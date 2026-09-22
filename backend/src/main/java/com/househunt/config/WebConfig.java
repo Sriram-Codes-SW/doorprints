@@ -29,10 +29,8 @@ public class WebConfig {
     private final AppProperties props;
 
     public WebConfig(AppProperties props) {
-        if (props.apiKey() == null || props.apiKey().isBlank() || props.apiKey().length() < 16) {
-            throw new IllegalStateException(
-                    "Set APP_API_KEY to a random secret of at least 16 characters (32+ recommended) before starting the API");
-        }
+        // Fail fast with a clear message (F-01): APP_API_KEY >= 32 chars, APP_API_KEY_NEXT empty or >= 32 chars.
+        ApiKeyFilter.validateKeys(props.apiKey(), props.apiKeyNext());
         this.props = props;
     }
 
@@ -78,7 +76,7 @@ public class WebConfig {
     public FilterRegistrationBean<ApiKeyFilter> apiKeyFilter() {
         var rl = props.rateLimit();
         var failures = new TokenBucketRateLimiter(rl.authFailureBurst(), rl.authFailuresPerMinute());
-        var bean = new FilterRegistrationBean<>(new ApiKeyFilter(props.apiKey(), failures));
+        var bean = new FilterRegistrationBean<>(new ApiKeyFilter(props.apiKey(), props.apiKeyNext(), failures));
         bean.setOrder(2);
         return bean;
     }

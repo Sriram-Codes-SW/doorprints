@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Network and resilience review, layer by layer |
-| Version | 0.1 |
+| Version | 0.2 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -13,6 +13,7 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. 55 scenarios across L1 to L7, with the mitigations built in wave 2 (retry with backoff and jitter, captive-portal detection, no redirects, Wi-Fi-only photos, battery-aware Hunt mode, gzip, EXIF stripping on the server, deny-by-default auth, rate limits, sync cursor safety). |
+| 0.2 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): row 5.5 (key rotation) is now **Yes**: dual API keys (`APP_API_KEY_NEXT`, SEC-017) give a zero-downtime rotation with no 401 window, procedure in [08 §5.1](08-operations-runbook.md#51-api-key-app_api_key-app_api_key_next); backlog item OSI-B04 marked Done. |
 
 Related: [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md)
 
@@ -112,7 +113,7 @@ Main code locations referenced below:
 | 5.2 | Sync interrupted half way | Push is per row (`markClean` only after the server accepted it); pull advances the cursor only after a whole batch is stored; photos have their own cursor that does not move past skipped downloads | L | Resumable by design: the next run continues from the saved cursors | Yes: `Repository.sync`, `SettingsStore.cursors` | TC-F-08 |
 | 5.3 | **Cursor skips a change** because a lower sync version commits after a higher one was already read (F-09) | Writers take a transaction-scoped advisory lock before `nextval('sync_seq')`, so versions become visible in assignment order and a reader can never pass an uncommitted version | M | `SyncVersions.lock()/next()` in every house, visit, photo and purge write | Yes | TC-I-14 (design argument in 03 §10.4; a concurrency test is backlog) |
 | 5.4 | Job retry policy | WorkManager: exponential backoff from 30 s, up to 5 attempts per run; an auth failure stops retrying (the user must fix the key); a periodic job every 30 minutes | L | `SyncWorker` | Yes | – |
-| 5.5 | Key rotation | Operator changes `APP_API_KEY`, users paste the new key; the old key immediately gets 401 | M: every device must be updated | Runbook 08 §5.1; dual-key support is backlog (SEC-017) | Part | TC-O-02 |
+| 5.5 | Key rotation | Since Sprint 2 the API accepts a second key, `APP_API_KEY_NEXT`, alongside `APP_API_KEY` (both at least 32 characters). The operator sets the new key as NEXT, clients move to it while the old key still works, then NEXT is promoted to `APP_API_KEY` and cleared; only then does the old key get 401. An emergency rotation (leaked key) skips the overlap on purpose | M: every device must be updated; with the overlap there is no 401 window, so no sync failures | Dual keys (SEC-017) with the procedure in runbook [08 §5.1](08-operations-runbook.md#51-api-key-app_api_key-app_api_key_next); do not leave NEXT set after a rotation (two valid keys) | Yes: `ApiKeyFilter`, `AppProperties`, `docker-compose.yml` | TC-O-02 (drill), TC-U-18 `ApiKeyFilterTest.acceptsBothKeysDuringRotation`, TC-I-21 `ApiIntegrationTest.acceptsTheNextKeyDuringRotation` |
 | 5.6 | Key at rest on the client | Android: AES-256-GCM with a Keystore key, never in backups; masked in Settings (only the last 4 characters are shown). Web: sessionStorage by default, localStorage only with "Remember on this device" | H (T-I1, T-I2) | `ApiKeyCipher`, `data_extraction_rules.xml`, `ConfigService` | Yes | TC-S-07, TC-M-06 |
 | 5.7 | Server-sent "retry later" | 429 carries `Retry-After`; the Android client and the web AI pages show it | L | – | Yes | `RetryInterceptorTest` |
 
@@ -166,6 +167,6 @@ Main code locations referenced below:
 | OSI-B01 | Web: "the server is waking up" hint after 5 s on the first request (NFR-002) | L4 | S |
 | OSI-B02 | Unicode NFC normalisation of street names before save and search | L6 | C |
 | OSI-B03 | A concurrency integration test for the sync cursor (two writers, one reader) | L5 | S |
-| OSI-B04 | Dual API keys for zero-downtime rotation (SEC-017) | L5 | S |
+| OSI-B04 | ~~Dual API keys for zero-downtime rotation (SEC-017)~~ **Done in Sprint 2**: `APP_API_KEY_NEXT`, rotation procedure in [08 §5.1](08-operations-runbook.md#51-api-key-app_api_key-app_api_key_next), row 5.5 | L5 | S |
 | OSI-B05 | Web offline support (service worker) for read-only use on the move | L1/L2 | C |
 | OSI-B06 | Measure Hunt mode battery use with the stationary slow-down (TC-F-06) and tune the intervals | L1 | S |

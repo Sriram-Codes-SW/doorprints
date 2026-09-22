@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,7 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Lists the 7 existing backend integration tests. Defines unit, integration, field, security, a11y, i18n and AI eval cases. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: new unit tests TC-U-12..17 (backend and Android), integration tests TC-I-15..20, statuses of TC-I-08..13 updated, new manual/field cases for captive portals, Wi-Fi-only photos, battery auto-stop, language picker, dark theme and the AI UI. CI now runs the automated tests (07). |
 | 0.3 | 2026-09-22 | Claude (Cowork) | First CI run fixes: backend tests no longer contain API-key literals (ApiIntegrationTest supplies a per-run random key via `@DynamicPropertySource`, ApiKeyFilterTest generates one too), so TC-S-03 gitleaks has nothing to flag in the tree. Jackson 3 (Boot 4) configured not to reject JSON that omits primitive fields (`deleted`, `syncVersion`), which every TC-I sync call relies on. |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): web unit tests (Vitest + jsdom via `@angular/build:unit-test`, `npm run test:ci` in `web.yml`) TC-U-19..21; Android unit tests `ChecklistScoreTest`, `SyncRulesTest`, `StreetAlertsTest` and more `ServerUrlTest` cases (TC-U-05, TC-U-06, TC-U-07 now Part/Exists, TC-U-15 extended); backend key-length and dual-key tests (TC-U-18, TC-I-21, TC-I-10b covered); AI eval harness TC-AI-09/10 (AI team); security gates TC-S-02 (Trivy on a CycloneDX SBOM, Tomcat 11.0.25 override), TC-S-14 (Trivy config blocking, DS-0002), TC-S-15 (signed release APK verified with `apksigner`); section 1 statuses and section 10 gaps updated (stale TC-U-06/07 "no unit tests" gap removed); model evals run by the manual workflow `.github/workflows/ai-evals.yml` (section 1, TC-AI-10). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -24,15 +25,15 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 
 | Level | What | Tooling (all free) | Runs | Status |
 |---|---|---|---|---|
-| Unit | Pure logic: StayDetector, Geo, score, LWW merge, DTO mapping, URL normalisation | JUnit 4 (Android local tests), JUnit 5 (backend), Vitest (Angular 21+ default) | Every push (CI) | **Gap**: no Android/web unit tests yet |
-| Integration | API + real PostGIS: auth, validation, LWW, change feed, geospatial, photos | Spring Boot test + `RestClient` against a PostGIS service container (`postgis/postgis:17-3.5`). Testcontainers as a local option. | Every push (CI) | 7 tests exist (`ApiIntegrationTest`) |
+| Unit | Pure logic: StayDetector, Geo, score, LWW merge, street alerts, DTO mapping, URL normalisation, i18n dictionaries, key checks | JUnit 4 (Android local tests), JUnit 5 (backend), Vitest + jsdom through `@angular/build:unit-test` (web, no browser needed) | Every push (CI: `backend.yml`, `android.yml` `testDebugUnitTest`, `web.yml` `npm run test:ci`) | Exists on all three: backend, Android (7 test classes), web (5 spec files) |
+| Integration | API + real PostGIS: auth, validation, LWW, change feed, geospatial, photos | Spring Boot test + `RestClient` against the `backend/db` image (`postgis/postgis:18-3.6` + pgvector) started with `docker run` in `backend.yml`. Testcontainers as a local option. | Every push (CI) | Exists (`ApiIntegrationTest`, section 4) |
 | Android instrumentation | Room DAO queries, WorkManager sync with MockWebServer, Compose UI | AndroidX Test, Room in-memory, `work-testing`, OkHttp MockWebServer, Compose UI test, emulator in CI (`reactivecircus/android-emulator-runner`) | Later (nightly / pre-release) | Planned |
 | Manual UI | Screens, deep links, permissions | Checklists in section 5 | Pre-release | Planned |
 | Field | Hunt mode walk test | Script in section 6 | Pre-release + after location changes | Planned |
-| Security | SAST, SCA, secrets, container, DAST, mobile static | Semgrep OSS, OWASP Dependency-Check, Trivy, npm audit, gitleaks, OWASP ZAP baseline, MobSF, Android Lint | CI + pre-release | Planned (see 07) |
+| Security | SAST, SCA, secrets, IaC/Dockerfile, DAST, mobile static | Semgrep OSS, Trivy (fs, CycloneDX SBOM, config), npm audit, gitleaks, OWASP ZAP baseline, MobSF, Android Lint, `apksigner` | CI (`security.yml`, every push + weekly) + pre-release | CI gates run (07 §1); ZAP and MobSF manual |
 | Accessibility | WCAG 2.2 AA, TalkBack | axe-core (Playwright), Lighthouse, Android Accessibility Scanner, TalkBack manual | Pre-release | Owned with the design team ([05](05-ux-accessibility-i18n.md)) |
 | i18n | en/hi/ta/te, pseudo-locales, number formats | Android pseudo-locales, Angular i18n extraction, manual review | Pre-release | Owned with the design team |
-| AI evals | Grounding, citations, injection, extraction accuracy | Golden set + JUnit/Spring AI eval harness (AI team) | Before enabling AI by default, and on model/prompt change | Planned ([ai/](ai/)) |
+| AI evals | Grounding, citations, injection, extraction accuracy, planner validity | Golden set (`docs/ai/evals/golden-set.json` v0.2, with thresholds) + harness in `backend/src/test/java/com/househunt/ai/eval/` (AI team): `EvalScorerTest` (pure scoring, every build) and `GoldenSetEvalTest` (real model, tag `llm-eval`, skipped unless `AI_API_KEY` is set) | Scoring: every push. Model evals: manually through `.github/workflows/ai-evals.yml` (Actions > AI evals > Run workflow; needs the `AI_API_KEY` repository secret; scorecard in the job summary and the `ai-eval-report` artifact), before enabling AI by default and on model/prompt change | Harness and workflow built in Sprint 2; no model run recorded yet (C-07 in [10](10-sprint-log.md)). Details in [ai/](ai/) |
 
 Principles: test risk-first (threats with risk ≥ 6 in 02 need a test), keep external services out of automated tests (fake the Geocoder and the LLM, no Nominatim calls), use fixture data with no real personal data.
 
@@ -66,6 +67,25 @@ Principles: test risk-first (threats with risk ≥ 6 in 02 need a test), keep ex
 | TC-U-15 | Android `ServerUrlTest` | HTTPS accepted; `http://` only for localhost/10.0.2.2; LAN and public `http://` refused; junk, user-info, query strings refused | SEC-004, F-02 |
 | TC-U-16 | Android `SyncOutcomeTest` | Stored form round-trips; v0.1 free text ignored; errors classified (auth, captive portal, rate limit, server, network) without server text | SEC-015, F-12 |
 | TC-U-17 | Android `RetryInterceptorTest` | 503/502 retried then success; gives up after 3 attempts; network errors retried for idempotent calls; plain POST not retried, POST tagged `Idempotent` retried; 401 not retried; backoff jittered and capped at 15 s | NFR-017, FR-020 |
+| TC-U-18 | Backend `ApiKeyFilterTest` (Sprint 2) | `refusesMissingOrShortKeys`: missing, blank or 31-char `APP_API_KEY` stops startup with a message naming the variable but never the value; `refusesShortNextKey`; `blankNextKeyIsIgnored` (null, empty, spaces); `acceptsBothKeysDuringRotation` (header and Bearer; prefixes, concatenations and case variants refused); `nextKeyIsNotAcceptedUnlessConfigured`; test keys themselves ≥ 32 chars | SEC-002, SEC-003, SEC-017, F-01 |
+| TC-U-19 | Web `models.spec.ts`, `config.service.spec.ts` | `houseScore` (same cases as Android TC-U-05, NaN and missing checklist); `ConfigService` session vs "remember" storage, corrupt or partial storage ignored, storage exceptions tolerated; `normalizeBaseUrl` | FR-005, FR-024, SEC-010, F-04 |
+| TC-U-20 | Web `api.interceptor.spec.ts` | Only `/api` URLs get the base URL and `X-API-Key`; third-party URLs (Nominatim, tiles) never get the key; method, body and headers kept; unconfigured requests pass through | FR-024, SEC-001, T-I5 |
+| TC-U-21 | Web `dictionaries.spec.ts`, `translation.service.spec.ts` | hi/ta/te have exactly the keys of `en`, no empty strings, same `{placeholders}`; language state saved and restored; `t()`, number, ₹ price (Indian grouping), score, date and duration formatting per locale | NFR-007, FR-036 |
+
+Status of the unit cases above (Sprint 2, 2026-09-22):
+
+| ID | Status | Test class / spec |
+|---|---|---|
+| TC-U-01..04 | Exists | Android `StayDetectorTest` (`distanceIsAccurate` covers TC-U-04) |
+| TC-U-05 | **Exists** | Android `ChecklistScoreTest` (+ `StayDetectorTest.scoreBlendsChecklistAndRating`), web `models.spec.ts` |
+| TC-U-06 | Part | Android `SyncRulesTest`: the keep-local rule (dirty and strictly newer wins; clean or missing local takes the server copy; houses and visits) was extracted to `data/SyncRules.kt`. Cursor, tombstone and `markClean` cases still need a fake `ApiClient`. |
+| TC-U-07 | Part | Android `StreetAlertsTest`: street key ignores case and spaces, unknown street never alerts, known street alerts once an hour (`location/StreetAlerts.kt`). House cooldown and geocode throttle not yet extracted. |
+| TC-U-08, TC-U-10, TC-U-11 | Gap | – |
+| TC-U-09 | **Exists** | Web `config.service.spec.ts` |
+| TC-U-12..14, TC-U-18 | Exists | Backend `ApiKeyFilterTest`, `ClientClockTest`, `ImageSanitizerTest` |
+| TC-U-15 | Exists (extended) | Android `ServerUrlTest`: plus case-insensitive scheme/host, look-alike local hosts (`localhost.evil.example`, `127.0.0.2`, `[::1]`) need HTTPS, URLs without a host, `javascript:` and fragments refused |
+| TC-U-16, TC-U-17 | Exists | Android `SyncOutcomeTest`, `RetryInterceptorTest` |
+| TC-U-19..21 | **Exists** | Web specs listed above |
 
 ## 4. Integration tests (backend + PostGIS)
 
@@ -83,7 +103,7 @@ Existing tests are in `backend/src/test/java/com/househunt/ApiIntegrationTest.ja
 | TC-I-08 | Photo upload types | Non-image bytes get 400 (in `photoUploadStripsMetadataAndDeletesSyncAsTombstones`). More than 5 MB gives 413 (manual). | FR-007, SEC-007 | Exists (part) |
 | TC-I-09 | Photo idempotency | Same `id` posted twice gives one row (in `photoUploadStripsMetadataAndDeletesSyncAsTombstones`). Unknown house gives 404. | FR-007 | Exists (part) |
 | TC-I-10 | `clientClockIsClampedOrRejected` | +3 h clamped to server time (a later normal edit still wins); 2030 gives 400 | SEC-020 | Exists |
-| TC-I-10b | Startup key check | Context fails to start with a key shorter than the minimum length | SEC-002 | New |
+| TC-I-10b | Startup key check | `WebConfig` calls `ApiKeyFilter.validateKeys`, so a key shorter than 32 chars (or a short `APP_API_KEY_NEXT`) stops startup. Covered at unit level by TC-U-18 `refusesMissingOrShortKeys`; the integration tests start with 39/44-char keys. | SEC-002, F-01 | Exists (unit) |
 | TC-I-11 | CORS | Preflight from an allowed origin gives ACAO. From a disallowed origin: no ACAO. 401 responses carry CORS headers. | SEC-005 | New |
 | TC-I-12 | Rate limit | Failed-key throttle covered by TC-U-12; body size cap by `rejectsOversizedJsonBodies` (400/413). A general 429 test with a low `app.rate-limit.burst` is still a gap. | SEC-008, SEC-026 | Part |
 | TC-I-13 | `nearbyRejectsOutOfRangeParameters` | lat 95 or radius −1 gives 400 | FR-026, SEC-006 | Exists |
@@ -94,6 +114,7 @@ Existing tests are in `backend/src/test/java/com/househunt/ApiIntegrationTest.ja
 | TC-I-18 | `exportContainsLiveDataAsAnAttachment`, `deleteAllNeedsTheConfirmationHeader` | Export is an attachment with houses/visits/photos; delete-all without or with a wrong header gives 428, with the header wipes houses including tombstones | FR-031, FR-032, PRV-004 | Exists |
 | TC-I-19 | `indicTextRoundTripsEndToEnd` | Telugu label, Hindi notes and a Tamil street round-trip through JSON, the query string and Postgres; street search finds it | NFR-007, 09 §7 | Exists |
 | TC-I-20 | `securityHeadersAndNoStoreOnJson` | `nosniff`, `no-store`, CSP `default-src 'none'`, `Referrer-Policy: no-referrer` on JSON | SEC-012, F-10 | Exists |
+| TC-I-21 | `acceptsTheNextKeyDuringRotation` | With `app.api-key-next` set, the next key gets 200 as `X-API-Key` and as `Bearer`; the next key plus one character gets 401 | SEC-017, F-01 | Exists (Sprint 2) |
 
 ## 5. Manual UI and instrumentation checks
 
@@ -145,7 +166,7 @@ Record: device model, Android version, alerts expected/received, false alerts, b
 | ID | Tool / method | Scope | Pass criteria | Threats / req |
 |---|---|---|---|---|
 | TC-S-01 | **Semgrep OSS** (`p/java`, `p/kotlin`, `p/typescript`, `p/owasp-top-ten`, `p/secrets`) | whole repo | No new ERROR findings. WARN findings triaged. | SEC-014 |
-| TC-S-02 | **OWASP Dependency-Check** (Maven plugin / CLI with a free NVD API key), **Trivy fs**, **npm audit --audit-level=high**, Gradle dependency report + Dependabot | backend, android, web | No unfixed Critical/High with a known fix. Exceptions documented with an expiry date. | SEC-013, T-T5 |
+| TC-S-02 | **Trivy sbom** on the backend CycloneDX SBOM (`cyclonedx-maven-plugin` `makeAggregateBom`, runtime scopes), **Trivy fs --offline-scan** (npm lock file, secrets), **npm audit --audit-level=high --omit=dev**, Dependabot (Gradle is not covered by Trivy without a lock file). OWASP Dependency-Check is not used (07 §1). | backend, android, web | No unfixed Critical/High with a known fix. A fix not yet managed by a framework BOM is applied as a documented version override (e.g. `tomcat.version` 11.0.25 for CVE-2026-65182/-65905/-68525, F-28) and removed when the BOM catches up. Exceptions documented with an expiry date. | SEC-013, T-T5, F-27, F-28 |
 | TC-S-03 | **gitleaks** (full history on first run, then on PRs) | repo | No secrets (tests generate their API keys at runtime; none are committed) | SEC-009 |
 | TC-S-04 | **OWASP ZAP baseline** (`zaproxy/action-baseline`) against the CI-started API and a preview of the web build | API, web | No High alerts. Headers (SEC-012) present after the fix. No stack traces. | SEC-012, SEC-015 |
 | TC-S-05 | **Trivy image** scan of `house-hunt-api` | container | No Critical. Runs as non-root (after F-23). | SEC-024 |
@@ -157,6 +178,8 @@ Record: device model, Android version, alerts expected/received, false alerts, b
 | TC-S-11 | Upload abuse: 5 MB+ file, polyglot, many concurrent uploads | API | 400/413. No OOM at 512 MB. | SEC-007, T-D3 |
 | TC-S-12 | Deep-link fuzz: `adb shell am start -n com.househunt.app/.MainActivity --es openHouse "../x"` and `--ed newLat 999` | Android | No crash. Invalid input is ignored. | SEC-021 |
 | TC-S-13 | Captive portal: connect the phone to a Wi-Fi with a sign-in page (or a local proxy that answers every request with a 302 or an HTML 200), then sync | Android | Sync reports "this Wi-Fi needs a sign-in page first"; the proxy log shows no request carrying `X-API-Key` to a redirect target | SEC-028, 09 §3 |
+| TC-S-14 | **Trivy config** on `backend/Dockerfile`, `backend/db/Dockerfile` and compose (`security.yml`) | Dockerfiles | No HIGH/CRITICAL misconfiguration (blocking since Sprint 2; DS-0002 "no USER" fixed at the source, no ignore entry); MEDIUM reported in a second, non-blocking pass | SEC-024, DS-0002 |
+| TC-S-15 | Signed release APK (`android.yml` job `release`, `main`/manual only, never on PRs): `assembleRelease` with the keystore from secrets, `apksigner verify --print-certs`, keystore deleted in `always()` | APK | Signature verifies; the printed SHA-256 cert fingerprint matches the published one. Skipped with a notice when the `HH_*` secrets are not set. | SEC-018, F-11 |
 
 ## 8. AI evaluation (AI team to finalise in [ai/](ai/))
 
@@ -175,6 +198,13 @@ Fixture: a synthetic hunt of about 25 houses and 60 visits across 3 localities, 
 
 Evals run with a fixed model/version and temperature 0 where the provider allows it. Results are stored as a CI artifact. A regression of more than 5 points blocks the prompt/model change.
 
+**Harness (Sprint 2, AI team; the metric definitions and thresholds in [ai/](ai/) and `golden-set.json` are authoritative):**
+
+| ID | Test | What it checks | When |
+|---|---|---|---|
+| TC-AI-09 | `EvalScorerTest` | The golden-set file is consistent; scoring of extraction (normalised fields, misses, hallucinations, injection guards), ask (citations, answer, refusal), plan validity, min/max thresholds, and the markdown report | Every backend build (no model, no network) |
+| TC-AI-10 | `GoldenSetEvalTest` (`@Tag("llm-eval")`) | Seeds the fixture houses and visits through the public API, reindexes, runs every golden case through the real endpoints (key filter and sanitizers included), writes `target/ai-eval-report.md` and fails if a metric misses its threshold | Only with `AI_API_KEY` set (free-tier Gemini key or local Ollama), on an empty database; skipped in normal CI. Run by `.github/workflows/ai-evals.yml` (Actions > AI evals > Run workflow; needs the `AI_API_KEY` repository secret; inputs `types`, `delay_ms`, `chat_model`); scorecard in the job summary and the `ai-eval-report` artifact (30 days) |
+
 ## 9. Accessibility, i18n, performance, operations
 
 | ID | Case | Tool | Req |
@@ -186,7 +216,7 @@ Evals run with a fixed model/version and temperature 0 where the provider allows
 | TC-A-05 | Contrast of status colours (NEW #3C5A99, SHORTLISTED #1A7A43, REJECTED #B3261E, star #A86A00) with text/background ≥ 4.5:1 (3:1 for the star glyph), and status not shown by colour alone | Contrast checker | NFR-006 |
 | TC-A-06 | Android dark theme: every screen readable, status and star colours from the dark token set, no white flash on start | Manual | FR-041 |
 | TC-A-07 | TalkBack: rating announced as a radio group ("3 out of 5 stars, selected"), checklist rows as radio groups, Hunt-mode row as one switch, Compare rows as checkboxes, headings navigable | TalkBack | NFR-020 |
-| TC-L-01 | All UI strings come from resources (Android `strings.xml` in 4 languages, Angular dictionaries). Android lint `MissingTranslation`/`ExtraTranslation` are errors (reported in CI); the web build fails on a missing key. | Lint, `ng build` | NFR-007 |
+| TC-L-01 | All UI strings come from resources (Android `strings.xml` in 4 languages, Angular dictionaries). Android lint `MissingTranslation`/`ExtraTranslation` are errors (reported in CI); the web build fails on a missing key, and `dictionaries.spec.ts` (TC-U-21) also checks empty strings and `{placeholders}`. | Lint, `ng build` | NFR-007 |
 | TC-L-02 | hi/ta/te rendering: fonts, line height, truncation, pseudo-locale `en-XA` expansion | Manual + pseudo-locales | NFR-007 |
 | TC-L-03 | Number/currency: ₹ with Indian grouping (1,00,000). Dates follow the locale. | Unit + manual | NFR-007 |
 | TC-L-04 | Notifications and Hunt card strings translated | Manual | NFR-007 |
@@ -196,7 +226,7 @@ Evals run with a fixed model/version and temperature 0 where the provider allows
 | TC-P-03 | Nearby check time per fix with 1 000 houses on a mid-range phone | Microbenchmark / log timing | NFR-003 |
 | TC-P-04 | DB size after 500 photos, projected against quota | SQL `pg_total_relation_size` | NFR-009 |
 | TC-O-01 | Backup restore drill: decrypt the latest dump and restore into a fresh PostGIS, app starts, counts match | 08 section 3 | NFR-008 |
-| TC-O-02 | Key rotation drill: rotate, old key gives 401, clients updated | 08 section 5 | SEC-017 |
+| TC-O-02 | Key rotation drill with `APP_API_KEY_NEXT` (08 §5.1): during the overlap both keys give 200; after promotion and clearing NEXT the old key gives 401; every client updated with no sync failure | 08 section 5 | SEC-017 |
 
 ## 10. Requirement coverage and gaps
 
@@ -204,9 +234,10 @@ The full mapping is the RTM in [01 section 12](01-requirements.md#12-requirement
 
 | Gap | Impact | Action |
 |---|---|---|
-| Sync merge (TC-U-06) and Hunt alert logic (TC-U-07) have no unit tests | Regressions in core Android logic | Extract to pure classes, then test |
-| No web tests | Regressions in the SPA | Add Vitest for `core/*` (`splitCitations`, `ConfigService`, `aiErrorMsg`) and a Playwright smoke + axe test |
-| CI added but not yet run (no GitHub access from the build sandbox) | First runs may fail on environment details | Lead runs the workflows and fixes forward |
+| Web: `splitCitations`, `aiErrorMsg` and components have no tests | Regressions in the AI UI and pages | Next sprint: specs for `core/ai.service.ts`, then a Playwright smoke + axe test (TC-A-01) |
+| Sync cursor/tombstone cases of TC-U-06, house cooldown of TC-U-07, TC-U-08, TC-U-10, TC-U-11 | Regressions in core Android logic | Extract the remaining logic to pure classes (as `SyncRules`/`StreetAlerts` were), then test |
+| No local builds in the engineering sandbox (Maven Central, Google Maven and npm unreachable) | Changes are first compiled in CI; a red run costs a round trip | Keep changes small, verify upstream APIs by reading source, fix forward ([10](10-sprint-log.md) retro) |
+| R8 is off in release builds (F-11 part) | Larger APK, no obfuscation | Needs keep rules and a release smoke test (instrumented) first |
 | TC-I-14 concurrency, general 429 test | F-09 and SEC-008 rely on design review | OSI-B03 |
 | AI UI | Manual only (TC-M-09) | Playwright with a stubbed `/api/ai/*` |
 

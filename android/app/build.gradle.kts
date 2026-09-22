@@ -5,6 +5,19 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Release signing (threat model F-11). The keystore never lives in the repo: CI or the developer supplies it
+// through Gradle properties (-PHH_KEYSTORE_FILE=..., ~/.gradle/gradle.properties) or environment variables
+// of the same names. The config is only created when all four are set; otherwise release builds stay unsigned
+// (assembleRelease still works, the APK just cannot be installed until it is signed).
+// HH_KEYSTORE_FILE should be an ABSOLUTE path (docs/07 section 7.1). A relative path is resolved by file()
+// against this module's directory, android/app/ (not the repo root, not android/, not the shell's cwd),
+// so "release.jks" means android/app/release.jks. Keep the keystore outside the repo.
+val releaseSigning = listOf("HH_KEYSTORE_FILE", "HH_KEYSTORE_PASSWORD", "HH_KEY_ALIAS", "HH_KEY_PASSWORD")
+    .associateWith { name ->
+        providers.gradleProperty(name).orElse(providers.environmentVariable(name)).orNull?.takeIf { it.isNotBlank() }
+    }
+val hasReleaseSigning = releaseSigning.values.all { it != null }
+
 android {
     namespace = "com.househunt.app"
     compileSdk = 37
@@ -17,9 +30,26 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                // Absolute path recommended; a relative one resolves against android/app/ (see comment at top).
+                storeFile = file(releaseSigning.getValue("HH_KEYSTORE_FILE")!!)
+                storePassword = releaseSigning.getValue("HH_KEYSTORE_PASSWORD")
+                keyAlias = releaseSigning.getValue("HH_KEY_ALIAS")
+                keyPassword = releaseSigning.getValue("HH_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8 stays off for now: kotlinx.serialization, Room (KSP-generated code), MapLibre (JNI) and
+            // WorkManager (reflective worker creation) need keep rules that are not written or tested yet, and
+            // there are no instrumented tests to catch a class R8 strips. A shrunk build that crashes at runtime
+            // is worse than a larger APK. Turn on together with proguard-rules.pro and a release smoke test.
             isMinifyEnabled = false
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
 

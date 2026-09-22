@@ -30,4 +30,27 @@ class ServerUrlTest {
         assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("https://example.com/?x=1"))
         assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("https://exa mple.com"))
     }
+
+    @Test
+    fun schemeAndLocalHostAreCaseInsensitive() {
+        assertEquals(ServerUrl.Result.Ok("HTTPS://Example.COM"), ServerUrl.check("HTTPS://Example.COM"))
+        assertEquals(ServerUrl.Result.Ok("http://LOCALHOST:8080"), ServerUrl.check("http://LOCALHOST:8080"))
+        assertEquals(ServerUrl.Result.Ok("http://127.0.0.1:8080"), ServerUrl.check("http://127.0.0.1:8080/"))
+        assertEquals(ServerUrl.Result.Ok("https://example.com"), ServerUrl.check("https://example.com///"))
+    }
+
+    @Test
+    fun lookAlikeLocalHostsNeedHttps() {
+        assertEquals(ServerUrl.Result.NotHttps, ServerUrl.check("http://localhost.evil.example"))
+        assertEquals(ServerUrl.Result.NotHttps, ServerUrl.check("http://127.0.0.2:8080"))
+        assertEquals(ServerUrl.Result.NotHttps, ServerUrl.check("http://[::1]:8080"))
+    }
+
+    @Test
+    fun rejectsUrlsWithoutAHost() {
+        assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("https://"))
+        assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("javascript:alert(1)"))
+        assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("https://example.com#top"))
+        assertEquals(ServerUrl.Result.Invalid, ServerUrl.check("/api"))
+    }
 }

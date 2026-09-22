@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version: monitoring, backups/restore, key rotation, incident response, data export/deletion, release checklist. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: export and delete-all now use the API (`GET /api/export`, `DELETE /api/data`), automatic 90-day tombstone purge, new log lines for auth failures and rate limits, CI-based dependency scanning, key rotation steps for the masked Android key field. |
+| 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): zero-downtime API key rotation with `APP_API_KEY_NEXT` (section 5.1), emergency rotation and the 32-character minimum upgrade note; Trivy (SBOM, config) replaces Dependency-Check in the routine tasks; check to remove the Tomcat override (F-28); signed release APK from `android.yml`; new section 9 Troubleshooting (non-root DB image, uid 999 bind-mount ownership, F-29; key-length and rotation 401s). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -103,7 +104,7 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 
 | Frequency | Task |
 |---|---|
-| Weekly | Merge Dependabot PRs after CI passes. Read the ZAP and Dependency-Check reports. |
+| Weekly | Merge Dependabot PRs after CI passes. Read the weekly `security.yml` run (Trivy SBOM/fs/config, npm audit, gitleaks, Semgrep) and any ZAP report. When a Spring Boot patch manages Tomcat 11.0.25 or later, remove the `tomcat.version` override from `backend/pom.xml` (F-28, 07 §1). |
 | Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. |
 | Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Pages, OpenFreeMap, Nominatim, LLM). |
 | 6-monthly | Rotate `APP_API_KEY` (section 5.1). Review the threat model findings. |
@@ -111,20 +112,27 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 
 ## 5. Key and secret rotation
 
-### 5.1 API key (`APP_API_KEY`)
+### 5.1 API key (`APP_API_KEY`, `APP_API_KEY_NEXT`)
 
-Today there is one key, so rotation has a short window in which clients get 401 until they are updated. Sync retries later, and the phone stays fully usable offline.
+Since Sprint 2 the API accepts two keys at once (SEC-017): the current `APP_API_KEY` and, during a rotation only, `APP_API_KEY_NEXT`. Both must be at least 32 characters; the API refuses to start otherwise and the log names the variable, never the value. Rotation therefore has **no 401 window**: clients move to the new key while the old one still works.
 
-| Step | Action |
-|---|---|
-| 1 | Generate: `openssl rand -base64 32`. Save it in the password manager. |
-| 2 | Update `APP_API_KEY` in the host's secret settings (Render/Koyeb) or the VM `.env`. Redeploy/restart. |
-| 3 | Check: `curl -s -o /dev/null -w '%{http_code}' -H "X-API-Key: <old>" https://<api>/api/stats` → `401`. With the new key → `200`. |
-| 4 | Web: Connect page → paste the new key → Test → Save (on each browser). |
-| 5 | Android: Settings → paste the new key (the field is empty; the hint shows the last 4 characters of the saved key) → Save and test → Sync now. Unsynced local changes are kept and pushed. The key is stored encrypted with a Keystore key. |
-| 6 | Record the date in the password manager entry |
+**Routine rotation (every 6 months, zero downtime)**
 
-Planned zero-downtime flow (SEC-017): set `APP_API_KEY_NEXT` → update clients → move NEXT to `APP_API_KEY` → remove NEXT.
+| Step | Action | Check |
+|---|---|---|
+| 1 | Generate: `openssl rand -hex 32` (64 chars). Save it in the password manager as "next". | Length ≥ 32 |
+| 2 | Set `APP_API_KEY_NEXT=<new>` in the host's secret settings (Render/Koyeb) or the VM `.env` (`compose.prod.yml` passes it through). Keep `APP_API_KEY=<old>`. Redeploy/restart. | Health UP. `curl -s -o /dev/null -w '%{http_code}' -H "X-API-Key: <old>" https://<api>/api/stats` → `200`; with `<new>` → `200` |
+| 3 | Web: Connect page → paste the new key → Test → Save (on each browser). | Map loads |
+| 4 | Android: Settings → paste the new key (the field is empty; the hint shows the last 4 characters of the saved key) → Save and test → Sync now, on every phone. Unsynced local changes are kept and pushed. | Settings shows the new last 4 characters; sync OK |
+| 5 | Any other client (MCP client, scripts): update the key. | – |
+| 6 | Promote: set `APP_API_KEY=<new>` and clear `APP_API_KEY_NEXT` (empty or removed). Redeploy/restart. | `<old>` → `401`, `<new>` → `200` |
+| 7 | Record the date in the password manager entry; delete the old key there. Watch the logs for a day: `auth.fail` lines from a known address mean a client was missed (it can be given the new key at any time). | TC-O-02 |
+
+Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys are valid.
+
+**Emergency rotation (key leaked or suspected, IR-2)**: do **not** use the overlap. Set `APP_API_KEY=<new>`, make sure `APP_API_KEY_NEXT` is empty, redeploy, confirm the old key gets `401`, then update the clients (steps 3 to 5). Clients get 401 until they are updated; sync retries later and the phone stays fully usable offline.
+
+**Upgrading from a 16–31 character key** (before Sprint 2 the minimum was 16): the new version will not start with it. Set a new 32+ key as `APP_API_KEY` in the same deploy (emergency-style swap, then update the clients), or rotate to a 32+ key with the old version first.
 
 ### 5.2 Other secrets
 
@@ -184,7 +192,7 @@ General flow: **Detect → Contain → Eradicate → Recover → Learn.** Record
 
 | Step | Action |
 |---|---|
-| Contain | Rotate immediately (section 5.1). Revocation is the real fix. Removing the key from history does not undo the leak. |
+| Contain | Rotate immediately with the **emergency** procedure in section 5.1 (no `APP_API_KEY_NEXT` overlap; if a rotation was in progress and the leaked key is the next key, clear `APP_API_KEY_NEXT` too). Revocation is the real fix. Removing the key from history does not undo the leak. |
 | Eradicate | If it was committed: remove it from the code, rewrite history with `git filter-repo` if the repo is public, force-push, and ask GitHub support to purge cached views if needed. Check that gitleaks/push protection were on. |
 | Assess | Host logs: requests from unknown IPs / user agents since the leak. Data check as in IR-1. If AI was enabled, check provider usage. |
 | Recover | Restore from backup if data was changed. Update all clients. |
@@ -223,7 +231,15 @@ Publish a warning in the repo README with the correct certificate fingerprint. C
 - [ ] Fresh backup taken (manual `backup.yml` run) within 24 h.
 - [ ] Deploy the API by image digest → health UP → smoke test (stats, create/delete a test house, then purge it).
 - [ ] Web deployed (Pages) → Connect and Map load. No CSP errors in the console.
-- [ ] Release APK built by `release.yml`, `apksigner verify` fingerprint matches, SHA-256 published.
+- [ ] Release APK built by the `android.yml` `release` job (`house-hunt-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
 - [ ] Install on the phone **after syncing**. Settings show the right server. Sync OK. Hunt mode starts and stops.
 - [ ] If AI changed: eval results attached and meet the thresholds. Flag default stays off unless approved.
 - [ ] Release notes: features, fixes, security fixes, migrations, known issues.
+
+## 9. Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Dev/CI database container (`house-hunt-db`, `backend/db/Dockerfile`) exits on first start with a permission error: `initdb: error: could not change permissions of directory …`, `mkdir: cannot create directory '/var/lib/postgresql/18/docker': Permission denied`, or `FATAL: data directory … has wrong ownership` | Since Sprint 2 the image runs as `USER postgres` (uid 999, F-29), so the entrypoint cannot `chown` the data directory. A **host bind mount** (for example `./pgdata:/var/lib/postgresql`), or a volume first initialised by another uid, is not owned by uid 999. The default named volume `dbdata18` is not affected. | On the host: `sudo chown -R 999:999 ./pgdata` and start again, or switch back to the named volume in `docker-compose.yml`. Do **not** add `user: root` to compose (it reverts F-29). See [07 §6.2](07-secure-build-and-deploy.md#62-api). |
+| API refuses to start: log names `APP_API_KEY` or `APP_API_KEY_NEXT` as too short | Key shorter than 32 characters (F-01, since Sprint 2) | Section 5.1, "Upgrading from a 16–31 character key" |
+| All clients get 401 right after a deploy | `APP_API_KEY` changed without the `APP_API_KEY_NEXT` overlap | Section 5.1: put the old key back as `APP_API_KEY` and the new one as `APP_API_KEY_NEXT`, or finish updating the clients |

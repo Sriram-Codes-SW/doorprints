@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Index, phase map and update rules. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Added 09 (OSI layer analysis) and the CI-backed update workflow; documents 01–08 moved to v0.2 after wave 2. |
+| 0.3 | 2026-09-22 | Claude (Cowork) | Added 10 (sprint log) and the root [CHANGELOG](../CHANGELOG.md); story and candidate id prefixes; update rule for the changelog and sprint log. Sprint 2 versions: 01 v0.3, 02 v0.4, 03 v0.3, 06 v0.4, 07 v0.4, 08 v0.3, 09 v0.2 (row 5.5 and OSI-B04: dual API keys done). |
 
 ---
 
@@ -38,6 +39,8 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 07 | [Secure build and deploy](07-secure-build-and-deploy.md) | CI/CD, branch protection, secrets, signing, free-tier deployment, environment variables | DevOps |
 | 08 | [Operations runbook](08-operations-runbook.md) | Monitoring, backups, key rotation, incident response, data export/deletion, release checklist | Operations |
 | 09 | [OSI 7-layer resilience analysis](09-osi-layer-analysis.md) | Scenario → behaviour → risk → mitigation → test for GPS/power, Wi-Fi/cellular/captive portals, DNS/IPv6/VPN, TCP retries and cold starts, sessions and sync cursors, TLS/UTF-8/time/EXIF, REST/auth/caching/AI | Architecture / Security |
+| 10 | [Sprint log](10-sprint-log.md) | Agile record: working agreement, sprint goals, stories, team sign-offs, CI results, retrospectives, next-sprint candidates | Docs team (all team managers sign off) |
+| – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals | **AI team** |
 
 ## SSDLC phase map
@@ -60,6 +63,7 @@ flowchart LR
 | 4 Verification | Unit/integration tests, SAST, SCA, secret scanning, DAST, accessibility, AI evals, field test, network resilience review | 06, 09 |
 | 5 Release and deploy | Signed builds, protected branches, CI gates, least-privilege secrets, hardened config | 07 |
 | 6 Operations | Monitoring, backups, key rotation, incident response, data subject rights | 08 |
+| Across all phases | Sprint planning, manager review and sign-off, CI results, retrospectives, release notes | 10, [CHANGELOG](../CHANGELOG.md) |
 
 ## Requirement ID scheme
 
@@ -77,6 +81,8 @@ flowchart LR
 | TC-xxx | Test case | 06 |
 | DF-xx | Data flow | 04 |
 | ADR-xx | Architecture decision record | 03 |
+| S<n>-xx | Sprint story (sprint n) | 10 |
+| C-xx | Next-sprint candidate | 10 |
 
 ## How to update these documents
 
@@ -88,4 +94,5 @@ flowchart LR
 6. **Diagrams** are Mermaid and render on GitHub. Put labels in quotes (`A["Label (with parens)"]`). In sequence diagrams, avoid `;` and `#` in message text. Preview on GitHub or in the Mermaid live editor before merging.
 7. **Cross-team documents**: `05-ux-accessibility-i18n.md` and `ai/` belong to other teams. Link to them. Don't copy their content here.
 8. Review the docs in the same pull request as the code change they describe.
-9. **CI is the check.** The workflows in `.github/workflows/` (07 §1) run the tests named in 06. When you add a test, add its TC id to 06 and to the RTM in 01; when you add an endpoint, update 03 §9, the DFD (04) and re-check 02 and 09. The root [README](../README.md) links here and must stay in sync with 07 (deploy steps) and 03 (architecture).
+9. **Changelog and sprint log.** Every user-visible or security change adds a line under *Unreleased* in the root [CHANGELOG](../CHANGELOG.md) (Added / Changed / Fixed / Security, with F-xx ids). At the end of each sprint, record the stories, the manager sign-offs, the CI results and the retrospective in [10](10-sprint-log.md).
+10. **CI is the check.** The workflows in `.github/workflows/` (07 §1) run the tests named in 06. When you add a test, add its TC id to 06 and to the RTM in 01; when you add an endpoint, update 03 §9, the DFD (04) and re-check 02 and 09. The root [README](../README.md) links here and must stay in sync with 07 (deploy steps) and 03 (architecture).

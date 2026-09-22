@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version, based on the code in `backend/`, `android/` and `web/` as of 2026-09-22. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: statuses updated after security hardening, Android i18n/a11y, AI UI and CI. New FR-034..FR-041, NFR-017..NFR-020, SEC-026..SEC-030. RTM extended with the new tests. |
+| 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 1 fixes and Sprint 2 ([10](10-sprint-log.md)): SEC-002 Impl (32-char minimum), SEC-017 Impl (`APP_API_KEY_NEXT` dual key), SEC-018 Part (signed release APK in CI, R8 still off), SEC-013 (Trivy on a CycloneDX SBOM, Tomcat 11.0.25 override for F-28), SEC-024 (DB image non-root, F-29). CON-03: compileSdk 37, MapLibre GL 6.10. RTM: new web and Android unit tests (TC-U-05..07, TC-U-18..21), TC-I-21, TC-S-14, TC-S-15, AI eval harness TC-AI-09/10. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -192,8 +193,8 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | ID | Requirement | Pri | Status | Threat / finding |
 |---|---|---|---|---|
 | SEC-001 | Deny by default: every request needs a valid API key (`X-API-Key`) except `GET/HEAD /actuator/health` and CORS preflights. Non-canonical paths (`;`, `%`, backslash, `//`, dot segments) are rejected with 400. | M | Impl | T-S1, T-S2, F-20 |
-| SEC-002 | The API key must be random with at least 128 bits of entropy (for example 32+ chars from `openssl rand -base64 32`). The server refuses to start with a key shorter than 16 chars (already enforced). Raise the minimum to 32. | M | Part | F-01 |
-| SEC-003 | Keys are compared in constant time. | M | Impl (`MessageDigest.isEqual`) | T-S1 |
+| SEC-002 | The API key must be random with at least 128 bits of entropy (for example 32+ chars from `openssl rand -hex 32`). The server refuses to start when `APP_API_KEY` (or a non-empty `APP_API_KEY_NEXT`) is shorter than 32 chars; the error names the variable, never the value. | M | Impl (Sprint 2) | F-01 |
+| SEC-003 | Keys are compared in constant time. With two keys configured, both are always compared (no early exit). | M | Impl (`MessageDigest.isEqual`) | T-S1 |
 | SEC-004 | Production traffic uses TLS only. Android allows cleartext only to `localhost`/`127.0.0.1`/`10.0.2.2` (network security config) and trusts only system CAs; Settings rejects non-HTTPS URLs. The web app must use an HTTPS API URL. | M | Impl | F-02 |
 | SEC-005 | CORS allows only the configured web origins, and only on `/api/**`. | M | Impl | T-S3 |
 | SEC-006 | All input is validated at the API (bean validation for lengths, ranges, enums and checklist 0 to 5). Out-of-range lat/lon and radius on query endpoints are rejected. | M | Impl | F-19 |
@@ -203,18 +204,18 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-010 | The API key is stored encrypted on the device (AES-256-GCM, Android Keystore key) and excluded from backups. On the web it is kept in sessionStorage unless the user chooses "remember on this device". | S | Impl | F-03, F-04 |
 | SEC-011 | Android: `allowBackup=false`; data extraction rules allow no cloud backup and device transfer of the database and photos only. | M | Impl | F-03 |
 | SEC-012 | Security headers: the API sends `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, CSP `default-src 'none'`, `Cache-Control: no-store` on JSON and HSTS over HTTPS. The web app ships a strict CSP, HSTS and `frame-ancestors 'none'` in `_headers`. | S | Impl | F-10 |
-| SEC-013 | Dependencies are scanned in CI (Trivy fs, npm audit) and weekly. Critical/High findings with a fix block merges. Dependabot covers Maven, npm, Gradle, Actions and Docker. | M | Impl | F-22 |
+| SEC-013 | Dependencies are scanned in CI (Trivy on the backend CycloneDX SBOM, Trivy fs for npm and secrets, npm audit) and weekly. Critical/High findings with a fix block merges; a fix the framework BOM does not manage yet is applied as a commented version override (e.g. Tomcat 11.0.25). Dependabot covers Maven, npm, Gradle, Actions and Docker. | M | Impl | F-22, F-27, F-28 |
 | SEC-014 | SAST (Semgrep OSS) runs in CI and blocks on ERROR findings. Android Lint runs and is reported (not yet blocking). | S | Part | F-22 |
 | SEC-015 | Error responses use RFC 7807 with no stack traces or SQL. The clients show translated error categories, never raw server bodies. | M | Impl | F-12 |
 | SEC-016 | Logs contain no API keys, coordinates, notes or phone numbers. Auth failures are logged with a salted client-address hash, method and path. | S | Impl | F-18 |
-| SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation. | S | Part (procedure in 08, dual-key not built) | F-01 |
-| SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (no signing config, minify off) | F-11 |
+| SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation (`APP_API_KEY`, `APP_API_KEY_NEXT`). | S | Impl (Sprint 2; procedure in 08 §5.1) | F-01 |
+| SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing with `release.yml` next) | F-11 |
 | SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the House Hunt schema. Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
 | SEC-020 | The server clamps client `updatedAt` values more than 5 minutes in the future to server time and rejects dates more than 365 days ahead or before 2000, so records cannot be "frozen". | M | Impl | F-08 |
 | SEC-021 | Android components are not exported unless needed. PendingIntents are immutable. The deep-link extras from `MainActivity` are validated (UUID format, lat/lon range). | S | Impl | F-25 |
 | SEC-022 | Alert notifications use `VISIBILITY_PRIVATE` with a redacted public version, so the lock screen does not show house names or prices. | C | Impl | F-14 |
 | SEC-023 | Actuator exposes only `health` without details. | M | Impl | - |
-| SEC-024 | The container runs as a non-root user (UID 10001); docker-compose adds a read-only filesystem, `cap_drop: ALL` and `no-new-privileges`. | S | Impl | F-23 |
+| SEC-024 | The containers run as non-root users: the API as UID 10001, the dev/CI database image (`backend/db`) as `postgres`; docker-compose adds a read-only filesystem, `cap_drop: ALL` and `no-new-privileges`. Trivy config blocks HIGH/CRITICAL Dockerfile findings. | S | Impl | F-23, F-29 |
 | SEC-025 | Future: per-device keys or OAuth2/OIDC (for example a free-tier IdP) with revocation. | C | Plan | F-01 |
 | SEC-026 | JSON request bodies are capped at 256 KB (413); Tomcat connection timeout 20 s. | S | Impl | F-05 |
 | SEC-027 | Sync versions are assigned under a transaction-scoped advisory lock so that a `since` cursor never skips a change. | M | Impl | F-09 |
@@ -267,7 +268,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 |---|---|
 | CON-01 | **Zero running cost.** Only free tiers: Oracle Cloud Always Free, Render/Koyeb for the API; Supabase/Neon for Postgres + PostGIS (+ pgvector); Cloudflare Pages/Netlify for the web; OpenFreeMap tiles; Nominatim; Android Geocoder; GitHub Actions; Gemini free tier or Ollama. |
 | CON-02 | The APK is sideloaded. Play Store publishing ($25 one-time) is deferred. |
-| CON-03 | Stack: Java 25, Spring Boot 4.1.1, Flyway, PostGIS; Kotlin, Compose, Room, WorkManager, minSdk 26 / targetSdk 36; Angular 22, MapLibre GL. Node is a build tool for the web app only (ADR-06). |
+| CON-03 | Stack: Java 25, Spring Boot 4.1.1 (embedded Tomcat overridden to 11.0.25), Flyway, PostGIS; Kotlin, Compose, Room, WorkManager, minSdk 26 / targetSdk 36 / compileSdk 37; Angular 22, MapLibre GL 6.10 (web), MapLibre Android 13. Node is a build tool for the web app only (ADR-06). |
 | CON-04 | Free-tier limits: sleeping instances (cold start 30 to 60 s), about 500 MB DB, projects paused after inactivity (Supabase), GitHub Actions minutes (unlimited for public repos, 2 000 min/month for private). |
 | CON-05 | Third-party policies: Nominatim (at most 1 req/s, no bulk use), OpenFreeMap fair use, LLM free-tier terms (free tiers may use prompts to improve products, which AI-010 must disclose). |
 
@@ -294,8 +295,8 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-001 | 03 §7.1 | android `ui/MapScreen.kt` (Save house here, long-press), web `pages/map`, `core/models.ts newHouse` | TC-M-01, TC-F-01 |
 | FR-002 | 03 §6, §9 | backend `house/HouseDto`, `House`; android `data/Models.kt`; web `core/models.ts` | TC-I-03, TC-I-06 |
 | FR-003 | 03 §6 | `HouseDto.rating @Min(1) @Max(5)` | TC-I-06 |
-| FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05 |
-| FR-005 | 03 §6.3 | `HouseEntity.score`, web `houseScore()` | TC-U-05 |
+| FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05, TC-U-19 |
+| FR-005 | 03 §6.3 | `HouseEntity.score`, web `houseScore()` | TC-U-05 (`ChecklistScoreTest`), TC-U-19 (`models.spec.ts`) |
 | FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03 |
 | FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `Repository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
 | FR-008 | 03 §7.3 | `visit/VisitController`, `Repository.markVisitedNow` | TC-I-07 |
@@ -304,29 +305,29 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-011 | 03 §4.2 | `CompareScreen.kt`, web `compare-page` | TC-M-04 |
 | FR-012 | 03 §10 | `HouseService.delete/purge`, `VisitController.delete` | TC-I-05, TC-I-16 |
 | FR-013 | 03 §7.2, §8.2 | `location/HuntService.checkNearbyHouses` | TC-U-07, TC-F-02 |
-| FR-014 | 03 §7.2 | `HuntService.checkStreet`, `ReverseGeocoder` | TC-U-07, TC-F-03 |
+| FR-014 | 03 §7.2 | `HuntService.checkStreet`, `location/StreetAlerts`, `ReverseGeocoder` | TC-U-07 (`StreetAlertsTest`), TC-F-03 |
 | FR-015 | 03 §7.3 | `location/StayDetector`, `HuntService.onStayStarted/Ended` | TC-U-01..03, TC-F-04 |
 | FR-016 | 03 §8.2 | `HuntService.onLocation` accuracy gate | TC-U-08, TC-F-05 |
 | FR-017 | 03 §8.2, ADR-01 | `HuntService`, `Notifications.CHANNEL_HUNT`, manifest `foregroundServiceType=location` | TC-F-01, TC-F-07 |
 | FR-018 | 03 §4.2 | `HuntState`, `MapScreen.HuntCard` | TC-F-02 |
 | FR-019 | 03 §10 | `data/AppDatabase`, `Repository` | TC-F-08 |
 | FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `data/RetryInterceptor` | TC-F-08, TC-U-17 |
-| FR-021 | 03 §7.1, §10 | `Repository.sync`, `PhotoController.changes` | TC-U-06, TC-I-05, TC-I-17 |
-| FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync` | TC-I-04, TC-U-06, TC-I-14 |
+| FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules`, `PhotoController.changes` | TC-U-06 (part), TC-I-05, TC-I-17 |
+| FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `data/SyncRules.keepLocal` | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |
 | FR-023 | 03 §10 | `SettingsStore.saveServer` | TC-U-06 |
-| FR-024 | 03 §4.3 | web `pages/*`, `core/config.*` | TC-M-05 |
+| FR-024 | 03 §4.3 | web `pages/*`, `core/config.*`, `core/api.interceptor.ts` | TC-M-05, TC-U-09, TC-U-19, TC-U-20 |
 | FR-025 | 03 §4.3 | web `core/geocode.service.ts` | TC-M-05 |
 | FR-026 | 03 §11 | `HouseRepository.findNearby` | TC-I-03, TC-I-13 |
 | FR-027 | 03 §11 | `HouseRepository.findLiveOnStreet` | TC-I-03, TC-I-19 |
 | FR-028 | 03 §9 | `StatsController` | TC-I-07 |
 | FR-029 | 03 §9 | actuator config in `application.yml` | TC-I-02 |
-| FR-030 | 03 §4.2 | `data/Settings.kt`, `ui/SettingsScreen.kt` | TC-M-06, TC-U-15 |
+| FR-030 | 03 §4.2 | `data/Settings.kt`, `data/ServerUrl.kt`, `ui/SettingsScreen.kt` | TC-M-06, TC-U-15 |
 | FR-031 | 03 §9 | `privacy/DataController`, `DataService.export` | TC-I-18 |
 | FR-032 | 03 §9 | `privacy/DataController`, `DataService.deleteAll` | TC-I-18 |
 | FR-033 | 03 §7.3 | `MainActivity.handle`, `Root.kt` deep links | TC-F-04, TC-S-12 |
 | FR-034 | 03 §10 | android `Repository.deletePhoto/sync`, backend `PhotoService.delete` | TC-I-17, TC-F-08 |
 | FR-035 | 09 §3 | `SyncWorker`, `Repository.sync(photosAllowed)`, `Settings.photosOnWifiOnly` | TC-F-10 |
-| FR-036 | 05 §8.2 | `res/values*/strings.xml`, `i18n/AppLocale.kt`, `res/xml/locales_config.xml` | TC-L-01, TC-L-05 |
+| FR-036 | 05 §8.2 | `res/values*/strings.xml`, `i18n/AppLocale.kt`, `res/xml/locales_config.xml`; web `i18n/*` | TC-L-01, TC-L-05, TC-U-21 |
 | FR-037 | 03 §7.5 | web `pages/ask`, android `ui/AssistantScreen.kt` | TC-M-09, TC-AI-01..03 |
 | FR-038 | 03 §7.6 | web `house-detail-page` import, android `HouseEditScreen.PasteListingDialog` | TC-M-09, TC-AI-05 |
 | FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` | TC-M-09, TC-AI-07 |
@@ -337,7 +338,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | NFR-003 | 03 §7.2 | `HuntService.checkNearbyHouses` | TC-P-03 |
 | NFR-004 | 03 §10 | Room + WorkManager | TC-F-08 |
 | NFR-005 | 03 §8.2, ADR-01 | `LocationRequest` settings | TC-F-06 |
-| NFR-006, NFR-007 | 05 | see 05 | TC-A-01..05, TC-L-01..04 |
+| NFR-006, NFR-007 | 05 | see 05; web `i18n/translation.service.ts`, dictionaries | TC-A-01..05, TC-L-01..04, TC-U-21 |
 | NFR-008 | 03 §5, 08 | deployment, backups | TC-O-01 (restore drill) |
 | NFR-009 | 03 §6, ADR-08 | `photo` table | TC-P-04 |
 | NFR-010 | 03 §5 | `Dockerfile` JVM flags, Hikari pool | TC-P-02 |
@@ -348,27 +349,27 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | NFR-018 | 09 §7 | `server.compression`, `Settings.photosOnWifiOnly` | TC-F-10 |
 | NFR-019 | 03 §6 | `PhotoService`, `MAX_PHOTOS_PER_HOUSE` | TC-I-17 |
 | NFR-020 | 05 §7.1 | `ui/*.kt` semantics | TC-A-03, TC-A-04 |
-| SEC-001, SEC-003 | 03 §12 | `config/ApiKeyFilter`, `RequestPaths` | TC-I-01, TC-I-15, TC-U-12, TC-S-08, TC-S-10 |
-| SEC-002 | 03 §12 | `config/WebConfig` constructor check | TC-I-10b |
+| SEC-001, SEC-003 | 03 §12 | `config/ApiKeyFilter`, `RequestPaths`; web `core/api.interceptor.ts` (key only to the API) | TC-I-01, TC-I-15, TC-U-12, TC-U-18, TC-U-20, TC-S-08, TC-S-10 |
+| SEC-002 | 03 §12 | `ApiKeyFilter.validateKeys` (`MIN_KEY_LENGTH` 32), called by the `config/WebConfig` constructor | TC-U-18, TC-I-10b |
 | SEC-004 | 03 §12 | `network_security_config.xml`, `ServerUrl` | TC-U-15, TC-S-07, TC-S-09 |
 | SEC-005 | 03 §12 | `WebConfig.corsFilter` | TC-I-11 |
 | SEC-006 | 03 §9 | DTO validation, `HouseController.nearby` | TC-I-06, TC-I-13 |
 | SEC-007 | 03 §7.4 | `PhotoService.upload`, `ImageSanitizer` | TC-I-08, TC-I-17, TC-U-14 |
 | SEC-008 | 03 §12 | `ApiRateLimitFilter`, `ApiKeyFilter` failure bucket, `AiRateLimitFilter` | TC-U-12, TC-I-12 |
-| SEC-009, SEC-013, SEC-014 | 07 | CI | TC-S-01..03 |
-| SEC-010, SEC-011 | 03 §12 | `ApiKeyCipher`, `Settings.kt`, `data_extraction_rules.xml`, web `config.service.ts` | TC-S-07, TC-M-06 |
+| SEC-009, SEC-013, SEC-014 | 07 | CI (`security.yml`), `.gitleaksignore` (reviewed fingerprints only), `backend/pom.xml` `tomcat.version` override | TC-S-01..03 |
+| SEC-010, SEC-011 | 03 §12 | `ApiKeyCipher`, `Settings.kt`, `data_extraction_rules.xml`, web `config.service.ts` | TC-S-07, TC-M-06, TC-M-11, TC-U-19 |
 | SEC-012 | 03 §12, 07 | `SecurityHeadersFilter`, `web/public/_headers` | TC-I-20, TC-S-04 |
 | SEC-015, SEC-016 | 03 §12 | `common/ApiExceptionHandler` | TC-S-04, review |
-| SEC-017 | 08 §5 | ops procedure | TC-O-02 |
-| SEC-018 | 07 §5 | `app/build.gradle.kts` | TC-S-06 |
+| SEC-017 | 08 §5.1, 07 §7 | `ApiKeyFilter` (list of current + next key), `AppProperties.apiKeyNext`, `application.yml` `app.api-key-next` | TC-U-18, TC-I-21, TC-O-02 |
+| SEC-018 | 07 §5 | `app/build.gradle.kts` (`signingConfigs.release` from `HH_*`), `android.yml` job `release` | TC-S-06, TC-S-15 |
 | SEC-019 | 07 §6 | DB setup | Review |
 | SEC-020 | 03 §10 | `sync/ClientClock` | TC-I-10, TC-U-13 |
 | SEC-021, SEC-022 | 03 §12 | `MainActivity`, `Notifications` | TC-S-06, TC-M-07 |
 | SEC-023 | 03 §9 | `application.yml` management | TC-I-02 |
-| SEC-024 | 07 | `Dockerfile`, `docker-compose.yml` | TC-S-05 |
+| SEC-024 | 07 | `backend/Dockerfile`, `backend/db/Dockerfile`, `docker-compose.yml` | TC-S-05, TC-S-14 |
 | SEC-026..SEC-030 | 03 §12, 07, 09 | `RequestSizeLimitFilter`, `SyncVersions`, `ApiClient`, `docker-compose.yml`, workflows | TC-I-12, TC-I-14, TC-S-13, CI |
 | PRV-001..003 | 03 §7.2, 04 §4 | `HuntService`, manifest permissions | TC-F-07, TC-S-07 |
 | PRV-004, PRV-005 | 08 §6 | `privacy/DataService`, `HouseService.purge`, V3 migration | TC-I-16, TC-I-18 |
 | PRV-008 | 03 §7.4 | `Repository.addPhoto`, `image-resize.ts`, `ImageSanitizer` | TC-U-11, TC-U-14 |
 | PRV-009, PRV-010, PRV-011 | 04 §6, 07, 08 | config / ops | Review |
-| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt` | TC-AI-01..08, TC-M-09 |
+| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-M-09 |

@@ -1,4 +1,4 @@
-# Android: debug APK + JVM unit tests. The APK artifact is how the app is installed (sideload), see README.md.
+# Android: debug APK + JVM unit tests + lint (report only); signed release APK when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
 name: Android
 
 on:
@@ -71,3 +71,94 @@ jobs:
             android/app/build/reports/
             android/app/build/test-results/
           retention-days: 7
+
+  # Only on main or a manual run, never for pull requests: PR code must not run with the signing key.
+  # `secrets` cannot be used in a job-level `if`, so this job checks for them and the release job keys off its output.
+  release-signing-check:
+    name: Release signing secrets present?
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          HH_KEYSTORE_BASE64: ${{ secrets.HH_KEYSTORE_BASE64 }}
+          HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
+          HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
+          HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+        run: |
+          if [ -n "$HH_KEYSTORE_BASE64" ] && [ -n "$HH_KEYSTORE_PASSWORD" ] && [ -n "$HH_KEY_ALIAS" ] && [ -n "$HH_KEY_PASSWORD" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release signing secrets not set (HH_KEYSTORE_BASE64, HH_KEYSTORE_PASSWORD, HH_KEY_ALIAS, HH_KEY_PASSWORD); signed release build skipped."
+          fi
+
+  # Signed release APK (threat model F-11). app/build.gradle.kts reads HH_KEYSTORE_FILE, HH_KEYSTORE_PASSWORD,
+  # HH_KEY_ALIAS and HH_KEY_PASSWORD from Gradle properties or environment variables; the keystore is decoded to
+  # the runner's temp directory (never the workspace) and deleted at the end.
+  release:
+    name: Signed release APK
+    needs: [build, release-signing-check]
+    if: needs.release-signing-check.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Decode keystore
+        env:
+          HH_KEYSTORE_BASE64: ${{ secrets.HH_KEYSTORE_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$HH_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/house-hunt-release.jks"
+          test -s "$RUNNER_TEMP/house-hunt-release.jks"
+
+      - name: assembleRelease (signed)
+        env:
+          HH_KEYSTORE_FILE: ${{ runner.temp }}/house-hunt-release.jks
+          HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
+          HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
+          HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      # With a signingConfig AGP writes app-release.apk; an unsigned build would be app-release-unsigned.apk.
+      - name: Verify APK signature
+        run: |
+          apk=app/build/outputs/apk/release/app-release.apk
+          test -f "$apk"
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          "$apksigner" verify --print-certs "$apk"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/house-hunt-release.jks"
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: house-hunt-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30

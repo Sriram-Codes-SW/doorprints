@@ -14,7 +14,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 
 /**
  * Single-user protection, <b>deny by default</b> (threat model F-20): every request must carry the shared key in the
@@ -28,6 +30,11 @@ import java.util.HexFormat;
  * <p>Failed attempts are logged (client address hashed, never the presented key: F-18) and throttled per client
  * address: after the burst is used up, further wrong keys get 429 instead of 401 (brute-force protection, F-05). A
  * correct key is never throttled here.
+ *
+ * <p>Keys must be at least {@link #MIN_KEY_LENGTH} characters (F-01). An optional second key ({@code APP_API_KEY_NEXT})
+ * is accepted alongside the current one so the key can be rotated without downtime (SEC-017): set the new key as
+ * {@code APP_API_KEY_NEXT}, move every client to it, then make it {@code APP_API_KEY} and clear
+ * {@code APP_API_KEY_NEXT}.
  */
 public class ApiKeyFilter extends OncePerRequestFilter {
 
@@ -37,17 +44,74 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     /** Per-process salt so hashed client addresses in the logs can be correlated but not reversed by a table. */
     private static final byte[] LOG_SALT = randomSalt();
 
-    private final byte[] expected;
+    /** Threat model F-01: shorter keys are refused at startup. 32 chars of hex/base64 is at least 128 bits. */
+    public static final int MIN_KEY_LENGTH = 32;
+
+    /** The current key and, during a rotation, the next one (SEC-017). Never empty. */
+    private final List<byte[]> expected;
     private final TokenBucketRateLimiter failures;
 
     public ApiKeyFilter(String apiKey) {
-        this(apiKey, new TokenBucketRateLimiter(10, 10));
+        this(apiKey, null, new TokenBucketRateLimiter(10, 10));
     }
 
     /** @param failures bucket per client address for wrong or missing keys */
     public ApiKeyFilter(String apiKey, TokenBucketRateLimiter failures) {
-        this.expected = apiKey.getBytes(StandardCharsets.UTF_8);
+        this(apiKey, null, failures);
+    }
+
+    /**
+     * @param apiKey   the current key ({@code APP_API_KEY}), required
+     * @param nextKey  optional second key ({@code APP_API_KEY_NEXT}); blank or {@code null} means none. While it is
+     *                 set, both keys are accepted, so clients can be moved to the new key without downtime (SEC-017)
+     * @param failures bucket per client address for wrong or missing keys
+     * @throws IllegalStateException if a key is missing or shorter than {@link #MIN_KEY_LENGTH}
+     */
+    public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures) {
+        validateKeys(apiKey, nextKey);
+        var keys = new ArrayList<byte[]>(2);
+        keys.add(apiKey.getBytes(StandardCharsets.UTF_8));
+        if (hasText(nextKey)) keys.add(nextKey.getBytes(StandardCharsets.UTF_8));
+        this.expected = List.copyOf(keys);
         this.failures = failures;
+    }
+
+    /**
+     * Startup check for {@code APP_API_KEY} and the optional {@code APP_API_KEY_NEXT} (F-01). The message names the
+     * variable and the rule but never includes the key itself.
+     */
+    public static void validateKeys(String apiKey, String nextKey) {
+        if (!hasText(apiKey)) {
+            throw new IllegalStateException("APP_API_KEY is not set. Set it to a random secret of at least "
+                    + MIN_KEY_LENGTH + " characters (for example the output of `openssl rand -hex 32`) before "
+                    + "starting the API.");
+        }
+        if (apiKey.length() < MIN_KEY_LENGTH) {
+            throw new IllegalStateException("APP_API_KEY is too short: it must be at least " + MIN_KEY_LENGTH
+                    + " characters (for example the output of `openssl rand -hex 32`).");
+        }
+        if (hasText(nextKey) && nextKey.length() < MIN_KEY_LENGTH) {
+            throw new IllegalStateException("APP_API_KEY_NEXT is too short: it must be at least " + MIN_KEY_LENGTH
+                    + " characters (for example the output of `openssl rand -hex 32`), or leave it empty.");
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    /**
+     * Constant-time check against every configured key: all keys are always compared (no early exit) and
+     * {@link MessageDigest#isEqual} does not return early on the first differing byte, so response timing does not
+     * reveal which key matched or how much of it.
+     */
+    private boolean matches(String given) {
+        var presented = given.getBytes(StandardCharsets.UTF_8);
+        boolean match = false;
+        for (var key : expected) {
+            match |= MessageDigest.isEqual(key, presented);
+        }
+        return match;
     }
 
     /** Public without a key. Everything else, including unknown paths, needs the key. */
@@ -72,7 +136,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
         var given = presentedKey(request);
-        if (given != null && MessageDigest.isEqual(expected, given.getBytes(StandardCharsets.UTF_8))) {
+        if (given != null && matches(given)) {
             chain.doFilter(request, response);
             return;
         }

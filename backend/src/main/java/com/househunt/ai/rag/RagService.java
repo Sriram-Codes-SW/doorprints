@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -95,7 +96,7 @@ public class RagService {
         if (answer.citedHouseIds() != null) answer.citedHouseIds().forEach(id -> ids.add(normalizeId(id)));
         // Also accept ids that only appear inline as [house:<id>].
         var m = java.util.regex.Pattern.compile("\\[house:([0-9a-fA-F-]{36})]").matcher(answer.answer());
-        while (m.find()) ids.add(m.group(1).toLowerCase());
+        while (m.find()) ids.add(m.group(1).toLowerCase(Locale.ROOT));
 
         var out = new ArrayList<Citation>();
         int dropped = 0;
@@ -114,7 +115,7 @@ public class RagService {
 
     private static String normalizeId(String id) {
         if (id == null) return "";
-        var s = id.strip().toLowerCase();
+        var s = id.strip().toLowerCase(Locale.ROOT);
         if (s.startsWith("[house:")) s = s.substring(7);
         if (s.startsWith("house:")) s = s.substring(6);
         if (s.endsWith("]")) s = s.substring(0, s.length() - 1);

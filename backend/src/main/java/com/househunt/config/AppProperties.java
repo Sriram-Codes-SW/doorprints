@@ -11,6 +11,8 @@ import java.util.List;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
         String apiKey,
+        /* Optional second key accepted during a rotation (APP_API_KEY_NEXT, SEC-017); blank means none. */
+        String apiKeyNext,
         List<String> corsOrigins,
         RateLimit rateLimit,
         Limits limits,

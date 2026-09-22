@@ -1,8 +1,10 @@
 package com.househunt.app.location
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
 import android.os.BatteryManager
@@ -95,7 +97,20 @@ class HuntService : LifecycleService() {
             .addAction(0, getString(R.string.notif_stop), stopIntent)
             .build()
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
-        ServiceCompat.startForeground(this, Notifications.ONGOING_ID, notification, type)
+        // startForeground comes first: a service started with startForegroundService must call it within a few
+        // seconds. It throws SecurityException on API 34+ when the location permission is missing (type "location"),
+        // and ForegroundServiceStartNotAllowedException on API 31+ when a START_STICKY restart happens while the
+        // app is in the background. Either way Hunt mode cannot run, so stop quietly instead of crashing.
+        val inForeground = try {
+            ServiceCompat.startForeground(this, Notifications.ONGOING_ID, notification, type)
+            true
+        } catch (e: RuntimeException) {
+            false
+        }
+        if (!inForeground || !hasLocationPermission(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         stationaryMode = null
         requestUpdates(stationary = false)
@@ -189,13 +204,12 @@ class HuntService : LifecycleService() {
         lifecycleScope.launch {
             // Offline or DNS failure: the geocoder returns null and street alerts simply pause (docs/09 L3).
             val street = geocoder.lookup(loc.latitude, loc.longitude)?.street ?: return@launch
-            if (street.equals(currentStreet, ignoreCase = true)) return@launch
+            if (StreetAlerts.sameStreet(street, currentStreet)) return@launch
             currentStreet = street
             val info = repo.streetInfo(street)
             HuntState.update { it.copy(street = street, streetHouses = info.houses, streetVisits = info.visits) }
-            if (info.houses == 0 && info.visits == 0) return@launch
-            val key = street.lowercase()
-            if (now - (streetAlertedAt[key] ?: 0) < 60 * 60_000L) return@launch
+            val key = StreetAlerts.key(street)
+            if (!StreetAlerts.shouldAlert(info.houses, info.visits, streetAlertedAt[key], now)) return@launch
             streetAlertedAt[key] = now
             val text = info.firstVisit?.let {
                 getString(R.string.notif_street_text_since, info.houses, info.visits, Formats.date(this@HuntService, it))
@@ -274,8 +288,26 @@ class HuntService : LifecycleService() {
         const val LOW_BATTERY_PERCENT = 15
         private const val LOW_BATTERY_NOTIFICATION_ID = 2
 
-        fun start(context: Context) =
-            ContextCompat.startForegroundService(context, Intent(context, HuntService::class.java))
+        fun hasLocationPermission(context: Context): Boolean =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+
+        /**
+         * Starts Hunt mode. Returns false without starting when location permission is missing (a location
+         * foreground service cannot start without it on API 34+) or when the system refuses a foreground-service
+         * start because the app is not in the foreground (API 31+).
+         */
+        fun start(context: Context): Boolean {
+            if (!hasLocationPermission(context)) return false
+            return try {
+                ContextCompat.startForegroundService(context, Intent(context, HuntService::class.java))
+                true
+            } catch (e: IllegalStateException) {
+                false
+            }
+        }
 
         fun stop(context: Context) = context.stopService(Intent(context, HuntService::class.java))
     }

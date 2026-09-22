@@ -1,4 +1,4 @@
-# Web: install, production build (Angular), upload the static site as an artifact.
+# Web: install, unit tests (Vitest + jsdom), production build (Angular), upload the static site as an artifact.
 name: Web
 
 on:
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build:
-    name: ng build (Node 24)
+    name: ng test + ng build (Node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -60,6 +60,12 @@ jobs:
           name: web-package-lock
           path: web/package-lock.json
           retention-days: 30
+
+      # Unit tests: Vitest through Angular's @angular/build:unit-test builder. No `browsers` option is configured, so
+      # tests run in Node with jsdom (a devDependency): no Chrome or display needed on the runner. --watch=false is in
+      # the script, and CI=true (set by GitHub Actions) turns off the Vitest UI.
+      - name: Unit tests
+        run: npm run test:ci
 
       - name: Build
         run: npm run build

@@ -135,15 +135,23 @@ jobs:
             sbom --cache-dir /cache --skip-version-check --no-progress \
             --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format table /sbom/bom.json
 
-      # Dockerfile checks are reported but not blocking yet: backend/db/Dockerfile extends the official postgres
-      # image, whose entrypoint must start as root (it drops to the postgres user itself).
-      - name: trivy config (Dockerfiles, report only)
+      # Dockerfile checks (backend/Dockerfile, backend/db/Dockerfile). Blocking on HIGH/CRITICAL: both images now
+      # run as a non-root USER (DS-0002 fixed at the source, no .trivyignore entry). MEDIUM findings are reported
+      # in a second, non-blocking pass so they stay visible.
+      - name: trivy config (Dockerfiles, HIGH/CRITICAL blocking)
         if: ${{ !cancelled() }}
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -v "${GITHUB_WORKSPACE}:/src:ro" -v "$HOME/.cache/trivy:/cache" -w /src "$TRIVY_IMAGE" \
             config --cache-dir /cache --skip-version-check --skip-dirs docs \
-            --severity MEDIUM,HIGH,CRITICAL --exit-code 0 .
+            --severity HIGH,CRITICAL --exit-code 1 .
+      - name: trivy config (Dockerfiles, MEDIUM report only)
+        if: ${{ !cancelled() }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "${GITHUB_WORKSPACE}:/src:ro" -v "$HOME/.cache/trivy:/cache" -w /src "$TRIVY_IMAGE" \
+            config --cache-dir /cache --skip-version-check --skip-dirs docs \
+            --severity MEDIUM --exit-code 0 .
 
       - name: Upload backend SBOM
         if: ${{ !cancelled() }}
