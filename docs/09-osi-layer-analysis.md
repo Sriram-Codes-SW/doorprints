@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Network and resilience review, layer by layer |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,7 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. 55 scenarios across L1 to L7, with the mitigations built in wave 2 (retry with backoff and jitter, captive-portal detection, no redirects, Wi-Fi-only photos, battery-aware Hunt mode, gzip, EXIF stripping on the server, deny-by-default auth, rate limits, sync cursor safety). |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): row 5.5 (key rotation) is now **Yes**: dual API keys (`APP_API_KEY_NEXT`, SEC-017) give a zero-downtime rotation with no 401 window, procedure in [08 §5.1](08-operations-runbook.md#51-api-key-app_api_key-app_api_key_next); backlog item OSI-B04 marked Done. |
 | 0.3 | 2026-09-22 | Claude (Cowork) | F-01 split in [02](02-threat-model.md) v0.6: rows 5.1 and 7.4 (one shared key, no roles) now point at F-01b (per-device keys, Open). No other change. |
+| 0.4 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): the introduction uses the new name. Source paths (`com/househunt/...`) are unchanged because the packages were kept. No network behaviour changed. |
 
 Related: [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md)
 
@@ -22,7 +23,7 @@ Related: [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](
 
 ## 1. Purpose and method
 
-House Hunt is used outdoors, on a phone, on Indian mobile networks, against an API on a free host that sleeps. Most failures are not bugs in the business logic. They are a lost GPS fix, a hotel Wi-Fi sign-in page, a cold start or a clock that runs fast. This document walks the OSI model from the radio up to the application and records, for each layer:
+Doorprints (called House Hunt until 2026-09-22) is used outdoors, on a phone, on Indian mobile networks, against an API on a free host that sleeps. Most failures are not bugs in the business logic. They are a lost GPS fix, a hotel Wi-Fi sign-in page, a cold start or a clock that runs fast. This document walks the OSI model from the radio up to the application and records, for each layer:
 
 - **Scenario**: what can go wrong.
 - **Current behaviour**: what the code does now (after wave 2).

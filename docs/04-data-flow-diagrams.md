@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.4 |
+| Version | 0.5 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -16,6 +16,7 @@
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: sync DFD with the server filter chain, photo tombstone feed, network checks and Wi-Fi-only photos; new level-2 DFDs for the AI UI flows (section 6.1) and for the OSI transport path (section 5.1); data dictionary and stores updated (encrypted key, sessionStorage, export/erase, retention). |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): the unnamed embedding request in the AI DFD (section 6) is now **DF-32** (P6 ↔ E6), with a data dictionary row: by default embeddings go to the native Gemini endpoint `models/{model}:batchEmbedContents` with the key in the `x-goog-api-key` header; Ollama uses the OpenAI-compatible `/embeddings`. Same external host as chat, no new trust boundary. DF-23 (P6 ↔ D6 vectors in pgvector) is unchanged. The contact name is part of the DF-32 embedding text and the DF-21 context and is not redacted ([02](02-threat-model.md) F-30): C2 handling rule, DF-21 and DF-32 rows and the level-0/AI diagram labels ("redacted" removed from DF-21 and P6.3) corrected. |
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): contact redaction (C-13) is in code, so F-30 is Fixed ([02](02-threat-model.md) v0.6): C2 handling rule, DF-21 and DF-32 rows and the diagram labels (level-0 DF-21, AI P6.3 and DF-32) say the contact name and phone are redacted. |
+| 0.5 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13), names only: level-0 process P0 and DF-07 (lock screen shows "Doorprints alert"). The store names `househunt.db` (D1) and `house-hunt.api-config` (D5) are unchanged on purpose so existing data and settings keep working. No new flow, store or trust boundary. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -50,7 +51,7 @@ flowchart LR
     E5["E5 OSM Nominatim"]
     E6["E6 LLM provider - optional"]
     E7["E7 GitHub Actions"]
-    P0(("0 House Hunt system"))
+    P0(("0 Doorprints system"))
     E1 -->|"DF-01 house details, photos, settings, questions"| P0
     P0 -->|"DF-07 alerts, maps, lists, answers"| E1
     P0 -->|"DF-19 tile requests"| E3
@@ -143,7 +144,7 @@ flowchart TB
 | D2 | `filesDir/photos/*.jpg` (and `cache/camera/` for captures) | `Repository.addPhoto`, `res/xml/file_paths.xml` |
 | D3 | DataStore `settings`: serverUrl, **apiKey**, radius, stay minutes, cursors, last sync | `data/Settings.kt` |
 | D4 | Postgres `house`, `house_checklist`, `visit`, `photo`, `sync_seq` | `V1__init.sql` |
-| D5 | `house-hunt.api-config` = {baseUrl, **apiKey**} | `core/config.service.ts` |
+| D5 | `house-hunt.api-config` = {baseUrl, **apiKey**} (key name kept at the Doorprints rename) | `core/config.service.ts` |
 | D6 | Vector store (planned) | AI team |
 | D7 | Nightly `pg_dump`, encrypted with age | 08 section 3 |
 
@@ -350,7 +351,7 @@ The start location for "Plan visits" (class C3) goes to the API and, as part of 
 | DF-04 | E4 → P2 | thoroughfare, locality, address line | C1 | TLS | |
 | DF-05 | P2 → D1 | AUTO visit: id, houseId, lat, lon, street, arrivedAt, leftAt | **C3** | Room (app sandbox, FBE) | Stay points only |
 | DF-06 | D1 → P2 | live houses | C2 | In process | |
-| DF-07 | P2/P1 → E1 | Notification: house label, status, price, stars, distance, street counts | C2 | System UI | Private visibility; lock screen shows "House Hunt alert" only (F-14 fixed) |
+| DF-07 | P2/P1 → E1 | Notification: house label, status, price, stars, distance, street counts | C2 | System UI | Private visibility; lock screen shows "Doorprints alert" only (F-14 fixed) |
 | DF-08 | P1 ↔ D1 | house/visit rows | C2/C3 | Room | |
 | DF-09 | P1 → D2 | JPEG (EXIF removed) | C2 | App files | PRV-008 |
 | DF-10 | P3 → P5 | HouseDto / VisitDto JSON + `X-API-Key` | **C3** | HTTPS only (cleartext only to local dev hosts), gzip responses | F-02 fixed |

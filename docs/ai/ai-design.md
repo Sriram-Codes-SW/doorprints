@@ -1,4 +1,4 @@
-# House Hunt — AI features design
+# Doorprints — AI features design
 
 | Version | Date       | Author                        | Change        |
 |---------|------------|-------------------------------|---------------|
@@ -14,6 +14,8 @@
 | v0.10   | 2026-09-22 | Claude (Cowork) – AI team     | Section 2 and 14: the docker-compose caveat is resolved: `docker-compose.yml` passes all four `AI_EMBEDDING_*` variables (see its header), and the embedding key falls back via `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}` (empty defaults, as the v0.6 note suggested, would break that fallback). 9.1: `place()` also removes initials-style names (saved "K. Ramesh" removes "C/o K Ramesh" and "Ramesh K"; saved "A. K. Sharma" removes "C/o A K Sharma" and "AK Sharma"), common in the ta/te locales; before, those reached the embedding text, `locality` metadata and agent/MCP tool results; new `ContactRedactorTest` cases; remaining gaps in Limits. Section 2 env table: Ollama base URL written `/v1` as in the compose example. |
 | v0.11   | 2026-09-22 | Claude (Cowork) – AI team     | First complete real eval run (Actions run 35720654442, `gemini-3.5-flash`, `gemini-embedding-2` via `google-genai`): 12/13 cases, FAIL only on `citationPrecision` 0.86 (6/7) from `ask-02`, whose answer cited the Blue gate house as a correct, grounded contrast ("only has bike parking"). Threshold **not** lowered. Golden set v0.3: optional `allowedCitations` per ask case (acceptable but not required houses); `citationPrecision` counts cited houses in `expectedHouseIds` ∪ `allowedCitations` as correct, `citationRecall` still uses `expectedHouseIds` only (8.2, 8.3); `ask-02` allows the Blue gate house; `EvalScorerTest` covers the rule and checks that an allowed house is neither expected nor `mustNotCite`. Ask prompt (6): cite a house only where the answer states a fact about it, answer with the houses that satisfy the question first, contrasts allowed but cited; injection rules unchanged (`AskPromptsTest`). New 8.5 **Eval results** with the scorecard and observations (plan-03 fell back to deterministic ordering, safely; plan latency 44-81 s on the free tier; extraction sends the pasted listing text, possibly with a contact, as an accepted user-initiated trade-off distinct from F-30). 14 updated. |
 | v0.12   | 2026-09-22 | Claude (Cowork) – AI team     | Review fixes. Ask prompt (6): the contrast example is now neutral ("X is over budget"); the earlier example repeated the `ask-02` fixture wording and would have tuned the production prompt to the eval. 8.5: the `plan-03` fallback names both causes that set `fallback=true` (agent did not finish, or every proposed stop invalid, such as the injected 9999… id) and says the cause for run 35720654442 is unconfirmed. |
+| v0.13   | 2026-09-22 | Claude (Cowork) – AI team     | Product rename to **Doorprints** (names only, no behaviour change): document title; section 12 Claude Desktop snippet uses the `doorprints` server key and `DOORPRINTS_API_KEY`, and notes that the MCP server reports `serverInfo.name` `doorprints` (endpoint still `/mcp`, tool names unchanged); eval scorecard title is now "Doorprints AI eval scorecard" (`EvalScorer`); golden set v0.4 (description renamed only; cases and thresholds unchanged). The model prompts never named the product, so they are unchanged. |
+| v0.14   | 2026-09-22 | Claude (Cowork) – AI team     | Rename guard: new `McpServerIdentityTest` (`backend/src/test/java/com/househunt/ai/mcp/`) reads the raw `application.yml` with Spring Boot's `YamlPropertySourceLoader` (no Spring context, no database) and fails the build if `spring.ai.mcp.server.name` is no longer `doorprints`, if the endpoint path is no longer `/mcp`, or if the MCP server instructions use the old product name again. Section 12 notes the guard. No behaviour change. |
 
 Status: implemented in `backend/` (package `com.househunt.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests.
@@ -440,7 +442,7 @@ first, a contrast house only briefly and cited" (v0.11, see 8.5); agent — "onl
 
 ## 8. Evaluation plan and harness
 
-Golden set: [`docs/ai/evals/golden-set.json`](evals/golden-set.json) (v0.3) — fixture houses and visits, cases for
+Golden set: [`docs/ai/evals/golden-set.json`](evals/golden-set.json) (v0.4) — fixture houses and visits, cases for
 extraction, Q&A, refusal, prompt injection and planning, and the pass **thresholds**. Model runs are manual only
 (never in PR CI: they cost quota and are not deterministic).
 
@@ -507,7 +509,7 @@ empty PostGIS + pgvector database:
 
 Thresholds live in the golden set (`thresholds`), so tightening one is a data change reviewed with the cases.
 
-| Metric (report name) | Definition | Threshold (golden set v0.3, unchanged since v0.2) |
+| Metric (report name) | Definition | Threshold (golden set v0.4, unchanged since v0.2) |
 |---|---|---|
 | Extraction field accuracy (`extractionFieldAccuracy`) | matching fields / expected fields, after normalisation | ≥ 0.90 |
 | Extraction hallucination rate (`extractionHallucinationRate`) | fields filled in although absent from the text / fields expected null (phone and URL are also enforced by the sanitizer) | ≤ 0.05 (in effect 0 today, see below) |
@@ -524,7 +526,7 @@ With today's small golden set a ≥ 0.80 rate over two cases means both must pas
 Per-case latency is in the report but not gated (free-tier latency varies).
 
 **The hallucination gate is really "zero hallucinations".** The denominator of `extractionHallucinationRate` is
-only the fields expected as `null`, and golden set v0.3 has just **4** of them (`extract-01`: `listingUrl`;
+only the fields expected as `null`, and golden set v0.4 has just **4** of them (`extract-01`: `listingUrl`;
 `extract-03`: `price`, `contactPhone`, `listingUrl`). One invented value gives 1/4 = 0.25, far above the 0.05
 threshold, so the gate fails on any single hallucination. The "≤ 0.05" figure only means something once there are
 20 or more null-expected fields. Until then, read it as a zero-tolerance check, not as a 5 % budget. Add
@@ -756,17 +758,23 @@ supports `reasoning_effort` [G1]).
    ```json
    {
      "mcpServers": {
-       "house-hunt": {
+       "doorprints": {
          "command": "npx",
          "args": ["-y", "mcp-remote", "https://YOUR-API-HOST/mcp", "--transport", "http-only",
-                  "--header", "X-API-Key:${HOUSE_HUNT_API_KEY}"],
-         "env": { "HOUSE_HUNT_API_KEY": "the value of APP_API_KEY" }
+                  "--header", "X-API-Key:${DOORPRINTS_API_KEY}"],
+         "env": { "DOORPRINTS_API_KEY": "the value of APP_API_KEY" }
        }
      }
    }
    ```
 
    (No spaces inside `args` — a known Windows quoting bug [MR]; `Authorization:Bearer…` via an env var also works.)
+   The server identifies itself to clients as `doorprints` (MCP `serverInfo.name`, set by
+   `spring.ai.mcp.server.name` in `application.yml`); the endpoint path stays `/mcp`. The `"doorprints"` key above is
+   only the local label Claude Desktop shows, so an existing `"house-hunt"` entry keeps working after the rename; if
+   you rename it, also rename the env variable. Tool names (`askHouseHunt` etc.) are unchanged so saved client
+   permissions and prompts keep working. `McpServerIdentityTest` guards the server name, the `/mcp` path and the
+   instructions text against a silent revert.
 3. Restart Claude Desktop; the tools `searchHouses`, `houseDetails`, `nearbyHouses`, `askHouseHunt` appear.
    Try: "Which of my shortlisted houses in Indiranagar are under 30k? Show details of the best rated one."
 4. Local testing: `npx @modelcontextprotocol/inspector` → Streamable HTTP → `http://localhost:8080/mcp` with header

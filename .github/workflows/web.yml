@@ -73,9 +73,10 @@ jobs:
       - name: Check security headers file is in the build
         run: test -f dist/web/browser/_headers && test -f dist/web/browser/_redirects
 
+      # Artifact name follows the product name Doorprints (was house-hunt-web-dist until 2026-09-22).
       - name: Upload site
         uses: actions/upload-artifact@v7
         with:
-          name: house-hunt-web-dist
+          name: doorprints-web-dist
           path: web/dist/web/browser
           retention-days: 14

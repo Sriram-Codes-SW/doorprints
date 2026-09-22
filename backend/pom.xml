@@ -14,7 +14,8 @@
   <groupId>com.househunt</groupId>
   <artifactId>house-hunt-api</artifactId>
   <version>0.1.0</version>
-  <name>house-hunt-api</name>
+  <name>doorprints-api</name>
+  <description>Doorprints API (formerly House Hunt): houses, visits, photos and sync for the Doorprints Android and web apps.</description>
 
   <properties>
     <java.version>25</java.version>

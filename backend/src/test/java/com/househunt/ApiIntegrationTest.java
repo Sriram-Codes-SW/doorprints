@@ -372,7 +372,10 @@ class ApiIntegrationTest {
         var id = UUID.randomUUID();
         put(id, house("Exported house", 12.9, 77.6, null));
         var response = api.get().uri("/api/export").retrieve().toEntity(MAP);
-        assertThat(response.getHeaders().getFirst("Content-Disposition")).startsWith("attachment");
+        assertThat(response.getHeaders().getFirst("Content-Disposition")).startsWith("attachment")
+                .matches("attachment; filename=\"doorprints-export-\\d{4}-\\d{2}-\\d{2}\\.json\"");
+        // The format id is deliberately kept from before the Doorprints rename (ADR-13): readers of old exports match on it.
+        assertThat(response.getBody()).containsEntry("format", "house-hunt-export/1");
         assertThat((List<?>) response.getBody().get("houses"))
                 .anySatisfy(h -> assertThat(((Map<?, ?>) h).get("id")).isEqualTo(id.toString()));
         assertThat(response.getBody()).containsKeys("visits", "photos", "exportedAt");

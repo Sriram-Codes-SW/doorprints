@@ -1,11 +1,12 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "date": "2026-09-22",
-  "description": "Golden cases for the House Hunt AI features. Run by backend/src/test/java/com/househunt/ai/eval/GoldenSetEvalTest (skipped unless AI_API_KEY is set; CI: .github/workflows/ai-evals.yml, manual). The harness loads fixtureHouses via PUT /api/houses/{id} and fixtureVisits via PUT /api/visits/{id}, calls POST /api/ai/reindex, runs the cases, writes backend/target/ai-eval-report.md and fails when a metric misses its threshold. Metric definitions: docs/ai/ai-design.md section 8.",
+  "description": "Golden cases for the Doorprints AI features. Run by backend/src/test/java/com/househunt/ai/eval/GoldenSetEvalTest (skipped unless AI_API_KEY is set; CI: .github/workflows/ai-evals.yml, manual). The harness loads fixtureHouses via PUT /api/houses/{id} and fixtureVisits via PUT /api/visits/{id}, calls POST /api/ai/reindex, runs the cases, writes backend/target/ai-eval-report.md and fails when a metric misses its threshold. Metric definitions: docs/ai/ai-design.md section 8.",
   "changes": [
     { "version": "0.1", "date": "2026-09-22", "change": "First version: fixtures, extraction, ask, refusal, prompt-injection and planning cases." },
     { "version": "0.2", "date": "2026-09-22", "change": "Added thresholds (read by GoldenSetEvalTest) and the harness description." },
-    { "version": "0.3", "date": "2026-09-22", "change": "Added optional allowedCitations on ask cases: houses that may be cited (e.g. a correctly cited contrast) but are not required. citationPrecision counts cited houses in expectedHouseIds + allowedCitations as correct; citationRecall still uses expectedHouseIds only. ask-02 allows the Blue gate house because the real Gemini run 35720654442 answered 'Corner flat has covered car parking, whereas the Blue gate house only has bike parking' and cited both: the contrast is grounded in the fixture notes, so it is not a wrong citation. Thresholds unchanged." }
+    { "version": "0.3", "date": "2026-09-22", "change": "Added optional allowedCitations on ask cases: houses that may be cited (e.g. a correctly cited contrast) but are not required. citationPrecision counts cited houses in expectedHouseIds + allowedCitations as correct; citationRecall still uses expectedHouseIds only. ask-02 allows the Blue gate house because the real Gemini run 35720654442 answered 'Corner flat has covered car parking, whereas the Blue gate house only has bike parking' and cited both: the contrast is grounded in the fixture notes, so it is not a wrong citation. Thresholds unchanged." },
+    { "version": "0.4", "date": "2026-09-22", "change": "Product rename: the description says Doorprints instead of House Hunt. Cases, fixtures and thresholds unchanged." }
   ],
   "thresholds": {
     "extractionFieldAccuracy": { "min": 0.90 },

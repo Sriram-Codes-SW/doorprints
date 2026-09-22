@@ -8,7 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * <p>Servlet containers and Spring MVC decode and normalise the request path before matching a controller
  * ({@code /api;x/houses}, {@code /%61pi/houses}, {@code //api/houses} and {@code /api/./houses} can all reach
  * {@code /api/houses}), while {@link HttpServletRequest#getRequestURI()} is the raw, undecoded path. Instead of trying
- * to reproduce that normalisation, the API refuses every path that <em>needs</em> it: no legitimate House Hunt client
+ * to reproduce that normalisation, the API refuses every path that <em>needs</em> it: no legitimate Doorprints client
  * ever sends path parameters, percent-encoding, backslashes, empty segments or dot segments in the path (ids are
  * UUIDs, and free text such as a street name travels in the query string). After that check the raw path equals the
  * path Spring matches, so simple string comparisons on it are safe.

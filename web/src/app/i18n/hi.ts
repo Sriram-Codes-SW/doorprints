@@ -2,9 +2,11 @@ import { Dict } from './en';
 
 /** Hindi (हिन्दी). Keep "BHK", "API", URLs and brand names as they are. */
 export const hi: Dict = {
-  'app.name': 'House Hunt',
+  'app.name': 'Doorprints',
+  'app.tagline': 'देखा हुआ हर मकान याद रखें।',
+  'app.description': 'Doorprints: देखा हुआ हर मकान याद रखें। जिन मकानों को आप देखने जाते हैं, उन्हें सहेजें, रेटिंग दें और उनकी तुलना करें।',
   'app.skip': 'मुख्य सामग्री पर जाएँ',
-  'app.homeLink': 'House Hunt मुखपृष्ठ',
+  'app.homeLink': 'Doorprints मुखपृष्ठ',
   'nav.label': 'मुख्य',
   'nav.map': 'नक्शा',
   'nav.compare': 'तुलना',
@@ -12,12 +14,12 @@ export const hi: Dict = {
   'lang.label': 'भाषा',
   'lang.changed': 'भाषा बदलकर हिन्दी कर दी गई',
 
-  'title.app': 'House Hunt',
-  'title.map': 'मकान · House Hunt',
-  'title.newHouse': 'नया मकान · House Hunt',
-  'title.house': 'मकान का विवरण · House Hunt',
-  'title.compare': 'तुलना · House Hunt',
-  'title.connect': 'कनेक्शन · House Hunt',
+  'title.app': 'Doorprints',
+  'title.map': 'मकान · Doorprints',
+  'title.newHouse': 'नया मकान · Doorprints',
+  'title.house': 'मकान का विवरण · Doorprints',
+  'title.compare': 'तुलना · Doorprints',
+  'title.connect': 'कनेक्शन · Doorprints',
 
   'common.loading': 'लोड हो रहा है…',
   'common.untitled': 'बिना नाम',
@@ -205,7 +207,7 @@ export const hi: Dict = {
   'compare.footnote': 'जाँच सूची की हर बात को 0 से 5 तक अंक मिलते हैं। हर पंक्ति का सबसे अच्छा मान हाइलाइट है और उस पर ✓ लगा है।',
 
   'connect.title': 'अपने सर्वर से जोड़ें',
-  'connect.intro': 'अपने House Hunt सर्वर का पता और उसकी API कुंजी डालें। ये सिर्फ़ इसी ब्राउज़र में सहेजे जाते हैं।',
+  'connect.intro': 'अपने Doorprints सर्वर का पता और उसकी API कुंजी डालें। ये सिर्फ़ इसी ब्राउज़र में सहेजे जाते हैं।',
   'connect.baseUrl': 'API पता (URL)',
   'connect.apiKey': 'API कुंजी',
   'connect.show': 'दिखाएँ',
@@ -230,8 +232,8 @@ export const hi: Dict = {
   'confirm.remove': 'हटाएँ',
   'nav.ask': 'पूछें',
   'nav.plan': 'दौरों की योजना',
-  'title.ask': 'पूछें · House Hunt',
-  'title.plan': 'दौरों की योजना · House Hunt',
+  'title.ask': 'पूछें · Doorprints',
+  'title.plan': 'दौरों की योजना · Doorprints',
   'connect.remember': 'इस डिवाइस पर याद रखें',
   'connect.rememberHint': 'बंद: यह टैब बंद करते ही कुंजी भुला दी जाएगी। साझा कंप्यूटर पर इसे बंद रखें।',
   'ai.disabled': 'आपके सर्वर पर AI सुविधाएँ बंद हैं।',

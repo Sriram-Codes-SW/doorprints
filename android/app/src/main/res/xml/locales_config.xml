@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Per-app language list for Android 13+ system settings (Settings > Apps > House Hunt > Language).
+<!-- Per-app language list for Android 13+ system settings (Settings > Apps > Doorprints > Language).
      Keep in sync with AppLocale.SUPPORTED and the values-* folders. -->
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="en" />

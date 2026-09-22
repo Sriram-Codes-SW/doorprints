@@ -438,7 +438,7 @@ final class EvalScorer {
                            List<String> warnings, List<String> errors) {
         var verdict = verdict(metrics, results, errors);
         var sb = new StringBuilder();
-        sb.append("# House Hunt AI eval scorecard\n\n");
+        sb.append("# Doorprints AI eval scorecard\n\n");
         sb.append("**Result: ").append(verdict.passed() ? "PASS" : "FAIL")
                 .append("** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
         sb.append("| | |\n|---|---|\n");

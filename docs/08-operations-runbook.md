@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.6 |
+| Version | 0.7 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -18,6 +18,7 @@
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): new section 1.1 with the AI settings, including the new `AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_API_KEY`, `AI_EMBEDDING_BASE_URL` and `AI_EMBEDDING_TASK_TYPE`; Ollama needs `AI_EMBEDDING_PROVIDER=openai`. Monitoring row for the summarised AI indexing WARN lines and the reindex 503; LLM key rotation covers `AI_EMBEDDING_API_KEY`; two troubleshooting rows. The AI indexing monitoring row quotes the reindex WARN line (the 503 body is a generic problem detail). |
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): section 1.1: run `POST /api/ai/reindex` once after deploying the contact-redaction fix (C-13, F-30); the dev compose passes the AI settings. AI indexing monitoring row matches the AI team's final logging (one summary WARN per 5 minutes, one WARN per reindex run, recovery INFO). Troubleshooting row for short keys points at F-01a (F-01 split in [02](02-threat-model.md) v0.6). |
 | 0.6 | 2026-09-22 | Claude (Cowork) | Section 1.1: the one-off `POST /api/ai/reindex` for the contact-redaction fix (F-30) must run after the final (ai-design v0.10) code is deployed; lists what older vectors may still hold. Matches [02](02-threat-model.md) v0.7. |
+| 0.7 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): password manager entry "Doorprints ops" (rename an existing "House Hunt ops" entry), export ZIP `doorprints-export-<date>.zip` (the API download is now `doorprints-export-<date>.json`, `format` still `house-hunt-export/1`), Settings → Apps → Doorprints, release checklist artifact `doorprints-release-apk`. Section 6.2: builds from before the rename (`com.househunt.app`) are a separate app with their own local data; sync and uninstall them. Backup file names (`househunt-*.dump.age`, `househunt-backup.agekey`), the database and the `house-hunt-db` image keep their names so existing backups and volumes still match. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -30,7 +31,7 @@ Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-
 | Components | API (Render/Koyeb/Oracle VM), Postgres+PostGIS (Supabase/Neon), web (Cloudflare Pages), Android app (sideloaded) |
 | Health | `GET https://<api>/actuator/health` → `{"status":"UP"}` (public, includes the DB check) |
 | Targets | RPO ≤ 24 h (nightly backup; the phone also holds a full offline copy), RTO ≤ 4 h (NFR-008) |
-| On-call | The owner (single user). Keep this runbook and the password manager entry "House Hunt ops" up to date. |
+| On-call | The owner (single user). Keep this runbook and the password manager entry "Doorprints ops" (formerly "House Hunt ops") up to date. |
 
 ### 1.1 AI settings (only when `APP_AI_ENABLED=true`)
 
@@ -179,10 +180,10 @@ mkdir -p photos
 for p in $(jq -r '.photos[].photo.id' export.json); do
   curl -sf -H "X-API-Key: $KEY" "$API/api/photos/$p" -o "photos/$p.jpg"
 done
-zip -r house-hunt-export-$(date +%F).zip export.json photos   # store encrypted: it holds location history
+zip -r doorprints-export-$(date +%F).zip export.json photos   # store encrypted: it holds location history
 ```
 
-A full export for migration is the encrypted `pg_dump` from section 3.
+The API download is named `doorprints-export-<date>.json`; its `format` field stays `house-hunt-export/1` so tools that read older exports keep working. A full export for migration is the encrypted `pg_dump` from section 3.
 
 ### 6.2 Deletion
 
@@ -191,7 +192,7 @@ A full export for migration is the encrypted `pg_dump` from section 3.
 | One house | Delete it in the app (or `DELETE /api/houses/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
-| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → House Hunt → Storage → Clear storage, then uninstall. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
+| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
 
 Third-party contact data (landlord/agent phone numbers) is removed with the house. If a third party asks you to delete their details, use the "one house" or field-level update (set `contact_name`/`contact_phone` to null through the app so it syncs).
 
@@ -252,7 +253,7 @@ Publish a warning in the repo README with the correct certificate fingerprint. C
 - [ ] Fresh backup taken (manual `backup.yml` run) within 24 h.
 - [ ] Deploy the API by image digest → health UP → smoke test (stats, create/delete a test house, then purge it).
 - [ ] Web deployed (Pages) → Connect and Map load. No CSP errors in the console.
-- [ ] Release APK built by the `android.yml` `release` job (`house-hunt-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
+- [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
 - [ ] Install on the phone **after syncing**. Settings show the right server. Sync OK. Hunt mode starts and stops.
 - [ ] If AI changed: eval results attached and meet the thresholds. Flag default stays off unless approved.
 - [ ] Release notes: features, fixes, security fixes, migrations, known issues.

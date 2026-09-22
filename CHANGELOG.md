@@ -1,7 +1,7 @@
 # Changelog
 
-All notable changes to House Hunt are recorded here. The format follows
-[Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and the project uses
+All notable changes to Doorprints (called House Hunt until 2026-09-22; the repository is still `house-hunt`) are
+recorded here. The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Security fixes reference the finding ids (F-xx) in the
 [threat model](docs/02-threat-model.md); sprint detail is in the [sprint log](docs/10-sprint-log.md).
 
@@ -19,13 +19,14 @@ Sprint 2 (2026-09-22): all four CI workflows (Backend, Android, Web, Security) a
 Sprint 3 (2026-09-22): the first real AI eval run (`ai-evals.yml`) found two defects, E-01 (Gemini embeddings failed)
 and E-02 (false PASS in the scorecard). Both are fixed (see *Fixed*): commit `6a348cc` passed the Backend and Security
 workflows (Android and Web had no changes). The first successful real Gemini eval run on 2026-09-22 (Actions run
-35720654442) ran all 13 cases; 12/13 passed (ask-02-filtered-parking failed only its citation check), and every
-metric passed except `citationPrecision` (0.86, threshold 0.90) because of that one contrast citation (E-03; the AI
-team is adding `allowedCitations` to the golden set and tightening the Ask prompt). AI stays off by default (AI-001,
-AI-012). C-13 (F-30, contact names sent to the LLM provider) is closed as fixed by lead decision (see *Security*).
-Sprint 4 candidates (offline map areas, AI map filter, voice notes, neighbourhood summary, alert one-liners with
-directions, local labels in AI citations, an AI-enabled CI smoke test, a golden-set fixture that tests redaction)
-are listed in the sprint log for the product owner; they are not committed scope.
+35720654442, on commit `6a348cc`, confirmed) ran all 13 cases; 12/13 passed (ask-02-filtered-parking failed only its
+citation check), and every metric passed except `citationPrecision` (0.86, threshold 0.90) because of that one
+contrast citation (E-03; the AI team is adding `allowedCitations` to the golden set and tightening the Ask prompt). AI
+stays off by default (AI-001, AI-012). C-13 (F-30, contact names sent to the LLM provider) is closed as fixed by lead
+decision (see *Security*). Sprint 4 candidates (offline map areas, AI map filter, voice notes, neighbourhood summary,
+alert one-liners with directions, local labels in AI citations, an AI-enabled CI smoke test, a golden-set fixture that
+tests redaction) are listed in the sprint log for the product owner; they are not committed scope. The product is
+renamed to **Doorprints** (see *Changed*; stories S3-07 and S3-08 in the sprint log).
 
 ### Added
 
@@ -33,7 +34,8 @@ are listed in the sprint log for the product owner; they are not committed scope
   while clients move to the new key (SEC-017). Procedure: [runbook 5.1](docs/08-operations-runbook.md).
 - Signed Android release builds: `app/build.gradle.kts` reads `HH_KEYSTORE_FILE`, `HH_KEYSTORE_PASSWORD`,
   `HH_KEY_ALIAS` and `HH_KEY_PASSWORD`; the `android.yml` job `release` (push to `main` or manual only) builds,
-  verifies with `apksigner` and uploads `house-hunt-release-apk` when the secrets exist (F-11, part).
+  verifies with `apksigner` and uploads the release APK artifact (`doorprints-release-apk` since the rename) when
+  the secrets exist (F-11, part).
 - Web unit tests (Vitest + jsdom through `@angular/build:unit-test`): score, config storage, API interceptor,
   translation dictionaries and formatting. `npm test`, `npm run test:ci`; run in `web.yml`.
 - Android unit tests: `ChecklistScoreTest`, `SyncRulesTest`, `StreetAlertsTest`, more `ServerUrlTest` cases. The
@@ -62,6 +64,31 @@ are listed in the sprint log for the product owner; they are not committed scope
 
 ### Changed
 
+- **Renamed to Doorprints** (tagline "Remember every house you've seen."), because "House Hunt" suggested a
+  property-listings site. Names only, no behaviour change; decision record ADR-13 in
+  [03](docs/03-design.md#14-architecture-decision-records).
+  - Display name in all four languages: Android app name, notification texts and the lock-screen public version
+    ("Doorprints alert"); web `<title>`, header and page titles ("Compare · Doorprints"). New translated tagline on
+    the Android first-run house list and a new Settings *About* section, and as the web meta description. New Android
+    launcher icon (a door with footprints).
+  - **Android `applicationId` is now `app.doorprints`** (was `com.househunt.app`). Builds from before the rename are
+    not upgraded: they install side by side and keep their own local data. Sync the old app, set up and sync
+    Doorprints, then uninstall the old one.
+  - CI artifacts: **`doorprints-debug-apk`**, **`doorprints-release-apk`** and **`doorprints-web-dist`** (were
+    `house-hunt-*`).
+  - API: `spring.application.name` `doorprints-api`; the MCP server reports `serverInfo.name` `doorprints` (endpoint
+    `/mcp` and tool names unchanged); `GET /api/export` downloads as `doorprints-export-<date>.json` (the `format`
+    field stays `house-hunt-export/1`). Web package `doorprints-web`, Gradle root project `Doorprints`, Maven
+    `<name>` `doorprints-api`. AI eval scorecard title "Doorprints AI eval scorecard"; golden set v0.4 (description
+    only; cases and thresholds unchanged).
+  - Unchanged on purpose: the repository name `house-hunt`, Java/Kotlin packages and class names (`com.househunt`),
+    browser storage keys (`house-hunt.lang`, `house-hunt.api-config`), the Android Keystore alias and Room database
+    file, database/user/schema names (`househunt`), the compose volume `dbdata18`, the image names `house-hunt-api`
+    and `house-hunt-db`, the `HH_*` signing secrets, MCP tool names, and "Hunt mode". Existing settings, data, backups
+    and deployments keep working.
+  - Docs: README, CHANGELOG and SSDLC documents 01 to 10 use the new name (01 v0.8, 02 v0.9, 03 v0.6, 04 v0.5, 05
+    v0.3, 06 v0.9, 07 v0.7, 08 v0.7, 09 v0.4, sprint log v0.6, docs index v0.8); historical change-log rows keep the
+    old name. 01 v0.8 also traces TC-AI-17 in the requirements traceability matrix.
 - **Breaking for deployments:** `APP_API_KEY` must now be at least 32 characters (was 16), and so must
   `APP_API_KEY_NEXT` when set. The API refuses to start otherwise. Generate one with `openssl rand -hex 32` (F-01).
 - `trivy config` in `security.yml` now fails the build on HIGH/CRITICAL Dockerfile findings; MEDIUM findings are
@@ -100,12 +127,12 @@ are listed in the sprint log for the product owner; they are not committed scope
   threat model v0.8 (F-30 closed, totals unchanged), 01 v0.7 (AI-010, AI-012, PRV-009), test plan v0.8 (TC-AI-10 gap
   row; section 1 now names golden set v0.3 and the first real run; `allowedCitations` traced in TC-AI-09 and the Ask
   prompt rules in new TC-AI-17) and the docs index v0.7 follow.
-- Ask answers (E-03, AI team; only with AI enabled): the Ask system prompt (`AskPrompts`) now tells the model to
-  cite a house only where the answer states a fact about it from its record, never for a passing mention; to answer
-  with the houses that satisfy the question first; and to mention another house only as a brief contrast (for
-  example "only has bike parking"), cited when it does. Answers may therefore name fewer houses and cite contrast
-  houses. The injection rules and the exact refusal sentence are unchanged (`AskPromptsTest`,
-  TC-AI-17 in the [test plan](docs/06-test-plan.md)).
+- Ask answers (E-03, AI team; only with AI enabled): the Ask system prompt (`AskPrompts`) now tells the model to cite
+  a house only where the answer states a fact about it from its record, never for a passing mention; to answer with
+  the houses that satisfy the question first; and to mention another house only as a brief contrast, cited when it
+  does (the prompt's example is the neutral "X is over budget", so it does not repeat the `ask-02` eval fixture).
+  Answers may therefore name fewer houses and cite contrast houses. The injection rules and the exact refusal sentence
+  are unchanged (`AskPromptsTest`, TC-AI-17 in the [test plan](docs/06-test-plan.md)).
 - AI eval golden set v0.3 (`docs/ai/evals/golden-set.json`): ask cases can list optional `allowedCitations`, houses
   that may be cited (such as a grounded contrast) but are not required. `citationPrecision` now counts a cited house
   as correct when it is in `expectedHouseIds` or `allowedCitations`; `citationRecall` still uses `expectedHouseIds`
@@ -116,7 +143,7 @@ are listed in the sprint log for the product owner; they are not committed scope
 ### Fixed
 
 Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini eval run (2026-09-22, Actions run
-35720654442).
+35720654442, which ran on `6a348cc`).
 
 - E-01: AI embeddings against Gemini failed because Gemini's OpenAI-compatible `/embeddings` response has no
   `data[].index`, which the OpenAI client in Spring AI rejects. Embeddings now use the native Gemini API

@@ -5,6 +5,8 @@ export interface ApiConfig {
   apiKey: string;
 }
 
+// Keeps the pre-rename 'house-hunt.' prefix on purpose: changing it would lose settings already saved in
+// users' browsers after the rename to Doorprints. Do not change it without a migration.
 const STORAGE_KEY = 'house-hunt.api-config';
 export const DEFAULT_BASE_URL = 'http://localhost:8080';
 

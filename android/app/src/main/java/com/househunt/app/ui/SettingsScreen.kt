@@ -192,6 +192,11 @@ fun SettingsScreen() {
         HorizontalDivider()
         SectionHeading(stringResource(R.string.settings_privacy))
         Text(stringResource(R.string.settings_privacy_note), style = MaterialTheme.typography.bodySmall)
+
+        HorizontalDivider()
+        SectionHeading(stringResource(R.string.settings_about))
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.bodySmall)
     }
 }
 

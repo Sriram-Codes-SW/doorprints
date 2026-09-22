@@ -30,7 +30,10 @@ private enum class Sort(@StringRes val label: Int) {
 @Composable
 fun HouseListScreen(onOpenHouse: (String) -> Unit) {
     val repo = repository()
-    val houses by repo.houses.collectAsStateWithLifecycle(emptyList())
+    // null until Room's first emission, so the first-run tagline/hint is not flashed for a frame on every launch.
+    val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    val loaded = loadedHouses != null
+    val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
     val visitsByHouse = counts.associateBy { it.houseId }
     var filter by remember { mutableStateOf<HouseStatus?>(null) }
@@ -89,10 +92,18 @@ fun HouseListScreen(onOpenHouse: (String) -> Unit) {
                 }
             }
         }
-        if (shown.isEmpty()) {
+        if (loaded && houses.isEmpty()) {
+            // First run: nothing saved yet, so introduce the app with its tagline above the how-to hint.
+            Text(
+                stringResource(R.string.app_tagline),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 24.dp),
+            )
+        }
+        if (loaded && shown.isEmpty()) {
             Text(
                 stringResource(if (houses.isEmpty()) R.string.houses_empty else R.string.houses_no_match),
-                modifier = Modifier.padding(top = 24.dp),
+                modifier = Modifier.padding(top = if (houses.isEmpty()) 8.dp else 24.dp),
             )
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {

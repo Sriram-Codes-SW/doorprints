@@ -266,6 +266,7 @@ class EvalScorerTest {
 
         var md = EvalScorer.markdown(header, metrics, new ArrayList<>(List.of(r)), List.of("careful"));
 
+        assertThat(md).startsWith("# Doorprints AI eval scorecard\n");
         assertThat(md).contains("**Result: FAIL**", "| extractionFieldAccuracy | 0.00 | 0/1 | >= 0.90 | FAIL |",
                 "m\\|1", "x\\|1", "- careful", "- [ ] price = 100");
         assertThat(List.of(md.split("\n"))).doesNotContain("| x|1 | extract | - | FAIL | 0/1 | 0 |");

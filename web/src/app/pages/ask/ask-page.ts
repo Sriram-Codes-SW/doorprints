@@ -14,7 +14,7 @@ import { HouseStatus, STATUSES, STATUS_KEY } from '../../core/models';
 import { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 
-/** "Ask my house hunt": RAG answers over the user's own houses, with every cited house linked (docs/ai 5.2). */
+/** "Ask about my houses": RAG answers over the user's own houses, with every cited house linked (docs/ai 5.2). */
 @Component({
   selector: 'app-ask-page',
   imports: [FormsModule, RouterLink, TPipe],

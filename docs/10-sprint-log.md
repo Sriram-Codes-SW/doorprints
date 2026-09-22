@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.5 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 2 done, Sprint 3 closing, Sprint 4 candidates awaiting the product owner) |
+| Status | Draft (Sprint 2 done, Sprint 3 closing with the Doorprints rename, Sprint 4 candidates awaiting the product owner) |
 
 ## Change log
 
@@ -17,6 +17,7 @@
 | 0.3 | 2026-09-22 | Claude (Cowork) | Lead decisions for Sprint 3: C-13 (F-30, contact name to the LLM provider) assigned to the AI team this sprint as S3-03, now done in code (F-30 Fixed in [02](02-threat-model.md) v0.6, waiting on CI); F-01 split into F-01a (Fixed) and F-01b (Open, C-04); `docker-compose.yml` moved to the Backend team's files (it passes the AI settings); new S3-04 (Docs). Section 1: new **Process** note: team managers upgraded to senior reviewers with a mandatory runtime pre-mortem, third-party wire-format verification and contract tests, because the Sprint 3 embeddings incompatibility (E-01) passed compile, unit tests and review. |
 | 0.4 | 2026-09-22 | Claude (Cowork) | S3-03 records the final redaction rules (ai-design v0.10, including initials-style names) and the `[contact]` label contract for clients, with the reindex after the v0.10 deploy; S3-04 lists the coordinator's rework (06 v0.7, 01 v0.6, 02 v0.7, 08 v0.6, CHANGELOG, README). |
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome: commit `6a348cc` pushed, Backend and Security workflows green (Android and Web not triggered by their path filters). First successful real Gemini eval run on 2026-09-22 (Actions run 35720654442): 12/13 cases passed, every metric passes except `citationPrecision` 0.86 (threshold 0.90) because of one correct contrast citation, recorded as E-03 (AI team: `allowedCitations` in the golden set and an Ask prompt tweak). E-01 and E-02 confirmed fixed; S3-01 Done with the E-03 follow-up; lead decision: **F-30 closed as Fixed** (evidence: TC-AI-15 green in the Backend workflow on `6a348cc`; the eval run is a no-regression check only, S3-03 Done, C-13 Done, [02](02-threat-model.md) v0.8). New S3-05 (local labels instead of `[contact]` in AI citations, not started) and new section 7: Sprint 4 candidates C-14..C-21, not committed scope, awaiting the product owner. |
+| 0.6 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** (tagline "Remember every house you've seen."), product owner request: new stories S3-07 (all code teams) and S3-08 (Docs), [03](03-design.md) ADR-13; section 1 and the Sprint 1 goal use the new name. Actions run 35720654442 ran on commit `6a348cc` (confirmed): section 5.3 *Code* row and the AI sign-off note no longer ask to confirm it. S3-06 now lists everything [06](06-test-plan.md) v0.8 changed (was only the TC-AI-10 gap row). Sprint 3 CI cell in section 2: Backend and Security green on `6a348cc`; the S3-07 rename (touches `android/`, `web/` and the workflows) waits on all four workflows on the merge commit. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -24,7 +25,7 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 
 ## 1. How we work
 
-House Hunt is built by small AI engineering teams, each with a senior reviewer (a team manager until Sprint 2), for one product owner (the user).
+Doorprints (called House Hunt until the Sprint 3 rename, S3-07) is built by small AI engineering teams, each with a senior reviewer (a team manager until Sprint 2), for one product owner (the user).
 Sprints are short (about one working session each). The log records what each sprint set out to do, what was
 delivered, who signed it off and what CI said. It is the Agile record; the SSDLC documents 01 to 09 hold the detail.
 
@@ -84,11 +85,11 @@ SDK version that Spring AI 2.0.1 uses.
 |---|---|---|---|---|
 | 1 | 2026-09-22 | Build the whole app (API, Android, web, AI, docs, CI) and get CI running | Delivered as 0.1.0 (`4b034d3`, `689927d`). Goal met except the Security gate. | Backend ✅ · Android ✅ · Web ✅ · Security ❌ (Trivy: Tomcat CVEs, DS-0002) |
 | 2 | 2026-09-22 | All four workflows green; close the High/Critical findings; safer key and release handling; more tests | Goal met (Unreleased; `f7da5ab`, `0e4e22a`) | Backend ✅ · Android ✅ · Web ✅ · Security ✅ |
-| 3 | 2026-09-22 | First real AI eval run and its fixes; contact redaction (C-13); remaining Sprint 2 candidates | Mostly met (`6a348cc`): embeddings and scorecard fixes confirmed by the first real Gemini eval run (12/13 cases passed, all metrics but `citationPrecision` pass, E-03 open with the AI team); F-30 closed as Fixed. Closing | Backend ✅ · Security ✅ · Android and Web not triggered (no `android/` or `web/` changes) |
+| 3 | 2026-09-22 | First real AI eval run and its fixes; contact redaction (C-13); remaining Sprint 2 candidates | Mostly met (`6a348cc`): embeddings and scorecard fixes confirmed by the first real Gemini eval run (12/13 cases passed, all metrics but `citationPrecision` pass, E-03 open with the AI team); F-30 closed as Fixed; product renamed to Doorprints (S3-07, waiting on CI). Closing | Backend ✅ · Security ✅ on `6a348cc` (Android and Web not triggered: no `android/` or `web/` changes). S3-07 rename: all four workflows pending on the merge commit |
 
 ## 3. Sprint 1: initial build
 
-**Goal:** a working, zero-cost House Hunt: Spring Boot + PostGIS API, offline-first Android app with Hunt mode,
+**Goal:** a working, zero-cost House Hunt (now Doorprints): Spring Boot + PostGIS API, offline-first Android app with Hunt mode,
 Angular web app, optional AI, SSDLC documents and a CI pipeline, all pushed to GitHub.
 
 ### 3.1 Stories
@@ -198,7 +199,9 @@ LLM provider (C-13, assigned to the AI team by the lead), then continue with the
 | S3-03 | As a contact person my name and phone never reach the LLM provider (C-13, [02](02-threat-model.md) F-30, AI-010), assigned to the AI team this sprint by the lead | AI | Done. Closed by lead decision: redaction tests TC-AI-15 pass in the Backend workflow on `6a348cc`; the real Gemini eval run 35720654442 confirms the AI paths work with the redactor in place (its fixtures hold no contact data, so it is a no-regression check, not a redaction test). `ContactRedactor` on the embedding text and metadata, the Ask context and citations (also chunks indexed before the fix) and the agent/MCP tool results (`HouseDetails.contactName` removed); tests TC-AI-15; name parts are removed from every free-text field, place fields match the whole name in order or reversed and initials-style names ("C/o K Ramesh"), the saved phone only at 8+ digits (ai-design v0.10 §9.1); `Citation.label` / `PlannedStop.label` may contain `[contact]` / `[phone]` (apps show the local label by `houseId`); run `POST /api/ai/reindex` once after deploying the final (v0.10) code (08 §1.1). F-30 **Fixed** in 02 v0.6, status cell aligned in v0.7, closed in v0.8 |
 | S3-04 | As the owner the docs record the lead decisions of Sprint 3 | Docs | Done: F-01 split into F-01a (32-char minimum and `APP_API_KEY_NEXT` rotation, Fixed) and F-01b (per-device keys, Open, C-04), totals 26 Fixed / 3 Part / 2 Open of 31 (02 v0.6); F-30 Fixed (01 v0.5, 02, 03 v0.5, 04 v0.4, 06 v0.6, 08 v0.5); `docker-compose.yml` owned by Backend, AI settings in the 07 v0.6 env table; 02 v0.5 change-log row corrected; *Process* note in section 1; 09 v0.3; CHANGELOG. Coordinator rework: 06 v0.7 (TC-AI-12: 5-minute window), 01 v0.6 (PRV-009 reason for Part), 02 v0.7 (F-30 cell per ai-design v0.10), 08 v0.6 (reindex after the v0.10 deploy), CHANGELOG *Changed* corrected, README index F-01a/F-01b..F-30 |
 | S3-05 | As the user I see my own house label, not `[contact]` / `[phone]`, in AI citations and planned stops (apps look up the local label by `houseId`, client contract in [02](02-threat-model.md) F-30 and ai-design §13) | Android, Web | Open: not started in Sprint 3; carried to Sprint 4 as candidate C-19 (section 7) |
-| S3-06 | As the owner the docs record the Sprint 3 outcome, close F-30 and list the Sprint 4 candidates | Docs | Done: this log v0.5 (sections 2, 5, 6, 7), 02 v0.8 (F-30 closed), 01 v0.7 (AI-010, AI-012, PRV-009), 06 v0.8 (TC-AI-10 gap row), docs index v0.7, CHANGELOG |
+| S3-06 | As the owner the docs record the Sprint 3 outcome, close F-30 and list the Sprint 4 candidates | Docs | Done: this log v0.5 (sections 2, 5, 6, 7), 02 v0.8 (F-30 closed), 01 v0.7 (AI-010, AI-012, PRV-009), 06 v0.8 (TC-AI-10 gap row with the first real scorecard; section 1 AI evals row: golden set v0.3 and the first real run; TC-AI-09 traces golden set v0.3 `allowedCitations`; new TC-AI-17 for the Ask prompt citation and contrast rules), docs index v0.7, CHANGELOG |
+| S3-07 | As the user the app's name says what it is: **Doorprints**, "Remember every house you've seen.", instead of "House Hunt", which sounded like a property-listings site (product owner request, [03](03-design.md) ADR-13) | Android, Web, Backend, AI, DevOps / Security | Done in code, waiting on CI: display name and tagline in all four languages (Android `app_name`/`app_tagline`, Settings *About*, first-run house list; web title, header, page titles, meta description), new launcher icon, `applicationId` `app.doorprints`, CI artifacts `doorprints-debug-apk` / `doorprints-release-apk` / `doorprints-web-dist`, `spring.application.name` and MCP server name `doorprints(-api)`, export file `doorprints-export-<date>.json`, eval scorecard title, golden set v0.4 (description only). Kept: Java/Kotlin packages, repository `house-hunt`, storage keys, database, image and volume names. Pre-rename Android test builds are not upgraded (new id): sync, then uninstall |
+| S3-08 | As the owner the docs, README and CHANGELOG use the new name and record the rename decision | Docs | Done: 01 v0.8 (also TC-AI-17 in the RTM), 02 v0.9, 03 v0.6 (ADR-13), 04 v0.5, 05 v0.3, 06 v0.9, 07 v0.7, 08 v0.7, 09 v0.4, this log v0.6, docs index v0.8, README, CHANGELOG. Historical change-log rows keep the old name. Coordinator nits fixed: S3-06 and the docs index v0.7 row now describe 06 v0.8 in full; the CHANGELOG quotes the neutral Ask prompt example ("X is over budget"); run 35720654442 recorded as run on `6a348cc` |
 
 ### 5.2 Findings of the first real AI eval run
 
@@ -218,7 +221,7 @@ default (AI-012) stays unmet until a run passes every metric (E-03).
 |---|---|
 | Date | 2026-09-22 |
 | Workflow run | `ai-evals.yml` (manual), GitHub Actions run 35720654442, free-tier Gemini key (`AI_API_KEY` repository secret) |
-| Code | Sprint 3 (expected `6a348cc`; confirm the head SHA on the run page at sign-off, since `ai-evals.yml` is manual and runs the ref chosen when it is started): native Gemini embeddings (E-01), fail-safe scorecard (E-02), contact redaction (F-30) |
+| Code | Commit `6a348cc` (Sprint 3; confirmed on the run page, `ai-evals.yml` is manual and runs the ref chosen when it is started): native Gemini embeddings (E-01), fail-safe scorecard (E-02), contact redaction (F-30) |
 | Cases | 13 ran, 12 passed (scorecard "Cases 12 / 13 passed"); failing case: `ask-02-filtered-parking`, check "cites only expected houses" |
 | Metrics | All pass their thresholds except `citationPrecision`: 0.86 vs 0.90 (E-03, one contrast citation) |
 | Verdict | FAIL on one metric; the scorecard is now trustworthy (no false PASS) and the remaining gap is a golden-set and prompt issue, not a provider or harness defect |
@@ -239,8 +242,8 @@ The last Web and Android runs are green on `0e4e22a` (section 4.2).
 
 | Team | Senior review | Sign-off |
 |---|---|---|
-| AI | Pending | Pending (E-03 open; confirm that run 35720654442's head SHA is `6a348cc`) |
-| Backend, DevOps / Security, Docs | Pending | Pending |
+| AI | Pending | Pending (E-03 open; run 35720654442 ran on `6a348cc`, confirmed) |
+| Backend, Android, Web, DevOps / Security, Docs | Pending | Pending (S3-07 rename: CI on the merge commit) |
 | Product owner | – | Pending: lead decision recorded to close F-30 as Fixed; AI-012 gate still unmet (E-03) |
 
 ## 6. Next sprint candidates (Sprint 3)
