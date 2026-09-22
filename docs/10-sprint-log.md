@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.9 |
+| Version | 0.12 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 2 done, Sprint 3 closing with the Doorprints rename, Sprint 4 candidates awaiting the product owner) |
+| Status | Draft (Sprint 3.5 KMP foundation delivered, CI result to record; Sprint 4a/4b scope set by the product owner, 4b with the 2026-09-22 additions) |
 
 ## Change log
 
@@ -21,6 +21,9 @@
 | 0.7 | 2026-09-22 | Claude (Cowork), Docs team | New section 8: product-owner decisions of 2026-09-22 (repository renamed to `Sriram-Codes-SW/doorprints` and made public with MIT `LICENSE`, `SECURITY.md` and a ruleset on `main`, required checks deliberately off; AI access policy with on-device AI for guests and cloud AI only for the owner and invited users on a paid, hard-capped key; bring-your-own-key rejected; Vertex AI added next to AI Studio), new Sprint 4 candidates **C-22..C-28** (CodeQL, PR flow with a `CI summary` check, Vertex AI provider, AI access tiers, Firebase Test Lab on Indian-market devices, Cloud Run staging, Speech-to-Text prototype) and the Google Cloud $300 trial operations notes (8.3). |
 | 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. Section 8.3: the spend cap budget (Preview; monthly, before credits) on the AI-only project is the provider-side stop, alerts only notify; new row: spend cap budgets do not cover Cloud SQL, so staging has its own budget alert and a tear-down date; credit coverage of the models confirmed on day 1. C-24: sync 04 (E6, DF-21, DF-32: Vertex endpoint and OAuth auth) and 02 T-I22 when the AI team's code lands. C-26: after the trial Test Lab runs within its no-cost Spark daily quota. |
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | **C-24** updated: the AI team's Vertex AI code and [ai/vertex-setup.md](ai/vertex-setup.md) landed in this change set (status: code landed, waiting for the first CI run and the owner's setup steps 8 and 10); the docs sync it asked for is done ([02](02-threat-model.md) T-I22, [03](03-design.md) §13, [04](04-data-flow-diagrams.md) E6, DF-21, DF-32, [06](06-test-plan.md), [07](07-secure-build-and-deploy.md) §4 and §7, [08](08-operations-runbook.md) §1.1, IR-9, §9). New acceptance item from the manager review: design and contract-test the provider response when the spend cap trips ([01](01-requirements.md) AI-017). PO-3: "being written" marker removed. Review fix: C-24 said the `ai-evals.yml` `provider` input defaults to `vertex`; it defaults to `aistudio` until the owner's step-10 run, and C-24's done-when item (2) now includes flipping it; C-24 also lists the `setupHint` and TC-AI-22. |
+| 0.10 | 2026-09-22 | Claude (Cowork), Docs team | New **section 9, Sprint 3.5 "KMP foundation"** (commit `8f583af`): stories S3.5-01..S3.5-06 (`:shared` Kotlin Multiplatform module, Ktor `ApiClient` replacing OkHttp's `RetryInterceptor`, Room schema export and `RoomSchemaTest`, compile-only iOS job `shared-ios.yml`, Gradle dependency graph and SHA-pinned `google-github-actions/auth`, docs), CI results to be recorded, Phase 2 plan; sprint summary row. New **section 10**: product-owner decisions later on 2026-09-22 (PO-5 Hunt mode reminders, PO-6 hunting areas / area wake-up, PO-7 location permission model, all Sprint 4b; [11](11-feature-parity-and-export-spec.md) v0.6 S4-17..S4-19) and the **Vertex AI setup outcome** (PO-8: project `doorprints-ai`, chat in `asia-south1`, embeddings on `global`, GitHub variables set; trial credit ends 22 Dec 2026). C-24 status updated (steps 1-8 done, steps 9-10 open); C-05 (DTO mapping part done), C-10 (Android dependencies now reach Dependabot through the dependency graph job) updated; 8.3 credit row names the end date. Team table: Docs owns `docs/ai/**` for this sprint (AI team idle). |
+| 0.11 | 2026-09-22 | Claude (Cowork), DevSecOps team | §9.2: corrected the `gradle-dependency-graph` follow-up (only the submit/upload phase is non-blocking; a Gradle resolution or configuration-filter failure still fails the job; an earlier wording said a generate or submit failure becomes a warning), added the no-report check and the exit criterion (`Submitted dependency-graph-reports/...` in the job log). |
+| 0.12 | 2026-09-22 | Claude (Cowork), Docs team | §9.2: runs of `8f583af` and the follow-up commit `feb0294` recorded from the public Actions pages with a confidence column (Shared iOS compile ✅; Android ✅ to confirm; Security ✅ on `feb0294`, but green does not prove the dependency graph was submitted, the `Submitted ...` log notice does; Backend on `feb0294` unclear, owner to check first); sprint summary row updated. C-24 and §10.2: first `provider=vertex` eval run 35753477789 failed only on `citationPrecision` 0.78, answered by `feb0294` (inline-marker citation rule, golden set v0.5, thresholds not lowered); re-run and credit check open. §10.1: 4b threats and tests copied to 02 and 06; reminder scheduling corrected in 11 v0.7. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -49,7 +52,7 @@ delivered, who signed it off and what CI said. It is the Agile record; the SSDLC
 | Web | `web/**` |
 | DevOps / Security | `.github/**`, `.gitleaks*`; Docker files other than `backend/**` as agreed (the dev `docker-compose.yml` moved to Backend in Sprint 3) |
 | Design | `docs/05-ux-accessibility-i18n.md`, string resources with Android and Web |
-| Docs | `docs/**` except `docs/ai/**`, `README.md`, `CHANGELOG.md`, this log |
+| Docs | `docs/**` except `docs/ai/**`, `README.md`, `CHANGELOG.md`, this log. Sprint 3.5 follow-up (2026-09-22): also `docs/ai/**` while the AI team is idle |
 
 **Process (since Sprint 3)**
 
@@ -89,6 +92,7 @@ SDK version that Spring AI 2.0.1 uses.
 | 1 | 2026-09-22 | Build the whole app (API, Android, web, AI, docs, CI) and get CI running | Delivered as 0.1.0 (`4b034d3`, `689927d`). Goal met except the Security gate. | Backend ✅ · Android ✅ · Web ✅ · Security ❌ (Trivy: Tomcat CVEs, DS-0002) |
 | 2 | 2026-09-22 | All four workflows green; close the High/Critical findings; safer key and release handling; more tests | Goal met (Unreleased; `f7da5ab`, `0e4e22a`) | Backend ✅ · Android ✅ · Web ✅ · Security ✅ |
 | 3 | 2026-09-22 | First real AI eval run and its fixes; contact redaction (C-13); remaining Sprint 2 candidates | Mostly met (`6a348cc`): embeddings and scorecard fixes confirmed by the first real Gemini eval run (12/13 cases passed, all metrics but `citationPrecision` pass, E-03 open with the AI team); F-30 closed as Fixed; product renamed to Doorprints (S3-07, waiting on CI). Closing | Backend ✅ · Security ✅ on `6a348cc` (Android and Web not triggered: no `android/` or `web/` changes). S3-07 rename: all four workflows pending on the merge commit |
+| 3.5 | 2026-09-22 | KMP foundation: make the Android code Kotlin Multiplatform-ready without an iOS app (section 9) | Delivered in `8f583af` (`:shared` module, Ktor client, Room schema guard, compile-only iOS CI) | Security ❌ on `8f583af` (new `gradle-dependency-graph` job failed at submission; follow-up `feb0294`: Security ✅, submission to confirm from the log). Shared iOS compile ✅, Android ✅ to confirm, Backend on `feb0294` unclear (9.2) |
 
 ## 3. Sprint 1: initial build
 
@@ -257,12 +261,12 @@ The last Web and Android runs are green on `0e4e22a` (section 4.2).
 | C-02 | `release.yml`: tag → signed APK + `.sha256` on a GitHub Release, signer fingerprint in the README | Finish F-11 / SEC-018 | 07 §5 | Open |
 | C-03 | R8 keep rules (`proguard-rules.pro`) and a release smoke test, then turn on `isMinifyEnabled`/`isShrinkResources` | F-11, M7 | 07 §5 | Open |
 | C-04 | Per-device API keys, stored hashed, with names and revocation | Close F-01b (SEC-025) | 02 §5 | Open |
-| C-05 | Remaining Android unit tests: sync cursor and tombstones with a fake `ApiClient`, house-alert cooldown, accuracy gate, DTO mapping, photo pipeline | TC-U-06..08, TC-U-10, TC-U-11 | 06 §10 | Open |
+| C-05 | Remaining Android unit tests: sync cursor and tombstones with a fake `ApiClient`, house-alert cooldown, accuracy gate, DTO mapping, photo pipeline | TC-U-06..08, TC-U-10, TC-U-11 | 06 §10 | Part (Sprint 3.5): DTO mapping done (`ModelMappingTest`, TC-U-10); a fake `ApiClient` is now easy with Ktor `MockEngine` |
 | C-06 | Web: specs for `ai.service.ts` (`splitCitations`, `aiErrorMsg`), Playwright smoke + axe | TC-A-01, AI UI | 06 §10 | Open |
 | C-07 | Run `ai-evals.yml` with a free-tier Gemini key (repository secret `AI_API_KEY`) and record the scorecard | TC-AI-10 (covers TC-AI-01..08 cases), AI-001 | [ai/](ai/) | Done: run 35720654442 (2026-09-22) recorded in section 5.3; follow-up E-03 |
 | C-08 | `deploy.yml`, `backup.yml`, `keepalive.yml` | Operations (NFR-008) | 08 §3 | Open |
 | C-09 | Drop the Tomcat override once Spring Boot manages 11.0.25+ | Keep the BOM authoritative | 07 §1 | Open |
-| C-10 | Pin scanner images by digest; Gradle dependency locking so Trivy can scan Android dependencies | Supply chain (T-T5) | 07 §1 | Open |
+| C-10 | Pin scanner images by digest; Gradle dependency locking so Trivy can scan Android dependencies | Supply chain (T-T5) | 07 §1 | Part (Sprint 3.5): the `gradle-dependency-graph` job in `security.yml` sends the Android graph to Dependabot alerts; digests and lock files still open |
 | C-11 | Field walk test TC-F-01..08 on a real phone with the signed APK | Hunt mode quality, R-01 | 06 §6 | Open |
 | C-12 | Dev `docker-compose.yml`: pass `APP_API_KEY_NEXT: ${APP_API_KEY_NEXT:-}` to the `api` service so the local stack can rehearse the key-rotation drill TC-O-02 (raised with the Backend/DevOps manager) | Rotation drill without a production-like stack | 08 §5.1 | Done (`docker-compose.yml`, `f7da5ab`) |
 | C-13 | Leave the contact name out of the text sent to the LLM provider: `HouseDocuments.text()` (embedding text DF-32 and Ask context DF-21) and `HouseQueries.HouseDetails` (planner/MCP tool results); add a test that no contact name or phone is in that text; reindex after the change. Found by the Docs team in the DF-32 re-check; raised with the AI team | AI-010 says contact names are redacted by default, but the name goes to the provider on every index and reindex (F-30) | 02 §5 (F-30), 04 DF-32 | Done (S3-03): F-30 closed as Fixed by lead decision; evidence: TC-AI-15 green in the Backend workflow on `6a348cc` (the eval run's fixtures hold no contact data, so it is not a redaction test; see C-21) |
@@ -305,7 +309,7 @@ Candidates only, for Sprint 4 planning next to section 7 and the plan in [11](11
 |---|---|---|---|---|
 | C-22 | **CodeQL** code scanning (Java/Kotlin, JavaScript/TypeScript) and SARIF upload of Semgrep to the Security tab | Free now that the repository is public; better SAST coverage | DevOps, Security | Sprint **4a** candidate. Kotlin with AGP 9 built-in Kotlin may need advanced setup with a manual Gradle build; check before committing ([07](07-secure-build-and-deploy.md) §1) |
 | C-23 | PR flow and an always-running **`CI summary`** check, then required status checks, "require PR" and linear history in the ruleset | Required checks today would block PRs whose paths skip a workflow | DevOps, Docs | [07](07-secure-build-and-deploy.md) §3.1; only `CI summary` becomes required |
-| C-24 | **Vertex AI** provider next to AI Studio, switchable by configuration; evals run against both | PO-3; real data off the free tier (PRV-022) | AI, Backend | **Code landed (2026-09-22), pending first CI.** Shipped: `AI_PROVIDER` switch (`aistudio` default, `vertex`), Vertex chat through Spring AI's Google GenAI starter with the app's own `Client` (ADC only, bounded retries), `VertexEmbeddingModel` (`:embedContent` / `:predict`, one text per call), `503` + `code: AI_QUOTA_EXHAUSTED` + `Retry-After: 60` for provider quota errors, re-index and eval stop on quota, `AI_INDEX_ON_CHANGE`, `ai-evals.yml` `provider` (default `aistudio`; `vertex` chosen by hand after vertex-setup steps 1-8, the default flips to `vertex` only after step 10) and `embedding_model` inputs with Workload Identity Federation; a `setupHint` on the `503` for Vertex AI 401/403/404 (`AiExceptionHandlerTest`, TC-AI-22); owner setup in [ai/vertex-setup.md](ai/vertex-setup.md). **Done when:** (1) Backend workflow green with the new tests (TC-AI-16, TC-AI-18..22 in [06](06-test-plan.md)); (2) owner's setup step 8 (models answer in `asia-south1`, or `AI_VERTEX_EMBEDDING_LOCATION` / `GCP_LOCATION=global` chosen) and step 10 (the trial credit pays for Vertex AI; first `extract` eval run green, with `provider=vertex` chosen by hand), then the `ai-evals.yml` default flipped to `vertex` (step 10 item 6; until then the default run uses AI Studio); (3) full eval (TC-AI-10) on `provider=vertex` recorded in [ai/ai-design.md](ai/ai-design.md) §8.5; (4) **spend cap trip (manager review):** the provider response when the AI-015 spend cap blocks the service is captured (or taken from Google's documentation), mapped to a clear "cloud AI paused" problem that is **not retried** (no SDK/embedding retries, `retryable: false`, no short `Retry-After`; re-index and eval stop at once), and pinned in a contract test next to the `AI_QUOTA_EXHAUSTED` tests, which today cover HTTP 429 only ([01](01-requirements.md) AI-017). Docs sync done in this change set (02 T-I22, 03 §13, 04 E6/DF-21/DF-32, 06, 07 §4 and §7, 08 §1.1, IR-9, §9) |
+| C-24 | **Vertex AI** provider next to AI Studio, switchable by configuration; evals run against both | PO-3; real data off the free tier (PRV-022) | AI, Backend | **Owner setup done (2026-09-22, section 10):** project `doorprints-ai`, GitHub variables `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global` (step 8: chat verified in `asia-south1`, `gemini-embedding-2` only on `global`); done-when item (2) is met for step 8; step 10 is **started**: the first `provider=vertex` eval (run 35753477789, `gemini-3.5-flash` in `asia-south1` + `gemini-embedding-2` on `global`, commit `8f583af`) failed only on `citationPrecision` 0.78 (7/9), answered in `feb0294` by golden set v0.5 and the rule that only inline `[house:id]` markers count as citations (thresholds not lowered); the re-run on `feb0294` or later and the **credit check** are open, and so are items (3), (4); DevSecOps review of `ai-evals.yml` signed off. Earlier status: **Code landed (2026-09-22), pending first CI.** Shipped: `AI_PROVIDER` switch (`aistudio` default, `vertex`), Vertex chat through Spring AI's Google GenAI starter with the app's own `Client` (ADC only, bounded retries), `VertexEmbeddingModel` (`:embedContent` / `:predict`, one text per call), `503` + `code: AI_QUOTA_EXHAUSTED` + `Retry-After: 60` for provider quota errors, re-index and eval stop on quota, `AI_INDEX_ON_CHANGE`, `ai-evals.yml` `provider` (default `aistudio`; `vertex` chosen by hand after vertex-setup steps 1-8, the default flips to `vertex` only after step 10) and `embedding_model` inputs with Workload Identity Federation; a `setupHint` on the `503` for Vertex AI 401/403/404 (`AiExceptionHandlerTest`, TC-AI-22); owner setup in [ai/vertex-setup.md](ai/vertex-setup.md). **Done when:** (1) Backend workflow green with the new tests (TC-AI-16, TC-AI-18..22 in [06](06-test-plan.md)); (2) owner's setup step 8 (models answer in `asia-south1`, or `AI_VERTEX_EMBEDDING_LOCATION` / `GCP_LOCATION=global` chosen) and step 10 (the trial credit pays for Vertex AI; first `extract` eval run green, with `provider=vertex` chosen by hand), then the `ai-evals.yml` default flipped to `vertex` (step 10 item 6; until then the default run uses AI Studio); (3) full eval (TC-AI-10) on `provider=vertex` recorded in [ai/ai-design.md](ai/ai-design.md) §8.5; (4) **spend cap trip (manager review):** the provider response when the AI-015 spend cap blocks the service is captured (or taken from Google's documentation), mapped to a clear "cloud AI paused" problem that is **not retried** (no SDK/embedding retries, `retryable: false`, no short `Retry-After`; re-index and eval stop at once), and pinned in a contract test next to the `AI_QUOTA_EXHAUSTED` tests, which today cover HTTP 429 only ([01](01-requirements.md) AI-017). Docs sync done in this change set (02 T-I22, 03 §13, 04 E6/DF-21/DF-32, 06, 07 §4 and §7, 08 §1.1, IR-9, §9) |
 | C-25 | **AI access tiers**: cloud AI allowlist (owner + invited), per-user quota, global hard cap; Android on-device AI spike (ML Kit GenAI Prompt API, beta) | PO-2 | Backend, AI, Android, Web | Sprint 5 story S5-07 in [11](11-feature-parity-and-export-spec.md); the Android spike can start in Sprint 4 |
 | C-26 | **Firebase Test Lab** runs of the debug APK (Robo + instrumented tests) on Indian-market devices (popular Xiaomi/Redmi, Samsung Galaxy A/M, Realme, Vivo/Oppo models available in the catalogue) | Real-device coverage for Hunt mode, OEM battery savers and Gemini Nano support that we cannot test locally | Android, DevOps | Paid from the trial credit; manual `workflow_dispatch` job or console runs; no real personal data in test accounts; device list chosen from what Test Lab offers at the time. After the trial, Test Lab keeps working within its no-cost Spark plan daily quota (a few physical- and virtual-device runs a day; check the current numbers in the Firebase docs), so device testing does not stop when the credit runs out |
 | C-27 | **Staging backend** on Cloud Run + Cloud SQL for PostgreSQL (PostGIS, pgvector) for the 90 trial days | A production-like place for migrations, AI and the Sprint 5 sign-in work | Backend, DevOps | Synthetic data only; torn down before the trial ends ([07](07-secure-build-and-deploy.md) §6.5) |
@@ -317,7 +321,105 @@ Candidates only, for Sprint 4 planning next to section 7 and the plan in [11](11
 |---|---|
 | Budget | On day 1 ([08](08-operations-runbook.md) §10.2, §10.3): a **spend cap budget** (Google Cloud Billing, Preview) on the AI-only project and the Vertex AI or Gemini API service, which blocks new AI usage when the monthly target is passed, plus alerts at 50 %, 90 % and 100 %. Alerts alone only notify. The spend cap counts cost **before** credits, so it can pause cloud AI while trial credit is left; size the target for that. |
 | Cloud SQL | Spend cap budgets do **not** cover Cloud SQL. The staging project gets its own budget with alerts and a fixed tear-down date written in the password manager entry ([07](07-secure-build-and-deploy.md) §6.5). |
-| Credit | Check monthly how much credit is left and the end date. Whether the trial credit covers the chosen Vertex AI (Gemini) models is **to be confirmed on day 1** when the project is set up. |
+| Credit | Check monthly how much credit is left and the end date. **The owner's trial credit ends on 22 Dec 2026**; export by about 15 Dec and switch back to AI Studio or upgrade before the 22nd ([08](08-operations-runbook.md) §10.4). Whether the trial credit covers the chosen Vertex AI (Gemini) models is still **to be confirmed** (vertex-setup step 10). |
 | Data | Staging, Test Lab and Speech-to-Text use synthetic data only. Real data only in production cloud AI for the owner and invited users. |
 | End of trial | No automatic charge unless the billing account is upgraded. Tear down staging (Cloud SQL, Cloud Run) before the end; move production cloud AI to the paid, hard-capped setup ([08](08-operations-runbook.md) §10.2) or turn it off. |
 | Zero-cost rule | The trial is time-limited; nothing in production may depend on it after it ends (CON-01). |
+
+## 9. Sprint 3.5: KMP foundation
+
+Goal (product owner, 2026-09-22): make the Android code base **Kotlin Multiplatform-ready now, ship iOS later**.
+There is no Mac, no iPhone and no Apple Developer Program fee (zero cost), so the sprint adds no iOS app and no iOS UI;
+it proves that the code an iOS app would reuse compiles without Android or JVM APIs. Decision record: [03](03-design.md)
+ADR-14. Module detail: `android/shared/README.md`.
+
+### 9.1 Stories
+
+| ID | Story | Team | Result | Status |
+|---|---|---|---|---|
+| S3.5-01 | `:shared` KMP module (`com.android.kotlin.multiplatform.library` + Kotlin Multiplatform 2.4.10): models and wire names, `HouseScore`, `SyncRules`, `SyncOutcome`, `Geo`, `StayDetector`, `StreetAlerts`, DTOs, `IsoTime`; version catalog `android/gradle/libs.versions.toml` | Android | Module boundaries in [03](03-design.md) §4.2.1; the pure suites moved to `commonTest` | Done (`8f583af`) |
+| S3.5-02 | Ktor 3.6 `ApiClient` (OkHttp 5.5 engine on Android) replaces the OkHttp 4 client and `RetryInterceptor` with the same behaviour; photo upload streamed from the file; `ApiClientContractTest` with Ktor `MockEngine` | Android | Same requests and retry rules (TC-U-17, TC-U-35); MapLibre now on OkHttp 5.5.0, manual smoke test TC-M-17 | Done |
+| S3.5-03 | Room schema export, committed `2.json`, `RoomSchemaTest` identity-hash guard; `ModelMappingTest`; sync worker no longer records a WorkManager stop as a failed sync | Android | TC-U-36, TC-U-10; R-06 part | Done |
+| S3.5-04 | `shared-ios.yml`: compile the iOS main and test klibs on `macos-latest` (no link, no signing), path-filtered; `kotlin.native.enableKlibsCrossCompilation=false` keeps iOS off the ubuntu job | DevSecOps | TC-U-37 | Done |
+| S3.5-05 | `android.yml` runs `:shared:testAndroidHostTest`; `security.yml` job `gradle-dependency-graph` (Dependabot alerts for Android dependencies); `google-github-actions/auth` pinned by SHA; DevSecOps review of `ai-evals.yml` recorded in its header; Dependabot ignores majors of the KMP library plugin | DevSecOps | [07](07-secure-build-and-deploy.md) v0.11 | Done |
+| S3.5-06 | Docs: ADR-14 and the component view, test plan, CI, OSI, DFD, requirements and runbook updates, README refresh, CHANGELOG | Docs | 01 v0.12, 02 v0.13, 03 v0.8, 04 v0.7, 06 v0.11, 07 v0.11, 08 v0.11, 09 v0.5, this log v0.10 | Done (this change) |
+
+### 9.2 CI results
+
+To be recorded in full from the GitHub Actions runs of `8f583af` (Android, Security, Shared iOS compile). Known so
+far (DevSecOps, 2026-09-22): the new **`gradle-dependency-graph`** job in Security **failed** at the submission step
+("Dependency submission failed"), most likely because the repository's dependency graph setting is off. DevSecOps'
+follow-up keeps the job but makes only the submit/upload phase non-blocking
+(`dependency-graph-continue-on-failure: true`, not a job-level `continue-on-error`; a Gradle resolution or
+configuration-filter failure still fails the job) with a preflight that names the setting and a check that warns when
+no graph JSON was produced; owner action: enable Settings → Security → Dependency graph
+([08](08-operations-runbook.md) §10.1) and re-run Security on `main`. Exit criterion: the job log shows
+`Submitted dependency-graph-reports/...` (a green job alone proves nothing while the input is on); then switch the job
+back to fail-closed. Other watch points: the first `shared-ios.yml` run
+downloads the Kotlin/Native toolchain (slow, then cached); MapLibre networking on OkHttp 5 is not covered by CI
+(TC-M-17 on a phone).
+
+**Runs recorded 2026-09-22 (Docs team).** The follow-up landed in commit `feb0294` (AI and DevSecOps change set, now
+remote `main`). Read from the public GitHub Actions pages (github.com, not the API; the build environment cannot open
+job logs), so each row needs the owner's confirmation in the Actions tab:
+
+| Commit | Workflow (run) | Result as read | Confidence |
+|---|---|---|---|
+| `8f583af` | Security (35753477885) | ❌ `gradle-dependency-graph` failed at submission (above) | Confirmed by DevSecOps |
+| `8f583af` | Android (35753477853) | ✅ run status "Success" and listed as "completed successfully"; debug APK and reports uploaded; signed release skipped (no signing secrets) | Medium: one reading of the run page showed the `assembleDebug + unit tests` job with a failure icon; check the job |
+| `8f583af` | Shared iOS compile (35753478002, first run) | ✅ `:shared iOS targets compile (macOS, JDK 21)`, about 3.5 min | High |
+| `8f583af` | AI evals, manual, `provider=vertex` (35753477789) | ❌ only `citationPrecision` 0.78 (7/9), see C-24 and [ai/ai-design.md](ai/ai-design.md) 8.5 | High (recorded by the AI change set in golden set v0.5) |
+| `feb0294` | Security (35755840179) | ✅ all six jobs; the dependency graph job reported that dependency results were updated | Medium: **a green Security run does not prove submission** while `dependency-graph-continue-on-failure` is on; the exit criterion stays the `Submitted dependency-graph-reports/...` notice in that job's log |
+| `feb0294` | Backend (35755840287) | **Unclear**: the run page read "Status Failure" (`mvn verify` exit code 1) while the workflow list showed it as completed successfully | Low: the owner checks this run first; it is the one that tests the new Ask citation rule (`AskPromptsTest`, `EvalScorerTest`) |
+
+`feb0294` touches no Android, web or shared code, so Android, Web and Shared iOS compile did not run on it.
+
+### 9.3 Phase 2 plan (not scheduled)
+
+1. Room KMP (Room 2.8 in `commonMain`, bundled SQLite driver), keeping `househunt.db`, version 2, `MIGRATION_1_2` and
+   `2.json`; migration test from real v1/v2 files; then the mappers.
+2. DataStore KMP; `expect/actual` secret storage (Android Keystore / iOS Keychain).
+3. `ServerUrl` as a common parser or `expect/actual`.
+4. iOS app (SwiftUI over the shared framework, or Compose Multiplatform) only when a Mac and the Apple Developer
+   Program are available; `iosMain` with `ktor-client-darwin`; run the iOS tests on a simulator in CI.
+5. iOS platform services: `CLLocationManager` (region monitoring also suits Hunting areas, 20 regions per app),
+   `CLGeocoder`, `BGTaskScheduler`, `NWPathMonitor`.
+
+Until then iPhone users are served by the PWA ([11](11-feature-parity-and-export-spec.md) 5.10, Sprint 4a).
+
+### 9.4 Sign-off and retrospective
+
+Sign-off: the Android and DevSecOps senior reviewers' sign-offs are to be recorded here with the CI results (9.2); the Docs change is this one (S3.5-06). Retrospective notes: the
+KMP move kept every wire format stable by pinning it in contract tests first (good, repeat for Room KMP); the module
+README and the workflow comments drifted slightly (the README still says `android.yml` also runs `:shared:allTests`
+and lists a `GeoTest` that is part of `StayDetectorTest`), for the Android team to align.
+
+## 10. Product-owner decisions later on 2026-09-22
+
+### 10.1 Sprint 4b scope additions and location permissions
+
+| # | Decision | Recorded in |
+|---|---|---|
+| PO-5 | **Hunt mode reminders**: a local notification before a planned viewing (default 15 min, 5 to 60) with a "Start Hunt mode" action; global and per-viewing switches; offline; Do Not Disturb respected. Sprint 4b (S4-17) | [11](11-feature-parity-and-export-spec.md) D-23, 5.16; [01](01-requirements.md) FR-083, FR-084 |
+| PO-6 | **Hunting areas / area wake-up**: up to 20 user-drawn areas, Android geofences, a "Start Hunt mode?" notification on entering, never auto-start, 6-hour cooldown per area, re-registered after reboot and update; stored locally, exported, synced later. Sprint 4b (S4-18) | [11](11-feature-parity-and-export-spec.md) D-24, 5.17; [01](01-requirements.md) FR-085..FR-088, NFR-030 |
+| PO-7 | **Location permission model**: foreground only by default ("While using the app" / "Only this time"); "Allow all the time" only when area wake-up is turned on, after a rationale screen and via system settings on Android 11+; area wake-up turns itself off if the permission is downgraded; re-check on every resume; approximate location explained. Sprint 4b (S4-19, with S4-18) | [11](11-feature-parity-and-export-spec.md) D-25, 5.18; [01](01-requirements.md) PRV-024..PRV-027, SEC-049, PRV-001; [03](03-design.md) ADR-01 note |
+
+The accepted Sprint 4b threats (T-I23, T-I24, T-E8) and tests (TC-U-38..40, TC-M-18, TC-F-12, TC-S-22, TC-A-12)
+are now in [02](02-threat-model.md) v0.14 and [06](06-test-plan.md) v0.12 §13, not only in 11; the reminder
+scheduling rule was corrected in [11](11-feature-parity-and-export-spec.md) v0.7 5.16 (exact alarm when allowed,
+otherwise a 10-minute window that ends at the reminder time, because Android 12+ clips shorter windows).
+
+Sprint 4b grows from 49 to 63 points ([11](11-feature-parity-and-export-spec.md) 14.2, RK-01); moving S4-13 and S4-15 to
+Sprint 5 is the suggested way back to about 49 if the product owner wants it.
+
+### 10.2 Vertex AI setup outcome (PO-8)
+
+| Item | Result |
+|---|---|
+| Project | `doorprints-ai` on the Google Cloud trial billing account; setup steps 1-8 of [ai/vertex-setup.md](ai/vertex-setup.md) done by the owner |
+| Models | Chat `gemini-3.5-flash` verified in `asia-south1`; `gemini-embedding-2` **not** available in `asia-south1`, verified on `global` |
+| GitHub variables | `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global` (secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` set) |
+| Data residency | Chat stays in India; embedding text (redacted house text, Ask questions) is processed on `global` ([02](02-threat-model.md) T-I20) |
+| Trial end | Credit ends **22 Dec 2026**: export by about 15 Dec, then switch back to AI Studio or upgrade billing ([08](08-operations-runbook.md) §10.4) |
+| First Vertex eval | Run 35753477789 (2026-09-22, commit `8f583af`): FAIL only on `citationPrecision` 0.78 (7/9) from `ask-01`; answered in `feb0294` (golden set v0.5; Ask citations need an inline `[house:id]` marker, `citedHouseIds` only as a fallback). Thresholds not lowered ([ai/ai-design.md](ai/ai-design.md) 8.5) |
+| Next | Re-run `provider=vertex` on `feb0294` or later; step 10 credit check (did the cost come off the trial credit?); step 9 (capture real responses); then flip the `ai-evals.yml` default (C-24) |

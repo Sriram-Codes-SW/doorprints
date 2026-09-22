@@ -2,79 +2,141 @@
 
 **Remember every house you've seen.**
 
-License: MIT ([LICENSE](LICENSE)) · Security: report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
+[![Backend](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml) [![Web](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml) [![Android](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml) [![Security](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml) [![Shared iOS compile](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml)
+
+MIT licensed ([LICENSE](LICENSE)) · Report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
 Repository: [`Sriram-Codes-SW/doorprints`](https://github.com/Sriram-Codes-SW/doorprints)
 
-Doorprints is a personal, zero-cost app for keeping track of the houses you visit while looking for a house to rent
-or buy in India. It is not a property-listings site: it holds only the houses you have seen yourself. Save every house
-with its price, BHK, a 10-point checklist, star rating, photos, contact and notes; compare your favourites side by
-side; and turn on **Hunt mode** while you walk around, so your phone tells you when you pass a house or enter a street
-you have already seen. Works fully offline on Android and syncs to your own server and a web app when you are online.
-
-> Doorprints was called **House Hunt** until 2026-09-22. The code packages (`com.househunt`), storage keys and
-> database names keep the old name; see [ADR-13](docs/03-design.md#14-architecture-decision-records) for what changed
-> and what did not. The old repository URL (`house-hunt`) redirects to `doorprints`.
+Doorprints is a personal, zero-cost app for keeping track of the houses you visit while looking for a home to rent
+or buy in India. It is **not** a property-listings site: it holds only the houses you have seen yourself. Save each
+house with its price, BHK, a 10-point checklist, star rating, photos, contact and notes; compare your favourites side
+by side; and switch on **Hunt mode** while you walk around, so your phone tells you when you pass a house or enter a
+street you have already seen. The Android app works fully offline and syncs to your own server and a web app when you
+are online.
 
 English · हिन्दी · தமிழ் · తెలుగు
 
-## Features
+> Doorprints was called **House Hunt** until 2026-09-22. Code packages (`com.househunt`), storage keys and database
+> names keep the old name on purpose ([ADR-13](docs/03-design.md#14-architecture-decision-records)). The old
+> repository URL (`house-hunt`) redirects here.
 
-| | Android app | Web app |
-|---|---|---|
-| Houses: save at your GPS position or anywhere on the map, checklist (0–5 × 10), rating, status, price in ₹, photos, visits | Yes (offline-first) | Yes |
-| Map (OpenFreeMap tiles, no API key), list with search, filter and sort, side-by-side compare | Yes | Yes |
-| **Hunt mode**: alerts near visited houses and known streets, automatic visit detection, battery-aware | Yes | – |
-| Sync: offline edits, photo deletes and tombstones; photos on Wi-Fi only (optional) | Yes | Always online |
-| Four languages, WCAG 2.2 AA (web), TalkBack support and dark theme (Android) | Yes | Yes |
-| Optional AI (off by default): ask questions about your houses with cited sources, fill a house from pasted listing text, plan a walking route of visits. Cloud AI is for the server owner (invited users planned); on-device AI for everyone else is planned ([docs/11](docs/11-feature-parity-and-export-spec.md) 5.13) | Yes | Yes |
-| Privacy: your own server, encrypted API key on the phone, photos stored without location metadata, export and delete-all | Yes | Yes |
+## Key features
+
+| Feature | What it does | Android | Web |
+|---|---|---|---|
+| **Hunt mode alerts** | While you walk, a notification when you are within 30 m (configurable) of a house you saved, at most once per house per 30 minutes | Yes | – |
+| **Street memory** | "You've been on this street before": counts and first visit date when you enter a street with saved houses or visits | Yes | – |
+| **Stay detection** | Stand still for a few minutes and the app records a visit, or asks "Are you at a house?" and pre-fills a new house at that spot | Yes | – |
+| **Checklist and scoring** | Water, power, parking, sunlight, noise, security and four more, each 0–5, blended with your star rating into one score | Yes | Yes |
+| **Compare** | Two to four houses side by side: checklist, rating, price in ₹, score | Yes | Yes |
+| **Photos** | Camera or gallery, resized, location metadata removed; optional upload on Wi-Fi only | Yes | Yes |
+| **Map and list** | OpenFreeMap vector tiles (no API key), markers by status, search, filter, sort | Yes | Yes |
+| **Offline-first** | Everything works without a network; sync resumes by itself with retries and captive-portal detection | Yes | Online |
+| **Four languages** | English, Hindi, Tamil, Telugu, switchable in the app; ₹ with lakh/crore grouping | Yes | Yes |
+| **Accessibility** | TalkBack labels, 48 dp targets, 200 % font scale, dark theme (Android); WCAG 2.2 AA target (web) | Yes | Yes |
+| **Privacy** | Your own server, encrypted API key on the phone, no raw GPS tracks stored, export and delete-all | Yes | Yes |
+| Optional AI (off by default) | Ask questions about your houses with cited sources, fill a house from pasted listing text, plan a walking route of visits | Yes | Yes |
+
+Coming in Sprint 4b: **Hunt mode reminders** before a planned viewing and **hunting areas** that offer Hunt mode when
+you enter a neighbourhood you are searching in (opt-in; see the roadmap and the location permission note below).
 
 ## Screenshots
 
-_Placeholder: add `docs/img/android-map.png`, `docs/img/android-house.png`, `docs/img/web-map.png` and
-`docs/img/web-compare.png` once a build has been run on a device._
+_Placeholder. To be added from a device run: `docs/img/android-map.png`, `docs/img/android-hunt-alert.png`,
+`docs/img/android-house.png`, `docs/img/web-map.png`, `docs/img/web-compare.png`._
+
+## Platforms
+
+| Platform | How you get it | Status |
+|---|---|---|
+| **Android** 8.0+ (API 26) | Sideloaded APK from GitHub Actions (no Play Store listing) | Available |
+| **Web** (desktop and mobile browsers) | Static Angular app you host for free (Cloudflare Pages or Netlify) | Available (online; needs your server) |
+| **iPhone / iPad** | The web app in Safari today; an **installable, offline PWA** in Sprint 4a | Web today, PWA planned |
+| Native iOS app | **Not planned**: it would need a Mac and the paid Apple Developer Program (zero-cost rule). The Android logic lives in a Kotlin Multiplatform module, `:shared`, that CI already compiles for iOS, so a native app stays possible later ([ADR-14](docs/03-design.md#14-architecture-decision-records)) | Phase 2 option |
+
+**Location permissions.** Doorprints asks only for location "While using the app" (or "Only this time"); Hunt mode
+is a visible foreground service you start and stop. "Allow all the time" will be requested only if you turn on the
+Sprint 4b *hunting areas* feature, after a screen that explains why, and that feature switches itself off if you take
+the permission back ([docs/11](docs/11-feature-parity-and-export-spec.md) 5.18).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Phone["Android app (Kotlin, Compose)"]
-        UI["Screens"] --> Repo["Repository"]
+    subgraph Phone["Android app"]
+        UI["Compose screens,<br/>MapLibre"] --> Repo["Repository"]
         Hunt["Hunt mode<br/>foreground location service"] --> Repo
         Repo --> Room[("Room DB + photo files")]
-        Repo --> Sync["SyncWorker<br/>WorkManager, retries"]
+        Repo --> Sync["SyncWorker<br/>WorkManager"]
+        subgraph Shared[":shared (Kotlin Multiplatform)"]
+            Rules["Score, sync rules,<br/>stay and street logic"]
+            Client["Ktor ApiClient<br/>retries, no redirects"]
+        end
+        Hunt --> Rules
+        Sync --> Client
     end
+    iOS["iOS targets<br/>compile-only in CI"] -.-> Shared
     subgraph Browser["Web app (Angular, static)"]
-        SPA["Pages: map, house, compare,<br/>ask, plan"]
+        SPA["Map, house, compare,<br/>ask, plan"]
     end
     subgraph Host["API host (free tier)"]
         API["Spring Boot 4.1 / Java 25<br/>API key, rate limits, validation"]
-        AI["Optional AI module<br/>Spring AI: RAG, extractor, planner, MCP"]
+        AI["Optional AI module<br/>Spring AI: RAG, extractor,<br/>planner, MCP"]
     end
-    DB[("PostgreSQL + PostGIS<br/>+ pgvector (optional)")]
+    DB[("PostgreSQL + PostGIS<br/>+ pgvector")]
     Tiles["OpenFreeMap tiles"]
-    LLM["LLM provider (Gemini free tier)<br/>or local Ollama"]
-    Sync -->|"HTTPS + X-API-Key"| API
-    SPA -->|"HTTPS + X-API-Key, CORS"| API
+    Vertex["Vertex AI (Gemini)<br/>AI_PROVIDER=vertex"]
+    Studio["Gemini API / AI Studio<br/>AI_PROVIDER=aistudio"]
+    Client -->|"HTTPS + X-API-Key"| API
+    SPA -->|"HTTPS + X-API-Key"| API
     API --> DB
     API -.-> AI
-    AI -.-> LLM
+    AI -.->|"one of"| Vertex
+    AI -.->|"one of"| Studio
     UI --> Tiles
     SPA --> Tiles
 ```
 
-| Folder | What |
-|---|---|
-| [`backend/`](backend/) | Spring Boot API, Flyway migrations (V1 schema, V2 optional pgvector, V3 photo tombstones), tests |
-| [`android/`](android/) | Android app (minSdk 26, targetSdk 36, compileSdk 37), AGP 9.4 with built-in Kotlin |
-| [`web/`](web/) | Angular 22 single-page app with MapLibre GL 6.10, see [web/README.md](web/README.md) |
-| [`docs/`](docs/) | Secure-SDLC documents 01–09, the sprint log (10) and the AI design |
-| [`CHANGELOG.md`](CHANGELOG.md) | Release notes (Keep a Changelog): Unreleased and 0.1.0 |
-| [`.github/`](.github/) | CI workflows (backend, web, android, security scans, manual AI evals) and Dependabot |
+- **Android** (Kotlin 2.4, Compose, Room, WorkManager, MapLibre 13.6; minSdk 26, targetSdk 36, compileSdk 37,
+  AGP 9.4): offline-first; the platform-neutral rules and the Ktor HTTP client are in `android/shared`
+  ([module README](android/shared/README.md), [03 §4.2.1](docs/03-design.md)).
+- **API** (Spring Boot 4.1.1, Java 25, Flyway): last-write-wins sync with a change feed, geospatial queries in PostGIS,
+  photos, export and delete-all.
+- **Web** (Angular 22, zoneless, MapLibre GL 6.10): review, edit and compare on a large screen.
+- **AI** (Spring AI 2.0.1, off unless `APP_AI_ENABLED=true`): **Vertex AI** is the provider this project is set up
+  for (project `doorprints-ai`: chat in Mumbai, `asia-south1`; embeddings on Google's `global` endpoint), and
+  **AI Studio** stays one setting away (`AI_PROVIDER=aistudio`, also the code default until the first Vertex eval
+  run is green). Details: [docs/ai/ai-design.md](docs/ai/ai-design.md), [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md).
 
-## Quick start (local)
+### AI access policy
 
-You need Docker. Everything else runs in containers.
+- **Guests get no cloud AI.** On supported Android phones they will get on-device AI (Gemini Nano through ML Kit,
+  Sprint 5); elsewhere AI entry points are hidden. Nothing in the app needs AI.
+- **Cloud AI** is for the owner and people the owner invites, on the owner's **paid key with a hard cap** (in-app
+  daily caps, a Google Cloud spend cap budget, budget alerts). Today only the owner's own install uses it.
+- **No bring-your-own-key**: users never paste their own Gemini or Vertex key.
+- Real user data goes only to Vertex AI or a paid Gemini tier; the free AI Studio tier is for synthetic eval data only.
+  Contact names and phone numbers are redacted before anything reaches the model.
+
+Policy: [docs/11](docs/11-feature-parity-and-export-spec.md) 5.13 (D-21, D-22), requirements AI-013..AI-017 in
+[docs/01](docs/01-requirements.md).
+
+## Quick start
+
+### Install the Android app (no build needed)
+
+1. Open [**Actions → Android**](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml), pick the latest green run on `main` and
+   download the artifact **`doorprints-debug-apk`** (or **`doorprints-release-apk`**, signed, when the `HH_*`
+   signing secrets are set; its signer fingerprint is printed in the "Verify APK signature" step). Unzip it.
+2. Copy the `.apk` to the phone and open it (allow "Install unknown apps" for your file manager when asked).
+3. Open Doorprints. It works right away without a server; to sync, go to **Settings**: server URL `https://…`, paste
+   the API key, **Save and test**, then **Sync now**.
+
+A signed release build cannot be installed over a debug build (different signer): sync first, uninstall, then
+install. Builds from before the rename (package `com.househunt.app`) are a separate app; sync them, install
+Doorprints (package `app.doorprints`), sync again, then uninstall the old one.
+
+### Run the API locally (Docker)
 
 ```bash
 export APP_API_KEY=$(openssl rand -hex 32)   # the API refuses to start without a key of 32+ characters
@@ -82,94 +144,108 @@ docker compose up --build                    # PostGIS + pgvector and the API on
 curl -H "X-API-Key: $APP_API_KEY" http://127.0.0.1:8080/api/stats
 ```
 
-Web app: `cd web && npm install && npx ng serve`, open <http://localhost:4200>, enter `http://localhost:8080` and the
-key. Android emulator: use `http://10.0.2.2:8080` as the server URL (plain `http://` is allowed only for localhost and
-the emulator; everything else must be `https://`).
+Android emulator: use `http://10.0.2.2:8080` as the server URL (plain `http://` is allowed only for localhost and the
+emulator; everything else must be `https://`).
 
-To try the AI features locally, also export `APP_AI_ENABLED=true` and `AI_API_KEY=<free Gemini API key>` before
-`docker compose up` (details in [docs/ai/ai-design.md](docs/ai/ai-design.md)). Use a free key only with test data:
-the free AI Studio tier may use prompts to improve Google products. The backend can also use **Google Cloud Vertex
-AI** instead (`AI_PROVIDER=vertex`, `GCP_PROJECT_ID`, Application Default Credentials, no key): see
-[docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) step 11 (`cd backend && mvn spring-boot:run`; the dev compose
-file does not pass the Vertex settings to the `api` container).
+AI locally: export `APP_AI_ENABLED=true` and `AI_API_KEY=<Gemini API key>` before `docker compose up` (use a free key
+only with test data). Vertex AI locally: `gcloud auth application-default login`, then run the backend with
+`AI_PROVIDER=vertex GCP_PROJECT_ID=… GCP_LOCATION=asia-south1 AI_VERTEX_EMBEDDING_LOCATION=global` via
+`cd backend && mvn spring-boot:run` (the dev compose file does not pass the Vertex settings yet;
+[vertex-setup step 11](docs/ai/vertex-setup.md)).
+
+### Run the web app (dev server)
+
+```bash
+cd web
+npm ci
+npm start          # ng serve on http://localhost:4200
+```
+
+Enter `http://localhost:8080` and the API key on the Connect page. Tests: `npm run test:ci`.
+
+### Build the Android app yourself
+
+JDK 21 and the Android SDK (compileSdk 37): `cd android && ./gradlew assembleDebug testDebugUnitTest`.
 
 ## Deploy for free
 
-Full steps and the environment variable reference are in
-[docs/07-secure-build-and-deploy.md](docs/07-secure-build-and-deploy.md#6-free-tier-deployment). In short:
+Full steps and the environment variable reference: [docs/07](docs/07-secure-build-and-deploy.md#6-free-tier-deployment).
 
-1. **Database**: a free Supabase (Mumbai region) or Neon project with the `postgis` extension. Use `sslmode=require`.
+1. **Database**: a free Supabase (Mumbai region) or Neon project with the `postgis` extension; `sslmode=require`.
 2. **API**: Render or Koyeb free web service from `backend/` (Docker), or an Oracle Cloud Always Free VM behind Caddy.
-   Set `DB_URL`, `DB_USER`, `DB_PASSWORD`, `APP_API_KEY` (at least 32 random characters, enforced at startup) and
-   `APP_CORS_ORIGINS`. To change the key later without breaking sync, use `APP_API_KEY_NEXT`
-   ([runbook 5.1](docs/08-operations-runbook.md)).
-3. **Web**: Cloudflare Pages (or Netlify), root `web`, build `npm run build`, output `dist/web/browser`.
+   Set `DB_URL`, `DB_USER`, `DB_PASSWORD`, `APP_API_KEY` (32+ random characters) and `APP_CORS_ORIGINS`. Rotate the
+   key later without breaking sync with `APP_API_KEY_NEXT` ([runbook 5.1](docs/08-operations-runbook.md)).
+3. **Web**: Cloudflare Pages (or Netlify), root `web`, build `npm run build`, output `dist/web/browser`;
    `public/_headers` adds the Content-Security-Policy and HSTS.
-4. **Android**: see below.
+4. **Android**: the APK from the quick start above.
 
-## Install the Android app
+## Repository structure
 
-There is no Play Store listing. Every push to `main` builds a debug APK, and a **signed** release APK
-(`doorprints-release-apk`) once the four `HH_*` signing secrets are set in the repository
-([docs/07 §5](docs/07-secure-build-and-deploy.md#5-android-release-signing)):
+| Path | What |
+|---|---|
+| [`android/app/`](android/app/) | Android app: Compose UI, Room, WorkManager sync, Hunt mode service, MapLibre, translations |
+| [`android/shared/`](android/shared/) | Kotlin Multiplatform module `:shared`: models, score, sync rules, stay and street logic, DTOs, Ktor API client (Android + compile-only iOS) |
+| [`backend/`](backend/) | Spring Boot API, Flyway migrations (V1 schema, V2 optional pgvector, V3 photo tombstones), optional AI module, tests; `backend/db` is the PostGIS + pgvector image |
+| [`web/`](web/) | Angular 22 single-page app ([web/README.md](web/README.md)) |
+| [`docs/`](docs/) | Secure-SDLC documents 01–11 and the AI docs |
+| [`.github/`](.github/) | CI workflows and Dependabot |
+| [`docker-compose.yml`](docker-compose.yml) | Local API + database |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release notes (Keep a Changelog) |
 
-1. On GitHub, open the [`doorprints`](https://github.com/Sriram-Codes-SW/doorprints) repository, then **Actions → Android → the latest green run on `main`**, and
-   download the artifact **`doorprints-release-apk`** (signed; its signer fingerprint is printed in the "Verify APK
-   signature" step) or **`doorprints-debug-apk`**, and unzip it. (Runs from before the rename name them
-   `house-hunt-release-apk` and `house-hunt-debug-apk`.)
-2. Copy the `.apk` to the phone and open it (allow "Install unknown apps" for your file manager when asked).
-3. Open Doorprints → **Settings**: server URL `https://…`, paste the API key, **Save and test**, then **Sync now**.
-
-The app works without a server too; everything is stored on the phone until you connect one. Prefer the signed
-release APK when it exists. A signed build cannot be installed over the debug build (different signer): sync first,
-uninstall the debug app, then install the release APK.
-
-Builds from before the rename (app name "House Hunt", package `com.househunt.app`) are a separate app to Android and
-are not upgraded by Doorprints (package `app.doorprints`). If you have one, sync it, install Doorprints and sync
-again, then uninstall the old app; its local data is not carried over.
+CI workflows (`.github/workflows/`): `backend.yml` (tests on PostGIS, SBOM, image check), `web.yml` (Vitest, build),
+`android.yml` (APK, unit tests incl. `:shared`, lint, signed release), `security.yml` (Semgrep, gitleaks, Trivy, npm
+audit, Android dependency graph, manual ZAP), `shared-ios.yml` (`:shared` iOS compile on macOS) and `ai-evals.yml`
+(manual AI evaluation against a real model). Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 
 ## Documentation
 
 | Doc | Topic |
 |---|---|
+| [Docs index](docs/README.md) | How the documents fit together and how to update them |
 | [01 Requirements](docs/01-requirements.md) | FR/NFR/SEC/PRV/AI requirements and the traceability matrix |
-| [02 Threat model](docs/02-threat-model.md) | STRIDE, abuse cases, findings F-01a/F-01b..F-30 (31 findings) and their status |
-| [03 Design](docs/03-design.md) | Architecture, data model, API reference, sync algorithm, ADRs |
-| [04 Data flows](docs/04-data-flow-diagrams.md) | DFDs and data classification |
+| [02 Threat model](docs/02-threat-model.md) | STRIDE, abuse cases, findings F-01a/F-01b..F-30 and their status |
+| [03 Design](docs/03-design.md) | Architecture, KMP module boundaries, data model, API reference, sync algorithm, ADRs |
+| [04 Data flows](docs/04-data-flow-diagrams.md) | DFDs, data classification, data residency |
 | [05 UX, accessibility, i18n](docs/05-ux-accessibility-i18n.md) | Design tokens, WCAG 2.2 AA, TalkBack, translations and glossary |
-| [06 Test plan](docs/06-test-plan.md) | Unit, integration, security, field and AI tests |
+| [06 Test plan](docs/06-test-plan.md) | Unit, contract, integration, security, field and AI tests |
 | [07 Build and deploy](docs/07-secure-build-and-deploy.md) | CI/CD, supply chain, free-tier deployment, environment variables |
-| [08 Operations](docs/08-operations-runbook.md) | Monitoring, backups, key rotation, incidents, export and deletion |
-| [09 OSI resilience](docs/09-osi-layer-analysis.md) | Behaviour under bad GPS, captive portals, flaky networks, cold starts |
-| [10 Sprint log](docs/10-sprint-log.md) | Sprint goals, stories, team sign-offs, CI results, retrospectives, next candidates |
-| [11 Feature parity and export](docs/11-feature-parity-and-export-spec.md) | Proposal: local-first with optional Google Sign-In, exports, AI access policy (draft) |
-| [CHANGELOG](CHANGELOG.md) | What changed in each version (Unreleased, 0.1.0) |
-| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately |
-| [LICENSE](LICENSE) | MIT |
-| [AI design](docs/ai/ai-design.md) | Providers, RAG, extractor, planner, MCP, API contract |
+| [08 Operations](docs/08-operations-runbook.md) | Monitoring, backups, key rotation, incidents, Google Cloud trial end checklist |
+| [09 OSI resilience](docs/09-osi-layer-analysis.md) | Bad GPS, captive portals, flaky networks, cold starts |
+| [10 Sprint log](docs/10-sprint-log.md) | Sprint goals, stories, sign-offs, CI results, product-owner decisions |
+| [11 Feature parity and export](docs/11-feature-parity-and-export-spec.md) | Local-first plan, exports, AI access policy, Sprint 4b reminders, hunting areas and location permissions |
+| [AI design](docs/ai/ai-design.md) | Providers, RAG, extractor, planner, MCP, evals, API contract |
+| [Vertex AI setup](docs/ai/vertex-setup.md) | Owner's step-by-step Google Cloud setup and this project's results |
+| [CHANGELOG](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [LICENSE](LICENSE) | Changes per version · private vulnerability reporting · MIT |
 
-## Contributing and keeping the docs current
+## Roadmap
 
-This is a personal project, but it follows a secure SDLC, so changes follow a few rules:
+| When | What |
+|---|---|
+| Done | Sprints 1–3: app, API, web, CI, security hardening, AI features (off by default), Vertex AI provider, rename to Doorprints. Sprint 3.5: Kotlin Multiplatform `:shared` module with a Ktor client and compile-only iOS CI |
+| **Sprint 4a** | Local-first web app (IndexedDB), installable **PWA** (iPhone included), offline copies in HTML, PDF, CSV, XLSX, Markdown and a JSON backup with import |
+| **Sprint 4b** | Weighted criteria and ranking, viewing questions, rooms, photo tags, viewings with reminders, Share to Doorprints; **Hunt mode reminders** and **hunting areas** with the foreground-first location permission model |
+| **Sprint 5** | Optional Google Sign-In, sync per user, Google Drive for photos and backups, signed-in devices, account deletion, AI access tiers (on-device AI for guests) |
+| **Phase 2 (KMP)** | Room and DataStore in the shared module, then a native iOS app only if a Mac and the Apple Developer Program become available ([03 §4.2.1](docs/03-design.md)) |
 
-1. **One pull request per change, code and docs together.** CI must be green: `Backend`, `Web`, `Android` and
-   `Security` workflows (backend/Android/web unit tests, integration tests, Semgrep, gitleaks, Trivy on the
-   backend SBOM, npm lock file and Dockerfiles, npm audit). Add a line under *Unreleased* in
-   [CHANGELOG.md](CHANGELOG.md).
-2. **Strings**: add every user-visible text in all four languages: `web/src/app/i18n/{en,hi,ta,te}.ts` (the build fails
-   if one is missing) and `android/app/src/main/res/values{,-hi,-ta,-te}/strings.xml` (lint reports missing ones).
-   Rules and glossary: [docs/05](docs/05-ux-accessibility-i18n.md#9-translation-workflow).
-3. **Database changes** are new Flyway files `V<n>__description.sql` (next free number; never edit an applied one).
-   Room schema changes need a version bump and a `Migration`.
-4. **Security-relevant changes** (new endpoint, data flow, third party, auth or storage change) update the threat model
-   (02), the DFDs (04) and, for network behaviour, the OSI review (09).
-5. **Docs versioning**: bump the document version, add a dated change-log row, keep requirement and test ids stable,
-   and update the traceability matrix in 01 and the test plan in 06. The full rules are in
-   [docs/README.md](docs/README.md#how-to-update-these-documents).
-6. **Secrets** never go into git: use environment variables and GitHub Secrets. `.env`, keystores and APKs are ignored.
-   The repository is public, so workflow logs and artifacts are public too: no secrets or personal data in them.
-7. **Security issues**: do not open a public issue; follow [SECURITY.md](SECURITY.md) (private vulnerability
-   reporting). Contributions are accepted under the MIT [LICENSE](LICENSE).
+Plan and sizing: [docs/11 §14](docs/11-feature-parity-and-export-spec.md) and the [sprint log](docs/10-sprint-log.md).
+
+## Contributing
+
+Doorprints is a personal project built in the open. **External pull requests are not expected** and may be closed
+without review; issues with ideas are welcome. Security problems: never open a public issue, use private
+vulnerability reporting ([SECURITY.md](SECURITY.md)). Anything you do contribute is under the MIT [LICENSE](LICENSE).
+
+House rules for the maintainers (full list in [docs/README.md](docs/README.md#how-to-update-these-documents)):
+
+1. Code and docs change together; CI (`Backend`, `Web`, `Android`, `Security`, and `Shared iOS compile` for shared
+   code) must be green; add a line under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
+2. Every user-visible string in all four languages: `web/src/app/i18n/{en,hi,ta,te}.ts` and
+   `android/app/src/main/res/values{,-hi,-ta,-te}/strings.xml` ([docs/05](docs/05-ux-accessibility-i18n.md#9-translation-workflow)).
+3. Database changes are new Flyway files `V<n>__description.sql`. Room changes need a version bump, a `Migration`
+   and a new exported schema file; `RoomSchemaTest` guards version 2.
+4. `android/shared/src/commonMain` stays free of `java.*` and `android.*` (the iOS compile job enforces it).
+5. Security-relevant changes update the threat model (02), the DFDs (04) and, for network behaviour, the OSI review (09).
+6. Secrets never go into git: environment variables and GitHub Secrets only. Workflow logs and artifacts are public.
 
 ## Change log
 
@@ -182,3 +258,4 @@ This is a personal project, but it follows a secure SDLC, so changes follow a fe
 | 2026-09-22 | Repository renamed to `Sriram-Codes-SW/doorprints` and made public: removed the "repository still named `house-hunt`" note, added the license (MIT) and security lines under the title, install step links the `doorprints` repository, docs table lists 11, `SECURITY.md` and `LICENSE`, contributing rules for public logs and private vulnerability reporting, AI access note (cloud AI for the owner and invited users). |
 | 2026-09-22 | Feature table: cloud AI is for the server owner today; invited users are planned (Sprint 5, AI-013). |
 | 2026-09-22 | Local AI note: free AI Studio key only with test data; Vertex AI as the alternative provider (`AI_PROVIDER=vertex`, link to `docs/ai/vertex-setup.md`). |
+| 2026-09-22 | **Full refresh** (product owner request): CI badges for Backend, Web, Android, Security and Shared iOS compile; key features; platforms (Android APK, web app and iPhone through the browser, installable PWA in Sprint 4a, no native iOS app, KMP-ready `:shared` module); architecture diagram with `:shared` and the Vertex AI / AI Studio switch; AI access policy; quick start (APK artifact, docker compose, web dev server); repository structure; full documentation index (01-11, AI design, Vertex setup); roadmap (Sprint 4a, 4b with Hunt mode reminders and hunting areas, 5, Phase 2 KMP); contributing note (no external pull requests expected). |

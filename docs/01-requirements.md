@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.11 |
+| Version | 0.13 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -23,6 +23,8 @@
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22 ([11](11-feature-parity-and-export-spec.md) v0.3 D-21, D-22). **AI access policy:** new **AI-013** (cloud AI only for the owner and invited users), **AI-014** (on-device AI for guests via Gemini Nano / ML Kit GenAI Prompt API, otherwise hidden), **AI-015** (hard cost cap on the paid key), **AI-016** (two active providers, Vertex AI and the Gemini API / AI Studio, switchable by configuration; AI Studio code kept). New **PRV-022** (real user data only to a paid tier or Vertex AI; the free AI Studio tier only with synthetic data) and **PRV-023** (on-device AI sends nothing off the phone). Changed: AI-001 and AI-009 (paid, hard-capped key instead of "stays within the free tier"), CON-01 (one owner-paid exception), CON-05. Section 11.3: **bring-your-own-key** is out of scope (rejected). RTM rows for the new IDs. The repository is now public (`Sriram-Codes-SW/doorprints`, MIT). All new IDs are **Plan** except AI-016 (**Part**). |
 | 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. **AI-015** now names three cap layers: in-app per-user and global daily caps, a Google Cloud **spend cap budget** (Preview; monthly, before credits) on an AI-only project and service, and budget alerts; the Quotas-page limit is optional. AI-016 points to the credential rules (07 §4, 02 T-I22). Links to `ai/vertex-setup.md` marked as being written by the AI team. |
 | 0.11 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI code landed in the same change set, so the "being written" markers on `ai/vertex-setup.md` are removed. **AI-016** now says what is implemented (`AI_PROVIDER` = `aistudio` default or `vertex`; Vertex chat through Spring AI's Google GenAI starter, embeddings through the app's `VertexEmbeddingModel`, Application Default Credentials only, no API key; provider quota errors return `503` with `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`); status stays **Part** until the first CI run and the owner's setup steps 8 and 10 (model location, credit check). New **AI-017**: when the Google Cloud spend cap (AI-015) trips, the API returns a clear "cloud AI paused" problem that is not retried, covered by a contract test (review finding: today's quota path covers HTTP 429 only). RTM rows updated with the new Vertex tests (TC-AI-16, TC-AI-18..TC-AI-21 in [06](06-test-plan.md) v0.10). |
+| 0.12 | 2026-09-22 | Claude (Cowork), Docs team | **Sprint 3.5 (KMP foundation, commit `8f583af`, [03](03-design.md) ADR-14):** RTM rows FR-005, FR-014, FR-019, FR-020, FR-022, NFR-017, SEC-015 and SEC-026..030 name the shared-module code (`com.househunt.shared.*`: `HouseScore`, `StreetAlerts`, `SyncRules`, Ktor `ApiClient` + `RetryPolicy`, which replaced OkHttp's `RetryInterceptor`) and the new tests TC-U-35 (`ApiClientContractTest`), TC-U-36 (`RoomSchemaTest`), TC-U-37 (iOS compile, `shared-ios.yml`); NFR-013 and CON-03 updated; section 2 and 11.3: a native iOS app stays out of scope (no Apple Developer fee), iPhone users get the PWA, and the shared module keeps an iOS app possible later. **Product-owner decisions of 2026-09-22 (Sprint 4b scope and location permissions):** new section 6.7 **FR-083..FR-088** (Hunt mode reminders before a planned viewing; *Hunting areas* with area wake-up through the Geofencing API), **NFR-030** (area wake-up battery), **PRV-024..PRV-027** (foreground-only location by default; "Allow all the time" only for area wake-up, after a rationale screen; permission re-checks and precise/approximate handling; geofence privacy), **SEC-049** (notification actions and boot receiver); **PRV-001** amended (background location only for area wake-up, opt-in); PRV-010 status notes the Vertex AI residency (chat in `asia-south1`, embeddings on `global`). Detail in [11](11-feature-parity-and-export-spec.md) v0.6 sections 5.16..5.18. |
+| 0.13 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. **FR-084** no longer promises "at most 5 minutes late": the official Android alarms guide (checked 2026-09-22) says `setWindow` windows under 10 minutes are typically clipped to 10 minutes for apps targeting Android 12+ and `setWindow` is not allow-while-idle. The reminder is now exact (`setExactAndAllowWhileIdle`) when "Alarms & reminders" is allowed, otherwise a 10-minute window that ends at the target time (early, never late, except under Doze or battery saver), with a Settings link to the system permission page ([11](11-feature-parity-and-export-spec.md) v0.7 5.16, TC-U-38). **SEC-049**: the geofencing `PendingIntent` is mutable (required by the API) and explicit; notification-action and alarm intents stay immutable. **SEC-021** now names that geofencing `PendingIntent` as the one exception to "PendingIntents are immutable". |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -45,7 +47,7 @@ Doorprints ("Remember every house you've seen.") helps one person keep track of 
 
 | In scope | Out of scope (v1) |
 |---|---|
-| Android app (sideloaded APK), Spring Boot API, Angular web app | iOS app |
+| Android app (sideloaded APK), Spring Boot API, Angular web app | Native iOS app (no Apple Developer fee; iPhone users use the web app / PWA). The Android logic sits in a Kotlin Multiplatform module that already compiles for iOS ([03](03-design.md) ADR-14), so an iOS app stays possible later |
 | One user, one shared API key | Multi-user accounts, sharing and roles |
 | Free-tier hosting only | Paid hosting, paid map/geocoding APIs |
 | Houses, visits, photos, checklist, compare | Listing scraping, property portals integration, payments, legal checks |
@@ -171,6 +173,19 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | FR-040 | Hunt mode lowers its GPS rate while the user stands still and stops itself when the battery is at 15% or less and not charging. | S | Impl |
 | FR-041 | Android dark theme, and colours taken from the web design tokens. | S | Impl |
 
+### 6.7 Sprint 4b additions: Hunt mode reminders and Hunting areas (Android)
+
+Accepted by the product owner on 2026-09-22 for Sprint 4b. Design and stories: [11](11-feature-parity-and-export-spec.md) 5.16 (reminders), 5.17 (areas), 5.18 (location permission model). FR-042..FR-082 are reserved for the proposals in [11](11-feature-parity-and-export-spec.md) §7.
+
+| ID | Requirement | Pri | Status |
+|---|---|---|---|
+| FR-083 | **Hunt mode reminder.** For a planned viewing (11 FR-062) the phone shows a local notification a set time before it (default 15 minutes, configurable 5 to 60) with the actions **Start Hunt mode** and **Dismiss**; tapping the body opens the viewing. Works offline, needs no server, survives reboot and time or time-zone changes, respects Do Not Disturb (normal priority, no full-screen intent, no DND override), and its lock-screen public version shows no address or house name. | S | Plan (4b) |
+| FR-084 | Hunt mode reminders have a global switch in Settings (default on) and a per-viewing switch. When the user has allowed "Alarms & reminders" (`canScheduleExactAlarms()` true) the reminder is an exact allow-while-idle alarm at the chosen time. Otherwise it is an inexact window alarm that **ends** at the chosen time (window 10 minutes, the minimum Android 12+ typically allows), so it arrives up to about 10 minutes early and never late, except when Doze or battery saver defers it; WorkManager is the fallback. The app works without the exact-alarm permission; Settings says "Reminders may arrive up to about 10 minutes early (or later if the phone is in battery saver)" and offers a link to the system "Alarms & reminders" page. Details and source: [11](11-feature-parity-and-export-spec.md) 5.16. | S | Plan (4b) |
+| FR-085 | **Hunting areas.** The user can mark up to 20 neighbourhoods on the map (tap or draw a circle, radius 200 m to 2 km, a name), edit, disable and delete them. Areas are stored on the device (Room), included in the offline exports and backups, and synced later (Sprint 5, with sign-in). | S | Plan (4b) |
+| FR-086 | **Area wake-up** (off by default): when on, the app registers one Geofencing API geofence per enabled area (ENTER transitions only). Entering an area shows a notification "You're in <area>: start Hunt mode?" with **Start Hunt mode** and **Dismiss**. It **never starts tracking without a tap**. Each area notifies at most once per 6 hours. | S | Plan (4b) |
+| FR-087 | Geofences are registered again after a reboot, an app update, a `GEOFENCE_NOT_AVAILABLE` recovery (location turned back on) and a permission change, and are removed when area wake-up is turned off or the background permission is lost. | M (with FR-086) | Plan (4b) |
+| FR-088 | Reminder and area notifications, the Settings texts and the background-location rationale screen exist in English, Hindi, Tamil and Telugu, and the notification actions have TalkBack labels. | M (with FR-083, FR-086) | Plan (4b) |
+
 ## 7. Non-functional requirements
 
 | ID | Category | Requirement | Measure / target | Pri |
@@ -187,7 +202,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | NFR-010 | Resource | API fits in 512 MB RAM | JVM flags `MaxRAMPercentage=75`, SerialGC, Hikari pool of 5 | M |
 | NFR-011 | Portability | Runs anywhere with Docker and Postgres 15+ with PostGIS 3 | `docker compose up` works locally | M |
 | NFR-012 | Fair use | Respect third-party usage policies | Nominatim at most 1 request/s, only on user action, with a proper User-Agent/Referer. OpenFreeMap fair use. Android Geocoder throttled (45 s / 80 m). | M |
-| NFR-013 | Maintainability | Automated tests and CI | Backend integration tests on PostGIS in CI. Android unit tests for StayDetector/Geo. Lint clean. | S |
+| NFR-013 | Maintainability | Automated tests and CI | Backend integration tests on PostGIS in CI. Android unit tests for the shared rules and the API client contract (`:shared` commonTest, Sprint 3.5) and the Room identity hash; the shared module's iOS targets compile on macOS (TC-U-37). Lint clean. | S |
 | NFR-014 | Cost | Zero running cost | See section 11 | M |
 | NFR-015 | Usability | One-handed, outdoor use | Main actions reachable by thumb, readable in sunlight (see 05) | S |
 | NFR-016 | Sync latency | Changes reach the server soon | At most 1 minute after a change when online | S |
@@ -195,6 +210,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | NFR-018 | Bandwidth | Mobile data use | JSON gzip-compressed by the API; photos only on Wi-Fi by default | S |
 | NFR-019 | Capacity | Photo storage bounded | At most 20 photos per house (server 409, app check) | M |
 | NFR-020 | Accessibility | Android touch targets and font scaling | 48 dp targets, radio/checkbox/switch semantics, headings, layouts that wrap at 200% font scale | M |
+| NFR-030 | Battery | Area wake-up (FR-086) costs little while Hunt mode is off | Geofences only (no location requests of our own), default responsiveness; target at most 1% battery per day extra with 20 areas, to be measured in the field test ([11](11-feature-parity-and-export-spec.md) TC-F-12). Alerts may arrive about 2 to 6 minutes after entering an area (Android's geofencing latency), which the UI states | S |
 
 ## 8. Security requirements
 
@@ -220,7 +236,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing with `release.yml` next) | F-11 |
 | SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the app schema (`househunt`; the database, role and schema names were kept at the Doorprints rename, [03](03-design.md) ADR-13). Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
 | SEC-020 | The server clamps client `updatedAt` values more than 5 minutes in the future to server time and rejects dates more than 365 days ahead or before 2000, so records cannot be "frozen". | M | Impl | F-08 |
-| SEC-021 | Android components are not exported unless needed. PendingIntents are immutable. The deep-link extras from `MainActivity` are validated (UUID format, lat/lon range). | S | Impl | F-25 |
+| SEC-021 | Android components are not exported unless needed. PendingIntents are immutable, with one exception: the Sprint 4b geofencing `PendingIntent` must be `FLAG_MUTABLE` (the Geofencing API fills in the event) and is explicit to a non-exported receiver (SEC-049, [02](02-threat-model.md) T-E8). The deep-link extras from `MainActivity` are validated (UUID format, lat/lon range). | S | Impl | F-25 |
 | SEC-022 | Alert notifications use `VISIBILITY_PRIVATE` with a redacted public version, so the lock screen does not show house names or prices. | C | Impl | F-14 |
 | SEC-023 | Actuator exposes only `health` without details. | M | Impl | - |
 | SEC-024 | The containers run as non-root users: the API as UID 10001, the dev/CI database image (`backend/db`) as `postgres`; docker-compose adds a read-only filesystem, `cap_drop: ALL` and `no-new-privileges`. Trivy config blocks HIGH/CRITICAL Dockerfile findings. | S | Impl | F-23, F-29 |
@@ -230,6 +246,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-028 | The Android client does not follow HTTP redirects (the key must never reach another host) and treats non-JSON answers as a captive portal. | M | Impl | 09 §3 |
 | SEC-029 | docker-compose binds all ports to 127.0.0.1 and refuses to start without `APP_API_KEY`. | M | Impl | F-17 |
 | SEC-030 | Third-party GitHub Actions are pinned to a commit SHA or run as pinned container images; workflows have read-only `permissions`. | M | Impl | F-22, T-E4 |
+| SEC-049 | Notification-action and alarm `PendingIntent`s are immutable and explicit to non-exported components; the geofencing `PendingIntent` is mutable (the Geofencing API requires `FLAG_MUTABLE` on Android 12+) but explicit to a non-exported receiver; **Start Hunt mode** starts the foreground service only from the user's tap on the notification (Android's exemption for starting a location foreground service from a notification interaction), never from the geofence or alarm broadcast itself. The boot and package-replaced receivers only re-register geofences and alarms (no location request, no network). | M | Plan (4b) | [11](11-feature-parity-and-export-spec.md) T-E8 |
 
 ## 9. Privacy requirements
 
@@ -237,7 +254,7 @@ Location history and third-party contact details are the most sensitive data her
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
-| PRV-001 | Location is collected only while Hunt mode is on or the map screen is open. The app does not request `ACCESS_BACKGROUND_LOCATION`. The foreground service is the only background collector. | M | Impl |
+| PRV-001 | Location is collected only while Hunt mode is on or the map screen is open. The foreground service is the only background collector. `ACCESS_BACKGROUND_LOCATION` is not requested (today) and, from Sprint 4b, only when the user turns on area wake-up (PRV-025); even then the app itself collects no location in the background: Google Play services watches the geofences and the app is only told that an area was entered. | M | Impl (amended 2026-09-22 for 4b) |
 | PRV-002 | Tracking is always visible (ongoing notification) and can be stopped in one tap. | M | Impl |
 | PRV-003 | Raw GPS tracks are **not** stored. Only visits (stay points) and house points are stored. | M | Impl |
 | PRV-004 | Right to access / portability: export all data (FR-031). | S | Impl (API) |
@@ -246,10 +263,14 @@ Location history and third-party contact details are the most sensitive data her
 | PRV-007 | Third parties that receive data are disclosed in-app: Google Play services (fused location, Android Geocoder: coordinates), OpenFreeMap (tile requests: map area + IP), OSM Nominatim (web: coordinates on button press), hosting/DB providers (all data), the LLM provider if AI is enabled (see AI-010). | S | Part (Android Settings and AI screens; web privacy page backlog) |
 | PRV-008 | Photo EXIF metadata (GPS, device) is removed before storage/upload. Android and web re-encode through a Bitmap/canvas, which drops EXIF; the server strips metadata again (JPEG APP1/COM, PNG text/eXIf, WebP EXIF/XMP). | M | Impl |
 | PRV-009 | Third-party contact data (names, phones) is stored only when the user enters it, is used only to contact about that house, and is removed by erasure. It is never sent to an LLM unless the user opts in (redacted by default). | M | Part. Done: stored only when entered; removed with the house, by delete-all and by clearing the fields ([08](08-operations-runbook.md) §6.2); the structured contact fields are never sent to an LLM, and names and phones typed into other fields are redacted ([02](02-threat-model.md) F-30 Fixed, Sprint 3, closed by lead decision; TC-AI-15 green on `6a348cc`). Still Part because: (1) free-text redaction is best effort ([ai/](ai/ai-design.md) §9.1 Limits: nicknames and other spellings, a first name alone in a street or locality, short local numbers); (2) listing extraction sends the pasted text as given, which may hold a contact (explicit user action, disclosed); (3) erasure does not reach encrypted backups until they expire (30 days, [08](08-operations-runbook.md) §3), devices that have not synced, or text a hosted provider already received (before the fix or the post-deploy reindex). |
-| PRV-010 | Prefer data residency in India where the free tier allows it (Supabase `ap-south-1` Mumbai, Oracle Mumbai/Hyderabad home region). | C | Plan |
+| PRV-010 | Prefer data residency in India where the free tier allows it (Supabase `ap-south-1` Mumbai, Oracle Mumbai/Hyderabad home region). | C | Plan. AI on Vertex AI (owner's setup, 2026-09-22): chat in `asia-south1` (Mumbai); embeddings on `global` because `gemini-embedding-2` is not offered in `asia-south1`, so embedding text has no India residency guarantee ([02](02-threat-model.md) T-I20, [ai/vertex-setup.md](ai/vertex-setup.md) step 8) |
 | PRV-011 | Server and CI logs hold no personal data (see SEC-016). Backups are encrypted (see 08). | M | Part |
 | PRV-022 | Real user data (houses, notes, visits, questions, listing text) is sent only to a provider tier whose terms do not use it to improve the provider's products: Vertex AI or the paid Gemini API tier. The free AI Studio tier, which may use prompts to improve Google products, is used only with synthetic data (evals). See [02](02-threat-model.md) T-I20. | M | Plan (with AI-016). Today: the owner's own data on the free tier, accepted and disclosed (CON-05). |
 | PRV-023 | On-device AI (AI-014) sends no prompt, data or output off the phone, and the app says so. | M | Plan (Sprint 5) |
+| PRV-024 | **Foreground-only by default** (product owner, 2026-09-22). Normal use and Hunt mode ask only for foreground location ("While using the app" or "Only this time"), never for background location at first launch. Hunt mode runs as a foreground service started from the visible app or a notification action, which Android allows with foreground permission. If the user chose "Only this time", the next Hunt mode start asks again, and the text explains that "While using the app" avoids the repeated prompt. | M | Part: today's app asks only for foreground location (PRV-001); the "Only this time" copy is Plan (4b) |
+| PRV-025 | **"Allow all the time" only for area wake-up.** When the user turns area wake-up on, the app first shows its own rationale screen (why, what is collected, battery, how to turn it off), then asks for `ACCESS_BACKGROUND_LOCATION`; on Android 11+ this can only be granted in system settings, so the app opens them with clear step-by-step text. If the permission is denied, or later downgraded or revoked, area wake-up turns itself off with a notice; Hunt mode and everything else keep working. If the app is ever published on Google Play, the background-location declaration and prominent disclosure are needed first ([11](11-feature-parity-and-export-spec.md) 5.18). | M | Plan (4b) |
+| PRV-026 | The location permission state is checked again every time the app comes to the foreground. With approximate location only, the app explains that house-level alerts need precise location and offers to change it; it does not start house alerts on approximate fixes. | M | Plan (4b) |
+| PRV-027 | **Geofence privacy.** Hunting areas (names, centres, radii) stay on the device (and in the user's own exports) until sync with sign-in exists; geofence transitions are not stored as location history; only each area's last-notified time is kept, for the cooldown. Google Play services processes the geofences on the device (disclosed with the other Google location services in PRV-007). | M | Plan (4b) |
 
 ## 10. AI requirements
 
@@ -283,7 +304,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 |---|---|
 | CON-01 | **Zero running cost.** Only free tiers: Oracle Cloud Always Free, Render/Koyeb for the API; Supabase/Neon for Postgres + PostGIS (+ pgvector); Cloudflare Pages/Netlify for the web; OpenFreeMap tiles; Nominatim; Android Geocoder; GitHub Actions; Ollama or an AI free tier for synthetic-data evals. **One exception (product owner, 2026-09-22):** cloud AI for the owner and invited users runs on the owner's paid, hard-capped key (AI-015); users never pay. A time-limited Google Cloud trial credit may fund Vertex AI, Test Lab and a staging backend ([10](10-sprint-log.md)). |
 | CON-02 | The APK is sideloaded. Play Store publishing ($25 one-time) is deferred. |
-| CON-03 | Stack: Java 25, Spring Boot 4.1.1 (embedded Tomcat overridden to 11.0.25), Flyway, PostGIS; Kotlin, Compose, Room, WorkManager, minSdk 26 / targetSdk 36 / compileSdk 37; Angular 22, MapLibre GL 6.10 (web), MapLibre Android 13. Node is a build tool for the web app only (ADR-06). |
+| CON-03 | Stack: Java 25, Spring Boot 4.1.1 (embedded Tomcat overridden to 11.0.25), Flyway, PostGIS; Kotlin 2.4.10, Compose, Room, WorkManager, Ktor client 3.6 in the Kotlin Multiplatform module `:shared` (Android + compile-only iOS, ADR-14), minSdk 26 / targetSdk 36 / compileSdk 37; Angular 22, MapLibre GL 6.10 (web), MapLibre Android 13. Node is a build tool for the web app only (ADR-06). |
 | CON-04 | Free-tier limits: sleeping instances (cold start 30 to 60 s), about 500 MB DB, projects paused after inactivity (Supabase), GitHub Actions minutes (unlimited for public repos, 2 000 min/month for private). |
 | CON-05 | Third-party policies: Nominatim (at most 1 req/s, no bulk use), OpenFreeMap fair use, LLM free-tier terms (the free AI Studio tier may use prompts to improve Google products, so real user data goes only to a paid tier or Vertex AI, PRV-022; AI-010 discloses the provider). |
 
@@ -299,7 +320,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 
 ### 11.3 Out of scope
 
-Multi-tenant accounts, sharing links, iOS, push notifications from the server, scraping property portals, payments, bring-your-own AI key (rejected 2026-09-22: consumer UX, payment-linked secret risk, support burden), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
+Multi-tenant accounts, sharing links, a native iOS app (the PWA serves iPhones; the shared KMP module keeps a later iOS app possible, ADR-14), push notifications from the server, scraping property portals, payments, bring-your-own AI key (rejected 2026-09-22: consumer UX, payment-linked secret risk, support burden), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
 
 ## 12. Requirements traceability matrix
 
@@ -311,7 +332,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-002 | 03 §6, §9 | backend `house/HouseDto`, `House`; android `data/Models.kt`; web `core/models.ts` | TC-I-03, TC-I-06 |
 | FR-003 | 03 §6 | `HouseDto.rating @Min(1) @Max(5)` | TC-I-06 |
 | FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05, TC-U-19 |
-| FR-005 | 03 §6.3 | `HouseEntity.score`, web `houseScore()` | TC-U-05 (`ChecklistScoreTest`), TC-U-19 (`models.spec.ts`) |
+| FR-005 | 03 §6.3 | `HouseScore.of` (`:shared`), `HouseEntity.score`, web `houseScore()` | TC-U-05 (`HouseScoreTest`), TC-U-19 (`models.spec.ts`) |
 | FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03 |
 | FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `Repository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
 | FR-008 | 03 §7.3 | `visit/VisitController`, `Repository.markVisitedNow` | TC-I-07 |
@@ -320,15 +341,15 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-011 | 03 §4.2 | `CompareScreen.kt`, web `compare-page` | TC-M-04 |
 | FR-012 | 03 §10 | `HouseService.delete/purge`, `VisitController.delete` | TC-I-05, TC-I-16 |
 | FR-013 | 03 §7.2, §8.2 | `location/HuntService.checkNearbyHouses` | TC-U-07, TC-F-02 |
-| FR-014 | 03 §7.2 | `HuntService.checkStreet`, `location/StreetAlerts`, `ReverseGeocoder` | TC-U-07 (`StreetAlertsTest`), TC-F-03 |
+| FR-014 | 03 §7.2 | `HuntService.checkStreet`, `StreetAlerts` (`:shared` location), `ReverseGeocoder` | TC-U-07 (`StreetAlertsTest`), TC-F-03 |
 | FR-015 | 03 §7.3 | `location/StayDetector`, `HuntService.onStayStarted/Ended` | TC-U-01..03, TC-F-04 |
 | FR-016 | 03 §8.2 | `HuntService.onLocation` accuracy gate | TC-U-08, TC-F-05 |
 | FR-017 | 03 §8.2, ADR-01 | `HuntService`, `Notifications.CHANNEL_HUNT`, manifest `foregroundServiceType=location` | TC-F-01, TC-F-07 |
 | FR-018 | 03 §4.2 | `HuntState`, `MapScreen.HuntCard` | TC-F-02 |
-| FR-019 | 03 §10 | `data/AppDatabase`, `Repository` | TC-F-08 |
-| FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `data/RetryInterceptor` | TC-F-08, TC-U-17 |
+| FR-019 | 03 §10, §6.2 | `data/AppDatabase` (schema export, `app/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`) |
+| FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `ApiClient` + `RetryPolicy` (`:shared` api; replaced `data/RetryInterceptor` in Sprint 3.5) | TC-F-08, TC-U-17, TC-U-35 |
 | FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules`, `PhotoController.changes` | TC-U-06 (part), TC-I-05, TC-I-17 |
-| FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `data/SyncRules.keepLocal` | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |
+| FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `SyncRules.keepLocal` (`:shared` sync) | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |
 | FR-023 | 03 §10 | `SettingsStore.saveServer` | TC-U-06 |
 | FR-024 | 03 §4.3 | web `pages/*`, `core/config.*`, `core/api.interceptor.ts` | TC-M-05, TC-U-09, TC-U-19, TC-U-20 |
 | FR-025 | 03 §4.3 | web `core/geocode.service.ts` | TC-M-05 |
@@ -348,6 +369,8 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` | TC-M-09, TC-AI-07 |
 | FR-040 | 09 §2 | `HuntService.requestUpdates/stopIfBatteryLow` | TC-F-06, TC-F-09 |
 | FR-041 | 05 §4 | `ui/Theme.kt`, `res/values-night` | TC-A-06 |
+| FR-083, FR-084 | [11](11-feature-parity-and-export-spec.md) 5.16 | planned: reminder scheduler (alarm + WorkManager fallback), `Notifications`, Settings | Planned TC-U-38, TC-M-18 ([06](06-test-plan.md) §13, [11](11-feature-parity-and-export-spec.md) §13) |
+| FR-085..FR-088 | [11](11-feature-parity-and-export-spec.md) 5.17, 03 ADR-01 | planned: `HuntingArea` model and cooldown (`:shared` candidates), Room 3 table, geofence registrar, boot receiver, notifications | Planned TC-U-39, TC-U-40, TC-M-18, TC-F-12, TC-A-12 |
 | NFR-001 | 03 §11 | GIST indexes in `V1__init.sql` | TC-P-01 |
 | NFR-002 | 03 §5 | `ApiClient` read timeout 90 s | TC-P-02 |
 | NFR-003 | 03 §7.2 | `HuntService.checkNearbyHouses` | TC-P-03 |
@@ -360,7 +383,8 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | NFR-011 | 03 §5 | `docker-compose.yml` | CI build |
 | NFR-012 | 03 §4 | `geocode.service.ts`, `HuntService.checkStreet` | TC-U-07, review |
 | NFR-013 | 06 | CI (07): `.github/workflows/*` | CI |
-| NFR-017 | 09 | `RetryInterceptor`, `ApiClient`, `NetworkState` | TC-U-17, TC-S-13 |
+| NFR-017 | 09 | `ApiClient`, `RetryPolicy` (`:shared` api, Ktor), `data/Api.kt` (one `HttpClient`), `NetworkState` | TC-U-17, TC-U-35, TC-S-13 |
+| NFR-030 | [11](11-feature-parity-and-export-spec.md) 5.17 | planned: geofence registration settings | Planned TC-F-12 |
 | NFR-018 | 09 §7 | `server.compression`, `Settings.photosOnWifiOnly` | TC-F-10 |
 | NFR-019 | 03 §6 | `PhotoService`, `MAX_PHOTOS_PER_HOUSE` | TC-I-17 |
 | NFR-020 | 05 §7.1 | `ui/*.kt` semantics | TC-A-03, TC-A-04 |
@@ -374,7 +398,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-009, SEC-013, SEC-014 | 07 | CI (`security.yml`), `.gitleaksignore` (reviewed fingerprints only), `backend/pom.xml` `tomcat.version` override | TC-S-01..03 |
 | SEC-010, SEC-011 | 03 §12 | `ApiKeyCipher`, `Settings.kt`, `data_extraction_rules.xml`, web `config.service.ts` | TC-S-07, TC-M-06, TC-M-11, TC-U-19 |
 | SEC-012 | 03 §12, 07 | `SecurityHeadersFilter`, `web/public/_headers` | TC-I-20, TC-S-04 |
-| SEC-015, SEC-016 | 03 §12 | `common/ApiExceptionHandler` | TC-S-04, review |
+| SEC-015, SEC-016 | 03 §12 | `common/ApiExceptionHandler`; Android `SyncOutcome` and `ApiException` (`:shared`) | TC-S-04, TC-U-16, TC-U-35, review |
 | SEC-017 | 08 §5.1, 07 §7 | `ApiKeyFilter` (list of current + next key), `AppProperties.apiKeyNext`, `application.yml` `app.api-key-next` | TC-U-18, TC-I-21, TC-O-02 |
 | SEC-018 | 07 §5 | `app/build.gradle.kts` (`signingConfigs.release` from `HH_*`), `android.yml` job `release` | TC-S-06, TC-S-15 |
 | SEC-019 | 07 §6 | DB setup | Review |
@@ -382,8 +406,10 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-021, SEC-022 | 03 §12 | `MainActivity`, `Notifications` | TC-S-06, TC-M-07 |
 | SEC-023 | 03 §9 | `application.yml` management | TC-I-02 |
 | SEC-024 | 07 | `backend/Dockerfile`, `backend/db/Dockerfile`, `docker-compose.yml` | TC-S-05, TC-S-14 |
-| SEC-026..SEC-030 | 03 §12, 07, 09 | `RequestSizeLimitFilter`, `SyncVersions`, `ApiClient`, `docker-compose.yml`, workflows | TC-I-12, TC-I-14, TC-S-13, CI |
+| SEC-026..SEC-030 | 03 §12, 07, 09 | `RequestSizeLimitFilter`, `SyncVersions`, `ApiClient` (`:shared`, no redirects, content-type check), `docker-compose.yml`, workflows | TC-I-12, TC-I-14, TC-S-13, TC-U-35, CI |
+| SEC-049 | [11](11-feature-parity-and-export-spec.md) 5.16..5.18 | planned: notification actions, boot/package-replaced receivers | Planned TC-S-22 |
 | PRV-001..003 | 03 §7.2, 04 §4 | `HuntService`, manifest permissions | TC-F-07, TC-S-07 |
+| PRV-024..PRV-027 | [11](11-feature-parity-and-export-spec.md) 5.18, 03 ADR-01 | planned: permission state checks on resume, rationale screen, settings deep link, area wake-up auto-off | Planned TC-U-40, TC-M-18 (permission matrix), TC-A-12 |
 | PRV-004, PRV-005 | 08 §6 | `privacy/DataService`, `HouseService.purge`, V3 migration | TC-I-16, TC-I-18 |
 | PRV-008 | 03 §7.4 | `Repository.addPhoto`, `image-resize.ts`, `ImageSanitizer` | TC-U-11, TC-U-14 |
 | PRV-009, PRV-010, PRV-011 | 04 §6, 07, 08 | config / ops | Review |

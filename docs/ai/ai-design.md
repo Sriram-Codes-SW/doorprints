@@ -18,12 +18,19 @@
 | v0.14   | 2026-09-22 | Claude (Cowork) – AI team     | Rename guard: new `McpServerIdentityTest` (`backend/src/test/java/com/househunt/ai/mcp/`) reads the raw `application.yml` with Spring Boot's `YamlPropertySourceLoader` (no Spring context, no database) and fails the build if `spring.ai.mcp.server.name` is no longer `doorprints`, if the endpoint path is no longer `/mcp`, or if the MCP server instructions use the old product name again. Section 12 notes the guard. No behaviour change. |
 | v0.15   | 2026-09-22 | Claude (Cowork) – AI team     | **PO decision: Vertex AI (Gemini Enterprise Agent Platform) is the active provider; AI Studio stays fully working and selectable.** One switch `app.ai.provider` / `AI_PROVIDER` = `aistudio` (default, unchanged behaviour) or `vertex`; AI still off by default. Vertex chat = Spring AI 2.0.1 `spring-ai-starter-model-google-genai` (chat starter only) in Vertex mode on the app's own google-genai `Client` (project, location, Application Default Credentials, bounded retries); Vertex embeddings = new `VertexEmbeddingModel` (`:embedContent`, one text per call, same retry / Retry-After / normalisation / errors as `GeminiEmbeddingModel`). New 2.1 (provider comparison: auth, data terms, pricing, trial-credit coverage unverified), 3.3 (verified wire formats, why the embedding starter is not used, location and model availability), 4.1 (switch), 10 (quota-aware 503 `code: AI_QUOTA_EXHAUSTED` + `Retry-After`, re-index stops at the first quota error, `AI_INDEX_ON_CHANGE`), 11 (Vertex settings), 14. Contract tests for Vertex `generateContent` (text, structured output, function call with thought signature, 429 `RESOURCE_EXHAUSTED`, 403 `PERMISSION_DENIED`) and embeddings (`embedContent`, `predict`, 429 with/without `RetryInfo`, 403 `SERVICE_DISABLED` / `IAM_PERMISSION_DENIED`, 404 model not in location). Eval harness and `ai-evals.yml`: `provider` input (default `vertex`, Workload Identity Federation via `google-github-actions/auth@v3`), `chat_model` / `embedding_model` inputs, `STOPPED: provider quota exhausted` instead of a flood of case failures, fewer calls per run. Owner setup guide: [vertex-setup.md](vertex-setup.md). |
 | v0.16   | 2026-09-22 | Claude (Cowork) – AI team     | Coordinator rework of v0.15. **Chat setup hints:** a Vertex AI 404 / 403 / 401 on chat now names `GCP_LOCATION` (and `global` / `us-central1`) instead of a bare 503; embeddings keep pointing to `AI_VERTEX_EMBEDDING_LOCATION`. The 503 problem detail carries a `setupHint` property, the WARN log line the same text (never the project id or provider text) (3.3, 10, 13); new `ProviderErrors.httpFailure`, `AiExceptionHandlerTest`, chat 404 contract test; the eval harness does not retry a 503 with a setup hint and lists the hint once in the scorecard warnings (8.1). **`ai-evals.yml` default `provider` is now `aistudio`** until the owner has finished [vertex-setup.md](vertex-setup.md) steps 1-8 and 10; the input description names the prerequisite (8.1). **Open coordination items** (section 2 and 14): request to the owner of `docker-compose.yml` to pass the Vertex variables and mount the ADC file (Vertex mode cannot be selected through compose until then); DevSecOps review of the `ai-evals.yml` change (`id-token: write`, `google-github-actions/auth@v3`) is pending and recorded as such in the workflow header; the new transitive runtime dependencies must be scanned by DevSecOps' blocking `trivy sbom` step before merge. |
+| v0.17   | 2026-09-22 | Claude (Cowork) – Docs team   | **Vertex AI setup outcome (owner, 2026-09-22)** recorded; the AI team is idle this sprint, so the Docs team made this change. Project `doorprints-ai`; [vertex-setup.md](vertex-setup.md) step 8: chat `gemini-3.5-flash` verified in `asia-south1`, `gemini-embedding-2` **not** offered in `asia-south1` (404) and verified on `global`; GitHub variables `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global`. 2.1: new *Data residency (this project)* paragraph (chat stays in India, embedding text is processed on `global`) and the trial end date (**22 Dec 2026**; export by about 15 Dec, then AI Studio or a paid upgrade). 3.3 *Locations and models*: verified results replace the unverified note for these two models. Section 14: Vertex item (b) resolved for chat and embeddings (Flash-Lite still unchecked); merge gate 2 closed with the DevSecOps sign-off from the `ai-evals.yml` header (SHA-pinned `google-github-actions/auth` v3.0.0, `id-token: write` accepted with the residual risk, stricter WIF attribute condition open on the owner side). No code change. |
+| v0.18   | 2026-09-22 | Claude (Cowork) – Docs team   | Synced with commit `feb0294` (AI change set; the AI team is idle, so Docs made this change). **Ask citation rule** (5 sequence, 6, 8.2, 13): inline `[house:id]` markers are authoritative, `citedHouseIds` is only a fallback when the answer has no marker, unmarked listed ids are dropped, the refusal has no citations. **8.5**: first `provider=vertex` eval run 35753477789 (`gemini-3.5-flash` in `asia-south1`, `gemini-embedding-2` on `global`, commit `8f583af`) failed only on `citationPrecision` 0.78 (7/9) from `ask-01`; answered by golden set v0.5 (`ask-01` allowedCitations) and the rule above; **thresholds not lowered**; full output for failing cases in the scorecard. Status and 14: re-run on `feb0294`, credit check and step 9 still open. 8.3 header names golden set v0.5. |
 
 Status: implemented in `backend/` (package `com.househunt.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
-`AI_PROVIDER=vertex` (2.1, 3.3); the product owner's target setup is Vertex AI. **Before merging v0.15/v0.16:** the
-DevSecOps review of `ai-evals.yml` and the Trivy scan of the new dependencies must be done; the docker-compose request
-must be done before compose support for Vertex is announced (section 14, "Merge gates").
+`AI_PROVIDER=vertex` (2.1, 3.3); the product owner's target setup is Vertex AI. The v0.15/v0.16 code is on `main`
+(commit `16cb3ef`). The owner finished the Google Cloud setup on 2026-09-22 (project `doorprints-ai`, chat in
+`asia-south1`, embeddings on `global`, 2.1). The first `provider=vertex` eval (run 35753477789, 8.5) failed only on
+`citationPrecision` 0.78; commit `feb0294` answers it (inline-marker citation rule, golden set v0.5, 8.2) without
+lowering thresholds. Still open: a re-run on `feb0294` or later, the credit check ([vertex-setup.md](vertex-setup.md)
+step 10) and step 9 (captured responses). Merge gate 2 (DevSecOps review of `ai-evals.yml`)
+is closed; the docker-compose request must be done before compose support for Vertex is announced, and the Trivy
+scan of the new dependencies is DevSecOps' (section 14, "Merge gates").
 
 ---
 
@@ -127,6 +134,16 @@ Product-owner decision (2026-09-22): **Vertex AI is the active provider** for ch
 stays in the code, tested and selectable, so switching back is one environment variable. Same models on both
 (`gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-embedding-2`, 768 dimensions), so a switch needs no code change;
 switching the *embedding model* (not the provider) needs a re-index.
+
+**This project's setup (owner, 2026-09-22; [vertex-setup.md](vertex-setup.md) "Status").** Project `doorprints-ai`;
+chat `gemini-3.5-flash` verified in `asia-south1`; `gemini-embedding-2` is not offered in `asia-south1` and was verified
+on `global`, so `GCP_LOCATION=asia-south1` and `AI_VERTEX_EMBEDDING_LOCATION=global`. **Data residency:** chat
+prompts, retrieved context and answers are processed in India (Mumbai); the **embedding text** (the redacted house
+document at every save or re-index, and the Ask question) is processed on Google's `global` endpoint, which gives no
+residency guarantee. The embedding text holds no contact name or phone (9.1), but it does hold notes, street and
+locality. Threat model: [02](../02-threat-model.md) T-I20. **Trial end:** the $300 credit ends on **22 Dec 2026**;
+export by about 15 Dec and then either switch back to `aistudio` (with a paid key for real data, PRV-022) or upgrade the
+billing account with the spend cap in place ([vertex-setup.md](vertex-setup.md) step 14, [runbook 10.4](../08-operations-runbook.md)).
 
 | | `aistudio` (Gemini Developer API) | `vertex` (Google Cloud Vertex AI, "Gemini Enterprise Agent Platform") |
 |---|---|---|
@@ -336,8 +353,11 @@ auto-configurations need classes from modules that are not on the classpath; `Ve
 looked up when Vertex is selected and AI is on (`VertexAutoConfigurationTest` builds these contexts with no ADC
 available).
 
-**Locations and models (partly unverified).** Default location `asia-south1` (Mumbai), as requested for India data
-residency and latency. A third-party availability tracker lists `gemini-3.5-flash` in `asia-south1` and on the
+**Locations and models (verified for this project on 2026-09-22, see below).** Default location `asia-south1`
+(Mumbai), as requested for India data residency and latency. **Owner's step-8 result:** `gemini-3.5-flash` answers in
+`asia-south1`; `gemini-embedding-2` answers 404 `NOT_FOUND` there and works on `global`, which is exactly the case
+`AI_VERTEX_EMBEDDING_LOCATION` was built for (set to `global`; residency consequence in 2.1). `gemini-3.5-flash-lite`
+was not checked. The rest of this paragraph is the pre-setup analysis, kept for context. A third-party availability tracker lists `gemini-3.5-flash` in `asia-south1` and on the
 `global` endpoint [T3]; Google's locations page could not be read from here, and availability of
 `gemini-3.5-flash-lite` and `gemini-embedding-2` in `asia-south1` is **not verified** (a March 2026 forum thread
 reported only Gemini 2.5 Flash in `asia-south1` then [T4]). Therefore embeddings have their own location
@@ -468,7 +488,7 @@ sequenceDiagram
     R->>R: ContactRedactor: drop "Contact:" lines, redact the<br/>house's contact name/phone and phone-like numbers
     R->>M: system rules + <houses-NONCE>[house:id] record…</houses-NONCE> + question
     M-->>R: {answer, citedHouseIds}
-    R->>R: keep only ids that were retrieved; add inline [house:id]s;<br/>snippet = best-matching line
+    R->>R: refusal sentence → no citations, otherwise cite the ids marked inline as [house:id]<br/>(citedHouseIds only when the answer has no marker),<br/>keep only retrieved ids, snippet = best-matching line
     R-->>App: {answer, citations[], grounded, retrieved}
   end
 ```
@@ -555,7 +575,10 @@ Common pattern:
 Key rules per feature: extraction — "only facts stated; null if absent; never guess phone numbers/URLs/prices";
 Q&A — "only the records; otherwise reply exactly *I don't know based on the houses you have saved.*; cite
 [house:id]; cite a house only where you state a fact about it; answer with the houses that satisfy the question
-first, a contrast house only briefly and cited" (v0.11, see 8.5); agent — "only ids returned by tools; prefer SHORTLISTED/NEW; skip REJECTED unless asked; be economical".
+first, a contrast house only briefly and cited" (v0.11, see 8.5). The server enforces the citation rule (v0.18,
+`RagService.citations`): the **inline `[house:id]` markers are authoritative**; `citedHouseIds` is used only as a
+fallback when the answer has no marker at all, ids listed there but not marked inline are dropped (and logged as a
+count), only retrieved ids are kept, and the refusal sentence (curly apostrophes folded) never has citations; agent — "only ids returned by tools; prefer SHORTLISTED/NEW; skip REJECTED unless asked; be economical".
 
 ## 7. RAG: indexing, retrieval and structured filtering
 
@@ -656,7 +679,9 @@ billing (vertex-setup.md step 10).
   `notesMention` ignore spaces and punctuation ("Power back-up" matches "power backup").
 - **Extraction**: every expected key is one field (`amenitiesInclude` / `notesMention` items count one each). A key
   expected as `null` must come back null or blank; otherwise it counts as a hallucination.
-- **Ask**: citations are the response's `citations[].houseId` (already restricted server-side to retrieved houses).
+- **Ask**: citations are the response's `citations[].houseId`, already restricted server-side (6, since `feb0294`) to
+  retrieved houses that the answer marks inline as `[house:id]` (the model's `citedHouseIds` list counts only when
+  the answer has no marker).
   Precision and recall are micro-averaged over all ask cases; citations on a refusal case count as wrong.
   **`allowedCitations`** (optional, golden set v0.3): houses the answer may cite but need not, typically a contrast
   that is correct and grounded ("the Blue gate house only has bike parking"). A cited house counts as correct for
@@ -678,7 +703,7 @@ billing (vertex-setup.md step 10).
 
 Thresholds live in the golden set (`thresholds`), so tightening one is a data change reviewed with the cases.
 
-| Metric (report name) | Definition | Threshold (golden set v0.4, unchanged since v0.2) |
+| Metric (report name) | Definition | Threshold (golden set v0.5, unchanged since v0.2) |
 |---|---|---|
 | Extraction field accuracy (`extractionFieldAccuracy`) | matching fields / expected fields, after normalisation | ≥ 0.90 |
 | Extraction hallucination rate (`extractionHallucinationRate`) | fields filled in although absent from the text / fields expected null (phone and URL are also enforced by the sanitizer) | ≤ 0.05 (in effect 0 today, see below) |
@@ -695,7 +720,7 @@ With today's small golden set a ≥ 0.80 rate over two cases means both must pas
 Per-case latency is in the report but not gated (free-tier latency varies).
 
 **The hallucination gate is really "zero hallucinations".** The denominator of `extractionHallucinationRate` is
-only the fields expected as `null`, and golden set v0.4 has just **4** of them (`extract-01`: `listingUrl`;
+only the fields expected as `null`, and golden set v0.5 (like v0.4) has just **4** of them (`extract-01`: `listingUrl`;
 `extract-03`: `price`, `contactPhone`, `listingUrl`). One invented value gives 1/4 = 0.25, far above the 0.05
 threshold, so the gate fails on any single hallucination. The "≤ 0.05" figure only means something once there are
 20 or more null-expected fields. Until then, read it as a zero-tolerance check, not as a 5 % budget. Add
@@ -718,6 +743,28 @@ the report before changing prompts or code:
 | Embedding provider / model id / dimension (see 3.1, 14) | `POST /api/ai/reindex` fails before any ask case can run (this is what happened in the first run: missing `index` on the compat endpoint). | The scorecard now FAILs with the reindex error listed. Fix the embedding config; ask/plan cases are skipped until then. |
 
 ### 8.5 Eval results
+
+**Run 35753477789 — 2026-09-22, first `provider=vertex` run** (Actions → AI evals, manual, commit `8f583af`, golden
+set v0.4; chat `gemini-3.5-flash` in `asia-south1`, embeddings `gemini-embedding-2` on `global`, both on Vertex AI
+through Application Default Credentials from Workload Identity Federation). Result: **FAIL, only on
+`citationPrecision` 0.78 (7/9)**; every other metric met its threshold (recorded in golden set v0.5's change note; the
+per-metric table of this run is in its `ai-eval-report` artifact and was not copied here). `ask-01-water` ("Which
+house had the best water situation?") named the Blue gate house (water 5/5), as expected, and also cited the Corner
+flat and the Damp ground floor. Those are the only other fixture houses with a water fact (checklist water 2 and 3),
+so a ranked answer citing them is grounded, like the `ask-02` contrast of run 35720654442. The report cut the answer
+at 200 characters, so it did not show why the two houses were cited. Decision (commit `feb0294`, AI change set), with
+**the threshold not lowered**:
+
+1. Golden set v0.5: `ask-01` allows `2222…` and `4444…` as `allowedCitations` (8.2). Houses without a water fact
+   (HSR 3BHK villa, Koramangala 2BHK) still count against precision.
+2. Server citation rule (6): only houses marked inline as `[house:id]` are cited; `citedHouseIds` is a fallback for
+   answers without any marker; the refusal has no citations. A house the model lists but never mentions no longer
+   counts.
+3. The scorecard shows the full output of failing and erroring cases (`EvalScorer.output`); passing cases stay
+   truncated at 600 characters.
+
+Not yet verified: a re-run on `feb0294` or later (with provider `vertex`), which checks items 1 and 2 on the live
+model, and whether the run's cost came off the trial credit ([vertex-setup.md](vertex-setup.md) step 10).
 
 **Run 35720654442 — 2026-09-22** (Actions → AI evals, golden set v0.2, chat `gemini-3.5-flash` on the
 OpenAI-compatible endpoint, embeddings `gemini-embedding-2` via `google-genai`, the app's native
@@ -1034,7 +1081,9 @@ Response:
 }
 ```
 Render `[house:<id>]` markers as links to the house (or strip them) and show citations as chips. When the answer is
-"I don't know based on the houses you have saved." `citations` is empty and `grounded` false.
+"I don't know based on the houses you have saved." `citations` is empty and `grounded` false. `citations` lists only
+houses the answer marks inline as `[house:<id>]`, in order of first appearance (the model's own id list is used only
+when the answer has no marker), so every chip has a marker in the text.
 
 ### `POST /api/ai/plan-visits`
 
@@ -1109,14 +1158,17 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
   the key falls back via `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}`.
 - `postgis/postgis:18-3.6` tag existence on Docker Hub was inferred from the `docker-postgis` repo, not from Hub.
 - Gemini structured output reliability with tool calling on the compat endpoint (beta) — covered by the fallback path.
-- Eval baseline (v0.11): run 35720654442 scored 12/13 (8.5). Not yet verified on a live run: the `allowedCitations`
-  scoring and the revised Ask citation rules (the next manual `AI evals` run). Thresholds are unchanged; revise them
+- Eval baseline (v0.11): run 35720654442 scored 12/13 (8.5). First Vertex run 35753477789 (v0.18, 8.5): FAIL only on
+  `citationPrecision` 0.78 (7/9), answered in `feb0294` by golden set v0.5 and the inline-marker citation rule (6).
+  Not yet verified on a live run: that rule and the v0.5 `allowedCitations` (the next manual `AI evals` run on
+  `feb0294` or later). Thresholds are unchanged; revise them
   only with data from more runs. The 8.4 risks still apply (`ask-06` passed this time).
 
 - **Vertex AI (v0.15), not verified live:** (a) whether the $300 trial credit pays for Vertex Gemini usage (inferred
   from the exclusion list [V1]; check Billing > Reports after the first small run, vertex-setup.md step 10); (b)
-  availability of `gemini-3.5-flash-lite` and `gemini-embedding-2` in `asia-south1` (3.3; vertex-setup.md step 8 tests
-  it); (c) the Vertex contract-test bodies were reconstructed from the SDK source and Google's reference, not captured
+  **resolved in v0.17** for chat and embeddings (owner's step 8, 2026-09-22: `gemini-3.5-flash` works in
+  `asia-south1`, `gemini-embedding-2` only on `global`, hence `AI_VERTEX_EMBEDDING_LOCATION=global`);
+  `gemini-3.5-flash-lite` in `asia-south1` is still unchecked; (c) the Vertex contract-test bodies were reconstructed from the SDK source and Google's reference, not captured
   (step 9 captures real ones); (d) whether Vertex sends `Retry-After` / `RetryInfo` on 429 (both are honoured for
   embeddings; the SDK ignores them for chat); (e) prices (third-party snapshot [T3]); (f) moved to "Merge gates"
   below; (g) the planner's graceful
@@ -1131,9 +1183,16 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
      documented only for `mvn spring-boot:run` and Cloud Run. Not a blocker for merging the code (default
      `aistudio` is unchanged), but a blocker for announcing compose support.
   2. **DevSecOps review of `ai-evals.yml`** (owner of `.github/**`): the AI-team change adds `id-token: write` on the
-     eval job (used only by the WIF step) and the third-party action `google-github-actions/auth@v3`, tag-pinned
-     like the repo's other actions (SHA pinning is DevSecOps' decision). **Status: pending, no sign-off recorded**;
-     the workflow header says so and must get the reviewer's name and date.
+     eval job (used only by the WIF step) and the third-party action `google-github-actions/auth@v3`.
+     **Status: closed.** Sign-off: DevSecOps team (Claude), 2026-09-22, recorded in the workflow header. Approved
+     with changes that are applied: the action is pinned to the full commit SHA of v3.0.0 (Dependabot keeps it
+     current); `id-token: write` stays job-level (GitHub has no step-level permissions), accepted because the workflow
+     is manual only and the token is useless outside the WIF attribute condition; the Maven step runs with the OIDC
+     request variables removed (`env -u …`), which is defence in depth only, since the WIF credential file holds the
+     same request URL and token (residual risk accepted; real controls: manual trigger, attribute condition, the
+     service account's single `roles/aiplatform.user` role, `cleanup_credentials`); `AI_API_KEY` is exported only for
+     `provider=aistudio`. **Open on the owner's side:** the stricter attribute condition that also pins
+     `refs/heads/main` ([vertex-setup.md](vertex-setup.md) step 4.5).
   3. **Trivy SBOM scan** (DevSecOps, blocking `trivy sbom` step in `security.yml`): `spring-ai-starter-model-google-genai`
      adds runtime dependencies that have not been scanned: google-genai 1.65.0, google-auth-library-oauth2-http
      1.33.0, guava 33.4.0, protobuf-java 3.25.5, okhttp 4.12.0 (already present via openai-java) and kotlin-stdlib

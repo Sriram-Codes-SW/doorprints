@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.10 |
+| Version | 0.12 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -22,6 +22,8 @@
 | 0.8 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome ([10](10-sprint-log.md) §5.3): the section 10 gap row for TC-AI-10 records the first real scorecard (Actions run 35720654442: all 13 cases ran, 12/13 passed, `citationPrecision` 0.86 < 0.90) instead of "no real scorecard exists yet"; remaining action is E-03, then a new run. It also notes that the golden-set fixtures hold no contact data, so contact redaction is covered by TC-AI-15 only (Sprint 4 candidate C-21). E-03 traceability: TC-AI-09 now covers golden set v0.3 `allowedCitations` (the consistency checks and `EvalScorerTest.allowedCitationsCountForPrecisionButNotRecall`) and new TC-AI-17 covers the Ask prompt citation and contrast rules (`AskPromptsTest.systemPromptScopesCitationsToStatedFacts`). Section 1 AI evals row: golden set v0.3 and the first real run recorded (was v0.2 and "no model run recorded yet"). Change-log rows put in ascending order. |
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): TC-M-07 expects "Doorprints alert"; TC-L-05 names Settings > Apps > Doorprints; TC-S-12 uses the new `applicationId` with the full activity class (`app.doorprints/com.househunt.app.MainActivity`, since the Kotlin package did not change); TC-S-05 notes that the image name `house-hunt-api` is kept. Section 1 AI evals row: golden set v0.4 (description renamed only, cases and thresholds unchanged) and run 35720654442 ran on commit `6a348cc` (confirmed). No test added or removed. |
 | 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI provider (AI team, same change set; [01](01-requirements.md) AI-016, [10](10-sprint-log.md) C-24). Section 1 AI evals row and **TC-AI-10**: `GoldenSetEvalTest` now runs when a provider is configured (`@EnabledIf("providerConfigured")`: `AI_API_KEY` for AI Studio, or `AI_PROVIDER=vertex` with `GCP_PROJECT_ID`), not only with `AI_API_KEY`; `ai-evals.yml` input `provider` defaults to `aistudio` (the `AI_API_KEY` secret); `vertex` is chosen by hand after [ai/vertex-setup.md](ai/vertex-setup.md) steps 1-8 and uses Workload Identity Federation (secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`, variable `GCP_PROJECT_ID`); the default moves to `vertex` only after the owner's step-10 run (corrected in review: an earlier draft of this row said the default was `vertex`); new inputs `provider` and `embedding_model`; the run stops with **STOPPED: provider quota exhausted** on a provider quota error. **TC-AI-16** gains `VertexGenerateContentContractTest` and `VertexEmbeddingContractTest`. New **TC-AI-18** (`ProviderErrorsTest`), **TC-AI-19** (`VertexSettingsTest`, `VertexAutoConfigurationTest`), **TC-AI-20** (`AiDefaultsEnvironmentPostProcessorTest` `app.ai.provider` cases), **TC-AI-21** (`HouseIndexerTest` quota stop and `AI_INDEX_ON_CHANGE`, `EvalScorerTest` STOPPED verdict), new **TC-AI-22** (`AiExceptionHandlerTest`, the `setupHint` on Vertex AI 401/403/404; TC-AI-10 notes the scorecard setup-hint warning); TC-AI-17 row moved above TC-AI-18 so the IDs are in order. Section 10: gap row for the first real Vertex AI run and for the spend cap response (AI-017). |
+| 0.11 | 2026-09-22 | Claude (Cowork), Docs team | Sprint 3.5 "KMP foundation" (commit `8f583af`, [03](03-design.md) ADR-14). The Android pure-logic suites moved to the KMP module's `commonTest` (kotlin.test; run as `:shared:testAndroidHostTest`, which `testDebugUnitTest` depends on and `android.yml` also names): `StayDetectorTest` (now also the distance cases), `StreetAlertsTest`, `SyncRulesTest`, `SyncOutcomeTest`, `HouseScoreTest` (replaces `ChecklistScoreTest`), `ModelTest`, `IsoTimeTest`, `RetryPolicyTest`; the OkHttp `RetryInterceptorTest` is replaced by `RetryPolicyTest` and the retry cases of the new `ApiClientContractTest` (Ktor `MockEngine`), so **TC-U-17** keeps its ID with new targets. New **TC-U-35** (`ApiClientContractTest`, wire contract of the shared client), **TC-U-36** (`RoomSchemaTest`, Room identity hash of database version 2), **TC-U-37** (`:shared` iOS targets compile on macOS, `shared-ios.yml`), **TC-M-17** (manual map-tile and sync smoke test after a Ktor, OkHttp or MapLibre version change). TC-U-10 (DTO mapping) is now **Exists** (`ModelMappingTest`, `IsoTimeTest`); TC-U-05 targets `HouseScore.of`. Section 1: new row for the iOS compile check; the instrumentation row no longer names OkHttp MockWebServer. Section 10: gaps for iOS tests (compiled, not run) and MapLibre on OkHttp 5 (manual only). IDs TC-U-22..TC-U-34 stay reserved for [11](11-feature-parity-and-export-spec.md) §13. |
+| 0.12 | 2026-09-22 | Claude (Cowork), Docs team | New section 13: the accepted Sprint 4b tests copied from [11](11-feature-parity-and-export-spec.md) §13 v0.7: **TC-U-38** (reminder scheduling: exact alarm when allowed, otherwise a 10-minute window that ends at the target time, never late; reschedule rules; Settings note), TC-U-39, TC-U-40, **TC-M-18** (permission matrix), TC-F-12, **TC-S-22** (notification-action and alarm `PendingIntent`s immutable, geofencing `PendingIntent` mutable and explicit to a non-exported receiver), TC-A-12. All Planned (4b). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -31,9 +33,10 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 
 | Level | What | Tooling (all free) | Runs | Status |
 |---|---|---|---|---|
-| Unit | Pure logic: StayDetector, Geo, score, LWW merge, street alerts, DTO mapping, URL normalisation, i18n dictionaries, key checks | JUnit 4 (Android local tests), JUnit 5 (backend), Vitest + jsdom through `@angular/build:unit-test` (web, no browser needed) | Every push (CI: `backend.yml`, `android.yml` `testDebugUnitTest`, `web.yml` `npm run test:ci`) | Exists on all three: backend, Android (7 test classes), web (5 spec files) |
+| Unit | Pure logic: StayDetector, Geo, score, LWW merge, street alerts, DTO mapping, API client wire contract and retries, Room identity hash, URL normalisation, i18n dictionaries, key checks | kotlin.test in the KMP module's `commonTest` and JUnit 4 in `:app` (Android local tests, JVM), Ktor `MockEngine` for the API client; JUnit 5 (backend); Vitest + jsdom through `@angular/build:unit-test` (web, no browser needed) | Every push (CI: `backend.yml`, `android.yml` `testDebugUnitTest :shared:testAndroidHostTest`, `web.yml` `npm run test:ci`) | Exists on all three: backend, Android (12 test classes since Sprint 3.5: 9 in `android/shared/src/commonTest`, 3 in `android/app/src/test`), web (5 spec files) |
+| Build check (iOS) | `commonMain` of `:shared` stays free of JVM/Android APIs (TC-U-37) | Kotlin/Native on a macOS runner: `:shared:compileKotlinIosArm64`, `:shared:compileKotlinIosSimulatorArm64`, `:shared:compileTestKotlinIosSimulatorArm64`; nothing linked, signed or run | `shared-ios.yml` on changes to `android/shared/**` or the root Gradle files, and manually | Exists (Sprint 3.5); iOS tests are compiled, not run (section 10) |
 | Integration | API + real PostGIS: auth, validation, LWW, change feed, geospatial, photos | Spring Boot test + `RestClient` against the `backend/db` image (`postgis/postgis:18-3.6` + pgvector) started with `docker run` in `backend.yml`. Testcontainers as a local option. | Every push (CI) | Exists (`ApiIntegrationTest`, section 4) |
-| Android instrumentation | Room DAO queries, WorkManager sync with MockWebServer, Compose UI | AndroidX Test, Room in-memory, `work-testing`, OkHttp MockWebServer, Compose UI test, emulator in CI (`reactivecircus/android-emulator-runner`) | Later (nightly / pre-release) | Planned |
+| Android instrumentation | Room DAO queries, WorkManager sync against a fake server, Room 1→2 migration (`MigrationTestHelper`, R-06), Compose UI | AndroidX Test, Room in-memory, `work-testing`, Ktor `MockEngine` injected through `Api` (or a local HTTP server), Compose UI test, emulator in CI (`reactivecircus/android-emulator-runner`) | Later (nightly / pre-release) | Planned |
 | Manual UI | Screens, deep links, permissions | Checklists in section 5 | Pre-release | Planned |
 | Field | Hunt mode walk test | Script in section 6 | Pre-release + after location changes | Planned |
 | Security | SAST, SCA, secrets, IaC/Dockerfile, DAST, mobile static | Semgrep OSS, Trivy (fs, CycloneDX SBOM, config), npm audit, gitleaks, OWASP ZAP baseline, MobSF, Android Lint, `apksigner` | CI (`security.yml`, every push + weekly) + pre-release | CI gates run (07 §1); ZAP and MobSF manual |
@@ -60,37 +63,46 @@ Principles: test risk-first (threats with risk ≥ 6 in 02 need a test), keep ex
 | TC-U-02 | `StayDetector` | After `Started`, a fix more than 40 m away produces `Ended(arrivedAt, leftAt = lastInside)` and resets | FR-015 |
 | TC-U-03 | `StayDetector` | Jitter of 35 m does not reset. Leaving before `minStayMs` produces no event. `minStayMs` changes take effect. | FR-015 |
 | TC-U-04 | `Geo.distanceM` | Known pairs (for example 0.00018° lat ≈ 20 m) within 0.5% | FR-013 |
-| TC-U-05 | `HouseEntity.score` / `houseScore()` | Checklist only, rating only, both (50/50), none gives null. Android and web give the same results. | FR-005 |
+| TC-U-05 | `HouseScore.of` (`:shared`, used by `HouseEntity.score`) / web `houseScore()` | Checklist only, rating only, both (50/50), none gives null. Android and web give the same results. | FR-005 |
 | TC-U-06 | `Repository.sync` merge (with a fake `ApiClient`) | Dirty local newer is kept. Incoming newer overwrites. Tombstone applied. Cursor = max syncVersion. `markClean` skipped if edited during sync. Server URL change resets cursors. | FR-021..023 |
 | TC-U-07 | `HuntService` alert logic (extract to a pure class) | House alert cooldown 30 min, street alert cooldown 60 min, geocode throttle 45 s / 80 m | FR-013, FR-014, NFR-012 |
 | TC-U-08 | Accuracy gate | Fix with accuracy 51 m triggers no alert and no stay update | FR-016 |
 | TC-U-09 | Web `normalizeBaseUrl`, `ConfigService` | Trailing slashes trimmed, whitespace trimmed, corrupt storage gives null | FR-024 |
-| TC-U-10 | DTO mapping (`Api.kt`) | Epoch ms ↔ ISO-8601 round trip. Unknown status gives NEW. | FR-021 |
+| TC-U-10 | DTO mapping (`data/Mappers.kt`, shared `IsoTime`) | Epoch ms ↔ ISO-8601 round trip. Unknown status gives NEW. The mapped JSON equals the pre-Sprint-3.5 wire format. | FR-021 |
 | TC-U-11 | Photo pipeline | Output at most 1600 px. EXIF rotation applied. **EXIF GPS tag absent** in the output (Android `Repository.addPhoto`, web `resizeImage`). | FR-007, PRV-008 |
 | TC-U-12 | Backend `ApiKeyFilterTest` | 17 non-canonical paths get 400 even with the key; every path outside the allowlist needs the key; health is public for GET/HEAD only; only real CORS preflights skip the key; Bearer accepted; wrong keys throttled to 429 while the right key still passes | SEC-001, SEC-008, F-20 |
 | TC-U-13 | Backend `ClientClockTest` | Null = now; past and small skew kept; +5 h and +30 days clamped to now; 2030 and 1999 rejected; event times validated but not clamped | SEC-020, F-08 |
 | TC-U-14 | Backend `ImageSanitizerTest` | JPEG: Exif (GPS), COM and trailer removed, JFIF/ICC and image data kept, idempotent. PNG: `tEXt`/`eXIf` and trailing bytes removed. WebP: `EXIF`/`XMP ` removed, VP8X flags cleared, RIFF size fixed. HTML/SVG, truncated and null input rejected | SEC-007, PRV-008, F-07 |
 | TC-U-15 | Android `ServerUrlTest` | HTTPS accepted; `http://` only for localhost/10.0.2.2; LAN and public `http://` refused; junk, user-info, query strings refused | SEC-004, F-02 |
 | TC-U-16 | Android `SyncOutcomeTest` | Stored form round-trips; v0.1 free text ignored; errors classified (auth, captive portal, rate limit, server, network) without server text | SEC-015, F-12 |
-| TC-U-17 | Android `RetryInterceptorTest` | 503/502 retried then success; gives up after 3 attempts; network errors retried for idempotent calls; plain POST not retried, POST tagged `Idempotent` retried; 401 not retried; backoff jittered and capped at 15 s | NFR-017, FR-020 |
+| TC-U-17 | Android `RetryPolicyTest` + the retry cases of `ApiClientContractTest` (`:shared` commonTest; until Sprint 3.5 `RetryInterceptorTest` on OkHttp) | 503/502 retried then success; gives up after 3 attempts; network errors retried for idempotent calls; plain POST not retried, the photo upload (marked idempotent) retried; 401 not retried; 429 with a short `Retry-After` waited for, with a long one returned as rate-limited; backoff jittered and capped at 15 s | NFR-017, FR-020 |
 | TC-U-18 | Backend `ApiKeyFilterTest` (Sprint 2) | `refusesMissingOrShortKeys`: missing, blank or 31-char `APP_API_KEY` stops startup with a message naming the variable but never the value; `refusesShortNextKey`; `blankNextKeyIsIgnored` (null, empty, spaces); `acceptsBothKeysDuringRotation` (header and Bearer; prefixes, concatenations and case variants refused); `nextKeyIsNotAcceptedUnlessConfigured`; test keys themselves ≥ 32 chars | SEC-002, SEC-003, SEC-017, F-01a |
 | TC-U-19 | Web `models.spec.ts`, `config.service.spec.ts` | `houseScore` (same cases as Android TC-U-05, NaN and missing checklist); `ConfigService` session vs "remember" storage, corrupt or partial storage ignored, storage exceptions tolerated; `normalizeBaseUrl` | FR-005, FR-024, SEC-010, F-04 |
 | TC-U-20 | Web `api.interceptor.spec.ts` | Only `/api` URLs get the base URL and `X-API-Key`; third-party URLs (Nominatim, tiles) never get the key; method, body and headers kept; unconfigured requests pass through | FR-024, SEC-001, T-I5 |
 | TC-U-21 | Web `dictionaries.spec.ts`, `translation.service.spec.ts` | hi/ta/te have exactly the keys of `en`, no empty strings, same `{placeholders}`; language state saved and restored; `t()`, number, ₹ price (Indian grouping), score, date and duration formatting per locale | NFR-007, FR-036 |
+| TC-U-22..TC-U-34 | Reserved | Proposed in [11](11-feature-parity-and-export-spec.md) §13 (Sprints 4a to 5); added here when accepted | – |
+| TC-U-35 | Android `ApiClientContractTest` (`:shared` commonTest, Ktor `MockEngine`, Sprint 3.5) | Responses recorded from the backend's DTOs, filters and exception handlers: `X-API-Key` header, URLs and exact request JSON, multipart upload (in memory and streamed, one fresh file source per attempt), 401/403 → auth, 404/409/400/413 mapping, 429 short and long `Retry-After`, AI 503 → AI unavailable, 502/503 retried then given up, network errors retried only for idempotent calls, HTML captive-portal page, 302/307 not followed, wrong content types, overall call timeout | NFR-017, FR-020, FR-021, SEC-015, SEC-028 |
+| TC-U-36 | Android `RoomSchemaTest` (`:app`, Sprint 3.5) | The committed `app/schemas/com.househunt.app.data.AppDatabase/2.json` and the generated `AppDatabase_Impl` both carry the identity hash of the shipped version-2 layout; any table drift fails the build | FR-019, R-06 (part) |
+| TC-U-37 | `:shared` iOS compile (`shared-ios.yml`, macOS, Sprint 3.5) | `compileKotlinIosArm64`, `compileKotlinIosSimulatorArm64` and `compileTestKotlinIosSimulatorArm64` succeed, so `commonMain` and `commonTest` use no JVM or Android API | [03](03-design.md) ADR-14 |
 
-Status of the unit cases above (Sprint 2, 2026-09-22):
+Status of the unit cases above (Sprint 2, 2026-09-22; Android rows updated for Sprint 3.5).
+
+Paths as of Sprint 3.5: "shared" means `android/shared/src/commonTest/kotlin/com/househunt/shared/…`, run by
+`:shared:testAndroidHostTest`; "app" means `android/app/src/test/java/com/househunt/app/`.
 
 | ID | Status | Test class / spec |
 |---|---|---|
-| TC-U-01..04 | Exists | Android `StayDetectorTest` (`distanceIsAccurate` covers TC-U-04) |
-| TC-U-05 | **Exists** | Android `ChecklistScoreTest` (+ `StayDetectorTest.scoreBlendsChecklistAndRating`), web `models.spec.ts` |
-| TC-U-06 | Part | Android `SyncRulesTest`: the keep-local rule (dirty and strictly newer wins; clean or missing local takes the server copy; houses and visits) was extracted to `data/SyncRules.kt`. Cursor, tombstone and `markClean` cases still need a fake `ApiClient`. |
-| TC-U-07 | Part | Android `StreetAlertsTest`: street key ignores case and spaces, unknown street never alerts, known street alerts once an hour (`location/StreetAlerts.kt`). House cooldown and geocode throttle not yet extracted. |
-| TC-U-08, TC-U-10, TC-U-11 | Gap | – |
+| TC-U-01..04 | Exists | Android shared `StayDetectorTest` (`distanceIsAccurate`, `distanceIsSymmetric` cover TC-U-04) |
+| TC-U-05 | **Exists** | Android shared `HouseScoreTest` (replaces `ChecklistScoreTest`; also `rankingPutsUnscoredLast`) and app `ModelMappingTest.scoreAndSyncRulesApplyToRoomEntities`, web `models.spec.ts` |
+| TC-U-06 | Part | Android shared `SyncRulesTest`: the keep-local rule (dirty and strictly newer wins; clean or missing local takes the server copy) in `com.househunt.shared.sync.SyncRules`; app `ModelMappingTest` applies it to Room entities. Cursor, tombstone and `markClean` cases still need a fake `ApiClient` (now possible with `MockEngine`). |
+| TC-U-07 | Part | Android shared `StreetAlertsTest`: street key ignores case and spaces, unknown street never alerts, known street alerts once an hour. House cooldown and geocode throttle not yet extracted. |
+| TC-U-08, TC-U-11 | Gap | – |
+| TC-U-10 | **Exists** (Sprint 3.5) | Android app `ModelMappingTest` (same wire format as before, unknown or missing values fall back, visit both ways, a translated label for every shared key and status), shared `IsoTimeTest`, `ModelTest` |
 | TC-U-09 | **Exists** | Web `config.service.spec.ts` |
 | TC-U-12..14, TC-U-18 | Exists | Backend `ApiKeyFilterTest`, `ClientClockTest`, `ImageSanitizerTest` |
 | TC-U-15 | Exists (extended) | Android `ServerUrlTest`: plus case-insensitive scheme/host, look-alike local hosts (`localhost.evil.example`, `127.0.0.2`, `[::1]`) need HTTPS, URLs without a host, `javascript:` and fragments refused |
-| TC-U-16, TC-U-17 | Exists | Android `SyncOutcomeTest`, `RetryInterceptorTest` |
+| TC-U-16, TC-U-17 | Exists | Android shared `SyncOutcomeTest`; `RetryPolicyTest` and `ApiClientContractTest` (TC-U-17 moved from `RetryInterceptorTest` in Sprint 3.5) |
+| TC-U-35..37 | **Exists** (Sprint 3.5) | Android shared `ApiClientContractTest`; app `RoomSchemaTest`; `shared-ios.yml` |
 | TC-U-19..21 | **Exists** | Web specs listed above |
 
 ## 4. Integration tests (backend + PostGIS)
@@ -137,6 +149,8 @@ Existing tests are in `backend/src/test/java/com/househunt/ApiIntegrationTest.ja
 | TC-M-09 | AI UI with `APP_AI_ENABLED=true`: Ask shows an answer with numbered links to houses; Import from listing fills the new-house form and shows warnings; Plan visits lists stops in order and draws them on the map (web). With AI off, none of these entry points is visible on web or Android. Errors 429/503 show translated messages. | FR-037..FR-039, AI-001 |
 | TC-M-10 | Web confirm dialog: delete a photo/visit/house, leave with unsaved changes, disconnect. The dialog is in the app language, Esc cancels, focus returns to the button that opened it. Map popup: Esc dismisses it; it stays while the pointer moves onto it | A11Y-B01, A11Y-B05 |
 | TC-M-11 | Web Connect: with "Remember on this device" off, closing the tab forgets the key; with it on, the key survives a browser restart | SEC-010, F-04 |
+| TC-M-12..TC-M-16 | Reserved for [11](11-feature-parity-and-export-spec.md) §13 | – |
+| TC-M-17 | **Map and sync smoke test after a Ktor, OkHttp or MapLibre version change** (Sprint 3.5; MapLibre Android 13.6.1 is built against OkHttp 4.12 but runs on the OkHttp 5.5.0 Ktor brings): fresh install of the CI debug APK; map tiles load while panning into unseen areas; add a house and a photo, Sync now succeeds and the photo shows on the web; `adb logcat` shows no `NoSuchMethodError`/`NoClassDefFoundError` (steps in `android/shared/README.md` §5) | FR-009, FR-021, ADR-14 |
 
 ## 6. Field test: Hunt mode walk test
 
@@ -254,6 +268,8 @@ The full mapping is the RTM in [01 section 12](01-requirements.md#12-requirement
 |---|---|---|
 | Web: `splitCitations`, `aiErrorMsg` and components have no tests | Regressions in the AI UI and pages | Next sprint: specs for `core/ai.service.ts`, then a Playwright smoke + axe test (TC-A-01) |
 | Sync cursor/tombstone cases of TC-U-06, house cooldown of TC-U-07, TC-U-08, TC-U-10, TC-U-11 | Regressions in core Android logic | Extract the remaining logic to pure classes (as `SyncRules`/`StreetAlerts` were), then test |
+| `:shared` iOS tests are compiled (TC-U-37) but not run: no simulator job | A Kotlin/Native-only runtime difference (for example in `kotlin.time.Instant` formatting) would not be caught | Phase 2 ([03](03-design.md) §4.2.1): add `:shared:iosSimulatorArm64Test` on the macOS runner when the iOS app starts |
+| MapLibre networking on OkHttp 5.5.0 is not exercised by any CI job | Tiles that never load or a `NoSuchMethodError` only on a device | TC-M-17 on every build that changes the Ktor, OkHttp or MapLibre version; later an instrumented map test |
 | No local builds in the engineering sandbox (Maven Central, Google Maven and npm unreachable) | Changes are first compiled in CI; a red run costs a round trip | Keep changes small, verify upstream APIs by reading source, fix forward ([10](10-sprint-log.md) retro) |
 | R8 is off in release builds (F-11 part) | Larger APK, no obfuscation | Needs keep rules and a release smoke test (instrumented) first |
 | TC-I-14 concurrency, general 429 test | F-09 and SEC-008 rely on design review | OSI-B03 |
@@ -279,3 +295,23 @@ The full mapping is the RTM in [01 section 12](01-requirements.md#12-requirement
 | S2 High | Wrong alerts, sync conflict losing edits, security finding rated High | Blocks release unless risk-accepted |
 | S3 Medium | Feature degraded with a workaround | Fix in the next release |
 | S4 Low | Cosmetic | Backlog |
+
+## 13. Planned tests for Sprint 4b (Hunt mode reminders, hunting areas, location permissions)
+
+Copied from [11](11-feature-parity-and-export-spec.md) §13 (v0.7) because the product owner accepted D-23..D-25. They
+are **Planned**: nothing is written until Sprint 4b starts. 11 §13 keeps the other Sprint 4 tests (TC-M-12..TC-M-16
+and so on); this section is the copy of record for the 4b rows, and a change to one must be made in both.
+
+| ID | Type | Check | Traces to |
+|---|---|---|---|
+| TC-U-38 | Unit (Robolectric) | Hunt mode reminder: lead time 5 to 60, per-viewing and global switches; with `canScheduleExactAlarms()` false the scheduler calls `setWindow` with window start `T − 10 min` and length 10 min (never a window that starts at or after T), and makes no exact call; with it true, `setExactAndAllowWhileIdle` at T; `T − 10 min` in the past schedules at now; reschedule on permission-granted broadcast, resume, boot, time zone, edit, cancel; WorkManager fallback; merged with the viewing reminder when due within 10 min of each other; Settings note and **Allow on-time reminders** button shown only without exact alarms | FR-083, FR-084 |
+| TC-U-39 | Unit (`:shared` commonTest) | `HuntingArea` validation (radius 200 m to 2 km, name, 20-area cap) and `AreaCooldown` (6 h per area, Dismiss counts, none while Hunt mode is on) | FR-085, FR-086 |
+| TC-U-40 | Unit | Permission state → feature state: foreground only, "Only this time", approximate only, background granted/denied/revoked (area wake-up switches off, Hunt mode unaffected) | PRV-024..PRV-026 |
+| TC-M-18 | Manual (Android 10, 11, 12, 13, 14+ and one Indian-market OEM phone) | **Permission matrix**: first launch asks foreground only; "Only this time" re-asks at the next Hunt start; approximate only explained; area wake-up rationale → settings hand-off → granted; downgrade to "While using the app" in system settings → area wake-up off with notice, Hunt mode still starts; reminder and area notifications in 4 languages and under Do Not Disturb | PRV-024..PRV-027, FR-083..FR-088 |
+| TC-F-12 | Field | Walk into a hunting area: notification within a few minutes, no tracking before the tap, tap starts Hunt mode with the app closed; second entry within 6 h is silent; after a reboot the areas still work; battery over a day with 20 areas (NFR-030) | FR-086, FR-087, NFR-030 |
+| TC-S-22 | Security | `adb shell am broadcast` / `am startservice` from another app cannot start Hunt mode or register geofences; `PendingIntent` flags checked in a manifest and code review: notification-action and alarm intents immutable, the geofencing intent mutable and explicit to a non-exported receiver (a reviewer must not force `FLAG_IMMUTABLE` on it, which breaks geofence delivery) | SEC-049 |
+| TC-A-12 | Accessibility / content | Rationale screen and reminder/area texts: TalkBack, 200% font, equal Allow/Not now buttons, 4 languages, Design Director review | FR-088, PRV-025 |
+
+TC-U-38 asserts the scheduler contract of 11 5.16: without exact alarms the window ends at the target time
+(`setWindow(T − 10 min, 10 min)`), because Android 12+ typically clips shorter windows to 10 minutes and the reminder
+must be early, not late. TC-S-22 must accept a mutable geofencing `PendingIntent`: the Geofencing API requires it.
