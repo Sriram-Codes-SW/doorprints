@@ -19,11 +19,17 @@ val releaseSigning = listOf("HH_KEYSTORE_FILE", "HH_KEYSTORE_PASSWORD", "HH_KEY_
 val hasReleaseSigning = releaseSigning.values.all { it != null }
 
 android {
+    // The product is called Doorprints (renamed from "House Hunt" on 2026-09-22). Only the applicationId changed:
+    // the namespace (R class, BuildConfig) and the Kotlin package stay com.househunt.app on purpose, so no source
+    // file moves. The app was never published, so the new id simply installs side by side with old
+    // com.househunt.app test builds (uninstall those by hand; their local data is not carried over).
+    // Everything that depends on the id follows it automatically: the FileProvider authority is
+    // "${applicationId}.files" in the manifest and context.packageName + ".files" in code.
     namespace = "com.househunt.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.househunt.app"
+        applicationId = "app.doorprints"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

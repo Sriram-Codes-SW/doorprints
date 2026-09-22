@@ -20,6 +20,8 @@ import javax.crypto.spec.GCMParameterSpec
  */
 object ApiKeyCipher {
     private const val KEYSTORE = "AndroidKeyStore"
+    // Kept from before the Doorprints rename on purpose: Keystore entries are per app, and renaming the alias
+    // would orphan the key that already-encrypted settings need. Do not change it.
     private const val ALIAS = "house_hunt_api_key_v1"
     private const val PREFIX = "v1:"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"

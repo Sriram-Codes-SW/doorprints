@@ -2,6 +2,8 @@
 <!-- Hindi. Generated from one table so every language has the same keys and placeholders;
      names mirror the web keys (web/src/app/i18n/en.ts) with "_" for ".". See docs/05 section 8.2. -->
 <resources>
+    <string name="app_name">Doorprints</string>
+    <string name="app_tagline">देखा हुआ हर मकान याद रखें।</string>
     <string name="nav_map">नक्शा</string>
     <string name="nav_houses">मकान</string>
     <string name="nav_compare">तुलना</string>
@@ -122,7 +124,7 @@
     <string name="compare_footnote">जाँच सूची के अंक 0 से 5 तक हैं। खोलने के लिए मकान का नाम दबाएँ।</string>
     <string name="settings_title">सेटिंग्स</string>
     <string name="settings_server">सर्वर (वैकल्पिक)</string>
-    <string name="settings_server_intro">ऐप पूरी तरह बिना इंटरनेट के चलता है। डेटा का बैकअप लेने और वेब पर देखने के लिए अपना House Hunt सर्वर जोड़ें।</string>
+    <string name="settings_server_intro">ऐप पूरी तरह बिना इंटरनेट के चलता है। डेटा का बैकअप लेने और वेब पर देखने के लिए अपना Doorprints सर्वर जोड़ें।</string>
     <string name="settings_url">सर्वर URL</string>
     <string name="settings_url_hint">जैसे https://my-api.example.com</string>
     <string name="settings_url_https">https:// पता इस्तेमाल करें। सादा http:// सिर्फ़ localhost और एमुलेटर (10.0.2.2) के लिए चलता है।</string>
@@ -145,6 +147,7 @@
     <string name="settings_gps_note">GPS आमतौर पर 5–20 मी तक सटीक होता है, इसलिए पास-पास के मकान गड़बड़ा सकते हैं। सिग्नल कमज़ोर हो (अंदर) तो सूचनाएँ रुक जाती हैं, और बैटरी कम होने पर हंट मोड अपने-आप बंद हो जाता है।</string>
     <string name="settings_privacy">गोपनीयता</string>
     <string name="settings_privacy_note">आपके मकान और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
+    <string name="settings_about">ऐप के बारे में</string>
     <string name="sync_ok">सिंक हुआ: भेजे %1$d, मिले %2$d</string>
     <string name="sync_ok_photos_waiting">सिंक हुआ: भेजे %1$d, मिले %2$d। Wi-Fi का इंतज़ार कर रही तस्वीरें: %3$d</string>
     <string name="sync_not_configured">कोई सर्वर सेट नहीं: बिना इंटरनेट चल रहा है</string>
@@ -179,7 +182,7 @@
     <string name="ai_provider_down">AI सेवा उपलब्ध नहीं है या मुफ़्त सीमा खत्म हो गई। बाद में कोशिश करें।</string>
     <string name="ai_disclosure">आपका सवाल और मिलते-जुलते मकानों के नोट आपके सर्वर पर सेट AI सेवा को भेजे जाते हैं।</string>
     <string name="notif_channel_hunt">हंट मोड</string>
-    <string name="notif_channel_hunt_desc">जब House Hunt आपकी सैर पर नज़र रखता है तब दिखता है</string>
+    <string name="notif_channel_hunt_desc">जब Doorprints आपकी सैर पर नज़र रखता है तब दिखता है</string>
     <string name="notif_channel_alerts">मकान और सड़क की सूचनाएँ</string>
     <string name="notif_channel_alerts_desc">जब आप पहले देखे मकान या सड़क से गुज़रें</string>
     <string name="notif_hunt_title">हंट मोड चालू है</string>
@@ -193,7 +196,7 @@
     <string name="notif_street_text_since">सहेजे मकान: %1$d, दौरे: %2$d, पहली बार %3$s</string>
     <string name="notif_stay_title">क्या आप किसी मकान पर हैं?</string>
     <string name="notif_stay_text">आप कुछ मिनट से यहाँ हैं। नोट और तस्वीरों के साथ सहेजने के लिए दबाएँ।</string>
-    <string name="notif_public">House Hunt सूचना</string>
+    <string name="notif_public">Doorprints सूचना</string>
     <string name="notif_battery_title">हंट मोड बंद हुआ</string>
     <string name="notif_battery_text">बैटरी कम है (%1$d%%)। चार्ज करते समय हंट मोड फिर चालू करें।</string>
 </resources>

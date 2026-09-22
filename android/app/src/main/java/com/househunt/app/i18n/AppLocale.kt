@@ -12,7 +12,7 @@ import java.util.Locale
  * Per-app language without AppCompat (docs/05 section 8.2).
  *
  *  - Android 13+ (API 33): the platform [LocaleManager] stores the choice, recreates activities and shows the same
- *    list in system Settings > Apps > House Hunt > Language (from res/xml/locales_config.xml).
+ *    list in system Settings > Apps > Doorprints > Language (from res/xml/locales_config.xml).
  *  - Android 8-12: the choice is kept in a small SharedPreferences file and applied by wrapping each Activity's and
  *    Service's base context ([wrap]), then the activity is recreated.
  *

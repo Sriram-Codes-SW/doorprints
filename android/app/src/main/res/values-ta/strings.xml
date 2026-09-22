@@ -2,6 +2,8 @@
 <!-- Tamil. Generated from one table so every language has the same keys and placeholders;
      names mirror the web keys (web/src/app/i18n/en.ts) with "_" for ".". See docs/05 section 8.2. -->
 <resources>
+    <string name="app_name">Doorprints</string>
+    <string name="app_tagline">நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள்.</string>
     <string name="nav_map">வரைபடம்</string>
     <string name="nav_houses">வீடுகள்</string>
     <string name="nav_compare">ஒப்பிடு</string>
@@ -122,7 +124,7 @@
     <string name="compare_footnote">சரிபார்ப்புப் பட்டியல் 0 முதல் 5 வரை மதிப்பிடப்படுகிறது. திறக்க வீட்டின் பெயரைத் தட்டவும்.</string>
     <string name="settings_title">அமைப்புகள்</string>
     <string name="settings_server">சர்வர் (விருப்பத்தேர்வு)</string>
-    <string name="settings_server_intro">செயலி இணையம் இல்லாமலும் முழுமையாக இயங்கும். தரவைக் காப்புப் பிரதி எடுக்கவும் இணையத்தில் பார்க்கவும் உங்கள் House Hunt சர்வரை இணைக்கவும்.</string>
+    <string name="settings_server_intro">செயலி இணையம் இல்லாமலும் முழுமையாக இயங்கும். தரவைக் காப்புப் பிரதி எடுக்கவும் இணையத்தில் பார்க்கவும் உங்கள் Doorprints சர்வரை இணைக்கவும்.</string>
     <string name="settings_url">சர்வர் URL</string>
     <string name="settings_url_hint">எ.கா. https://my-api.example.com</string>
     <string name="settings_url_https">https:// முகவரியைப் பயன்படுத்தவும். வெறும் http:// localhost மற்றும் எமுலேட்டருக்கு (10.0.2.2) மட்டுமே.</string>
@@ -145,6 +147,7 @@
     <string name="settings_gps_note">GPS பொதுவாக 5–20 மீ துல்லியமானது, எனவே அருகிலுள்ள வீடுகள் குழம்பலாம். சமிக்ஞை பலவீனமாக இருக்கும்போது (உள்ளே) அறிவிப்புகள் நிற்கும்; பேட்டரி குறைந்தால் தேடல் பயன்முறை தானாக நிற்கும்.</string>
     <string name="settings_privacy">தனியுரிமை</string>
     <string name="settings_privacy_note">உங்கள் வீடுகளும் வருகைகளும் இந்த ஃபோனிலும் உங்கள் சொந்த சர்வரிலும் மட்டுமே இருக்கும். வரைபடங்கள் OpenFreeMap-இலிருந்தும், தெருப் பெயர்கள் ஃபோனின் ஜியோகோடரிலிருந்தும் (Google) வருகின்றன. படங்கள் இருப்பிடத் தகவல் இல்லாமல் சேமிக்கப்படுகின்றன.</string>
+    <string name="settings_about">செயலியைப் பற்றி</string>
     <string name="sync_ok">ஒத்திசைந்தது: அனுப்பியவை %1$d, பெற்றவை %2$d</string>
     <string name="sync_ok_photos_waiting">ஒத்திசைந்தது: அனுப்பியவை %1$d, பெற்றவை %2$d. Wi-Fi-க்குக் காத்திருக்கும் படங்கள்: %3$d</string>
     <string name="sync_not_configured">சர்வர் அமைக்கப்படவில்லை: ஆஃப்லைனில் இயங்குகிறது</string>
@@ -179,7 +182,7 @@
     <string name="ai_provider_down">AI சேவை கிடைக்கவில்லை அல்லது இலவச வரம்பு முடிந்தது. பின்னர் முயலவும்.</string>
     <string name="ai_disclosure">உங்கள் கேள்வியும் பொருந்தும் வீட்டுக் குறிப்புகளும் உங்கள் சர்வரில் அமைத்த AI சேவைக்கு அனுப்பப்படும்.</string>
     <string name="notif_channel_hunt">தேடல் பயன்முறை</string>
-    <string name="notif_channel_hunt_desc">House Hunt உங்கள் நடையைக் கண்காணிக்கும்போது காட்டப்படும்</string>
+    <string name="notif_channel_hunt_desc">Doorprints உங்கள் நடையைக் கண்காணிக்கும்போது காட்டப்படும்</string>
     <string name="notif_channel_alerts">வீடு, தெரு அறிவிப்புகள்</string>
     <string name="notif_channel_alerts_desc">முன்பு பார்த்த வீடு அல்லது தெருவைக் கடக்கும்போது</string>
     <string name="notif_hunt_title">தேடல் பயன்முறை இயக்கத்தில் உள்ளது</string>
@@ -193,7 +196,7 @@
     <string name="notif_street_text_since">சேமித்த வீடுகள்: %1$d, வருகைகள்: %2$d, முதல் முறை %3$s</string>
     <string name="notif_stay_title">நீங்கள் ஒரு வீட்டில் இருக்கிறீர்களா?</string>
     <string name="notif_stay_text">சில நிமிடங்களாக இங்கே இருக்கிறீர்கள். குறிப்புகள், படங்களுடன் சேமிக்கத் தட்டவும்.</string>
-    <string name="notif_public">House Hunt அறிவிப்பு</string>
+    <string name="notif_public">Doorprints அறிவிப்பு</string>
     <string name="notif_battery_title">தேடல் பயன்முறை நிறுத்தப்பட்டது</string>
     <string name="notif_battery_text">பேட்டரி குறைவு (%1$d%%). சார்ஜ் செய்யும்போது தேடல் பயன்முறையை மீண்டும் இயக்கவும்.</string>
 </resources>

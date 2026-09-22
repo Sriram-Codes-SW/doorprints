@@ -1,9 +1,9 @@
-# House Hunt: Secure SDLC documentation
+# Doorprints: Secure SDLC documentation
 
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -18,11 +18,12 @@
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 2 outcome (all four workflows green on `f7da5ab` and `0e4e22a`) and Sprint 3 (first AI eval run: native Gemini embeddings and scorecard fixes, in code, waiting on an eval run). Versions: 01 v0.4 (RTM: TC-AI-11..14), 02 v0.5 (F-01 text: 32 characters; embedding flow re-checked), 03 v0.4, 04 v0.3 (DF-32 embedding request), 06 v0.5 (TC-AI-10 verdict, TC-AI-11..14), 07 v0.5, 08 v0.4 (AI settings, `AI_EMBEDDING_*`), 10 v0.2; 05 and 09 unchanged (v0.2). |
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions: F-01 split into F-01a (Fixed) and F-01b (Open); F-30 (contact name to the LLM provider) Fixed in code by the AI team (C-13); dev `docker-compose.yml` owned by Backend and passes the AI settings; senior reviewers with runtime pre-mortem, wire-format verification and contract tests. F-xx scheme allows a letter suffix for split findings. Versions: 01 v0.5, 02 v0.6, 03 v0.5, 04 v0.4, 06 v0.6 (TC-AI-15, TC-AI-16), 07 v0.6 (env table), 08 v0.5, 09 v0.3, 10 v0.3; 05 unchanged (v0.2). |
 | 0.6 | 2026-09-22 | Claude (Cowork) | Sprint 3 coordinator rework: 01 v0.6 (PRV-009 reason for Part), 02 v0.7 (F-30 status cell per ai-design v0.10: rules, client label contract, limits, reindex after the v0.10 deploy), 06 v0.7 (TC-AI-12: 5-minute log window; TC-AI-15 final redaction cases), 08 v0.6 (reindex after the v0.10 deploy), 10 v0.4; 03, 04, 07 and 09 unchanged since v0.5. |
-| 0.7 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome (`6a348cc`: Backend and Security green; first successful real Gemini eval run, 12/13 cases passed, `citationPrecision` 0.86 vs 0.90 open as E-03): 02 v0.8 (F-30 closed as Fixed by lead decision, evidence TC-AI-15), 01 v0.7 (AI-010 and PRV-009 evidence, AI-012 first eval result), 06 v0.8 (TC-AI-10 gap row: first real scorecard recorded), 10 v0.5 (Sprint 3 CI, eval run and sign-off table, S3-05, section 7 Sprint 4 candidates C-14..C-21, not committed). |
+| 0.7 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome (`6a348cc`: Backend and Security green; first successful real Gemini eval run, 12/13 cases passed, `citationPrecision` 0.86 vs 0.90 open as E-03): 02 v0.8 (F-30 closed as Fixed by lead decision, evidence TC-AI-15), 01 v0.7 (AI-010 and PRV-009 evidence, AI-012 first eval result), 06 v0.8 (TC-AI-10 gap row: first real scorecard recorded; section 1 AI evals row: golden set v0.3 and the first real run; TC-AI-09 traces `allowedCitations`; new TC-AI-17 for the Ask prompt citation and contrast rules), 10 v0.5 (Sprint 3 CI, eval run and sign-off table, S3-05, section 7 Sprint 4 candidates C-14..C-21, not committed). |
+| 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** (tagline "Remember every house you've seen."; the repository is still `house-hunt`): title and introduction; new ADR-13 in 03 records what changed and what did not. Versions: 01 v0.8 (also TC-AI-17 in the RTM), 02 v0.9, 03 v0.6, 04 v0.5, 05 v0.3, 06 v0.9, 07 v0.7, 08 v0.7, 09 v0.4, 10 v0.6. The v0.7 row now lists everything 06 v0.8 changed (it named only the TC-AI-10 gap row). |
 
 ---
 
-House Hunt is a personal, single-user app for hunting rental and for-sale houses in India. It has three parts:
+Doorprints ("Remember every house you've seen.") is a personal, single-user app that keeps a record of the rental and for-sale houses you see while house hunting in India. It is not a property-listings site. It was called House Hunt until 2026-09-22; the repository, code packages, storage keys and database names keep the old name ([03](03-design.md) ADR-13). It has three parts:
 
 - an offline-first **Android app** (Kotlin, Compose, Room, WorkManager, foreground "Hunt mode" location service, MapLibre with OpenFreeMap tiles),
 - a **Spring Boot 4.1 / Java 25 API** backed by **PostgreSQL + PostGIS**,

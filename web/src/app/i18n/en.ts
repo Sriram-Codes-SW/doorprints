@@ -9,9 +9,11 @@
  */
 export const en = {
   // App shell
-  'app.name': 'House Hunt',
+  'app.name': 'Doorprints',
+  'app.tagline': "Remember every house you've seen.",
+  'app.description': "Doorprints: Remember every house you've seen. Save, rate and compare the houses you visit.",
   'app.skip': 'Skip to main content',
-  'app.homeLink': 'House Hunt home',
+  'app.homeLink': 'Doorprints home',
   'nav.label': 'Main',
   'nav.map': 'Map',
   'nav.compare': 'Compare',
@@ -20,12 +22,12 @@ export const en = {
   'lang.changed': 'Language changed to English',
 
   // Page titles (browser tab)
-  'title.app': 'House Hunt',
-  'title.map': 'Houses · House Hunt',
-  'title.newHouse': 'New house · House Hunt',
-  'title.house': 'House details · House Hunt',
-  'title.compare': 'Compare · House Hunt',
-  'title.connect': 'Connect · House Hunt',
+  'title.app': 'Doorprints',
+  'title.map': 'Houses · Doorprints',
+  'title.newHouse': 'New house · Doorprints',
+  'title.house': 'House details · Doorprints',
+  'title.compare': 'Compare · Doorprints',
+  'title.connect': 'Connect · Doorprints',
 
   // Shared
   'common.loading': 'Loading…',
@@ -223,7 +225,7 @@ export const en = {
 
   // Connect page
   'connect.title': 'Connect to your server',
-  'connect.intro': 'Enter the address of your House Hunt server and its API key. They are stored only in this browser.',
+  'connect.intro': 'Enter the address of your Doorprints server and its API key. They are stored only in this browser.',
   'connect.baseUrl': 'API address (URL)',
   'connect.apiKey': 'API key',
   'connect.show': 'Show',
@@ -248,8 +250,8 @@ export const en = {
   'confirm.remove': 'Remove',
   'nav.ask': 'Ask',
   'nav.plan': 'Plan visits',
-  'title.ask': 'Ask · House Hunt',
-  'title.plan': 'Plan visits · House Hunt',
+  'title.ask': 'Ask · Doorprints',
+  'title.plan': 'Plan visits · Doorprints',
   'connect.remember': 'Remember on this device',
   'connect.rememberHint': 'Off: the key is forgotten when you close this tab. Leave it off on shared computers.',
   'ai.disabled': 'AI features are turned off on your server.',

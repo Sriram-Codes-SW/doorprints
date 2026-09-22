@@ -2,7 +2,8 @@
 <!-- English (default). Generated from one table so every language has the same keys and placeholders;
      names mirror the web keys (web/src/app/i18n/en.ts) with "_" for ".". See docs/05 section 8.2. -->
 <resources>
-    <string name="app_name" translatable="false">House Hunt</string>
+    <string name="app_name">Doorprints</string>
+    <string name="app_tagline">Remember every house you\'ve seen.</string>
     <string name="nav_map">Map</string>
     <string name="nav_houses">Houses</string>
     <string name="nav_compare">Compare</string>
@@ -123,7 +124,7 @@
     <string name="compare_footnote">Checklist items are scored 0 to 5. Tap a house name to open it.</string>
     <string name="settings_title">Settings</string>
     <string name="settings_server">Server (optional)</string>
-    <string name="settings_server_intro">The app works fully offline. Connect your House Hunt server to back up your data and see it on the web.</string>
+    <string name="settings_server_intro">The app works fully offline. Connect your Doorprints server to back up your data and see it on the web.</string>
     <string name="settings_url">Server URL</string>
     <string name="settings_url_hint">For example https://my-api.example.com</string>
     <string name="settings_url_https">Use an https:// address. Plain http:// is only allowed for localhost and the emulator (10.0.2.2).</string>
@@ -146,6 +147,7 @@
     <string name="settings_gps_note">GPS is usually accurate to 5–20 m, so neighbouring houses can be confused. Alerts pause when the signal is weak (indoors), and hunt mode stops by itself when the battery is low.</string>
     <string name="settings_privacy">Privacy</string>
     <string name="settings_privacy_note">Your houses and visits stay on this phone and your own server. Map tiles come from OpenFreeMap, and street names from the phone’s built-in geocoder (Google). Photos are saved without location data.</string>
+    <string name="settings_about">About</string>
     <string name="sync_ok">Synced: sent %1$d, received %2$d</string>
     <string name="sync_ok_photos_waiting">Synced: sent %1$d, received %2$d. Photos waiting for Wi-Fi: %3$d</string>
     <string name="sync_not_configured">No server set up: working offline</string>
@@ -180,7 +182,7 @@
     <string name="ai_provider_down">The AI provider is unavailable or out of free quota. Try again later.</string>
     <string name="ai_disclosure">Your question and the matching house notes are sent to the AI provider set up on your server.</string>
     <string name="notif_channel_hunt">Hunt mode</string>
-    <string name="notif_channel_hunt_desc">Shown while House Hunt is tracking your walk</string>
+    <string name="notif_channel_hunt_desc">Shown while Doorprints is tracking your walk</string>
     <string name="notif_channel_alerts">House and street alerts</string>
     <string name="notif_channel_alerts_desc">When you pass a house or street you have visited before</string>
     <string name="notif_hunt_title">Hunt mode is on</string>
@@ -194,7 +196,7 @@
     <string name="notif_street_text_since">Saved houses: %1$d, visits: %2$d, first on %3$s</string>
     <string name="notif_stay_title">Are you at a house?</string>
     <string name="notif_stay_text">You have been here a few minutes. Tap to save it with notes and photos.</string>
-    <string name="notif_public">House Hunt alert</string>
+    <string name="notif_public">Doorprints alert</string>
     <string name="notif_battery_title">Hunt mode stopped</string>
     <string name="notif_battery_text">Battery is low (%1$d%%). Turn hunt mode on again when charging.</string>
 </resources>

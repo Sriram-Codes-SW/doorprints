@@ -58,6 +58,8 @@ public class DataService {
         var liveVisits = visits.findByDeletedFalseOrderByArrivedAtDesc().stream().map(VisitDto::from).toList();
         var livePhotos = photos.findAllLiveMetadata().stream()
                 .map(p -> new ExportedPhoto(p, "/api/photos/" + p.id())).toList();
+        // Format id kept from before the Doorprints rename: it versions the file layout, and tools that read
+        // older exports match on it. Only the download file name changed (DataController).
         return new Export("house-hunt-export/1", Instant.now(), liveHouses, liveVisits, livePhotos);
     }
 

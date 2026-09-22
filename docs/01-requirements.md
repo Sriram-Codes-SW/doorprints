@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -19,6 +19,7 @@
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): AI-010 back to **Impl** (C-13: the AI team's `ContactRedactor` fixes F-30; waiting on CI); RTM traces TC-AI-15 (contact redaction) and TC-AI-16 (contract tests). F-01 is split in [02](02-threat-model.md) v0.6: SEC-002 and SEC-017 trace to F-01a (Fixed), SEC-025 to F-01b (Open). |
 | 0.6 | 2026-09-22 | Claude (Cowork) | PRV-009 stays **Part** now that F-30 is fixed; the status cell gives the reasons (best-effort free-text redaction, pasted listing text sent for extraction, erasure does not reach backups, unsynced devices or data a provider already received) and what is done. No requirement text changed. |
 | 0.7 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome ([10](10-sprint-log.md) §5): AI-010 stays **Impl** and PRV-009 stays **Part**; their "waiting on CI" notes are replaced by the evidence (F-30 closed as Fixed by lead decision: TC-AI-15 green in the Backend workflow on `6a348cc`; the real Gemini eval run 35720654442 is a no-regression check only, its fixtures hold no contact data). AI-012 stays **Part** and records the first real eval result (all 13 cases ran, 12/13 cases passed, all metrics pass except `citationPrecision` 0.86 vs 0.90, E-03). No requirement text changed. |
+| 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** (tagline "Remember every house you've seen."; [03](03-design.md) ADR-13): sections 1 and 2, SEC-019 and the section 9 privacy introduction use the new name; section 2 says the app is a personal record of the houses the user has seen, not a listings site. RTM row AI-001..AI-012 now also traces **TC-AI-17** (Ask prompt citation and contrast rules, AI-002/AI-003; added in [06](06-test-plan.md) v0.8 but missing here). No requirement text or status changed. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -26,11 +27,11 @@ Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](0
 
 ## 1. Purpose
 
-This SRS defines what House Hunt must do and how well it must do it. It sets the security, privacy and AI rules the system must follow. It is the baseline for design (03), threat modelling (02) and testing (06).
+This SRS defines what Doorprints (called House Hunt until 2026-09-22, see [03](03-design.md) ADR-13) must do and how well it must do it. It sets the security, privacy and AI rules the system must follow. It is the baseline for design (03), threat modelling (02) and testing (06).
 
 ## 2. Scope
 
-House Hunt helps one person look for a house to rent or buy in India. While walking or driving around a locality, the app:
+Doorprints ("Remember every house you've seen.") helps one person keep track of the houses they see while looking for a house to rent or buy in India. It is a personal record of the user's own visits, not a property-listings site. While walking or driving around a locality, the app:
 
 - remembers every house viewed: location, notes, star rating, a 10-item checklist, photos, price, contact and status,
 - warns when you pass a house you have already seen, or enter a street you have been on before,
@@ -214,7 +215,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-016 | Logs contain no API keys, coordinates, notes or phone numbers. Auth failures are logged with a salted client-address hash, method and path. | S | Impl | F-18 |
 | SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation (`APP_API_KEY`, `APP_API_KEY_NEXT`). | S | Impl (Sprint 2; procedure in 08 §5.1) | F-01a |
 | SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing with `release.yml` next) | F-11 |
-| SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the House Hunt schema. Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
+| SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the app schema (`househunt`; the database, role and schema names were kept at the Doorprints rename, [03](03-design.md) ADR-13). Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
 | SEC-020 | The server clamps client `updatedAt` values more than 5 minutes in the future to server time and rejects dates more than 365 days ahead or before 2000, so records cannot be "frozen". | M | Impl | F-08 |
 | SEC-021 | Android components are not exported unless needed. PendingIntents are immutable. The deep-link extras from `MainActivity` are validated (UUID format, lat/lon range). | S | Impl | F-25 |
 | SEC-022 | Alert notifications use `VISIBILITY_PRIVATE` with a redacted public version, so the lock screen does not show house names or prices. | C | Impl | F-14 |
@@ -229,7 +230,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 
 ## 9. Privacy requirements
 
-Location history and third-party contact details are the most sensitive data here. India's **Digital Personal Data Protection Act, 2023 (DPDP Act)** does not apply to personal data "processed by an individual for any personal or domestic purpose" (section 3(c)(i)). Still, House Hunt holds **other people's** data (landlord/agent names and phone numbers, photos that may show people) and sends data to processors (hosting, LLM). We therefore follow DPDP principles voluntarily: purpose limitation, data minimisation, accuracy, storage limitation, security safeguards and erasure. If the app is ever offered to other users, the DPDP obligations (notice, consent, Data Principal rights, breach notice to the Data Protection Board) would apply in full.
+Location history and third-party contact details are the most sensitive data here. India's **Digital Personal Data Protection Act, 2023 (DPDP Act)** does not apply to personal data "processed by an individual for any personal or domestic purpose" (section 3(c)(i)). Still, Doorprints holds **other people's** data (landlord/agent names and phone numbers, photos that may show people) and sends data to processors (hosting, LLM). We therefore follow DPDP principles voluntarily: purpose limitation, data minimisation, accuracy, storage limitation, security safeguards and erasure. If the app is ever offered to other users, the DPDP obligations (notice, consent, Data Principal rights, breach notice to the Data Protection Board) would apply in full.
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
@@ -376,4 +377,4 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | PRV-004, PRV-005 | 08 §6 | `privacy/DataService`, `HouseService.purge`, V3 migration | TC-I-16, TC-I-18 |
 | PRV-008 | 03 §7.4 | `Repository.addPhoto`, `image-resize.ts`, `ImageSanitizer` | TC-U-11, TC-U-14 |
 | PRV-009, PRV-010, PRV-011 | 04 §6, 07, 08 | config / ops | Review |
-| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-AI-11 (native Gemini embeddings), TC-AI-12 (indexing failures, reindex 503; AI-011), TC-AI-13 (scorecard verdict; AI-012), TC-AI-14 (AI-001 embedding provider selection), TC-AI-15 (contact redaction; AI-010), TC-AI-16 (provider wire-format contract tests), TC-M-09 |
+| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-AI-11 (native Gemini embeddings), TC-AI-12 (indexing failures, reindex 503; AI-011), TC-AI-13 (scorecard verdict; AI-012), TC-AI-14 (AI-001 embedding provider selection), TC-AI-15 (contact redaction; AI-010), TC-AI-16 (provider wire-format contract tests), TC-AI-17 (Ask prompt citation and contrast rules; AI-002, AI-003), TC-M-09 |

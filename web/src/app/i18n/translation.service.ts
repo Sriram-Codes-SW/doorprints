@@ -11,6 +11,8 @@ export interface Msg {
 export type Param = string | number | Msg;
 export type Params = Readonly<Record<string, Param>>;
 
+// Keeps the pre-rename 'house-hunt.' prefix on purpose: changing it would lose settings already saved in
+// users' browsers after the rename to Doorprints. Do not change it without a migration.
 const STORAGE_KEY = 'house-hunt.lang';
 
 /**

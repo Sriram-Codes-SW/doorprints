@@ -1,9 +1,16 @@
-# House Hunt
+# Doorprints
 
-A personal, zero-cost app for hunting rental and for-sale houses in India. Save every house you see with its
-price, BHK, a 10-point checklist, star rating, photos, contact and notes; compare your favourites side by side; and
-turn on **Hunt mode** while you walk around, so your phone tells you when you pass a house or enter a street you have
-already seen. Works fully offline on Android and syncs to your own server and a web app when you are online.
+**Remember every house you've seen.**
+
+Doorprints is a personal, zero-cost app for keeping track of the houses you visit while looking for a house to rent
+or buy in India. It is not a property-listings site: it holds only the houses you have seen yourself. Save every house
+with its price, BHK, a 10-point checklist, star rating, photos, contact and notes; compare your favourites side by
+side; and turn on **Hunt mode** while you walk around, so your phone tells you when you pass a house or enter a street
+you have already seen. Works fully offline on Android and syncs to your own server and a web app when you are online.
+
+> Doorprints was called **House Hunt** until 2026-09-22. The GitHub repository is still named `house-hunt`, and so
+> are the code packages (`com.househunt`), storage keys and database names; see
+> [ADR-13](docs/03-design.md#14-architecture-decision-records) for what changed and what did not.
 
 English · हिन्दी · தமிழ் · తెలుగు
 
@@ -96,18 +103,23 @@ Full steps and the environment variable reference are in
 ## Install the Android app
 
 There is no Play Store listing. Every push to `main` builds a debug APK, and a **signed** release APK
-(`house-hunt-release-apk`) once the four `HH_*` signing secrets are set in the repository
+(`doorprints-release-apk`) once the four `HH_*` signing secrets are set in the repository
 ([docs/07 §5](docs/07-secure-build-and-deploy.md#5-android-release-signing)):
 
-1. On GitHub, open **Actions → Android → the latest green run on `main`**, download the artifact
-   **`house-hunt-release-apk`** (signed; its signer fingerprint is printed in the "Verify APK signature" step) or
-   **`house-hunt-debug-apk`**, and unzip it.
+1. On GitHub, open the `house-hunt` repository, then **Actions → Android → the latest green run on `main`**, and
+   download the artifact **`doorprints-release-apk`** (signed; its signer fingerprint is printed in the "Verify APK
+   signature" step) or **`doorprints-debug-apk`**, and unzip it. (Runs from before the rename name them
+   `house-hunt-release-apk` and `house-hunt-debug-apk`.)
 2. Copy the `.apk` to the phone and open it (allow "Install unknown apps" for your file manager when asked).
-3. Open House Hunt → **Settings**: server URL `https://…`, paste the API key, **Save and test**, then **Sync now**.
+3. Open Doorprints → **Settings**: server URL `https://…`, paste the API key, **Save and test**, then **Sync now**.
 
 The app works without a server too; everything is stored on the phone until you connect one. Prefer the signed
 release APK when it exists. A signed build cannot be installed over the debug build (different signer): sync first,
 uninstall the debug app, then install the release APK.
+
+Builds from before the rename (app name "House Hunt", package `com.househunt.app`) are a separate app to Android and
+are not upgraded by Doorprints (package `app.doorprints`). If you have one, sync it, install Doorprints and sync
+again, then uninstall the old app; its local data is not carried over.
 
 ## Documentation
 
@@ -153,3 +165,4 @@ This is a personal project, but it follows a secure SDLC, so changes follow a fe
 | 2026-09-22 | First version of this README (Sprint 1). |
 | 2026-09-22 | Sprint 2: links to the sprint log (docs/10) and CHANGELOG, 32-character API key and `APP_API_KEY_NEXT` rotation, signed release APK, compileSdk 37, MapLibre GL 6.10, findings F-01..F-29, CI test and scan list. |
 | 2026-09-22 | Sprint 3: documentation index lists threat-model findings F-01a/F-01b..F-30 (31 findings; F-01 split into F-01a and F-01b, new F-30 contact redaction). |
+| 2026-09-22 | Renamed the product to **Doorprints** (tagline "Remember every house you've seen."): title and description (a personal record, not a listings site), note that the repository is still `house-hunt`, install steps with the `doorprints-debug-apk` / `doorprints-release-apk` artifacts and the upgrade note for pre-rename builds. |

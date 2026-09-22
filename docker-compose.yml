@@ -23,6 +23,9 @@
 #   export AI_EMBEDDING_DIMENSIONS=768
 #   export AI_TIMEOUT=180s                    # local models are slower on CPU
 #   # On Linux, start Ollama with OLLAMA_HOST=0.0.0.0 so the container can reach it through host-gateway.
+# Doorprints (formerly House Hunt): there is deliberately no top-level `name:` and the volume is still `dbdata18`.
+# Compose prefixes volumes with the project name (the checkout folder by default), so renaming the project or the
+# volume would start an empty database; the image tag house-hunt-db also stays, matching CI and the runbook.
 services:
   db:
     build: ./backend/db

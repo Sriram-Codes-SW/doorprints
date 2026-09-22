@@ -2,9 +2,11 @@ import { Dict } from './en';
 
 /** Tamil (தமிழ்). Keep "BHK", "API", URLs and brand names as they are. */
 export const ta: Dict = {
-  'app.name': 'House Hunt',
+  'app.name': 'Doorprints',
+  'app.tagline': 'நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள்.',
+  'app.description': 'Doorprints: நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். நீங்கள் பார்வையிடும் வீடுகளைச் சேமித்து, மதிப்பிட்டு, ஒப்பிடுங்கள்.',
   'app.skip': 'முதன்மை உள்ளடக்கத்திற்குச் செல்லவும்',
-  'app.homeLink': 'House Hunt முகப்பு',
+  'app.homeLink': 'Doorprints முகப்பு',
   'nav.label': 'முதன்மை',
   'nav.map': 'வரைபடம்',
   'nav.compare': 'ஒப்பிடு',
@@ -12,12 +14,12 @@ export const ta: Dict = {
   'lang.label': 'மொழி',
   'lang.changed': 'மொழி தமிழுக்கு மாற்றப்பட்டது',
 
-  'title.app': 'House Hunt',
-  'title.map': 'வீடுகள் · House Hunt',
-  'title.newHouse': 'புதிய வீடு · House Hunt',
-  'title.house': 'வீட்டு விவரங்கள் · House Hunt',
-  'title.compare': 'ஒப்பீடு · House Hunt',
-  'title.connect': 'இணைப்பு · House Hunt',
+  'title.app': 'Doorprints',
+  'title.map': 'வீடுகள் · Doorprints',
+  'title.newHouse': 'புதிய வீடு · Doorprints',
+  'title.house': 'வீட்டு விவரங்கள் · Doorprints',
+  'title.compare': 'ஒப்பீடு · Doorprints',
+  'title.connect': 'இணைப்பு · Doorprints',
 
   'common.loading': 'ஏற்றுகிறது…',
   'common.untitled': 'பெயரில்லை',
@@ -205,7 +207,7 @@ export const ta: Dict = {
   'compare.footnote': 'சரிபார்ப்புப் பட்டியலின் ஒவ்வொன்றுக்கும் 0 முதல் 5 வரை மதிப்பெண். ஒவ்வொரு வரிசையிலும் சிறந்த மதிப்பு முன்னிலைப்படுத்தப்பட்டு ✓ குறியிடப்பட்டுள்ளது.',
 
   'connect.title': 'உங்கள் சர்வருடன் இணை',
-  'connect.intro': 'உங்கள் House Hunt சர்வரின் முகவரியையும் அதன் API விசையையும் உள்ளிடவும். இவை இந்த உலாவியில் மட்டுமே சேமிக்கப்படும்.',
+  'connect.intro': 'உங்கள் Doorprints சர்வரின் முகவரியையும் அதன் API விசையையும் உள்ளிடவும். இவை இந்த உலாவியில் மட்டுமே சேமிக்கப்படும்.',
   'connect.baseUrl': 'API முகவரி (URL)',
   'connect.apiKey': 'API விசை',
   'connect.show': 'காட்டு',
@@ -230,8 +232,8 @@ export const ta: Dict = {
   'confirm.remove': 'அகற்று',
   'nav.ask': 'கேள்',
   'nav.plan': 'வருகைத் திட்டம்',
-  'title.ask': 'கேள் · House Hunt',
-  'title.plan': 'வருகைத் திட்டம் · House Hunt',
+  'title.ask': 'கேள் · Doorprints',
+  'title.plan': 'வருகைத் திட்டம் · Doorprints',
   'connect.remember': 'இந்தச் சாதனத்தில் நினைவில் வை',
   'connect.rememberHint': 'அணைத்தால்: இந்தத் தாவலை மூடியதும் விசை மறக்கப்படும். பகிரப்பட்ட கணினிகளில் அணைத்தே வைக்கவும்.',
   'ai.disabled': 'உங்கள் சர்வரில் AI அம்சங்கள் அணைக்கப்பட்டுள்ளன.',

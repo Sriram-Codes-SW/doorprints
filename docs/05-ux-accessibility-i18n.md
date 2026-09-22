@@ -1,9 +1,9 @@
-# House Hunt: UX, accessibility and internationalisation
+# Doorprints: UX, accessibility and internationalisation
 
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -15,6 +15,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) – Design team | First version. Design principles, tokens with contrast ratios, component inventory, screen flows, WCAG 2.2 AA checklist (web status, Android plan), i18n architecture for en/hi/ta/te, translation workflow, glossary, accessibility test plan. |
 | 0.2 | 2026-09-22 | Claude (Cowork) – Design team | Wave 2: Android strings in 4 languages with an in-app language picker (LocaleManager on 13+, no AppCompat), TalkBack semantics, 48 dp targets, font-scaling layouts, web tokens and dark theme on Android (section 7.1, 8.2). Web: accessible confirm dialog replaces `confirm()` (A11Y-B05 closed), dismissible/hoverable map popup (A11Y-B01 closed), AI pages and import panel, "remember on this device". |
+| 0.3 | 2026-09-22 | Claude (Cowork) – Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): title, page-title example ("Compare · Doorprints"), WCAG 3.1.2 brand note, translator rule (keep "Doorprints" unchanged) and two glossary rows: `app.name` (never translated) and `app.tagline` ("Remember every house you've seen.", web meta description and first-run house list / Settings *About* on Android). Section 8.1: the storage key `house-hunt.lang` is kept. Section 8.2: 197 strings per language; `app_name` is now in every language (was English only, `translatable="false"`). The Android launcher icon is now a door with footprints. The Hindi tagline is one value, "देखा हुआ हर मकान याद रखें।", now the same on Android and web. |
 
 ---
 
@@ -233,7 +234,7 @@ Status: **Met** (implemented and checked by code review), **Partial** (known gap
 | 2.2.2 | Pause, stop, hide | A | Met | Skeleton shimmer only while loading and stops with reduced motion. | Same with `LocalReduceMotion` / animator duration scale. |
 | 2.3.1 | Three flashes | A | Met | No flashing. | Same. |
 | 2.4.1 | Bypass blocks | A | Met | Skip link to `<main>`; landmarks. | N/A on native (TalkBack headings navigation instead). |
-| 2.4.2 | Page titled | A | Met | Translated per route ("Compare · House Hunt"). | `Activity` / screen titles announced via `paneTitle`. |
+| 2.4.2 | Page titled | A | Met | Translated per route ("Compare · Doorprints"; brand last so tabs stay distinguishable). The meta description is the translated tagline. | `Activity` / screen titles announced via `paneTitle`. |
 | 2.4.3 | Focus order | A | Met | DOM order; focus moves to `<h1>` after navigation, to section headings after deleting a visit or photo. | Default order; move accessibility focus after navigation. |
 | 2.4.4 | Link purpose (in context) | A | Met | "Open" listing link has label "Open the listing (opens in a new tab)"; house links use the house name. | Same. |
 | 2.4.5 | Multiple ways | AA | Met | Nav, list with search/filter, map, compare links. | Bottom nav + search. |
@@ -247,7 +248,7 @@ Status: **Met** (implemented and checked by code review), **Partial** (known gap
 | 2.5.7 | Dragging movements | AA | Met | Pin: click on map or type coordinates. Map pan: keyboard arrows and zoom buttons. | "Use my location" and coordinate entry as alternatives to dragging the pin. |
 | 2.5.8 | Target size (minimum) | AA | Met | 44 px default; smallest are checklist options 34 × 36 px at ≤ 400 px wide and MapLibre controls 29 px. | 48 × 48 dp (`minimumInteractiveComponentSize`). |
 | 3.1.1 | Language of page | A | Met | `<html lang>` updated on every switch. | Per-app language sets the locale. |
-| 3.1.2 | Language of parts | AA | Met | Language options carry `lang`; brand name "House Hunt" is a proper noun. User-entered text (notes in another language) is not marked, see section 13. | `LocaleSpan`/`Modifier.semantics` not needed for UI; same limit for user text. |
+| 3.1.2 | Language of parts | AA | Met | Language options carry `lang`; brand name "Doorprints" is a proper noun, written in Latin script in every language. User-entered text (notes in another language) is not marked, see section 13. | `LocaleSpan`/`Modifier.semantics` not needed for UI; same limit for user text. |
 | 3.2.1 | On focus | A | Met | Focus only shows a popup; no navigation. | Same. |
 | 3.2.2 | On input | A | Met | Changing language or sort changes presentation only; no navigation. | Same. |
 | 3.2.3 | Consistent navigation | AA | Met | Same header on every page. | Same bottom bar. |
@@ -302,7 +303,7 @@ flowchart LR
 |---|---|---|
 | Library | Own ~150-line runtime (`web/src/app/i18n/`), not `@angular/localize` | One build, instant switching without reload, free static hosting of a single `dist/`. |
 | Dictionaries | Typed TS objects. `en` is the source; `type Dict = { readonly [K in keyof typeof en]: string }`; `const hi: Dict = {...}` | A missing or extra key in any language fails `ng build`. Keys used in templates are type-checked (`TKey`) under `strictTemplates`. |
-| State | `lang` signal in `TranslationService`; persisted in `localStorage['house-hunt.lang']` (in `try/catch`); default from `navigator.languages` if supported, else `en` | Signals make templates, `computed()` values and the pipe update without zone.js. |
+| State | `lang` signal in `TranslationService`; persisted in `localStorage['house-hunt.lang']` (in `try/catch`; the pre-rename key is kept so saved choices survive, 03 ADR-13); default from `navigator.languages` if supported, else `en` | Signals make templates, `computed()` values and the pipe update without zone.js. |
 | Template API | `{{ 'house.save' \| t }}`, `{{ 'common.bhk' \| t: { n: 2 } }}` (impure pipe that reads the signal) | Cheap: one map lookup per binding. |
 | Code API | `i18n.t(key, params)`, `i18n.msg({ key, params })` | Used for `confirm()`, MapLibre popups, control labels and table rows. |
 | Messages in state | Errors and announcements are stored as `Msg` objects (`{ key, params }`), not strings; params can nest a `Msg` (e.g. "Save failed: {reason}") | A message on screen changes language with the UI. |
@@ -320,7 +321,7 @@ Files: `web/src/app/i18n/en.ts`, `hi.ts`, `ta.ts`, `te.ts`, `languages.ts`, `tra
 
 | Item | Implementation |
 |---|---|
-| Strings | `res/values/strings.xml` (English, default) plus `values-hi/`, `values-ta/`, `values-te/`, 194 strings each. Names mirror web keys with `_` instead of `.`: `house.save` → `house_save`, `check.water` → `check_water`. Screen-specific Android keys use the same `area_thing` pattern (`map_hunt_mode`, `settings_photos_wifi`, `ai_plan_leg`). |
+| Strings | `res/values/strings.xml` (English, default) plus `values-hi/`, `values-ta/`, `values-te/`, 197 strings each (since the Doorprints rename `app_name`, `app_tagline` and `settings_about` are in every language; `app_name` is "Doorprints" in all four). Names mirror web keys with `_` instead of `.`: `house.save` → `house_save`, `check.water` → `check_water`. Screen-specific Android keys use the same `area_thing` pattern (`map_hunt_mode`, `settings_photos_wifi`, `ai_plan_leg`). |
 | Placeholders | Positional `%1$s`, `%2$d`; every language keeps exactly the same placeholders (checked when the files are generated). Web `{name}` maps to `%1$s`. |
 | Plurals | Avoided by phrasing, as on the web ("Visits: %1$d"). |
 | Per-app language | `res/xml/locales_config.xml` (`en`, `hi`, `ta`, `te`) and `android:localeConfig` in the manifest (Android 13+ system settings). In-app picker in Settings (`i18n/AppLocale.kt`): on API 33+ it calls the platform `LocaleManager.setApplicationLocales(...)` (the system stores the choice and recreates the activity); on API 26–32 it stores the tag in a small SharedPreferences file and wraps each `Activity`/`Service` base context (`attachBaseContext`) with that locale, then recreates the activity. **No AppCompat dependency** (the app is Compose-only on `ComponentActivity`). Notification channels are re-created with the localised context so their names follow the language. |
@@ -355,7 +356,7 @@ Changing the English meaning of an existing key: rename the key instead of editi
 ### 9.3 Quality rules for translators
 
 - Use everyday words people use when renting in that region, not formal or Sanskritised/literary forms. Prefer a native word when it is common (किराया, வாடகை, అద్దె); keep English loanwords when they are what people say (पार्किंग, BHK, API).
-- Keep "BHK", "API", "URL", "CORS", "House Hunt", "OpenStreetMap" unchanged.
+- Keep "BHK", "API", "URL", "CORS", "Doorprints", "OpenStreetMap" unchanged (the brand is never translated or transliterated; attach suffixes with a hyphen or directly, as in "Doorprints-க்கு").
 - Buttons are verbs (imperative, polite form: हिन्दी "-एँ", Tamil plain imperative as in Android Tamil UI, Telugu "-ండి" forms for actions).
 - Keep labels short; Tamil and Telugu can be 30–50 % longer. The layouts wrap, but check the header and the checklist on a 320 px screen.
 - Accessible names must contain the visible label text (WCAG 2.5.3).
@@ -365,6 +366,8 @@ Changing the English meaning of an existing key: rename the key instead of editi
 
 | Term (key) | English | हिन्दी (hi) | தமிழ் (ta) | తెలుగు (te) | Notes |
 |---|---|---|---|---|---|
+| app.name | Doorprints | Doorprints | Doorprints | Doorprints | Brand, never translated (was "House Hunt" until 2026-09-22). |
+| app.tagline | Remember every house you've seen. | देखा हुआ हर मकान याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. | Web `app.tagline`, Android `app_tagline` (same wording on both). |
 | house | House | मकान | வீடு | ఇల్లు | Hindi "घर" means home; "मकान" is the building being rented or bought. |
 | map | Map | नक्शा | வரைபடம் | మ్యాప్ | Telugu loanword is more common in apps than "పటం". |
 | compare | Compare | तुलना | ஒப்பிடு | పోల్చండి | – |

@@ -2,9 +2,11 @@ import { Dict } from './en';
 
 /** Telugu (తెలుగు). Keep "BHK", "API", URLs and brand names as they are. */
 export const te: Dict = {
-  'app.name': 'House Hunt',
+  'app.name': 'Doorprints',
+  'app.tagline': 'మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.',
+  'app.description': 'Doorprints: మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. మీరు చూసే ఇళ్లను సేవ్ చేసి, రేటింగ్ ఇచ్చి, పోల్చండి.',
   'app.skip': 'ప్రధాన కంటెంట్‌కు వెళ్లండి',
-  'app.homeLink': 'House Hunt హోమ్',
+  'app.homeLink': 'Doorprints హోమ్',
   'nav.label': 'ప్రధాన',
   'nav.map': 'మ్యాప్',
   'nav.compare': 'పోల్చండి',
@@ -12,12 +14,12 @@ export const te: Dict = {
   'lang.label': 'భాష',
   'lang.changed': 'భాష తెలుగుకు మార్చబడింది',
 
-  'title.app': 'House Hunt',
-  'title.map': 'ఇళ్లు · House Hunt',
-  'title.newHouse': 'కొత్త ఇల్లు · House Hunt',
-  'title.house': 'ఇంటి వివరాలు · House Hunt',
-  'title.compare': 'పోలిక · House Hunt',
-  'title.connect': 'కనెక్షన్ · House Hunt',
+  'title.app': 'Doorprints',
+  'title.map': 'ఇళ్లు · Doorprints',
+  'title.newHouse': 'కొత్త ఇల్లు · Doorprints',
+  'title.house': 'ఇంటి వివరాలు · Doorprints',
+  'title.compare': 'పోలిక · Doorprints',
+  'title.connect': 'కనెక్షన్ · Doorprints',
 
   'common.loading': 'లోడ్ అవుతోంది…',
   'common.untitled': 'పేరు లేదు',
@@ -205,7 +207,7 @@ export const te: Dict = {
   'compare.footnote': 'తనిఖీ జాబితాలోని ప్రతి అంశానికి 0 నుండి 5 వరకు స్కోర్. ప్రతి వరుసలో ఉత్తమ విలువ హైలైట్ చేసి ✓ గుర్తు పెట్టబడింది.',
 
   'connect.title': 'మీ సర్వర్‌కు కనెక్ట్ అవ్వండి',
-  'connect.intro': 'మీ House Hunt సర్వర్ చిరునామాను, దాని API కీని నమోదు చేయండి. ఇవి ఈ బ్రౌజర్‌లో మాత్రమే సేవ్ అవుతాయి.',
+  'connect.intro': 'మీ Doorprints సర్వర్ చిరునామాను, దాని API కీని నమోదు చేయండి. ఇవి ఈ బ్రౌజర్‌లో మాత్రమే సేవ్ అవుతాయి.',
   'connect.baseUrl': 'API చిరునామా (URL)',
   'connect.apiKey': 'API కీ',
   'connect.show': 'చూపించు',
@@ -230,8 +232,8 @@ export const te: Dict = {
   'confirm.remove': 'తీసివేయండి',
   'nav.ask': 'అడగండి',
   'nav.plan': 'సందర్శనల ప్రణాళిక',
-  'title.ask': 'అడగండి · House Hunt',
-  'title.plan': 'సందర్శనల ప్రణాళిక · House Hunt',
+  'title.ask': 'అడగండి · Doorprints',
+  'title.plan': 'సందర్శనల ప్రణాళిక · Doorprints',
   'connect.remember': 'ఈ పరికరంలో గుర్తుంచుకోండి',
   'connect.rememberHint': 'ఆఫ్: ఈ ట్యాబ్ మూసివేయగానే కీ మరచిపోబడుతుంది. షేర్ చేసిన కంప్యూటర్లలో ఆఫ్‌లోనే ఉంచండి.',
   'ai.disabled': 'మీ సర్వర్‌లో AI ఫీచర్లు ఆఫ్‌లో ఉన్నాయి.',

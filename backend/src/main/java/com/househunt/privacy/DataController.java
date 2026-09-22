@@ -32,7 +32,7 @@ public class DataController {
 
     @GetMapping("/export")
     public ResponseEntity<DataService.Export> export() {
-        var name = "house-hunt-export-" + LocalDate.now(ZoneOffset.UTC) + ".json";
+        var name = "doorprints-export-" + LocalDate.now(ZoneOffset.UTC) + ".json";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "\"")
                 .body(service.export());

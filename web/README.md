@@ -1,6 +1,8 @@
-# House Hunt — web
+# Doorprints — web
 
-Angular 22 single-page app for the House Hunt API: a map + list of houses, house details (checklist,
+*Remember every house you've seen.*
+
+Angular 22 single-page app for the Doorprints API (formerly "House Hunt"): a map + list of houses, house details (checklist,
 rating, photos, visits) and a side-by-side comparison. Uses MapLibre GL with the free
 [OpenFreeMap](https://openfreemap.org) "liberty" style (no API key).
 
@@ -56,13 +58,16 @@ must fall back to `index.html`:
   `public/_redirects` (`/* /index.html 200`) is copied into the build and handles the SPA fallback.
 - **GitHub Pages** — copy `index.html` to `404.html` so deep links work (`npm run build:pages` builds
   and makes that copy). If the site lives under a sub-path, build with that base href instead:
-  `npx ng build --base-href /house-hunt/ && cp dist/web/browser/index.html dist/web/browser/404.html`.
+  `npx ng build --base-href /doorprints/ && cp dist/web/browser/index.html dist/web/browser/404.html`.
 
 `public/_headers` adds a strict Content-Security-Policy, HSTS and other security headers on Cloudflare Pages and
 Netlify. GitHub Pages cannot send headers; prefer Cloudflare Pages if you can.
 
-Remember to add the deployed origin (e.g. `https://house-hunt.pages.dev`) to the API's
+Remember to add the deployed origin (e.g. `https://doorprints.pages.dev`) to the API's
 `APP_CORS_ORIGINS`, and use an HTTPS API URL — browsers block calls from an HTTPS page to an HTTP API.
+
+Browser storage keys keep the old `house-hunt.` prefix (`house-hunt.lang`, `house-hunt.api-config`) so
+settings saved before the rename to Doorprints are not lost.
 
 Address lookup ("Fill address from map") uses the public OpenStreetMap Nominatim service and is only
 called when you press the button, in line with its usage policy.
@@ -72,3 +77,5 @@ called when you press the button, in line with its usage policy.
 | Date       | Change                                                                  |
 |------------|-------------------------------------------------------------------------|
 | 2026-09-22 | Added Vitest unit tests (`npm test`, `npm run test:ci`) and this log.   |
+| 2026-09-22 | Renamed the product to Doorprints (tagline "Remember every house you've seen."): title, meta description, favicon, header, page titles, all four dictionaries (new `app.tagline` key), package name `doorprints-web`. Storage keys unchanged. |
+| 2026-09-22 | Meta description now comes from a new `app.description` key (English matches `index.html`) and is updated only on language change, in its own effect; the tagline is no longer used for it. Hindi tagline confirmed as "देखा हुआ हर मकान याद रखें।" (same as Android and the docs/05 glossary). Added `i18n-title.strategy.spec.ts`. |

@@ -2,6 +2,8 @@
 <!-- Telugu. Generated from one table so every language has the same keys and placeholders;
      names mirror the web keys (web/src/app/i18n/en.ts) with "_" for ".". See docs/05 section 8.2. -->
 <resources>
+    <string name="app_name">Doorprints</string>
+    <string name="app_tagline">మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.</string>
     <string name="nav_map">మ్యాప్</string>
     <string name="nav_houses">ఇళ్లు</string>
     <string name="nav_compare">పోల్చండి</string>
@@ -122,7 +124,7 @@
     <string name="compare_footnote">తనిఖీ జాబితాకు 0 నుండి 5 వరకు స్కోర్. తెరవడానికి ఇంటి పేరు నొక్కండి.</string>
     <string name="settings_title">సెట్టింగ్‌లు</string>
     <string name="settings_server">సర్వర్ (ఐచ్ఛికం)</string>
-    <string name="settings_server_intro">యాప్ ఇంటర్నెట్ లేకుండా పూర్తిగా పనిచేస్తుంది. డేటా బ్యాకప్ చేయడానికి, వెబ్‌లో చూడటానికి మీ House Hunt సర్వర్‌ను కనెక్ట్ చేయండి.</string>
+    <string name="settings_server_intro">యాప్ ఇంటర్నెట్ లేకుండా పూర్తిగా పనిచేస్తుంది. డేటా బ్యాకప్ చేయడానికి, వెబ్‌లో చూడటానికి మీ Doorprints సర్వర్‌ను కనెక్ట్ చేయండి.</string>
     <string name="settings_url">సర్వర్ URL</string>
     <string name="settings_url_hint">ఉదా. https://my-api.example.com</string>
     <string name="settings_url_https">https:// చిరునామా వాడండి. సాధారణ http:// కేవలం localhost, ఎమ్యులేటర్ (10.0.2.2) కోసమే.</string>
@@ -145,6 +147,7 @@
     <string name="settings_gps_note">GPS సాధారణంగా 5–20 మీ వరకు ఖచ్చితంగా ఉంటుంది, కాబట్టి పక్కపక్క ఇళ్లు గందరగోళం కావచ్చు. సిగ్నల్ బలహీనంగా ఉంటే (లోపల) హెచ్చరికలు ఆగుతాయి, బ్యాటరీ తక్కువైతే హంట్ మోడ్ దానంతట అదే ఆగుతుంది.</string>
     <string name="settings_privacy">గోప్యత</string>
     <string name="settings_privacy_note">మీ ఇళ్లు, సందర్శనలు ఈ ఫోన్‌లో, మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు ఫోన్ జియోకోడర్ (Google) నుండి వస్తాయి. ఫోటోలు స్థాన సమాచారం లేకుండా సేవ్ అవుతాయి.</string>
+    <string name="settings_about">యాప్ గురించి</string>
     <string name="sync_ok">సింక్ అయింది: పంపినవి %1$d, అందినవి %2$d</string>
     <string name="sync_ok_photos_waiting">సింక్ అయింది: పంపినవి %1$d, అందినవి %2$d. Wi-Fi కోసం వేచి ఉన్న ఫోటోలు: %3$d</string>
     <string name="sync_not_configured">సర్వర్ సెట్ చేయలేదు: ఆఫ్‌లైన్‌లో పనిచేస్తోంది</string>
@@ -179,7 +182,7 @@
     <string name="ai_provider_down">AI సేవ అందుబాటులో లేదు లేదా ఉచిత పరిమితి అయిపోయింది. తర్వాత ప్రయత్నించండి.</string>
     <string name="ai_disclosure">మీ ప్రశ్న, సరిపోలే ఇంటి గమనికలు మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడతాయి.</string>
     <string name="notif_channel_hunt">హంట్ మోడ్</string>
-    <string name="notif_channel_hunt_desc">House Hunt మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
+    <string name="notif_channel_hunt_desc">Doorprints మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
     <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>
     <string name="notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు</string>
     <string name="notif_hunt_title">హంట్ మోడ్ ఆన్‌లో ఉంది</string>
@@ -193,7 +196,7 @@
     <string name="notif_street_text_since">సేవ్ చేసిన ఇళ్లు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s</string>
     <string name="notif_stay_title">మీరు ఏదైనా ఇంటి దగ్గర ఉన్నారా?</string>
     <string name="notif_stay_text">మీరు కొన్ని నిమిషాలుగా ఇక్కడ ఉన్నారు. గమనికలు, ఫోటోలతో సేవ్ చేయడానికి నొక్కండి.</string>
-    <string name="notif_public">House Hunt హెచ్చరిక</string>
+    <string name="notif_public">Doorprints హెచ్చరిక</string>
     <string name="notif_battery_title">హంట్ మోడ్ ఆగింది</string>
     <string name="notif_battery_text">బ్యాటరీ తక్కువగా ఉంది (%1$d%%). ఛార్జ్ చేస్తున్నప్పుడు హంట్ మోడ్ మళ్లీ ఆన్ చేయండి.</string>
 </resources>
