@@ -27,11 +27,28 @@ spring:
   # Spring AI (only used when app.ai.enabled=true). Which Spring AI auto-configurations are active
   # is decided by com.househunt.ai.config.AiDefaultsEnvironmentPostProcessor: with AI disabled it
   # forces spring.ai.model.*=none, spring.ai.vectorstore.type=none and turns the MCP server off,
-  # so the app starts without any key. Chat = any OpenAI-compatible endpoint (default: the Gemini
-  # API free tier; Ollama works too). Embeddings = app.ai.embedding.provider (default google-genai,
-  # the native Gemini API; openai = the settings below). See docs/ai/ai-design.md section 3.1.
+  # so the app starts without any key. Provider = app.ai.provider (AI_PROVIDER):
+  #   aistudio (default): chat = any OpenAI-compatible endpoint (default: the Gemini API; Ollama
+  #     works too), embeddings = app.ai.embedding.provider (default google-genai, the native Gemini
+  #     API; openai = the settings below). See docs/ai/ai-design.md section 3.1.
+  #   vertex: Google Cloud Vertex AI with Application Default Credentials: chat = spring.ai.google.genai
+  #     below, embeddings = com.househunt.ai.embedding.VertexEmbeddingModel. See docs/ai/ai-design.md
+  #     sections 2.1, 3.3 and docs/ai/vertex-setup.md.
   # ---------------------------------------------------------------------------------------------
   ai:
+    # Only used with app.ai.provider=vertex. The google-genai Client (project, location, ADC, timeout,
+    # retries) is built by com.househunt.ai.vertex.VertexAiConfiguration from app.ai.vertex below; no
+    # api-key / project-id / credentials-uri is set here on purpose (ADC only, no keys in config).
+    google:
+      genai:
+        chat:
+          # Same model ids as AI Studio (gemini-3.5-flash, gemini-3.5-flash-lite, ...).
+          model: ${AI_CHAT_MODEL:gemini-3.5-flash}
+          temperature: 0.2
+          # Thinking level is left at the model's default; to lower it set the environment variable
+          # SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW (MINIMAL | LOW | MEDIUM | HIGH, Gemini 3.x).
+          # Explicit context caching is not used (prompts are small and per-user).
+          enable-cached-content: false
     openai:
       base-url: ${AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai/}
       api-key: ${AI_API_KEY:}
@@ -136,6 +153,11 @@ app:
   ai:
     # Master switch for /api/ai/** (extract-listing, ask, plan-visits, reindex). Off by default.
     enabled: ${APP_AI_ENABLED:false}
+    # aistudio (default): Gemini Developer API key (AI_API_KEY). vertex: Google Cloud Vertex AI, Application
+    # Default Credentials, settings in app.ai.vertex. Model, dimensions, retries and timeout below apply to both.
+    provider: ${AI_PROVIDER:aistudio}
+    # Embed a house right after each save (async). false = only POST /api/ai/reindex embeds (fewer provider calls).
+    index-on-change: ${AI_INDEX_ON_CHANGE:true}
     max-input-chars: ${AI_MAX_INPUT_CHARS:8000}
     max-question-chars: ${AI_MAX_QUESTION_CHARS:1000}
     max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
@@ -165,6 +187,17 @@ app:
       task-type: ${AI_EMBEDDING_TASK_TYPE:}
       max-retries: ${AI_MAX_RETRIES:2}
       timeout: ${AI_TIMEOUT:60s}
+    vertex:
+      # Only used with provider=vertex. Auth = Application Default Credentials (Workload Identity Federation in
+      # GitHub Actions, the attached service account on Cloud Run, `gcloud auth application-default login` locally).
+      project-id: ${GCP_PROJECT_ID:}
+      # Mumbai (India data residency / latency). `global` has the widest model availability (no residency guarantee).
+      location: ${GCP_LOCATION:asia-south1}
+      # Empty = same as location. Set (e.g. us-central1 or global) if the embedding model is not offered there.
+      embedding-location: ${AI_VERTEX_EMBEDDING_LOCATION:}
+      # Empty = derived from the location (https://<location>-aiplatform.googleapis.com, global: aiplatform.googleapis.com).
+      endpoint: ${AI_VERTEX_ENDPOINT:}
+      api-version: ${AI_VERTEX_API_VERSION:v1beta1}
   mcp:
     # Exposes read-only tools at /mcp (Streamable HTTP, same X-API-Key). Off by default.
     enabled: ${APP_MCP_ENABLED:false}

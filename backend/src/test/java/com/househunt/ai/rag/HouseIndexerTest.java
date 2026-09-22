@@ -1,6 +1,9 @@
 package com.househunt.ai.rag;
 
+import com.househunt.ai.ProviderErrors;
+import com.househunt.ai.embedding.GeminiEmbeddingModel;
 import com.househunt.house.House;
+import com.househunt.house.HouseChangedEvent;
 import com.househunt.house.HouseRepository;
 import com.househunt.visit.VisitRepository;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -19,6 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -58,6 +63,44 @@ class HouseIndexerTest {
                 .hasMessage("AI reindex incomplete: 20 house(s) in 1 of 2 batch(es) not indexed, 5 indexed")
                 .hasMessageNotContaining("provider down");
         verify(vectorStore, times(2)).add(anyList());
+    }
+
+    @Test
+    void reindexStopsAtTheFirstQuotaErrorInsteadOfBurningMoreCalls() {
+        when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(liveHouses(2 * HouseIndexer.BATCH + 5));
+        when(houses.findBySyncVersionGreaterThanOrderBySyncVersion(0)).thenReturn(List.of());
+        var quota = new GeminiEmbeddingModel.GeminiEmbeddingException(
+                "Vertex AI embedding request failed: HTTP 429 (RESOURCE_EXHAUSTED)", 429, "RESOURCE_EXHAUSTED");
+        doNothing().doThrow(new RuntimeException("wrapped", quota)).when(vectorStore).add(anyList());
+
+        assertThatThrownBy(indexer::reindexAll)
+                .isInstanceOfSatisfying(HouseIndexer.ReindexFailedException.class, e -> {
+                    assertThat(e.quotaExhausted()).isTrue();
+                    assertThat(e.indexed()).isEqualTo(HouseIndexer.BATCH);
+                    assertThat(e.failed()).isEqualTo(HouseIndexer.BATCH + 5);
+                    assertThat(ProviderErrors.isQuotaExhausted(e)).isTrue();
+                })
+                .hasMessage("AI reindex incomplete: 25 house(s) in 2 of 3 batch(es) not indexed, 20 indexed "
+                        + "(stopped: provider quota exhausted)");
+        verify(vectorStore, times(2)).add(anyList()); // the third batch was never sent
+    }
+
+    @Test
+    void indexOnChangeOffSkipsEmbeddingButStillRemovesDeletedHouses() {
+        var off = new HouseIndexer(houses, visits, vectorStore, false);
+        var live = liveHouses(1).getFirst();
+        var gone = new House(UUID.randomUUID());
+        gone.setLabel("gone");
+        gone.setDeleted(true);
+        when(houses.findById(live.getId())).thenReturn(Optional.of(live));
+        when(houses.findById(gone.getId())).thenReturn(Optional.of(gone));
+
+        off.onHouseChanged(new HouseChangedEvent(live.getId()));
+        off.onHouseChanged(new HouseChangedEvent(gone.getId()));
+
+        verify(vectorStore, never()).add(anyList());
+        verify(vectorStore, never()).delete(List.of(live.getId().toString()));
+        verify(vectorStore).delete(List.of(gone.getId().toString()));
     }
 
     @Test

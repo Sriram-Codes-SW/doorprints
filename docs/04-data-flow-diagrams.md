@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.5 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -17,6 +17,7 @@
 | 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): the unnamed embedding request in the AI DFD (section 6) is now **DF-32** (P6 ↔ E6), with a data dictionary row: by default embeddings go to the native Gemini endpoint `models/{model}:batchEmbedContents` with the key in the `x-goog-api-key` header; Ollama uses the OpenAI-compatible `/embeddings`. Same external host as chat, no new trust boundary. DF-23 (P6 ↔ D6 vectors in pgvector) is unchanged. The contact name is part of the DF-32 embedding text and the DF-21 context and is not redacted ([02](02-threat-model.md) F-30): C2 handling rule, DF-21 and DF-32 rows and the level-0/AI diagram labels ("redacted" removed from DF-21 and P6.3) corrected. |
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): contact redaction (C-13) is in code, so F-30 is Fixed ([02](02-threat-model.md) v0.6): C2 handling rule, DF-21 and DF-32 rows and the diagram labels (level-0 DF-21, AI P6.3 and DF-32) say the contact name and phone are redacted. |
 | 0.5 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13), names only: level-0 process P0 and DF-07 (lock screen shows "Doorprints alert"). The store names `househunt.db` (D1) and `house-hunt.api-config` (D5) are unchanged on purpose so existing data and settings keep working. No new flow, store or trust boundary. |
+| 0.6 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI provider (AI team, same change set; [10](10-sprint-log.md) C-24 asked for this sync when the code landed). **E6** now has three forms chosen by `AI_PROVIDER`: Gemini API / AI Studio (`generativelanguage.googleapis.com`, `x-goog-api-key`), **Vertex AI** (`<location>-aiplatform.googleapis.com`, or `aiplatform.googleapis.com` for `global`, or `aiplatform.<loc>.rep.googleapis.com` for the multi-regions `us`/`eu` (added in review); OAuth bearer tokens from Application Default Credentials / Workload Identity Federation) and Ollama. New note in section 6 on E6. **DF-21** and **DF-32** give the endpoint, credential and the Vertex **location as a data-residency attribute** (default `asia-south1`, Mumbai; `global` gives no residency guarantee; embeddings may use a separate `AI_VERTEX_EMBEDDING_LOCATION`). DF-22 unchanged. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -268,7 +269,7 @@ The AI team owns the detailed design ([ai/](ai/)). This diagram fixes the trust 
 ```mermaid
 flowchart TB
     E1["E1 User"]
-    E6["E6 LLM provider - Gemini or Ollama<br/>chat and embeddings, same host"]
+    E6["E6 LLM provider - Gemini API, Vertex AI or Ollama<br/>chat and embeddings, one provider at a time"]
     E8["E8 MCP client - optional"]
     subgraph TB3["TB3 API host"]
         P60(("P6.0 Auth, AI flag, quota"))
@@ -307,6 +308,19 @@ flowchart TB
     P65 -->|"answer + valid citations, or draft house"| E1
     P7 -->|"read-only queries"| D4
 ```
+
+**E6, the LLM provider, has one of three forms**, chosen by `AI_PROVIDER` (`app.ai.provider`) and never mixed at run
+time ([03](03-design.md) §13, [ai/ai-design.md](ai/ai-design.md) §2.1, §3.3):
+
+| Form | Host | Credential on the wire | Where the data is processed |
+|---|---|---|---|
+| Gemini API / AI Studio (`aistudio`, default) | `generativelanguage.googleapis.com` (chat on the OpenAI-compatible path, embeddings on the native API) | API key: `Authorization: Bearer` for chat (OpenAI-compatible client), `x-goog-api-key` header for embeddings; never in the URL | Google chooses; the free tier may use prompts to improve Google products, so real data only with a paid-tier key (PRV-022, [02](02-threat-model.md) T-I20) |
+| Vertex AI (`vertex`) | `<location>-aiplatform.googleapis.com` (for example `asia-south1-aiplatform.googleapis.com`), or `aiplatform.googleapis.com` for `global`; the multi-regions `us` and `eu` use `aiplatform.<loc>.rep.googleapis.com` (for example `aiplatform.eu.rep.googleapis.com`, `VertexEndpoints`); path `/v1beta1/projects/<project>/locations/<location>/publishers/google/models/<model>:generateContent`, `:embedContent` or `:predict` | Short-lived OAuth access token (`Authorization: Bearer`) from Application Default Credentials: Workload Identity Federation in CI, the attached service account on Cloud Run, `gcloud` locally, or a JSON key only on a non-Google host ([02](02-threat-model.md) T-I22); optional `x-goog-user-project`. No API key | The **location** is a data-residency attribute of the flow: `GCP_LOCATION` (default `asia-south1`, Mumbai) for chat and `AI_VERTEX_EMBEDDING_LOCATION` (default the same) for embeddings; `global` lets Google pick the region, with no residency guarantee. Model availability per location is checked in [ai/vertex-setup.md](ai/vertex-setup.md) step 8 |
+| Ollama (`aistudio` with `AI_BASE_URL` and `AI_EMBEDDING_PROVIDER=openai`) | localhost or the owner's VM | Any non-empty value | On the owner's machine |
+
+In every form chat and embeddings go to the same provider, so the TB3 ↔ TB6 boundary of [02](02-threat-model.md)
+is the only one crossed; Vertex AI adds the token exchange with Google's identity services, which carries no house
+data.
 
 ### 6.1 AI flows from the clients (wave 2 UI)
 
@@ -365,7 +379,7 @@ The start location for "Plan visits" (class C3) goes to the API and, as part of 
 | DF-18 | P4 → E5 | lat, lon (+ IP, Referer, User-Agent) | C3 point / C1 result | HTTPS | Only on button press |
 | DF-19 | P1/P4 → E3 | tile z/x/y, style (+ IP) | C1 | HTTPS | Shows the area viewed |
 | DF-20 | P5 ↔ D4 | SQL rows, photo bytea | **C3** | JDBC, TLS required (SEC-019) | |
-| DF-21 | P6 → E6 | system prompt, question, retrieved house text (contact name and phone redacted, F-30 Fixed) or listing text | C2 | HTTPS to provider, or localhost for Ollama | Opt-in (AI-001, AI-010) |
+| DF-21 | P6 → E6 | system prompt, question, retrieved house text (contact name and phone redacted, F-30 Fixed) or listing text | C2 | HTTPS to the provider chosen by `AI_PROVIDER` (section 6, E6): AI Studio `generativelanguage.googleapis.com/v1beta/openai/` with the API key; Vertex AI `POST https://<location>-aiplatform.googleapis.com/v1beta1/projects/<p>/locations/<l>/publishers/google/models/<model>:generateContent` (host `aiplatform.googleapis.com` for `global`, `aiplatform.<loc>.rep.googleapis.com` for the multi-regions `us`/`eu`) with an OAuth bearer token from ADC (no API key); or localhost for Ollama. **Location (Vertex AI):** `GCP_LOCATION`, default `asia-south1` (processing in India); `global` has no residency guarantee | Opt-in (AI-001, AI-010). Real user data only to a paid tier or Vertex AI (PRV-022). Credential: [02](02-threat-model.md) T-I20, T-I22 |
 | DF-22 | E6 → P6 | completion, structured JSON | C2, **untrusted** | HTTPS | Validated (AI-005) |
 | DF-23 | P6 ↔ D6 | vectors + source IDs + chunk text | C2 | JDBC TLS | Deleted with the source (AI-011) |
 | DF-24 | E7 → P5 | container image / deploy hook | C1 (integrity critical) | HTTPS, GitHub OIDC or secret | 07 |
@@ -376,7 +390,7 @@ The start location for "Plan visits" (class C3) goes to the API and, as part of 
 | DF-29 | P5 → E1 (download) | `GET /api/export` JSON of all live data | **C3** | HTTPS + key | Attachment; handle as sensitive |
 | DF-30 | E1 → P5 | `DELETE /api/data` + `X-Confirm-Delete` | – | HTTPS + key | Irreversible; logged at WARN |
 | DF-31 | P1/P4 → P5 → P6 | plan-visits start lat/lon | **C3** | HTTPS + key | Only on user action |
-| DF-32 | P6 ↔ E6 | Embedding request: house text built by `HouseDocuments` (label, address, street, locality, price, size, status, rating, checklist, visit summary, notes; no contact line, and the contact name and phone-like numbers in free text are replaced by `[contact]` / `[phone]`) on indexing, the question on Ask; response: 768-d vectors | C2 | Default (`AI_EMBEDDING_PROVIDER=google-genai`): HTTPS to the native Gemini API `POST …/v1beta/models/{model}:batchEmbedContents`, key only in the `x-goog-api-key` header (never in the URL), no redirects followed. `openai` (Ollama): OpenAI-compatible `/embeddings` at `AI_BASE_URL`, localhost or HTTPS | Opt-in (AI-001). Same external host and TB3 ↔ TB6 boundary as DF-21/DF-22 (02), so no new trust boundary. Contact redaction by `ContactRedactor` since Sprint 3 (F-30 Fixed, [02](02-threat-model.md)); reindex once after deploying. Named in v0.3 (the flow existed unnamed since v0.1). |
+| DF-32 | P6 ↔ E6 | Embedding request: house text built by `HouseDocuments` (label, address, street, locality, price, size, status, rating, checklist, visit summary, notes; no contact line, and the contact name and phone-like numbers in free text are replaced by `[contact]` / `[phone]`) on indexing, the question on Ask; response: 768-d vectors | C2 | `AI_PROVIDER=aistudio` (default) with `AI_EMBEDDING_PROVIDER=google-genai`: HTTPS to the native Gemini API `POST …/v1beta/models/{model}:batchEmbedContents` (up to 100 texts per call), key only in the `x-goog-api-key` header (never in the URL), no redirects followed. `openai` (Ollama): OpenAI-compatible `/embeddings` at `AI_BASE_URL`, localhost or HTTPS. `AI_PROVIDER=vertex`: HTTPS `POST https://<location>-aiplatform.googleapis.com/v1beta1/projects/<p>/locations/<l>/publishers/google/models/<model>:embedContent` (host as in DF-21, including `aiplatform.<loc>.rep.googleapis.com` for `us`/`eu`) (`gemini-embedding-2`) or `:predict` (`gemini-embedding-001`), **one text per call**, OAuth bearer token from ADC, no API key; **location** `AI_VERTEX_EMBEDDING_LOCATION` (default `GCP_LOCATION`, `asia-south1`) is the data-residency attribute and may differ from the chat location | Opt-in (AI-001). Same provider and TB3 ↔ TB6 boundary as DF-21/DF-22 (02), so no new trust boundary. With `AI_INDEX_ON_CHANGE=false` the per-save embedding request is not sent; only the re-index sends house text. Contact redaction by `ContactRedactor` since Sprint 3 (F-30 Fixed, [02](02-threat-model.md)); reindex once after deploying. Named in v0.3 (the flow existed unnamed since v0.1). |
 
 ## 8. Data store inventory and retention
 

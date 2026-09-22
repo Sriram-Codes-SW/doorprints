@@ -1,5 +1,7 @@
 package com.househunt.ai.rag;
 
+import com.househunt.ai.ProviderErrors;
+import com.househunt.ai.config.AiProperties;
 import com.househunt.house.HouseChangedEvent;
 import com.househunt.house.HouseDto;
 import com.househunt.house.HouseRepository;
@@ -9,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,7 +28,9 @@ import java.util.function.LongSupplier;
 /**
  * Keeps the pgvector index in sync with houses. Changes are indexed asynchronously after the write transaction
  * commits, so a slow or failing embedding call never slows down or rolls back a save from the apps. If an update is
- * missed (provider down, quota exhausted), {@code POST /api/ai/reindex} rebuilds everything.
+ * missed (provider down, quota exhausted), {@code POST /api/ai/reindex} rebuilds everything. With
+ * {@code app.ai.index-on-change=false} ({@code AI_INDEX_ON_CHANGE}) saves are not embedded and only the full re-index
+ * embeds (the eval harness uses this to halve its embedding calls); deletes still remove the house from the index.
  */
 @Service
 @ConditionalOnBooleanProperty("app.ai.enabled")
@@ -40,22 +45,43 @@ public class HouseIndexer {
     private final VisitRepository visits;
     private final VectorStore vectorStore;
     private final FailureSummary asyncFailures = new FailureSummary(log, FAILURE_WINDOW, System::nanoTime);
+    private final boolean indexOnChange;
 
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore) {
+        this(houses, visits, vectorStore, true);
+    }
+
+    @Autowired
+    public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, AiProperties props) {
+        this(houses, visits, vectorStore, props.indexOnChange());
+    }
+
+    HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, boolean indexOnChange) {
         this.houses = houses;
         this.visits = visits;
         this.vectorStore = vectorStore;
+        this.indexOnChange = indexOnChange;
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onHouseChanged(HouseChangedEvent event) {
         try {
-            index(event.houseId());
+            if (indexOnChange) {
+                index(event.houseId());
+            } else {
+                // No embedding call, but a deleted house still leaves the index at once (AI-011).
+                removeIfDeleted(event.houseId());
+            }
             asyncFailures.success();
         } catch (RuntimeException e) {
             asyncFailures.failure(event.houseId(), e);
         }
+    }
+
+    private void removeIfDeleted(UUID houseId) {
+        var house = houses.findById(houseId).orElse(null);
+        if (house == null || house.isDeleted()) vectorStore.delete(List.of(houseId.toString()));
     }
 
     /** Reports failures still pending once their window is over, even if no further update comes in. */
@@ -75,8 +101,10 @@ public class HouseIndexer {
 
     /**
      * Re-embeds every live house (in batches of {@value #BATCH}) and removes documents of deleted ones. A failing batch
-     * does not stop the others; failures are logged as ONE WARN at the end (per-batch detail and the provider error
-     * class at DEBUG), and {@link ReindexFailedException} reports how many houses were not indexed.
+     * does not stop the others, except when the provider reports its quota exhausted (HTTP 429 after the embedding
+     * model's own retries): then the remaining batches are skipped instead of spending more calls on certain failures.
+     * Failures are logged as ONE WARN at the end (per-batch detail and the provider error class at DEBUG), and
+     * {@link ReindexFailedException} reports how many houses were not indexed and whether quota was the cause.
      *
      * @return the number of houses indexed
      */
@@ -86,6 +114,7 @@ public class HouseIndexer {
         int indexed = 0;
         int failedHouses = 0;
         int failedBatches = 0;
+        boolean quotaExhausted = false;
         for (int b = 0; b < batches; b++) {
             var slice = live.subList(b * BATCH, Math.min(live.size(), (b + 1) * BATCH));
             try {
@@ -98,6 +127,15 @@ public class HouseIndexer {
                 failedHouses += slice.size();
                 log.debug("AI reindex batch {}/{} failed ({} house(s)): {}", b + 1, batches, slice.size(),
                         e.getClass().getName());
+                if (ProviderErrors.isQuotaExhausted(e)) {
+                    quotaExhausted = true;
+                    int skipped = live.size() - (b + 1) * BATCH;
+                    if (skipped > 0) {
+                        failedHouses += skipped;
+                        failedBatches += batches - (b + 1);
+                    }
+                    break;
+                }
             }
         }
         var deletedIds = houses.findBySyncVersionGreaterThanOrderBySyncVersion(0).stream()
@@ -106,7 +144,7 @@ public class HouseIndexer {
                 .toList();
         if (!deletedIds.isEmpty()) vectorStore.delete(deletedIds);
         if (failedBatches > 0) {
-            var failed = new ReindexFailedException(indexed, failedHouses, failedBatches, batches);
+            var failed = new ReindexFailedException(indexed, failedHouses, failedBatches, batches, quotaExhausted);
             log.warn(failed.getMessage());
             throw failed;
         }
@@ -119,12 +157,24 @@ public class HouseIndexer {
     public static class ReindexFailedException extends RuntimeException {
         private final int indexed;
         private final int failed;
+        private final boolean quotaExhausted;
 
         ReindexFailedException(int indexed, int failed, int failedBatches, int batches) {
+            this(indexed, failed, failedBatches, batches, false);
+        }
+
+        ReindexFailedException(int indexed, int failed, int failedBatches, int batches, boolean quotaExhausted) {
             super("AI reindex incomplete: " + failed + " house(s) in " + failedBatches + " of " + batches
-                    + " batch(es) not indexed, " + indexed + " indexed");
+                    + " batch(es) not indexed, " + indexed + " indexed"
+                    + (quotaExhausted ? " (stopped: provider quota exhausted)" : ""));
             this.indexed = indexed;
             this.failed = failed;
+            this.quotaExhausted = quotaExhausted;
+        }
+
+        /** The provider answered 429 / RESOURCE_EXHAUSTED and the remaining batches were skipped. */
+        public boolean quotaExhausted() {
+            return quotaExhausted;
         }
 
         public int indexed() {

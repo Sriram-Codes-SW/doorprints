@@ -2,9 +2,10 @@ package com.househunt.ai.eval;
 
 import com.househunt.ai.eval.EvalScorer.CaseResult;
 import com.househunt.ai.eval.EvalScorer.Metric;
+import com.househunt.ai.web.AiExceptionHandler;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static com.househunt.ai.eval.EvalScorer.ASK;
 import static com.househunt.ai.eval.EvalScorer.EXTRACT;
@@ -39,11 +41,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * End-to-end evaluation of the AI features against a real model, driven by {@code docs/ai/evals/golden-set.json}.
  *
- * <p>Skipped unless {@code AI_API_KEY} is set, so the normal build never calls a model (costs quota, and the answers
- * are not deterministic). Run it with {@code .github/workflows/ai-evals.yml} (manual) or locally:
+ * <p>Skipped unless a provider is configured ({@code AI_API_KEY} for AI Studio, or {@code AI_PROVIDER=vertex} with
+ * {@code GCP_PROJECT_ID} and Application Default Credentials), so the normal build never calls a model (costs quota,
+ * and the answers are not deterministic). Run it with {@code .github/workflows/ai-evals.yml} (manual) or locally:
  * <pre>
  * AI_API_KEY=... DB_URL=... mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test
+ * AI_PROVIDER=vertex GCP_PROJECT_ID=... DB_URL=... mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test
  * </pre>
+ * <p>Quota-aware: when the provider's quota is exhausted (the app answers 503 with {@code code: AI_QUOTA_EXHAUSTED},
+ * i.e. HTTP 429 / RESOURCE_EXHAUSTED from AI Studio or Vertex AI) and one wait of Retry-After does not help, the run
+ * stops, the scorecard says {@code STOPPED: provider quota exhausted} and the test fails, instead of recording every
+ * remaining case as an error. To save calls, saves are not embedded one by one ({@code app.ai.index-on-change=false});
+ * the single re-index embeds each fixture house once.
  * Flow: seed the fixture houses and visits through the public API ({@code PUT /api/houses/{id}},
  * {@code PUT /api/visits/{id}}), rebuild the vector index ({@code POST /api/ai/reindex}), run every case through the
  * real HTTP endpoints (API-key filter, validation and sanitizers included), score it with {@link EvalScorer}, write a
@@ -54,12 +63,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * between cases for free-tier rate limits, default 4000) and {@code AI_EVAL_GOLDEN_SET} (another golden set file).
  */
 @Tag("llm-eval")
-@EnabledIfEnvironmentVariable(named = "AI_API_KEY", matches = ".*\\S.*",
-        disabledReason = "LLM eval: needs a real provider key in AI_API_KEY (see .github/workflows/ai-evals.yml)")
+@EnabledIf(value = "providerConfigured",
+        disabledReason = "LLM eval: needs AI_API_KEY (AI Studio) or AI_PROVIDER=vertex + GCP_PROJECT_ID (Vertex AI), "
+                + "see .github/workflows/ai-evals.yml")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "app.ai.enabled=true",
                 "app.mcp.enabled=false",
+                // Only the explicit re-index embeds the fixtures (halves embedding calls, no async races).
+                "app.ai.index-on-change=false",
                 // The eval paces itself; the app's own AI limiter must not turn cases into 429s.
                 "app.ai.rate-limit.requests-per-minute=1000",
                 "app.ai.rate-limit.burst=1000"})
@@ -70,8 +82,17 @@ class GoldenSetEvalTest {
     /** Generated per run, never a literal (nothing for secret scanners); >= 32 characters as the key filter requires. */
     private static final String KEY = "eval-" + UUID.randomUUID();
     static final Path REPORT = Path.of("target", "ai-eval-report.md");
-    /** Provider errors surface as 503 (retryable); free-tier quota errors often clear after a short wait. */
-    private static final int MAX_ATTEMPTS = 4;
+    /** Provider errors surface as 503 (retryable); transient ones often clear after a short wait. */
+    private static final int MAX_ATTEMPTS = 3;
+    /** Quota errors: one wait of Retry-After, then stop the whole run (each attempt already includes provider retries). */
+    private static final int QUOTA_MAX_ATTEMPTS = 2;
+
+    /** JUnit condition: AI Studio key present, or Vertex AI selected with a project id. */
+    static boolean providerConfigured() {
+        var provider = env("AI_PROVIDER", "aistudio").toLowerCase(Locale.ROOT);
+        if (provider.equals("vertex")) return !env("GCP_PROJECT_ID", "").isEmpty();
+        return !env("AI_API_KEY", "").isEmpty();
+    }
 
     @DynamicPropertySource
     static void apiKey(DynamicPropertyRegistry registry) {
@@ -81,11 +102,23 @@ class GoldenSetEvalTest {
     @Value("${local.server.port}")
     int port;
 
+    @Value("${app.ai.provider:aistudio}")
+    String provider;
+
     @Value("${spring.ai.openai.base-url:unknown}")
     String baseUrl;
 
     @Value("${spring.ai.openai.chat.model:unknown}")
-    String chatModel;
+    String openAiChatModel;
+
+    @Value("${spring.ai.google.genai.chat.model:unknown}")
+    String vertexChatModel;
+
+    @Value("${app.ai.vertex.location:}")
+    String vertexLocation;
+
+    @Value("${app.ai.vertex.embedding-location:}")
+    String vertexEmbeddingLocation;
 
     @Value("${app.ai.embedding.model:unknown}")
     String embeddingModel;
@@ -95,6 +128,10 @@ class GoldenSetEvalTest {
 
     private RestClient api;
     private final List<String> warnings = new ArrayList<>();
+    /** Each distinct Vertex AI setup hint is reported once, not once per case. */
+    private final Set<String> reportedSetupHints = new HashSet<>();
+    private static final Pattern SETUP_HINT =
+            Pattern.compile("\"" + AiExceptionHandler.SETUP_HINT_PROPERTY + "\"\\s*:\\s*\"([^\"\\\\]*)\"");
     /** Harness errors (seeding, re-indexing, anything that aborted the run): any entry makes the scorecard FAIL. */
     private final List<String> errors = new ArrayList<>();
     private final Map<String, String> header = EvalScorer.header();
@@ -117,8 +154,12 @@ class GoldenSetEvalTest {
         var started = Instant.now();
 
         header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
-        header.put("Provider", baseUrl);
-        header.put("Chat model", chatModel);
+        boolean vertex = "vertex".equals(provider);
+        header.put("Provider", vertex
+                ? "vertex (Vertex AI, chat " + vertexLocation + ", embeddings "
+                        + (vertexEmbeddingLocation.isBlank() ? vertexLocation : vertexEmbeddingLocation) + ")"
+                : "aistudio (" + baseUrl + ")");
+        header.put("Chat model", vertex ? vertexChatModel : openAiChatModel);
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
         header.put("Started", started.toString());
@@ -143,6 +184,9 @@ class GoldenSetEvalTest {
                 first = false;
                 results.add(run(testCase, golden));
             }
+        } catch (QuotaExhausted e) {
+            errors.add(EvalScorer.QUOTA_STOPPED + " (" + e.getMessage() + "); " + results.size()
+                    + " case(s) scored before the stop, the rest were not run");
         } catch (RuntimeException e) {
             errors.add("Eval aborted: " + describe(e));
         } finally {
@@ -168,7 +212,7 @@ class GoldenSetEvalTest {
 
     /**
      * Upserts the fixtures through the public API, then rebuilds the vector index synchronously. Returns false (and
-     * records a harness error, so the scorecard FAILs) when either step fails.
+     * records a harness error, so the scorecard FAILs) when either step fails; a quota error stops the run.
      */
     private boolean seed(GoldenSet golden) {
         try {
@@ -178,11 +222,12 @@ class GoldenSetEvalTest {
             return false;
         }
         try {
-            // Each save also triggers async indexing of that house; let it settle before the full rebuild.
-            pause(5000);
+            // Saves are not embedded one by one here (app.ai.index-on-change=false), so no settling pause is needed.
             var indexed = post("/api/ai/reindex", null);
             header.put("Indexed houses", String.valueOf(indexed.get("indexed")));
             return true;
+        } catch (QuotaExhausted e) {
+            throw e;
         } catch (RuntimeException e) {
             errors.add("POST /api/ai/reindex failed (embeddings unavailable; ask/plan cases skipped): " + describe(e));
             return false;
@@ -229,6 +274,8 @@ class GoldenSetEvalTest {
                 case ASK -> post("/api/ai/ask", input);
                 default -> post("/api/ai/plan-visits", input);
             };
+        } catch (QuotaExhausted e) {
+            throw e; // stops the run; this case is not scored
         } catch (RestClientResponseException e) {
             error = "HTTP " + e.getStatusCode().value() + ": " + EvalScorer.truncate(e.getResponseBodyAsString(), 300);
             response = null;
@@ -246,7 +293,11 @@ class GoldenSetEvalTest {
         return result;
     }
 
-    /** POST with retries on 503/429 (provider quota or transient failure), honouring Retry-After. */
+    /**
+     * POST with retries on 503/429 (provider quota or transient failure), honouring Retry-After. A provider quota error
+     * (problem {@code code: AI_QUOTA_EXHAUSTED}) is retried once after Retry-After and then throws
+     * {@link QuotaExhausted}, which stops the run.
+     */
     private Map<String, Object> post(String path, Object body) {
         for (int attempt = 1; ; attempt++) {
             try {
@@ -257,12 +308,54 @@ class GoldenSetEvalTest {
                 return result;
             } catch (RestClientResponseException e) {
                 int status = e.getStatusCode().value();
+                boolean quota = isQuotaError(e);
+                if (quota && attempt >= QUOTA_MAX_ATTEMPTS) {
+                    throw new QuotaExhausted("POST " + path + " still HTTP " + status + " "
+                            + AiExceptionHandler.QUOTA_EXHAUSTED_CODE + " after " + attempt + " attempt(s)");
+                }
+                String hint = quota ? null : setupHint(e);
+                if (hint != null) {
+                    // Vertex AI 401/403/404 (credentials, IAM, model not in the location): retrying cannot help.
+                    if (reportedSetupHints.add(hint)) warnings.add("POST " + path + " returned " + status + ", setup: " + hint);
+                    throw e;
+                }
                 if ((status != 503 && status != 429) || attempt >= MAX_ATTEMPTS) throw e;
                 long waitMs = retryAfterMs(e, attempt);
-                warnings.add("POST " + path + " returned " + status + " (attempt " + attempt + "), retried after "
-                        + waitMs / 1000 + " s");
+                warnings.add("POST " + path + " returned " + status + (quota ? " (provider quota exhausted)" : "")
+                        + " (attempt " + attempt + "), retried after " + waitMs / 1000 + " s");
                 pause(waitMs);
             }
+        }
+    }
+
+    /** Problem-detail property {@code setupHint} (JSON string without quotes or escapes by construction), or null. */
+    static String setupHint(RestClientResponseException e) {
+        String body;
+        try {
+            body = e.getResponseBodyAsString();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        if (body == null) return null;
+        var m = SETUP_HINT.matcher(body);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /** The app's problem detail for HTTP 429 / RESOURCE_EXHAUSTED from AI Studio or Vertex AI. */
+    static boolean isQuotaError(RestClientResponseException e) {
+        String body;
+        try {
+            body = e.getResponseBodyAsString();
+        } catch (RuntimeException ignored) {
+            return false;
+        }
+        return body != null && body.contains(AiExceptionHandler.QUOTA_EXHAUSTED_CODE);
+    }
+
+    /** Stops the eval: the provider's quota is exhausted, so every further case would only fail the same way. */
+    static final class QuotaExhausted extends RuntimeException {
+        QuotaExhausted(String message) {
+            super(message);
         }
     }
 

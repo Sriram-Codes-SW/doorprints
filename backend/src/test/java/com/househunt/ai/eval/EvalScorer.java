@@ -20,6 +20,8 @@ import java.util.Set;
  */
 final class EvalScorer {
 
+    /** Result line (and harness-error prefix) when the run stopped because the provider's quota ran out. */
+    static final String QUOTA_STOPPED = "STOPPED: provider quota exhausted";
     static final String EXTRACT = "extract";
     static final String ASK = "ask";
     static final String PLAN = "plan";
@@ -428,6 +430,11 @@ final class EvalScorer {
         return new Verdict(reasons.isEmpty(), List.copyOf(reasons));
     }
 
+    /** True when a harness error says the run was stopped by a provider quota error. */
+    static boolean quotaStopped(List<String> errors) {
+        return errors.stream().anyMatch(e -> e.startsWith(QUOTA_STOPPED));
+    }
+
     /** Report without harness errors (kept for callers that have none). */
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings) {
@@ -437,10 +444,17 @@ final class EvalScorer {
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings, List<String> errors) {
         var verdict = verdict(metrics, results, errors);
+        boolean stopped = quotaStopped(errors);
         var sb = new StringBuilder();
         sb.append("# Doorprints AI eval scorecard\n\n");
-        sb.append("**Result: ").append(verdict.passed() ? "PASS" : "FAIL")
-                .append("** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
+        if (stopped) {
+            sb.append("**Result: ").append(QUOTA_STOPPED).append("** (the model provider answered HTTP 429 / "
+                    + "RESOURCE_EXHAUSTED, so the remaining cases were not run; the metrics below cover only the "
+                    + "cases scored before the stop. Wait for the quota to reset or check billing, then re-run.)\n\n");
+        } else {
+            sb.append("**Result: ").append(verdict.passed() ? "PASS" : "FAIL")
+                    .append("** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
+        }
         sb.append("| | |\n|---|---|\n");
         header.forEach((k, v) -> sb.append("| ").append(cell(k)).append(" | ").append(cell(v)).append(" |\n"));
         sb.append("| Cases | ").append(results.stream().filter(CaseResult::passed).count()).append(" / ")

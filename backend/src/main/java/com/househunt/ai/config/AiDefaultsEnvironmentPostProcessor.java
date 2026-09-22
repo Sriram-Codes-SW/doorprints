@@ -19,8 +19,18 @@ import java.util.Map;
  * disabled we force every selector to {@code none} (highest precedence, so nothing re-enables it by accident);
  * when enabled we only switch off the model types this app never uses (image, audio, moderation), and the
  * OpenAI-compatible embedding model unless {@code app.ai.embedding.provider=openai} (the default provider
- * {@code google-genai} is the app's own {@code GeminiEmbeddingModel}, see docs/ai/ai-design.md 3.1). No Google GenAI
- * starter is on the classpath, so there is no Google auto-configuration to switch off.
+ * {@code google-genai} is the app's own {@code GeminiEmbeddingModel}, see docs/ai/ai-design.md 3.1).
+ *
+ * <p>Provider switch {@code app.ai.provider} ({@code AI_PROVIDER}): {@code aistudio} (default) keeps the setup above;
+ * {@code vertex} selects Spring AI's Google GenAI chat auto-configuration ({@code spring.ai.model.chat=google-genai},
+ * backed by the app's own Vertex-mode {@code com.google.genai.Client} from
+ * {@code com.househunt.ai.vertex.VertexAiConfiguration}) and the app's {@code VertexEmbeddingModel}
+ * ({@code app.ai.embedding.provider} is forced to {@code vertex}, every Spring AI embedding auto-configuration off).
+ * Only the Google GenAI <em>chat</em> starter is on the classpath: its auto-configuration is conditional on
+ * {@code spring.ai.model.chat=google-genai} (matchIfMissing), which is forced to {@code none} with AI disabled and is
+ * {@code openai} for AI Studio, so an AI-disabled or AI Studio startup never builds a Google client and never looks
+ * up Google credentials. The Google GenAI embedding/image connection auto-configurations have no switch, but they are
+ * conditional on classes from modules that are deliberately not on the classpath.
  * The MCP server gets the same treatment via {@code spring.ai.mcp.server.enabled}.
  *
  * <p>Runs after {@code ConfigDataEnvironmentPostProcessor} (lowest precedence) so application.yml and
@@ -30,6 +40,8 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
 
     static final String FORCED = "houseHuntAiForced";
     static final String DEFAULTS = "houseHuntAiDefaults";
+    /** Spring AI's selector value for the Google GenAI models ({@code SpringAIModels.GOOGLE_GEN_AI}). */
+    static final String SPRING_AI_GOOGLE_GENAI = "google-genai";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication application) {
@@ -43,7 +55,17 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
         for (var unused : new String[] {"image", "audio.speech", "audio.transcription", "moderation"}) {
             forced.put("spring.ai.model." + unused, "none");
         }
-        if (ai) {
+        var aiProvider = AiProperties.normalizeProvider(env.getProperty("app.ai.provider", ""));
+        forced.put("app.ai.provider", aiProvider);
+        if (ai && AiProperties.VERTEX.equals(aiProvider)) {
+            // Vertex AI: Google GenAI chat (Vertex mode) + the app's VertexEmbeddingModel; nothing OpenAI-compatible.
+            forced.put("spring.ai.model.chat", SPRING_AI_GOOGLE_GENAI);
+            defaults.put("spring.ai.vectorstore.type", "pgvector");
+            forced.put("app.ai.embedding.provider", AiProperties.Embedding.VERTEX);
+            forced.put("spring.ai.model.embedding", "none");
+            forced.put("spring.ai.model.embedding.text", "none");
+            forced.put("spring.ai.model.embedding.multimodal", "none");
+        } else if (ai) {
             defaults.put("spring.ai.model.chat", "openai");
             defaults.put("spring.ai.vectorstore.type", "pgvector");
             var provider = embeddingProvider(env);

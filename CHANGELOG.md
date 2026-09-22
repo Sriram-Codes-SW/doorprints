@@ -1,7 +1,7 @@
 # Changelog
 
-All notable changes to Doorprints (called House Hunt until 2026-09-22; the repository is still `house-hunt`) are
-recorded here. The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and the project uses
+All notable changes to Doorprints (called House Hunt until 2026-09-22; repository `Sriram-Codes-SW/doorprints`,
+renamed from `house-hunt` on 2026-09-22) are recorded here. The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Security fixes reference the finding ids (F-xx) in the
 [threat model](docs/02-threat-model.md); sprint detail is in the [sprint log](docs/10-sprint-log.md).
 
@@ -28,8 +28,56 @@ alert one-liners with directions, local labels in AI citations, an AI-enabled CI
 tests redaction) are listed in the sprint log for the product owner; they are not committed scope. The product is
 renamed to **Doorprints** (see *Changed*; stories S3-07 and S3-08 in the sprint log).
 
+Product-owner decisions (2026-09-22): the repository is renamed to `Sriram-Codes-SW/doorprints` and is public; AI
+access policy (on-device AI for guests, cloud AI only for the owner and invited users on a paid, hard-capped key,
+bring-your-own-key rejected); Vertex AI added as a provider next to AI Studio; Google Cloud trial plan. See the
+[sprint log](docs/10-sprint-log.md) section 8. The Vertex AI provider code landed in the same change (AI team, see
+*Added* and *Changed*); it is off unless `APP_AI_ENABLED=true` and `AI_PROVIDER=vertex`, and waits for its first CI run
+and the owner's setup in [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) (C-24).
+
 ### Added
 
+- **Vertex AI provider** (AI team; AI-016, C-24), chosen with the new setting `AI_PROVIDER` (`app.ai.provider`):
+  `aistudio` (default, unchanged behaviour: Gemini API key `AI_API_KEY`) or `vertex` (Google Cloud Vertex AI with
+  Application Default Credentials, no API key). Vertex chat uses Spring AI's Google GenAI chat starter
+  (`spring-ai-starter-model-google-genai`, new backend dependency managed by the Spring AI 2.0.1 BOM; its
+  auto-configuration stays off unless `vertex` is selected) with the app's own google-genai `Client`
+  (`VertexAiConfiguration`, `GoogleAccessTokenSource`, bounded retries). Vertex embeddings use the new
+  `VertexEmbeddingModel` (`:embedContent` for `gemini-embedding-2`, `:predict` for `gemini-embedding-001`, one text
+  per call). New settings `GCP_PROJECT_ID` (required with `vertex`), `GCP_LOCATION` (default `asia-south1`),
+  `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION` (default `v1beta1`); the standard
+  `GOOGLE_APPLICATION_CREDENTIALS` is honoured through ADC. Owner setup: [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md);
+  settings: [runbook 1.1](docs/08-operations-runbook.md), [07 section 7](docs/07-secure-build-and-deploy.md#7-environment-variables).
+- `setupHint` property on the AI `503` problem when Vertex AI answers 401, 403 or 404 (`AI_PROVIDER=vertex` only): an
+  owner-facing hint that names the setting to change (`GCP_LOCATION` for chat, `AI_VERTEX_EMBEDDING_LOCATION` for
+  embeddings, with a location to try, or the credentials for a 401). It holds env-var names and the configured location
+  only, never the project id or the provider message. The eval harness does not retry such a `503` and lists each hint
+  once in the scorecard warnings. See [03 section 9](docs/03-design.md) and [runbook section 9](docs/08-operations-runbook.md).
+- `AI_INDEX_ON_CHANGE` (default `true`): `false` stops embedding each house right after a save; only
+  `POST /api/ai/reindex` embeds then (deletes still leave the index at once). The eval harness uses `false`.
+- `ai-evals.yml`: new inputs `provider` (default `aistudio`; choose `vertex` after
+  [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) steps 1-8; the default moves to `vertex` only after the owner's
+  step-10 run) and `embedding_model`. With `vertex` the job authenticates through Workload Identity Federation (`google-github-actions/auth`, `id-token: write` on that job
+  only; secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`, variables `GCP_PROJECT_ID`, `GCP_LOCATION`, optional
+  `AI_VERTEX_EMBEDDING_LOCATION`); no key is stored. `AI_API_KEY` is only passed on the `aistudio` path.
+- Tests for the Vertex AI provider: `VertexGenerateContentContractTest` and `VertexEmbeddingContractTest` (TC-AI-16),
+  `ProviderErrorsTest` (TC-AI-18), `VertexSettingsTest` and `VertexAutoConfigurationTest` (TC-AI-19), provider cases
+  in `AiDefaultsEnvironmentPostProcessorTest` (TC-AI-20), the quota stop in `HouseIndexerTest` and the STOPPED verdict
+  in `EvalScorerTest` (TC-AI-21), `AiExceptionHandlerTest` (TC-AI-22). The Vertex response bodies follow the SDK
+  and Google's reference; they were not captured from a live call yet.
+- Requirement **AI-017** (planned, manager review): when the Google Cloud spend cap trips, the API returns a clear
+  "cloud AI paused" problem that is not retried, pinned by a contract test; today's quota path covers HTTP 429 only.
+- MIT `LICENSE` and `SECURITY.md` (private vulnerability reporting through GitHub Security Advisories).
+- Docs: sprint log section 8 (product-owner decisions of 2026-09-22 and Sprint 4 candidates C-22..C-28: CodeQL, PR
+  flow with an always-running `CI summary` check, Vertex AI provider, AI access tiers, Firebase Test Lab on
+  Indian-market devices, Cloud Run + Cloud SQL staging for the trial period, Speech-to-Text prototype); runbook
+  section 10 (public repository settings, paid AI key with a hard cap, Google Cloud $300 trial and tear-down) and
+  incidents IR-8 (vulnerability report) and IR-9 (AI spend); build guide 3.1 (`CI summary` check), 3.2
+  (public-repository rules) and 6.5 (time-limited staging on Google Cloud).
+- Requirements (planned): AI-013 cloud AI only for the owner and invited users, AI-014 on-device AI (Gemini Nano via
+  the ML Kit GenAI Prompt API) for guests where supported, otherwise hidden, AI-015 hard cost cap, AI-016 Vertex AI and
+  AI Studio as switchable providers; PRV-022 real user data only on a paid tier or Vertex AI, PRV-023 on-device AI
+  sends nothing off the phone.
 - API key rotation without downtime: optional second key `APP_API_KEY_NEXT`, accepted alongside `APP_API_KEY`
   while clients move to the new key (SEC-017). Procedure: [runbook 5.1](docs/08-operations-runbook.md).
 - Signed Android release builds: `app/build.gradle.kts` reads `HH_KEYSTORE_FILE`, `HH_KEYSTORE_PASSWORD`,
@@ -64,6 +112,40 @@ renamed to **Doorprints** (see *Changed*; stories S3-07 and S3-08 in the sprint 
 
 ### Changed
 
+- AI provider quota errors (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex AI, after the bounded retries)
+  are now told apart from outages: the AI endpoints still answer `503` (`"retryable": true`), and the problem body
+  adds `"code": "AI_QUOTA_EXHAUSTED"` and the response a `Retry-After: 60` header (`ProviderErrors`,
+  `AiExceptionHandler`). Existing clients are unaffected; see [03 section 9](docs/03-design.md#9-api-reference).
+- `POST /api/ai/reindex` stops at the first batch that fails with a provider quota error instead of spending more
+  calls on the remaining batches (they are counted as failed; the answer is `503` with `AI_QUOTA_EXHAUSTED`).
+- The AI eval (`GoldenSetEvalTest`) runs when a provider is configured (`AI_API_KEY`, or `AI_PROVIDER=vertex` with
+  `GCP_PROJECT_ID`), not only with `AI_API_KEY`. On a provider quota error it waits once for `Retry-After`, then stops:
+  the scorecard result is **STOPPED: provider quota exhausted** and `ai-evals.yml` fails with an "AI eval STOPPED"
+  annotation, instead of recording every remaining case as an error.
+- Repository renamed from `house-hunt` to **`Sriram-Codes-SW/doorprints`** and made **public** (GitHub redirects the
+  old URL). `main` is protected by a ruleset (no deletion, no force push); required status checks are deliberately
+  not enabled until a PR flow with an always-running `CI summary` check exists (07 §3). README: license and security
+  lines, repository link, the "repository still named `house-hunt`" note removed.
+- AI access policy (feature spec 11 v0.3, D-21 and D-22): guests get no cloud AI (on-device Gemini Nano where the
+  Android device supports it, otherwise AI is hidden); cloud AI only for the owner and invited users on a paid key
+  with a hard cap; the v0.2 guest AI allowance and sign-in-for-more-AI prompt are withdrawn; bring-your-own-key is
+  rejected and listed as out of scope. Vertex AI is added as an active provider next to AI Studio (AI team, setup in
+  `docs/ai/vertex-setup.md`); the AI Studio code path stays.
+- Feature spec 11 v0.2 (Product/Architecture): product-owner decisions D-01 (local-first, optional Google Sign-In),
+  D-02 (photos on the device or in the user's own Google Drive), D-03 and D-08 applied to the proposal; v0.3 then
+  replaced its guest AI allowance with the D-21 access policy.
+- AI hard cap (AI-015, runbook 10.2) rebuilt on three layers: in-app per-user and global daily caps; a Google Cloud
+  **spend cap budget** (Preview; monthly, counted before credits) on an AI-only project and the Vertex AI or Gemini
+  API service, which pauses new AI usage when the target is passed; budget alerts at 50/90/100 %. A Quotas-page limit
+  is optional (only if the model exposes one). Spend caps do not cover Cloud SQL, so staging has its own budget alert
+  and a tear-down date. Firebase Test Lab keeps running within its no-cost daily quota after the trial.
+- Docs versions: 01 v0.11, 02 v0.12, 03 v0.7, 04 v0.6, 06 v0.10, 07 v0.10, 08 v0.10, sprint log v0.9, feature spec
+  11 v0.5, README change log. The Vertex AI sync: 03 section 13 describes both providers and the `AI_QUOTA_EXHAUSTED`
+  problem; 04 E6, DF-21 and DF-32 name the Vertex endpoints, OAuth tokens from ADC and the location as a
+  data-residency attribute; 06 adds TC-AI-18..22 and updates TC-AI-10 and TC-AI-16; 07 sections 4 and 7 and 08
+  section 1.1, IR-9 and section 9 list the new settings, the quota error, the `setupHint` and the eval STOPPED
+  result; 03 section 9 documents `setupHint`; 07 and 06 state that `ai-evals.yml` defaults to `aistudio`; sprint log C-24
+  says the code landed and adds the spend cap acceptance item (AI-017).
 - **Renamed to Doorprints** (tagline "Remember every house you've seen."), because "House Hunt" suggested a
   property-listings site. Names only, no behaviour change; decision record ADR-13 in
   [03](docs/03-design.md#14-architecture-decision-records).
@@ -155,6 +237,19 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
 
 ### Security
 
+- Vertex AI uses **only** Application Default Credentials (short-lived OAuth tokens; Workload Identity Federation in
+  CI, the attached service account on Cloud Run); there is no Vertex API key path in the code. Threat model v0.12
+  T-I22 and build guide section 4 updated: nothing to rotate for WIF and Cloud Run, quarterly rotation only for a
+  JSON key on a non-Google host.
+- Threat model v0.11: **T-I22** (Vertex AI / Google Cloud credential leak → spend and project access): AI-only
+  project, service account with `roles/aiplatform.user` only, no JSON key in the repository, image, artifacts or logs,
+  Workload Identity Federation (GitHub OIDC) for CI, quarterly rotation, spend cap budget as blast-radius limit; new
+  credential row in the build guide section 4.
+- Threat model v0.10: **T-I20** (the free AI Studio tier may use prompts to improve Google products; real user data
+  only on the paid tier or Vertex AI, PRV-022) and **T-I21** (public repository: history, logs and artifacts are
+  public; gitleaks on the full history, secret scanning, private vulnerability reporting, no `pull_request_target`).
+  T-I11 no longer counts a private repository as a mitigation. CodeQL is free now that the repository is public and is
+  a Sprint 4a candidate (C-22).
 - F-28 (Critical): embedded Tomcat raised from 11.0.24 to **11.0.25** with a `tomcat.version` override in
   `backend/pom.xml` for CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525. Remove the override when Spring Boot
   manages 11.0.25 or later.

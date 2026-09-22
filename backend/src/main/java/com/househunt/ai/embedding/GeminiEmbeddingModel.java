@@ -196,13 +196,13 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
                 if (!retryable || attempt >= maxRetries) {
                     var reason = errorReason(e);
                     throw new GeminiEmbeddingException("Gemini embedding request failed: HTTP " + status
-                            + (reason == null ? "" : " (" + reason + ")"));
+                            + (reason == null ? "" : " (" + reason + ")"), status, reason);
                 }
                 var hint = serverRetryHint(e, Instant.now());
                 if (hint != null) {
                     if (hint.compareTo(MAX_RETRY_WAIT) > 0) {
                         throw new GeminiEmbeddingException("Gemini embedding request failed: HTTP " + status
-                                + " (server asks to retry after " + hint.toSeconds() + " s)");
+                                + " (server asks to retry after " + hint.toSeconds() + " s)", status, errorReason(e));
                     }
                     if (hint.compareTo(wait) > 0) wait = hint;
                 }
@@ -299,10 +299,33 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         }
     }
 
-    /** Provider failure; message carries no request text, response body or key. */
+    /**
+     * Provider failure; message carries no request text, response body or key. Also thrown by
+     * {@code com.househunt.ai.embedding.VertexEmbeddingModel} (same Gemini models, Vertex AI endpoint).
+     * {@link #httpStatus()} is 0 and {@link #reason()} {@code null} when the failure was not an HTTP error response.
+     */
     public static class GeminiEmbeddingException extends RuntimeException {
+        private final int httpStatus;
+        private final String reason;
+
         public GeminiEmbeddingException(String message) {
+            this(message, 0, null);
+        }
+
+        public GeminiEmbeddingException(String message, int httpStatus, String reason) {
             super(message);
+            this.httpStatus = httpStatus;
+            this.reason = reason;
+        }
+
+        /** HTTP status of the provider's error response, or 0. */
+        public int httpStatus() {
+            return httpStatus;
+        }
+
+        /** google.rpc ErrorInfo reason or status token (e.g. {@code RESOURCE_EXHAUSTED}), or {@code null}. */
+        public String reason() {
+            return reason;
         }
     }
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.8 |
+| Version | 0.11 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -20,6 +20,9 @@
 | 0.6 | 2026-09-22 | Claude (Cowork) | Sprint 3 coordinator rework: 01 v0.6 (PRV-009 reason for Part), 02 v0.7 (F-30 status cell per ai-design v0.10: rules, client label contract, limits, reindex after the v0.10 deploy), 06 v0.7 (TC-AI-12: 5-minute log window; TC-AI-15 final redaction cases), 08 v0.6 (reindex after the v0.10 deploy), 10 v0.4; 03, 04, 07 and 09 unchanged since v0.5. |
 | 0.7 | 2026-09-22 | Claude (Cowork) | Sprint 3 outcome (`6a348cc`: Backend and Security green; first successful real Gemini eval run, 12/13 cases passed, `citationPrecision` 0.86 vs 0.90 open as E-03): 02 v0.8 (F-30 closed as Fixed by lead decision, evidence TC-AI-15), 01 v0.7 (AI-010 and PRV-009 evidence, AI-012 first eval result), 06 v0.8 (TC-AI-10 gap row: first real scorecard recorded; section 1 AI evals row: golden set v0.3 and the first real run; TC-AI-09 traces `allowedCitations`; new TC-AI-17 for the Ask prompt citation and contrast rules), 10 v0.5 (Sprint 3 CI, eval run and sign-off table, S3-05, section 7 Sprint 4 candidates C-14..C-21, not committed). |
 | 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** (tagline "Remember every house you've seen."; the repository is still `house-hunt`): title and introduction; new ADR-13 in 03 records what changed and what did not. Versions: 01 v0.8 (also TC-AI-17 in the RTM), 02 v0.9, 03 v0.6, 04 v0.5, 05 v0.3, 06 v0.9, 07 v0.7, 08 v0.7, 09 v0.4, 10 v0.6. The v0.7 row now lists everything 06 v0.8 changed (it named only the TC-AI-10 gap row). |
+| 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22: repository renamed to `Sriram-Codes-SW/doorprints` and public (MIT `LICENSE`, `SECURITY.md`), AI access policy (on-device AI for guests, cloud AI for the owner and invited users on a paid, hard-capped key, bring-your-own-key rejected), Vertex AI next to AI Studio, Google Cloud trial plan. Versions: 01 v0.9, 02 v0.10, 07 v0.8, 08 v0.8, 10 v0.7, 11 v0.3. Index lists 11 and `SECURITY.md`. |
+| 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes for the paid-AI hard cap and the Vertex credential: 01 v0.10 (AI-015 three layers with a Google Cloud spend cap budget), 02 v0.11 (new T-I22 Vertex credential leak; T-D4), 07 v0.9 (credential row in section 4; Cloud SQL not covered by spend caps), 08 v0.9 (section 10.2 rewritten, IR-9 spend cap tripped), sprint log v0.8, feature spec 11 v0.4. |
+| 0.11 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI provider code landed (AI team, same change set), docs synced: 01 v0.11 (AI-016 implemented, new AI-017 spend cap response), 02 v0.12 (T-I22: ADC only, no Vertex API key; rotation by credential type), 03 v0.7 (section 13 both providers, `AI_QUOTA_EXHAUSTED`, section 9 `setupHint`), 04 v0.6 (E6, DF-21, DF-32 with Vertex endpoints incl. `us`/`eu` multi-regions, OAuth tokens and location), 06 v0.10 (TC-AI-10, TC-AI-16, new TC-AI-18..22 incl. `AiExceptionHandlerTest`), 07 v0.10 (section 4 real variable names, section 7 new settings; `ai-evals.yml` `provider` defaults to `aistudio` until vertex-setup step 10), 08 v0.10 (section 1.1, 5.2, IR-9, section 9 `setupHint`, 10.2 trial alert thresholds), 10 v0.9 (C-24 code landed, spend cap acceptance item), 11 v0.5 (markers removed). |
 
 ---
 
@@ -45,7 +48,9 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 08 | [Operations runbook](08-operations-runbook.md) | Monitoring, backups, key rotation, incident response, data export/deletion, release checklist | Operations |
 | 09 | [OSI 7-layer resilience analysis](09-osi-layer-analysis.md) | Scenario → behaviour → risk → mitigation → test for GPS/power, Wi-Fi/cellular/captive portals, DNS/IPv6/VPN, TCP retries and cold starts, sessions and sync cursors, TLS/UTF-8/time/EXIF, REST/auth/caching/AI | Architecture / Security |
 | 10 | [Sprint log](10-sprint-log.md) | Agile record: working agreement, sprint goals, stories, team sign-offs, CI results, retrospectives, next-sprint candidates | Docs team (all senior reviewers sign off) |
+| 11 | [Feature parity and export spec](11-feature-parity-and-export-spec.md) | Proposal (draft): SeenHouse parity, local-first with optional Google Sign-In, exports, AI access policy (D-21, D-22) | Product / Architecture, Docs team |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
+| – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
 | AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals | **AI team** |
 
 ## SSDLC phase map
