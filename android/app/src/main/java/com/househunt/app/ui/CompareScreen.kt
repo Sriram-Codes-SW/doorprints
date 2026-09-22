@@ -19,9 +19,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.R
-import com.househunt.app.data.Checklist
+import com.househunt.app.data.ChecklistLabels
 import com.househunt.app.data.HouseEntity
-import com.househunt.app.data.HouseStatus
+import com.househunt.app.data.labelRes
+import com.househunt.shared.model.HouseStatus
 
 private data class CompareRow(val label: String, val value: @Composable (HouseEntity) -> String)
 
@@ -72,7 +73,7 @@ fun CompareScreen(onOpenHouse: (String) -> Unit) {
                 add(CompareRow(stringResource(R.string.compare_rating)) { h -> h.rating?.let { stringResource(R.string.common_stars, it) } ?: dash })
                 add(CompareRow(stringResource(R.string.compare_visits)) { (visits[it.id] ?: 0).toString() })
                 add(CompareRow(stringResource(R.string.compare_street)) { it.street ?: dash })
-                Checklist.items.forEach { (key, label) ->
+                ChecklistLabels.items.forEach { (key, label) ->
                     add(CompareRow(stringResource(label)) { h -> h.checklist[key]?.toString() ?: dash })
                 }
                 add(CompareRow(stringResource(R.string.compare_contact)) { it.contactName ?: it.contactPhone ?: dash })

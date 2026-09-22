@@ -1,40 +1,17 @@
 package com.househunt.app.data
 
-import androidx.annotation.StringRes
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.househunt.app.R
+import com.househunt.shared.model.HouseScore
+import com.househunt.shared.model.HouseStatus
+import com.househunt.shared.model.VisitSource
+import com.househunt.shared.sync.SyncRecord
 
-/** Stored by name (shared with the API and web); only the label is translated. */
-enum class HouseStatus(@StringRes val labelRes: Int) {
-    NEW(R.string.status_NEW),
-    SHORTLISTED(R.string.status_SHORTLISTED),
-    REJECTED(R.string.status_REJECTED),
-}
-
-/**
- * Things worth checking at every house. Each is scored 0 (bad) to 5 (great). Keys are language-neutral and shared
- * with the API and the web app; labels come from strings.xml (check_water, ...), like the web's check.water keys.
- */
-object Checklist {
-    val items: Map<String, Int> = linkedMapOf(
-        "water" to R.string.check_water,
-        "power" to R.string.check_power,
-        "parking" to R.string.check_parking,
-        "sunlight" to R.string.check_sunlight,
-        "ventilation" to R.string.check_ventilation,
-        "noise" to R.string.check_noise,
-        "security" to R.string.check_security,
-        "maintenance" to R.string.check_maintenance,
-        "neighbourhood" to R.string.check_neighbourhood,
-        "commute" to R.string.check_commute,
-    )
-}
-
-/** Same cap as the server's app.limits.max-photos-per-house default (threat model F-06). */
-const val MAX_PHOTOS_PER_HOUSE = 20
+// Room entities stay in :app until the Room KMP migration (Phase 2, see android/shared/README.md). Their table and
+// column layout is unchanged by Sprint 3.5: HouseStatus and VisitSource moved to :shared with the same constant
+// names, and Room still stores them by name. The pure rules (score, sync conflicts) now live in :shared.
 
 @Entity(tableName = "houses", indices = [Index("street")])
 data class HouseEntity(
@@ -56,27 +33,15 @@ data class HouseEntity(
     val notes: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
-    val updatedAt: Long,
+    override val updatedAt: Long,
     val deleted: Boolean = false,
     /** True while this row has local changes the server hasn't seen yet. */
-    val dirty: Boolean = true,
-) {
-    /**
-     * 0–5 overall score: average of the checklist, blended 50/50 with the star rating when both exist.
-     * Null if nothing has been scored yet.
-     */
+    override val dirty: Boolean = true,
+) : SyncRecord {
+    /** 0–5 overall score, see [HouseScore.of]. Null if nothing has been scored yet. Not stored. */
     val score: Double?
-        get() {
-            val check = if (checklist.isEmpty()) null else checklist.values.average()
-            val stars = rating?.toDouble()
-            return when {
-                check != null && stars != null -> (check + stars) / 2
-                else -> check ?: stars
-            }
-        }
+        get() = HouseScore.of(checklist, rating)
 }
-
-enum class VisitSource { AUTO, MANUAL }
 
 @Entity(tableName = "visits", indices = [Index("houseId"), Index("street")])
 data class VisitEntity(
@@ -88,10 +53,10 @@ data class VisitEntity(
     val arrivedAt: Long,
     val leftAt: Long? = null,
     val source: VisitSource = VisitSource.MANUAL,
-    val updatedAt: Long,
+    override val updatedAt: Long,
     val deleted: Boolean = false,
-    val dirty: Boolean = true,
-)
+    override val dirty: Boolean = true,
+) : SyncRecord
 
 @Entity(tableName = "photos", indices = [Index("houseId")])
 data class PhotoEntity(

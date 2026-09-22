@@ -9,7 +9,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import com.househunt.app.data.HouseStatus
+import com.househunt.shared.model.HouseStatus
 
 /**
  * Colours are the web design tokens (web/src/styles.css, docs/05 section 4), not Material dynamic colour, so the

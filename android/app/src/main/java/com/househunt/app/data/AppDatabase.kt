@@ -104,7 +104,11 @@ interface PhotoDao {
     suspend fun delete(id: String)
 }
 
-@Database(entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class], version = 2, exportSchema = false)
+// exportSchema (Sprint 3.5): Room writes app/schemas/com.househunt.app.data.AppDatabase/<version>.json on every build
+// (room.schemaLocation in app/build.gradle.kts). The committed 2.json and RoomSchemaTest pin the identity hash, so a
+// change to the table layout (for example through the HouseStatus/VisitSource types now defined in :shared) fails
+// the unit tests instead of crashing upgraded installs with "Room cannot verify the data integrity".
+@Database(entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class], version = 2, exportSchema = true)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun houses(): HouseDao

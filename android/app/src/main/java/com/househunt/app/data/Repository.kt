@@ -6,11 +6,24 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
+import com.househunt.shared.api.ApiClient
+import com.househunt.shared.api.ApiException
+import com.househunt.shared.api.AskResponseDto
+import com.househunt.shared.api.HouseDraftDto
+import com.househunt.shared.api.PlanRequest
+import com.househunt.shared.api.PlanResponseDto
+import com.househunt.shared.api.StatsDto
+import com.househunt.shared.model.MAX_PHOTOS_PER_HOUSE
+import com.househunt.shared.model.VisitSource
+import com.househunt.shared.sync.SyncOutcome
+import com.househunt.shared.sync.SyncRules
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.io.asSource
+import kotlinx.io.buffered
 import java.io.File
 import java.util.UUID
 
@@ -122,7 +135,7 @@ class Repository(
 
     suspend fun testConnection(): Result<StatsDto> = withContext(Dispatchers.IO) {
         val s = settings.current()
-        runCatching { ApiClient(s.serverUrl, s.apiKey).stats() }
+        runCatching { Api.client(s.serverUrl, s.apiKey).stats() }
     }
 
     // ---- AI features (optional; hidden unless the server reports enabled = true) ----
@@ -133,16 +146,16 @@ class Repository(
     /** Asks the server whether AI features are on. Offline or not configured means off. */
     suspend fun refreshAiStatus(): Boolean = withContext(Dispatchers.IO) {
         val s = settings.current()
-        val enabled = s.serverConfigured && runCatching { ApiClient(s.serverUrl, s.apiKey).aiStatus().enabled }
+        val enabled = s.serverConfigured && runCatching { Api.client(s.serverUrl, s.apiKey).aiStatus().enabled }
             .getOrDefault(false)
         _aiEnabled.value = enabled
         enabled
     }
 
-    private suspend fun <T> withApi(block: (ApiClient) -> T): T = withContext(Dispatchers.IO) {
+    private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
         val s = settings.current()
         check(s.serverConfigured) { "Server not configured" }
-        block(ApiClient(s.serverUrl, s.apiKey))
+        block(Api.client(s.serverUrl, s.apiKey))
     }
 
     suspend fun extractListing(text: String): HouseDraftDto = withApi { it.extractListing(text) }
@@ -158,7 +171,7 @@ class Repository(
     suspend fun sync(photosAllowed: Boolean = true): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
         if (!s.serverConfigured) return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
-        val api = ApiClient(s.serverUrl, s.apiKey)
+        val api = Api.client(s.serverUrl, s.apiKey)
 
         var pushed = 0
         for (h in db.houses().dirty()) {
@@ -179,7 +192,8 @@ class Repository(
                 photosWaiting++; continue
             }
             try {
-                api.uploadPhoto(p.houseId, p.id, file)
+                // Streamed from the file, not read into memory; each (re)try opens the file again.
+                api.uploadPhoto(p.houseId, p.id, file.name, file.length()) { file.inputStream().asSource().buffered() }
             } catch (e: ApiException) {
                 // Permanent rejections (not an image, too big, over the per-house limit) would fail on every sync;
                 // keep the photo on this phone only and move on. Anything else (5xx, auth) aborts the sync.

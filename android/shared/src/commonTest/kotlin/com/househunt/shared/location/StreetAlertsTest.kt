@@ -1,10 +1,9 @@
-package com.househunt.app
+package com.househunt.shared.location
 
-import com.househunt.app.location.StreetAlerts
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /** Hunt mode's "been on this street before" alert rules. */
 class StreetAlertsTest {

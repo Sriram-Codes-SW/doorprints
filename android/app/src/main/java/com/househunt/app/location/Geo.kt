@@ -11,18 +11,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
-import kotlin.math.*
 
-object Geo {
-    /** Great-circle distance in metres. */
-    fun distanceM(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val r = 6_371_000.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2).pow(2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2)
-        return 2 * r * asin(sqrt(a))
-    }
-}
+// Great-circle distance (Geo.distanceM) moved to :shared (com.househunt.shared.location.Geo) in Sprint 3.5;
+// the platform geocoder stays here.
 
 data class Place(val street: String?, val locality: String?, val address: String?)
 

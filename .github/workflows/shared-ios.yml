@@ -1,0 +1,78 @@
+# Shared KMP module (android/shared): compiles the iOS targets on macOS so the shared code is proved to stay
+# iOS-compatible without an iPhone, a Mac of our own or a paid Apple Developer account (compiling a klib needs
+# neither signing nor a device). macOS runners are free for public repositories.
+# A separate workflow (not a job in android.yml) so GitHub's own path filter limits it to shared-code changes.
+name: Shared iOS compile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/shared/**"
+      # Root Gradle config pins the Kotlin/AGP versions and the module list, which can break the iOS build too.
+      - "android/build.gradle.kts"
+      - "android/settings.gradle.kts"
+      - "android/gradle.properties"
+      - "android/gradle/**"
+      - ".github/workflows/shared-ios.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "android/shared/**"
+      - "android/build.gradle.kts"
+      - "android/settings.gradle.kts"
+      - "android/gradle.properties"
+      - "android/gradle/**"
+      - ".github/workflows/shared-ios.yml"
+  workflow_dispatch:
+
+# Least privilege: nothing by default; the job asks only for contents: read.
+permissions: {}
+
+concurrency:
+  group: shared-ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  shared-ios-compile:
+    name: ":shared iOS targets compile (macOS, JDK 21)"
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Caches Gradle and validates the wrapper JAR checksum.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # The Kotlin/Native toolchain and its dependencies (~/.konan) are not covered by setup-gradle; the key follows
+      # the root build script, where the Kotlin version is pinned.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
+          restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-
+
+      # Task names follow KGP's scheme compile[Test]Kotlin<Target>: the main klibs of both iOS targets plus the
+      # simulator test klib (commonTest/iosTest code). Nothing is linked, signed or run on a simulator.
+      - name: Compile iOS targets of :shared
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace \
+            :shared:compileKotlinIosArm64 \
+            :shared:compileKotlinIosSimulatorArm64 \
+            :shared:compileTestKotlinIosSimulatorArm64

@@ -37,13 +37,14 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.househunt.app.R
-import com.househunt.app.data.ApiException
-import com.househunt.app.data.Checklist
-import com.househunt.app.data.HouseDraftDto
+import com.househunt.app.data.ChecklistLabels
 import com.househunt.app.data.HouseEntity
-import com.househunt.app.data.HouseStatus
-import com.househunt.app.data.MAX_PHOTOS_PER_HOUSE
 import com.househunt.app.data.Repository
+import com.househunt.app.data.labelRes
+import com.househunt.shared.api.ApiException
+import com.househunt.shared.api.HouseDraftDto
+import com.househunt.shared.model.HouseStatus
+import com.househunt.shared.model.MAX_PHOTOS_PER_HOUSE
 import com.househunt.app.location.ReverseGeocoder
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -212,7 +213,7 @@ fun HouseEditScreen(
             }
 
             SectionHeading(stringResource(R.string.house_checklist))
-            Checklist.items.forEach { (key, labelRes) ->
+            ChecklistLabels.items.forEach { (key, labelRes) ->
                 ChecklistRow(stringResource(labelRes), d.checklist[key]) { n ->
                     update {
                         val current = it.checklist[key]

@@ -43,10 +43,17 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # Sprint 3.5: android/shared is the Kotlin Multiplatform module :shared (com.android.kotlin.multiplatform.library,
+      # compile-only iOS targets). It has no testDebugUnitTest; its JVM tests (commonTest + androidHostTest, enabled
+      # with withHostTest {}) are the task :shared:testAndroidHostTest. The app's testDebugUnitTest already depends on
+      # it (app/build.gradle.kts); it is named here as well so the shared tests run even if that wiring changes, and so
+      # a moved or renamed module fails this step loudly instead of being skipped.
+      # :shared:allTests is deliberately not run here: on Linux it would only add the cross-compiled iOS test klibs,
+      # which downloads the Kotlin/Native toolchain (~/.konan) on every run. iOS is covered on macOS by shared-ios.yml.
       - name: Build and test
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest
+          ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :shared:testAndroidHostTest
 
       # Android lint (includes MissingTranslation as an error, see app/build.gradle.kts). Reported, not yet
       # blocking: switch continue-on-error off once the first report is clean.
@@ -71,6 +78,8 @@ jobs:
           path: |
             android/app/build/reports/
             android/app/build/test-results/
+            android/shared/build/reports/
+            android/shared/build/test-results/
           retention-days: 7
 
   # Only on main or a manual run, never for pull requests: PR code must not run with the signing key.

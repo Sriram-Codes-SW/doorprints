@@ -1,8 +1,10 @@
-package com.househunt.app.location
+package com.househunt.shared.location
 
 /**
  * Turns a stream of GPS fixes into "stays": staying within [radiusM] of where you stopped for at
  * least [minStayMs] counts as being at a place (e.g. inside a house you're viewing).
+ *
+ * Not thread-safe: feed it from one thread (Android: the HuntService location callback).
  */
 class StayDetector(
     private val radiusM: Double = 40.0,

@@ -18,9 +18,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.R
-import com.househunt.app.data.AskResponseDto
-import com.househunt.app.data.PlanRequest
-import com.househunt.app.data.PlanResponseDto
+import com.househunt.shared.api.AskResponseDto
+import com.househunt.shared.api.PlanRequest
+import com.househunt.shared.api.PlanResponseDto
 import kotlinx.coroutines.launch
 import java.util.Locale
 
