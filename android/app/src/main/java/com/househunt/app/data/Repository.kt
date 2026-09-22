@@ -198,14 +198,14 @@ class Repository(
             houseCursor = maxOf(houseCursor, dto.syncVersion)
             val local = db.houses().get(dto.id)
             val incoming = dto.toEntity()
-            if (local != null && local.dirty && local.updatedAt > incoming.updatedAt) continue
+            if (SyncRules.keepLocal(local, incoming)) continue
             db.houses().upsert(incoming); pulled++
         }
         for (dto in api.visitsSince(visitCursor)) {
             visitCursor = maxOf(visitCursor, dto.syncVersion)
             val local = db.visits().get(dto.id)
             val incoming = dto.toEntity()
-            if (local != null && local.dirty && local.updatedAt > incoming.updatedAt) continue
+            if (SyncRules.keepLocal(local, incoming)) continue
             db.visits().upsert(incoming); pulled++
         }
         settings.saveCursors(houseCursor, visitCursor)

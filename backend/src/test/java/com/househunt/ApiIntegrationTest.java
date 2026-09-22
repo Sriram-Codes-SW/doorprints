@@ -42,12 +42,15 @@ class ApiIntegrationTest {
 
     private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<Map<String, Object>> MAP = new ParameterizedTypeReference<>() {};
-    /** Generated per run (never a literal in source, so secret scanners have nothing to flag); >= 16 chars. */
+    /** Generated per run (never a literal in source, so secret scanners have nothing to flag); 39 chars, >= 32 (F-01). */
     private static final String KEY = "it-" + UUID.randomUUID();
+    /** Second key (APP_API_KEY_NEXT) so the rotation path is exercised end to end (SEC-017). */
+    private static final String NEXT_KEY = "it-next-" + UUID.randomUUID();
 
     @DynamicPropertySource
     static void apiKey(DynamicPropertyRegistry registry) {
         registry.add("app.api-key", () -> KEY);
+        registry.add("app.api-key-next", () -> NEXT_KEY);
     }
 
     @Value("${local.server.port}")
@@ -114,6 +117,22 @@ class ApiIntegrationTest {
     @Test
     void rejectsRequestsWithoutKey() {
         assertThatThrownBy(() -> anonymous.get().uri("/api/houses").retrieve().body(String.class))
+                .isInstanceOfSatisfying(HttpClientErrorException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(401)));
+    }
+
+    /** SEC-017: while APP_API_KEY_NEXT is set, both keys are accepted (header and bearer). */
+    @Test
+    void acceptsTheNextKeyDuringRotation() {
+        var base = "http://localhost:" + port;
+        var withNext = RestClient.builder().baseUrl(base).defaultHeader("X-API-Key", NEXT_KEY).build();
+        assertThat(withNext.get().uri("/api/stats").retrieve().toEntity(String.class).getStatusCode().value())
+                .isEqualTo(200);
+        var bearerNext = RestClient.builder().baseUrl(base).defaultHeader("Authorization", "Bearer " + NEXT_KEY).build();
+        assertThat(bearerNext.get().uri("/api/stats").retrieve().toEntity(String.class).getStatusCode().value())
+                .isEqualTo(200);
+        var wrong = RestClient.builder().baseUrl(base).defaultHeader("X-API-Key", NEXT_KEY + "x").build();
+        assertThatThrownBy(() -> wrong.get().uri("/api/stats").retrieve().body(String.class))
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(401)));
     }

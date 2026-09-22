@@ -35,6 +35,18 @@ a string or a language.
 npm run build       # output: dist/web/browser
 ```
 
+## Test
+
+Unit tests use Angular's built-in `@angular/build:unit-test` builder with Vitest and jsdom (no browser needed).
+Spec files sit next to the code (`*.spec.ts`) and cover the score calculation, rupee/number formatting per
+language, completeness of the translation dictionaries (same keys and `{placeholders}` as `en.ts`), the API
+interceptor (only `/api` URLs get the base URL and key) and where the API config is stored.
+
+```bash
+npm test            # watch mode while developing
+npm run test:ci     # single headless run (ng test --watch=false), used by CI
+```
+
 ## Deploy (free static hosting)
 
 The output in `dist/web/browser` is plain static files. Because it is a single-page app, unknown paths
@@ -54,3 +66,9 @@ Remember to add the deployed origin (e.g. `https://house-hunt.pages.dev`) to the
 
 Address lookup ("Fill address from map") uses the public OpenStreetMap Nominatim service and is only
 called when you press the button, in line with its usage policy.
+
+## Change log
+
+| Date       | Change                                                                  |
+|------------|-------------------------------------------------------------------------|
+| 2026-09-22 | Added Vitest unit tests (`npm test`, `npm run test:ci`) and this log.   |

@@ -1,0 +1,144 @@
+# AI evals: runs the golden set (docs/ai/evals/golden-set.json) against a real model and publishes a scorecard.
+# Manual only: it spends free-tier quota and model answers are not deterministic, so it never runs on push/PR.
+# Harness: backend/src/test/java/com/househunt/ai/eval/GoldenSetEvalTest.java; metrics: docs/ai/ai-design.md section 8.
+# Needs the repository secret AI_API_KEY (a free Gemini API key from https://aistudio.google.com/apikey).
+# Ownership: the workflow file belongs to DevSecOps (owner of .github/**, adopted 2026-09-22, reviewed against the
+# repo's CI rules: manual trigger only, permissions {} with job-level contents: read, persist-credentials: false,
+# untrusted inputs passed through env and validated, never interpolated into scripts). The eval harness and golden
+# set belong to the AI team; changes to either side go through the other team's review.
+name: AI evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      types:
+        description: Case types to run
+        type: choice
+        default: extract,ask,plan
+        options:
+          - extract,ask,plan
+          - extract,ask
+          - extract
+          - ask
+          - plan
+      delay_ms:
+        description: Pause between cases in ms (free-tier requests-per-minute limits)
+        type: string
+        default: "4000"
+      chat_model:
+        description: Chat model override (empty = AI_CHAT_MODEL default from application.yml)
+        type: string
+        default: ""
+
+# Least privilege: nothing by default; the job only reads the repository.
+permissions: {}
+
+# One eval at a time (they share the provider quota); never cancel a running one.
+concurrency:
+  group: ai-evals
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    name: Golden-set eval (JDK 25, PostGIS 18 + pgvector, real model)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check the AI_API_KEY secret is set
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          if [ -z "$AI_API_KEY" ]; then
+            echo "::error::Repository secret AI_API_KEY is not set (Settings > Secrets and variables > Actions). Without it the eval test is skipped."
+            exit 1
+          fi
+
+      - name: Validate inputs
+        env:
+          DELAY_MS: ${{ inputs.delay_ms }}
+        run: |
+          if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
+            echo "::error::delay_ms must be a whole number of milliseconds"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Same database as backend.yml: service containers cannot be built from a Dockerfile, so build backend/db
+      # (postgis/postgis + pgvector) and run it by hand. A fresh database per run keeps retrieval scores comparable.
+      - name: Build database image (PostGIS + pgvector)
+        run: docker build -t house-hunt-db:ci backend/db
+
+      - name: Start database
+        run: |
+          docker run -d --name db \
+            -e POSTGRES_DB=househunt -e POSTGRES_USER=househunt -e POSTGRES_PASSWORD=househunt \
+            -p 127.0.0.1:5432:5432 house-hunt-db:ci
+          # Wait for the final server on TCP (the image's init phase only listens on the unix socket).
+          for i in $(seq 1 60); do
+            if docker exec db pg_isready -h 127.0.0.1 -U househunt -d househunt >/dev/null 2>&1; then
+              echo "database ready"; exit 0
+            fi
+            sleep 2
+          done
+          docker logs db
+          exit 1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Run GoldenSetEvalTest
+        working-directory: backend
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/househunt
+          DB_USER: househunt
+          DB_PASSWORD: househunt
+          APP_AI_ENABLED: "true"
+          APP_MCP_ENABLED: "false"
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_EVAL_TYPES: ${{ inputs.types }}
+          AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
+        run: |
+          # Only override the model when asked: an empty AI_CHAT_MODEL would replace the application.yml default.
+          if [ -n "$CHAT_MODEL_INPUT" ]; then export AI_CHAT_MODEL="$CHAT_MODEL_INPUT"; fi
+          # No -Dsurefire.failIfNoSpecifiedTests=false: if the test class is renamed or removed, Surefire fails the
+          # run ("No tests matching pattern") instead of passing green with no scorecard.
+          mvn -B -ntp test -Dtest=GoldenSetEvalTest
+
+      - name: Publish scorecard to the job summary
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ]; then
+            cat backend/target/ai-eval-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No scorecard was written (the test was skipped or failed before the first case)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload scorecard
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-eval-report
+          path: backend/target/ai-eval-report.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-eval-test-reports
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+      - name: Database logs
+        if: failure()
+        run: docker logs db | tail -200

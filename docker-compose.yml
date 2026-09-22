@@ -1,4 +1,4 @@
-# LOCAL DEVELOPMENT ONLY. `APP_API_KEY=$(openssl rand -hex 24) docker compose up --build` starts PostGIS + pgvector
+# LOCAL DEVELOPMENT ONLY. `APP_API_KEY=$(openssl rand -hex 32) docker compose up --build` starts PostGIS + pgvector
 # and the API on http://127.0.0.1:8080. Both ports are bound to the loopback interface only, so nothing is reachable
 # from the network even on a VM with a public IP (threat model F-17). For a public server use a managed Postgres or
 # a separate hardened compose file with secrets from the environment (docs/07-secure-build-and-deploy.md).
@@ -32,8 +32,11 @@ services:
       DB_URL: jdbc:postgresql://db:5432/househunt
       DB_USER: househunt
       DB_PASSWORD: ${POSTGRES_PASSWORD:-househunt}
-      # No default: compose refuses to start without a key (and the API refuses keys shorter than 16 chars).
-      APP_API_KEY: ${APP_API_KEY:?Set APP_API_KEY to a random secret, for example the output of openssl rand -hex 24}
+      # No default: compose refuses to start without a key (and the API refuses keys shorter than 32 chars, F-01).
+      APP_API_KEY: ${APP_API_KEY:?Set APP_API_KEY to a random secret of at least 32 characters, for example the output of openssl rand -hex 32}
+      # Optional second key accepted alongside APP_API_KEY during a rotation (SEC-017, drill TC-O-02). Empty = none;
+      # if set it must also be at least 32 chars. Rotate: set it, move clients, promote it to APP_API_KEY, clear it.
+      APP_API_KEY_NEXT: ${APP_API_KEY_NEXT:-}
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:4200}
       APP_AI_ENABLED: ${APP_AI_ENABLED:-false}
       APP_MCP_ENABLED: ${APP_MCP_ENABLED:-false}

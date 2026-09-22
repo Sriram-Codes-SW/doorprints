@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,7 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First threat model of the current code and the planned AI features. 26 findings recorded. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2 hardening: 21 findings Fixed, 2 Partly fixed, 3 Open (section 5.1). New controls in the trust-boundary table. OWASP mapping statuses updated. Network-layer threats are analysed in [09](09-osi-layer-analysis.md). |
 | 0.3 | 2026-09-22 | Claude (Cowork) | F-27 (Critical, found by the CI `npm audit` gate): maplibre-gl ≤ 6.4.0 `DOM.sanitize()` bypass (GHSA-jrc7-96c5-q579). Fixed by upgrading the web app to maplibre-gl ^6.10.0; CSP `worker-src` tightened to `'self'`. Totals: 22 Fixed. |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): new **F-28** (Critical, Trivy on the backend SBOM): tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905, CVE-2026-68525, Fixed by the `tomcat.version` 11.0.25 override; new **F-29** (Low; Trivy config DS-0002 rated HIGH): `backend/db/Dockerfile` had no `USER`, Fixed (`USER postgres`), Dockerfile scan now blocking. F-01 Part (minimum key length 32, `APP_API_KEY_NEXT` dual key for rotation); F-11 Part (release signing from secrets, signed APK verified in CI; R8 still off). Totals: 24 Fixed, 4 Part, 1 Open (accepted). OWASP mapping updated. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -172,7 +173,7 @@ flowchart LR
 |---|---|---|---|---|---|---|---|
 | T-E1 | P5 | There are no roles. Every key holder, including the read-mostly family member PER-3, has full write/delete. | 2 | 2 | 4 Medium | Accept for v1. Add a read-only key later (SEC-025). | F-01 |
 | T-E2 | P6/P7 agent | Prompt injection in notes or listing text makes the agent call tools beyond what the user asked (for example delete houses, send data) | 2 | 3 | **6 High** | AI-006/AI-007 read-only tools, AI-008 data/instruction separation, confirmation for writes | Planned |
-| T-E3 | P5 container | App runs as root in the container. An RCE gets root in the container. | 1 | 2 | 2 Low | SEC-024 non-root user | F-23 |
+| T-E3 | P5 container, D1 dev/CI DB container | App (or the dev/CI database image) runs as root in the container. An RCE gets root in the container. | 1 | 2 | 2 Low | SEC-024 non-root user | F-23, F-29 |
 | T-E4 | E7 CI | Workflow injection (untrusted PR titles in `run:`), `pull_request_target` misuse, an over-scoped PAT | 1 | 3 | 3 Medium | 07 section 3: minimal `permissions:`, no `pull_request_target`, fine-grained PAT with expiry | F-22 |
 | T-E5 | Compose on a public VM | Running `docker-compose.yml` unchanged on an Oracle VM exposes Postgres on 0.0.0.0:5432 with `househunt/househunt` and the API with the public default key `local-dev-key-change-me` | 2 | 3 | **6 High** | Separate prod compose, no DB port publish, required secrets (07 section 6.2) | F-17 |
 
@@ -193,7 +194,7 @@ flowchart LR
 
 ## 5. Findings in the current code
 
-Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
+Severity uses the same L×I scale. Status per finding (v0.4) is in section 5.1.
 
 | ID | Sev | Location | Finding | Recommended fix | Req |
 |---|---|---|---|---|---|
@@ -224,14 +225,16 @@ Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
 | F-25 | Low | `MainActivity.handle` | Deep-link extras are not validated (any app can start the exported launcher activity with extras) | Check the UUID format and lat/lon ranges. Ignore unknown IDs. Check for existence before navigating. | SEC-021 |
 | F-26 | Low | `PhotoController.upload` | Uploads are accepted for soft-deleted houses (`existsById` ignores `deleted`) and there is no count limit | Check `!deleted`. Cap the number of photos per house. | SEC-007 |
 | F-27 | Critical | `web/package.json` (maplibre-gl ^5.24.0) | Vulnerable dependency: maplibre-gl ≤ 6.4.0, GHSA-jrc7-96c5-q579 "XSS sanitizer bypass in `DOM.sanitize()` via live `NamedNodeMap` removal skip". Removing one dangerous attribute skipped the next, so e.g. a second `on*` handler survived sanitisation. MapLibre uses it for the attribution HTML taken from the map style and tile sources (third-party input). Found by the CI `npm audit` gate. | Upgrade to maplibre-gl ≥ 6.4.1 (6.10.0 chosen). Never pass user data to `setHTML`; build popup content with `setDOMContent` + `textContent`. Keep the strict CSP (`script-src 'self'`). | SEC-012, SEC-014 |
+| F-28 | Critical | `backend/pom.xml` (Spring Boot 4.1.1 parent manages Tomcat 11.0.24) | Vulnerable dependency: `org.apache.tomcat.embed:tomcat-embed-core` 11.0.24 has three CRITICAL advisories, CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525, all fixed in 11.0.25. Tomcat is the embedded HTTP server, so it faces every request from the internet. Found by the CI `trivy sbom` gate (Sprint 2). | Override the managed version with the `tomcat.version` property (11.0.25) until a Spring Boot 4.1.x patch manages 11.0.25 or later, then drop the override. Dependabot groups the Boot patch update. | SEC-013 |
+| F-29 | Low (Trivy rates DS-0002 HIGH) | `backend/db/Dockerfile` (`postgis/postgis:18-3.6` + pgvector) | No `USER` instruction: the database image starts as root (the official entrypoint drops to `postgres` via `gosu`, but anything before that, and any exec into the container, is root). Found by `trivy config` (Sprint 2). The image is used in CI and local dev; managed Postgres is used in production. | Install pgvector as root, then `USER postgres` (uid 999 from the base image). The entrypoint supports a non-root start and skips `chown`/`gosu`. Host bind mounts must be owned by uid 999. Make the Dockerfile scan blocking. | SEC-024 |
 
-### 5.1 Finding status (v0.3, 2026-09-22)
+### 5.1 Finding status (v0.4, 2026-09-22)
 
-**Fixed** = code and test in the repository (not yet run in CI: the pipeline was added in the same wave). **Part** = partly fixed. **Open** = not started.
+**Fixed** = code and test in the repository; since Sprint 1 the CI pipeline (07 §1) runs those tests on every push. **Part** = partly fixed. **Open** = not started. Sprint 2 changes are compiled and tested in CI only (no local builds, see [10](10-sprint-log.md)).
 
 | ID | Status | Fix (file references) | Test |
 |---|---|---|---|
-| F-01 | Open | Single shared key remains. Minimum length still 16 (raising it would break existing deployments; recommended 32+ in the error message and docs). Dual keys and per-device keys are backlog (SEC-017, SEC-025). | TC-I-10b |
+| F-01 | Part | Minimum key length raised to **32** (`ApiKeyFilter.MIN_KEY_LENGTH`, checked at startup by `WebConfig` through `validateKeys`; the error names the variable, never the value). Optional second key `APP_API_KEY_NEXT` (also ≥ 32) is accepted alongside the current one for zero-downtime rotation (SEC-017, 08 §5.1); both keys are always compared in constant time. Still one shared key for all clients: per-device keys with revocation remain backlog (SEC-025). **Upgrade note:** deployments with a 16–31 character key must set a new 32+ key before upgrading. | TC-U-18, TC-I-10b, TC-I-21 |
 | F-02 | **Fixed** | `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for localhost, 127.0.0.1, 10.0.2.2; system CAs only), manifest `usesCleartextTraffic` removed, `data/ServerUrl.kt` (Settings rejects non-HTTPS URLs) | `ServerUrlTest`, TC-S-07 |
 | F-03 | **Fixed** | `allowBackup="false"`, `res/xml/data_extraction_rules.xml` (no cloud backup; device transfer only of the DB and photos, never settings), `data/ApiKeyCipher.kt` (AES-256-GCM, Android Keystore key), `data/Settings.kt` (migrates the old plaintext key) | TC-S-07, TC-M-06 |
 | F-04 | **Fixed** | `web/src/app/core/config.service.ts`: sessionStorage by default, localStorage only with "Remember on this device" (Connect page) | TC-U-09, TC-M-05 |
@@ -241,7 +244,7 @@ Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
 | F-08 | **Fixed** | `sync/ClientClock.java`: `updatedAt` more than 5 min ahead is clamped to server time, more than 365 days ahead or before 2000 is a 400; visit times validated. The integration test no longer uses 2030 dates. | `ClientClockTest`, `clientClockIsClampedOrRejected` |
 | F-09 | **Fixed** | `sync/SyncVersions.java`: transaction-scoped advisory lock before `nextval`, taken by every house/visit/photo write, so versions commit in order (03 §10.4) | Design argument; concurrency test is backlog (OSI-B03) |
 | F-10 | **Fixed** | API: `config/SecurityHeadersFilter.java` (nosniff, DENY, no-referrer, CSP `default-src 'none'`, HSTS on HTTPS, `no-store` for JSON). Web: `web/public/_headers` (CSP, HSTS, frame-ancestors, Permissions-Policy); `inlineCritical` off so `script-src 'self'` holds | `securityHeadersAndNoStoreOnJson`, TC-S-04 |
-| F-11 | Open | No release signing or R8 yet; CI builds a debug APK only | TC-S-06 |
+| F-11 | Part | `app/build.gradle.kts`: `signingConfigs.release` from `HH_KEYSTORE_FILE`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` (Gradle properties or env vars, created only when all four are set). `android.yml` job `release` (push to `main`/manual only, never PRs) decodes `HH_KEYSTORE_BASE64` into `$RUNNER_TEMP`, runs `assembleRelease`, verifies with `apksigner verify --print-certs`, deletes the keystore in `always()` and uploads `house-hunt-release-apk`. R8 (`isMinifyEnabled`) stays **off** on purpose until keep rules and a release smoke test exist; publishing the SHA-256 with a GitHub Release (`release.yml`) is next sprint. | TC-S-06, TC-S-15 |
 | F-12 | **Fixed** | Android shows a translated error category (`data/SyncOutcome.kt`), never the server body; bodies are only logged in debug | `SyncOutcomeTest` |
 | F-13 | Open (accepted) | Room DB and photos rely on device encryption (AS-02) | – |
 | F-14 | **Fixed** | `Notifications.kt`: `VISIBILITY_PRIVATE` with a public version "House Hunt alert"; channel lock-screen visibility private | TC-M-07 |
@@ -258,8 +261,10 @@ Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
 | F-25 | **Fixed** | `MainActivity.handle`: UUID and coordinate range checks on intent extras | TC-S-12 |
 | F-26 | **Fixed** | Uploads rejected for deleted houses and above the per-house cap (`PhotoService.upload`) | `photoUploadStripsMetadataAndDeletesSyncAsTombstones` |
 | F-27 | **Fixed** | `web/package.json`: maplibre-gl ^6.10.0 (fix in 6.4.1). v6 migration: ESM worker copied to `/maplibre/` (`angular.json` assets) and set with `setWorkerUrl` (`shared/map-style.ts`), CSP `worker-src 'self'` (no `blob:`), `setData` promise handled, WebGL 2 missing → translated `role="status"` message instead of the map. Popups already use `setDOMContent` with `textContent` only; no `setHTML`/`innerHTML` in `web/src`. | CI `npm audit` (security workflow), `ng build` |
+| F-28 | **Fixed** | `backend/pom.xml`: `<tomcat.version>11.0.25</tomcat.version>` overrides the version managed by `spring-boot-dependencies` 4.1.1 (with a comment to drop it once Boot manages 11.0.25+) | CI `trivy sbom` (TC-S-02), backend tests on 11.0.25 |
+| F-29 | **Fixed** | `backend/db/Dockerfile`: `USER postgres` after the pgvector install; no `.trivyignore` entry. `security.yml` `trivy config` now fails on HIGH/CRITICAL (MEDIUM in a separate report-only pass) | TC-S-14; `backend.yml` still starts the DB image for the integration tests |
 
-Totals: 22 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accepted risk). High findings still open: **F-01** (shared key) only.
+Totals (29 findings): 24 Fixed, 4 Part (F-01, F-06, F-11, F-21), 1 Open (F-13, accepted risk). High findings not fully fixed: **F-01** (shared key, now Part: 32-char minimum and dual-key rotation done, per-device keys backlog).
 
 ## 6. Mitigation → requirement map (summary)
 
@@ -287,7 +292,7 @@ Totals: 22 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accept
 
 | ID | Residual risk | Rating | Acceptance rationale |
 |---|---|---|---|
-| RR-01 | Whoever holds the (single) key has full access until it is rotated | Medium | Single-user app. Rotation runbook in 08. Per-device keys are a later item (SEC-025). |
+| RR-01 | Whoever holds the (single) key has full access until it is rotated | Medium | Single-user app. Zero-downtime rotation with `APP_API_KEY_NEXT` (08 §5.1). Per-device keys are a later item (SEC-025). |
 | RR-02 | Data on an unlocked stolen phone is readable | Medium | Depends on the Android lock screen. Remote wipe via Google Find My Device. |
 | RR-03 | Third parties (Google, OSM, OpenFreeMap, hosting/DB provider, optional LLM) see some data | Low/Medium | Needed for zero-cost operation. Disclosed (PRV-007). Local Ollama is available for AI. |
 | RR-04 | Free-tier provider outages, pauses or policy changes | Medium | Data can be exported. Backups are off-provider. Migration is possible with Docker. |
@@ -301,13 +306,13 @@ Totals: 22 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accept
 | Category | Relevant threats / findings | Status |
 |---|---|---|
 | A01 Broken Access Control | T-S2/F-20 path bypass, T-E1 no roles, T-S6 MCP | F-20 Fixed; no roles (accepted, SEC-025) |
-| A02 Security Misconfiguration | F-02 cleartext, F-03 backup, F-10 headers, F-17 compose defaults, F-24 actuator (ok) | Fixed |
-| A03 Software Supply Chain Failures | T-T5, F-22 (no SCA, unpinned Actions) | Fixed (CI scans, Dependabot); web lock file still to commit |
+| A02 Security Misconfiguration | F-02 cleartext, F-03 backup, F-10 headers, F-17 compose defaults, F-24 actuator (ok), F-29 root DB container | Fixed |
+| A03 Software Supply Chain Failures | T-T5, F-22 (no SCA, unpinned Actions), F-27 maplibre-gl, F-28 Tomcat | Fixed (CI scans incl. Trivy on the CycloneDX SBOM, Dependabot, F-27/F-28 upgraded); web lock file still to commit |
 | A04 Cryptographic Failures | F-02 (TLS not enforced), F-03/F-04 plaintext key, unencrypted backups T-I11 | Fixed (F-02, F-03, F-04); backups per 08 |
 | A05 Injection | JPA parameter binding and native queries with named params (safe). Angular auto-escaping. Prompt injection is covered under LLM01. | Low risk |
-| A06 Insecure Design | Shared key (F-01), LWW trusting the client clock (F-08), photos in DB (F-06), soft-delete only (F-16) | Part (F-01 open, F-06 part) |
-| A07 Authentication Failures | F-01, F-05 (no throttling), F-18 | Part (F-05, F-18 fixed; F-01 open) |
-| A08 Software or Data Integrity Failures | F-11 unsigned/unverified APK, T-T6 sync ordering, CI integrity | Part (F-09 fixed, CI added; F-11 open) |
+| A06 Insecure Design | Shared key (F-01), LWW trusting the client clock (F-08), photos in DB (F-06), soft-delete only (F-16) | Part (F-01 part, F-06 part) |
+| A07 Authentication Failures | F-01, F-05 (no throttling), F-18 | Part (F-05, F-18 fixed; F-01 part: 32-char keys, dual-key rotation) |
+| A08 Software or Data Integrity Failures | F-11 unsigned/unverified APK, T-T6 sync ordering, CI integrity | Part (F-09 fixed, CI added; F-11 part: signed and verified in CI, checksum publishing next) |
 | A09 Security Logging and Alerting Failures | F-18 no auth-failure logs or alerting | Part (logs added; alerting per 08) |
 | A10 Mishandling of Exceptional Conditions | `ApiExceptionHandler` returns RFC 7807 (good). Unhandled exceptions fall back to Spring's default error (no stack trace by default). Android `runCatching` swallows the photo delete (F-15). | Fixed (F-15; 409/413/428 mapped) |
 
@@ -315,13 +320,13 @@ Totals: 22 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accept
 
 | Category | Relevant findings | Status |
 |---|---|---|
-| M1 Improper Credential Usage | F-01 shared static key, F-03 plaintext key | Part (F-03 fixed) |
-| M2 Inadequate Supply Chain Security | F-22, sideloaded APK integrity (F-11) | Part (F-22 fixed) |
+| M1 Improper Credential Usage | F-01 shared static key, F-03 plaintext key | Part (F-03 fixed, F-01 part) |
+| M2 Inadequate Supply Chain Security | F-22, sideloaded APK integrity (F-11) | Part (F-22 fixed, F-11 part) |
 | M3 Insecure Authentication/Authorization | F-01, no local app lock (optional biometric lock later) | Open |
 | M4 Insufficient Input/Output Validation | F-25 intent extras. Server data rendered by Compose `Text` (safe). | Fixed |
 | M5 Insecure Communication | F-02 cleartext allowed, no HTTPS enforcement | Fixed |
 | M6 Inadequate Privacy Controls | F-14 lock screen, F-16 retention, F-21 disclosure. Positives: PRV-001..003, PRV-008 | Mostly fixed (F-21 part) |
-| M7 Insufficient Binary Protections | F-11 no R8 obfuscation (low value for a personal app) | Open (low) |
+| M7 Insufficient Binary Protections | F-11 no R8 obfuscation (low value for a personal app) | Open (low): R8 deliberately off until keep rules and a release smoke test exist |
 | M8 Security Misconfiguration | F-02, F-03, the exported launcher only, immutable PendingIntents (good) | Fixed |
 | M9 Insecure Data Storage | F-03, F-13 | Part (F-03 fixed, F-13 accepted) |
 | M10 Insufficient Cryptography | No custom crypto used (good). Keystore needed for SEC-010. | Fixed (Keystore AES-GCM) |

@@ -102,8 +102,12 @@ management:
       show-details: never
 
 app:
-  # Required. Every /api request must send this in the X-API-Key header.
+  # Required, at least 32 characters (e.g. `openssl rand -hex 32`). Every /api request must send it in the X-API-Key
+  # header (or as Authorization: Bearer).
   api-key: ${APP_API_KEY:}
+  # Optional second key for zero-downtime rotation (SEC-017): while set, both keys are accepted. Also >= 32 characters.
+  # Rotate: set the new key here, move all clients to it, promote it to APP_API_KEY and clear this variable.
+  api-key-next: ${APP_API_KEY_NEXT:}
   # Comma-separated list of web origins allowed to call the API.
   cors-origins: ${APP_CORS_ORIGINS:http://localhost:4200}
   rate-limit:

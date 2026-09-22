@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,7 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version: pipeline design, branch protection, secrets, APK signing, free-tier deployment (Supabase/Neon + Render/Koyeb/Oracle + Cloudflare Pages), env vars. No workflows exist in the repo yet. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: the pipeline now exists (`backend.yml`, `web.yml`, `android.yml`, `security.yml`, `dependabot.yml`); section 1 describes the real workflows and the CodeQL decision. Hardened Dockerfile and dev compose, `web/public/_headers` in the repo, new environment variables (rate limits, size limits, clock skew, retention, forward headers). |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Fixes after the first CI runs: Trivy scans the backend from a CycloneDX SBOM (`trivy sbom`) and runs `trivy fs --offline-scan` (the pom.xml resolution hit Maven Central `429 Too Many Requests`), Trivy DB cached with `actions/cache`; backend.yml publishes the SBOM; `permissions: {}` at the top with per-job `contents: read`; only PR runs are cancelled by newer pushes; Dependabot tuned (Monday schedule, 5 open PRs, grouped minor/patch and security updates, framework majors ignored); gitleaks history note. |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 1 close-out and Sprint 2 ([10](10-sprint-log.md)): section 6.3 CSP note fixed (MapLibre GL 6 module worker from `/maplibre/`, `worker-src 'self'`, no `blob:`); reviewed `.gitleaksignore`; Tomcat 11.0.25 override (F-28) and the version-override rule; `trivy config` blocking on HIGH/CRITICAL (DS-0002 fixed, F-29); `web.yml` runs unit tests; `android.yml` signed release job with `HH_*` secrets (F-11); `APP_API_KEY` minimum 32 and `APP_API_KEY_NEXT` implemented (F-01, SEC-017); compileSdk 37; CI results per sprint; `ai-evals.yml` (manual golden-set eval against a real model) in the section 1 table, diagram and secrets table; section 6.2 note on the non-root DB image (uid 999) and host bind-mount ownership; first-push CI row marked as reconstructed from the `689927d` commit message. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -22,7 +23,15 @@ Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [
 
 ## 1. Pipeline overview
 
-The workflows live in `.github/workflows/` (F-22 fixed). They run on push and pull request to `main` and on manual dispatch; the security workflow also runs weekly. First CI results (2026-09-22): Web build and Semgrep passed; Trivy fs failed on Maven Central rate limiting and gitleaks flagged test API keys, both addressed in v0.3 (below).
+The workflows live in `.github/workflows/` (F-22 fixed). `backend.yml`, `web.yml`, `android.yml` and `security.yml` run on push and pull request to `main` and on manual dispatch; the security workflow also runs weekly. `ai-evals.yml` is the exception: it is manual only (`workflow_dispatch`) and never runs on push or PR.
+
+| Run | Backend | Web | Android | Security |
+|---|---|---|---|---|
+| First push `4b034d3` (Sprint 1)¹ | Failed (test compile error) | Build passed; `npm audit` found F-27 | Failed (compileSdk) | Trivy fs hit Maven Central `429`; gitleaks flagged test keys |
+| Commit `689927d` (end of Sprint 1) | Passed | Passed | Passed (`assembleDebug`, unit tests) | Failed only on Trivy: tomcat-embed-core 11.0.24 (F-28) and DS-0002 in `backend/db/Dockerfile` (F-29) |
+| Sprint 2 | To be confirmed by the first CI run after merge: F-28 and F-29 fixed, new web unit tests, signed release job, dual-key tests (see [10](10-sprint-log.md)) | | | |
+
+¹ Reconstructed from the `689927d` commit message ("Fix first CI run: test compile error, ... compileSdk 37, ..."); the CI logs of the first push were not reviewed.
 
 ```mermaid
 flowchart LR
@@ -34,28 +43,39 @@ flowchart LR
     end
     subgraph web["web.yml"]
         w1["Node 24: npm ci or npm install"] --> w2["upload package-lock.json<br/>if not committed"]
-        w1 --> w3["ng build, check _headers,<br/>upload house-hunt-web-dist"]
+        w1 --> w4["npm run test:ci<br/>Vitest + jsdom"]
+        w4 --> w3["ng build, check _headers,<br/>upload house-hunt-web-dist"]
     end
     subgraph and["android.yml"]
         a1["JDK 21 + setup-gradle<br/>(wrapper validation, cache)"] --> a2["assembleDebug testDebugUnitTest"]
         a2 --> a3["lintDebug - report only"]
         a2 --> a4["upload house-hunt-debug-apk"]
+        a2 --> a5["main or manual, HH_* secrets set:<br/>assembleRelease signed,<br/>apksigner verify,<br/>upload house-hunt-release-apk"]
     end
     subgraph sec["security.yml (+ weekly)"]
         s1["Semgrep OSS --config auto,<br/>blocks on ERROR"]
         s2["gitleaks full history"]
-        s3["Trivy: fs --offline-scan (npm, secrets),<br/>sbom (backend Java), both blocking;<br/>config report only"]
+        s3["Trivy: fs --offline-scan (npm, secrets),<br/>sbom (backend Java), config HIGH/CRITICAL,<br/>all blocking; config MEDIUM report only"]
         s4["npm audit --omit=dev high"]
         s5["ZAP baseline - manual, given a URL"]
     end
+    manual["Manual only: Actions > AI evals > Run workflow"] --> ai
+    subgraph ai["ai-evals.yml (workflow_dispatch only)"]
+        ai1["fail fast if AI_API_KEY secret missing"] --> ai2["build backend/db, docker run"]
+        ai2 --> ai3["mvn test -Dtest=GoldenSetEvalTest<br/>real model"]
+        ai3 --> ai4["scorecard: job summary +<br/>artifact ai-eval-report"]
+    end
 ```
+
+`ai-evals.yml` is drawn apart from the push/PR flow on purpose: nothing triggers it except a person pressing Run workflow.
 
 | Workflow | Trigger | What it does | Blocking gates |
 |---|---|---|---|
 | `backend.yml` | push/PR touching `backend/**`, manual | Builds `backend/db` (service containers cannot be built, so it is `docker run` by hand), waits for TCP readiness, runs `mvn -B -ntp verify` on Temurin 25 with `DB_URL` etc., then generates a CycloneDX JSON SBOM (`cyclonedx-maven-plugin:2.9.3:makeAggregateBom`, runtime scopes) and uploads it as `backend-sbom-cyclonedx`; on push also builds the API image and checks it does not run as root | Tests pass; image user ≠ root |
-| `web.yml` | push/PR touching `web/**`, manual | Node 24, `npm ci` if `package-lock.json` exists else `npm install` (and uploads the generated lock file as artifact `web-package-lock` so it can be committed), `npm run build`, checks `_headers`/`_redirects` are in the output, uploads `house-hunt-web-dist` | Build passes |
-| `android.yml` | push/PR touching `android/**`, manual | Temurin 21, `gradle/actions/setup-gradle@v6` (validates the wrapper JAR), `./gradlew assembleDebug testDebugUnitTest`, `lintDebug` (report only), uploads **`house-hunt-debug-apk`** and reports | Build + unit tests pass |
-| `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`, see below), `npm audit --audit-level=high --omit=dev` (dev-only tooling such as the Angular CLI is not shipped, so its advisories do not block), optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy, no high npm advisory |
+| `web.yml` | push/PR touching `web/**`, manual | Node 24, `npm ci` if `package-lock.json` exists else `npm install` (and uploads the generated lock file as artifact `web-package-lock` so it can be committed), **`npm run test:ci`** (`ng test --watch=false`: Vitest through `@angular/build:unit-test`, jsdom, no browser), `npm run build`, checks `_headers`/`_redirects` are in the output, uploads `house-hunt-web-dist` | Unit tests and build pass |
+| `android.yml` | push/PR touching `android/**`, manual | Temurin 21, `gradle/actions/setup-gradle@v6` (validates the wrapper JAR), `./gradlew assembleDebug testDebugUnitTest` (compileSdk 37), `lintDebug` (report only), uploads **`house-hunt-debug-apk`** and reports. Not on PRs: job `release-signing-check` looks for the four `HH_*` secrets (a job-level `if` cannot read secrets); when present, job `release` builds a **signed** `assembleRelease` and uploads `house-hunt-release-apk` (section 5) | Build + unit tests pass; release: `apksigner verify` passes |
+| `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`, see below), `npm audit --audit-level=high --omit=dev` (dev-only tooling such as the Angular CLI is not shipped, so its advisories do not block), optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy (dependencies and Dockerfiles), no high npm advisory |
+| `ai-evals.yml` | **Manual only** (`workflow_dispatch`), never on push or PR (it spends free-tier model quota and model answers are not deterministic). Inputs: `types` (choice, default `extract,ask,plan`), `delay_ms` (pause between cases, default `4000`, validated as a whole number), `chat_model` (optional model override; empty keeps the `application.yml` default) | Top-level `permissions: {}`, job-level `contents: read`; one run at a time (`concurrency: ai-evals`, never cancelled). Fails fast if the `AI_API_KEY` repository secret is missing. Builds `backend/db` and runs it with `docker run`, then `mvn -B -ntp test -Dtest=GoldenSetEvalTest` on Temurin 25 with `APP_AI_ENABLED=true` against the golden set ([ai/evals/golden-set.json](ai/evals/golden-set.json)). Always publishes `backend/target/ai-eval-report.md` to the job summary and as artifact **`ai-eval-report`** (kept 30 days); on failure also uploads `ai-eval-test-reports` (7 days) | Not a merge gate. The run fails when a metric misses the golden set's thresholds or no case matches `types`; a person reviews the scorecard (TC-AI-10, [06](06-test-plan.md) §2) |
 | `deploy.yml`, `release.yml`, `backup.yml` | – | **Not built yet** (see sections 5, 6 and 08 §3) | – |
 
 Conventions used in every workflow:
@@ -80,11 +100,14 @@ Conventions used in every workflow:
 | DB cache | `actions/cache` on `~/.cache/trivy` (daily key, restore from the latest); the default `--db-repository` already prefers `mirror.gcr.io` over `ghcr.io` | – |
 | `trivy fs --offline-scan` | npm lock file vulnerabilities and secrets in the whole repo (skips `docs`, `backend/target`, `backend/pom.xml`); `--offline-scan` means Trivy never fetches POMs remotely | Yes, High/Critical with a fix |
 | `trivy sbom` | Backend Java dependencies from `backend/target/bom.json`; runs even if the fs step failed | Yes, High/Critical with a fix |
-| `trivy config` | Dockerfiles and compose | No (report only) |
+| `trivy config` (HIGH/CRITICAL) | `backend/Dockerfile`, `backend/db/Dockerfile` and compose (skips `docs`) | **Yes** since Sprint 2. DS-0002 ("Specify at least 1 USER command") in `backend/db/Dockerfile` was fixed at the source with `USER postgres` (F-29), not with a `.trivyignore` entry |
+| `trivy config` (MEDIUM) | Same files | No (report only, so MEDIUM findings stay visible) |
 
 The containers run as the runner's user (`--user $(id -u):$(id -g)`) with `--cache-dir /cache`, so `actions/cache` can save the DB. The SBOM is also uploaded (`backend-sbom-cyclonedx`). Known gap: Trivy only covers Gradle with a `gradle.lockfile`; the Android dependencies are covered by Dependabot and Gradle dependency locking can be added later.
 
-**gitleaks** scans the whole git history (`fetch-depth: 0`). The flagged test API keys are being removed by the backend team; test code should build its key at runtime instead of hard-coding a realistic-looking one. No `.gitleaks.toml` allowlist is added. If the keys stay in an earlier commit, gitleaks keeps failing on history: before the repo gets other users, either rewrite that commit (the repo is new) or add the exact finding fingerprints from the gitleaks log to a reviewed `.gitleaksignore`, never a path-wide allowlist.
+**Version overrides for security fixes.** When Trivy reports a Critical/High in a library whose version the Spring Boot BOM manages, and Boot has not shipped a patch yet, override only that version property in `backend/pom.xml` with a comment naming the CVEs and when to remove it. Sprint 2: `<tomcat.version>11.0.25</tomcat.version>` for tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 (F-28). Remove the property when the Spring Boot parent manages 11.0.25 or later (Dependabot's grouped Boot patch PR is the trigger to check). Never override across a major or minor line without the framework's support.
+
+**gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
 
 **Dependabot** (`.github/dependabot.yml`). The first push opened many PRs at once, so it is tuned:
 
@@ -130,9 +153,10 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | `BACKUP_DB_URL` | GitHub `production` environment secret (read-only DB role) | `backup.yml` | Yearly |
 | `BACKUP_AGE_RECIPIENT` | GitHub variable (public key, not secret). The private key is **offline** in the password manager. | `backup.yml` | Yearly |
 | `RENDER_DEPLOY_HOOK_URL` / `VM_SSH_KEY` | `production` environment secret | `deploy.yml` | Yearly / on staff change |
-| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | `release` environment secrets. The master copy is offline. | `release.yml` | Never (key loss = no in-place updates). Passwords rotate yearly. |
-| `NVD_API_KEY` | Repo secret | Dependency-Check | Yearly |
-| LLM provider key (e.g. `GEMINI_API_KEY`) | Host secret store. Name TBD by the AI team ([ai/](ai/)). | AI module | On suspicion / quarterly |
+| `APP_API_KEY_NEXT` | Same place as `APP_API_KEY`, only during a rotation; empty otherwise | API | Promoted to `APP_API_KEY` at the end of each rotation (08 §5.1) |
+| `HH_KEYSTORE_BASE64`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` | Repository secrets today (move them to a `release` environment restricted to `main` when the repo is public, where environment protection is free). The master keystore copy is offline. | `android.yml` job `release` (never on PRs) | Never for the key (key loss = no in-place updates). Passwords rotate yearly. |
+| ~~`NVD_API_KEY`~~ | Not needed: OWASP Dependency-Check is not used (section 1) | – | – |
+| LLM provider key `AI_API_KEY` | Host secret store ([ai/](ai/) §11). For the manual AI eval run (TC-AI-10, `ai-evals.yml` (manual, workflow_dispatch)) a separate free-tier key as a repository secret, never exposed to PR runs. | AI module, AI evals | On suspicion / quarterly |
 | GitHub PAT | **Avoid**: use `GITHUB_TOKEN`. If you need one, use a fine-grained PAT, a single repo, minimal scopes, expiry ≤ 90 days. | Local tooling only | At expiry, **and immediately if it was ever pasted into chat, logs or a file** |
 
 Rules: never commit keys (`.gitignore` already covers `.env`, `*.keystore`, `*.jks`, `local.properties`); never put secrets in Docker build args or the APK; never echo secrets in workflow logs; generate keys with `openssl rand -base64 32`; the `docker-compose.yml` defaults are **dev-only** (F-17).
@@ -143,12 +167,13 @@ Rules: never commit keys (`.gitignore` already covers `.env`, `*.keystore`, `*.j
 |---|---|
 | Create the keystore once, offline | `keytool -genkeypair -v -keystore house-hunt-release.jks -alias househunt -keyalg RSA -keysize 4096 -validity 10000` |
 | Back up | The keystore + passwords go to the password manager and one offline encrypted copy. **If lost**, updates must be signed with a new key, which forces an uninstall and **wipes local unsynced data**. |
-| Gradle config | `signingConfigs.release` reads `keystore.properties` (gitignored) locally or env vars in CI. `release { isMinifyEnabled = true; isShrinkResources = true; signingConfig = ... }` (F-11). |
+| Gradle config (done, Sprint 2) | `app/build.gradle.kts` reads `HH_KEYSTORE_FILE`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` from Gradle properties (`-P…` or `~/.gradle/gradle.properties`, never the repo) or environment variables of the same names. `signingConfigs.release` is created only when all four are set; otherwise `assembleRelease` still works but produces an unsigned APK. |
+| R8 | `isMinifyEnabled = false` **on purpose** for now: kotlinx.serialization, Room (KSP), MapLibre (JNI) and WorkManager need keep rules that are not written or tested, and there are no instrumented tests to catch a stripped class. Turn on `isMinifyEnabled`/`isShrinkResources` together with `proguard-rules.pro` and a release smoke test (F-11 stays Part until then). |
 | Network security | Remove `usesCleartextTraffic="true"`. Add `network_security_config.xml` allowing cleartext only to `10.0.2.2` and `localhost` in `src/debug/` (F-02). |
 | Backup | `android:allowBackup="false"` or `dataExtractionRules` excluding `database/`, `file/photos/`, `datastore/` (F-03) |
-| Build in CI | Decode `ANDROID_KEYSTORE_BASE64` to `$RUNNER_TEMP`, run `./gradlew assembleRelease`, delete the file in `always()` |
-| Verify | `apksigner verify --print-certs app-release.apk`. Compare the SHA-256 cert fingerprint with the one published in the README. |
-| Publish | GitHub Release: `house-hunt-vX.Y.Z.apk` + `house-hunt-vX.Y.Z.apk.sha256`. Notes list the image digest, schema migrations and security fixes. |
+| Build in CI (done, Sprint 2) | `android.yml`: `release-signing-check` (no permissions) outputs whether all four secrets exist; `release` (needs `build`, `contents: read`) decodes `HH_KEYSTORE_BASE64` with `umask 077` to `$RUNNER_TEMP/house-hunt-release.jks`, runs `./gradlew assembleRelease` with `HH_KEYSTORE_FILE` pointing there, verifies, deletes the file in `always()` and uploads `house-hunt-release-apk` (30 days). Runs only on push to `main` and manual dispatch, never for pull requests, so PR code never runs with the key. To encode the keystore: `base64 -w0 house-hunt-release.jks`. |
+| Verify | CI runs `apksigner verify --print-certs` (latest installed build-tools) on `app-release.apk`. Compare the SHA-256 cert fingerprint in the log with the one published in the README. |
+| Publish (planned, `release.yml`) | GitHub Release: `house-hunt-vX.Y.Z.apk` + `house-hunt-vX.Y.Z.apk.sha256`. Notes list the image digest, schema migrations and security fixes (see [CHANGELOG](../CHANGELOG.md)). Until then, download `house-hunt-release-apk` from the Actions run. |
 | Install | The user checks the SHA-256, allows "Install unknown apps" for the browser/file manager once, and turns it off afterwards |
 
 ## 6. Free-tier deployment
@@ -190,6 +215,7 @@ services:
       DB_USER: ${DB_USER:?required}
       DB_PASSWORD: ${DB_PASSWORD:?required}
       APP_API_KEY: ${APP_API_KEY:?required}
+      APP_API_KEY_NEXT: ${APP_API_KEY_NEXT:-}   # only during a key rotation (08 §5.1)
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:?required}
     restart: unless-stopped
     read_only: true
@@ -209,17 +235,19 @@ volumes: { caddy_data: {} }
 
 **Dev compose** (F-17, done): `docker-compose.yml` binds Postgres and the API to `127.0.0.1` only, refuses to start without `APP_API_KEY`, waits for a healthy database, and runs the API read-only with `cap_drop: ALL` and `no-new-privileges`. It is still for development only; on a VM use the prod file above.
 
+**Dev/CI database image runs as `postgres`, uid 999** (F-29, Sprint 2): `backend/db/Dockerfile` ends with `USER postgres`, so the official entrypoint starts without root and **cannot `chown` the data directory**. The default `docker-compose.yml` uses the named volume `dbdata18` mounted at `/var/lib/postgresql`; a fresh named or anonymous volume inherits the image's ownership and just works. If you replace it with a **host bind mount** (for example `./pgdata:/var/lib/postgresql`), or reuse a volume first initialised by another uid, the directory must be owned by uid 999 before the first start, otherwise the container exits during startup with a permission error (`initdb` or the entrypoint cannot create or write `/var/lib/postgresql/18/docker`, or Postgres refuses a data directory with the wrong owner). Fix: `sudo chown -R 999:999 ./pgdata` (on the host), or go back to the named volume. Do not work around it with `user: root` in compose, which undoes F-29. The same applies if you self-host this image on a VM (section 6.2). Troubleshooting entry: [08 §9](08-operations-runbook.md#9-troubleshooting).
+
 ### 6.3 Web: Cloudflare Pages (or Netlify)
 
 1. Pages → connect the repo, root `web`, build command `npm run build`, output `dist/web/browser`, env `NODE_VERSION=24`.
-2. `public/_redirects` handles the SPA fallback and **`public/_headers`** (in the repo, F-10 fixed) sets the CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy: strict-origin-when-cross-origin` (Nominatim needs a referrer), `Permissions-Policy`, COOP and long caching for hashed bundles. `connect-src` allows `https:` because the API address is typed by the user at runtime; `worker-src blob:` is for MapLibre 5; `angular.json` sets `inlineCritical: false` so `script-src 'self'` holds (no inline `onload` handler). GitHub Pages cannot send headers, so prefer Cloudflare Pages or Netlify.
+2. `public/_redirects` handles the SPA fallback and **`public/_headers`** (in the repo, F-10 fixed) sets the CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy: strict-origin-when-cross-origin` (Nominatim needs a referrer), `Permissions-Policy`, COOP and long caching for hashed bundles. `connect-src` allows `https:` because the API address is typed by the user at runtime; `worker-src 'self'`: MapLibre GL 6 loads its ES-module worker from `/maplibre/maplibre-gl-worker.mjs` (copied with `maplibre-gl-shared.mjs` by `angular.json` assets, set with `setWorkerUrl` in `shared/map-style.ts`), so the `blob:` worker source that MapLibre 5 needed is gone (F-27); `angular.json` sets `inlineCritical: false` so `script-src 'self'` holds (no inline `onload` handler). GitHub Pages cannot send headers, so prefer Cloudflare Pages or Netlify.
 
 3. Set `APP_CORS_ORIGINS=https://<project>.pages.dev` (plus a custom domain if you use one) on the API and redeploy.
 4. Open the site → Connect → enter the `https://` API URL + key.
 
 ### 6.4 Android client
 
-Install the APK (section 5; until release signing exists, the debug APK from the `house-hunt-debug-apk` artifact of `android.yml`). Settings → server URL `https://…` (the app rejects `http://` except for localhost and the emulator), paste the key, then Save and test, then Sync now.
+Install the APK (section 5): the signed `house-hunt-release-apk` artifact of `android.yml` once the `HH_*` secrets are set, otherwise the debug APK from `house-hunt-debug-apk`. A signed release cannot be installed over a debug build (different signer): sync, uninstall, then install. Settings → server URL `https://…` (the app rejects `http://` except for localhost and the emulator), paste the key, then Save and test, then Sync now.
 
 ## 7. Environment variables
 
@@ -229,7 +257,7 @@ Install the APK (section 5; until release signing exists, the debug APK from the
 | `DB_USER` | Yes (prod) | `househunt` (**dev only**) | `househunt_app` | Yes |
 | `DB_PASSWORD` | Yes (prod) | `househunt` (**dev only**) | Generated, 32+ chars | Yes |
 | `DB_POOL_SIZE` | No | `5` | Keep ≤ 5 on free DBs | No |
-| `APP_API_KEY` | **Yes** (startup fails if shorter than 16 chars) | empty | `openssl rand -base64 32` | Yes |
+| `APP_API_KEY` | **Yes** (startup fails if missing or shorter than **32** chars; since Sprint 2, was 16) | empty | `openssl rand -hex 32` (64 chars) | Yes |
 | `APP_CORS_ORIGINS` | Yes for web | `http://localhost:4200` | `https://house-hunt.pages.dev` (comma-separated) | No |
 | `PORT` | No | `8080` | Set by Render/Koyeb | No |
 | `JAVA_TOOL_OPTIONS` | No | Set in the Dockerfile: `-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Xss512k` | Keep for 512 MB hosts | No |
@@ -240,12 +268,24 @@ Install the APK (section 5; until release signing exists, the debug APK from the
 | `MAX_PHOTOS_PER_HOUSE` | No | `20` | Keep equal to the Android `MAX_PHOTOS_PER_HOUSE` | No |
 | `SYNC_MAX_CLOCK_SKEW_SECONDS`, `SYNC_MAX_FUTURE_DAYS` | No | `300`, `365` | Client clock clamp / reject (F-08) | No |
 | `TOMBSTONE_RETENTION_DAYS` | No | `90` | Daily purge at 03:30 server time | No |
-| `APP_API_KEY_NEXT` | Planned (SEC-017) | - | Second valid key during rotation | Yes |
+| `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes |
 | AI variables (`APP_AI_ENABLED`, `APP_MCP_ENABLED`, `AI_API_KEY`, models, limits) | No, off by default (AI-001) | – | See [docs/ai/ai-design.md](ai/ai-design.md) §11 | Keys: Yes |
+
+### 7.1 Build-time variables (Android release signing, F-11)
+
+Read by `android/app/build.gradle.kts` as Gradle properties or environment variables. All four must be set, otherwise the release build is unsigned.
+
+| Variable | Where it comes from | Notes | Secret |
+|---|---|---|---|
+| `HH_KEYSTORE_FILE` | CI: `$RUNNER_TEMP/house-hunt-release.jks` (decoded from the `HH_KEYSTORE_BASE64` secret). Local: an absolute path outside the repo | `*.jks`/`*.keystore` are gitignored anyway | Path only |
+| `HH_KEYSTORE_PASSWORD` | GitHub secret / local `~/.gradle/gradle.properties` | – | Yes |
+| `HH_KEY_ALIAS` | GitHub secret / local | e.g. `househunt` (section 5) | Low |
+| `HH_KEY_PASSWORD` | GitHub secret / local | – | Yes |
+| `HH_KEYSTORE_BASE64` | GitHub secret only | `base64 -w0 house-hunt-release.jks`; used only by the CI decode step | Yes |
 
 ## 8. Pre-deploy checklist (per environment)
 
-- [ ] `APP_API_KEY` is 32+ random chars and differs from dev/staging.
+- [ ] `APP_API_KEY` is 32+ random chars (enforced at startup) and differs from dev/staging. `APP_API_KEY_NEXT` is empty unless a rotation is in progress.
 - [ ] `DB_URL` has `sslmode=require` and uses the least-privilege role.
 - [ ] No dev defaults (`househunt/househunt`) anywhere in prod; the old `local-dev-key-change-me` default no longer exists.
 - [ ] `web/public/_headers` is served (check with `curl -I` that `Content-Security-Policy` is present) and the app still loads maps and fonts.

@@ -120,6 +120,11 @@ fun MapScreen(onOpenHouse: (String) -> Unit, onNewHouse: (Double, Double) -> Uni
     LaunchedEffect(Unit) { if (!permissionGranted) askPermissions(false) }
 
     val mapView = rememberMapViewWithLifecycle()
+    // The map callbacks below are registered once, in the AndroidView factory; read the latest values through
+    // these instead of the ones captured on the first composition.
+    val currentHouses by rememberUpdatedState(houses)
+    val currentOnOpenHouse by rememberUpdatedState(onOpenHouse)
+    val currentOnNewHouse by rememberUpdatedState(onNewHouse)
 
     // Keep the markers in sync with the database.
     LaunchedEffect(style, houses) {
@@ -148,18 +153,18 @@ fun MapScreen(onOpenHouse: (String) -> Unit, onNewHouse: (Double, Double) -> Uni
                         m.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { s ->
                             addHouseLayers(s)
                             style = s
-                            if (houses.isNotEmpty()) {
-                                val h = houses.first()
+                            if (currentHouses.isNotEmpty()) {
+                                val h = currentHouses.first()
                                 m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(h.lat, h.lon), 15.0))
                             }
                         }
                         m.addOnMapClickListener { point ->
                             val screen = m.projection.toScreenLocation(point)
                             val hit = m.queryRenderedFeatures(screen, DOTS, LABELS).firstOrNull()
-                            hit?.getStringProperty("id")?.let { onOpenHouse(it); true } ?: false
+                            hit?.getStringProperty("id")?.let { currentOnOpenHouse(it); true } ?: false
                         }
                         m.addOnMapLongClickListener { point ->
-                            onNewHouse(point.latitude, point.longitude); true
+                            currentOnNewHouse(point.latitude, point.longitude); true
                         }
                     }
                 }
@@ -171,9 +176,9 @@ fun MapScreen(onOpenHouse: (String) -> Unit, onNewHouse: (Double, Double) -> Uni
         HuntCard(
             hunt = hunt,
             onToggle = { on ->
+                // start() returns false when the permission was revoked since this screen last checked.
                 if (!on) HuntService.stop(context)
-                else if (permissionGranted) HuntService.start(context)
-                else askPermissions(true)
+                else if (!permissionGranted || !HuntService.start(context)) askPermissions(true)
             },
             onOpenHouse = onOpenHouse,
             modifier = Modifier.align(Alignment.TopCenter).padding(12.dp),
@@ -303,25 +308,65 @@ private fun enableLocationDot(context: Context, map: MapLibreMap, style: Style) 
     }
 }
 
+/**
+ * A MapView driven by the screen's lifecycle. MapView crashes or leaks when its callbacks arrive out of order or
+ * twice (onDestroy after onDestroy, onStop without onStart), so:
+ *  - onStart/onResume/onPause/onStop are tracked and only ever called in pairs; leaving the screen (or the
+ *    lifecycle owner changing) unwinds pause/stop before anything else,
+ *  - onDestroy runs exactly once, when the MapView itself leaves the composition. Before this change it ran in
+ *    the same effect as the observer, so a new lifecycle owner destroyed the map and then kept using it.
+ * Compose disposes effects in reverse order, so the destroy effect is declared first and runs last.
+ */
 @Composable
 private fun rememberMapViewWithLifecycle(): MapView {
     val context = LocalContext.current
     val mapView = remember { MapView(context).apply { onCreate(Bundle()) } }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(mapView) {
+        onDispose { mapView.onDestroy() }
+    }
     DisposableEffect(lifecycle, mapView) {
+        var started = false
+        var resumed = false
+        fun start() {
+            if (!started) {
+                mapView.onStart()
+                started = true
+            }
+        }
+        fun resume() {
+            start()
+            if (!resumed) {
+                mapView.onResume()
+                resumed = true
+            }
+        }
+        fun pause() {
+            if (resumed) {
+                mapView.onPause()
+                resumed = false
+            }
+        }
+        fun stop() {
+            pause()
+            if (started) {
+                mapView.onStop()
+                started = false
+            }
+        }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_START -> start()
+                Lifecycle.Event.ON_RESUME -> resume()
+                Lifecycle.Event.ON_PAUSE -> pause()
+                Lifecycle.Event.ON_STOP -> stop()
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
-            mapView.onDestroy()
+            stop()
         }
     }
     return mapView
