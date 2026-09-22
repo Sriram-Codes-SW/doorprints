@@ -32,6 +32,11 @@ class EvalScorerTest {
         return map("id", id, "type", type, "category", category, "expected", expected, "input", map());
     }
 
+    /** Golden-set id list, lower-cased (ids are UUIDs; Locale.ROOT avoids locale-sensitive casing). */
+    private static List<String> lower(Object o) {
+        return GoldenSet.strings(o).stream().map(v -> v.toLowerCase(Locale.ROOT)).toList();
+    }
+
     private static Metric metric(List<Metric> metrics, String name) {
         return metrics.stream().filter(m -> m.name().equals(name)).findFirst().orElseThrow();
     }
@@ -50,19 +55,28 @@ class EvalScorerTest {
             assertThat(caseIds.add(String.valueOf(c.get("id")))).as("duplicate case id %s", c.get("id")).isTrue();
             assertThat(c.get("type")).isIn(EvalScorer.EXTRACT, EvalScorer.ASK, EvalScorer.PLAN);
             var expected = GoldenSet.map(c.get("expected"));
+            // AssertJ's doesNotContainAnyElementsOf throws IllegalArgumentException on an EMPTY iterable
+            // (Iterables.checkIsNotNullAndNotEmpty), so every list-valued check is guarded on non-empty;
+            // an absent/empty key means "no constraint", which is trivially consistent.
             for (var key : List.of("expectedHouseIds", "allowedCitations", "mustNotCite", "stopsSubsetOf")) {
-                assertThat(fixtureIds).as("%s.%s", c.get("id"), key)
-                        .containsAll(GoldenSet.strings(expected.get(key)).stream().map(String::toLowerCase).toList());
+                var ids = lower(expected.get(key));
+                if (!ids.isEmpty()) assertThat(fixtureIds).as("%s.%s", c.get("id"), key).containsAll(ids);
             }
             // An allowed citation must be neither required nor forbidden, or the case contradicts itself.
-            var allowed = GoldenSet.strings(expected.get("allowedCitations")).stream().map(String::toLowerCase).toList();
+            var allowed = lower(expected.get("allowedCitations"));
             if (!allowed.isEmpty()) {
                 assertThat(c.get("type")).as("%s.allowedCitations only applies to ask cases", c.get("id"))
                         .isEqualTo(EvalScorer.ASK);
-                assertThat(allowed).as("%s.allowedCitations vs expectedHouseIds", c.get("id")).doesNotContainAnyElementsOf(
-                        GoldenSet.strings(expected.get("expectedHouseIds")).stream().map(String::toLowerCase).toList());
-                assertThat(allowed).as("%s.allowedCitations vs mustNotCite", c.get("id")).doesNotContainAnyElementsOf(
-                        GoldenSet.strings(expected.get("mustNotCite")).stream().map(String::toLowerCase).toList());
+                var required = lower(expected.get("expectedHouseIds"));
+                if (!required.isEmpty()) {
+                    assertThat(allowed).as("%s.allowedCitations vs expectedHouseIds", c.get("id"))
+                            .doesNotContainAnyElementsOf(required);
+                }
+                var forbidden = lower(expected.get("mustNotCite"));
+                if (!forbidden.isEmpty()) {
+                    assertThat(allowed).as("%s.allowedCitations vs mustNotCite", c.get("id"))
+                            .doesNotContainAnyElementsOf(forbidden);
+                }
             }
         }
         for (var v : golden.fixtureVisits()) {
@@ -315,12 +329,14 @@ class EvalScorerTest {
         var golden = GoldenSet.load(GoldenSet.locate());
         var ask01 = golden.cases().stream().filter(c -> "ask-01-water".equals(c.get("id"))).findFirst().orElseThrow();
         var expected = GoldenSet.map(ask01.get("expected"));
-        var allowed = GoldenSet.strings(expected.get("allowedCitations"));
+        // Fixture ids are lower-cased, so the golden-set lists are too (a mixed-case UUID must not slip through).
+        var allowed = lower(expected.get("allowedCitations"));
+        var required = lower(expected.get("expectedHouseIds"));
         assertThat(allowed).isNotEmpty();
         assertThat(String.valueOf(expected.get("note"))).contains("35753477789");
         for (var house : golden.fixtureHouses()) {
             var id = String.valueOf(house.get("id")).toLowerCase(Locale.ROOT);
-            if (GoldenSet.strings(expected.get("expectedHouseIds")).contains(id)) continue;
+            if (required.contains(id)) continue;
             var checklist = GoldenSet.map(house.get("checklist"));
             var notes = String.valueOf(house.get("notes")).toLowerCase(Locale.ROOT);
             boolean waterFact = checklist.containsKey("water") || notes.contains("water");
