@@ -50,9 +50,19 @@ class EvalScorerTest {
             assertThat(caseIds.add(String.valueOf(c.get("id")))).as("duplicate case id %s", c.get("id")).isTrue();
             assertThat(c.get("type")).isIn(EvalScorer.EXTRACT, EvalScorer.ASK, EvalScorer.PLAN);
             var expected = GoldenSet.map(c.get("expected"));
-            for (var key : List.of("expectedHouseIds", "mustNotCite", "stopsSubsetOf")) {
+            for (var key : List.of("expectedHouseIds", "allowedCitations", "mustNotCite", "stopsSubsetOf")) {
                 assertThat(fixtureIds).as("%s.%s", c.get("id"), key)
                         .containsAll(GoldenSet.strings(expected.get(key)).stream().map(String::toLowerCase).toList());
+            }
+            // An allowed citation must be neither required nor forbidden, or the case contradicts itself.
+            var allowed = GoldenSet.strings(expected.get("allowedCitations")).stream().map(String::toLowerCase).toList();
+            if (!allowed.isEmpty()) {
+                assertThat(c.get("type")).as("%s.allowedCitations only applies to ask cases", c.get("id"))
+                        .isEqualTo(EvalScorer.ASK);
+                assertThat(allowed).as("%s.allowedCitations vs expectedHouseIds", c.get("id")).doesNotContainAnyElementsOf(
+                        GoldenSet.strings(expected.get("expectedHouseIds")).stream().map(String::toLowerCase).toList());
+                assertThat(allowed).as("%s.allowedCitations vs mustNotCite", c.get("id")).doesNotContainAnyElementsOf(
+                        GoldenSet.strings(expected.get("mustNotCite")).stream().map(String::toLowerCase).toList());
             }
         }
         for (var v : golden.fixtureVisits()) {
@@ -136,6 +146,48 @@ class EvalScorerTest {
         assertThat(metric(metrics, "citationPrecision").value()).isCloseTo(0.5, within(1e-9));
         assertThat(metric(metrics, "citationRecall").value()).isCloseTo(0.5, within(1e-9));
         assertThat(metric(metrics, "answerCorrectness").value()).isCloseTo(0.0, within(1e-9));
+    }
+
+    @Test
+    void allowedCitationsCountForPrecisionButNotRecall() {
+        // ask-02 shape: the answer names the matching house and cites a contrast house for a grounded fact.
+        var c = testCase("a4", "ask", null, map("expectedHouseIds", List.of(H2), "allowedCitations", List.of(H1),
+                "mustContain", List.of("corner flat"), "mustNotCite", List.of(H3)));
+        var contrast = map("answer", "The Corner flat [house:" + H2 + "] has covered car parking; the Blue gate house"
+                        + " [house:" + H1 + "] only has bike parking.", "grounded", true,
+                "citations", List.of(map("houseId", H2), map("houseId", H1.toUpperCase(Locale.ROOT))));
+
+        var r = EvalScorer.scoreAsk(c, contrast, null);
+
+        assertThat(r.cited).isEqualTo(2);
+        assertThat(r.citedCorrect).isEqualTo(2);
+        assertThat(r.expectedCitations).isEqualTo(1); // allowed houses are not required
+        assertThat(r.expectedCited).isEqualTo(1);
+        assertThat(r.passed()).isTrue();
+        assertThat(r.answerPass).isTrue();
+
+        // Citing only the allowed house: precision stays perfect, recall misses the expected house.
+        var onlyAllowed = EvalScorer.scoreAsk(c, map("answer", "The Blue gate house [house:" + H1 + "].",
+                "grounded", true, "citations", List.of(map("houseId", H1))), null);
+        assertThat(onlyAllowed.citedCorrect).isEqualTo(1);
+        assertThat(onlyAllowed.expectedCited).isZero();
+        assertThat(onlyAllowed.passed()).isFalse();
+
+        // A house that is neither expected nor allowed still counts against precision.
+        var stray = EvalScorer.scoreAsk(c, map("answer", "The Corner flat [house:" + H2 + "].", "grounded", true,
+                "citations", List.of(map("houseId", H2), map("houseId", H3))), null);
+        assertThat(stray.citedCorrect).isEqualTo(1);
+        assertThat(stray.passed()).isFalse();
+
+        var metrics = EvalScorer.metrics(List.of(r, onlyAllowed, stray), Map.of());
+        assertThat(metric(metrics, "citationPrecision").value()).isCloseTo(4.0 / 5.0, within(1e-9));
+        assertThat(metric(metrics, "citationRecall").value()).isCloseTo(2.0 / 3.0, within(1e-9));
+
+        // Without allowedCitations the contrast citation is a precision miss (the pre-0.3 behaviour).
+        var strict = EvalScorer.scoreAsk(testCase("a5", "ask", null, map("expectedHouseIds", List.of(H2))),
+                contrast, null);
+        assertThat(strict.citedCorrect).isEqualTo(1);
+        assertThat(strict.passed()).isFalse();
     }
 
     @Test

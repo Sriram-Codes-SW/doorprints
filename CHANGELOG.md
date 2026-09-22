@@ -14,12 +14,18 @@ the end of this file) once `v0.1.0` is tagged (C-02 in the [sprint log](docs/10-
 ## [Unreleased]
 
 Sprint 2 (2026-09-22): all four CI workflows (Backend, Android, Web, Security) are green on `f7da5ab` and
-`0e4e22a`. Sprint 3 has started; see the [sprint log](docs/10-sprint-log.md).
+`0e4e22a`. See the [sprint log](docs/10-sprint-log.md).
 
-Sprint 3: the first real AI eval run (`ai-evals.yml`) found two defects, E-01 (Gemini embeddings failed) and E-02
-(false PASS in the scorecard). Both are fixed in code (see *Fixed*) but **not yet confirmed**: they wait on green CI
-and a manual AI evals run. AI stays off by default (AI-001). The lead assigned C-13 (F-30, contact names sent to the
-LLM provider) to the AI team this sprint; it is fixed in code and waits on CI (see *Security*).
+Sprint 3 (2026-09-22): the first real AI eval run (`ai-evals.yml`) found two defects, E-01 (Gemini embeddings failed)
+and E-02 (false PASS in the scorecard). Both are fixed (see *Fixed*): commit `6a348cc` passed the Backend and Security
+workflows (Android and Web had no changes). The first successful real Gemini eval run on 2026-09-22 (Actions run
+35720654442) ran all 13 cases; 12/13 passed (ask-02-filtered-parking failed only its citation check), and every
+metric passed except `citationPrecision` (0.86, threshold 0.90) because of that one contrast citation (E-03; the AI
+team is adding `allowedCitations` to the golden set and tightening the Ask prompt). AI stays off by default (AI-001,
+AI-012). C-13 (F-30, contact names sent to the LLM provider) is closed as fixed by lead decision (see *Security*).
+Sprint 4 candidates (offline map areas, AI map filter, voice notes, neighbourhood summary, alert one-liners with
+directions, local labels in AI citations, an AI-enabled CI smoke test, a golden-set fixture that tests redaction)
+are listed in the sprint log for the product owner; they are not committed scope.
 
 ### Added
 
@@ -87,10 +93,30 @@ LLM provider) to the AI team this sprint; it is fixed in code and waits on CI (s
   09 v0.3 follow. Rework: threat model v0.7 aligns the F-30 entry with the final redaction rules; 01 v0.6 gives the
   reasons PRV-009 stays partly met; 06 v0.7 (TC-AI-12) and 08 v0.6 match the final indexer logging and reindex
   rollout; sprint log v0.4.
+- Docs for the Sprint 3 outcome: sprint log v0.5 records the `6a348cc` CI results, the first successful real Gemini
+  eval run (all 13 cases ran, 12/13 cases passed; `citationPrecision` 0.86 vs 0.90 open as E-03), F-30 closed by lead
+  decision (evidence: TC-AI-15 green in the Backend workflow), the new story S3-05
+  (local labels instead of `[contact]` in AI citations) and the Sprint 4 candidates C-14..C-21 (not committed);
+  threat model v0.8 (F-30 closed, totals unchanged), 01 v0.7 (AI-010, AI-012, PRV-009), test plan v0.8 (TC-AI-10 gap
+  row; section 1 now names golden set v0.3 and the first real run; `allowedCitations` traced in TC-AI-09 and the Ask
+  prompt rules in new TC-AI-17) and the docs index v0.7 follow.
+- Ask answers (E-03, AI team; only with AI enabled): the Ask system prompt (`AskPrompts`) now tells the model to
+  cite a house only where the answer states a fact about it from its record, never for a passing mention; to answer
+  with the houses that satisfy the question first; and to mention another house only as a brief contrast (for
+  example "only has bike parking"), cited when it does. Answers may therefore name fewer houses and cite contrast
+  houses. The injection rules and the exact refusal sentence are unchanged (`AskPromptsTest`,
+  TC-AI-17 in the [test plan](docs/06-test-plan.md)).
+- AI eval golden set v0.3 (`docs/ai/evals/golden-set.json`): ask cases can list optional `allowedCitations`, houses
+  that may be cited (such as a grounded contrast) but are not required. `citationPrecision` now counts a cited house
+  as correct when it is in `expectedHouseIds` or `allowedCitations`; `citationRecall` still uses `expectedHouseIds`
+  only. `ask-02` allows the Blue gate house; thresholds unchanged. `EvalScorerTest` covers the rule and checks that an
+  allowed house is neither expected nor `mustNotCite` (TC-AI-09). A new `ai-evals.yml` run is still needed to confirm
+  E-03.
 
 ### Fixed
 
-Fixed in code; not yet confirmed by an AI eval run (waiting on green CI and a manual `ai-evals.yml` run).
+Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini eval run (2026-09-22, Actions run
+35720654442).
 
 - E-01: AI embeddings against Gemini failed because Gemini's OpenAI-compatible `/embeddings` response has no
   `data[].index`, which the OpenAI client in Spring AI rejects. Embeddings now use the native Gemini API
@@ -115,7 +141,9 @@ Fixed in code; not yet confirmed by an AI eval run (waiting on green CI and a ma
   replaced by `[contact]` / `[phone]` (best effort, see the threat model). Ask citation labels and plan stop labels
   may therefore contain `[contact]`; the apps can show their own label for the `houseId`. Only relevant with AI
   enabled. **After deploying, run `POST /api/ai/reindex` once** so stored vectors no longer hold contact names
-  ([runbook 1.1](docs/08-operations-runbook.md)). Fixed in code, waiting on CI (C-13, AI-010).
+  ([runbook 1.1](docs/08-operations-runbook.md)). Closed by lead decision (C-13, AI-010): the redaction tests TC-AI-15
+  pass in the Backend workflow on `6a348cc`. The real Gemini eval run 35720654442 only shows that the AI paths still
+  work with the redactor in place; its fixture houses hold no contact data, so it is not a redaction test.
 
 ## [0.1.0] - 2026-09-22
 
