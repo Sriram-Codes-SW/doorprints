@@ -19,18 +19,21 @@ on:
         required: false
         default: ""
 
-permissions:
-  contents: read
+# Least privilege: nothing by default; each job asks for what it needs (only contents: read).
+permissions: {}
 
+# Superseded PR runs are cancelled; runs on main (push, weekly schedule) always finish.
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   semgrep:
     name: SAST (Semgrep OSS)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -54,6 +57,8 @@ jobs:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,29 +74,92 @@ jobs:
   trivy:
     name: Dependencies and IaC (Trivy)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      TRIVY_IMAGE: aquasec/trivy:0.74.0
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      # Pinned image version (not the moving trivy-action tags); vulnerabilities in pom.xml / Gradle / npm lock files,
-      # misconfigurations in Dockerfiles and docker-compose.yml, and secrets.
+
+      # Java dependencies are scanned from a CycloneDX SBOM, not from pom.xml: `trivy fs` resolves parent POMs and
+      # BOMs (spring-boot-dependencies, spring-batch-bom, ...) from Maven Central on every run and failed with
+      # "429 Too Many Requests". Maven resolves the tree once, from the setup-java cache when it is warm.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Generate backend SBOM (CycloneDX JSON, runtime dependencies)
+        id: sbom
+        working-directory: backend
+        run: |
+          mvn -B -ntp org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom \
+            -DoutputFormat=json -DoutputName=bom -DincludeTestScope=false
+          test -s target/bom.json
+
+      # Trivy vulnerability DB (about 80 MB) cached per day; Trivy re-downloads it only when the cached copy is stale.
+      # The default --db-repository already tries mirror.gcr.io before ghcr.io.
+      - name: Cache key for the Trivy DB
+        id: trivy-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: trivy-db-${{ runner.os }}-
+      # Run as the runner's user so actions/cache can read and save what Trivy writes to the cache directory.
+      - name: Prepare Trivy cache directory
+        run: mkdir -p "$HOME/.cache/trivy"
+
+      # Pinned image version (not the moving trivy-action tags). Blocking: npm lock file vulnerabilities and secrets.
+      # --offline-scan: never fetch POMs from remote Maven repositories (Java is covered by the SBOM step below);
+      # backend/pom.xml is skipped so Java findings are reported once.
       - name: trivy fs (vulnerabilities and secrets, blocking)
         run: |
-          docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src aquasec/trivy:0.74.0 \
-            fs --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed \
-            --skip-dirs docs --exit-code 1 --format table .
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "${GITHUB_WORKSPACE}:/src:ro" -v "$HOME/.cache/trivy:/cache" -w /src "$TRIVY_IMAGE" \
+            fs --cache-dir /cache --offline-scan --skip-version-check --no-progress \
+            --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed \
+            --skip-dirs docs --skip-dirs backend/target --skip-files backend/pom.xml \
+            --exit-code 1 --format table .
+
+      # Runs even when the fs step found something, so every finding shows up in one run.
+      - name: trivy sbom (backend Java dependencies, blocking)
+        if: ${{ !cancelled() && steps.sbom.outcome == 'success' }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "${GITHUB_WORKSPACE}/backend/target:/sbom:ro" -v "$HOME/.cache/trivy:/cache" "$TRIVY_IMAGE" \
+            sbom --cache-dir /cache --skip-version-check --no-progress \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format table /sbom/bom.json
+
       # Dockerfile checks are reported but not blocking yet: backend/db/Dockerfile extends the official postgres
       # image, whose entrypoint must start as root (it drops to the postgres user itself).
       - name: trivy config (Dockerfiles, report only)
+        if: ${{ !cancelled() }}
         run: |
-          docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src aquasec/trivy:0.74.0 \
-            config --severity MEDIUM,HIGH,CRITICAL --exit-code 0 .
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "${GITHUB_WORKSPACE}:/src:ro" -v "$HOME/.cache/trivy:/cache" -w /src "$TRIVY_IMAGE" \
+            config --cache-dir /cache --skip-version-check --skip-dirs docs \
+            --severity MEDIUM,HIGH,CRITICAL --exit-code 0 .
+
+      - name: Upload backend SBOM
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-sbom-cyclonedx
+          path: backend/target/bom.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   npm-audit:
     name: npm audit (web)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: web
@@ -106,7 +174,8 @@ jobs:
         run: |
           if [ ! -f package-lock.json ]; then npm install --package-lock-only --no-audit --no-fund; fi
       - name: npm audit (production dependencies, high and critical)
-        run: npm audit --omit=dev --audit-level=high
+        # Dev-only tooling (Angular CLI, build plugins) is not shipped, so it does not block.
+        run: npm audit --audit-level=high --omit=dev
 
   zap-baseline:
     name: OWASP ZAP baseline (manual)

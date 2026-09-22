@@ -1,37 +1,83 @@
-# Weekly dependency updates (threat model T-T5 / SEC-013). Grouped minor/patch updates keep the PR count low.
+# Dependency updates (threat model T-T5 / SEC-013), tuned after the first push opened a flood of PRs:
+# - weekly, Monday morning IST, at most 5 open PRs per ecosystem;
+# - minor and patch updates grouped into one PR per ecosystem (security updates are grouped separately);
+# - major bumps of the pinned frameworks (Spring Boot, Angular, AGP, Kotlin) are ignored: those upgrades are
+#   planned and done by hand (docs/07 section 1). Dependabot security updates still apply where a patch exists.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /backend
-    schedule: { interval: weekly }
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 5
     groups:
       maven-minor-patch:
+        applies-to: version-updates
         update-types: [minor, patch]
+      maven-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "org.springframework.boot:*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /web
-    schedule: { interval: weekly }
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 5
     groups:
-      angular:
-        patterns: ["@angular/*", "@angular-devkit/*", "typescript"]
       npm-minor-patch:
+        applies-to: version-updates
         update-types: [minor, patch]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      # Angular majors (and the TypeScript range each Angular major supports) move together via `ng update`.
+      - dependency-name: "@angular/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@angular-devkit/*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "typescript"
+        update-types: [version-update:semver-major, version-update:semver-minor]
 
   - package-ecosystem: gradle
     directory: /android
-    schedule: { interval: weekly }
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 5
     groups:
       gradle-minor-patch:
+        applies-to: version-updates
         update-types: [minor, patch]
+      gradle-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "com.android.application"
+        update-types: [version-update:semver-major]
+      - dependency-name: "com.android.tools.build:*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "org.jetbrains.kotlin*"
+        update-types: [version-update:semver-major]
+      # KSP versions follow the Kotlin version, so they move with the manual Kotlin upgrade.
+      - dependency-name: "com.google.devtools.ksp*"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 5
+    groups:
+      actions-all:
+        patterns: ["*"]
 
   - package-ecosystem: docker
-    directory: /backend
-    schedule: { interval: weekly }
-
-  - package-ecosystem: docker
-    directory: /backend/db
-    schedule: { interval: weekly }
+    directories: [/backend, /backend/db]
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 5
+    groups:
+      docker-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Base images track JDK 25 and PostgreSQL 18; major moves are planned upgrades.
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]

@@ -10,6 +10,8 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -31,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** Runs against a real PostGIS database (see DB_URL; CI starts one as a service container). */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                "app.api-key=test-key-0123456789",
                 // Many tests deliberately fail authentication from 127.0.0.1; keep the brute-force throttle out of
                 // their way (it has its own unit test in ApiKeyFilterTest).
                 "app.rate-limit.auth-failures-per-minute=10000",
@@ -41,7 +42,13 @@ class ApiIntegrationTest {
 
     private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST = new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<Map<String, Object>> MAP = new ParameterizedTypeReference<>() {};
-    private static final String KEY = "test-key-0123456789";
+    /** Generated per run (never a literal in source, so secret scanners have nothing to flag); >= 16 chars. */
+    private static final String KEY = "it-" + UUID.randomUUID();
+
+    @DynamicPropertySource
+    static void apiKey(DynamicPropertyRegistry registry) {
+        registry.add("app.api-key", () -> KEY);
+    }
 
     @Value("${local.server.port}")
     int port;
@@ -150,7 +157,7 @@ class ApiIntegrationTest {
         var street = "Test Street " + id;
         var saved = put(id, house("Blue gate house", 12.97160, 77.59460, street));
         assertThat(saved.get("label")).isEqualTo("Blue gate house");
-        assertThat((Map<?, ?>) saved.get("checklist")).containsEntry("water", 5);
+        assertThat(((Map<?, ?>) saved.get("checklist")).get("water")).isEqualTo(5);
 
         // ~20 m away: found within 50 m, not within 5 m
         var near = api.get().uri("/api/houses/nearby?lat=12.97178&lon=77.59460&radius=50").retrieve().body(LIST);

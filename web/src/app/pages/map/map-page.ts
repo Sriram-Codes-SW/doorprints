@@ -24,7 +24,7 @@ import {
   houseScore,
 } from '../../core/models';
 import { errorMsg } from '../../core/format';
-import { MAP_STYLE_URL, mapLocale } from '../../shared/map-style';
+import { createMlMap } from '../../shared/map-style';
 import { round6 } from '../../shared/location-map';
 import { TKey } from '../../i18n/en';
 import { Msg, TranslationService } from '../../i18n/translation.service';
@@ -123,14 +123,8 @@ export class MapPage implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     const container = this.mapEl().nativeElement;
-    const map = new MlMap({
-      container,
-      style: MAP_STYLE_URL,
-      center: [0, 20],
-      zoom: 1.5,
-      attributionControl: { compact: true },
-      locale: mapLocale(this.i18n),
-    });
+    const map = createMlMap(this.i18n, { container, center: [0, 20], zoom: 1.5 });
+    if (!map) return;
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new GeolocateControl({ positionOptions: { enableHighAccuracy: true } }), 'top-right');
 
@@ -296,9 +290,10 @@ export class MapPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private setMapData(houses: HouseDto[]): void {
-    const source = this.map?.getSource(SOURCE_ID) as unknown as { setData(data: unknown): void } | undefined;
+    // MapLibre 6: GeoJSONSource.setData returns a Promise<void> (no longer `this`).
+    const source = this.map?.getSource(SOURCE_ID) as unknown as { setData(data: unknown): Promise<void> } | undefined;
     if (!source) return;
-    source.setData({
+    void source.setData({
       type: 'FeatureCollection',
       features: houses.map((h) => ({
         type: 'Feature',

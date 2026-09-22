@@ -15,7 +15,7 @@ import { AI_MAX_QUESTION_CHARS, AiService, PlanResponse, aiErrorMsg } from '../.
 import { Announcer } from '../../core/announcer.service';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
-import { MAP_STYLE_URL, mapLocale } from '../../shared/map-style';
+import { createMlMap } from '../../shared/map-style';
 import { round6 } from '../../shared/location-map';
 
 const ROUTE_SOURCE = 'plan-route';
@@ -129,14 +129,8 @@ export class PlanPage implements AfterViewInit, OnDestroy {
 
   private createMap(container: HTMLDivElement): void {
     const s = this.start();
-    const map = new MlMap({
-      container,
-      style: MAP_STYLE_URL,
-      center: [s.lon, s.lat],
-      zoom: 4,
-      attributionControl: { compact: true },
-      locale: mapLocale(this.i18n),
-    });
+    const map = createMlMap(this.i18n, { container, center: [s.lon, s.lat], zoom: 4 });
+    if (!map) return;
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     const marker = new Marker({ color: '#1F6F5C', draggable: true }).setLngLat([s.lon, s.lat]).addTo(map);
     marker.on('dragend', () => {
@@ -176,7 +170,8 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     const s = this.start();
     const coords: [number, number][] = [[s.lon, s.lat], ...stops.map((x): [number, number] => [x.lon, x.lat])];
     const source = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-    source?.setData({
+    // MapLibre 6: setData returns a Promise<void>; the route is fire-and-forget.
+    void source?.setData({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }],
     });

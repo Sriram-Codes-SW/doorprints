@@ -76,6 +76,7 @@ export const hi: Dict = {
   'map.myLocation': 'मेरी जगह दिखाएँ',
   'map.locationUnavailable': 'जगह उपलब्ध नहीं है',
   'map.attribution': 'नक्शे का श्रेय दिखाएँ',
+  'map.unavailable': 'इस ब्राउज़र में नक्शा नहीं दिखाया जा सकता क्योंकि WebGL 2 उपलब्ध नहीं है। बाकी सब कुछ काम करता है।',
   'map.legend': 'संकेत',
   'map.statsLabel': 'सारांश',
   'map.stats.houses': 'मकान',

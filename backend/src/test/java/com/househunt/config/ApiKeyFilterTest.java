@@ -8,12 +8,15 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** F-20: deny by default, canonical paths only, explicit allowlist. */
 class ApiKeyFilterTest {
 
-    private static final String KEY = "unit-test-key-0123456789";
+    /** Generated per run: no key-like literal in source for secret scanners to flag. */
+    private static final String KEY = "unit-" + UUID.randomUUID();
 
     private final ApiKeyFilter filter = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(3, 3));
 

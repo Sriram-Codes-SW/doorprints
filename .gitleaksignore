@@ -1,0 +1,4 @@
+# Reviewed 2026-09-22: throwaway test API keys in the initial commit (not real secrets).
+# Tests now generate a random key at runtime. See docs/07-secure-build-and-deploy.md.
+4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:34
+4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:44

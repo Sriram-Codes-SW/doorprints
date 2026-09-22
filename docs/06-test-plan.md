@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Lists the 7 existing backend integration tests. Defines unit, integration, field, security, a11y, i18n and AI eval cases. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: new unit tests TC-U-12..17 (backend and Android), integration tests TC-I-15..20, statuses of TC-I-08..13 updated, new manual/field cases for captive portals, Wi-Fi-only photos, battery auto-stop, language picker, dark theme and the AI UI. CI now runs the automated tests (07). |
+| 0.3 | 2026-09-22 | Claude (Cowork) | First CI run fixes: backend tests no longer contain API-key literals (ApiIntegrationTest supplies a per-run random key via `@DynamicPropertySource`, ApiKeyFilterTest generates one too), so TC-S-03 gitleaks has nothing to flag in the tree. Jackson 3 (Boot 4) configured not to reject JSON that omits primitive fields (`deleted`, `syncVersion`), which every TC-I sync call relies on. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -145,7 +146,7 @@ Record: device model, Android version, alerts expected/received, false alerts, b
 |---|---|---|---|---|
 | TC-S-01 | **Semgrep OSS** (`p/java`, `p/kotlin`, `p/typescript`, `p/owasp-top-ten`, `p/secrets`) | whole repo | No new ERROR findings. WARN findings triaged. | SEC-014 |
 | TC-S-02 | **OWASP Dependency-Check** (Maven plugin / CLI with a free NVD API key), **Trivy fs**, **npm audit --audit-level=high**, Gradle dependency report + Dependabot | backend, android, web | No unfixed Critical/High with a known fix. Exceptions documented with an expiry date. | SEC-013, T-T5 |
-| TC-S-03 | **gitleaks** (full history on first run, then on PRs) | repo | No secrets | SEC-009 |
+| TC-S-03 | **gitleaks** (full history on first run, then on PRs) | repo | No secrets (tests generate their API keys at runtime; none are committed) | SEC-009 |
 | TC-S-04 | **OWASP ZAP baseline** (`zaproxy/action-baseline`) against the CI-started API and a preview of the web build | API, web | No High alerts. Headers (SEC-012) present after the fix. No stack traces. | SEC-012, SEC-015 |
 | TC-S-05 | **Trivy image** scan of `house-hunt-api` | container | No Critical. Runs as non-root (after F-23). | SEC-024 |
 | TC-S-06 | **MobSF** static scan (Docker, local) + Android Lint security checks on the release APK | APK | No cleartext, `allowBackup` false/rules, `debuggable` false, signed with the release cert, exported components reviewed | SEC-004, SEC-011, SEC-018, SEC-021 |

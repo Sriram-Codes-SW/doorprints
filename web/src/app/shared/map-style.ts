@@ -1,3 +1,4 @@
+import { GPUInitializationError, Map as MlMap, type MapOptions, setWorkerUrl } from 'maplibre-gl';
 import { TranslationService } from '../i18n/translation.service';
 
 /** Free OpenFreeMap vector style — no API key needed. */
@@ -18,4 +19,47 @@ export function mapLocale(i18n: TranslationService): Record<string, string> {
     'AttributionControl.ToggleAttribution': i18n.t('map.attribution'),
     'Popup.Close': i18n.t('common.close'),
   };
+}
+
+/**
+ * MapLibre GL 6 is ESM-only and no longer inlines its worker as a blob: URL. angular.json copies
+ * `maplibre-gl-worker.mjs` and its `maplibre-gl-shared.mjs` chunk to `/maplibre/`, so the worker is
+ * same-origin (CSP `worker-src 'self'`, no `blob:` needed).
+ */
+let workerConfigured = false;
+function configureWorker(): void {
+  if (workerConfigured) return;
+  setWorkerUrl(new URL('maplibre/maplibre-gl-worker.mjs', document.baseURI).href);
+  workerConfigured = true;
+}
+
+/**
+ * Creates a map with the app's style and translated control labels. MapLibre 6 requires WebGL 2 and
+ * throws `GPUInitializationError` without it; then a translated, announced message replaces the map
+ * and `null` is returned, so the rest of the page (house list, forms) keeps working.
+ */
+export function createMlMap(
+  i18n: TranslationService,
+  options: Omit<MapOptions, 'style' | 'locale' | 'attributionControl'>,
+): MlMap | null {
+  configureWorker();
+  try {
+    return new MlMap({
+      style: MAP_STYLE_URL,
+      attributionControl: { compact: true },
+      locale: mapLocale(i18n),
+      ...options,
+    });
+  } catch (e) {
+    if (!(e instanceof GPUInitializationError)) throw e;
+    const container = options.container;
+    if (container instanceof HTMLElement) {
+      const msg = document.createElement('p');
+      msg.className = 'map-unavailable';
+      msg.setAttribute('role', 'status');
+      msg.textContent = i18n.t('map.unavailable');
+      container.replaceChildren(msg);
+    }
+    return null;
+  }
 }

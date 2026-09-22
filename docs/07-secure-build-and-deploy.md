@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version: pipeline design, branch protection, secrets, APK signing, free-tier deployment (Supabase/Neon + Render/Koyeb/Oracle + Cloudflare Pages), env vars. No workflows exist in the repo yet. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: the pipeline now exists (`backend.yml`, `web.yml`, `android.yml`, `security.yml`, `dependabot.yml`); section 1 describes the real workflows and the CodeQL decision. Hardened Dockerfile and dev compose, `web/public/_headers` in the repo, new environment variables (rate limits, size limits, clock skew, retention, forward headers). |
+| 0.3 | 2026-09-22 | Claude (Cowork) | Fixes after the first CI runs: Trivy scans the backend from a CycloneDX SBOM (`trivy sbom`) and runs `trivy fs --offline-scan` (the pom.xml resolution hit Maven Central `429 Too Many Requests`), Trivy DB cached with `actions/cache`; backend.yml publishes the SBOM; `permissions: {}` at the top with per-job `contents: read`; only PR runs are cancelled by newer pushes; Dependabot tuned (Monday schedule, 5 open PRs, grouped minor/patch and security updates, framework majors ignored); gitleaks history note. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -21,13 +22,14 @@ Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [
 
 ## 1. Pipeline overview
 
-The workflows live in `.github/workflows/` (F-22 fixed). They run on push and pull request to `main` and on manual dispatch; the security workflow also runs weekly. Not yet run: the build sandbox has no access to GitHub, Maven Central, Google Maven or npm, so the first runs happen after the lead pushes.
+The workflows live in `.github/workflows/` (F-22 fixed). They run on push and pull request to `main` and on manual dispatch; the security workflow also runs weekly. First CI results (2026-09-22): Web build and Semgrep passed; Trivy fs failed on Maven Central rate limiting and gitleaks flagged test API keys, both addressed in v0.3 (below).
 
 ```mermaid
 flowchart LR
     dev["Push / PR to main"] --> be & web & and & sec
     subgraph be["backend.yml"]
         be1["build backend/db image,<br/>docker run PostGIS 18 + pgvector"] --> be2["JDK 25: mvn -B verify<br/>unit + integration tests"]
+        be2 --> be4["CycloneDX SBOM,<br/>upload backend-sbom-cyclonedx"]
         be2 --> be3["push only: docker build,<br/>assert non-root user"]
     end
     subgraph web["web.yml"]
@@ -42,7 +44,7 @@ flowchart LR
     subgraph sec["security.yml (+ weekly)"]
         s1["Semgrep OSS --config auto,<br/>blocks on ERROR"]
         s2["gitleaks full history"]
-        s3["Trivy fs: vuln + secret blocking,<br/>config report only"]
+        s3["Trivy: fs --offline-scan (npm, secrets),<br/>sbom (backend Java), both blocking;<br/>config report only"]
         s4["npm audit --omit=dev high"]
         s5["ZAP baseline - manual, given a URL"]
     end
@@ -50,26 +52,49 @@ flowchart LR
 
 | Workflow | Trigger | What it does | Blocking gates |
 |---|---|---|---|
-| `backend.yml` | push/PR touching `backend/**`, manual | Builds `backend/db` (service containers cannot be built, so it is `docker run` by hand), waits for TCP readiness, runs `mvn -B -ntp verify` on Temurin 25 with `DB_URL` etc.; on push also builds the API image and checks it does not run as root | Tests pass; image user ≠ root |
+| `backend.yml` | push/PR touching `backend/**`, manual | Builds `backend/db` (service containers cannot be built, so it is `docker run` by hand), waits for TCP readiness, runs `mvn -B -ntp verify` on Temurin 25 with `DB_URL` etc., then generates a CycloneDX JSON SBOM (`cyclonedx-maven-plugin:2.9.3:makeAggregateBom`, runtime scopes) and uploads it as `backend-sbom-cyclonedx`; on push also builds the API image and checks it does not run as root | Tests pass; image user ≠ root |
 | `web.yml` | push/PR touching `web/**`, manual | Node 24, `npm ci` if `package-lock.json` exists else `npm install` (and uploads the generated lock file as artifact `web-package-lock` so it can be committed), `npm run build`, checks `_headers`/`_redirects` are in the output, uploads `house-hunt-web-dist` | Build passes |
 | `android.yml` | push/PR touching `android/**`, manual | Temurin 21, `gradle/actions/setup-gradle@v6` (validates the wrapper JAR), `./gradlew assembleDebug testDebugUnitTest`, `lintDebug` (report only), uploads **`house-hunt-debug-apk`** and reports | Build + unit tests pass |
-| `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`) fs vuln+secret and config, `npm audit --omit=dev --audit-level=high`, optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy, no high npm advisory |
+| `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`, see below), `npm audit --audit-level=high --omit=dev` (dev-only tooling such as the Angular CLI is not shipped, so its advisories do not block), optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy, no high npm advisory |
 | `deploy.yml`, `release.yml`, `backup.yml` | – | **Not built yet** (see sections 5, 6 and 08 §3) | – |
 
 Conventions used in every workflow:
 
 | Control | How |
 |---|---|
-| Least privilege | Top-level `permissions: contents: read`; no job writes to the repository; no `pull_request_target` |
+| Least privilege | Top-level `permissions: {}` (no token scopes by default); every job declares `permissions: contents: read` and nothing more; no job writes to the repository; no `pull_request_target` |
 | Pinning | GitHub-owned actions by major version tag (`actions/checkout@v7`, `setup-java@v6`, `setup-node@v7`, `upload-artifact@v7`, `gradle/actions/setup-gradle@v6`, latest majors on 2026-09-22); the one third-party action (ZAP) by full commit SHA; scanners run as version-pinned container images instead of third-party actions with mutable tags (tag hijacking, T-T5); pin the images by digest once the first run has confirmed the tags |
 | Credentials | `actions/checkout` with `persist-credentials: false` |
-| Concurrency | One run per workflow and ref; newer pushes cancel older runs |
-| Caching | Maven (`setup-java cache: maven`), Gradle (`setup-gradle`, read-only on branches), npm once the lock file is committed |
-| Artifacts | APK 30 days, web dist 14 days, reports 7 days |
+| Concurrency | One run per workflow and ref; on pull requests a newer push cancels the older run (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`); runs on `main` (push, weekly scan) always finish |
+| Timeouts | Every job sets `timeout-minutes` (10 to 40) so a hung step cannot burn the free Actions minutes |
+| Caching | Maven (`setup-java cache: maven`), Gradle (`setup-gradle`, read-only on branches), Trivy DB (`actions/cache@v6` on `~/.cache/trivy`, daily key), npm once the lock file is committed |
+| Artifacts | APK 30 days, backend SBOM 30 days, web dist 14 days, reports 7 days |
 
 **Why no CodeQL.** On a private repository, GitHub code scanning (CodeQL analysis results and SARIF upload to the Security tab) needs a paid GitHub Advanced Security / Code Security licence, which breaks CON-01 (zero cost). Semgrep OSS covers SAST instead and its SARIF is kept as an artifact. If the repository becomes public, CodeQL and SARIF upload are free and should be added.
 
-**Dependabot** (`.github/dependabot.yml`): weekly updates for Maven (`/backend`), npm (`/web`, Angular packages grouped), Gradle (`/android`), GitHub Actions (`/`) and Docker (`/backend`, `/backend/db`), minor/patch updates grouped.
+**Trivy** (job `trivy` in `security.yml`). The first run failed with `remote Maven repository returned 429 Too Many Requests` for `spring-batch-bom-6.0.5.pom`: `trivy fs` resolves every parent POM and imported BOM of `backend/pom.xml` from Maven Central on each run. The job now:
+
+| Step | What | Blocking |
+|---|---|---|
+| SBOM | `setup-java` (Maven cache) + `mvn org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom -DoutputFormat=json -DoutputName=bom -DincludeTestScope=false`. Maven resolves the tree (from the cache when warm); Trivy reads CycloneDX **JSON** only, not XML | – |
+| DB cache | `actions/cache` on `~/.cache/trivy` (daily key, restore from the latest); the default `--db-repository` already prefers `mirror.gcr.io` over `ghcr.io` | – |
+| `trivy fs --offline-scan` | npm lock file vulnerabilities and secrets in the whole repo (skips `docs`, `backend/target`, `backend/pom.xml`); `--offline-scan` means Trivy never fetches POMs remotely | Yes, High/Critical with a fix |
+| `trivy sbom` | Backend Java dependencies from `backend/target/bom.json`; runs even if the fs step failed | Yes, High/Critical with a fix |
+| `trivy config` | Dockerfiles and compose | No (report only) |
+
+The containers run as the runner's user (`--user $(id -u):$(id -g)`) with `--cache-dir /cache`, so `actions/cache` can save the DB. The SBOM is also uploaded (`backend-sbom-cyclonedx`). Known gap: Trivy only covers Gradle with a `gradle.lockfile`; the Android dependencies are covered by Dependabot and Gradle dependency locking can be added later.
+
+**gitleaks** scans the whole git history (`fetch-depth: 0`). The flagged test API keys are being removed by the backend team; test code should build its key at runtime instead of hard-coding a realistic-looking one. No `.gitleaks.toml` allowlist is added. If the keys stay in an earlier commit, gitleaks keeps failing on history: before the repo gets other users, either rewrite that commit (the repo is new) or add the exact finding fingerprints from the gitleaks log to a reviewed `.gitleaksignore`, never a path-wide allowlist.
+
+**Dependabot** (`.github/dependabot.yml`). The first push opened many PRs at once, so it is tuned:
+
+| Setting | Value |
+|---|---|
+| Ecosystems | Maven (`/backend`), npm (`/web`), Gradle (`/android`), GitHub Actions (`/`), Docker (`/backend`, `/backend/db`) |
+| Schedule | Weekly, Monday 06:00 Asia/Kolkata |
+| Open PRs | `open-pull-requests-limit: 5` per ecosystem |
+| Groups | One PR for all minor + patch version updates per ecosystem; security updates grouped separately; all Actions bumps in one PR |
+| Ignored | Major bumps of the pinned frameworks: Spring Boot (`org.springframework.boot:*`), Angular (`@angular/*`, `@angular-devkit/*`; TypeScript minor/major, which follow Angular), AGP (`com.android.application`, `com.android.tools.build:*`), Kotlin (`org.jetbrains.kotlin*`, and KSP which follows Kotlin), Docker base image majors (JDK 25, PostgreSQL 18). These upgrades are planned and done by hand (`ng update`, Spring Boot migration guide, AGP upgrade assistant). |
 
 OWASP Dependency-Check is not used: its NVD download is slow and needs an API key; Trivy covers the same Maven/npm ecosystems from the GitHub Advisory database.
 
@@ -91,7 +116,7 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | Default branch | `main`, protected (ruleset): require PR, require status checks `backend`, `web`, `android`, `security`, `image`, block force-push and deletion, linear history |
 | Reviews | Solo developer: allow self-merge, but keep required checks. Enable "Require conversation resolution". |
 | Plan caveat | On **GitHub Free**, rulesets/branch protection and environment reviewers are enforced only on **public** repos. For a private repo on Free, rely on the CI gates plus a local `pre-push` hook (gitleaks + tests), or make the repo public. The code has no secrets, but check your comfort with the personal context in the docs. |
-| Workflows | Default `permissions: contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`. **Never** use `pull_request_target` with a checkout of PR code. Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
+| Workflows | Top-level `permissions: {}`, per job `contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`. **Never** use `pull_request_target` with a checkout of PR code. Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
 | Secret scanning | Enable GitHub secret scanning + push protection (free for public repos). gitleaks in CI either way. |
 | Environments | `production` (deploy hook, DB URL for backups) and `release` (keystore). Restricted to `main`/tags. |
 | CODEOWNERS | `docs/05-*` for design, `docs/ai/` for the AI team, `backend/src/main/resources/db/migration/` needs careful review |

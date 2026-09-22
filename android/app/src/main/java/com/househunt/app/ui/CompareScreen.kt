@@ -62,48 +62,48 @@ fun CompareScreen(onOpenHouse: (String) -> Unit) {
         }
         if (chosen.size < 2) {
             Text(stringResource(R.string.compare_pick_more), Modifier.padding(top = 16.dp))
-            return@Column
-        }
-        Spacer(Modifier.height(16.dp))
-        val dash = "–"
-        val rows = buildList {
-            add(CompareRow(stringResource(R.string.compare_overall)) { it.score.scoreText() })
-            add(CompareRow(stringResource(R.string.compare_price)) { it.priceText() ?: dash })
-            add(CompareRow(stringResource(R.string.compare_bhk)) { h -> h.bedrooms?.let { stringResource(R.string.common_bhk, it) } ?: dash })
-            add(CompareRow(stringResource(R.string.compare_rating)) { h -> h.rating?.let { stringResource(R.string.common_stars, it) } ?: dash })
-            add(CompareRow(stringResource(R.string.compare_visits)) { (visits[it.id] ?: 0).toString() })
-            add(CompareRow(stringResource(R.string.compare_street)) { it.street ?: dash })
-            Checklist.items.forEach { (key, label) ->
-                add(CompareRow(stringResource(label)) { h -> h.checklist[key]?.toString() ?: dash })
-            }
-            add(CompareRow(stringResource(R.string.compare_contact)) { it.contactName ?: it.contactPhone ?: dash })
-        }
-        val best = chosen.maxByOrNull { it.score ?: -1.0 }
-        val bestSuffix = stringResource(R.string.compare_best)
-        // Row by row, so each row's cells share one height even when a label wraps at large font sizes.
-        val tableWidth = 140.dp * (chosen.size + 1)
-        Column(Modifier.horizontalScroll(rememberScrollState())) {
-            Row(Modifier.height(IntrinsicSize.Min)) {
-                Cell("", header = true)
-                chosen.forEach { h ->
-                    val name = h.label.ifBlank { stringResource(R.string.house_unnamed) }
-                    Cell(
-                        if (h == best && h.score != null) "$name $bestSuffix" else name, header = true,
-                        modifier = Modifier.clickable(onClickLabel = stringResource(R.string.compare_open_house)) { onOpenHouse(h.id) },
-                    )
+        } else {
+            Spacer(Modifier.height(16.dp))
+            val dash = "–"
+            val rows = buildList {
+                add(CompareRow(stringResource(R.string.compare_overall)) { it.score.scoreText() })
+                add(CompareRow(stringResource(R.string.compare_price)) { it.priceText() ?: dash })
+                add(CompareRow(stringResource(R.string.compare_bhk)) { h -> h.bedrooms?.let { stringResource(R.string.common_bhk, it) } ?: dash })
+                add(CompareRow(stringResource(R.string.compare_rating)) { h -> h.rating?.let { stringResource(R.string.common_stars, it) } ?: dash })
+                add(CompareRow(stringResource(R.string.compare_visits)) { (visits[it.id] ?: 0).toString() })
+                add(CompareRow(stringResource(R.string.compare_street)) { it.street ?: dash })
+                Checklist.items.forEach { (key, label) ->
+                    add(CompareRow(stringResource(label)) { h -> h.checklist[key]?.toString() ?: dash })
                 }
+                add(CompareRow(stringResource(R.string.compare_contact)) { it.contactName ?: it.contactPhone ?: dash })
             }
-            HorizontalDivider(Modifier.width(tableWidth))
-            rows.forEach { row ->
+            val best = chosen.maxByOrNull { it.score ?: -1.0 }
+            val bestSuffix = stringResource(R.string.compare_best)
+            // Row by row, so each row's cells share one height even when a label wraps at large font sizes.
+            val tableWidth = 140.dp * (chosen.size + 1)
+            Column(Modifier.horizontalScroll(rememberScrollState())) {
                 Row(Modifier.height(IntrinsicSize.Min)) {
-                    Cell(row.label, header = true)
-                    chosen.forEach { Cell(row.value(it)) }
+                    Cell("", header = true)
+                    chosen.forEach { h ->
+                        val name = h.label.ifBlank { stringResource(R.string.house_unnamed) }
+                        Cell(
+                            if (h == best && h.score != null) "$name $bestSuffix" else name, header = true,
+                            modifier = Modifier.clickable(onClickLabel = stringResource(R.string.compare_open_house)) { onOpenHouse(h.id) },
+                        )
+                    }
                 }
                 HorizontalDivider(Modifier.width(tableWidth))
+                rows.forEach { row ->
+                    Row(Modifier.height(IntrinsicSize.Min)) {
+                        Cell(row.label, header = true)
+                        chosen.forEach { Cell(row.value(it)) }
+                    }
+                    HorizontalDivider(Modifier.width(tableWidth))
+                }
             }
+            Text(stringResource(R.string.compare_footnote),
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         }
-        Text(stringResource(R.string.compare_footnote),
-            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
     }
 }
 

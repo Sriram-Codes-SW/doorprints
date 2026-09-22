@@ -3,6 +3,7 @@ package com.househunt.app.ui
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +32,7 @@ private data class Tab(val route: String, @StringRes val label: Int, val icon: I
 private val baseTabs = listOf(
     Tab("map", R.string.nav_map, Icons.Default.Place),
     Tab("houses", R.string.nav_houses, Icons.Default.Home),
-    Tab("compare", R.string.nav_compare, Icons.Default.List),
+    Tab("compare", R.string.nav_compare, Icons.AutoMirrored.Filled.List),
 )
 private val assistantTab = Tab("assistant", R.string.nav_assistant, Icons.Default.Search)
 private val settingsTab = Tab("settings", R.string.nav_settings, Icons.Default.Settings)
