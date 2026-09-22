@@ -41,6 +41,6 @@ public final class AskModels {
     /** Structured output target for the model. */
     public record ModelAnswer(
             @JsonPropertyDescription("The answer, in 1-6 sentences, citing houses inline as [house:<id>]") String answer,
-            @JsonPropertyDescription("Ids of the houses the answer relies on, copied exactly from the context") List<String> citedHouseIds) {
+            @JsonPropertyDescription("Ids of the houses cited inline as [house:<id>] in the answer, copied exactly from the context") List<String> citedHouseIds) {
     }
 }

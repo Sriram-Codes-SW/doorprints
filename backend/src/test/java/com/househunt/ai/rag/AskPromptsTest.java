@@ -81,4 +81,62 @@ class AskPromptsTest {
         assertThat(RagService.citations(answer, docs, "corner")).extracting(c -> c.houseId().toString())
                 .containsExactly(id2);
     }
+
+    @Test
+    void listedButNotInlineIdsAreDropped() {
+        // Vertex eval run 35753477789 (ask-01): three houses came back as citations; only inline markers count now.
+        var answer = new ModelAnswer("The Blue gate house [house:" + id1 + "] has the best water (5/5).",
+                List.of(id1, id2));
+        assertThat(RagService.citations(answer, docs, "water")).extracting(c -> c.houseId().toString())
+                .containsExactly(id1);
+    }
+
+    @Test
+    void citationsFollowTheInlineOrderNotTheListOrder() {
+        var answer = new ModelAnswer("Corner flat [house:" + id2 + "] has car parking; Blue gate [house:" + id1
+                + "] only bike parking. Again [house:" + id2 + "].", List.of(id1, id2));
+        assertThat(RagService.citations(answer, docs, "parking")).extracting(c -> c.houseId().toString())
+                .containsExactly(id2, id1);
+    }
+
+    @Test
+    void inlineMarkerVariantsAreRecognised() {
+        assertThat(RagService.inlineIds("A [house: " + id1.toUpperCase(java.util.Locale.ROOT) + "] and "
+                + "[house:" + id2 + ", house:" + id1 + "] and [HOUSE:" + id2 + "]")).containsExactly(id1, id2);
+        assertThat(RagService.inlineIds("no markers, just " + id1)).isEmpty();
+        assertThat(RagService.inlineIds(null)).isEmpty();
+    }
+
+    @Test
+    void listIsOnlyAFallbackWhenTheAnswerHasNoInlineMarker() {
+        var answer = new ModelAnswer("The Blue gate house has the best water.", List.of("house:" + id1));
+        assertThat(RagService.citations(answer, docs, "water")).extracting(c -> c.houseId().toString())
+                .containsExactly(id1);
+    }
+
+    @Test
+    void inventedInlineIdDoesNotReviveTheList() {
+        // An inline marker exists (even if it is invented), so the list is not used as a fallback.
+        var invented = UUID.randomUUID().toString();
+        var answer = new ModelAnswer("Maybe [house:" + invented + "]", List.of(id1));
+        assertThat(RagService.citations(answer, docs, "water")).isEmpty();
+    }
+
+    @Test
+    void refusalSentenceHasNoCitations() {
+        var answer = new ModelAnswer(" " + AskPrompts.I_DONT_KNOW + " ", List.of(id1));
+        assertThat(RagService.citations(answer, docs, "tax")).isEmpty();
+    }
+
+    @Test
+    void refusalWithCurlyApostropheHasNoCitationsEvenWithACitedList() {
+        var curly = AskPrompts.I_DONT_KNOW.replace('\'', '\u2019');
+        assertThat(curly).isNotEqualTo(AskPrompts.I_DONT_KNOW);
+        var answer = new ModelAnswer(curly + "\n", List.of(id1, "house:" + id2));
+        assertThat(RagService.citations(answer, docs, "tax")).isEmpty();
+        assertThat(RagService.isRefusal(AskPrompts.I_DONT_KNOW.replace('\'', '\u2018'))).isTrue();
+        assertThat(RagService.isRefusal("I don\u2019t know which one is quieter, but [house:" + id1 + "] is cheaper."))
+                .isFalse();
+        assertThat(RagService.isRefusal(null)).isFalse();
+    }
 }

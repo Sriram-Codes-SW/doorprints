@@ -24,14 +24,16 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Feature 2: "Ask my house hunt". Retrieve (metadata pre-filter + cosine similarity in pgvector) -> answer only from
- * the retrieved houses -> keep only citations that point at retrieved houses.
+ * the retrieved houses -> keep only citations that are referenced inline in the answer and point at retrieved houses.
  *
  * <p>Retrieved chunk text is passed through {@link ContactRedactor} with each house's current contact name and phone
  * before it is put into the prompt or a citation, so documents indexed before the F-30 fix (which had a
@@ -134,19 +136,47 @@ public class RagService {
         return out;
     }
 
-    /** Keeps only ids that were actually retrieved (drops hallucinated ones), in the model's order, de-duplicated. */
+    /** An inline citation marker: {@code [house:<id>]}, also {@code [house: <id>]} and {@code [house:<a>, house:<b>]}. */
+    private static final Pattern INLINE_MARKER = Pattern.compile("\\[house:([^\\[\\]\\n]{1,400})]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern UUID_TEXT =
+            Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    /**
+     * The citations of an answer, enforcing the product rule "a house is cited only where the answer states a fact
+     * about it": the cited houses are the ids referenced inline as {@code [house:<id>]} in the answer text, in order of
+     * first appearance, de-duplicated, and only those that were actually retrieved (hallucinated ids are dropped).
+     *
+     * <p>Ids the model lists in {@code citedHouseIds} without referencing them inline are dropped: the list is only a
+     * fallback for an answer that carries no inline marker at all (some models fill the list but forget the markers;
+     * without it such a grounded answer would lose every citation). The refusal sentence (curly apostrophes folded,
+     * see {@link #isRefusal}) never has citations.
+     */
     static List<Citation> citations(ModelAnswer answer, List<Document> docs, String question) {
+        var text = answer.answer() == null ? "" : answer.answer();
+        if (text.isBlank() || isRefusal(text)) return List.of();
+
         var byId = new LinkedHashMap<String, Document>();
-        docs.forEach(d -> byId.put(d.getId(), d));
-        var ids = new ArrayList<String>();
-        if (answer.citedHouseIds() != null) answer.citedHouseIds().forEach(id -> ids.add(normalizeId(id)));
-        // Also accept ids that only appear inline as [house:<id>].
-        var m = java.util.regex.Pattern.compile("\\[house:([0-9a-fA-F-]{36})]").matcher(answer.answer());
-        while (m.find()) ids.add(m.group(1).toLowerCase(Locale.ROOT));
+        docs.forEach(d -> byId.put(d.getId().toLowerCase(Locale.ROOT), d));
+
+        var ids = new LinkedHashSet<String>(inlineIds(text));
+        int listedNotInline = 0;
+        if (ids.isEmpty()) {
+            if (answer.citedHouseIds() != null) {
+                for (var id : answer.citedHouseIds()) {
+                    var n = normalizeId(id);
+                    if (!n.isEmpty()) ids.add(n);
+                }
+            }
+        } else if (answer.citedHouseIds() != null) {
+            for (var id : answer.citedHouseIds()) {
+                var n = normalizeId(id);
+                if (!n.isEmpty() && !ids.contains(n)) listedNotInline++;
+            }
+        }
 
         var out = new ArrayList<Citation>();
         int dropped = 0;
-        for (var id : ids.stream().distinct().toList()) {
+        for (var id : ids) {
             var doc = byId.get(id);
             if (doc == null) {
                 dropped++;
@@ -156,7 +186,35 @@ public class RagService {
             out.add(new Citation(UUID.fromString(id), label, AskPrompts.snippet(doc.getText(), question, 240)));
         }
         if (dropped > 0) log.info("ask: dropped {} citation(s) that were not in the retrieved context", dropped);
+        if (listedNotInline > 0) {
+            log.info("ask: dropped {} citedHouseIds not referenced inline", listedNotInline);
+        }
         return out;
+    }
+
+    /**
+     * Whether the answer is the exact refusal sentence, after trimming and folding curly single quotes (U+2018, U+2019)
+     * to {@code '} so "I don\u2019t know ..." is recognised the same way the eval scorer recognises it.
+     */
+    static boolean isRefusal(String answer) {
+        if (answer == null) return false;
+        return AskPrompts.I_DONT_KNOW.equals(foldApostrophes(answer.strip()));
+    }
+
+    private static String foldApostrophes(String s) {
+        return s.replace('\u2019', '\'').replace('\u2018', '\'');
+    }
+
+    /** Ids referenced inline as {@code [house:<id>]}, lower case, in order of first appearance. */
+    static List<String> inlineIds(String answer) {
+        var out = new LinkedHashSet<String>();
+        if (answer == null) return List.of();
+        var marker = INLINE_MARKER.matcher(answer);
+        while (marker.find()) {
+            var uuid = UUID_TEXT.matcher(marker.group(1));
+            while (uuid.find()) out.add(uuid.group().toLowerCase(Locale.ROOT));
+        }
+        return List.copyOf(out);
     }
 
     private static String normalizeId(String id) {

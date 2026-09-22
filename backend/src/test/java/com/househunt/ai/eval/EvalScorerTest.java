@@ -273,6 +273,63 @@ class EvalScorerTest {
     }
 
     @Test
+    void failingCaseReportKeepsTheFullAnswer() {
+        // Vertex run 35753477789: ask-01's answer was cut at 200 characters, hiding why two extra houses were cited.
+        var tail = " By comparison, the Damp ground floor [house:44444444-4444-4444-8444-444444444444] rates water 3/5 "
+                + "and the Corner flat [house:" + H2 + "] only 2/5. END-OF-ANSWER";
+        var answer = "The Blue gate house [house:" + H1 + "] in Indiranagar (Rs 28000 per month, 2 BHK) has the best "
+                + "water situation, with a water rating of 5/5 and `notes` mentioning great water pressure and 24h "
+                + "Kaveri water. " + "x".repeat(700) + tail;
+        var c = testCase("ask-01-water", "ask", null, map("expectedHouseIds", List.of(H1)));
+        var failing = EvalScorer.scoreAsk(c, map("answer", answer, "grounded", true, "retrieved", 5, "citations",
+                List.of(map("houseId", H1), map("houseId", "44444444-4444-4444-8444-444444444444"),
+                        map("houseId", H2))), null);
+        var passing = EvalScorer.scoreAsk(c, map("answer", answer, "grounded", true, "retrieved", 5,
+                "citations", List.of(map("houseId", H1))), null);
+        assertThat(failing.passed()).isFalse();
+        assertThat(passing.passed()).isTrue();
+
+        var md = EvalScorer.markdown(EvalScorer.header(), EvalScorer.metrics(List.of(failing), Map.of()),
+                List.of(failing), List.of(), List.of());
+        assertThat(md).contains("Output (full):\n\n```text\nanswer=\"The Blue gate house")
+                .contains(tail + "\" citations=[" + H1 + ", 44444444-4444-4444-8444-444444444444, " + H2 + "]")
+                .contains("'notes'") // backticks cannot break the fence
+                .doesNotContain("END-OF-ANSWER...");
+
+        var ok = EvalScorer.output(passing);
+        assertThat(ok).startsWith("\nOutput: `answer=\"The Blue gate house").doesNotContain("END-OF-ANSWER")
+                .doesNotContain("```");
+        assertThat(ok.strip().length()).isLessThanOrEqualTo("Output: ``".length() + EvalScorer.PASS_OUTPUT_MAX + 3);
+    }
+
+    @Test
+    void erroredCaseOutputIsShownInFull() {
+        var c = testCase("e2", "extract", null, map("price", 100));
+        var r = EvalScorer.scoreExtract(c, null, "HTTP 503: down");
+        r.output = "y".repeat(900);
+        assertThat(EvalScorer.output(r)).contains("y".repeat(900)).startsWith("\nOutput (full):");
+    }
+
+    @Test
+    void ask01AllowsOnlyTheHousesWhoseWaterFactsAreInTheFixture() throws Exception {
+        var golden = GoldenSet.load(GoldenSet.locate());
+        var ask01 = golden.cases().stream().filter(c -> "ask-01-water".equals(c.get("id"))).findFirst().orElseThrow();
+        var expected = GoldenSet.map(ask01.get("expected"));
+        var allowed = GoldenSet.strings(expected.get("allowedCitations"));
+        assertThat(allowed).isNotEmpty();
+        assertThat(String.valueOf(expected.get("note"))).contains("35753477789");
+        for (var house : golden.fixtureHouses()) {
+            var id = String.valueOf(house.get("id")).toLowerCase(Locale.ROOT);
+            if (GoldenSet.strings(expected.get("expectedHouseIds")).contains(id)) continue;
+            var checklist = GoldenSet.map(house.get("checklist"));
+            var notes = String.valueOf(house.get("notes")).toLowerCase(Locale.ROOT);
+            boolean waterFact = checklist.containsKey("water") || notes.contains("water");
+            assertThat(allowed.contains(id)).as("house %s allowed iff it has a water fact", house.get("label"))
+                    .isEqualTo(waterFact);
+        }
+    }
+
+    @Test
     void zeroCasesIsAFailNotAPass() {
         // The first real run printed "Result: PASS" with "Cases 0 / 0" because every metric was n/a.
         var metrics = EvalScorer.metrics(List.of(), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
