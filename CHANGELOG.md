@@ -297,6 +297,13 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
 - E-02: the AI eval scorecard reported PASS when no case had run. `GoldenSetEvalTest` now fails when zero cases ran,
   on any harness error (seeding the fixtures or re-indexing failed) or when a metric misses its threshold; the
   scorecard lists *Errors* and *Why FAIL*.
+- Backend CI on `feb0294` (run 35755840287) failed: `EvalScorerTest.goldenSetFileIsConsistent` threw
+  `IllegalArgumentException: The iterable of values to look for should not be empty` because `ask-01` in golden set
+  v0.5 has `allowedCitations` but no `mustNotCite`, and AssertJ's `doesNotContainAnyElementsOf` rejects an empty
+  list (258/259 tests passed). The golden-set consistency check now skips an empty or missing id list ("no
+  constraint"); `ask01AllowsOnlyTheHousesWhoseWaterFactsAreInTheFixture` compares lower-cased ids on both sides. Test
+  code only; golden set and thresholds unchanged. Not yet confirmed by a green Backend run (recorded in the
+  [sprint log](docs/10-sprint-log.md) 9.2, TC-AI-09 in the [test plan](docs/06-test-plan.md)).
 
 ### Security
 
