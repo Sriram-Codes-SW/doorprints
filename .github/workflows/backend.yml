@@ -11,19 +11,21 @@ on:
     paths: ["backend/**", ".github/workflows/backend.yml"]
   workflow_dispatch:
 
-# Least privilege: the job only reads the repository.
-permissions:
-  contents: read
+# Least privilege: nothing by default; each job asks for what it needs (only contents: read).
+permissions: {}
 
+# Superseded PR runs are cancelled; runs on main always finish.
 concurrency:
   group: backend-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
     name: mvn verify (JDK 25, PostGIS 18 + pgvector)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,6 +67,22 @@ jobs:
           APP_MCP_ENABLED: "false"
         run: mvn -B -ntp verify
 
+      # Supply chain record: CycloneDX SBOM of the runtime dependencies (the same file security.yml scans with
+      # `trivy sbom`). Dependencies are already in the local Maven repository after verify.
+      - name: Generate SBOM (CycloneDX JSON)
+        working-directory: backend
+        run: |
+          mvn -B -ntp org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom \
+            -DoutputFormat=json -DoutputName=bom -DincludeTestScope=false
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-sbom-cyclonedx
+          path: backend/target/bom.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -83,6 +101,8 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:

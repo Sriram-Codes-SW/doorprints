@@ -632,3 +632,10 @@ textarea:focus-visible {
     outline: 2px solid CanvasText;
   }
 }
+
+/* Shown instead of the map when the browser has no WebGL 2 (MapLibre GL 6 requirement). */
+.map-unavailable {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+}

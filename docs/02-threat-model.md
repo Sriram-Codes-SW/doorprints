@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First threat model of the current code and the planned AI features. 26 findings recorded. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2 hardening: 21 findings Fixed, 2 Partly fixed, 3 Open (section 5.1). New controls in the trust-boundary table. OWASP mapping statuses updated. Network-layer threats are analysed in [09](09-osi-layer-analysis.md). |
+| 0.3 | 2026-09-22 | Claude (Cowork) | F-27 (Critical, found by the CI `npm audit` gate): maplibre-gl ≤ 6.4.0 `DOM.sanitize()` bypass (GHSA-jrc7-96c5-q579). Fixed by upgrading the web app to maplibre-gl ^6.10.0; CSP `worker-src` tightened to `'self'`. Totals: 22 Fixed. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -222,8 +223,9 @@ Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
 | F-24 | Info | `application.yml` management | Actuator exposes only `health`, details hidden by default. Good. | Keep it. Add `management.endpoint.health.show-details=never` explicitly. | SEC-023 |
 | F-25 | Low | `MainActivity.handle` | Deep-link extras are not validated (any app can start the exported launcher activity with extras) | Check the UUID format and lat/lon ranges. Ignore unknown IDs. Check for existence before navigating. | SEC-021 |
 | F-26 | Low | `PhotoController.upload` | Uploads are accepted for soft-deleted houses (`existsById` ignores `deleted`) and there is no count limit | Check `!deleted`. Cap the number of photos per house. | SEC-007 |
+| F-27 | Critical | `web/package.json` (maplibre-gl ^5.24.0) | Vulnerable dependency: maplibre-gl ≤ 6.4.0, GHSA-jrc7-96c5-q579 "XSS sanitizer bypass in `DOM.sanitize()` via live `NamedNodeMap` removal skip". Removing one dangerous attribute skipped the next, so e.g. a second `on*` handler survived sanitisation. MapLibre uses it for the attribution HTML taken from the map style and tile sources (third-party input). Found by the CI `npm audit` gate. | Upgrade to maplibre-gl ≥ 6.4.1 (6.10.0 chosen). Never pass user data to `setHTML`; build popup content with `setDOMContent` + `textContent`. Keep the strict CSP (`script-src 'self'`). | SEC-012, SEC-014 |
 
-### 5.1 Finding status (v0.2, 2026-09-22)
+### 5.1 Finding status (v0.3, 2026-09-22)
 
 **Fixed** = code and test in the repository (not yet run in CI: the pipeline was added in the same wave). **Part** = partly fixed. **Open** = not started.
 
@@ -255,8 +257,9 @@ Severity uses the same L×I scale. Status per finding (v0.2) is in section 5.1.
 | F-24 | **Fixed** | `management.endpoint.health.show-details: never` set explicitly | TC-I-02 |
 | F-25 | **Fixed** | `MainActivity.handle`: UUID and coordinate range checks on intent extras | TC-S-12 |
 | F-26 | **Fixed** | Uploads rejected for deleted houses and above the per-house cap (`PhotoService.upload`) | `photoUploadStripsMetadataAndDeletesSyncAsTombstones` |
+| F-27 | **Fixed** | `web/package.json`: maplibre-gl ^6.10.0 (fix in 6.4.1). v6 migration: ESM worker copied to `/maplibre/` (`angular.json` assets) and set with `setWorkerUrl` (`shared/map-style.ts`), CSP `worker-src 'self'` (no `blob:`), `setData` promise handled, WebGL 2 missing → translated `role="status"` message instead of the map. Popups already use `setDOMContent` with `textContent` only; no `setHTML`/`innerHTML` in `web/src`. | CI `npm audit` (security workflow), `ng build` |
 
-Totals: 21 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accepted risk). High findings still open: **F-01** (shared key) only.
+Totals: 22 Fixed, 2 Part (F-06, F-21), 3 Open (F-01, F-11, and F-13 as an accepted risk). High findings still open: **F-01** (shared key) only.
 
 ## 6. Mitigation → requirement map (summary)
 

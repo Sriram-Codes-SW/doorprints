@@ -76,6 +76,7 @@ export const ta: Dict = {
   'map.myLocation': 'என் இருப்பிடத்தைக் காட்டு',
   'map.locationUnavailable': 'இருப்பிடம் கிடைக்கவில்லை',
   'map.attribution': 'வரைபட நன்றிக்குறிப்பைக் காட்டு',
+  'map.unavailable': 'WebGL 2 கிடைக்காததால் இந்த உலாவியில் வரைபடத்தைக் காட்ட முடியாது. மற்ற அனைத்தும் வழக்கம்போல் இயங்கும்.',
   'map.legend': 'குறிப்பு',
   'map.statsLabel': 'சுருக்கம்',
   'map.stats.houses': 'வீடுகள்',

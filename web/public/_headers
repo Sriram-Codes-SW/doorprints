@@ -7,9 +7,10 @@
 # - style-src 'unsafe-inline': Angular injects component styles as <style> elements at runtime.
 # - connect-src https: : the API address is chosen by the user at runtime, so any HTTPS origin is allowed;
 #   http://localhost is for a local API during development. Tiles (OpenFreeMap) and Nominatim are HTTPS.
-# - worker-src/child-src blob: : MapLibre GL 5 starts its web worker from a blob: URL.
+# - worker-src 'self': MapLibre GL 6 loads its module worker from /maplibre/maplibre-gl-worker.mjs (copied by
+#   angular.json, set via setWorkerUrl), so the blob: worker source that MapLibre GL 5 needed is no longer allowed.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tiles.openfreemap.org; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; child-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tiles.openfreemap.org; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

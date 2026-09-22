@@ -76,6 +76,7 @@ export const te: Dict = {
   'map.myLocation': 'నా స్థానాన్ని చూపించు',
   'map.locationUnavailable': 'స్థానం అందుబాటులో లేదు',
   'map.attribution': 'మ్యాప్ క్రెడిట్స్ చూపించు',
+  'map.unavailable': 'WebGL 2 అందుబాటులో లేనందున ఈ బ్రౌజర్‌లో మ్యాప్ చూపించలేము. మిగతావన్నీ యథావిధిగా పని చేస్తాయి.',
   'map.legend': 'సూచిక',
   'map.statsLabel': 'సారాంశం',
   'map.stats.houses': 'ఇళ్లు',

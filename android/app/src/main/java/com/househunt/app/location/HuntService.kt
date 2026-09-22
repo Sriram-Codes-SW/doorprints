@@ -162,12 +162,8 @@ class HuntService : LifecycleService() {
         val nearest = houses
             .map { it to Geo.distanceM(loc.latitude, loc.longitude, it.lat, it.lon) }
             .minByOrNull { it.second }
-        HuntState.update {
-            it.copy(
-                nearestHouse = nearest?.first?.takeIf { nearest.second <= 150 },
-                nearestDistanceM = nearest?.second?.takeIf { d -> d <= 150 },
-            )
-        }
+        val close = nearest?.takeIf { it.second <= 150 }
+        HuntState.update { it.copy(nearestHouse = close?.first, nearestDistanceM = close?.second) }
         val (house, distance) = nearest ?: return
         if (distance > alertRadiusM) return
         val last = houseAlertedAt[house.id] ?: 0

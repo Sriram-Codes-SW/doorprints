@@ -10,18 +10,21 @@ on:
     paths: ["web/**", ".github/workflows/web.yml"]
   workflow_dispatch:
 
-permissions:
-  contents: read
+# Least privilege: nothing by default; each job asks for what it needs (only contents: read).
+permissions: {}
 
+# Superseded PR runs are cancelled; runs on main always finish.
 concurrency:
   group: web-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     name: ng build (Node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: web

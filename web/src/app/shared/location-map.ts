@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { Map as MlMap, Marker, NavigationControl } from 'maplibre-gl';
 import { TranslationService } from '../i18n/translation.service';
-import { MAP_STYLE_URL, mapLocale } from './map-style';
+import { createMlMap } from './map-style';
 
 export interface LatLon {
   lat: number;
@@ -83,14 +83,8 @@ export class LocationMap implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     const container = this.mapEl().nativeElement;
     const center: [number, number] = [this.lon(), this.lat()];
-    const map = new MlMap({
-      container,
-      style: MAP_STYLE_URL,
-      center,
-      zoom: 16,
-      attributionControl: { compact: true },
-      locale: mapLocale(this.i18n),
-    });
+    const map = createMlMap(this.i18n, { container, center, zoom: 16 });
+    if (!map) return;
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     const marker = new Marker({ color: this.color(), draggable: this.editable() }).setLngLat(center).addTo(map);
     marker.on('dragend', () => {

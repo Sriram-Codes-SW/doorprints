@@ -40,19 +40,19 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit) {
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp).semantics { heading() })
         if (!aiEnabled) {
             Text(stringResource(R.string.ai_unavailable), modifier = Modifier.padding(16.dp))
-            return@Column
-        }
-        PrimaryTabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.ai_ask_tab)) })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.ai_plan_tab)) })
-        }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(stringResource(R.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (tab == 0) AskPane(onOpenHouse) else PlanPane(onOpenHouse)
+        } else {
+            PrimaryTabRow(selectedTabIndex = tab) {
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.ai_ask_tab)) })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.ai_plan_tab)) })
+            }
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(stringResource(R.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (tab == 0) AskPane(onOpenHouse) else PlanPane(onOpenHouse)
+            }
         }
     }
 }

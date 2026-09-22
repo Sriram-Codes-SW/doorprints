@@ -90,6 +90,7 @@ export const en = {
   'map.myLocation': 'Show my location',
   'map.locationUnavailable': 'Location not available',
   'map.attribution': 'Show map credits',
+  'map.unavailable': 'The map can’t be shown in this browser because WebGL 2 is not available. Everything else still works.',
   'map.legend': 'Legend',
   'map.statsLabel': 'Summary',
   'map.stats.houses': 'Houses',

@@ -14,6 +14,11 @@ spring:
     properties:
       # Timestamps are Instants end to end (timestamptz in the DB, ISO-8601 with Z in JSON).
       hibernate.jdbc.time_zone: UTC
+  jackson:
+    deserialization:
+      # Jackson 3 (Boot 4) fails on a missing primitive record component by default. Sync clients omit
+      # server-managed fields such as deleted/syncVersion, so keep the Jackson 2 behaviour (false / 0).
+      fail-on-null-for-primitives: false
   servlet:
     multipart:
       max-file-size: 5MB
