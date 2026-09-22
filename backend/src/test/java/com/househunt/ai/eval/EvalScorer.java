@@ -200,6 +200,12 @@ final class EvalScorer {
             if (!id.isEmpty() && !cited.contains(id)) cited.add(id);
         }
         var expectedIds = lower(GoldenSet.strings(expected.get("expectedHouseIds")));
+        // allowedCitations: houses that may be cited (e.g. a correctly cited contrast) but are not required.
+        // They count as correct for precision; recall and "cites all expected houses" use expectedIds only.
+        var acceptableIds = new ArrayList<String>(expectedIds);
+        for (var id : lower(GoldenSet.strings(expected.get("allowedCitations")))) {
+            if (!acceptableIds.contains(id)) acceptableIds.add(id);
+        }
 
         boolean refusal = REFUSAL.equals(r.category) || expected.containsKey("answerEquals");
         if (refusal) {
@@ -212,7 +218,7 @@ final class EvalScorer {
             r.check("grounded is false", !grounded, "grounded=" + grounded);
             r.refusalPass = response != null && exact && cited.isEmpty() && !grounded;
         } else {
-            int correct = (int) cited.stream().filter(expectedIds::contains).count();
+            int correct = (int) cited.stream().filter(acceptableIds::contains).count();
             int found = (int) expectedIds.stream().filter(cited::contains).count();
             r.cited += cited.size();
             r.citedCorrect += correct;
@@ -221,8 +227,8 @@ final class EvalScorer {
             if (!expectedIds.isEmpty()) {
                 r.check("cites all expected houses", found == expectedIds.size(),
                         "cited " + cited + ", expected " + expectedIds);
-                r.check("cites only expected houses", correct == cited.size(),
-                        "cited " + cited + ", expected " + expectedIds);
+                r.check("cites only expected or allowed houses", correct == cited.size(),
+                        "cited " + cited + ", expected " + expectedIds + ", allowed " + acceptableIds);
             }
             boolean answerOk = response != null;
             for (var s : GoldenSet.strings(expected.get("mustContain"))) {
@@ -367,7 +373,7 @@ final class EvalScorer {
                 fieldHits, fields, thresholds));
         out.add(metric("extractionHallucinationRate", "Fields absent from the listing that the model filled in anyway",
                 hallucinated, nullFields, thresholds));
-        out.add(metric("citationPrecision", "Cited houses that were expected / all cited houses",
+        out.add(metric("citationPrecision", "Cited houses that were expected or allowed / all cited houses",
                 citedCorrect, cited, thresholds));
         out.add(metric("citationRecall", "Expected houses that were cited / all expected houses",
                 expectedCited, expectedCitations, thresholds));
