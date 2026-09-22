@@ -27,7 +27,9 @@ on:
         default: ""
 
 # Least privilege: nothing by default; each job asks for what it needs (contents: read, except
-# gradle-dependency-graph: contents: write for the Dependency Submission API, main/schedule/manual only).
+# gradle-dependency-graph: contents: write for the Dependency Submission API, main/schedule/manual only; only that
+# job's submit/upload phase is non-blocking, via the action's dependency-graph-continue-on-failure input, until the
+# dependency graph is confirmed on).
 permissions: {}
 
 # Superseded PR runs are cancelled; runs on main (push, weekly schedule) always finish.
@@ -172,8 +174,24 @@ jobs:
 
   # Dependency Submission API: needs contents: write, which is why this job is separate, never runs for pull requests
   # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main, the weekly
-  # schedule and manual runs. No artifact is uploaded (generate-and-submit); results appear as Dependabot alerts.
-  # Requires the repository's dependency graph (on by default for public repositories).
+  # schedule and manual runs. No artifact is uploaded on success (generate-and-submit); results appear as Dependabot
+  # alerts. Requires the repository's dependency graph: Settings > Security (Advanced Security) > Dependency graph.
+  #
+  # Non-blocking until the owner confirms that setting (2026-09-22): the first run on main (8f583af) failed with
+  # "HttpError: Dependency submission failed for dependency-graph-reports/security-gradle-dependency-graph.json"
+  # although the job had contents: write, most likely because the dependency graph is not enabled. The official
+  # action input dependency-graph-continue-on-failure: true makes ONLY the submit/upload phase non-blocking: in
+  # gradle/actions v6.3.0 (sources/src/dependency-graph.ts) warnOrFail wraps only dependencyGraph.complete(), i.e.
+  # finding the report JSON and POSTing it to the Dependency Submission API; a failure there becomes a ::warning::
+  # and the action uploads the graph JSON as a workflow artifact so it is not lost. Everything before it still fails
+  # the step: the Gradle build that resolves the dependencies (including a bad dependency-graph-exclude-configurations
+  # filter), Gradle provisioning, action setup, checkout and setup-java. No job-level continue-on-error.
+  # The preflight step below only warns and names the exact setting to change; the report check after the action
+  # warns when no graph JSON was produced (the action then only logs "No dependency graph files found to submit"
+  # and passes, which would be a false green).
+  # EXIT CRITERION: the job counts as working only when its log/annotations show the notice
+  # "Submitted dependency-graph-reports/<file>.json: ..." (a green job alone proves nothing while the input is on).
+  # Once a main run shows it, remove dependency-graph-continue-on-failure (back to fail-closed).
   gradle-dependency-graph:
     name: Android dependency graph (Gradle, Dependabot alerts)
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -185,6 +203,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      # Read-only preflight (GET, covered by the contents permission): the SBOM export endpoint answers only when the
+      # dependency graph is enabled. Never fails the job; it only explains a likely submission failure up front.
+      - name: Check that the repository dependency graph is enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh api "repos/${REPO}/dependency-graph/sbom" --silent >/dev/null 2>preflight.err; then
+            echo "Dependency graph is enabled for ${REPO}."
+          else
+            echo "::warning title=Dependency graph not available::The dependency graph API did not answer for ${REPO} ($(tr '\n' ' ' < preflight.err | cut -c1-200)). Gradle dependency submission will fail (non-blocking). Repository owner: enable Settings > Security > Advanced Security > Dependency graph (see https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/configuring-the-dependency-graph), then re-run the Security workflow on main."
+          fi
+          rm -f preflight.err
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -194,14 +225,30 @@ jobs:
         with:
           build-root-directory: android
           dependency-graph: generate-and-submit
+          # Warn instead of failing when the submit/upload phase fails (see the job comment above). Temporary.
+          dependency-graph-continue-on-failure: true
           cache-read-only: true
           # :shared is Kotlin Multiplatform with iOS targets; the force-resolution task would otherwise resolve the
           # Kotlin/Native (klib, commonizer, native bundle) configurations on Linux, which Linux CI never needs and
           # which do not ship in the APK. The filter (full-match regex, gradle/github-dependency-graph-gradle-plugin
           # ResolvedConfigurationFilter) also applies to that task. Android/JVM classpaths stay included.
-          # First run still unproven: dispatch Security on main after merge; if it fails, fix the filter rather
-          # than adding continue-on-error (false green).
+          # continue-on-failure does NOT cover this filter: it is applied inside the Gradle build, and a Gradle
+          # resolution or filter failure still fails this step (red job). Only the later submit/upload phase is
+          # non-blocking.
           dependency-graph-exclude-configurations: '(ios|apple|native).*|.*(Native|Klibraries|Cinterop|Klib).*'
+      # False-green guard: with no report JSON the action logs "No dependency graph files found to submit" and passes.
+      # The default report directory of gradle/actions v6 is dependency-graph-reports/ in the workspace. Never fails
+      # the job; a JSON on disk still does not prove submission (look for the "Submitted ..." notice).
+      - name: Check that a dependency graph report was produced
+        if: always()
+        run: |
+          if find dependency-graph-reports -name '*.json' -type f 2>/dev/null | grep -q .; then
+            echo "Dependency graph report(s):"
+            find dependency-graph-reports -name '*.json' -type f
+            echo "Submission succeeded only if the previous step shows 'Submitted dependency-graph-reports/...'."
+          else
+            echo "::warning title=No dependency graph report::No dependency graph JSON was found under dependency-graph-reports/, so nothing was submitted to GitHub and Dependabot alerts do not cover the Android (Gradle) dependencies. Check the 'Submit Gradle dependency graph (android/)' step log (Gradle build, init script, exclude filter)."
+          fi
 
   npm-audit:
     name: npm audit (web)

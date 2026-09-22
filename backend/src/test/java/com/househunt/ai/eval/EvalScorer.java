@@ -253,7 +253,9 @@ final class EvalScorer {
             }
             r.answerPass = answerOk;
         }
-        if (response != null) r.output = "answer=" + quote(answer) + " citations=" + cited + " grounded=" + grounded
+        // The full answer (not quote()'d): the report shows it untruncated for failing cases, so reviewers can see
+        // whether an unexpected citation was a grounded comparison or a wrong one.
+        if (response != null) r.output = "answer=\"" + answer + "\" citations=" + cited + " grounded=" + grounded
                 + " retrieved=" + out.get("retrieved");
         return r;
     }
@@ -506,9 +508,23 @@ final class EvalScorer {
                 if (!c.passed()) sb.append(" - ").append(cell(c.detail()));
                 sb.append('\n');
             }
-            if (!r.output.isEmpty()) sb.append("\nOutput: `").append(truncate(r.output, 600).replace('`', '\'')).append("`\n");
+            if (!r.output.isEmpty()) sb.append(output(r));
         }
         return sb.toString();
+    }
+
+    /** Longest output shown for a passing case; failing and erroring cases show it in full. */
+    static final int PASS_OUTPUT_MAX = 600;
+
+    /**
+     * The "Output" block of a case: passing cases as one truncated inline-code line; failing or erroring cases in
+     * full, in a fenced block, because that is where a reviewer needs the whole answer (ask-01 in Vertex run
+     * 35753477789 was cut at 200 characters, before anything showing why two extra houses were cited).
+     */
+    static String output(CaseResult r) {
+        var text = r.output.replace('`', '\'');
+        if (r.passed()) return "\nOutput: `" + truncate(text, PASS_OUTPUT_MAX).replace('\n', ' ') + "`\n";
+        return "\nOutput (full):\n\n```text\n" + text.strip() + "\n```\n";
     }
 
     // ---------------------------------------------------------------------------------------------------------

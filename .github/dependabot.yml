@@ -3,6 +3,11 @@
 # - minor and patch updates grouped into one PR per ecosystem (security updates are grouped separately);
 # - major bumps of the pinned frameworks (Spring Boot, Angular, AGP, Kotlin) are ignored: those upgrades are
 #   planned and done by hand (docs/07 section 1). Dependabot security updates still apply where a patch exists.
+# 2026-09-22 (DevSecOps):
+# - docker: the maven build image may no longer move to a non-LTS JDK (PR #6 proposed maven:3-eclipse-temurin-26;
+#   the project is on Java 25 LTS). See the maven ignore rule below.
+# - npm: major bumps of web dev dependencies (e.g. jsdom, vitest) are grouped into one weekly PR (npm-dev-major).
+#   Already open individual PRs (#7 jsdom 30, #8 vitest 5) are left for the Web team to evaluate.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -28,6 +33,12 @@ updates:
       npm-minor-patch:
         applies-to: version-updates
         update-types: [minor, patch]
+      # One weekly PR for all major bumps of devDependencies (test/build tooling); the Web team evaluates it as a
+      # unit. Production-dependency majors still come as individual PRs. Angular/TypeScript majors stay ignored.
+      npm-dev-major:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: [major]
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
@@ -82,5 +93,21 @@ updates:
         update-types: [minor, patch]
     ignore:
       # Base images track JDK 25 and PostgreSQL 18; major moves are planned upgrades.
+      # Covers eclipse-temurin:25-jre (25 -> 26 is a major) and postgis/postgis:18-3.6 (18 -> 19).
       - dependency-name: "*"
         update-types: [version-update:semver-major]
+      # maven:3.9-eclipse-temurin-25 (backend/Dockerfile build stage): Dependabot reads the JDK number as the last
+      # version segment (numeric version 3.9.25; "3-eclipse-temurin-26" reads as 3.26), so a JDK change is NOT a
+      # semver-major and the rule above does not stop it (PR #6). Tag wildcards are not supported for docker ignores;
+      # `versions` are Ruby Gem requirements on that numeric version (dependabot-core docker/requirement.rb, tag.rb).
+      # Allowed: 3.9-eclipse-temurin-25 and 3.10-eclipse-temurin-25. Ignored: JDK > 25 on 3.9, any JDK other than 25
+      # on 3.10, every Maven-only floating tag "3-eclipse-temurin-NN" (3.NN, NN >= 11) and Maven >= 3.11 / 4 (planned
+      # upgrades). Lower JDKs on 3.9 need no rule: Dependabot drops version downgrades itself.
+      # JDK moves (next LTS: 29) are done by hand together with pom.xml and the CI setup-java versions.
+      # NOT YET EXERCISED: the version parsing above was read from dependabot-core main, not from the hosted
+      # Dependabot release, and no Dependabot run has used this rule yet. This file does not close PR #6
+      # (maven:3-eclipse-temurin-26): the owner closes it or comments "@dependabot ignore this version". After the
+      # next Monday run, check that PR #6 is not reopened or superseded by a JDK 26/27 maven PR; if it is, replace
+      # these ranges with a plain `update-types: [version-update:semver-minor]` ignore for "maven".
+      - dependency-name: "maven"
+        versions: [">= 3.9.26, < 3.10", ">= 3.10.26, < 3.11", "< 3.10.25, >= 3.10", ">= 3.11"]
