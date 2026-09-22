@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -19,6 +19,7 @@
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): contact redaction (C-13, F-30 Fixed by the AI team): the system context diagram, sequence 7.5 and the section 13 AI data sources row now say that `ContactRedactor` keeps the contact name and phone out of the embedding text, Ask context and tool results. F-01 split in [02](02-threat-model.md) v0.6: `WebConfig` row points at F-01a, ADR-03 at F-01a/F-01b. |
 | 0.6 | 2026-09-22 | Claude (Cowork), Docs team | New **ADR-13**: product renamed from House Hunt to **Doorprints** (tagline "Remember every house you've seen."): reason, what changed (display name, tagline, `applicationId` `app.doorprints`, CI artifact names, launcher icon, export file name, MCP server name) and what did not (Java/Kotlin packages and class names, repository name, storage keys, database, role, image and volume names, export format id, MCP tool names). System context and container diagrams, the export row in section 9 and the MCP row in section 13 use the new names. |
 | 0.7 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI provider (AI team, same change set; [01](01-requirements.md) AI-016, [10](10-sprint-log.md) C-24). Section 13 Providers row now describes both providers and the `app.ai.provider` (`AI_PROVIDER`) switch: **aistudio** (default; OpenAI-compatible chat, native `batchEmbedContents` with `x-goog-api-key`) and **vertex** (chat through Spring AI's Google GenAI starter with the app's own google-genai `Client`; embeddings through the app's `VertexEmbeddingModel`, `:embedContent` or `:predict`, one text per call; OAuth bearer tokens from Application Default Credentials, no API key; `<location>-aiplatform.googleapis.com`). Section 9 and 13: the `503` problem for provider quota errors now carries `code: AI_QUOTA_EXHAUSTED` and a `Retry-After: 60` header; the spend cap case is open (AI-017). Section 2 context diagram and section 4.1 errors row updated. Review fix: section 9 and the section 4.1 errors row add the `setupHint` property on Vertex AI 401/403/404 (`AiExceptionHandler.SETUP_HINT_PROPERTY`). |
+| 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Sprint 3.5 "KMP foundation" (commit `8f583af`, [10](10-sprint-log.md) §9). New **ADR-14**: Kotlin Multiplatform-ready Android code base with a `:shared` module (Android + compile-only `iosArm64`/`iosSimulatorArm64`), Ktor 3.6 client replacing OkHttp's `RetryInterceptor`, Room staying in `:app` until Phase 2. Section 1 Android row (Ktor client with the OkHttp 5.5 engine, version catalog); section 4.2 component diagram and table (`ApiClient`, `RetryPolicy`, `SyncOutcome`, `SyncRules`, `StayDetector`, `StreetAlerts`, `Geo`, `HouseScore` now in `:shared`; `Api.kt` holds the app-wide `HttpClient`); new section 4.2.1 with the module boundaries and the Phase 2 plan; section 6.2: Room schema export on, `2.json` committed and `RoomSchemaTest` pins the identity hash; 6.3 score in `HouseScore`; **R-06** partly closed (migration test still open). ADR-01 notes the Sprint 4b *Hunting areas* exception (Geofencing API with an opt-in background permission, [11](11-feature-parity-and-export-spec.md) 5.17); the 11 proposals renumber to ADR-15..ADR-18. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -28,7 +29,7 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 
 | Part | Tech | Responsibility | Source |
 |---|---|---|---|
-| Android app | Kotlin 2.4, Jetpack Compose (Material 3), Navigation, Room 2.8, WorkManager 2.10, DataStore, Play services location, MapLibre Android 13, OkHttp 4, kotlinx.serialization, Coil 3. minSdk 26, targetSdk 36, compileSdk 37 (AGP 9.4, built-in Kotlin). | Offline-first capture, Hunt mode, map/list/compare, background sync | `android/` |
+| Android app | Kotlin 2.4.10, Jetpack Compose (Material 3), Navigation, Room 2.8, WorkManager 2.10, DataStore, Play services location, MapLibre Android 13.6, Ktor client 3.6 (OkHttp 5.5 engine), kotlinx.serialization, Coil 3. minSdk 26, targetSdk 36, compileSdk 37 (AGP 9.4, built-in Kotlin). Two Gradle modules since Sprint 3.5: `:app` and the Kotlin Multiplatform module `:shared` (platform-neutral rules, DTOs and the API client; ADR-14). Versions in one catalog, `android/gradle/libs.versions.toml`. | Offline-first capture, Hunt mode, map/list/compare, background sync | `android/` |
 | API | Java 25, Spring Boot 4.1.1 (Web MVC, Data JPA, Validation, Actuator, Flyway; embedded Tomcat pinned to 11.0.25 by `tomcat.version`, F-28), PostgreSQL JDBC | REST API, LWW upserts, change feed, geospatial queries, photo storage | `backend/` |
 | Database | PostgreSQL 15+ with PostGIS 3 (pgvector planned) | System of record, spatial indexes, `sync_seq` | `backend/src/main/resources/db/migration/V1__init.sql` |
 | Web app | Angular 22 (standalone, zoneless, signals), MapLibre GL 6.10 (ESM, module worker from `/maplibre/`), static build | Desktop review/edit/compare | `web/` |
@@ -171,7 +172,9 @@ flowchart TB
     repo --> st["SettingsStore<br/>DataStore"]
     repo --> sw["SyncWorker<br/>WorkManager"]
     sw --> repo
-    repo --> api["ApiClient<br/>shared OkHttp pool, RetryInterceptor,<br/>no redirects, content-type check"]
+    repo --> api["ApiClient (:shared, Ktor)<br/>one app-wide HttpClient, RetryPolicy,<br/>no redirects, content-type check"]
+    hunt --> shl["StayDetector, StreetAlerts, Geo (:shared)"]
+    repo --> shm["HouseScore, SyncRules, SyncOutcome (:shared)"]
     sw --> net["NetworkState<br/>captive portal, metered"]
     st --> kc["ApiKeyCipher<br/>Keystore AES-GCM"]
 ```
@@ -187,12 +190,74 @@ flowchart TB
 | `SettingsScreen` | `ui/SettingsScreen.kt` | Server URL (HTTPS check, `ServerUrl`), API key (masked hint, blank keeps the saved key), Save and test, Sync now, last sync result (translated `SyncOutcome`), photos only on Wi-Fi, language picker (`i18n/AppLocale`), Hunt settings, privacy note |
 | `AssistantScreen` | `ui/AssistantScreen.kt` | Ask (answer without `[house:id]` markers, cited houses as cards) and Plan visits (stops in order with leg distance and time) |
 | `HuntService` | `location/HuntService.kt` | Section 7.2, 7.3, 8.2 |
-| `StayDetector`, `Geo`, `ReverseGeocoder` | `location/*.kt` | Pure stay logic (easy to unit test), haversine distance, Geocoder wrapper (API 33+ async) |
+| `StayDetector`, `StreetAlerts`, `Geo` | `:shared` `com.househunt.shared.location` | Pure stay logic, street-alert rule and haversine distance (`Geo.distanceM`), unit-tested in `commonTest` (section 4.2.1) |
+| `ReverseGeocoder` | `location/ReverseGeocoder.kt` | Android Geocoder wrapper (API 33+ async), 10 s limit |
 | `Repository` | `data/Repository.kt` | Only way to write data. Sets `dirty` + `updatedAt`, calls `syncSoon`, handles photos (downscale, EXIF rotation, JPEG q80, cap, offline delete queue), sync algorithm (section 10), AI calls and `aiEnabled` state |
 | `SyncWorker` | `data/SyncWorker.kt` | Unique one-time "sync-now" (3 s delay, REPLACE) + 30-min periodic job + "sync-photos-wifi" (UNMETERED). Needs a network; skips captive portals. Exponential backoff from 30 s, up to 5 attempts; no retry on auth failure. |
-| `ApiClient`, `RetryInterceptor` | `data/Api.kt`, `data/RetryInterceptor.kt` | Blocking OkHttp client on a shared pool, DTO mapping (epoch ms to ISO-8601), AI DTOs, typed `ApiException` kinds; retries with full-jitter backoff (docs/09 L4) |
-| `SettingsStore`, `ApiKeyCipher`, `ServerUrl`, `SyncOutcome` | `data/*.kt` | DataStore settings; the key is stored as `v1:` + Base64(IV + AES-GCM ciphertext); URL validation; last sync result as a code |
+| `ApiClient`, `RetryPolicy`, DTOs, `IsoTime`, `ApiException` | `:shared` `com.househunt.shared.api` (since Sprint 3.5; replaced `data/RetryInterceptor.kt` and the OkHttp client) | Suspending Ktor client: `X-API-Key`, own JSON encoding (`ignoreUnknownKeys`, `explicitNulls = false`), `Content-Type` check before decoding (captive portals), redirects never followed, typed `ApiException` kinds, retries of idempotent calls and the marked photo upload on network errors and 408/429/502/503/504 with full-jitter backoff (1 s base, 15 s cap, 3 attempts, short `Retry-After` honoured), 4-minute limit per call including retries (`ApiTimeoutException`), streamed photo upload (docs/09 L4) |
+| `Api` | `data/Api.kt` | One app-wide Ktor `HttpClient` (`AndroidApiHttp`: OkHttp engine, connect 20 s, read 90 s, write 60 s, no redirects), so every `ApiClient` shares one connection pool; debug log of status, method and path only |
+| Mappers | `data/Mappers.kt`, `data/ModelLabels.kt` | Room entity ↔ DTO (epoch ms ↔ ISO-8601 through `IsoTime`), translated labels for shared statuses and checklist keys |
+| `SettingsStore`, `ApiKeyCipher`, `ServerUrl` | `data/*.kt` | DataStore settings; the key is stored as `v1:` + Base64(IV + AES-GCM ciphertext); URL validation (`java.net.URI`) |
+| `SyncOutcome`, `SyncRules`, `HouseScore` | `:shared` `com.househunt.shared.sync`, `.model` | Last sync result as a stored code (errors classified without server text), last-edit-wins rule, overall score and ranking |
 | `AppLocale` | `i18n/AppLocale.kt` | Per-app language: `LocaleManager` on API 33+, SharedPreferences + context wrapping on 26–32 |
+
+### 4.2.1 Kotlin Multiplatform module boundaries (`:shared`, Sprint 3.5, ADR-14)
+
+```mermaid
+flowchart LR
+    subgraph app[":app (Android only)"]
+        ui["Compose UI, MapLibre,<br/>string resources"]
+        plat["HuntService, fused location,<br/>ReverseGeocoder, Notifications"]
+        data["Repository, Room (AppDatabase v2),<br/>Mappers, SyncWorker, DataStore,<br/>ApiKeyCipher, ServerUrl"]
+        apiw["Api.kt: one HttpClient"]
+    end
+    subgraph shared[":shared (Kotlin Multiplatform)"]
+        subgraph cm["commonMain (no java.*, no android.*)"]
+            model["model: HouseStatus, VisitSource,<br/>Checklist, HouseScore"]
+            sync["sync: SyncRecord, SyncRules,<br/>SyncOutcome"]
+            loc["location: Geo, StayDetector,<br/>StreetAlerts"]
+            api["api: ApiClient, RetryPolicy,<br/>DTOs, IsoTime, ApiException"]
+        end
+        am["androidMain: AndroidApiHttp<br/>(Ktor OkHttp engine)"]
+        ios["iosArm64, iosSimulatorArm64<br/>compile-only (shared-ios.yml)"]
+    end
+    ui --> data
+    plat --> loc
+    data --> sync
+    data --> model
+    data --> api
+    apiw --> am
+    am --> api
+    ios -.->|"compiles"| cm
+```
+
+| Layer | Contents | Rule |
+|---|---|---|
+| `commonMain` | Everything an iOS app would reuse: wire and database names, business rules, the HTTP client and its DTOs | Only Kotlin stdlib, `kotlin.time`, `kotlin.math`, kotlinx.coroutines, kotlinx.serialization, kotlinx.io and Ktor client core. No `java.*`, `android.*`, `System.*`, `String.format`, `Thread`. The macOS job `shared-ios.yml` enforces this by compiling the iOS targets. Names with a wire or database meaning (`HouseStatus`, `VisitSource`, checklist keys, `SyncOutcome` codes) never change; tests pin them. |
+| `androidMain` | `AndroidApiHttp` (Ktor OkHttp engine, timeouts, `followRedirects(false)`) | Platform glue behind a common type (`HttpClientEngine`) or an injected function (`debugLog`) |
+| `iosMain` | Not created yet (Phase 2: `ktor-client-darwin`) | – |
+| `:app` | Room (entities implement the shared `SyncRecord`), mappers, WorkManager, DataStore and Keystore, location and notification services, Compose UI, MapLibre, translations | Stays Android-only in this phase; reasons per item in `android/shared/README.md` section 3 |
+
+Build and test: `:shared` uses the Kotlin Multiplatform plugin and AGP's `com.android.kotlin.multiplatform.library`
+(`kotlin { android { … withHostTest {} } }`). Its JVM tests are the task `:shared:testAndroidHostTest`, which
+`:app:testDebugUnitTest` depends on and `android.yml` also names. On Linux the iOS tasks are skipped
+(`kotlin.native.enableKlibsCrossCompilation=false`); `shared-ios.yml` compiles the iOS main and test klibs on
+macOS without linking, signing or a simulator. Test detail: [06](06-test-plan.md) §3; CI: [07](07-secure-build-and-deploy.md) §1.
+
+Behaviour kept from the OkHttp client (pinned by `ApiClientContractTest`): same request JSON and URLs, same retry
+rules and numbers, captive-portal detection, no redirects, same error kinds. Intentional, invisible differences:
+Ktor's `Accept`/`Accept-Charset`/`User-Agent` headers, and a connection dropped while a retriable response body is
+read is now retried too. MapLibre Android 13.6.1 is built against OkHttp 4.12 but runs on the OkHttp 5.5.0 that Ktor
+brings; no CI job exercises MapLibre networking, so `android/shared/README.md` §5 has a manual map-tile smoke test
+for every Ktor, OkHttp or MapLibre version change.
+
+**Phase 2 plan (not scheduled; ADR-14):** (1) Room KMP (Room 2.8 in `commonMain` with the bundled SQLite driver),
+keeping `househunt.db`, version 2, `MIGRATION_1_2` and the committed `2.json`, plus a migration test from real v1/v2
+files; then the mappers move. (2) DataStore KMP for settings and cursors; `expect/actual` secret storage (Android
+Keystore / iOS Keychain). (3) `ServerUrl` as a common parser or `expect/actual`. (4) An iOS app (SwiftUI over the
+shared framework, or Compose Multiplatform), only when a Mac and the Apple Developer Program are available; there is
+no paid Apple account today, so iPhone users are served by the PWA ([11](11-feature-parity-and-export-spec.md) 5.10).
+(5) iOS platform services (`CLLocationManager`, `CLGeocoder`, `BGTaskScheduler`, `NWPathMonitor`).
 
 ### 4.3 Web components
 
@@ -334,13 +399,13 @@ Sequence `sync_seq` is shared by `house`, `visit` and (since V3) `photo`. V2 (op
 | `visits` | epoch-ms timestamps, `dirty` | `houseId`, `street` |
 | `photos` | `path` (file in `filesDir/photos`), `uploaded` flag, `deleted` flag (v2: delete queued for the server) | `houseId` |
 
-Migration 1→2 (`AppDatabase.MIGRATION_1_2`) adds `photos.deleted INTEGER NOT NULL DEFAULT 0`. `exportSchema = false` still: turn it on and add a migration test (R-06).
+Migration 1→2 (`AppDatabase.MIGRATION_1_2`) adds `photos.deleted INTEGER NOT NULL DEFAULT 0`. Since Sprint 3.5 `exportSchema = true` (KSP argument `room.schemaLocation`): `app/schemas/com.househunt.app.data.AppDatabase/2.json` is committed and `RoomSchemaTest` checks that both it and the generated `AppDatabase_Impl` carry the identity hash of the shipped version-2 layout (`539964c2013f14439605fab0d18a142a`), so a table change through the shared enums fails the unit tests instead of crashing upgraded installs. A real schema change needs a version bump, a migration and a new `<version>.json`, never an edit to `2.json`. Still open: a `MigrationTestHelper` test of 1→2 (R-06).
 
 ### 6.3 Derived values
 
 | Value | Formula | Implemented in |
 |---|---|---|
-| Overall score | `mean(checklist)` blended 50/50 with `rating` when both exist, else whichever exists, else null | `HouseEntity.score`, web `houseScore()` |
+| Overall score | `mean(checklist)` blended 50/50 with `rating` when both exist, else whichever exists, else null | `HouseScore.of` in `:shared` (used by `HouseEntity.score`), web `houseScore()` |
 | Distinct streets | `count(distinct lower(street))` over live houses | `HouseRepository.countDistinctStreets` |
 
 ## 7. Sequence diagrams
@@ -737,7 +802,7 @@ The AI team owns the details in [docs/ai/](ai/). This document only fixes the in
 
 | ADR | Decision | Alternatives | Rationale / consequences |
 |---|---|---|---|
-| ADR-01 | **Foreground location service + in-app distance checks** for Hunt mode | Android Geofencing API | Geofencing needs `ACCESS_BACKGROUND_LOCATION` (a hard permission for sideloaded apps and more invasive for privacy), allows 100 geofences per app, has a background latency of minutes, and cannot do street detection or stay detection. A visible FGS runs only while the user wants it (PRV-001/002), gives 5 to 15 s updates and uses all houses. Cost: higher battery use while on (NFR-005), and Android 14 FGS type rules. |
+| ADR-01 | **Foreground location service + in-app distance checks** for Hunt mode | Android Geofencing API | Geofencing needs `ACCESS_BACKGROUND_LOCATION` (a hard permission for sideloaded apps and more invasive for privacy), allows 100 geofences per app, has a background latency of minutes, and cannot do street detection or stay detection. A visible FGS runs only while the user wants it (PRV-001/002), gives 5 to 15 s updates and uses all houses. Cost: higher battery use while on (NFR-005), and Android 14 FGS type rules. **Still holds for Hunt mode.** Sprint 4b adds one opt-in exception (product owner, 2026-09-22): *Hunting areas* use the Geofencing API only to **offer** Hunt mode when the user enters a neighbourhood they marked, and ask for "Allow all the time" only when the user turns that feature on; Hunt mode itself stays a foreground service started by a tap ([11](11-feature-parity-and-export-spec.md) 5.17, 5.18; [01](01-requirements.md) PRV-024..PRV-027). |
 | ADR-02 | **MapLibre + OpenFreeMap** tiles | Google Maps SDK, Mapbox, raw OSM tile servers | No API key, no billing account, vector tiles, same style on web and Android, OSM data is good in Indian cities. The OSM tile server policy forbids heavy app use. Risk: a community service with no SLA, so the style URL is a single constant and easy to swap. |
 | ADR-03 | **Single API key** for v1 | OAuth2/OIDC (Keycloak, Auth0 free, Supabase Auth), per-device keys | One user and no login UI. Works for background sync without token refresh. Risks accepted with rotation, TLS and rate limits ([02](02-threat-model.md): F-01a key length and rotation Fixed, F-01b per-device keys Open). The upgrade path is per-device hashed keys, then OIDC. |
 | ADR-04 | **Offline-first with client UUIDs, server sequence cursor, LWW** | CRDTs, per-field merge, server timestamps as cursor | Simple and fits a single user. A sequence cursor avoids clock problems in the feed. LWW can drop concurrent edits (RR-06). |
@@ -750,6 +815,7 @@ The AI team owns the details in [docs/ai/](ai/). This document only fixes the in
 | ADR-11 | **AI optional and in-process**, pgvector in the same DB | Separate AI service, hosted vector DB | Free tier allows one service and one DB. Feature flag keeps the core app independent (AI-001). |
 | ADR-12 | **Manual DI** (`AppContainer`) on Android | Hilt/Koin | Small app, fewer dependencies (supply chain), faster builds |
 | ADR-13 | **Rename the product from House Hunt to Doorprints** (2026-09-22, product owner), tagline "Remember every house you've seen.". Names only, no behaviour change | Keep "House Hunt"; a full rename including code packages, repository, storage keys and database names | **Reason:** "House Hunt" made the app sound like a property-listings site (search houses for rent or sale), while it is a personal record of the houses the user has seen in person. **Changed:** the display name in all four languages (Android `app_name`, now translatable and the same in every language; notification channel text and the lock-screen public version "Doorprints alert"; web `<title>`, header and page titles "<page> · Doorprints", `application-name`); a translated tagline (Android `app_tagline` on the empty house list and in a new Settings *About* section; web `app.tagline`, also the meta description); a new Android launcher icon (a door with footprints); Android `applicationId` **`app.doorprints`** (was `com.househunt.app`) and Gradle root project `Doorprints`; CI artifact names **`doorprints-debug-apk`**, **`doorprints-release-apk`**, **`doorprints-web-dist`** (were `house-hunt-*`); web package `doorprints-web`; Maven `<name>` and `spring.application.name` `doorprints-api`; MCP `serverInfo.name` `doorprints`; export download file `doorprints-export-<date>.json`; eval scorecard title; docs, README and CHANGELOG. **Not changed, on purpose:** Java/Kotlin packages (`com.househunt`, `com.househunt.app`, which is also the Android `namespace` for `R` and `BuildConfig`) and class names (`HouseHuntApp`, `HouseHuntRoot`, `HouseHuntTheme`), so no source file moves; the repository name `house-hunt`; storage keys that hold existing data: web `localStorage` `house-hunt.lang` and `house-hunt.api-config`, the Android Keystore alias `house_hunt_api_key_v1`, the Room file `househunt.db`; database, role and schema names (`househunt`, `househunt_app`), the compose volume `dbdata18` and project name, the image names `house-hunt-api` and `house-hunt-db`, Maven `groupId`/`artifactId`; the export `format` id `house-hunt-export/1`; MCP tool names (`askHouseHunt`, …); the `HH_*` signing secrets and the CI keystore file name; the feature name "Hunt mode". Renaming any of these would lose saved settings or data, break existing deployments and backups, or touch every source file for no user benefit. **Consequences:** Android treats `app.doorprints` as a new app: builds made before the rename (`com.househunt.app`, never published) are not upgraded, install side by side and keep their own local data, so sync them first and then uninstall them (08 §6.2). Everything derived from the id follows it (FileProvider authority `${applicationId}.files`). `adb` commands name the activity by its class: `app.doorprints/com.househunt.app.MainActivity`. |
+| ADR-14 | **Kotlin Multiplatform-ready Android code base, iOS later** (Sprint 3.5, product owner 2026-09-22; commit `8f583af`). A `:shared` KMP module holds the platform-neutral code (models and wire names, score, sync rules and outcome codes, stay detection, street alerts, distance, DTOs, ISO time, the API client and its retry policy); targets Android and, **compile-only**, `iosArm64` + `iosSimulatorArm64`. The HTTP client moves from OkHttp 4 with an interceptor (`RetryInterceptor`) to a **Ktor 3.6** client (`ktor-client-core` in commonMain, OkHttp engine on Android) with the same behaviour. Room, WorkManager, DataStore, Keystore, location services and the Compose UI stay in `:app` | (a) Keep everything in `:app` until an iOS app is funded; (b) full KMP now, including Room KMP and a Compose Multiplatform UI; (c) Kotlin/JS or a shared TypeScript core with the web app; (d) keep OkHttp and wrap it in `expect/actual` | **Reason:** no Mac, no iPhone and no Apple Developer Program fee (zero cost, CON-01), so no iOS app now; but the rules and the client an iOS app would reuse should already compile without JVM or Android APIs, so Phase 2 does not start with a large refactor. (a) lets JVM-only code creep in; (b) touches every tester's on-device database (identity hash, migration 1→2, TypeConverter) and the UI in one sprint; (c) the web app is Angular and would not share Kotlin code; (d) OkHttp does not run on iOS. **Guard rails:** `shared-ios.yml` (macOS runner, free for public repositories) compiles the iOS main and test klibs on every `android/shared/**` or root Gradle change; nothing is linked, signed or run. `ApiClientContractTest` (Ktor `MockEngine`, responses recorded from the backend's DTOs and handlers) pins the wire format and the retry, captive-portal, redirect and timeout rules the old `RetryInterceptorTest` covered; the other pure suites moved to `commonTest`. `RoomSchemaTest` pins the Room identity hash because the entities now use the shared enums. **Consequences:** one version catalog (`android/gradle/libs.versions.toml`) for both modules; `:shared` is `api(ktor-client-core)`, so `:app` sees Ktor types; MapLibre runs on OkHttp 5.5.0 instead of 4.12.0 (manual map smoke test per version change, `android/shared/README.md` §5); `Api.kt` keeps one app-wide `HttpClient`; package `com.househunt.shared` (packages keep the old name, ADR-13); the iOS tests themselves are not run anywhere yet. **Phase 2** (section 4.2.1): Room KMP, DataStore KMP and `expect/actual` secrets, `ServerUrl`, then an iOS app and its platform services. Until then iPhone users use the PWA. |
 
 ## 15. Design risks and open items
 
@@ -760,6 +826,6 @@ The AI team owns the details in [docs/ai/](ai/). This document only fixes the in
 | R-03 | Cold starts delay the first sync by up to 60 s | 90 s timeout. The web shows a "waking server" message. Optional keep-alive (check provider terms). |
 | R-04 | DB free quota used up by photos | F-06 actions, size monitoring (08) |
 | R-05 | Export is JSON only; photos are fetched one by one via `photoUrl`. No export/erase buttons in the apps yet. | A ZIP export would need streaming (heap limit); add app buttons that call the API |
-| R-06 | Room `exportSchema=false`; the 1→2 migration is untested | Enable schema export and add a `MigrationTestHelper` test |
+| R-06 | The 1→2 Room migration is untested | Part (Sprint 3.5): schema export on, `2.json` committed, `RoomSchemaTest` pins the identity hash. Still to do: a `MigrationTestHelper` test that opens a real v1 database (Sprint 4a S4-00, [11](11-feature-parity-and-export-spec.md) TC-I-25) |
 | R-07 | Hard delete-all leaves copies on devices (no tombstones for hard deletes) | Documented in 08 §6.2; users clear app data per device |
 | R-08 | The advisory lock serialises all writes | Fine for one user; revisit if multi-user |

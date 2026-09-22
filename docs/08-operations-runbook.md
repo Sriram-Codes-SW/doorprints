@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.10 |
+| Version | 0.11 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -22,6 +22,7 @@
 | 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22: new **section 10** (repository now public as `Sriram-Codes-SW/doorprints` with MIT `LICENSE`, `SECURITY.md` and a ruleset on `main`: settings to check and the history re-check; paid AI key with a hard cap and budget alerts; Google Cloud $300 trial plan and tear-down), new **IR-8** (private vulnerability report) and **IR-9** (AI spend alert or cap reached). Section 1.1: `AI_API_KEY` is the free key only for synthetic evals; real data needs the paid Gemini API tier or Vertex AI ([01](01-requirements.md) PRV-022, [ai/vertex-setup.md](ai/vertex-setup.md)). Section 4: monthly AI spend check, trial end date. Release checklist: no personal data in public logs or artifacts. |
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. Section 10.2 rewritten around three layers: in-app per-user and global daily caps; a Google Cloud **spend cap budget** (Preview) on the AI-only project and the Vertex AI or Gemini API service (monthly, gross of credits, not instant, can pause cloud AI mid-request; fallback: budget notification that disables billing); budget alerts at 50/90/100 %. The Quotas-page limit is now optional and unverified (Vertex Gemini uses dynamic shared quota). Spend cap budgets do not cover Cloud SQL: staging needs its own budget alert and a tear-down date (section 10.3). IR-9: what to do when the spend cap trips. Section 10.3: day-1 check that the credit covers the models; Test Lab after the trial runs within the no-cost Spark quota. Links to `ai/vertex-setup.md` marked as being written by the AI team. |
 | 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI code landed (same change set): "being written" markers on [ai/vertex-setup.md](ai/vertex-setup.md) removed. Section 1.1 now lists `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION`, `AI_INDEX_ON_CHANGE` and `GOOGLE_APPLICATION_CREDENTIALS`, and says to re-index after switching provider. Section 5.2: Vertex AI credential row (WIF and Cloud Run have nothing to rotate; JSON key only on a non-Google host). IR-9 and section 9: the new `503` problem with `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`, the eval result **STOPPED: provider quota exhausted**, the re-index that stops at the first quota error, and how a spend cap trip looks today (a generic `503`, not yet a distinct "cloud AI paused" state; AI-017). New troubleshooting rows for Vertex AI startup and 403/404 errors; the 403/404 row points to the `setupHint` in the `503` body. Section 10.2 and IR-9: vertex-setup step 7's $50/$150/$250 alerts are the trial-period form of the 50/90/100 % alerts. |
+| 0.11 | 2026-09-22 | Claude (Cowork), Docs team | **Vertex AI setup outcome** (owner, 2026-09-22; [ai/vertex-setup.md](ai/vertex-setup.md) v0.3): project `doorprints-ai`; chat `gemini-3.5-flash` verified in `asia-south1`, `gemini-embedding-2` only on `global`; GitHub variables `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global`. Section 1.1 rows name these values and the residency consequence (embedding text processed on `global`). New **section 10.4 "Google Cloud trial end checklist"**: credit ends **22 Dec 2026**; export by about 15 Dec; decide AI Studio (paid key for real data) or a paid upgrade with the spend cap in place; switch before the 22nd; tear down staging; remove WIF secrets if Vertex is dropped. Section 4 calendar: one-off trial-end dates. Section 10.3: trial dates. Section 10.1: new row "Dependency graph: On" (needed by the Sprint 3.5 `gradle-dependency-graph` job, whose first run failed at submission). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -50,8 +51,8 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 | `AI_EMBEDDING_TASK_TYPE` | empty | Only for `google-genai` with `AI_EMBEDDING_MODEL=gemini-embedding-001` (for example `RETRIEVAL_DOCUMENT`); `gemini-embedding-2` rejects task types. |
 | `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS` | `gemini-embedding-2`, `768` | Ollama: `nomic-embed-text`. Dimensions must stay `768` (the `vector(768)` column). Same values on both providers. |
 | `GCP_PROJECT_ID` | – | Vertex only, **required** (startup fails without it): the AI-only project's id (not its number). |
-| `GCP_LOCATION` | `asia-south1` | Vertex only: location for chat and, by default, embeddings. If a model answers 404 `NOT_FOUND` there, use `global` (widest availability, no India residency guarantee) or `us-central1` ([ai/vertex-setup.md](ai/vertex-setup.md) step 8). |
-| `AI_VERTEX_EMBEDDING_LOCATION` | = `GCP_LOCATION` | Vertex only: set (for example `global`) when the embedding model is not offered in `GCP_LOCATION`. |
+| `GCP_LOCATION` | `asia-south1` | Vertex only: location for chat and, by default, embeddings. If a model answers 404 `NOT_FOUND` there, use `global` (widest availability, no India residency guarantee) or `us-central1` ([ai/vertex-setup.md](ai/vertex-setup.md) step 8). **This project: `asia-south1`** (chat `gemini-3.5-flash` verified there on 2026-09-22; project `doorprints-ai`). |
+| `AI_VERTEX_EMBEDDING_LOCATION` | = `GCP_LOCATION` | Vertex only: set (for example `global`) when the embedding model is not offered in `GCP_LOCATION`. **This project: `global`**, because `gemini-embedding-2` is not offered in `asia-south1` (verified 2026-09-22). Consequence: chat stays in India, but the redacted embedding text (house notes, street, locality; every save or re-index) and Ask questions are processed on `global` ([02](02-threat-model.md) T-I20). Set it on every host that runs with `AI_PROVIDER=vertex`, not only in GitHub. |
 | `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION` | derived from the location, `v1beta1` | Vertex only; leave the defaults (the endpoint override is for tests and Private Service Connect). |
 | `AI_INDEX_ON_CHANGE` | `true` | `false` stops embedding each house right after a save; only `POST /api/ai/reindex` embeds then (fewer provider calls). Deletes still leave the index at once. |
 | `GOOGLE_APPLICATION_CREDENTIALS` | unset | Vertex only, standard ADC variable: path to a credential file. Not needed on Cloud Run (the attached service account) or locally after `gcloud auth application-default login`; on a non-Google host it points to the mode-600 key file ([07](07-secure-build-and-deploy.md) §4). |
@@ -138,6 +139,7 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 |---|---|
 | Weekly | Merge Dependabot PRs after CI passes. Read the weekly `security.yml` run (Trivy SBOM/fs/config, npm audit, gitleaks, Semgrep) and any ZAP report. When a Spring Boot patch manages Tomcat 11.0.25 or later, remove the `tomcat.version` override from `backend/pom.xml` (F-28, 07 §1). |
 | Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. Check AI spend against the budget and the per-user and global caps (section 10.2). While the Google Cloud trial runs: credit left and days left (section 10.3). |
+| One-off (2026) | **By about 15 Dec 2026:** Google Cloud trial export and provider decision; **before 22 Dec 2026:** switch or upgrade, tear down staging (section 10.4). Put both dates in the calendar and the password manager entry. |
 | Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Pages, OpenFreeMap, Nominatim, LLM). |
 | 6-monthly | Rotate `APP_API_KEY` (section 5.1). Review the threat model findings. |
 | Yearly | Rotate DB, backup-role and CI secrets. Review the docs (bump versions). Check the keystore backup is readable. |
@@ -327,6 +329,7 @@ The repository is **`Sriram-Codes-SW/doorprints`** (renamed from `house-hunt`; t
 | Ruleset on `main` | Active; blocks deletion and force pushes. Required status checks **off** until the PR flow and the `CI summary` check exist ([07](07-secure-build-and-deploy.md) §3.1). |
 | Private vulnerability reporting | On (Settings → Security) |
 | Secret scanning and push protection | On (free for public repositories) |
+| Dependency graph | **On** (Settings → Security → Advanced Security → Dependency graph). Needed by the `security.yml` job `gradle-dependency-graph` (Sprint 3.5), whose first run on `8f583af` failed at submission, most likely because this was off ([07](07-secure-build-and-deploy.md) §1). After enabling it, re-run Security on `main` and check the job log says "Submitted …" |
 | Actions | Approval required for workflows from outside contributors; no `pull_request_target` |
 | Artifacts and logs | Readable by anyone: no personal data or secrets; DB dumps only `age`-encrypted (section 3) |
 
@@ -383,6 +386,8 @@ Plan of the product owner (sprint candidates C-24..C-28 in [10](10-sprint-log.md
 | Staging backend | Cloud Run + Cloud SQL for PostgreSQL (PostGIS, pgvector), synthetic data only, for the trial period ([07](07-secure-build-and-deploy.md) §6.5) |
 | Speech-to-Text prototype | For the voice-notes candidate (C-16); synthetic recordings |
 
+Trial dates (owner's account): the credit ends on **22 Dec 2026**; checklist in section 10.4.
+
 Operations: on day 1, confirm that the trial credit covers the chosen Gemini models on Vertex AI; create the
 AI project's spend cap budget (section 10.2; it counts cost **before** credits, so it can pause cloud AI while
 credit is left) and a separate budget with alerts for the staging project, because spend cap budgets do **not**
@@ -391,3 +396,21 @@ password manager entry; check credit and end date monthly (section 4). The trial
 charge** unless the billing account is upgraded to a paid account; do not upgrade by accident. Before the end,
 export anything worth keeping (staging has only synthetic data), delete the Cloud SQL instance and the Cloud Run
 service, and move the production AI key to the paid setup of section 10.2 if cloud AI should continue.
+
+### 10.4 Google Cloud trial end checklist (credit ends 22 Dec 2026)
+
+Project `doorprints-ai` (AI), plus a staging project if one was created (section 10.3). When the trial ends, Google
+stops the billed services until the billing account is upgraded; it does not charge automatically. With
+`AI_PROVIDER=vertex` cloud AI would then fail (clients show the AI-unavailable message; on-device AI and every non-AI
+feature keep working). Owner: the product owner. Step by step for the AI part: [ai/vertex-setup.md](ai/vertex-setup.md) step 14.
+
+| When | Task | Done when |
+|---|---|---|
+| Monthly until then | Billing > Overview: credit left and days left; Billing > Reports: Vertex AI cost per SKU (and whether the credit is applied, vertex-setup step 10) | Numbers written in the password manager entry |
+| **By about 15 Dec 2026** | **Export.** Anything worth keeping from Google Cloud: staging database (synthetic data; usually nothing to keep), eval reports beyond the 30-day artifact retention, billing reports as CSV. The Doorprints data itself lives in the production database and on the phones, not in Google Cloud: take a normal backup (section 3) anyway | Files stored outside Google Cloud |
+| By about 15 Dec 2026 | **Decide** (product owner): (a) **back to AI Studio**: `AI_PROVIDER=aistudio`; real data only with a paid-tier Gemini API key ([01](01-requirements.md) PRV-022; the free tier is for synthetic evals only); or (b) **upgrade the billing account** to paid and keep Vertex AI, with the spend cap budget and alerts of section 10.2 created **before** the upgrade; or (c) turn cloud AI off (`APP_AI_ENABLED=false`) | Decision recorded in the sprint log ([10](10-sprint-log.md)) |
+| **Before 22 Dec 2026** | Carry out the decision on every host (`AI_PROVIDER`, keys or credentials) and run `POST /api/ai/reindex` if the provider changed; run one small `ai-evals.yml` run (`types` = `extract`) on the provider now in use | Eval run green or STOPPED only by quota |
+| Before 22 Dec 2026 | **Staging tear-down** (section 10.3, [07](07-secure-build-and-deploy.md) §6.5): delete the Cloud SQL instance and the Cloud Run service; spend cap budgets do not cover Cloud SQL | Nothing billable left in the staging project |
+| If Vertex AI is dropped | Disable the Vertex AI API or shut down `doorprints-ai`; delete the GitHub secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL`; remove the Workload Identity principal binding; leave `ai-evals.yml` on `provider=aistudio` | No Google Cloud credential left that can call Vertex AI |
+| If Vertex AI is kept | Spend cap budget and 50/90/100 % alerts active on the paid account (section 10.2); the trial-period $50/$150/$250 alerts replaced | Budget page shows the monthly target |
+| Firebase Test Lab | Nothing to do: it keeps working within the no-cost daily quota (section 10.3) | – |

@@ -35,7 +35,38 @@ bring-your-own-key rejected); Vertex AI added as a provider next to AI Studio; G
 *Added* and *Changed*); it is off unless `APP_AI_ENABLED=true` and `AI_PROVIDER=vertex`, and waits for its first CI run
 and the owner's setup in [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) (C-24).
 
+Sprint 3.5 "KMP foundation" (2026-09-22, commit `8f583af`): the Android code is Kotlin Multiplatform-ready with a
+`:shared` module that CI also compiles for iOS; no iOS app ([ADR-14](docs/03-design.md#14-architecture-decision-records),
+[sprint log](docs/10-sprint-log.md) section 9). On `8f583af` the new Security job `gradle-dependency-graph` failed at submission (most likely the repository's
+dependency graph setting is off). Commit `feb0294` makes only its submit step non-blocking
+(`dependency-graph-continue-on-failure: true`), so **a green Security run no longer proves the graph was submitted**:
+only the notice `Submitted dependency-graph-reports/...` in that job's log does ([07](docs/07-secure-build-and-deploy.md) §1).
+The CI results of `8f583af` and `feb0294` are in the [sprint log](docs/10-sprint-log.md) 9.2. Later the same day the
+owner finished the Google Cloud setup for Vertex AI (project `doorprints-ai`; chat in `asia-south1`, embeddings on
+`global`; trial credit ends 22 Dec 2026) and approved Sprint 4b additions: Hunt mode reminders, hunting areas and a
+foreground-first location permission model ([sprint log](docs/10-sprint-log.md) section 10). The Sprint 4b decisions
+change nothing in the apps yet; they are requirements FR-083..FR-088 and PRV-024..PRV-027. The first `provider=vertex`
+eval run (35753477789, `gemini-3.5-flash` + `gemini-embedding-2` on `global`) failed only on `citationPrecision` 0.78
+(7/9); commit `feb0294` answers it (see *Changed*) without lowering any threshold; the re-run and the trial credit
+check are still open ([vertex-setup](docs/ai/vertex-setup.md) status).
+
 ### Added
+
+- **Kotlin Multiplatform module `android/shared`** (Sprint 3.5): models and wire names, score, sync rules and outcome
+  codes, stay detection, street alerts, distance, DTOs and the API client, for Android and (compile-only)
+  `iosArm64`/`iosSimulatorArm64`. One version catalog `android/gradle/libs.versions.toml`.
+- CI: **`shared-ios.yml`** ("Shared iOS compile", macOS, compile-only, path-filtered to shared code); `android.yml`
+  runs `:shared:testAndroidHostTest`; `security.yml` job `gradle-dependency-graph` sends the Android dependency graph
+  to Dependabot alerts (the only job with `contents: write`, never on pull requests).
+- Android tests: `ApiClientContractTest` (Ktor `MockEngine`, TC-U-35), `RoomSchemaTest` (Room identity hash of
+  database version 2, TC-U-36), `ModelMappingTest` (TC-U-10), `HouseScoreTest`, `ModelTest`, `IsoTimeTest`,
+  `RetryPolicyTest`; the iOS compile is TC-U-37. Room schema export is on (`app/schemas/.../2.json` committed).
+- Docs: ADR-14 and the `:shared` module boundaries ([03](docs/03-design.md) 4.2.1); Sprint 4b design for Hunt mode
+  reminders, hunting areas / area wake-up and the location permission model ([11](docs/11-feature-parity-and-export-spec.md)
+  v0.6, 5.16..5.18; requirements FR-083..FR-088, NFR-030, SEC-049, PRV-024..PRV-027 in [01](docs/01-requirements.md)
+  v0.12); Google Cloud trial end checklist ([runbook 10.4](docs/08-operations-runbook.md)) and
+  [vertex-setup](docs/ai/vertex-setup.md) step 14; the owner's Vertex setup results as a worked example (step 8);
+  README refresh with CI badges, platforms, AI access policy, roadmap and a full documentation index.
 
 - **Vertex AI provider** (AI team; AI-016, C-24), chosen with the new setting `AI_PROVIDER` (`app.ai.provider`):
   `aistudio` (default, unchanged behaviour: Gemini API key `AI_API_KEY`) or `vertex` (Google Cloud Vertex AI with
@@ -112,6 +143,38 @@ and the owner's setup in [docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) (C-2
 
 ### Changed
 
+- **Ask citations need an inline marker** (commit `feb0294`, AI change set; only with AI enabled). The server now cites
+  a house only when the answer marks it inline as `[house:<id>]` (in order of first appearance, retrieved houses
+  only); the model's `citedHouseIds` list is used only when the answer has no marker at all, and the refusal sentence
+  (curly apostrophes folded) never has citations. Clients see fewer chips for houses the answer never mentions
+  ([ai-design](docs/ai/ai-design.md) 6, 8.2, 13). Golden set **v0.5**: `ask-01` allows the two other houses with a
+  water fact as a grounded comparison (evidence: Vertex run 35753477789); thresholds unchanged. The eval scorecard
+  shows the full output of failing and erroring cases.
+- CI: the Security job `gradle-dependency-graph` does not fail on the submit step while the repository's dependency
+  graph setting is off (`dependency-graph-continue-on-failure: true`, `feb0294`); a Gradle resolution failure still
+  fails it. A green run therefore does not show that the graph was submitted; check the job log for `Submitted ...`,
+  then the input is removed again. Dependabot keeps the Maven build image on JDK 25.
+- Docs (Sprint 4b design review): Hunt mode reminders are exact (`setExactAndAllowWhileIdle`) when the user allows
+  "Alarms & reminders", otherwise an inexact 10-minute window that ends at the chosen time, so they come up to about
+  10 minutes early rather than late ([11](docs/11-feature-parity-and-export-spec.md) v0.7 5.16, FR-084); the geofencing
+  `PendingIntent` is mutable as the API requires (T-E8, SEC-049); the 4b threats and tests are now also in
+  [02](docs/02-threat-model.md) and [06](docs/06-test-plan.md).
+- **Android HTTP client: Ktor 3.6 instead of OkHttp 4 with `RetryInterceptor`** (Sprint 3.5). Same requests, retry
+  rules (idempotent calls and the photo upload; 408/429/502/503/504; full-jitter backoff 1 s to 15 s; 3 attempts;
+  short `Retry-After` honoured), captive-portal detection and no redirects; new: a dropped connection while a
+  retriable response body is read is retried too, and each call is limited to 4 minutes including retries. The photo
+  upload streams from the file. MapLibre now runs on OkHttp 5.5.0 (brought by Ktor); a manual map smoke test (TC-M-17)
+  covers it. The old `RetryInterceptorTest`, `ChecklistScoreTest` and app-side `StayDetectorTest`, `SyncRulesTest`,
+  `StreetAlertsTest` moved to `commonTest` (TC-U-17 now points at `RetryPolicyTest` and `ApiClientContractTest`).
+- `google-github-actions/auth` in `ai-evals.yml` pinned to a commit SHA (v3.0.0) after the DevSecOps review, which
+  is now recorded (merge gate 2 in [ai-design](docs/ai/ai-design.md) section 14 closed).
+- Vertex AI configuration for this project (owner, 2026-09-22): GitHub variables `GCP_PROJECT_ID=doorprints-ai`,
+  `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global`, because `gemini-embedding-2` is not offered in
+  `asia-south1`. Chat stays in India; embedding text is processed on the `global` endpoint (threat model T-I20). The
+  `ai-evals.yml` default stays `aistudio` until the first `provider=vertex` run and credit check.
+- Docs versions: 01 v0.13, 02 v0.14, 03 v0.8, 04 v0.7, 06 v0.12, 07 v0.12, 08 v0.11, 09 v0.5, sprint log (10) v0.12,
+  11 v0.7 (its proposed ADRs renumbered to ADR-15..ADR-18), docs index v0.13, ai-design v0.18, vertex-setup v0.4.
+  PRV-001 amended: background location only for the opt-in Sprint 4b area wake-up.
 - AI provider quota errors (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex AI, after the bounded retries)
   are now told apart from outages: the AI endpoints still answer `503` (`"retryable": true`), and the problem body
   adds `"code": "AI_QUOTA_EXHAUSTED"` and the response a `Retry-After: 60` header (`ProviderErrors`,

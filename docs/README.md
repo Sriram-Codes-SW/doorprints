@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.11 |
+| Version | 0.13 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -23,12 +23,14 @@
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22: repository renamed to `Sriram-Codes-SW/doorprints` and public (MIT `LICENSE`, `SECURITY.md`), AI access policy (on-device AI for guests, cloud AI for the owner and invited users on a paid, hard-capped key, bring-your-own-key rejected), Vertex AI next to AI Studio, Google Cloud trial plan. Versions: 01 v0.9, 02 v0.10, 07 v0.8, 08 v0.8, 10 v0.7, 11 v0.3. Index lists 11 and `SECURITY.md`. |
 | 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes for the paid-AI hard cap and the Vertex credential: 01 v0.10 (AI-015 three layers with a Google Cloud spend cap budget), 02 v0.11 (new T-I22 Vertex credential leak; T-D4), 07 v0.9 (credential row in section 4; Cloud SQL not covered by spend caps), 08 v0.9 (section 10.2 rewritten, IR-9 spend cap tripped), sprint log v0.8, feature spec 11 v0.4. |
 | 0.11 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI provider code landed (AI team, same change set), docs synced: 01 v0.11 (AI-016 implemented, new AI-017 spend cap response), 02 v0.12 (T-I22: ADC only, no Vertex API key; rotation by credential type), 03 v0.7 (section 13 both providers, `AI_QUOTA_EXHAUSTED`, section 9 `setupHint`), 04 v0.6 (E6, DF-21, DF-32 with Vertex endpoints incl. `us`/`eu` multi-regions, OAuth tokens and location), 06 v0.10 (TC-AI-10, TC-AI-16, new TC-AI-18..22 incl. `AiExceptionHandlerTest`), 07 v0.10 (section 4 real variable names, section 7 new settings; `ai-evals.yml` `provider` defaults to `aistudio` until vertex-setup step 10), 08 v0.10 (section 1.1, 5.2, IR-9, section 9 `setupHint`, 10.2 trial alert thresholds), 10 v0.9 (C-24 code landed, spend cap acceptance item), 11 v0.5 (markers removed). |
+| 0.12 | 2026-09-22 | Claude (Cowork), Docs team | Sprint 3.5 "KMP foundation" (`8f583af`), the Sprint 4b scope additions and the Vertex AI setup outcome: 01 v0.12 (FR-083..FR-088, NFR-030, SEC-049, PRV-024..PRV-027, PRV-001 amended; RTM with the shared-module tests), 02 v0.13 (T-I20 data residency: chat in `asia-south1`, embeddings on `global`), 03 v0.8 (ADR-14 KMP, section 4.2.1 module boundaries, R-06 part, ADR-01 note), 04 v0.7 (transport path with the Ktor client; DF-32 location), 06 v0.11 (commonTest suites, TC-U-35..37, TC-M-17), 07 v0.11 (`shared-ios.yml`, `gradle-dependency-graph`, Vertex variables), 08 v0.11 (trial end checklist 10.4), 09 v0.5 (Ktor client rows), 10 v0.10 (sections 9 and 10), 11 v0.6 (5.16..5.18, D-23..D-25; its ADR proposals renumbered to ADR-15..18), ai/ai-design v0.17 and ai/vertex-setup v0.3 (edited by the Docs team this sprint; the AI team is idle). Android bullet names the `:shared` module. |
+| 0.13 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes: 01 v0.13 and 11 v0.7 (Hunt mode reminder scheduling: exact alarm when allowed, otherwise a 10-minute window ending at the reminder time; mutable geofencing `PendingIntent` in T-E8/SEC-049), 02 v0.14 (T-I23, T-I24, T-E8), 06 v0.12 (section 13, Sprint 4b tests), 10 v0.12 (CI runs of `8f583af` and `feb0294`, first Vertex eval), [ai/ai-design.md](ai/ai-design.md) v0.18 and [ai/vertex-setup.md](ai/vertex-setup.md) v0.4 (inline-marker Ask citation rule, Vertex run 35753477789). |
 
 ---
 
 Doorprints ("Remember every house you've seen.") is a personal, single-user app that keeps a record of the rental and for-sale houses you see while house hunting in India. It is not a property-listings site. It was called House Hunt until 2026-09-22; the repository, code packages, storage keys and database names keep the old name ([03](03-design.md) ADR-13). It has three parts:
 
-- an offline-first **Android app** (Kotlin, Compose, Room, WorkManager, foreground "Hunt mode" location service, MapLibre with OpenFreeMap tiles),
+- an offline-first **Android app** (Kotlin, Compose, Room, WorkManager, foreground "Hunt mode" location service, MapLibre with OpenFreeMap tiles), whose platform-neutral rules and Ktor API client live in a Kotlin Multiplatform module `:shared` that also compiles for iOS (no iOS app; [03](03-design.md) ADR-14),
 - a **Spring Boot 4.1 / Java 25 API** backed by **PostgreSQL + PostGIS**,
 - an **Angular 22 web app** hosted as static files.
 
@@ -48,10 +50,10 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 08 | [Operations runbook](08-operations-runbook.md) | Monitoring, backups, key rotation, incident response, data export/deletion, release checklist | Operations |
 | 09 | [OSI 7-layer resilience analysis](09-osi-layer-analysis.md) | Scenario → behaviour → risk → mitigation → test for GPS/power, Wi-Fi/cellular/captive portals, DNS/IPv6/VPN, TCP retries and cold starts, sessions and sync cursors, TLS/UTF-8/time/EXIF, REST/auth/caching/AI | Architecture / Security |
 | 10 | [Sprint log](10-sprint-log.md) | Agile record: working agreement, sprint goals, stories, team sign-offs, CI results, retrospectives, next-sprint candidates | Docs team (all senior reviewers sign off) |
-| 11 | [Feature parity and export spec](11-feature-parity-and-export-spec.md) | Proposal (draft): SeenHouse parity, local-first with optional Google Sign-In, exports, AI access policy (D-21, D-22) | Product / Architecture, Docs team |
+| 11 | [Feature parity and export spec](11-feature-parity-and-export-spec.md) | Proposal (draft): SeenHouse parity, local-first with optional Google Sign-In, exports, AI access policy (D-21, D-22), Sprint 4b Hunt mode reminders, hunting areas and the location permission model (D-23..D-25, accepted) | Product / Architecture, Docs team |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
-| AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals | **AI team** |
+| AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals; [Vertex AI setup](ai/vertex-setup.md) (owner guide and this project's setup outcome) | **AI team** (Docs team while the AI team is idle, Sprint 3.5 follow-up) |
 
 ## SSDLC phase map
 
