@@ -23,16 +23,55 @@ class AiDefaultsEnvironmentPostProcessorTest {
     }
 
     @Test
-    void enabledSelectsOpenAiCompatibleAndPgVectorButAllowsOverrides() {
+    void disabledNeedsNoEmbeddingProviderEither() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.embedding.provider", "openai");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.model.embedding.text")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.chat.client.enabled")).isEqualTo("false");
+    }
+
+    @Test
+    void enabledWithDefaultProviderUsesNativeGeminiEmbeddingsAndOpenAiCompatibleChat() {
         var env = new MockEnvironment();
         env.setProperty("app.ai.enabled", "true");
         env.setProperty("app.mcp.enabled", "true");
-        env.setProperty("spring.ai.model.embedding", "custom");
+        env.setProperty("spring.ai.model.embedding", "openai"); // would add a second EmbeddingModel: overridden
         epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("app.ai.embedding.provider")).isEqualTo("google-genai");
         assertThat(env.getProperty("spring.ai.model.chat")).isEqualTo("openai");
-        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("custom");
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.model.embedding.text")).isEqualTo("none");
         assertThat(env.getProperty("spring.ai.vectorstore.type")).isEqualTo("pgvector");
         assertThat(env.getProperty("spring.ai.mcp.server.enabled")).isEqualTo("true");
         assertThat(env.getProperty("spring.ai.model.audio.speech")).isEqualTo("none");
+    }
+
+    @Test
+    void providerIsNormalisedForTheConditionalBean() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.enabled", "true");
+        env.setProperty("app.ai.embedding.provider", " Google-GenAI ");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("app.ai.embedding.provider")).isEqualTo("google-genai");
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("none");
+    }
+
+    @Test
+    void openAiProviderSelectsOpenAiCompatibleEmbeddingsButAllowsOverrides() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.enabled", "true");
+        env.setProperty("app.ai.embedding.provider", "openai");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("openai");
+
+        var custom = new MockEnvironment();
+        custom.setProperty("app.ai.enabled", "true");
+        custom.setProperty("app.ai.embedding.provider", "openai");
+        custom.setProperty("spring.ai.model.embedding", "custom");
+        epp.postProcessEnvironment(custom, new SpringApplication());
+        assertThat(custom.getProperty("spring.ai.model.embedding")).isEqualTo("custom");
+        assertThat(custom.getProperty("spring.ai.model.chat")).isEqualTo("openai");
     }
 }

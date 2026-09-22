@@ -404,16 +404,52 @@ final class EvalScorer {
     // Markdown report
     // ---------------------------------------------------------------------------------------------------------
 
+    /**
+     * Overall result. PASS needs at least one case run, no harness error (seeding, re-indexing, anything that stopped
+     * the run) and no metric below its threshold. {@code reasons} lists why it failed, for the report and the
+     * assertion message.
+     */
+    record Verdict(boolean passed, List<String> reasons) {
+    }
+
+    static Verdict verdict(List<Metric> metrics, List<CaseResult> results, List<String> errors) {
+        var reasons = new ArrayList<String>();
+        if (results.isEmpty()) reasons.add("no golden-set case ran (0 cases)");
+        if (!errors.isEmpty()) reasons.add(errors.size() + " harness error(s): " + String.join("; ", errors));
+        metrics.stream()
+                .filter(Metric::failed)
+                .forEach(m -> reasons.add(m.name() + " = " + fmt(m.value()) + " (needs " + m.threshold() + ")"));
+        return new Verdict(reasons.isEmpty(), List.copyOf(reasons));
+    }
+
+    /** Report without harness errors (kept for callers that have none). */
     static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
                            List<String> warnings) {
-        boolean pass = metrics.stream().noneMatch(Metric::failed);
+        return markdown(header, metrics, results, warnings, List.of());
+    }
+
+    static String markdown(Map<String, String> header, List<Metric> metrics, List<CaseResult> results,
+                           List<String> warnings, List<String> errors) {
+        var verdict = verdict(metrics, results, errors);
         var sb = new StringBuilder();
         sb.append("# House Hunt AI eval scorecard\n\n");
-        sb.append("**Result: ").append(pass ? "PASS" : "FAIL").append("** (thresholds from the golden set)\n\n");
+        sb.append("**Result: ").append(verdict.passed() ? "PASS" : "FAIL")
+                .append("** (thresholds from the golden set; FAIL also when no case ran or the harness hit an error)\n\n");
         sb.append("| | |\n|---|---|\n");
         header.forEach((k, v) -> sb.append("| ").append(cell(k)).append(" | ").append(cell(v)).append(" |\n"));
         sb.append("| Cases | ").append(results.stream().filter(CaseResult::passed).count()).append(" / ")
                 .append(results.size()).append(" passed |\n\n");
+
+        if (!errors.isEmpty()) {
+            sb.append("## Errors\n\n");
+            errors.forEach(e -> sb.append("- ").append(cell(e)).append('\n'));
+            sb.append('\n');
+        }
+        if (!verdict.passed()) {
+            sb.append("## Why FAIL\n\n");
+            verdict.reasons().forEach(r -> sb.append("- ").append(cell(truncate(r, 500))).append('\n'));
+            sb.append('\n');
+        }
 
         if (!warnings.isEmpty()) {
             sb.append("## Warnings\n\n");

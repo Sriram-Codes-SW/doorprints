@@ -4,7 +4,25 @@
 # a separate hardened compose file with secrets from the environment (docs/07-secure-build-and-deploy.md).
 #
 # AI features are off by default; to try them, also export APP_AI_ENABLED=true and AI_API_KEY=<free Gemini key>
-# (see docs/ai/ai-design.md).
+# (see docs/ai/ai-design.md). Every AI_* / APP_AI_* / APP_MCP_* variable below is read from the host shell (or a
+# git-ignored .env file next to this file); unset means the default shown, which matches application.yml.
+#
+# Example: Gemini API free tier (chat via its OpenAI-compatible endpoint, embeddings via the native API):
+#   export APP_AI_ENABLED=true
+#   export AI_API_KEY=<key from https://aistudio.google.com/apikey>
+#   # optional: AI_CHAT_MODEL=gemini-3.5-flash AI_EMBEDDING_MODEL=gemini-embedding-2 (the defaults)
+#
+# Example: local Ollama on the host (nothing leaves the machine; run `ollama pull qwen3:8b` and
+#   `ollama pull nomic-embed-text` first):
+#   export APP_AI_ENABLED=true
+#   export AI_BASE_URL=http://host.docker.internal:11434/v1
+#   export AI_API_KEY=ollama                  # any non-empty value; Ollama ignores it
+#   export AI_CHAT_MODEL=qwen3:8b
+#   export AI_EMBEDDING_PROVIDER=openai       # OpenAI-compatible /embeddings at AI_BASE_URL
+#   export AI_EMBEDDING_MODEL=nomic-embed-text  # 768-dimensional, matches the vector(768) column
+#   export AI_EMBEDDING_DIMENSIONS=768
+#   export AI_TIMEOUT=180s                    # local models are slower on CPU
+#   # On Linux, start Ollama with OLLAMA_HOST=0.0.0.0 so the container can reach it through host-gateway.
 services:
   db:
     build: ./backend/db
@@ -38,13 +56,43 @@ services:
       # if set it must also be at least 32 chars. Rotate: set it, move clients, promote it to APP_API_KEY, clear it.
       APP_API_KEY_NEXT: ${APP_API_KEY_NEXT:-}
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:4200}
+      # --- AI (docs/ai/ai-design.md). Off unless APP_AI_ENABLED=true; defaults mirror application.yml. ---
       APP_AI_ENABLED: ${APP_AI_ENABLED:-false}
       APP_MCP_ENABLED: ${APP_MCP_ENABLED:-false}
+      # Chat: any OpenAI-compatible endpoint (Gemini's by default, or Ollama's /v1).
       AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      # Secret: never commit it; required (non-empty) only when APP_AI_ENABLED=true.
       AI_API_KEY: ${AI_API_KEY:-}
       AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-3.5-flash}
+      AI_TIMEOUT: ${AI_TIMEOUT:-60s}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+      # Embeddings: google-genai (native Gemini API, default) or openai (AI_BASE_URL /embeddings, e.g. Ollama).
+      AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-google-genai}
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-gemini-embedding-2}
+      # Must stay 768 to match the vector(768) column in Flyway V2.
       AI_EMBEDDING_DIMENSIONS: ${AI_EMBEDDING_DIMENSIONS:-768}
+      # Used only by the google-genai provider.
+      AI_EMBEDDING_BASE_URL: ${AI_EMBEDDING_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      # Falls back to AI_API_KEY here: an empty value would be passed through and defeat application.yml's fallback.
+      AI_EMBEDDING_API_KEY: ${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}
+      # Empty = no task type (gemini-embedding-2 rejects one; gemini-embedding-001 accepts e.g. RETRIEVAL_DOCUMENT).
+      AI_EMBEDDING_TASK_TYPE: ${AI_EMBEDDING_TASK_TYPE:-}
+      AI_VECTOR_INIT_SCHEMA: ${AI_VECTOR_INIT_SCHEMA:-false}
+      # Abuse / free-tier quota guards.
+      AI_MAX_INPUT_CHARS: ${AI_MAX_INPUT_CHARS:-8000}
+      AI_MAX_QUESTION_CHARS: ${AI_MAX_QUESTION_CHARS:-1000}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-2048}
+      AI_RATE_LIMIT_PER_MINUTE: ${AI_RATE_LIMIT_PER_MINUTE:-10}
+      AI_RATE_LIMIT_BURST: ${AI_RATE_LIMIT_BURST:-5}
+      MCP_RATE_LIMIT_PER_MINUTE: ${MCP_RATE_LIMIT_PER_MINUTE:-60}
+      AI_RAG_TOP_K: ${AI_RAG_TOP_K:-6}
+      AI_RAG_SIMILARITY_THRESHOLD: ${AI_RAG_SIMILARITY_THRESHOLD:-0.25}
+      AI_AGENT_MAX_TOOL_CALLS: ${AI_AGENT_MAX_TOOL_CALLS:-12}
+      AI_AGENT_MAX_CALLS_PER_TOOL: ${AI_AGENT_MAX_CALLS_PER_TOOL:-4}
+      AI_AGENT_MAX_STOPS: ${AI_AGENT_MAX_STOPS:-8}
+    # Lets AI_BASE_URL=http://host.docker.internal:11434/v1 reach an Ollama on the host (Docker Desktop defines this
+    # name already; on Linux Engine it needs the host-gateway mapping). Unused while AI is off.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     ports: ["127.0.0.1:8080:8080"]
     # The image runs as UID 10001 (see backend/Dockerfile); the filesystem is read-only except /tmp (multipart).
     read_only: true

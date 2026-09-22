@@ -6,6 +6,12 @@
 | v0.2    | 2026-09-22 | Claude (Cowork)               | Client UI built on the section 13 contract (13.1). The AI endpoints now sit behind the deny-by-default key filter, the general per-address rate limit and then the AI limit (filter order 3); photo/house deletes purge content so the index follows (AI-011). |
 | v0.3    | 2026-09-22 | Claude (Cowork) – AI team     | Eval harness built (section 8): `GoldenSetEvalTest` (runs only with `AI_API_KEY`), `EvalScorer` + unit tests, manual workflow `.github/workflows/ai-evals.yml`, markdown scorecard, thresholds moved into the golden set (v0.2). |
 | v0.4    | 2026-09-22 | Claude (Cowork) – AI team     | Review follow-ups: 8.3 states that the hallucination gate is in effect "zero hallucinations" (only 4 null-expected fields, so one miss = 0.25); new 8.4 lists known risks for the first real run, including the brittle `ask-06` date string `2026-09-14`; eval and RAG id handling uses `toLowerCase(Locale.ROOT)`. |
+| v0.5    | 2026-09-22 | Claude (Cowork) – AI team     | First real eval run failed: Gemini's OpenAI-compatible `/embeddings` omits `data[].index` and the openai-java SDK rejects it (`OpenAIInvalidDataException: index is not set`), so every reindex returned 503 while the scorecard said PASS with 0/0 cases. Embeddings now use the native Gemini API through the app's own `GeminiEmbeddingModel` (new 3.1; provider switch `app.ai.embedding.provider=google-genai|openai`); chat stays on the OpenAI-compatible endpoint. Scorecard now FAILs on zero cases or any harness error and lists the errors (8.1). `HouseIndexer` logs one summarised WARN per failed batch / per minute of async failures, provider error class at DEBUG only (7). Sections 2, 4.1, 8.4, 11 and 14 updated. |
+| v0.6    | 2026-09-22 | Claude (Cowork) – AI team     | Review follow-ups: `GeminiEmbeddingModel` honours the server's wait on 429 (`Retry-After` header, else Gemini's `google.rpc.RetryInfo.retryDelay`), capped at 60 s; a longer hint (daily quota) fails at once (3.1). The async failure summary re-arms after a success, so a new outage is reported at once (7). Section 2 and 14: `docker-compose.yml` does not yet pass `AI_EMBEDDING_PROVIDER` / `AI_EMBEDDING_API_KEY` / `AI_EMBEDDING_BASE_URL` / `AI_EMBEDDING_TASK_TYPE` to the backend (owned by another team; requested). |
+| v0.7    | 2026-09-22 | Claude (Cowork) – AI team     | **C-13 / F-30 fixed in code:** the contact name and phone never reach the provider. One sanitizer, `com.househunt.ai.ContactRedactor`, used by the embedding text and metadata (`HouseDocuments`), the Ask context and citations (`RagService`, which also scrubs chunks indexed before the fix), and the agent/MCP tool results (`HouseSearchService.HouseSummary`, `HouseQueries.HouseDetails`, which drops `contactName`); new 9.1 with the threat notes and the required reindex. Logging (7): at most one WARN per 5-minute window for async index failures, also when 429s alternate with successes (the v0.6 re-arm after a success produced one WARN per house in that case), a scheduled tick reports pending failures, one INFO when updates work again; reindex logs one WARN per run instead of one per batch. New contract tests with recorded Gemini payloads (3.1: `batchEmbedContents` response, 400 `API_KEY_INVALID`, 429 `RESOURCE_EXHAUSTED` with `RetryInfo` / `Retry-After`, 503) and new 3.2: chat through the OpenAI-compatible endpoint checked against openai-java 4.49.0 (the SDK version of Spring AI 2.0.1) end to end; chat stays on that path. Embedding errors now name the Google error reason (e.g. `HTTP 400 (API_KEY_INVALID)`). Senior self-check notes in 14. |
+| v0.8    | 2026-09-22 | Claude (Cowork) – AI team     | Review follow-ups to C-13 / F-30 (9.1): single name parts (3+ letters, honorifics excluded) are now removed from **every** field the user types freely (label, checklist keys, listing URL, notes), not only notes, so a house labelled "Ramesh's 2BHK" for contact "Ramesh Kumar" no longer sends "Ramesh" in the embedding text and `label` metadata, the Ask context and citation labels, or any agent/MCP tool result; whole-name-only matching is kept for address, street and locality (place names such as "Kumar Park"). `ContactRedactor.Redactor` methods are now `freeText()` and `place()`. The `searchHouses` text filter matches the redacted text, so it can no longer confirm a guessed contact name or phone. 9.1 states that Ask citation labels come back redacted (apps can show the real label by `houseId`). 3.2: new canary for a missing `tool_calls[].id`. |
+| v0.9    | 2026-09-22 | Claude (Cowork) – AI team     | Review follow-ups to 9.1: in `place()` (address, street, locality) "whole name" now means the name's significant parts (3+ letters, honorifics ignored) in order **or reversed**, with any separator, as well as the saved string, so "C/o Ramesh Kumar", "C/o Ramesh  Kumar", "RAMESH KUMAR" and "Kumar Ramesh" all lose the name for saved contact "Mr. Ramesh Kumar" (before, only the exact saved string matched, and the name reached the embedding text, `locality` metadata and agent/MCP tool results). The saved phone is matched in text only when it has 8+ digits, so a short saved number no longer turns prices into `[phone]` (Limits). Section 13: `Citation.label` and `PlannedStop.label` may contain `[contact]` / `[phone]`; clients show the local label by `houseId`. |
+| v0.10   | 2026-09-22 | Claude (Cowork) – AI team     | Section 2 and 14: the docker-compose caveat is resolved: `docker-compose.yml` passes all four `AI_EMBEDDING_*` variables (see its header), and the embedding key falls back via `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}` (empty defaults, as the v0.6 note suggested, would break that fallback). 9.1: `place()` also removes initials-style names (saved "K. Ramesh" removes "C/o K Ramesh" and "Ramesh K"; saved "A. K. Sharma" removes "C/o A K Sharma" and "AK Sharma"), common in the ta/te locales; before, those reached the embedding text, `locality` metadata and agent/MCP tool results; new `ContactRedactorTest` cases; remaining gaps in Limits. Section 2 env table: Ollama base URL written `/v1` as in the compose example. |
 
 Status: implemented in `backend/` (package `com.househunt.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests.
@@ -32,16 +38,26 @@ read-only, costs are bounded per request and per minute, and nothing private is 
 
 ## 2. Provider choice (zero cost)
 
-**Default: Google Gemini API free tier through its OpenAI-compatible endpoint**, driven by Spring AI's OpenAI starter.
-One starter covers chat and embeddings, and the same code runs against Ollama (local, free) by changing three env vars.
+**Default: Google Gemini API free tier.** Chat goes through Gemini's OpenAI-compatible endpoint with Spring AI's
+OpenAI starter; embeddings go through the native Gemini API (`models/{model}:batchEmbedContents`) with the app's own
+`GeminiEmbeddingModel` (see 3.1 for why). The same code runs against Ollama (local, free) by changing a few env vars,
+including `AI_EMBEDDING_PROVIDER=openai`.
+
+> **docker-compose (resolved, v0.10).** `docker-compose.yml` now passes all four `AI_EMBEDDING_*` variables
+> (`AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_API_KEY`, `AI_EMBEDDING_BASE_URL`, `AI_EMBEDDING_TASK_TYPE`) to the
+> `backend` service, with defaults that mirror `application.yml`; its header comment has a Gemini and an Ollama
+> example. The key falls back in compose itself, `AI_EMBEDDING_API_KEY: ${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}`:
+> an empty default there would be passed through as an empty value and defeat the `AI_EMBEDDING_API_KEY` →
+> `AI_API_KEY` fallback in `application.yml`, so do not "simplify" it to `${AI_EMBEDDING_API_KEY:-}`.
 
 | | Default (Gemini free tier) | Alternative (Ollama, local) |
 |---|---|---|
-| `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | `http://localhost:11434/v1/` (from Docker: `http://host.docker.internal:11434/v1/`) |
+| `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | `http://localhost:11434/v1` (from Docker: `http://host.docker.internal:11434/v1`, as in the `docker-compose.yml` example) |
 | `AI_API_KEY` | free key from Google AI Studio | any non-empty value, e.g. `ollama` |
 | `AI_CHAT_MODEL` | `gemini-3.5-flash` (or `gemini-3.5-flash-lite` for more requests/day) | e.g. `qwen3:8b`, `llama3.1:8b` (must support tools) |
+| `AI_EMBEDDING_PROVIDER` | `google-genai` (native Gemini API, same `AI_API_KEY`) | `openai` (uses `AI_BASE_URL`) |
 | `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | `nomic-embed-text` (natively 768-d) |
-| `AI_EMBEDDING_DIMENSIONS` | `768` (sent as `dimensions`) | `768` |
+| `AI_EMBEDDING_DIMENSIONS` | `768` (sent as `outputDimensionality`) | `768` (sent as `dimensions`) |
 
 What the sources say (checked 2026-09-22):
 
@@ -56,22 +72,21 @@ What the sources say (checked 2026-09-22):
   acceptable, but it is a real privacy trade-off (see threat model, LLM02) — use Ollama if that is not OK.
 - Embeddings: `gemini-embedding-2` (8,192 input tokens) and `gemini-embedding-001` (2,048); both output 128–3,072
   dimensions, recommended 768/1536/3072; the two embedding spaces are incompatible (re-index when switching);
-  Embedding 2 normalises truncated vectors [G4]. The OpenAI-compat page's example uses the id
-  `gemini-embedding-2-preview` [G1] while the embeddings page uses `gemini-embedding-2` [G4] — if the compat endpoint
-  rejects one id, set `AI_EMBEDDING_MODEL` to the other.
+  Embedding 2 normalises truncated vectors, 001 does not [G4]. `gemini-embedding-2` does **not** accept `task_type`
+  (put task instructions in the text instead); `gemini-embedding-001` does [G4]. The first real run showed the
+  compat endpoint accepts `gemini-embedding-2` (it answered 200; the failure was the missing `index`, see 3.1).
 - Rate limits are per project and are shown in AI Studio, not published as fixed numbers [G5]. Third-party snapshots
   (March 2026) list e.g. 2.5 Flash 10 RPM / 250 RPD and 2.5 Flash-Lite 15 RPM / 1,000 RPD on the free tier [T1];
   treat those as indicative only. Our default app-side limit (10 AI requests/min, burst 5) stays below them.
-- `dimensions` on the OpenAI-compatible embeddings path: returns 3072 when omitted and honours smaller values
-  (observed via an OpenAI-compatible gateway) [T2]; Google's page doesn't show the parameter explicitly [G1].
-  **Unverified directly against Google** — see §12. If it is ignored, inserts fail loudly with a dimension mismatch
-  (`vector(768)`), never silently.
+- `dimensions` on the OpenAI-compatible embeddings path is no longer used for Gemini. On the native path the size is
+  `outputDimensionality`, and `GeminiEmbeddingModel` rejects any vector whose length is not `AI_EMBEDDING_DIMENSIONS`,
+  so a mismatch fails loudly before it reaches `vector(768)`.
 - Ollama exposes `/v1/chat/completions` (tools, `response_format`) and `/v1/embeddings` (incl. `dimensions`) with any
   API key [O1].
 
-Why not the Google GenAI starter? Spring AI 2.0.1 has `spring-ai-starter-model-google-genai(-embedding)`, but the
-OpenAI-compatible route gives one code path for Gemini, Ollama, and any paid OpenAI-compatible provider later.
-Trade-off: Gemini-specific knobs (embedding `task_type`, safety settings) are not reachable.
+Chat stays on the OpenAI-compatible route: one code path for Gemini, Ollama and any paid OpenAI-compatible provider
+later, and moving chat to native Google GenAI would add the same SDK dependency that 3.1 avoids. Trade-off: Gemini
+safety settings are not reachable. Chat on the compat endpoint has **not** been exercised by a real run yet (14).
 
 ## 3. Verified dependency coordinates (Spring AI 2.0.1)
 
@@ -95,6 +110,100 @@ Verified against tag `v2.0.1` of `spring-projects/spring-ai` (source read on 202
 | MCP tool registration | every `ToolCallbackProvider`/`ToolCallback` bean → MCP tool (`ToolCallbackConverterAutoConfiguration`) | same |
 | Boot 4 env post-processor | `org.springframework.boot.EnvironmentPostProcessor` (the `…boot.env` one is deprecated since 4.0) registered in `META-INF/spring.factories` | spring-boot `v4.1.1` |
 | DB image | `postgis/postgis:18-3.6` is built `FROM postgres:18-trixie` (PGDG apt available) | `postgis/docker-postgis` `18-3.6/Dockerfile` |
+
+### 3.1 Embeddings on Gemini: native API, own `EmbeddingModel` (v0.5)
+
+**Finding (first manual `AI evals` run, 2026-09-22).** Every `HouseIndexer` embedding call failed with
+`OpenAIInvalidDataException: index is not set`. Gemini's OpenAI-compatible `POST /v1beta/openai/embeddings` answers
+200 but its `data[]` items have no `index` field; the official openai-java SDK under Spring AI 2.0.1's
+`spring-ai-starter-model-openai` treats `index` as required and throws while reading the response. No setting fixes
+this on our side, so Gemini embeddings cannot use the OpenAI-compatible path. The reindex returned 503 four times,
+`GoldenSetEvalTest` errored in `seed()`, and chat was never exercised.
+
+**Options checked against Spring AI tag `v2.0.1`:**
+
+| Option | Facts from the source | Verdict |
+|---|---|---|
+| `spring-ai-starter-model-google-genai-embedding` | Starter = `spring-ai-autoconfigure-model-google-genai` + `spring-ai-google-genai-embedding` (google-genai Java SDK). Model `org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingModel`. Properties: `spring.ai.google.genai.embedding.api-key` (Gemini Developer API mode when set, else Vertex `project-id`/`location`), `spring.ai.google.genai.embedding.text.model/dimensions/task-type/title`; model selector `spring.ai.model.embedding.text=google-genai` (`matchIfMissing=true`). `GoogleGenAiTextEmbeddingModelName` knows `gemini-embedding-001` (3072), `text-embedding-004`, not `gemini-embedding-2`. `dimensions` is sent as `outputDimensionality`. | Not used, for four reasons below. |
+| Own `EmbeddingModel` over `RestClient` | `POST {base}/models/{model}:batchEmbedContents`, header `x-goog-api-key`, body `requests[] {model, content.parts[].text, outputDimensionality, taskType?}`, response `embeddings[].values` in request order. This is the shape the google-genai Java SDK itself sends in Gemini API mode (`Models.embedContentConfigToMldev`, `requests[].outputDimensionality`). | **Chosen.** |
+
+Why the native starter is unsuitable here:
+1. `GoogleGenAiEmbeddingConnectionAutoConfiguration` has **no property condition** (only `@ConditionalOnClass`). With
+   the starter on the classpath it always builds the connection and, with no key, asserts `project-id` → the
+   AI-disabled app would fail to start unless we also maintained a `spring.autoconfigure.exclude` list.
+2. `GoogleGenAiTextEmbeddingModel.call` never sends the task type (the code says so in a comment).
+3. For a model not in its enum (`gemini-embedding-2`) `dimensions()` falls back to a live probe embedding call.
+4. It adds the google-genai SDK and Google auth libraries to the SBOM that `security.yml` scans (Trivy), for one HTTP
+   call; any CVE there would block the Security workflow, which another team owns.
+
+**What we built** (`com.househunt.ai.embedding`):
+- `GeminiEmbeddingModel implements EmbeddingModel`: batches of at most 100 texts per call, `outputDimensionality` =
+  `AI_EMBEDDING_DIMENSIONS` (768), optional `AI_EMBEDDING_TASK_TYPE` (only for `gemini-embedding-001`), L2
+  normalisation (harmless for Embedding 2, needed for 001 at 768-d), size check against the configured dimensions,
+  retries on 429/5xx/I-O (`AI_MAX_RETRIES`, 2 s × attempt), `dimensions()` answers from config (no probe call).
+- On 429 the wait is the server's hint when it is longer than the backoff: the `Retry-After` header (seconds or
+  HTTP-date), else the `retryDelay` of the `google.rpc.RetryInfo` detail that Gemini puts in the 429 body (only that
+  number is read; the body is never logged). A per-minute free-tier quota therefore waits out the minute instead of
+  losing the reindex batch. Hints above 60 s (a daily quota) fail the call at once with the hint in the message,
+  because retrying within the request is pointless. Worst case per batch with the defaults ≈ 2 × 60 s, inside the
+  eval harness's 3-minute read timeout.
+- Key only in the `x-goog-api-key` header, never in the URL; error messages carry the HTTP status and, since v0.7,
+  the machine-readable Google error reason (`API_KEY_INVALID`, else the `status` such as `RESOURCE_EXHAUSTED`; only
+  upper-case enum tokens are read, never the free-text `message`, which can echo the embedded text) and no cause;
+  redirects are not followed.
+- `GeminiEmbeddingConfiguration` registers it when `app.ai.enabled=true` and `app.ai.embedding.provider=google-genai`
+  (default). `AI_EMBEDDING_API_KEY` defaults to `AI_API_KEY`, so one free AI Studio key serves chat and embeddings.
+- `app.ai.embedding.provider=openai` keeps Spring AI's OpenAI-compatible embeddings (Ollama, OpenAI, other gateways).
+- Unit tests: `GeminiEmbeddingModelTest` against `MockRestServiceServer` (URL, header, body, batching, retries,
+  `Retry-After` / `retryDelay` handling and the 60 s cap, error messages, dimension check, missing `index`).
+- Contract tests (v0.7): `GeminiEmbeddingContractTest` replays bodies in the documented shape [G6]: a 200
+  `{"embeddings":[{"values":[768 numbers]}, …]}` (no `index`: order = request order), the same with the optional
+  `shape[]` and `usageMetadata`, a 400 `INVALID_ARGUMENT` with `ErrorInfo.reason = API_KEY_INVALID` (Gemini answers
+  400, not 401, for a bad key; fails fast, message `HTTP 400 (API_KEY_INVALID)`), a 400 whose `message` echoes the
+  input (never copied), the free-tier 429 `RESOURCE_EXHAUSTED` with `QuotaFailure` / `Help` / `RetryInfo`
+  (`"retryDelay": "37s"` → waits 37 s; a `Retry-After` header wins over the body), and a 503 `UNAVAILABLE`
+  (retried with backoff).
+- Same vector space as before only if the model is unchanged; the table was empty after the failed run anyway.
+  After switching model or provider, run `POST /api/ai/reindex`.
+
+### 3.2 Chat on Gemini's OpenAI-compatible endpoint: contract check (v0.7)
+
+Chat, Ask and the planner go through Spring AI 2.0.1's `OpenAiChatModel`, which uses the official openai-java SDK
+**4.49.0** (`openai-sdk.version` in the Spring AI v2.0.1 root pom). Checked in the SDK source
+(`ChatCompletion.kt`, `JsonField.getRequired/getOptional`) and in `OpenAiChatModel.internalCall`/`from()`/
+`buildGeneration()`: the SDK parses lazily and Spring AI does not turn on response validation, so a field only fails
+when Spring AI reads it.
+
+| Field in `chat.completion` | SDK | Read by Spring AI 2.0.1 | Missing → |
+|---|---|---|---|
+| `id` | required | yes (metadata) | `OpenAIInvalidDataException: id is not set` |
+| `model` | required | yes (metadata) | exception |
+| `created` | required | yes, but caught (`getCreated` → 0) | tolerated |
+| `object` (`"chat.completion"`) | checked only by `validate()` | no | tolerated |
+| `choices[]` | required | yes | exception |
+| `choices[].index` | required | yes (generation metadata) | exception (the embeddings failure mode) |
+| `choices[].finish_reason` | required; unknown values allowed | yes | exception; an unknown value (e.g. `MALFORMED_FUNCTION_CALL`) is fine |
+| `choices[].message` | required | yes | exception (reported for Gemini safety blocks: `message: null`, openai-agents-python #744) |
+| `message.content`, `refusal`, `tool_calls`, `usage` | optional | yes | tolerated |
+| `tool_calls[].id`, `.type="function"`, `.function.name/arguments` | required inside a tool call | yes | exception |
+
+Gemini's chat responses carry `id`, `object`, `created`, `model`, `choices[].index`, `choices[].finish_reason`,
+`choices[].message` and `usage` (Gemini's OpenAI compatibility docs [G1] and published response samples), unlike its
+`/embeddings`. **Decision: chat stays on the OpenAI-compatible path.** Any exception there is already mapped to a
+503 "AI unavailable" by `RagService`/`VisitPlannerService`/`ListingExtractionService`, so a blocked response
+(`message: null`) degrades, it does not crash.
+
+`GeminiOpenAiChatContractTest` runs the real stack (ChatClient → `OpenAiChatModel` → SDK over HTTP) against a local
+JDK `HttpServer` that replays Gemini-shaped bodies: a plain answer (path `/v1beta/openai/chat/completions`,
+`Authorization: Bearer`), the Ask structured output (fenced JSON → `ModelAnswer`), a planner-style function-call
+round trip with `finish_reason` `tool_calls` **and** `stop` (reported for Gemini 3 Flash with tools, LiteLLM
+#21041; Spring AI decides on the presence of tool calls, not the finish reason), a body without `created`/`object` (tolerated), and a 429. Four **canary** tests assert
+that a body without `choices[].index`, `finish_reason`, `id` or `tool_calls[].id` fails (the last one matters for the
+planner: `OpenAiChatModel.buildGeneration` reads the call id, a required SDK field, and sends it back with the tool
+result; Gemini's `function-call-<digits>` id format is taken from published samples, not confirmed live); if Gemini ever changes its shape the canaries
+document the break and the fix is the 3.1 pattern (own `ChatModel` over the native `generateContent`, or the
+`google-genai` starter with the caveats in 3.1). The bodies are assembled from the documented shape, not captured
+from a live call (no network to Google here); the next manual `AI evals` run is the live check (14).
 
 ## 4. Architecture
 
@@ -145,10 +254,16 @@ Other backend changes: `HouseService` and `VisitController` publish `HouseChange
 
 - AI off → forces (highest precedence) `spring.ai.model.chat|embedding=none`, `spring.ai.vectorstore.type=none`,
   `spring.ai.chat.client.enabled=false`. No OpenAI client, no vector store, no key needed.
-- AI on → low-precedence defaults `chat=openai`, `embedding=openai`, `vectorstore.type=pgvector`.
+- AI on → low-precedence defaults `chat=openai`, `vectorstore.type=pgvector`. Embeddings depend on
+  `app.ai.embedding.provider` (normalised to lower case and written back): `google-genai` (default) **forces**
+  `spring.ai.model.embedding(.text|.multimodal)=none`, because the OpenAI embedding auto-configuration's
+  `@ConditionalOnMissingBean` looks for `OpenAiEmbeddingModel` and would otherwise add a second `EmbeddingModel`;
+  `openai` sets the low-precedence default `embedding=openai`. No Google GenAI starter is on the classpath, so there is
+  no Google auto-configuration to switch off (3.1).
 - Always → image/audio/moderation models `none`; `spring.ai.mcp.server.enabled` = `app.mcp.enabled`.
 - Our own beans use `@ConditionalOnBooleanProperty("app.ai.enabled")` / `("app.mcp.enabled")`.
-- `AiConfiguration` fails fast with a clear message when AI is on but `AI_API_KEY` is blank.
+- `AiConfiguration` fails fast with a clear message when AI is on but `AI_API_KEY` is blank or the embedding provider
+  is not `google-genai`/`openai`; `GeminiEmbeddingConfiguration` fails fast when the embedding key is blank.
 
 ## 5. Feature flows
 
@@ -188,6 +303,7 @@ sequenceDiagram
   alt nothing retrieved
     R-->>App: "I don't know…" (no LLM call)
   else
+    R->>R: ContactRedactor: drop "Contact:" lines, redact the<br/>house's contact name/phone and phone-like numbers
     R->>M: system rules + <houses-NONCE>[house:id] record…</houses-NONCE> + question
     M-->>R: {answer, citedHouseIds}
     R->>R: keep only ids that were retrieved; add inline [house:id]s;<br/>snippet = best-matching line
@@ -284,9 +400,12 @@ Q&A — "only the records; otherwise reply exactly *I don't know based on the ho
   3,000 chars), far below the embedding limit, so there is no chunking; citations therefore always point at a whole
   house, and re-indexing is an idempotent upsert.
 - **Document text** (`HouseDocuments.text`) is labelled lines: House, Address, Street, Locality, Price (with
-  rent/sale), Size (BHK), Status, My rating, Checklist (sorted `item n/5`), Contact name, Visits summary (count, last
-  date, total minutes), Notes. Phone numbers are **not** embedded.
-- **Metadata** (`houseId, label, status, priceType, price, bedrooms, rating, locality`) is stored as JSON and used for
+  rent/sale), Size (BHK), Status, My rating, Checklist (sorted `item n/5`), Visits summary (count, last date, total
+  minutes), Notes. Since v0.7 there is **no Contact line**, and every free-text field goes through `ContactRedactor`
+  (9.1): neither the contact name nor any phone number is embedded or used as Ask context.
+- **Metadata** (`houseId, label, status, priceType, price, bedrooms, rating, locality`; label and locality redacted
+  like the text, because an OpenAI-compatible embedding model may embed metadata and citation labels reach MCP
+  clients) is stored as JSON and used for
   pre-filtering; Spring AI's PgVector filter converter turns `Filter.Expression` into a `jsonpath` predicate on
   `metadata`, applied in the same SQL as the `<=>` cosine ranking.
 - **Hybrid approach (structured + semantic)**: the client passes explicit `filters` (status, priceType, maxPrice,
@@ -296,10 +415,18 @@ Q&A — "only the records; otherwise reply exactly *I don't know based on the ho
   shortlisted?") the right tool is `GET /api/stats` or the agent's `searchHouses`, not RAG; the docs for the apps
   should route those questions accordingly.
 - **Freshness**: `HouseChangedEvent` from `HouseService.upsert/delete` and `VisitController.upsert/delete` →
-  `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` → re-embed that house. Failures are logged (id only) and
-  healed by `POST /api/ai/reindex` (batches of 20, also purges deleted houses).
+  `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` → re-embed that house. Failures are summarised, **at most
+  one WARN per 5-minute window** (v0.7): the first failure is reported at once; later ones are counted and reported
+  in one summary WARN ("N house(s) … since the last report") when the window is over, on the next failure or on a
+  scheduled check every minute (`@Scheduled`, so a quiet period still gets its summary). The first success after a
+  WARN logs one INFO ("working again"). A success does **not** re-arm the immediate WARN any more: with free-tier
+  429s alternating with successes, the v0.6 behaviour logged one WARN per house. House ids and the provider error
+  class only at DEBUG, never the exception message. Failures are healed by `POST /api/ai/reindex` (batches of 20,
+  also purges deleted houses; a successful run clears the pending count): a failed batch is logged at DEBUG, the
+  other batches still run, and the run logs ONE WARN and fails (503) with a count-only message
+  "N house(s) in B of T batch(es) not indexed".
 - **Dimensions**: fixed `vector(768)` in `V2__pgvector_store.sql`, `AI_EMBEDDING_DIMENSIONS=768` for both the
-  embedding request and PgVectorStore. Changing model or dimension = new migration (`ALTER TABLE … TYPE vector(N)`
+  embedding request (`outputDimensionality` on Gemini, `dimensions` on OpenAI-compatible) and PgVectorStore. Changing model or dimension = new migration (`ALTER TABLE … TYPE vector(N)`
   or truncate) + reindex.
 - **Migration safety**: V2 is a `DO` block that only creates the extension/table if `pg_available_extensions` has
   `vector`, so plain PostGIS databases (current CI) still migrate. If pgvector is installed later, set
@@ -335,8 +462,12 @@ Flow of one run:
 4. Scores every case, writes `backend/target/ai-eval-report.md` (metrics table, per-case table, every check with the
    model output) and prints it; the workflow appends it to the job summary and uploads it as artifact
    `ai-eval-report`.
-5. Fails when any metric misses its threshold. A metric with nothing to measure (for example no plan cases because
-   `AI_EVAL_TYPES=extract,ask`) shows `n/a` and does not fail.
+5. Fails when any metric misses its threshold, **when no case ran, or when the harness hit an error** (fixture
+   seeding, `POST /api/ai/reindex`, or anything that aborted the loop). Errors are listed under "Errors" and every
+   reason under "Why FAIL" in the report (`EvalScorer.verdict`, unit-tested in `EvalScorerTest`). If seeding or the
+   reindex fails, ask/plan cases are skipped (their scores would only measure the seeding failure) and extraction
+   cases still run. A metric with nothing to measure (for example no plan cases because `AI_EVAL_TYPES=extract,ask`)
+   shows `n/a` and does not fail on its own. Before v0.5 an all-`n/a` run printed "Result: PASS" with 0/0 cases.
 
 Run it: Actions → **AI evals** → Run workflow (inputs: case types, delay, optional chat model), or locally against an
 empty PostGIS + pgvector database:
@@ -404,7 +535,7 @@ the report before changing prompts or code:
 | `ask-06-visits` `mustContain: ["2026-09-14"]` is brittle | The context gives the date as ISO `2026-09-14` (`HouseDocuments.visitSummary`), but the model may rewrite it as "14 September 2026", "Sep 14" or a relative date ("last Monday"). The literal check then fails and `answerCorrectness` drops. `answerCorrectness` counts the 5 non-refusal ask cases, so one miss gives 4/5 = 0.80, which is below the 0.85 threshold and fails the run. | If the answer is right but uses another date format, change the case (for example `mustContainAny` with the likely formats, which would need a scorer change) or tell the prompt to keep ISO dates. Do not lower the threshold. |
 | Hallucination gate is zero-tolerance | See 8.3: only 4 null-expected fields. | Check the failing field in the report. Add null-expected fields to the golden set. |
 | Small denominators for the other metrics | 1 refusal case, 3 injection cases, 3 plan cases (2 with a `fallback` expectation), so one flaky call moves a metric by 0.33–1.0. | Rerun once to rule out free-tier noise (`429`/`503` are retried, but the output is not deterministic), then look at the case. |
-| Embedding dimension / model id (see 14) | `POST /api/ai/reindex` fails before any ask case can run. | Fix the embedding config. Every ask case shows ERROR until then. |
+| Embedding provider / model id / dimension (see 3.1, 14) | `POST /api/ai/reindex` fails before any ask case can run (this is what happened in the first run: missing `index` on the compat endpoint). | The scorecard now FAILs with the reindex error listed. Fix the embedding config; ask/plan cases are skipped until then. |
 
 ## 9. Threat model (OWASP Top 10 for LLM Applications 2025 [OW])
 
@@ -413,7 +544,7 @@ Assets: the user's notes, contacts, locations and visit history; the API key; th
 | OWASP 2025 | Risk here | Mitigations |
 |---|---|---|
 | LLM01 Prompt injection | Pasted listings and house notes contain "ignore previous instructions…" (direct & indirect). | Nonce-delimited data blocks + explicit "data not instructions" rules; outputs are schema-bound JSON that the server validates; tools are read-only; no tool can send data anywhere; injection cases in the golden set. |
-| LLM02 Sensitive information disclosure | Notes/contacts sent to a third-party model; free-tier content may be used by Google [G3]; logs. | Feature off by default; Ollama option for fully local; phone numbers not embedded; no prompt/completion logging (INFO logs show model + token counts only); errors log exception class, not bodies; single-user key. |
+| LLM02 Sensitive information disclosure | Notes/contacts sent to a third-party model; free-tier content may be used by Google [G3]; logs. | Feature off by default; Ollama option for fully local; contact name and phone never sent: `ContactRedactor` on every provider-bound path (9.1, F-30); no prompt/completion logging (INFO logs show model + token counts only); errors log exception class, not bodies; single-user key. |
 | LLM03 Supply chain | Model/SDK/starter compromise, model deprecation. | Pinned BOM `spring-ai-bom:2.0.1`; models chosen by env var; provider behind OpenAI-compatible interface so it can be swapped. |
 | LLM04 Data & model poisoning | A malicious listing pasted into notes skews answers. | Only the user writes data; RAG answers cite sources so the user can check them; reindex rebuilds from the DB of record. |
 | LLM05 Improper output handling | Model returns scripts, wrong types, huge strings, fake URLs/phones. | `DraftSanitizer` clamps to column sizes, strips control chars, allows only http(s) URLs present in the input, phones present in the input; citations restricted to retrieved ids; agent stops restricted to tool-returned ids; clients must render text as text (no HTML). |
@@ -425,6 +556,84 @@ Assets: the user's notes, contacts, locations and visit history; the API key; th
 
 Also: `/mcp` sits behind the same API key (header or `Authorization: Bearer`) and rate limit; CORS stays limited to
 `/api/**` for the configured web origin.
+
+### 9.1 Contact redaction (C-13, threat model F-30, AI-010)
+
+**Threat.** A house's contact person (name + phone) is third-party PII. Before v0.7 the contact name went to the
+provider in the embedding text on every index/reindex (DF-32), in the Ask context (DF-21) and in the planner/MCP
+`houseDetails` result; free-text notes could carry the name and number too.
+
+**Control: one sanitizer, `com.househunt.ai.ContactRedactor`, on every path that leaves for a model.**
+
+| Provider-bound path | Where | What is sent now |
+|---|---|---|
+| Embedding text (DF-32) | `HouseDocuments.text()` / `metadata()` | No Contact line; label, checklist keys and notes redacted with `freeText()`, address, street and locality with `place()`; `label` metadata (`freeText()`) and `locality` metadata (`place()`) redacted |
+| Ask context (DF-21) and citations | `RagService.redacted()` on the retrieved chunks, with each house's current contact from `HouseRepository.findAllById` | `Contact:` lines dropped (chunks indexed before v0.7), name and phones redacted, citation labels redacted |
+| Agent tool results | `HouseSearchService.HouseSummary.of`, `HouseQueries.HouseDetails.of` | No contact fields (`HouseDetails.contactName` removed); label, checklist keys, listing URL and notes redacted with `freeText()`, address, street and locality with `place()`; the `searchHouses` text filter matches this redacted text, not the raw fields |
+| MCP tool results (Claude Desktop is a provider too) | `McpHouseTools` → same `HouseQueries` | as above; `askHouseHunt` returns the redacted citations; the MCP server instructions say contacts are withheld |
+
+Rules (`ContactRedactor.Redactor`), all case-insensitive and on word boundaries (Indic scripts included):
+
+- **Free text** (`freeText()`: label, checklist keys, listing URL, notes, and chunk text read back from the vector
+  store): the saved contact name, whole, **and** each name part of 3+ letters except honorifics (`Mr`, `Sri`, `anna`,
+  `garu`, ...). So "Ramesh's 2BHK" for contact "Ramesh Kumar" becomes "[contact]'s 2BHK"; "Rameshwaram" is kept.
+- **Place fields** (`place()`: address, street, locality): the whole name only, so place names that share a word
+  with the contact ("Kumar Park", "Lakshmi Nagar") survive. "Whole name" (v0.9) means the saved string as typed
+  **and** the name's significant parts (3+ letters, honorifics ignored) in order or in reverse order with any
+  separator between them: for saved "Mr. Ramesh Kumar", "C/o Ramesh Kumar", "C/o Ramesh  Kumar", "RAMESH KUMAR",
+  "Ramesh.Kumar" and "Kumar Ramesh" all become "[contact]"; "Kumar Park" and "Ramesh Kumaran Road" are kept.
+  **Initials** (v0.10, common in the ta/te locales): name parts of 1-2 letters that are not honorifics are initials,
+  and the whole name then also matches with the initials before or after the other parts, each letter with or
+  without a dot, initials written apart or together. Saved "K. Ramesh" removes "C/o K Ramesh", "K.Ramesh" and
+  "Ramesh K"; saved "A. K. Sharma" removes "C/o A K Sharma", "A.K.Sharma", "AK Sharma" and "Sharma A K". The
+  initials are required in place fields, so "Ramesh Layout" and "Sharma Nagar" are kept.
+- **Both:** the saved phone (when it has 8+ digits) with any separators, with or without the country code; and any phone-like number
+  (`+<cc>…`, Indian mobiles, STD-code landlines, 10-15-digit runs). Dates, prices and PIN codes are kept.
+
+Placeholders `[contact]` / `[phone]`.
+
+**Not changed.** The contact stays in the database and the normal house API (`/api/houses`), so the web and Android
+apps still show and edit it. Listing extraction (DF-27) still sends the text the user pastes, which may contain a
+contact, because extracting it is the feature; that is the user's explicit action and is disclosed.
+
+**Limits.** Free-text redaction is best effort: a nickname or a different spelling of the name in a note is not
+caught, a 7-9-digit local number that is not the saved phone is kept, and over-redaction is possible (a 10-digit
+listing id in a URL becomes `[phone]`, a word in a label or URL that equals a name part becomes `[contact]`). Place
+fields keep single name parts on purpose, so a street or locality written with only the contact's first name
+("Ramesh Layout" for contact "Ramesh Kumar") still reaches the provider; the whole name is removed there too (in
+order or reversed; a middle part in between, "Ramesh S. Kumar" for saved "Ramesh Kumar", is not caught there).
+Initials-style names are caught in place fields only with **all** saved initials (v0.10): "C/o K Sharma" for saved
+"A. K. Sharma", or "C/o Ramesh" without the initial for saved "K. Ramesh", is kept there (free text still loses
+"Sharma" / "Ramesh"); and an initials form can over-redact, e.g. "Ramesh K R Puram" for saved "K. Ramesh" becomes
+"[contact] R Puram". A
+saved phone with fewer than 8 digits is not matched in text at all (a 6-digit "phone" would otherwise also turn a
+price or deposit such as "123456" into `[phone]`); `ContactRedactorTest` pins this. The structured fields are never
+sent at all.
+
+**What the apps see.** Labels that come back from the AI endpoints are the redacted ones: the planner's user-facing
+stop labels (from the redacted summary) and the **Ask citation labels** returned by `POST /api/ai/ask` (and by the
+MCP `askHouseHunt` tool) show `[contact]` where the label contained the name or a name part. Each citation and stop
+carries its `houseId`, so the web and Android apps can show the real label by looking the house up in their own
+local data (the normal house API is unchanged). Hand-off to the web and Android teams (their files): use the local
+label for `houseId` in Ask citation chips and plan stops when they want the real one.
+
+**Search.** The agent/MCP `searchHouses` text filter matches the same redacted text the model sees, so searching
+for a guessed contact name or phone finds nothing and cannot be used to confirm it.
+
+**Rollout.** Vectors indexed before v0.10 may still hold the contact name (before v0.7), a first name in the
+label (v0.7), a "C/o <owner>" address (v0.8 and older) or an initials-style "C/o K Ramesh" address (v0.9 and older)
+in pgvector (the database, not the provider); `RagService`
+scrubs chunk text and labels with `freeText()` before any prompt or citation, and `POST /api/ai/reindex` once after
+deploying replaces them.
+
+**Tests.** `ContactRedactorTest` (rules, Indic names, initials-style names such as "K. Ramesh" and "A. K. Sharma", phone formats, dates/prices untouched, legacy chunks),
+`HouseDocumentsTest` (embedding text and metadata contain no name/phone even when typed into label, address,
+checklist or notes; a label "Ramesh's 2BHK" loses the first name in text and `label` metadata; a "C/o Ramesh Kumar"
+address, street and locality for saved "Mr. Ramesh Kumar" lose the name in text and `locality` metadata),
+`AskContextRedactionTest` (prompt and citations from a pre-fix chunk; citation label "Ramesh's 2BHK" comes back as
+"[contact]'s 2BHK"), `ToolResultRedactionTest` (every agent and MCP tool result, including labels, checklist keys and
+listing URLs named after the owner's first name; a "C/o Ramesh Kumar" address for saved "Mr. Ramesh Kumar" in every
+agent and MCP result; search cannot confirm a guessed name or phone).
 
 ## 10. Cost controls & observability
 
@@ -448,8 +657,12 @@ Also: `/mcp` sits behind the same API key (header or `Authorization: Bearer`) an
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | OpenAI-compatible endpoint |
 | `AI_API_KEY` | – | Gemini key (or `ollama`) |
 | `AI_CHAT_MODEL` | `gemini-3.5-flash` | Chat model |
-| `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | Embedding model |
+| `AI_EMBEDDING_PROVIDER` | `google-genai` | `google-genai` = native Gemini API (3.1); `openai` = OpenAI-compatible `AI_BASE_URL` (Ollama etc.) |
+| `AI_EMBEDDING_MODEL` | `gemini-embedding-2` | Embedding model (both providers) |
 | `AI_EMBEDDING_DIMENSIONS` | `768` | Must match `vector(768)` in V2 |
+| `AI_EMBEDDING_API_KEY` | `AI_API_KEY` | Gemini key for embeddings (google-genai only) |
+| `AI_EMBEDDING_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Native Gemini API base (google-genai only) |
+| `AI_EMBEDDING_TASK_TYPE` | empty | e.g. `RETRIEVAL_DOCUMENT`, only for `gemini-embedding-001` (Embedding 2 rejects task types) |
 | `AI_VECTOR_INIT_SCHEMA` | `false` | Let PgVectorStore create the table (only if V2 skipped it) |
 | `AI_TIMEOUT` / `AI_MAX_RETRIES` | `60s` / `2` | HTTP client limits |
 | `AI_MAX_INPUT_CHARS` / `AI_MAX_QUESTION_CHARS` / `AI_MAX_OUTPUT_TOKENS` | `8000` / `1000` / `2048` | Guardrails |
@@ -492,6 +705,11 @@ supports `reasoning_effort` [G1]).
 All endpoints: `X-API-Key` header required; JSON; errors are RFC 7807 ProblemDetail
 (`{"status":400,"detail":"…"}`). Status codes: `400` validation, `401` key, `404` AI disabled (except status),
 `429` rate limit (`Retry-After` seconds), `503` provider failure (`"retryable": true`).
+
+**Labels are redacted (v0.9, see 9.1).** `Citation.label` (from `ask`) and `PlannedStop.label` (from
+`plan-visits`) may contain the placeholders `[contact]` or `[phone]` where the house's label named the contact or
+held a phone number. Clients that want the real label should show their local label looked up by `houseId` (the
+normal house API is unchanged); `snippet`, `reason` and `answer` may contain the placeholders too.
 
 ### `GET /api/ai/status` (always available, not rate-limited)
 
@@ -592,10 +810,35 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 
 - Not compiled here (sandbox has no Maven Central); CI must build. Class names/APIs were checked against Spring AI
   v2.0.1 and Spring Boot v4.1.1 sources.
-- Whether Gemini's OpenAI-compatible **embeddings** endpoint honours `dimensions=768` for `gemini-embedding-2`, and
-  which embedding id it accepts (`gemini-embedding-2` vs `gemini-embedding-2-preview`). Check once with a real key:
-  `POST /api/ai/reindex` fails with a dimension error if not honoured.
-- Exact free-tier RPM/RPD for the chosen models (shown only in AI Studio).
+- Senior self-check (v0.7) of the Sprint 3 code, against sources: `EmbeddingModel` in 2.0.1 has one abstract
+  method besides `call` (`embed(Document)`), `getEmbeddingContent` defaults to `getText()` (no metadata) and the batch
+  `embed(List<Document>, …)` default calls `call()`; `Embedding(float[], Integer)`,
+  `EmbeddingResponse(List, EmbeddingResponseMetadata)`, `EmbeddingResponseMetadata()` + `setModel` exist. The
+  request/response records use `com.fasterxml.jackson.annotation` annotations, which Jackson 3 keeps, and read with
+  whichever JSON converter `RestClient.builder()` picks (Jackson 3 in Boot 4; unknown fields are ignored explicitly).
+  Mockito on JDK 25: all AI tests mock interfaces (`VectorStore`, `HouseRepository`, `VisitRepository`, `Logger`,
+  `ObjectProvider`) or plain non-final classes (`HouseService`); the inline mock maker self-attaches with a JVM warning
+  only, which does not fail the build. With AI disabled no new bean is created (`GeminiEmbeddingConfiguration`,
+  `HouseIndexer` incl. its `@Scheduled` check, `RagService` are all `@ConditionalOnBooleanProperty("app.ai.enabled")`;
+  `ContactRedactor` is a static utility).
+- Resolved (v0.5): Gemini's OpenAI-compatible **embeddings** endpoint is unusable with the openai-java SDK (missing
+  `data[].index`); Gemini embeddings now use the native API (3.1).
+- Native path not yet run against the real API (no network to Google here): request/response shape is taken from the
+  Gemini API reference [G4][G6] and the google-genai Java SDK source, and covered by mocked-server tests only. The
+  next manual `AI evals` run is the check. `batchEmbedContents` per-request `outputDimensionality`/`taskType` are
+  documented as deprecated in favour of `embedContentConfig`, but they are what the official SDK still sends.
+- Chat on the OpenAI-compatible endpoint has never been exercised by a real run (the first run stopped at the reindex).
+  3.2 shows from the SDK source which fields it needs and that Gemini's documented shape has them; the contract test
+  bodies are assembled, not captured live. If a live run shows otherwise, the canary tests say which field, and the
+  fallback is an own `ChatModel` over `generateContent` or `spring-ai-starter-model-google-genai` (caveats in 3.1).
+- Contact redaction (9.1) is rule-based; its false negatives (nicknames, short local numbers, a first name used in a
+  street or locality) and false positives (10-digit ids, a label word equal to a name part) are accepted and listed
+  there (v0.10 adds initials-style names in place fields, with the gaps listed in Limits). A reindex is needed once after deploying v0.10 (it replaces vectors built with the v0.9 or older text).
+- Exact free-tier RPM/RPD for the chosen models (shown only in AI Studio). Whether Gemini sends a `Retry-After`
+  header on 429 is not documented; the `RetryInfo.retryDelay` body field is the documented hint and is parsed too.
+- Resolved (v0.10): `docker-compose.yml` passes `AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_API_KEY`,
+  `AI_EMBEDDING_BASE_URL` and `AI_EMBEDDING_TASK_TYPE` to the `backend` service (see its header comment and section 2);
+  the key falls back via `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}`.
 - `postgis/postgis:18-3.6` tag existence on Docker Hub was inferred from the `docker-postgis` repo, not from Hub.
 - Gemini structured output reliability with tool calling on the compat endpoint (beta) — covered by the fallback path.
 - The eval harness has not run against a real model yet (no key or network here); the first manual `AI evals` run
@@ -609,6 +852,9 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 - [G3] Google, "Gemini Developer API pricing" — https://ai.google.dev/gemini-api/docs/pricing
 - [G4] Google, "Embeddings" — https://ai.google.dev/gemini-api/docs/embeddings
 - [G5] Google, "Rate limits", last updated 2026-09-02 — https://ai.google.dev/gemini-api/docs/rate-limits
+- [G6] Google, "Embeddings" API reference (`batchEmbedContents`, `EmbedContentRequest`) — https://ai.google.dev/api/embeddings
+- openai/openai-java v4.49.0 `ChatCompletion.kt`, `core/Values.kt` — https://github.com/openai/openai-java/tree/v4.49.0
+- googleapis/java-genai `Models.java` (Gemini API request mapping for `embedContent`) — https://github.com/googleapis/java-genai
 - [T1] AI Free API, "Gemini API Free Tier Complete Guide" (2026-03-17) — https://www.aifreeapi.com/en/posts/gemini-api-free-tier-complete-guide
 - [T2] garrytan/gbrain PR #4868 (dimensions on the OpenAI-compatible path) — https://github.com/garrytan/gbrain/pull/4868
 - [O1] Ollama, "OpenAI compatibility" — https://docs.ollama.com/api/openai-compatibility

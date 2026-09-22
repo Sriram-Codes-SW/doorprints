@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Network and resilience review, layer by layer |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. 55 scenarios across L1 to L7, with the mitigations built in wave 2 (retry with backoff and jitter, captive-portal detection, no redirects, Wi-Fi-only photos, battery-aware Hunt mode, gzip, EXIF stripping on the server, deny-by-default auth, rate limits, sync cursor safety). |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): row 5.5 (key rotation) is now **Yes**: dual API keys (`APP_API_KEY_NEXT`, SEC-017) give a zero-downtime rotation with no 401 window, procedure in [08 §5.1](08-operations-runbook.md#51-api-key-app_api_key-app_api_key_next); backlog item OSI-B04 marked Done. |
+| 0.3 | 2026-09-22 | Claude (Cowork) | F-01 split in [02](02-threat-model.md) v0.6: rows 5.1 and 7.4 (one shared key, no roles) now point at F-01b (per-device keys, Open). No other change. |
 
 Related: [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md)
 
@@ -109,7 +110,7 @@ Main code locations referenced below:
 
 | # | Scenario | Current behaviour | Risk | Mitigation | Implemented? | Test |
 |---|---|---|---|---|---|---|
-| 5.1 | Session model | There is no login session: every request carries the shared API key (`X-API-Key`, or `Authorization: Bearer` for MCP clients). No cookies, so no CSRF. | M (F-01: one key, full access) | Constant-time compare; deny by default; failed attempts logged with a salted address hash and throttled | Yes: `ApiKeyFilter` | TC-I-01, `ApiKeyFilterTest` |
+| 5.1 | Session model | There is no login session: every request carries the shared API key (`X-API-Key`, or `Authorization: Bearer` for MCP clients). No cookies, so no CSRF. | M (F-01b: one key, full access) | Constant-time compare; deny by default; failed attempts logged with a salted address hash and throttled | Yes: `ApiKeyFilter` | TC-I-01, `ApiKeyFilterTest` |
 | 5.2 | Sync interrupted half way | Push is per row (`markClean` only after the server accepted it); pull advances the cursor only after a whole batch is stored; photos have their own cursor that does not move past skipped downloads | L | Resumable by design: the next run continues from the saved cursors | Yes: `Repository.sync`, `SettingsStore.cursors` | TC-F-08 |
 | 5.3 | **Cursor skips a change** because a lower sync version commits after a higher one was already read (F-09) | Writers take a transaction-scoped advisory lock before `nextval('sync_seq')`, so versions become visible in assignment order and a reader can never pass an uncommitted version | M | `SyncVersions.lock()/next()` in every house, visit, photo and purge write | Yes | TC-I-14 (design argument in 03 §10.4; a concurrency test is backlog) |
 | 5.4 | Job retry policy | WorkManager: exponential backoff from 30 s, up to 5 attempts per run; an auth failure stops retrying (the user must fix the key); a periodic job every 30 minutes | L | `SyncWorker` | Yes | – |
@@ -139,7 +140,7 @@ Main code locations referenced below:
 | 7.1 | Auth bypass through path tricks (`/api;x/houses`, `/%61pi/houses`, `//api/houses`, `/api/./houses`, trailing dots) (F-20) | **Deny by default**: every path needs the key except `GET/HEAD /actuator/health[/**]` and real CORS preflights. Any path with `;`, `%`, `\`, an empty segment, a dot segment or a segment ending in `.` gets 400 before routing, so the filter and Spring MVC always agree on the path | H | `ApiKeyFilter`, `RequestPaths.isCanonical` | Yes | `ApiKeyFilterTest` (17 bad paths), `pathTricksCannotBypassTheKeyFilter`, TC-S-10 |
 | 7.2 | REST semantics | PUT upserts are idempotent; DELETE is idempotent (a second delete of a photo or visit is a no-op); `GET ?since=` feeds for houses, visits and photos | L | – | Yes | TC-I-05 |
 | 7.3 | Input validation | Bean validation on DTOs; `nearby` lat/lon ranges and positive radius; street name 1–200 chars; visit `leftAt` not before `arrivedAt`; client clock checks | M (F-19) | Built-in MVC method validation (Spring 6.1+) | Yes | `nearbyRejectsOutOfRangeParameters`, TC-I-06 |
-| 7.4 | Authorisation | Single user, single key: no roles (F-01, T-E1 accepted for v1) | M | Per-device keys are backlog (SEC-025) | No | – |
+| 7.4 | Authorisation | Single user, single key: no roles (F-01b, T-E1 accepted for v1) | M | Per-device keys are backlog (SEC-025) | No | – |
 | 7.5 | Error handling | RFC 7807 problem details; 400/404/409/413/428/429/503; no stack traces. Android shows a translated category, never the server body (F-12). Web maps 401/429/503 to translated messages | L | `ApiExceptionHandler`, `SyncOutcome`, `aiErrorMsg` | Yes | `SyncOutcomeTest` |
 | 7.6 | HTTP caching of private data | JSON: `Cache-Control: no-store` (no disk or proxy caching of locations and phone numbers). Photos: `private, max-age=30 days` (immutable by id). Web static files: hashed bundles cached for a year, `index.html` `no-cache` | M | `SecurityHeadersFilter`, `PhotoController`, `web/public/_headers` | Yes | `securityHeadersAndNoStoreOnJson` |
 | 7.7 | Security headers | API: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, CSP `default-src 'none'`, HSTS on HTTPS. Web: strict CSP, HSTS, `frame-ancestors 'none'` via `_headers` (F-10) | M | – | Yes | TC-S-04 |

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.4 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -16,6 +16,8 @@
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: the pipeline now exists (`backend.yml`, `web.yml`, `android.yml`, `security.yml`, `dependabot.yml`); section 1 describes the real workflows and the CodeQL decision. Hardened Dockerfile and dev compose, `web/public/_headers` in the repo, new environment variables (rate limits, size limits, clock skew, retention, forward headers). |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Fixes after the first CI runs: Trivy scans the backend from a CycloneDX SBOM (`trivy sbom`) and runs `trivy fs --offline-scan` (the pom.xml resolution hit Maven Central `429 Too Many Requests`), Trivy DB cached with `actions/cache`; backend.yml publishes the SBOM; `permissions: {}` at the top with per-job `contents: read`; only PR runs are cancelled by newer pushes; Dependabot tuned (Monday schedule, 5 open PRs, grouped minor/patch and security updates, framework majors ignored); gitleaks history note. |
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 1 close-out and Sprint 2 ([10](10-sprint-log.md)): section 6.3 CSP note fixed (MapLibre GL 6 module worker from `/maplibre/`, `worker-src 'self'`, no `blob:`); reviewed `.gitleaksignore`; Tomcat 11.0.25 override (F-28) and the version-override rule; `trivy config` blocking on HIGH/CRITICAL (DS-0002 fixed, F-29); `web.yml` runs unit tests; `android.yml` signed release job with `HH_*` secrets (F-11); `APP_API_KEY` minimum 32 and `APP_API_KEY_NEXT` implemented (F-01, SEC-017); compileSdk 37; CI results per sprint; `ai-evals.yml` (manual golden-set eval against a real model) in the section 1 table, diagram and secrets table; section 6.2 note on the non-root DB image (uid 999) and host bind-mount ownership; first-push CI row marked as reconstructed from the `689927d` commit message. |
+| 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3: section 1 `ai-evals.yml` row now says the run also fails when zero cases ran or on a harness error (seeding or reindex failure), with *Errors* and *Why FAIL* sections in the scorecard (fix for the false PASS of the first eval run, E-02 in [10](10-sprint-log.md)); TC-AI-10 reference points to 06 §8. Environment variable table (section 7) lists the new `AI_EMBEDDING_*` settings. |
+| 0.6 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decision: the dev `docker-compose.yml` is owned by the Backend team and now passes every `AI_*` / `APP_AI_*` / `APP_MCP_*` setting to the `api` service. Section 7: the single "AI variables" row is replaced by one row per setting group with the `application.yml` defaults, and a new **Dev compose** column says which variables the dev stack passes; note that `compose.prod.yml` passes only the core variables. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -75,7 +77,7 @@ flowchart LR
 | `web.yml` | push/PR touching `web/**`, manual | Node 24, `npm ci` if `package-lock.json` exists else `npm install` (and uploads the generated lock file as artifact `web-package-lock` so it can be committed), **`npm run test:ci`** (`ng test --watch=false`: Vitest through `@angular/build:unit-test`, jsdom, no browser), `npm run build`, checks `_headers`/`_redirects` are in the output, uploads `house-hunt-web-dist` | Unit tests and build pass |
 | `android.yml` | push/PR touching `android/**`, manual | Temurin 21, `gradle/actions/setup-gradle@v6` (validates the wrapper JAR), `./gradlew assembleDebug testDebugUnitTest` (compileSdk 37), `lintDebug` (report only), uploads **`house-hunt-debug-apk`** and reports. Not on PRs: job `release-signing-check` looks for the four `HH_*` secrets (a job-level `if` cannot read secrets); when present, job `release` builds a **signed** `assembleRelease` and uploads `house-hunt-release-apk` (section 5) | Build + unit tests pass; release: `apksigner verify` passes |
 | `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`, see below), `npm audit --audit-level=high --omit=dev` (dev-only tooling such as the Angular CLI is not shipped, so its advisories do not block), optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy (dependencies and Dockerfiles), no high npm advisory |
-| `ai-evals.yml` | **Manual only** (`workflow_dispatch`), never on push or PR (it spends free-tier model quota and model answers are not deterministic). Inputs: `types` (choice, default `extract,ask,plan`), `delay_ms` (pause between cases, default `4000`, validated as a whole number), `chat_model` (optional model override; empty keeps the `application.yml` default) | Top-level `permissions: {}`, job-level `contents: read`; one run at a time (`concurrency: ai-evals`, never cancelled). Fails fast if the `AI_API_KEY` repository secret is missing. Builds `backend/db` and runs it with `docker run`, then `mvn -B -ntp test -Dtest=GoldenSetEvalTest` on Temurin 25 with `APP_AI_ENABLED=true` against the golden set ([ai/evals/golden-set.json](ai/evals/golden-set.json)). Always publishes `backend/target/ai-eval-report.md` to the job summary and as artifact **`ai-eval-report`** (kept 30 days); on failure also uploads `ai-eval-test-reports` (7 days) | Not a merge gate. The run fails when a metric misses the golden set's thresholds or no case matches `types`; a person reviews the scorecard (TC-AI-10, [06](06-test-plan.md) §2) |
+| `ai-evals.yml` | **Manual only** (`workflow_dispatch`), never on push or PR (it spends free-tier model quota and model answers are not deterministic). Inputs: `types` (choice, default `extract,ask,plan`), `delay_ms` (pause between cases, default `4000`, validated as a whole number), `chat_model` (optional model override; empty keeps the `application.yml` default) | Top-level `permissions: {}`, job-level `contents: read`; one run at a time (`concurrency: ai-evals`, never cancelled). Fails fast if the `AI_API_KEY` repository secret is missing. Builds `backend/db` and runs it with `docker run`, then `mvn -B -ntp test -Dtest=GoldenSetEvalTest` on Temurin 25 with `APP_AI_ENABLED=true` against the golden set ([ai/evals/golden-set.json](ai/evals/golden-set.json)). Always publishes `backend/target/ai-eval-report.md` to the job summary and as artifact **`ai-eval-report`** (kept 30 days); on failure also uploads `ai-eval-test-reports` (7 days) | Not a merge gate. The run fails when no golden-set case ran (0 cases, including no case matching `types`), on any harness error (seeding the fixtures or `POST /api/ai/reindex` failed; listed under *Errors* in the scorecard) or when a metric misses the golden set's thresholds; the scorecard's *Why FAIL* section lists the reasons. A person reviews the scorecard (TC-AI-10, [06](06-test-plan.md) §8) |
 | `deploy.yml`, `release.yml`, `backup.yml` | – | **Not built yet** (see sections 5, 6 and 08 §3) | – |
 
 Conventions used in every workflow:
@@ -251,25 +253,40 @@ Install the APK (section 5): the signed `house-hunt-release-apk` artifact of `an
 
 ## 7. Environment variables
 
-| Variable | Required | Default (in code) | Example / notes | Secret |
-|---|---|---|---|---|
-| `DB_URL` | Yes (prod) | `jdbc:postgresql://localhost:5432/househunt` | `jdbc:postgresql://<host>:5432/postgres?sslmode=require` | Yes (host info) |
-| `DB_USER` | Yes (prod) | `househunt` (**dev only**) | `househunt_app` | Yes |
-| `DB_PASSWORD` | Yes (prod) | `househunt` (**dev only**) | Generated, 32+ chars | Yes |
-| `DB_POOL_SIZE` | No | `5` | Keep ≤ 5 on free DBs | No |
-| `APP_API_KEY` | **Yes** (startup fails if missing or shorter than **32** chars; since Sprint 2, was 16) | empty | `openssl rand -hex 32` (64 chars) | Yes |
-| `APP_CORS_ORIGINS` | Yes for web | `http://localhost:4200` | `https://house-hunt.pages.dev` (comma-separated) | No |
-| `PORT` | No | `8080` | Set by Render/Koyeb | No |
-| `JAVA_TOOL_OPTIONS` | No | Set in the Dockerfile: `-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Xss512k` | Keep for 512 MB hosts | No |
-| `FORWARD_HEADERS_STRATEGY` | No | `native` | Trust `X-Forwarded-*` from proxies Tomcat considers internal (private ranges): correct client address for rate limits and HTTPS detection for HSTS. Set `none` if the API is exposed directly. | No |
-| `RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_BURST` | No | `600`, `300` | Per client address, all paths except health | No |
-| `AUTH_FAILURES_PER_MINUTE`, `AUTH_FAILURE_BURST` | No | `10`, `10` | Wrong/missing keys per address before 429 | No |
-| `MAX_JSON_BYTES` | No | `262144` | JSON body cap (413) | No |
-| `MAX_PHOTOS_PER_HOUSE` | No | `20` | Keep equal to the Android `MAX_PHOTOS_PER_HOUSE` | No |
-| `SYNC_MAX_CLOCK_SKEW_SECONDS`, `SYNC_MAX_FUTURE_DAYS` | No | `300`, `365` | Client clock clamp / reject (F-08) | No |
-| `TOMBSTONE_RETENTION_DAYS` | No | `90` | Daily purge at 03:30 server time | No |
-| `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes |
-| AI variables (`APP_AI_ENABLED`, `APP_MCP_ENABLED`, `AI_API_KEY`, models, limits) | No, off by default (AI-001) | – | See [docs/ai/ai-design.md](ai/ai-design.md) §11 | Keys: Yes |
+The **Dev compose** column says whether the local `docker-compose.yml` passes the variable to the `api` service. The file is owned by the Backend team (since Sprint 3, [10](10-sprint-log.md) §1) and passes every `AI_*`, `APP_AI_*` and `APP_MCP_*` setting from the host shell or a git-ignored `.env` file, with the same defaults as `application.yml`; its header comment has a Gemini and a local Ollama example. Variables marked *No* still work through `application.yml` defaults but cannot be changed in the dev stack without editing the compose file. `compose.prod.yml` (section 6.2) passes only the core variables: add the AI ones there if you turn AI on.
+
+| Variable | Required | Default (in code) | Example / notes | Secret | Dev compose |
+|---|---|---|---|---|---|
+| `DB_URL` | Yes (prod) | `jdbc:postgresql://localhost:5432/househunt` | `jdbc:postgresql://<host>:5432/postgres?sslmode=require` | Yes (host info) | Yes (`jdbc:postgresql://db:5432/househunt`) |
+| `DB_USER` | Yes (prod) | `househunt` (**dev only**) | `househunt_app` | Yes | Yes (`househunt`) |
+| `DB_PASSWORD` | Yes (prod) | `househunt` (**dev only**) | Generated, 32+ chars | Yes | Yes (`${POSTGRES_PASSWORD:-househunt}`) |
+| `DB_POOL_SIZE` | No | `5` | Keep ≤ 5 on free DBs | No | No (code default) |
+| `APP_API_KEY` | **Yes** (startup fails if missing or shorter than **32** chars; since Sprint 2, was 16) | empty | `openssl rand -hex 32` (64 chars) | Yes | Yes, required (`:?`) |
+| `APP_CORS_ORIGINS` | Yes for web | `http://localhost:4200` | `https://house-hunt.pages.dev` (comma-separated) | No | Yes |
+| `PORT` | No | `8080` | Set by Render/Koyeb | No | No (code default) |
+| `JAVA_TOOL_OPTIONS` | No | Set in the Dockerfile: `-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -Xss512k` | Keep for 512 MB hosts | No | No (Dockerfile default) |
+| `FORWARD_HEADERS_STRATEGY` | No | `native` | Trust `X-Forwarded-*` from proxies Tomcat considers internal (private ranges): correct client address for rate limits and HTTPS detection for HSTS. Set `none` if the API is exposed directly. | No | No (code default) |
+| `RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_BURST` | No | `600`, `300` | Per client address, all paths except health | No | No (code default) |
+| `AUTH_FAILURES_PER_MINUTE`, `AUTH_FAILURE_BURST` | No | `10`, `10` | Wrong/missing keys per address before 429 | No | No (code default) |
+| `MAX_JSON_BYTES` | No | `262144` | JSON body cap (413) | No | No (code default) |
+| `MAX_PHOTOS_PER_HOUSE` | No | `20` | Keep equal to the Android `MAX_PHOTOS_PER_HOUSE` | No | No (code default) |
+| `SYNC_MAX_CLOCK_SKEW_SECONDS`, `SYNC_MAX_FUTURE_DAYS` | No | `300`, `365` | Client clock clamp / reject (F-08) | No | No (code default) |
+| `TOMBSTONE_RETENTION_DAYS` | No | `90` | Daily purge at 03:30 server time | No | No (code default) |
+| `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes | Yes (empty) |
+| `APP_AI_ENABLED`, `APP_MCP_ENABLED` | No, off by default (AI-001) | `false`, `false` | `true` turns on the AI endpoints / the MCP server ([ai/](ai/ai-design.md) §11) | No | Yes (`false`) |
+| `AI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Chat endpoint (OpenAI-compatible). Ollama in dev compose: `http://host.docker.internal:11434/v1` (compose maps `host.docker.internal` to `host-gateway`) | No | Yes |
+| `AI_API_KEY` | Yes when `APP_AI_ENABLED=true` | empty | Free Gemini key; any non-empty value for Ollama | **Yes** | Yes (empty) |
+| `AI_CHAT_MODEL`, `AI_TIMEOUT`, `AI_MAX_RETRIES` | No | `gemini-3.5-flash`, `60s`, `2` | Ollama: e.g. `qwen3:8b`, `180s` | No | Yes |
+| `AI_EMBEDDING_PROVIDER` | No | `google-genai` | `google-genai` (native Gemini `batchEmbedContents`) or `openai` (`AI_BASE_URL` `/embeddings`; **needed for Ollama**); other values stop startup ([08](08-operations-runbook.md) §1.1) | No | Yes |
+| `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS` | No | `gemini-embedding-2`, `768` | Ollama: `nomic-embed-text`. Dimensions must stay `768` (`vector(768)` column) | No | Yes |
+| `AI_EMBEDDING_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta` | Only for `google-genai` | No | Yes |
+| `AI_EMBEDDING_API_KEY` | No | `AI_API_KEY` | Only for `google-genai`, when embeddings use a different key. Dev compose passes `${AI_EMBEDDING_API_KEY:-${AI_API_KEY:-}}` so an unset value keeps the fallback | **Yes** | Yes |
+| `AI_EMBEDDING_TASK_TYPE` | No | empty | Only with `gemini-embedding-001` (e.g. `RETRIEVAL_DOCUMENT`); `gemini-embedding-2` rejects task types | No | Yes |
+| `AI_VECTOR_INIT_SCHEMA` | No | `false` | Flyway V2 creates the vector table; keep `false` | No | Yes |
+| `AI_MAX_INPUT_CHARS`, `AI_MAX_QUESTION_CHARS`, `AI_MAX_OUTPUT_TOKENS` | No | `8000`, `1000`, `2048` | Input and output caps (AI-009) | No | Yes |
+| `AI_RATE_LIMIT_PER_MINUTE`, `AI_RATE_LIMIT_BURST`, `MCP_RATE_LIMIT_PER_MINUTE` | No | `10`, `5`, `60` | Free-tier quota guards (AI-009) | No | Yes |
+| `AI_RAG_TOP_K`, `AI_RAG_SIMILARITY_THRESHOLD` | No | `6`, `0.25` | RAG retrieval | No | Yes |
+| `AI_AGENT_MAX_TOOL_CALLS`, `AI_AGENT_MAX_CALLS_PER_TOOL`, `AI_AGENT_MAX_STOPS` | No | `12`, `4`, `8` | Planner step limits | No | Yes |
 
 ### 7.1 Build-time variables (Android release signing, F-11)
 

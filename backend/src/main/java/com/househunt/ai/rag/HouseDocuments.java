@@ -1,5 +1,6 @@
 package com.househunt.ai.rag;
 
+import com.househunt.ai.ContactRedactor;
 import com.househunt.house.HouseDto;
 import com.househunt.visit.VisitDto;
 import org.springframework.ai.document.Document;
@@ -17,6 +18,11 @@ import java.util.TreeMap;
  * notes), so there is no chunking: one document per house, id = house id, which makes re-indexing an idempotent
  * upsert and makes every citation point at a whole house. Notes are capped so one essay-length note can't dominate
  * the embedding.
+ *
+ * <p>The text is sent to the embedding provider on every (re)index and, read back from the vector store, as Ask
+ * context, so it never contains the contact name or phone: the contact fields are left out and every free-text field
+ * goes through {@link ContactRedactor} (threat model F-30): label, checklist keys and notes lose the whole name and
+ * every name part, address, street and locality the whole name. Label and locality in the metadata are redacted too.
  */
 public final class HouseDocuments {
 
@@ -30,13 +36,14 @@ public final class HouseDocuments {
         return new Document(h.id().toString(), text(h, visits), metadata(h));
     }
 
-    /** Stable, labelled plain text; the labels double as grounding cues for the model. */
+    /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
     public static String text(HouseDto h, List<VisitDto> visits) {
+        var r = ContactRedactor.forHouse(h);
         var sb = new StringBuilder();
-        line(sb, "House", h.label());
-        line(sb, "Address", h.address());
-        line(sb, "Street", h.street());
-        line(sb, "Locality", h.locality());
+        line(sb, "House", r.freeText(h.label()));
+        line(sb, "Address", r.place(h.address()));
+        line(sb, "Street", r.place(h.street()));
+        line(sb, "Locality", r.place(h.locality()));
         if (h.price() != null) {
             line(sb, "Price", "Rs " + h.price() + (h.priceType() == null ? "" : "RENT".equals(h.priceType())
                     ? " per month (rent)" : " (sale)"));
@@ -46,30 +53,36 @@ public final class HouseDocuments {
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
             var items = new StringBuilder();
-            new TreeMap<>(h.checklist()).forEach((k, v) -> items.append(items.isEmpty() ? "" : ", ").append(k)
-                    .append(' ').append(v).append("/5"));
+            new TreeMap<>(h.checklist()).forEach((k, v) -> items.append(items.isEmpty() ? "" : ", ")
+                    .append(r.freeText(k)).append(' ').append(v).append("/5"));
             line(sb, "Checklist", items.toString());
         }
-        line(sb, "Contact", h.contactName());
+        // Deliberately no "Contact" line: the contact name and phone never go to the provider (F-30).
         line(sb, "Visits", visitSummary(visits));
         if (h.notes() != null && !h.notes().isBlank()) {
             var notes = h.notes().strip();
-            line(sb, "Notes", notes.length() > NOTES_MAX ? notes.substring(0, NOTES_MAX) + " …" : notes);
+            notes = notes.length() > NOTES_MAX ? notes.substring(0, NOTES_MAX) + " …" : notes;
+            line(sb, "Notes", r.freeText(notes));
         }
         return sb.toString().strip();
     }
 
-    /** Only non-null values (Document metadata rejects nulls); used for structured filtering in PgVector. */
+    /**
+     * Only non-null values (Document metadata rejects nulls); used for structured filtering in PgVector and for
+     * citation labels. Label and locality are redacted too: an OpenAI-compatible embedding model may embed metadata
+     * with the text ({@code MetadataMode.EMBED}), and citation labels reach MCP clients.
+     */
     public static Map<String, Object> metadata(HouseDto h) {
+        var r = ContactRedactor.forHouse(h);
         var m = new HashMap<String, Object>();
         m.put("houseId", h.id().toString());
-        m.put("label", h.label());
+        m.put("label", h.label() == null ? "" : r.freeText(h.label()));
         if (h.status() != null) m.put("status", h.status().name());
         if (h.priceType() != null) m.put("priceType", h.priceType());
         if (h.price() != null) m.put("price", h.price());
         if (h.bedrooms() != null) m.put("bedrooms", h.bedrooms());
         if (h.rating() != null) m.put("rating", h.rating());
-        if (h.locality() != null) m.put("locality", h.locality());
+        if (h.locality() != null) m.put("locality", r.place(h.locality()));
         return m;
     }
 

@@ -114,7 +114,7 @@ uninstall the debug app, then install the release APK.
 | Doc | Topic |
 |---|---|
 | [01 Requirements](docs/01-requirements.md) | FR/NFR/SEC/PRV/AI requirements and the traceability matrix |
-| [02 Threat model](docs/02-threat-model.md) | STRIDE, abuse cases, findings F-01..F-29 and their status |
+| [02 Threat model](docs/02-threat-model.md) | STRIDE, abuse cases, findings F-01a/F-01b..F-30 (31 findings) and their status |
 | [03 Design](docs/03-design.md) | Architecture, data model, API reference, sync algorithm, ADRs |
 | [04 Data flows](docs/04-data-flow-diagrams.md) | DFDs and data classification |
 | [05 UX, accessibility, i18n](docs/05-ux-accessibility-i18n.md) | Design tokens, WCAG 2.2 AA, TalkBack, translations and glossary |
@@ -152,3 +152,4 @@ This is a personal project, but it follows a secure SDLC, so changes follow a fe
 |---|---|
 | 2026-09-22 | First version of this README (Sprint 1). |
 | 2026-09-22 | Sprint 2: links to the sprint log (docs/10) and CHANGELOG, 32-character API key and `APP_API_KEY_NEXT` rotation, signed release APK, compileSdk 37, MapLibre GL 6.10, findings F-01..F-29, CI test and scan list. |
+| 2026-09-22 | Sprint 3: documentation index lists threat-model findings F-01a/F-01b..F-30 (31 findings; F-01 split into F-01a and F-01b, new F-30 contact redaction). |

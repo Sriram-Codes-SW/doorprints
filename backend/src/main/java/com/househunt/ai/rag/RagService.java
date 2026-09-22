@@ -1,5 +1,6 @@
 package com.househunt.ai.rag;
 
+import com.househunt.ai.ContactRedactor;
 import com.househunt.ai.PromptSafety;
 import com.househunt.ai.config.AiProperties;
 import com.househunt.ai.rag.AskModels.AskFilters;
@@ -8,6 +9,8 @@ import com.househunt.ai.rag.AskModels.Citation;
 import com.househunt.ai.rag.AskModels.ModelAnswer;
 import com.househunt.ai.web.AiUnavailableException;
 import com.househunt.ai.web.AiUsageLogger;
+import com.househunt.house.House;
+import com.househunt.house.HouseRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,14 +22,20 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProp
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Feature 2: "Ask my house hunt". Retrieve (metadata pre-filter + cosine similarity in pgvector) -> answer only from
  * the retrieved houses -> keep only citations that point at retrieved houses.
+ *
+ * <p>Retrieved chunk text is passed through {@link ContactRedactor} with each house's current contact name and phone
+ * before it is put into the prompt or a citation, so documents indexed before the F-30 fix (which had a
+ * {@code Contact:} line) and names typed into notes never reach the provider or an MCP client.
  */
 @Service
 @ConditionalOnBooleanProperty("app.ai.enabled")
@@ -37,11 +46,13 @@ public class RagService {
     private final ChatClient chat;
     private final VectorStore vectorStore;
     private final AiProperties props;
+    private final HouseRepository houses;
 
-    public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props) {
+    public RagService(ChatClient chat, VectorStore vectorStore, AiProperties props, HouseRepository houses) {
         this.chat = chat;
         this.vectorStore = vectorStore;
         this.props = props;
+        this.houses = houses;
     }
 
     public AskResponse ask(String question, AskFilters filters) {
@@ -59,6 +70,7 @@ public class RagService {
                     .filterExpression(AskPrompts.filter(filters))
                     .build();
             docs = vectorStore.similaritySearch(search);
+            if (docs != null && !docs.isEmpty()) docs = redacted(docs, contactsOf(docs));
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Search over your houses failed", e);
         }
@@ -86,6 +98,40 @@ public class RagService {
         }
         var citations = citations(answer, docs, question);
         return new AskResponse(answer.answer().strip(), citations, !citations.isEmpty(), docs.size());
+    }
+
+    /** Current contact name/phone per retrieved house id (houses deleted meanwhile are simply absent). */
+    private Map<String, House> contactsOf(List<Document> docs) {
+        var ids = new ArrayList<UUID>();
+        for (var d : docs) {
+            try {
+                ids.add(UUID.fromString(d.getId()));
+            } catch (IllegalArgumentException ignored) {
+                // not a house document; scrubbed with the generic rules only
+            }
+        }
+        var out = new HashMap<String, House>();
+        if (!ids.isEmpty()) houses.findAllById(ids).forEach(h -> out.put(h.getId().toString(), h));
+        return out;
+    }
+
+    /**
+     * The retrieved documents as they may be shown to the provider (and, as citations, to MCP clients): chunk text
+     * and label scrubbed by {@link ContactRedactor#scrubStoredText}, id, score and other metadata unchanged.
+     */
+    static List<Document> redacted(List<Document> docs, Map<String, House> contacts) {
+        var out = new ArrayList<Document>(docs.size());
+        for (var d : docs) {
+            var h = contacts.get(d.getId());
+            var name = h == null ? null : h.getContactName();
+            var phone = h == null ? null : h.getContactPhone();
+            var text = ContactRedactor.scrubStoredText(d.getText() == null ? "" : d.getText(), name, phone);
+            var metadata = new HashMap<String, Object>(d.getMetadata());
+            var label = metadata.get("label");
+            if (label instanceof String s) metadata.put("label", ContactRedactor.forContact(name, phone).freeText(s));
+            out.add(d.mutate().text(text).metadata(metadata).build());
+        }
+        return out;
     }
 
     /** Keeps only ids that were actually retrieved (drops hallucinated ones), in the model's order, de-duplicated. */

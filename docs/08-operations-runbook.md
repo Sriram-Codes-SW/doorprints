@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.3 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,9 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version: monitoring, backups/restore, key rotation, incident response, data export/deletion, release checklist. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: export and delete-all now use the API (`GET /api/export`, `DELETE /api/data`), automatic 90-day tombstone purge, new log lines for auth failures and rate limits, CI-based dependency scanning, key rotation steps for the masked Android key field. |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 2 ([10](10-sprint-log.md)): zero-downtime API key rotation with `APP_API_KEY_NEXT` (section 5.1), emergency rotation and the 32-character minimum upgrade note; Trivy (SBOM, config) replaces Dependency-Check in the routine tasks; check to remove the Tomcat override (F-28); signed release APK from `android.yml`; new section 9 Troubleshooting (non-root DB image, uid 999 bind-mount ownership, F-29; key-length and rotation 401s). |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): new section 1.1 with the AI settings, including the new `AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_API_KEY`, `AI_EMBEDDING_BASE_URL` and `AI_EMBEDDING_TASK_TYPE`; Ollama needs `AI_EMBEDDING_PROVIDER=openai`. Monitoring row for the summarised AI indexing WARN lines and the reindex 503; LLM key rotation covers `AI_EMBEDDING_API_KEY`; two troubleshooting rows. The AI indexing monitoring row quotes the reindex WARN line (the 503 body is a generic problem detail). |
+| 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): section 1.1: run `POST /api/ai/reindex` once after deploying the contact-redaction fix (C-13, F-30); the dev compose passes the AI settings. AI indexing monitoring row matches the AI team's final logging (one summary WARN per 5 minutes, one WARN per reindex run, recovery INFO). Troubleshooting row for short keys points at F-01a (F-01 split in [02](02-threat-model.md) v0.6). |
+| 0.6 | 2026-09-22 | Claude (Cowork) | Section 1.1: the one-off `POST /api/ai/reindex` for the contact-redaction fix (F-30) must run after the final (ai-design v0.10) code is deployed; lists what older vectors may still hold. Matches [02](02-threat-model.md) v0.7. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -28,6 +31,23 @@ Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-
 | Health | `GET https://<api>/actuator/health` → `{"status":"UP"}` (public, includes the DB check) |
 | Targets | RPO ≤ 24 h (nightly backup; the phone also holds a full offline copy), RTO ≤ 4 h (NFR-008) |
 | On-call | The owner (single user). Keep this runbook and the password manager entry "House Hunt ops" up to date. |
+
+### 1.1 AI settings (only when `APP_AI_ENABLED=true`)
+
+AI is off by default (AI-001); none of these variables is needed then. Full list and defaults: [ai/ai-design.md](ai/ai-design.md) §11 and [07 §7](07-secure-build-and-deploy.md).
+
+| Variable | Default | When to change it |
+|---|---|---|
+| `AI_API_KEY` | – | Free Gemini key from Google AI Studio; for Ollama any non-empty value (for example `ollama`). Used for chat and, by default, for embeddings. Secret. |
+| `AI_EMBEDDING_PROVIDER` | `google-genai` | `google-genai`: embeddings from the native Gemini API (`models/{model}:batchEmbedContents`). **Ollama (or any other OpenAI-compatible server) needs `AI_EMBEDDING_PROVIDER=openai`**, which sends embeddings to `AI_BASE_URL` like chat. Any other value stops startup with a message naming the variable. |
+| `AI_EMBEDDING_API_KEY` | `AI_API_KEY` | Only for `google-genai`, and only if embeddings should use a different Gemini key than chat. Secret. |
+| `AI_EMBEDDING_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Only for `google-genai`; leave the default. |
+| `AI_EMBEDDING_TASK_TYPE` | empty | Only for `google-genai` with `AI_EMBEDDING_MODEL=gemini-embedding-001` (for example `RETRIEVAL_DOCUMENT`); `gemini-embedding-2` rejects task types. |
+| `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS` | `gemini-embedding-2`, `768` | Ollama: `nomic-embed-text`. Dimensions must stay `768` (the `vector(768)` column). |
+
+After changing the embedding provider or model, run `POST /api/ai/reindex` so every house is embedded with the new model.
+
+**Once after deploying the contact-redaction fix** (Sprint 3, C-13, [02](02-threat-model.md) F-30): run `POST /api/ai/reindex` until it returns 200, **after the final version of the fix is deployed** ([ai/ai-design.md](ai/ai-design.md) v0.10 §9.1; a reindex run on an earlier build of the fix must be repeated). Vectors indexed before it may still hold the contact name (before ai-design v0.7), a first name in the label (v0.7), a "C/o <owner>" address (v0.8 and older) or an initials-style "C/o K Ramesh" address (v0.9 and older) in pgvector (the database, not the provider); the Ask path already scrubs them before any prompt or citation, and the reindex replaces them with redacted text. The dev `docker-compose.yml` passes all these settings from the shell or a `.env` file ([07 §7](07-secure-build-and-deploy.md), column *Dev compose*).
 
 ## 2. Monitoring
 
@@ -43,6 +63,7 @@ Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-
 | Dependencies | Dependabot PRs, `security.yml` (Trivy, npm audit, Semgrep, gitleaks) on every push and weekly | Critical/High → patch within 7 days |
 | Backups | `backup.yml` run status (GitHub notifies on failure) | Failed 2 nights in a row → fix the same day |
 | AI usage (when enabled) | Usage counters (D8) / provider console | ≥ 80% of the daily free quota → check for abuse (IR-6) |
+| AI indexing (when enabled) | WARN line `AI index update failed for N house(s)…; they are searchable again after POST /api/ai/reindex` (at most one per 5 minutes, a summary instead of one line per house; one INFO `AI index updates are working again` after an outage); one WARN per reindex run `AI reindex incomplete: N house(s) in b of n batch(es) not indexed, k indexed` (per-batch detail at DEBUG); `POST /api/ai/reindex` then answers **503** (generic problem detail), logged as `Re-indexing failed (ReindexFailedException: …)` | Check the provider key, quota and `AI_EMBEDDING_*` settings (section 1.1), then run `POST /api/ai/reindex` again until it returns 200. House ids and the provider error class are logged at DEBUG only. |
 
 Logs: use the host's log viewer (Render/Koyeb dashboard, `docker compose logs` on the VM). Logs must not contain keys, coordinates or notes (SEC-016).
 
@@ -139,7 +160,7 @@ Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys 
 | Secret | Procedure |
 |---|---|
 | DB password | Reset in the provider dashboard → update `DB_PASSWORD` (and `BACKUP_DB_URL`) → redeploy → check health |
-| LLM provider key | Revoke in the provider console → new key in the host env → redeploy. See [ai/](ai/). |
+| LLM provider key | Revoke in the provider console → new key in the host env (`AI_API_KEY`, and `AI_EMBEDDING_API_KEY` if it is set separately) → redeploy. See [ai/](ai/). |
 | Deploy hook / SSH key | Regenerate in Render / replace the `authorized_keys` line → update the GitHub environment secret |
 | GitHub PAT | Revoke at github.com/settings/tokens. Create a fine-grained one with expiry ≤ 90 days only if needed. |
 | Age backup key | Create a new key pair → update `BACKUP_AGE_RECIPIENT`. Keep the old private key until the old backups expire (30 days). |
@@ -241,5 +262,7 @@ Publish a warning in the repo README with the correct certificate fingerprint. C
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Dev/CI database container (`house-hunt-db`, `backend/db/Dockerfile`) exits on first start with a permission error: `initdb: error: could not change permissions of directory …`, `mkdir: cannot create directory '/var/lib/postgresql/18/docker': Permission denied`, or `FATAL: data directory … has wrong ownership` | Since Sprint 2 the image runs as `USER postgres` (uid 999, F-29), so the entrypoint cannot `chown` the data directory. A **host bind mount** (for example `./pgdata:/var/lib/postgresql`), or a volume first initialised by another uid, is not owned by uid 999. The default named volume `dbdata18` is not affected. | On the host: `sudo chown -R 999:999 ./pgdata` and start again, or switch back to the named volume in `docker-compose.yml`. Do **not** add `user: root` to compose (it reverts F-29). See [07 §6.2](07-secure-build-and-deploy.md#62-api). |
-| API refuses to start: log names `APP_API_KEY` or `APP_API_KEY_NEXT` as too short | Key shorter than 32 characters (F-01, since Sprint 2) | Section 5.1, "Upgrading from a 16–31 character key" |
+| API refuses to start: log names `APP_API_KEY` or `APP_API_KEY_NEXT` as too short | Key shorter than 32 characters (F-01a, since Sprint 2) | Section 5.1, "Upgrading from a 16–31 character key" |
 | All clients get 401 right after a deploy | `APP_API_KEY` changed without the `APP_API_KEY_NEXT` overlap | Section 5.1: put the old key back as `APP_API_KEY` and the new one as `APP_API_KEY_NEXT`, or finish updating the clients |
+| API with AI enabled refuses to start: log names `app.ai.embedding.provider` / `AI_EMBEDDING_PROVIDER`, or says `google-genai` needs an API key | Provider value other than `google-genai` or `openai`, or no `AI_API_KEY` / `AI_EMBEDDING_API_KEY` for the default Gemini embeddings | Section 1.1. For Ollama set `AI_EMBEDDING_PROVIDER=openai`. |
+| `POST /api/ai/reindex` returns 503; Ask finds no houses | Embedding calls failing (key, quota, wrong provider for the server, model or dimensions) | Section 1.1 and the `AI reindex` WARN lines (section 2); fix, then reindex again |
