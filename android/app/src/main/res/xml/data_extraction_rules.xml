@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Threat model F-03 / SEC-011 (Android 12+). android:allowBackup="false" turns off cloud backup and adb backup;
+     these rules additionally control device-to-device transfer, which allowBackup does not switch off on 12+.
+     Cloud backup: nothing. Device transfer (new phone, cable/Wi-Fi): only the house database and photos, never the
+     settings (server URL, encrypted API key, sync cursors) - the key's Keystore entry cannot move anyway. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="photos/" />
+    </device-transfer>
+</data-extraction-rules>

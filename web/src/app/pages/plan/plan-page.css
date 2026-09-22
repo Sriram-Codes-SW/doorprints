@@ -1,0 +1,61 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+textarea {
+  width: 100%;
+}
+
+.small-field input {
+  max-width: 6rem;
+}
+
+.coords {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.plan-map {
+  height: 60vh;
+  min-height: 320px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.stops {
+  padding-left: var(--space-5);
+}
+
+.stops li {
+  margin-bottom: var(--space-3);
+}
+
+.stops span {
+  display: block;
+}
+
+/* Marker elements are created by MapLibre outside this component's view, so style them globally. */
+:host ::ng-deep .plan-stop-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1f6f5c;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+}

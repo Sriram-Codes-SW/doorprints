@@ -1,0 +1,95 @@
+<div class="page">
+  <h1>{{ 'plan.title' | t }}</h1>
+  <p class="muted">{{ 'plan.intro' | t }}</p>
+
+  @if (!ai.enabled()) {
+    <p class="card">{{ 'ai.disabled' | t }}</p>
+  }
+
+  <div class="layout" [hidden]="!ai.enabled()">
+    <div class="col">
+      <form class="card" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="plan-question">{{ 'plan.question' | t }}</label>
+          <textarea
+            id="plan-question"
+            name="question"
+            rows="3"
+            [(ngModel)]="question"
+            [attr.maxlength]="maxChars"
+            [placeholder]="'plan.placeholder' | t"
+            aria-describedby="plan-disclosure"
+            required
+          ></textarea>
+        </div>
+        <div class="field small-field">
+          <label for="plan-stops">{{ 'plan.maxStops' | t }}</label>
+          <input id="plan-stops" name="maxStops" type="number" min="1" max="8" inputmode="numeric" [(ngModel)]="maxStops" />
+        </div>
+
+        <fieldset>
+          <legend>{{ 'plan.start' | t }}</legend>
+          <p class="muted small" id="start-hint">{{ 'plan.startHint' | t }}</p>
+          <div class="coords">
+            <div class="field">
+              <label for="start-lat">{{ 'house.lat' | t }}</label>
+              <input id="start-lat" type="text" inputmode="decimal" [value]="start().lat" (change)="onCoord('lat', $event)" aria-describedby="start-hint" />
+            </div>
+            <div class="field">
+              <label for="start-lon">{{ 'house.lon' | t }}</label>
+              <input id="start-lon" type="text" inputmode="decimal" [value]="start().lon" (change)="onCoord('lon', $event)" aria-describedby="start-hint" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm" [disabled]="locating()" (click)="useMyLocation()">
+            {{ (locating() ? 'plan.locating' : 'plan.useMyLocation') | t }}
+          </button>
+        </fieldset>
+
+        <p id="plan-disclosure" class="muted small">{{ 'ai.disclosure' | t }}</p>
+        <button type="submit" class="btn btn-primary" [disabled]="busy() || !question.trim()">
+          {{ (busy() ? 'plan.planning' : 'plan.submit') | t }}
+        </button>
+      </form>
+
+      @if (error(); as e) {
+        <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+      }
+
+      <div aria-live="polite">
+        @if (plan(); as p) {
+          <section class="card" aria-labelledby="route-heading">
+            <h2 id="route-heading">{{ 'plan.route' | t }}</h2>
+            @if (p.summary) {
+              <p>{{ p.summary }}</p>
+            }
+            @if (p.fallback) {
+              <p class="muted small">{{ 'plan.fallback' | t }}</p>
+            }
+            <p><strong>{{ 'plan.total' | t: { km: totalKm(), min: p.totalWalkMinutes } }}</strong></p>
+            @if (stops().length === 0) {
+              <p>{{ 'plan.noStops' | t }}</p>
+            } @else {
+              <ol class="stops">
+                @for (s of stops(); track s.houseId) {
+                  <li>
+                    <a [routerLink]="['/houses', s.houseId]">{{ s.label || ('common.untitled' | t) }}</a>
+                    <span class="muted small">{{ 'plan.leg' | t: { m: s.legMeters, min: s.walkMinutes } }}</span>
+                    @if (s.reason) {
+                      <span class="small">{{ s.reason }}</span>
+                    }
+                  </li>
+                }
+              </ol>
+              <p class="muted small">{{ 'plan.estimateNote' | t }}</p>
+            }
+          </section>
+        }
+      </div>
+    </div>
+
+    <div class="col map-col" role="region" [attr.aria-label]="'plan.mapLabel' | t" aria-describedby="plan-map-hint">
+      <p id="plan-map-hint" class="sr-only">{{ 'plan.mapHint' | t }}</p>
+      <div #mapEl class="plan-map"></div>
+    </div>
+  </div>
+</div>

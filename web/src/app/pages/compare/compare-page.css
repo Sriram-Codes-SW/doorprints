@@ -1,0 +1,71 @@
+.picker {
+  margin-bottom: var(--space-4);
+}
+
+.star {
+  color: var(--star);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  padding: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+th,
+td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--primary-soft);
+  min-width: 9rem;
+}
+
+thead th a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+thead th a:hover {
+  text-decoration: underline;
+}
+
+thead th div {
+  margin-top: var(--space-1);
+}
+
+tbody th {
+  font-weight: 600;
+  color: var(--text);
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  min-width: 8rem;
+}
+
+td.best {
+  background: var(--best);
+  font-weight: 700;
+  color: var(--on-best);
+}
+
+.best-mark {
+  margin-left: var(--space-1);
+}
+
+.score-row td {
+  font-size: var(--text-lg);
+}
+
+.footnote {
+  margin-top: var(--space-2);
+}

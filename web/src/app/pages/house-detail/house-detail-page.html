@@ -1,0 +1,391 @@
+<div class="page">
+  <div class="toolbar">
+    <a routerLink="/" class="btn btn-sm"><span aria-hidden="true">←</span> {{ 'house.back' | t }}</a>
+    <h1 class="page-title">
+      @if (isNew()) {
+        {{ 'house.newTitle' | t }}
+      } @else {
+        {{ draft()?.label || ('common.untitled' | t) }}
+      }
+    </h1>
+    <div class="toolbar-right">
+      @if (dirty()) {
+        <span class="muted small"><span aria-hidden="true">● </span>{{ 'house.unsaved' | t }}</span>
+      } @else if (justSaved()) {
+        <span class="saved small"><span aria-hidden="true">✓ </span>{{ 'house.saved' | t }}</span>
+      }
+      <button type="button" class="btn btn-primary" [disabled]="!draft() || saving()" (click)="save()">
+        {{ (saving() ? 'house.saving' : isNew() ? 'house.create' : 'house.save') | t }}
+      </button>
+    </div>
+  </div>
+
+  @if (error(); as e) {
+    <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+      <span class="skeleton short" aria-hidden="true"></span>
+    </div>
+  } @else {
+  @if (draft(); as d) {
+    @if (isNew() && ai.enabled()) {
+      <details class="card import">
+        <summary>{{ 'import.title' | t }}</summary>
+        <div class="field">
+          <label for="listing-text">{{ 'import.label' | t }}</label>
+          <textarea
+            id="listing-text"
+            rows="5"
+            [(ngModel)]="listingText"
+            [attr.maxlength]="listingMax"
+            [placeholder]="'import.placeholder' | t"
+            aria-describedby="import-hint"
+          ></textarea>
+          <span id="import-hint" class="field-hint">{{ 'import.hint' | t }} {{ 'ai.disclosure' | t }}</span>
+        </div>
+        <button type="button" class="btn" [disabled]="importing() || !listingText.trim()" (click)="importListing()">
+          {{ (importing() ? 'import.working' : 'import.submit') | t }}
+        </button>
+        @if (importWarnings().length > 0) {
+          <div class="warnings" role="status">
+            <p>{{ 'import.warnings' | t }}</p>
+            <ul>
+              @for (w of importWarnings(); track $index) {
+                <li>{{ w }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </details>
+    }
+    <div class="grid" (input)="markDirty()" (change)="markDirty()">
+      <!-- Main details -->
+      <section class="card" aria-labelledby="details-heading">
+        <h2 id="details-heading">{{ 'house.details' | t }}</h2>
+        <div class="title-row">
+          <div class="field grow">
+            <label for="house-name">{{ 'house.name' | t }} <span class="req" aria-hidden="true">*</span></label>
+            <input
+              id="house-name"
+              type="text"
+              [(ngModel)]="d.label"
+              [placeholder]="'house.namePlaceholder' | t"
+              maxlength="200"
+              required
+              autocomplete="off"
+              [attr.aria-invalid]="nameError() ? 'true' : null"
+              [attr.aria-describedby]="nameError() ? 'name-error' : null"
+            />
+            @if (nameError()) {
+              <span id="name-error" class="field-error">{{ 'house.nameRequired' | t }}</span>
+            }
+          </div>
+          <div class="score" role="img" [attr.aria-label]="'common.scoreOutOf' | t: { score: i18n.score(score(d)) }">
+            <b aria-hidden="true">{{ i18n.score(score(d)) }}</b>
+            <span aria-hidden="true">{{ 'house.scoreShort' | t }}</span>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>{{ 'house.status' | t }}</legend>
+          <div class="options">
+            @for (s of statuses; track s) {
+              <label [class]="'option status-' + s">
+                <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s)" />
+                <span><span aria-hidden="true">{{ statusIcon[s] }}</span> {{ statusKey[s] | t }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ 'house.rating' | t }}</legend>
+          <div class="rating-row">
+            <div class="options stars">
+              @for (n of starValues; track n) {
+                <label class="option" [class.lit]="(d.rating ?? 0) >= n">
+                  <input type="radio" name="rating" [value]="n" [checked]="d.rating === n" (change)="setRating(n)" />
+                  <span>
+                    <span aria-hidden="true">{{ (d.rating ?? 0) >= n ? '★' : '☆' }}</span>
+                    <span class="sr-only">{{ 'common.stars' | t: { n: n } }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+            @if (d.rating) {
+              <button type="button" class="btn btn-sm" (click)="setRating(null)">{{ 'house.clearRating' | t }}</button>
+            } @else {
+              <span class="muted small">{{ 'house.noRating' | t }}</span>
+            }
+          </div>
+        </fieldset>
+
+        <div class="row">
+          <div class="field">
+            <label for="house-price">{{ 'house.price' | t }}</label>
+            <input id="house-price" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.price" />
+          </div>
+          <div class="field narrow">
+            <label for="house-price-type">{{ 'house.priceType' | t }}</label>
+            <select id="house-price-type" [(ngModel)]="d.priceType">
+              <option [ngValue]="'RENT'">{{ 'price.rent' | t }}</option>
+              <option [ngValue]="'SALE'">{{ 'price.sale' | t }}</option>
+              <option [ngValue]="null">{{ 'common.notSet' | t }}</option>
+            </select>
+          </div>
+          <div class="field narrow">
+            <label for="house-bhk">{{ 'house.bhk' | t }}</label>
+            <input id="house-bhk" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.bedrooms" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="house-address">{{ 'house.address' | t }}</label>
+          <input id="house-address" type="text" [(ngModel)]="d.address" maxlength="500" autocomplete="off" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="house-street">{{ 'house.street' | t }}</label>
+            <input id="house-street" type="text" [(ngModel)]="d.street" maxlength="200" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="house-locality">{{ 'house.locality' | t }}</label>
+            <input id="house-locality" type="text" [(ngModel)]="d.locality" maxlength="200" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="house-contact">{{ 'house.contactName' | t }}</label>
+            <input id="house-contact" type="text" [(ngModel)]="d.contactName" maxlength="200" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="house-phone">{{ 'house.contactPhone' | t }}</label>
+            <div class="inline">
+              <input id="house-phone" type="tel" [(ngModel)]="d.contactPhone" maxlength="50" autocomplete="off" />
+              @if (d.contactPhone) {
+                <a class="btn" [href]="telHref(d.contactPhone)" [attr.aria-label]="'house.callAria' | t: { phone: d.contactPhone ?? '' }">
+                  <span aria-hidden="true">📞</span> {{ 'house.call' | t }}
+                </a>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="house-listing">{{ 'house.listingUrl' | t }}</label>
+          <div class="inline">
+            <input id="house-listing" type="url" inputmode="url" [(ngModel)]="d.listingUrl" maxlength="1000" placeholder="https://…" />
+            @if (d.listingUrl) {
+              <a
+                class="btn"
+                [href]="listingHref(d.listingUrl)"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="'house.openListingAria' | t"
+              >
+                {{ 'house.openListing' | t }} <span aria-hidden="true">↗</span>
+              </a>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="house-notes">{{ 'house.notes' | t }}</label>
+          <textarea id="house-notes" rows="5" [(ngModel)]="d.notes" maxlength="20000"></textarea>
+        </div>
+      </section>
+
+      <!-- Location -->
+      <section class="card" aria-labelledby="location-heading">
+        <h2 id="location-heading">{{ 'house.location' | t }}</h2>
+        <app-location-map
+          [lat]="d.lat"
+          [lon]="d.lon"
+          [color]="statusColor[d.status]"
+          [label]="'house.mapLabel' | t"
+          describedBy="location-hint"
+          (moved)="onMoved($event)"
+        />
+        <p id="location-hint" class="muted small">{{ 'house.mapHint' | t }}</p>
+        <div class="row coords">
+          <div class="field">
+            <label for="house-lat">{{ 'house.lat' | t }}</label>
+            <input
+              id="house-lat"
+              type="number"
+              inputmode="decimal"
+              step="0.000001"
+              min="-90"
+              max="90"
+              [value]="d.lat"
+              (change)="onCoord('lat', $event)"
+            />
+          </div>
+          <div class="field">
+            <label for="house-lon">{{ 'house.lon' | t }}</label>
+            <input
+              id="house-lon"
+              type="number"
+              inputmode="decimal"
+              step="0.000001"
+              min="-180"
+              max="180"
+              [value]="d.lon"
+              (change)="onCoord('lon', $event)"
+            />
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm" [disabled]="geocoding()" (click)="fillAddress()">
+          {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
+        </button>
+        <span class="muted small attribution">{{ 'house.osm' | t }}</span>
+      </section>
+
+      <!-- Checklist -->
+      <section class="card" aria-labelledby="checklist-heading">
+        <h2 id="checklist-heading">{{ 'house.checklist' | t }}</h2>
+        <p class="muted small">{{ 'house.checklistHint' | t }}</p>
+        @for (item of checklist; track item.key) {
+          <fieldset class="check-row">
+            <legend class="check-label">{{ item.labelKey | t }}</legend>
+            <div class="options check-values">
+              <label class="option">
+                <input
+                  type="radio"
+                  [name]="'check-' + item.key"
+                  value=""
+                  [checked]="checkValue(d, item.key) === null"
+                  (change)="setCheck(item.key, null)"
+                />
+                <span><span aria-hidden="true">–</span><span class="sr-only">{{ 'house.notScored' | t }}</span></span>
+              </label>
+              @for (v of checkValues; track v) {
+                <label class="option">
+                  <input
+                    type="radio"
+                    [name]="'check-' + item.key"
+                    [value]="v"
+                    [checked]="checkValue(d, item.key) === v"
+                    (change)="setCheck(item.key, v)"
+                  />
+                  <span>{{ v }}</span>
+                </label>
+              }
+            </div>
+          </fieldset>
+        }
+      </section>
+    </div>
+
+    <div class="grid">
+      <!-- Visits -->
+      <section class="card" aria-labelledby="visits-heading">
+        <div class="section-head">
+          <h2 id="visits-heading" tabindex="-1">{{ 'house.visits' | t }}</h2>
+          <button type="button" class="btn btn-sm" [disabled]="isNew() || markingVisit()" (click)="markVisited()">
+            {{ 'house.markVisited' | t }}
+          </button>
+        </div>
+        @if (isNew()) {
+          <p class="muted small">{{ 'house.saveFirstVisits' | t }}</p>
+        } @else if (sortedVisits().length === 0) {
+          <p class="muted small empty-inline"><span aria-hidden="true">🗓 </span>{{ 'house.noVisits' | t }}</p>
+        } @else {
+          <ul class="visits">
+            @for (v of sortedVisits(); track v.id) {
+              <li>
+                <div>
+                  <b>{{ i18n.dateTime(v.arrivedAt) }}</b>
+                  @if (i18n.duration(v.arrivedAt, v.leftAt); as dur) {
+                    <span class="muted"> · {{ dur }}</span>
+                  }
+                  <span class="tag">{{ (v.source === 'AUTO' ? 'house.visitAuto' : 'house.visitManual') | t }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="icon-btn"
+                  [attr.aria-label]="'house.removeVisit' | t: { date: i18n.dateTime(v.arrivedAt) }"
+                  [title]="'house.removeVisit' | t: { date: i18n.dateTime(v.arrivedAt) }"
+                  (click)="deleteVisit(v)"
+                >
+                  <span aria-hidden="true">✕</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <!-- Photos -->
+      <section class="card" aria-labelledby="photos-heading">
+        <div class="section-head">
+          <h2 id="photos-heading" tabindex="-1">{{ 'house.photos' | t }}</h2>
+          @if (!isNew()) {
+            <label class="btn btn-sm upload">
+              @if (uploading() > 0) {
+                {{ 'house.uploading' | t: { n: uploading() } }}
+              } @else {
+                <span aria-hidden="true">＋</span> {{ 'house.addPhotos' | t }}
+              }
+              <input type="file" accept="image/*" multiple (change)="onFiles($event)" />
+            </label>
+          }
+        </div>
+        @if (isNew()) {
+          <p class="muted small">{{ 'house.saveFirstPhotos' | t }}</p>
+        } @else if (photoIds().length === 0) {
+          <p class="muted small empty-inline"><span aria-hidden="true">📷 </span>{{ 'house.noPhotos' | t }}</p>
+        } @else {
+          <ul class="gallery">
+            @for (id of photoIds(); track id; let i = $index) {
+              <li class="photo">
+                <app-auth-image
+                  [photoId]="id"
+                  [alt]="'house.photoAlt' | t: { n: i + 1, name: d.label || ('common.untitled' | t) }"
+                  (opened)="openPhoto($event, i + 1)"
+                />
+                <button
+                  type="button"
+                  class="photo-del"
+                  [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
+                  [title]="'house.deletePhoto' | t: { n: i + 1 }"
+                  (click)="deletePhoto(id)"
+                >
+                  <span aria-hidden="true">✕</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <div class="danger-zone">
+      <button type="button" class="btn btn-danger" (click)="deleteHouse()">
+        {{ (isNew() ? 'house.discard' : 'house.delete') | t }}
+      </button>
+    </div>
+  } @else {
+    <div class="card empty-state">
+      <span class="empty-icon" aria-hidden="true">🏚</span>
+      <p>{{ 'house.notFound' | t }}</p>
+      <a class="btn" routerLink="/">{{ 'house.backToMap' | t }}</a>
+    </div>
+  }
+  }
+</div>
+
+<dialog #viewer class="lightbox" [attr.aria-label]="'photo.viewer' | t" (close)="closePhoto()" (click)="onViewerClick($event)">
+  @if (lightbox(); as p) {
+    <img [src]="p.src" [alt]="p.alt" />
+  }
+  <button type="button" class="btn lightbox-close" (click)="viewer.close()">
+    <span aria-hidden="true">✕</span> {{ 'common.close' | t }}
+  </button>
+</dialog>

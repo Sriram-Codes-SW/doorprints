@@ -1,0 +1,125 @@
+# Security scans (docs/07 section 4, threat model F-22 / SEC-013 / SEC-014). All free and open source.
+#
+# CodeQL is not used: on private repositories GitHub code scanning needs a paid GitHub Advanced Security licence
+# (CON-01 zero cost). The same goes for uploading SARIF to the Security tab, so reports are kept as artifacts.
+# If the repository is made public, CodeQL and SARIF upload become free and can be added.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1" # weekly, Monday 04:17 UTC: catches new CVEs in unchanged dependencies
+  workflow_dispatch:
+    inputs:
+      zap_target:
+        description: "Optional: URL of a deployed web app or API to run the OWASP ZAP baseline (passive) scan against"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: SAST (Semgrep OSS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # --config auto picks rules for the languages found (Java, Kotlin, TypeScript, Dockerfile, YAML). It fetches
+      # rules from the Semgrep registry and needs metrics on; no code leaves the runner.
+      - name: semgrep scan
+        run: |
+          docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src semgrep/semgrep:1.177.0 \
+            semgrep scan --config auto --severity ERROR --error \
+            --exclude 'docs/**' --sarif --output semgrep.sarif
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          retention-days: 14
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # scan the whole history, not only the last commit
+          persist-credentials: false
+      # The CLI in its container avoids gitleaks-action's licence requirement for organisation accounts.
+      # Run as the runner's user: git refuses a repository owned by another user ("dubious ownership").
+      - name: gitleaks detect
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${GITHUB_WORKSPACE}:/repo" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --verbose --exit-code 1
+
+  trivy:
+    name: Dependencies and IaC (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Pinned image version (not the moving trivy-action tags); vulnerabilities in pom.xml / Gradle / npm lock files,
+      # misconfigurations in Dockerfiles and docker-compose.yml, and secrets.
+      - name: trivy fs (vulnerabilities and secrets, blocking)
+        run: |
+          docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src aquasec/trivy:0.74.0 \
+            fs --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed \
+            --skip-dirs docs --exit-code 1 --format table .
+      # Dockerfile checks are reported but not blocking yet: backend/db/Dockerfile extends the official postgres
+      # image, whose entrypoint must start as root (it drops to the postgres user itself).
+      - name: trivy config (Dockerfiles, report only)
+        run: |
+          docker run --rm -v "${GITHUB_WORKSPACE}:/src" -w /src aquasec/trivy:0.74.0 \
+            config --severity MEDIUM,HIGH,CRITICAL --exit-code 0 .
+
+  npm-audit:
+    name: npm audit (web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Resolve the dependency tree
+        run: |
+          if [ ! -f package-lock.json ]; then npm install --package-lock-only --no-audit --no-fund; fi
+      - name: npm audit (production dependencies, high and critical)
+        run: npm audit --omit=dev --audit-level=high
+
+  zap-baseline:
+    name: OWASP ZAP baseline (manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.zap_target != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      # Passive scan only (no attacks). Third-party action pinned to a full commit SHA (v0.15.0).
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25
+        with:
+          target: ${{ inputs.zap_target }}
+          allow_issue_writing: false
+          fail_action: false

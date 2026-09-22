@@ -1,0 +1,179 @@
+<div class="layout">
+  <section
+    class="map-wrap"
+    role="region"
+    [attr.aria-label]="'map.regionLabel' | t"
+    aria-describedby="map-hint"
+  >
+    <p id="map-hint" class="sr-only">{{ 'map.regionHint' | t }}</p>
+    <div #mapEl class="map"></div>
+
+    @if (addMode()) {
+      <div class="crosshair" aria-hidden="true"></div>
+    }
+
+    <div class="map-actions">
+      <button
+        type="button"
+        class="btn"
+        [attr.aria-pressed]="addMode()"
+        [attr.aria-describedby]="addMode() ? 'add-hint' : null"
+        (click)="toggleAddMode()"
+      >
+        <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
+        {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
+      </button>
+      @if (addMode()) {
+        <button type="button" class="btn btn-primary" (click)="placeAtCenter()">
+          <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
+        </button>
+      } @else if (items().length > 0) {
+        <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
+      }
+    </div>
+
+    @if (addMode()) {
+      <p id="add-hint" class="add-hint" role="status">{{ 'map.addHint' | t }}</p>
+    }
+
+    <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
+      @for (s of statuses; track s) {
+        <span class="legend-item">
+          <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey[s] | t }}
+        </span>
+      }
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="houses-heading">
+    <div class="panel-head">
+      <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
+    </div>
+
+    @if (stats(); as s) {
+      <dl class="stats" [attr.aria-label]="'map.statsLabel' | t">
+        <div><dt>{{ 'map.stats.houses' | t }}</dt><dd>{{ i18n.number(s.houses) }}</dd></div>
+        <div><dt>{{ 'map.stats.shortlisted' | t }}</dt><dd>{{ i18n.number(s.shortlisted) }}</dd></div>
+        <div><dt>{{ 'map.stats.rejected' | t }}</dt><dd>{{ i18n.number(s.rejected) }}</dd></div>
+        <div><dt>{{ 'map.stats.visits' | t }}</dt><dd>{{ i18n.number(s.visits) }}</dd></div>
+        <div><dt>{{ 'map.stats.streets' | t }}</dt><dd>{{ i18n.number(s.streets) }}</dd></div>
+      </dl>
+    }
+
+    <div class="controls">
+      <div class="field">
+        <label for="house-search">{{ 'map.search' | t }}</label>
+        <input
+          id="house-search"
+          type="search"
+          [placeholder]="'map.searchPlaceholder' | t"
+          [value]="search()"
+          (input)="onSearch($event)"
+          autocomplete="off"
+        />
+      </div>
+      <div class="chips" role="group" [attr.aria-label]="'map.filterLabel' | t">
+        @for (f of filters; track f) {
+          <button
+            type="button"
+            class="chip"
+            [attr.aria-pressed]="statusFilter() === f"
+            (click)="statusFilter.set(f)"
+          >
+            @if (filterIcon[f]) {
+              <span class="icon" aria-hidden="true">{{ filterIcon[f] }}</span>
+            }
+            {{ filterKey(f) | t }} <span class="count">({{ i18n.number(countFor(f)) }})</span>
+          </button>
+        }
+      </div>
+      <div class="field sort">
+        <label for="house-sort">{{ 'map.sort' | t }}</label>
+        <select id="house-sort" [value]="sort()" (change)="onSort($event)">
+          @for (s of sorts; track s.key) {
+            <option [value]="s.key" [selected]="sort() === s.key">{{ s.labelKey | t }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (error(); as e) {
+      <div class="error" role="alert">
+        {{ e.key | t: e.params }}
+        <div class="err-actions">
+          <button type="button" class="btn btn-sm" (click)="reload()">{{ 'common.retry' | t }}</button>
+          <a class="btn btn-sm" routerLink="/connect">{{ 'map.checkConnection' | t }}</a>
+        </div>
+      </div>
+    }
+
+    @if (loading()) {
+      <div class="pad" role="status">
+        <span class="sr-only">{{ 'map.loading' | t }}</span>
+        @for (i of skeletonRows; track i) {
+          <div class="skeleton-item" aria-hidden="true">
+            <span class="skeleton wide"></span>
+            <span class="skeleton short"></span>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="shown muted small" role="status">
+        {{ 'map.shown' | t: { shown: items().length, total: houses().length } }}
+      </p>
+      @if (items().length > 0) {
+        <ul class="list" [attr.aria-label]="'map.listLabel' | t">
+          @for (item of items(); track item.house.id) {
+            <li>
+              <a
+                class="item"
+                [routerLink]="['/houses', item.house.id]"
+                (mouseenter)="hoverHouse(item.house)"
+                (focus)="hoverHouse(item.house)"
+              >
+                <span class="item-top">
+                  <strong class="label">{{ item.house.label || ('common.untitled' | t) }}</strong>
+                  <span [class]="'pill pill-' + item.house.status">
+                    <span aria-hidden="true">{{ statusIcon[item.house.status] }}</span>
+                    {{ statusKey[item.house.status] | t }}
+                  </span>
+                </span>
+                <span class="item-meta">
+                  <span>{{ i18n.price(item.house.price, item.house.priceType) }}</span>
+                  @if (item.house.bedrooms != null) {
+                    <span>{{ 'common.bhk' | t: { n: item.house.bedrooms ?? 0 } }}</span>
+                  }
+                  <span>
+                    <span class="star" aria-hidden="true">★</span>
+                    <span class="sr-only">{{ 'common.score' | t }}</span>
+                    {{ i18n.score(item.score) }}
+                  </span>
+                </span>
+                @if (item.house.street || item.house.locality) {
+                  <span class="item-place muted small">
+                    {{ item.house.street }}{{ item.house.street && item.house.locality ? ', ' : '' }}{{ item.house.locality }}
+                  </span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      } @else if (houses().length === 0 && !error()) {
+        <div class="empty-state">
+          <span class="empty-icon" aria-hidden="true">🏠</span>
+          <h2>{{ 'map.emptyTitle' | t }}</h2>
+          <p>{{ 'map.emptyBody' | t }}</p>
+          <button type="button" class="btn btn-primary" (click)="startAdd()">
+            <span class="icon" aria-hidden="true">＋</span> {{ 'map.add' | t }}
+          </button>
+        </div>
+      } @else if (houses().length > 0) {
+        <div class="empty-state">
+          <span class="empty-icon" aria-hidden="true">🔍</span>
+          <p>{{ 'map.noMatch' | t }}</p>
+          <button type="button" class="btn" (click)="clearFilters()">{{ 'map.clearFilters' | t }}</button>
+        </div>
+      }
+    }
+  </section>
+</div>

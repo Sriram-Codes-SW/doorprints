@@ -1,0 +1,634 @@
+/*
+ * House Hunt design tokens and shared components.
+ * Contrast ratios are listed in docs/05-ux-accessibility-i18n.md (section 4). Change a colour there too.
+ */
+:root {
+  /* Brand and surfaces (light) */
+  --primary: #1f6f5c; /* 6.02:1 on white */
+  --primary-dark: #17574a;
+  --primary-soft: #e3f0ec;
+  --on-primary: #ffffff;
+  --header-bg: #1f6f5c;
+  --on-header: #ffffff;
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef2f0;
+  --text: #1c2421; /* 14.6:1 on --bg */
+  --muted: #5f6b67; /* 5.11:1 on --bg, 5.55:1 on white */
+  --border: #d9e0dd; /* decorative dividers only */
+  --border-strong: #7d8985; /* form control borders, 3.63:1 on white (WCAG 1.4.11) */
+  --focus: #1f6f5c;
+
+  /* Status (text on white and white on these all >= 5:1) */
+  --status-new: #3c5a99;
+  --status-shortlisted: #1a7a43;
+  --status-rejected: #b3261e;
+  --on-status: #ffffff;
+  --star: #a86a00; /* 4.44:1 on white */
+  --best: #dff3e7;
+  --on-best: #1a7a43; /* 4.63:1 */
+  --error-bg: #fbeceb;
+  --error-border: #e8b4b0;
+  --error-text: #b3261e; /* 5.7:1 on --error-bg */
+  --success-bg: #e7f5ed;
+  --success-border: #b5dcc4;
+  --success-text: #1a7a43; /* 4.78:1 on --success-bg */
+  --overlay: rgba(255, 255, 255, 0.94);
+  --scrim: rgba(0, 0, 0, 0.88);
+
+  /* Spacing scale (4 px base) */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-5: 1.5rem; /* 24 */
+  --space-6: 2rem; /* 32 */
+  --space-7: 3rem; /* 48 */
+
+  /* Type scale (rem, 16 px root; never set px font sizes so browser zoom and text size work) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --leading: 1.5;
+  --leading-indic: 1.7;
+
+  /* Shape and size */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-pill: 999px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --target: 44px; /* preferred touch target */
+  --target-min: 32px; /* dense controls; still above the WCAG 2.5.8 minimum of 24 px */
+  --header-h: 56px;
+  --duration: 150ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #6fd1b3; /* 8.95:1 on --surface */
+    --primary-dark: #9be3cc;
+    --primary-soft: #1d3b33;
+    --on-primary: #0b1f19; /* 9.35:1 on --primary */
+    --header-bg: #173f35;
+    --on-header: #ffffff; /* 11.67:1 */
+    --bg: #101614;
+    --surface: #19211f;
+    --surface-2: #212b28;
+    --text: #e4ebe8; /* 13.57:1 on --surface */
+    --muted: #a7b3ae; /* 7.59:1 on --surface */
+    --border: #2e3935;
+    --border-strong: #7f8c87; /* 4.7:1 on --surface */
+    --focus: #6fd1b3;
+
+    --status-new: #9db4ea;
+    --status-shortlisted: #6fd69a;
+    --status-rejected: #ff8e86;
+    --on-status: #0e1412; /* >= 8.4:1 on each status colour */
+    --star: #f2b84b;
+    --best: #173524;
+    --on-best: #6fd69a;
+    --error-bg: #3a1b19;
+    --error-border: #6e2c27;
+    --error-text: #ff8e86;
+    --success-bg: #15301f;
+    --success-border: #2b5a3b;
+    --success-text: #6fd69a;
+    --overlay: rgba(25, 33, 31, 0.94);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6);
+
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Indic scripts have taller glyphs (matras, vowel signs): give them more line height. */
+:lang(hi),
+:lang(ta),
+:lang(te) {
+  --leading: var(--leading-indic);
+}
+
+a {
+  color: var(--primary);
+  text-underline-offset: 0.15em;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  margin: 0 0 var(--space-2);
+}
+
+h1 {
+  font-size: var(--text-xl);
+}
+
+h2 {
+  font-size: var(--text-lg);
+}
+
+h3 {
+  font-size: var(--text-md);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: var(--text-sm);
+}
+
+/* Visible only to screen readers. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ---------- Focus: always visible for keyboard users (WCAG 2.4.7, 2.4.11) ---------- */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------- Messages ---------- */
+.error,
+.success {
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-2) 0;
+}
+
+.error {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+}
+
+.success {
+  color: var(--success-text);
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+}
+
+.error::before {
+  content: '⚠ ';
+}
+
+.success::before {
+  content: '✓ ';
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background var(--duration), border-color var(--duration);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.btn-danger {
+  color: var(--error-text);
+  border-color: var(--error-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--error-bg);
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn.active,
+.btn[aria-pressed='true'] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.icon {
+  display: inline-block;
+  line-height: 1;
+}
+
+/* ---------- Cards and forms ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  min-width: 0;
+}
+
+.field-label,
+.field > label,
+fieldset > legend {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-hint {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+fieldset {
+  border: 0;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  min-width: 0;
+}
+
+fieldset > legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+}
+
+input[type='text'],
+input[type='url'],
+input[type='tel'],
+input[type='number'],
+input[type='password'],
+input[type='search'],
+select,
+textarea {
+  width: 100%;
+  min-height: var(--target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 0;
+  border-color: var(--focus);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.row > .field {
+  flex: 1 1 10rem;
+}
+
+.inline {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inline > input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Chips and status pills ---------- */
+.chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  border-width: 2px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.chip[aria-pressed='true']::before {
+  content: '✓';
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  border-radius: var(--radius-pill);
+  padding: 0.1rem 0.6rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--on-status);
+  white-space: nowrap;
+}
+
+.pill-NEW {
+  background: var(--status-new);
+}
+
+.pill-SHORTLISTED {
+  background: var(--status-shortlisted);
+}
+
+.pill-REJECTED {
+  background: var(--status-rejected);
+}
+
+/* ---------- Radio-based segmented controls (status, checklist) ---------- */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Real radio inputs stay in the accessibility tree and keep native arrow-key behaviour. */
+.option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.option > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: var(--target);
+  min-height: var(--target);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.option input:checked + span {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.option input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.option input:hover + span {
+  border-color: var(--text);
+}
+
+.option.status-NEW input:checked + span {
+  background: var(--status-new);
+  border-color: var(--status-new);
+  color: var(--on-status);
+}
+
+.option.status-SHORTLISTED input:checked + span {
+  background: var(--status-shortlisted);
+  border-color: var(--status-shortlisted);
+  color: var(--on-status);
+}
+
+.option.status-REJECTED input:checked + span {
+  background: var(--status-rejected);
+  border-color: var(--status-rejected);
+  color: var(--on-status);
+}
+
+/* Stars: filled ★ vs outlined ☆ differ in shape, not only colour. */
+.stars .option > span {
+  border: 0;
+  background: none;
+  min-width: var(--target);
+  padding: 0;
+  font-size: 1.75rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.stars .option.lit > span {
+  color: var(--star);
+}
+
+.stars .option input:checked + span {
+  background: none;
+  color: var(--star);
+}
+
+/* ---------- Layout helpers, states ---------- */
+.page {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.empty-state h2,
+.empty-state strong {
+  color: var(--text);
+}
+
+.skeleton {
+  display: block;
+  height: 1rem;
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+.skeleton.wide {
+  width: 80%;
+}
+
+.skeleton.short {
+  width: 45%;
+}
+
+@keyframes skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.maplibregl-popup-content {
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: #1c2421; /* popups keep a white background in both themes */
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-3);
+  }
+
+  .card {
+    padding: var(--space-3);
+  }
+}
+
+/* Respect the OS "reduce motion" setting (WCAG 2.3.3). MapLibre also skips camera animations then. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Windows High Contrast / forced colours: keep selected states visible. */
+@media (forced-colors: active) {
+  .option input:checked + span,
+  .chip[aria-pressed='true'],
+  .btn[aria-pressed='true'] {
+    outline: 2px solid CanvasText;
+  }
+}

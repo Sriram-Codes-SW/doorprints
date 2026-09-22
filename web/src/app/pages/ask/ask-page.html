@@ -1,0 +1,93 @@
+<div class="page narrow">
+  <h1>{{ 'ask.title' | t }}</h1>
+  <p class="muted">{{ 'ask.intro' | t }}</p>
+
+  @if (!ai.enabled()) {
+    <p class="card">{{ 'ai.disabled' | t }}</p>
+  } @else {
+    <form class="card" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="question">{{ 'ask.question' | t }}</label>
+        <textarea
+          id="question"
+          name="question"
+          rows="3"
+          [(ngModel)]="question"
+          [attr.maxlength]="maxChars"
+          [placeholder]="'ask.placeholder' | t"
+          aria-describedby="ask-disclosure"
+          required
+        ></textarea>
+      </div>
+
+      <details class="filters">
+        <summary>{{ 'ask.filters' | t }}</summary>
+        <div class="filter-grid">
+          <div class="field">
+            <label for="f-status">{{ 'house.status' | t }}</label>
+            <select id="f-status" name="status" [(ngModel)]="status">
+              <option value="">{{ 'status.ALL' | t }}</option>
+              @for (s of statuses; track s) {
+                <option [value]="s">{{ statusKey[s] | t }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-price">{{ 'ask.maxPrice' | t }}</label>
+            <input id="f-price" name="maxPrice" type="number" min="0" step="1000" inputmode="numeric" [(ngModel)]="maxPrice" />
+          </div>
+          <div class="field">
+            <label for="f-bhk">{{ 'ask.minBedrooms' | t }}</label>
+            <input id="f-bhk" name="minBedrooms" type="number" min="0" max="20" inputmode="numeric" [(ngModel)]="minBedrooms" />
+          </div>
+        </div>
+      </details>
+
+      <p id="ask-disclosure" class="muted small">{{ 'ai.disclosure' | t }}</p>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" [disabled]="busy() || !question.trim()">
+          {{ (busy() ? 'ask.thinking' : 'ask.submit') | t }}
+        </button>
+      </div>
+    </form>
+
+    @if (error(); as e) {
+      <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+    }
+
+    <div aria-live="polite">
+      @if (result(); as r) {
+        <section class="card answer" aria-labelledby="answer-heading">
+          <h2 id="answer-heading">{{ 'ask.answer' | t }}</h2>
+          <p class="answer-text">
+            @for (p of parts(); track $index) {
+              @if (p.kind === 'text') {
+                {{ p.text }}
+              } @else {
+                <a class="cite" [routerLink]="['/houses', p.houseId]" [attr.aria-label]="'ask.citeAria' | t: { n: numberOf(p.houseId), name: labelOf(p.houseId) }"
+                  >[{{ numberOf(p.houseId) }}]</a
+                >
+              }
+            }
+          </p>
+          @if (!r.grounded) {
+            <p class="muted small">{{ 'ask.notGrounded' | t }}</p>
+          }
+          @if (r.citations.length > 0) {
+            <h3>{{ 'ask.sources' | t }}</h3>
+            <ol class="sources">
+              @for (c of r.citations; track c.houseId) {
+                <li>
+                  <a [routerLink]="['/houses', c.houseId]">{{ c.label || ('common.untitled' | t) }}</a>
+                  @if (c.snippet) {
+                    <span class="muted small">{{ c.snippet }}</span>
+                  }
+                </li>
+              }
+            </ol>
+          }
+        </section>
+      }
+    </div>
+  }
+</div>
