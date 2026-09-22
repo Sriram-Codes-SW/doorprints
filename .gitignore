@@ -1,0 +1,21 @@
+# Java / Maven
+backend/target/
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.kotlin/
+*.apk
+*.keystore
+*.jks
+# Angular / Node
+web/node_modules/
+web/dist/
+web/.angular/
+# IDEs
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.env

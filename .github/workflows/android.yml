@@ -1,0 +1,70 @@
+# Android: debug APK + JVM unit tests. The APK artifact is how the app is installed (sideload), see README.md.
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: assembleDebug + unit tests (JDK 21)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Caches Gradle and validates the wrapper JAR checksum (protects against a tampered gradle-wrapper.jar).
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest
+
+      # Android lint (includes MissingTranslation as an error, see app/build.gradle.kts). Reported, not yet
+      # blocking: switch continue-on-error off once the first report is clean.
+      - name: Lint
+        continue-on-error: true
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: house-hunt-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports
+          path: |
+            android/app/build/reports/
+            android/app/build/test-results/
+          retention-days: 7

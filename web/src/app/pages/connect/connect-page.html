@@ -1,0 +1,86 @@
+<div class="page narrow">
+  <div class="card">
+    <h1>{{ 'connect.title' | t }}</h1>
+    <p class="muted">{{ 'connect.intro' | t }}</p>
+
+    <form (ngSubmit)="save()" novalidate>
+      <div class="field">
+        <label for="baseUrl">
+          {{ 'connect.baseUrl' | t }} <span class="req" aria-hidden="true">*</span>
+        </label>
+        <input
+          id="baseUrl"
+          type="url"
+          name="baseUrl"
+          [(ngModel)]="baseUrl"
+          placeholder="https://my-api.example.com"
+          autocomplete="url"
+          inputmode="url"
+          spellcheck="false"
+          required
+          [attr.aria-invalid]="mixedContent ? 'true' : null"
+          [attr.aria-describedby]="mixedContent ? 'mixed-content' : null"
+        />
+      </div>
+
+      <div class="field">
+        <label for="apiKey">
+          {{ 'connect.apiKey' | t }} <span class="req" aria-hidden="true">*</span>
+        </label>
+        <div class="inline">
+          <input
+            id="apiKey"
+            [type]="showKey() ? 'text' : 'password'"
+            name="apiKey"
+            [(ngModel)]="apiKey"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+          <button
+            type="button"
+            class="btn"
+            aria-controls="apiKey"
+            [attr.aria-label]="(showKey() ? 'connect.hideKeyAria' : 'connect.showKeyAria') | t"
+            (click)="showKey.set(!showKey())"
+          >
+            {{ (showKey() ? 'connect.hide' : 'connect.show') | t }}
+          </button>
+        </div>
+      </div>
+      <div class="field checkbox">
+        <input id="remember" type="checkbox" name="remember" [(ngModel)]="remember" aria-describedby="remember-hint" />
+        <label for="remember">{{ 'connect.remember' | t }}</label>
+        <p id="remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
+      </div>
+      <p class="muted small"><span aria-hidden="true">* </span>{{ 'connect.required' | t }}</p>
+
+      @if (mixedContent) {
+        <p id="mixed-content" class="error small">{{ 'connect.mixedContent' | t }}</p>
+      }
+
+      @if (error(); as e) {
+        <div class="error" role="alert">{{ 'connect.failed' | t: { reason: e } }}</div>
+      }
+      <div role="status">
+        @if (testResult(); as s) {
+          <div class="success">
+            {{ 'connect.success' | t: { houses: s.houses, visits: s.visits, streets: s.streets } }}
+          </div>
+        }
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn" [disabled]="!canSubmit || testing()" (click)="test()">
+          {{ (testing() ? 'connect.testing' : 'connect.test') | t }}
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="!canSubmit">{{ 'connect.save' | t }}</button>
+        @if (configured()) {
+          <button type="button" class="btn btn-danger" (click)="disconnect()">{{ 'connect.disconnect' | t }}</button>
+        }
+      </div>
+    </form>
+
+    <p class="muted small hint">{{ 'connect.cors' | t: { setting: 'APP_CORS_ORIGINS' } }}</p>
+  </div>
+</div>

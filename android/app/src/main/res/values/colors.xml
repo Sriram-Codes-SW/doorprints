@@ -1,0 +1,4 @@
+<resources>
+    <!-- The web background token (bg) in web/src/styles.css -->
+    <color name="window_background">#FFF4F6F5</color>
+</resources>

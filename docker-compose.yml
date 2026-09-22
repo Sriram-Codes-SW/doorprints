@@ -1,0 +1,58 @@
+# LOCAL DEVELOPMENT ONLY. `APP_API_KEY=$(openssl rand -hex 24) docker compose up --build` starts PostGIS + pgvector
+# and the API on http://127.0.0.1:8080. Both ports are bound to the loopback interface only, so nothing is reachable
+# from the network even on a VM with a public IP (threat model F-17). For a public server use a managed Postgres or
+# a separate hardened compose file with secrets from the environment (docs/07-secure-build-and-deploy.md).
+#
+# AI features are off by default; to try them, also export APP_AI_ENABLED=true and AI_API_KEY=<free Gemini key>
+# (see docs/ai/ai-design.md).
+services:
+  db:
+    build: ./backend/db
+    image: house-hunt-db:pg18
+    environment:
+      POSTGRES_DB: househunt
+      POSTGRES_USER: househunt
+      # Dev default is acceptable only because the port is loopback-only; override with POSTGRES_PASSWORD.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-househunt}
+    ports: ["127.0.0.1:5432:5432"]
+    # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker, so mount the parent.
+    volumes: [dbdata18:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U househunt -d househunt"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt: ["no-new-privileges:true"]
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/househunt
+      DB_USER: househunt
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-househunt}
+      # No default: compose refuses to start without a key (and the API refuses keys shorter than 16 chars).
+      APP_API_KEY: ${APP_API_KEY:?Set APP_API_KEY to a random secret, for example the output of openssl rand -hex 24}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:4200}
+      APP_AI_ENABLED: ${APP_AI_ENABLED:-false}
+      APP_MCP_ENABLED: ${APP_MCP_ENABLED:-false}
+      AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-3.5-flash}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-gemini-embedding-2}
+      AI_EMBEDDING_DIMENSIONS: ${AI_EMBEDDING_DIMENSIONS:-768}
+    ports: ["127.0.0.1:8080:8080"]
+    # The image runs as UID 10001 (see backend/Dockerfile); the filesystem is read-only except /tmp (multipart).
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+volumes:
+  dbdata18:

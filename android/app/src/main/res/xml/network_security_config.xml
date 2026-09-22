@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Threat model F-02 / SEC-004: HTTPS only. Cleartext is allowed solely for local development hosts
+     (the emulator's alias for the dev machine, and localhost), matching ServerUrl.LOCAL_HOSTS.
+     Only the system CA store is trusted (no user-installed CAs), so a CA added by another app or a
+     "monitoring" profile cannot intercept the API key. No certificate pinning: see docs/09 L6. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,110 @@
+<div class="page">
+  <h1>{{ 'compare.title' | t }}</h1>
+
+  @if (error(); as e) {
+    <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+      <span class="skeleton short" aria-hidden="true"></span>
+    </div>
+  } @else if (candidates().length === 0) {
+    <div class="card empty-state">
+      <span class="empty-icon" aria-hidden="true">⚖</span>
+      <p>{{ 'compare.empty' | t }}</p>
+      <a class="btn btn-primary" routerLink="/">{{ 'compare.addSome' | t }}</a>
+    </div>
+  } @else {
+    <section class="picker" aria-labelledby="picker-heading">
+      <h2 id="picker-heading" class="sr-only">{{ 'compare.pickerLabel' | t }}</h2>
+      <p class="muted small" id="picker-hint" role="status">
+        {{ 'compare.choose' | t: { min: minSelected, max: maxSelected, n: selectedIds().length } }}
+      </p>
+      <div class="chips" role="group" [attr.aria-label]="'compare.pickerLabel' | t" aria-describedby="picker-hint">
+        @for (c of candidates(); track c.house.id) {
+          <button
+            type="button"
+            class="chip"
+            [attr.aria-pressed]="isSelected(c.house.id)"
+            [disabled]="!isSelected(c.house.id) && selectedIds().length >= maxSelected"
+            (click)="toggle(c.house.id)"
+          >
+            @if (c.house.status === 'SHORTLISTED') {
+              <span class="star" aria-hidden="true">★</span>
+              <span class="sr-only">{{ 'status.SHORTLISTED' | t }}:</span>
+            }
+            {{ c.house.label || ('common.untitled' | t) }}
+            <span class="muted"><span class="sr-only">{{ 'common.score' | t }}</span> {{ i18n.score(c.score) }}</span>
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (selected().length < minSelected) {
+      <p class="muted">{{ 'compare.pickMore' | t: { min: minSelected } }}</p>
+    } @else {
+      <div class="table-wrap card" role="region" [attr.aria-label]="'compare.caption' | t" tabindex="0">
+        <table>
+          <caption class="sr-only">{{ 'compare.caption' | t }}</caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">{{ 'compare.criterion' | t }}</span></th>
+              @for (h of selected(); track h.id) {
+                <th scope="col">
+                  <a [routerLink]="['/houses', h.id]">{{ h.label || ('common.untitled' | t) }}</a>
+                  <div>
+                    <span [class]="'pill pill-' + h.status">
+                      <span aria-hidden="true">{{ statusIcon[h.status] }}</span> {{ statusKey[h.status] | t }}
+                    </span>
+                  </div>
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id; let first = $first) {
+              <tr [class.score-row]="first">
+                <th scope="row">{{ row.label }}</th>
+                @for (cell of row.cells; track $index) {
+                  <td [class.best]="row.best.has($index)">
+                    @if (cell.srText) {
+                      <span aria-hidden="true">{{ cell.text }}</span>
+                      <span class="sr-only">{{ cell.srText }}</span>
+                    } @else {
+                      {{ cell.text }}
+                    }
+                    @if (row.best.has($index)) {
+                      <span class="best-mark" aria-hidden="true">✓</span>
+                      <span class="sr-only">{{ 'compare.best' | t }}</span>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+            <tr>
+              <th scope="row">{{ 'compare.contact' | t }}</th>
+              @for (h of selected(); track h.id) {
+                <td>
+                  @if (h.contactName) {
+                    <div>{{ h.contactName }}</div>
+                  }
+                  @if (h.contactPhone) {
+                    <a [href]="telHref(h.contactPhone)">{{ h.contactPhone }}</a>
+                  }
+                  @if (!h.contactName && !h.contactPhone) {
+                    <span aria-hidden="true">–</span><span class="sr-only">{{ 'compare.noValue' | t }}</span>
+                  }
+                </td>
+              }
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small footnote">{{ 'compare.footnote' | t }}</p>
+    }
+  }
+</div>

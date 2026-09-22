@@ -1,0 +1,72 @@
+# Web: install, production build (Angular), upload the static site as an artifact.
+name: Web
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/web.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ng build (Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          # npm caching needs a lock file; enable `cache: npm` once web/package-lock.json is committed.
+
+      - name: Is there a lock file?
+        id: lock
+        run: |
+          if [ -f package-lock.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            echo "::warning::web/package-lock.json is missing; running npm install. Commit the uploaded lock file."
+            npm install --no-audit --no-fund
+          fi
+
+      # Supply chain (threat model T-T5): until the lock file is in git, hand it over so it can be committed.
+      - name: Upload generated package-lock.json
+        if: steps.lock.outputs.present == 'false'
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-package-lock
+          path: web/package-lock.json
+          retention-days: 30
+
+      - name: Build
+        run: npm run build
+
+      - name: Check security headers file is in the build
+        run: test -f dist/web/browser/_headers && test -f dist/web/browser/_redirects
+
+      - name: Upload site
+        uses: actions/upload-artifact@v7
+        with:
+          name: house-hunt-web-dist
+          path: web/dist/web/browser
+          retention-days: 14
