@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.3 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,9 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version. Index, phase map and update rules. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Added 09 (OSI layer analysis) and the CI-backed update workflow; documents 01–08 moved to v0.2 after wave 2. |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Added 10 (sprint log) and the root [CHANGELOG](../CHANGELOG.md); story and candidate id prefixes; update rule for the changelog and sprint log. Sprint 2 versions: 01 v0.3, 02 v0.4, 03 v0.3, 06 v0.4, 07 v0.4, 08 v0.3, 09 v0.2 (row 5.5 and OSI-B04: dual API keys done). |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 2 outcome (all four workflows green on `f7da5ab` and `0e4e22a`) and Sprint 3 (first AI eval run: native Gemini embeddings and scorecard fixes, in code, waiting on an eval run). Versions: 01 v0.4 (RTM: TC-AI-11..14), 02 v0.5 (F-01 text: 32 characters; embedding flow re-checked), 03 v0.4, 04 v0.3 (DF-32 embedding request), 06 v0.5 (TC-AI-10 verdict, TC-AI-11..14), 07 v0.5, 08 v0.4 (AI settings, `AI_EMBEDDING_*`), 10 v0.2; 05 and 09 unchanged (v0.2). |
+| 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions: F-01 split into F-01a (Fixed) and F-01b (Open); F-30 (contact name to the LLM provider) Fixed in code by the AI team (C-13); dev `docker-compose.yml` owned by Backend and passes the AI settings; senior reviewers with runtime pre-mortem, wire-format verification and contract tests. F-xx scheme allows a letter suffix for split findings. Versions: 01 v0.5, 02 v0.6, 03 v0.5, 04 v0.4, 06 v0.6 (TC-AI-15, TC-AI-16), 07 v0.6 (env table), 08 v0.5, 09 v0.3, 10 v0.3; 05 unchanged (v0.2). |
+| 0.6 | 2026-09-22 | Claude (Cowork) | Sprint 3 coordinator rework: 01 v0.6 (PRV-009 reason for Part), 02 v0.7 (F-30 status cell per ai-design v0.10: rules, client label contract, limits, reindex after the v0.10 deploy), 06 v0.7 (TC-AI-12: 5-minute log window; TC-AI-15 final redaction cases), 08 v0.6 (reindex after the v0.10 deploy), 10 v0.4; 03, 04, 07 and 09 unchanged since v0.5. |
 
 ---
 
@@ -39,7 +42,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 07 | [Secure build and deploy](07-secure-build-and-deploy.md) | CI/CD, branch protection, secrets, signing, free-tier deployment, environment variables | DevOps |
 | 08 | [Operations runbook](08-operations-runbook.md) | Monitoring, backups, key rotation, incident response, data export/deletion, release checklist | Operations |
 | 09 | [OSI 7-layer resilience analysis](09-osi-layer-analysis.md) | Scenario → behaviour → risk → mitigation → test for GPS/power, Wi-Fi/cellular/captive portals, DNS/IPv6/VPN, TCP retries and cold starts, sessions and sync cursors, TLS/UTF-8/time/EXIF, REST/auth/caching/AI | Architecture / Security |
-| 10 | [Sprint log](10-sprint-log.md) | Agile record: working agreement, sprint goals, stories, team sign-offs, CI results, retrospectives, next-sprint candidates | Docs team (all team managers sign off) |
+| 10 | [Sprint log](10-sprint-log.md) | Agile record: working agreement, sprint goals, stories, team sign-offs, CI results, retrospectives, next-sprint candidates | Docs team (all senior reviewers sign off) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | AI | [AI features](ai/) | Spring AI design, RAG, extractor, agent, MCP server, prompts, evals | **AI team** |
 
@@ -63,7 +66,7 @@ flowchart LR
 | 4 Verification | Unit/integration tests, SAST, SCA, secret scanning, DAST, accessibility, AI evals, field test, network resilience review | 06, 09 |
 | 5 Release and deploy | Signed builds, protected branches, CI gates, least-privilege secrets, hardened config | 07 |
 | 6 Operations | Monitoring, backups, key rotation, incident response, data subject rights | 08 |
-| Across all phases | Sprint planning, manager review and sign-off, CI results, retrospectives, release notes | 10, [CHANGELOG](../CHANGELOG.md) |
+| Across all phases | Sprint planning, senior review (runtime pre-mortem, wire-format check, contract tests) and sign-off, CI results, retrospectives, release notes | 10, [CHANGELOG](../CHANGELOG.md) |
 
 ## Requirement ID scheme
 
@@ -76,7 +79,7 @@ flowchart LR
 | AI-xxx | AI feature requirement | 01 (detail in ai/) |
 | UX-xxx, A11Y-xxx, I18N-xxx | UX / accessibility / language | 05 (design team) |
 | T-xx | Threat | 02 |
-| F-xx | Security finding in current code | 02 |
+| F-xx | Security finding in current code; a split finding gets a letter suffix (F-01a, F-01b) | 02 |
 | R-xx | Risk (non-security, e.g. free-tier limits) | 03 / 08 |
 | TC-xxx | Test case | 06 |
 | DF-xx | Data flow | 04 |

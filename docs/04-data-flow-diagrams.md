@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.2 |
+| Version | 0.4 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -14,6 +14,8 @@
 |---|---|---|---|
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version: DFD levels 0 and 1, level 2 for Hunt mode, Sync and AI/RAG. Data dictionary with sensitivity classes. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: sync DFD with the server filter chain, photo tombstone feed, network checks and Wi-Fi-only photos; new level-2 DFDs for the AI UI flows (section 6.1) and for the OSI transport path (section 5.1); data dictionary and stores updated (encrypted key, sessionStorage, export/erase, retention). |
+| 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): the unnamed embedding request in the AI DFD (section 6) is now **DF-32** (P6 ↔ E6), with a data dictionary row: by default embeddings go to the native Gemini endpoint `models/{model}:batchEmbedContents` with the key in the `x-goog-api-key` header; Ollama uses the OpenAI-compatible `/embeddings`. Same external host as chat, no new trust boundary. DF-23 (P6 ↔ D6 vectors in pgvector) is unchanged. The contact name is part of the DF-32 embedding text and the DF-21 context and is not redacted ([02](02-threat-model.md) F-30): C2 handling rule, DF-21 and DF-32 rows and the level-0/AI diagram labels ("redacted" removed from DF-21 and P6.3) corrected. |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): contact redaction (C-13) is in code, so F-30 is Fixed ([02](02-threat-model.md) v0.6): C2 handling rule, DF-21 and DF-32 rows and the diagram labels (level-0 DF-21, AI P6.3 and DF-32) say the contact name and phone are redacted. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -34,7 +36,7 @@ Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design]
 | Class | Name | Examples | Handling |
 |---|---|---|---|
 | C3 | Restricted | API key, location fixes, visits (time + place), house coordinates together with notes, backups | TLS in transit. Never logged. Encrypted backups. Minimal third-party exposure. |
-| C2 | Confidential | Notes, ratings, prices, photos, contact name/phone (third-party PII), LLM prompts | TLS. Kept out of logs. Redacted before going to an LLM. |
+| C2 | Confidential | Notes, ratings, prices, photos, contact name/phone (third-party PII), LLM prompts | TLS. Kept out of logs. Stored contact name and phone never sent to an LLM: `ContactRedactor` redacts them in embedding text, Ask context and tool results (AI-010, [02](02-threat-model.md) F-30 Fixed in Sprint 3). |
 | C1 | Internal | Stats, street names alone, tile coordinates, build artifacts | TLS preferred |
 | C0 | Public | Health status, static web assets, map styles | None |
 
@@ -57,7 +59,7 @@ flowchart LR
     E4 -->|"DF-02 fixes, DF-04 street"| P0
     P0 -->|"DF-18 coordinates on demand"| E5
     E5 -->|"address"| P0
-    P0 -.->|"DF-21 redacted prompts"| E6
+    P0 -.->|"DF-21 prompts - contacts redacted"| E6
     E6 -.->|"DF-22 completions - untrusted"| P0
     E7 -->|"DF-24 build and deploy"| P0
     P0 -->|"DF-25 encrypted backups"| E7
@@ -265,13 +267,13 @@ The AI team owns the detailed design ([ai/](ai/)). This diagram fixes the trust 
 ```mermaid
 flowchart TB
     E1["E1 User"]
-    E6["E6 LLM provider - Gemini or Ollama"]
+    E6["E6 LLM provider - Gemini or Ollama<br/>chat and embeddings, same host"]
     E8["E8 MCP client - optional"]
     subgraph TB3["TB3 API host"]
         P60(("P6.0 Auth, AI flag, quota"))
         P61(("P6.1 Index - chunk and embed on house change"))
         P62(("P6.2 Retrieve top k"))
-        P63(("P6.3 Redact and assemble prompt"))
+        P63(("P6.3 Assemble prompt - contacts redacted"))
         P64(("P6.4 Call LLM with limits"))
         P65(("P6.5 Validate output and citations"))
         P66(("P6.6 Listing extractor"))
@@ -288,14 +290,15 @@ flowchart TB
     P60 <--> D8
     D4 -->|"notes, checklist, locality"| P61
     P61 -->|"DF-23 embeddings"| D6
-    P61 -.->|"embedding request"| E6
+    P61 -.->|"DF-32 embedding request - redacted house text or question"| E6
+    E6 -.->|"DF-32 vectors"| P61
     P60 --> P62
     D6 -->|"chunks + ids, deleted false"| P62
     P62 --> P63
     P60 --> P66
     P60 --> P67
     P67 -->|"list, nearby, distance"| D4
-    P63 -->|"DF-21 redacted context"| P64
+    P63 -->|"DF-21 context"| P64
     P66 -->|"DF-21 listing text as data"| P64
     P67 --> P64
     P64 --> E6
@@ -361,7 +364,7 @@ The start location for "Plan visits" (class C3) goes to the API and, as part of 
 | DF-18 | P4 → E5 | lat, lon (+ IP, Referer, User-Agent) | C3 point / C1 result | HTTPS | Only on button press |
 | DF-19 | P1/P4 → E3 | tile z/x/y, style (+ IP) | C1 | HTTPS | Shows the area viewed |
 | DF-20 | P5 ↔ D4 | SQL rows, photo bytea | **C3** | JDBC, TLS required (SEC-019) | |
-| DF-21 | P6 → E6 | system prompt, question, redacted chunks or listing text | C2 | HTTPS to provider, or localhost for Ollama | Opt-in (AI-001, AI-010) |
+| DF-21 | P6 → E6 | system prompt, question, retrieved house text (contact name and phone redacted, F-30 Fixed) or listing text | C2 | HTTPS to provider, or localhost for Ollama | Opt-in (AI-001, AI-010) |
 | DF-22 | E6 → P6 | completion, structured JSON | C2, **untrusted** | HTTPS | Validated (AI-005) |
 | DF-23 | P6 ↔ D6 | vectors + source IDs + chunk text | C2 | JDBC TLS | Deleted with the source (AI-011) |
 | DF-24 | E7 → P5 | container image / deploy hook | C1 (integrity critical) | HTTPS, GitHub OIDC or secret | 07 |
@@ -372,6 +375,7 @@ The start location for "Plan visits" (class C3) goes to the API and, as part of 
 | DF-29 | P5 → E1 (download) | `GET /api/export` JSON of all live data | **C3** | HTTPS + key | Attachment; handle as sensitive |
 | DF-30 | E1 → P5 | `DELETE /api/data` + `X-Confirm-Delete` | – | HTTPS + key | Irreversible; logged at WARN |
 | DF-31 | P1/P4 → P5 → P6 | plan-visits start lat/lon | **C3** | HTTPS + key | Only on user action |
+| DF-32 | P6 ↔ E6 | Embedding request: house text built by `HouseDocuments` (label, address, street, locality, price, size, status, rating, checklist, visit summary, notes; no contact line, and the contact name and phone-like numbers in free text are replaced by `[contact]` / `[phone]`) on indexing, the question on Ask; response: 768-d vectors | C2 | Default (`AI_EMBEDDING_PROVIDER=google-genai`): HTTPS to the native Gemini API `POST …/v1beta/models/{model}:batchEmbedContents`, key only in the `x-goog-api-key` header (never in the URL), no redirects followed. `openai` (Ollama): OpenAI-compatible `/embeddings` at `AI_BASE_URL`, localhost or HTTPS | Opt-in (AI-001). Same external host and TB3 ↔ TB6 boundary as DF-21/DF-22 (02), so no new trust boundary. Contact redaction by `ContactRedactor` since Sprint 3 (F-30 Fixed, [02](02-threat-model.md)); reindex once after deploying. Named in v0.3 (the flow existed unnamed since v0.1). |
 
 ## 8. Data store inventory and retention
 

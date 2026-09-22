@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.3 |
+| Version | 0.6 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -15,6 +15,9 @@
 | 0.1 | 2026-09-22 | Claude (Cowork) | First version, based on the code in `backend/`, `android/` and `web/` as of 2026-09-22. |
 | 0.2 | 2026-09-22 | Claude (Cowork) | Wave 2: statuses updated after security hardening, Android i18n/a11y, AI UI and CI. New FR-034..FR-041, NFR-017..NFR-020, SEC-026..SEC-030. RTM extended with the new tests. |
 | 0.3 | 2026-09-22 | Claude (Cowork) | Sprint 1 fixes and Sprint 2 ([10](10-sprint-log.md)): SEC-002 Impl (32-char minimum), SEC-017 Impl (`APP_API_KEY_NEXT` dual key), SEC-018 Part (signed release APK in CI, R8 still off), SEC-013 (Trivy on a CycloneDX SBOM, Tomcat 11.0.25 override for F-28), SEC-024 (DB image non-root, F-29). CON-03: compileSdk 37, MapLibre GL 6.10. RTM: new web and Android unit tests (TC-U-05..07, TC-U-18..21), TC-I-21, TC-S-14, TC-S-15, AI eval harness TC-AI-09/10. |
+| 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): RTM row AI-001..AI-012 traces the new AI tests TC-AI-11..14 from [06](06-test-plan.md) §8 (native Gemini embeddings, indexer failure handling, scorecard verdict, embedding provider selection). No requirement text changed. AI-010 status set to **Part**: the contact name still reaches the LLM provider ([02](02-threat-model.md) F-30). |
+| 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): AI-010 back to **Impl** (C-13: the AI team's `ContactRedactor` fixes F-30; waiting on CI); RTM traces TC-AI-15 (contact redaction) and TC-AI-16 (contract tests). F-01 is split in [02](02-threat-model.md) v0.6: SEC-002 and SEC-017 trace to F-01a (Fixed), SEC-025 to F-01b (Open). |
+| 0.6 | 2026-09-22 | Claude (Cowork) | PRV-009 stays **Part** now that F-30 is fixed; the status cell gives the reasons (best-effort free-text redaction, pasted listing text sent for extraction, erasure does not reach backups, unsynced devices or data a provider already received) and what is done. No requirement text changed. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -193,7 +196,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | ID | Requirement | Pri | Status | Threat / finding |
 |---|---|---|---|---|
 | SEC-001 | Deny by default: every request needs a valid API key (`X-API-Key`) except `GET/HEAD /actuator/health` and CORS preflights. Non-canonical paths (`;`, `%`, backslash, `//`, dot segments) are rejected with 400. | M | Impl | T-S1, T-S2, F-20 |
-| SEC-002 | The API key must be random with at least 128 bits of entropy (for example 32+ chars from `openssl rand -hex 32`). The server refuses to start when `APP_API_KEY` (or a non-empty `APP_API_KEY_NEXT`) is shorter than 32 chars; the error names the variable, never the value. | M | Impl (Sprint 2) | F-01 |
+| SEC-002 | The API key must be random with at least 128 bits of entropy (for example 32+ chars from `openssl rand -hex 32`). The server refuses to start when `APP_API_KEY` (or a non-empty `APP_API_KEY_NEXT`) is shorter than 32 chars; the error names the variable, never the value. | M | Impl (Sprint 2) | F-01a |
 | SEC-003 | Keys are compared in constant time. With two keys configured, both are always compared (no early exit). | M | Impl (`MessageDigest.isEqual`) | T-S1 |
 | SEC-004 | Production traffic uses TLS only. Android allows cleartext only to `localhost`/`127.0.0.1`/`10.0.2.2` (network security config) and trusts only system CAs; Settings rejects non-HTTPS URLs. The web app must use an HTTPS API URL. | M | Impl | F-02 |
 | SEC-005 | CORS allows only the configured web origins, and only on `/api/**`. | M | Impl | T-S3 |
@@ -208,7 +211,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-014 | SAST (Semgrep OSS) runs in CI and blocks on ERROR findings. Android Lint runs and is reported (not yet blocking). | S | Part | F-22 |
 | SEC-015 | Error responses use RFC 7807 with no stack traces or SQL. The clients show translated error categories, never raw server bodies. | M | Impl | F-12 |
 | SEC-016 | Logs contain no API keys, coordinates, notes or phone numbers. Auth failures are logged with a salted client-address hash, method and path. | S | Impl | F-18 |
-| SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation (`APP_API_KEY`, `APP_API_KEY_NEXT`). | S | Impl (Sprint 2; procedure in 08 §5.1) | F-01 |
+| SEC-017 | The key can be rotated with a documented procedure. The server supports a current and a next key during rotation (`APP_API_KEY`, `APP_API_KEY_NEXT`). | S | Impl (Sprint 2; procedure in 08 §5.1) | F-01a |
 | SEC-018 | Release APKs are signed with a private keystore kept outside the repo, built with R8 minify/shrink, `debuggable=false`, and published with a SHA-256 checksum. | M | Part (Sprint 2: signing from `HH_*` secrets and `apksigner verify` in CI; R8 off until keep rules exist; checksum publishing with `release.yml` next) | F-11 |
 | SEC-019 | The DB connection uses TLS (`sslmode=require`) and a non-superuser app role that owns only the House Hunt schema. Flyway migrations run with the same role or a separate migration role. | M | Plan | T-I4 |
 | SEC-020 | The server clamps client `updatedAt` values more than 5 minutes in the future to server time and rejects dates more than 365 days ahead or before 2000, so records cannot be "frozen". | M | Impl | F-08 |
@@ -216,7 +219,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | SEC-022 | Alert notifications use `VISIBILITY_PRIVATE` with a redacted public version, so the lock screen does not show house names or prices. | C | Impl | F-14 |
 | SEC-023 | Actuator exposes only `health` without details. | M | Impl | - |
 | SEC-024 | The containers run as non-root users: the API as UID 10001, the dev/CI database image (`backend/db`) as `postgres`; docker-compose adds a read-only filesystem, `cap_drop: ALL` and `no-new-privileges`. Trivy config blocks HIGH/CRITICAL Dockerfile findings. | S | Impl | F-23, F-29 |
-| SEC-025 | Future: per-device keys or OAuth2/OIDC (for example a free-tier IdP) with revocation. | C | Plan | F-01 |
+| SEC-025 | Future: per-device keys or OAuth2/OIDC (for example a free-tier IdP) with revocation. | C | Plan | F-01b |
 | SEC-026 | JSON request bodies are capped at 256 KB (413); Tomcat connection timeout 20 s. | S | Impl | F-05 |
 | SEC-027 | Sync versions are assigned under a transaction-scoped advisory lock so that a `since` cursor never skips a change. | M | Impl | F-09 |
 | SEC-028 | The Android client does not follow HTTP redirects (the key must never reach another host) and treats non-JSON answers as a captive portal. | M | Impl | 09 §3 |
@@ -237,7 +240,7 @@ Location history and third-party contact details are the most sensitive data her
 | PRV-006 | Retention: the user can purge visits older than a chosen age. Default suggestion: delete all data 6 months after the hunt ends. | C | Plan |
 | PRV-007 | Third parties that receive data are disclosed in-app: Google Play services (fused location, Android Geocoder: coordinates), OpenFreeMap (tile requests: map area + IP), OSM Nominatim (web: coordinates on button press), hosting/DB providers (all data), the LLM provider if AI is enabled (see AI-010). | S | Part (Android Settings and AI screens; web privacy page backlog) |
 | PRV-008 | Photo EXIF metadata (GPS, device) is removed before storage/upload. Android and web re-encode through a Bitmap/canvas, which drops EXIF; the server strips metadata again (JPEG APP1/COM, PNG text/eXIf, WebP EXIF/XMP). | M | Impl |
-| PRV-009 | Third-party contact data (names, phones) is stored only when the user enters it, is used only to contact about that house, and is removed by erasure. It is never sent to an LLM unless the user opts in (redacted by default). | M | Part |
+| PRV-009 | Third-party contact data (names, phones) is stored only when the user enters it, is used only to contact about that house, and is removed by erasure. It is never sent to an LLM unless the user opts in (redacted by default). | M | Part. Done: stored only when entered; removed with the house, by delete-all and by clearing the fields ([08](08-operations-runbook.md) §6.2); the structured contact fields are never sent to an LLM, and names and phones typed into other fields are redacted ([02](02-threat-model.md) F-30 Fixed, Sprint 3, waiting on CI). Still Part because: (1) free-text redaction is best effort ([ai/](ai/ai-design.md) §9.1 Limits: nicknames and other spellings, a first name alone in a street or locality, short local numbers); (2) listing extraction sends the pasted text as given, which may hold a contact (explicit user action, disclosed); (3) erasure does not reach encrypted backups until they expire (30 days, [08](08-operations-runbook.md) §3), devices that have not synced, or text a hosted provider already received (before the fix or the post-deploy reindex). |
 | PRV-010 | Prefer data residency in India where the free tier allows it (Supabase `ap-south-1` Mumbai, Oracle Mumbai/Hyderabad home region). | C | Plan |
 | PRV-011 | Server and CI logs hold no personal data (see SEC-016). Backups are encrypted (see 08). | M | Part |
 
@@ -256,7 +259,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 | AI-007 | MCP server: exposes house tools (search, get, nearby, stats) behind the same authentication as the API. Read-only by default. Any write tool needs explicit opt-in config and client-side confirmation. | C | Impl (backend, see [ai/](ai/)) |
 | AI-008 | Prompt-injection defence: listing text, notes and retrieved content are treated as untrusted data and delimited in prompts. The model cannot call write tools because of instructions inside that data. The system prompt holds no secrets. | M | Impl (backend, see [ai/](ai/)) |
 | AI-009 | Cost/abuse limits: a per-day request quota, max input/output tokens, request timeouts and a concurrency limit of 1 to 2. Everything stays within the provider's free tier. On quota exhaustion the feature degrades gracefully. | M | Impl (backend, see [ai/](ai/)) |
-| AI-010 | Data sent to third-party LLMs: the user is told which provider is configured. Contact names/phones are redacted by default. A local model (Ollama) is supported for full privacy. Prompt/response logging is off by default. | M | Impl (backend, see [ai/](ai/)) |
+| AI-010 | Data sent to third-party LLMs: the user is told which provider is configured. Contact names/phones are redacted by default. A local model (Ollama) is supported for full privacy. Prompt/response logging is off by default. | M | Impl (Sprint 3, C-13; waiting on CI): provider disclosure, Ollama option and logging off; `ContactRedactor` keeps the contact name and phone out of the embedding text, Ask context, citations and agent/MCP tool results ([02](02-threat-model.md) F-30 Fixed, [ai/](ai/ai-design.md) §9.1). Pasted listing text for extraction is sent as the user gave it. |
 | AI-011 | Embeddings are stored with a foreign key to their source and are deleted/re-computed when the source changes or is deleted (PRV-005). | M | Impl (backend, see [ai/](ai/)) |
 | AI-012 | An eval suite (golden Q&A, citation accuracy, injection cases) must pass agreed thresholds before an AI feature is enabled by default in a release (see 06 section 8). | S | Part (golden set in `ai/evals/`) |
 
@@ -372,4 +375,4 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | PRV-004, PRV-005 | 08 §6 | `privacy/DataService`, `HouseService.purge`, V3 migration | TC-I-16, TC-I-18 |
 | PRV-008 | 03 §7.4 | `Repository.addPhoto`, `image-resize.ts`, `ImageSanitizer` | TC-U-11, TC-U-14 |
 | PRV-009, PRV-010, PRV-011 | 04 §6, 07, 08 | config / ops | Review |
-| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-M-09 |
+| AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-AI-11 (native Gemini embeddings), TC-AI-12 (indexing failures, reindex 503; AI-011), TC-AI-13 (scorecard verdict; AI-012), TC-AI-14 (AI-001 embedding provider selection), TC-AI-15 (contact redaction; AI-010), TC-AI-16 (provider wire-format contract tests), TC-M-09 |

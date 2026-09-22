@@ -218,4 +218,62 @@ class EvalScorerTest {
                 "m\\|1", "x\\|1", "- careful", "- [ ] price = 100");
         assertThat(List.of(md.split("\n"))).doesNotContain("| x|1 | extract | - | FAIL | 0/1 | 0 |");
     }
+
+    @Test
+    void zeroCasesIsAFailNotAPass() {
+        // The first real run printed "Result: PASS" with "Cases 0 / 0" because every metric was n/a.
+        var metrics = EvalScorer.metrics(List.of(), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var verdict = EvalScorer.verdict(metrics, List.of(), List.of());
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, List.of(), List.of(), List.of());
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.reasons()).containsExactly("no golden-set case ran (0 cases)");
+        assertThat(md).contains("**Result: FAIL**", "| Cases | 0 / 0 passed |", "## Why FAIL",
+                "- no golden-set case ran (0 cases)");
+        assertThat(md).doesNotContain("**Result: PASS**");
+    }
+
+    @Test
+    void harnessErrorsFailTheRunAndAreListed() {
+        var c = testCase("e1", "extract", null, map("price", 100));
+        var r = EvalScorer.scoreExtract(c, map("price", 100), null);
+        var metrics = EvalScorer.metrics(List.of(r), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        var errors = List.of("POST /api/ai/reindex failed: HTTP 503: {\"detail\":\"Re-indexing failed\"}");
+
+        var verdict = EvalScorer.verdict(metrics, List.of(r), errors);
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, List.of(r), List.of(), errors);
+
+        assertThat(metric(metrics, "extractionFieldAccuracy").status()).isEqualTo("PASS");
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.reasons()).hasSize(1);
+        assertThat(verdict.reasons().get(0)).startsWith("1 harness error(s): POST /api/ai/reindex");
+        assertThat(md).contains("**Result: FAIL**", "## Errors", "- POST /api/ai/reindex failed: HTTP 503");
+    }
+
+    @Test
+    void passesOnlyWithCasesNoErrorsAndMetricsMet() {
+        var c = testCase("p1", "extract", null, map("price", 100));
+        var r = EvalScorer.scoreExtract(c, map("price", 100), null);
+        var metrics = EvalScorer.metrics(List.of(r), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var verdict = EvalScorer.verdict(metrics, List.of(r), List.of());
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, List.of(r), List.of(), List.of());
+
+        assertThat(verdict.passed()).isTrue();
+        assertThat(verdict.reasons()).isEmpty();
+        assertThat(md).contains("**Result: PASS**").doesNotContain("## Errors", "## Why FAIL");
+    }
+
+    @Test
+    void metricBelowThresholdIsAReason() {
+        var c = testCase("m1", "extract", null, map("price", 100));
+        var r = EvalScorer.scoreExtract(c, map("price", 5), null);
+        var metrics = EvalScorer.metrics(List.of(r), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+
+        var verdict = EvalScorer.verdict(metrics, List.of(r), List.of());
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(verdict.reasons()).containsExactly("extractionFieldAccuracy = 0.00 (needs >= 0.90)");
+    }
 }

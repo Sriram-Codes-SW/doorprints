@@ -87,11 +87,16 @@ class GoldenSetEvalTest {
     @Value("${spring.ai.openai.chat.model:unknown}")
     String chatModel;
 
-    @Value("${spring.ai.openai.embedding.model:unknown}")
+    @Value("${app.ai.embedding.model:unknown}")
     String embeddingModel;
+
+    @Value("${app.ai.embedding.provider:unknown}")
+    String embeddingProvider;
 
     private RestClient api;
     private final List<String> warnings = new ArrayList<>();
+    /** Harness errors (seeding, re-indexing, anything that aborted the run): any entry makes the scorecard FAIL. */
+    private final List<String> errors = new ArrayList<>();
     private final Map<String, String> header = EvalScorer.header();
 
     @Test
@@ -114,7 +119,7 @@ class GoldenSetEvalTest {
         header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
         header.put("Provider", baseUrl);
         header.put("Chat model", chatModel);
-        header.put("Embedding model", embeddingModel);
+        header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
         header.put("Started", started.toString());
         checkThresholdsDeclared(golden);
@@ -122,7 +127,8 @@ class GoldenSetEvalTest {
         var results = new ArrayList<CaseResult>();
         List<Metric> metrics = List.of();
         try {
-            if (types.contains(ASK) || types.contains(PLAN)) seed(golden);
+            boolean seeded = true;
+            if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
             boolean first = true;
             for (var testCase : golden.cases()) {
                 var type = String.valueOf(testCase.get("type"));
@@ -131,29 +137,59 @@ class GoldenSetEvalTest {
                     continue;
                 }
                 if (!types.contains(type)) continue;
+                // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
+                if (!seeded && !EXTRACT.equals(type)) continue;
                 if (!first) pause(delayMs);
                 first = false;
                 results.add(run(testCase, golden));
             }
+        } catch (RuntimeException e) {
+            errors.add("Eval aborted: " + describe(e));
         } finally {
             header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
             metrics = EvalScorer.metrics(results, golden.thresholds());
-            var markdown = EvalScorer.markdown(header, metrics, results, warnings);
+            var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors);
             Files.createDirectories(REPORT.getParent());
             Files.writeString(REPORT, markdown, StandardCharsets.UTF_8);
             System.out.println(markdown);
         }
 
-        assertThat(results).as("no golden-set case matched AI_EVAL_TYPES").isNotEmpty();
-        var below = metrics.stream()
-                .filter(Metric::failed)
-                .map(m -> m.name() + " = " + EvalScorer.fmt(m.value()) + " (needs " + m.threshold() + ")")
-                .toList();
-        assertThat(below).as("AI eval metrics below threshold; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
+        // Fails on zero cases, any harness error (e.g. seeding / reindex 503) or a metric below its threshold.
+        var verdict = EvalScorer.verdict(metrics, results, errors);
+        assertThat(verdict.reasons()).as("AI eval failed; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
     }
 
-    /** Upserts the fixtures through the public API, then rebuilds the vector index synchronously. */
-    private void seed(GoldenSet golden) {
+    private static String describe(RuntimeException e) {
+        if (e instanceof RestClientResponseException r) {
+            return "HTTP " + r.getStatusCode().value() + ": " + EvalScorer.truncate(r.getResponseBodyAsString(), 300);
+        }
+        return e.getClass().getSimpleName() + ": " + EvalScorer.truncate(String.valueOf(e.getMessage()), 300);
+    }
+
+    /**
+     * Upserts the fixtures through the public API, then rebuilds the vector index synchronously. Returns false (and
+     * records a harness error, so the scorecard FAILs) when either step fails.
+     */
+    private boolean seed(GoldenSet golden) {
+        try {
+            seedFixtures(golden);
+        } catch (RuntimeException e) {
+            errors.add("Seeding fixtures failed: " + describe(e));
+            return false;
+        }
+        try {
+            // Each save also triggers async indexing of that house; let it settle before the full rebuild.
+            pause(5000);
+            var indexed = post("/api/ai/reindex", null);
+            header.put("Indexed houses", String.valueOf(indexed.get("indexed")));
+            return true;
+        } catch (RuntimeException e) {
+            errors.add("POST /api/ai/reindex failed (embeddings unavailable; ask/plan cases skipped): " + describe(e));
+            return false;
+        }
+    }
+
+    private void seedFixtures(GoldenSet golden) {
         var now = Instant.now().toString();
         for (var house : golden.fixtureHouses()) {
             var body = new LinkedHashMap<String, Object>(house);
@@ -179,10 +215,6 @@ class GoldenSetEvalTest {
             warnings.add(others + " saved house(s) besides the fixtures are in this database; they can change "
                     + "retrieval and citation scores. Run the eval against an empty database.");
         }
-        // Each save also triggers async indexing of that house; let it settle before the full rebuild.
-        pause(5000);
-        var indexed = post("/api/ai/reindex", null);
-        header.put("Indexed houses", String.valueOf(indexed.get("indexed")));
     }
 
     private CaseResult run(Map<String, Object> testCase, GoldenSet golden) {

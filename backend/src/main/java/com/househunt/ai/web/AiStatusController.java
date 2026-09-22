@@ -19,7 +19,7 @@ public class AiStatusController {
     public AiStatusController(@Value("${app.ai.enabled:false}") boolean enabled,
                               @Value("${app.mcp.enabled:false}") boolean mcpEnabled,
                               @Value("${spring.ai.openai.chat.model:}") String chatModel,
-                              @Value("${spring.ai.openai.embedding.model:}") String embeddingModel) {
+                              @Value("${app.ai.embedding.model:}") String embeddingModel) {
         this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null);
     }
 

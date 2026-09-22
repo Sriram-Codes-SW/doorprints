@@ -7,6 +7,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -16,7 +17,10 @@ import java.util.Map;
  * matchIfMissing = true)} and the PgVector store auto-configuration needs an {@code EmbeddingModel} bean, so
  * merely having the starters on the classpath would try to build OpenAI clients and a vector store. When AI is
  * disabled we force every selector to {@code none} (highest precedence, so nothing re-enables it by accident);
- * when enabled we only switch off the model types this app never uses (image, audio, moderation).
+ * when enabled we only switch off the model types this app never uses (image, audio, moderation), and the
+ * OpenAI-compatible embedding model unless {@code app.ai.embedding.provider=openai} (the default provider
+ * {@code google-genai} is the app's own {@code GeminiEmbeddingModel}, see docs/ai/ai-design.md 3.1). No Google GenAI
+ * starter is on the classpath, so there is no Google auto-configuration to switch off.
  * The MCP server gets the same treatment via {@code spring.ai.mcp.server.enabled}.
  *
  * <p>Runs after {@code ConfigDataEnvironmentPostProcessor} (lowest precedence) so application.yml and
@@ -41,8 +45,20 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
         }
         if (ai) {
             defaults.put("spring.ai.model.chat", "openai");
-            defaults.put("spring.ai.model.embedding", "openai");
             defaults.put("spring.ai.vectorstore.type", "pgvector");
+            var provider = embeddingProvider(env);
+            // Normalised so the case-sensitive @ConditionalOnProperty on GeminiEmbeddingConfiguration agrees with us.
+            forced.put("app.ai.embedding.provider", provider);
+            if (AiProperties.Embedding.OPENAI.equals(provider)) {
+                defaults.put("spring.ai.model.embedding", "openai");
+            } else {
+                // google-genai: com.househunt.ai.embedding.GeminiEmbeddingModel is the only EmbeddingModel. The
+                // OpenAI embedding auto-configuration must stay off (its @ConditionalOnMissingBean looks for an
+                // OpenAiEmbeddingModel, so it would add a second EmbeddingModel and break PgVector's injection).
+                forced.put("spring.ai.model.embedding", "none");
+                forced.put("spring.ai.model.embedding.text", "none");
+                forced.put("spring.ai.model.embedding.multimodal", "none");
+            }
         } else {
             forced.put("spring.ai.model.chat", "none");
             forced.put("spring.ai.model.embedding", "none");
@@ -55,6 +71,12 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
 
         env.getPropertySources().addFirst(new MapPropertySource(FORCED, forced));
         env.getPropertySources().addLast(new MapPropertySource(DEFAULTS, defaults));
+    }
+
+    /** {@code app.ai.embedding.provider}, lower case; {@code google-genai} when unset. */
+    static String embeddingProvider(ConfigurableEnvironment env) {
+        var p = env.getProperty("app.ai.embedding.provider", "");
+        return p.isBlank() ? AiProperties.Embedding.GOOGLE_GENAI : p.strip().toLowerCase(Locale.ROOT);
     }
 
     @Override
