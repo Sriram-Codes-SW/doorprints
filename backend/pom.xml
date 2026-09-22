@@ -79,6 +79,16 @@
       <artifactId>spring-ai-starter-model-openai</artifactId>
     </dependency>
     <dependency>
+      <!-- Google GenAI chat, used ONLY in Vertex AI mode (app.ai.provider=vertex, docs/ai/ai-design.md 3.3). Chat
+           starter only: it brings the google-genai SDK (with google-auth-library for Application Default
+           Credentials) and an auto-configuration that is off unless spring.ai.model.chat=google-genai. The Google
+           GenAI embedding/image starters are deliberately NOT added (their connection auto-configurations have no
+           switch and would need Google settings at every startup); Vertex embeddings use the app's own
+           VertexEmbeddingModel. -->
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-google-genai</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
     </dependency>

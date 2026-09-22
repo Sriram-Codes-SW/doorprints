@@ -2,15 +2,18 @@
 
 **Remember every house you've seen.**
 
+License: MIT ([LICENSE](LICENSE)) · Security: report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
+Repository: [`Sriram-Codes-SW/doorprints`](https://github.com/Sriram-Codes-SW/doorprints)
+
 Doorprints is a personal, zero-cost app for keeping track of the houses you visit while looking for a house to rent
 or buy in India. It is not a property-listings site: it holds only the houses you have seen yourself. Save every house
 with its price, BHK, a 10-point checklist, star rating, photos, contact and notes; compare your favourites side by
 side; and turn on **Hunt mode** while you walk around, so your phone tells you when you pass a house or enter a street
 you have already seen. Works fully offline on Android and syncs to your own server and a web app when you are online.
 
-> Doorprints was called **House Hunt** until 2026-09-22. The GitHub repository is still named `house-hunt`, and so
-> are the code packages (`com.househunt`), storage keys and database names; see
-> [ADR-13](docs/03-design.md#14-architecture-decision-records) for what changed and what did not.
+> Doorprints was called **House Hunt** until 2026-09-22. The code packages (`com.househunt`), storage keys and
+> database names keep the old name; see [ADR-13](docs/03-design.md#14-architecture-decision-records) for what changed
+> and what did not. The old repository URL (`house-hunt`) redirects to `doorprints`.
 
 English · हिन्दी · தமிழ் · తెలుగు
 
@@ -23,7 +26,7 @@ English · हिन्दी · தமிழ் · తెలుగు
 | **Hunt mode**: alerts near visited houses and known streets, automatic visit detection, battery-aware | Yes | – |
 | Sync: offline edits, photo deletes and tombstones; photos on Wi-Fi only (optional) | Yes | Always online |
 | Four languages, WCAG 2.2 AA (web), TalkBack support and dark theme (Android) | Yes | Yes |
-| Optional AI (off by default): ask questions about your houses with cited sources, fill a house from pasted listing text, plan a walking route of visits | Yes | Yes |
+| Optional AI (off by default): ask questions about your houses with cited sources, fill a house from pasted listing text, plan a walking route of visits. Cloud AI is for the server owner (invited users planned); on-device AI for everyone else is planned ([docs/11](docs/11-feature-parity-and-export-spec.md) 5.13) | Yes | Yes |
 | Privacy: your own server, encrypted API key on the phone, photos stored without location metadata, export and delete-all | Yes | Yes |
 
 ## Screenshots
@@ -84,7 +87,11 @@ key. Android emulator: use `http://10.0.2.2:8080` as the server URL (plain `http
 the emulator; everything else must be `https://`).
 
 To try the AI features locally, also export `APP_AI_ENABLED=true` and `AI_API_KEY=<free Gemini API key>` before
-`docker compose up` (details in [docs/ai/ai-design.md](docs/ai/ai-design.md)).
+`docker compose up` (details in [docs/ai/ai-design.md](docs/ai/ai-design.md)). Use a free key only with test data:
+the free AI Studio tier may use prompts to improve Google products. The backend can also use **Google Cloud Vertex
+AI** instead (`AI_PROVIDER=vertex`, `GCP_PROJECT_ID`, Application Default Credentials, no key): see
+[docs/ai/vertex-setup.md](docs/ai/vertex-setup.md) step 11 (`cd backend && mvn spring-boot:run`; the dev compose
+file does not pass the Vertex settings to the `api` container).
 
 ## Deploy for free
 
@@ -106,7 +113,7 @@ There is no Play Store listing. Every push to `main` builds a debug APK, and a *
 (`doorprints-release-apk`) once the four `HH_*` signing secrets are set in the repository
 ([docs/07 §5](docs/07-secure-build-and-deploy.md#5-android-release-signing)):
 
-1. On GitHub, open the `house-hunt` repository, then **Actions → Android → the latest green run on `main`**, and
+1. On GitHub, open the [`doorprints`](https://github.com/Sriram-Codes-SW/doorprints) repository, then **Actions → Android → the latest green run on `main`**, and
    download the artifact **`doorprints-release-apk`** (signed; its signer fingerprint is printed in the "Verify APK
    signature" step) or **`doorprints-debug-apk`**, and unzip it. (Runs from before the rename name them
    `house-hunt-release-apk` and `house-hunt-debug-apk`.)
@@ -135,7 +142,10 @@ again, then uninstall the old app; its local data is not carried over.
 | [08 Operations](docs/08-operations-runbook.md) | Monitoring, backups, key rotation, incidents, export and deletion |
 | [09 OSI resilience](docs/09-osi-layer-analysis.md) | Behaviour under bad GPS, captive portals, flaky networks, cold starts |
 | [10 Sprint log](docs/10-sprint-log.md) | Sprint goals, stories, team sign-offs, CI results, retrospectives, next candidates |
+| [11 Feature parity and export](docs/11-feature-parity-and-export-spec.md) | Proposal: local-first with optional Google Sign-In, exports, AI access policy (draft) |
 | [CHANGELOG](CHANGELOG.md) | What changed in each version (Unreleased, 0.1.0) |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately |
+| [LICENSE](LICENSE) | MIT |
 | [AI design](docs/ai/ai-design.md) | Providers, RAG, extractor, planner, MCP, API contract |
 
 ## Contributing and keeping the docs current
@@ -157,6 +167,9 @@ This is a personal project, but it follows a secure SDLC, so changes follow a fe
    and update the traceability matrix in 01 and the test plan in 06. The full rules are in
    [docs/README.md](docs/README.md#how-to-update-these-documents).
 6. **Secrets** never go into git: use environment variables and GitHub Secrets. `.env`, keystores and APKs are ignored.
+   The repository is public, so workflow logs and artifacts are public too: no secrets or personal data in them.
+7. **Security issues**: do not open a public issue; follow [SECURITY.md](SECURITY.md) (private vulnerability
+   reporting). Contributions are accepted under the MIT [LICENSE](LICENSE).
 
 ## Change log
 
@@ -166,3 +179,6 @@ This is a personal project, but it follows a secure SDLC, so changes follow a fe
 | 2026-09-22 | Sprint 2: links to the sprint log (docs/10) and CHANGELOG, 32-character API key and `APP_API_KEY_NEXT` rotation, signed release APK, compileSdk 37, MapLibre GL 6.10, findings F-01..F-29, CI test and scan list. |
 | 2026-09-22 | Sprint 3: documentation index lists threat-model findings F-01a/F-01b..F-30 (31 findings; F-01 split into F-01a and F-01b, new F-30 contact redaction). |
 | 2026-09-22 | Renamed the product to **Doorprints** (tagline "Remember every house you've seen."): title and description (a personal record, not a listings site), note that the repository is still `house-hunt`, install steps with the `doorprints-debug-apk` / `doorprints-release-apk` artifacts and the upgrade note for pre-rename builds. |
+| 2026-09-22 | Repository renamed to `Sriram-Codes-SW/doorprints` and made public: removed the "repository still named `house-hunt`" note, added the license (MIT) and security lines under the title, install step links the `doorprints` repository, docs table lists 11, `SECURITY.md` and `LICENSE`, contributing rules for public logs and private vulnerability reporting, AI access note (cloud AI for the owner and invited users). |
+| 2026-09-22 | Feature table: cloud AI is for the server owner today; invited users are planned (Sprint 5, AI-013). |
+| 2026-09-22 | Local AI note: free AI Studio key only with test data; Vertex AI as the alternative provider (`AI_PROVIDER=vertex`, link to `docs/ai/vertex-setup.md`). |

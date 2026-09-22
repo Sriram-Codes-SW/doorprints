@@ -16,9 +16,14 @@
 | v0.12   | 2026-09-22 | Claude (Cowork) – AI team     | Review fixes. Ask prompt (6): the contrast example is now neutral ("X is over budget"); the earlier example repeated the `ask-02` fixture wording and would have tuned the production prompt to the eval. 8.5: the `plan-03` fallback names both causes that set `fallback=true` (agent did not finish, or every proposed stop invalid, such as the injected 9999… id) and says the cause for run 35720654442 is unconfirmed. |
 | v0.13   | 2026-09-22 | Claude (Cowork) – AI team     | Product rename to **Doorprints** (names only, no behaviour change): document title; section 12 Claude Desktop snippet uses the `doorprints` server key and `DOORPRINTS_API_KEY`, and notes that the MCP server reports `serverInfo.name` `doorprints` (endpoint still `/mcp`, tool names unchanged); eval scorecard title is now "Doorprints AI eval scorecard" (`EvalScorer`); golden set v0.4 (description renamed only; cases and thresholds unchanged). The model prompts never named the product, so they are unchanged. |
 | v0.14   | 2026-09-22 | Claude (Cowork) – AI team     | Rename guard: new `McpServerIdentityTest` (`backend/src/test/java/com/househunt/ai/mcp/`) reads the raw `application.yml` with Spring Boot's `YamlPropertySourceLoader` (no Spring context, no database) and fails the build if `spring.ai.mcp.server.name` is no longer `doorprints`, if the endpoint path is no longer `/mcp`, or if the MCP server instructions use the old product name again. Section 12 notes the guard. No behaviour change. |
+| v0.15   | 2026-09-22 | Claude (Cowork) – AI team     | **PO decision: Vertex AI (Gemini Enterprise Agent Platform) is the active provider; AI Studio stays fully working and selectable.** One switch `app.ai.provider` / `AI_PROVIDER` = `aistudio` (default, unchanged behaviour) or `vertex`; AI still off by default. Vertex chat = Spring AI 2.0.1 `spring-ai-starter-model-google-genai` (chat starter only) in Vertex mode on the app's own google-genai `Client` (project, location, Application Default Credentials, bounded retries); Vertex embeddings = new `VertexEmbeddingModel` (`:embedContent`, one text per call, same retry / Retry-After / normalisation / errors as `GeminiEmbeddingModel`). New 2.1 (provider comparison: auth, data terms, pricing, trial-credit coverage unverified), 3.3 (verified wire formats, why the embedding starter is not used, location and model availability), 4.1 (switch), 10 (quota-aware 503 `code: AI_QUOTA_EXHAUSTED` + `Retry-After`, re-index stops at the first quota error, `AI_INDEX_ON_CHANGE`), 11 (Vertex settings), 14. Contract tests for Vertex `generateContent` (text, structured output, function call with thought signature, 429 `RESOURCE_EXHAUSTED`, 403 `PERMISSION_DENIED`) and embeddings (`embedContent`, `predict`, 429 with/without `RetryInfo`, 403 `SERVICE_DISABLED` / `IAM_PERMISSION_DENIED`, 404 model not in location). Eval harness and `ai-evals.yml`: `provider` input (default `vertex`, Workload Identity Federation via `google-github-actions/auth@v3`), `chat_model` / `embedding_model` inputs, `STOPPED: provider quota exhausted` instead of a flood of case failures, fewer calls per run. Owner setup guide: [vertex-setup.md](vertex-setup.md). |
+| v0.16   | 2026-09-22 | Claude (Cowork) – AI team     | Coordinator rework of v0.15. **Chat setup hints:** a Vertex AI 404 / 403 / 401 on chat now names `GCP_LOCATION` (and `global` / `us-central1`) instead of a bare 503; embeddings keep pointing to `AI_VERTEX_EMBEDDING_LOCATION`. The 503 problem detail carries a `setupHint` property, the WARN log line the same text (never the project id or provider text) (3.3, 10, 13); new `ProviderErrors.httpFailure`, `AiExceptionHandlerTest`, chat 404 contract test; the eval harness does not retry a 503 with a setup hint and lists the hint once in the scorecard warnings (8.1). **`ai-evals.yml` default `provider` is now `aistudio`** until the owner has finished [vertex-setup.md](vertex-setup.md) steps 1-8 and 10; the input description names the prerequisite (8.1). **Open coordination items** (section 2 and 14): request to the owner of `docker-compose.yml` to pass the Vertex variables and mount the ADC file (Vertex mode cannot be selected through compose until then); DevSecOps review of the `ai-evals.yml` change (`id-token: write`, `google-github-actions/auth@v3`) is pending and recorded as such in the workflow header; the new transitive runtime dependencies must be scanned by DevSecOps' blocking `trivy sbom` step before merge. |
 
 Status: implemented in `backend/` (package `com.househunt.ai`), **off by default**. Not yet compiled in this
-sandbox (no Maven Central access) — CI compiles and runs the tests.
+sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
+`AI_PROVIDER=vertex` (2.1, 3.3); the product owner's target setup is Vertex AI. **Before merging v0.15/v0.16:** the
+DevSecOps review of `ai-evals.yml` and the Trivy scan of the new dependencies must be done; the docker-compose request
+must be done before compose support for Vertex is announced (section 14, "Merge gates").
 
 ---
 
@@ -54,6 +59,30 @@ including `AI_EMBEDDING_PROVIDER=openai`.
 > an empty default there would be passed through as an empty value and defeat the `AI_EMBEDDING_API_KEY` →
 > `AI_API_KEY` fallback in `application.yml`, so do not "simplify" it to `${AI_EMBEDDING_API_KEY:-}`.
 
+> **docker-compose and Vertex AI (open, requested v0.16).** `docker-compose.yml` (owned by another team) does not yet
+> pass the Vertex settings, and its header still says AI needs `AI_API_KEY` only, so **`AI_PROVIDER=vertex` cannot be
+> selected through the documented compose path** (use `mvn spring-boot:run`, [vertex-setup.md](vertex-setup.md) step
+> 11, until then). Requested from the compose owner, same pattern as the v0.6 request for `AI_EMBEDDING_*`:
+>
+> 1. `backend.environment`, defaults mirroring `application.yml`: `AI_PROVIDER: ${AI_PROVIDER:-aistudio}`,
+>    `GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}`, `GCP_LOCATION: ${GCP_LOCATION:-asia-south1}`,
+>    `AI_VERTEX_EMBEDDING_LOCATION: ${AI_VERTEX_EMBEDDING_LOCATION:-}`, `AI_VERTEX_ENDPOINT: ${AI_VERTEX_ENDPOINT:-}`,
+>    `AI_INDEX_ON_CHANGE: ${AI_INDEX_ON_CHANGE:-true}`. Empty values are safe here: the app treats a blank
+>    embedding location / endpoint / project as unset (`AiProperties.Vertex`), unlike the `AI_EMBEDDING_API_KEY` case.
+> 2. Application Default Credentials in the container: the host's ADC file
+>    (`~/.config/gcloud/application_default_credentials.json` after `gcloud auth application-default login`) mounted
+>    **read-only**, e.g. at `/run/gcp/adc.json:ro`, and `GOOGLE_APPLICATION_CREDENTIALS: /run/gcp/adc.json`. Because a
+>    bind mount of a missing file fails (or creates a directory), the AI team suggests an opt-in override file (e.g.
+>    `docker-compose.vertex.yml`, `docker compose -f docker-compose.yml -f docker-compose.vertex.yml up`) rather than
+>    an always-on mount; an empty `GOOGLE_APPLICATION_CREDENTIALS` is ignored by google-auth-library 1.33.0
+>    (`DefaultCredentialsProvider` checks for a non-empty value), so passing it through with an empty default is
+>    also safe. The container runs as UID 10001 with a read-only root filesystem: the mounted file must be readable
+>    by that UID (the gcloud file is mode 600 for the host user on Linux; copy it to a 0644 file in a private
+>    directory, or run the service with a matching `user:`; the compose owner's call). The ADC
+>    file is a refresh token for the owner's Google account: never bake it into the image or commit it.
+> 3. Header comment: add a Vertex example (`APP_AI_ENABLED=true AI_PROVIDER=vertex GCP_PROJECT_ID=… GCP_LOCATION=…`,
+>    no `AI_API_KEY`) next to the Gemini and Ollama ones, and drop "AI needs `AI_API_KEY`" as the only option.
+
 | | Default (Gemini free tier) | Alternative (Ollama, local) |
 |---|---|---|
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai/` | `http://localhost:11434/v1` (from Docker: `http://host.docker.internal:11434/v1`, as in the `docker-compose.yml` example) |
@@ -88,9 +117,37 @@ What the sources say (checked 2026-09-22):
 - Ollama exposes `/v1/chat/completions` (tools, `response_format`) and `/v1/embeddings` (incl. `dimensions`) with any
   API key [O1].
 
-Chat stays on the OpenAI-compatible route: one code path for Gemini, Ollama and any paid OpenAI-compatible provider
-later, and moving chat to native Google GenAI would add the same SDK dependency that 3.1 avoids. Trade-off: Gemini
+Chat stays on the OpenAI-compatible route for `aistudio`: one code path for Gemini, Ollama and any paid
+OpenAI-compatible provider later. (v0.15: the `vertex` provider uses native Google GenAI chat instead, 2.1 and 3.3.) Trade-off: Gemini
 safety settings are not reachable. Chat on the compat endpoint has **not** been exercised by a real run yet (14).
+
+### 2.1 Providers: AI Studio vs Vertex AI (v0.15)
+
+Product-owner decision (2026-09-22): **Vertex AI is the active provider** for chat and embeddings; the AI Studio path
+stays in the code, tested and selectable, so switching back is one environment variable. Same models on both
+(`gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-embedding-2`, 768 dimensions), so a switch needs no code change;
+switching the *embedding model* (not the provider) needs a re-index.
+
+| | `aistudio` (Gemini Developer API) | `vertex` (Google Cloud Vertex AI, "Gemini Enterprise Agent Platform") |
+|---|---|---|
+| Switch | `AI_PROVIDER=aistudio` (default) | `AI_PROVIDER=vertex` |
+| Auth | API key `AI_API_KEY` (`x-goog-api-key` for embeddings, bearer for the compat chat endpoint) | OAuth access token from **Application Default Credentials**: Workload Identity Federation in GitHub Actions, attached service account on Cloud Run, `gcloud auth application-default login` locally. No key anywhere; the service account needs only `roles/aiplatform.user` |
+| Chat path | OpenAI-compatible endpoint, Spring AI OpenAI starter (3.2) | native `generateContent`, Spring AI Google GenAI chat starter in Vertex mode (3.3) |
+| Embeddings | `batchEmbedContents`, up to 100 texts per call (3.1) | `embedContent`, **one text per call** (3.3) |
+| Data terms | Free tier: content **is used to improve Google's products** [G3]; paid tier: not used | Google Cloud terms: customer data is **not used to train or fine-tune models** without permission; inputs/outputs may be cached in memory up to 24 h (can be disabled per project) and prompt logging for abuse monitoring applies to some non-invoiced accounts [V3] |
+| Region | global (no residency choice) | chosen location; default `asia-south1` (Mumbai) for India residency/latency, or `global` (3.3) |
+| Price | free tier with rate limits, then pay-as-you-go | pay-as-you-go per token from the first call (no free tier). A third-party snapshot shows `gemini-3.5-flash` at about $1.50 / 1M input tokens on the global endpoint and about 10% more on regional endpoints [T3]; check the official Vertex AI pricing page before relying on numbers |
+| $300 trial credit | **not** usable: "The $300 credit can't pay for Gemini API in AI Studio costs" [V1] | **Believed** usable (only partner models "offered as a managed API" are excluded [V1]), **not verified**: confirm in Billing > Reports after a small run ([vertex-setup.md](vertex-setup.md) step 10) |
+| Quota | per-project free-tier RPM/RPD | per-minute quotas / dynamic shared quota; a trial account **cannot request quota increases** [V1] |
+
+Assessment of the decision (AI team): a good call for this product, with two caveats. For: the trial credit is the
+only way to run the Flash models at non-trivial volume at zero cost (AI Studio's free tier is small and trains on the
+data), Vertex's terms keep the user's private notes out of training (threat model LLM02, 9.1 still applies), and ADC
+removes the last long-lived AI secret from CI. Caveats: (1) the credit coverage is an inference from the exclusion list,
+so the first run must be small and checked in the billing report before the eval runs at full size; the trial lasts 90
+days and after it every call costs money, so budget alerts are part of the setup; (2) Vertex embeddings cost one HTTP
+call per house (AI Studio batches 100), which is fine at a personal scale (tens of houses) but is why the eval now
+skips per-save indexing. Keeping AI Studio costs little: it is the default, its tests still run in every build.
 
 ## 3. Verified dependency coordinates (Spring AI 2.0.1)
 
@@ -101,6 +158,7 @@ Verified against tag `v2.0.1` of `spring-projects/spring-ai` (source read on 202
 | Spring Boot compatibility | root pom `<spring-boot.version>4.1.1</spring-boot.version>` | `pom.xml` |
 | BOM | `org.springframework.ai:spring-ai-bom:2.0.1` (import) | `spring-ai-bom/pom.xml` |
 | Chat + embeddings | `spring-ai-starter-model-openai` (official `openai-java` SDK underneath) | `starters/…-model-openai` |
+| Chat on Vertex AI (v0.15) | `spring-ai-starter-model-google-genai` (google-genai Java SDK 1.65.0 underneath); selector `spring.ai.model.chat=google-genai` | `starters/…-model-google-genai`, 3.3 |
 | Vector store | `spring-ai-starter-vector-store-pgvector` | `starters/…-vector-store-pgvector` |
 | MCP server | `spring-ai-starter-mcp-server-webmvc` (MCP Java SDK 2.0.0, `mcp.sdk.version`) | `starters/…-mcp-server-webmvc` |
 | Model on/off | `spring.ai.model.chat|embedding|image|audio.*|moderation = openai|none` (`matchIfMissing=true` for openai) | `OpenAi*AutoConfiguration` |
@@ -139,6 +197,10 @@ Why the native starter is unsuitable here:
 3. For a model not in its enum (`gemini-embedding-2`) `dimensions()` falls back to a live probe embedding call.
 4. It adds the google-genai SDK and Google auth libraries to the SBOM that `security.yml` scans (Trivy), for one HTTP
    call; any CVE there would block the Security workflow, which another team owns.
+
+   *Update v0.15:* the Vertex AI provider (3.3) now brings the google-genai SDK in through the Google GenAI **chat**
+   starter, so point 4 no longer holds as a reason; points 1-3 still do, and on Vertex the embedding starter would
+   also fail for batches (3.3). AI Studio embeddings stay on `GeminiEmbeddingModel`.
 
 **What we built** (`com.househunt.ai.embedding`):
 - `GeminiEmbeddingModel implements EmbeddingModel`: batches of at most 100 texts per call, `outputDimensionality` =
@@ -209,6 +271,97 @@ document the break and the fix is the 3.1 pattern (own `ChatModel` over the nati
 `google-genai` starter with the caveats in 3.1). The bodies are assembled from the documented shape, not captured
 from a live call (no network to Google here); the next manual `AI evals` run is the live check (14).
 
+### 3.3 Vertex AI provider (v0.15)
+
+Selected with `AI_PROVIDER=vertex` (`app.ai.provider`). Owner setup, click by click: [vertex-setup.md](vertex-setup.md).
+
+**Chat: Spring AI's Google GenAI starter in Vertex mode (verified in source).** `spring-ai-starter-model-google-genai`
+(managed by `spring-ai-bom` 2.0.1) brings `spring-ai-google-genai` (`GoogleGenAiChatModel`), the google-genai Java SDK
+**1.65.0** (`com.google.genai.version` in the Spring AI v2.0.1 root pom, with `google-auth-library-oauth2-http` 1.33.0
+for ADC) and `spring-ai-autoconfigure-model-google-genai`. Checked in tag `v2.0.1`:
+
+| Item | Value | Where |
+|---|---|---|
+| Chat on/off | `GoogleGenAiChatAutoConfiguration`: `@ConditionalOnProperty(spring.ai.model.chat=google-genai, matchIfMissing=true)` | autoconfigure `chat/` |
+| Client | `@Bean @ConditionalOnMissingBean Client googleGenAiClient(...)`: Vertex mode with `spring.ai.google.genai.vertex-ai=true` + `project-id` + `location` (+ optional `credentials-uri`), else API key | same |
+| Chat props | `spring.ai.google.genai.chat.model/temperature/max-output-tokens/thinking-level/...` | `GoogleGenAiChatProperties` |
+| Tools | `GoogleGenAiChatModel` wraps the `ToolCallingManager`; the loop runs in `ToolCallingAdvisor` (the app's bounded manager, 5.3); tool results that are JSON arrays/primitives are wrapped as `{"result": ...}` for `functionResponse` | `GoogleGenAiChatModel#messageToGeminiParts` |
+| Gemini 3 thought signatures | read from response parts into message metadata and sent back on the first `functionCall` part of the next turn (Gemini 3 rejects a function-call turn without it) | same, `responseCandidateToGeneration` |
+| Retries | Spring AI's `RetryTemplate` retries only `TransientAiException`, but the model wraps SDK errors in a plain `RuntimeException`, so retries come from the SDK's `RetryInterceptor` (default 5 attempts on 408/429/5xx, no `Retry-After`, and it sleeps once more after the last failed attempt) | java-genai `RetryInterceptor` |
+| Errors | `ClientException` / `ServerException` extend `ApiException(code, status, message)`; `status` is the HTTP reason phrase, the google.rpc `status` is in the message | java-genai `errors/ApiException` |
+| Response needs | `modelVersion` is read with `Optional.get()`: a response without it would fail (canary test) | `GoogleGenAiChatModel#internalCall` |
+
+The app does not use the auto-configured client: `com.househunt.ai.vertex.VertexAiConfiguration` defines the
+`Client` bean (the starter's is `@ConditionalOnMissingBean`) with `vertexAI(true)`, explicit `project`/`location`, ADC
+credentials loaded once (`GoogleAccessTokenSource`), `AI_TIMEOUT` and a bounded retry policy (`AI_MAX_RETRIES` + 1
+attempts, 1 s initial backoff, +/-50% jitter, at most 10 s), and never an API key (the SDK ignores `GOOGLE_API_KEY`
+when credentials are passed). API version `v1beta1` (the SDK's Vertex default; `AI_VERTEX_API_VERSION=v1` is possible).
+Requests go to `https://<location>-aiplatform.googleapis.com/v1beta1/projects/<p>/locations/<l>/publishers/google/models/<model>:generateContent`
+(`global` → `https://aiplatform.googleapis.com`), with `Authorization: Bearer <token>` and `x-goog-user-project` when
+the credentials carry a quota project.
+
+**Embeddings: own `VertexEmbeddingModel`, not the Google GenAI embedding starter.** Verified in the SDK source
+(`Models.embedContent`, `Transformers.tIsVertexEmbedContentModel`, `embedContentParametersPrivateToVertex`,
+`embedContentResponseFromVertex`): on Vertex, Gemini embedding models except `gemini-embedding-001` use
+`POST .../publishers/google/models/<model>:embedContent` with **one** content (`{"content":{"parts":[{"text":…}]},
+"embedContentConfig":{"outputDimensionality":768,"taskType":…}}` → `{"embedding":{"values":[…]},"usageMetadata":{…},
+"truncated":false}`), and the SDK throws for more than one; `gemini-embedding-001` and older text models use `:predict`
+(`{"instances":[{"content":"…","task_type":…}],"parameters":{"outputDimensionality":768}}` →
+`{"predictions":[{"embeddings":{"values":[…],"statistics":{…}}}]}`). Spring AI 2.0.1's `GoogleGenAiTextEmbeddingModel`
+passes the whole batch to `embedContent`, so with `gemini-embedding-2` on Vertex every batch of more than one text
+would fail; and its `GoogleGenAiEmbeddingConnectionAutoConfiguration` has no property condition (only
+`@ConditionalOnClass`), so adding that starter would make every startup, AI off included, require Google settings.
+`VertexEmbeddingModel` sends one request per text (sequentially), with the same `AI_MAX_RETRIES` backoff,
+`Retry-After` / `RetryInfo` handling (capped at 60 s), L2 normalisation, dimension check and exception type
+(`GeminiEmbeddingException` with `httpStatus()`/`reason()`) as `GeminiEmbeddingModel`, plus setup hints for 401, 403
+("enable the Vertex AI API / grant roles/aiplatform.user") and 404 ("model not in this location, set
+`AI_VERTEX_EMBEDDING_LOCATION`"). Messages carry the HTTP status and google.rpc reason only, never the body or text.
+
+**Setup hints for chat too (v0.16).** Chat errors come from the SDK (`ClientException` with `code()`), so they had no
+hint and the first failure with the unconfirmed `asia-south1` default was a generic 503. Now
+`ProviderErrors.httpFailure` finds the first google-genai `ApiException` (chat) or `GeminiEmbeddingException` with a
+status (embeddings) in the cause chain, and `AiExceptionHandler` (only with `AI_PROVIDER=vertex`) adds a `setupHint`
+to the 503 problem detail and the WARN line: 404 → "the chat model (AI_CHAT_MODEL) is not available in location
+asia-south1; set GCP_LOCATION=global …" (embeddings: `AI_VERTEX_EMBEDDING_LOCATION`), 403 → Vertex AI API /
+`roles/aiplatform.user`, then the location, 401 → ADC / Workload Identity Federation. The hint uses env-var names and
+the configured location only (no project id, no provider text); quota errors (429) keep their own `code` and get no
+hint. Vertex answers a model that is not offered in a location with 404 `NOT_FOUND` ("Publisher Model … was not found
+or your project does not have access to it"); 403 is listed too because the same message shape is used when access is
+missing. Tests: `AiExceptionHandlerTest`, `ProviderErrorsTest`, and the chat contract test for 404 and 403.
+
+**Off by default, no Google lookups.** Only the chat starter is added. With AI off `spring.ai.model.chat=none` keeps
+`GoogleGenAiChatAutoConfiguration` off; with `aistudio` it is `openai`; the embedding/image connection
+auto-configurations need classes from modules that are not on the classpath; `VertexAiConfiguration` is
+`@ConditionalOnBooleanProperty("app.ai.enabled")` + `@ConditionalOnProperty(app.ai.provider=vertex)`. So ADC is only
+looked up when Vertex is selected and AI is on (`VertexAutoConfigurationTest` builds these contexts with no ADC
+available).
+
+**Locations and models (partly unverified).** Default location `asia-south1` (Mumbai), as requested for India data
+residency and latency. A third-party availability tracker lists `gemini-3.5-flash` in `asia-south1` and on the
+`global` endpoint [T3]; Google's locations page could not be read from here, and availability of
+`gemini-3.5-flash-lite` and `gemini-embedding-2` in `asia-south1` is **not verified** (a March 2026 forum thread
+reported only Gemini 2.5 Flash in `asia-south1` then [T4]). Therefore embeddings have their own location
+(`AI_VERTEX_EMBEDDING_LOCATION`, default = `GCP_LOCATION`), and [vertex-setup.md](vertex-setup.md) step 8 tests both
+models with `curl` before anything is switched: if a model answers 404 `NOT_FOUND` in `asia-south1`, use
+`global` for that model (widest availability, no residency guarantee) or `us-central1`. The model ids are the same
+strings as on AI Studio and appear in Spring AI 2.0.1's `GoogleGenAiChatModel.ChatModel` enum
+(`gemini-3.5-flash`, `gemini-3.5-flash-lite`); `gemini-embedding-2` with `outputDimensionality` 768 matches the
+`vector(768)` column. Switching provider keeps the same embedding model, so the existing index stays valid in
+principle; run `POST /api/ai/reindex` once after the switch anyway (cheap at personal scale, and it removes any doubt
+about cross-endpoint vector differences).
+
+**Contract tests** (no network, no credentials): `VertexGenerateContentContractTest` runs ChatClient →
+`GoogleGenAiChatModel` → the production `Client` factory → a local HTTP server: plain answer (path, bearer token, no
+API key header), Ask structured output, planner function-call round trip that must send the thought signature back,
+canary for a missing `modelVersion`, 429 `RESOURCE_EXHAUSTED` (bounded retries, classified as quota, 503 +
+`code: AI_QUOTA_EXHAUSTED` + `Retry-After`), 403 `PERMISSION_DENIED` (not retried, not quota).
+`VertexEmbeddingContractTest`: `embedContent` (one call per text, bearer, no key header), `predict` for
+`gemini-embedding-001` (snake-case `task_type`, quota-project header), 429 with and without `RetryInfo`, 403
+`SERVICE_DISABLED` and `IAM_PERMISSION_DENIED`, 404 model not found, wrong dimensions, missing credentials. The
+bodies follow the SDK converters and Google's reference; **they were not captured from a live Vertex call** (no Google
+Cloud access from the build sandbox). [vertex-setup.md](vertex-setup.md) step 9 captures real responses on the first
+run; replace the test bodies with them if anything differs.
+
 ## 4. Architecture
 
 ```mermaid
@@ -258,16 +411,21 @@ Other backend changes: `HouseService` and `VisitController` publish `HouseChange
 
 - AI off → forces (highest precedence) `spring.ai.model.chat|embedding=none`, `spring.ai.vectorstore.type=none`,
   `spring.ai.chat.client.enabled=false`. No OpenAI client, no vector store, no key needed.
+- Provider: `app.ai.provider` is normalised (lower case, default `aistudio`) and written back. AI on with
+  `vertex` → **forces** `spring.ai.model.chat=google-genai`, `app.ai.embedding.provider=vertex` and every Spring AI
+  embedding selector `none`, default `vectorstore.type=pgvector` (3.3). The rest of this list is the `aistudio` path.
 - AI on → low-precedence defaults `chat=openai`, `vectorstore.type=pgvector`. Embeddings depend on
   `app.ai.embedding.provider` (normalised to lower case and written back): `google-genai` (default) **forces**
   `spring.ai.model.embedding(.text|.multimodal)=none`, because the OpenAI embedding auto-configuration's
   `@ConditionalOnMissingBean` looks for `OpenAiEmbeddingModel` and would otherwise add a second `EmbeddingModel`;
-  `openai` sets the low-precedence default `embedding=openai`. No Google GenAI starter is on the classpath, so there is
-  no Google auto-configuration to switch off (3.1).
+  `openai` sets the low-precedence default `embedding=openai`. Since v0.15 the Google GenAI **chat** starter is on the
+  classpath for Vertex; its auto-configuration is off unless `spring.ai.model.chat=google-genai` (3.3).
 - Always → image/audio/moderation models `none`; `spring.ai.mcp.server.enabled` = `app.mcp.enabled`.
 - Our own beans use `@ConditionalOnBooleanProperty("app.ai.enabled")` / `("app.mcp.enabled")`.
 - `AiConfiguration` fails fast with a clear message when AI is on but `AI_API_KEY` is blank or the embedding provider
-  is not `google-genai`/`openai`; `GeminiEmbeddingConfiguration` fails fast when the embedding key is blank.
+  is not `google-genai`/`openai`; `GeminiEmbeddingConfiguration` fails fast when the embedding key is blank. With
+  `vertex` it instead requires a valid `GCP_PROJECT_ID` and location, and `GoogleAccessTokenSource` fails startup with
+  setup instructions when no Application Default Credentials are found; an unknown `AI_PROVIDER` fails startup.
 
 ## 5. Feature flows
 
@@ -450,20 +608,26 @@ extraction, Q&A, refusal, prompt injection and planning, and the pass **threshol
 
 | Piece | Where | Runs |
 |---|---|---|
-| `GoldenSetEvalTest` (JUnit 5, `@Tag("llm-eval")`) | `backend/src/test/java/com/househunt/ai/eval/` | Only when `AI_API_KEY` is set (`@EnabledIfEnvironmentVariable`); skipped in `backend.yml` |
+| `GoldenSetEvalTest` (JUnit 5, `@Tag("llm-eval")`) | `backend/src/test/java/com/househunt/ai/eval/` | Only when a provider is configured: `AI_API_KEY` (AI Studio) or `AI_PROVIDER=vertex` + `GCP_PROJECT_ID` (`@EnabledIf("providerConfigured")`, v0.15); skipped in `backend.yml` |
 | `EvalScorer` + `GoldenSet` (pure scoring, report) | same package | Used by the eval |
 | `EvalScorerTest` (scoring rules + golden-set consistency) | same package | Every `mvn verify`, no model needed |
-| `.github/workflows/ai-evals.yml` | `workflow_dispatch` only | Secret `AI_API_KEY`; same PostGIS + pgvector image as `backend.yml` |
+| `.github/workflows/ai-evals.yml` | `workflow_dispatch` only | Input `provider` (default `aistudio` since v0.16, until the owner has finished vertex-setup.md steps 1-8 and 10; the input description says so. `vertex`: Workload Identity Federation with secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` and variable `GCP_PROJECT_ID` (+ optional `GCP_LOCATION`); `aistudio`: secret `AI_API_KEY`); same PostGIS + pgvector image as `backend.yml` |
 
 Flow of one run:
 1. Boots the app (`@SpringBootTest`, random port) with `app.ai.enabled=true`, a generated API key and the app's AI
    rate limit raised (the harness paces itself instead: `AI_EVAL_DELAY_MS`, default 4 s between cases).
 2. Seeds `fixtureHouses` and `fixtureVisits` through the public API (`PUT /api/houses/{id}`, `PUT /api/visits/{id}`),
-   waits for the async per-house indexing, then calls `POST /api/ai/reindex`. The report warns if the database holds
+   then calls `POST /api/ai/reindex` once. Since v0.15 the eval runs with `app.ai.index-on-change=false`, so saves
+   are not embedded one by one (before, every fixture was embedded twice: once per save, once by the re-index). The report warns if the database holds
    other houses (they change retrieval), so use an empty database — CI starts a fresh one.
 3. Runs each case through the real endpoints (`extract-listing`, `ask`, `plan-visits`), so key filter, validation,
-   sanitizer and citation filtering are part of what is measured. `503`/`429` are retried up to 3 times (honouring
-   `Retry-After`, else 15 s × attempt); a case that still fails is scored as failed (ERROR), never skipped.
+   sanitizer and citation filtering are part of what is measured. `503`/`429` are retried up to 2 more times
+   (honouring `Retry-After`, else 15 s × attempt); a case that still fails is scored as failed (ERROR), never skipped.
+   **Quota stop (v0.15):** a `503` with `code: AI_QUOTA_EXHAUSTED` (provider 429 / `RESOURCE_EXHAUSTED`, 10) gets one
+   retry after `Retry-After`; if it persists, the run stops, the case is not scored, the report's result line reads
+   **`STOPPED: provider quota exhausted`** with the number of cases scored before the stop, the test fails, and the
+   workflow adds an explicit error annotation. This replaces a flood of identical ERROR cases that each burned
+   retries. A re-index that stops on quota counts the same way.
 4. Scores every case, writes `backend/target/ai-eval-report.md` (metrics table, per-case table, every check with the
    model output) and prints it; the workflow appends it to the job summary and uploads it as artifact
    `ai-eval-report`.
@@ -474,9 +638,14 @@ Flow of one run:
    cases still run. A metric with nothing to measure (for example no plan cases because `AI_EVAL_TYPES=extract,ask`)
    shows `n/a` and does not fail on its own. Before v0.5 an all-`n/a` run printed "Result: PASS" with 0/0 cases.
 
-Run it: Actions → **AI evals** → Run workflow (inputs: case types, delay, optional chat model), or locally against an
-empty PostGIS + pgvector database:
-`AI_API_KEY=… DB_URL=… mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test` in `backend/`.
+Run it: Actions → **AI evals** → Run workflow (inputs: provider, case types, delay, optional chat and embedding
+model), or locally against an empty PostGIS + pgvector database, in `backend/`:
+`AI_API_KEY=… DB_URL=… mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test`, or for Vertex
+after `gcloud auth application-default login`:
+`AI_PROVIDER=vertex GCP_PROJECT_ID=… DB_URL=… mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test`.
+Calls per full run (13 cases, 5 fixture houses): about 5 embedding calls for the re-index plus one per ask case, one
+chat call per extract/ask case and a few per plan case; start the first Vertex run with `types=extract` to check
+billing (vertex-setup.md step 10).
 
 ### 8.2 Scoring rules
 
@@ -716,7 +885,15 @@ agent and MCP result; search cannot confirm a guessed name or phone).
   no LLM call when retrieval is empty, agent tool caps.
 - Per-minute: `AI_RATE_LIMIT_PER_MINUTE` / `AI_RATE_LIMIT_BURST` for `/api/ai/**` (not `/api/ai/status`), separate
   `MCP_RATE_LIMIT_PER_MINUTE` for `/mcp` (an MCP session makes several protocol calls). 429 + `Retry-After`.
-- Provider errors (quota exhausted, 5xx, bad JSON) → `503` ProblemDetail with `retryable: true`.
+- Provider errors (quota exhausted, 5xx, bad JSON) → `503` ProblemDetail with `retryable: true`. Since v0.15 a
+  provider quota error (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex, detected by type and status code
+  in the cause chain by `com.househunt.ai.ProviderErrors`, never by message text) additionally carries
+  `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`; the status stays 503 so the web and Android apps need no change.
+  Since v0.16 a Vertex AI 401 / 403 / 404 adds a `setupHint` (3.3) naming the setting to change (`GCP_LOCATION`,
+  `AI_VERTEX_EMBEDDING_LOCATION`, IAM, ADC); the eval harness does not retry such a 503 and lists the hint once.
+- `POST /api/ai/reindex` stops at the first quota error instead of sending the remaining batches (the error says
+  "stopped: provider quota exhausted"). `AI_INDEX_ON_CHANGE=false` turns off per-save embedding (only re-index embeds);
+  the eval uses it to halve its embedding calls.
 - Observability: each call logs `ai.call feature=… model=… promptTokens=… completionTokens=… totalTokens=… durationMs=…`.
   Spring AI's Micrometer observations (chat client, chat model, embedding, vector store, tool calls) are active by
   default with actuator on the classpath, including the `gen_ai.client.token.usage` meter; only `health` is exposed
@@ -743,9 +920,16 @@ agent and MCP result; search cannot confirm a guessed name or phone).
 | `AI_RATE_LIMIT_PER_MINUTE` / `AI_RATE_LIMIT_BURST` / `MCP_RATE_LIMIT_PER_MINUTE` | `10` / `5` / `60` | Rate limits |
 | `AI_RAG_TOP_K` / `AI_RAG_SIMILARITY_THRESHOLD` | `6` / `0.25` | Retrieval |
 | `AI_AGENT_MAX_TOOL_CALLS` / `AI_AGENT_MAX_CALLS_PER_TOOL` / `AI_AGENT_MAX_STOPS` | `12` / `4` / `8` | Agent bounds |
+| `AI_PROVIDER` | `aistudio` | `aistudio` = Gemini Developer API key; `vertex` = Google Cloud Vertex AI with ADC (2.1, 3.3). `AI_CHAT_MODEL`, `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS`, `AI_EMBEDDING_TASK_TYPE`, `AI_TIMEOUT`, `AI_MAX_RETRIES` apply to both |
+| `GCP_PROJECT_ID` | – | Vertex only, required: Google Cloud project id |
+| `GCP_LOCATION` | `asia-south1` | Vertex only: location for chat (and embeddings unless the next row is set); `global` has the widest model availability |
+| `AI_VERTEX_EMBEDDING_LOCATION` | = `GCP_LOCATION` | Vertex only: location for the embedding model, if it is not offered in `GCP_LOCATION` |
+| `AI_VERTEX_ENDPOINT` / `AI_VERTEX_API_VERSION` | derived / `v1beta1` | Vertex only: base URL override (tests, Private Service Connect) and REST API version |
+| `AI_INDEX_ON_CHANGE` | `true` | Embed a house after each save; `false` = only `POST /api/ai/reindex` embeds |
+| `GOOGLE_APPLICATION_CREDENTIALS` | – | Standard ADC variable (set by `google-github-actions/auth`); not needed on Cloud Run or after `gcloud auth application-default login` |
 
 Optional: Gemini "thinking" can be reduced with `SPRING_AI_OPENAI_CHAT_REASONING_EFFORT=low` (compat endpoint
-supports `reasoning_effort` [G1]).
+supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL=LOW`.
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 
@@ -784,7 +968,11 @@ supports `reasoning_effort` [G1]).
 
 All endpoints: `X-API-Key` header required; JSON; errors are RFC 7807 ProblemDetail
 (`{"status":400,"detail":"…"}`). Status codes: `400` validation, `401` key, `404` AI disabled (except status),
-`429` rate limit (`Retry-After` seconds), `503` provider failure (`"retryable": true`).
+`429` rate limit (`Retry-After` seconds), `503` provider failure (`"retryable": true`). Since v0.15 a `503` caused
+by the provider's quota (AI Studio or Vertex AI answered 429 / `RESOURCE_EXHAUSTED`) also has `"code":
+"AI_QUOTA_EXHAUSTED"` and a `Retry-After: 60` header; clients may show "try again in a minute" for it (optional, the
+status is unchanged). Since v0.16 a `503` from a Vertex AI setup error (401/403/404) may carry a `"setupHint"` string
+for the owner (which setting to change); clients may ignore it. `GET /api/ai/status` reports the active provider's chat model; the provider itself is not exposed.
 
 **Labels are redacted (v0.9, see 9.1).** `Citation.label` (from `ask`) and `PlannedStop.label` (from
 `plan-visits`) may contain the placeholders `[contact]` or `[phone]` where the house's label named the contact or
@@ -925,6 +1113,34 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
   scoring and the revised Ask citation rules (the next manual `AI evals` run). Thresholds are unchanged; revise them
   only with data from more runs. The 8.4 risks still apply (`ask-06` passed this time).
 
+- **Vertex AI (v0.15), not verified live:** (a) whether the $300 trial credit pays for Vertex Gemini usage (inferred
+  from the exclusion list [V1]; check Billing > Reports after the first small run, vertex-setup.md step 10); (b)
+  availability of `gemini-3.5-flash-lite` and `gemini-embedding-2` in `asia-south1` (3.3; vertex-setup.md step 8 tests
+  it); (c) the Vertex contract-test bodies were reconstructed from the SDK source and Google's reference, not captured
+  (step 9 captures real ones); (d) whether Vertex sends `Retry-After` / `RetryInfo` on 429 (both are honoured for
+  embeddings; the SDK ignores them for chat); (e) prices (third-party snapshot [T3]); (f) moved to "Merge gates"
+  below; (g) the planner's graceful
+  fallback (5.3) also hides a quota error mid-plan (the response is a fallback plan, not a 503), so the eval can
+  record such a case as a plan failure rather than a quota stop.
+
+
+- **Merge gates (v0.16, coordination with other teams; none can be closed by the AI team alone):**
+  1. **docker-compose** (compose owner): pass `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION`,
+     `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_INDEX_ON_CHANGE` and `GOOGLE_APPLICATION_CREDENTIALS`
+     with a read-only ADC mount, and update the header comment; exact request in section 2. Until then Vertex mode is
+     documented only for `mvn spring-boot:run` and Cloud Run. Not a blocker for merging the code (default
+     `aistudio` is unchanged), but a blocker for announcing compose support.
+  2. **DevSecOps review of `ai-evals.yml`** (owner of `.github/**`): the AI-team change adds `id-token: write` on the
+     eval job (used only by the WIF step) and the third-party action `google-github-actions/auth@v3`, tag-pinned
+     like the repo's other actions (SHA pinning is DevSecOps' decision). **Status: pending, no sign-off recorded**;
+     the workflow header says so and must get the reviewer's name and date.
+  3. **Trivy SBOM scan** (DevSecOps, blocking `trivy sbom` step in `security.yml`): `spring-ai-starter-model-google-genai`
+     adds runtime dependencies that have not been scanned: google-genai 1.65.0, google-auth-library-oauth2-http
+     1.33.0, guava 33.4.0, protobuf-java 3.25.5, okhttp 4.12.0 (already present via openai-java) and kotlin-stdlib
+     1.9.10 (via okhttp). Ask DevSecOps to run the Security workflow on the branch **before** merging, so a finding
+     does not turn `main` red for every team; any finding is fixed with a version override in the Spring AI section
+     of `backend/pom.xml` (AI team) or a documented, time-boxed exception (DevSecOps), not by removing the gate.
+
 ## Sources
 
 - [G1] Google, "OpenAI compatibility", Gemini API docs, last updated 2026-09-02 — https://ai.google.dev/gemini-api/docs/openai
@@ -939,6 +1155,13 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 - [T2] garrytan/gbrain PR #4868 (dimensions on the OpenAI-compatible path) — https://github.com/garrytan/gbrain/pull/4868
 - [O1] Ollama, "OpenAI compatibility" — https://docs.ollama.com/api/openai-compatibility
 - [OW] OWASP, "Top 10 for LLM Applications 2025" — https://genai.owasp.org/llm-top-10/
+- [V1] Google Cloud, "Free Google Cloud features and trial offer" (90-day $300 trial; "The $300 credit can't pay for Gemini API in AI Studio costs"; no credit for partner models offered as a managed API; trial accounts cannot request quota increases), read 2026-09-22 — https://docs.cloud.google.com/free/docs/free-cloud-features
+- [V2] Google Cloud, "Gemini Enterprise Agent Platform" deployments and endpoints / Gemini 3.5 Flash model pages (could not be read from the sandbox; to be checked by the owner) — https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations
+- [V3] "Generative AI and data governance" (mirror of the Vertex AI page: no training on customer data without permission, 24 h in-memory caching that can be disabled, abuse-monitoring prompt logging for non-invoiced accounts) — https://blevinscm.github.io/genai-docs/Generative-AI-and-data-governance/ ; original https://cloud.google.com/vertex-ai/generative-ai/docs/data-governance
+- [T3] modelavailability.com, "gemini-3.5-flash — Availability on GCP Vertex AI" (regions incl. asia-south1, global; prices), read 2026-09-22 — https://modelavailability.com/models/google/gemini-3-5-flash
+- [T4] Google AI Developers Forum, "Is there any model available (or planned) in the asia-south1 region on Vertex AI that is more capable than Gemini 2.5 Flash?" (2026-03-05) — https://discuss.ai.google.dev/t/is-there-any-model-available-or-planned-in-the-asia-south1-region-on-vertex-ai-that-is-more-capable-than-gemini-2-5-flash/128791
+- googleapis/java-genai v1.65.0 `Models.java`, `Transformers.java`, `ApiClient.java`, `RetryInterceptor.java`, `errors/ApiException.java` — https://github.com/googleapis/java-genai/tree/v1.65.0
+- google-github-actions/auth v3.0.0 `action.yml` (inputs `workload_identity_provider`, `service_account`, `project_id`; `create_credentials_file` default true) — https://github.com/google-github-actions/auth/tree/v3.0.0
 - [MR] geelen/mcp-remote README — https://github.com/geelen/mcp-remote
 - Spring AI v2.0.1 source — https://github.com/spring-projects/spring-ai/tree/v2.0.1
 - Spring Boot v4.1.1 source — https://github.com/spring-projects/spring-boot/tree/v4.1.1

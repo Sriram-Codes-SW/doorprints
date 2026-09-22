@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.7 |
+| Version | 0.10 |
 | Date | 2026-09-22 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -19,6 +19,9 @@
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3: section 1 `ai-evals.yml` row now says the run also fails when zero cases ran or on a harness error (seeding or reindex failure), with *Errors* and *Why FAIL* sections in the scorecard (fix for the false PASS of the first eval run, E-02 in [10](10-sprint-log.md)); TC-AI-10 reference points to 06 §8. Environment variable table (section 7) lists the new `AI_EMBEDDING_*` settings. |
 | 0.6 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decision: the dev `docker-compose.yml` is owned by the Backend team and now passes every `AI_*` / `APP_AI_*` / `APP_MCP_*` setting to the `api` service. Section 7: the single "AI variables" row is replaced by one row per setting group with the `application.yml` defaults, and a new **Dev compose** column says which variables the dev stack passes; note that `compose.prod.yml` passes only the core variables. |
 | 0.7 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): CI artifacts are now `doorprints-debug-apk`, `doorprints-release-apk` and `doorprints-web-dist` (pipeline diagram, workflow table, section 5, section 6.4); planned release files `doorprints-vX.Y.Z.apk`; `APP_CORS_ORIGINS` example `https://doorprints.pages.dev`. Kept on purpose: the `HH_*` secrets, the CI keystore file `house-hunt-release.jks`, the image names `house-hunt-api` / `house-hunt-db` and the `househunt` database, user and role names. Section 5 notes that the new `applicationId` `app.doorprints` does not upgrade pre-rename builds. |
+| 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22: the repository is renamed to **`Sriram-Codes-SW/doorprints`** and is **public** with an MIT `LICENSE` and `SECURITY.md` (private vulnerability reporting). Section 3 rewritten: the ruleset on `main` blocks deletion and force pushes; **required status checks are deliberately not enabled yet**, because the workflows have path filters and a required check that never runs blocks a PR; they will be enabled once a PR flow exists with an always-running **CI summary** check (3.1). Public-repository rules (3.2): logs and artifacts are public. **CodeQL** is now free (public repository) and is a **Sprint 4a candidate** (section 1). Section 7: new cloud AI access and cost-cap settings (planned, [11](11-feature-parity-and-export-spec.md) 5.13) and a pointer to [ai/vertex-setup.md](ai/vertex-setup.md) for the Vertex AI settings; section 6.5: time-limited staging on Google Cloud (trial credit). |
+| 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. Section 4: new row for the **Vertex AI / Google Cloud credential** ([02](02-threat-model.md) T-I22): AI-only project, service account with `roles/aiplatform.user` only, no JSON key in repository, image, artifacts or logs, Workload Identity Federation (GitHub OIDC) for CI, quarterly rotation; exact variable names left to the AI team's `ai/vertex-setup.md` (being written). Section 6.5: spend cap budgets do not cover Cloud SQL, so staging needs its own budget alert and a fixed tear-down date. |
+| 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI code and [ai/vertex-setup.md](ai/vertex-setup.md) landed in the same change set, so the "being written" markers are gone. Section 4: the Vertex AI row names the real settings (GitHub secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL`; GitHub variables `GCP_PROJECT_ID`, `GCP_LOCATION`, optional `AI_VERTEX_EMBEDDING_LOCATION`; `GOOGLE_APPLICATION_CREDENTIALS` for ADC) and splits rotation by credential type: Workload Identity Federation and the Cloud Run service account have no long-lived secret to rotate; only a JSON key on a non-Google host is rotated quarterly (the old "delete the old key" rule applies to that case only). The code supports ADC only, no Vertex API key. `ai-evals.yml` row: `provider` input (default `aistudio`; `vertex` chosen by hand after [ai/vertex-setup.md](ai/vertex-setup.md) steps 1-8; the default moves to `vertex` only after the step-10 run; corrected in review, an earlier draft said the default was `vertex`) and the quota stop. Section 7: new rows `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION`, `AI_INDEX_ON_CHANGE`, `GOOGLE_APPLICATION_CREDENTIALS`. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -64,7 +67,8 @@ flowchart LR
     end
     manual["Manual only: Actions > AI evals > Run workflow"] --> ai
     subgraph ai["ai-evals.yml (workflow_dispatch only)"]
-        ai1["fail fast if AI_API_KEY secret missing"] --> ai2["build backend/db, docker run"]
+        ai1["fail fast if the provider's settings are missing<br/>(vertex: GCP_* / aistudio: AI_API_KEY)"] --> aiw["vertex only: Workload Identity<br/>Federation (no stored key)"]
+        aiw --> ai2["build backend/db, docker run"]
         ai2 --> ai3["mvn test -Dtest=GoldenSetEvalTest<br/>real model"]
         ai3 --> ai4["scorecard: job summary +<br/>artifact ai-eval-report"]
     end
@@ -78,7 +82,7 @@ flowchart LR
 | `web.yml` | push/PR touching `web/**`, manual | Node 24, `npm ci` if `package-lock.json` exists else `npm install` (and uploads the generated lock file as artifact `web-package-lock` so it can be committed), **`npm run test:ci`** (`ng test --watch=false`: Vitest through `@angular/build:unit-test`, jsdom, no browser), `npm run build`, checks `_headers`/`_redirects` are in the output, uploads `doorprints-web-dist` | Unit tests and build pass |
 | `android.yml` | push/PR touching `android/**`, manual | Temurin 21, `gradle/actions/setup-gradle@v6` (validates the wrapper JAR), `./gradlew assembleDebug testDebugUnitTest` (compileSdk 37), `lintDebug` (report only), uploads **`doorprints-debug-apk`** and reports. Not on PRs: job `release-signing-check` looks for the four `HH_*` secrets (a job-level `if` cannot read secrets); when present, job `release` builds a **signed** `assembleRelease` and uploads `doorprints-release-apk` (section 5) | Build + unit tests pass; release: `apksigner verify` passes |
 | `security.yml` | push/PR, weekly (Mon 04:17 UTC), manual | Semgrep (container `semgrep/semgrep:1.177.0`), gitleaks (`ghcr.io/gitleaks/gitleaks:v8.30.1`, full history), Trivy (`aquasec/trivy:0.74.0`, see below), `npm audit --audit-level=high --omit=dev` (dev-only tooling such as the Angular CLI is not shipped, so its advisories do not block), optional ZAP baseline against a URL given at dispatch | No Semgrep ERROR, no gitleaks hit, no unfixed Critical/High from Trivy (dependencies and Dockerfiles), no high npm advisory |
-| `ai-evals.yml` | **Manual only** (`workflow_dispatch`), never on push or PR (it spends free-tier model quota and model answers are not deterministic). Inputs: `types` (choice, default `extract,ask,plan`), `delay_ms` (pause between cases, default `4000`, validated as a whole number), `chat_model` (optional model override; empty keeps the `application.yml` default) | Top-level `permissions: {}`, job-level `contents: read`; one run at a time (`concurrency: ai-evals`, never cancelled). Fails fast if the `AI_API_KEY` repository secret is missing. Builds `backend/db` and runs it with `docker run`, then `mvn -B -ntp test -Dtest=GoldenSetEvalTest` on Temurin 25 with `APP_AI_ENABLED=true` against the golden set ([ai/evals/golden-set.json](ai/evals/golden-set.json)). Always publishes `backend/target/ai-eval-report.md` to the job summary and as artifact **`ai-eval-report`** (kept 30 days); on failure also uploads `ai-eval-test-reports` (7 days) | Not a merge gate. The run fails when no golden-set case ran (0 cases, including no case matching `types`), on any harness error (seeding the fixtures or `POST /api/ai/reindex` failed; listed under *Errors* in the scorecard) or when a metric misses the golden set's thresholds; the scorecard's *Why FAIL* section lists the reasons. A person reviews the scorecard (TC-AI-10, [06](06-test-plan.md) §8) |
+| `ai-evals.yml` | **Manual only** (`workflow_dispatch`), never on push or PR (it spends provider quota or credit and model answers are not deterministic). Inputs: `provider` (choice, default **`aistudio`**; choose `vertex` after [ai/vertex-setup.md](ai/vertex-setup.md) steps 1-8, which needs the secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` and the variable `GCP_PROJECT_ID`; the default moves to `vertex` only after the owner's step-10 run, vertex-setup step 10 item 6), `types` (choice, default `extract,ask,plan`), `delay_ms` (pause between cases, default `4000`, validated as a whole number), `chat_model` and `embedding_model` (optional model overrides, validated as lower-case names; empty keeps the `application.yml` default) | Top-level `permissions: {}`, job-level `contents: read` and `id-token: write` (only used by the Workload Identity Federation step when `provider=vertex`); one run at a time (`concurrency: ai-evals`, never cancelled). Fails fast when the chosen provider's settings are missing: `vertex` needs the secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` and the variable `GCP_PROJECT_ID` (section 4), `aistudio` needs the `AI_API_KEY` secret; `AI_API_KEY` is passed to the tests only on the `aistudio` path. With `vertex`, `google-github-actions/auth` exchanges the GitHub OIDC token for short-lived Google credentials (no stored key). Builds `backend/db` and runs it with `docker run`, then `mvn -B -ntp test -Dtest=GoldenSetEvalTest` on Temurin 25 with `APP_AI_ENABLED=true` against the golden set ([ai/evals/golden-set.json](ai/evals/golden-set.json)). Always publishes `backend/target/ai-eval-report.md` to the job summary and as artifact **`ai-eval-report`** (kept 30 days); on failure also uploads `ai-eval-test-reports` (7 days) | Not a merge gate. The run fails when no golden-set case ran (0 cases, including no case matching `types`), on any harness error (seeding the fixtures or `POST /api/ai/reindex` failed; listed under *Errors* in the scorecard) or when a metric misses the golden set's thresholds; the scorecard's *Why FAIL* section lists the reasons. When the provider's quota is exhausted (HTTP 429 / `RESOURCE_EXHAUSTED`, one wait of `Retry-After` did not help) the harness stops, the scorecard says **STOPPED: provider quota exhausted** and a separate step fails the job with an error annotation. A person reviews the scorecard (TC-AI-10, [06](06-test-plan.md) §8) |
 | `deploy.yml`, `release.yml`, `backup.yml` | – | **Not built yet** (see sections 5, 6 and 08 §3) | – |
 
 Conventions used in every workflow:
@@ -93,7 +97,7 @@ Conventions used in every workflow:
 | Caching | Maven (`setup-java cache: maven`), Gradle (`setup-gradle`, read-only on branches), Trivy DB (`actions/cache@v6` on `~/.cache/trivy`, daily key), npm once the lock file is committed |
 | Artifacts | APK 30 days, backend SBOM 30 days, web dist 14 days, reports 7 days |
 
-**Why no CodeQL.** On a private repository, GitHub code scanning (CodeQL analysis results and SARIF upload to the Security tab) needs a paid GitHub Advanced Security / Code Security licence, which breaks CON-01 (zero cost). Semgrep OSS covers SAST instead and its SARIF is kept as an artifact. If the repository becomes public, CodeQL and SARIF upload are free and should be added.
+**Why no CodeQL.** On a private repository, GitHub code scanning (CodeQL analysis results and SARIF upload to the Security tab) needs a paid GitHub Advanced Security / Code Security licence, which breaks CON-01 (zero cost). Semgrep OSS covers SAST instead and its SARIF is kept as an artifact. **Update 2026-09-22:** the repository is now public, so CodeQL (default or advanced setup) and SARIF upload to the Security tab are free. Adding CodeQL for Java/Kotlin and JavaScript/TypeScript (and uploading the Semgrep SARIF) is a **Sprint 4a candidate** (C-22 in [10](10-sprint-log.md) §8); Kotlin with AGP 9 built-in Kotlin needs a manual build step in advanced setup, to be checked in the story. Until then Semgrep OSS stays the SAST gate.
 
 **Trivy** (job `trivy` in `security.yml`). The first run failed with `remote Maven repository returned 429 Too Many Requests` for `spring-batch-bom-6.0.5.pom`: `trivy fs` resolves every parent POM and imported BOM of `backend/pom.xml` from Maven Central on each run. The job now:
 
@@ -137,15 +141,41 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 
 ## 3. Repository and branch protection
 
+The repository is **`Sriram-Codes-SW/doorprints`** (renamed from `house-hunt` on 2026-09-22; GitHub redirects the old
+URL) and is **public** with an MIT `LICENSE` and a `SECURITY.md` that points to GitHub's **private vulnerability
+reporting** (Security → Report a vulnerability).
+
 | Setting | Value |
 |---|---|
-| Default branch | `main`, protected (ruleset): require PR, require status checks `backend`, `web`, `android`, `security`, `image`, block force-push and deletion, linear history |
-| Reviews | Solo developer: allow self-merge, but keep required checks. Enable "Require conversation resolution". |
-| Plan caveat | On **GitHub Free**, rulesets/branch protection and environment reviewers are enforced only on **public** repos. For a private repo on Free, rely on the CI gates plus a local `pre-push` hook (gitleaks + tests), or make the repo public. The code has no secrets, but check your comfort with the personal context in the docs. |
-| Workflows | Top-level `permissions: {}`, per job `contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`. **Never** use `pull_request_target` with a checkout of PR code. Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
+| Default branch | `main`, protected by a **ruleset**: **block deletion** and **block force pushes** (active since 2026-09-22). Rulesets are enforced on GitHub Free because the repository is public. |
+| Required status checks | **Deliberately not enabled yet** (product-owner decision 2026-09-22). The workflows use path filters (for example `backend.yml` runs only for `backend/**`), so a required check such as `backend` would never report on a docs-only PR and the PR could not merge. They are enabled together with a PR flow (3.1). |
+| Require PR, linear history, conversation resolution | Planned with the PR flow (3.1). Today the owner pushes to `main` directly. |
+| Reviews | Solo developer: allow self-merge, but keep required checks once they exist. |
+| Workflows | Top-level `permissions: {}`, per job `contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`. **Never** use `pull_request_target` with a checkout of PR code (fork PRs on a public repository must not see secrets). Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
+| Fork PR workflows | Settings → Actions → General → "Approval for running fork pull request workflows from contributors": require approval for all external contributors, so an outside PR cannot run workflows before review. |
 | Secret scanning | Enable GitHub secret scanning + push protection (free for public repos). gitleaks in CI either way. |
+| Private vulnerability reporting | Enabled; `SECURITY.md` asks reporters not to open public issues. Triage in [08](08-operations-runbook.md) §7 IR-8. |
 | Environments | `production` (deploy hook, DB URL for backups) and `release` (keystore). Restricted to `main`/tags. |
 | CODEOWNERS | `docs/05-*` for design, `docs/ai/` for the AI team, `backend/src/main/resources/db/migration/` needs careful review |
+
+### 3.1 Future: always-running "CI summary" check
+
+When the PR flow starts (candidate C-23 in [10](10-sprint-log.md) §8), add one job named **`CI summary`** that runs on **every**
+pull request (no path filter), waits for or inspects the other workflows for the head commit, and fails if any
+triggered workflow failed; a workflow skipped by its path filter counts as passed. Only `CI summary` then becomes the
+required status check (together with "require a pull request" and linear history). This avoids both the stuck-PR
+problem of path-filtered required checks and running every workflow on every change. Until then, check the Actions
+tab after each push and fix a red run before the next change.
+
+### 3.2 Rules that follow from a public repository
+
+| Rule | Why |
+|---|---|
+| Everything in git history, workflow logs and Actions artifacts is public. Never commit or print secrets or personal data; DB dumps may be artifacts only when encrypted with `age` ([08](08-operations-runbook.md) §3) | [02](02-threat-model.md) T-I11, T-I21 |
+| Eval fixtures and scorecards use synthetic data only | T-I20, T-I21 |
+| Real user data never goes to the free AI Studio tier; the free key is for evals with synthetic data | [01](01-requirements.md) PRV-022 |
+| Security reports go through private vulnerability reporting, not public issues | `SECURITY.md` |
+| GitHub Actions minutes are free and unlimited for public repositories on standard runners (CON-04) | Cost |
 
 ## 4. Secrets handling
 
@@ -157,9 +187,10 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | `BACKUP_AGE_RECIPIENT` | GitHub variable (public key, not secret). The private key is **offline** in the password manager. | `backup.yml` | Yearly |
 | `RENDER_DEPLOY_HOOK_URL` / `VM_SSH_KEY` | `production` environment secret | `deploy.yml` | Yearly / on staff change |
 | `APP_API_KEY_NEXT` | Same place as `APP_API_KEY`, only during a rotation; empty otherwise | API | Promoted to `APP_API_KEY` at the end of each rotation (08 §5.1) |
-| `HH_KEYSTORE_BASE64`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` | Repository secrets today (move them to a `release` environment restricted to `main` when the repo is public, where environment protection is free). The master keystore copy is offline. | `android.yml` job `release` (never on PRs) | Never for the key (key loss = no in-place updates). Passwords rotate yearly. |
+| `HH_KEYSTORE_BASE64`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` | Repository secrets today; the repo is public since 2026-09-22, so environment protection is free: move them to a `release` environment restricted to `main`. The master keystore copy is offline. | `android.yml` job `release` (never on PRs) | Never for the key (key loss = no in-place updates). Passwords rotate yearly. |
 | ~~`NVD_API_KEY`~~ | Not needed: OWASP Dependency-Check is not used (section 1) | – | – |
-| LLM provider key `AI_API_KEY` | Host secret store ([ai/](ai/) §11). For the manual AI eval run (TC-AI-10, `ai-evals.yml` (manual, workflow_dispatch)) a separate free-tier key as a repository secret, never exposed to PR runs. | AI module, AI evals | On suspicion / quarterly |
+| LLM provider key `AI_API_KEY` (only with `AI_PROVIDER=aistudio`, the default) | Host secret store ([ai/](ai/) §11). For the manual AI eval run with `provider=aistudio` (TC-AI-10, `ai-evals.yml` (manual, workflow_dispatch)) a separate free-tier key as a repository secret, never exposed to PR runs, used **only with the synthetic golden set** ([01](01-requirements.md) PRV-022). The production key must be a **paid** Gemini API key or Vertex AI credentials with a hard cap (AI-015); Vertex AI: see the next row. | AI module, AI evals | On suspicion / quarterly |
+| **Vertex AI / Google Cloud credential** (Application Default Credentials only; the code has no Vertex API key path). GitHub **secrets** `GCP_WIF_PROVIDER` (full Workload Identity provider name) and `GCP_SA_EMAIL` (service-account e-mail); GitHub **variables** `GCP_PROJECT_ID`, `GCP_LOCATION` and, only if needed, `AI_VERTEX_EMBEDDING_LOCATION` (identifiers, not credentials; `ai-evals.yml` also accepts the first two as secrets). On the host: `AI_PROVIDER=vertex`, `GCP_PROJECT_ID`, `GCP_LOCATION`, and `GOOGLE_APPLICATION_CREDENTIALS` only where a credential file is needed. Setup: [ai/vertex-setup.md](ai/vertex-setup.md) | Linked to a billing account, so treat it like a payment secret ([02](02-threat-model.md) T-I22). A **dedicated Google Cloud project for AI only**; a service account with **only** `roles/aiplatform.user` (never Owner or Editor). **CI** (`ai-evals.yml`, `provider=vertex`): **Workload Identity Federation with GitHub OIDC** through `google-github-actions/auth` (`id-token: write` on that job only, provider attribute condition `assertion.repository == 'Sriram-Codes-SW/doorprints'`); the action writes a short-lived credential file in the workspace and sets `GOOGLE_APPLICATION_CREDENTIALS`; no key is stored. **Cloud Run**: the service runs as the service account and gets tokens from the metadata server; no key, no `GOOGLE_APPLICATION_CREDENTIALS`. **Local**: `gcloud auth application-default login` (the developer's own account). **Non-Google host** (Render, Koyeb, a VM), only if Vertex AI is used there: a service-account JSON key as a mode-600 secret file outside the image, named by `GOOGLE_APPLICATION_CREDENTIALS`. **Never** in the repository, the Docker image, build args, CI artifacts or logs. Blast-radius limit: the spend cap budget on the AI project ([08](08-operations-runbook.md) §10.2). | AI module (production), AI evals | WIF and Cloud Run: nothing to rotate (tokens live about an hour); on suspicion remove the principal binding or disable the service account (IR-2, IR-9). JSON key on a non-Google host only: quarterly and at once on suspicion; create the new key, switch, then delete the old key. Local ADC: `gcloud auth application-default revoke` when a machine is lost. |
 | GitHub PAT | **Avoid**: use `GITHUB_TOKEN`. If you need one, use a fine-grained PAT, a single repo, minimal scopes, expiry ≤ 90 days. | Local tooling only | At expiry, **and immediately if it was ever pasted into chat, logs or a file** |
 
 Rules: never commit keys (`.gitignore` already covers `.env`, `*.keystore`, `*.jks`, `local.properties`); never put secrets in Docker build args or the APK; never echo secrets in workflow logs; generate keys with `openssl rand -base64 32`; the `docker-compose.yml` defaults are **dev-only** (F-17).
@@ -252,6 +283,17 @@ volumes: { caddy_data: {} }
 
 Install the APK (section 5): the signed `doorprints-release-apk` artifact of `android.yml` once the `HH_*` secrets are set, otherwise the debug APK from `doorprints-debug-apk`. A signed release cannot be installed over a debug build (different signer): sync, uninstall, then install. Settings → server URL `https://…` (the app rejects `http://` except for localhost and the emulator), paste the key, then Save and test, then Sync now.
 
+### 6.5 Staging on Google Cloud (trial credit, time-limited)
+
+From Sprint 4 the owner may run a **staging** backend on **Cloud Run** with **Cloud SQL for PostgreSQL** (PostGIS and
+pgvector are supported extensions there) for up to the 90 days of the Google Cloud free trial, paid from the trial
+credit ([10](10-sprint-log.md) §8, C-27; [08](08-operations-runbook.md) §10.3). Rules: staging holds **synthetic data only**;
+secrets in Secret Manager (or Cloud Run secret env vars), not in the image; the smallest Cloud SQL tier, stopped when
+unused; a budget with alerts on the staging project. Google Cloud **spend cap budgets do not cover Cloud SQL**, so
+nothing stops Cloud SQL charges automatically: write a fixed **tear-down date** (at the latest the trial end) in the
+password manager entry and tear down by then (the trial does not charge automatically unless the billing
+account is upgraded). Production stays on the free-tier hosts above (CON-01).
+
 ## 7. Environment variables
 
 The **Dev compose** column says whether the local `docker-compose.yml` passes the variable to the `api` service. The file is owned by the Backend team (since Sprint 3, [10](10-sprint-log.md) §1) and passes every `AI_*`, `APP_AI_*` and `APP_MCP_*` setting from the host shell or a git-ignored `.env` file, with the same defaults as `application.yml`; its header comment has a Gemini and a local Ollama example. Variables marked *No* still work through `application.yml` defaults but cannot be changed in the dev stack without editing the compose file. `compose.prod.yml` (section 6.2) passes only the core variables: add the AI ones there if you turn AI on.
@@ -276,7 +318,7 @@ The **Dev compose** column says whether the local `docker-compose.yml` passes th
 | `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes | Yes (empty) |
 | `APP_AI_ENABLED`, `APP_MCP_ENABLED` | No, off by default (AI-001) | `false`, `false` | `true` turns on the AI endpoints / the MCP server ([ai/](ai/ai-design.md) §11) | No | Yes (`false`) |
 | `AI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Chat endpoint (OpenAI-compatible). Ollama in dev compose: `http://host.docker.internal:11434/v1` (compose maps `host.docker.internal` to `host-gateway`) | No | Yes |
-| `AI_API_KEY` | Yes when `APP_AI_ENABLED=true` | empty | Free Gemini key; any non-empty value for Ollama | **Yes** | Yes (empty) |
+| `AI_API_KEY` | Yes when `APP_AI_ENABLED=true` and `AI_PROVIDER=aistudio` (not used with `vertex`) | empty | Gemini API key (paid tier for real data, PRV-022; a free key only for synthetic evals); any non-empty value for Ollama | **Yes** | Yes (empty) |
 | `AI_CHAT_MODEL`, `AI_TIMEOUT`, `AI_MAX_RETRIES` | No | `gemini-3.5-flash`, `60s`, `2` | Ollama: e.g. `qwen3:8b`, `180s` | No | Yes |
 | `AI_EMBEDDING_PROVIDER` | No | `google-genai` | `google-genai` (native Gemini `batchEmbedContents`) or `openai` (`AI_BASE_URL` `/embeddings`; **needed for Ollama**); other values stop startup ([08](08-operations-runbook.md) §1.1) | No | Yes |
 | `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS` | No | `gemini-embedding-2`, `768` | Ollama: `nomic-embed-text`. Dimensions must stay `768` (`vector(768)` column) | No | Yes |
@@ -288,6 +330,15 @@ The **Dev compose** column says whether the local `docker-compose.yml` passes th
 | `AI_RATE_LIMIT_PER_MINUTE`, `AI_RATE_LIMIT_BURST`, `MCP_RATE_LIMIT_PER_MINUTE` | No | `10`, `5`, `60` | Free-tier quota guards (AI-009) | No | Yes |
 | `AI_RAG_TOP_K`, `AI_RAG_SIMILARITY_THRESHOLD` | No | `6`, `0.25` | RAG retrieval | No | Yes |
 | `AI_AGENT_MAX_TOOL_CALLS`, `AI_AGENT_MAX_CALLS_PER_TOOL`, `AI_AGENT_MAX_STOPS` | No | `12`, `4`, `8` | Planner step limits | No | Yes |
+| `AI_PROVIDER` | No | `aistudio` | `aistudio` = Gemini API key (`AI_API_KEY`, OpenAI-compatible chat, native embeddings); `vertex` = Google Cloud Vertex AI with Application Default Credentials ([ai/](ai/ai-design.md) §2.1, §3.3). Other values stop startup. `AI_CHAT_MODEL`, `AI_EMBEDDING_MODEL`, `AI_EMBEDDING_DIMENSIONS`, `AI_EMBEDDING_TASK_TYPE`, `AI_TIMEOUT` and `AI_MAX_RETRIES` apply to both | No | No (code default) |
+| `GCP_PROJECT_ID` | Yes when `AI_PROVIDER=vertex` (startup fails without it) | empty | Project **id** of the AI-only project (not the number) | No | No |
+| `GCP_LOCATION` | No | `asia-south1` | Vertex AI location for chat (and embeddings unless the next row is set); `global` has the widest model availability but no residency guarantee ([ai/vertex-setup.md](ai/vertex-setup.md) step 8) | No | No |
+| `AI_VERTEX_EMBEDDING_LOCATION` | No | empty (= `GCP_LOCATION`) | Only if the embedding model is not offered in `GCP_LOCATION`, e.g. `global` or `us-central1` | No | No |
+| `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION` | No | empty (derived: `https://<location>-aiplatform.googleapis.com`, `global` → `https://aiplatform.googleapis.com`), `v1beta1` | Base URL override (tests, Private Service Connect) and REST version (`v1` possible) | No | No |
+| `AI_INDEX_ON_CHANGE` | No | `true` | `false` = saves are not embedded one by one; only `POST /api/ai/reindex` embeds (fewer provider calls; deletes still leave the index at once). The eval harness sets it to `false` | No | No |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Only for Vertex AI on a non-Google host (and in CI, where `google-github-actions/auth` sets it) | unset | Standard ADC variable: path to a credential file. Not needed on Cloud Run (metadata server) or after `gcloud auth application-default login` | The **file** it points to is secret (section 4) | No |
+
+**Vertex AI and cloud AI access (2026-09-22).** Vertex AI is the second active provider next to the Gemini API (AI Studio), selected with `AI_PROVIDER` (rows above); the owner's step-by-step setup is [ai/vertex-setup.md](ai/vertex-setup.md) and the credential rules are in section 4. The planned cloud AI allowlist, per-user quota and global hard cap ([11](11-feature-parity-and-export-spec.md) 5.13, [01](01-requirements.md) AI-013, AI-015) will add settings in Sprint 5; this table gets them when the code lands.
 
 ### 7.1 Build-time variables (Android release signing, F-11)
 

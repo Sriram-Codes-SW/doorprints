@@ -1,11 +1,27 @@
 # AI evals: runs the golden set (docs/ai/evals/golden-set.json) against a real model and publishes a scorecard.
-# Manual only: it spends free-tier quota and model answers are not deterministic, so it never runs on push/PR.
+# Manual only: it spends provider quota / credit and model answers are not deterministic, so it never runs on push/PR.
 # Harness: backend/src/test/java/com/househunt/ai/eval/GoldenSetEvalTest.java; metrics: docs/ai/ai-design.md section 8.
-# Needs the repository secret AI_API_KEY (a free Gemini API key from https://aistudio.google.com/apikey).
+# Providers (input `provider`, docs/ai/ai-design.md 2.1 and 3.3):
+#   vertex: Google Cloud Vertex AI via Workload Identity Federation, no stored key. Needs repository secrets
+#     GCP_WIF_PROVIDER (projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>) and
+#     GCP_SA_EMAIL (the eval service account, roles/aiplatform.user only), plus GCP_PROJECT_ID and optionally
+#     GCP_LOCATION as repository variables (or secrets). Setup: docs/ai/vertex-setup.md.
+#   aistudio (default until the owner has finished docs/ai/vertex-setup.md steps 1-8 and step 10 has confirmed the
+#     trial credit is applied; then change the default below to vertex): Gemini Developer API; needs the repository
+#     secret AI_API_KEY (https://aistudio.google.com/apikey).
+# Quota-aware: on HTTP 429 / RESOURCE_EXHAUSTED the harness stops, the scorecard says
+# "STOPPED: provider quota exhausted" and the job fails with an explicit error annotation.
 # Ownership: the workflow file belongs to DevSecOps (owner of .github/**, adopted 2026-09-22, reviewed against the
 # repo's CI rules: manual trigger only, permissions {} with job-level contents: read, persist-credentials: false,
 # untrusted inputs passed through env and validated, never interpolated into scripts). The eval harness and golden
 # set belong to the AI team; changes to either side go through the other team's review.
+# 2026-09-22 (AI team, PO decision "Vertex AI as active provider"): provider input, Vertex AI auth through
+# google-github-actions/auth@v3 (id-token: write on this job only, used only when provider=vertex), model inputs,
+# quota-stop annotation.
+# DevSecOps review of the 2026-09-22 AI-team change: PENDING (not yet recorded). To review: `id-token: write` on this
+# job (needed only by the WIF step), the new third-party action google-github-actions/auth@v3 (tag-pinned like the
+# other actions in this repo; SHA pinning is DevSecOps' call), and that the AI_API_KEY secret is only exported for
+# provider=aistudio. Record the sign-off here (name, date) and in docs/ai/ai-design.md section 14 before merging.
 name: AI evals
 
 on:
@@ -25,8 +41,19 @@ on:
         description: Pause between cases in ms (free-tier requests-per-minute limits)
         type: string
         default: "4000"
+      provider:
+        description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
+        type: choice
+        default: aistudio
+        options:
+          - aistudio
+          - vertex
       chat_model:
-        description: Chat model override (empty = AI_CHAT_MODEL default from application.yml)
+        description: Chat model override, e.g. gemini-3.5-flash-lite (empty = AI_CHAT_MODEL default from application.yml)
+        type: string
+        default: ""
+      embedding_model:
+        description: Embedding model override, e.g. gemini-embedding-001 (empty = default gemini-embedding-2; must give 768 dims)
         type: string
         default: ""
 
@@ -45,28 +72,72 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      # Only for Workload Identity Federation (google-github-actions/auth, provider=vertex): lets the job request a
+      # GitHub OIDC token, which Google exchanges for a short-lived service-account token. The aistudio path never
+      # requests one.
+      id-token: write
     steps:
-      - name: Check the AI_API_KEY secret is set
-        env:
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        run: |
-          if [ -z "$AI_API_KEY" ]; then
-            echo "::error::Repository secret AI_API_KEY is not set (Settings > Secrets and variables > Actions). Without it the eval test is skipped."
-            exit 1
-          fi
-
       - name: Validate inputs
         env:
           DELAY_MS: ${{ inputs.delay_ms }}
+          PROVIDER: ${{ inputs.provider }}
+          CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
+          EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
           if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
             echo "::error::delay_ms must be a whole number of milliseconds"
             exit 1
           fi
+          if [ "$PROVIDER" != "vertex" ] && [ "$PROVIDER" != "aistudio" ]; then
+            echo "::error::provider must be vertex or aistudio"
+            exit 1
+          fi
+          for m in "$CHAT_MODEL_INPUT" "$EMBEDDING_MODEL_INPUT"; do
+            if [ -n "$m" ] && ! [[ "$m" =~ ^[a-z0-9][a-z0-9.-]{0,63}$ ]]; then
+              echo "::error::model names may only contain lower-case letters, digits, dots and hyphens"
+              exit 1
+            fi
+          done
+
+      - name: Check the provider's secrets are set
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+          GCP_SA_EMAIL: ${{ secrets.GCP_SA_EMAIL }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+        run: |
+          where="Settings > Secrets and variables > Actions"
+          if [ "$PROVIDER" = "aistudio" ]; then
+            if [ -z "$AI_API_KEY" ]; then
+              echo "::error::Repository secret AI_API_KEY is not set ($where). Without it the eval test is skipped."
+              exit 1
+            fi
+          else
+            missing=""
+            [ -z "$GCP_WIF_PROVIDER" ] && missing="$missing GCP_WIF_PROVIDER(secret)"
+            [ -z "$GCP_SA_EMAIL" ] && missing="$missing GCP_SA_EMAIL(secret)"
+            [ -z "$GCP_PROJECT_ID" ] && missing="$missing GCP_PROJECT_ID(variable)"
+            if [ -n "$missing" ]; then
+              echo "::error::Vertex AI eval needs:$missing ($where; see docs/ai/vertex-setup.md). Or run with provider=aistudio."
+              exit 1
+            fi
+          fi
 
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      # Workload Identity Federation: no service-account key exists anywhere. Writes a short-lived external-account
+      # credential file (removed again at the end of the job) and exports GOOGLE_APPLICATION_CREDENTIALS, which the
+      # app's Application Default Credentials lookup reads. Must run after checkout (the file lives in the workspace).
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: ${{ inputs.provider == 'vertex' }}
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          project_id: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
 
       # Same database as backend.yml: service containers cannot be built from a Dockerfile, so build backend/db
       # (postgis/postgis + pgvector) and run it by hand. A fresh database per run keeps retrieval scores comparable.
@@ -102,16 +173,33 @@ jobs:
           DB_PASSWORD: househunt
           APP_AI_ENABLED: "true"
           APP_MCP_ENABLED: "false"
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_PROVIDER: ${{ inputs.provider }}
+          # The key is only handed to the aistudio path; Vertex AI uses the federated credentials instead.
+          AI_API_KEY: ${{ inputs.provider == 'aistudio' && secrets.AI_API_KEY || '' }}
+          GCP_PROJECT_ID: ${{ inputs.provider == 'vertex' && (vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID) || '' }}
+          GCP_LOCATION_SETTING: ${{ vars.GCP_LOCATION || secrets.GCP_LOCATION }}
+          AI_VERTEX_EMBEDDING_LOCATION: ${{ vars.AI_VERTEX_EMBEDDING_LOCATION }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
+          EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
-          # Only override the model when asked: an empty AI_CHAT_MODEL would replace the application.yml default.
+          # Only override when set: an empty value would replace the application.yml default.
           if [ -n "$CHAT_MODEL_INPUT" ]; then export AI_CHAT_MODEL="$CHAT_MODEL_INPUT"; fi
+          if [ -n "$EMBEDDING_MODEL_INPUT" ]; then export AI_EMBEDDING_MODEL="$EMBEDDING_MODEL_INPUT"; fi
+          if [ -n "$GCP_LOCATION_SETTING" ]; then export GCP_LOCATION="$GCP_LOCATION_SETTING"; fi
+          if [ -z "$AI_VERTEX_EMBEDDING_LOCATION" ]; then unset AI_VERTEX_EMBEDDING_LOCATION; fi
           # No -Dsurefire.failIfNoSpecifiedTests=false: if the test class is renamed or removed, Surefire fails the
           # run ("No tests matching pattern") instead of passing green with no scorecard.
           mvn -B -ntp test -Dtest=GoldenSetEvalTest
+
+      - name: Report a provider quota stop
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q "STOPPED: provider quota exhausted" backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval STOPPED::Provider quota exhausted (HTTP 429 / RESOURCE_EXHAUSTED). The remaining cases were not run. Wait for the per-minute/daily quota to reset, check Billing, or lower the load (types, delay_ms), then re-run."
+            exit 1
+          fi
 
       - name: Publish scorecard to the job summary
         if: always()

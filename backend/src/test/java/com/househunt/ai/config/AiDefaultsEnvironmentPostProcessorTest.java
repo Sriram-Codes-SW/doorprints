@@ -59,6 +59,45 @@ class AiDefaultsEnvironmentPostProcessorTest {
     }
 
     @Test
+    void providerDefaultsToAiStudio() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.enabled", "true");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("app.ai.provider")).isEqualTo("aistudio");
+        assertThat(env.getProperty("spring.ai.model.chat")).isEqualTo("openai");
+        assertThat(env.getProperty("app.ai.embedding.provider")).isEqualTo("google-genai");
+    }
+
+    @Test
+    void vertexSelectsGoogleGenAiChatAndTheAppsVertexEmbeddings() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.enabled", "true");
+        env.setProperty("app.ai.provider", " Vertex ");
+        env.setProperty("spring.ai.model.chat", "openai"); // a leftover setting must not mix providers
+        env.setProperty("app.ai.embedding.provider", "openai");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        assertThat(env.getProperty("app.ai.provider")).isEqualTo("vertex");
+        assertThat(env.getProperty("spring.ai.model.chat")).isEqualTo("google-genai");
+        assertThat(env.getProperty("app.ai.embedding.provider")).isEqualTo("vertex");
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.model.embedding.text")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.model.embedding.multimodal")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.vectorstore.type")).isEqualTo("pgvector");
+        assertThat(env.getProperty("spring.ai.model.image")).isEqualTo("none");
+    }
+
+    @Test
+    void vertexSelectedButAiDisabledStillForcesEverythingOff() {
+        var env = new MockEnvironment();
+        env.setProperty("app.ai.provider", "vertex");
+        epp.postProcessEnvironment(env, new SpringApplication());
+        // chat=none keeps GoogleGenAiChatAutoConfiguration (matchIfMissing=true) off: no Google client, no ADC lookup.
+        assertThat(env.getProperty("spring.ai.model.chat")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.model.embedding")).isEqualTo("none");
+        assertThat(env.getProperty("spring.ai.vectorstore.type")).isEqualTo("none");
+    }
+
+    @Test
     void openAiProviderSelectsOpenAiCompatibleEmbeddingsButAllowsOverrides() {
         var env = new MockEnvironment();
         env.setProperty("app.ai.enabled", "true");

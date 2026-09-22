@@ -305,6 +305,25 @@ class EvalScorerTest {
     }
 
     @Test
+    void quotaStopIsReportedAsStoppedNotAsAFloodOfCaseFailures() {
+        var c = testCase("e1", "extract", null, map("price", 100));
+        var r = EvalScorer.scoreExtract(c, map("price", 100), null);
+        var metrics = EvalScorer.metrics(List.of(r), Map.of("extractionFieldAccuracy", Map.of("min", 0.9)));
+        var errors = List.of(EvalScorer.QUOTA_STOPPED
+                + " (POST /api/ai/ask still HTTP 503 AI_QUOTA_EXHAUSTED after 2 attempt(s)); 1 case(s) scored before "
+                + "the stop, the rest were not run");
+
+        var verdict = EvalScorer.verdict(metrics, List.of(r), errors);
+        var md = EvalScorer.markdown(EvalScorer.header(), metrics, List.of(r), List.of(), errors);
+
+        assertThat(verdict.passed()).isFalse();
+        assertThat(EvalScorer.quotaStopped(errors)).isTrue();
+        assertThat(md).contains("**Result: STOPPED: provider quota exhausted**", "## Errors", "| Cases | 1 / 1 passed |");
+        assertThat(md).doesNotContain("**Result: FAIL**").doesNotContain("**Result: PASS**");
+        assertThat(EvalScorer.quotaStopped(List.of("POST /api/ai/reindex failed"))).isFalse();
+    }
+
+    @Test
     void passesOnlyWithCasesNoErrorsAndMetricsMet() {
         var c = testCase("p1", "extract", null, map("price", 100));
         var r = EvalScorer.scoreExtract(c, map("price", 100), null);
