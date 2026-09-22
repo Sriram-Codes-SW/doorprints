@@ -20,9 +20,13 @@ import com.househunt.app.HouseHuntApp
 import com.househunt.app.Notifications
 import com.househunt.app.R
 import com.househunt.app.data.HouseEntity
-import com.househunt.app.data.HouseStatus
 import com.househunt.app.data.VisitEntity
-import com.househunt.app.data.VisitSource
+import com.househunt.app.data.labelRes
+import com.househunt.shared.location.Geo
+import com.househunt.shared.location.StayDetector
+import com.househunt.shared.location.StreetAlerts
+import com.househunt.shared.model.HouseStatus
+import com.househunt.shared.model.VisitSource
 import com.househunt.app.i18n.AppLocale
 import com.househunt.app.ui.Formats
 import kotlinx.coroutines.launch

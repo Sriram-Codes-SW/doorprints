@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.R
 import com.househunt.app.data.HouseEntity
-import com.househunt.app.data.HouseStatus
+import com.househunt.app.data.labelRes
+import com.househunt.shared.model.HouseStatus
 
 private enum class Sort(@StringRes val label: Int) {
     RECENT(R.string.sort_recent), SCORE(R.string.sort_score), PRICE(R.string.sort_price)

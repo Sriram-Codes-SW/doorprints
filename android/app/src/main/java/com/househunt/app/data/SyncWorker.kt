@@ -3,6 +3,8 @@ package com.househunt.app.data
 import android.content.Context
 import androidx.work.*
 import com.househunt.app.HouseHuntApp
+import com.househunt.shared.sync.SyncOutcome
+import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -12,7 +14,10 @@ import java.util.concurrent.TimeUnit
  *  - on metered networks, photos wait for Wi-Fi when the user asked for that; a separate UNMETERED job then
  *    transfers them as soon as Wi-Fi is available,
  *  - transient failures retry with WorkManager's exponential backoff (30 s, 60 s, 120 s, ...); an auth failure
- *    does not retry (it needs the user to fix the key).
+ *    does not retry (it needs the user to fix the key),
+ *  - when WorkManager stops the worker (constraint lost, e.g. the network went away, or the work was replaced or
+ *    cancelled) the coroutine is cancelled; that is not a failed sync, so nothing is recorded (WorkManager runs
+ *    stopped work again once its constraints are met).
  */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -30,6 +35,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             repo.settings.saveSyncResult(outcome)
             if (outcome.photosWaiting > 0) syncPhotosOnWifi(applicationContext)
             Result.success()
+        } catch (e: CancellationException) {
+            // Since Sprint 3.5 every HTTP call is a cancellable Ktor suspend call, so a stop now surfaces here as a
+            // CancellationException. Rethrow it (as in ReverseGeocoder) instead of saving it as a sync error.
+            throw e
         } catch (e: Exception) {
             val outcome = SyncOutcome.fromError(e)
             repo.settings.saveSyncResult(outcome)

@@ -1,0 +1,5 @@
+# Build output of the KMP module and Kotlin Gradle plugin caches (Sprint 3.5). The repo-root .gitignore covers
+# android/build/ and android/app/build/ only.
+/shared/build/
+/.kotlin/
+/local.properties

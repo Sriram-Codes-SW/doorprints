@@ -54,6 +54,9 @@ updates:
     ignore:
       - dependency-name: "com.android.application"
         update-types: [version-update:semver-major]
+      # Plugin of the KMP module android/shared (Sprint 3.5); same version as AGP, so it moves with the manual AGP upgrade.
+      - dependency-name: "com.android.kotlin.multiplatform.library"
+        update-types: [version-update:semver-major]
       - dependency-name: "com.android.tools.build:*"
         update-types: [version-update:semver-major]
       - dependency-name: "org.jetbrains.kotlin*"

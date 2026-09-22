@@ -1,8 +1,8 @@
-package com.househunt.app.location
+package com.househunt.shared.location
 
 /**
- * Pure rules for Hunt mode's "you've been on this street before" alert, kept free of Android types so they are
- * unit-tested on the JVM. [HuntService] turns the decision into a localised notification.
+ * Pure rules for Hunt mode's "you've been on this street before" alert. The Android HuntService (in :app) turns the
+ * decision into a localised notification.
  */
 object StreetAlerts {
     /** At most one alert per street per hour. */

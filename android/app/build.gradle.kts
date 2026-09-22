@@ -1,8 +1,8 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.kotlin.plugin.serialization")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 // Release signing (threat model F-11). The keystore never lives in the repo: CI or the developer supplies it
@@ -68,8 +68,16 @@ android {
         compose = true
     }
 
+    packaging {
+        resources {
+            // Licence and OSGi metadata that several KMP/Ktor jars ship under the same path; not needed at runtime
+            // and a duplicate would stop the merge (same exclusions as Google's KMP sample app).
+            excludes += listOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        }
+    }
+
     testOptions {
-        // JVM unit tests touch a few android.* classes (e.g. Log in ApiClient); return defaults instead of throwing.
+        // JVM unit tests touch a few android.* classes (e.g. Log via data/Api.kt); return defaults instead of throwing.
         unitTests.isReturnDefaultValues = true
     }
 
@@ -81,38 +89,51 @@ android {
 
 ksp {
     arg("room.generateKotlin", "true")
+    // Schema export (Sprint 3.5): the JSON files in app/schemas are committed and checked by RoomSchemaTest.
+    // Phase 2 (Room KMP) can switch to the androidx.room Gradle plugin's room { schemaDirectory(...) }.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-core:1.7.8")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    // Platform-neutral logic, DTOs and the Ktor API client (Sprint 3.5, see ../shared/README.md).
+    implementation(project(":shared"))
 
-    implementation("androidx.core:core-ktx:1.17.0")
-    implementation("androidx.activity:activity-compose:1.11.0")
-    implementation("androidx.navigation:navigation-compose:2.9.5")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
-    implementation("androidx.lifecycle:lifecycle-service:2.9.4")
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
 
-    implementation("androidx.room:room-runtime:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
-    ksp("androidx.room:room-compiler:2.8.4")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.service)
 
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
-    implementation("androidx.exifinterface:exifinterface:1.4.1")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("org.maplibre.gl:android-sdk:13.6.1")
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.exifinterface)
 
-    testImplementation("junit:junit:4.13.2")
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
+    // Room's checklist converter (AppDatabase.kt) still encodes JSON here; the DTOs moved to :shared.
+    implementation(libs.kotlinx.serialization.json)
+    // No direct OkHttp dependency any more: HTTP goes through :shared's Ktor client (OkHttp engine, OkHttp 5.x).
+    implementation(libs.coil.compose)
+    implementation(libs.maplibre.android)
+
+    testImplementation(libs.junit)
+}
+
+// CI runs `./gradlew assembleDebug testDebugUnitTest`. :shared is a KMP library whose Android host tests are the task
+// :shared:testAndroidHostTest (it has no testDebugUnitTest), so the app's unit-test task pulls them in. That keeps the
+// existing CI command covering the commonTest suite (domain rules and the Ktor API contract tests).
+tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
+    dependsOn(":shared:testAndroidHostTest")
 }

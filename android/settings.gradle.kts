@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Doorprints"
 include(":app")
+// Kotlin Multiplatform module with the platform-neutral logic (domain rules, DTOs, Ktor API client). See shared/README.md.
+include(":shared")

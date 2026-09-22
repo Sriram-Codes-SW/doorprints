@@ -1,19 +1,23 @@
-package com.househunt.app
+package com.househunt.shared.sync
 
-import com.househunt.app.data.ApiException
-import com.househunt.app.data.SyncOutcome
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
-import java.io.IOException
+import com.househunt.shared.api.ApiException
+import com.househunt.shared.api.ApiTimeoutException
+import kotlinx.io.IOException
+import kotlinx.serialization.SerializationException
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class SyncOutcomeTest {
 
     @Test
     fun roundTripsThroughItsStoredForm() {
         val outcome = SyncOutcome(SyncOutcome.Kind.OK, pushed = 3, pulled = 7, photosWaiting = 2)
+        assertEquals("OK|3|7|2|0", outcome.encode()) // stored in DataStore: the format must not change
         assertEquals(outcome, SyncOutcome.decode(outcome.encode()))
+        assertEquals(SyncOutcome(SyncOutcome.Kind.SERVER, httpCode = 503), SyncOutcome.decode("SERVER|0|0|0|503"))
         assertNull(SyncOutcome.decode("Synced: sent 1, received 2")) // v0.1 free text is ignored
+        assertNull(SyncOutcome.decode("BOGUS|0|0|0|0"))
         assertNull(SyncOutcome.decode(null))
     }
 
@@ -24,7 +28,10 @@ class SyncOutcomeTest {
             SyncOutcome.fromError(ApiException(ApiException.Kind.CAPTIVE_PORTAL, 200)).kind)
         assertEquals(SyncOutcome.Kind.RATE_LIMITED, SyncOutcome.fromError(ApiException(ApiException.Kind.RATE_LIMITED, 429)).kind)
         assertEquals(503, SyncOutcome.fromError(ApiException(ApiException.Kind.SERVER, 503)).httpCode)
+        assertEquals(SyncOutcome.Kind.SERVER, SyncOutcome.fromError(ApiException(ApiException.Kind.CONFLICT, 409)).kind)
         assertEquals(SyncOutcome.Kind.NETWORK, SyncOutcome.fromError(IOException("timeout")).kind)
+        assertEquals(SyncOutcome.Kind.NETWORK, SyncOutcome.fromError(ApiTimeoutException(240_000)).kind)
         assertEquals(SyncOutcome.Kind.UNKNOWN, SyncOutcome.fromError(IllegalStateException()).kind)
+        assertEquals(SyncOutcome.Kind.UNKNOWN, SyncOutcome.fromError(SerializationException("bad json")).kind)
     }
 }

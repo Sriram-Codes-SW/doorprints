@@ -29,7 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.R
 import com.househunt.app.data.AppSettings
 import com.househunt.app.data.ServerUrl
-import com.househunt.app.data.SyncOutcome
+import com.househunt.shared.sync.SyncOutcome
 import com.househunt.app.i18n.AppLocale
 import kotlinx.coroutines.launch
 

@@ -18,10 +18,27 @@
 # 2026-09-22 (AI team, PO decision "Vertex AI as active provider"): provider input, Vertex AI auth through
 # google-github-actions/auth@v3 (id-token: write on this job only, used only when provider=vertex), model inputs,
 # quota-stop annotation.
-# DevSecOps review of the 2026-09-22 AI-team change: PENDING (not yet recorded). To review: `id-token: write` on this
-# job (needed only by the WIF step), the new third-party action google-github-actions/auth@v3 (tag-pinned like the
-# other actions in this repo; SHA pinning is DevSecOps' call), and that the AI_API_KEY secret is only exported for
-# provider=aistudio. Record the sign-off here (name, date) and in docs/ai/ai-design.md section 14 before merging.
+# DevSecOps review of the 2026-09-22 AI-team change: DONE 2026-09-22 (Claude, DevSecOps team), approved with the
+# changes below, which are applied in this file:
+#   - id-token: write stays job-level (GitHub has no step-level permissions). It is acceptable because the workflow
+#     is manual only (users with write access) and the token is useless outside the WIF provider's attribute
+#     condition. The Maven step runs with the OIDC request variables removed (env -u ACTIONS_ID_TOKEN_REQUEST_URL
+#     -u ACTIONS_ID_TOKEN_REQUEST_TOKEN), but that is defence in depth only, NOT isolation: env -u only stops code
+#     from reading the request variables directly. The WIF credential file that google-github-actions/auth writes
+#     to the workspace (GOOGLE_APPLICATION_CREDENTIALS, credential_source.url and credential_source.headers) holds
+#     the same OIDC request URL and bearer token, so any Maven plugin or test code in that step can still obtain
+#     GitHub OIDC tokens while the job runs. Residual risk, accepted: the real controls are the manual-only trigger
+#     (write access), the WIF attribute condition (repository plus refs/heads/main, owner action below), the eval
+#     service account having only roles/aiplatform.user, and cleanup_credentials (default true, not overridden
+#     here) deleting the file when the job ends.
+#   - google-github-actions/auth is a third-party action, so it is pinned to a full commit SHA (v3.0.0), like
+#     zaproxy/action-baseline in security.yml; Dependabot (github-actions ecosystem) keeps the SHA current.
+#   - AI_API_KEY is exported only for provider=aistudio (checked, correct); the WIF credential file written to the
+#     workspace is not uploaded (both upload steps only take backend/target paths) and is removed by the action.
+#   - Required on the Google side (owner, docs/ai/vertex-setup.md): use the stricter attribute condition that also
+#     pins the ref, assertion.repository == 'Sriram-Codes-SW/doorprints' && assertion.ref == 'refs/heads/main',
+#     now that the repository is public. Tracked as an open DevSecOps item until the owner confirms it.
+#   The matching sign-off line in docs/ai/ai-design.md section 14 is for the AI/Docs team to add.
 name: AI evals
 
 on:
@@ -133,7 +150,7 @@ jobs:
       # app's Application Default Credentials lookup reads. Must run after checkout (the file lives in the workspace).
       - name: Authenticate to Google Cloud (Workload Identity Federation)
         if: ${{ inputs.provider == 'vertex' }}
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
@@ -191,7 +208,13 @@ jobs:
           if [ -z "$AI_VERTEX_EMBEDDING_LOCATION" ]; then unset AI_VERTEX_EMBEDDING_LOCATION; fi
           # No -Dsurefire.failIfNoSpecifiedTests=false: if the test class is renamed or removed, Surefire fails the
           # run ("No tests matching pattern") instead of passing green with no scorecard.
-          mvn -B -ntp test -Dtest=GoldenSetEvalTest
+          # Defence in depth only: env -u only stops code from reading the OIDC request variables directly. The WIF
+          # credential file (credential_source.url and headers) contains the same request URL and bearer token, so
+          # code in this step (third-party plugins, tests) can still obtain OIDC tokens while the job runs; Vertex
+          # auth keeps working because the Google auth library takes both from that file. The real controls are the
+          # manual-only trigger, the WIF attribute condition (repository + refs/heads/main), the eval SA having only
+          # roles/aiplatform.user, and cleanup_credentials removing the file after the job (see header).
+          env -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_ID_TOKEN_REQUEST_TOKEN mvn -B -ntp test -Dtest=GoldenSetEvalTest
 
       - name: Report a provider quota stop
         if: always()

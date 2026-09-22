@@ -2,7 +2,14 @@
 #
 # CodeQL is not used: on private repositories GitHub code scanning needs a paid GitHub Advanced Security licence
 # (CON-01 zero cost). The same goes for uploading SARIF to the Security tab, so reports are kept as artifacts.
-# If the repository is made public, CodeQL and SARIF upload become free and can be added.
+# The repository is public since Sprint 3.5 (2026-09-22), so CodeQL and SARIF upload are now free; adding them is an
+# open DevSecOps item, not done yet.
+#
+# Android (Gradle) dependencies: `trivy fs` only reads Gradle lock files (gradle.lockfile), which android/ does not
+# have yet, and Semgrep does not look at dependencies. Until the Android build uses dependency locking, the job
+# gradle-dependency-graph below submits the fully resolved Gradle graph (including transitive dependencies such as
+# Ktor, OkHttp, kotlinx-io, kotlinx-serialization) to GitHub's dependency graph, where Dependabot alerts cover it.
+# Once gradle.lockfile files are committed, the trivy fs step scans them without any change here.
 name: Security
 
 on:
@@ -19,7 +26,8 @@ on:
         required: false
         default: ""
 
-# Least privilege: nothing by default; each job asks for what it needs (only contents: read).
+# Least privilege: nothing by default; each job asks for what it needs (contents: read, except
+# gradle-dependency-graph: contents: write for the Dependency Submission API, main/schedule/manual only).
 permissions: {}
 
 # Superseded PR runs are cancelled; runs on main (push, weekly schedule) always finish.
@@ -161,6 +169,39 @@ jobs:
           path: backend/target/bom.json
           if-no-files-found: ignore
           retention-days: 30
+
+  # Dependency Submission API: needs contents: write, which is why this job is separate, never runs for pull requests
+  # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main, the weekly
+  # schedule and manual runs. No artifact is uploaded (generate-and-submit); results appear as Dependabot alerts.
+  # Requires the repository's dependency graph (on by default for public repositories).
+  gradle-dependency-graph:
+    name: Android dependency graph (Gradle, Dependabot alerts)
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # Dependency Submission API only; the checkout itself does not keep the token
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Submit Gradle dependency graph (android/)
+        uses: gradle/actions/dependency-submission@v6
+        with:
+          build-root-directory: android
+          dependency-graph: generate-and-submit
+          cache-read-only: true
+          # :shared is Kotlin Multiplatform with iOS targets; the force-resolution task would otherwise resolve the
+          # Kotlin/Native (klib, commonizer, native bundle) configurations on Linux, which Linux CI never needs and
+          # which do not ship in the APK. The filter (full-match regex, gradle/github-dependency-graph-gradle-plugin
+          # ResolvedConfigurationFilter) also applies to that task. Android/JVM classpaths stay included.
+          # First run still unproven: dispatch Security on main after merge; if it fails, fix the filter rather
+          # than adding continue-on-error (false green).
+          dependency-graph-exclude-configurations: '(ios|apple|native).*|.*(Native|Klibraries|Cinterop|Klib).*'
 
   npm-audit:
     name: npm audit (web)
