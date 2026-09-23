@@ -257,6 +257,20 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **CI runs on every branch** (owner decision, 2026-09-23: "We need to have the pipelines run on branches as well
+  because we need to be sure that the code is right before merging into main"; [sprint log](docs/10-sprint-log.md)
+  12.5 Decision 5). `backend.yml`, `web.yml`, `android.yml`, `shared-ios.yml`, `security.yml` and `codeql.yml` run on
+  a push to any branch with their path filters unchanged; pull requests to `main` still run (CodeQL still not on pull
+  requests). Deploying (`web.yml` `firebase-setup` / `deploy-firebase`), release signing (`android.yml`
+  `release-signing-check`, which now requires `main` too, and `release`, which runs only on its output) and the Android dependency-graph submission stay
+  on `main`; the backend image build and non-root check (never pushed) now also run on branches. For signing that
+  guard holds only while `android.yml` is unmodified, because a push runs the pushed branch's copy of the workflow and
+  the `HH_*` signing secrets are still repository secrets; moving them into a `release` environment restricted to
+  `main` is backlog ticket S4b-BL-8. A newer push to a branch or pull request cancels the older run; an in-progress
+  run on `main` is never cancelled, and when several pushes queue up only the newest waiting run starts. Required status checks stay off, and
+  with a pull request open each push runs every triggered workflow twice. Before merging, check the latest run of each
+  triggered workflow on the branch and bring the branch up to date with `main`. Not yet run in CI. See
+  [07 section 1](docs/07-secure-build-and-deploy.md#1-pipeline-overview) (*Branch runs*).
 - **Android, whole-app UX audit** (Sprint 4a, before the first deploy; `android/shared/README.md` 1.24–1.34, not
   pushed yet). Location and notifications are asked only in context (the Hunt switch, *Save house here*, *My
   location*, *Use my current location*, *Plan visits*), never on arrival; *Approximate* location is its own state with

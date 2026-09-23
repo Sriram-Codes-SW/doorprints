@@ -217,8 +217,12 @@ Full steps and the environment variable reference: [docs/07](docs/07-secure-buil
 
 CI workflows (`.github/workflows/`): `backend.yml` (tests on PostGIS, SBOM, image check), `web.yml` (Vitest, build),
 `android.yml` (APK, unit tests incl. `:shared`, lint, signed release), `security.yml` (Semgrep, gitleaks, Trivy, npm
-audit, Android dependency graph, manual ZAP), `shared-ios.yml` (`:shared` iOS compile on macOS) and `ai-evals.yml`
-(manual AI evaluation against a real model). Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
+audit, Android dependency graph, manual ZAP), `shared-ios.yml` (`:shared` iOS compile on macOS), `codeql.yml`
+(CodeQL SAST) and `ai-evals.yml` (manual AI evaluation against a real model). Since 2026-09-23 the path-filtered
+workflows and `security.yml` run on a push to **any branch** and on pull requests to `main`; `codeql.yml` runs on a
+push to any branch (not on pull requests). Deploying and release signing stay on `main` (for signing, only while
+the workflow is unmodified until its secrets move to a `main`-only environment, [docs/07 §4](docs/07-secure-build-and-deploy.md#4-secrets-handling)).
+Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 
 ## Documentation
 
@@ -261,7 +265,11 @@ vulnerability reporting ([SECURITY.md](SECURITY.md)). Anything you do contribute
 House rules for the maintainers (full list in [docs/README.md](docs/README.md#how-to-update-these-documents)):
 
 1. Code and docs change together; CI (`Backend`, `Web`, `Android`, `Security`, and `Shared iOS compile` for shared
-   code) must be green; add a line under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
+   code) must be green on the branch before it is merged into `main` (the workflows run on every branch push): the
+   latest run of each workflow the branch triggered, read in the Actions tab filtered by the branch (path filters work
+   per push, so the head commit's checks alone can hide an older red run), with the branch up to date with `main`
+   (rebase or merge `main` and push again, or open the PR, if `main` has moved); add a line under *Unreleased* in
+   [CHANGELOG.md](CHANGELOG.md).
 2. Every user-visible string in all four languages: `web/src/app/i18n/{en,hi,ta,te}.ts` and
    `android/app/src/main/res/values{,-hi,-ta,-te}/strings.xml` ([docs/05](docs/05-ux-accessibility-i18n.md#9-translation-workflow)).
 3. Database changes are new Flyway files `V<n>__description.sql`. Room changes need a version bump, a `Migration`
@@ -290,3 +298,5 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-23 | **Web hosting moved to Firebase Hosting at https://doorprints.web.app** (owner decision, with the brand advisor; the Cloudflare Pages plan was never set up, because a `pages.dev` address reads as a test site): the **Web** platform row gives the real address, *Run the API locally* and *Deploy for free* give `https://doorprints.web.app` for `APP_CORS_ORIGINS` and describe the Firebase deploy (Workload Identity, no key) and its owner setup, done on 2026-09-23. The *Offline copies* row and the Sprint 4b roadmap row say that web import comes in Sprint 4b under the approved import definition, and use *Add a shared listing* ([docs/12](docs/12-brand-and-naming.md)). |
 | 2026-09-23 | Final Sprint 4a round: the **Android** platform row states the owner's release guard (no Play Store release and no public server until the release security gate exists and passes), and the **Sprint 4a** roadmap row notes that the whole-app UX audit, the go-ahead for the first deploy, is approved on both apps ([docs/10](docs/10-sprint-log.md) §11.7, §12.5). The licence is still MIT: the approved move to `AGPL-3.0-only` is a separate follow-up (§12.6). |
 | 2026-09-23 | The **Four languages** feature row says that Hindi, Tamil and Telugu ship *under review* (machine-drafted, native-speaker review pending), the owner's decision in the first release's Definition of Done ([docs/10](docs/10-sprint-log.md) §12.5 Decision 4). The **Android** row's release-guard link now leads to the full release security gate as the owner approved it (§12.5 Decision 1). |
+| 2026-09-23 | **CI on every branch** (owner decision): the CI paragraph under *Repository structure* says the workflows run on a push to any branch as well as on pull requests to `main`, with deploying and release signing on `main` only; house rule 1 asks for green branch runs before a merge ([docs/10](docs/10-sprint-log.md) §12.5 Decision 5). |
+| 2026-09-23 | Review fixes to the CI-on-every-branch rows: the CI paragraph lists `codeql.yml` and says it runs on a push to any branch but not on pull requests; deploying stays on `main` and signing does so only while the workflow is unmodified, until the `HH_*` secrets move to a `main`-only environment; house rule 1 says what green means (the latest run of each triggered workflow on the branch, with the branch up to date with `main`; [docs/07](docs/07-secure-build-and-deploy.md) §3.1). |

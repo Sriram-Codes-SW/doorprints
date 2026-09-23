@@ -1,6 +1,7 @@
 # Web: install, unit tests (Vitest + jsdom), production build (Angular), upload the static site as an artifact,
 # verify the PWA files survived the build, check the Firebase Hosting configuration and CLI, and publish that same
-# artifact to Firebase Hosting (https://<FIREBASE_SITE_ID>.web.app) on pushes to main and manual runs.
+# artifact to Firebase Hosting (https://<FIREBASE_SITE_ID>.web.app) on pushes to main and manual runs on main
+# (build and checks run on every branch push too; see Triggers below).
 #
 # npm audit is NOT run here: it lives in security.yml (job `npm audit (web)`, production dependencies, high and
 # critical), together with the other scanners, so audit rules stay in one place. The installs below keep
@@ -25,11 +26,21 @@
 #   firebase-tools 15.30.2 from .github/firebase-tools, live header check with an overall deadline). The build no
 #   longer requires _headers/_redirects: the Web team moves the headers to web/firebase.json and deletes both files;
 #   pwa-files warns if they come back. Triggers also cover .github/firebase-tools/** (Dependabot npm updates).
+#
+# 2026-09-23 (DevSecOps), owner decision "be sure that the code is right before merging into main": the push trigger
+#   now runs on ANY branch (same path filters as before); pull requests to main and manual runs are unchanged.
+#   build, pwa-files and firebase-config run on branch pushes; firebase-setup and deploy-firebase stay main-only
+#   (their `github.ref == 'refs/heads/main'` guards, backed by the Workload Identity condition above). Superseded
+#   runs are now cancelled on every ref except main.
 name: Web
 
+# Triggers: a push to ANY branch touching the paths below (tag pushes do not trigger), a pull request to main (tests
+# the merge result; also covers fork PRs) and manual runs. The two path lists are identical and must stay that way.
+# Only a push or manual run on main can deploy. With a pull request open, one push gives two runs (branch push +
+# pull_request); accepted (docs/07 section 3).
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   pull_request:
     branches: [main]
@@ -40,10 +51,11 @@ on:
 # id-token: write, and firebase-setup nothing at all).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main always finish (a cancelled run on main could abort a deployment).
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main always finish (a cancelled run on main could abort a deployment).
 concurrency:
   group: web-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:

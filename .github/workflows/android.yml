@@ -1,11 +1,16 @@
-# Android: debug APK + JVM unit tests + lint (report only); signed release APK when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
+# Android: debug APK + JVM unit tests + lint (report only); signed release APK on main when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
 name: Android
 
 # Path filters cover every file the build and tests read, not only android/** (same rule as backend.yml).
 # The two lists below are identical and must stay that way (GitHub Actions does not support YAML anchors).
+#
+# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
+# branch that touches one of the paths below, a pull request to main (tests the merge result; also covers fork PRs)
+# and manual runs. Tag pushes do not trigger. With a pull request open, one push gives two runs (branch push +
+# pull_request); accepted (docs/07 section 3). The signing key is used on main only (release-signing-check below).
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "android/**"
       # The export/backup contract sample. Load-bearing: CanonicalSampleTest (app JVM unit tests) walks up to
@@ -23,10 +28,11 @@ on:
 # Least privilege: nothing by default; each job asks for what it needs (only contents: read).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main always finish.
 concurrency:
   group: android-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
@@ -92,11 +98,14 @@ jobs:
             android/shared/build/test-results/
           retention-days: 7
 
-  # Only on main or a manual run, never for pull requests: PR code must not run with the signing key.
-  # `secrets` cannot be used in a job-level `if`, so this job checks for them and the release job keys off its output.
+  # Only for a push to main or a manual run on main: never for pull requests and never for a push to (or a manual
+  # run on) any other branch, because code that has not been merged into main must not run with the signing key.
+  # Since 2026-09-23 this workflow runs on every branch push, so the ref check is what keeps the key on main.
+  # `secrets` cannot be used in a job-level `if`, so this job checks for them and the release job keys off its output
+  # (skipped here => output empty => release skipped).
   release-signing-check:
     name: Release signing secrets present?
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
