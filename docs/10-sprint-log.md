@@ -1135,9 +1135,9 @@ docs reviews approve; the owner merges (or a session merges on the owner's instr
 | Renders shown to the owner | Before/after comparison and final renders (512, maskable in the circle, Apple, 192, favicon at real size, status icon at 24/48/72 px), 2026-09-24 |
 | Web | `ng test` 459 of 459, `ng build` and the precache stamp, locally (Node 24) and in CI |
 | Android | `assembleDebug` and unit tests green in CI on the branch (no SDK in the session) |
-| CI on the branch | All workflows green on `e2414f6` (round 1); the fix round's head is re-run by CI |
+| CI on the branch | All workflows green on `e2414f6` (round 1); the review-fix heads re-run by CI, and the owner's condition for the merge is green CI on the final head |
 | Reviews, round 1 | Code (Web, Android): **approved**, three minors (the status icon's toes and the favicon's toes at small sizes, both owner-accepted or device checks; one BACKLOG). Design and UX: **approved**, one spacing minor applied (top print to (78.5,51.5)), three BACKLOG. Docs: **changes requested**, two majors (ADR-13 in [03](03-design.md) still said the favicon had no toes; [14](14-lead-backlog-and-handoff.md) §1 still showed PR #14 open) and five minors, all applied |
-| Reviews, round 2 (delta only) | Pending |
+| Reviews, round 2 and 3 (delta only) | Code: **approved**. Design and UX: **approved** (gaps now 3.85 and 3.44 units; the maskable mark inside the 80 % circle). Docs: round 2 found one major (N-06's contrast warning named the wrong direction; it is a lighter teal or a darker gold that lowers the contrast) and one minor ("the five app-icon PNGs", not the shortcut icons), fixed in `c9d8bac`; round 3 **approved**. All gates approved |
 | Device checks | Owner: the launcher icon on a round-mask launcher; the status-bar icon while Hunt mode runs |
 
 **Review follow-ups (`BACKLOG:` candidates, not in this story).** (a) One source for the footprint: the path is
