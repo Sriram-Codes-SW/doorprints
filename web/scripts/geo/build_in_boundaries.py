@@ -90,6 +90,11 @@ for line in claims:
         d0, a = locate(line, s0); d1, b = locate(line, s1)
         if d0 < 1e-8 and d1 < 1e-8:
             if not a < b: raise SystemExit(f'SHARED stretch {k} runs against its claim line')
+            # SHARED is rounded to 5 decimals: a cut within that of a line end is at the end (else a piece of ours
+            # would be a connector alone, a spur).
+            near = lambda pos, i: max(abs(u - v) for u, v in zip(point_at(line, pos), line[i])) < 1e-4
+            if near(a, 0): a = 0.0
+            if near(b, len(line) - 1): b = float(len(line) - 1)
             cuts.append((a, b, t0, t1)); found.add(k)
     cuts.sort()
     pos, lead = 0.0, None  # lead: the connector point the next piece starts from
