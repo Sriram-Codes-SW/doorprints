@@ -98,7 +98,11 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
 import kotlin.math.hypot
 
-/** Free vector map tiles from OpenFreeMap (OpenStreetMap data) — no API key or billing needed. */
+/**
+ * Free vector map tiles from OpenFreeMap (OpenStreetMap data) — no API key or billing needed. Every load of it goes
+ * through [applyIndiaView] (India's boundary as the Government of India shows it; IndiaViewRules), so any new place
+ * that loads a style must call it too.
+ */
 const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
 private const val SOURCE = "houses"
@@ -504,6 +508,8 @@ fun MapScreen(
 
     fun loadStyle(m: MapLibreMap) {
         m.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { s ->
+            // Before the house layers, on every load (the first one and each retry): India's own boundary, no LoC/LAC.
+            applyIndiaView(s)
             addHouseLayers(s, markerLabelSizeSp(labelFontScale))
             style = s
         }
