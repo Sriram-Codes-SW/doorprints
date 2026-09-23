@@ -169,17 +169,18 @@ install UI requests them. Each shortcut has its own 96×96 icon (the map and dat
 teal) instead of reusing the app icon.
 
 **The app icon is the brand mark**, the same as Android's launcher icon
-(`android/app/src/main/res/drawable/ic_launcher.xml`): a white arched front door with its doorstep and two gold
-(#F2B84B) footprints walking up to it, on the brand teal #1F6F5C (the manifest's `theme_color` and
+(`android/app/src/main/res/drawable/ic_launcher.xml`): a white arched front door with its doorstep and three small gold
+(#F2B84B) footprints walking up beside it, left, right, left (each a sole, a heel and four toes; option C of
+[docs/14](../docs/14-lead-backlog-and-handoff.md) N3, 2026-09-24), on the brand teal #1F6F5C (the manifest's `theme_color` and
 `background_color`, and the light `theme-color` meta). `icon-192.png` and `icon-512.png` are rounded squares with
 transparent corners; `icon-maskable-512.png` is full bleed with the whole mark inside the 80 % safe circle;
 `apple-touch-icon.png` (180×180) is full bleed with no transparency, because iOS rounds the corners itself. The PNGs
-were rendered from SVG with headless Chromium. `favicon.svg` is the same mark **without the toes**: at 16×16 in a
-browser tab the four toe dots blurred into olive pixels beside the soles, so the favicon keeps the door, the
-doorstep, the knob and two gold soles, drawn a little larger in its rounded square. `icons/favicon-32.png` is that
+were rendered from SVG with headless Chromium. `favicon.svg` is the same mark with the same three prints, drawn a
+little larger in its rounded square (the owner chose one mark everywhere, 2026-09-24: at 16×16 the prints are small
+gold marks beside the door, and the toes do not show). `icons/favicon-32.png` is that
 same `favicon.svg` rendered at 32×32 by headless Chromium (transparent corners), and `index.html` lists it first,
 with `sizes="32x32"`, then the 192 px PNG, then the SVG: a browser that picks a bitmap tab icon by size takes the
-32 px one for a 16 px (1x) or 32 px (2x) tab instead of shrinking the detailed 192 px icon with the toes. It is in the
+32 px one for a 16 px (1x) or 32 px (2x) tab instead of shrinking the 192 px icon. It is in the
 build, so the precache (and the offline tab) has it too.
 
 On iPhone and iPad, Safari can evict a non-installed site's storage when it has had no user interaction in the
