@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.11 |
-| Date | 2026-09-22 |
+| Version | 0.15 |
+| Date | 2026-09-23 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -18,11 +18,15 @@
 | 0.4 | 2026-09-22 | Claude (Cowork) | Sprint 3 ([10](10-sprint-log.md)): new section 1.1 with the AI settings, including the new `AI_EMBEDDING_PROVIDER`, `AI_EMBEDDING_API_KEY`, `AI_EMBEDDING_BASE_URL` and `AI_EMBEDDING_TASK_TYPE`; Ollama needs `AI_EMBEDDING_PROVIDER=openai`. Monitoring row for the summarised AI indexing WARN lines and the reindex 503; LLM key rotation covers `AI_EMBEDDING_API_KEY`; two troubleshooting rows. The AI indexing monitoring row quotes the reindex WARN line (the 503 body is a generic problem detail). |
 | 0.5 | 2026-09-22 | Claude (Cowork) | Sprint 3 lead decisions ([10](10-sprint-log.md)): section 1.1: run `POST /api/ai/reindex` once after deploying the contact-redaction fix (C-13, F-30); the dev compose passes the AI settings. AI indexing monitoring row matches the AI team's final logging (one summary WARN per 5 minutes, one WARN per reindex run, recovery INFO). Troubleshooting row for short keys points at F-01a (F-01 split in [02](02-threat-model.md) v0.6). |
 | 0.6 | 2026-09-22 | Claude (Cowork) | Section 1.1: the one-off `POST /api/ai/reindex` for the contact-redaction fix (F-30) must run after the final (ai-design v0.10) code is deployed; lists what older vectors may still hold. Matches [02](02-threat-model.md) v0.7. |
-| 0.7 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): password manager entry "Doorprints ops" (rename an existing "House Hunt ops" entry), export ZIP `doorprints-export-<date>.zip` (the API download is now `doorprints-export-<date>.json`, `format` still `house-hunt-export/1`), Settings → Apps → Doorprints, release checklist artifact `doorprints-release-apk`. Section 6.2: builds from before the rename (`com.househunt.app`) are a separate app with their own local data; sync and uninstall them. Backup file names (`househunt-*.dump.age`, `househunt-backup.agekey`), the database and the `house-hunt-db` image keep their names so existing backups and volumes still match. |
+| 0.7 | 2026-09-22 | Claude (Cowork), Docs team | Product rename to **Doorprints** ([03](03-design.md) ADR-13): password manager entry "Doorprints ops" (rename an existing "House Hunt ops" entry), export ZIP `doorprints-export-<date>.zip` (the API download is now `doorprints-export-<date>.json`, `format` still `house-hunt-export/1` — *superseded in 0.12: since Sprint 4a it is `Doorprints-backup-<UTC date>.json` in `doorprints-backup/1`*), Settings → Apps → Doorprints, release checklist artifact `doorprints-release-apk`. Section 6.2: builds from before the rename (`com.househunt.app`) are a separate app with their own local data; sync and uninstall them. Backup file names (`househunt-*.dump.age`, `househunt-backup.agekey`), the database and the `house-hunt-db` image keep their names so existing backups and volumes still match. |
 | 0.8 | 2026-09-22 | Claude (Cowork), Docs team | Product-owner decisions of 2026-09-22: new **section 10** (repository now public as `Sriram-Codes-SW/doorprints` with MIT `LICENSE`, `SECURITY.md` and a ruleset on `main`: settings to check and the history re-check; paid AI key with a hard cap and budget alerts; Google Cloud $300 trial plan and tear-down), new **IR-8** (private vulnerability report) and **IR-9** (AI spend alert or cap reached). Section 1.1: `AI_API_KEY` is the free key only for synthetic evals; real data needs the paid Gemini API tier or Vertex AI ([01](01-requirements.md) PRV-022, [ai/vertex-setup.md](ai/vertex-setup.md)). Section 4: monthly AI spend check, trial end date. Release checklist: no personal data in public logs or artifacts. |
 | 0.9 | 2026-09-22 | Claude (Cowork), Docs team | Review fixes. Section 10.2 rewritten around three layers: in-app per-user and global daily caps; a Google Cloud **spend cap budget** (Preview) on the AI-only project and the Vertex AI or Gemini API service (monthly, gross of credits, not instant, can pause cloud AI mid-request; fallback: budget notification that disables billing); budget alerts at 50/90/100 %. The Quotas-page limit is now optional and unverified (Vertex Gemini uses dynamic shared quota). Spend cap budgets do not cover Cloud SQL: staging needs its own budget alert and a tear-down date (section 10.3). IR-9: what to do when the spend cap trips. Section 10.3: day-1 check that the credit covers the models; Test Lab after the trial runs within the no-cost Spark quota. Links to `ai/vertex-setup.md` marked as being written by the AI team. |
 | 0.10 | 2026-09-22 | Claude (Cowork), Docs team | Vertex AI code landed (same change set): "being written" markers on [ai/vertex-setup.md](ai/vertex-setup.md) removed. Section 1.1 now lists `AI_PROVIDER`, `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `AI_VERTEX_ENDPOINT`, `AI_VERTEX_API_VERSION`, `AI_INDEX_ON_CHANGE` and `GOOGLE_APPLICATION_CREDENTIALS`, and says to re-index after switching provider. Section 5.2: Vertex AI credential row (WIF and Cloud Run have nothing to rotate; JSON key only on a non-Google host). IR-9 and section 9: the new `503` problem with `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`, the eval result **STOPPED: provider quota exhausted**, the re-index that stops at the first quota error, and how a spend cap trip looks today (a generic `503`, not yet a distinct "cloud AI paused" state; AI-017). New troubleshooting rows for Vertex AI startup and 403/404 errors; the 403/404 row points to the `setupHint` in the `503` body. Section 10.2 and IR-9: vertex-setup step 7's $50/$150/$250 alerts are the trial-period form of the 50/90/100 % alerts. |
 | 0.11 | 2026-09-22 | Claude (Cowork), Docs team | **Vertex AI setup outcome** (owner, 2026-09-22; [ai/vertex-setup.md](ai/vertex-setup.md) v0.3): project `doorprints-ai`; chat `gemini-3.5-flash` verified in `asia-south1`, `gemini-embedding-2` only on `global`; GitHub variables `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global`. Section 1.1 rows name these values and the residency consequence (embedding text processed on `global`). New **section 10.4 "Google Cloud trial end checklist"**: credit ends **22 Dec 2026**; export by about 15 Dec; decide AI Studio (paid key for real data) or a paid upgrade with the spend cap in place; switch before the 22nd; tear down staging; remove WIF secrets if Vertex is dropped. Section 4 calendar: one-off trial-end dates. Section 10.3: trial dates. Section 10.1: new row "Dependency graph: On" (needed by the Sprint 3.5 `gradle-dependency-graph` job, whose first run failed at submission). |
+| 0.12 | 2026-09-22 | Claude (Cowork), Docs team | Ticket S4-00/c (`docs/schemas/README.md` §9). Section 6.1 still named the API download `doorprints-export-<date>.json` with `format: house-hunt-export/1` and read photo ids as `.photos[].photo.id`. Since Sprint 4a `GET /api/export` returns the shared `doorprints-backup/1` object as `Doorprints-backup-<UTC date>.json` (`photos[]` rows carry `id` directly); the example saves it as `data.json`, fetches photo bytes by `.photos[].id`, and says how to restore it (`POST /api/import`, `?dryRun=true` first, or Android Import, which accepts a bare `data.json`). The v0.7 row's file name is marked superseded. |
+| 0.13 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision (2026-09-23): the web app is hosted on Cloudflare Pages** ([03](03-design.md) ADR-21). §7 IR-5 (free-tier outage, move provider): the web can move to another host that reads `_headers` (Netlify), **not** to GitHub Pages, and `npm run build:pages` is no longer a GitHub Pages build. §8 release checklist: the web step names the `web.yml` Cloudflare Pages deploy and its header check, the `pages.dev` address, and `APP_CORS_ORIGINS`. §4 quarterly review: Cloudflare Pages terms. New note on withdrawing an old deployment ([02](02-threat-model.md) RR-12). §5.2: rotating the Cloudflare API token. |
+| 0.14 | 2026-09-23 | Claude (Cowork), Docs team | Review fix, §5.2 Cloudflare API token row: "replace the repository secret" now says to replace it where it is stored, preferably the `cloudflare-pages` environment's secrets restricted to `main` ([07](07-secure-build-and-deploy.md) v0.21 §4 and §6.3 step 4). |
+| 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** (Spark plan, no billing account; [03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. §1 components; **§2** new *Web host usage* row (Hosting > Usage: transfer against 360 MB/day or 10 GB/month, storage against 10 GB; there is no budget alert on Spark); **§4** monthly usage check and 10 releases kept, quarterly free-tier terms name Firebase Hosting; **§5.2** the Cloudflare token row becomes the web deploy identity (Workload Identity, nothing to rotate; what to do on suspicion); **§7 IR-5** rewritten for Firebase (a site disabled for quota; moving host); new **IR-10** *Bad web release: roll back* (Firebase console → Hosting → release history → Rollback, no build) and deploy / manual re-run; **§8** release checklist. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -32,7 +36,7 @@ Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-
 
 | Item | Value |
 |---|---|
-| Components | API (Render/Koyeb/Oracle VM), Postgres+PostGIS (Supabase/Neon), web (Cloudflare Pages), Android app (sideloaded) |
+| Components | API (Render/Koyeb/Oracle VM), Postgres+PostGIS (Supabase/Neon), web (Firebase Hosting, Spark plan, `https://doorprints.web.app`), Android app (sideloaded) |
 | Health | `GET https://<api>/actuator/health` → `{"status":"UP"}` (public, includes the DB check) |
 | Targets | RPO ≤ 24 h (nightly backup; the phone also holds a full offline copy), RTO ≤ 4 h (NFR-008) |
 | On-call | The owner (single user). Keep this runbook and the password manager entry "Doorprints ops" (formerly "House Hunt ops") up to date. |
@@ -71,6 +75,8 @@ After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api
 | Sync health | Android Settings shows the last sync time and message | Last sync older than 24 h while online → Sync now, check the key/URL |
 | Auth failures | Host logs, WARN lines `auth.fail reason=wrong-key client=<hash> …`, `auth.throttled …` (429 after 10 wrong keys/min per address) and `auth.reject reason=non-canonical-path …` | Sudden spike of `auth.fail`/`auth.throttled` → IR-2 (possible leaked or guessed key). `auth.reject` bursts are scanners probing path tricks (F-20): no action unless combined with 200s. |
 | Rate limiting | 429 responses in the host's request log | Many 429 from one address → a runaway client or a flood; consider a Cloudflare rule |
+| Web host usage | Firebase console → project `doorprints` → Hosting → **Usage** (monthly, and after sharing the link widely): data transfer and storage. Spark has no billing account, so **no budget alert** exists | Transfer approaching **360 MB/day** (pricing page) or **10 GB/month** (quota page; plan for the stricter) → look for a download loop or an unexpected audience; storage near 10 GB → check *Releases to keep* is 10. Site shows as disabled → IR-5 |
+| Web deploy | `Web` workflow runs on `main`: `deploy-firebase` green, its *Security headers are served* step green (GitHub notifies on failure) | A red header check → the live site may be missing a header: compare `web/firebase.json` with the last good release; roll back (IR-10) if a release is broken |
 | Tombstone purge | INFO line `privacy.purge tombstones: houses=… visits=… photos=…` daily at 03:30 | None expected; absent for weeks with deletes happening → check the scheduler |
 | Dependencies | Dependabot PRs, `security.yml` (Trivy, npm audit, Semgrep, gitleaks) on every push and weekly | Critical/High → patch within 7 days |
 | Backups | `backup.yml` run status (GitHub notifies on failure) | Failed 2 nights in a row → fix the same day |
@@ -138,9 +144,9 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 | Frequency | Task |
 |---|---|
 | Weekly | Merge Dependabot PRs after CI passes. Read the weekly `security.yml` run (Trivy SBOM/fs/config, npm audit, gitleaks, Semgrep) and any ZAP report. When a Spring Boot patch manages Tomcat 11.0.25 or later, remove the `tomcat.version` override from `backend/pom.xml` (F-28, 07 §1). |
-| Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. Check AI spend against the budget and the per-user and global caps (section 10.2). While the Google Cloud trial runs: credit left and days left (section 10.3). |
+| Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. Check AI spend against the budget and the per-user and global caps (section 10.2). While the Google Cloud trial runs: credit left and days left (section 10.3). Firebase Hosting usage (section 2) and *Releases to keep* = 10. |
 | One-off (2026) | **By about 15 Dec 2026:** Google Cloud trial export and provider decision; **before 22 Dec 2026:** switch or upgrade, tear down staging (section 10.4). Put both dates in the calendar and the password manager entry. |
-| Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Pages, OpenFreeMap, Nominatim, LLM). |
+| Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Firebase Hosting Spark, OpenFreeMap, Nominatim, LLM). If a custom domain was ever bought: auto-renew on and the renewal date in the calendar ([12](12-brand-and-naming.md) section D). |
 | 6-monthly | Rotate `APP_API_KEY` (section 5.1). Review the threat model findings. |
 | Yearly | Rotate DB, backup-role and CI secrets. Review the docs (bump versions). Check the keystore backup is readable. |
 
@@ -176,6 +182,7 @@ Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys 
 | LLM provider key | Revoke in the provider console → new key in the host env (`AI_API_KEY`, and `AI_EMBEDDING_API_KEY` if it is set separately) → redeploy. See [ai/](ai/). |
 | Vertex AI credential | GitHub Actions (Workload Identity Federation) and Cloud Run (attached service account): no stored key, nothing to rotate; on suspicion remove the `roles/iam.workloadIdentityUser` binding or disable the service account, then re-grant after the fix. JSON key on a non-Google host only: quarterly and on suspicion, create a new key → replace the file named by `GOOGLE_APPLICATION_CREDENTIALS` → redeploy → delete the old key in IAM. [07](07-secure-build-and-deploy.md) §4, [02](02-threat-model.md) T-I22. |
 | Deploy hook / SSH key | Regenerate in Render / replace the `authorized_keys` line → update the GitHub environment secret |
+| Web deploy identity (`FIREBASE_WIF_PROVIDER`, `FIREBASE_SA_EMAIL`; Firebase project `doorprints`) | **Nothing to rotate**: Workload Identity Federation issues a token of about an hour to `web.yml` on `main` only, and the service account `firebase-hosting-deploy` has no key ([07](07-secure-build-and-deploy.md) §6.3). **On suspicion** (an unexpected release in *Hosting → release history*, a changed provider condition, a key found on the service account): Cloud console → project `doorprints` → *IAM & Admin → Service Accounts* → `firebase-hosting-deploy` → *Disable* (or remove its *Workload Identity User* binding); delete any key listed under *Keys*; check the provider `github-web-deploy`'s attribute condition against 07 §6.3 step 6; roll back the site (IR-10); then re-enable. The two GitHub secrets are identifiers, not credentials. If the Cloudflare secrets were ever added, delete them (07 §6.3 step 8). |
 | GitHub PAT | Revoke at github.com/settings/tokens. Create a fine-grained one with expiry ≤ 90 days only if needed. |
 | Age backup key | Create a new key pair → update `BACKUP_AGE_RECIPIENT`. Keep the old private key until the old backups expire (30 days). |
 | Android signing key | **Do not rotate** unless it is compromised (see IR-7) |
@@ -188,15 +195,21 @@ Required by PRV-004/PRV-005. The API implements both (FR-031/FR-032); app button
 
 ```bash
 API=https://<api>; KEY=<key>
-curl -sf -H "X-API-Key: $KEY" "$API/api/export" -o export.json      # houses, visits, photo metadata
+curl -sf -H "X-API-Key: $KEY" "$API/api/export" -o data.json      # doorprints-backup/1: houses, visits, photo rows
 mkdir -p photos
-for p in $(jq -r '.photos[].photo.id' export.json); do
+for p in $(jq -r '.photos[].id' data.json); do
   curl -sf -H "X-API-Key: $KEY" "$API/api/photos/$p" -o "photos/$p.jpg"
 done
-zip -r doorprints-export-$(date +%F).zip export.json photos   # store encrypted: it holds location history
+zip -r doorprints-export-$(date +%F).zip data.json photos   # store encrypted: it holds location history
 ```
 
-The API download is named `doorprints-export-<date>.json`; its `format` field stays `house-hunt-export/1` so tools that read older exports keep working. A full export for migration is the encrypted `pg_dump` from section 3.
+Since Sprint 4a the API download is named `Doorprints-backup-<UTC date>.json` and is the `data.json` half of the
+shared **`doorprints-backup/1`** format ([schemas/README.md](schemas/README.md), [03](03-design.md) ADR-20; it was
+`doorprints-export-<date>.json` with `format: house-hunt-export/1` before). Photo bytes are not in it; the loop above
+fetches them. The ZIP made here is an archive for the owner, **not** a device backup ZIP (it has no `manifest.json`).
+To restore: `POST /api/import` with the `data.json` body (`?dryRun=true` first to see the counts; 413 above
+`MAX_IMPORT_BYTES`, 16 MiB, or `MAX_IMPORT_ROWS`), or Android *Import*, which accepts a bare `data.json` and reports
+its photos as missing from the file. A full export for migration is the encrypted `pg_dump` from section 3.
 
 ### 6.2 Deletion
 
@@ -246,7 +259,9 @@ Reset the DB password (section 5.2). Check roles (`\du`) for unknown users. Chec
 
 ### IR-5 Free-tier outage, suspension or policy change
 
-The phone keeps working offline. To move provider: restore the latest dump to another provider (section 3.1) → update `DB_URL` → redeploy. The API image runs on any Docker host. The web is static and can go to Netlify/GitHub Pages (`npm run build:pages`). Tiles: change `MAP_STYLE_URL` (web `shared/map-style.ts`, Android `MAP_STYLE_URL`) if OpenFreeMap is unavailable.
+The phone keeps working offline. To move provider: restore the latest dump to another provider (section 3.1) → update `DB_URL` → redeploy. The API image runs on any Docker host. Tiles: change `MAP_STYLE_URL` (web `shared/map-style.ts`, Android `MAP_STYLE_URL`) if OpenFreeMap is unavailable.
+
+**Web (Firebase Hosting, Spark).** If `https://doorprints.web.app` shows that the site is disabled, the Spark transfer quota was exceeded ([02](02-threat-model.md) T-D9, RR-13): Firebase re-enables it when the day or month resets. Nothing is lost — each user's houses are in their own browser, the Android app and a synced server are unaffected — and an installed web app keeps starting from its service-worker precache. Check *Hosting → Usage* for a download loop; tell users to use the installed app or the phone meanwhile. **Never attach a billing account to lift it** (that moves the project to Blaze, CON-01). If it recurs, the owner decides between another static host that sends the same headers (translate `web/firebase.json`: Netlify reads `_headers` plus a `/* /index.html 200` rule; Cloudflare Pages is the natural host **with** a custom domain, [12](12-brand-and-naming.md) section E) and Blaze with a budget (not zero-cost). **Not** GitHub Pages: it sends no headers and shares one origin across the owner's Pages sites ([02](02-threat-model.md) F-31, RR-11). A move to another address strands every user's browser data at the old one, so announce it with a *Full backup* export and import step, and only once the web can import (Sprint 4b); then add the new origin to `APP_CORS_ORIGINS` on every API.
 
 ### IR-6 AI abuse or prompt-injection incident (when AI is enabled)
 
@@ -287,6 +302,18 @@ work until the cap is lifted. Check Cloud Billing → Budgets before assuming an
 raise the target or lift the cap in Cloud Billing → Budgets. Never lift it while the cause is unknown. If the
 billing-disable fallback fired instead, re-link the billing account to the AI project after the fix.
 
+### IR-10 Bad web release: roll back (Firebase Hosting)
+
+A release of the web app is broken (a blank page, a failed header check, a security fix that must be undone or a
+regression users report). **Roll back first, fix second:** Firebase console → project `doorprints` → *Hosting* →
+release history → the last good release (its message is `web.yml <commit sha>`) → **⋮** → **Rollback**. It takes
+effect at once and needs no build; 10 releases are kept. Installed apps pick the rolled-back build up on their next
+update check (the precache is per build). Then fix on a branch and merge; the next push to `main` deploys again.
+**Deploy or re-run by hand:** GitHub → *Actions* → *Web* → *Run workflow* on `main` (the same checks run). A deploy
+that fails with `PERMISSION_DENIED`: send the red line to DevSecOps; do not add roles to the service account by hand
+([07](07-secure-build-and-deploy.md) §6.3). Old releases are not reachable at addresses of their own, so there is
+nothing else to withdraw.
+
 ## 8. Release checklist
 
 - [ ] Version bumped: `android/app/build.gradle.kts` (`versionCode` +1, `versionName`), `backend/pom.xml`, `web/package.json`.
@@ -296,7 +323,7 @@ billing-disable fallback fired instead, re-link the billing account to the AI pr
 - [ ] Threat model findings: fixed ones marked, new risks recorded. Docs versions and change logs updated.
 - [ ] Fresh backup taken (manual `backup.yml` run) within 24 h.
 - [ ] Deploy the API by image digest → health UP → smoke test (stats, create/delete a test house, then purge it).
-- [ ] Web deployed (Pages) → Connect and Map load. No CSP errors in the console.
+- [ ] Web deployed to Firebase Hosting (`web.yml` job `deploy-firebase` green, **including its security-header check**) → open `https://doorprints.web.app`: Connect and Map load, no CSP errors in the console; `APP_CORS_ORIGINS` on the API lists `https://doorprints.web.app` (no path); the release is in *Hosting → release history*.
 - [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
 - [ ] Install on the phone **after syncing**. Settings show the right server. Sync OK. Hunt mode starts and stops.
 - [ ] If AI changed: eval results attached and meet the thresholds. Flag default stays off unless approved.
