@@ -32,6 +32,12 @@
 #   build, pwa-files and firebase-config run on branch pushes; firebase-setup and deploy-firebase stay main-only
 #   (their `github.ref == 'refs/heads/main'` guards, backed by the Workload Identity condition above). Superseded
 #   runs are now cancelled on every ref except main.
+#
+# 2026-09-24 (DevSecOps), owner issue P0 "India's boundaries" (branch fix/india-boundaries): pwa-files now also
+#   requires geo/in-boundaries.geojson in the built site (valid GeoJSON FeatureCollection with the kinds "world" and
+#   "claim"), and the live check (.github/firebase-tools/check-live-headers.sh) checks /geo/in-boundaries.geojson
+#   after the deploy. Triggers unchanged: web/public/** and web/scripts/** are already under "web/**". android.yml
+#   now also runs on web/public/geo/** (IndiaBoundaryDataTest compares the web copy with the app's).
 name: Web
 
 # Triggers: a push to ANY branch touching the paths below (tag pushes do not trigger), a pull request to main (tests
@@ -122,6 +128,8 @@ jobs:
   # Guards the installable-app promise (S4-05) against a silent build regression: an assets glob or an output path
   # change that drops the service worker or the manifest would otherwise ship a site that cannot be installed and
   # cannot start offline, with a green build. Checks the uploaded artifact, i.e. exactly the bytes that get deployed.
+  # Since 2026-09-24 it also requires India's boundary file geo/in-boundaries.geojson (section 6 of the script); the
+  # job name is kept so that any required status check that names it keeps matching.
   pwa-files:
     name: PWA files in the build (service worker, manifest, icons, screenshots)
     needs: build
@@ -260,6 +268,29 @@ jobs:
           if (!exists('favicon.svg')) warnings.push('missing favicon.svg');
           for (const rel of ['_headers', '_redirects']) {
             if (exists(rel)) warnings.push(`${rel} is in the build but unused by Firebase Hosting (headers live in web/firebase.json); remove it from web/public`);
+          }
+
+          // 6. India's boundary file (owner issue P0, 2026-09-24). src/app/shared/india-boundaries.ts hides Liberty's
+          //    disputed lines and draws India's external boundary from this same-origin file on every style load.
+          //    Without it the "**" rewrite would answer the request with index.html, the overlay would fail to parse
+          //    and the map would show no boundary where the hidden lines were. So: present, valid GeoJSON, and it
+          //    holds the two kinds the layers filter on. Byte identity with the Android copy and the reviewed sha256
+          //    are held by IndiaBoundaryDataTest in android.yml, which this file's folder also triggers.
+          const boundaryFile = 'geo/in-boundaries.geojson';
+          if (required(boundaryFile, "India's boundary on the map, loaded by src/app/shared/india-boundaries.ts")) {
+            try {
+              const geo = JSON.parse(read(boundaryFile));
+              const features = geo && Array.isArray(geo.features) ? geo.features : [];
+              if (!geo || geo.type !== 'FeatureCollection') {
+                errors.push(`${boundaryFile} is not a GeoJSON FeatureCollection`);
+              }
+              const kinds = new Set(features.map((f) => String((f && f.properties && f.properties.kind) || '')));
+              for (const kind of ['world', 'claim']) {
+                if (!kinds.has(kind)) errors.push(`${boundaryFile} has no feature with properties.kind "${kind}"`);
+              }
+            } catch (e) {
+              errors.push(`${boundaryFile} is not valid JSON: ${String(e.message).replace(/\s+/g, ' ')}`);
+            }
           }
 
           for (const w of warnings) console.log(`::warning title=PWA check::${w}`);
