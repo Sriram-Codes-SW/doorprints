@@ -36,7 +36,7 @@ English · हिन्दी · தமிழ் · తెలుగు
 | **Checklist and scoring** | Water, power, parking, sunlight, noise, security and four more, each 0–5, blended with your star rating into one score | Yes | Yes |
 | **Compare** | Two to four houses side by side: checklist, rating, price in ₹, score | Yes | Yes |
 | **Photos** | Camera or gallery, resized, location metadata removed; optional upload on Wi-Fi only | Yes | Yes |
-| **Map and list** | OpenFreeMap vector tiles (no API key), markers by status, search, filter, sort | Yes | Yes |
+| **Map and list** | OpenFreeMap vector tiles (no API key), India's boundaries as the Government of India shows them, markers by status, search, filter, sort | Yes | Yes |
 | **Offline copies** (**4a**) | Save everything as HTML, PDF, CSV, XLSX, Markdown or a JSON backup, built on the device; the JSON backup can be read back in | Yes (import too) | Export yes; **import in Sprint 4b** (only a Doorprints *Full backup* can be imported: [docs/01 §6.9](docs/01-requirements.md)) |
 | **Offline-first** | Everything works without a network; sync resumes by itself with retries and captive-portal detection | Yes | Yes (**4a**: the web app keeps your houses and photos in the browser with IndexedDB and needs no server; before 4a it needed one) |
 | **Four languages** | English, Hindi, Tamil, Telugu, switchable in the app; ₹ with lakh/crore grouping. **Hindi, Tamil and Telugu are *under review***: machine-drafted, with the native-speaker review still to come (owner decision of 2026-09-23, [docs/05](docs/05-ux-accessibility-i18n.md) I18N-B03) | Yes (hi/ta/te under review) | Yes (hi/ta/te under review) |
@@ -181,6 +181,17 @@ app, open **Connect** and enter `http://localhost:8080` and the API key; that is
 
 JDK 21 and the Android SDK (compileSdk 37): `cd android && ./gradlew assembleDebug testDebugUnitTest`.
 
+## Map data and credits
+
+Both apps draw OpenFreeMap vector tiles (OpenStreetMap data, ODbL, credited in the map's attribution) with
+OpenFreeMap's "liberty" style. **India's boundaries are shown as the Government of India depicts them**, the only view,
+because every user is in India: all of Jammu and Kashmir and Ladakh and Arunachal Pradesh inside India, one solid
+outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.md) ADR-22). That outline comes from
+[Natural Earth](https://www.naturalearthdata.com/) (public domain; `natural-earth-vector` commit `ca96624`, India
+point of view), bundled as `web/public/geo/in-boundaries.geojson` and `android/app/src/main/assets/geo/in-boundaries.geojson`
+and built by `web/scripts/geo/build_in_boundaries.py`. Public-domain data needs no credit; the web app credits
+"Natural Earth" in the map attribution anyway.
+
 ## Deploy for free
 
 Full steps and the environment variable reference: [docs/07](docs/07-secure-build-and-deploy.md#6-free-tier-deployment).
@@ -300,3 +311,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-23 | The **Four languages** feature row says that Hindi, Tamil and Telugu ship *under review* (machine-drafted, native-speaker review pending), the owner's decision in the first release's Definition of Done ([docs/10](docs/10-sprint-log.md) §12.5 Decision 4). The **Android** row's release-guard link now leads to the full release security gate as the owner approved it (§12.5 Decision 1). |
 | 2026-09-23 | **CI on every branch** (owner decision): the CI paragraph under *Repository structure* says the workflows run on a push to any branch as well as on pull requests to `main`, with deploying and release signing on `main` only; house rule 1 asks for green branch runs before a merge ([docs/10](docs/10-sprint-log.md) §12.5 Decision 5). |
 | 2026-09-23 | Review fixes to the CI-on-every-branch rows: the CI paragraph lists `codeql.yml` and says it runs on a push to any branch but not on pull requests; deploying stays on `main` and signing does so only while the workflow is unmodified, until the `HH_*` secrets move to a `main`-only environment; house rule 1 says what green means (the latest run of each triggered workflow on the branch, with the branch up to date with `main`; [docs/07](docs/07-secure-build-and-deploy.md) §3.1). |
+| 2026-09-24 | New *Map data and credits* (owner issue P0, India's boundaries on the map): the map shows India's external boundary as the Government of India depicts it, with no Line of Control or Line of Actual Control; the outline is bundled Natural Earth data (public domain), credited on the web ([docs/03](docs/03-design.md) ADR-22). |
