@@ -1,0 +1,17 @@
+# Code owners (DevSecOps proposal, 2026-09-23; Firebase Hosting plan PART 2 section 3).
+# GitHub asks these owners to review every pull request that touches the paths below. The team roles map to the
+# repository owner today, the only person with write access.
+#
+# - /.github/: CI workflows, Dependabot, the pinned deploy CLI (.github/firebase-tools) and the deploy checks.
+#   A change here can alter what runs with the Firebase deploy credential.
+# - /web/firebase.json: owned by the Web team (security headers, caching, rewrites), but a change to it changes what
+#   the deploy publishes and how, so it also needs DevSecOps review. web.yml refuses lifecycle hooks, function or
+#   Cloud Run rewrites and any other public directory whatever this file says.
+#
+# To make the review mandatory, turn on "Require review from Code Owners" in the branch protection rule (or
+# ruleset) for main. With a single maintainer, GitHub does not let authors approve their own pull requests, so
+# leave it off until there is a second reviewer; the automatic review request still applies.
+#
+# Later rules win over earlier ones for the same path.
+/.github/          @Sriram-Codes-SW
+/web/firebase.json @Sriram-Codes-SW
