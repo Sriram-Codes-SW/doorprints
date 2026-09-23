@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.1 |
+| Version | 0.2 |
 | Date | 2026-09-24 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..16); this file lists the lead-level items and points to the rest. |
@@ -12,12 +12,13 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-09-24 | Claude (Cowork), lead | First version: state of `main`, open pull requests, the ordered next steps, parked items and owner decisions still in force. |
+| 0.2 | 2026-09-24 | Claude (Code), lead | N1 done: PR #14 merged by the owner's instruction (`f8ee821`). N3 built on `fix/brand-footprints`, PR #15: the owner chose **left/right/left** over the right/left/right first written in N3 (so the big toes face each other) and kept the same three prints in the favicon; renders shown to the owner before the PR. §1 updated to `main` = `f8ee821` and open PR #15. The top print moved from (79,55) to (78.5,51.5) in the design review (spacing only, as N3 allows), so that its heel no longer touches the middle print. |
 
 ## 1. Where things stand (2026-09-24, ~03:30 IST)
 
 - **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity Federation, main only).
-- **`main` = `705db44`**: Sprint 4a (PR #11) and the India boundary fix (PR #13, [03](03-design.md) ADR-22).
-- **Open PR #14** (branch `fix/india-boundaries`): docs and code-comment sync for ADR-22, **no behaviour change**, plus this file. Its last review round was cut off by a usage limit: Web approved; the Docs and Android managers did not finish their delta re-review (item N1 below).
+- **`main` = `f8ee821`**: Sprint 4a (PR #11), the India boundary fix (PR #13, [03](03-design.md) ADR-22) and its docs and comment sync with this file (PR #14, merged on the owner's instruction on 2026-09-24).
+- **Open PR #15** (branch `fix/brand-footprints`): N3, the icon's footprints (story S4b-BR-1, [10](10-sprint-log.md) §12.9).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1). Deploy, signing and the dependency graph are main-only.
 - **Merging is the owner's click.** An automated session must not merge its own pull request.
 
@@ -25,9 +26,9 @@
 
 | Id | Item | Owner | Notes |
 |---|---|---|---|
-| N1 | **Finish PR #14 review**: Docs and Android managers review only the delta since `3ad2b58` (text only). Apply fixes on `fix/india-boundaries`. | Docs, Android | Safe to merge as it is; no behaviour change. |
+| N1 | ~~**Finish PR #14 review**: Docs and Android managers review only the delta since `3ad2b58` (text only). Apply fixes on `fix/india-boundaries`.~~ **Done:** merged on the owner's instruction, 2026-09-24 (`f8ee821`). | Docs, Android | No behaviour change. |
 | N2 | **Owner device check of the boundary fix** (TC-M-25 in [06](06-test-plan.md)): live site, zoom 3-8 over Jammu and Kashmir, Ladakh, Aksai Chin and Arunachal Pradesh, compared with Google Maps as seen from India. Also install the new Android APK from the latest `Android` run on `main` and check the same. | Owner | Known limits: [03](03-design.md) ADR-22 Consequences; S4b-BL-11, -15, -16. |
-| N3 | **App icon footprints, option C (owner's choice 2026-09-24).** The web `favicon.svg` footprints are two large gold ovals. Replace them with three small footprints (sole, heel, four toes), alternating right/left/right, walking up beside the door. Geometry in the Android 108x108 space: prints at translate (78,80), (84,68), (79,55), rotate -10, scale 0.9; sole ellipse rx 2.7 ry 3.9 at y -1.6; heel ellipse rx 2.0 ry 2.4 at y 4.6 (offset 0.3 to the outer side); toes r 0.95/0.85/0.75/0.65 near y -6.5..-7.6, big toe on the inner side. Colours unchanged (#1F6F5C tile, #FFFFFF door, #F2B84B prints). | Web, Android; Design Director may refine spacing only | Web: `web/public/favicon.svg` and every PNG in `web/public/icons` (maskable safe zone). Android: `res/drawable/ic_launcher.xml` (and `ic_stat_doorprints.xml` if it has footprints). Show renders to the owner before the PR. Separate branch `fix/brand-footprints`. |
+| N3 | **App icon footprints, option C (owner's choice 2026-09-24).** The web `favicon.svg` footprints are two large gold ovals. Replace them with three small footprints (sole, heel, four toes), alternating right/left/right, walking up beside the door. Geometry in the Android 108x108 space: prints at translate (78,80), (84,68), (79,55), rotate -10, scale 0.9; sole ellipse rx 2.7 ry 3.9 at y -1.6; heel ellipse rx 2.0 ry 2.4 at y 4.6 (offset 0.3 to the outer side); toes r 0.95/0.85/0.75/0.65 near y -6.5..-7.6, big toe on the inner side. Colours unchanged (#1F6F5C tile, #FFFFFF door, #F2B84B prints). | Web, Android; Design Director may refine spacing only | Web: `web/public/favicon.svg` and every PNG in `web/public/icons` (maskable safe zone). Android: `res/drawable/ic_launcher.xml` (and `ic_stat_doorprints.xml` if it has footprints). Show renders to the owner before the PR. Separate branch `fix/brand-footprints`. **Built, PR #15** (owner's choices: feet **left/right/left**, not right/left/right, so the big toes face each other; the favicon keeps the same three prints; [12](12-brand-and-naming.md) N-06 v0.4; design review moved the top print to (78.5,51.5), spacing only). |
 | N4 | **Licence change MIT -> AGPL-3.0-only** with a README trademark notice ([10](10-sprint-log.md) §12.6, approved). Fetch the licence text, do not retype it; in-app "Source code" links; `package.json` licence field. | Docs, Web, Android | PolyForm Noncommercial only if the owner asks later. |
 | N5 | **Dependabot pull requests** opened after the Sprint 4a merge (npm major for web dev tools, Gradle, Maven, Docker, GitHub Actions). Triage: merge patch/minor when CI is green; majors get a ticket. | DevSecOps | Branch CI runs on each. |
 | N6 | **Sprint 4b**, as recorded in [10](10-sprint-log.md) §12: S4b-00 import definition, **web import first**, release security gate (S4b-SEC-1..3), screenshot tests, design-first spec step, component kit, end-to-end tests, S4b-EFF-1..6, backlog S4b-BL-1..16. | All | The guard rule stays: no Play Store release and no public server until the release security gate exists and passes. |
