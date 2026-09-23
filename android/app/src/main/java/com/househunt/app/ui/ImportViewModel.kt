@@ -175,22 +175,22 @@ class ImportViewModel(
                 runCheck { Imports.preview(repository, staged, fileName) }
             } else {
                 saved.remove<String>(KEY_STAGED)
-                setFinishing(false)
+                rememberFinishing(false)
             }
         }
     }
 
     fun pick(uri: Uri) {
         blocked = false
-        setFinishing(false)
-        setRestoreDeleted(false)
+        rememberFinishing(false)
+        onRestoreDeletedChange(false)
         job?.cancel()
         discardStaged()
-        setFileName(null)
+        rememberFileName(null)
         runCheck {
             // First, so the header can name the file while the (possibly long) copy runs.
             val name = Imports.displayName(app, uri)
-            setFileName(name)
+            rememberFileName(name)
             when (val staging = Imports.stage(app, uri)) {
                 is Imports.Staging.Refused -> ImportCheck.Refused(staging.problem)
                 is Imports.Staging.Staged -> {
@@ -208,10 +208,10 @@ class ImportViewModel(
         checks++
         checking = false
         blocked = false
-        setFinishing(false)
-        setRestoreDeleted(false)
+        rememberFinishing(false)
+        onRestoreDeletedChange(false)
         discardStaged()
-        setFileName(null)
+        rememberFileName(null)
         check = null
     }
 
@@ -221,7 +221,7 @@ class ImportViewModel(
     }
 
     /** "Also bring back *n* houses deleted on this phone", and the bar's *Bring them back*; see [restoreDeleted]. */
-    fun setRestoreDeleted(on: Boolean) {
+    fun onRestoreDeletedChange(on: Boolean) {
         restoreDeleted = on
         saved[KEY_RESTORE] = on
     }
@@ -275,7 +275,7 @@ class ImportViewModel(
         val start = startWork(context, request)
         val runId = start.id.toString()
         blocked = false
-        setFinishing(false)
+        rememberFinishing(false)
         starting = true
         startedRunId = runId
         saved[KEY_STARTED] = runId
@@ -346,7 +346,7 @@ class ImportViewModel(
             // If the worker deleted the copy after all (it finished just as Stop arrived), the check comes back
             // without a Ready and the screen falls back to the stopped result card.
             saved[KEY_STAGED] = handed
-            setFinishing(true)
+            rememberFinishing(true)
             runCheck {
                 val result = Imports.preview(repository, handed, fileName)
                 if (result is ImportCheck.Refused && !File(handed).isFile) null else result
@@ -411,7 +411,7 @@ class ImportViewModel(
                 val result = block()
                 if (result !is ImportCheck.Ready) {
                     saved.remove<String>(KEY_STAGED)
-                    setFinishing(false)
+                    rememberFinishing(false)
                 }
                 check = result
                 checkedAt = SystemClock.elapsedRealtime()
@@ -437,12 +437,12 @@ class ImportViewModel(
         saved.remove<String>(KEY_STAGED)
     }
 
-    private fun setFileName(name: String?) {
+    private fun rememberFileName(name: String?) {
         fileName = name
         if (name == null) saved.remove<String>(KEY_NAME) else saved[KEY_NAME] = name
     }
 
-    private fun setFinishing(value: Boolean) {
+    private fun rememberFinishing(value: Boolean) {
         finishing = value
         saved[KEY_FINISHING] = value
     }

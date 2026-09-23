@@ -383,7 +383,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     // Only switches the mode, like the Replace dialog's safe way out: the copy preview is seen before any write.
     val showAsCopies = { vm.choose(ImportMode.COPY) }
     // The undelete, from the bar's "Bring them back": turns the switch on, which shows its preview.
-    val bringBack = { vm.setRestoreDeleted(true) }
+    val bringBack = { vm.onRestoreDeletedChange(true) }
     // Asks for notifications first, once, when they are off, and imports whatever the answer.
     val startImport: (Boolean) -> Unit = { skipUpdates ->
         askNotifications { vm.startImport(context, skipUpdates = skipUpdates) }
@@ -614,7 +614,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                             hint = stringResource(R.string.import_restore_switch_hint),
                             checked = restore,
                             enabled = !running,
-                            onChange = { vm.setRestoreDeleted(it) },
+                            onChange = { vm.onRestoreDeletedChange(it) },
                         )
                         if (!running) {
                             // The label starts at the text's edge: 16 dp less the TextButton's own 12 dp padding.
