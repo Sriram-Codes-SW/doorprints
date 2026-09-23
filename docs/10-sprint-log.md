@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.34 |
+| Version | 0.35 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, fix on branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI not yet seen green**, §12.8) |
@@ -46,6 +46,7 @@
 | 0.32 | 2026-09-24 | Claude (Cowork), Docs team | **Owner issue P0 of 2026-09-24: India's boundaries on the map** (live site; Jammu and Kashmir, then the same issue near Arunachal Pradesh). New **§12.8**: the owner's decision ([03](03-design.md) ADR-22), what each team did on branch `fix/india-boundaries` (lead: the data, commit `a37ecbd`; Web, Android, DevSecOps: working tree), what is verified and what is not, and the release gate TC-M-25. **§12.7 register**: new backlog tickets **S4b-BL-9** (re-check the boundaries after each OpenFreeMap planet or style update) and **S4b-BL-10** (consider a Survey of India-derived outline). Hand-off rule 11: last rows applied are `android/shared/README.md` 1.36 (2026-09-24) and the `web/README.md` row of 2026-09-24 (*India's boundaries on every map*). |
 | 0.33 | 2026-09-24 | Claude (Cowork), Docs team | Round 1 review of the Docs change for India's boundaries (two majors, one minor). **§12.8** re-synced with the code as of 2026-09-23 19:56 UTC (2026-09-24 01:26 IST): Android's round 1 fixes (`android/shared/README.md` 1.37: rule 2's adm0 guard, `in-boundary-world` maxzoom `Math.nextDown(5f)`, a 13th rules test, so **15** tests, not 12) and the web's missing adm0 guard, recorded as an open parity gap handed to Web; *Verified* corrected (the lead's zoom 5 render shows a tile line beside the outline in the middle box, not one outline) and a Docs decode of the lead's zoom 4, 5 and 6 tiles added (adm0 sides, doubled stretches, `boundary_3`); new *Open before release*. **§11.5** handover table gains Android items 35 to 38 (README 1.36 and 1.37 ask for them in the Sprint 4b handover list). **§12.7 register**: new backlog tickets **S4b-BL-11** (doubled lines inside the claim areas; lead, then Web and Android) and **S4b-BL-12** (Pakistani or Chinese admin lines inside the outline, if TC-M-25 finds any; Web and Android, with the lead). Hand-off rule 11: last rows applied are `android/shared/README.md` 1.37 (2026-09-24) and the `web/README.md` row of 2026-09-24 (*India's boundaries on every map*, unchanged since). |
 | 0.34 | 2026-09-24 | Claude (Cowork), Docs team | **Comment and docs sync of the India's boundaries change** (coordinator's round; branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI running; no behaviour change). Compared with the code at `3ad2b58` (`india-boundaries.ts`, `IndiaViewRules.kt`, `IndiaView.kt` and their tests). **§12.8**: the web has rule 2's adm0 clause and tile-zoom guard, so the v0.33 "open parity gap" is removed (Web row: 37 spec cases; Android row: 18 tests, the round 2 tile-zoom guard); parity paragraph: read from the renderer sources, both maplibre-gl 6.10.0 and maplibre-native android-v13.6.1 skip a minzoom 5 layer in a zoom 0-4 tile, so the guards are defence in depth on both (this corrects this round's brief, which called it "the fix on Android"; S4b-BL-13 reopened for Android's KDoc); *Open before release* and *Backlog* updated. **§11.5** items 36 (done by Web) and 38 ((b) corrected, (c) sign-off open). **§12.7 register**: S4b-BL-11's list corrected (Arunachal-Bhutan and Arunachal-Myanmar are not doubled); new **S4b-BL-13** (renderer wording in comments; Android's 1.39 wording still to correct), **S4b-BL-14** (`web/README.md` intro; done by Web this round, awaiting review), S4b-BL-10 with the measured offsets, **S4b-BL-15** (Assam-Arunachal Pradesh state line from zoom 5), **S4b-BL-16** (doubled lines in the middle sector and the Wakhan, style-side). Hand-off rule 11: last rows applied are `android/shared/README.md` 1.39 (2026-09-24) and the `web/README.md` row of 2026-09-24, *India's boundaries, comment and README sync* (its finding (4), maplibre-native's `geometry_tile.cpp:317` skip, checked in the source and adopted). |
+| 0.35 | 2026-09-24 | Claude (Code), lead | New **§12.9, story S4b-BR-1: the app icon's footprints, option C** ([14](14-lead-backlog-and-handoff.md) N3; PR #15, branch `fix/brand-footprints`): the owner's choices (left/right/left, the same prints in the favicon), what changed on each platform, the checks and the review sign-off. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1109,3 +1110,30 @@ areas: a separate data kind for the stretches the tiles also draw), S4b-BL-12 (P
 inside the outline, only if TC-M-25 finds one), S4b-BL-13 (renderer wording in the code comments),
 S4b-BL-14 (`web/README.md` intro; done by Web this round), S4b-BL-15 (the Assam-Arunachal Pradesh state line) and S4b-BL-16 (doubled lines in
 the middle sector and the Wakhan, style-side) in the §12.7 register.
+
+### 12.9 Story S4b-BR-1: the app icon's footprints, option C
+
+**Story.** As a user, I recognise Doorprints by one mark on every platform. The footprints beside the door read as
+footprints, not as two gold ovals. Source: [14](14-lead-backlog-and-handoff.md) N3, the owner's choice of option C on
+2026-09-24. Branch `fix/brand-footprints`, PR #15.
+
+**Owner decisions (2026-09-24).** (1) Three small footprints (sole, heel, four toes) walking up beside the door, at the
+positions, rotation and scale of N3. (2) **Left/right/left**, not the right/left/right first written in N3: at those
+positions right/left/right put the left foot to the right of the right feet, so the big toes faced away from each
+other. The owner chose the swap after a side-by-side render. (3) The favicon keeps the same three prints; at 16 px
+the toes do not show, and the owner accepted that for one mark everywhere.
+
+**Done when:** `ic_launcher.xml`, `ic_stat_doorprints.xml`, `favicon.svg` and the five app-icon PNGs show the new
+prints with colours, the door and each icon's layout unchanged; the maskable icon keeps the whole mark inside the
+80 % safe circle; [12](12-brand-and-naming.md) N-06, `web/README.md` *Installable (PWA)* and CHANGELOG describe it;
+the renders are shown to the owner before the pull request; CI is green on the branch; the code, design and UX and
+docs reviews approve; the owner merges (or a session merges on the owner's instruction).
+
+| Check | Result |
+|---|---|
+| Renders shown to the owner | Before/after comparison and final renders (512, maskable in the circle, Apple, 192, favicon at real size, status icon at 24/48/72 px), 2026-09-24 |
+| Web | `ng test` 459 of 459, `ng build` and the precache stamp, locally (Node 24) and in CI |
+| Android | `assembleDebug` and unit tests green in CI on the branch (no SDK in the session) |
+| CI on the branch | All workflows green on `e2414f6` |
+| Reviews | Pending: code (Web, Android), design and UX, docs |
+| Device checks | Owner: the launcher icon on a round-mask launcher; the status-bar icon while Hunt mode runs |
