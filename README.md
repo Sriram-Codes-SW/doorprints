@@ -190,7 +190,10 @@ outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.
 [Natural Earth](https://www.naturalearthdata.com/) (public domain; `natural-earth-vector` commit `ca96624`, India
 point of view), bundled as `web/public/geo/in-boundaries.geojson` and `android/app/src/main/assets/geo/in-boundaries.geojson`
 and built by `web/scripts/geo/build_in_boundaries.py`. Public-domain data needs no credit; the web app credits
-"Natural Earth" in the map attribution anyway.
+"Natural Earth" in the map attribution anyway. Both apps apply the same rules. Known limits: the outline is a median of
+about 1.5-1.6 km off the true line; in a few mountain stretches (for example the Wakhan and the Himachal Pradesh and
+Uttarakhand border) a second, close line from the base map can show when zoomed in; and from zoom 5 the
+Assam-Arunachal Pradesh state line is not drawn (ADR-22 *Consequences*).
 
 ## Deploy for free
 
@@ -312,3 +315,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-23 | **CI on every branch** (owner decision): the CI paragraph under *Repository structure* says the workflows run on a push to any branch as well as on pull requests to `main`, with deploying and release signing on `main` only; house rule 1 asks for green branch runs before a merge ([docs/10](docs/10-sprint-log.md) §12.5 Decision 5). |
 | 2026-09-23 | Review fixes to the CI-on-every-branch rows: the CI paragraph lists `codeql.yml` and says it runs on a push to any branch but not on pull requests; deploying stays on `main` and signing does so only while the workflow is unmodified, until the `HH_*` secrets move to a `main`-only environment; house rule 1 says what green means (the latest run of each triggered workflow on the branch, with the branch up to date with `main`; [docs/07](docs/07-secure-build-and-deploy.md) §3.1). |
 | 2026-09-24 | New *Map data and credits* (owner issue P0, India's boundaries on the map): the map shows India's external boundary as the Government of India depicts it, with no Line of Control or Line of Actual Control; the outline is bundled Natural Earth data (public domain), credited on the web ([docs/03](docs/03-design.md) ADR-22). |
+| 2026-09-24 | *Map data and credits*: both apps apply the same boundary rules, and the known limits are stated with the measured figures (the outline a median of about 1.5-1.6 km off the true line; a second, close line in a few mountain stretches; no Assam-Arunachal Pradesh state line from zoom 5), from [docs/03](docs/03-design.md) ADR-22 v0.18. |
