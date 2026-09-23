@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- A long export, import or automatic backup runs as a WorkManager foreground job (Sprint 4a, S4-02), so
+         Android does not stop it halfway while the user looks at something else. Android 14+ requires the
+         type-specific permission as well as the generic FOREGROUND_SERVICE one. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -39,6 +43,13 @@
             android:name=".location.HuntService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- WorkManager's own foreground service needs a declared type from Android 14 (API 34): it is merged
+             into the library's <service> entry rather than declared again. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

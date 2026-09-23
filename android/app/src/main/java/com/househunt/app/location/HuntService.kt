@@ -61,6 +61,14 @@ class HuntService : LifecycleService() {
     private var stationaryMode: Boolean? = null
     private var lastBatteryCheckAt = 0L
 
+    /** Set just before a stopSelf() the user did not ask for; the Map says why (see [HuntState.State.stopReason]). */
+    private var stopReason: HuntState.StopReason? = null
+
+    private fun stopFor(reason: HuntState.StopReason) {
+        stopReason = reason
+        stopSelf()
+    }
+
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let(::onLocation)
@@ -85,6 +93,8 @@ class HuntService : LifecycleService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         if (intent?.action == ACTION_STOP) {
+            // The user's own Stop (the notification action): no reason to show.
+            stopReason = null
             stopSelf()
             return START_NOT_STICKY
         }
@@ -93,7 +103,7 @@ class HuntService : LifecycleService() {
             android.app.PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_HUNT)
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_doorprints)
             .setContentTitle(getString(R.string.notif_hunt_title))
             .setContentText(getString(R.string.notif_hunt_text))
             .setOngoing(true)
@@ -111,14 +121,19 @@ class HuntService : LifecycleService() {
         } catch (e: RuntimeException) {
             false
         }
-        if (!inForeground || !hasLocationPermission(this)) {
-            stopSelf()
+        if (!inForeground) {
+            stopFor(HuntState.StopReason.NOT_ALLOWED)
+            return START_NOT_STICKY
+        }
+        if (!hasLocationPermission(this)) {
+            stopFor(HuntState.StopReason.NO_PERMISSION)
             return START_NOT_STICKY
         }
 
+        stopReason = null
         stationaryMode = null
         requestUpdates(stationary = false)
-        HuntState.update { it.copy(active = true, startedAt = System.currentTimeMillis()) }
+        HuntState.update { it.copy(active = true, startedAt = System.currentTimeMillis(), stopReason = null) }
         return START_STICKY
     }
 
@@ -139,12 +154,13 @@ class HuntService : LifecycleService() {
                 .build()
         }
         runCatching { fused.requestLocationUpdates(request, callback, Looper.getMainLooper()) }
-            .onFailure { stopSelf() } // permission revoked while running
+            .onFailure { stopFor(HuntState.StopReason.NO_PERMISSION) } // permission revoked while running
     }
 
     override fun onDestroy() {
         fused.removeLocationUpdates(callback)
-        HuntState.update { HuntState.State() }
+        // Everything resets except why it stopped, which the Map shows until it is closed.
+        HuntState.update { HuntState.State(stopReason = stopReason) }
         super.onDestroy()
     }
 
@@ -168,9 +184,9 @@ class HuntService : LifecycleService() {
         val battery = getSystemService(BatteryManager::class.java) ?: return false
         val percent = battery.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         if (percent in 1..LOW_BATTERY_PERCENT && !battery.isCharging) {
-            Notifications.alert(this, LOW_BATTERY_NOTIFICATION_ID, getString(R.string.notif_battery_title),
+            Notifications.alert(this, Notifications.LOW_BATTERY_ID, getString(R.string.notif_battery_title),
                 getString(R.string.notif_battery_text, percent), Notifications.openAppIntent(this, 0))
-            stopSelf()
+            stopFor(HuntState.StopReason.LOW_BATTERY)
             return true
         }
         return false
@@ -290,7 +306,6 @@ class HuntService : LifecycleService() {
         private const val ACTION_STOP = "stop"
         const val MAX_ACCURACY_M = 50f
         const val LOW_BATTERY_PERCENT = 15
-        private const val LOW_BATTERY_NOTIFICATION_ID = 2
 
         fun hasLocationPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -313,6 +328,10 @@ class HuntService : LifecycleService() {
             }
         }
 
+        /** The user turned Hunt mode off: onDestroy runs with no stop reason. */
         fun stop(context: Context) = context.stopService(Intent(context, HuntService::class.java))
+
+        /** Closes the "Hunt mode stopped because…" card on the Map. */
+        fun clearStopReason() = HuntState.update { it.copy(stopReason = null) }
     }
 }

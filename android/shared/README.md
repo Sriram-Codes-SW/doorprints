@@ -2,15 +2,48 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.34 |
 | Date | 2026-09-22 |
-| Sprint | 3.5 "KMP foundation" |
+| Sprint | 4a "offline copy" (was 3.5 "KMP foundation") |
 | Owner | Android team |
 
 **Change log**
 
 | Version | Date | Change |
 |---|---|---|
+| 1.34 | 2026-09-22 | Delivery coordinator's final cross-team review of 2026-09-23 (one minor; this README only, no code or string changes, en/hi/ta/te unchanged at 489 string resources each). **Handover for rounds 9 and 10:** 1.32 and 1.33 changed behaviour that docs/05 and docs/06 describe and added `settings_status_updating`, but section 9 had no row for Docs. New item 34 (to Docs) carries the new string for I18N-B06, `RefreshableResultCard` (the result or error card kept in place and dimmed while a new run is busy, `STALE_RESULT_ALPHA` 0.5, "Updating…" / "Thinking…" / "Planning…" as its state), Settings' rule that a rejected address withdraws the result until the next run ends, the Assistant's rule that an error card stays in place while a retry runs, the round-9 items (the Assistant's one error style and centred title and tabs, the attribution clearance above the legend) and the tests and device checks for docs/06. Section 9's docs/10 copy list now runs to item 34. |
+| 1.33 | 2026-09-22 | Whole-app UX audit, round 10 (Senior Lead UX Developer's review of 1.32; `SettingsScreen`, `ServerStatus`, `ResultCard`, `AssistantScreen`, `MapScreen`, `ServerStatusTest`; one new string, `settings_status_updating`, in en/hi/ta/te). **Settings' withdrawn result follows the run, not the field's error (major; WCAG 4.1.3):** 1.32 hid the result card while the address field showed an error, so *Sync now* after a rejected address (it syncs the saved server, so it stays enabled) ended with no card and nothing announced, and the first key press in the field brought an older, unrelated result back mid-typing (read by TalkBack, assertively after a failed sync). A rejected address now withdraws the result until the next run ends (`withdrawnRun`, `serverResultWithdrawn`, `serverStatusSlot(resultWithdrawn = …)`): typing starts no run, so no card comes back; *Save and test* with a valid address and *Sync now* always end with their result. `ServerStatusTest` covers withdrawn and busy (the bar alone) and a new run after a withdrawal (the card). **Stale card readable (minor):** while a run is busy the earlier card no longer drops to 38 % as a whole (error text on errorContainer fell to about 2:1); only its icon and border are dimmed (50 %), the text stays at full contrast, and "Updating…" (`settings_status_updating`) is its state for TalkBack; the card, its text and the bar are one item (`RefreshableResultCard`, new in `ResultCard.kt`). **One rule on the Assistant (minor):** asking or planning again after an error no longer swaps the red card (about 72 dp) for the bar and "Thinking…" (about 28 dp) and back; the error is kept while the new request runs and drawn with the same `RefreshableResultCard`, its state "Thinking…" / "Planning…"; it is cleared when the request succeeds or is cancelled and replaced when it fails. **Assistant title (minor):** only the tabs are fixed above the scrolling pane; the title is 8 dp above them, left out on a window under 480 dp tall (the Map's `mapControlsInRow` threshold), so a landscape phone at 200 % font in ta or te with the keyboard up keeps room for the field and *Ask*; with the assistant off the title scrolls with the hero, as on Settings. **Attribution under a snackbar (minor):** the "i" is hidden, not left half covered, while a snackbar sits beside the landscape row in the legend's place (`isAttributionEnabled = !snackbarAtStart`), and comes back in the same place when it goes; known minor (e) reworded. Device check 21 updated. |
+| 1.32 | 2026-09-22 | Whole-app UX audit, round 9 (Senior Lead UX Developer's review of 1.31; `AssistantScreen`, `MapScreen`, `MapRules`, `SettingsScreen`, `ServerStatus`, `MapRulesTest`, `ServerStatusTest`; no string changes, en/hi/ta/te unchanged). **Assistant title and tabs in the centred column (major):** 1.31 centred only the panes, so on an 800 dp landscape phone the title started at 16 dp and the field at about 96 dp, and each tab stretched 400 dp; the title and the `PrimaryTabRow` are now in the same `ContentMaxWidth` column as the panes and the "not available" hero, the title's 16 dp matching their 16 dp padding, as Settings and the web's ask page. **Attribution follows the legend's place (minor):** the "i" is lifted above the legend's place at the bottom start whether or not the legend is faded out for a snackbar, so it no longer jumps down and back up (the margin is not animated) with every snackbar; a snackbar beside the row may cover its lower part for its few seconds, recorded as known minor (e). **Clearance above the legend (minor):** the band and the snackbar keep `MAP_ATTRIBUTION_STACK_DP` (the 8 dp gap, the 21 dp "i" and 8 dp, 37 dp) above a legend at the bottom start, not 16 dp (`controlsClearanceDp`), so a snackbar above a tall legend (ta at 130 %, a 700 dp landscape map) no longer covers the "i"; `MapRulesTest` holds legend top 114 dp to at least 151 dp. **One error style on the Assistant (minor):** the Ask error, the Plan visits request errors and the no-fix failure are the red `ResultCard` with the warning sign inside the existing live message; "Answer ready" / "Plan ready" stay the muted caption and the permission note the amber note. **Settings' result card (minor):** while *Save and test* or *Sync now* runs, the earlier card keeps its slot at 38 % with the progress bar along its foot (`serverStatusSlot`), so what is below it no longer jumps; an address that fails validation (not https, malformed, empty) clears the last result and no card shows while the field shows its error; the automatic backup's failure is the red card too. Device check 21 reworded for the malformed address and for (y). |
+| 1.31 | 2026-09-22 | Whole-app UX audit, round 8 (Senior Lead UX Developer's review of 1.30; `MapRules`, `MapScreen`, `AssistantScreen`, `SettingsScreen`, `HouseEditScreen`, `Rows`, the new `ServerStatus`, `MapRulesTest`, the new `ServerStatusTest`; no string changes, en/hi/ta/te unchanged). **North-up map (major; WCAG 2.5.1):** 1.30 put MapLibre's compass at the top end below the band's measured height, but the band may grow down to the bottom controls, so on a landscape phone with Hunt mode and a note, at 200 % font, or beside the column the compass landed under *Zoom in* or *Save house here*, leaving a rotated map with no visible way back to north, and it jumped with every change of the Hunt card's height. The map is now north-up (`MAP_NORTH_UP`): `isRotateGesturesEnabled`, `isTiltGesturesEnabled` and `isCompassEnabled` are false (`UiSettings`, 13.6.1), the compass `LaunchedEffect` and the band's height measure are gone, and a camera saved before is restored at bearing 0; the web is asked to match (section 9, item 33). **Legend width with room for pixel rounding (minor):** `legendMinWidthDp` rounds the widest name up to a whole dp and adds `LEGEND_ROUNDING_SLACK_DP` (2 dp), since each part is laid out in whole pixels (at 2.625× 24 + 18 + 4 dp is 120.75 px as a sum, 122 px as laid out) and the Tamil “நிராகரிக்கப்பட்டது” broke at the exact threshold; the names are `softWrap = false`, so a missed pixel clips instead of wrapping (tested at 1× to 4×). **Legend on one line or one item per line (minor):** no `FlowRow`; `MapLegend` measures its width (`BoxWithConstraints`) and uses a `Row` when all three items fit (`legendOneLineWidthDp` from the three measured names, `legendFitsOneLine`), otherwise a `Column`, so the key is never “● New ● Shortlisted” over a lone “● Rejected”. **Legend beside the row and the attribution (minor):** the legend fades out and in (`AnimatedVisibility`, `fadeIn` / `fadeOut`, 150 ms, scaled by the system animator duration scale) while a snackbar sits beside the row, and MapLibre's “i” is lifted only while the legend is drawn (`legendShown`); the band and the snackbar still keep clear of the legend's place, so the band does not jump. **Attribution gap (minor):** 8 dp above an overlay (`MAP_ATTRIBUTION_OVERLAY_GAP_DP`, the overlays' rhythm), 4 dp from the bare map edge (`attributionBottomDp`). **Snackbar action by measured width (minor):** `snackbarActionOnNewLine(actionWidthDp, snackbarWidthDp)`: the action's label is measured at labelLarge with the screen's `TextMeasurer`, and goes on its own line when it and its 24 dp of padding take more than 30 % of the snackbar (the host less its margins); 1.30 counted UTF-16 units (> 12), so Hindi “सेटिंग खोलें” (12) stayed inline while “Open settings” (13) went down. **Content width (minor):** `ContentMaxWidth` (640 dp) in `Rows.kt` replaces the form's private `FORM_MAX_WIDTH`; the Assistant (both panes and the unavailable state) and Settings are centred at most 640 dp wide too, the scroll still full width, as the web's `--content-narrow` pages. **Settings result (minor):** *Save and test* / *Sync now* show a `ResultCard` in the outcome's tone (`serverStatusTone`: the last test when there is one, else the last sync; OK success, not configured neutral, any other kind error) inside `LiveMessage(assertive = failed)`; it is hidden while a run is busy and keyed on a run counter, so the same result twice is announced twice. Device checks 21 (x) and (y) updated; handover item 33 added. |
+| 1.30 | 2026-09-22 | Whole-app UX audit, round 7 (Senior Lead UX Developer's review of 1.29; `MapRules`, `MapScreen`, `AssistantScreen`, `SettingsScreen`, strings in en/hi/ta/te, `MapRulesTest`). **MapLibre's attribution no longer under the legend (major; ODbL / OpenFreeMap credit):** the legend at the bottom start covered the top of MapLibre's logo (4 dp) and of its 21 dp attribution "i" (92 dp / 4 dp; `MapLibreMapOptions` 13.6.1) and took their taps. The Map now turns the logo off (`setLogoEnabled(false)`: MapLibre's BSD licence does not ask for it, and the web shows none) and puts the "i" on the 16 dp gutter, 4 dp above whatever sits at the bottom start (`setAttributionMargins`, `attributionBottomDp`): the legend (its height measured with `onSizeChanged`), or a row of controls that reaches the button in a narrow split-screen (`rowReachesAttribution`); 4 dp when nothing is there, as the web lifts its corner controls with `--map-stack-h`. The compass (after a rotation) sits below the top band (`setCompassMargins`, the band's measured height), 16 dp from the end, no longer under the Hunt card. **Legend width measured, not guessed (major):** `MAP_LEGEND_MIN_WIDTH_DP` (120) is gone; Tamil "நிராகரிக்கப்பட்டது" alone is about 120 dp at 12 sp, so on a 412 dp phone the legend went beside the 232 dp Tamil button with 132 dp and broke the word. The Map measures the widest status name with `rememberTextMeasurer` (the legend's style, one line, keyed on the labels, style and density, as `ActionBar` does) and `legendMinWidthDp` adds the 18 dp dot box, 4 dp gap and 2 × 12 dp padding; `legendBesideFab(mapWidth, fabWidth, legendMinWidth)` and the new `legendPlace` decide BESIDE_FAB, ABOVE_FAB, BESIDE_ROW or IN_BAND (the top band's last item, full width under the Hunt card, when not even the room above the button fits: a 360 dp phone at 200 % font in Tamil). Tested with the Tamil figures. **Row layout (minor):** the legend is no longer in the controls' `FlowRow`; it sits at the bottom start on its own (the web's legend-start / actions-end row) and is hidden while a snackbar sits beside the row in its place, so the row is narrow again and "Finding your location…" goes back beside it on a landscape phone (the round-5 behaviour 1.29 had lost). A legend taller than the controls counts in the band's and the snackbar's clearance. **Refused-tap snackbar (major):** one short sentence, `location_off_short` (new: "Location is off for Doorprints." / "Doorprints के लिए जगह की अनुमति बंद है।" / "Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது." / "Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది.", the first sentence of `map_location_off`) or `location_approximate_only` (`refusedTapSnackbarText`, tested), for `SnackbarDuration.Long` as it carries an action; the Hunt card's note keeps the reason (the whole note wrapped to 10-20 lines on a 360 dp phone). The Map's `SnackbarHost` draws `Snackbar(data, actionOnNewLine = …)`: an action label longer than 12 characters ("Open settings", "அமைப்புகளைத் திற") goes on its own line (`snackbarActionOnNewLine`, tested). **Legend look (minor):** each dot is centred in one 18 dp box (`LEGEND_DOT_BOX_DP`), so stacked names start on one line; the box has `shadowElevation = 2.dp` (the tonal elevation did nothing on a translucent colour); the names are labelMedium SemiBold, as the web's 600. **Assistant (minor):** both `StateButton`s are full width, so *Ask* / *Plan visits* ↔ *Cancel* no longer changes size under the finger. **Carried-over minors:** (a) the Hunt card's notifications note is bodyMedium, as the location note; (b) Settings' *Save and test* status is in an always-composed `LiveMessage`; (c) and (d) are recorded as known in device check 21 (y). Device check 21 (x) updated, (y) added; handover item 32 added. |
+| 1.29 | 2026-09-22 | Whole-app UX audit, round 6 (Senior Lead UX Developer's review of 1.28; `MapRules`, `MapScreen`, `ActionBar` (`StateButton`), `AssistantScreen`, strings in en/hi/ta/te, `MapRulesTest`). **Map legend (major; UX-002, A11Y-003, WCAG 1.4.1, web parity):** `MapLegend` shows ● New / ★ Shortlisted / ✕ Rejected as the web's legend does: a `Surface` (`surface` at 92 %, tonal elevation 2) holding a `FlowRow` (8 dp / 4 dp gaps) of a `Canvas` dot and the status name (`status_*`, labelMedium). The dots copy the web's `.dot` (`LEGEND_DOTS` in `MapRules`: new 12 dp with a 2 dp white ring, shortlisted 16 dp with a 3 dp ring, rejected 9 dp at 75 %, each with a 1 dp black hairline at 35 %) in `MarkerColors`, held to the markers' ring and opacity by `MapRulesTest.theLegendDrawsTheMarkersAsTheWebDoes`. TalkBack hears "Legend" (new `map_legend`: Legend / संकेत / குறிப்பு / సూచిక, the web's words; a heading and traversal group) and then each name. Row layout: the legend is the controls `FlowRow`'s first item, so it wraps onto its own line when it does not fit and the measured row size (top band, `snackbarBesideRow`) includes it; on an 800 dp landscape phone the snackbar now usually goes above the row, since the row is wider. Column layout: bottom start, `end = Save house here's measured width + 32 dp` (`onSizeChanged` on the button), beside it while that leaves 120 dp (`legendBesideFab`, tested), otherwise above it, inset 80 dp from the end past the 48 dp buttons. Hidden while the map failed or its style is loading (the web's `mapUsable()`) and before the button is measured. **A tap that starts nothing is answered at the thumb (major):** without TalkBack, when Android will not ask again, the Hunt switch, *Save house here* and *My location* now also give `HapticFeedbackType.Reject` and a short snackbar carrying the note's own text (`locationNoteText`: `map_location_off`, or the approximate-only text plus the settings sentence) with *Open settings* (and a close button); the action opens the app's settings. With TalkBack the round-5 path is kept (focus to the note, no snackbar). **Gutters:** the top band's outer padding is 12 dp, so with the 4 dp shadow inset the Hunt card's edge is on the 16 dp gutter of the controls and the snackbar. **No invisible strip:** the band's `spacedBy(8.dp)` is gone and the map-status content pads itself (`padding(top = 8.dp)`), so the idle live region adds 1 dp, not 9; in the Hunt card the announcer is drawn over the card's bottom edge (outside the column) and the bottom padding is 12 dp less one per empty note `LiveMessage`, so the last visible line is 12 dp from the edge (top 12 dp too) whichever notes show. **Assistant buttons keep their node:** *Ask* / *Plan visits* and *Cancel* are one `StateButton` call site each (new in `ActionBar.kt`; `BarButton` is now `StateButton` with the row weight, so the rule lives in one place), so TalkBack's focus stays on the button when it becomes *Cancel*. **Assistant note focus:** a *Plan visits* tap that starts nothing moves TalkBack's focus to the note (`FocusRequester`, `focusable()` only with touch exploration, two frames later), as the Map does. **Map labels:** `text-size` follows the font scale up to 1.5× (`markerLabelSizeSp`, read at style load and on every resume), long names wrap after 8 ems (`textMaxWidth`); each feature carries `indic` (`hasIndicScript`: Devanagari, Tamil, Telugu) and the label layer filters on `MAP_LABELS_SHOW_INDIC` (true), so if device check 21 (d), now a release gate, shows broken conjuncts, one constant hides those labels instead of drawing broken text. **Telugu:** `map_notifications_off` ends "… హంట్ మోడ్ మీకు తెలియజేయదు." (future negative, "will not let you know"; was "… చెప్పలేదు", which also reads as the past "did not tell"), for a native Telugu reviewer. Device checks 21 (d) and (w) updated, (x) added; handover item 31 added. |
+| 1.28 | 2026-09-22 | Whole-app UX audit, round 5 (Senior Lead UX Developer's review of 1.27; `MapRules`, `MapScreen`, `LocationPermission`, `AssistantScreen`, `Rows` (`WarnNote`), strings in en/hi/ta/te, `MapRulesTest`, `LocationAccessTest`). **No refusal snackbar on the Map (major; WCAG 2.4.11):** on a short map "Location not allowed. See the Hunt mode card." sat on that card's own *Allow location* / *Open settings* button (fully in split-screen, partly on an 800 dp landscape phone). The refusal snackbars and their strings (`map_location_not_allowed`, `map_precise_not_allowed`) are gone: the Hunt card's location note and the notifications note are each in a polite `LiveMessage`, the location note is hidden while Android's prompt is up (`asking`), so it appears, and TalkBack reads it once, after the answer, and a `BringIntoViewRequester` scrolls the band to it. A tap on the Hunt switch, *Save house here* or *My location* when Android will not ask again starts nothing and brings the note into view; with TalkBack on the note is focusable and takes focus, so the tap is answered by its reason and *Open settings*. **Snackbar beside the row:** in the row layout the `SnackbarHost` sits at the bottom start, beside the row (`end = row width + 8 dp`, the row's width measured next to its height), when the map leaves it at least 288 dp (`snackbarBesideRow`, tested); otherwise, and in the column layout, above the controls as before, so "Finding your location…" no longer covers the note or the nearest-house button on a landscape phone. **Markers by size too (major; UX-002, A11Y-003, WCAG 1.4.1):** `addHouseLayers` copies the web encoding: radius interpolated by zoom (8/14/18: shortlisted 7/11/15, new 5/8/12, rejected 4/6/9 dp), a 3 dp ring on shortlisted (2 dp otherwise), rejected at 75 % opacity; the values are `MARKER_RADII` and constants in `MapRules`, held to the web's by `MapRulesTest.markersTellStatusBySizeNotOnlyColour`; the label offset is 1.6 em so a name clears the largest dot. **One start rule:** `locationStart(precise, canAsk)` (RUN / ASK / SHOW_NOTE, tested) drives the Map's three controls and the Assistant's *Plan visits*; the Assistant no longer calls `plan()` when Android will not ask, so "Planning…" never flashes before the same note. **Assistant text:** no location says `ai_plan_location_off`, "Location is off for Doorprints. ‘Plan visits’ needs it to start from where you are.", the same pattern as the Map and the form (was the vague `map_location_needed`). **Note size:** `WarnNote` takes `textStyle` (bodySmall by default); `LocationPermissionNote` passes bodyMedium (14/20 sp Latin, 14/24 sp Indic), so the main blocking message is not smaller than its button. **Weak GPS** (and waiting for GPS) in the Hunt card is `onSurfaceVariant`, not error red: a condition, not a failure. **One quote style:** UI labels named in text are in ‘ ’ in all four locales: en `houses_empty`, `map_add_tip`, `map_add_tip_a11y` and the import strings (`import_blocked`, `import_copy_shown`, `import_ready_merge`, `import_stopped_resume`, `import_undo_failed` and their plurals: ‘Import’, ‘Add’, ‘Finish import’, ‘Bring them back’, ‘Undo this import’); in hi, ta and te every “ ” around a label became ‘ ’ (the house name example “Blue gate, 2nd floor” keeps “ ”: it is sample text, not a label). The 1.27 row and item 29 (c) said the Indic files already used ‘ ’; they mostly used “ ”, and both are corrected. Device checks 21 (q), (s), (v) and (w) updated; handover item 29 (c) extended and item 30 added. |
+| 1.27 | 2026-09-22 | Whole-app UX audit, round 4 (Senior Lead UX Developer's review of 1.26; `MapRules`, `MapScreen`, `LocationPermission`, `HouseEditScreen`, `AssistantScreen`, `Rows` (`WarnNote`), strings in en/hi/ta/te, `MapRulesTest`, `LocationAccessTest`). **Short map (major; WCAG 1.3.4, 1.4.10, 2.5.8):** below 480 dp of map height (phone landscape, split-screen, a half-open foldable; `mapControlsInRow`) the bottom controls are one `FlowRow` at the bottom end, [Zoom out][Zoom in][My location][Save house here], 8 dp apart (*Save house here* wraps on a narrow map), about 88 dp tall, so the Hunt card's band gets the rest; the column's Zoom in no longer sits on the Hunt switch. In the column layout a band that would get less than a quarter keeps the quarter beside the buttons with an 80 dp end inset (`topBandBesideControls`, `topBandEndInsetDp`). The floors are 270 dp (column, `MAP_BOTTOM_STACK_MIN_DP`) and 88 dp (row, `MAP_BOTTOM_ROW_MIN_DP`); each layout keeps its own measured height. `MapRulesTest` now asserts no overlap on every short map (`aShortMapNeverPutsTheBandUnderAButton`, replacing `aShortMapStillGivesTheBandAQuarter`) and inset or no overlap in the column. **Snackbar:** the `SnackbarHost` is no longer part of the measured stack; it sits just above the controls and may cover the band for its few seconds, so the band stops jumping when "Finding your location…" comes and goes. **Location text per screen (major):** `LocationPermissionNote` takes `deniedText`, `approximateText` and `launchRequest`; `location_approximate_only` is now only the lead "Doorprints has only your approximate location.", joined (`approximateLocationText`) with `map_needs_precise`, `house_needs_precise` or `ai_plan_needs_precise`; `locationNoteText` (tested) adds `location_precise_in_settings` for OPEN_SETTINGS_PRECISE. The form's no-location text is `house_location_denied` ("Location is off for Doorprints. Allow it, or type the latitude and longitude below.", as the web's `house.locationDenied`). **One rule for the button:** the note calls `LocationAsk.requestOrOpenSettings`, which follows `LocationFix.launchesRequest()` (markAsked + the screen's launcher, or the app's settings); the screens' own `if (canAsk)` copies are gone. **Map refusals said once:** the refusal snackbars are now "Location not allowed. See the Hunt mode card." / "Precise location not allowed. See the Hunt mode card." (`map_location_not_allowed`, `map_precise_not_allowed`) with no action; the note carries the text and *Open settings*; `locationMessage()` is gone. **Assistant:** the first tap on *Plan visits* (or Send) without precise location asks at once; a refusal shows the note (`AssistantViewModel.noLocation`); `NoLocationException.permitted` tells a permission gap from a real no-fix failure, and precise location granted later (even in system settings) plans again by itself instead of showing the red "Your location is not available."; the permission note is polite, only a real failure is assertive. **Quoted names in English:** ‘Save house here’, ‘Use precise location’ and ‘Plan visits’ are quoted with ‘ ’ (`map_location_off`, `map_save_needs_location`, `location_precise_in_settings`); corrected in 1.28: hi/ta/te then mostly used “ ”, and 1.28 makes ‘ ’ the one style in all four locales. **WarnNote:** the sign is 16 sp (scales with the font) in a box one bodySmall line tall (16 sp Latin, 20 sp Indic), so it is centred on the first line in every script. Device checks 21 (v) and (w) added, (r) updated; handover item 29 added. |
+| 1.26 | 2026-09-22 | Whole-app UX audit, round 3 (Senior Lead UX Developer's review of 1.25; `LocationPermission`, `MapScreen`, `HouseEditScreen`, `AssistantScreen`, `Rows` (`WarnNote`), the new `MapRules`, strings in en/hi/ta/te, the new `LocationAccessTest` and `MapRulesTest`). **Approximate location (major):** Android 12+'s *Approximate* answer is no longer treated as "no permission". `LocationAsk` now holds `access` (`LocationAccess`: PRECISE, APPROXIMATE, NONE, from both grants) with `approximateOnly`, refreshed with `asked` / `canAsk`; the Map's Hunt card, the house form and the Assistant show one note, `LocationPermissionNote` (a `WarnNote` with a 48 dp button): no location → "Location is off for Doorprints…" (Map) or "Location permission is needed for this" with *Allow location* / *Open settings*; approximate only → "Doorprints has only your approximate location. Hunt mode and Save house here need precise location." with *Turn on precise location* (re-launches `LOCATION_PERMISSIONS`, so Android shows "Change to precise location?"), or *Open settings* plus "In settings, open Permissions, then Location, and turn on Use precise location." once Android will not ask (`LocationFix`). The Map's refusal snackbars use the same wording. `map_location_off` and `map_location_needed` stay for the real no-permission state. **Large text on the Map (major, WCAG 1.4.4):** the content is a `BoxWithConstraints`; the top band is capped at the map's height less the bottom stack's measured height (at least 260 dp, `MAP_BOTTOM_STACK_MIN_DP`), never under 25 % of it (`topBandMaxHeightDp`), and scrolls, so no note sits under a button or a snackbar; with Hunt mode on the switch's subtitle is dropped (`map_hunt_on` deleted in all four languages; `map_hunt_off` stays while it is off). **One look for location notes:** `WarnNote` takes an optional trailing action (`onWarn` text button, 48 dp, under the text); the Hunt card's location and notification notes, the form's note (now also *Allow location* while Android will ask) and the Assistant's note use it, so a refusal is never error red (`house_location_failed` and the Assistant's "Your location is not available." with precise location stay red: real failures). **No first-frame flicker:** `LocationAsk.canAsk` starts from `canAskLocation` (read once, in `remember`), not `!asked`. **Finding your location…:** *Save house here* keeps its label and swaps only its icon for the 20 dp spinner (no width jump, no two-line Tamil label); both it and *My location* carry `stateDescription` "Finding your location…" while locating, and *My location*'s name is on the button's semantics, not on the icon, so TalkBack keeps it while the spinner shows; the snackbar remains the announcement. **House form:** the Location section (*Use my current location*, Latitude / Longitude) follows Street / Locality, as on the web; the form is at most 640 dp wide, centred (`FORM_MAX_WIDTH`), with the scroll still full width. **Reduced motion** is read again on every resume (`animationsOff` in the Map's `LifecycleResumeEffect`). **Field pairs:** the Design Director confirmed the rule (stack below 300 dp of room inside the gutters, or from 1.3× font; `stackFieldPair`), feedback of 2026-09-22; device check 21 (o) now also covers 115 % font (the "Large" default of several OEM builds) and the floated labels. 3 new strings (`location_approximate_only`, `location_precise_in_settings`, `location_turn_on_precise`), 1 deleted (`map_hunt_on`). Section 8: round-3 notes, device check 21 (o) extended, (r) to (u) added, two Sprint 4b items. Section 9: item 28 (Docs, docs/05). |
+| 1.25 | 2026-09-22 | Whole-app UX audit, round 2 (Senior Lead UX Developer's review of 1.24; `MapScreen`, `HouseEditScreen`, `AssistantScreen`, `HouseFormRules`, the new `LocationPermission`, `HouseFormRulesTest`). **The map frames itself again (major):** MapLibre delivers the camera-idle of the initial "whole of India" `setCameraPosition` after the listener is registered, so 1.24 saved that as the user's camera and the first framing never ran (houses and the user's location were never framed, and every return showed India). A saveable `framed` flag now gates the idle listener; it is true after the first framing, when a saved camera is restored, and when the user moves the map (`OnCameraMoveStartedListener.REASON_API_GESTURE`, the zoom buttons or *My location*); the framing effect is keyed on it. **Field pairs** (price and BHK, street and locality, latitude and longitude) stack below 300 dp of room inside the gutters or from 1.3× font (`stackFieldPair`), not below 360 dp, which stacked every phone narrower than 392 dp. **Assistant questions** are synchronous Compose state (`SavedStateHandle.saveable { mutableStateOf("") }`), not a `StateFlow` collected into the text field, so fast typing and Indic IME composing text are not dropped. **Location asked, app-wide:** the "location asked" flag moved to `LocationPermission.kt` and is set by the Map, the house form's *Use my current location* and the Assistant's *Allow location*; each screen keeps `asked` / `canAsk` as state (`rememberLocationAsk`) recomputed on resume and after every answer, never during composition, so the Hunt card, the Assistant's button and the house form offer *Open settings* as soon as Android stops asking; a refusal on the Map that makes Android stop asking offers *Open settings* in its snackbar; approximate-only no longer re-launches the form's request. **House form:** a sync replacement of an untouched form clears typed latitude / longitude text (a leftover "1x" no longer keeps Save disabled), and *I am here now* records the visit at the stored house, not the unsaved draft. No new strings. Section 5: `HouseFormRulesTest` covers `stackFieldPair` and `canAskAgain`. Section 8: round-2 notes, device check 21 (n) to (q). |
+| 1.24 | 2026-09-22 | Whole-app UX audit by the Senior Lead UX Developer (the go-ahead for the first deploy; `MainActivity`, `HouseHuntApp`, `Root`, `MapScreen`, `HouseEditScreen`, `HouseListScreen`, `CompareScreen`, `AssistantScreen`, `SettingsScreen`, `Rows`, `NotifyAsk`, the new `LiveMessage`, `DeletedHouseUndo` and `HouseFormRules`, `Repository`, `Settings`, `SyncWorker`, the new `SyncHealth`, `HuntService`, `HuntState`, `Geo`, `AppLocale`, `ModelLabels`, `:app` strings, and the new `HouseFormRulesTest` and `SyncHealthTest`). **Deep links run once (blocker):** `onCreate` handles the intent only when `savedInstanceState == null`, `onNewIntent` calls `setIntent`, the consumed extras are removed, and an intent `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` is ignored, so a rotation, the language switch or reopening from Recents no longer reopens the house or stacks new-house forms; the same alert tapped twice does not stack two forms, a "stay here?" alert whose visit is already a house opens that house, and Settings from a notification opens as a tab. **Keyboard:** the house form, Settings and the Assistant apply `imePadding` (edge-to-edge no longer resizes the window). **House form:** a new house's first save continues on it as an existing house ("Saved", *Save and add photos*); a newer version from sync replaces an untouched form, and an edited one shows "This house was changed on another device." with *Show their version* / *Keep mine* (Save with nothing changed writes nothing); the form shows at once while the geocoder fills the address in ("Finding the address…"); a full-screen photo viewer; *Use my current location* and Latitude / Longitude fields; Status as three radio rows with the ● ★ ✕ glyph; *Fill in from listing text* (one name), filling only empty fields and saying what it filled and kept, closing on an outside tap only when empty, scrolling; "Visit recorded" and no duplicate within ten minutes; "Adding photo…"; photo undo survives a rotation (`PhotoDeleteViewModel`); *Undo* after deleting a house (on the Map and the list); one-line title, not-found title, stacked field pairs below 360 dp or from 1.3×; the checklist's "–" last; delete a visit, *Open* the listing, *Save as a new house*. **Map:** no permission prompt on arrival; location from the Hunt switch, *Save house here* and *My location*, notifications when Hunt mode is turned on (with a reason); rechecked on resume; location-off and notifications-off notes in the Hunt card; snackbars instead of toasts; "Finding your location…" with one lookup at a time and a 15 s limit; a last-known fix only if under 2 min and within 50 m; the camera kept in saved state and framed once; loading and error states with *Try again* / *Open Houses*; a quiet live region (events only, no distances) and a 15 s staleness clock; why Hunt mode stopped; 48 dp hit area and Zoom in / Zoom out. **Compare:** saved selection, table first with pinned labels and one TalkBack item per row, header names as heading buttons, "(best)" as a format string, an empty state, the limit said. **Assistant:** a `AssistantViewModel` (survives leaving and rotation, answer and plan kept as JSON), one live message, result headings, Send, Cancel, *Allow location*, and a "not available" state; the tab stays while it is shown, AI status is fetched once per process and kept on network errors. **Settings:** sections reordered (Language, Your data, Hunt mode, Sync, Privacy, About), named sliders, Show / Hide key, the typed URL kept, the URL error announced and focused, the version, and "Language changed to …". **List:** status glyphs, rents before sales in *Lowest price*, and a warning when sync has failed for a day or three times with AUTH/SERVER. **Bottom bar:** one-line labels. 80 new strings in en/hi/ta/te; `house_paste_listing`, `house_paste_done`, `house_paste_warnings`, `house_location` and `compare_best` removed; `house_save_first_photos` and `compare_hint` reworded. Section 8: whole-app audit notes, device check 19 (h) updated, device check 21. Section 9: item 27. |
+| 1.23 | 2026-09-22 | Twenty-first Sprint 4a round (Design and UX review of 1.22; `HouseEditScreen`, `HouseListScreen`, `Root`). **Checklist:** the ✓ is withdrawn (not confirmed by the Design Director); each row is the web's segmented radio (docs/05 §5), fixed 48 dp squares in a wrapping `FlowRow`, `primary` fill and `onPrimary` label when chosen, 1 dp `outline` edge otherwise, with a leading "–" (not scored). **Rent/Buy** is a two-segment `SingleChoiceSegmentedButtonRow` like Status; the house list's status chips are radio buttons for TalkBack. **House form:** the draft, its baseline and a new house's id are saveable; an unsaved-changes guard on the back arrow and system Back; photo delete is undoable from a snackbar; a double tap can no longer pop twice (`busy`, `dropUnlessResumed`, exit through `LifecycleResumeEffect`); a not-found state for unknown or deleted ids and an error card when the house is removed while open; photo errors under the photo buttons in a live region; *Clear rating*; IME capitalisation and Next/Done; a live ₹ preview under the price; the Paste listing dialog can be cancelled while it runs. **Dialogs:** one look for an irreversible choice, `DangerButton` (error outline), for *Replace*, *Remove copies*, *Delete* and *Discard*. **House list:** closing the undo row moves TalkBack's focus to the chips; which undo outcome was news and which failure was closed are saveable (`Outcome.finishedAt`). Section 8: twenty-first-round notes, device check 19 (h) rewritten, device check 20. Section 9: item 26. |
+| 1.22 | 2026-09-22 | Twentieth Sprint 4a round (Android review of 1.21; `HouseListScreen` and `HouseEditScreen`). **Focus after the list's confirm dialog now works with TalkBack:** 1.21 said focus goes back to the row's button, but a plain `TextButton` is `Focusability.SystemDefined`, which cannot take focus in touch mode (TalkBack is touch mode), and after *Remove copies* the button is disabled while the undo runs, and a disabled clickable has no focus node at all; `runCatching` hid both failures. The list now uses the Export screen's `focusSaveAfterRecovery` pattern: closing the dialog (either button, Back or a tap outside) sets `focusUndoButton` in `HouseListScreen`, only while touch exploration is on; while it is set the row's button has `focusProperties { canFocus = true }`; `LaunchedEffect(focusUndoButton, undoButtonEnabled)` waits a frame, focuses it, waits a frame and clears the flag. After *Keep them* focus lands on *Undo this import*; after *Remove copies* it waits for the button to be enabled again, as *Close* (or *Undo this import* after a failure). **A failed undo's card can be closed:** its close button now shows when the undo failed too; that hides the card for this visit only and writes nothing to the record, so the chip, the Import screen's undo and the row on a later visit stay. **The checklist's 0–5 chips have the ✓** (`ChipCheck`) like every other selected chip, not the 2 dp border alone (listed for the Design Director in section 8). **The 1.12 row** now notes the Replace dialog's 540 dp threshold. Section 8: twentieth-round notes and device check 19 (g) and (h). Section 9: item 25 (d). |
+| 1.21 | 2026-09-22 | Nineteenth Sprint 4a round (Design director and UX lead review of 1.20; `Theme`, `Root`, `HouseListScreen`, `HouseEditScreen`, `ResultCard`, `ImportUndo`, `ImportUndoTest`, comments in `ActionBar` and `ImportScreen`, and `:app` strings). **Selected states are teal, with a ✓:** `secondaryContainer` / `onSecondaryContainer` are now `--primary-soft` (light #E3F0EC / #0B3B30, dark #1D3B33 / #E4EBE8, 10.05:1) instead of the amber star family, which M3 painted on every selected FilterChip and InputChip, the bottom nav's active pill and the status segmented button; `secondary` stays `--star`, and nothing in `:app` reads `secondaryContainer` for a star. The status chips, the "Just imported" chip and the house form's Rent/Buy chips lead with a ✓ (`ChipCheck`) and have the web's edge (`brandFilterChipBorder` / `brandInputChipBorder`: 1 dp `outline`, 2 dp `primary` when selected); the checklist's 0–5 chips get the border only; the applied "Just imported" chip has a trailing close glyph; the NavigationBar's active label is `primary` (M3's default is `secondary`, the amber star). **Close, not Dismiss:** `common_dismiss` (hi "खारिज करें", ta "நிராகரி", te "తీసివేయండి" read as *Reject* / *Remove*) is replaced by `common_close` (the web's `common.close`: "Close", "बंद करें", "மூடு", "మూసివేయండి") on the result cards' close button and the undo row. **The list's undo asks first and names its import:** the row is a `ResultCard` (NEUTRAL, SUCCESS after the undo, ERROR on failure) with the time of the import ("Imported from your backup at <time>: 40 copies.", `houses_imported_row` now takes it), its *Undo this import* opens "Remove the 40 copies imported at <time>?" (new `houses_undo_confirm_title`, `_body`, `_remove`, `_keep`), and the card has a close button that hides it for that run (`CopyRecord.rowHidden`, `ImportUndo.hideRow`). **The right import:** the list shows the newest undoable copy import when it is newer than the one it was opened for, and Root clears `importedRun` whenever Import is opened. **The filter:** "Just imported" turns itself on once per *See your houses* tap (`importedOpen`), not on every return to the tab, and off when a house that is not a copy is added. **No jump:** opened for an import the list waits for the record (heading only); the chip, the card, the chips, the sort, the count and the cards use `animateItem()`. **Hindi undo wording:** वापस लें instead of पूर्ववत. Section 8: nineteenth-round notes and device checks 18 (updated) and 19. Section 9: item 25 (Docs: docs/05 §4.5, §14.3, I18N-B06) and item 24 (i). |
+| 1.20 | 2026-09-22 | Eighteenth Sprint 4a round (Design director and UX lead review of 1.19; `ActionBar`, `ImportScreen`, `ImportViewModel`, `HouseListScreen`, `ExportScreen`, `Rows`, `Root`, `Repository`, `ImportUndo`, the new `CopyImportUndo`, `ImportUndoTest` and `:app` strings). **Buttons stack by measuring:** the action bar measures the labels it draws (`ActionBar(labels, iconLabel)`, `rememberTextMeasurer`, `labelLarge`, against half the bar less the button padding) and stacks the buttons when one needs more than two lines or one word is wider than its room, as well as from font scale 1.3; Tamil *Undo this import*, *Choose a backup file* and *Bring them back* no longer lose their ends at 100% font. **Share** uses M3's icon padding (`ButtonWithIconContentPadding`, `IconSize`, `IconSpacing`). **Undo from the house list:** *See your houses* pops the Import screen, so the list now has a row under the "Just imported" chip — "Imported from your backup: *n* copies.", "You can undo this until …" and *Undo this import* — running the same undo (`CopyImportUndo`, application scope, snapshot state both screens read), with a live-region sentence; after an undo the filter goes off and the button becomes *Dismiss* in place. **The undo is kept:** picking another file or closing the result no longer deletes the record; it expires after its day, and the list shows the newest undoable copy import when it was not opened from one. **Kept copies stay findable:** an undo that kept edited houses writes back a reduced record (`CopyRecord.keptOnly`, `undone = true`, no undo), and *See your houses* then opens the list on them. **Undo states:** *See your houses* is disabled while the undo runs; the bar says "Undo finished." (new `import_undo_finished`) and the heading says what it did, with the restore glyph in neutral colours; the success hero is the tick on `success` / `onSuccess` (`HeroEmptyState(iconTint, iconContainer)`); "You can undo this until …" (new `import_undo_until`) under the heading. **Chip:** "Just imported (*n*)" is an `InputChip` with the restore glyph in its own row, outside the status chips' `selectableGroup()`. **Export:** the recovery button is pulled back 12 dp like *Use everything*; the focus move to *Save to…* happens only with TalkBack on and is released a frame later. **Hindi:** `import_mode_copy` uses कॉपी like every other copy-import string. **Comments:** the PreviewCard KDoc describes the 24 h undo. Section 5: new `ImportUndoTest` cases. Section 8: eighteenth-round notes, device checks 16 (extended), 17 and 18. Section 9: items 23 and 24 extended. |
+| 1.19 | 2026-09-22 | Seventeenth Sprint 4a round (Android review of 1.18, traced through the backend's `HouseService.purge`, `VisitRepository.unlinkHouse`, `VisitController.upsert` and `ClientClock`; `SyncRules` and `SyncRulesTest` in `:shared`, `Repository`, the new `CopyUndo` and `CopyUndoTest`, `ImportScreen`, `ExportScreen` and `ActionBar` in `:app`). **Undo after a sync removes the copies' visits too:** the undo's visit tombstones are written with `houseId = null` (`CopyUndo.visitTombstone`) and `Repository.sync` now pushes visit tombstones without a house before any house (`SyncRules.pushesBeforeHouses` / `visitsByPushOrder`), reading the dirty houses before the dirty visits, so the house purge on the server no longer unlinks, re-stamps and so revives them as loose street visits on every device. **The undo's decisions are pure and tested:** `CopyUndo.decideHouse` / `decideVisit` / `removesPhoto` and the tombstone builders, with `CopyUndoTest` covering every keep/remove/skip rule; `undoCopyImport` only reads, asks and writes. **No false "edited since":** `applyCopy` stamps each copy with min(backup `updatedAt`, now) (`CopyUndo.copyStamp`) and records that stamp. **A cancelled picker keeps the undo:** *Choose a backup file* closes the result (and forgets the undo) only when a file is picked. **Export recovery keeps TalkBack's place:** *All houses* / *Include rejected houses* are one call site, and when the tap makes houses match, focus moves to *Save to…* (`BarButton(modifier)`, a `FocusRequester` with `canFocus` for that one request). Section 5: new tests listed. Section 8: seventeenth-round notes, the backend interaction and the fast-clock limitation in the sixteenth-round notes, device check 16 extended and 16b added. Section 9: item 24 (e). |
+| 1.18 | 2026-09-22 | Sixteenth Sprint 4a round (UX review of 1.17; `ActionBar`, `ExportScreen`, `ImportScreen`, `ImportViewModel`, `HouseListScreen`, `MapScreen`, `Root`, `Repository`, `AppDatabase` (queries only), `ImportWorker`, the new `ImportUndo`, `HouseHuntApp` and `:app` strings). **Buttons keep TalkBack's focus:** every action-bar position is one `BarButton` call site whose label, action and filled/outlined look follow the state, so *Save to…*/*Share*/*Import*/*Bring them back*/*Stop* and the Replace dialog's choices no longer remove the focused node and drop TalkBack to the top of the screen. **Copy imports can be undone:** the worker records the new ids in `filesDir/imports/<runId>.json` (`ImportUndo`, `CopyRecord`, `ImportUndoTest`); for a day, until the result is closed, the result offers *Undo this import*, which removes exactly those rows in one transaction as synced tombstones and keeps any house edited since (`Repository.undoCopyImport`); *See your houses* opens the list on the copies behind a "Just imported (n)" chip; the copy preview's button reads **Add *n* copies** when some houses would appear twice. **Smaller:** the map's arrival tip names *Save house here* for TalkBack users and without location, and *Save house here* without a location says what it needs; the house list's results count is always composed, and its live text starts empty for each filter; sort label is a format string with name, state and drop-down role; house cards say "open details"; *Include rejected houses* is offered when that is why nothing matches. 13 new strings in en/hi/ta/te. Section 8: sixteenth-round notes and device check 16. Section 9: item 21 extended, items 23 (Docs) and 24 (Web). |
+| 1.17 | 2026-09-22 | Fifteenth Sprint 4a round (UX review of 1.16; `HouseListScreen`, `MapScreen`, `Root`, `ExportScreen` and `:app` strings). **One scrolling list:** the heading, search field, status chips, sort control and results count are now items of the house `LazyColumn`, so they scroll away in landscape and at 200 % font scale instead of leaving the list less than one card. **Sort:** the inline row that could not wrap is one 48 dp *Sort: Best score ▾* button with a menu of radio items, like the web's select. **Results count:** new `houses_shown` ("Houses shown: %1$d of %2$d", the web's `map.shown`, en/hi/ta/te) while a search or filter is active, a polite live region read 500 ms after typing pauses (docs/05 4.1.3). **Search field:** IME Search action closes the keyboard; a clear button (new `houses_clear_search`); *Clear search and filter* puts focus back in the field. **Copy:** `houses_no_match` is the web's `map.noMatch`; `export_empty_action` is renamed `common_add_on_map` (Export and the house list). **State:** search and filter reset when the last house goes. **Add on the map:** the map shows `map_long_press_tip` in a snackbar on arrival from either *Add a house on the map*. **Hero buttons** share one width. Section 8: fifteenth-round notes. Section 9: item 21 extended (docs/05 4.1.3, I18N-B06), item 22 (Docs, docs/11 pick-a-spot mode). |
+| 1.16 | 2026-09-22 | Fourteenth Sprint 4a round (Design and UX review of 1.15; `HouseListScreen`, `Rows.HeroEmptyState`, `Root` and `:app` strings). **First-run hero:** a filled **Add a house on the map** (`export_empty_action`, which opens the Map tab like Export's empty state) now sits above the outlined *Import a backup*, as docs/05 §5 (icon, message, primary action), Export and the web's filled *Add* ask. **No flash:** until Room's first emission the list shows only its heading, not the search, chips and sort row. **Gutter:** `HeroEmptyState` takes `horizontalPadding` (16 dp default, as `RadioRow`/`SwitchRow`); the house list passes 0 dp inside its own 16 dp padding. **No match:** a search-glyph hero with *Clear search and filter* (new `houses_clear_filters`, en/hi/ta/te, the web's `map.clearFilters` copy) that resets both. Section 8: fourteenth-round notes. Section 9: item 21 (Docs, docs/05 §14.10 and I18N-B06). |
+| 1.15 | 2026-09-22 | Thirteenth Sprint 4a round (Android review of 1.14; `:app` strings and `HouseListScreen`, `ImportPlan` in `:shared`, `Repository`, `AppDatabase` and `ImportWorker` in `:app`). **Tamil spelling:** `settings_server_intro` (ta) now uses the joined காப்புப்பிரதி like every other use in `values-ta` (naming brief [12](../../docs/12-brand-and-naming.md) §G.1); `grep -n 'காப்புப் பிரதி\|காப்பு பிரதி'` on that file returns nothing. **Brand rule G.3.3:** the empty house list's button now reads *Import a backup* (`import_title`, already in en/hi/ta/te) instead of *Restore from a backup*; `houses_restore` is removed from all four languages. **Dirty-tombstone guard:** `ImportPlan.plan` takes `syncedDeletedHouseIds` (`HouseDao.syncedDeletedIds()`, `deleted = 1 AND dirty = 0`, via `LocalVersions.syncedDeletedHouseIds`) and gives fresh photo ids only to houses whose delete reached the server, so restoring a delete that was never pushed keeps the photo ids the server still holds live; `null` (the default) keeps the 1.14 rule. `ImportPlanTest.aTombstoneThatWasNeverPushedKeepsItsPhotoIds`, and the preview-equals-plan walk has ten phone states. Section 8: device check 10b and the twelfth-round notes cite the backend's `ApiIntegrationTest` restore tests as the server-side proof; thirteenth-round notes; the Sprint 4b "two halves of a sync" item keeps only its case 2; the readable-copy file names (G.3 rule 4) are a Sprint 4b item. Section 9: item 16 gets the I18N-B06 changes (`settings_server_intro` ta added, `houses_restore` dropped) and the new button label; item 17 the new parameter; items 19 (Backend, schemas §6 rule 6 device note) and 20 (Docs, docs/12 G.3 and docs/05) are added. |
+| 1.14 | 2026-09-22 | Twelfth Sprint 4a round (Android review of 1.13, checked against the backend's `HouseService.purge` and `PhotoService.upload`; `ImportPlan` in `:shared`, `Repository` and `ImportWorker` in `:app`). **The undelete now works on a phone that synced the delete.** A house written over a tombstone (restored with `restoreDeleted`, or updated because the file's row is newer) relinks its visits and gives its photos fresh ids: `ImportPlan.preview` / `plan` take `localUnlinkedVisitIds` (`Repository.LocalVersions.unlinkedVisitIds`, from the new `VisitDao.unlinkedIds()`); a visit of such a house that is a loose visit here is written whatever last edit wins says (`ImportPreview.relinkedVisits`, counted in `newVisits`; `ImportActions.relinkedVisitIds`), and `Repository.applyImport` keeps the phone's copy, sets its `houseId` and stamps `updatedAt` = max(now, its own + 1) so the relink beats the server's unlink; each photo of such a house gets `newId()` because the server never takes a tombstoned photo id back. `ImportPlanTest` adds the synced, the resurrected and the never-synced states, and the preview-equals-plan walk now covers eight phone states. **Lists of any length:** `ImportWorker.joined` handles any number of items (`joinList`, new string `import_list_middle` in en/hi/ta/te, `JoinListTest`), so a fourth backup gap can never drop out of the partial-backup note. Section 8: device check 10 is split into 10a (no sync) and 10b (synced, checked on the web), the twelfth-round notes, and two Sprint 4b items. Section 9: item 16 is qualified until check 10b passes; item 18 (Backend, optional) is added. |
+| 1.13 | 2026-09-22 | Eleventh Sprint 4a round (UX lead and Design director review of 1.12; `:app` plus `ImportPlan` and the new `BackupCompleteness` in `:shared`). **Import, restoring deleted houses:** `ImportPlan.preview` / `plan` take an opt-in MERGE flag `restoreDeleted`: a house in the file that is a tombstone here and would stay deleted is written with its original id (`ImportPreview.restoredHouses`, `ImportActions.restoredHouseIds`), and its visits and photos count as kept; `Repository.applyImport` clears the tombstone and stamps `updatedAt` = now (and past the tombstone's) so the undelete wins on the next sync. The Import screen replaces *Bring them back as copies* with the switch "Also bring back *n* houses deleted on this phone" (off by default); in the nothing-would-change state the bar's primary is **Bring them back** (turns the switch on), and *Show as copies* is a secondary text button. **Import, Replace dialog:** a second flag `skipUpdates` ("Keep mine, add only what's new", `ImportPreview.keptMineHouses` / `keptMineVisits`) is the dialog's first, tonal choice; *Import as a copy instead* is a text button; the title counts houses and visits apart ("Replace 3 houses and 5 visits?", `import_confirm_title_parts`, replacing the `import_confirm_title` plural) and the body names up to five of the houses (`ImportCheck.Ready.replacedHouseLabels`). `ImportPlanTest` pins both flags and, for every flag combination, that the preview equals the plan. **Export, partial backups:** `BackupCompleteness.gaps(options)` (`:shared`, `BackupCompletenessTest`) says what a full backup made with narrowed options leaves out; the Export screen shows it as an amber note under the format cards ("This backup leaves out … Restoring from it will not bring those back.") with *Use everything*, and the result card and notification say "Saved a partial backup…" (`ExportRequest.KEY_PARTIAL`). **Results nobody was told about:** `Notifications.result` returns whether it posted (and treats a blocked channel as not posted); both workers write `ExportRequest.KEY_NOTIFIED`; both screens show a finished run however old when it failed or nobody was told, until it has been seen once, and keep seen and dismissed run ids in the Settings DataStore (`ResultMarks`) instead of `rememberSaveable`; the first *Save to…*, *Share* or *Import* while notifications are off asks for them in context, once (`rememberNotificationAsk`), and goes ahead either way. **Smaller:** the import success sentence is said once (the body's heading; the bar says "Import finished." or shows the lost-photos card); each import preview is its own status kind (merge / merge with deleted houses brought back / copy), so a mode switch is announced; the preview is re-worked out quietly on resume after 30 s (`ImportViewModel.refreshPreview`); *Choose a backup file* cannot stack two pickers; the contact warning is part of the switch row (`SwitchRow(warning = …)`); the house list keeps its search, sort and filter across rotation and process death, and on first run shows only the tagline, the hint and an outlined *Restore from a backup* in a `HeroEmptyState`; `export_intro` no longer claims nothing is sent anywhere; `import_deleted_here` reads "Deleted on this phone; they stay deleted"; a saved file says where it went when the provider exposes it ("Saved to Download: …", `Saf.locationName`); the progress counter is "12 of 80" with no noun (`export_progress_count`, replacing the `export_progress` plural). `import_checked` is removed (replaced by the per-preview lines). Section 8 adds the eleventh-round notes and device checks 10–15; section 9 adds items 16 and 17. |
+| 1.12 | 2026-09-22 | Tenth Sprint 4a round (Design director and UX lead review of 1.11; `:app` plus `ImportPlan` in `:shared`). **Accessibility:** the `ActionBar` status **container** is now the live region (polite, or assertive via the new `assertive` parameter for a refused file, a failed run or an error message), because a live region on a node that arrives inside `AnimatedContent` is never announced; `StatusLine` and `ResultCard` no longer set their own, the Export count keeps its own; the Import screen's "copy shown", "blocked" and "stopped, finish it" lines are their own status kinds so each is heard. **Large text:** the bar's buttons stack one per row from font scale 1.3 (`FlowRow`, `maxItemsInEachRow = 1`); the Export bar is now *Share* · **Save to…** so the filled primary is last (at the bottom when stacked); the Replace dialog's title and body scroll between the icon and pinned buttons, and below 480 dp of height the whole dialog scrolls (540 dp since 1.18; see section 8, sixteenth round). **Import:** houses a merge leaves deleted are counted apart (`ImportPreview.deletedHereHouses` / `deletedHereVisits` / `deletedHerePhotos`), shown as "Deleted on this phone, stay deleted" with *Bring them back as copies*, and when that is all the backup holds the bar says so (`import_nothing_deleted`) and offers **Show as copies**; a stopped merge is previewed again and finished in place (**Finish import**); while another import blocks this one the button says *Stop the other import*; the body shows a file header (display name, "Backup made on") instead of repeating the file-type fine print, which stays on the empty state and under a refused file; a successful import fills the body with the success sentence; the result says "Added … Updated …" from the non-zero parts only (`ImportActions.updatedHouseIds` / `updatedVisitIds`, `Repository.ImportResult.updatedHouses` / `updatedVisits`); the write-failed copy says "Check that the phone has free space" rather than "Free up space"; `import_checked` in hi/ta/te no longer says "see below". **Also:** `HeroEmptyState` text capped at 480 dp and its title is a heading; sections on both screens are 24 dp apart and 8 dp under their heading; a Share export opens the share sheet by itself only if it finished while the screen was visible (5 s grace); the empty house list offers *Restore from a backup*. Section 8 adds the tenth-round notes and device checks 6–9; section 9 adds items 14 and 15. |
+| 1.11 | 2026-09-22 | Ninth Sprint 4a round (Design and UX review of 1.10, then the Android review of that rework; `:app` plus one `:shared` helper). **Design:** the action bar is flat `surface` (no tonal elevation, 3 dp shadow, top `outlineVariant` divider); result cards have 1 dp `successBorder` / `errorBorder` / `outlineVariant` borders and NEUTRAL has an Info icon; count chips have a border. Both colour schemes set every `surfaceContainer*`, `surfaceDim` and `surfaceBright` role; one `WorkProgress` / `ProgressBar` puts every progress track on `primaryContainer` (Export, Import, Settings, HouseEdit, Assistant); `brandSliderColors()` on the three Settings sliders, `tonalPrimaryColors()` on *Import as a copy instead* and *Back up now*. `IndicTypography` (1.6–1.7× leading, letter spacing 0) is used for hi/ta/te. Token drift fixed: light `surfaceVariant` #EEF2F0 (`--surface-2`), dark `primaryContainer` #1D3B33 (`--primary-soft`); new `warn` / `onWarn` / `warnBorder` for the amber `WarnNote` (contact warning). Shared `HeroEmptyState` (the Import screen's designed empty state, and Export's); format cards two per row at 600 dp and wider; the status area cross-fades between kinds and is capped at 40% of the window height. **Import:** `ImportViewModel` starts one import per tap (`starting` flag, `startWork` seam, `ImportStartOnceTest`); a start WorkManager drops (KEEP, an earlier import still running) or fails is now detected (`ImportStart.queued`), the staged copy is taken back and the bar says so (`import_blocked`) instead of waiting for ever; in copy mode the preview's first line is "Already on this phone, will appear twice: n", with n from the new `ImportPlan.copyDuplicates` (live houses only; a house deleted here is not a duplicate), and after the dialog's *Import as a copy instead* the status line gives the same n (`import_copy_shown_duplicates`); "nothing would change" is one of three messages (empty backup, phone already newer, already on the phone); the picker opens at the weekly-backup folder (`OpenBackupDocument` with `EXTRA_INITIAL_URI`). **Export:** *Save to…* is disabled until the picker returns; the bar shows "Saving your copy…" from the tap (`awaitingRunId`, now plain `remember` and cleared by Stop); the live count re-reads the rows on every change to the houses, visits or photos table (`Repository.localRowsFlow`) and counts off the main thread (`ExportBuilder.build`); the empty state's action is **"Add a house on the map"** (was *Map*). **Settings:** the weekly-backup details sit in an `OutlinedCard` that animates with the switch, with *Change folder* and *Back up now* in one `FlowRow`; behaviour change: with the switch off, "Last backup: …" is no longer shown (only an error, and *Choose folder* when the folder has gone). Notification failure bodies are full sentences (`ExportWorker`, `AutoBackupWorker`). Section 8 adds the ninth-round decisions and the device checks; section 9 marks item 5 done and adds items 12 and 13. |
+| 1.10 | 2026-09-22 | Eighth Sprint 4a round (Design director and UX lead review of the Export and Import screens, `:app` only). **Import safety:** the Replace dialog's *Import as a copy instead* now only switches the mode, so the copy preview is always seen before anything is written, and a new status line says so (`import_copy_shown`); a **copy import is all or nothing** (`Repository.applyCopy`: photo files first, then every row in one `withTransaction`; a Stop, system stop or failure rolls back and deletes the files), so the stopped and write-failed messages are now per mode (`import_stopped_copy`, `import_write_failed_copy`: "nothing was added"), and "import the same file again to finish" is said only for a merge; the mode travels as a work tag (`ImportWorker.modeOf`) because a cancelled run has no output; the mode radios are locked while an import runs; the copy hint now says houses already on the phone will appear twice. **Layout:** the Export screen's bottom bar is the shared `ui/ActionBar.kt` (with `StatusLine`, `ButtonLabel`, a 150 ms `animateContentSize`), now also the Import screen's (status line and full-width buttons per state; *See your houses* after a success); one `RadioRow` / `SwitchRow` / `RadioCard` in `ui/Rows.kt` with edge-to-edge ripples and disabled text colours. **Export:** changing any option or closing the result card (new close button, `common_dismiss`) brings the live count back; the count is three chips read as one sentence; *Shortlisted only* with no match offers *All houses*; formats are selectable cards; *Photos* and *Include rejected* animate; the result card's action is *Share this file* (`export_share_file`); with no house the options give way to an empty state with a *Map* button (1.11: "Add a house on the map"). **Import preview:** sign, label and a right-aligned tabular number per line (the eight `import_*` labels lose ": %1$d"), grouped with dividers, error-tinted signs on the two loss lines, the empty preview as a neutral card; the Replace dialog is a `BasicAlertDialog` with stacked buttons, safest first. **Copy:** *Save to…* was "Save here…" in hi/ta/te; Hindi contact warning said "दलालों" — all three contact warnings are now the docs/05 §14.2 text; Telugu buttons use the polite form; `import_cancel` is gone (`common_cancel`); *Replace* is "बदल दें" / "மேலெழுது" / "భర్తీ చేయండి". **Settings:** the folder button and "Saved to:" show only while the weekly backup is on (or to recover a folder that has gone; 1.11 hides "Last backup" under an off switch too); the keep-N slider has a spoken name and value. New handovers 10 and 11 in section 9. |
+| 1.9 | 2026-09-22 | Seventh Sprint 4a round (review of 1.8, after schemas README 1.3): **S4-00/g done** — the checklist decision is option (b), so an absent **or `null`** `checklist` now reads as `{}` through `LenientChecklistSerializer` on that one property (not `coerceInputValues`, which would also accept `"status": null`); `BackupTest.checklistAbsentOrNullReadsAsNoScores` (was `checklistLeniencyAsItStandsToday`) pins it on the streaming and the tree decoder, with `status: null` still refused. **Backups no longer drop visits that belong to no house**: Hunt mode records a dwell at a place that is not a house yet with `houseId = null`, and `ExportBundle.build` used to leave those out of every manual and weekly backup, so a restore lost them silently. They now travel in `ExportBundle.unlinkedVisits` (scope "All houses" only) and go last in `data.json`; the tables and their goldens are unchanged, and the manifest counts what `data.json` holds. The import preview warns when a newer row without a checklist will clear this phone's scores (schemas §4.4), in all four languages. Section 9 updated: item 2 decided, item 4 done by Backend, new items 7, 8 and 9 (Web, Backend and Docs: unlinked visits and the new preview line). |
+| 1.8 | 2026-09-22 | Sixth Sprint 4a round (contract alignment with `docs/schemas/README.md`): **S4-00/a done** — `BackupData.of` groups visits and photos by house (rows whose house is not in the copy last) and writes checklist keys sorted, and the new `:app` `CanonicalSampleTest` compares Android's `data.json` with `docs/schemas/backup-sample.json` as parsed JSON (numbers as numbers, key order kept). The reader now refuses a file that leaves out `status`, a visit's `source` or `format` (`@Required`), as section 4.4 and the server do, instead of reading them as `NEW` / `MANUAL` / ours. Android also imports a **bare `data.json`** (the server's `GET /api/export`), photos reported as missing. The checklist leniency is pinned as it is and **not** changed, pending a joint Android + Backend decision. New section 9 records the handovers to Docs, Backend and DevOps. |
+| 1.7 | 2026-09-22 | Fifth Sprint 4a review round (`:app` only): a "Save to…" export now persists its document grant (`ExportGrants`), so Stop's delete, a retry and the notification's Open and Share survive the user backing out of the app; failed and abandoned runs release it and finished ones keep only the newest five (`ExportGrantsTest`). Turning the weekly backup off now releases its folder grant, and a folder picked after process death reads the stored settings. The import screen no longer deletes a copy it has handed to the import worker, and a restored screen whose copy has gone starts at the picker instead of showing "could not be read". Section 8 adds the back-out device check. |
+| 1.6 | 2026-09-22 | Fourth Sprint 4a review round (Design and UX): `ExportLanguages` gives the HTML, PDF and Markdown covers the language's native name instead of its code; the HTML copy's stylesheet now uses the Doorprints tokens, a 46rem measure, line-height 1.7 for hi/ta/te and a two-up photo grid, matching the web copy (presentation only, the golden cuts it out); photo `alt` text is "house, Photos n/m"; section 8 records the PDF line-spacing fix for Indic scripts and adds its manual check. |
+| 1.5 | 2026-09-22 | Third Sprint 4a review round: the export worker now decides for itself whether a stopped run's file is abandoned (its own WorkManager row is missing or `CANCELLED`) and writing stops at the next progress callback, replacing the screen-side delete and sweep; the weekly backup writes under a `partial-` name that retention never counts and deletes its document on every path but success; export and backup failures travel as `ExportProblem` codes instead of exception text; the CSV formula guard's trigger set is pinned to the web's (line feed removed). |
+| 1.4 | 2026-09-22 | Second Sprint 4a review round: a cancelled export now deletes the file it was part-way through writing (and the export screen says so), `ImportPlan` applies the same orphan filters in COPY mode as in MERGE and is told which local houses are tombstones so the preview and the import agree, `BackupProblem.WRITE_FAILED` replaces an exception message on the import worker's failure path, and section 8 records the PDF path's two device-only memory risks. |
+| 1.3 | 2026-09-22 | Sprint 4a review follow-ups: `HtmlWriter` writes into an `Appendable` so the HTML copy (and the copy inside every backup) streams instead of being built whole in memory; the backup reader's ZIP-bomb limits are enforced while decompressing rather than from the central directory, and `data.json` is capped at 16 MiB; `BackupValidation` now checks the *shape* of row ids, because an importer turns them into file names; the import preview counts orphaned photos the way the plan treats them. Section 8 gains "Deferred to Sprint 4b". |
+| 1.2 | 2026-09-22 | Sprint 4a S4-02/S4-04: new `export` package in commonMain (export model, format-independent rows, CSV/Markdown/HTML/XLSX writers, backup format, import plan, in-copy translations for en/hi/ta/te) with golden-file tests in commonTest; section 8 explains the split against `:app`. |
 | 1.1 | 2026-09-22 | Review follow-ups: section 5 matches CI (`shared-ios.yml` compiles only; `kotlin.native.enableKlibsCrossCompilation=false` keeps iOS off the ubuntu job), MapLibre on OkHttp 5.5.0 documented with a manual map-tile smoke test, Room schema export + identity-hash guard (`RoomSchemaTest`), photo upload streamed from the file again, sync worker no longer records a WorkManager stop as a failed sync. |
 | 1.0 | 2026-09-22 | First version. `:shared` module created; pure logic, DTOs and the API client moved out of `:app`; OkHttp client replaced by a Ktor client with the same behaviour. |
 
@@ -54,6 +87,7 @@ Package: **`com.househunt.shared`**, next to the app's `com.househunt.app` and t
 | `sync` | `SyncRecord` (implemented by the Room entities), `SyncRules` (last-edit-wins), `SyncOutcome` (stored sync result code) |
 | `location` | `Geo.distanceM` (haversine, pure math), `StayDetector`, `StreetAlerts` |
 | `api` | DTOs (`HouseDto`, `VisitDto`, `PhotoChangeDto`, AI DTOs, …), `IsoTime`, `ApiException`, `RetryPolicy`, `ApiClient`, `ApiHttp`; `AndroidApiHttp` in androidMain |
+| `export` | The offline copy (section 8): `ExportHouse`/`ExportVisit`/`ExportPhoto`, `ExportOptions`, `ExportBundle`, `ExportTime`, `ExportRows` + `Cell`/`ExportTable`, `CsvWriter`, `MarkdownWriter`, `HtmlWriter`, `XlsxWriter`, `ExportFormat`, `ExportStrings`, `BackupFormat`/`BackupData`/`BackupManifest`/`BackupValidation`, `ImportPlan`, `BackupCompleteness`/`BackupGap` |
 
 ## 3. What stays in `:app` and why
 
@@ -114,8 +148,9 @@ Known, intentional differences from the OkHttp client (none visible to the user)
 |---|---|---|
 | `commonTest/api` | `ApiClientContractTest` | Ktor `MockEngine` with responses recorded from the backend's DTOs, filters and exception handlers: X-API-Key header, URLs and exact request JSON, multipart upload parts (in-memory and streamed, one fresh file source per attempt), 401/403 → AUTH, 404/409/400/413 mapping, 429 with short and long `Retry-After`, AI 503 → AI_UNAVAILABLE, 502/503 retried then given up, network errors retried only for idempotent calls, HTML captive-portal page, 302/307 not followed, wrong content types, overall call timeout |
 | `commonTest/api` | `IsoTimeTest`, `RetryPolicyTest` | Same ISO strings as `java.time.Instant`; backoff bounds |
-| `commonTest/model`, `sync`, `location` | `HouseScoreTest`, `ModelTest`, `SyncRulesTest`, `SyncOutcomeTest`, `StayDetectorTest`, `GeoTest`, `StreetAlertsTest` | The rules moved from `:app` (the old JUnit tests, ported to `kotlin.test`) |
-| `app/src/test` | `ModelMappingTest`, `ServerUrlTest`, `RoomSchemaTest` | Entity ↔ DTO mapping, labels for every shared key/status, shared rules on Room entities; URL validation; Room identity hash of database version 2 (see below) |
+| `commonTest/model`, `sync`, `location` | `HouseScoreTest`, `ModelTest`, `SyncRulesTest`, `SyncOutcomeTest`, `StayDetectorTest`, `GeoTest`, `StreetAlertsTest` | The rules moved from `:app` (the old JUnit tests, ported to `kotlin.test`); since 1.19 also the push order (visit tombstones without a house before the houses) |
+| `commonTest/export` | `ExportGoldenTest`, `ExportRowsTest`, `ExportStringsTest`, `XlsxWriterTest`, `BackupTest`, `ImportPlanTest`, `ExportFormatTest` | Golden output of every copy for `ExportFixture` (see section 8), ordering/filtering/redaction, ₹ and date formatting, the four languages, the SpreadsheetML package, the backup round trip, `data.json` grouped by house with sorted checklist keys, required fields refused, the zip-slip/ratio guards, every merge case |
+| `app/src/test` | `ModelMappingTest`, `ServerUrlTest`, `RoomSchemaTest`, `ExportMappingTest`, `BackupRoundTripTest`, `ExportGrantsTest`, `CanonicalSampleTest`, `ImportStartOnceTest`, `JoinListTest` | Entity ↔ DTO mapping, labels for every shared key/status, shared rules on Room entities; URL validation; Room identity hash of database version 2 (see below); Room entity ↔ export model; a real backup ZIP written and read back on the JVM; which persisted export grants are kept and which released; Android's `data.json` against `docs/schemas/backup-sample.json` as parsed JSON, and the bare `data.json` import; one import per tap, and a start WorkManager drops or fails gives the staged copy back; a list of any length keeps every item; since 1.18 `ImportUndoTest` (the copy import's undo record file) and since 1.19 `CopyUndoTest` (every keep/remove/skip rule of the undo, its tombstones — visits without a house, so they are pushed first — and the copy's stamp never in the future); since 1.20 `ImportUndoTest` also covers the record an undo leaves for kept houses (`keptOnly`, no undo), a record written before the `undone` flag, and which record the house list offers (`latestUndoable`); since 1.24 `HouseFormRulesTest` (the late address fill that never overwrites typing and is not an unsaved change, the listing fill that fills only empty fields and reports what it kept, typed coordinates, rents before sales, the ten-minute visit guard, the last-known fix's age and accuracy, when the form's field pairs stack, and when Android will still show the location prompt) and `SyncHealthTest` (failures in a row, when the list warns); since 1.26 `LocationAccessTest` (approximate location told apart from none, and which note and button each state gets) and `MapRulesTest` (the Map's top band ends above the bottom stack, with a 25 % floor) |
 
 Commands (from `android/`):
 
@@ -177,3 +212,1241 @@ OkHttp or MapLibre version, see section 4):
 5. **iOS platform services**: location via `CLLocationManager` (significant-change + region monitoring feeding the
    shared `StayDetector` and `StreetAlerts`), reverse geocoding via `CLGeocoder`, background sync via
    `BGTaskScheduler`, reachability via `NWPathMonitor` (captive-portal detection stays in the shared client).
+
+## 8. The `export` package (Sprint 4a, S4-02/S4-04)
+
+The offline copy has to come out **the same from the Android app and from the web app** (docs/11 section 5.2:
+"gives the same output for the same data and options"). Two independent implementations would drift within a
+sprint, so everything that decides *what a copy says* lives here, and each platform only supplies what it must.
+
+| In `:shared` (pure, tested by golden files) | In `:app` (platform) |
+|---|---|
+| Which houses, visits and photos end up in a copy, in what order, with contacts redacted (`ExportBundle.build`) | Reading them out of Room (`ExportBuilder`, `data/ExportMappers.kt`) |
+| The rows of every table and their cell types (`ExportRows`) | – |
+| CSV text, Markdown, the HTML document, the SpreadsheetML XML parts (`CsvWriter`, `MarkdownWriter`, `HtmlWriter`, `XlsxWriter`) | The ZIP container (`Zip`), JPEG shrinking and `data:` URIs (`PhotoBytes`), the PDF canvas (`PdfExporter`) |
+| The backup format, its limits and its validation (`BackupFormat`, `BackupValidation`) | `java.util.zip` reading, SHA-256, staging the picked file (`BackupReader`, `Imports`) |
+| What an import would change and the rows to write (`ImportPlan`) | Writing them (`Repository.applyImport`), new UUIDs, WorkManager |
+| The words inside a copy in en/hi/ta/te (`ExportStrings`) | The words on the export/import **screens** (`res/values-*/strings.xml`) |
+
+Four decisions worth remembering:
+
+* **No platform formatter.** `java.text.NumberFormat` and `Intl.NumberFormat` disagree about spacing, the minus
+  sign and where ₹ goes, and their locale data changes with the OS. `ExportRows.fixed`/`rupees` and `ExportTime`
+  format by hand, and `fixed` rounds ties away from zero with `floor(x + 0.5)` rather than `kotlin.math.round`
+  (which is `rint` on the JVM and rounds to even, so 3.85 would differ between Android and the browser).
+* **No clock and no time-zone database in common code.** The export instant and a fixed UTC offset are passed in
+  ([`ExportOptions`]), so the same data and options always give byte-identical output — and a copy made in India
+  keeps reading in IST when it is opened elsewhere years later.
+* **Export text is not in `strings.xml`.** The language of a copy is a per-export choice, `commonMain` cannot read
+  Android resources, and a golden test can only pin output whose headings are part of the pinned code.
+  `ExportStringsTest` enforces that all four languages carry exactly the same keys, in their own script.
+* **Golden files are Kotlin constants** (`commonTest/export/ExportGolden.kt`), not files on disk: `commonTest` also
+  compiles for iOS, where common code has no file-system API, so a golden read from a file could not be a golden on
+  every target. `ExportFixture` is the shared input; the web team mirrors both in its own suite.
+
+Two more decisions, added after the Sprint 4a review:
+
+* **Nothing a photo goes into is built in memory.** `HtmlWriter.write` takes an `Appendable` and the String-
+  returning overload is only a wrapper for the golden tests. With photos embedded as base64 `data:` URIs, 150
+  photos is roughly 35 MB of text, and a `StringBuilder` plus its `toString()` copy plus the UTF-8 bytes is an
+  `OutOfMemoryError` on a phone — for the *default* export format, and again for the readable copy inside every
+  JSON backup. Android passes an `OutputStreamWriter` over the destination, so one photo's URI is the largest
+  thing resident. `HtmlStreamTest` pins the property rather than the allocation. Note the exact claim: Markdown,
+  CSV, XLSX **and a backup's `data.json`** are still built as Strings, because none of them holds photo bytes and
+  each is bounded (`data.json` by `BackupFormat.MAX_DATA_JSON_BYTES`, 16 MiB, on the read side).
+  `Json.encodeToStream` would remove that last copy but is JVM-only, and `BackupData` is shared with the web
+  importer.
+* **The ZIP central directory is untrusted input, so limits are enforced while decompressing.** `ZipEntry.size`
+  and `compressedSize` are numbers the file's author wrote, and `java.util.zip.ZipFile` never verifies them while
+  it inflates; deflate reaches about 1000:1, so an entry that declares 100 bytes can expand to a gigabyte inside
+  `readBytes()`. `BackupReader` keeps the declared numbers only as a cheap first filter and reads every entry
+  through a counting stream with a hard limit (`BackupRoundTripTest.anEntryThatUnderstatesItsSizeIsRefused…`).
+  The matching half of the zip-slip guard lives here in `BackupValidation.checkData`: a row id must be
+  `[A-Za-z0-9_-]{1,64}`, because an importer builds `photos/<id>.jpg` out of it, so the web importer inherits the
+  check for free.
+
+More, after the second and third review rounds:
+
+* **The preview must promise exactly what the import writes — in both modes, and with tombstones.** `ImportPlan`
+  has two halves that must agree row for row, and they drifted twice. `preview` in `COPY` mode was counting every
+  visit and every photo in the file, while `plan` dropped the ones whose `houseId` is not one of the *file's* own
+  houses; our exporter cannot produce such a row (`ExportBundle.build` filters to the houses it keeps) but a
+  hand-edited or third-party backup can, and surviving those is what an importer is for. Separately, the local
+  house map deliberately **includes tombstones** — a deleted house keeps its `updatedAt` so an older backup row
+  cannot resurrect it — but a tombstone is not a place a photo can be attached, so `preview`/`plan` now take
+  `locallyDeletedHouseIds` as well and exclude those houses from the kept set unless the file's row wins
+  last-write-wins. `ImportPlanTest` asserts `newPhotos == actions.photos.size` and
+  `newVisits == actions.visits.size` for every one of these shapes.
+* **An abandoned export deletes its half-written file; a system stop must not — and the worker decides which.**
+  (`:app`, `ExportWorker`; reworked in the third review round, which found the screen-side version unsafe.)
+  WorkManager re-runs a job the *system* stopped with the same input, so that retry needs the destination document
+  to still exist; Stop (`cancelUniqueWork`) and a second export (`ExistingWorkPolicy.REPLACE`) never re-run. The
+  first version let the UI delete the file, which could delete an export that had *just finished* (cancelling
+  finished work is a no-op, but the delete still ran, under a "Saved" line), deleted while the blocking writer was
+  still writing, and relied on seeing the replaced run as `CANCELLED` — but REPLACE deletes the old row outright
+  (androidx `EnqueueRunnable`). Now the worker's cancellation path, under `NonCancellable`, reads its own row with
+  `getWorkInfoById(id)` (polled up to ten times, 100 ms apart, because the row can still say `RUNNING` for a
+  moment): missing or `CANCELLED` means abandoned and the file is deleted, anything else is a retry and it is kept.
+  A run that already returned success never reaches that path. Writing is cooperative — the progress callback calls
+  `ensureActive()`, and no exporter wraps it in `runCatching` — so a stop takes effect at the next row, page or
+  photo. The target still rides on the request's tags, now only so a replaced run does not delete a file its
+  replacement is writing (a "Share" always writes the same cache path). `getStopReason()` would say all this
+  directly but is `@RequiresApi(31)` against minSdk 26.
+* **Only finished automatic backups count as backups.** The weekly job (S4-07) is stopped part-way more than any
+  other — unplugging ends its charging constraint — and each run creates a new document, so a truncated ZIP used
+  to stay behind under a plausible name and retention ("keep the newest N") counted it, deleting good backups to
+  make room. Now the file is created as `partial-Doorprints-backup-….zip`, renamed only after the ZIP is complete
+  (a provider that does not advertise `FLAG_SUPPORTS_RENAME` gets the final name up front), and deleted on every
+  path except success. Retention filters with `AutoBackupWorker.isFinishedBackup`, which never matches a partial
+  name (`SafTrimTest.aPartialBackupNeverTakesARetentionSlot`). With 25 photos or more the job also asks to run in
+  the foreground, like the export and import workers.
+* **Failure reasons are codes, never exception text.** Export and automatic-backup failures carry an
+  `ExportProblem` code (`no-space`, `cannot-write`, `write-failed`) mapped to a translated reason on screen, the
+  same approach as `BackupProblem` on the import side; the exception goes to logcat. Raw `e.message` was English
+  JVM text, sometimes with a `content://` URI in it, shown as-is to Hindi, Tamil and Telugu users.
+* **The CSV formula guard matches the web byte for byte.** `CsvWriter.guard` prefixes exactly `=`, `+`, `-`, `@`,
+  tab and carriage return — OWASP's list and the web `csvCell` regex `/^[=+\-@\t\r]/`. A leading line feed had
+  crept into the Kotlin set only, so a note starting with a newline gave different bytes on the two platforms; it
+  is not a formula trigger (the cell is quoted anyway) and was removed. `ExportRowsTest.csvGuardCharacterSetMatchesTheWeb`
+  pins the set; the mirror cases in the web suite are requested of the Web team.
+* **Two PDF memory risks are device tests, not comments.** They are not regressions and cannot be reproduced in
+  CI, so they belong on the release checklist (the Docs team owns the docs/06 entry):
+  1. Each photo's `Bitmap` is `recycle()`d right after `canvas.drawBitmap` into a `PdfDocument.Page` canvas. That
+     canvas *records*; pixels are serialised at `doc.writeTo(out)`. Whether the recorded image keeps the pixel ref
+     alive past `recycle()` is a Skia/HWUI detail, not a documented contract. If it turns out not to, the recycle
+     moves after `sheet.finishPage()` for that page.
+  2. `PdfDocument` keeps every page in memory until `writeTo`, so a large export with photos has exactly the
+     peak-allocation shape the HTML streaming fix was written to avoid.
+
+  The check: one on-device PDF export of the fixture data scaled up — at least 100 houses with photos, in Hindi,
+  Tamil and Telugu — confirming the file opens with correct shaping and that logcat shows no
+  `Canvas: trying to use a recycled bitmap`.
+
+Fourth review round (Design and UX, 2026-09-22):
+
+* **PDF line boxes are sized from the Indic fonts, not from Roboto.** `StaticLayout.Builder` defaults to
+  `setUseLineSpacingFromFallbacks(false)` (TextView turns it on for itself; StaticLayout does not), so a line's
+  top and bottom came from Roboto's ascent and descent. The Devanagari, Tamil and Telugu fallback fonts reach past
+  both — reph, candrabindu and top matras above, Telugu vattulu and vowel signs below — and `PdfExporter` draws
+  each chunk under a clip at exactly those bounds, so those marks were at risk of being cut off. `Sheet.paragraph`
+  now includes the font padding, uses 1.15x line spacing and, on API 28+, fallback line spacing; the paint uses
+  `isElegantTextHeight` (the non-UI Noto Indic faces, right for print) on API 28+ only, where the fallback spacing
+  keeps them inside the line. **Manual check (TC-M-12, Docs team owns the docs/06 entry):** export one house named
+  `శ్రీ వెంకటేశ్వర్ల నివాసం / श्रीकृष्ण निवास / ஸ்ரீ லக்ஷ்மி இல்லம்` as a PDF in te, hi and ta, and inspect it at 400%
+  zoom: no mark above or below the base line may be clipped and no two lines may touch. Repeat on an API 26/27
+  device, where only the padding and the 1.15x spacing apply.
+* **One stylesheet for both HTML copies.** `HtmlWriter.CSS` now follows the web copy's `STYLE`
+  (`web/src/app/export/html-export.ts`) and the docs/05 section 4.1 tokens; the Web team is asked to adopt this
+  exact block (it adds the `:lang(hi|ta|te)` line-height, the `dl` grid, the `.note`/`.warn` cards — amber, not
+  error pink, per docs/05 section 14.2 — and `border-inline-start` for right-to-left safety) so the two copies of
+  the same backup look like one product.
+* **A result nobody saw is posted, not lost** (`:app`). The Export, Import and Settings screens mark themselves
+  visible (`ScreenWatch`, set from `LifecycleStartEffect`); a worker that finishes while its screen is not showing
+  posts one notification on the quiet export channel — "Your copy is saved" with Open and Share, "Backup imported"
+  with the counts, or the translated failure — and the weekly backup posts "Automatic backup stopped" when its
+  folder has gone and when its last attempt fails, because Settings alone let it stop silently for months. The
+  progress notifications open their screen and carry Stop (`WorkManager.createCancelPendingIntent`), except the
+  weekly backup's, where cancelling by id would cancel the schedule.
+* **The cover names the language natively** (`ExportLanguages.nativeName`: English, हिन्दी, தமிழ், తెలుగు), in the
+  HTML, PDF and Markdown copies; the backup manifest keeps the code, because a program reads it.
+
+Fifth review round (2026-09-22, `:app` only):
+
+* **A "Save to…" document stays reachable after the user leaves the app.** The grant `ACTION_CREATE_DOCUMENT`
+  returns belongs to the receiving *activity* (AOSP `ActivityRecord`: activity-result grants go to its
+  `UriPermissionOwner`, and `removeFromHistory()` calls `removeUriPermissionsLocked()`), so backing out of the app
+  or swiping it from Recents during a long export used to cut the worker off from its own file: Stop could not
+  delete the truncated ZIP (while the screen said "Nothing was saved"), a retry after a system stop failed with
+  "cannot write", the provider would not give the file's name, and the "Your copy is saved" notification's Open
+  and Share silently did nothing. The export screen now calls `takePersistableUriPermission` (read and write,
+  write alone as a fallback) before starting the run. Persisted grants are capped per app, so they are released
+  deliberately: a failed run, and an abandoned one after its file is deleted, give theirs back; finished exports
+  keep theirs for the notification, but only the newest `ExportGrants.KEPT` (5) — the bounded list lives in
+  DataStore and its trimming is the pure `retainNewestGrants`, pinned by `ExportGrantsTest`.
+* **The weekly backup's folder grant is given back when it is no longer used.** Turning the backup off now forgets
+  the folder and releases its grant (turning it on again asks for a folder), and choosing another folder releases
+  the old one. A run still writing to that folder keeps the grant — it needs it to delete its unfinished
+  `partial-` document when it is cancelled — and releases it itself when it ends. The folder callback also reads
+  the stored settings rather than the screen's first, default value, which after process death reset "keep 8" to
+  4 and skipped the "folder gone" recovery.
+* **The import screen never deletes a copy it has handed over.** The copy's path is held under one key until
+  `ImportWorker` takes it; after that only the worker, or the screen once WorkManager reports the run
+  `CANCELLED`, deletes it. Import, then Back while the run was still queued used to delete the worker's input, so
+  a good backup was reported as "could not be read". A screen restored after process death whose copy the
+  six-hour sweep has removed now simply starts at the picker.
+* **Device check (release checklist, Docs team owns the docs/06 entry):** start an HTML export with 100 or more
+  photos to Downloads, press Back to leave the app, then (1) tap Stop in the progress notification and confirm the
+  file is gone from Downloads; (2) start a second export the same way, let it finish, and confirm the "Your copy is
+  saved" notification's Open and Share both work. Then in Settings turn the weekly backup off and confirm with
+  `adb shell dumpsys activity permissions` that the backup folder is no longer among the app's persisted grants.
+
+Sixth round (2026-09-22, contract alignment with `docs/schemas/README.md`):
+
+* **`data.json` groups by house; the tables do not.** `ExportBundle.build` keeps visits and photos sorted as a
+  whole, which is the order of the CSV and XLSX tables on both apps. `BackupData.of` regroups them by house, in
+  house order, with any row whose house is not in the copy last, and sorts every checklist's keys — the rules of
+  schemas README section 5 that the server (`BackupMapper`) and the web writer already follow. Before this an
+  Android backup and a server or web backup of the same data were different documents whenever two houses' visits
+  interleaved. `BackupTest.dataJsonGroupsVisitsAndPhotosByHouse` pins it on an interleaving fixture.
+* **The canonical sample is read from disk, in `:app`.** `CanonicalSampleTest` decodes
+  `docs/schemas/backup-sample.json`, feeds its rows back in reversed (and each checklist reversed), writes
+  `data.json` and compares the two **parsed** documents: rows, row order, key order, no nulls, numbers compared as
+  numbers. A byte golden cannot work, because the sample is written the browser's way (`"lat":0`) and
+  `kotlinx.serialization` writes `0.0` (schemas README section 8.1). This is the one golden that is a file rather
+  than a Kotlin constant: it is the cross-team contract, so a copy would defeat it, and it lives in `:app` because
+  `commonTest` has no file system on iOS.
+* **"Always present" means refused when absent.** `ExportHouse.status`, `ExportVisit.source`, `BackupData.format`
+  and `BackupManifest.format` keep their Kotlin defaults for callers but are `@Required` when read, so a file
+  without them is refused (`BROKEN_DATA`, or `NOT_A_BACKUP` for a manifest) instead of importing every house as
+  `NEW` or a foreign JSON as ours. Every writer always wrote these fields, so no real backup changes behaviour.
+  `lat`/`lon`, `label` and the timestamps were already refused (no default). The row arrays stay lenient when
+  absent, as on the server.
+* **A bare `data.json` imports.** `BackupReader` tells a ZIP from anything else by its first four bytes; anything
+  else is read as `data.json` (16 MiB cap, then the format id: not ours is `NOT_A_BACKUP`, `doorprints-backup/2`
+  is `UNSUPPORTED_VERSION`, ours but malformed is `BROKEN_DATA`). It has no manifest and no photo bytes, so its
+  photo rows appear as "Photos listed but not in the file" and are skipped. The picker also offers
+  `application/json`, and the import intro and Settings hint say so in all four languages.
+
+Seventh round (2026-09-22, after `docs/schemas/README.md` 1.3):
+
+* **`checklist`: absent or `null` reads as "no scores" (S4-00/g, decided: option (b)).** Schemas README sections
+  3.1 and 4.4 make `checklist` the one lenient always-present field, and the server reads both forms as `{}`. The
+  Kotlin default already covered *absent*; `null` is now covered by `LenientChecklistSerializer`, which reads the
+  map as nullable and falls back to `emptyMap()` and writes the plain map, so a backup's bytes are unchanged. It is
+  on that one property on purpose: `coerceInputValues = true` on `BackupFormat.json` would also turn
+  `"status": null` into `NEW` and `"source": null` into `MANUAL`, which section 4.4 forbids.
+  `BackupTest.checklistAbsentOrNullReadsAsNoScores` runs every case through `decodeFromString` (the ZIP path) and
+  through `parseToJsonElement` + `decodeFromJsonElement` (the bare `data.json` path), and checks that a `null`
+  `status` is still refused on both.
+* **The import preview says when scores will be cleared.** A newer row wins whole (section 4.2), so a newer house
+  with no checklist clears the scores this phone has. `ImportPreview.checklistsCleared` counts those houses (MERGE
+  only, from `Repository.LocalVersions.scoredHouseIds`), and the preview shows it as a warning line in en, hi, ta
+  and te. Unlike the server, the device also counts a newer explicit `{}`: `kotlinx.serialization` reads absent,
+  `null` and `{}` to the same empty map, and for the person confirming the import the result is the same, their
+  scores go. `ImportPlanTest.theWarningCountsOnlyScoredHousesANewerEmptyChecklistWillClear` pins it.
+* **Visits that belong to no house are in the backup.** Hunt mode (`HuntService.onStayStarted`) saves a dwell with
+  `houseId = null` when it is not at a known house, and the user turns it into a house later (route
+  `new?visitId=`). `ExportBundle.build` only kept visits of the houses it kept, so no manual or weekly backup ever
+  held these rows, and a restore after a lost phone or a reinstall lost that history without a word. For "All
+  houses" the bundle now carries them as `unlinkedVisits` (sorted by `arrivedAt`, then `id`); `BackupData.of`
+  writes them last, after the grouped visits, as schemas README section 5 orders rows whose house is not in the
+  file; `BackupCounts.of(data)` makes the manifest count them; and the export screen's summary includes them for
+  a JSON backup. The CSV, XLSX, HTML, Markdown and PDF copies are about houses and still leave them out, so their
+  goldens and the web tables do not change. A "Shortlisted only" (or selected) backup is a copy of those houses and
+  does not carry them. `ImportPlan` already imported a visit with no house in both modes; tests:
+  `BackupTest.visitsWithoutAHouseAreInTheBackupAndComeLast` and
+  `BackupRoundTripTest.aVisitWithNoHouseSurvivesTheBackupAndIsRestored` (written, read back, previewed, merged
+  and copied).
+
+Ninth round (2026-09-22, Design and UX review of 1.10 and the Android review of that rework, `:app` and one
+`:shared` helper):
+
+* **"Will appear twice" counts live houses only.** A copy import gives every house a new id, so a house in the
+  file whose id is a *live* house here is on screen twice afterwards. `Repository.LocalVersions.houses` includes
+  tombstones on purpose (an older backup row must not resurrect a deletion), so the merge preview's "known here"
+  sum also counts houses deleted on this phone, and the first version of the warning did exactly that. In the case
+  a copy exists for — "I deleted these, now restore the backup", where a merge keeps the newer tombstone — it
+  warned that every restored house would be a duplicate. The count is now `ImportPlan.copyDuplicates(data,
+  localHouses, locallyDeletedHouseIds)`, pure and in `:shared` so the web importer (UX-B07) can use the same
+  rule, worked out in `Imports.preview` next to the data (`ImportCheck.Ready.duplicateHouses`), and pinned by
+  `ImportPlanTest.copyDuplicatesCountsLiveHousesOnlyNotTombstonesOrNewOnes`.
+* **One import per tap, and a tap that starts nothing says so.** `startImport` hands a staged copy to the worker
+  at most once, and `starting` shows "Importing…" and Stop from the tap. `ExistingWorkPolicy.KEEP` drops the
+  request when an earlier import is still ENQUEUED or RUNNING, and then no run with the new id is ever reported:
+  the bar used to wait for it for ever. `ImportWorker.start` now returns an `ImportStart` whose `queued()` waits
+  for the enqueue `Operation` and then looks the id up (`getWorkInfoByIdFlow(id).first()`); when it is absent,
+  or the enqueue failed, the ViewModel takes the copy back, clears `starting` and `startedRunId`, shows the earlier
+  run's progress with "Another import was still running, so yours has not started…" (`import_blocked`), and
+  re-previews the file when that run ends, since it may have changed the phone. `ImportStartOnceTest` covers
+  double taps, the dropped start and a failed enqueue on the JVM (the check runs on `Dispatchers.Unconfined`).
+  The Export screen's `awaitingRunId` is plain `remember` for the same reason: a restored id of a run WorkManager
+  has since pruned would never be seen again. Stop clears it.
+* **The export count follows every table the file reads.** `Repository.localRowsFlow()` is
+  `InvalidationTracker.createFlow("houses", "visits", "photos")` mapped to `localRows()` (conflated), so a visit
+  Hunt mode records, or a photo added, while the Export screen is open changes the chips as it changes the file.
+* **Device checks (release checklist; Docs team owns the docs/06 entries).** None of these can be seen by a JVM
+  test:
+  1. TalkBack on the Export screen: change an option (count), tap *Share* (progress), let it finish (result).
+     Each change is announced once; the outgoing status is removed from the semantics tree while it fades out, so
+     it must not be read again on top of the incoming one.
+  2. Tamil at 200% font, landscape: a result card with its actions stays inside the 40% cap and scrolls; the
+     buttons row stays visible. Repeat with *Remove animations* on (the cross-fade becomes instant).
+  3. Telugu and Hindi: `bodySmall` hints and preview lines wrap without the vowel signs of one line touching the
+     subscripts of the next (`IndicTypography`); the flat bar, the card borders and the amber note in dark theme.
+  4. Import picker: with a weekly-backup folder set to `Download/Doorprints`, *Choose a backup file* opens there in
+     AOSP DocumentsUI (`EXTRA_INITIAL_URI` from the tree root); with the Google Drive provider the hint is ignored
+     and the picker opens at its default, which is acceptable.
+  5. Start an import, then start a second one from another file before the first ends: the bar shows the first
+     run's progress with the "still running" line, and after it ends the second file is previewed again and
+     imports normally.
+
+Tenth round (2026-09-22, Design director and UX lead review of 1.11, `:app` and `ImportPlan`):
+
+* **Houses deleted on this phone are said as such, and copies are offered.** Deleting a house bumps its
+  `updatedAt`, so its tombstone always beats the backup's row and a merge leaves it deleted — the most common
+  reason to open a backup dead-ended in "Kept, because this phone has a newer version" or "Nothing would change".
+  `ImportPlan.preview` (MERGE) now counts a house in the file that is a tombstone here and does not win as
+  `deletedHereHouses` instead of `newerHereHouses` (or `unchangedHouses`), and the visits and photos of such a
+  house as `deletedHereVisits` / `deletedHerePhotos` (the photos are still part of `skippedPhotos`). `isEmpty` and
+  what `plan` writes are unchanged. The screen shows "Deleted on this phone, stay deleted: n" with *Bring them back
+  as copies* under the preview, and when a merge would change nothing because of them the bar says "Nothing would
+  change in a merge: n houses in this backup were deleted on this phone. To bring them back, add them as copies."
+  with **Show as copies**. Both only switch the mode, so the copy preview (whose duplicates count already leaves
+  tombstones out) is seen before anything is written. `ImportPlanTest.aHouseDeletedOnThisPhoneIsCountedAsDeletedHereNotAsNewerHere`;
+  the same rule is for the web importer (UX-B07), section 9 item 15.
+* **The result uses the preview's words.** `ImportPlan.plan` (MERGE) returns `updatedHouseIds` / `updatedVisitIds`,
+  `Repository.applyImport` counts them into `ImportResult.updatedHouses` / `updatedVisits`, and
+  `ImportWorker.importedText` builds "Added 2 houses and 20 photos. Updated 3 houses." from the non-zero parts only,
+  with a per-language list pattern (`import_list_two`, `import_list_three`); nothing written at all is "Import
+  finished. Nothing needed to be added or updated." `ImportPlanTest.aMergePlanSaysWhichRowsAreUpdates`.
+* **A stopped merge is finished in place.** On Stop the worker keeps its staged copy (for a retry), so for a merge
+  `ImportViewModel.onRunEnded` takes it back as the screen's staged copy, previews it again and sets `finishing`:
+  the bar says "Import stopped. What was already added stays. Tap Finish import to add the rest of this file." and
+  offers **Finish import**. A merge is idempotent, so this is safe. A stopped copy is rolled back and its copy
+  deleted as before; if the worker deleted the copy anyway (it finished as Stop arrived) the stopped result card is
+  shown.
+* **The live region is the bar's status container.** Compose sends no event of its own for a node that enters the
+  tree already marked as a live region; the only event is a subtree change from the nearest parent with semantics,
+  and TalkBack only announces when that source is itself a live region. So every change of status *kind* was silent.
+  `ActionBar` now sets the live region on the `AnimatedContent` container (the node that also scrolls), assertive
+  when the caller passes `assertive = true`; the status composables set none, except the Export count, whose text
+  changes on the same node.
+* **Device checks, tenth round** (continuing the list above):
+  6. TalkBack on Import: pick a file (Checking → "File checked…"), tap Import (→ "Importing…"), let it finish
+     (→ the result), then pick a file that is not a backup (the refusal interrupts). Each change is heard once.
+     Repeat device check 1 on Export.
+  7. Tamil at 200% font, landscape: open the Replace dialog; all three buttons can be reached (the whole dialog
+     scrolls). In portrait the buttons stay pinned and the question scrolls above them.
+  8. Tamil and Telugu at 200% font on a 360 dp phone: every two-button state of both bars stacks the buttons, the
+     filled one at the bottom, and no label ends in "…".
+  9. *(Superseded by check 10 in 1.13.)* Delete a house, then import a backup that has it: the merge preview says
+     "Deleted on this phone, stay deleted", *Bring them back as copies* switches to the copy preview, and importing
+     brings the house back once.
+
+Eleventh round (2026-09-22, UX lead and Design director review of 1.12, `:app`, `ImportPlan` and
+`BackupCompleteness`):
+
+* **Restoring deleted houses is an opt-in undelete, not a copy of everything.** A 40-house backup with 3 houses
+  deleted here used to offer only *Show as copies*, which added all 40 (37 of them twice). `ImportPlan` now takes
+  `restoreDeleted` (MERGE only, ignored by COPY): a house whose tombstone would win or tie is `HouseOutcome.RESTORE`
+  instead of `DELETED_HERE`, is written with its own id, and is one of the "kept" houses its visits and photos may
+  land on. One private decision, `houseOutcome`, is shared by `preview`, `plan` and `keptHouseIdsFor`, so the three
+  cannot drift apart. `Repository.applyImport` writes a restored house with `deleted = false` and `updatedAt` =
+  max(now, tombstone + 1): kept at the backup's own timestamp it would lose to the server's newer tombstone on the
+  next sync and be deleted again. The switch's count always comes from the plain merge (`ImportCheck.Ready.merge`);
+  the preview on screen is `Ready.mergeFor(restoreDeleted, skipUpdates)`, all four worked out once in
+  `Imports.preview`. The flags travel to the worker in `ImportRequest` (`ImportStartOnceTest`).
+* **"Keep mine, add only what's new".** `skipUpdates` (MERGE only) leaves every row the file has a newer version of
+  as it is on the phone; a tombstone the file is newer than stays deleted unless `restoreDeleted` is on too. It
+  replaces nothing, so the Replace dialog starts it directly; it is offered only when it would add something
+  (`!Ready.mergeFor(restore, true).isEmpty`), otherwise the dialog keeps *Import as a copy instead* as its tonal
+  choice. `ImportPlanTest.thePreviewMatchesThePlanForEveryFlagCombination` walks five phone states (eight from 1.14) × four flag
+  combinations and checks every count against the plan and that each house of the file is counted exactly once.
+* **A partial "Full backup" says so.** Docs/05 §14.6 reserves "Full backup" for the complete file. The rule is pure
+  and shared (`BackupCompleteness.gaps`): *Shortlisted only* → houses that are not shortlisted; *All houses* without
+  rejected → rejected houses; *Photos of shortlisted houses* (unless the scope is already the shortlist) → their
+  photos; *No photos* → photos; contacts off → contact details. The worker records `KEY_PARTIAL`, and
+  `ExportWorker.resultText` builds the one sentence the card and the notification share.
+* **Nobody told, still shown.** `KEY_NOTIFIED` is true when the screen was showing (`ScreenWatch`) or the result
+  notification was posted; it reads as true for a row written by an older build, so nothing old comes back. A run is
+  shown when this screen started it, it ended within 10 minutes, this visit already showed it, or — however old — it
+  failed or nobody was told and the user has not seen it here yet; never once dismissed. "Seen" and "dismissed" are
+  `ResultMarks` in the DataStore; until the DataStore answers no finished run is shown, so a dismissed one cannot
+  flash up. The in-context notification request is asked once (`SettingsStore.notificationsAsked`).
+* **Where the file went.** `Saf.locationName` reads it from the document id alone (no provider call): the folder on
+  the device's own storage, or "Downloads" for the Downloads provider. Other providers' roots can only be listed
+  with `MANAGE_DOCUMENTS`, so they keep plain "Saved: …".
+* **Device checks, eleventh round** (continuing the list above):
+  10. *(Split into 10a and 10b in 1.14; both must pass.)* Make a backup of 40 houses with visits and photos, then
+      delete 3 of them.
+      a. **No sync since the delete** (airplane mode, or no server set up): import the backup. The bar says nothing
+         would change and offers **Bring them back**; tapping it turns on "Also bring back 3 houses deleted on this
+         phone" and the preview shows "Deleted on this phone, brought back: 3". Import adds exactly 3 houses with
+         their old ids and the result says "Brought back 3 houses."; each house shows its visits and photos (they
+         never left the phone). Then sync: all three are still there, and on the web too, with the same photos
+         once each. *(1.15)* Also add a photo to one of the three on the web **before** deleting it on the phone
+         and do not sync the phone: after the restore and a sync the web shows that photo once, not twice (the
+         tombstone was never pushed, so the photos keep their ids).
+      b. **After a sync of the delete** (the server has unlinked the visits and tombstoned the photos; on the phone
+         the visits now show as street visits and the photos are gone): import the backup and bring them back. The
+         preview counts their visits and photos as new; after Import each house has its visits again (and they are
+         no longer loose street visits) and its photos. Sync, then open the web: the three houses are there with
+         their visits and photos, and a second phone that syncs gets them too. Reinstall and sync: still there.
+         *Server side already proven (1.15):* the backend's `ApiIntegrationTest`
+         `aNewerWriteBringsBackAHouseDeletedWithPutAndSyncsIt` and `aNewerWriteBringsBackAHouseDeletedWithDeleteAndSyncsIt`
+         (both run `restoreAfterASyncedDelete`) pin every server rule this check relies on: a PUT with
+         `deleted = false` and a newer `updatedAt` over the purged tombstone makes the house live and an older one
+         changes nothing; a relink must beat the **unlink's** server stamp, not the house tombstone's; an upload under
+         the tombstoned photo id is accepted and ignored while one under a new id is stored; and the next pull hands
+         out all three. What is still open is the on-device run of this check.
+  11. Import a backup that is newer for some houses: the Replace dialog's title counts houses and visits apart and
+      names up to five houses; *Keep mine, add only what's new* adds only the new rows and replaces nothing.
+  12. Export: choose *Full backup (ZIP)* and *Shortlisted only*, *No photos*, contacts off: the amber note names all
+      three; *Use everything* resets them and the note goes; with the note showing, the result says "Saved a partial
+      backup to Download: …" and so does the notification.
+  13. Android 13+, notifications denied: tap *Save to…* on Export: the one-line question appears once, then the
+      picker; start a long PDF, leave the app for more than 10 minutes, come back: the result is shown. Make an export
+      fail (a full disk or a revoked folder) with notifications off: its failure is shown on the next visit, however
+      late, and not again once closed.
+  14. TalkBack on Import: switch Merge → Copy → Merge and turn the deleted-houses switch on and off: each change is
+      announced once. On Export, focus *Include contact details* while on: the warning is read with the switch.
+  15. House list: search, sort by price and filter *Shortlisted*, rotate and switch the language: all three are
+      kept. On a new install the list shows only the tagline, the hint and *Import a backup* (1.15; was *Restore
+      from a backup*), which opens the Import screen.
+
+Twelfth round (2026-09-22, Android review of 1.13; `ImportPlan`, `Repository`, `ImportWorker`):
+
+* **The undelete after a synced delete.** The review checked 1.13's undelete against the backend and it held only
+  on a phone that had not synced the delete. When a house delete reaches the server, `HouseService.purge` unlinks
+  the house's visits (`houseId = null`, `updatedAt` = now) and turns its photos into tombstones; the next pull
+  applies both here. 1.13 then restored the house alone: the backup's visits compared as older than the unlinked
+  copies and stayed loose, and the photos were written under their old ids, which `PhotoService.upload` accepts
+  and ignores for a tombstone ("a deleted photo is never resurrected"), so they existed on this phone only while
+  the result said success. Now a house **written over a tombstone** (`RESTORE`, or `UPDATE` of a house in
+  `locallyDeletedHouseIds`; `ImportPlan.overTombstoneHouseIds`) is treated as a relink:
+  * its visits that are loose visits here (`localUnlinkedVisitIds`) are written whatever last edit wins says
+    (`VisitOutcome.RELINK`, one private decision shared by `preview` and `plan`), counted as new visits
+    (`ImportPreview.relinkedVisits` is the subset) and listed in `ImportActions.relinkedVisitIds`;
+    `Repository.applyImport` keeps the phone's copy of each (it is at least as new, and may have been edited as a
+    street visit), sets `houseId` back and stamps `updatedAt` = max(now, its own + 1), as for a restored house, so
+    the relink wins against the server's unlink. A visit deleted or put in a house since the preview is left alone.
+    A visit the file has a newer version of stays an ordinary update; its row carries the `houseId`.
+  * its photos get a fresh id (`newId()`, `photoSources[newId] = entry`, as a copy does); the "already on this
+    phone" check still uses the backup's id, so a delete that was never synced (photo rows still here) adds nothing
+    twice. The preview's counts do not change.
+  On a phone that has not synced the delete neither rule fires: its visits are still linked and its photos are
+  still in `localPhotoIds`. `ImportPlanTest` pins the synced state
+  (`restoreAfterASyncedDeleteRelinksTheVisitAndGivesThePhotoANewId`), a resurrecting update over a synced
+  tombstone, and the never-synced state, and the preview-equals-plan walk adds those three states (eight in all)
+  and checks that no photo of such a house keeps its old id. Device check 10 is now 10a and 10b.
+  The server rules this depends on (`HouseService.upsert` taking `deleted = false` over a tombstone when not older,
+  `purge` unlinking with server `now`, `VisitController.upsert` not checking whether the house is live,
+  `PhotoService.upload` ignoring an existing tombstoned id) are pinned server-side by the Backend team's
+  `ApiIntegrationTest.aNewerWriteBringsBackAHouseDeletedWithPutAndSyncsIt` and
+  `…WithDeleteAndSyncsIt` (`restoreAfterASyncedDelete`); only device check 10b's run on a phone is still open.
+* **Lists of any length.** `ImportWorker.joined` stopped at three items and silently dropped a fourth; it builds
+  the Export screen's partial-backup note, which exists to name what a backup leaves out. `joinList` now folds
+  everything before the last two items into the first slot of `import_list_three` with the new `import_list_middle`
+  ("a, b"), in all four languages, so "a, b, c and d" keeps every item (`JoinListTest`).
+
+Thirteenth round (2026-09-22, Android review of 1.14):
+
+* **Tamil spelling.** `settings_server_intro` (ta) had the split காப்புப் பிரதி; it now has the joined
+  காப்புப்பிரதி the naming brief (docs/12 §G.1) asks for, like every other use in `values-ta`. Check:
+  `grep -n 'காப்புப் பிரதி\|காப்பு பிரதி' android/app/src/main/res/values-ta/strings.xml` returns nothing.
+* **No "restore" button label** (docs/12 G.3 rule 3: an import never deletes). The empty house list's outlined
+  button uses `import_title` (*Import a backup*, and its hi/ta/te text); `houses_restore` is gone from all four
+  files. The restore glyph stays. "Bring them back" and "could not be restored" are explanations and stay.
+* **Fresh photo ids only for a delete the server has seen.** A house's tombstone is `dirty = 1` until the push
+  reaches the server (`HouseDao.markClean`) and `dirty = 0` once it has, or when it was pulled from another
+  device. Only a clean tombstone has been purged there. `ImportPlan.plan(syncedDeletedHouseIds = …)`
+  (`LocalVersions.syncedDeletedHouseIds`, from the new query-only `HouseDao.syncedDeletedIds()`, so the Room
+  identity hash is unchanged) gives fresh ids only to the photos of those houses; a restore of a delete that is
+  still waiting to be pushed keeps the backup's ids, which the server still holds live, so a photo this phone
+  never downloaded no longer shows twice on the web. `null` (the default, and what `preview` implies: a photo's
+  id never changes a count) keeps 1.14's rule of treating every tombstone as synced. Tests:
+  `ImportPlanTest.aTombstoneThatWasNeverPushedKeepsItsPhotoIds` (dirty: "p1" kept and no `newId` call; synced:
+  "new-1"; `null`: a fresh id) and two more phone states in the preview-equals-plan walk (a dirty tombstone whose
+  photo this phone never had, and a synced one older than the file), which also checks that a photo over a dirty
+  tombstone always keeps its id.
+
+Fourteenth round (2026-09-22, Design and UX review of 1.15):
+
+* **The first-run hero leads with adding a house.** Its only button was the outlined *Import a backup*, the rare
+  path. The hero's action is now a centred stack: a filled **Add a house on the map** (`export_empty_action`, the
+  same string and the same `navigate("map") { popUpTo("map"); launchSingleTop = true }` as Export's empty state,
+  via the new `HouseListScreen(onOpenMap = …)`), then the outlined **Import a backup** with the restore glyph at
+  `ButtonDefaults.IconSize` and `ButtonWithIconContentPadding`. Both are at least 48 dp tall. No new strings.
+* **No chrome flash on a new install.** The screen's body is a three-way `when`: nothing until Room's first
+  emission, the hero when there are no houses, else the search, chips, sort and list. Before, the not-yet-loaded
+  state drew the list chrome for a frame and then collapsed into the hero.
+* **One gutter for the hero.** `HeroEmptyState(horizontalPadding = 16.dp)`, following `RadioRow` and `SwitchRow`;
+  the house list, whose Column is already padded 16 dp, passes 0 dp, so the hero has 16 dp margins there as on
+  Export and Import (it had 32 dp, a 296 dp measure at 360 dp for the long ta/te `houses_empty`).
+* **No match has a way out.** With houses but nothing matching, the list shows a `HeroEmptyState` with the search
+  glyph, "Nothing matches." and an outlined **Clear search and filter** (`houses_clear_filters`: hi "खोज और फ़िल्टर
+  हटाएँ", ta "தேடலையும் வடிகட்டலையும் அழி", te "వెతుకులాట, ఫిల్టర్ తీసివేయండి", the web's `map.clearFilters`), which
+  clears both the status filter and the search text, as on the web.
+
+Fifteenth round (2026-09-22, UX review of 1.16):
+
+* **The list chrome scrolls with the list.** The heading, the search field, the status chips, the sort control and
+  the results count are `item(key = …)`s of the house `LazyColumn`, followed by `items(shown, key = { it.id })` or
+  the no-match hero as `item("nomatch")`. In landscape (about 256 dp of height), at 200 % font scale or with the
+  Indic chips on two or three rows, the chrome no longer leaves the list less than one card: it scrolls away
+  (docs/05, 320 dp at 200 %; A11Y-A03). The separate `verticalScroll` Column of the no-match state is gone; the
+  first-run hero's Column now scrolls with the heading inside it. `rememberLazyListState` is saveable, so the
+  position survives opening a house and coming back.
+* **Sort is one control.** The inline "Sort: Recent Best score Lowest price" row could not wrap and squeezed
+  "Lowest price" to nothing in Tamil at 360 dp. It is now a 48 dp `TextButton` reading "Sort: Best score ▾" (one
+  `Text`, so it wraps inside the button at 320 dp and 200 % and the arrow stays), which opens a `DropdownMenu` of
+  the three orders; each `DropdownMenuItem` has a `RadioButton` leading icon and `role = RadioButton` plus
+  `selected` semantics, in a `selectableGroup()`. This matches the web's single labelled select. No new strings
+  (`houses_sort` + `sort_*`).
+* **Filter results are announced.** New `houses_shown` in all four languages, the web's `map.shown` copy: en
+  "Houses shown: %1$d of %2$d", hi "दिखाए गए मकान: %2$d में से %1$d", ta "காட்டப்படும் வீடுகள்: %2$d-இல் %1$d",
+  te "చూపిస్తున్న ఇళ్లు: %2$dలో %1$d". It is a `bodySmall` `onSurfaceVariant` line after the sort control whenever
+  the search is not blank or a status chip other than *All* is on. The visible text follows every keystroke; its
+  semantics (`clearAndSetSemantics { contentDescription; liveRegion = Polite }`) carry a copy that updates only
+  after 500 ms without a change (a `LaunchedEffect` keyed on the text, so a debounce), so TalkBack reads the count
+  once typing pauses, not per letter. With no match it says "0 of n", so the hero's title is not a second live
+  region.
+* **Search field.** `ImeAction.Search`, and the Search key clears focus (the keyboard no longer covers the no-match
+  hero). A trailing `Close` `IconButton`, only while there is text, clears it and keeps focus in the field; its
+  label is the new `houses_clear_search` (en "Clear search", hi "खोज हटाएँ", ta "தேடலை அழி", te "వెతుకులాట
+  తీసివేయండి", worded like `houses_clear_filters`). *Clear search and filter* scrolls the list to the top and
+  moves focus to the search field, so TalkBack does not drop to the top of the screen when the button vanishes.
+* **No-match copy.** `houses_no_match` is now the web's `map.noMatch`: en "No houses match your search or filter.",
+  hi "आपकी खोज या फ़िल्टर से कोई मकान मेल नहीं खाता।", ta "உங்கள் தேடல் அல்லது வடிகட்டலுக்குப் பொருந்தும் வீடுகள்
+  இல்லை.", te "మీ వెతుకులాటకు లేదా ఫిల్టర్‌కు సరిపోయే ఇళ్లు లేవు.".
+* **No stale filter after the last house.** `LaunchedEffect(firstRun)` clears the search and the status filter when
+  the list becomes empty, so the first house added afterwards is not hidden behind "Rejected" or an old search.
+  The sort is kept (it hides nothing).
+* **"Add a house on the map" says how.** `Root` sets a saveable one-shot flag before switching to the Map tab, from
+  the house list's hero and from Export's empty state (the same button). `MapScreen(showAddTip, onAddTipShown)`
+  clears it and shows `map_long_press_tip` in a `Snackbar` (with a dismiss button, long duration) above the
+  map's buttons; `SnackbarHost` makes it a polite live region. Long-press is still not possible with TalkBack
+  (A11Y-B02): an accessible pick-a-spot mode is handed to Sprint 4b in section 9, item 22.
+* **One neutral key for the primary.** `export_empty_action` is renamed `common_add_on_map` in all four languages
+  (same text), used by Export's empty state and the house list, so a later re-wording for one screen is visible
+  as affecting both. The first-run buttons sit in a `Modifier.width(IntrinsicSize.Max)` column and both
+  `fillMaxWidth()`, so they share the wider label's width (capped by the screen) instead of two ragged widths in
+  hi/ta/te; the Design Director is asked to confirm.
+
+Sixteenth round (2026-09-22, UX review of 1.17):
+
+* **Action-bar buttons keep their node, so TalkBack keeps its place.** Every state used to draw its buttons at a
+  different call site (`OutlinedButton` for Stop, `Button` for Save or Import), so Compose made a new node on each
+  tap, the focused one disappeared and TalkBack went back to the top of the screen — just as a user who had started
+  a long export or import needed Stop, the only way to cancel. The new `RowScope.BarButton` (`ui/ActionBar.kt`) is one
+  M3 `Button` whose colours, border and elevation switch between the filled and the outlined style
+  (`BarButtonStyle`; outlined is exactly what `OutlinedButton` draws, since it is a `Button` with
+  `outlinedButtonColors()`, `outlinedButtonBorder(enabled)` and no elevation). Each position is drawn by one call site
+  in every state, inside its own `if` when it can be absent, so the node survives and only its label and action
+  change. **Export:** *Share* then **Save to…**; a run's *Stop* takes the place of the button that started it
+  (`pendingShare` tells a Share run apart), and turns back into it when the run ends. **Import:** the state is first
+  worked out as an optional outlined secondary and a primary (`BarAction`), then drawn: *Import* → *Stop* → *Finish
+  import* / *See your houses* / *Choose a backup file*; *Bring them back* → *Import*; *Cancel* (checking) → *Choose
+  another file*; after the Replace dialog's *Keep mine* or *Replace*, focus returns to the primary, which by then
+  reads *Stop*. Buttons use `Modifier.weight(1f)` throughout, so one alone fills the row as `fillMaxWidth()` did.
+* **Copy imports can be undone.** "Add everything as new copies" keeps each house's label and times and only changes
+  the ids, so the copies sort next to their originals (`updatedAt DESC`), look the same and sync out (`dirty`); the
+  only cleanup was deleting houses one at a time and guessing which of each pair was the copy. Now:
+  (1) `Repository.applyCopy` returns the new house and visit ids with the `updatedAt` each was written with, and the
+  new photo ids (`ImportResult.copiedHouses` / `copiedVisits` / `copiedPhotos`); `ImportWorker` writes them to
+  `filesDir/imports/<runId>.json` (`ImportUndo.save`, `CopyRecord` via kotlinx.serialization, written aside and
+  renamed; not the output `Data`, which is capped at 10 KB) and sets `KEY_UNDOABLE`. The run id must be a UUID to
+  name a file. Records older than 24 h are swept at app start (`HouseHuntApp`). (2) While that result is shown —
+  and it stays shown for the record's day, however old, until it is closed (*Choose a backup file* closes it and
+  deletes the record once a file is picked; since 1.19 a cancelled picker leaves both; since 1.20 the record is never deleted by closing, only by an undo or its 24 h) — the bar's secondary place is **Undo this import** (`import_undo_copy`), with *Choose a backup
+  file* under the body's heading. One tap, no confirmation, runs `Repository.undoCopyImport` in the application
+  scope: in one `withTransaction` each recorded house that is unchanged becomes a tombstone (`deleted`, stamped now,
+  `dirty`, as `deleteHouse` does, so sync removes it from the server and other devices); a house whose `updatedAt`
+  changed, one of whose visits was edited, or that has a visit or photo the import did not add is kept and counted;
+  the import's unchanged visits go with their removed house (and its loose street visits), and the removed houses'
+  photos lose their row and, after the commit, their file. The bar says "Removing the copies…", then "Removed *n*
+  copies." (`import_undone`) plus "Kept *m* houses you had edited since." (`import_undone_kept`), or
+  `import_undone_nothing`; a failure rolls back, says so assertively (`import_undo_failed`) and leaves the undo on
+  offer. After an undo the result is marked closed, so a later visit does not show "Added 40 houses" for houses that
+  are gone. (3) *See your houses* after a copy opens the list filtered to the copies: `Root` keeps the run id
+  (saveable; no id list in saved state), `HouseListScreen(importedRun)` reads the record's house ids, and a selected
+  "Just imported (*n*)" chip (`houses_just_imported` in the `status_filter` pattern) leads the chips; tapping it
+  toggles the filter and it stays in place. (4) In copy mode with duplicates, the preview's button reads **Add *n*
+  copies** (`import_go_copies`, *n* = houses the copy adds), and `import_copy_shown_duplicates` now ends "Nothing is
+  added until you tap the Add button." in all four languages.
+  **Backend interaction (found in the Android review of 1.18, fixed in 1.19).** As first written, the undo left the
+  copies' visits linked to their house and `sync()` pushed houses before visits. After the copies had synced (a
+  signed-in phone syncs 3 s after an import, so this is the normal case), the house tombstone reached
+  `HouseService.upsert` first; its `purge()` called `VisitRepository.unlinkHouse`, which set `houseId = null` and
+  `updatedAt` = *server* now on every visit of that copy. The visit tombstone that followed carried the undo's
+  earlier phone stamp, so `VisitController.upsert` kept the server row (`isAfter(incoming)`), the phone marked it
+  clean anyway, and the same sync's pull wrote each visit back as a live loose street visit — on this phone, the
+  server and every other device, counted in `streetInfo` and exported as `unlinkedVisits` — while the screen said
+  "Removed 40 copies". This is the unlink the twelfth-round notes describe for the undelete. The fix is in the
+  seventeenth-round notes below.
+  **Known limitation: a phone whose clock runs fast.** A copy used to keep the backup's `updatedAt` even when it lay
+  in the future (a backup made on a phone whose clock ran fast). Beyond `app.sync.max-clock-skew-seconds` the server
+  clamps it to its own now (`ClientClock.accept`), the next pull writes that value back here, and the undo then took
+  every such copy for one "you had edited since" and removed nothing. Since 1.19 a copy is stamped min(backup, now)
+  (`CopyUndo.copyStamp`), which closes that case. What is left: if *this* phone's clock runs more than the allowed
+  skew ahead of the server, its own stamps are clamped the same way and its copies look edited after a sync, so the
+  undo keeps them and says so ("Kept *n* houses you had edited since"), which is untrue but deletes nothing. Sprint
+  4b: compare against the server's accepted stamp (the `putHouse` response, or the pulled row with `dirty = 0` and
+  the same content) instead of only the stamp the phone wrote.
+* **The map tip a TalkBack user can follow.** Until the pick-a-spot mode (section 9, item 22), the arrival tip is
+  chosen by context: with touch exploration on (`AccessibilityManager.isTouchExplorationEnabled`) or without the
+  location permission, `map_add_tip_a11y` ("Tip: tap Save house here while you are at the house."); otherwise
+  `map_add_tip`, which gives both ways, as the first-run text does. *Save house here* without a location shows
+  `map_save_needs_location` to a TalkBack user and the long-press `map_long_press_tip` to everyone else.
+* **The results count is always there.** "Houses shown: *n* of *m*" is composed whether or not a filter is on, as the
+  web's `role="status"` is always in the DOM, because a node that arrives already marked as a live region is never
+  announced. Its semantics are the full text while nothing is filtered; with a filter they are a polite live region
+  whose text starts empty and is set 500 ms after the last change, so the first filter always produces a change,
+  even when the count equals the unfiltered one (tapping *New* when every house is new).
+* **Sort and cards for TalkBack.** The sort button's text is the new format string `houses_sort_value` ("Sort:
+  %1$s", so each language orders its words) and its semantics are name `houses_sort`, state the current order and
+  `Role.DropdownList`, set outside `TextButton`'s own `role = Button` so they win (the outermost semantics modifier is
+  applied last). House cards are `clickable(onClickLabel = house_open, role = Button)`: "double-tap to open details".
+* **No dead end when every house is rejected.** With *All houses* and *Include rejected houses* off, "No houses
+  match these options." now offers *Include rejected houses* (`export_include_rejected`), as *Shortlisted only*
+  offers *All houses*.
+* **Replace dialog height.** The dialog scrolls as a whole below **540 dp** of height (`COMPACT_DIALOG_HEIGHT`,
+  raised from 480 dp in an earlier round without a note), not 480 dp as the 1.12 notes and docs/05 §14.3 say:
+  the icon, the spacing and four two-line buttons at 200 % take about 440 dp, and the pinned layout needs room for
+  a few lines of the question.
+* **Device check 16 (TalkBack focus).** With TalkBack on, on Import: pick a backup, double-tap **Import** (or
+  *Keep mine* / *Replace* in the dialog), then **Stop**, then wait for the result; on Export: double-tap **Save
+  to…** (choose a file) and **Share**, then **Stop**. Focus must stay on the bottom control every time and read its
+  new label; it must never jump to the back arrow. Also: after a copy import, double-tap *Undo this import*; focus
+  stays on that button, which becomes *Choose a backup file*, and TalkBack reads "Removed *n* copies.".
+  **Extended in 1.19:** on Export, choose *Shortlisted only* with nothing shortlisted, then double-tap *All houses*
+  in the bar: focus must move to *Save to…* (read with its label), not to the back arrow. With every house rejected
+  and *Include rejected houses* off, *Shortlisted only* → *All houses* must keep focus on the same button, now reading
+  *Include rejected houses*; double-tapping it moves focus to *Save to…*. Then turn *Include rejected houses* off
+  again and check that *Save to…* no longer holds focus when nothing needed it (a keyboard or D-pad still reaches
+  it). Also on Import: after a copy import, tap *Choose a backup file* and cancel the picker: *Undo this import* and
+  the "Just imported" chip must still be there; pick a file this time: the result closes.
+* **Naming.** The feature is *Save a copy* on Android (`settings_export`, `export_title`) and already on the web
+  (`data.exportHeading` = "Save a copy" in all four languages); docs/12 §G names the action *Save a copy*. Only the
+  docs/05 §14.6 glossary row still says "Export a copy"; no Android string changes (section 9, item 23).
+
+Seventeenth round (2026-09-22, Android review of 1.18):
+
+* **Undo after a sync, fixed at the push order.** Two changes, each enough for the undo on its own and together
+  robust to an undo that lands while a sync is running: (1) the undo writes each removed visit's tombstone with
+  `houseId = null` (`CopyUndo.visitTombstone`); a tombstone needs no link, and the server calls `purgePlace()` on it
+  anyway. (2) `Repository.sync` pushes dirty visits with `deleted && houseId == null` **before** the house loop
+  (`SyncRules.pushesBeforeHouses`, `SyncRules.visitsByPushOrder`; `SyncRulesTest`). They need no house row on the
+  server, so the foreign key `visit.house_id REFERENCES house` is never at risk, and when the house tombstone then
+  reaches `purge()`, `unlinkHouse(copyId)` no longer matches them. Every other dirty visit, live or a tombstone that
+  still names its house, is pushed after the houses as before. The dirty houses are read **before** the dirty
+  visits: the undo writes both kinds of tombstone in one transaction, so any house tombstone a sync pushes has its
+  visit tombstones in the visit list read after it, even when the undo commits between the two reads. The
+  pull-side alternative (a local tombstone not revived by a row that differs only by `houseId = null`) was not
+  taken: it would need a content comparison on every pulled visit and would override last-write-wins in `:shared`.
+* **The undo's decisions are a pure function.** `CopyUndo` (`:app`, next to `ImportUndo`, because the tombstone
+  builders take the Room entities) holds every rule: `decideHouse(HouseNow?, recordedAt, recordedVisits,
+  recordedPhotoIds)` returns REMOVE / KEEP / SKIP (kept when its `updatedAt` changed, when a live visit is not one the
+  import wrote with that very `updatedAt` — a lookup that finds nothing keeps the house — or when a live photo is not
+  from the import; a recorded photo or visit the user deleted does not keep it; deleted or gone is skipped),
+  `decideVisit(VisitNow?, recordedAt, removedHouseIds)` (removed when unchanged and loose or in a removed house; kept
+  when edited or in a house that stays), `removesPhoto`, `houseTombstone`, `visitTombstone`, `tombstoneStamp` and
+  `copyStamp`. `Repository.undoCopyImport` only reads the rows, asks and writes. `CopyUndoTest` covers each case the
+  review listed, the tombstones (and that a removed visit's is pushed before the houses) and the copy stamp.
+* **A copy is never stamped in the future.** `applyCopy` writes each house and visit with min(backup `updatedAt`,
+  now) and puts that stamp in the undo record; see "Known limitation" in the sixteenth-round notes.
+* **A cancelled picker keeps the undo.** *Choose a backup file* no longer closes the result before the picker opens;
+  the picker's callback closes it (and forgets the undo record) only when a file was picked. The result's state is
+  known only further down the composable, so the callback calls it through a remembered holder
+  (`closeResultOnPick`) that each composition sets.
+* **Export's recovery buttons keep TalkBack's place.** *All houses* and *Include rejected houses* are one `TextButton`
+  call site, so when *All houses* still leaves nothing (every house rejected) the same node relabels in place. When
+  the tap makes houses match, the "nothing matches" status goes, and with it the focused node; focus then moves to
+  *Save to…* once the new count has enabled it (a disabled button cannot take focus), after a frame, as *Clear
+  search and filter* does on the house list. `BarButton` has an optional `modifier` for the `FocusRequester`. A
+  Compose button is focusable only outside touch mode (`Focusability.SystemDefined`; TalkBack runs in touch mode),
+  so for that one request the button also gets `focusProperties { canFocus = true }`; the flag is cleared by the
+  next option change or bar tap, after which keyboard and D-pad focus behave as before. Whether TalkBack follows the
+  moved input focus is device check 16.
+* **Device check 16b (undo after sync).** Signed in to a server: import a backup as copies (with houses that have
+  visits, and note the phone's street visit counts on a house's street first), wait for the sync (the bar's sync
+  status, or Settings → *Sync now*), then *Undo this import* and sync again. On the web and on a second device
+  signed in to the same server: none of the copied houses **and none of their visits** exist (`GET /api/visits`,
+  which lists live visits only, returns none of the copies' visit ids, and no extra loose visits show up). On the phone: the street visit counts are back to the pre-import
+  values, and a new backup's `unlinkedVisits` holds none of the copies' visits. Repeat with *Undo this import*
+  tapped while a sync is running.
+
+Eighteenth round (2026-09-22, Design director and UX lead review of 1.19):
+
+* **The action bar stacks its buttons by measuring, not only by font scale.** The Design director measured the
+  shipped Tamil labels at 14 sp: with two buttons side by side each label has 112 dp at 360 dp width (16 dp bar
+  padding each side, an 8 dp gap, 24 dp button padding each side), 128 dp at 393 dp and 138 dp at 411 dp, and at
+  **100 %** font *Undo this import* ("இந்த இறக்குமதியைச் செயல்தவிர்") needs three lines even at 411 dp, so it was
+  ellipsised to "This import…" — the verb was what disappeared. *Choose a backup file* and *Bring them back* broke the
+  same way, and from 1.15 single words were wider than the button. `ActionBar` now takes `labels` (the texts of the
+  buttons it draws; Export passes *Share*/*Stop* and *Save to…*/*Stop*, Import its `BarAction` secondary and primary,
+  now worked out before the bar) and `iconLabel` (the one with a leading icon). Inside the bar a `BoxWithConstraints`
+  measures each label with `rememberTextMeasurer` in `labelLarge` against its room — half the row less the button's
+  padding (24 + 24 dp, or 16 + 24 dp plus the 18 dp icon and 8 dp gap for the Share button) — and stacks when a label
+  needs more than two lines (`BUTTON_LABEL_MAX_LINES`, `ButtonLabel`'s limit) or a single word is wider than the room.
+  Font scale 1.3 still stacks on its own. The measurement is `remember`ed on the labels, the width, the style and the
+  density. Stacked, each label has about 280 dp at 360 dp, where every Tamil and Telugu label fits in two lines; the
+  filled primary is still drawn last, so it is the bottom one. Changing `maxItemsInEachRow` keeps the `BarButton`
+  nodes, so the round-16 focus stability holds (device check 16).
+* **Share's icon padding.** A `BarButton` with an icon uses `ButtonDefaults.ButtonWithIconContentPadding` (16 dp
+  before the icon) and `IconSize` / `IconSpacing`, as M3's `Button` does, instead of the text-only 24 dp, giving the
+  label 8 dp more room.
+* **Undo from where the copies are (UX lead, major).** *See your houses* navigates with `popUpTo("map")`, so Back from
+  the list went to the map, and the undo was left in Settings → *Import a backup* exactly when the user was looking at
+  40 duplicates. The undo is now one implementation, `CopyImportUndo` (`export/`), run in the application scope, with
+  `undoingRun` and `outcome` as snapshot state read by both screens; `ImportViewModel.undoCopy` only hands it the
+  record, and `undoing` / `undone` read it (`undone` is only an outcome reached while that ViewModel exists, so a
+  later visit does not bring back an old sentence). `HouseListScreen` shows a row right under the "Just imported"
+  chip: "Imported from your backup: *n* copies." (new plurals `houses_imported_row`), "You can undo this until …"
+  and a 48 dp *Undo this import* whose label lines up with the text. The sentence is a live region (polite; assertive
+  for a failure) on a node that is there before it changes, so TalkBack hears "Removing the copies…" and then
+  "Removed 40 copies. Kept 2 houses you had edited since." (or `import_undo_failed`). After a successful undo the
+  "Just imported" filter goes off and the button becomes *Dismiss* in the same place, so focus stays in the row. The
+  list shows the run it was opened for, or else the newest record that can still be undone (`ImportUndo.
+  latestUndoable`), with its chip off. The Import screen keeps being popped (no back-path fallback).
+* **Choosing a file no longer ends the undo.** `dismissResult` (the picker's callback and *See your houses* for a
+  result that cannot be undone) marks the result closed but keeps the record; `forgetUndo` is gone. The record
+  expires after its 24 h (`ImportUndo.load`, `sweep`), and until then the house list offers the undo.
+* **Kept copies can be found.** `Repository.undoCopyImport` returns the kept house ids (`UndoResult.keptHouses`); when
+  there are any, the record is written back as `CopyRecord.keptOnly` — those houses only, `undone = true`, which
+  `loadUndo` and `latestUndoable` never offer as an undo — so the "Just imported (2)" chip shows them until the record
+  expires. After such an undo *See your houses* passes the run again and the list opens on them.
+* **Undo states on the Import screen.** While the undo runs, *See your houses* is disabled (same node; TalkBack keeps
+  its focus). When it ends, the bar says only "Undo finished." (`import_undo_finished`), as it says "Import
+  finished.", and the heading says what the undo did (round 11's "said once" rule); the heading's glyph is the
+  restore glyph on `surfaceVariant` (a reversal), not the success tick. A successful import's tick is now
+  `onSuccess` on `success`, like Export's green result card (`HeroEmptyState(iconTint, iconContainer)`, brand
+  colours by default). While the undo is on offer the heading has "You can undo this until <date, time>"
+  (`import_undo_until`, `finishedAt` + 24 h in the file header's format).
+* **"Just imported" is an applied filter.** It was a `FilterChip` inside the status chips' single-choice
+  `selectableGroup()`, so "Just imported (40)" and "All (50)" were both selected. It is now an `InputChip` with the
+  restore glyph (`InputChipDefaults.IconSize`, M3's leading-icon size) in a row of its own, 8 dp above the status
+  chips, and only the status chips are in the group.
+* **Export.** The recovery button (*All houses* / *Include rejected houses*) is pulled back 12 dp
+  (`Modifier.offset(x = (-12).dp)`), like *Use everything*, so its label lines up with "No houses match these
+  options.". The focus move to *Save to…* after it is set only when touch exploration is on
+  (`AccessibilityManager.isTouchExplorationEnabled`, as `MapScreen` checks it), and the flag, with its `canFocus`, is
+  cleared one frame after the request, so touch users never see a leftover focus highlight.
+* **Hindi "copy".** The copy mode's label said प्रतियों while its button, the status line, the undo and *Import as a
+  copy instead* said कॉपी. `import_mode_copy` is now "सब कुछ नई कॉपियों के रूप में जोड़ें": every string of the copy
+  import uses कॉपी, and प्रति stays the word for an exported *copy* (docs/12 §G, *Save a copy*). On the I18N-B06 list
+  (section 9, item 23).
+* **Device check 16, extended again.** After an *All houses* / *Include rejected houses* recovery with TalkBack on:
+  is the count ("12 houses, 30 visits…") still read after focus moves to *Save to…*, or does the focus change cut it
+  off? And with TalkBack off, the recovery tap must leave no focus highlight on *Save to…*. Also: on Import after a
+  copy import, double-tap *Undo this import*; *See your houses* must read as disabled until "Undo finished." is heard.
+* **Device check 17 (Tamil action bar, 100 % font).** App language Tamil, system font 100 %, on a 360 dp-wide
+  emulator (for example 720 × 1600 at 320 dpi) and again at 393 dp (1080 × 2340 at 440 dpi): import a backup as copies; after it the bar must show *Undo this import* in full ("இந்த இறக்குமதியைச்
+  செயல்தவிர்", stacked above *See your houses*), never "இந்த / இறக்குமதியைச்…". Then a merge import (*Choose a backup
+  file* · *See your houses*) and a backup whose houses were all deleted here (*Choose another file* · *Bring them
+  back*): every label in full. At 115 % no word may break in the middle. Repeat in Telugu at 130 %.
+* **Device check 18 (undo from the list).** Import a backup as copies, tap *See your houses*: the list opens on
+  "Just imported (*n*)" (the only selected chip; "All" is not selected) with the undo row under it. Edit one copy,
+  then with TalkBack on double-tap *Undo this import* in the row: TalkBack reads "Removing the copies…" and then
+  "Removed *n*−1 copies. Kept 1 house you had edited since.", focus stays on the row's button (now *Dismiss*), the
+  filter is off and "Just imported (1)" shows the edited copy. System Back goes to the map. Then: import copies, tap
+  *Choose a backup file* on the result and pick another file; open the house list from the tab: the row and the chip
+  (off) are still there until 24 h after that import.
+
+Nineteenth round (2026-09-22, Design director and UX lead review of 1.20):
+
+* **`secondaryContainer` is `--primary-soft` (Design director, major).** M3's FilterChip, InputChip,
+  NavigationBarItem and SegmentedButton paint their selected state in `secondaryContainer`, which `Theme.kt` had set
+  to the amber star family (#FBE7C2 / #3A2C10) while its own KDoc and docs/05 §4.5 said nothing but a star may use
+  it; only the progress track, the Slider and the tonal button had been moved to `primaryContainer`. So the selected
+  status chip, the new "Just imported" chip and the active tab on every screen showed a caution-amber pill where the
+  web shows `--primary-soft`. Nothing in `:app` reads `secondaryContainer` for a star (stars use
+  `LocalHouseHuntColors.star`), so the role is remapped once for every component: light #E3F0EC with #0B3B30
+  (10.66:1), dark #1D3B33 with #E4EBE8 (10.05:1), the `primaryContainer` pair. `secondary` stays `--star`.
+  `tonalPrimaryColors()` and `brandSliderColors()` stay as a safety net. Side effects, all intended: the house form's
+  status segmented button, its Rent/Buy chips and the Settings tonal button are teal too.
+* **Selection is not colour alone (WCAG 1.4.1).** The selected fill is about 1.1–1.2:1 against the background, so
+  the chips now carry the web's other cues: a ✓ leading icon when selected (`ChipCheck`, `FilterChipDefaults.
+  IconSize`), and a 2 dp `primary` border when selected, 1 dp `outline` (`--border-strong`, 3.63:1) when not
+  (`brandFilterChipBorder`, `brandInputChipBorder`, `Theme.kt`). The house list's status chips and the Rent/Buy chips
+  use both; the checklist's 0–5 chips, six digits in one scrolling row, use the border only (the ✓ too since 1.22,
+  see the twentieth round). The "Just imported"
+  `InputChip` keeps its restore glyph and, while applied, has a trailing close glyph (M3's cue for a removable
+  filter). The NavigationBar's active label is `primary`: M3's default active label colour is `secondary`, which is
+  the amber `--star`, so the label was amber even under a teal pill.
+* **`common_close` replaces `common_dismiss` (Design director, major).** Round 18 made the label visible as the undo
+  row's button, and its translations meant *Reject* (ta நிராகரி, sitting above the நிராகரிக்கப்பட்டது status chip;
+  hi खारिज करें) or *Remove* (te తీసివేయండి, straight after an undo that removed copies). The key is replaced by
+  `common_close` with the web's reviewed `common.close` wording (Close, बंद करें, மூடு, మూసివేయండి) in `ResultCard`'s
+  close button and the undo row; `common_dismiss` is deleted in all four languages.
+* **The list's undo confirms, and names the import (UX lead, major).** From a row that lasts a day on a main tab,
+  one double-tap removed up to *n* houses from this phone, the server and every other device (synced tombstones,
+  photo files deleted after the commit), with nothing to reverse it: against UX-005. *Undo this import* in the row now
+  opens an `AlertDialog` — "Remove the 40 copies imported at 22 Sept 2026, 3:04 pm?", "Houses you have edited since
+  are kept. The copies are also removed from your other devices, and this cannot be undone.", *Remove copies* (a text
+  button in the error colour) and *Keep them* (the dismiss action, like Back and a tap outside). The dialog flag is
+  saveable; when it closes, focus goes back to the row's button (as written in 1.21 this did nothing for TalkBack;
+  fixed in 1.22, see the twentieth round). The row's sentence names the time ("Imported from your
+  backup at <time>: 40 copies.", `Formats.dateTime`). The Import screen's own undo, straight after the result, stays
+  one tap.
+* **The list undoes the right import (UX lead, major).** Root kept `importedRun` for the whole session, so after a
+  second copy import left with Back the row still pointed at the first. Root now clears it before every
+  `navigate("import")` (the house list's and Settings' *Import a backup*, and the `OpenScreen` deep link), and the list
+  reads both the run it was opened for and `ImportUndo.latestUndoable` and shows the newer. After an undo of the run on
+  screen the list stays on that run (its record is gone or reduced) so the card can say what the undo did.
+* **The row is a `ResultCard` (Design director, minor).** NEUTRAL (info sign, `surfaceVariant`) while the undo is
+  on offer and while it runs, SUCCESS (tick, `success`) after it, ERROR (warning sign, `errorContainer`) on a failure,
+  so a failed undo no longer looks like the success text. The sentence is the card's text; "You can undo this until …"
+  and the one `TextButton` call site (*Undo this import* → *Close*) are in its actions, the button through
+  `ResultActionsRow`. The live region (polite; assertive on failure) is on a `Box` around the card, a node that stays.
+  The item has 8 dp of bottom padding, so the chip and the card read as one group, 16 dp above the status chips.
+* **The row can be closed without undoing (UX lead, minor).** While the undo is on offer the card has its 48 dp close
+  button (`common_close`); it hides the row for that run and saves the choice in the record (`CopyRecord.rowHidden`,
+  `ImportUndo.hideRow`, which writes nothing for a record that is gone or already undone; `ImportUndoTest.
+  hidingTheListRowKeepsTheRecordAndItsUndo`). The chip stays, and the Import screen's result still offers the undo.
+* **"Just imported" does not come back by itself (UX lead, minor).** It was `rememberSaveable(importedRun)` and the
+  Houses tab restores its state, so every return reopened the filtered list and a house just added on the map seemed
+  missing. Root now counts *See your houses* taps (`importedOpen`, saveable) and the list turns the filter on once per
+  tap (`consumedOpen`); the filter applies only to the run it was set for (`filterRun`), so a newer import never
+  inherits it; and it turns off when the number of houses that are not copies goes up (compared with the last visit,
+  saveable).
+* **No pop-in (UX lead, minor).** The record is read from disk. Opened for an import, the list draws only its heading
+  until the record is there (as before Room answers), so it no longer draws all 50 houses and then drops to the 40
+  copies. Opened from the tab, it draws at once, and the chip, the card, the status chips, the sort, the count, the
+  no-match hero and the house cards use `Modifier.animateItem()`, which follows the system animator duration scale
+  (*Remove animations* makes it instant).
+* **Hindi undo wording (Design director, minor).** पूर्ववत is formal and not recognised at a glance; Android's own
+  Hindi UI says वापस लें. `import_undo_copy` "यह आयात वापस लें", `import_undo_finished` "आयात वापस ले लिया गया।",
+  `import_undo_until` "आप इसे %1$s तक वापस ले सकते हैं।", and `import_undo_failed` quotes the new button label. On the
+  I18N-B06 list (section 9, item 25).
+* **Device check 18, updated.** In the undo-from-the-list steps the button after the undo reads *Close*, and the
+  double-tap on *Undo this import* first opens "Remove the *n* copies imported at …?"; *Keep them* returns focus to the
+  row's button, *Remove copies* runs the undo (focus after both: device check 19 (g)).
+* **Device check 19 (round 19).** (a) Light and dark theme: the selected status chip, the "Just imported" chip and
+  the active tab are teal (`--primary-soft`), never amber; a selected chip has a ✓ and a visibly thicker teal edge;
+  the active tab's label is teal. (b) App language Tamil: the result cards' close button and the undo row's button
+  read மூடு. (c) Import backup A as copies, *See your houses*; then Settings → *Import a backup*, import backup B as
+  copies and leave with Back; open the Houses tab: the card names B's time, and *Remove copies* removes B's copies,
+  not A's. (d) After *See your houses*, go to the map, save a house, return to Houses: the filter is off and the new
+  house is listed; switch tabs twice more: the filter stays off. (e) Close the card with its close button, leave and
+  return: the card stays closed, the chip is still there, and Settings → *Import a backup* still offers the undo. (f)
+  *See your houses* on a 50-house phone with 40 copies: the list never shows 50 cards before settling on 40.
+
+Twentieth round (2026-09-22, Android review of 1.21):
+
+* **Focus after the confirm dialog (major).** 1.21's KDoc and the nineteenth-round note above said focus goes back
+  to the row's button when the dialog closes. For a TalkBack user it did not, on either path (checked against
+  androidx-main, 2026-09-22): a clickable's focus node is `Focusability.SystemDefined`, and `canFocus` is false while
+  `inputMode == InputMode.Touch`, which is TalkBack's mode, so after *Keep them* `requestFocus()` on the plain
+  `TextButton` did nothing; after *Remove copies* the button is disabled while the undo runs, and a disabled
+  clickable undelegates its focus node, so there was no target at all. The effect ran once, `runCatching` hid the
+  failure, and TalkBack fell back to the top of the window (the loss of place UX review 16, major 1 called a major).
+  The list now follows the Export screen's `focusSaveAfterRecovery`: (1) `focusUndoButton` is a `remember`ed flag in
+  `HouseListScreen` (not in the dialog, so it outlives the dialog and the undo), set when the dialog closes on either
+  button, Back or a tap outside, and only while `isTouchExplorationEnabled` (a touch user sees where they are); (2)
+  the row's one `TextButton` call site has `focusRequester(...)` and, while the flag is set, `focusProperties {
+  canFocus = true }` (keyboard and D-pad focus are unchanged otherwise); (3) `LaunchedEffect(focusUndoButton,
+  undoButtonEnabled)` returns unless both are true, then `withFrameNanos {}`, `requestFocus()`, `withFrameNanos {}`
+  and clears the flag. `undoButtonEnabled` is the row's `done || (canUndo && !undoing)` (and the row shown), so after
+  *Keep them* focus lands on *Undo this import* at once, and after *Remove copies* it waits (the undo sets
+  `undoingRun` before the dialog's callback returns, so the button is disabled in that same frame) and lands on
+  *Close* once the result is there, or on *Undo this import* if the undo failed. Tapping the button clears the flag.
+* **A failed undo's card can be closed (minor).** The ERROR card had no close button (only while the undo was on
+  offer did it have one) and its only action, *Undo this import*, reopened the confirm dialog, so a user who did not
+  want to retry could not clear the red card until they left the list. The card's close button now shows when the
+  undo failed too (the one `TextButton` call site is unchanged). Closing it hides the card for as long as that
+  failure is the news on this visit (a `remember`ed `hiddenFailure`, compared by identity with the outcome); it
+  writes nothing to the record (`rowHidden` stays false) and does not set the saveable `hiddenRun`, so the chip, the
+  Import screen's undo and, on a later visit, the row offering the undo again all stay. While a retry runs the card
+  is NEUTRAL "Removing the copies…" with no close button (the failed outcome is still the last one until the new one
+  arrives, and it had made the retry's card red).
+* **The checklist's 0–5 chips have the ✓ (minor; for the Design Director).** Their only non-colour cue was the
+  1 dp → 2 dp border with a stroke colour change (`outline` #7D8985 → `primary` #1F6F5C, about 1.6:1 between them),
+  and the fill is about 1.1:1 against the background: weak for WCAG 1.4.1, and unlike the web's
+  `.chip[aria-pressed='true']`, which has a ✓. They now lead with `ChipCheck` when selected, like the status and
+  Rent/Buy chips. Only the selected chip grows, by about 20 dp (the 18 dp icon and its gap, less the chip's smaller
+  start padding); the six chips are in a horizontally scrolling row, so at 320 dp and 200 % in ta/te the row scrolls
+  rather than wraps or clips. **Design
+  Director: please confirm** the ✓ on a digit chip (the alternative was a SemiBold label with the 2 dp border).
+* **The 1.12 change-log row** now says the Replace dialog's threshold is 540 dp since 1.18 (the history is
+  otherwise unchanged). docs/05 §14.1, §14.3 and §14.10 are still Docs' (section 9, item 21 (d)–(f)); §4.5's
+  `secondaryContainer` row is item 25 (a).
+* **Device check 19 (g) and (h) (round 20).** (g) TalkBack on, on the house list's undo row: (1) double-tap *Undo
+  this import*, then *Keep them*: TalkBack's focus is on *Undo this import* (not the top of the screen); repeat with
+  Back instead of *Keep them*. (2) Double-tap *Undo this import*, then *Remove copies*: "Removing the copies…" is
+  read, then the result, and TalkBack's focus is on *Close* once the result has been read. (3) When the undo fails (a
+  forced failure in a debug build; the undo only writes locally, so going offline does not make it fail): focus
+  lands on *Undo this import*, the error card has a close button, and closing it hides the card; leave the list and return: the undo is offered again. (4) With TalkBack off, none of
+  this moves focus. (h) The house form's checklist (rewritten in round 21; order changed by the whole-app audit, 1.24):
+  each row is 0–5 and then "–" as fixed 48 dp squares, the chosen one filled `primary` with no ✓; at 320 dp, 200 %
+  font, Tamil and Telugu, the row wraps, never scrolls, and no option is clipped or off-screen; no option moves when
+  another is chosen. **For the Design Director:** "–" is now last, so on a 360–391 dp phone (328–359 dp inside the
+  gutters) 0–5 stay on one line (6 × 48 + 5 × 4 = 308 dp) and only "–" wraps, instead of "5" alone on a second line in
+  every one of the ten rows. The alternative in the audit (44 dp squares with 2 dp gaps below 360 dp) was not taken:
+  it would put the targets under 48 dp.
+
+Twenty-first round (2026-09-22, Design and UX review of 1.22):
+
+* **Checklist score control (major; Design Director).** The ✓ asked about in 1.22 is not confirmed and is gone. It
+  made a score look like a filter (docs/05 §5 lists the checklist as a *segmented radio*, `.options .option`; the ✓ is
+  for toggle chips), it widened only the chosen chip so the ones after it moved on every tap, and it pushed "5" into a
+  sideways-scrolling strip at 320 dp and at 200 % on 360 dp. `ChecklistRow` is now the web's control, drawn like
+  `RatingRow`: a `FlowRow(selectableGroup(), 4 dp gaps)` of fixed 48 dp squares (`sizeIn(min 48 dp)`, 8 dp corner),
+  chosen = `primary` fill, 2 dp `primary` edge, `onPrimary` SemiBold `labelLarge`; otherwise `surface` with a 1 dp
+  `outline` edge; each a `selectable(role = RadioButton)` with "Water: 3 out of 5" as its name. The chosen state is a
+  lightness change (`primary` on `surface` 6.02:1 light, far above 3:1 dark; WCAG 1.4.1), the label 6.02:1 / about
+  10:1, the unselected edge 3.63:1 (1.4.11). A leading **"–"** (`house_check_option_none`, "Water: not rated") makes
+  "not scored" a choice, as on the web (UX-005: every rating can be cleared); tapping the chosen score again still
+  clears it. **Width, for the Design Director:** seven options are 7 × 48 + 6 × 4 = 360 dp, so a row fits one line
+  where the form is at least 360 dp wide (a 392 dp phone and up); on a 360 dp phone (328 dp inside the 16 dp gutters),
+  at 320 dp and at 200 % it wraps, and "5" starts the second line. The web's `.options` wraps the same way
+  (`flex-wrap`, and its options are wider). Without "–" the six squares (308 dp) would fit one line at 360 dp; if the
+  one-line row matters more there than parity and an explicit "not scored", dropping "–" is a one-line change.
+* **Rent/Buy (minor; Design Director and UX).** Two `FilterChip`s in a `selectableGroup()` read as "checkbox, checked"
+  for a one-of-two choice. Now a `SingleChoiceSegmentedButtonRow(fillMaxWidth)` with two `SegmentedButton`s
+  (`itemShape(i, 2)`), as Status above it: radio semantics, equal widths, M3's own tick. It moved above the price, whose
+  label it changes. The house list's `StatusChip`s keep the chip look (they are filters) but pass `semantics { role =
+  Role.RadioButton }`, which wins over FilterChip's `Role.Checkbox`, as in `SortMenu`.
+* **One look for "cannot be undone" (minor; Design Director).** New `DangerButton` (ActionBar.kt): `OutlinedButton`
+  with `error` content, a 1 dp `error` edge and 48 dp height, the Import screen's *Replace* treatment. Used for the
+  house list's *Remove copies* (was an error `TextButton`), the house form's *Delete* (was a plain `TextButton`) and
+  *Discard*. The safe choice stays a `TextButton`. docs/05 §5 to record it: section 9, item 26 (a).
+* **The draft survives recreation (major 1).** `draft`, `baseline` (what was loaded, or the new-house default) and a
+  new house's `id` are `rememberSaveable`; the draft through `HouseDraftSaver`, a flat `ArrayList` of Bundle-safe
+  values (the status by name, the checklist as `"key=score"` strings), so no `@Parcelize` or serializer on the Room
+  entity. The load effects skip a restored draft, so a rotation, the language switch, dark mode or process death
+  during the camera hand-off keeps what was typed and the new house is not geocoded again. The photo is written to
+  Room by the camera result, which the recreated activity still receives.
+* **Unsaved changes (major 2).** `dirty = draft != baseline`. `BackHandler(enabled = dirty || busy)` and the back
+  arrow go through `leave()`: when dirty, an `AlertDialog` titled "Leave without saving?" (`house_leave_title`) or,
+  for a new house, "Discard this new house?" (`house_discard_new_title`), with the web's `confirm.leaveUnsaved`
+  sentence "You have unsaved changes." (`house_unsaved_body`) and *Keep editing* (the dismiss action; also Back and a
+  tap outside), *Discard* (`house_discard`, the web's `house.discard`, as a `DangerButton`) and *Save* (saves, then
+  leaves). The hi/ta/te texts are the web's.
+* **Photo delete is undoable (major 3).** The trash button hides the photo at once (`pendingDelete`) and shows
+  "Photo 2 deleted" with *Undo* (`common_undo`) in the screen's `SnackbarHost`, `SnackbarDuration.Long` (10 s, which
+  M3 lengthens for accessibility users; its pane title makes TalkBack read it). The file and the tombstone go only
+  when the snackbar ends without *Undo*: then `Repository.deletePhoto` runs in the app scope, so it also happens when
+  the screen closes or rotates during the 10 s. Starting another delete, *Take photo* or *From gallery* first ends
+  the current snackbar (so the limit counts right). A delete still waiting when the process dies keeps the photo, the
+  safe side. With TalkBack on, focus goes to the next photo's delete button (the previous one for the last photo) or
+  to *From gallery* when none are left, with the list's `canFocus` + two-frame pattern. The web asks first
+  (`confirm.deletePhoto`); undo was the review's preferred fix.
+* **One exit per tap (major 4).** `busy` is set by `save()` and the delete dialog's *Delete* before their coroutine
+  starts, and a second call returns at once; both Save buttons and *Delete* are disabled while it is set, and the top
+  bar's Save shows a 20 dp `CircularProgressIndicator` named "Saving…" (`house_saving`). The delete dialog is closed
+  before the delete starts. `busy` is plain `remember`: a rotation cancels the coroutine, and a saved `true` would
+  leave Save disabled for good; the Room write itself is `withContext(NonCancellable)`, so it completes anyway. The
+  screen leaves through `LifecycleResumeEffect(finished)`, so an exit that lands while the app is paused happens on
+  its return. Root wraps the house, new-house, Export and Import `onDone` / `onBack` in `dropUnlessResumed`
+  (lifecycle-runtime-compose 2.9.4, checked in androidx-main), so a second pop during the exit transition is ignored.
+* **Not on this phone (major 5).** The route watches `repo.house(id)` wrapped as `RoomAnswer`, so "not answered yet"
+  and "no row" differ. An existing-house route whose row is missing or a tombstone shows `HeroEmptyState` (search
+  glyph, "This house is no longer on this phone.", a line on why, *Back to your houses*, which opens the Houses tab),
+  with no Save or Delete in the top bar and no default house built. If the row turns deleted while the form is open
+  (sync, an import undo, another device), an ERROR `ResultCard` at the top ("This house was removed on another device
+  or by an undo. Your changes cannot be saved.") appears in an assertive live region and Save is disabled; the leave
+  guard is off, as there is nothing to save. The form's own Delete sets `busy`, so it never shows that card.
+* **Photo errors where the user is (major 6).** The limit and unreadable messages are an ERROR `ResultCard` (warning
+  glyph, close button) right under *Take photo* / *From gallery*, kept as `photoProblem` (the `AddPhotoResult`, so it
+  follows a language switch). Every message area on the form (this one, the paste result under *Paste listing*, the
+  removed card, the Paste dialog's busy and error lines) is a `LiveMessage`: a `Box` with the live region that is
+  always composed and at least 1 dp tall. Checked in androidx-main: a node of zero size is not in the accessibility
+  node map, and a subtree change is reported on the nearest semantics node, so the region must exist, with a size,
+  before the message. Closing the photo error moves TalkBack's focus to *Take photo*.
+* **Minor.** *Clear rating* (`house_clear_rating`, the web's `house.clearRating`), a 48 dp text button after the
+  stars, always there and disabled with no rating, so nothing jumps. Name, address, street, locality and contact
+  name use `KeyboardCapitalization.Words`; notes `Sentences` (multi-line, so Enter stays a new line); every
+  single-line field has `ImeAction.Next`, the listing link `Done`. The price shows `Formats.price` live as its
+  supporting text (₹1,00,00,000, ₹25,000 / month, in the app language). The Paste dialog keeps its `Job`; *Cancel*
+  and Back stay enabled while it runs and cancel it; only a tap outside is ignored then. On the list, closing the undo
+  row with TalkBack on moves focus to the "Just imported" chip, or the first status chip once that is gone; and
+  `outcomeBefore` and `hiddenFailure` are `rememberSaveable` by `Outcome.key` (run id + the new `finishedAt`), so a
+  rotation neither drops "Removed 40 copies." nor brings a closed failure back. A closed failure now stays closed on
+  a return from a house or another tab (the list's saved state), and the undo is offered again by a new list.
+* **Device check 20 (round 21).** (a) Open a house, type in Notes, tap *Take photo*, run `adb shell am kill
+  app.doorprints` while the camera is open, take the photo, return: the notes and the new photo are both there.
+  Repeat with a rotation and with the in-app language switch. (b) Open a house from the Map, double-tap Save (and
+  tap the top-bar Save then the bottom one): one pop, back on the Map with the bottom bar. Same with the delete
+  dialog's *Delete*. (c) Delete a house, then open it through its notification (or `adb shell am start -n
+  app.doorprints/com.househunt.app.MainActivity --es openHouse <its id>`): "This house is no longer on this phone."
+  and *Back to your houses*; no form, no Save. (d) Edit a house, press Back: the leave dialog; *Keep editing* keeps
+  the edits, *Discard* leaves, *Save* saves and leaves; with nothing changed Back leaves at once. (e) Delete a photo:
+  it goes, "Photo 1 deleted" is read, *Undo* brings it back; without *Undo* it is gone after 10 s and after a sync on
+  the web too. With TalkBack, focus lands on the next photo's delete button. (f) Add a 21st photo (the limit is 20): the limit
+  card appears under the photo buttons and TalkBack reads it. (g) With the form open, undo the import that added it
+  (or delete it on the web and sync): the red card appears and Save is disabled.
+
+Whole-app audit (2026-09-22, Senior Lead UX Developer; this README 1.24):
+
+* **Deep links (blocker).** `MainActivity` acts on a notification's extras once: `handle(intent)` only when
+  `savedInstanceState == null`, `setIntent` in `onNewIntent`, the five extras removed after use, and nothing from an
+  intent launched from history. Root skips a house already on top (same id) and a new-house form already on top for
+  the same visit, opens the saved house for a visit that already has one, and opens Settings with the tab options.
+* **House form.** Exits go through `FormExit` (Done, Created, Deleted) in the `LifecycleResumeEffect`. A new house's
+  first save navigates to `house/{id}` popping the new-house route, and the house entry shows "Saved" once
+  (`justSaved` in its `SavedStateHandle`). `seenUpdatedAt` (saveable) is the newest row version the user has seen or
+  overridden; a newer row replaces an untouched form, and an edited one shows the warning and disables Save until
+  *Show their version* or *Keep mine*. The pure rules (`fillPlace`, `mergeListing`, `parseCoordinate`,
+  `sortByPrice`, `visitIsRecent`, `lastFixUsable`) are in `HouseFormRules.kt`, tested by `HouseFormRulesTest`. Photo
+  deletes waiting for *Undo* live in `PhotoDeleteViewModel` (the entry's scope), committed when the snackbar ends or
+  the entry is cleared. A deleted house is handed to the previous entry's `SavedStateHandle` (`deletedHouse`); the Map
+  and the list offer *Undo* for 10 s (`offerDeletedHouseUndo`).
+* **Map.** Permissions are asked only in context; `map_permissions` (SharedPreferences) remembers that location was
+  asked, so "never ask again" shows *Open settings* (since 1.25 in `LocationPermission.kt`, set by every screen that
+  asks: the Map, the house form and the Assistant; `rememberLocationAsk` recomputes `asked` / `canAsk` on resume and
+  after each answer; since 1.26 also `access`, so approximate-only location gets its own note, `LocationPermissionNote`,
+  shared with the form and the Assistant). The top band is capped by `topBandMaxHeightDp` (`MapRules.kt`) against the
+  bottom stack's measured height and scrolls. The camera is a saveable `CameraSpot`, set on camera idle only once
+  `framed` is true (1.25: the first framing, a restored camera, or a user gesture, zoom button or *My location*); the
+  first framing fits all houses (`newLatLngBounds`, 64 dp padding, at most zoom 16), or one house at 15, or the
+  user's location at 16. `addOnDidFailLoadingMapListener` sets the error card. The Hunt card's live region is a 1 dp
+  node whose description is built from the street, the nearest house's name and the GPS state.
+* **Sync health.** `SettingsStore.saveSyncResult` counts failures in a row (`syncFailures`, `syncFailingSince`,
+  `lastSyncOkAt`; reset by a new server or key); `SyncHealth.warningSince` decides the list's warning, tested by
+  `SyncHealthTest`.
+* **Device check 21 (whole-app audit).** (a) Open the app cold from a "You passed …" alert, press Back, rotate twice and
+  switch the language: only the Map shows. From a "stay here?" alert: rotate on the form: still one form; save it and
+  tap the alert again: the saved house opens. (b) On a 360 dp phone tap Listing link and type: the field stays above
+  the keyboard; delete a photo with the keyboard up: *Undo* is above it; same for Settings' API key and the
+  Assistant's question. (c) Save a new house: the form stays, "Saved" is read, *Take photo* is there. Offline, open a
+  new-house form: it shows at once with "Finding the address…". (d) **Release gate (since 1.29).** Name houses
+  "பச்சை வில்லா", "हरा विला" and "పచ్చ విల్లా" and look at their map labels at 100 % and 200 % font: if a conjunct
+  renders broken (or as boxes), set `MAP_LABELS_SHOW_INDIC` to false in `MapRules.kt` before the release, so the label
+  layer shows only names in other scripts (item 27 (b)); the dots and the Houses tab still show every house. A long
+  name wraps after about 8 characters' width, and at 200 % font the labels are half as large again, not twice. (e) At 100 %
+  in ta and te the Status radios do not break a word; ● ★ ✕ show but TalkBack says only the status. (f) At 200 % in ta
+  and te the bottom bar's labels are one line (ellipsised) and TalkBack reads them whole. (g) Tap a thumbnail: the
+  viewer opens, swipes, says "Photo 2 of 5", Back closes it and TalkBack is on the thumbnail. (h) Fresh install: the
+  Map asks nothing; turning Hunt mode on asks for location, then shows the notification reason; refuse
+  notifications: the card says so with *Allow notifications*. Refuse location twice: *Save house here* offers *Open
+  settings*. (i) Airplane mode, clear data, open the Map: "Loading the map…", then the error card; *Open Houses* goes
+  to the Houses tab. (j) TalkBack, Hunt mode on, walk: the distance is not read out; a new street or nearest house is.
+  (k) Compare three houses, open one from the header, come back: the same three; swipe the table sideways: the labels
+  stay; TalkBack reads a row as "Parking: …, 3 out of 5; …, not scored". (l) Ask the Assistant, open a cited house,
+  come back: the answer is there; rotate: still there. (m) Revoke the API key on the server and sync three times: the
+  Houses list shows "Sync has not worked since …" with *Open Settings*. Added in 1.25 (round 2): (n) **Framing.**
+  Save 3 houses far apart, force-stop the app and open it cold: the Map frames all 3 (not India at zoom 4); open a
+  house and come back: the same view. With no houses and location allowed, a cold start frames the user's location
+  at zoom 16. Pan the map before it finishes loading: it stays where you panned. (o) **Field pairs.** On a 360 dp
+  phone at 100 % and at 115 % font (the "Large" default of several OEM builds) in en, hi, ta and te: Rent ₹/month and
+  BHK, Street and Locality, Latitude and Longitude are side by side and no label is cut off, in particular
+  அட்சரேகை / தீர்க்கரேகை, అక్షాంశం / రేఖాంశం and "வாடகை ₹/மாதம்", both inside the empty field and as the floated label
+  once a value is typed; at 130 % they stack. The Design Director confirmed this rule (stack below 300 dp of room
+  inside the gutters, or from 1.3× font; `stackFieldPair`, replacing 1.24's 360 dp) in the feedback of 2026-09-22
+  (README 1.26); if a Tamil or Telugu label is cut off at 100 % or 115 % on a 360 dp phone, raise
+  `PAIR_STACK_BELOW_DP` rather than stacking for everyone. (p) **Typing in the Assistant.** With a Tamil (and a Hindi) keyboard, type a long question fast and
+  with composing suggestions: no character is lost and the cursor stays at the end; rotate: the question is still
+  there. (q) **Location refused elsewhere.** Fresh install: refuse location twice from the house form's *Use my
+  current location*: the form says "Location is off for Doorprints. Allow it, or type the latitude and longitude below."
+  with *Open settings* (since 1.27). Then on the Map tap *Save house here*: no prompt and no snackbar (since 1.28);
+  the band scrolls to the Hunt card's note, whose button says *Open settings* (no silent refusal). Same after refusing twice from the Assistant's *Allow location*, whose button then says *Open
+  settings*. On *I am here now* after typing new coordinates without saving: the visit uses the saved place.
+  Added in 1.26 (round 3): (r) **Approximate location.** On Android 12+, fresh install, choose *Approximate* in the
+  prompt from each of: the Map (Hunt switch), the form's *Use my current location* and the Assistant's *Plan visits*.
+  Each shows the same amber note, "Doorprints has only your approximate location. Hunt mode and Save house here need
+  precise location.", with *Turn on precise location* (never "Location is off" or red text); the button shows
+  Android's "Change to precise location?" prompt, and *Precise* there makes the note go and the action continue. Decline
+  it until the button says *Open settings*: the note adds "In settings, open Permissions, then Location, and turn on
+  Use precise location.", and the settings page has that switch. In hi, ta and te the same. (s) **Large text on the
+  Map.** ta and te, 360 dp phone, 130 % and 200 % font, Hunt mode on with a street, the nearest house, weak GPS and
+  notifications off; then tap *Save house here* so "Finding your location…" shows in the snackbar: no text sits under
+  a button (since 1.27 the snackbar may cover the card for its few seconds, and the card keeps its height), the card
+  scrolls, *Allow notifications* is reachable, and at 200 % the card still leaves
+  the map visible. (t) **Finding your location.** Tap *Save house here* in ta at 130 %: the button keeps its label
+  and width, only the icon becomes a spinner; with TalkBack, *My location* and *Save house here* are read by name with
+  "Finding your location…" as their state while it runs. (u) **Reduced motion.** Open the Map, turn on *Remove
+  animations* in settings, come back: Zoom in and *My location* jump without animating. Also: open the Map after one
+  refusal (Android will still ask): the Hunt card's button reads *Allow location* from the first frame; the house
+  form in landscape and on a tablet is at most 640 dp wide and centred, and Location follows Street / Locality.
+  Updated in 1.27 (round 4): in (r) the approximate note gives each screen's own reason: the Map "Hunt mode and ‘Save
+  house here’ need precise location.", the form "Placing this house needs precise location, or type the latitude and
+  longitude.", the Assistant "‘Plan visits’ needs precise location to start from where you are.", each after
+  "Doorprints has only your approximate location."; the settings sentence names ‘Use precise location’. In hi, ta and
+  te, compare the quoted ‘सटीक जगह का इस्तेमाल करें’ / ‘துல்லியமான இருப்பிடத்தைப் பயன்படுத்து’ / ‘ఖచ్చితమైన స్థానాన్ని
+  ఉపయోగించండి’ with the real switch label on an Android 12+ phone set to that language, and adjust the wording (or drop
+  the quotes) if it differs. On the form, refuse location: "Location is off for Doorprints. Allow it, or type the
+  latitude and longitude below." Added in 1.27 (round 4): (v) **Short map.** On a 360 × 800 dp phone in landscape,
+  and in a 50/50 split-screen (both halves, portrait), at 100 % and 200 % font in en and ta: the controls are one row
+  at the bottom right ([Zoom out][Zoom in][My location][Save house here]; *Save house here* may wrap to a second line
+  in split-screen), the Hunt card's switch toggles Hunt mode (never Zoom in), and after refusing location the Hunt
+  card's note is readable (the card scrolls inside its band, and scrolls to the note) with its button reachable and
+  never covered by a snackbar. Tap *Save house here* (location allowed): on the 800 dp landscape phone "Finding your
+  location…" shows at the bottom left, beside the row, covering neither the Hunt card nor a button (updated in 1.28);
+  in split-screen, where it does not fit beside the row, it shows above the row; either way the Hunt card does not
+  change height. Same on a half-open
+  foldable in tabletop posture. (w) **Said once, asked at once.** On the Map refuse location from the Hunt switch:
+  no snackbar (since 1.28); the Hunt card's note appears after the prompt closes, the band scrolls to it, and
+  TalkBack reads the full sentence once, politely. Refuse again (Android then stops asking) and tap *Save house
+  here*: nothing starts, the band scrolls to the note, and with TalkBack focus moves to the note ("Location is off
+  for Doorprints…", then *Open settings*); without TalkBack there is also a "reject" buzz and a short snackbar with
+  the same text and *Open settings* (since 1.29, see (x)). With a hardware keyboard, a snackbar over the note's button
+  offers the same *Open settings*. In the Assistant with no location, the first tap on *Plan visits* shows Android's prompt (no "Planning…"
+  flash first); refuse: the amber note ("Location is off for Doorprints. ‘Plan visits’ needs it to start from where
+  you are.", since 1.28) appears and TalkBack reads it politely (it does not interrupt). Once Android will not ask
+  again (refused twice, or approximate only and the precise prompt declined), each tap on *Plan visits* shows the
+  note at once, with no "Planning…" or progress bar in between (since 1.28). Then allow precise location in system settings and come back: planning starts by itself; the red "Your
+  location is not available." never shows. The warning sign in every amber note sits centred on the first line in
+  en and ta at 100 % and 200 % font. Added in 1.28: the location note's text is the size of its button's label
+  (bodyMedium), not the smaller privacy-hint size; in Hunt mode a weak GPS signal ("Weak GPS (±N m)…") is grey,
+  not red. **Markers (1.28).** With a new, a shortlisted and a rejected house near each other, at zoom 8, 14 and 18
+  (and with the phone's colour correction or a greyscale filter on): the shortlisted dot is the largest with a
+  thicker white ring, the rejected one the smallest and slightly see-through, the same as on the web map; a name
+  label never sits on its dot, and a tap anywhere on the largest dot opens its house. Added in 1.29 (round 6): (x)
+  **Legend and feedback.** Portrait 360 dp phone, en and ta, 100 % and 200 % font: the legend (● New, ★ Shortlisted,
+  ✕ Rejected, dots sized like the markers) sits bottom left beside *Save house here* (one item per line), or above
+  it when the button is too wide, never under a button; it is absent while "Loading the map…" or the error card
+  shows. Landscape and split-screen: it is the first item of the bottom row and wraps onto its own line when the row
+  is too narrow; the Hunt card never overlaps it. TalkBack reads "Legend", then each status name, not the dots. The
+  Hunt card's edge lines up with the right edge of the buttons (16 dp), and a drag just below the card pans the map.
+  With TalkBack off and location refused twice, tap *Save house here*: the phone gives a short "reject" buzz and a
+  snackbar near the button says "Location is off for Doorprints…" with *Open settings*, which opens the app's page; with
+  TalkBack on, no snackbar, and focus moves to the Hunt card's note (unchanged). In the Assistant, with TalkBack and
+  location refused twice, a second *Plan visits* moves focus to the note; double-tap *Ask*: the same button says
+  *Cancel* and keeps focus, and a second double-tap cancels. Updated in 1.30 (round 7): the legend's place follows
+  its measured width, so in ta on a 412 dp phone it sits above *Save house here*, not beside it, and in ta at 200 %
+  font on a 360 dp phone it is the last item of the Hunt card's band; no status name ever breaks mid-word, and the
+  three names start on one line. In landscape it sits at the bottom left on its own, with the four buttons at the
+  bottom right; while "Finding your location…" shows beside the row, the legend is hidden and comes back after.
+  Updated in 1.31 (round 8): the legend's three items are on one line, or one per line, never two and one; in ta at
+  every density the longest name ("நிராகரிக்கப்பட்டது") is never cut or wrapped; beside the landscape row the legend
+  fades out and back in around a snackbar (instantly with *Remove animations* on). In a 360 dp phone's refused-tap
+  snackbar, *Open settings* is on its own line in en, hi, ta and te alike; *Undo* stays beside its message. In
+  landscape, on a tablet or a foldable, the Assistant and Settings are a centred column at most 640 dp wide, as the
+  house form. After *Save and test* with a well-formed https address that no server answers, the result is a red card
+  with a warning sign, read at once; tap it again: the same result is read again (updated in 1.32: a malformed or
+  non-https address shows the field's own error, moves focus to the field and shows no card, not even the last one;
+  updated in 1.33: typing in the field brings no card back, and *Sync now* after a rejected address shows its own
+  result, read at once if it failed). The
+  refused-tap snackbar is one sentence ("Location is off for Doorprints." or "Doorprints has only your approximate
+  location."), stays about 10 s, and *Open settings* is on its own line under it. In the Assistant, *Ask* / *Plan
+  visits* and *Cancel* are full width and the same size. Updated in 1.32 (round 9): 800 dp landscape phone, en and ta:
+  in the Assistant the title, the tab indicator's panel and the field share one left edge, and each tab is half of the
+  640 dp column, not half the screen; with the assistant off, the title lines up with the "not available" message. A
+  failed *Ask* or *Plan visits* (no server, or precise location allowed but no fix) is a red card with a warning sign,
+  read at once; "Answer ready" / "Plan ready" stay small grey text and a refused location the amber note. In Settings,
+  during *Save and test* or *Sync now*, the last result card stays in place, dimmed, with a progress bar along its
+  foot, and nothing below it moves; a failed automatic backup is a red card with a warning sign. Updated in 1.33
+  (round 10): the dimmed card's text stays at full contrast (only its icon and border are dimmed), and TalkBack on it
+  says "Updating…" after its text; in the Assistant, *Ask* or *Plan visits* again after an error keeps the red card
+  in place in the same way ("Thinking…" / "Planning…"), and the answer or route below does not move; on a landscape
+  phone (under 480 dp tall) the Assistant shows the tabs without the title, and at 200 % font in ta and te with the
+  keyboard up the field and *Ask* are both reachable. Added in 1.30: (y) **MapLibre's own controls.** Portrait
+  (360 and 412 dp) and landscape, en and ta, 100 % and 200 % font, legend shown: MapLibre's logo is gone; its
+  attribution "i" sits at the bottom left on the 16 dp gutter 8 dp above the legend's place (or at the bottom edge when
+  the legend is in the band), fully visible except as in known minor (e), and one tap on it opens the OpenStreetMap /
+  OpenMapTiles / OpenFreeMap credits; in a 50/50 split-screen at 200 % font it is above the controls' row, never under
+  it. Updated in 1.32 (round 9): the "i" stays where it is while the legend fades out and back in around a snackbar
+  beside the landscape row (it no longer jumps down and back up); on a landscape map about 700 dp wide (split-screen
+  or a foldable) in ta at 130 % font, where the legend is one item per line and the snackbar goes above the row, the
+  snackbar and the bottom of the Hunt card's band stay clear of the "i". Updated in 1.33 (round 10): while a snackbar
+  sits beside the landscape row ("Finding your location…", up to 15 s), the "i" is hidden with the legend, never half
+  covered, and comes back in the same place, whole and tappable, when the snackbar goes. Since 1.31 (round 8)
+  the map is north-up: a two-finger twist or a two-finger drag up or down neither rotates nor tilts it, no compass
+  ever shows, and a map left rotated by an older build comes back pointing north. Known minors, accepted for release: (c) on a narrow row layout (split-screen), the add-house tip
+  snackbar, shown above the row for its few seconds, can cover the Hunt card note's button (the snackbar has a close
+  button, and the note's action is also reachable after it goes); (d) a snackbar beside the row that wraps to three
+  or more lines can rise into the bottom of the Hunt card's band (the round-7 refusal snackbar is one sentence, so
+  only a long tip or GPS message on a narrow landscape map does this); (e) since 1.33, while a snackbar sits beside the
+  landscape row (about 10 s, and up to 15 s for "Finding your location…", which stays until a fix or the 15 s
+  timeout), the attribution "i" is hidden with the legend instead of being half covered (1.32), so the OpenStreetMap /
+  OpenFreeMap credits are one tap away again only once the snackbar goes; the "i" does not move, and comes back whole
+  and tappable.
+
+### Deferred to Sprint 4b
+
+* **A mini-map with a draggable pin on the house form** (UX review, whole-app audit, round 3). The form's Location
+  section follows Street / Locality since 1.26, as on the web, but correcting a misplaced house still means *Use my
+  current location* or typed coordinates; the web has a map pin. A small MapLibre view with a pin the user drags
+  (and a TalkBack alternative: the coordinate fields stay) belongs next to *Use my current location*.
+* **The Hunt switch within one-handed reach** (round 3). The switch and its status sit in the Map's top band, the
+  hardest place to reach on the flagship "walking the street" feature. Consider a bottom sheet that peeks above the
+  buttons with the switch and the street / nearest house, keeping the top band for transient notes only.
+
+* **Opening a backup from another app.** A backup shared through WhatsApp or Gmail cannot be opened with
+  Doorprints yet: add an `ACTION_VIEW` / `ACTION_SEND` intent filter for `application/zip` and `application/json`
+  that opens the Import screen with the `Uri` already picked (`vm.pick(uri)`); the preview is the safety step, so
+  arriving this way is safe. The empty house list's *Import a backup* button (1.12; relabelled in 1.15) is the
+  Sprint 4a part.
+* **Readable-copy file names** (docs/12 G.3 rule 4). Backups are already `Doorprints-backup-<date>.zip`; the HTML,
+  PDF, XLSX, Markdown and CSV copies are still `Doorprints-<date>.<ext>` (`ExportFormat.fileName`, pinned by
+  `ExportFormatTest`) and become `Doorprints-copy-<date>.<ext>` in Sprint 4b, as the web's HTML copy already is.
+* **A separate "no space" import problem.** `WRITE_FAILED` covers any write or SQLite failure, so its copy now
+  says "Check that the phone has free space"; a distinct `NO_SPACE`, as `ExportProblem` has, would let it say so
+  outright.
+
+* **`ExportScope.SELECTED`.** The scope is implemented and tested in `:shared`
+  (`ExportRowsTest.selectedScopeKeepsOnlyTheTickedHouses`), but the Android export screen offers only "All
+  houses" and "Shortlisted only". Picking individual houses needs a checkable list on the export screen — the
+  Compare screen's multi-select is the pattern — and that UI is deliberately not in Sprint 4a. docs/11
+  section 5.2 lists the option as "all / shortlisted / selected houses", so **the Docs team should note the
+  partial delivery against that line** until the picker ships.
+
+* **Re-importing after a restore over a synced tombstone.** The photos of such a restore arrive under fresh ids.
+  Importing the *same* backup again later sees the backup's old photo ids as absent from the phone and the house
+  as live, so it writes those photos a second time under their old ids; the server ignores those uploads (the ids
+  are tombstones there), so the duplicates stay on this phone only. This is the pre-existing merge gap for any
+  photo id the server holds a tombstone for (the same happens after a plain merge whose file is newer than such a
+  tombstone). The fix needs the set of server-tombstoned photo ids on the phone (kept from the pull instead of
+  deleting the row), or the backend alternative in section 9 item 18.
+* **Restores between the two halves of a sync.** `ImportPlan` sees what the phone has, not what the server did.
+  Case 1 (a delete not yet pushed, then a restore, gave a photo the phone never had a fresh id and it showed twice
+  on the web) is fixed in 1.15 by `syncedDeletedHouseIds`. Case 2 remains: a sync that pushed the delete but
+  failed before its pull leaves the visits still linked and the photo rows still here, so the restore writes
+  neither; the next pull then unlinks the visits and removes the photos. It is rare. The fix now that the synced
+  set reaches `ImportPlan`: for a house in it, relink every visit of the house (not only loose ones) and re-add
+  every photo under a fresh id even when its row is still on the phone.
+
+* **Two edges of the unlinked-visit fix.** (1) The export screen enables Save only when at least one house
+  matches, so a phone that has Hunt-mode visits but **no house at all** cannot make a backup yet; the visits are
+  kept on the phone, and the first house makes them backed up. (2) A visit that still points at a house deleted
+  **on this phone** is not carried: Android tombstones the house but leaves the visit's `houseId`, and an import
+  would skip a visit whose house it does not have anyway. The server unlinks such visits when the delete reaches
+  it, and once that unlink syncs back they are ordinary unlinked visits and are backed up. Offering the backup
+  with no houses, and unlinking locally on delete as the server does, are Sprint 4b items.
+
+Known gap against docs/11 section 5.2: the spec lists seven CSV tables. Four exist today — `houses`, `scores`,
+`visits`, `photos` — because rooms, question answers and viewings are Sprint 4b features (S4-10, S4-11, S4-12) and
+have no data to export yet. `ExportRows.tables` is the single place they get added, and `scores` already carries the
+criterion key next to its label so Sprint 4b's custom criteria (docs/11 section 5.4) need no format change.
+
+## 9. Handovers (Android, 2026-09-22)
+
+Each item is in another team's files, so it is recorded here and in the Android summary to the coordinator rather
+than edited across the ownership line. The Docs team owns `docs/10-sprint-log.md`; please copy items 1, 3, 6, 7,
+8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33 and 34 into its Sprint 4a handover list. Updated in version 1.9: item 2 is decided, item 4 is done.
+Version 1.10 adds items 10 and 11. Version 1.11 marks item 5 done by DevOps and adds items 12 and 13; item 12
+supersedes the parts of item 10 it names. Version 1.12 adds items 14 and 15. Version 1.13 adds items 16 and 17;
+item 16 supersedes the parts of item 14 about deleted houses and the Replace dialog, and item 17 the "copy is the
+way back" advice of item 15. Version 1.14 qualifies item 16 (see its last sentence) and adds item 18. Version 1.15
+updates items 16 and 17 (their "Added in 1.15" sentences) and adds items 19 and 20; item 20 supersedes the
+*Restore from a backup* label in items 14 and 16. Version 1.16 adds item 21, which supersedes the first-run
+button description in items 16 and 20. Version 1.17 extends item 21 (docs/05 row 4.1.3, the new and renamed
+strings, the no-match copy) and adds item 22. Version 1.18 extends item 21 again (docs/05 §14.1 key name,
+§14.3 dialog height) and adds items 23 and 24. Version 1.20 extends items 23 (the undo's states, its place on the
+house list, the new strings and the I18N-B06 additions) and 24 (f–h). Version 1.21 adds item 25, which supersedes
+the *Dismiss* label, the `common_dismiss` entry and the unconfirmed list undo in items 10 and 23 (f), and extends
+item 24 (i). Version 1.22 extends item 25 (d). Version 1.23 adds item 26, which supersedes the checklist sentence of
+item 25 (d) ("the ✓ on a selected chip now covers the house form's checklist 0–5 chips too"). Version 1.27 adds
+item 29, which supersedes the approximate-location sentence and the three-string list of item 28 (a) and (d).
+Version 1.28 extends item 29 (c) and adds item 30, which supersedes the refusal-snackbar sentences of item 29 (a)
+and (b). Version 1.30 adds item 32, which supersedes the snackbar sentence of item 31 (b). Version 1.31 adds item 33.
+Version 1.34 adds item 34 (rounds 9 and 10, README 1.32 and 1.33) and extends the docs/10 copy list above to items
+28–34.
+
+| # | To | What | Where it lands |
+|---|---|---|---|
+| 1 | **Docs** | **Turning the weekly backup off now forgets its folder.** The folder's persisted grant is released, the stored folder is cleared and the last error is cleared too (it described a setup that no longer exists). Turning the backup on again therefore opens the folder picker. Choosing a different folder releases the old folder's grant. A run already writing keeps the grant until it ends, so it can still delete its `partial-` file. (`SettingsScreen`, `AutoBackupWorker.releaseFolder`, shipped in round 5.) | docs/10 S4-07 result cell; docs/05 (Settings: automatic backup behaviour and the picker on re-enable) |
+| 2 | **Backend** | **Decided: option (b), see docs/schemas/README.md §4.4 / S4-00/g — done on Android in 1.9.** An absent **or `null`** `checklist` reads as `{}` in `:shared` too (`LenientChecklistSerializer` on that one property, not `coerceInputValues`), on both the streaming and the tree decoder; `"status": null` is still refused. The pinning test was renamed from `checklistLeniencyAsItStandsToday` to **`BackupTest.checklistAbsentOrNullReadsAsNoScores`**. Backend can mark **S4-00/g done**, drop "Open on Android" from §4.4 and point its references to the new test name. The optional preview line is shipped too (`ImportPreview.checklistsCleared`); note for §4.4 that the device also warns for a newer explicit `{}`, because its reader cannot tell it from absent or `null`. | docs/schemas/README.md §4.4, §9 (S4-00/g row) |
+| 3 | **Docs** | **Persisted SAF grants and a new foreground-service type.** (a) A "Save to…" export takes a persistable read+write grant on the document it creates (write-only as a fallback), so Stop, a retry and the notification's Open/Share still work after the user leaves the app. It keeps the newest **5** (`ExportGrants.KEPT`) and releases the rest, and releases the grant of a failed or abandoned run. (b) The weekly backup holds one persisted grant on its folder (item 1). (c) `AndroidManifest.xml` adds `FOREGROUND_SERVICE_DATA_SYNC` and declares WorkManager's `SystemForegroundService` with `foregroundServiceType="dataSync"` (merged), which Android 14+ requires for the long export, import and backup jobs that run in the foreground. | docs/02 (the app's persisted access to user-chosen documents: a bounded asset, released on failure) and docs/04 (the export/backup data flows: device → user-chosen SAF location, grant lifetime); docs/07 or 03 if they list manifest permissions; docs/10 handover |
+| 4 | **Backend** | **Done by Backend in schemas README 1.3** (S4-00/a marked done, the §5 divergence closed). No further action. | — |
+| 5 | **DevOps** | **Done by DevOps (seen in 1.11):** `android.yml` now triggers on `docs/schemas/**` in both `paths` lists, with a comment naming `CanonicalSampleTest`. No further action. Original request: `CanonicalSampleTest` reads `docs/schemas/backup-sample.json`, but `android.yml` only triggers on `android/**`. A change to the sample alone does not run the Android tests that check it. Please add `docs/schemas/backup-sample.json` (or `docs/schemas/**`) to both `paths` lists, with a comment naming the reader, as `backend.yml` does for `CanonicalSample`. | `.github/workflows/android.yml` |
+| 6 | **Docs** | Ticket S4-00/e: docs/06 TC-I-34 can now say the sample is pinned on the server **and on Android** (parsed JSON, `CanonicalSampleTest`), with the web's byte golden still S4-00/b. Also add the bare `data.json` import to TC-I-34 or a new case, and add it to docs/11 section 5.2 or 14.1 where the import sources are listed. | docs/06, docs/11 |
+| 7 | **Web** | **Backups drop visits that belong to no house** — the same gap Android closed in 1.9. `export-model.ts` skips every visit with no `houseId` (`if (visit.deleted \|\| !visit.houseId) continue`), so a web backup of a store that holds such visits (restored from a server or phone backup, or synced) loses them on restore. Suggested shape, matching Android: carry them, for scope "all" only, in a separate list sorted by `arrivedAt`, then `id`, used only by the `data.json` writer (`backup-export.ts`), appended after the grouped visits; the manifest counts them; the tables and their goldens stay as they are. Also for the web importer: schemas §4.4 asks device importers to show the "checklist scores will be cleared" line in the preview; Android's is `ImportPreview.checklistsCleared` (newer row with an empty checklist over a house that has scores, MERGE only). | web/src/app/export (export-model.ts, backup-export.ts, the import preview) and its tests |
+| 8 | **Backend** | Schemas README §5 calls "the device writers drop rows whose house is not in the file" a **known parity gap**. Android closed it in 1.9 (`ExportBundle.unlinkedVisits`, written last); the web side is item 7. §5 can say Android now writes them, scope "All houses" only, and keep the gap open for web until item 7 lands. If the canonical sample gains an unlinked visit to pin it, `CanonicalSampleTest` already feeds sample visits through `ExportBundle.build` and will check it. | docs/schemas/README.md §5, §9 |
+| 9 | **Docs** | Two user-visible changes for docs/05 (import preview) and docs/11 section 5.2 (backup contents): (a) the import preview has a new warning line, "Houses whose checklist scores will be cleared, because the newer version in the file has none: N", in en/hi/ta/te; (b) a JSON backup made with "All houses" now also holds the visits Hunt mode recorded at places that are not houses yet, and the export screen's visit count for a backup includes them. The two known edges (no backup possible with no house at all; a visit of a house deleted on this phone is not carried until the server's unlink syncs back) are in section 8, "Deferred to Sprint 4b". | docs/05, docs/11 §5.2, docs/10 handover |
+| 10 | **Docs** | **docs/05 (to 0.8), from the Design and UX review of 2026-09-22 (this README 1.10).** **§14.3** (the Design director asked for this with the fix; it is in Docs' file): (a) the import screen now uses the Export screen's sticky action bar — the intro, *Backup made on*, the mode and the preview scroll; one status line and full-width 48 dp buttons sit at the bottom: no file → **Choose a backup file**; checking → "Checking the file…" + indeterminate bar + *Cancel*; refused → error card + **Choose another file**; ready → "File checked…" + *Choose another file* · **Import**; nothing to do → neutral card "Nothing would change…" + **Choose another file**; importing → "Importing…" + determinate bar + *Stop*; imported → result card + *Choose a backup file* · **See your houses** (hi "अपने मकान देखें", ta "உங்கள் வீடுகளைப் பார்", te "మీ ఇళ్లు చూడండి"); stopped/failed → card + **Choose a backup file**. (b) The confirmation row: *Import as a copy instead* **only switches to copy mode** — the preview redraws and a status line says "Showing what adding copies would change. Nothing is imported until you tap Import." (`import_copy_shown`, 4 languages in `values*/strings.xml`); the dialog's buttons are stacked, safest first: *Import as a copy instead* (tonal), *Replace* (outlined, error colour; hi "बदल दें", ta "மேலெழுது", te "భర్తీ చేయండి"), *Cancel*. (c) The preview line pattern is now label + number in its own column, so the §14.3 checklist-line copy loses its trailing ": *n*" in all four languages; lines are grouped houses / visits / photos, with a + sign for new items and the warning sign in the error colour on the two loss lines. (d) The mode row: the copy hint is now "Nothing on this phone is changed. Houses you already have will appear twice." (hi "इस फ़ोन पर कुछ नहीं बदलेगा। जो मकान पहले से हैं, वे दो बार दिखेंगे।", ta "இந்தத் தொலைபேசியில் எதுவும் மாறாது. ஏற்கெனவே உள்ள வீடுகள் இரண்டு முறை தோன்றும்.", te "ఈ ఫోన్‌లో ఏదీ మారదు. ఇప్పటికే ఉన్న ఇళ్లు రెండుసార్లు కనిపిస్తాయి."), and the "As a copy is the safe one" note should add that it can duplicate; the modes are locked while an import runs. (e) Interruption: a merge that is stopped or fails keeps what it wrote and importing the file again finishes it; **a copy is all or nothing** and says "Import stopped. Nothing was added." / "The import could not be finished, so nothing was added. Free up space and try again." **§14.1:** the count is three chips (one sentence for TalkBack); *Shortlisted only* with no match offers *All houses*; the formats are selectable cards (2 dp primary border on primaryContainer when chosen); changing an option or closing the result card brings the count back; the result card's action is *Share this file* (hi "यह फ़ाइल साझा करें", ta "இந்தக் கோப்பைப் பகிர்", te "ఈ ఫైల్‌ను షేర్ చేయండి"), so *Share* in the bar has one meaning; Android *Save to…* is hi "सहेजें…", ta "சேமி…", te "సేవ్ చేయండి…"; the empty state matches the web's. **§14.2:** Android's `export_contacts_hint` now is the table's text verbatim in all four languages. **§14.8:** the folder button and "Saved to:" appear only while the backup is on, or to recover after "The folder is no longer available". **I18N-B06:** add the new hi/ta/te strings above (`import_copy_shown`, `import_stopped_copy`, `import_write_failed_copy`, `import_mode_copy_hint`, `import_see_houses`, `export_share_file`, `common_dismiss`) to the native-speaker review list. docs/03 near line 896 (*Import as a copy*) can add that a copy import runs in one transaction. docs/06: TC-A-09 on the Replace dialog should check that TalkBack announces the switched preview. | docs/05 §14.1–14.3, §14.8, §13 (I18N-B06); docs/03 §16; docs/06 TC-A-09; docs/10 handover |
+| 11 | **Web** | Parity items from the same review: (a) `/data` shows *Include rejected houses* for *Shortlisted only* too, where it does nothing (Android hides it); wrap that field in `@if (options.scope === 'all')` and keep the stored value, as Photos does. (b) For the future web import (UX-B07): *Import as a copy instead* must only switch the mode, and a copy import must be all or nothing (one IndexedDB transaction), or its stop and failure messages must not say "import again to finish". | web/src/app/pages/data/data-page.html; the web importer when it lands |
+| 12 | **Docs** | **docs/05 to 0.8 (this README 1.11), what Android now ships.** **§4 token mapping:** Android `surfaceVariant` = `--surface-2` #EEF2F0; `primaryContainer` = `--primary-soft` in both themes (dark #1D3B33, was #173F35); a green-grey `surfaceContainerLowest…Highest` / `surfaceDim` / `surfaceBright` ramp between `--bg` and `--surface`; progress tracks, the Slider's inactive track and tonal buttons use `primaryContainer` (not M3's amber `secondaryContainer`); extra tokens `success` #E7F5ED / `onSuccess` #1A7A43 / `successBorder` #B5DCC4 and `errorBorder` #E8B4B0 (dark #15301F / #6FD69A / #2B5A3B and #6E2C27) for 1 dp result-card borders; `warn` #FFF4E0 / `onWarn` #8A5A00 (5.44:1) / `warnBorder` #F0C987 (dark #33260F / #F2B84B, 8.23:1 / #6B4F1A) for the web's `.warn-box`. **§4.3:** add an Android row: `IndicTypography` for hi/ta/te keeps M3's sizes and weights, sets letter spacing 0 and line heights headlineSmall 36, titleLarge 32, titleMedium 28, titleSmall 24, bodyLarge 28, bodyMedium 24, bodySmall 20, labelLarge 22, labelMedium 20, labelSmall 18 sp (the counterpart of the web's `--leading: 1.7`). **§14.2:** the contact-details warning is a calm amber note (warn tokens, 1 dp border), not an error, on **both** platforms. **§14.3:** replace item 10's list with: no file → a designed empty state (restore glyph, "Bring back houses, visits and photos from a Doorprints backup.", the file types as fine print) and **Choose a backup file**, which opens at the weekly-backup folder when one is set; the Replace dialog has three stacked buttons, safest first — *Import as a copy instead* (tonal), *Replace* (outlined, error colour), *Cancel*; in copy mode the preview's first line is a warning "Already on this phone, will appear twice: n" (live houses only: a house deleted on this phone is not counted, because the copy is its only visible row), and after *Import as a copy instead* the status line says "Showing what adding copies would change: n houses already on this phone would appear twice. Nothing is imported until you tap Import."; "nothing would change" is one of three messages: "This backup has no houses or visits in it." / "Nothing would change: this phone already has the same or newer versions of everything in this backup." / "Nothing would change: this backup is already on the phone."; a tap that starts nothing because another import is running says "Another import was still running, so yours has not started. When it has finished, tap Import again." **§14.1:** the empty state's action is "Add a house on the map". **§14.8:** with the weekly backup off, "Last backup: …" is hidden too. **I18N-B06:** add `import_lead`, `import_copy_duplicates`, `import_copy_shown_duplicates`, `import_nothing_empty`, `import_nothing_newer`, `import_blocked`, `export_empty_action` and the reworded `settings_auto_backup_last` to the native-speaker review list. Bump docs/05's version and change log. | docs/05 §4, §4.3, §14.1–14.3, §14.8, §13 (I18N-B06); docs/10 handover |
+| 13 | **Web** | **Empty-state label parity.** Android's export empty state now says **"Add a house on the map"** (hi "नक्शे पर मकान जोड़ें", ta "வரைபடத்தில் ஒரு வீட்டைச் சேர்", te "మ్యాప్‌లో ఒక ఇల్లు చేర్చండి"; `export_empty_action`), but `/data` still labels its button with `nav.map` ("Map"). Add a new key (for example `data.emptyAction`) in en/hi/ta/te and use it on that button. For the web importer (UX-B07): count "will appear twice" as `ImportPlan.copyDuplicates` does, live houses only. | web/src/app/pages/data/data-page.html, web/src/app/i18n/*.ts |
+| 14 | **Docs** | **docs/05 §14.3 and §13 (I18N-B06), from the Design and UX review of 1.11 (this README 1.12).** §14.3: once a file is picked the screen shows a file header (its name, "Backup made on …") and the file-type fine print only on the empty state and under a refused file; after a success the screen shows the success sentence, which now reads "Added *n* houses, *n* visits and *n* photos. Updated *n* houses and *n* visits." with zero parts left out; the merge preview has a line "Deleted on this phone, stay deleted: *n*" with *Bring them back as copies*, and when that is why nothing would change the bar says "Nothing would change in a merge: *n* houses in this backup were deleted on this phone. To bring them back, add them as copies." with **Show as copies** — this is the on-screen form of "copy mode is the one way back"; a stopped merge offers **Finish import** ("Import stopped. What was already added stays. Tap Finish import to add the rest of this file."); a tap blocked by another import shows *Stop the other import*; the write-failed messages say "Check that the phone has free space, then …". §14.1: the Android bar's buttons are *Share* · **Save to…** (filled primary last), and stack one per row at font scale 1.3 and above on both screens. §4 or §5: the house list's empty state offers *Restore from a backup*. **I18N-B06:** add the reworded `import_checked` (hi "फ़ाइल जाँच ली गई। यह रहा कि इससे क्या बदलेगा।", ta "கோப்பு சரிபார்க்கப்பட்டது. இது என்ன மாற்றும் என்பது இதோ.", te "ఫైల్ తనిఖీ అయింది. ఇది ఏమి మారుస్తుందో ఇదిగో." — no longer "see below", WCAG 1.3.3), `import_write_failed`, `import_write_failed_copy`, and the new `import_deleted_here`, `import_bring_back`, `import_show_copies`, `import_nothing_deleted`, `import_stop_other`, `import_finish`, `import_stopped_resume`, `import_added`, `import_updated`, `import_done_nothing`, `import_list_two`, `import_list_three`, `houses_restore` to the native-speaker review list. docs/06: TC-A-09 can add README §8 device checks 6–9 (TalkBack hears every Import state change; Replace dialog reachable in Tamil at 200% landscape; stacked buttons; restoring a deleted house by copy). Bump docs/05's version and change log. | docs/05 §14.1, §14.3, §13 (I18N-B06); docs/06 TC-A-09; docs/10 handover |
+| 15 | **Web** | **For the web importer (UX-B07): houses deleted on this device.** Use `ImportPlan`'s rule: in a merge, a house in the file that is a tombstone here and whose row does not win is "deleted here, stays deleted", not "newer here", and its visits and photos are counted with it; show that line with a *Bring them back as copies* action, and when it is the only reason nothing would change, say so and offer *Show as copies* (switch the mode only; the copy preview first). Also: the result sentence lists only non-zero parts and says "added" and "updated" separately; a stopped merge can offer *Finish import*; the status region that announces import states must be a node that stays in the DOM (an `aria-live` container present before its text changes), for the same reason as Android's `ActionBar`. | the web importer when it lands (UX-B07) |
+| 16 | **Docs** | **docs/05 §14.1, §14.3, §14.6 and §13 (I18N-B06), from the UX review of 1.12 (this README 1.13). The UX lead asked for §14.3 to be bumped with the fix; it is in Docs' file, so here is the text.** **§14.3, deleted houses:** a merge offers an opt-in undelete, "Also bring back *n* houses deleted on this phone" (a switch, off by default, under the mode); on, the preview adds the line "Deleted on this phone, brought back: *n*" and counts those houses' visits and photos as new, and the import brings exactly those houses back with their own ids (nothing else is added twice) and stamps them as edited now so the undelete syncs; when the deleted houses are why nothing would change, the bar says "Nothing would change in a merge: *n* houses in this backup were deleted on this phone. Tap Bring them back to restore them, with their visits and photos." and its primary is **Bring them back**; *Show as copies* remains as a secondary text button; the preview line for houses left deleted reads "Deleted on this phone; they stay deleted". **§14.3, Replace dialog:** title "Replace *n* houses and *n* visits?", the body lists up to five house names and "and *n* more houses", buttons *Keep mine, add only what's new* (tonal; replaces nothing, writes only new rows) · *Replace* (error outline) · *Import as a copy instead* (text) · *Cancel*. **§14.3, status and result:** the bar's status names the preview on screen — "Showing what a merge would change. Nothing is imported until you tap Import.", "…with *n* houses deleted on this phone brought back…", or the copy line — so each mode switch is announced; after a success the sentence ("Brought back 3 houses. Added … Updated …") is the screen's heading and the bar says only "Import finished."; a result nobody was told about (notifications off) or a failure stays on the screen until seen, however old. **§14.1:** a *Full backup* with narrowed options shows an amber note under the format cards, "This backup leaves out houses that are not shortlisted, photos and contact details. Restoring from it will not bring those back.", with *Use everything*; its result is "Saved a partial backup (to *folder*): *name*"; a saved file names its folder where the provider exposes it ("Saved to Download: …"); the intro is "The copy is made on this phone, offline. It goes only where you save or share it."; **progress phrasing, proposed for both platforms:** the activity on its own line or label ("Saving your copy…" / "Preparing photos"), then the counter as "*done* of *total*" with no noun, tabular figures (Android `export_progress_count`: en "12 of 80", hi "80 में से 12", ta "80 இல் 12", te "80 లో 12"); please record it in §14.1 once Web agrees (item 17). The first *Save to…*, *Share* or *Import* while notifications are off asks for them once, with "So we can tell you when a long copy is finished." and *Allow notifications* / *Not now*, and goes ahead either way. **§14.6:** "Full backup" is used only for a complete file; a narrowed one is a "partial backup". **§4/§5:** the house list's first-run state is a hero (tagline, how to add a house, outlined *Import a backup* (`import_title`; was *Restore from a backup* until 1.15, see item 20) with the restore glyph) with no search, chips or sort. **I18N-B06:** add the new strings in the "UX review, round 11" block of `values*/strings.xml` (`export_partial_note`, the six `export_gap_*`, `export_done_partial*`, `export_ready_partial`, `export_done_in`, `export_location_downloads`, `export_use_everything`, `export_progress_count`, `notify_*`, `import_ready_merge`, `import_ready_restore`, `import_restore_switch`, `import_restore_switch_hint`, `import_restored_houses`, `import_restored_result`, `import_keep_mine`, `import_confirm_title_parts`, `import_confirm_more`, `import_finished`) and the reworded `export_intro`, `import_deleted_here`, `import_bring_back`, `import_nothing_deleted`. docs/06: TC-A-09 / TC-I-34 can take README §8 device checks 10a, 10b and 11–15. Bump docs/05's version and change log (2026-09-22). **Qualified in 1.14:** the §14.3 promise that a restore brings houses back "with their visits and photos" is made true for a phone that has synced the delete by README 1.14 (visits relinked, photos under fresh ids); please hold that clause until Android reports device check 10b passed, and until then write it as "brings exactly those houses back with their own ids". Add `import_list_middle` ("%1$s, %2$s") to the I18N-B06 list. **Added in 1.15 (I18N-B06 native-speaker list):** add the Tamil `settings_server_intro`, reworded to the joined காப்புப்பிரதி ("…தரவைக் காப்புப்பிரதி எடுக்கவும் இணையத்தில் பார்க்கவும் உங்கள் Doorprints சர்வரை இணைக்கவும்."), so that every use in `values-ta` now reads the same (docs/12 §G.1); and remove `houses_restore` from the list: the string is deleted and the button uses `import_title`, whose text has not changed. | docs/05 §14.1, §14.3, §14.6, §13; docs/06; docs/10 handover |
+| 17 | **Web** | **Parity with Android 1.13.** (a) **/data, partial backup:** when *Full backup* is chosen with *Shortlisted only*, rejected houses off, photos other than *All photos*, or contacts off, show the same amber `.warn-box` directly under the format cards naming each gap (the rule is `BackupCompleteness.gaps` in `:shared`: shortlist → "houses that are not shortlisted"; all houses without rejected → "rejected houses"; photos of shortlisted houses while the scope is not the shortlist → "photos of houses that are not shortlisted"; no photos → "photos"; contacts off → "contact details"), with a *Use everything* button that resets the four options, and say "Saved a partial backup: …" in the result. (b) **Progress phrasing:** keep "Preparing photos" as the activity and make the counter "*done* of *total*" (proposed for docs/05 §14.1 in item 16), so both platforms read "… 12 of 56". (c) **For the web importer (UX-B07), replacing item 15's advice that a copy is the way back:** use `ImportPlan`'s `restoreDeleted` (an opt-in undelete that keeps ids; clear the tombstone and stamp `updatedAt` = now) behind the same "Also bring back *n* houses deleted on this device" switch and **Bring them back** primary, and `skipUpdates` for a "Keep mine, add only what's new" choice in the replace confirmation; the preview must equal the plan for every flag combination (`ImportPlanTest.thePreviewMatchesThePlanForEveryFlagCombination`). **Added in 1.14:** pass the device's live visits with no house as `localUnlinkedVisitIds`, write `ImportActions.relinkedVisitIds` as the local copy with `houseId` set back and `updatedAt` = max(now, its own + 1), and take photo ids from the plan (a house brought back over a synced tombstone gets fresh ones), or a restore after a synced delete brings the house back without its visits and photos. **Added in 1.15:** also pass `syncedDeletedHouseIds`, the tombstones whose delete has already reached the server (on the web, the ones whose push has succeeded), so only those houses' photos get fresh ids; a delete still waiting to be pushed keeps its ids. Leaving it out (`null`) treats every tombstone as synced, as 1.14 did. Read the device note Backend is asked to add under schemas §6 rule 6 (item 19) as the rule for the web importer's wording too. | web `/data`, future web importer |
+| 18 | **Backend** (optional) | **An alternative to fresh photo ids after an undelete.** `PhotoService.upload` returns without change for any existing id, live or deleted, so Android 1.14 gives the photos of a house brought back over a synced tombstone new ids (README §8, twelfth round). If the backend accepted an upload to a tombstoned id **when that photo's house is live again** (clear the tombstone, store the bytes, bump `syncVersion`), a restore could keep the original ids, and re-importing the same backup later would add nothing twice (the Sprint 4b item in §8). Android does not depend on it; tell Android if it ships, so `ImportPlan` can drop the fresh ids. | backend `PhotoService`, docs/03 sync rules |
+| 19 | **Backend** | **A device note for docs/schemas/README.md §6 rule 6 (the contract says no implementation may diverge from it silently, so this is the notice).** Rule 6 describes the **server** import: a restored house's "photos and their bytes are gone for good", and a visit re-links "only if its updatedAt is newer than that delete"; it also says device importers should say the same. The Android device import (README 1.14, 1.15) deliberately goes further when it brings a house back over a tombstone **that has reached the server** (`dirty = 0`): (a) it **relinks** the visits the purge unlinked, whatever their timestamps: it takes the phone's own loose copy, sets `houseId` again and stamps `updatedAt` = max(now, its own `updatedAt` + 1), so the relink beats the unlink's server stamp on the next sync; (b) it **re-adds the photos under new ids** from the backup's bytes, because the server never takes a tombstoned photo id back. So a device import says the photos **come back**, not that they are gone; the server import's wording stays as it is, because the server has no bytes. Your `ApiIntegrationTest.aNewerWriteBringsBackAHouseDeletedWithPutAndSyncsIt` / `…WithDeleteAndSyncsIt` (`restoreAfterASyncedDelete`) already pin the server behaviour both parts rely on. Please add this as a device note under rule 6 (with the one exception: a tombstone still waiting to be pushed was not purged, so the device writes the house only and the photos keep their ids), so that the web importer (item 17) reads the same rule, and bump the schemas README's version and change log. | docs/schemas/README.md §6 rule 6 |
+| 20 | **Docs** | **docs/12 G.3 rule 3 and docs/05 §4/§5, the button is renamed (this README 1.15).** Android's empty house list no longer says *Restore from a backup*: the outlined button reads *Import a backup* (`import_title`, en/hi/ta/te) and `houses_restore` is deleted. Please update docs/12 G.3 rule 3's state sentence (it now says Android still uses `houses_restore` and renames it in Sprint 4b), docs/05 §4/§5's first-run description (line "an outlined **Restore from a backup** button … (`houses_restore`)") and the I18N-B06 row (drop `houses_restore`; add the Tamil `settings_server_intro`, whose காப்புப்பிரதி is now joined), and mark the docs/10 Sprint 4b row "Android `houses_restore` … → **Import a backup**" as done in Sprint 4a. G.3 rule 4 (readable copies to `Doorprints-copy-<date>.<ext>`) is still Sprint 4b on Android (README §8). Bump each document's version and change log (2026-09-22). | docs/12 G.3; docs/05 §4/§5, §13; docs/10 |
+| 21 | **Docs** | **docs/05 §14.10 and §13 (I18N-B06), from the Design and UX review of 1.15 (this README 1.16).** §14.10's first-run hero now has two buttons, centred and stacked: a filled **Add a house on the map** (`export_empty_action`, which opens the Map tab, as Export's empty state does) above an outlined **Import a backup** (`import_title`) with the restore glyph; please replace the sentence that describes an outlined *Restore from a backup* (`houses_restore`) as its only button. Also add to §14.10: until the house list has loaded, only the "Houses" heading shows (no search, chips or sort flash first); when there are houses but none match, the list shows a search-glyph empty state, "Nothing matches.", with an outlined **Clear search and filter** that clears both the search and the status filter (as the web's no-match state). **I18N-B06:** add `houses_clear_filters` (en "Clear search and filter", hi "खोज और फ़िल्टर हटाएँ", ta "தேடலையும் வடிகட்டலையும் அழி", te "వెతుకులాట, ఫిల్టర్ తీసివేయండి"; the web's `map.clearFilters` copy) to the native-speaker review list. Bump docs/05's version and change log (2026-09-22). **Extended in 1.17 (UX review of 1.16):** (a) **§14.10:** the primary's key is now `common_add_on_map` (renamed from `export_empty_action`, same text in all four languages, shared with Export's empty state), both hero buttons share one width, and tapping it shows the map's long-press tip in a snackbar; the no-match sentence is now the web's "No houses match your search or filter." (`houses_no_match`, hi/ta/te as the web's `map.noMatch`), not "Nothing matches."; the search field, chips, sort and list scroll as one list; sort is one "Sort: Best score ▾" menu button, as the web's select; the search field has a Search key and a *Clear search* button. (b) **Row 4.1.3 (Status messages):** it can now say Android meets it too: while a search or status filter is active the house list shows "Houses shown: *x* of *y*" (`houses_shown`, the web's `map.shown` copy), a polite live region that TalkBack reads 500 ms after typing pauses; until this release Android had no count. (c) **I18N-B06:** add `houses_shown`, `houses_clear_search` (en "Clear search", hi "खोज हटाएँ", ta "தேடலை அழி", te "వెతుకులాట తీసివేయండి") and the reworded `houses_no_match`, and replace `export_empty_action` with `common_add_on_map` in the list. **Extended in 1.18 (UX review of 1.17):** (d) **§14.1** still names the Export empty state's key `export_empty_action`; it is `common_add_on_map`. (e) **§14.3** (and this README's 1.12 entry) says the Replace dialog scrolls as a whole below 480 dp of height; the code's threshold is **540 dp** (`COMPACT_DIALOG_HEIGHT`; see section 8, sixteenth round). (f) **§14.10:** the results count "Houses shown: *x* of *y*" is now always shown (announced only while a search or filter is on), and the first-run sentence must describe the filled **Add a house on the map** above the outlined **Import a backup**, not an outlined *Restore from a backup* as the only action. | docs/05 §14.1, §14.3, §14.10, §13, 4.1.3 |
+| 22 | **Docs** | **docs/11, parity of the web's add mode (this README 1.17).** The web's filled *Add house* puts the map into add mode; Android's *Add a house on the map* now switches to the Map tab and shows "Tip: long-press the map to add a house anywhere" (`map_long_press_tip`) in a snackbar, but long-press is not available to TalkBack or switch-access users (A11Y-B02), and *Save house here* uses the current location, which is wrong for someone planning from home. Please record in docs/11 (the Android map and add-house flow, and the Sprint 4b backlog) that the Android equivalent of the web's add mode is an **accessible pick-a-spot mode**: a centre crosshair over the map plus a *Save house at centre* button (48 dp, labelled), entered from *Add a house on the map*, planned for Sprint 4b. Bump docs/11's version and change log (2026-09-22). | docs/11 |
+| 23 | **Docs** | **docs/05 §14.3, §14.6 and §13 (I18N-B06), from the UX review of 1.17 (this README 1.18).** (a) **§14.3, copy imports:** a copy import can now be undone. For 24 h after it, and until its result is closed, the result offers *Undo this import* (outlined, in the bar's secondary place; *Choose a backup file* moves under the success heading), which with no confirmation removes exactly the rows that import added, as tombstones that sync, and keeps any house edited since ("Removed 40 copies. Kept 2 houses you had edited since."); *See your houses* opens the list on the copies behind a "Just imported (*n*)" chip; before the import, the copy preview's button reads **Add *n* copies** when some houses would appear twice, and the status line ends "Nothing is added until you tap the Add button.". (b) **§14.3 and §14.1, focus:** the action bar's buttons keep their place when the state changes (Save/Share → Stop → Save/Share; Import → Stop → Finish import / See your houses), so TalkBack focus stays on them; add this as the rule for any button that changes with a running task. (c) **§14.6 glossary:** the feature is **Save a copy** on Android and on the web (`data.exportHeading` is "Save a copy" in all four languages, and docs/12 §G names the action *Save a copy*); please change the row that says "Export a copy" (hi "एक प्रति सहेजें", ta "ஒரு நகலைச் சேமி", te "ఒక కాపీ సేవ్ చేయండి"), confirming with the Design Director under the docs/12 naming brief. (d) **I18N-B06:** add the 13 new strings for native-speaker review: `map_add_tip`, `map_add_tip_a11y`, `map_save_needs_location`, `house_open`, `houses_sort_value`, `houses_just_imported`, `import_undo_copy`, `import_undoing`, `import_undone`, `import_undone_kept`, `import_undone_nothing`, `import_undo_failed`, `import_go_copies`, and the reworded `import_copy_shown_duplicates`. Bump docs/05's version and change log (2026-09-22). **Extended in 1.20 (Design and UX review of 1.19):** (e) **§14.3 state table**, add three rows after *Imported*: **Imported as copies, undo on offer** — the bar says "Import finished."; the heading is the success sentence on the green success tick, with "You can undo this until <date, time>" under it and *Choose a backup file* as a text button; buttons *Undo this import* (outlined) · **See your houses** (opens the list on the copies). **Undoing** — "Removing the copies…" and an indeterminate bar; *Undo this import* and *See your houses* disabled in place. **Undone** — the bar says "Undo finished."; the heading says what the undo did ("Removed 40 copies. Kept 2 houses you had edited since.") on the restore glyph in neutral colours; *Choose a backup file* · **See your houses** (on the kept copies, if any); a failure is an assertive error card and the undo stays on offer. (f) **§14.3, where the undo is reachable:** *See your houses* pops the Import screen, so the house list offers the same undo in a row under the "Just imported (*n*)" chip ("Imported from your backup: 40 copies.", "You can undo this until …", *Undo this import*; a polite live region; after the undo the filter goes off and the button becomes *Dismiss*). Choosing another file or closing the result does **not** end the undo; it lasts 24 h, and the list shows the newest undoable copy import when it is opened any other way. An undo that kept edited houses leaves them behind the chip. Please also replace the Mode note "duplicates, which can only be removed one house at a time" with "duplicates, which can be removed together for 24 hours with *Undo this import*, and one house at a time after that". (g) **§14.3 / list:** "Just imported (*n*)" is an input chip (an applied filter) in its own row above the status chips, not one of them. (h) **I18N-B06:** add `import_undo_finished` (hi "पूर्ववत हो गया।", ta "செயல்தவிர்ப்பு முடிந்தது.", te "వెనక్కి తీసుకోవడం పూర్తయింది."), `import_undo_until`, `houses_imported_row`; `import_undo_copy` (ta) "இந்த இறக்குமதியைச் செயல்தவிர்", noting that a shorter, verb-first form is welcome (the bar now stacks when it does not fit, but a shorter label reads better); and for Hindi one term for an imported copy — Android now uses कॉपी throughout (`import_mode_copy` changed from प्रतियों; also `import_as_copy`, `import_show_copies`, `import_go_copies`, `import_undone`, `import_undone_nothing`, `import_undo_failed`, `import_undoing`, `import_copy_shown`, `import_copy_shown_duplicates`), keeping प्रति for an exported copy; please confirm the choice with the native-speaker review under docs/12 §G. | docs/05 §14.1, §14.3, §14.6, §13 |
+| 24 | **Web** | **Parity with Android 1.18, for the web importer (UX-B07) and `/data`.** (a) A copy import must be undoable: record the ids it adds (IndexedDB, one entry per run, kept 24 h), offer *Undo this import* on its result, remove exactly those rows in one transaction as tombstones, and keep any house edited since (compare `updatedAt`, and any visit or photo added to it). (b) In copy mode with duplicates, label the import button "Add *n* copies". (c) After a copy, "See your houses" should open the list filtered to the copies ("Just imported (*n*)"). (d) Keep the primary action one element across states (Save → Stop → Save) so screen-reader focus is not lost when a run starts or ends. **Extended in 1.19 (Android review of 1.18):** (e) **The undo must survive a sync.** The server's house purge (`HouseService.purge` → `VisitRepository.unlinkHouse`) unlinks every visit still linked to a deleted house and stamps it with server now, which beats an undo's visit tombstone pushed after the house and revives each copied visit as a live loose visit everywhere. Write the undo's visit tombstones with `houseId: null` and push visit tombstones without a house before any house (Android: `SyncRules.pushesBeforeHouses`, `CopyUndo.visitTombstone`); and stamp each copy with min(backup `updatedAt`, now) so the server's clock-skew clamp cannot make an untouched copy look edited (`CopyUndo.copyStamp`). Device check: this README, section 8, check 16b. **Extended in 1.20 (Design and UX review of 1.19):** (f) Offer the undo where the copies are shown: the list filtered to "Just imported (*n*)" gets an "Undo this import" row with a live-region result, sharing one undo implementation with the importer; picking another file must not end the undo (it lasts 24 h), and an undo that kept edited houses should leave them findable behind the chip. (g) "Just imported" is an applied filter shown apart from the status filter (not a second selected option of the same group), and the importer's result says until when the undo is on offer. (h) Action-bar buttons: decide side-by-side versus stacked by measuring the labels (a `ResizeObserver` or a container query on the bar, with `flex-wrap`), not only by text size; Tamil *Undo this import* needs three lines at 100 % in half of a 360 px bar. **Extended in 1.21 (Design and UX review of 1.20):** (i) Wherever the undo is offered away from the import's own result (the web's equivalent of the list row), confirm it first (UX-005): "Remove the *n* copies imported at <time>? Houses you have edited since are kept. The copies are also removed from your other devices, and this cannot be undone." with *Remove copies* (error colour) and *Keep them*; name the import's time in that row; show the newest undoable import rather than one remembered from earlier in the session; let the row be closed without undoing (the filter chip stays); and turn the "Just imported" filter on only once, when the list is opened from the import, and off when a house that is not a copy is added. The close button's label is `common.close`. | the web importer when it lands; web/src/app/pages/data/ |
+| 25 | **Docs** | **docs/05 §4.5, §14.3 and §14.7 (I18N-B06), from the Design and UX review of 1.20 (this README 1.21).** (a) **§4.5, the `secondary` / `secondaryContainer` row** becomes two rows: `secondary` — `--star` — `#A86A00` / `#F2B84B` — "Star colour only (stars themselves use `LocalHouseHuntColors.star`)"; and `secondaryContainer` / `onSecondaryContainer` — `--primary-soft` — `#E3F0EC` / `#0B3B30` (10.66:1) light, `#1D3B33` / `#E4EBE8` (10.05:1) dark — "M3's selected state: the selected FilterChip and InputChip, the NavigationBar's active pill, the SegmentedButton, progress tracks, the Slider's inactive track and tonal buttons. Was the amber star family (#FBE7C2 / #3A2C10) until Android 1.21, which painted selected chips and the active tab amber. `WorkProgress`, `brandSliderColors()` and `tonalPrimaryColors()` still name `primaryContainer`, now only as a safety net." Please add under the table: selection is never the fill alone (about 1.1–1.2:1 against the background, WCAG 1.4.1); a selected chip has a ✓ and a 2 dp `primary` border, an unselected one a 1 dp `outline` (`--border-strong`) edge, as the web's `.chip[aria-pressed='true']`; the NavigationBar's active label is `primary` (M3's default is `secondary`, the star colour). (b) **§14.3, the house list's undo** (replaces item 23 (f)'s row description): the row is a result card under the "Just imported (*n*)" chip — neutral "Imported from your backup at <date, time>: *n* copies." with "You can undo this until …", *Undo this import* and a close button; success after the undo, with *Close* in the button's place; an error card if it failed. From the list the undo is **confirmed** (UX-005): title "Remove the *n* copies imported at <date, time>?", body "Houses you have edited since are kept. The copies are also removed from your other devices, and this cannot be undone.", buttons *Remove copies* (error colour) and *Keep them*. The Import screen's undo straight after the result stays one tap. The list shows the newest copy import that can still be undone (or the one it was opened for, if that is newer); closing the row hides it for that import only, and the chip and the Import screen's undo stay. The "Just imported" filter turns on once, when *See your houses* opens the list, and turns off when a house that is not a copy is added. (c) **I18N-B06:** replace `common_dismiss` with `common_close` (hi "बंद करें", ta "மூடு", te "మూసివేయండి", the web's reviewed `common.close`; the old translations read as *Reject* / *Remove*); add the new `houses_undo_confirm_title` (hi "%2$s को आयात की गईं %1$d कॉपियाँ हटाएँ?", ta "%2$s அன்று இறக்குமதியான %1$d நகல்களை நீக்கவா?", te "%2$s న దిగుమతి అయిన %1$d కాపీలను తీసివేయాలా?"), `houses_undo_confirm_body`, `houses_undo_confirm_remove` (hi "कॉपियाँ हटाएँ", ta "நகல்களை நீக்கு", te "కాపీలను తీసివేయండి"), `houses_undo_confirm_keep` (hi "रहने दें", ta "அவற்றை வைத்திரு", te "వాటిని ఉంచండి") and the reworded `houses_imported_row` (now with the time; how a formatted date-time takes a postposition — hi को, ta அன்று, te న — is a question for the reviewer); and the Hindi undo wording, changed from the formal पूर्ववत to वापस लें as Android's own Hindi UI says it: `import_undo_copy` "यह आयात वापस लें", `import_undo_finished` "आयात वापस ले लिया गया।", `import_undo_until` "आप इसे %1$s तक वापस ले सकते हैं।", `import_undo_failed` (quotes the button) — please confirm with the native-speaker pass. Bump docs/05's version and change log (2026-09-22). docs/06: TC-A-09 can take README §8 device check 19. **Extended in 1.22 (Android review of 1.21):** (d) **§14.3, the house list's undo:** after the confirm dialog closes, TalkBack's focus returns to the row's button: *Undo this import* after *Keep them*, and *Close* once the result is read after *Remove copies* (*Undo this import* again if it failed); a failed undo's error card also has a close button, which hides it for that visit only (the chip and the Import screen's undo stay). **§4.5:** the ✓ on a selected chip now covers the house form's checklist 0–5 chips too. docs/06: TC-A-09 can take device check 19 (g) and (h). | docs/05 §4.5, §14.3, §14.7 (I18N-B06); docs/06 TC-A-09; docs/10 handover |
+| 26 | **Docs** | **docs/05 §5, §14.3 and §13 (I18N-B06), and docs/06, from the Design and UX review of 1.22 (this README 1.23).** (a) **§5, confirmations:** an irreversible choice in a confirmation dialog (Android *Replace*, *Remove copies*, *Delete house*, *Discard*) is an error-outlined button (`DangerButton`: `error` label, 1 dp `error` edge, 48 dp), the safe choice a text button; this supersedes "*Remove copies* is a text button in the error colour" in item 23/25. (b) **§5, Segmented radio:** Android's house form now uses it for the checklist ("–" and 0–5, fixed 48 dp squares, `primary` fill with `onPrimary` label when chosen, 1 dp `outline` edge otherwise, no ✓, wraps), and a two-segment `SingleChoiceSegmentedButtonRow` for Rent/Buy; the ✓ stays for toggle chips only. This supersedes item 25 (d)'s checklist sentence. (c) **§5, the house form:** the unsaved-changes dialog (title "Leave without saving?" / "Discard this new house?", body "You have unsaved changes.", *Keep editing* / *Discard* / *Save*), photo delete with a 10 s *Undo* snackbar (the web confirms instead; parity note), the not-found state ("This house is no longer on this phone.", *Back to your houses*) and the "removed while open" error card, *Clear rating*. (d) **§13 (I18N-B06), new keys** in en/hi/ta/te: `common_undo`, `house_saving`, `house_leave_title`, `house_discard_new_title`, `house_unsaved_body`, `house_discard`, `house_keep_editing`, `house_photo_deleted`, `house_not_found`, `house_not_found_body`, `house_back_to_list`, `house_removed_while_open`, `house_clear_rating`, `house_check_option_none`. (e) **docs/06:** TC-A11Y-06 ("checklist row fits or wraps") can take device check 19 (h) as rewritten; a TC-A case for device check 20 (a)–(g). | docs/05, docs/06 |
+| 27 | **Docs** | **docs/05 §5, §7, §13 (I18N-B06) and §14.1, from the whole-app UX audit (this README 1.24).** (a) **§13 (I18N-B06):** the 80 new Android strings of 1.24 for native-speaker review (see `values/strings.xml`, block "Whole-app UX audit"), and the reworded `house_save_first_photos` and `compare_hint`; `map_zoom_in` / `map_zoom_out`, `house_lat` / `house_lon`, `house_visit_recorded`, `house_photo_viewer`, `house_listing_open`, `settings_show_key` / `settings_hide_key` reuse the web's reviewed wording. (b) **§5, map labels:** if device check 21 (d) shows broken Indic conjuncts in MapLibre's symbol layer, decide whether marker labels show only Latin-script names (the house list and the form are unaffected). (c) **§14.1:** notifications are now asked for in context on the Map too (when Hunt mode is turned on, "Hunt mode tells you with a notification when you pass a house you have seen."), and location only from the Hunt switch, *Save house here* and *My location*. (d) **§5 and §7:** the house form's new states and actions (changed on another device, *Save and add photos*, photo viewer, location fields, delete a visit, *Save as a new house*, *Undo* after deleting a house) and Compare's empty state. | docs/05, docs/06 |
+| 28 | **Docs** | **docs/05 §5, §7, §13 (I18N-B06) and §14.1, from the whole-app UX audit, round 3 (this README 1.26).** (a) **§14.1, approximate location:** Android 12+ offers *Approximate* as an equal choice; the app treats it as its own state, not as a refusal. The Map's Hunt card, the house form and the Assistant show one amber note (never error red, since refusing is the user's choice): "Doorprints has only your approximate location. Hunt mode and Save house here need precise location." with *Turn on precise location* (Android then shows "Change to precise location?"), or *Open settings* and "In settings, open Permissions, then Location, and turn on Use precise location." once Android will not ask; no location keeps "Location is off for Doorprints…" (Map) / "Location permission is needed for this" with *Allow location* or *Open settings*. (b) **§5, notes:** a note's next step is a text button inside the amber note, under its text. (c) **§7, large text:** the Map's top band stops above the bottom buttons and scrolls; with Hunt mode on the subtitle "Alerts on for visited houses and streets" is gone (the switch says on). *Save house here* keeps its label while finding the location (spinner in place of the icon). The house form puts Location after Street / Locality and is at most 640 dp wide. (d) **§13 (I18N-B06):** the 3 new strings `location_approximate_only`, `location_turn_on_precise` and `location_precise_in_settings` for native-speaker review in hi, ta and te; the last names the system switch *Use precise location*, whose wording varies by Android version and OEM, so the reviewer should compare it with a phone set to each language. | docs/05 |
+| 29 | **Docs** | **docs/05 §7, §13 (I18N-B06) and §14.1, from the whole-app UX audit, round 4 (this README 1.27).** (a) **§14.1, location notes per screen:** the approximate-only note is a shared lead plus each screen's reason: "Doorprints has only your approximate location." then, on the Map, "Hunt mode and ‘Save house here’ need precise location."; on the house form, "Placing this house needs precise location, or type the latitude and longitude."; in the Assistant, "‘Plan visits’ needs precise location to start from where you are."; once Android will not ask, "In settings, open Permissions, then Location, and turn on ‘Use precise location’." is added. The form's no-location note is "Location is off for Doorprints. Allow it, or type the latitude and longitude below." (web parity with `house.locationDenied`). On the Map a refusal is said once, by the Hunt card's note; the snackbar only says "Location not allowed. See the Hunt mode card." (or "Precise location not allowed…"). The Assistant asks for location on the first tap of *Plan visits*, and plans again by itself when precise location is granted later. (b) **§7, short map:** below 480 dp of map height the Map's controls are one row at the bottom end ([Zoom out][Zoom in][My location][Save house here], 8 dp apart), so the Hunt card never sits under a button; the snackbar may cover the card briefly and no longer resizes it. (c) **§13 (I18N-B06):** new strings for native-speaker review in hi, ta and te: `map_needs_precise`, `house_needs_precise`, `ai_plan_needs_precise`, `house_location_denied`, `map_location_not_allowed`, `map_precise_not_allowed`; changed: `location_approximate_only` (now the lead only) and, in English only, `map_location_off`, `map_save_needs_location` and `location_precise_in_settings` (feature and setting names quoted with ‘ ’). Corrected in 1.28: the Indic files did not already do so (they mostly used “ ”); since 1.28 every UI label named in text is in ‘ ’ in all four locales (see item 30 (c)). The reviewer should check each quoted ‘Use precise location’ against the system label on a phone in that language (device check 21 (r)). Added in 1.28: the new `ai_plan_location_off` (hi "Doorprints के लिए जगह की अनुमति बंद है। ‘दौरों की योजना’ को आपकी अभी की जगह से शुरू करने के लिए इसकी ज़रूरत है।", ta "Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. நீங்கள் இருக்கும் இடத்திலிருந்து தொடங்க ‘வருகைகளைத் திட்டமிடு’க்கு இது தேவை.", te "Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. మీరు ఉన్న చోటు నుండి ప్రారంభించడానికి ‘సందర్శనల ప్రణాళిక’కు ఇది అవసరం."), the Assistant's no-location note; and `map_location_not_allowed` and `map_precise_not_allowed` are withdrawn (no refusal snackbar since 1.28). | docs/05 |
+| 30 | **Docs** | **docs/05 §7, §13 (I18N-B06) and §14.1, from the whole-app UX audit, round 5 (this README 1.28).** (a) **§14.1, a refusal is said once, by the note:** the Map shows no refusal snackbar any more (it covered the Hunt card's own button on a short map, WCAG 2.4.11). The Hunt card's location note appears after Android's answer, is read once by TalkBack (a polite live region) and is scrolled into view; a tap on a location control when Android will not ask again brings the note into view (and, with TalkBack, focus to it). The Assistant's no-location note is "Location is off for Doorprints. ‘Plan visits’ needs it to start from where you are.", and *Plan visits* starts planning only with precise location (otherwise it asks, or shows the note). The location note's text is bodyMedium, not bodySmall. A weak GPS signal is muted text, not error red. (b) **§7, snackbar on a short map:** in the row layout the snackbar sits beside the row at the bottom start when at least 288 dp is left for it, otherwise above the controls; the Android map markers now differ in size, ring and opacity by status as the web's do, so UX-002, A11Y-003 and the WCAG 1.4.1 row hold on Android too (no change to their text is needed). (c) **§13 (I18N-B06):** UI labels named in running text are quoted with ‘ ’ in en, hi, ta and te (the house-name example keeps “ ”, as sample text); the changed strings (en `houses_empty`, `map_add_tip`, `map_add_tip_a11y` and the import strings listed in 1.28; in hi, ta and te the same keys plus `map_save_needs_location`) and the new `ai_plan_location_off` (item 29 (c)) are for native-speaker review. | docs/05 |
+| 31 | **Docs** | **docs/05 §7 (WCAG table), §13 (I18N-B06) and §14.1, from the whole-app UX audit, round 6 (this README 1.29).** (a) **§7, docs/05 line 278 (WCAG 1.4.1 row, Android column):** "markers with icon glyph" is not what Android draws; please change it to "marker size, ring and opacity + legend" (Android now has the web's legend, `MapLegend`). (b) **§14.1:** without TalkBack, a Map location control tapped when Android will not ask again gives a "reject" haptic and a short snackbar with the note's text and *Open settings*; with TalkBack, focus moves to the note, and the Assistant's *Plan visits* now does the same. (c) **§13 (I18N-B06):** the new `map_legend` (Legend / संकेत / குறிப்பு / సూచిక, the web's `map.legend`) and the reworded Telugu `map_notifications_off` ("… హంట్ మోడ్ మీకు తెలియజేయదు.") for native-speaker review, the Telugu one by a native Telugu reviewer. (d) **docs/06 release checklist:** device check 21 (d) (Indic map labels) is now a release gate. | docs/05, docs/06 |
+| 32 | **Docs** | **docs/05 §7, §13 (I18N-B06) and §14.1, from the whole-app UX audit, round 7 (this README 1.30).** (a) **§14.1:** without TalkBack, a Map location control tapped when Android will not ask again gives a "reject" haptic and a one-sentence snackbar ("Location is off for Doorprints." or "Doorprints has only your approximate location.") with *Open settings* on its own line, shown for the long duration; the Hunt card's note keeps the reason. (b) **§7 (WCAG 1.4.1 and 2.5.8 rows, Android column):** the map legend's place follows its measured width (beside or above *Save house here*, at the start of the landscape row, or in the top band), and MapLibre's attribution button is lifted above it, so the OpenStreetMap credit stays visible and tappable; MapLibre's logo is off, as on the web. (c) **§13 (I18N-B06):** the new `location_off_short` (the first sentence of `map_location_off` in each language) for native-speaker review. | docs/05 |
+| 33 | **Web** | **A north-up map on the web too, from the whole-app UX audit, round 8 (this README 1.31).** Android's map no longer rotates or tilts (`MAP_NORTH_UP`: rotation, tilt and the compass off; WCAG 2.5.1, a two-finger rotation had no single-pointer way back once the compass could sit under a button). The web map already hides the compass (`NavigationControl({ showCompass: false })`) but still rotates with right-drag, Ctrl-drag and a two-finger twist, leaving the same rotated map with no way back to north. Please call `map.dragRotate.disable()`, `map.touchZoomRotate.disableRotation()` and, for tilt, `map.touchPitch.disable()` (or create the map with `dragRotate: false`, `pitchWithRotate: false`, `touchPitch: false`), and `map.keyboard.disableRotation()` so Shift + arrow keys neither rotate nor tilt it, so both platforms match. | web `map-page.ts` |
+| 34 | **Docs** | **docs/05 §5.1, §7, §14.1 and §14.7 (I18N-B06), and docs/06, from the whole-app UX audit, rounds 9 and 10 (this README 1.32 and 1.33; delivery coordinator's final review of 2026-09-23).** (a) **§14.7 (I18N-B06; items 21 and 29–32 called this §13):** one new string for native-speaker review, `settings_status_updating`: en "Updating…", hi "अपडेट हो रहा है…", ta "புதுப்பிக்கிறது…", te "అప్‌డేట్ చేస్తోంది…". It is not drawn as text: TalkBack reads it as the state of Settings' dimmed result card (after the card's text). No other string changed in 1.32 or 1.33; each of the four locales has 489 string resources (472 strings and 17 plurals), with the same names and placeholders. (b) **§5.1, the result card kept during a new run (`RefreshableResultCard` in `ResultCard.kt`):** while *Save and test* or *Sync now* (Settings), or *Ask* or *Plan visits* after an error (Assistant), is busy, the earlier card keeps its slot so nothing below it moves; only its icon and 1 dp border are dimmed, to 50 % (`STALE_RESULT_ALPHA`); its text stays at full contrast (1.32 dimmed the whole card to 38 %, about 2:1 for error text on `errorContainer`; superseded); the indeterminate progress bar runs along its foot, inside its corners; the card, its text and the bar are one TalkBack item whose state is "Updating…" (Settings) or "Thinking…" / "Planning…" (`ai_asking`, `ai_planning`). The node is keyed on the run (Settings) or the failure (Assistant), so a new result, even with the same text, is a new node and is announced; assertive only for an error once the run has ended. With no earlier result there is the bar alone (Settings) or the bar and "Thinking…" / "Planning…" (Assistant). The automatic backup's failure on Settings is a plain red `ResultCard` (1.32) with no run to keep it through, so please list it under the red result card rather than under "kept during a retry". (c) **§5.1 / §14.1, Settings: a rejected address withdraws the result until the next run ends** (`withdrawnRun`, `serverResultWithdrawn`, `serverStatusSlot(resultWithdrawn = …)` in `ServerStatus.kt`): when *Save and test* rejects the address in the field (not https, malformed, empty) the last result card goes; typing in the field clears the field's error but starts no run, so no older result comes back mid-typing; *Sync now* (it syncs the saved server, so it stays enabled) or *Save and test* with a valid address shows the bar alone while busy and always ends with its own result card. This supersedes 1.32's "no card while the field shows its error". (d) **§5.1, the Assistant (round 9 and 10):** the Ask error, the *Plan visits* request errors and the no-fix failure (precise location allowed, no fix) are the red `ResultCard` with the warning sign; "Answer ready" / "Plan ready" stay the muted caption and a refused location the amber note (not a failure, so not kept or dimmed). Asking or planning again after an error keeps that card in place as in (b); it is cleared when the request succeeds or is cancelled and replaced when it fails. The title and the tabs are in the same 640 dp `ContentMaxWidth` column as the panes; only the tabs stay fixed above the scrolling pane, and the title is left out on a window under 480 dp tall (the Map's `mapControlsInRow` threshold). (e) **§7 (WCAG 2.5.8 row, Android column) and §7.2:** the band and the snackbar keep 37 dp (`MAP_ATTRIBUTION_STACK_DP`: 8 dp gap, the 21 dp "i", 8 dp) above a legend at the bottom start; the "i" stays over the legend's place while the legend fades out for a snackbar beside the landscape row, and since 1.33 it is hidden (not half covered) while that snackbar shows and comes back in the same place; recorded as known minor (e) in device check 21 (y), accepted for release. (f) **docs/06:** the unit tests `ServerStatusTest` (`theLastTestDecidesTheToneWhenThereIsOne`, `otherwiseTheLastSyncDecidesIt`, `aBusyRunKeepsTheCardsSlot`, `noCardUnderAnAddressThatWasNotChecked`, `aWithdrawnResultStaysWithdrawnUntilTheNextRunEnds`) and `MapRulesTest.theBandAndTheSnackbarKeepClearOfTheAttributionAboveTheLegend` (legend top 114 dp keeps the band and snackbar at least 151 dp up); and the manual cases of device check 21 (x) and (y) as updated in 1.32 and 1.33: the dimmed card with full-contrast text and "Updating…" in TalkBack, *Sync now* after a rejected address ending with its card, no card returning while typing, the Assistant's kept error card with "Thinking…" / "Planning…", no Assistant title on a landscape phone with the field and *Ask* reachable at 200 % in ta and te with the keyboard up, and the attribution "i" hidden and restored around a snackbar beside the landscape row. As of this edit docs/05 0.10 (working tree, 2026-09-23) already carries most of (a), (b) and (c) in §5.1 and §14.7; please check it against this item, and add (f) to docs/06, which does not yet name `ServerStatusTest`. | docs/05, docs/06 |
