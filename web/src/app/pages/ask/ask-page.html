@@ -1,9 +1,19 @@
 <div class="page narrow">
-  <h1>{{ 'ask.title' | t }}</h1>
-  <p class="muted">{{ 'ask.intro' | t }}</p>
+  <header class="page-head">
+    <h1>{{ 'ask.title' | t }}</h1>
+    <p class="muted">{{ 'ask.intro' | t }}</p>
+  </header>
 
   @if (!ai.enabled()) {
-    <p class="card">{{ 'ai.disabled' | t }}</p>
+    @if (config.configured()) {
+      <p class="card">{{ 'ai.disabled' | t }}</p>
+    } @else {
+      <!-- No server at all: "turned off on your server" would be untrue. Say what is needed, and where. -->
+      <p class="card">
+        {{ 'ai.noServer' | t }}
+        <a routerLink="/connect">{{ 'nav.connect' | t }}</a>
+      </p>
+    }
   } @else {
     <form class="card" (ngSubmit)="submit()" novalidate>
       <div class="field">
@@ -13,11 +23,16 @@
           name="question"
           rows="3"
           [(ngModel)]="question"
+          (ngModelChange)="onQuestion($event)"
           [attr.maxlength]="maxChars"
           [placeholder]="'ask.placeholder' | t"
-          aria-describedby="ask-disclosure"
+          [attr.aria-invalid]="questionMissing() ? 'true' : null"
+          [attr.aria-describedby]="questionMissing() ? 'question-error ask-disclosure' : 'ask-disclosure'"
           required
         ></textarea>
+        @if (questionMissing()) {
+          <span id="question-error" class="field-error">{{ 'ask.questionRequired' | t }}</span>
+        }
       </div>
 
       <details class="filters">
@@ -45,20 +60,40 @@
 
       <p id="ask-disclosure" class="muted small">{{ 'ai.disclosure' | t }}</p>
       <div class="actions">
-        <button type="submit" class="btn btn-primary" [disabled]="busy() || !question.trim()">
+        <!-- aria-disabled, not disabled: focus stays on the button while the answer is prepared. -->
+        <button
+          id="ask-submit"
+          type="submit"
+          class="btn btn-primary"
+          [attr.aria-disabled]="busy() || !question.trim() ? 'true' : null"
+        >
           {{ (busy() ? 'ask.thinking' : 'ask.submit') | t }}
         </button>
+        @if (busy()) {
+          <button type="button" class="btn" (click)="cancel()">{{ 'common.cancel' | t }}</button>
+        }
       </div>
     </form>
 
-    @if (error(); as e) {
-      <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+    <!-- Asking again keeps the error in place, dimmed, with the bar along its foot named "Thinking…" (outside the
+         alert, so it is found by browsing but not announced), until the run ends. Keyed on the run, so a new failure
+         is a new alert and is read even when its words are the same. -->
+    @if (error(); as card) {
+      <div class="refresh-slot" [class.stale]="busy()">
+        @for (c of [card]; track c.run) {
+          <div class="error" role="alert">{{ c.value.key | t: c.value.params }}</div>
+        }
+        @if (busy()) {
+          <div class="refresh-bar" role="progressbar" [attr.aria-label]="'ask.thinking' | t"></div>
+        }
+      </div>
     }
 
-    <div aria-live="polite">
-      @if (result(); as r) {
+    <!-- Not a live region (it would be read twice, or all at once): the announcer says "Answer ready" and focus moves
+         to the heading below. -->
+    @if (result(); as r) {
         <section class="card answer" aria-labelledby="answer-heading">
-          <h2 id="answer-heading">{{ 'ask.answer' | t }}</h2>
+          <h2 id="answer-heading" tabindex="-1">{{ 'ask.answer' | t }}</h2>
           <p class="answer-text">
             @for (p of parts(); track $index) {
               @if (p.kind === 'text') {
@@ -87,7 +122,6 @@
             </ol>
           }
         </section>
-      }
-    </div>
+    }
   }
 </div>

@@ -1,0 +1,88 @@
+# CodeQL code scanning (docs/07-secure-build-and-deploy.md section 4, threat model SEC-013).
+#
+# Free because the repository is public (since Sprint 3.5, 2026-09-22): code scanning and SARIF upload to the
+# Security tab need GitHub Advanced Security only on private repositories. If this repository is ever made private
+# again, this workflow must be deleted or its upload will start failing — security.yml's scanners (Semgrep, Trivy,
+# gitleaks) keep working either way, so nothing is lost by removing it.
+#
+# What is analysed:
+#   java-kotlin            -> backend/ (Java 25; CodeQL supports Java 7-26).
+#   javascript-typescript  -> web/ (Angular 22, TypeScript 6) including web/public/sw.js.
+#
+# build-mode: none for both. No Maven or Gradle build runs, so no database container, no JDK/Android toolchain and
+# no dependency download; the extractors read the source. Two consequences, both deliberate:
+#   - Android Kotlin is NOT analysed: Kotlin analysis requires a real build (an AGP/Gradle run per scan), and CodeQL
+#     produces a warning "Detected N Kotlin files ... that could not be processed without a build" rather than an
+#     error. Kotlin stays covered by Semgrep in security.yml. Revisit if the Android build ever becomes cheap enough
+#     to run here.
+#   - Java results are slightly less precise than a build-mode: manual analysis of a compiled backend. Accepted: a
+#     buildless run cannot be broken by a Maven/PostGIS problem, which keeps this workflow independent of backend.yml.
+#
+# Triggers: a push to ANY branch (since 2026-09-23, owner decision "be sure that the code is right before merging
+# into main"; buildless, so cheap; tag pushes do not trigger), the weekly schedule and manual runs. No path filter
+# on the trigger (the paths-ignore below only limits what is extracted). Deliberately NOT on pull_request: a
+# same-repository branch is analysed by its own push run (results appear under that branch in the Security tab);
+# fork pull requests get SAST from Semgrep in security.yml. Dependabot branch pushes get a read-only token by
+# default; GitHub documents that the workflow `permissions` key can raise it, so the job's explicit
+# security-events: write should allow the SARIF upload there too (not yet observed on a dependabot/** run).
+name: CodeQL
+
+on:
+  push:
+    branches: ["**"]
+  # Weekly, so new queries in the CodeQL bundle reach unchanged code. Monday 05:23 UTC, away from the other
+  # scheduled workflows (security.yml runs at 04:17).
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+# Least privilege: nothing by default; the job below asks for what it needs.
+permissions: {}
+
+# One run per ref: a newer push to a branch cancels the older analysis; runs on main (push, schedule, manual)
+# always finish.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read # checkout
+      security-events: write # upload the SARIF results to the Security tab
+      # actions: read would also be needed if this repository ever becomes private again (see the header).
+    strategy:
+      fail-fast: false # one language failing must not hide the other one's results
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # Keeps generated and vendored trees out of the database. paths-ignore applies to the buildless
+          # extractors used here; for a built language CodeQL ignores it (with a warning), which is harmless.
+          config: |
+            paths-ignore:
+              - docs
+              - "**/node_modules"
+              - "**/dist"
+              - "**/build"
+              - "backend/target"
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

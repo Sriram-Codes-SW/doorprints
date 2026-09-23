@@ -39,6 +39,12 @@
 #     pins the ref, assertion.repository == 'Sriram-Codes-SW/doorprints' && assertion.ref == 'refs/heads/main',
 #     now that the repository is public. Tracked as an open DevSecOps item until the owner confirms it.
 #   The matching sign-off line in docs/ai/ai-design.md section 14 is for the AI/Docs team to add.
+# Firebase (DevSecOps, 2026-09-23): the Workload Identity pool this workflow uses (doorprints-ai project, secrets
+#   GCP_WIF_PROVIDER / GCP_SA_EMAIL) is NOT trusted for Firebase Hosting and must never be granted any role in the
+#   Firebase project `doorprints`. The web deploy (web.yml, job deploy-firebase) has its own pool `github` and
+#   provider `github-web-deploy` inside the Firebase project, whose attribute condition accepts only web.yml on
+#   main (push or workflow_dispatch); a token from this workflow is refused there. Reason: this job runs Maven and
+#   test code while OIDC tokens can be obtained (see above), so it must not be able to replace the public website.
 name: AI evals
 
 on:

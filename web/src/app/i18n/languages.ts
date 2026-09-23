@@ -1,4 +1,5 @@
-import { Dict, en } from './en';
+import { en } from './en';
+import type { Dict } from './en';
 import { hi } from './hi';
 import { ta } from './ta';
 import { te } from './te';

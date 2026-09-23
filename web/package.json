@@ -6,7 +6,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:pages": "ng build && node -e \"require('fs').copyFileSync('dist/web/browser/index.html','dist/web/browser/404.html')\"",
+    "postbuild": "node scripts/sw-precache.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false"

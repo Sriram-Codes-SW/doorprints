@@ -18,7 +18,14 @@ export const DEFAULT_BASE_URL = 'http://localhost:8080';
  *   or borrowed computer this is the safer choice.
  *
  * Either way any script running on this origin could read the key, which is why the site ships a strict
- * Content-Security-Policy (public/_headers) and the app never renders user data as HTML.
+ * Content-Security-Policy and the app never renders user data as HTML. The policy is in `web/firebase.json` (sent
+ * as a header by Firebase Hosting, the live host) and is also written into index.html as a `<meta>` at build time
+ * (`scripts/sw-precache.mjs`), as defence in depth for any host that ignores `firebase.json`.
+ *
+ * "This origin" must be the app's own: localStorage (the key, when remembered) and IndexedDB are per origin, not
+ * per path. That is why the live site is on Firebase Hosting (`https://doorprints.web.app`, an origin of its
+ * own) and not on GitHub Pages, where `https://<owner>.github.io` is shared by every project site of that owner
+ * and a script in any of them could read them. web/README.md ("Deploy") says so.
  */
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
@@ -96,6 +103,15 @@ function sessionStorageOrNull(): Storage | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The address the Connect page starts with before anything is saved: the local development server on localhost,
+ * and nothing on the live site. A prefilled `http://localhost:8080` there was an address nobody has, flagged as a
+ * blocked http:// address before the user had typed anything; the example stays as the field's placeholder.
+ */
+export function initialBaseUrl(hostname: string): string {
+  return hostname === 'localhost' || hostname === '127.0.0.1' ? DEFAULT_BASE_URL : '';
 }
 
 export function normalizeBaseUrl(url: string): string {

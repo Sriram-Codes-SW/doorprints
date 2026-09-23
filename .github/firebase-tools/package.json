@@ -1,0 +1,9 @@
+{
+  "name": "doorprints-firebase-tools",
+  "private": true,
+  "description": "Pinned Firebase CLI for the web deploy in .github/workflows/web.yml (job deploy-firebase). Owner: DevSecOps. Not part of the web app.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "firebase-tools": "15.30.2"
+  }
+}

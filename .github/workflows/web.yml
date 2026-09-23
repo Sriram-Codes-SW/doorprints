@@ -1,22 +1,61 @@
-# Web: install, unit tests (Vitest + jsdom), production build (Angular), upload the static site as an artifact.
+# Web: install, unit tests (Vitest + jsdom), production build (Angular), upload the static site as an artifact,
+# verify the PWA files survived the build, check the Firebase Hosting configuration and CLI, and publish that same
+# artifact to Firebase Hosting (https://<FIREBASE_SITE_ID>.web.app) on pushes to main and manual runs on main
+# (build and checks run on every branch push too; see Triggers below).
+#
+# npm audit is NOT run here: it lives in security.yml (job `npm audit (web)`, production dependencies, high and
+# critical), together with the other scanners, so audit rules stay in one place. The installs below keep
+# `--no-audit --no-fund` for that reason; do not "fix" them by dropping --no-audit, it would only duplicate the
+# security workflow's findings in a job that is not allowed to fail on them.
+#
+# Hosting (S4 CI item 3): Firebase Hosting, no-cost Spark plan with no billing account, project and site
+# `doorprints` (owner decision 2026-09-23; GitHub Pages is switched off). See the deploy-firebase job. Only that
+# job may request a GitHub OIDC token.
+#
+# DO NOT RENAME THIS FILE without the owner: the Workload Identity provider `github-web-deploy` (pool `github` in
+# the Firebase project) only accepts tokens whose workflow_ref is .github/workflows/web.yml@refs/heads/main, on push
+# or workflow_dispatch. A renamed file, another branch, a pull request or any other workflow (ai-evals.yml
+# included) is refused by Google. After a rename the owner must edit that attribute condition first.
+#
+# Change log
+# 2026-09-23 (DevSecOps): deployment added, to Firebase Hosting. Two earlier drafts never reached main and are gone
+#   from this file: GitHub Pages jobs, then a Cloudflare Pages job (replaced by the owner decision of 2026-09-23
+#   before its account, token or secrets existed). New jobs: firebase-config (checks web/firebase.json and installs
+#   the pinned firebase-tools on every run, pull requests included), firebase-setup (is the owner's setup present?
+#   keeps main green and records no deployment until it is) and deploy-firebase (Workload Identity Federation,
+#   firebase-tools 15.30.2 from .github/firebase-tools, live header check with an overall deadline). The build no
+#   longer requires _headers/_redirects: the Web team moves the headers to web/firebase.json and deletes both files;
+#   pwa-files warns if they come back. Triggers also cover .github/firebase-tools/** (Dependabot npm updates).
+#
+# 2026-09-23 (DevSecOps), owner decision "be sure that the code is right before merging into main": the push trigger
+#   now runs on ANY branch (same path filters as before); pull requests to main and manual runs are unchanged.
+#   build, pwa-files and firebase-config run on branch pushes; firebase-setup and deploy-firebase stay main-only
+#   (their `github.ref == 'refs/heads/main'` guards, backed by the Workload Identity condition above). Superseded
+#   runs are now cancelled on every ref except main.
 name: Web
 
+# Triggers: a push to ANY branch touching the paths below (tag pushes do not trigger), a pull request to main (tests
+# the merge result; also covers fork PRs) and manual runs. The two path lists are identical and must stay that way.
+# Only a push or manual run on main can deploy. With a pull request open, one push gives two runs (branch push +
+# pull_request); accepted (docs/07 section 3).
 on:
   push:
-    branches: [main]
-    paths: ["web/**", ".github/workflows/web.yml"]
+    branches: ["**"]
+    paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   pull_request:
     branches: [main]
-    paths: ["web/**", ".github/workflows/web.yml"]
+    paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   workflow_dispatch:
 
-# Least privilege: nothing by default; each job asks for what it needs (only contents: read).
+# Least privilege: nothing by default; each job asks for what it needs (contents: read; deploy-firebase also
+# id-token: write, and firebase-setup nothing at all).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main always finish (a cancelled run on main could abort a deployment).
 concurrency:
   group: web-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
@@ -67,11 +106,10 @@ jobs:
       - name: Unit tests
         run: npm run test:ci
 
+      # The PWA files (public/manifest.webmanifest, public/sw.js, public/icons/*) are copied by the `assets` glob in
+      # angular.json, so the ordinary production build is already the PWA build. The pwa-files job below proves it.
       - name: Build
         run: npm run build
-
-      - name: Check security headers file is in the build
-        run: test -f dist/web/browser/_headers && test -f dist/web/browser/_redirects
 
       # Artifact name follows the product name Doorprints (was house-hunt-web-dist until 2026-09-22).
       - name: Upload site
@@ -80,3 +118,435 @@ jobs:
           name: doorprints-web-dist
           path: web/dist/web/browser
           retention-days: 14
+
+  # Guards the installable-app promise (S4-05) against a silent build regression: an assets glob or an output path
+  # change that drops the service worker or the manifest would otherwise ship a site that cannot be installed and
+  # cannot start offline, with a green build. Checks the uploaded artifact, i.e. exactly the bytes that get deployed.
+  pwa-files:
+    name: PWA files in the build (service worker, manifest, icons, screenshots)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # No checkout: the check only looks at the uploaded build output, and the script below is written here.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Download the built site
+        uses: actions/download-artifact@v8
+        with:
+          name: doorprints-web-dist
+          path: site
+
+      # Written here rather than in web/: .github/** is the only tree this workflow's team owns, and the check must
+      # not be something the build being checked can change. Plain CommonJS (.cjs), no dependencies.
+      - name: Write the check script
+        run: |
+          cat > check-pwa.cjs <<'CHECK_EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          const root = process.argv[2];
+          const errors = [];
+          const warnings = [];
+
+          if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+            console.log(`::error title=PWA check::no built site at ${root}; did the download step change?`);
+            process.exit(1);
+          }
+
+          const abs = (rel) => path.join(root, rel);
+          const exists = (rel) => fs.existsSync(abs(rel)) && fs.statSync(abs(rel)).isFile();
+          const read = (rel) => fs.readFileSync(abs(rel), 'utf8');
+
+          function required(rel, why) {
+            if (!exists(rel)) {
+              errors.push(`missing ${rel} (${why})`);
+              return false;
+            }
+            if (fs.statSync(abs(rel)).size === 0) {
+              errors.push(`${rel} is empty (${why})`);
+              return false;
+            }
+            console.log(`ok: ${rel} (${fs.statSync(abs(rel)).size} bytes)`);
+            return true;
+          }
+
+          // 1. Service worker: without it the app has no offline start.
+          if (required('sw.js', 'offline app shell, PwaService registers it')) {
+            const sw = read('sw.js');
+            for (const needle of ['install', 'activate', 'fetch']) {
+              if (!sw.includes(`'${needle}'`) && !sw.includes(`"${needle}"`)) {
+                warnings.push(`sw.js has no '${needle}' listener; is it still a service worker?`);
+              }
+            }
+          }
+
+          // 2. Manifest: without it the browser offers no install.
+          let manifest = null;
+          if (required('manifest.webmanifest', 'installable web app')) {
+            try {
+              manifest = JSON.parse(read('manifest.webmanifest'));
+            } catch (e) {
+              errors.push(`manifest.webmanifest is not valid JSON: ${e.message}`);
+            }
+          }
+
+          if (manifest) {
+            for (const field of ['name', 'short_name', 'start_url', 'scope', 'display', 'icons']) {
+              if (manifest[field] === undefined || manifest[field] === null || manifest[field] === '') {
+                errors.push(`manifest.webmanifest has no "${field}"`);
+              }
+            }
+            // Every image the manifest names has to be in the build: icons[], shortcuts[].icons[] and screenshots[].
+            // Screenshots are deliberately not precached by sw.js, so without this check a dropped one would only
+            // show up as a missing picture in the browser's install dialog.
+            function checkImages(list, what) {
+              for (const entry of Array.isArray(list) ? list : []) {
+                const src = String((entry && entry.src) || '');
+                if (!src) {
+                  errors.push(`manifest.webmanifest has a ${what} entry without "src"`);
+                  continue;
+                }
+                if (/^https?:\/\//i.test(src)) {
+                  warnings.push(`manifest ${what} ${src} is cross-origin; not checked`);
+                  continue;
+                }
+                const rel = src.replace(/^\.?\//, '');
+                if (exists(rel)) console.log(`ok: ${rel} (manifest ${what})`);
+                else errors.push(`manifest ${what} ${src} is not in the build (looked for ${rel})`);
+              }
+            }
+            const icons = Array.isArray(manifest.icons) ? manifest.icons : [];
+            checkImages(icons, 'icon');
+            const shortcuts = Array.isArray(manifest.shortcuts) ? manifest.shortcuts : [];
+            shortcuts.forEach((shortcut, i) => checkImages(shortcut && shortcut.icons, `shortcuts[${i}] icon`));
+            checkImages(manifest.screenshots, 'screenshot');
+            const sizes = new Set(icons.map((i) => String(i.sizes || '')));
+            for (const wanted of ['192x192', '512x512']) {
+              if (!sizes.has(wanted)) errors.push(`manifest.webmanifest has no ${wanted} icon`);
+            }
+            if (!icons.some((i) => String(i.purpose || '').split(/\s+/).includes('maskable'))) {
+              warnings.push('manifest.webmanifest has no maskable icon (Android adaptive icons)');
+            }
+          }
+
+          // 3. index.html must point at the manifest, and the SPA needs its entry point.
+          if (required('index.html', 'app shell')) {
+            const index = read('index.html');
+            if (!/<link[^>]+rel=["']manifest["']/i.test(index)) {
+              errors.push('index.html has no <link rel="manifest">');
+            }
+            if (!/<app-root/i.test(index)) errors.push('index.html has no <app-root> element');
+            const base = index.match(/<base[^>]+href=["']([^"']*)["']/i);
+            console.log(`base href: ${base ? base[1] : '(none)'}`);
+            if (!base) warnings.push('index.html has no <base href>; the SPA router needs one');
+          }
+
+          // 4. The bundle has to register the worker, otherwise the file above is dead weight. Kept a warning: the
+          //    string comes from minified output, so a bundler change could hide it without breaking the app.
+          const registers = fs
+            .readdirSync(root)
+            .filter((name) => name.endsWith('.js'))
+            .some((name) => fs.readFileSync(path.join(root, name), 'utf8').includes('sw.js'));
+          if (!registers) warnings.push('no built .js file mentions "sw.js": is the service worker still registered?');
+
+          // 5. Static hosting extras. The security headers live in web/firebase.json (job firebase-config checks it).
+          //    Leftover _headers/_redirects files are unused by Firebase Hosting, which would publish them as plain
+          //    files unless firebase.json ignores them.
+          if (!exists('favicon.svg')) warnings.push('missing favicon.svg');
+          for (const rel of ['_headers', '_redirects']) {
+            if (exists(rel)) warnings.push(`${rel} is in the build but unused by Firebase Hosting (headers live in web/firebase.json); remove it from web/public`);
+          }
+
+          for (const w of warnings) console.log(`::warning title=PWA check::${w}`);
+          for (const e of errors) console.log(`::error title=PWA check::${e}`);
+          if (errors.length > 0) {
+            console.log(`\n${errors.length} problem(s) in the built site under ${root}.`);
+            process.exit(1);
+          }
+          console.log('\nPWA files are present and consistent.');
+          CHECK_EOF
+
+      - name: Check the built site
+        run: node check-pwa.cjs site
+
+  # Checks, on every run (pull requests included) and with no credentials at all, what the deploy job relies on:
+  # web/firebase.json passes the deploy gate (.github/firebase-tools/check-firebase-json.sh), and the pinned
+  # firebase-tools installs and reports its pinned version (.github/firebase-tools/install.sh). A bad Hosting
+  # configuration or a broken Dependabot update of .github/firebase-tools therefore fails before it is merged, not
+  # in the job that holds the deploy token. Until .github/firebase-tools/package-lock.json is committed, the lock
+  # file npm generated here is uploaded as the artifact firebase-tools-package-lock for the owner to commit.
+  # Sparse checkout: only the two paths the checks read; no application code, no npm project of web/.
+  firebase-config:
+    name: Firebase Hosting config and CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /web/firebase.json
+            /.github/firebase-tools/
+          sparse-checkout-cone-mode: false
+
+      # A pull request from a fork gets no repository variables; the script then only format-checks hosting.site.
+      - name: Check web/firebase.json
+        env:
+          FIREBASE_SITE_ID: ${{ vars.FIREBASE_SITE_ID }}
+        run: bash .github/firebase-tools/check-firebase-json.sh web/firebase.json "$FIREBASE_SITE_ID"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          # No `cache: npm`: it needs the lock file, which is not committed yet (see install.sh).
+
+      - name: Install firebase-tools (pinned version, no install scripts)
+        id: cli
+        run: bash .github/firebase-tools/install.sh
+
+      - name: Upload generated firebase-tools package-lock.json
+        if: steps.cli.outputs.lock == 'generated'
+        uses: actions/upload-artifact@v7
+        with:
+          name: firebase-tools-package-lock
+          path: .github/firebase-tools/package-lock.json
+          # The path lies under .github/, which upload-artifact treats as hidden.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  # Is the owner's Firebase setup in place? A job-level `if:` cannot read secrets, so this small job does, and the
+  # deploy job runs only when it says ready=true. Keeping the check out of the deploy job means that no
+  # `firebase-hosting` deployment is recorded on GitHub while nothing is deployed (coordinator review 2026-09-23).
+  # All four values missing: notice, green. Some missing: warning naming them, green. All set but malformed: red.
+  # The four values are repository-level (Settings > Secrets and variables > Actions): FIREBASE_WIF_PROVIDER and
+  # FIREBASE_SA_EMAIL as secrets, FIREBASE_PROJECT_ID and FIREBASE_SITE_ID as variables. None of them is a
+  # credential (the provider only accepts tokens for this workflow on main). Do not move them into the
+  # `firebase-hosting` environment: this job has no environment and would then always skip the deploy.
+  firebase-setup:
+    name: Firebase Hosting setup present?
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Are the four Firebase values set and well-formed?
+        id: check
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIREBASE_SITE_ID: ${{ vars.FIREBASE_SITE_ID }}
+          FIREBASE_WIF_PROVIDER: ${{ secrets.FIREBASE_WIF_PROVIDER }}
+          FIREBASE_SA_EMAIL: ${{ secrets.FIREBASE_SA_EMAIL }}
+        run: |
+          set -euo pipefail
+          where="Settings > Secrets and variables > Actions"
+          missing=""
+          for name in FIREBASE_PROJECT_ID FIREBASE_SITE_ID FIREBASE_WIF_PROVIDER FIREBASE_SA_EMAIL; do
+            [ -n "${!name}" ] || missing="${missing:+${missing}, }${name}"
+          done
+          if [ "$missing" = "FIREBASE_PROJECT_ID, FIREBASE_SITE_ID, FIREBASE_WIF_PROVIDER, FIREBASE_SA_EMAIL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Firebase Hosting::Deployment skipped: the repository variables FIREBASE_PROJECT_ID and FIREBASE_SITE_ID and the repository secrets FIREBASE_WIF_PROVIDER and FIREBASE_SA_EMAIL are not set ($where; owner setup, docs/ops/firebase-hosting-setup.md)."
+            exit 0
+          fi
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Firebase Hosting::Deployment skipped: ${missing} not set at repository level ($where). The deploy runs once all four exist."
+            exit 0
+          fi
+          # Formats only; the values themselves are never printed.
+          id_pattern='^[a-z0-9][a-z0-9-]{0,29}$'
+          provider_pattern='^projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]+/providers/[a-z0-9-]+$'
+          sa_pattern='^[a-z][a-z0-9-]{4,28}[a-z0-9]@[a-z][a-z0-9-]{4,28}[a-z0-9]\.iam\.gserviceaccount\.com$'
+          bad=""
+          [[ "$FIREBASE_PROJECT_ID" =~ $id_pattern ]] || bad="${bad} FIREBASE_PROJECT_ID (variable, ${id_pattern})"
+          [[ "$FIREBASE_SITE_ID" =~ $id_pattern ]] || bad="${bad} FIREBASE_SITE_ID (variable, ${id_pattern})"
+          [[ "$FIREBASE_WIF_PROVIDER" =~ $provider_pattern ]] || bad="${bad} FIREBASE_WIF_PROVIDER (secret, projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>)"
+          [[ "$FIREBASE_SA_EMAIL" =~ $sa_pattern ]] || bad="${bad} FIREBASE_SA_EMAIL (secret, <name>@<project>.iam.gserviceaccount.com)"
+          if [ -n "$bad" ]; then
+            echo "::error title=Firebase Hosting::malformed value(s):${bad}. Correct them in ${where}; nothing was deployed."
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "All four Firebase values are set; deploying."
+
+  # Firebase Hosting (owner decision 2026-09-23; docs/02 RR-11 / F-31; setup: docs/ops/firebase-hosting-setup.md).
+  # Project and site `doorprints` on the no-cost Spark plan, no billing account, live at https://<site>.web.app.
+  # Firebase sends the security headers from web/firebase.json (Web team). Deploys the artifact the `build` job
+  # uploaded, byte for byte: the production build with base href "/" that pwa-files has checked. No second build.
+  #
+  # Identity: Workload Identity Federation, no key anywhere. google-github-actions/auth (same pinned commit as
+  # ai-evals.yml) exchanges this job's GitHub OIDC token, through the provider `github-web-deploy` of the pool
+  # `github` in the Firebase project, for the service account firebase-hosting-deploy, whose only role is Firebase
+  # Hosting Admin. That provider's attribute condition accepts only repository_id + repository of this repository,
+  # ref refs/heads/main, workflow_ref .github/workflows/web.yml@refs/heads/main and event push or workflow_dispatch.
+  # It is a different pool from the one in the doorprints-ai project that ai-evals.yml uses; that one is NOT trusted
+  # for Hosting, and this one is not trusted for anything else. The existing GCP_* secrets are not used here.
+  #
+  # Least privilege and ordering:
+  #   - contents: read and id-token: write on this job only.
+  #   - Sparse checkout of web/firebase.json and .github/firebase-tools/ only: no application code is present in the
+  #     job that holds the token, and nothing from web/ is built or run here.
+  #   - web/firebase.json is checked BEFORE any credential exists: lifecycle hooks (shell commands), rewrites to
+  #     functions/Cloud Run and any public directory other than the downloaded build are refused.
+  #   - firebase-tools is installed before authentication, with --ignore-scripts and without the OIDC request
+  #     variables. The deploy itself also runs without them (env -u); that is defence in depth only, because the
+  #     credential file that the auth action writes into the workspace root holds the same OIDC request URL and
+  #     token (see ai-evals.yml). The file lies outside the published directory and is deleted after the job
+  #     (cleanup_credentials, default true).
+  #   - No .firebaserc, no --token, no FIREBASE_TOKEN: project and site come from the repository variables.
+  #   - One deployment at a time, never cancelled half-way; separate from the workflow-level concurrency group.
+  #   - No preview channels for pull requests (Firebase Hosting plan PART 2 section 5).
+  # Rollback: Firebase console > Hosting > release history > Rollback (docs/08). No rebuild needed.
+  deploy-firebase:
+    name: Deploy to Firebase Hosting
+    needs: [build, pwa-files, firebase-config, firebase-setup]
+    if: needs.firebase-setup.outputs.ready == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: firebase-hosting-${{ github.repository }}
+      cancel-in-progress: false
+    environment:
+      name: firebase-hosting
+      url: https://${{ vars.FIREBASE_SITE_ID }}.web.app
+    env:
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SITE_ID: ${{ vars.FIREBASE_SITE_ID }}
+      # No update check from CI (firebase-tools uses update-notifier).
+      NO_UPDATE_NOTIFIER: "1"
+    steps:
+      # Checked again here, not only in firebase-setup: these values go into command arguments below.
+      - name: Check the project and site IDs
+        run: |
+          id_pattern='^[a-z0-9][a-z0-9-]{0,29}$'
+          for name in FIREBASE_PROJECT_ID FIREBASE_SITE_ID; do
+            if ! [[ "${!name}" =~ $id_pattern ]]; then
+              echo "::error title=Firebase Hosting::the repository variable ${name} does not match ${id_pattern}."
+              exit 1
+            fi
+          done
+          echo "project ${FIREBASE_PROJECT_ID}, site ${FIREBASE_SITE_ID}"
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /web/firebase.json
+            /.github/firebase-tools/
+          sparse-checkout-cone-mode: false
+
+      - name: Check web/firebase.json (before any credential exists)
+        run: bash .github/firebase-tools/check-firebase-json.sh web/firebase.json "$FIREBASE_SITE_ID"
+
+      # Into the directory that web/firebase.json names as "public" (dist/web/browser, relative to web/).
+      - name: Download the built site
+        uses: actions/download-artifact@v8
+        with:
+          name: doorprints-web-dist
+          path: web/dist/web/browser
+
+      # The site is served from the root of its own origin, so the artifact must be the base-href "/" build, with
+      # its manifest id stamped to "/" (web/scripts/sw-precache.mjs). The build must not ship a 404.html: the "**"
+      # rewrite answers unknown paths with the app shell, and the Web team's build excludes that file.
+      - name: The build fits a root deployment
+        working-directory: web/dist/web/browser
+        run: |
+          set -euo pipefail
+          base=$(grep -o '<base[^>]*>' index.html | head -n 1 || true)
+          echo "index.html: ${base:-(no <base> tag)}"
+          case "$base" in
+            *'href="/"'*|*"href='/'"*) ;;
+            *)
+              echo "::error title=Firebase Hosting build::index.html must have <base href=\"/\"> (the site is served from the root of https://${FIREBASE_SITE_ID}.web.app); found: ${base:-no <base> tag}."
+              exit 1
+              ;;
+          esac
+          id=$(jq -r '.id // "(unset)"' manifest.webmanifest)
+          echo "manifest id: ${id}"
+          if [ "$id" != "/" ]; then
+            echo "::error title=Firebase Hosting build::manifest.webmanifest id is '${id}', expected '/' for a root deployment (stamped by web/scripts/sw-precache.mjs from <base href>)."
+            exit 1
+          fi
+          if [ -e 404.html ]; then
+            echo "::error title=Firebase Hosting build::the build contains 404.html; it must not ship one (unknown paths get the app shell through the \"**\" rewrite)."
+            exit 1
+          fi
+          echo "$(find . -type f | wc -l) files to publish."
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # Before authentication, so no credential file exists yet; and without the OIDC request variables.
+      - name: Install firebase-tools (pinned version, no install scripts)
+        id: cli
+        run: env -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_ID_TOKEN_REQUEST_TOKEN bash .github/firebase-tools/install.sh
+
+      # Writes a short-lived external-account credential file (gha-creds-*.json in the workspace root, outside the
+      # published directory) and exports GOOGLE_APPLICATION_CREDENTIALS, which firebase-tools reads through
+      # Application Default Credentials (src/requireAuth.ts). Defaults kept: create_credentials_file and
+      # cleanup_credentials are true.
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.FIREBASE_WIF_PROVIDER }}
+          service_account: ${{ secrets.FIREBASE_SA_EMAIL }}
+          project_id: ${{ vars.FIREBASE_PROJECT_ID }}
+
+      # IDs come from env, never from ${{ }} inside the script. Only the Hosting site is deployed.
+      - name: Deploy
+        id: deploy
+        working-directory: web
+        run: |
+          set -euo pipefail
+          message="web.yml ${GITHUB_SHA}"
+          env -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u FIREBASE_TOKEN \
+            ../.github/firebase-tools/node_modules/.bin/firebase deploy \
+              --only "hosting:${FIREBASE_SITE_ID}" \
+              --project "${FIREBASE_PROJECT_ID}" \
+              --non-interactive \
+              --message "$message"
+          echo "message=${message}" >> "$GITHUB_OUTPUT"
+
+      # RR-11 acceptance on the live site: this release is served, with the headers and caching rules from
+      # web/firebase.json. Details and the 5-minute overall deadline: .github/firebase-tools/check-live-headers.sh.
+      - name: Security headers are served
+        id: headers
+        run: bash .github/firebase-tools/check-live-headers.sh "https://${FIREBASE_SITE_ID}.web.app" web/dist/web/browser
+
+      - name: Summary
+        if: ${{ !cancelled() && steps.auth.outcome == 'success' }}
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          DEPLOY_MESSAGE: ${{ steps.deploy.outputs.message }}
+          HEADERS_OUTCOME: ${{ steps.headers.outcome }}
+          CLI_VERSION: ${{ steps.cli.outputs.version }}
+          CLI_LOCK: ${{ steps.cli.outputs.lock }}
+        run: |
+          {
+            echo "### Firebase Hosting"
+            echo ""
+            echo "- Live: https://${FIREBASE_SITE_ID}.web.app (project \`${FIREBASE_PROJECT_ID}\`, site \`${FIREBASE_SITE_ID}\`)"
+            echo "- Deploy: ${DEPLOY_OUTCOME}; release message \`${DEPLOY_MESSAGE:-none}\`"
+            echo "- Security headers and caching from web/firebase.json: ${HEADERS_OUTCOME:-not checked}"
+            echo "- firebase-tools ${CLI_VERSION:-unknown} (lock file: ${CLI_LOCK:-unknown})"
+            echo "- Rollback: Firebase console > Hosting > release history > Rollback"
+            if [ "$DEPLOY_OUTCOME" = "failure" ]; then
+              echo ""
+              echo "The deploy failed. If its log shows PERMISSION_DENIED, send that line to DevSecOps; do not add roles to the service account by hand."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

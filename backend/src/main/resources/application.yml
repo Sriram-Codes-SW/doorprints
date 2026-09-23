@@ -130,7 +130,9 @@ app:
   # Optional second key for zero-downtime rotation (SEC-017): while set, both keys are accepted. Also >= 32 characters.
   # Rotate: set the new key here, move all clients to it, promote it to APP_API_KEY and clear this variable.
   api-key-next: ${APP_API_KEY_NEXT:}
-  # Comma-separated list of web origins allowed to call the API.
+  # Comma-separated list of web origins allowed to call the API (origins, no path), e.g.
+  # http://localhost:4200,https://doorprints.web.app for the dev server plus the live web app on Firebase Hosting.
+  # The default stays the dev server only: a server should allow the public site by choice (see docker-compose.yml).
   cors-origins: ${APP_CORS_ORIGINS:http://localhost:4200}
   rate-limit:
     # Per client address, all paths except /actuator/health (429 + Retry-After when exceeded).
@@ -142,6 +144,13 @@ app:
   limits:
     max-json-bytes: ${MAX_JSON_BYTES:262144}
     max-photos-per-house: ${MAX_PHOTOS_PER_HOUSE:20}
+    # POST /api/import only (one backup file holds every house). 16 MiB = the data.json cap of the Android and web
+    # readers (BackupFormat.MAX_DATA_JSON_BYTES, docs/schemas/README.md section 7), so any backup a device accepts
+    # also restores here. That is ~80 000 typical rows, far above the row cap below, so the row cap is what a normal
+    # client meets first; this one stops a body from being read at all. Lowering it is safe; raising it only admits
+    # files no device can read back.
+    max-import-bytes: ${MAX_IMPORT_BYTES:16777216}
+    max-import-rows: ${MAX_IMPORT_ROWS:20000}
   sync:
     # Client updatedAt later than server now + skew is clamped to now; more than max-future-days ahead is a 400.
     max-clock-skew-seconds: ${SYNC_MAX_CLOCK_SKEW_SECONDS:300}

@@ -43,6 +43,21 @@ export interface VisitDto {
   syncVersion: number;
 }
 
+/**
+ * One row of `GET /api/photos?since=`: a new photo or a delete tombstone (never the bytes).
+ * Field names match `PhotoDto` on the server and `PhotoChangeDto` in android/shared.
+ */
+export interface PhotoChangeDto {
+  id: string;
+  houseId: string;
+  contentType?: string | null;
+  sizeBytes?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  deleted: boolean;
+  syncVersion: number;
+}
+
 export interface StatsDto {
   houses: number;
   shortlisted: number;

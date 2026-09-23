@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { HouseDto, StatsDto, VisitDto, uuid } from './models';
+import { HouseDto, PhotoChangeDto, StatsDto, VisitDto, uuid } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class HouseApiService {
@@ -20,8 +20,44 @@ export class HouseApiService {
     return this.http.get<HouseDto[]>('/api/houses').pipe(map((list) => list.map(normalizeHouse)));
   }
 
+  /**
+   * Every house changed after `since` (tombstones included), in sync-version order. The sync engine
+   * (data/sync.service.ts) uses this; `since = 0` pulls everything, which is the first-run migration.
+   */
+  housesSince(since: number): Observable<HouseDto[]> {
+    const params = new HttpParams().set('since', since);
+    return this.http.get<HouseDto[]>('/api/houses', { params }).pipe(map((l) => l.map(normalizeHouse)));
+  }
+
+  visitsSince(since: number): Observable<VisitDto[]> {
+    const params = new HttpParams().set('since', since);
+    return this.http.get<VisitDto[]>('/api/visits', { params });
+  }
+
+  /** Photo metadata changes (new photos and delete tombstones) after a sync version. */
+  photoChangesSince(since: number): Observable<PhotoChangeDto[]> {
+    const params = new HttpParams().set('since', since);
+    return this.http.get<PhotoChangeDto[]>('/api/photos', { params });
+  }
+
   house(id: string): Observable<HouseDto> {
     return this.http.get<HouseDto>(`/api/houses/${encodeURIComponent(id)}`).pipe(map(normalizeHouse));
+  }
+
+  /**
+   * Pushes a row exactly as it is stored locally, keeping its `updatedAt`. The sync engine must not restamp the
+   * time: the stored value is what last-write-wins compares on every device (data/sync-rules.ts).
+   */
+  pushHouse(house: HouseDto): Observable<HouseDto> {
+    const body: HouseDto = { ...house };
+    delete body.distanceMeters;
+    return this.http
+      .put<HouseDto>(`/api/houses/${encodeURIComponent(house.id)}`, body)
+      .pipe(map(normalizeHouse));
+  }
+
+  pushVisit(visit: VisitDto): Observable<VisitDto> {
+    return this.http.put<VisitDto>(`/api/visits/${encodeURIComponent(visit.id)}`, visit);
   }
 
   saveHouse(house: HouseDto): Observable<HouseDto> {

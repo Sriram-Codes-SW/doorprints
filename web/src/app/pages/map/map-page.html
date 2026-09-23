@@ -1,5 +1,6 @@
 <div class="layout">
   <section
+    #wrap
     class="map-wrap"
     role="region"
     [attr.aria-label]="'map.regionLabel' | t"
@@ -8,40 +9,96 @@
     <p id="map-hint" class="sr-only">{{ 'map.regionHint' | t }}</p>
     <div #mapEl class="map"></div>
 
-    @if (addMode()) {
+    @if (!mapUsable()) {
+      <!-- Offline (the map style is never cached), or no WebGL 2 at all: say why there is no map and what works
+           without one. With no WebGL 2 there is nothing to retry. -->
+      <div class="map-offline" role="status">
+        <p>{{ (mapUnsupported() ? 'map.unavailable' : 'map.offline') | t }}</p>
+        <div class="offline-actions">
+          @if (addMode()) {
+            @if (canLocate) {
+              <button
+                id="add-at-location"
+                type="button"
+                class="btn btn-primary"
+                [attr.aria-disabled]="locating() ? 'true' : null"
+                (click)="addAtMyLocation()"
+              >
+                {{ (locating() ? 'house.locating' : 'map.addAtMyLocation') | t }}
+              </button>
+            }
+            <button id="type-coords" type="button" class="btn" (click)="typeCoordinates()">{{ 'map.typeCoords' | t }}</button>
+          }
+          @if (!mapUnsupported()) {
+            <button type="button" class="btn" (click)="retryMap()">{{ 'common.retry' | t }}</button>
+          }
+        </div>
+        <!-- Present before the message arrives, so the failure is announced. -->
+        <div role="alert">
+          <!-- Keyed on its run: pressing the button again and failing the same way is read again. -->
+          @if (locateError(); as card) {
+            @for (c of [card]; track c.run) {
+              <p class="error">{{ c.value | t }}</p>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    @if (addMode() && mapUsable()) {
       <div class="crosshair" aria-hidden="true"></div>
     }
 
-    <div class="map-actions">
-      <button
-        type="button"
-        class="btn"
-        [attr.aria-pressed]="addMode()"
-        [attr.aria-describedby]="addMode() ? 'add-hint' : null"
-        (click)="toggleAddMode()"
-      >
-        <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
-        {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
-      </button>
-      @if (addMode()) {
-        <button type="button" class="btn btn-primary" (click)="placeAtCenter()">
-          <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
-        </button>
-      } @else if (items().length > 0) {
-        <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
-      }
-    </div>
-
-    @if (addMode()) {
-      <p id="add-hint" class="add-hint" role="status">{{ 'map.addHint' | t }}</p>
+    @if (addMode() && mapUsable()) {
+      <!-- From the share page: the listing has no position yet, so the pin comes first (never 0°, 0°). Not a live
+           region: turning add mode on says the full hint through the app's announcer. On phones it sits at the top of
+           the map, clear of the crosshair, of the actions at the bottom and of MapLibre's control column, and says the
+           short version (map.addHintShort), so a Tamil or Telugu hint does not grow down onto the crosshair. The
+           version not shown is display: none, so it is not part of Cancel adding's description either. -->
+      <p id="add-hint" class="add-hint">
+        <span class="hint-full">{{ (sharedText() !== null ? 'map.pickShared' : 'map.addHint') | t }}</span>
+        <span class="hint-short">{{ 'map.addHintShort' | t }}</span>
+      </p>
     }
 
-    <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
-      @for (s of statuses; track s) {
-        <span class="legend-item">
-          <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey[s] | t }}
-        </span>
+    <!--
+      The legend and the actions share one container, so they can never cover each other or the hint whatever a
+      translation's length: on wider screens it lays nothing out (the actions sit top-left, the legend bottom-left);
+      on phones it is one bottom row, the legend at the start and the actions in a column at the end, within thumb
+      reach, the primary action last (Android MapScreen: zoom, my location, then "Save here"). Its measured height
+      lifts MapLibre's bottom-right controls above it.
+    -->
+    <div #stack class="map-stack">
+      <!-- Not needed while a pin is being placed, and it would crowd the hint and the crosshair. -->
+      @if (mapUsable() && !addMode()) {
+        <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
+          @for (s of statuses; track s) {
+            <span class="legend-item">
+              <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey[s] | t }}
+            </span>
+          }
+        </div>
       }
+      <div class="map-actions">
+        <!-- The label says the state ("Add house" / "Cancel adding"): no aria-pressed on top of it. -->
+        <button
+          id="add-toggle"
+          type="button"
+          class="btn"
+          [attr.aria-describedby]="addMode() && mapUsable() ? 'add-hint' : null"
+          (click)="toggleAddMode()"
+        >
+          <span class="icon" aria-hidden="true">{{ addMode() ? '✕' : '＋' }}</span>
+          {{ (addMode() ? 'map.addCancel' : 'map.add') | t }}
+        </button>
+        @if (addMode() && mapUsable()) {
+          <button id="place-here" type="button" class="btn btn-primary" (click)="placeAtCenter()">
+            <span class="icon" aria-hidden="true">⌖</span> {{ 'map.placeCenter' | t }}
+          </button>
+        } @else if (items().length > 0 && mapUsable()) {
+          <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
+        }
+      </div>
     </div>
   </section>
 
@@ -78,7 +135,7 @@
             type="button"
             class="chip"
             [attr.aria-pressed]="statusFilter() === f"
-            (click)="statusFilter.set(f)"
+            (click)="setStatusFilter(f)"
           >
             @if (filterIcon[f]) {
               <span class="icon" aria-hidden="true">{{ filterIcon[f] }}</span>
@@ -97,12 +154,19 @@
       </div>
     </div>
 
-    @if (error(); as e) {
-      <div class="error" role="alert">
-        {{ e.key | t: e.params }}
+    @if (error(); as card) {
+      <div class="error">
+        <!-- Only the sentence is keyed on the run (Retry failing the same way is a new node, read again); the buttons
+             stay the same nodes, so a focused Retry keeps focus (R18). Inline, so it stays on the line of the ⚠. -->
+        <span role="alert">
+          @for (c of [card]; track c.run) {
+            <span>{{ c.value.key | t: c.value.params }}</span>
+          }
+        </span>
         <div class="err-actions">
-          <button type="button" class="btn btn-sm" (click)="reload()">{{ 'common.retry' | t }}</button>
-          <a class="btn btn-sm" routerLink="/connect">{{ 'map.checkConnection' | t }}</a>
+          <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+          <!-- The houses come from this browser's own storage, not the network: Your data shows what is stored. -->
+          <a class="btn btn-sm" routerLink="/data">{{ 'nav.data' | t }}</a>
         </div>
       </div>
     }
@@ -118,7 +182,8 @@
         }
       </div>
     } @else {
-      <p class="shown muted small" role="status">
+      <!-- Not a live region: it would be read on every keystroke. The count is announced once typing pauses. -->
+      <p class="shown muted small">
         {{ 'map.shown' | t: { shown: items().length, total: houses().length } }}
       </p>
       @if (items().length > 0) {
@@ -158,9 +223,25 @@
             </li>
           }
         </ul>
+      } @else if (houses().length === 0 && !error() && housesOnServer()) {
+        <!-- The first-run download is offered or running: the houses exist, on the server, not "none yet". -->
+        <div class="empty-state">
+          <span class="empty-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.cloudDownload" /></svg>
+          </span>
+          <h2>{{ 'map.onServerTitle' | t }}</h2>
+          <p>{{ 'map.onServerBody' | t }}</p>
+          @if (sync.migration() === 'running') {
+            <p id="download-progress" class="progress" tabindex="-1">{{ 'data.migrationRunning' | t }}</p>
+          } @else {
+            <button type="button" class="btn btn-primary" (click)="downloadHere()">{{ 'data.migrationYes' | t }}</button>
+          }
+        </div>
       } @else if (houses().length === 0 && !error()) {
         <div class="empty-state">
-          <span class="empty-icon" aria-hidden="true">🏠</span>
+          <span class="empty-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
+          </span>
           <h2>{{ 'map.emptyTitle' | t }}</h2>
           <p>{{ 'map.emptyBody' | t }}</p>
           <button type="button" class="btn btn-primary" (click)="startAdd()">
@@ -169,7 +250,9 @@
         </div>
       } @else if (houses().length > 0) {
         <div class="empty-state">
-          <span class="empty-icon" aria-hidden="true">🔍</span>
+          <span class="empty-glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.search" /></svg>
+          </span>
           <p>{{ 'map.noMatch' | t }}</p>
           <button type="button" class="btn" (click)="clearFilters()">{{ 'map.clearFilters' | t }}</button>
         </div>

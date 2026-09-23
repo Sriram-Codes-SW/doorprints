@@ -2,22 +2,60 @@
 # docs/07-secure-build-and-deploy.md section 3 describes the pipeline and its security controls.
 name: Backend
 
+# Path filters cover every file `mvn verify` reads, not only backend/**: a test that reads a file outside the module
+# would otherwise be able to break main without any workflow running (near-miss in commit feb0294, where a golden-set
+# edit alone would have skipped this workflow). Checked 2026-09-22 by grepping backend/src/test for repoFile(, Path.of(
+# and "../": the readers are GoldenSet, CanonicalSample and BackupParityTest, each named on its entries below.
+# Whoever adds such a test adds its path here.
+# The two lists below are identical and must stay that way (GitHub Actions does not support YAML anchors).
+#
+# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
+# branch that touches one of the paths below, a pull request to main (tests the merge result; also covers fork PRs,
+# which never get secrets) and manual runs. `branches: ['**']` matches branch names with "/" (feature/x,
+# dependabot/...); tag pushes do not trigger. With a pull request open, one push gives two runs (branch push +
+# pull_request); that is accepted (docs/07 section 3). Nothing in this workflow deploys, signs or pushes an image.
 on:
   push:
-    branches: [main]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      # EvalScorerTest (a plain unit test in `mvn verify`) loads docs/ai/evals/golden-set.json through
+      # GoldenSet.locate() -> "../docs/ai/evals/golden-set.json": editing the golden set can turn this workflow red.
+      - "docs/ai/evals/**"
+      # The export/backup contract sample. Load-bearing: CanonicalSample (used by BackupMapperTest and BackupApiTest,
+      # both in `mvn verify`) walks up to docs/schemas/backup-sample.json, so editing the shared format sample alone
+      # can turn this workflow red.
+      - "docs/schemas/**"
+      # BackupParityTest.theShippedConfigurationUsesTheSameNumber reads the MAX_IMPORT_BYTES default here.
+      - "docker-compose.yml"
+      # BackupParityTest.theClientReadersUseTheSameNumber reads maxDataJsonBytes here.
+      - "web/src/app/export/backup-export.ts"
+      # BackupParityTest.theWebGoldenIsTheCanonicalSample compares golden/backup.golden.ts byte for byte with the sample.
+      - "web/src/app/export/golden/**"
+      # BackupParityTest.theClientReadersUseTheSameNumber reads MAX_DATA_JSON_BYTES here (Android :shared).
+      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - ".github/workflows/backend.yml"
   pull_request:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths:
+      - "backend/**"
+      - "docs/ai/evals/**"
+      - "docs/schemas/**"
+      - "docker-compose.yml"
+      - "web/src/app/export/backup-export.ts"
+      - "web/src/app/export/golden/**"
+      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - ".github/workflows/backend.yml"
   workflow_dispatch:
 
 # Least privilege: nothing by default; each job asks for what it needs (only contents: read).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main always finish.
 concurrency:
   group: backend-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:
@@ -95,6 +133,9 @@ jobs:
         if: failure()
         run: docker logs db | tail -200
 
+  # Build-only check of backend/Dockerfile (no registry login, no push, contents: read): runs on every push, branch
+  # pushes included since 2026-09-23, so a broken Dockerfile or a root USER is caught before the merge. Still not run
+  # for pull_request events: for a same-repository pull request the branch push of the same commit already builds it.
   image:
     name: Build container image
     needs: verify

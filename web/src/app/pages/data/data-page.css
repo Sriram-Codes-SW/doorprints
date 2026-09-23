@@ -1,0 +1,227 @@
+.page {
+  max-width: var(--content-narrow);
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The page's own gap separates the heading from the first card (styles.css gives other pages a margin). */
+.page-head {
+  margin-bottom: 0;
+}
+
+.card > h2 {
+  margin-top: 0;
+}
+
+.formats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* Each format is one large, obvious target (WCAG 2.5.8): the whole card is the label. */
+.format {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: var(--target);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  /* The global reduced-motion rule shortens this to nothing. */
+  transition:
+    border-color var(--duration),
+    background var(--duration);
+}
+
+.format:hover {
+  border-color: var(--primary);
+}
+
+/*
+ * Keyboard focus rings the card the user is choosing, not only the 20px radio inside it. Guarded, so a browser
+ * without :has() keeps the radio's own ring instead of losing the focus indicator altogether.
+ */
+@supports selector(:has(*)) {
+  .format:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .format input:focus-visible {
+    outline: none;
+  }
+}
+
+.format.chosen {
+  border-color: var(--primary);
+  border-width: 2px;
+  background: var(--primary-soft);
+  padding: calc(var(--space-3) - 1px);
+}
+
+.format input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.2rem 0 0;
+  flex: 0 0 auto;
+}
+
+.format span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The checkbox rows are the shared .checkbox (styles.css), also used by Connect's "Remember". */
+.checkbox p.warn-box {
+  padding: var(--space-2) var(--space-3);
+}
+
+fieldset.sub {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+}
+
+fieldset.sub > legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+/* The export progress bar and its visible label ("Preparing photos 34 of 212…"). */
+.progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.progress-row progress {
+  width: 100%;
+  height: 0.5rem;
+}
+
+.progress-row .progress {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A 20px glyph before a button label (Share), drawn in the button's text colour like the navigation icons. */
+.btn-glyph {
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.preview {
+  margin: var(--space-2) 0;
+  min-height: 2.25rem;
+}
+
+.preview p {
+  margin: 0;
+}
+
+/* What the file will contain, as three chips ("Houses: 3"), which read without plural rules in every language. */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats li {
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.card > .empty-state {
+  padding: var(--space-4) var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.steps {
+  margin: var(--space-2) 0 0;
+  padding-inline-start: 1.25rem;
+}
+
+.steps li + li {
+  margin-top: var(--space-1);
+}
+
+.share-glyph {
+  vertical-align: -2px;
+  fill: currentColor;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-3) 0 0;
+}
+
+/* A pulled row the app refused to store, a background sync that failed: not an error, but not silent either. */
+.warn {
+  color: var(--warn-text);
+}
+
+.warn::before {
+  content: '⚠ ';
+}
+
+.danger {
+  border-color: var(--error-border);
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-4) var(--space-3) var(--space-6);
+  }
+  .formats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The partial-backup note: what this "Full backup" leaves out, and the one tap that puts it all back. */
+.warn-box.partial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.warn-box.partial p {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+/*
+ * The ⚠ starts the sentence (styles.css turns the box's own ::before off): as a flex item of its own it took a row
+ * to itself on a 360px phone, where it, the gap and the 16rem sentence did not fit in one line.
+ */
+.warn-box.partial p::before {
+  content: '⚠ ';
+}
+
+.card > [role='status'] .skeleton {
+  display: block;
+  margin-bottom: var(--space-2);
+}

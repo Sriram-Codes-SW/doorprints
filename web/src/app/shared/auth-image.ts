@@ -1,10 +1,11 @@
 import { Component, OnDestroy, OnInit, inject, input, output, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { HouseApiService } from '../core/house-api.service';
+import { LocalDataService } from '../core/local-data.service';
 import { TPipe } from '../i18n/t.pipe';
 
 /**
- * Shows a photo from the API. The request needs the API key header, so it is fetched as a Blob.
+ * Shows a photo from this browser's local store (IndexedDB). It is read as a Blob and turned into an object URL,
+ * so nothing is fetched over the network and the photo shows offline.
  * The image sits inside a real button so the larger view can be opened with a keyboard.
  */
 @Component({
@@ -77,7 +78,7 @@ export class AuthImage implements OnInit, OnDestroy {
   readonly alt = input.required<string>();
   readonly opened = output<string>();
 
-  private readonly api = inject(HouseApiService);
+  private readonly api = inject(LocalDataService);
   protected readonly src = signal<string | null>(null);
   protected readonly failed = signal(false);
   private sub?: Subscription;

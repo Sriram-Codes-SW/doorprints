@@ -1,26 +1,37 @@
 <div class="page narrow">
-  <div class="card">
-    <h1>{{ 'connect.title' | t }}</h1>
+  <!-- The same page top as every other screen: title and intro above, the form in one card below. -->
+  <header class="page-head">
+    <h1 id="connect-title" tabindex="-1">{{ 'connect.title' | t }}</h1>
     <p class="muted">{{ 'connect.intro' | t }}</p>
+  </header>
+  <div class="card">
 
     <form (ngSubmit)="save()" novalidate>
       <div class="field">
         <label for="baseUrl">
           {{ 'connect.baseUrl' | t }} <span class="req" aria-hidden="true">*</span>
         </label>
+        <!-- The example is only a placeholder: the field starts empty on the live site. -->
         <input
           id="baseUrl"
           type="url"
           name="baseUrl"
           [(ngModel)]="baseUrl"
+          (ngModelChange)="onEdit()"
+          (blur)="urlTouched.set(true)"
           placeholder="https://my-api.example.com"
           autocomplete="url"
           inputmode="url"
           spellcheck="false"
           required
-          [attr.aria-invalid]="mixedContent ? 'true' : null"
-          [attr.aria-describedby]="mixedContent ? 'mixed-content' : null"
+          [attr.aria-invalid]="urlMissing || showMixedContent ? 'true' : null"
+          [attr.aria-describedby]="urlDescribedBy()"
         />
+        @if (urlMissing) {
+          <span id="baseUrl-required" class="field-error">{{ 'connect.urlRequired' | t }}</span>
+        } @else if (showMixedContent) {
+          <span id="mixed-content" class="field-error">{{ 'connect.mixedContent' | t }}</span>
+        }
       </div>
 
       <div class="field">
@@ -33,9 +44,12 @@
             [type]="showKey() ? 'text' : 'password'"
             name="apiKey"
             [(ngModel)]="apiKey"
+            (ngModelChange)="onEdit()"
             autocomplete="off"
             spellcheck="false"
             required
+            [attr.aria-invalid]="keyMissing ? 'true' : null"
+            [attr.aria-describedby]="keyMissing ? 'apiKey-required' : null"
           />
           <button
             type="button"
@@ -47,6 +61,9 @@
             {{ (showKey() ? 'connect.hide' : 'connect.show') | t }}
           </button>
         </div>
+        @if (keyMissing) {
+          <span id="apiKey-required" class="field-error">{{ 'connect.keyRequired' | t }}</span>
+        }
       </div>
       <div class="field checkbox">
         <input id="remember" type="checkbox" name="remember" [(ngModel)]="remember" aria-describedby="remember-hint" />
@@ -55,26 +72,66 @@
       </div>
       <p class="muted small"><span aria-hidden="true">* </span>{{ 'connect.required' | t }}</p>
 
-      @if (mixedContent) {
-        <p id="mixed-content" class="error small">{{ 'connect.mixedContent' | t }}</p>
-      }
-
-      @if (error(); as e) {
-        <div class="error" role="alert">{{ 'connect.failed' | t: { reason: e } }}</div>
-      }
-      <div role="status">
-        @if (testResult(); as s) {
-          <div class="success">
-            {{ 'connect.success' | t: { houses: s.houses, visits: s.visits, streets: s.streets } }}
-          </div>
+      <!-- The regions are present before the result arrives, so both a failure and a success are announced. A new
+           check keeps the last card in place, dimmed, with the bar along its foot named "Testing…" (outside both
+           regions, so it is found by browsing but not announced), until the check ends. Each card is keyed on its
+           run, so a result with the same words as the last one is a new node and is read again. -->
+      <div class="refresh-slot" [class.stale]="testing()">
+        <div role="alert">
+          @if (error(); as card) {
+            @for (c of [card]; track c.run) {
+              <div class="error">
+                {{ 'connect.failed' | t: { reason: c.value } }}
+                @if (offerSaveAnyway()) {
+                  <p class="muted small">{{ 'connect.saveAnywayHint' | t }}</p>
+                }
+              </div>
+            }
+          }
+        </div>
+        <div role="status">
+          @if (testResult(); as card) {
+            @for (c of [card]; track c.run) {
+              <div class="success">
+                {{ 'connect.success' | t: { houses: c.value.houses, visits: c.value.visits, streets: c.value.streets } }}
+              </div>
+            }
+          }
+        </div>
+        @if (testing() && (error() || testResult())) {
+          <div class="refresh-bar" role="progressbar" [attr.aria-label]="'connect.testing' | t"></div>
         }
       </div>
 
       <div class="actions">
-        <button type="button" class="btn" [disabled]="!canSubmit || testing()" (click)="test()">
+        <!-- Always enabled: pressing either button with a field missing says which one, next to it. -->
+        <button
+          type="button"
+          class="btn"
+          [attr.aria-disabled]="testing() ? 'true' : null"
+          (click)="test()"
+        >
           {{ (testing() ? 'connect.testing' : 'connect.test') | t }}
         </button>
-        <button type="submit" class="btn btn-primary" [disabled]="!canSubmit">{{ 'connect.save' | t }}</button>
+        <!-- id: where focus goes when "Save anyway" is removed while it had focus (check() → focusIfLost). -->
+        <button
+          id="connect-save"
+          type="submit"
+          class="btn btn-primary"
+          [attr.aria-disabled]="testing() ? 'true' : null"
+        >
+          {{ 'connect.save' | t }}
+        </button>
+        @if (offerSaveAnyway()) {
+          <button
+            type="button"
+            class="btn"
+            [attr.aria-disabled]="testing() ? 'true' : null"
+            (click)="saveAnyway()"
+          >
+            {{ 'connect.saveAnyway' | t }}
+          </button>
+        }
         @if (configured()) {
           <button type="button" class="btn btn-danger" (click)="disconnect()">{{ 'connect.disconnect' | t }}</button>
         }

@@ -8,6 +8,13 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * One visit over the sync API. Same null semantics as {@link com.househunt.house.HouseDto}: every field is written,
+ * {@code null} included, and on input absent means "no value" ({@code houseId} absent unlinks the visit,
+ * {@code leftAt} absent means the visit has not ended). {@code source} defaults to {@code MANUAL},
+ * {@code updatedAt} to server time; {@code syncVersion} is server-managed. A deleted visit keeps only its id,
+ * timestamps and sync version — where the user was is purged (PRV-005).
+ */
 public record VisitDto(
         UUID id,
         UUID houseId,

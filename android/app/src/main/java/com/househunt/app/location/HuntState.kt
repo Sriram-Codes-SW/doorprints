@@ -20,7 +20,24 @@ object HuntState {
         val startedAt: Long? = null,
         /** When the last GPS fix arrived; the UI shows "waiting for GPS" when it is old (signal lost indoors). */
         val lastFixAt: Long? = null,
+        /**
+         * Why Hunt mode stopped by itself, shown on the Map until closed or Hunt mode is turned on again (UX review,
+         * whole-app audit); null after the user stopped it.
+         */
+        val stopReason: StopReason? = null,
     )
+
+    /** Why [HuntService] stopped without being asked to. */
+    enum class StopReason {
+        /** The battery fell to [HuntService.LOW_BATTERY_PERCENT] and the phone was not charging. */
+        LOW_BATTERY,
+
+        /** The location permission was missing or revoked. */
+        NO_PERMISSION,
+
+        /** Android refused to run it as a foreground service (started while the app was in the background). */
+        NOT_ALLOWED,
+    }
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state

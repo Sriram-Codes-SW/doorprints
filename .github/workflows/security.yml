@@ -1,20 +1,27 @@
 # Security scans (docs/07 section 4, threat model F-22 / SEC-013 / SEC-014). All free and open source.
 #
-# CodeQL is not used: on private repositories GitHub code scanning needs a paid GitHub Advanced Security licence
-# (CON-01 zero cost). The same goes for uploading SARIF to the Security tab, so reports are kept as artifacts.
-# The repository is public since Sprint 3.5 (2026-09-22), so CodeQL and SARIF upload are now free; adding them is an
-# open DevSecOps item, not done yet.
+# CodeQL is not here: it has its own workflow, .github/workflows/codeql.yml (added 2026-09-22, Sprint 4a). It is
+# free because the repository is public since Sprint 3.5; on a private repository code scanning and SARIF upload to
+# the Security tab need a paid GitHub Advanced Security licence (CON-01 zero cost), which is why the scanners in
+# this file keep their reports as workflow artifacts instead of uploading SARIF. CodeQL analyses Java (backend) and
+# JavaScript/TypeScript (web) without a build; Android Kotlin is covered by Semgrep below, not by CodeQL.
 #
 # Android (Gradle) dependencies: `trivy fs` only reads Gradle lock files (gradle.lockfile), which android/ does not
 # have yet, and Semgrep does not look at dependencies. Until the Android build uses dependency locking, the job
 # gradle-dependency-graph below submits the fully resolved Gradle graph (including transitive dependencies such as
 # Ktor, OkHttp, kotlinx-io, kotlinx-serialization) to GitHub's dependency graph, where Dependabot alerts cover it.
 # Once gradle.lockfile files are committed, the trivy fs step scans them without any change here.
+#
+# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
+# branch (no path filter, as before; tag pushes do not trigger), a pull request to main (the merge result; also
+# covers fork PRs), the weekly schedule (runs on main) and manual runs. Every scanner job runs on a branch push;
+# gradle-dependency-graph (contents: write) stays main-only and zap-baseline stays manual-only. With a pull request
+# open, one push gives two runs (branch push + pull_request); accepted (docs/07 section 3).
 name: Security
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
     branches: [main]
   schedule:
@@ -32,10 +39,11 @@ on:
 # dependency graph is confirmed on).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main (push, weekly schedule) always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main (push, weekly schedule, manual) always finish.
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   semgrep:
@@ -173,9 +181,11 @@ jobs:
           retention-days: 30
 
   # Dependency Submission API: needs contents: write, which is why this job is separate, never runs for pull requests
-  # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main, the weekly
-  # schedule and manual runs. No artifact is uploaded on success (generate-and-submit); results appear as Dependabot
-  # alerts. Requires the repository's dependency graph: Settings > Security (Advanced Security) > Dependency graph.
+  # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main: a push to
+  # main, the weekly schedule and a manual run on main; never on a push to another branch (the ref check in its `if`,
+  # which matters since the push trigger covers every branch, 2026-09-23). No artifact is uploaded on success
+  # (generate-and-submit); results appear as Dependabot alerts. Requires the repository's dependency graph:
+  # Settings > Security (Advanced Security) > Dependency graph.
   #
   # Non-blocking until the owner confirms that setting (2026-09-22): the first run on main (8f583af) failed with
   # "HttpError: Dependency submission failed for dependency-graph-reports/security-gradle-dependency-graph.json"
@@ -221,7 +231,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Submit Gradle dependency graph (android/)
-        uses: gradle/actions/dependency-submission@v6
+        uses: gradle/actions/dependency-submission@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           build-root-directory: android
           dependency-graph: generate-and-submit
@@ -283,7 +293,7 @@ jobs:
     steps:
       # Passive scan only (no attacks). Third-party action pinned to a full commit SHA (v0.15.0).
       - name: ZAP baseline scan
-        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
         with:
           target: ${{ inputs.zap_target }}
           allow_issue_writing: false

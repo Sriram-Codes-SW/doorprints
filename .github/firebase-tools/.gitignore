@@ -1,0 +1,2 @@
+# Local installs of the pinned CLI (install.sh) are never committed; package-lock.json is.
+node_modules/
