@@ -9,6 +9,7 @@ import {
   inBoundariesUrl,
   indiaBoundaryStyle,
   isLegacyFilter,
+  STATE_FALLBACK_LINE_PAINT,
   TILE_ZOOM_GUARD,
 } from './india-boundaries';
 import { libertyExcerpt } from './testing/liberty-style.fixture';
@@ -211,13 +212,34 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
     expect(style.sources['ne2_shaded']).toEqual(liberty.sources['ne2_shaded']);
   });
 
-  it('rule 3: puts the two overlay layers directly above boundary_2, below everything that was above it', () => {
+  it('rule 3: puts the two overlay layers directly above boundary_2, and the state line directly above boundary_3', () => {
     expect(ids(style)).toEqual([
-      ...ids(liberty).slice(0, ids(liberty).indexOf('boundary_2') + 1),
+      ...ids(liberty).slice(0, ids(liberty).indexOf('boundary_3') + 1),
+      'in-boundary-state',
+      ...ids(liberty).slice(ids(liberty).indexOf('boundary_3') + 1, ids(liberty).indexOf('boundary_2') + 1),
       'in-boundary-world',
       'in-boundary-claim',
       ...ids(liberty).slice(ids(liberty).indexOf('boundary_2') + 1),
     ]);
+  });
+
+  it('rule 3: India\'s state line (Assam-Arunachal Pradesh) from zoom 5, dashed and drawn like boundary_3', () => {
+    const paint = layer(liberty, 'boundary_3')['paint'] as Json;
+    expect(layer(style, 'in-boundary-state')).toEqual({
+      id: 'in-boundary-state',
+      type: 'line',
+      source: 'in-boundaries',
+      filter: ['==', ['get', 'kind'], 'state'],
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': paint['line-color'], 'line-width': paint['line-width'], 'line-dasharray': paint['line-dasharray'] },
+      minzoom: 5,
+    });
+    expect(shows(style, 'in-boundary-state', { kind: 'state' })).toBe(true);
+    expect(shows(style, 'in-boundary-state', { kind: 'claim' })).toBe(false);
+    expect(shows(style, 'in-boundary-world', { kind: 'state' })).toBe(false);
+    expect(shows(style, 'in-boundary-claim', { kind: 'state' })).toBe(false);
+    // A copy: changing the overlay's dashes later can never change boundary_3's.
+    expect((layer(style, 'in-boundary-state')['paint'] as Json)['line-dasharray']).not.toBe(paint['line-dasharray']);
   });
 
   it('rule 3: world lines below zoom 5 only, India\'s own outline at every zoom, drawn like boundary_2', () => {
@@ -305,7 +327,13 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
     expect(warnings).toEqual(['layer "boundary_2" not found; the overlay is placed by the fallback rule']);
     expect(layer(style, 'boundary_3')['filter']).toEqual(['all', layer(libertyExcerpt(), 'boundary_3')['filter'], TILE_ZOOM_GUARD]);
     const at = ids(style).indexOf('boundary_3');
-    expect(ids(style).slice(at, at + 4)).toEqual(['boundary_3', 'in-boundary-world', 'in-boundary-claim', 'boundary_disputed']);
+    expect(ids(style).slice(at, at + 5)).toEqual([
+      'boundary_3',
+      'in-boundary-state',
+      'in-boundary-world',
+      'in-boundary-claim',
+      'boundary_disputed',
+    ]);
     expect(layer(style, 'in-boundary-claim')['paint']).toEqual({ 'line-color': 'hsl(248,1%,41%)', 'line-width': 1.2, 'line-opacity': 1 });
     expect(layer(style, 'in-boundary-world')['paint']).toEqual(FALLBACK_LINE_PAINT);
     expect((layer(style, 'boundary_disputed')['layout'] as Json)['visibility']).toBe('none');
@@ -354,8 +382,26 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
   it('with an empty style: warns for each rule and adds the overlay and its source', () => {
     const { style, warnings } = indiaBoundaryStyle({ version: 8, sources: {}, layers: [] }, URL_);
     expect(warnings).toHaveLength(4);
-    expect(ids(style)).toEqual(['in-boundary-world', 'in-boundary-claim']);
+    expect(ids(style)).toEqual(['in-boundary-state', 'in-boundary-world', 'in-boundary-claim']);
     expect(Object.keys(style.sources)).toEqual(['in-boundaries']);
+  });
+
+  it('without boundary_3: puts the state line directly below the other overlay layers, with the fallback paint', () => {
+    const { style } = indiaBoundaryStyle(without(libertyExcerpt(), ['boundary_3']), URL_);
+    const at = ids(style).indexOf('boundary_2');
+    expect(ids(style).slice(at, at + 4)).toEqual(['boundary_2', 'in-boundary-state', 'in-boundary-world', 'in-boundary-claim']);
+    expect(layer(style, 'in-boundary-state')['paint']).toEqual(STATE_FALLBACK_LINE_PAINT);
+    expect((layer(style, 'in-boundary-state')['paint'] as Json)['line-dasharray']).not.toBe(STATE_FALLBACK_LINE_PAINT['line-dasharray']);
+  });
+
+  it('with the state-line id already taken: warns and leaves it out, keeps the other overlay layers', () => {
+    const base = libertyExcerpt();
+    base.layers.push({ id: 'in-boundary-state', type: 'background' } as LayerSpecification);
+    const { style, warnings } = indiaBoundaryStyle(base, URL_);
+    expect(warnings).toEqual(['layer id "in-boundary-state" is already taken; that overlay layer is not added']);
+    expect(ids(style).filter((id) => id === 'in-boundary-state')).toHaveLength(1);
+    expect(ids(style)).toContain('in-boundary-world');
+    expect(ids(style)).toContain('in-boundary-claim');
   });
 
   it('takes each paint property boundary_2 does not set from the fallback', () => {
@@ -544,6 +590,7 @@ describe('applyIndiaBoundaries (on style.load of a live map)', () => {
     expect(calls).toEqual([
       ['addSource', 'in-boundaries', { type: 'geojson', data: URL_, attribution: 'Natural Earth' }],
       ['setFilter', 'boundary_3', layer(expected, 'boundary_3')['filter']],
+      ['addLayer', 'in-boundary-state', 'boundary_2'],
       ['setFilter', 'boundary_2', layer(expected, 'boundary_2')['filter']],
       ['setZoomRange', 'boundary_2', 5, 24],
       ['addLayer', 'in-boundary-world', 'boundary_disputed'],

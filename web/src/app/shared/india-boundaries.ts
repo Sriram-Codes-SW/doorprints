@@ -26,10 +26,15 @@ import type {
  *     starts at zoom 5 also take only the features of a zoom 5+ tile ({@link TILE_ZOOM_GUARD}): no zoom 0-4 line of
  *     any admin level is drawn through Jammu and Kashmir, Ladakh, Aksai Chin or Arunachal Pradesh at zoom 5 and above;
  *  3. GeoJSON source `in-boundaries` (the bundled `geo/in-boundaries.geojson`, Natural Earth, public domain) with
- *     two line layers directly above `boundary_2`: `in-boundary-world` (kind `world`, the world's land boundaries
- *     with India's classification, below zoom 5 only, in place of the tiles' lines) and `in-boundary-claim` (kind
- *     `claim`, India's own outline in the four disputed areas, at every zoom). They copy `boundary_2`'s colour,
- *     width and opacity so they look like the base map's own lines ({@link FALLBACK_LINE_PAINT} where it has none);
+ *     two line layers directly above `boundary_2`: `in-boundary-world` (kind `world`, below zoom 5 only, in place of
+ *     the tiles' lines: the world's land boundaries with India's classification, and the stretches of India's own
+ *     outline along which the tiles draw a country line of their own from zoom 5, so the two never show side by side)
+ *     and `in-boundary-claim` (kind `claim`, the rest of India's own outline in the four disputed areas, at every
+ *     zoom: the stretches the tiles leave to disputed lines). They copy `boundary_2`'s colour, width and opacity so
+ *     they look like the base map's own lines ({@link FALLBACK_LINE_PAINT} where it has none). A third layer,
+ *     `in-boundary-state` (kind `state`, the Assam-Arunachal Pradesh state line, which the tiles mark disputed and
+ *     claimed by China, so no layer draws it), goes directly above `boundary_3` from zoom 5 and copies its dashed
+ *     paint ({@link STATE_FALLBACK_LINE_PAINT} where it has none);
  *  4. the state labels "Azad Kashmir" and "Gilgit-Baltistan" (English or Urdu name), which sit inside India's
  *     territory, are filtered out of every `place` label layer that can show a state;
  *  5. a layer that is missing is skipped with a warning, never an error, and the overlay is still added. A layer whose
@@ -47,6 +52,8 @@ export const IN_BOUNDARIES_SOURCE = 'in-boundaries';
 export const IN_BOUNDARY_WORLD_LAYER = 'in-boundary-world';
 /** India's own outline in the four disputed areas, used at every zoom (kind `claim`). */
 export const IN_BOUNDARY_CLAIM_LAYER = 'in-boundary-claim';
+/** India's state lines that the tiles leave undrawn (kind `state`: Assam-Arunachal Pradesh), from zoom 5. */
+export const IN_BOUNDARY_STATE_LAYER = 'in-boundary-state';
 /** The bundled data, relative to the app's base href (web/public/geo/, precached by sw.js with the rest of the build). */
 export const IN_BOUNDARIES_PATH = 'geo/in-boundaries.geojson';
 /** Credit shown in the map's attribution while the overlay is drawn. Natural Earth is public domain; credit is courtesy. */
@@ -70,6 +77,18 @@ export const FALLBACK_LINE_PAINT: Readonly<Record<string, unknown>> = Object.fre
   'line-width': 1.2,
   'line-opacity': 1,
 });
+
+/**
+ * Paint for the state-line overlay when `boundary_3` is missing or does not set a property: Liberty's own `boundary_3`
+ * colour and dashes, and its width at zoom 7. The same values as Android's `IndiaViewRules.STATE_FALLBACK_LINE_*`.
+ */
+export const STATE_FALLBACK_LINE_PAINT: Readonly<Record<string, unknown>> = Object.freeze({
+  'line-color': 'hsl(0,0%,70%)',
+  'line-width': 1,
+  'line-dasharray': [1, 1],
+});
+/** Paint properties the state-line overlay copies from `boundary_3` when it sets them. */
+const STATE_LINE_PAINT_KEYS = ['line-color', 'line-width', 'line-dasharray', 'line-opacity'];
 
 const BOUNDARY_SOURCE_LAYER = 'boundary';
 const PLACE_SOURCE_LAYER = 'place';
@@ -227,18 +246,27 @@ export function indiaBoundaryStyle(style: StyleSpecification, dataUrl: string): 
   }
   if (labelLayers === 0) warnings.push(`no symbol layer on source-layer "${PLACE_SOURCE_LAYER}" shows states; no label hidden`);
 
-  // 3. India's lines, directly above the country lines.
+  // 3. India's lines, directly above the country lines; India's state line directly above the state lines.
   const at = overlayIndex(layers, country);
   const ids = new Set(layers.map((layer) => layer.id));
-  const overlay = [
-    overlayLayer(IN_BOUNDARY_WORLD_LAYER, 'world', paint, TILE_BOUNDARY_MIN_ZOOM),
-    overlayLayer(IN_BOUNDARY_CLAIM_LAYER, 'claim', paint),
-  ].filter((layer) => {
+  const free = (layer: LineLayerSpecification) => {
     if (!ids.has(layer.id)) return true;
     warnings.push(`layer id "${layer.id}" is already taken; that overlay layer is not added`);
     return false;
-  });
+  };
+  const overlay = [
+    overlayLayer(IN_BOUNDARY_WORLD_LAYER, 'world', paint, undefined, TILE_BOUNDARY_MIN_ZOOM),
+    overlayLayer(IN_BOUNDARY_CLAIM_LAYER, 'claim', paint),
+  ].filter(free);
   layers.splice(at, 0, ...overlay);
+  const stateLines = indexOf(STATE_LINES_LAYER);
+  const statePaint = copyPaint(stateLines < 0 ? undefined : read(layers[stateLines], 'paint'), STATE_FALLBACK_LINE_PAINT, STATE_LINE_PAINT_KEYS);
+  const state = overlayLayer(IN_BOUNDARY_STATE_LAYER, 'state', statePaint, TILE_BOUNDARY_MIN_ZOOM);
+  if (free(state)) {
+    // Without boundary_3, directly below the other overlay layers (or where they would have gone).
+    const worldAt = indexOf(IN_BOUNDARY_WORLD_LAYER);
+    layers.splice(stateLines >= 0 ? stateLines + 1 : worldAt >= 0 ? worldAt : at, 0, state);
+  }
 
   const source: GeoJSONSourceSpecification = { type: 'geojson', data: dataUrl, attribution: IN_BOUNDARIES_ATTRIBUTION };
   return {
@@ -372,27 +400,39 @@ function overlayIndex(layers: LayerSpecification[], country: number): number {
   return symbol >= 0 ? symbol : layers.length;
 }
 
-function overlayLayer(id: string, kind: 'world' | 'claim', paint: Record<string, unknown>, maxzoom?: number): LineLayerSpecification {
+function overlayLayer(
+  id: string,
+  kind: 'world' | 'claim' | 'state',
+  paint: Record<string, unknown>,
+  minzoom?: number,
+  maxzoom?: number,
+): LineLayerSpecification {
   const layer: LineLayerSpecification = {
     id,
     type: 'line',
     source: IN_BOUNDARIES_SOURCE,
     filter: ['==', ['get', 'kind'], kind],
-    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    // A dashed line keeps butt caps, as boundary_3 does (round caps would fill its gaps).
+    layout: kind === 'state' ? { 'line-join': 'round' } : { 'line-join': 'round', 'line-cap': 'round' },
     paint: paint as unknown as LineLayerSpecification['paint'],
   };
+  if (minzoom !== undefined) layer.minzoom = minzoom;
   if (maxzoom !== undefined) layer.maxzoom = maxzoom;
   return layer;
 }
 
 /**
- * `boundary_2`'s colour, width and opacity, so the overlay looks like the base map's own lines; a property it does not
- * set comes from {@link FALLBACK_LINE_PAINT}.
+ * A base layer's paint for an overlay layer, so it looks like the base map's own lines: `boundary_2`'s colour, width
+ * and opacity by default; a property the base layer does not set comes from `fallback` ({@link FALLBACK_LINE_PAINT}).
  */
-function copyPaint(paint: unknown): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...FALLBACK_LINE_PAINT };
+function copyPaint(
+  paint: unknown,
+  fallback: Readonly<Record<string, unknown>> = FALLBACK_LINE_PAINT,
+  keys: readonly string[] = Object.keys(FALLBACK_LINE_PAINT),
+): Record<string, unknown> {
+  const out: Record<string, unknown> = JSON.parse(JSON.stringify(fallback)) as Record<string, unknown>;
   if (!paint || typeof paint !== 'object') return out;
-  for (const key of Object.keys(FALLBACK_LINE_PAINT)) {
+  for (const key of keys) {
     const value = (paint as Record<string, unknown>)[key];
     // A copy (style values are plain JSON), so the overlay never shares an array with boundary_2.
     if (value !== undefined) out[key] = JSON.parse(JSON.stringify(value)) as unknown;
