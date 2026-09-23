@@ -259,8 +259,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 - **App icon: three small footprints (option C).** On Android (`ic_launcher.xml`, and the status-bar icon
   `ic_stat_doorprints.xml`) and on the web (`favicon.svg`, `icons/favicon-32.png`, `icon-192.png`, `icon-512.png`,
-  `icon-maskable-512.png`, `apple-touch-icon.png`), the two large gold ovals beside the door are now three small
-  footprints walking up to it, left, right, left, each with a sole, a heel and four toes. Colours, the door and the
+  `icon-maskable-512.png`, `apple-touch-icon.png`), the two large gold prints beside the door (a sole with two toes; plain ovals in the favicon)
+  are now three small footprints walking up to it, left, right, left, each with a sole, a heel and four toes. Colours, the door and the
   layout of each icon are unchanged; the favicon now shows the same prints ([12](docs/12-brand-and-naming.md) N-06,
   [14](docs/14-lead-backlog-and-handoff.md) N3).
 - **CI runs on every branch** (owner decision, 2026-09-23: "We need to have the pipelines run on branches as well

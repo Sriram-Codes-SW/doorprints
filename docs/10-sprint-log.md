@@ -6,7 +6,7 @@
 | Version | 0.35 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, fix on branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI not yet seen green**, §12.8) |
+| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, fix on branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI not yet seen green**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15**, §12.9) |
 
 ## Change log
 
@@ -1118,7 +1118,8 @@ footprints, not as two gold ovals. Source: [14](14-lead-backlog-and-handoff.md) 
 2026-09-24. Branch `fix/brand-footprints`, PR #15.
 
 **Owner decisions (2026-09-24).** (1) Three small footprints (sole, heel, four toes) walking up beside the door, at the
-positions, rotation and scale of N3. (2) **Left/right/left**, not the right/left/right first written in N3: at those
+positions, rotation and scale of N3, except that the design review moved the top print from (79,55) to (78.5,51.5)
+(spacing only, as N3 allows) so that its heel no longer touches the middle print. (2) **Left/right/left**, not the right/left/right first written in N3: at those
 positions right/left/right put the left foot to the right of the right feet, so the big toes faced away from each
 other. The owner chose the swap after a side-by-side render. (3) The favicon keeps the same three prints; at 16 px
 the toes do not show, and the owner accepted that for one mark everywhere.
@@ -1134,6 +1135,14 @@ docs reviews approve; the owner merges (or a session merges on the owner's instr
 | Renders shown to the owner | Before/after comparison and final renders (512, maskable in the circle, Apple, 192, favicon at real size, status icon at 24/48/72 px), 2026-09-24 |
 | Web | `ng test` 459 of 459, `ng build` and the precache stamp, locally (Node 24) and in CI |
 | Android | `assembleDebug` and unit tests green in CI on the branch (no SDK in the session) |
-| CI on the branch | All workflows green on `e2414f6` |
-| Reviews | Pending: code (Web, Android), design and UX, docs |
+| CI on the branch | All workflows green on `e2414f6` (round 1); the fix round's head is re-run by CI |
+| Reviews, round 1 | Code (Web, Android): **approved**, three minors (the status icon's toes and the favicon's toes at small sizes, both owner-accepted or device checks; one BACKLOG). Design and UX: **approved**, one spacing minor applied (top print to (78.5,51.5)), three BACKLOG. Docs: **changes requested**, two majors (ADR-13 in [03](03-design.md) still said the favicon had no toes; [14](14-lead-backlog-and-handoff.md) §1 still showed PR #14 open) and five minors, all applied |
+| Reviews, round 2 (delta only) | Pending |
 | Device checks | Owner: the launcher icon on a round-mask launcher; the status-bar icon while Hunt mode runs |
+
+**Review follow-ups (`BACKLOG:` candidates, not in this story).** (a) One source for the footprint: the path is
+repeated in `ic_launcher.xml` (three groups), `ic_stat_doorprints.xml` and `favicon.svg`; a small script that writes
+the web SVG and PNGs from the Android geometry would stop the two platforms drifting (code and design reviews).
+(b) If the owner reopens the mark: a print scale of about 1.0 instead of 0.9, for more gold at the 48 px launcher size
+(design review). (c) Check the status-bar icon's toes on an mdpi or hdpi phone; if they smear, drop them from the
+small icon only (code review; device check above).
