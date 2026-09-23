@@ -828,9 +828,20 @@ describe('SyncService', () => {
       expect(sync.lastError()).toBeNull();
     });
 
+    // Both branches of errorMsg's status-0 rule (core/format.ts), reached through a real forced run: while the
+    // browser says it is offline the user is told so (not the CORS advice); while it says online, a request that
+    // got no response is still the connection/CORS message.
     it('reports a failure the user asked for, as such', async () => {
       api.houses = () => throwError(() => offline());
       setOnline(false);
+      await sync.syncNow(true);
+      expect(sync.lastError()).toEqual({ key: 'error.offline' });
+      expect(sync.lastErrorForced()).toBe(true);
+    });
+
+    it('keeps the connection message for a forced run that got no response while the browser says online', async () => {
+      api.houses = () => throwError(() => offline());
+      setOnline(true);
       await sync.syncNow(true);
       expect(sync.lastError()).toEqual({ key: 'error.network' });
       expect(sync.lastErrorForced()).toBe(true);
