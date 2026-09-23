@@ -311,6 +311,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   [docs/05](docs/05-ux-accessibility-i18n.md) v0.12 and [docs/07](docs/07-secure-build-and-deploy.md) v0.25 (the
   same rules at the top of §15.5 and A.5) and [docs/06](docs/06-test-plan.md) v0.23 (the `connect-page` and
   `run-result` specs; the 0.22 change-log row reattached to its table).
+- **Docs for the pre-deploy close-out** (2026-09-23): [docs/05](docs/05-ux-accessibility-i18n.md) v0.13–v0.14,
+  [docs/06](docs/06-test-plan.md) v0.24–v0.26, [docs/10](docs/10-sprint-log.md) v0.27–v0.29 and the
+  [docs index](docs/README.md) v0.27–v0.29. The last sync before the first deploy applies the Web team's close-out
+  review rows up to `web/README.md` *Pre-deploy close-out, round 3 review fixes* (the last handover applied;
+  `android/shared/README.md` up to 1.34): Plan and the new-house start in docs/05 §5, two NEW rules in docs/05 §15.3 R6
+  and R9, the new spec cases in docs/06 TC-U-53, §14.3 and TC-S-19, and backlog tickets S4b-BL-6 and S4b-BL-7 with
+  rule candidates (i)–(k) in docs/10 §12.7.
 - **The web app is hosted on Firebase Hosting at https://doorprints.web.app** (owner decisions, 2026-09-23; not
   pushed yet). It replaces GitHub Pages, which cannot send security headers and shares one origin across the owner's
   Pages sites, and a Cloudflare Pages plan of the same morning, which the owner rejected before it was set up because
@@ -540,6 +547,23 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
   the longitude, not the latitude (`pages/plan/start-field.ts`, `start-field.spec.ts`; [sprint log](docs/10-sprint-log.md)
   §11.7 W2). The map's *Download now* no longer announces "*n* houses downloaded" on another page when the map was
   left while the download ran (§12.7 S4b-BL-5).
+- **Web, Plan's typed start** (pre-deploy close-out, round 1 review, 2026-09-23; not yet built in CI): a coordinate
+  typed while no start is set is dropped when its field turns invalid or is cleared, so Plan never sets a start from a
+  value the user removed (`nextTypedStart` in `pages/plan/start-field.ts`, `start-field.spec.ts`;
+  [sprint log](docs/10-sprint-log.md) §11.7 W2).
+- **Web, a stale start message withdrawn by every start** (pre-deploy close-out, round 2 review, 2026-09-23; not yet
+  built in CI): a *location blocked* or *location unavailable* note under Plan's start fields now goes away however the
+  start is then set (map, marker drag, typing, the newest house, *Use my location*), so it is no longer read with the
+  fields on every focus ([docs/05](docs/05-ux-accessibility-i18n.md) §5, *Start point (web)*).
+- **Web, no start in central India on the untouched default view** (pre-deploy close-out, round 1 review, 2026-09-23;
+  not yet built in CI): the map view saved on the map page's first layout (the untouched country view) is not read as
+  the user's choice, so the new-house form opened with no position, and Plan's first start, no longer start in the
+  middle of India (`loadStartPoint` in `shared/map-center.ts`, `map-center.spec.ts`;
+  [test plan](docs/06-test-plan.md) TC-U-53).
+- **Web, the `/houses/new` read guarded after the page is gone** (pre-deploy close-out, round 2 review, 2026-09-23;
+  not yet built in CI): leaving the new-house form while it reads the houses for its starting view no longer announces
+  *Draft restored* or sets the title on the next page (`startWithoutPosition()` in `house-detail-page.ts`;
+  [sprint log](docs/10-sprint-log.md) §12.7 candidate (f); its TestBed cases are S4b-BL-7).
 
 ### Security
 
