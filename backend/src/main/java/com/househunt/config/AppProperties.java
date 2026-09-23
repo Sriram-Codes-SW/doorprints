@@ -21,7 +21,7 @@ public record AppProperties(
 
     public AppProperties {
         rateLimit = rateLimit == null ? new RateLimit(null, null, null, null) : rateLimit;
-        limits = limits == null ? new Limits(null, null, null) : limits;
+        limits = limits == null ? new Limits(null, null, null, null, null) : limits;
         sync = sync == null ? new Sync(null, null) : sync;
         privacy = privacy == null ? new Privacy(null) : privacy;
     }
@@ -40,12 +40,25 @@ public record AppProperties(
         }
     }
 
-    /** Request and storage limits (F-05, F-06). */
-    public record Limits(Integer maxJsonBytes, Integer maxPhotosPerHouse, Integer maxPhotoBytes) {
+    /**
+     * Request and storage limits (F-05, F-06).
+     *
+     * <p>{@code maxImportBytes} and {@code maxImportRows} apply to {@code POST /api/import} only: one backup file
+     * holds every house at once, so it needs more room than a sync write, but still a hard cap (a backup of a few
+     * thousand rows is well under a megabyte of JSON). The body cap defaults to
+     * {@link com.househunt.backup.BackupFormat#MAX_DATA_JSON_BYTES} (16 MiB), the {@code data.json} limit of the
+     * device readers, so any backup a phone or a browser accepts also restores to a server (docs/schemas/README.md
+     * section 7). An operator may lower it; raising it only admits files no device could read back.
+     */
+    public record Limits(Integer maxJsonBytes, Integer maxPhotosPerHouse, Integer maxPhotoBytes,
+                         Integer maxImportBytes, Integer maxImportRows) {
         public Limits {
             maxJsonBytes = positiveOr(maxJsonBytes, 256 * 1024);
             maxPhotosPerHouse = positiveOr(maxPhotosPerHouse, 20);
             maxPhotoBytes = positiveOr(maxPhotoBytes, 5 * 1024 * 1024);
+            maxImportBytes = positiveOr(maxImportBytes,
+                    Math.toIntExact(com.househunt.backup.BackupFormat.MAX_DATA_JSON_BYTES));
+            maxImportRows = positiveOr(maxImportRows, 20_000);
         }
     }
 

@@ -1,6 +1,7 @@
 package com.househunt.config;
 
 import com.househunt.ai.web.TokenBucketRateLimiter;
+import com.househunt.backup.BackupController;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,7 @@ import java.util.List;
  * Servlet filter chain, in order:
  * <ol>
  *   <li>-100 {@link SecurityHeadersFilter}: headers on every response, including errors written by later filters</li>
- *   <li>-90 {@link RequestSizeLimitFilter}: JSON body cap (413)</li>
+ *   <li>-90 {@link RequestSizeLimitFilter}: JSON body cap (413), larger for POST /api/import</li>
  *   <li>0 CORS: so 401/429 responses still carry CORS headers the browser can read</li>
  *   <li>1 {@link ApiRateLimitFilter}: per-address flood limit (429)</li>
  *   <li>2 {@link ApiKeyFilter}: canonical path check (400), then deny-by-default key check (401/429)</li>
@@ -43,7 +44,9 @@ public class WebConfig {
 
     @Bean
     public FilterRegistrationBean<RequestSizeLimitFilter> requestSizeLimitFilter() {
-        var bean = new FilterRegistrationBean<>(new RequestSizeLimitFilter(props.limits().maxJsonBytes()));
+        var limits = props.limits();
+        var bean = new FilterRegistrationBean<>(new RequestSizeLimitFilter(
+                limits.maxJsonBytes(), BackupController.IMPORT_PATH, limits.maxImportBytes()));
         bean.setOrder(-90);
         return bean;
     }

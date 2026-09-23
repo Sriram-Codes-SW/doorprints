@@ -12,6 +12,17 @@
 #   export AI_API_KEY=<key from https://aistudio.google.com/apikey>
 #   # optional: AI_CHAT_MODEL=gemini-3.5-flash AI_EMBEDDING_MODEL=gemini-embedding-2 (the defaults)
 #
+# Example: Google Cloud Vertex AI (paid key with a hard cap; docs/ai/vertex-setup.md). Authentication is
+#   Application Default Credentials only — there is no Vertex API key — so the container needs your ADC file.
+#   Compose cannot mount a file conditionally, so the two `volumes:` lines under `api:` are commented out; uncomment
+#   them (and the GOOGLE_APPLICATION_CREDENTIALS line) the first time you use this, after
+#   `gcloud auth application-default login`:
+#   export APP_AI_ENABLED=true
+#   export AI_PROVIDER=vertex GCP_PROJECT_ID=<your project> GCP_LOCATION=asia-south1
+#   export AI_VERTEX_EMBEDDING_LOCATION=global   # if the embedding model is not offered in GCP_LOCATION
+#   # No AI_API_KEY. The ADC file (~/.config/gcloud/application_default_credentials.json) holds a refresh token:
+#   # it is mounted read-only and must never be copied into an image or committed.
+#
 # Example: local Ollama on the host (nothing leaves the machine; run `ollama pull qwen3:8b` and
 #   `ollama pull nomic-embed-text` first):
 #   export APP_AI_ENABLED=true
@@ -58,13 +69,35 @@ services:
       # Optional second key accepted alongside APP_API_KEY during a rotation (SEC-017, drill TC-O-02). Empty = none;
       # if set it must also be at least 32 chars. Rotate: set it, move clients, promote it to APP_API_KEY, clear it.
       APP_API_KEY_NEXT: ${APP_API_KEY_NEXT:-}
+      # Browser origins allowed to call the API: comma-separated origins (scheme://host[:port]), no path, no trailing
+      # slash. The default allows only the Angular dev server. To sync the live web app on Firebase Hosting with this
+      # server, opt in before `docker compose up`:
+      #   export APP_CORS_ORIGINS=http://localhost:4200,https://doorprints.web.app
+      # (https://doorprints.firebaseapp.com serves the same site but is a separate origin with its own browser data;
+      # add it only if you use that address.) The public origin is deliberately not the default here or in
+      # application.yml: every server started with the defaults would then answer that website from the user's
+      # browser, so a bad deploy of the site or a script injected into it could read and change the data of any such
+      # server whose key the user has saved there. Allowing it is each server owner's choice. The site is HTTPS: it
+      # can reach this loopback-only http:// server only where the browser exempts localhost (Chrome asks the user
+      # first); docs/07 section 6 has the https:// setup.
       APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:4200}
+      # POST /api/import (restoring a doorprints-backup/1 file): body and row caps, see application.yml. 16 MiB is
+      # the data.json cap of the device readers too (docs/schemas/README.md section 7): keep them equal.
+      MAX_IMPORT_BYTES: ${MAX_IMPORT_BYTES:-16777216}
+      MAX_IMPORT_ROWS: ${MAX_IMPORT_ROWS:-20000}
       # --- AI (docs/ai/ai-design.md). Off unless APP_AI_ENABLED=true; defaults mirror application.yml. ---
       APP_AI_ENABLED: ${APP_AI_ENABLED:-false}
       APP_MCP_ENABLED: ${APP_MCP_ENABLED:-false}
+      # Which provider serves chat and embeddings: aistudio (default, AI_API_KEY below) or vertex (Google Cloud
+      # Vertex AI with Application Default Credentials, docs/ai/vertex-setup.md). Both code paths stay in the
+      # image, so switching back is one variable. The AI_* limits, models and retries below apply to both.
+      AI_PROVIDER: ${AI_PROVIDER:-aistudio}
+      # Embed a house right after each save; false = only POST /api/ai/reindex embeds (fewer provider calls).
+      AI_INDEX_ON_CHANGE: ${AI_INDEX_ON_CHANGE:-true}
       # Chat: any OpenAI-compatible endpoint (Gemini's by default, or Ollama's /v1).
       AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
-      # Secret: never commit it; required (non-empty) only when APP_AI_ENABLED=true.
+      # Secret: never commit it; required (non-empty) only when APP_AI_ENABLED=true and AI_PROVIDER=aistudio. The
+      # vertex path uses Application Default Credentials and needs GCP_PROJECT_ID instead of a key.
       AI_API_KEY: ${AI_API_KEY:-}
       AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-3.5-flash}
       AI_TIMEOUT: ${AI_TIMEOUT:-60s}
@@ -93,6 +126,24 @@ services:
       AI_AGENT_MAX_TOOL_CALLS: ${AI_AGENT_MAX_TOOL_CALLS:-12}
       AI_AGENT_MAX_CALLS_PER_TOOL: ${AI_AGENT_MAX_CALLS_PER_TOOL:-4}
       AI_AGENT_MAX_STOPS: ${AI_AGENT_MAX_STOPS:-8}
+      # --- Vertex AI (only read when AI_PROVIDER=vertex). No key: authentication is Application Default
+      # Credentials, so either mount the ADC file (see the volumes below) or run on a host with a service
+      # account attached. Empty values mean "use the default" exactly as in application.yml. ---
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      # Mumbai (India data residency / latency); `global` has the widest model availability.
+      GCP_LOCATION: ${GCP_LOCATION:-asia-south1}
+      # Empty = same as GCP_LOCATION. Set (e.g. global) when the embedding model is not offered there.
+      AI_VERTEX_EMBEDDING_LOCATION: ${AI_VERTEX_EMBEDDING_LOCATION:-}
+      # Empty = derived from the location (https://<location>-aiplatform.googleapis.com).
+      AI_VERTEX_ENDPOINT: ${AI_VERTEX_ENDPOINT:-}
+      AI_VERTEX_API_VERSION: ${AI_VERTEX_API_VERSION:-v1beta1}
+      # Uncomment together with the volumes below to hand the container your gcloud ADC file.
+      # GOOGLE_APPLICATION_CREDENTIALS: /adc/application_default_credentials.json
+    # Uncomment for AI_PROVIDER=vertex with a local `gcloud auth application-default login` (read-only, and the
+    # file stays on the host). Leave commented otherwise: a bind mount of a file that does not exist fails the
+    # whole `docker compose up`, and compose has no way to make one optional.
+    # volumes:
+    #   - ${HOME}/.config/gcloud/application_default_credentials.json:/adc/application_default_credentials.json:ro
     # Lets AI_BASE_URL=http://host.docker.internal:11434/v1 reach an Ollama on the host (Docker Desktop defines this
     # name already; on Linux Engine it needs the host-gateway mapping). Unused while AI is off.
     extra_hosts: ["host.docker.internal:host-gateway"]
