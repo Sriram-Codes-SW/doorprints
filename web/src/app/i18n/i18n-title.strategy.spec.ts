@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { en } from './en';
 import { hi } from './hi';
 import { ta } from './ta';
-import { I18nTitleStrategy } from './i18n-title.strategy';
+import { I18nTitleStrategy, TitleOverride } from './i18n-title.strategy';
 import { TranslationService } from './translation.service';
 
 /** The snapshot is never read: buildTitle() is stubbed, so each test picks the route title key directly. */
@@ -64,6 +64,20 @@ describe('I18nTitleStrategy', () => {
     i18n.setLang('hi');
     TestBed.tick();
     expect(title.getTitle()).toBe(hi['title.map']);
+  });
+
+  it('uses a page’s own title while it is set, in the current language, and the route title again after', () => {
+    const own = TestBed.inject(TitleOverride);
+    navigateTo('title.house');
+    own.message.set({ key: 'title.houseNamed', params: { name: 'Blue gate 2BHK' } });
+    TestBed.tick();
+    expect(title.getTitle()).toBe('Blue gate 2BHK · Doorprints');
+    i18n.setLang('hi');
+    TestBed.tick();
+    expect(title.getTitle()).toBe(hi['title.houseNamed'].replace('{name}', 'Blue gate 2BHK'));
+    own.message.set(null);
+    TestBed.tick();
+    expect(title.getTitle()).toBe(hi['title.house']);
   });
 
   it('sets the meta description from app.description, matching index.html in English', () => {

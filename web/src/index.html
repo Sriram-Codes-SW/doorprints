@@ -6,12 +6,31 @@
   <meta name="description" content="Doorprints: Remember every house you've seen. Save, rate and compare the houses you visit.">
   <meta name="application-name" content="Doorprints">
   <base href="/">
-  <!-- No maximum-scale / user-scalable=no: pinch zoom must keep working (WCAG 1.4.4). -->
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    No maximum-scale / user-scalable=no: pinch zoom must keep working (WCAG 1.4.4).
+    viewport-fit=cover goes with the black-translucent status bar below: an app added to the iPhone Home Screen
+    then draws under the status bar and the home indicator, and app.ts pads the header and the bottom navigation
+    by env(safe-area-inset-*) so the clock, the notch or Dynamic Island never cover a link.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#1F6F5C" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#173F35" media="(prefers-color-scheme: dark)">
+  <!-- The door-and-footprints mark. The PNGs come first, for browsers without SVG tab icons (Safari before 26), which
+       would otherwise ask for /favicon.ico and get the SPA fallback page; browsers that draw SVG use the one after.
+       favicon-32.png is favicon.svg (the simplified tab mark, no toes) rendered at 32 px by headless Chromium: a browser
+       that picks a bitmap by size takes it for the 16 px (1x) and 32 px (2x) tab, instead of shrinking the detailed
+       192 px icon. The 192 px one stays for large uses (bookmarks, new-tab tiles). -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <!-- Installable web app (S4-05). iOS ignores the manifest's icons, hence the apple-touch-icon. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Doorprints">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!--
     Fallback fonts for Hindi, Tamil and Telugu when the device has none. Google Fonts serves them split by
     unicode-range, so a browser only downloads a script's font when that script appears on the page.

@@ -32,6 +32,118 @@
   font-weight: 600;
 }
 
+/*
+ * "Saving…": a small ring in the text colour, beside the words (only the words for screen readers on phones). With
+ * reduced motion (styles.css stops animations) the still, open ring remains a "working" sign.
+ */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: save-spin 0.8s linear infinite;
+}
+
+@keyframes save-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * One control height in the bar: Back is as tall as Save (44px) on every screen, not a 36px .btn-sm beside a 44px
+ * .btn on a desktop with a mouse (UX lead review 2026-09-22).
+ */
+.toolbar .back {
+  min-height: var(--target);
+}
+
+/*
+ * Phones: one row, like Android's 64dp top app bar (UX lead audit 2026-09-22). In Tamil the toolbar used to wrap to
+ * three rows (~160px), pinned between the header and the bottom bar for the whole form. Back becomes a 44px icon
+ * button (its name stays in the accessibility tree), the title keeps one line with an ellipsis (the full name is in
+ * the Name field right below), and the save state is its glyph (● unsaved, ✓ saved) with the words for screen readers.
+ */
+@media (max-width: 600px) {
+  .toolbar {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  /*
+   * An M3 top-app-bar icon button, not an outlined square: no border or fill until hovered (the focus ring is the
+   * global one).
+   */
+  .back {
+    flex: 0 0 auto;
+    width: var(--target);
+    min-width: var(--target);
+    min-height: var(--target);
+    padding: 0;
+    font-size: var(--text-lg);
+    border-color: transparent;
+    background: none;
+  }
+
+  @media (hover: hover) {
+    .back:hover:not(:disabled) {
+      background: var(--surface-2);
+    }
+  }
+
+  /*
+   * overflow: hidden clips ink to the line box. At the heading's 1.25 that cut off Telugu vattulu (the translated
+   * "New house" కొత్త ఇల్లు, and Telugu house names) and grazed Hindi ु ू and Tamil ு ூ. --leading is 1.7 for Indic
+   * and 1.5 for Latin (31px at 18px), and the padding gives descenders a little more; it still fits the 44px row.
+   */
+  .page-title {
+    flex: 1 1 auto;
+    font-size: var(--text-lg);
+    line-height: var(--leading);
+    padding-block: 0.1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal;
+  }
+
+  .toolbar-right {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+
+  .save-state {
+    font-size: var(--text-md);
+  }
+
+  .back-text,
+  .state-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/*
+ * Short viewports (a phone in landscape, 400% zoom at 320x256): header, toolbar and bottom bar together left almost
+ * nothing to read (WCAG 1.4.10). The toolbar scrolls away with the form there; watchToolbar() then reserves nothing.
+ */
+@media (max-height: 500px) {
+  .toolbar {
+    position: static;
+  }
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
@@ -50,14 +162,9 @@
   flex: 1;
 }
 
-.req,
-.field-error {
+/* Field errors are the shared .field-error (styles.css). */
+.req {
   color: var(--error-text);
-}
-
-.field-error {
-  font-size: var(--text-sm);
-  font-weight: 600;
 }
 
 .score {
@@ -135,6 +242,25 @@ app-location-map {
   min-width: 2.5rem;
   min-height: 2.5rem;
   padding: 0;
+}
+
+/*
+ * Touch screens: the full 44px target (UX-007), like .btn-sm and .chip; this form is filled in outdoors, during a
+ * visit. Six 44px options and five 4px gaps take 284px, which fits a 360px phone inside the gutters and the card
+ * padding, so 0-5 stay on one line and only "–" (not scored, last) wraps. Android's ChecklistRow uses 48dp.
+ */
+@media (pointer: coarse) {
+  .check-values .option > span {
+    min-width: var(--target);
+    min-height: var(--target);
+  }
+}
+
+/* Phones: the item's name on its own line above the scale, as on Android. */
+@media (max-width: 600px) {
+  .check-row > legend {
+    flex: 1 1 100%;
+  }
 }
 
 .section-head {
@@ -246,6 +372,14 @@ app-location-map {
   font: inherit;
 }
 
+/* Touch screens: a full 44px target on each photo (UX-007). */
+@media (pointer: coarse) {
+  .photo-del {
+    width: var(--target);
+    height: var(--target);
+  }
+}
+
 .photo-del:focus-visible {
   outline-color: #fff;
   box-shadow: 0 0 0 5px #000;
@@ -253,8 +387,57 @@ app-location-map {
 
 .danger-zone {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
   padding: var(--space-2) 0 var(--space-6);
+}
+
+.danger-zone > div {
+  flex: 1 1 16rem;
+}
+
+/*
+ * The message grows and the button follows it (at the end of the row, or on the next line when the row wraps). The
+ * ⚠ starts the sentence it qualifies, inside the text item, instead of being a flex item of its own (styles.css
+ * turns the box's own ::before off).
+ */
+.restored {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.restored > span {
+  flex: 1 1 16rem;
+}
+
+.restored > span::before {
+  content: '⚠ ';
+}
+
+.failures {
+  margin: var(--space-1) 0;
+  padding-inline-start: 1.25rem;
+}
+
+/*
+ * The photos that could not be added: a sentence, then the list. The ⚠ goes into the sentence instead of standing on
+ * a line of its own above it (the box's ::before would come before the block paragraph).
+ */
+.error.with-list::before {
+  content: none;
+}
+
+.error.with-list > p:first-child::before {
+  content: '⚠ ';
+}
+
+.error p {
+  margin: 0;
 }
 
 .lightbox {
@@ -286,27 +469,23 @@ app-location-map {
 
 .lightbox-close {
   position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
+  /* An installed iPhone app draws under the status bar (index.html, black-translucent): stay below it. */
+  top: max(var(--space-4), env(safe-area-inset-top));
+  right: max(var(--space-4), env(safe-area-inset-right));
 }
 
 @media (max-width: 400px) {
-  .check-values .option > span {
-    min-width: 2.125rem;
-    min-height: 2.25rem;
-  }
-
   .score {
     width: 3.75rem;
     height: 3.75rem;
   }
 }
 
-.import {
+.listing-fill {
   margin-bottom: var(--space-4);
 }
 
-.import summary {
+.listing-fill summary {
   cursor: pointer;
   font-weight: 700;
   min-height: var(--target);
@@ -314,13 +493,20 @@ app-location-map {
   align-items: center;
 }
 
-.import textarea {
+.listing-fill textarea {
   width: 100%;
 }
 
-.import .warnings {
+.listing-fill .warnings {
   margin-top: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-left: 4px solid var(--star);
   background: var(--surface-2, var(--bg));
+}
+
+.location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
