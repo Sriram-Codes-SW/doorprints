@@ -175,6 +175,34 @@ class IndiaViewRulesTest {
         assertEquals("in-boundaries", IndiaViewRules.SOURCE_ID)
         assertEquals("in-boundary-world", IndiaViewRules.WORLD_LAYER)
         assertEquals("in-boundary-claim", IndiaViewRules.CLAIM_LAYER)
+        val state = parse(IndiaViewRules.STATE_FILTER)
+        assertTrue(eval(state, mapOf("kind" to "state")))
+        assertFalse(eval(state, mapOf("kind" to "claim")))
+        assertFalse(eval(world, mapOf("kind" to "state")))
+        assertFalse(eval(claim, mapOf("kind" to "state")))
+        assertEquals("in-boundary-state", IndiaViewRules.STATE_OVERLAY_LAYER)
+    }
+
+    @Test
+    fun indiasStateLineGoesDirectlyAboveTheStateLinesFromZoomFive() {
+        // Assam-Arunachal Pradesh: the tiles mark it disputed and claimed by China, so boundary_3 never draws it; ours
+        // is drawn from where boundary_3 starts, like it (the web's in-boundary-state, india-boundaries.ts).
+        assertEquals(5f, IndiaViewRules.STATE_MIN_ZOOM)
+        val liberty = listOf(
+            line("boundary_3", "boundary", 5f),
+            line("boundary_2", "boundary"),
+            line("in-boundary-world", "in-boundaries"),
+            line("in-boundary-claim", "in-boundaries"),
+            line("boundary_disputed", "boundary"),
+        )
+        assertEquals(Placement.Above("boundary_3"), IndiaViewRules.statePlacement(liberty))
+        val noStateLines = liberty.filter { it.id != "boundary_3" }
+        assertEquals(Placement.Below("in-boundary-world"), IndiaViewRules.statePlacement(noStateLines))
+        val neither = noStateLines.filter { !it.id.startsWith("in-boundary") }
+        assertEquals(IndiaViewRules.placement(neither), IndiaViewRules.statePlacement(neither))
+        assertEquals(Placement.Top, IndiaViewRules.statePlacement(emptyList()))
+        assertEquals("hsl(0,0%,70%)", IndiaViewRules.STATE_FALLBACK_LINE_COLOR)
+        assertEquals(listOf(1f, 1f), IndiaViewRules.STATE_FALLBACK_LINE_DASHARRAY.toList())
     }
 
     @Test
@@ -297,7 +325,8 @@ class IndiaViewRulesTest {
         val legacyOps = setOf("all", "any", "has", "none", "in", "!in")
         listOf(
             IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER, IndiaViewRules.STATE_LABEL_EXTRA_FILTER,
-            IndiaViewRules.WORLD_FILTER, IndiaViewRules.CLAIM_FILTER, IndiaViewRules.TILE_ZOOM_GUARD,
+            IndiaViewRules.WORLD_FILTER, IndiaViewRules.CLAIM_FILTER, IndiaViewRules.STATE_FILTER,
+            IndiaViewRules.TILE_ZOOM_GUARD,
         ).forEach {
             val ops = expressionOperators(parse(it))
             assertTrue("$it uses ${ops - expressionOps}", expressionOps.containsAll(ops))

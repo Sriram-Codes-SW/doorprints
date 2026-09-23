@@ -7,6 +7,8 @@ import com.househunt.app.ui.IndiaViewRules.DISPUTED_LAYER
 import com.househunt.app.ui.IndiaViewRules.LayerInfo
 import com.househunt.app.ui.IndiaViewRules.Placement
 import com.househunt.app.ui.IndiaViewRules.SOURCE_ID
+import com.househunt.app.ui.IndiaViewRules.STATE_LINE_LAYER
+import com.househunt.app.ui.IndiaViewRules.STATE_OVERLAY_LAYER
 import com.househunt.app.ui.IndiaViewRules.WORLD_LAYER
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
@@ -124,6 +126,33 @@ fun applyIndiaView(style: Style) {
         }
     }
 
+    // 3b. India's state line that the tiles leave undrawn (Assam-Arunachal Pradesh), from zoom 5, drawn like the other
+    //     state lines, directly above them.
+    step("add $STATE_OVERLAY_LAYER") {
+        if (style.getSource(SOURCE_ID) != null && style.getLayer(STATE_OVERLAY_LAYER) == null) {
+            val stateLines = try {
+                style.getLayer(STATE_LINE_LAYER) as? LineLayer
+            } catch (e: Exception) {
+                Log.w(TAG, "reading $STATE_LINE_LAYER failed", e)
+                null
+            }
+            val state = LineLayer(STATE_OVERLAY_LAYER, SOURCE_ID)
+                .withFilter(Expression.raw(IndiaViewRules.STATE_FILTER))
+                .withProperties(*statePaint(stateLines))
+            state.setMinZoom(IndiaViewRules.STATE_MIN_ZOOM)
+            try {
+                when (val at = IndiaViewRules.statePlacement(style.layers.map(::placementInfo))) {
+                    is Placement.Above -> style.addLayerAbove(state, at.layerId)
+                    is Placement.Below -> style.addLayerBelow(state, at.layerId)
+                    Placement.Top -> style.addLayer(state)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "placing $STATE_OVERLAY_LAYER failed; added on top", e)
+                if (style.getLayer(STATE_OVERLAY_LAYER) == null) style.addLayer(state)
+            }
+        }
+    }
+
     // 4. No state label for the parts of Jammu and Kashmir and Ladakh under Pakistan's administration.
     step("filter state labels") {
         val ids = IndiaViewRules.stateLabelLayers(style.layers.map(::labelInfo))
@@ -203,17 +232,55 @@ private fun linePaint(country: LineLayer?): Array<PropertyValue<*>> {
     )
 }
 
-/** One paint property of [country] for the outline, or null (the caller's fallback) when it cannot be read. */
+/**
+ * [STATE_LINE_LAYER]'s colour, width, dashes and opacity for India's state line, so it looks like the base map's other
+ * state lines, with round joins and butt caps as there (round caps would fill the dashes' gaps). Each is read on its
+ * own; one that cannot be read is logged and replaced by Liberty's value (rule 5).
+ */
+private fun statePaint(stateLines: LineLayer?): Array<PropertyValue<*>> {
+    val color = copied("line-color", stateLines, STATE_LINE_LAYER) { layer ->
+        val pv = layer.lineColor
+        when {
+            pv.isExpression -> pv.expression?.let { PropertyFactory.lineColor(it) }
+            else -> (pv.value as? String)?.let { PropertyFactory.lineColor(it) }
+        }
+    } ?: PropertyFactory.lineColor(IndiaViewRules.STATE_FALLBACK_LINE_COLOR)
+    val width = copied("line-width", stateLines, STATE_LINE_LAYER) { layer ->
+        val pv = layer.lineWidth
+        when {
+            pv.isExpression -> pv.expression?.let { PropertyFactory.lineWidth(it) }
+            else -> (pv.value as? Number)?.let { PropertyFactory.lineWidth(it.toFloat()) }
+        }
+    } ?: PropertyFactory.lineWidth(IndiaViewRules.STATE_FALLBACK_LINE_WIDTH)
+    val dashes = copied("line-dasharray", stateLines, STATE_LINE_LAYER) { layer ->
+        val pv = layer.lineDasharray
+        when {
+            pv.isExpression -> pv.expression?.let { PropertyFactory.lineDasharray(it) }
+            else -> pv.value?.let { PropertyFactory.lineDasharray(it) }
+        }
+    } ?: PropertyFactory.lineDasharray(IndiaViewRules.STATE_FALLBACK_LINE_DASHARRAY)
+    val opacity = copied("line-opacity", stateLines, STATE_LINE_LAYER) { layer ->
+        val pv = layer.lineOpacity
+        when {
+            pv.isExpression -> pv.expression?.let { PropertyFactory.lineOpacity(it) }
+            else -> (pv.value as? Number)?.let { PropertyFactory.lineOpacity(it.toFloat()) }
+        }
+    } ?: PropertyFactory.lineOpacity(IndiaViewRules.FALLBACK_LINE_OPACITY)
+    return arrayOf<PropertyValue<*>>(color, width, dashes, opacity, PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND))
+}
+
+/** One paint property of [layer] for an overlay layer, or null (the caller's fallback) when it cannot be read. */
 private inline fun copied(
     what: String,
-    country: LineLayer?,
+    layer: LineLayer?,
+    layerId: String = COUNTRY_LAYER,
     read: (LineLayer) -> PropertyValue<*>?,
 ): PropertyValue<*>? {
-    if (country == null) return null
+    if (layer == null) return null
     return try {
-        read(country)
+        read(layer)
     } catch (e: Exception) {
-        Log.w(TAG, "reading $what of $COUNTRY_LAYER failed; Liberty's value used", e)
+        Log.w(TAG, "reading $what of $layerId failed; Liberty's value used", e)
         null
     }
 }

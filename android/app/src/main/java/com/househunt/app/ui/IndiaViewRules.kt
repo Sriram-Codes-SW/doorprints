@@ -20,7 +20,11 @@ package com.househunt.app.ui
  *     drawn in place of a loading or missing one;
  *  3. the bundled outline ([SOURCE_URI], built from Natural Earth by web/scripts/geo/build_in_boundaries.py): the
  *     'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines there are Natural Earth's ISO view and
- *     cannot be filtered) and India's 'claim' outline at every zoom, directly above [COUNTRY_LAYER] and drawn like it;
+ *     cannot be filtered), which also hold the stretches of India's outline along which the tiles draw a country line
+ *     of their own from zoom 5 (so the two never show side by side), and India's 'claim' outline, the rest, at every
+ *     zoom, directly above [COUNTRY_LAYER] and drawn like it; and India's 'state' line that the tiles leave undrawn
+ *     (Assam-Arunachal Pradesh, marked disputed and claimed by China) from zoom 5, directly above [STATE_LINE_LAYER]
+ *     and drawn like it ([STATE_OVERLAY_LAYER], [statePlacement]);
  *  4. no state label for the areas above ([STATE_LABEL_EXTRA_FILTER]);
  *  5. a missing layer is skipped with a warning, never a crash, and the outline is still added; a layer whose own
  *     filter is in the deprecated syntax gets the same rules in that syntax ([extraFilterFor]), except the tile-zoom
@@ -35,6 +39,7 @@ object IndiaViewRules {
 
     const val WORLD_LAYER = "in-boundary-world"
     const val CLAIM_LAYER = "in-boundary-claim"
+    const val STATE_OVERLAY_LAYER = "in-boundary-state"
 
     /** Liberty's solid country lines (admin level 2, not maritime, not disputed, not a claim). */
     const val COUNTRY_LAYER = "boundary_2"
@@ -168,6 +173,18 @@ object IndiaViewRules {
 
     val WORLD_FILTER: String = "[\"==\", ${get("kind")}, ${quote("world")}]"
     val CLAIM_FILTER: String = "[\"==\", ${get("kind")}, ${quote("claim")}]"
+    val STATE_FILTER: String = "[\"==\", ${get("kind")}, ${quote("state")}]"
+
+    /** [STATE_OVERLAY_LAYER]'s minzoom: from where [STATE_LINE_LAYER] draws the other state lines. */
+    const val STATE_MIN_ZOOM = DETAILED_FROM_ZOOM
+
+    /**
+     * Liberty's `boundary_3` paint (its colour and dashes, its width at zoom 7), used only when that layer is missing
+     * or a property cannot be read; the web's STATE_FALLBACK_LINE_PAINT.
+     */
+    const val STATE_FALLBACK_LINE_COLOR = "hsl(0,0%,70%)"
+    const val STATE_FALLBACK_LINE_WIDTH = 1f
+    val STATE_FALLBACK_LINE_DASHARRAY: Array<Float> get() = arrayOf(1f, 1f)
 
     /** Liberty's `boundary_2` paint, used only when that layer is missing and there is nothing to copy. */
     const val FALLBACK_LINE_COLOR = "hsl(248,1%,41%)"
@@ -203,6 +220,16 @@ object IndiaViewRules {
         layers.firstOrNull { it.sourceLayer == BOUNDARY_SOURCE_LAYER }?.let { return Placement.Above(it.id) }
         layers.firstOrNull { it.isSymbol }?.let { return Placement.Below(it.id) }
         return Placement.Top
+    }
+
+    /**
+     * Where [STATE_OVERLAY_LAYER] goes: directly above [STATE_LINE_LAYER]; without it, directly below [WORLD_LAYER]
+     * (the web puts it where the outline starts); without that either, where [placement] puts the outline.
+     */
+    fun statePlacement(layers: List<LayerInfo>): Placement = when {
+        layers.any { it.id == STATE_LINE_LAYER } -> Placement.Above(STATE_LINE_LAYER)
+        layers.any { it.id == WORLD_LAYER } -> Placement.Below(WORLD_LAYER)
+        else -> placement(layers)
     }
 
     /**
