@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.31 |
-| Date | 2026-09-23 |
+| Version | 0.33 |
+| Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -43,6 +43,8 @@
 | 0.29 | 2026-09-23 | Claude (Cowork), Docs team | **Last Docs sync before the first deploy** (the delivery coordinator's final review of the pre-deploy close-out; Docs items only). Handovers applied (update rule 11): `web/README.md` up to its row dated 2026-09-22, *Pre-deploy close-out, round 3 review fixes (Sprint 4a, 2026-09-23)*, with the round 1 and 2 rows before it; `android/shared/README.md` up to 1.34 (unchanged since the earlier round). **05 v0.14**: §5 *Start point (web)* (the default view is never a start the user chose; every way of setting the start withdraws the message under the start fields; `start-msg` in both fields' `aria-describedby`, the focused field `aria-invalid`); §15.3 R6 and R9 gain the coordinator's two NEW rules, with pointers from R11 and R18. **06 v0.26**: TC-U-53 and §14.3 add `nextTypedStart` and the stored-map-view cases (`parseMapView`, `startPointFromView`, `loadStartPoint`); TC-S-19 adds the untouched `hh.mapView` that is never read back as a user choice, and storage blocked for the site. **10 v0.29**: §11.7 W2 (`nextTypedStart`); §12.7 backlog tickets S4b-BL-6 and S4b-BL-7 (owner Web), candidate (f)'s third finished case, and candidates (i)–(k). The root CHANGELOG adds the four round 1 and 2 web fixes under Fixed (not yet built in CI) and the docs versions under Changed. |
 | 0.30 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision: CI runs on every branch** ([10](10-sprint-log.md) §12.5 Decision 5). 02 v0.25 (T-E4, T-I21), 07 v0.26 (§1 *Branch runs*, triggers, diagram, Conventions, pinning of `gradle/actions`, §3, §4, §5, 6.3), 10 v0.30 (§12.5 Decision 5). Rule 10 says to push to a branch and merge when green. Root README and CHANGELOG *Changed* follow. |
 | 0.31 | 2026-09-23 | Claude (Cowork), Docs team | **Pre-review fixes to the branch-runs change.** 07 v0.27 (the `main` ref guard is not a boundary for the `HH_*` repository secrets, since a branch can edit it; the `release` environment restricted to `main` is the control, planned as S4b-BL-8; §3 *Environments* planned, not in place; concurrency on `main`: an in-progress run is never cancelled, only the newest waiting run starts; §3.1 what a branch run does not test), 02 v0.26 (T-E4), 10 v0.31 (Decision 5 items 2, 3, 7 and Status; S4b-BL-8; C-22 trigger). Rule 10: green means the latest run of each triggered workflow on the branch, with the branch up to date with `main`. Root README (CI paragraph with `codeql.yml`, house rule 1) and CHANGELOG follow. |
+| 0.32 | 2026-09-24 | Claude (Cowork), Docs team | **Owner issue P0 of 2026-09-24: India's boundaries on the map.** 01 v0.21 (FR-098), 02 v0.27 (RR-16, review trigger), 03 v0.16 (ADR-22), 05 v0.15 (§7.3), 06 v0.27 (§15: TC-U-54, TC-U-55, TC-S-25, TC-M-25), 07 v0.28 (CI checks of the boundary file), 10 v0.32 (§12.8, S4b-BL-9, S4b-BL-10), 11 v0.13 (D-26, §10). Root README (*Map data and credits*) and CHANGELOG *Fixed* follow. |
+| 0.33 | 2026-09-24 | Claude (Cowork), Docs team | **Round 1 review of the India's boundaries Docs change** (two majors, one minor; code compared as of 2026-09-23 19:56 UTC, 2026-09-24 01:26 IST). 01 v0.22 (FR-098: Impl on Android, Partial on the web), 02 v0.28 (RR-16 residual), 03 v0.17 (ADR-22 rule 2's adm0 guard and why, the world maxzoom on both, Consequences: doubled lines inside the claim areas, offline, `boundary_3`), 05 v0.16 (§7.3 rows corrected; §15.3 R20 gains the parity `NEW RULE:`), 06 v0.28 (TC-U-55: 15 tests; TC-U-54 and §15: the web gap; TC-M-25: doubled-line pass rule, admin lines, loading, offline, cold start, zoom 5.0, street zoom), 10 v0.33 (§12.8, S4b-BL-11, S4b-BL-12), 11 v0.14 (§10: open parity gap, not "identical"). CHANGELOG *Fixed* follows. |
 
 ---
 

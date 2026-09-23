@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.20 |
-| Date | 2026-09-23 |
+| Version | 0.22 |
+| Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -32,6 +32,8 @@
 | 0.18 | 2026-09-23 | Claude (Cowork), Docs team | **FR-070**: the manifest `id` example follows the owner's hosting decision of 2026-09-23 — Cloudflare Pages at the root of its own origin, so the build writes `"id": "/"`; the GitHub Pages path `/doorprints/` is no longer used ([03](03-design.md) ADR-21). No requirement changes. |
 | 0.19 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decisions of 2026-09-23.** (1) **Hosting:** the web app is on **Firebase Hosting** at `https://doorprints.web.app` (Spark plan, no billing account), replacing the Cloudflare Pages plan, which was never set up ([03](03-design.md) ADR-21): FR-070's `id` example and **CON-01** (the web's free tier) and **SEC-012** (the web headers now come from `web/firebase.json`; RTM row with TC-S-23, TC-S-24, TC-M-19) follow. (2) **The approved import definition** (Sprint 4b story S4b-00) becomes new section **6.9, FR-089..FR-097**: what an import is, the only two accepted files, what a backup can contain, what an import never changes, validate-first, preview, merge by newest edit, never delete, add as copies on Android **and web**, and the import screen's wording; FR-047 points to it; other-app and spreadsheet import is added to 11.3 as a later, separately named feature. (3) **FR-038** is renamed *Fill in from listing text* (the Web team renamed the feature and its keys `import.*` → `listingFill.*` on 2026-09-23, so that "import" means only a backup; [12](12-brand-and-naming.md) G.1). (4) **FR-047** status records Android's opt-in undelete of houses deleted on the phone, with visits relinked and photos under fresh ids after a synced delete (`android/shared/README.md` 1.13–1.14; device check 10b not yet run). RTM rows for FR-089..FR-097. |
 | 0.20 | 2026-09-23 | Claude (Cowork), Docs team | Traceability only (final Sprint 4a round; [06](06-test-plan.md) v0.21): the RTM rows **FR-001** (TC-U-51, TC-M-23, TC-M-24), **FR-011** (TC-U-53), **FR-042..FR-048** (TC-U-50, TC-U-52, TC-M-21, TC-M-22) and **NFR-020** (TC-A-13, TC-M-22, TC-M-23; [05](05-ux-accessibility-i18n.md) §5.1, §7.2) name the tests of the whole-app UX audit. No requirement changed. |
+| 0.21 | 2026-09-24 | Claude (Cowork), Docs team | **Owner decision of 2026-09-24 (P0 on the live site): India's boundaries on the map** ([03](03-design.md) ADR-22). New section **6.10, FR-098**: both apps show India's external boundary as the Government of India depicts it (all of Jammu and Kashmir and Ladakh, including PoK, Gilgit-Baltistan, Shaksgam and Aksai Chin, and Arunachal Pradesh inside India; no Line of Control, Line of Actual Control or other claim line; no switch). **FR-009** points to it. RTM row FR-098 → TC-U-54, TC-U-55, TC-S-25, TC-M-25 ([06](06-test-plan.md) §15). The id follows this document's FR scheme ([README](README.md) *Requirement ID scheme* has no MAP- prefix). |
+| 0.22 | 2026-09-24 | Claude (Cowork), Docs team | Round 1 review of the Docs change for India's boundaries. **FR-098** said both apps do it "identically" and draw no other line "at any zoom"; Android has since added a guard to [03](03-design.md) ADR-22 rule 2 (only tile country lines with an adm0 side, so a zoom 0-4 tile shown while a closer tile loads, or offline, never draws its ISO-view line through Kashmir or Arunachal Pradesh; `android/shared/README.md` 1.37) and the web has not. FR-098 now requires it while tiles load and offline, and its status says **Impl on Android, Partial on the web** until Web adds the guard (open parity gap, [11](11-feature-parity-and-export-spec.md) §10). Compared with the code as of 2026-09-23 19:56 UTC (2026-09-24 01:26 IST). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -122,7 +124,7 @@ Priority: **M**ust, **S**hould, **C**ould, **W**on't (this release). Status: **I
 | FR-006 | A house has a status of NEW, SHORTLISTED or REJECTED. The user can change it at any time (state machine in 03 section 8.1). | M | Impl |
 | FR-007 | The user can attach photos from the camera or the gallery. Photos are shrunk to 1600 px on the longest side and saved as JPEG before storage/upload. The server accepts JPEG/PNG/WebP up to 5 MB, detected from the bytes, at most 20 per house. | M | Impl |
 | FR-008 | The system records visits: MANUAL ("been here now") and AUTO (from stay detection). Visits can be linked to a house. | M | Impl |
-| FR-009 | Map view shows all houses as markers coloured by status, on OpenFreeMap vector tiles. | M | Impl |
+| FR-009 | Map view shows all houses as markers coloured by status, on OpenFreeMap vector tiles. India's boundaries on every map follow FR-098. | M | Impl |
 | FR-010 | List view with text search (name, street, notes), a status filter and sorting. | S | Impl (Android) |
 | FR-011 | Compare view shows 2 to 4 houses side by side with the checklist, rating, price and score. | S | Impl |
 | FR-012 | Delete leaves a tombstone so it syncs to other devices. The tombstone keeps no content (see PRV-005). | M | Impl |
@@ -235,6 +237,12 @@ It binds every importer: Android, the web app and a self-hosted server. The form
 
 **Out of scope for 4b (owner decision (c)):** importing from other apps or arbitrary spreadsheets, perhaps with
 AI-assisted column mapping, is a possible later feature with its own name (11.3).
+
+### 6.10 Map: India's boundaries (owner decision, 2026-09-24)
+
+| ID | Requirement | Pri | Status |
+|---|---|---|---|
+| FR-098 | **Every map shows India's external boundary as the Government of India depicts it**, on Android and the web, identically, as the only view (no switch; every user is in India). All of Jammu and Kashmir and Ladakh are inside India, including the areas the tiles call Azad Kashmir, Gilgit-Baltistan, the Shaksgam valley and Aksai Chin, and so is Arunachal Pradesh. The map draws one solid outline and **no Line of Control, Line of Actual Control or other de facto or claim line** at any zoom, including while closer tiles are still loading and offline, and no "Azad Kashmir" or "Gilgit-Baltistan" state label. The rules are applied on every load of the base style (first load, retries, reloads); a base-style change that removes a layer the rules refer to never breaks the map, and India's outline is still drawn. No new network host. Design: [03](03-design.md) ADR-22. | M | **Impl on Android; Partial on the web** (working tree on `fix/india-boundaries`, not yet built in CI or deployed). The web lacks the adm0 guard of [03](03-design.md) ADR-22 rule 2, so while a zoom 5+ tile loads or is not cached offline it can show the zoom 4 tile's Pakistan line through Kashmir and the line through Arunachal Pradesh at zoom 5 or more: an open parity gap handed to Web ([11](11-feature-parity-and-export-spec.md) §10). Compared with the code as of 2026-09-23 19:56 UTC |
 
 ## 7. Non-functional requirements
 
@@ -477,6 +485,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | PRV-024..PRV-027 | [11](11-feature-parity-and-export-spec.md) 5.18, 03 ADR-01 | planned: permission state checks on resume, rationale screen, settings deep link, area wake-up auto-off | Planned TC-U-40, TC-M-18 (permission matrix), TC-A-12 |
 | FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `app/ui/ExportScreen.kt`, `app/ui/ImportScreen.kt`, `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10 |
 | FR-089..FR-097 | [schemas/README.md](schemas/README.md) §0, §6, §7; 03 §16.3; [12](12-brand-and-naming.md) G | Android `shared/export/ImportPlan.kt`, `BackupValidation`, `app/export/BackupReader.kt`, `app/ui/ImportScreen.kt`; server `backend/backup/**`; web: planned (4b) | TC-U-42, TC-U-28, TC-S-17, TC-I-33, TC-I-34; the web import's tests are planned with S4b-00 |
+| FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `ui/IndiaView.kt`, `ui/IndiaViewRules.kt`, `ui/MapScreen.kt` (`loadStyle`), `assets/geo/in-boundaries.geojson`; data builder `web/scripts/geo/build_in_boundaries.py` | TC-U-54, TC-U-55, TC-S-25, TC-M-25 |
 | FR-070..FR-073 | 03 §16.4 | `web/public/manifest.webmanifest`, `web/public/sw.js`, `core/pwa.service.ts`, `data/storage.service.ts`, `data/local-db.ts`, `shared/app-banners.ts`, `pages/share/share-page.ts`, `scripts/sw-precache*.mjs` | TC-U-31, TC-U-43, TC-U-44, TC-S-19, TC-M-15, TC-M-19 |
 | NFR-021..NFR-027 | 03 §16 | `shared/export/ExportModel.kt` (fixed order, passed-in clock), `web/src/app/export/zip.ts` (stored entries) | TC-U-26, TC-U-29, TC-P-05 (planned) |
 | PRV-012, PRV-018 | 03 §16.2 | `ExportBundle.build` (one redaction point), export screens | TC-U-27 |
