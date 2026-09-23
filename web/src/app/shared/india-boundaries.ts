@@ -339,9 +339,19 @@ function canShowState(layer: LayerSpecification): boolean {
 
 /**
  * True for a line layer on source-layer `boundary` that gets {@link TILE_ZOOM_GUARD}: `boundary_2` and `boundary_3` by
- * name, and every other one whose minzoom is 5 or more (for those, the minzoom alone, checked against the map zoom,
- * would keep the zoom 0-4 tiles' lines off the map). Never `boundary_disputed` (hidden), a symbol layer, or a line
+ * name, and every other one whose minzoom is 5 or more. Never `boundary_disputed` (hidden), a symbol layer, or a line
  * layer meant for zoom 0-4, whose low-zoom lines the guard would remove. Android's `tileZoomGuardedLayers`.
+ *
+ * On the web the guard is defence in depth and parity with Android: for a layer with minzoom 5, maplibre-gl 6.10.0
+ * already builds no bucket in a tile whose zoom is below floor(minzoom) (`src/source/worker_tile.ts:109`,
+ * `layer.isHidden(this.zoom, true)`; `src/style/style_layer.ts:321-322`), so the minzoom alone kept the zoom 0-4
+ * tiles' lines off the map. The guard makes that hold whatever the renderer does with minzoom. On Android,
+ * maplibre-native android-v13.6.1 (c7506d6): the worker's parse loop (`src/mln/tile/geometry_tile_worker.cpp`,
+ * lines 446-502) has no zoom check of its own and runs the filter with `overscaledZ` (line 502), but
+ * `GeometryTile::setLayers` leaves out a layer whose floor(minZoom) is above the tile's `overscaledZ` before the worker
+ * gets the layers (`src/mln/tile/geometry_tile.cpp:317`, called for new and relaid-out tiles,
+ * `src/mln/renderer/tile_pyramid.cpp:167,193`), so by the source Android skips such a layer too and its guard is
+ * also defence in depth (read from the source, not checked on a device; handed to Android and Docs, README change log).
  */
 function takesTileZoomGuard(layer: LayerSpecification): boolean {
   if (layer.type !== 'line' || read(layer, 'source-layer') !== BOUNDARY_SOURCE_LAYER) return false;
