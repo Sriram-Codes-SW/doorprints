@@ -3,6 +3,7 @@ package com.househunt;
 import com.househunt.photo.ImageSanitizerTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
@@ -21,6 +22,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +32,13 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Runs against a real PostGIS database (see DB_URL; CI starts one as a service container). */
+/**
+ * Runs against a real PostGIS database (see DB_URL; CI starts one as a service container).
+ *
+ * <p>That database is shared with {@code backup.BackupApiTest}, whose set-up wipes every row with
+ * {@code DELETE /api/data}. Surefire runs test classes one after another today, so the two never overlap;
+ * {@code @ResourceLock("database")} on both keeps it that way if JUnit parallel execution is ever switched on.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 // Many tests deliberately fail authentication from 127.0.0.1; keep the brute-force throttle out of
@@ -38,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
                 "app.rate-limit.auth-failures-per-minute=10000",
                 "app.rate-limit.auth-failure-burst=10000",
                 "app.limits.max-photos-per-house=3"})
+@ResourceLock("database")
 class ApiIntegrationTest {
 
     private static final ParameterizedTypeReference<List<Map<String, Object>>> LIST = new ParameterizedTypeReference<>() {};
@@ -99,8 +108,12 @@ class ApiIntegrationTest {
     }
 
     private UUID uploadPhoto(UUID houseId, byte[] bytes) {
+        return uploadPhoto(houseId, UUID.randomUUID(), bytes);
+    }
+
+    /** Uploads under a client-chosen id, as the apps do, and checks that the server answers with that id. */
+    private UUID uploadPhoto(UUID houseId, UUID photoId, byte[] bytes) {
         var form = new LinkedMultiValueMap<String, Object>();
-        var photoId = UUID.randomUUID();
         form.add("id", photoId.toString());
         form.add("file", new ByteArrayResource(bytes) {
             @Override
@@ -298,6 +311,162 @@ class ApiIntegrationTest {
         assertThat(visit.get("houseId")).isNull();
     }
 
+    /*
+     * Undelete after a synced delete. Android 1.14 (android/shared/README.md section 8, twelfth round; device check
+     * 10b) brings a house back from a backup on a phone that has already pulled the server's tombstone. It relies on
+     * exactly the server behaviour pinned below, and nothing else caught a regression of it before these tests:
+     *   - PUT /api/houses/{id} with deleted=false and a newer updatedAt over the purged tombstone makes the house live
+     *     again under its own id and createdAt; an older updatedAt leaves the tombstone as it is and syncs nothing;
+     *   - restoring the house does not undo the purge: its visits stay unlinked and its photos stay tombstones;
+     *   - a visit is relinked by a PUT with houseId set whose updatedAt beats the unlink stamp (server time of the
+     *     delete, not the house tombstone's updatedAt), which is why Android stamps max(now, own + 1 ms);
+     *   - a photo upload under the old, tombstoned id answers 200 with that id and stores nothing ("a deleted photo
+     *     is never resurrected", PhotoService.upload), while a fresh id is stored, which is why Android gives the
+     *     photos of such a house new ids (README section 9 item 18 is the optional alternative);
+     *   - a sync pull after the tombstone's version hands out the live house, the relinked visit and the new photo,
+     *     and not the old photo id.
+     * Android deletes with PUT deleted=true and the web app with DELETE; the phone may have synced either.
+     */
+
+    @Test
+    void aNewerWriteBringsBackAHouseDeletedWithPutAndSyncsIt() {
+        restoreAfterASyncedDelete(true);
+    }
+
+    @Test
+    void aNewerWriteBringsBackAHouseDeletedWithDeleteAndSyncsIt() {
+        restoreAfterASyncedDelete(false);
+    }
+
+    private void restoreAfterASyncedDelete(boolean deleteWithPut) {
+        var jpeg = ImageSanitizerTest.jpegWithExif();
+        var id = UUID.randomUUID();
+        var street = "Temple Street " + id;
+        // Millisecond values so that comparisons after the database round trip (microseconds) are exact.
+        var createdAt = Instant.now().minus(Duration.ofDays(3)).truncatedTo(ChronoUnit.MILLIS);
+        var original = house("Bring me back", 12.9, 77.6, street);
+        original.put("notes", "south-facing balcony");
+        original.put("createdAt", createdAt.toString());
+        var editedAt = Instant.now().minus(Duration.ofMinutes(10)).truncatedTo(ChronoUnit.MILLIS);
+        original.put("updatedAt", editedAt.toString());
+        put(id, original);
+        var oldPhotoId = uploadPhoto(id, UUID.randomUUID(), jpeg);
+        var visitId = UUID.randomUUID();
+        var arrivedAt = Instant.now().minus(Duration.ofHours(1)).truncatedTo(ChronoUnit.MILLIS);
+        putVisit(visitId, visit(id, arrivedAt, Instant.now().minus(Duration.ofMinutes(10))));
+
+        // 1. The delete reaches the server, which purges the house, tombstones its photo and unlinks its visit.
+        Map<String, Object> tombstone;
+        if (deleteWithPut) {
+            var body = house("Bring me back", 12.9, 77.6, street);
+            body.put("deleted", true);
+            body.put("updatedAt", Instant.now().minus(Duration.ofMinutes(5)).truncatedTo(ChronoUnit.MILLIS).toString());
+            tombstone = put(id, body);
+        } else {
+            api.delete().uri("/api/houses/{id}", id).retrieve().toBodilessEntity();
+            tombstone = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        }
+        assertThat(tombstone).containsEntry("deleted", true).containsEntry("label", "");
+        long cursor = version(tombstone);
+        var tombstonedAt = instant(tombstone, "updatedAt");
+        // What the phone pulled: the unlinked visit and the photo tombstone carry the tombstone's version.
+        var unlinked = row(changes("/api/visits", cursor - 1), visitId);
+        assertThat(unlinked).isNotNull();
+        assertThat(unlinked.get("houseId")).isNull();
+        var unlinkedAt = instant(unlinked, "updatedAt");
+        assertThat(row(changes("/api/photos", cursor - 1), oldPhotoId)).isNotNull().containsEntry("deleted", true);
+
+        // 2. A live write older than the tombstone (a stale edit, or a backup row not stamped anew) changes nothing.
+        var stale = house("Bring me back", 12.9, 77.6, street);
+        stale.put("updatedAt", tombstonedAt.minus(Duration.ofMinutes(1)).toString());
+        assertThat(put(id, stale)).containsEntry("deleted", true).containsEntry("label", "");
+        assertThat(row(changes("/api/houses", cursor), id)).isNull();
+        assertThat(api.get().uri("/api/houses").retrieve().body(LIST))
+                .noneMatch(h -> id.toString().equals(h.get("id")));
+
+        // 3. The undelete: same id, deleted=false, updatedAt newer than the tombstone.
+        var restore = house("Bring me back", 12.9, 77.6, street);
+        restore.put("notes", "south-facing balcony");
+        restore.put("createdAt", createdAt.toString());
+        restore.put("updatedAt", later(Instant.now(), tombstonedAt).toString());
+        var restored = put(id, restore);
+        assertThat(restored).containsEntry("deleted", false).containsEntry("label", "Bring me back")
+                .containsEntry("street", street).containsEntry("notes", "south-facing balcony");
+        assertThat(instant(restored, "createdAt")).isEqualTo(createdAt);
+        assertThat(version(restored)).isGreaterThan(cursor);
+        // Bringing the house back does not undo the purge.
+        assertThat(api.get().uri("/api/visits?houseId={h}", id).retrieve().body(LIST)).isEmpty();
+        assertThat(api.get().uri("/api/houses/{id}/photos", id).retrieve().body(List.class)).isEmpty();
+
+        // 4. Visits: a relink has to beat the server's unlink stamp; being newer than the house delete is not enough.
+        assertThat(putVisit(visitId, visit(id, arrivedAt, unlinkedAt.minusMillis(1))).get("houseId")).isNull();
+        assertThat(putVisit(visitId, visit(id, arrivedAt, later(Instant.now(), unlinkedAt))))
+                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
+        assertThat(api.get().uri("/api/visits?houseId={h}", id).retrieve().body(LIST))
+                .singleElement().satisfies(v -> assertThat(v.get("id")).isEqualTo(visitId.toString()));
+
+        // 5. Photos: an upload under the tombstoned id is accepted and ignored; a fresh id is stored.
+        uploadPhoto(id, oldPhotoId, jpeg);
+        assertThat(status(() -> api.get().uri("/api/photos/{id}", oldPhotoId).retrieve().body(byte[].class)))
+                .isEqualTo(404);
+        var freshPhotoId = uploadPhoto(id, UUID.randomUUID(), jpeg);
+        assertThat(api.get().uri("/api/houses/{id}/photos", id).retrieve().body(List.class))
+                .containsExactly(freshPhotoId.toString());
+        assertThat(api.get().uri("/api/photos/{id}", freshPhotoId).retrieve().body(byte[].class)).isNotEmpty();
+
+        // 6. The next pull from the tombstone's version brings every other device the restored state.
+        assertThat(row(changes("/api/houses", cursor), id)).isNotNull()
+                .containsEntry("deleted", false).containsEntry("label", "Bring me back");
+        assertThat(row(changes("/api/visits", cursor), visitId)).isNotNull()
+                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
+        var photoChanges = changes("/api/photos", cursor);
+        assertThat(row(photoChanges, freshPhotoId)).isNotNull()
+                .containsEntry("houseId", id.toString()).containsEntry("deleted", false);
+        assertThat(row(photoChanges, oldPhotoId)).isNull();
+        assertThat(api.get().uri("/api/houses").retrieve().body(LIST))
+                .anyMatch(h -> id.toString().equals(h.get("id")));
+    }
+
+    private Map<String, Object> visit(UUID houseId, Instant arrivedAt, Instant updatedAt) {
+        var body = new HashMap<String, Object>();
+        body.put("houseId", houseId.toString());
+        body.put("lat", 12.9);
+        body.put("lon", 77.6);
+        body.put("arrivedAt", arrivedAt.toString());
+        body.put("source", "AUTO");
+        body.put("updatedAt", updatedAt.toString());
+        return body;
+    }
+
+    private Map<String, Object> putVisit(UUID id, Map<String, Object> body) {
+        return api.put().uri("/api/visits/{id}", id).contentType(MediaType.APPLICATION_JSON)
+                .body(body).retrieve().body(MAP);
+    }
+
+    /** A sync pull: every row of {@code path} whose version is greater than {@code since}. */
+    private List<Map<String, Object>> changes(String path, long since) {
+        return api.get().uri(path + "?since={c}", since).retrieve().body(LIST);
+    }
+
+    /** The row with this id, or null. */
+    private static Map<String, Object> row(List<Map<String, Object>> rows, UUID id) {
+        return rows.stream().filter(r -> id.toString().equals(r.get("id"))).findFirst().orElse(null);
+    }
+
+    private static Instant instant(Map<String, Object> row, String field) {
+        return Instant.parse((String) row.get(field));
+    }
+
+    private static long version(Map<String, Object> row) {
+        return ((Number) row.get("syncVersion")).longValue();
+    }
+
+    /** max(now, previous + 1 ms): how the apps stamp a write that must win over {@code previous}. */
+    private static Instant later(Instant now, Instant previous) {
+        var next = previous.plusMillis(1);
+        return now.isAfter(next) ? now : next;
+    }
+
     /** F-15, F-07, F-06: photo tombstones sync, metadata is stripped, the count is capped. */
     @Test
     void photoUploadStripsMetadataAndDeletesSyncAsTombstones() {
@@ -343,6 +512,13 @@ class ApiIntegrationTest {
         assertThatThrownBy(() -> put(UUID.randomUUID(), bad))
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(400)));
+
+        // label is required, but "" is a value: an unnamed house must be syncable and restorable (HouseDto).
+        var noLabel = house("Nameless", 12.9, 77.6, null);
+        noLabel.remove("label");
+        assertThat(status(() -> put(UUID.randomUUID(), noLabel))).isEqualTo(400);
+        var emptyLabel = house("", 12.9, 77.6, null);
+        assertThat(put(UUID.randomUUID(), emptyLabel).get("label")).isEqualTo("");
     }
 
     @Test
@@ -367,15 +543,19 @@ class ApiIntegrationTest {
         assertThat(((Number) stats.get("visits")).longValue()).isGreaterThanOrEqualTo(1);
     }
 
+    /**
+     * The export speaks the shared backup format ({@code doorprints-backup/1}), the same object the Android and web
+     * backups carry as {@code data.json}. Its schema is pinned against the canonical sample in
+     * {@link com.househunt.backup.BackupApiTest}; this test only checks that the endpoint still hands it out.
+     */
     @Test
     void exportContainsLiveDataAsAnAttachment() {
         var id = UUID.randomUUID();
         put(id, house("Exported house", 12.9, 77.6, null));
         var response = api.get().uri("/api/export").retrieve().toEntity(MAP);
         assertThat(response.getHeaders().getFirst("Content-Disposition")).startsWith("attachment")
-                .matches("attachment; filename=\"doorprints-export-\\d{4}-\\d{2}-\\d{2}\\.json\"");
-        // The format id is deliberately kept from before the Doorprints rename (ADR-13): readers of old exports match on it.
-        assertThat(response.getBody()).containsEntry("format", "house-hunt-export/1");
+                .matches("attachment; filename=\"Doorprints-backup-\\d{4}-\\d{2}-\\d{2}\\.json\"");
+        assertThat(response.getBody()).containsEntry("format", "doorprints-backup/1");
         assertThat((List<?>) response.getBody().get("houses"))
                 .anySatisfy(h -> assertThat(((Map<?, ?>) h).get("id")).isEqualTo(id.toString()));
         assertThat(response.getBody()).containsKeys("visits", "photos", "exportedAt");

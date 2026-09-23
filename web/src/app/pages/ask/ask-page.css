@@ -1,5 +1,6 @@
+/* The same column as Connect, Your data and Share (--content-narrow, styles.css). */
 .narrow {
-  max-width: 48rem;
+  max-width: var(--content-narrow);
 }
 
 textarea {
@@ -25,6 +26,7 @@ textarea {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 

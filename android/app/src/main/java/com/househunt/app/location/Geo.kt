@@ -5,9 +5,10 @@ import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -22,7 +23,8 @@ data class Place(val street: String?, val locality: String?, val address: String
  *
  * Devices without Google Play services (many custom ROMs, some Huawei phones) have no geocoder backend:
  * [Geocoder.isPresent] is false and every lookup is null. On API 33+ a backend that never calls the listener would
- * otherwise suspend the caller forever (the new-house screen waits for the first lookup), so it is time-limited.
+ * otherwise suspend the caller forever, so both branches are time-limited ([LOOKUP_TIMEOUT_MS]). The new-house form no
+ * longer waits for a lookup at all: it shows at once and fills the address in when one arrives.
  */
 class ReverseGeocoder(context: Context) {
     private val geocoder = runCatching {
@@ -48,10 +50,15 @@ class ReverseGeocoder(context: Context) {
                     }
                 }
             } else {
-                withContext(Dispatchers.IO) {
+                // The blocking call has no timeout of its own and cannot be interrupted, so it runs outside this
+                // coroutine and only the wait for it is time-limited (UX review, whole-app audit): a phone offline
+                // below API 33 no longer holds the caller for as long as the platform takes to give up. A late
+                // answer is simply dropped.
+                val pending = CoroutineScope(Dispatchers.IO).async {
                     @Suppress("DEPRECATION")
                     g.getFromLocation(lat, lon, 1)?.firstOrNull()
                 }
+                withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { pending.await() }
             }
         } catch (e: CancellationException) {
             throw e
@@ -67,7 +74,8 @@ class ReverseGeocoder(context: Context) {
         }
     }
 
-    private companion object {
+    companion object {
+        /** How long a lookup may take before it counts as "no answer". */
         const val LOOKUP_TIMEOUT_MS = 10_000L
     }
 }

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="camera" path="camera/" />
+    <!-- Copies built for the share sheet (Sprint 4a). They are deleted after 24 hours; see ExportScreen. -->
+    <cache-path name="exports" path="exports/" />
 </paths>

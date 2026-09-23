@@ -1,7 +1,19 @@
 <div class="page">
-  <div class="toolbar">
-    <a routerLink="/" class="btn btn-sm"><span aria-hidden="true">←</span> {{ 'house.back' | t }}</a>
-    <h1 class="page-title">
+  <!-- One row on a phone, like Android's top app bar: an icon-only Back (its name stays for screen readers), the
+       title on one line with an ellipsis (the full name is in the Name field), the save state as a glyph, and Save. -->
+  <div class="toolbar" #toolbar>
+    @if (backToPrevious()) {
+      <!-- Back to where this house was opened from (Compare, an answer, a route, the filtered list). -->
+      <button type="button" class="btn btn-sm back" (click)="goBack()">
+        <span aria-hidden="true">←</span> <span class="back-text">{{ backKey() | t }}</span>
+      </button>
+    } @else {
+      <!-- No page behind this one in the app (a bookmark, a reload): the list, with its last search and filter. -->
+      <a routerLink="/" [queryParams]="listReturn.queryParams()" class="btn btn-sm back">
+        <span aria-hidden="true">←</span> <span class="back-text">{{ 'house.back' | t }}</span>
+      </a>
+    }
+    <h1 id="house-title" class="page-title" tabindex="-1">
       @if (isNew()) {
         {{ 'house.newTitle' | t }}
       } @else {
@@ -9,19 +21,50 @@
       }
     </h1>
     <div class="toolbar-right">
-      @if (dirty()) {
-        <span class="muted small"><span aria-hidden="true">● </span>{{ 'house.unsaved' | t }}</span>
+      <!-- While saving, the state slot shows a small spinner (the words for screen readers, and on wider screens) and
+           the Save label stays as it is, so the row does not reflow ("Saving…" is much longer in Hindi). -->
+      @if (saving()) {
+        <span class="save-state muted small">
+          <span class="spinner" aria-hidden="true"></span><span class="state-text"> {{ 'house.saving' | t }}</span>
+        </span>
+      } @else if (dirty()) {
+        <span class="save-state muted small">
+          <span aria-hidden="true">●</span><span class="state-text"> {{ 'house.unsaved' | t }}</span>
+        </span>
       } @else if (justSaved()) {
-        <span class="saved small"><span aria-hidden="true">✓ </span>{{ 'house.saved' | t }}</span>
+        <span class="save-state saved small">
+          <span aria-hidden="true">✓</span><span class="state-text"> {{ 'house.saved' | t }}</span>
+        </span>
       }
-      <button type="button" class="btn btn-primary" [disabled]="!draft() || saving()" (click)="save()">
-        {{ (saving() ? 'house.saving' : isNew() ? 'house.create' : 'house.save') | t }}
+      <!-- aria-disabled while saving, not disabled: the focus stays on the button (save() ignores a second press).
+           aria-busy says the save is running; the label does not change, so the button keeps its width. "Saving…"
+           is spoken through the app's announcer when the save starts (save()), as Android's Save button says it; a
+           failure cancels it if it is still pending, so the "Could not save…" alert is not followed by "Saving…". -->
+      <button
+        type="button"
+        class="btn btn-primary"
+        [attr.aria-disabled]="!draft() || saving() ? 'true' : null"
+        [attr.aria-busy]="saving() ? 'true' : null"
+        (click)="save()"
+      >
+        {{ (isNew() ? 'house.create' : 'house.save') | t }}
       </button>
     </div>
   </div>
 
-  @if (error(); as e) {
-    <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+  <!-- Save failures only (they also move focus to the field concerned). Other failures are shown next to the control
+       that failed, in their own card. Every message below that a button can give twice in a row with the same words
+       is keyed on its run (RunResult), so the second one is a new node and is read again (web UX gate R9). -->
+  @if (error(); as card) {
+    @for (c of [card]; track c.run) {
+      <div class="error" role="alert">
+        {{ c.value.key | t: c.value.params }}
+        @if (isStorageFull(c.value)) {
+          <!-- No space left: Your data is where a backup is made and the space use is shown. -->
+          <a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a>
+        }
+      </div>
+    }
   }
 
   @if (loading()) {
@@ -33,29 +76,51 @@
     </div>
   } @else {
   @if (draft(); as d) {
+    @if (restored()) {
+      <!-- A discarded tab (or a reload) left unsaved edits: they are back, and can be thrown away in one step. -->
+      <div class="warn-box restored">
+        <span>{{ 'house.draftRestored' | t }}</span>
+        <button type="button" class="btn btn-sm" (click)="discardRestored()">{{ 'house.draftDiscard' | t }}</button>
+      </div>
+    }
     @if (isNew() && ai.enabled()) {
-      <details class="card import">
-        <summary>{{ 'import.title' | t }}</summary>
+      <details class="card listing-fill" [open]="listingOpen">
+        <summary>{{ 'listingFill.title' | t }}</summary>
         <div class="field">
-          <label for="listing-text">{{ 'import.label' | t }}</label>
+          <label for="listing-text">{{ 'listingFill.label' | t }}</label>
           <textarea
             id="listing-text"
             rows="5"
             [(ngModel)]="listingText"
             [attr.maxlength]="listingMax"
-            [placeholder]="'import.placeholder' | t"
-            aria-describedby="import-hint"
+            [placeholder]="'listingFill.placeholder' | t"
+            aria-describedby="listing-fill-hint"
           ></textarea>
-          <span id="import-hint" class="field-hint">{{ 'import.hint' | t }} {{ 'ai.disclosure' | t }}</span>
+          <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ 'ai.disclosure' | t }}</span>
         </div>
-        <button type="button" class="btn" [disabled]="importing() || !listingText.trim()" (click)="importListing()">
-          {{ (importing() ? 'import.working' : 'import.submit') | t }}
+        <button
+          type="button"
+          class="btn"
+          [attr.aria-disabled]="filling() || !listingText.trim() ? 'true' : null"
+          (click)="fillFromListing()"
+        >
+          {{ (filling() ? 'listingFill.working' : 'listingFill.submit') | t }}
         </button>
-        @if (importWarnings().length > 0) {
-          <div class="warnings" role="status">
-            <p>{{ 'import.warnings' | t }}</p>
+        <div role="alert">
+          @if (fillError(); as card) {
+            @for (c of [card]; track c.run) {
+              <p class="error">{{ c.value.key | t: c.value.params }}</p>
+            }
+          }
+        </div>
+        @if (fillWarnings().length > 0 || keptWarnings().length > 0) {
+          <div class="warnings">
+            <p>{{ 'listingFill.warnings' | t }}</p>
             <ul>
-              @for (w of importWarnings(); track $index) {
+              @for (k of keptWarnings(); track $index) {
+                <li>{{ k.key | t: k.params }}</li>
+              }
+              @for (w of fillWarnings(); track $index) {
                 <li>{{ w }}</li>
               }
             </ul>
@@ -109,7 +174,14 @@
             <div class="options stars">
               @for (n of starValues; track n) {
                 <label class="option" [class.lit]="(d.rating ?? 0) >= n">
-                  <input type="radio" name="rating" [value]="n" [checked]="d.rating === n" (change)="setRating(n)" />
+                  <input
+                    type="radio"
+                    name="rating"
+                    [id]="'rating-' + n"
+                    [value]="n"
+                    [checked]="d.rating === n"
+                    (change)="setRating(n)"
+                  />
                   <span>
                     <span aria-hidden="true">{{ (d.rating ?? 0) >= n ? '★' : '☆' }}</span>
                     <span class="sr-only">{{ 'common.stars' | t: { n: n } }}</span>
@@ -118,7 +190,7 @@
               }
             </div>
             @if (d.rating) {
-              <button type="button" class="btn btn-sm" (click)="setRating(null)">{{ 'house.clearRating' | t }}</button>
+              <button type="button" class="btn btn-sm" (click)="clearRating()">{{ 'house.clearRating' | t }}</button>
             } @else {
               <span class="muted small">{{ 'house.noRating' | t }}</span>
             }
@@ -204,26 +276,33 @@
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
         <h2 id="location-heading">{{ 'house.location' | t }}</h2>
+        @if (!locationSet()) {
+          <!-- A new house with no position yet (share target, bookmark): the pin is only a starting guess. -->
+          <p id="location-unset" [class]="locationError() ? 'error' : 'warn-box'">{{ 'house.locationUnset' | t }}</p>
+        }
         <app-location-map
           [lat]="d.lat"
           [lon]="d.lon"
+          [zoom]="startZoom()"
           [color]="statusColor[d.status]"
           [label]="'house.mapLabel' | t"
-          describedBy="location-hint"
+          [describedBy]="locationSet() ? 'location-hint' : 'location-unset location-hint'"
           (moved)="onMoved($event)"
         />
         <p id="location-hint" class="muted small">{{ 'house.mapHint' | t }}</p>
         <div class="row coords">
           <div class="field">
             <label for="house-lat">{{ 'house.lat' | t }}</label>
+            <!-- Text with a decimal keypad, as on Plan: type="number" has no minus key on iOS. -->
             <input
               id="house-lat"
-              type="number"
+              type="text"
               inputmode="decimal"
-              step="0.000001"
-              min="-90"
-              max="90"
+              autocomplete="off"
+              spellcheck="false"
               [value]="d.lat"
+              [attr.aria-invalid]="locationError() || coordsInvalid().lat ? 'true' : null"
+              [attr.aria-describedby]="coordsDescribedBy('lat')"
               (change)="onCoord('lat', $event)"
             />
           </div>
@@ -231,19 +310,52 @@
             <label for="house-lon">{{ 'house.lon' | t }}</label>
             <input
               id="house-lon"
-              type="number"
+              type="text"
               inputmode="decimal"
-              step="0.000001"
-              min="-180"
-              max="180"
+              autocomplete="off"
+              spellcheck="false"
               [value]="d.lon"
+              [attr.aria-invalid]="locationError() || coordsInvalid().lon ? 'true' : null"
+              [attr.aria-describedby]="coordsDescribedBy('lon')"
               (change)="onCoord('lon', $event)"
             />
           </div>
         </div>
-        <button type="button" class="btn btn-sm" [disabled]="geocoding()" (click)="fillAddress()">
-          {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
-        </button>
+        <!-- Exists before the message does, so the message is announced when it appears. -->
+        <div role="alert">
+          @if (coordsError()) {
+            <p id="coords-error" class="field-error">{{ 'house.coordsInvalid' | t }}</p>
+          }
+        </div>
+        <div class="location-actions">
+          @if (canLocate) {
+            <!-- Filled while the pin is not set yet: standing outside the house, it is the fastest way to put it. -->
+            <button
+              type="button"
+              [class]="locationSet() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
+              [attr.aria-disabled]="locating() ? 'true' : null"
+              (click)="useMyLocation()"
+            >
+              {{ (locating() ? 'house.locating' : 'house.useMyLocation') | t }}
+            </button>
+          }
+          <button
+            type="button"
+            class="btn btn-sm"
+            [attr.aria-disabled]="geocoding() || !locationSet() ? 'true' : null"
+            (click)="fillAddress()"
+          >
+            {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
+          </button>
+        </div>
+        <!-- Why "Use my location" or "Fill address from map" did not work, right under them. -->
+        <div role="alert">
+          @if (locationMsg(); as card) {
+            @for (c of [card]; track c.run) {
+              <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+            }
+          }
+        </div>
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>
       </section>
 
@@ -255,16 +367,6 @@
           <fieldset class="check-row">
             <legend class="check-label">{{ item.labelKey | t }}</legend>
             <div class="options check-values">
-              <label class="option">
-                <input
-                  type="radio"
-                  [name]="'check-' + item.key"
-                  value=""
-                  [checked]="checkValue(d, item.key) === null"
-                  (change)="setCheck(item.key, null)"
-                />
-                <span><span aria-hidden="true">–</span><span class="sr-only">{{ 'house.notScored' | t }}</span></span>
-              </label>
               @for (v of checkValues; track v) {
                 <label class="option">
                   <input
@@ -277,6 +379,17 @@
                   <span>{{ v }}</span>
                 </label>
               }
+              <!-- "Not scored" last, as on Android (ChecklistRow): 0–5 stay on one line and only this one wraps. -->
+              <label class="option">
+                <input
+                  type="radio"
+                  [name]="'check-' + item.key"
+                  value=""
+                  [checked]="checkValue(d, item.key) === null"
+                  (change)="setCheck(item.key, null)"
+                />
+                <span><span aria-hidden="true">–</span><span class="sr-only">{{ 'house.notScored' | t }}</span></span>
+              </label>
             </div>
           </fieldset>
         }
@@ -288,9 +401,21 @@
       <section class="card" aria-labelledby="visits-heading">
         <div class="section-head">
           <h2 id="visits-heading" tabindex="-1">{{ 'house.visits' | t }}</h2>
-          <button type="button" class="btn btn-sm" [disabled]="isNew() || markingVisit()" (click)="markVisited()">
+          <button
+            type="button"
+            class="btn btn-sm"
+            [attr.aria-disabled]="isNew() || markingVisit() ? 'true' : null"
+            (click)="markVisited()"
+          >
             {{ 'house.markVisited' | t }}
           </button>
+        </div>
+        <div role="alert">
+          @if (visitsMsg(); as card) {
+            @for (c of [card]; track c.run) {
+              <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+            }
+          }
         </div>
         @if (isNew()) {
           <p class="muted small">{{ 'house.saveFirstVisits' | t }}</p>
@@ -337,6 +462,30 @@
             </label>
           }
         </div>
+        <!-- Every photo that could not be added, by name, and a failed delete: here, not at the top of the page. -->
+        <div role="alert">
+          <!-- One run per batch: a file failing in the same batch joins its list; a new batch is a new node. -->
+          @if (photoFailures(); as card) {
+            @for (c of [card]; track c.run) {
+              <div class="error small with-list">
+                <p>{{ 'house.photosFailed' | t }}</p>
+                <ul class="failures">
+                  @for (f of c.value; track $index) {
+                    <li>{{ 'house.photoFailedItem' | t: { file: f.file, reason: f.reason } }}</li>
+                  }
+                </ul>
+                @if (anyStorageFull(c.value)) {
+                  <a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a>
+                }
+              </div>
+            }
+          }
+          @if (photosMsg(); as card) {
+            @for (c of [card]; track c.run) {
+              <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+            }
+          }
+        </div>
         @if (isNew()) {
           <p class="muted small">{{ 'house.saveFirstPhotos' | t }}</p>
         } @else if (photoIds().length === 0) {
@@ -367,15 +516,24 @@
     </div>
 
     <div class="danger-zone">
+      <div role="alert">
+        @if (dangerMsg(); as card) {
+          @for (c of [card]; track c.run) {
+            <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+          }
+        }
+      </div>
       <button type="button" class="btn btn-danger" (click)="deleteHouse()">
         {{ (isNew() ? 'house.discard' : 'house.delete') | t }}
       </button>
     </div>
   } @else {
     <div class="card empty-state">
-      <span class="empty-icon" aria-hidden="true">🏚</span>
+      <span class="empty-glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
+      </span>
       <p>{{ 'house.notFound' | t }}</p>
-      <a class="btn" routerLink="/">{{ 'house.backToMap' | t }}</a>
+      <a class="btn" routerLink="/" [queryParams]="listReturn.queryParams()">{{ 'house.backToMap' | t }}</a>
     </div>
   }
   }

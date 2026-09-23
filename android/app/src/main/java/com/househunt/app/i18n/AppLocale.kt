@@ -25,6 +25,16 @@ object AppLocale {
     private const val PREFS = "app_locale"
     private const val KEY = "language"
 
+    /** The language just chosen in Settings, to confirm once after the recreate ([consumeChange]). */
+    private const val KEY_CHANGED = "changedTo"
+    private const val KEY_CHANGED_AT = "changedAt"
+
+    /** "" in [KEY_CHANGED] means "follow the system language" (null cannot be stored as a marker). */
+    private const val SYSTEM = ""
+
+    /** A change older than this is not announced (the app was closed before it came back). */
+    private const val ANNOUNCE_WITHIN_MS = 30_000L
+
     fun current(context: Context): String? {
         if (Build.VERSION.SDK_INT >= 33) {
             val locales = context.getSystemService(LocaleManager::class.java)?.applicationLocales
@@ -35,6 +45,13 @@ object AppLocale {
 
     fun set(activity: Activity, language: String?) {
         val tag = language?.takeIf { it in SUPPORTED }
+        // Written before the recreate, read once by Root after it (UX review, whole-app audit): "Language changed to
+        // தமிழ்" is the confirmation, for TalkBack as well as on screen. commit(), not apply(): the process may
+        // recreate the activity before an asynchronous write lands.
+        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_CHANGED, tag ?: SYSTEM)
+            .putLong(KEY_CHANGED_AT, System.currentTimeMillis())
+            .commit()
         if (Build.VERSION.SDK_INT >= 33) {
             activity.getSystemService(LocaleManager::class.java)?.applicationLocales =
                 if (tag == null) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
@@ -44,6 +61,23 @@ object AppLocale {
             activity.recreate()
         }
     }
+
+    /**
+     * The language chosen in Settings just before this activity was recreated, once: returns it (null inside the
+     * [Change] for "System default") and forgets it, so a later recreation does not announce it again. Null when there
+     * was no recent change.
+     */
+    fun consumeChange(context: Context): Change? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val changed = prefs.getString(KEY_CHANGED, null) ?: return null
+        val at = prefs.getLong(KEY_CHANGED_AT, 0L)
+        prefs.edit().remove(KEY_CHANGED).remove(KEY_CHANGED_AT).apply()
+        if (System.currentTimeMillis() - at !in 0..ANNOUNCE_WITHIN_MS) return null
+        return Change(changed.takeIf { it != SYSTEM })
+    }
+
+    /** A language change to confirm; [language] is null for "System default". */
+    data class Change(val language: String?)
 
     /** Applies the saved language on Android 12 and lower; a no-op on 13+ (the platform does it). */
     fun wrap(base: Context): Context {

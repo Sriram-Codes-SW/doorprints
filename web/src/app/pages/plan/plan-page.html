@@ -1,9 +1,19 @@
 <div class="page">
-  <h1>{{ 'plan.title' | t }}</h1>
-  <p class="muted">{{ 'plan.intro' | t }}</p>
+  <header class="page-head">
+    <h1>{{ 'plan.title' | t }}</h1>
+    <p class="muted">{{ 'plan.intro' | t }}</p>
+  </header>
 
   @if (!ai.enabled()) {
-    <p class="card">{{ 'ai.disabled' | t }}</p>
+    @if (config.configured()) {
+      <p class="card">{{ 'ai.disabled' | t }}</p>
+    } @else {
+      <!-- No server at all: "turned off on your server" would be untrue. Say what is needed, and where. -->
+      <p class="card">
+        {{ 'ai.noServer' | t }}
+        <a routerLink="/connect">{{ 'nav.connect' | t }}</a>
+      </p>
+    }
   }
 
   <div class="layout" [hidden]="!ai.enabled()">
@@ -16,11 +26,16 @@
             name="question"
             rows="3"
             [(ngModel)]="question"
+            (ngModelChange)="onQuestion($event)"
             [attr.maxlength]="maxChars"
             [placeholder]="'plan.placeholder' | t"
-            aria-describedby="plan-disclosure"
+            [attr.aria-invalid]="questionMissing() ? 'true' : null"
+            [attr.aria-describedby]="questionMissing() ? 'plan-question-error plan-disclosure' : 'plan-disclosure'"
             required
           ></textarea>
+          @if (questionMissing()) {
+            <span id="plan-question-error" class="field-error">{{ 'plan.questionRequired' | t }}</span>
+          }
         </div>
         <div class="field small-field">
           <label for="plan-stops">{{ 'plan.maxStops' | t }}</label>
@@ -30,61 +45,122 @@
         <fieldset>
           <legend>{{ 'plan.start' | t }}</legend>
           <p class="muted small" id="start-hint">{{ 'plan.startHint' | t }}</p>
+          <!-- Empty until a start is chosen: the example is only a placeholder, not a start the user picked. -->
           <div class="coords">
             <div class="field">
               <label for="start-lat">{{ 'house.lat' | t }}</label>
-              <input id="start-lat" type="text" inputmode="decimal" [value]="start().lat" (change)="onCoord('lat', $event)" aria-describedby="start-hint" />
+              <input
+                id="start-lat"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="startSet() ? start().lat : ''"
+                [placeholder]="startExample.lat"
+                [attr.aria-invalid]="fieldInvalid('lat') ? 'true' : null"
+                [attr.aria-describedby]="coordsDescribedBy('lat')"
+                (change)="onCoord('lat', $event)"
+              />
             </div>
             <div class="field">
               <label for="start-lon">{{ 'house.lon' | t }}</label>
-              <input id="start-lon" type="text" inputmode="decimal" [value]="start().lon" (change)="onCoord('lon', $event)" aria-describedby="start-hint" />
+              <input
+                id="start-lon"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="startSet() ? start().lon : ''"
+                [placeholder]="startExample.lon"
+                [attr.aria-invalid]="fieldInvalid('lon') ? 'true' : null"
+                [attr.aria-describedby]="coordsDescribedBy('lon')"
+                (change)="onCoord('lon', $event)"
+              />
             </div>
           </div>
-          <button type="button" class="btn btn-sm" [disabled]="locating()" (click)="useMyLocation()">
+          <!-- Present before any message, so each one is announced: invalid coordinates, no start yet, no location.
+               The message also has an id in the fields' aria-describedby, so it is read with the field that "Plan
+               route" focuses even when the focus announcement cuts the alert off. -->
+          <div role="alert">
+            @if (coordsInvalid().lat || coordsInvalid().lon) {
+              <p id="start-coords-error" class="field-error">{{ 'house.coordsInvalid' | t }}</p>
+            }
+            @if (startMsg(); as card) {
+              @for (c of [card]; track c.run) {
+                <p id="start-msg" class="error small">{{ c.value.key | t: c.value.params }}</p>
+              }
+            }
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm"
+            [attr.aria-disabled]="locating() ? 'true' : null"
+            (click)="useMyLocation()"
+          >
             {{ (locating() ? 'plan.locating' : 'plan.useMyLocation') | t }}
           </button>
         </fieldset>
 
         <p id="plan-disclosure" class="muted small">{{ 'ai.disclosure' | t }}</p>
-        <button type="submit" class="btn btn-primary" [disabled]="busy() || !question.trim()">
-          {{ (busy() ? 'plan.planning' : 'plan.submit') | t }}
-        </button>
+        <div class="actions">
+          <!-- aria-disabled, not disabled: focus stays on the button while the route is planned. -->
+          <button
+            id="plan-submit"
+            type="submit"
+            class="btn btn-primary"
+            [attr.aria-disabled]="busy() || !question.trim() ? 'true' : null"
+          >
+            {{ (busy() ? 'plan.planning' : 'plan.submit') | t }}
+          </button>
+          @if (busy()) {
+            <button type="button" class="btn" (click)="cancel()">{{ 'common.cancel' | t }}</button>
+          }
+        </div>
       </form>
 
-      @if (error(); as e) {
-        <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+      <!-- Planning again keeps the error in place, dimmed, with the bar along its foot named "Planning…" (outside the
+           alert, so it is found by browsing but not announced), until the run ends. Keyed on the run, so a new
+           failure is a new alert and is read even when its words are the same. -->
+      @if (error(); as card) {
+        <div class="refresh-slot" [class.stale]="busy()">
+          @for (c of [card]; track c.run) {
+            <div class="error" role="alert">{{ c.value.key | t: c.value.params }}</div>
+          }
+          @if (busy()) {
+            <div class="refresh-bar" role="progressbar" [attr.aria-label]="'plan.planning' | t"></div>
+          }
+        </div>
       }
 
-      <div aria-live="polite">
-        @if (plan(); as p) {
-          <section class="card" aria-labelledby="route-heading">
-            <h2 id="route-heading">{{ 'plan.route' | t }}</h2>
-            @if (p.summary) {
-              <p>{{ p.summary }}</p>
-            }
-            @if (p.fallback) {
-              <p class="muted small">{{ 'plan.fallback' | t }}</p>
-            }
-            <p><strong>{{ 'plan.total' | t: { km: totalKm(), min: p.totalWalkMinutes } }}</strong></p>
-            @if (stops().length === 0) {
-              <p>{{ 'plan.noStops' | t }}</p>
-            } @else {
-              <ol class="stops">
-                @for (s of stops(); track s.houseId) {
-                  <li>
-                    <a [routerLink]="['/houses', s.houseId]">{{ s.label || ('common.untitled' | t) }}</a>
-                    <span class="muted small">{{ 'plan.leg' | t: { m: s.legMeters, min: s.walkMinutes } }}</span>
-                    @if (s.reason) {
-                      <span class="small">{{ s.reason }}</span>
-                    }
-                  </li>
-                }
-              </ol>
-              <p class="muted small">{{ 'plan.estimateNote' | t }}</p>
-            }
-          </section>
-        }
-      </div>
+      <!-- Not a live region: the announcer says "Route ready" and focus moves to the heading. -->
+      @if (plan(); as p) {
+        <section class="card" aria-labelledby="route-heading">
+          <h2 id="route-heading" tabindex="-1">{{ 'plan.route' | t }}</h2>
+          @if (p.summary) {
+            <p>{{ p.summary }}</p>
+          }
+          @if (p.fallback) {
+            <p class="muted small">{{ 'plan.fallback' | t }}</p>
+          }
+          <p><strong>{{ 'plan.total' | t: { km: totalKm(), min: p.totalWalkMinutes } }}</strong></p>
+          @if (stops().length === 0) {
+            <p>{{ 'plan.noStops' | t }}</p>
+          } @else {
+            <ol class="stops">
+              @for (s of stops(); track s.houseId) {
+                <li>
+                  <a [routerLink]="['/houses', s.houseId]">{{ s.label || ('common.untitled' | t) }}</a>
+                  <span class="muted small">{{ 'plan.leg' | t: { m: s.legMeters, min: s.walkMinutes } }}</span>
+                  @if (s.reason) {
+                    <span class="small">{{ s.reason }}</span>
+                  }
+                </li>
+              }
+            </ol>
+            <p class="muted small">{{ 'plan.estimateNote' | t }}</p>
+          }
+        </section>
+      }
     </div>
 
     <div class="col map-col" role="region" [attr.aria-label]="'plan.mapLabel' | t" aria-describedby="plan-map-hint">

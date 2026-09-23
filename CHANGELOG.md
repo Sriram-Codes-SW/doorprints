@@ -13,8 +13,15 @@ the end of this file) once `v0.1.0` is tagged (C-02 in the [sprint log](docs/10-
 
 ## [Unreleased]
 
-Sprint 2 (2026-09-22): all four CI workflows (Backend, Android, Web, Security) are green on `f7da5ab` and
-`0e4e22a`. See the [sprint log](docs/10-sprint-log.md).
+**Current CI status (2026-09-22): green on `19006bc`**, the tip of `main` — Backend ✅, Security ✅,
+Android ✅ and Shared iOS compile ✅. `19006bc` changes backend test code only, so of the five workflows only Backend
+and Security are triggered by the push; Android, Shared iOS compile and Web are path-filtered. The Android and
+shared-iOS trees are unchanged since `8f583af` and green; the last green **Web** run is `0e4e22a`. Quote `19006bc`
+as "the last green build", and read the older green commits below as the state at the end of their own sprint rather
+than the current one. Run ids and the path-filter caveat: [sprint log](docs/10-sprint-log.md) 9.2.
+
+Sprint 2 (2026-09-22): at the end of that sprint all four CI workflows (Backend, Android, Web, Security) were green
+on `f7da5ab` and `0e4e22a`. See the [sprint log](docs/10-sprint-log.md).
 
 Sprint 3 (2026-09-22): the first real AI eval run (`ai-evals.yml`) found two defects, E-01 (Gemini embeddings failed)
 and E-02 (false PASS in the scorecard). Both are fixed (see *Fixed*): commit `6a348cc` passed the Backend and Security
@@ -47,10 +54,117 @@ owner finished the Google Cloud setup for Vertex AI (project `doorprints-ai`; ch
 foreground-first location permission model ([sprint log](docs/10-sprint-log.md) section 10). The Sprint 4b decisions
 change nothing in the apps yet; they are requirements FR-083..FR-088 and PRV-024..PRV-027. The first `provider=vertex`
 eval run (35753477789, `gemini-3.5-flash` + `gemini-embedding-2` on `global`) failed only on `citationPrecision` 0.78
-(7/9); commit `feb0294` answers it (see *Changed*) without lowering any threshold; the re-run and the trial credit
-check are still open ([vertex-setup](docs/ai/vertex-setup.md) status).
+(7/9); commit `feb0294` answers it (see *Changed*) without lowering any threshold. The re-run is **done and green**:
+Actions run **35758157317** (2026-09-22, `provider=vertex`, `gemini-3.5-flash` in `asia-south1` + `gemini-embedding-2`
+on `global`, golden set v0.5, commit `19006bc`) passed **13/13 cases and every metric** in 198 s, with two `503`
+retries from the provider that the harness's bounded retry absorbed. E-03 is therefore closed by a real run, not only
+by code. The trial **credit check** (vertex-setup step 10) is done: on 2026-09-23 the owner found **₹45 of the trial
+credit** used for the Vertex eval runs, so their cost came off the credit ([sprint log](docs/10-sprint-log.md) 10.2).
+Still open from the Vertex checklist: vertex-setup step 9 (capture real responses for the contract tests) and flipping the `ai-evals.yml`
+`provider` default to `vertex` ([vertex-setup](docs/ai/vertex-setup.md) status, C-24 in the
+[sprint log](docs/10-sprint-log.md)).
+
+Product-owner decision (2026-09-22, PO-9): **both AI providers stay.** `AI_PROVIDER` keeps `aistudio` (default) and
+`vertex` as a real switch; which becomes the long-term default is decided later. The owner takes the billing risk
+explicitly, and the cost controls are unchanged (AI off by default, spend cap budget, trial credit ends 22 Dec 2026).
+There is no removal story for either provider ([sprint log](docs/10-sprint-log.md) section 10.3).
+
+Sprint 4a (2026-09-22, **not pushed yet**): the web app becomes local-first and installable, and both apps can write
+six offline copies of everything and read a backup back. Detail in the [sprint log](docs/10-sprint-log.md) section 11.
+The format is pinned once, in [docs/schemas/README.md](docs/schemas/README.md), and implemented three times (server,
+Android, web) with golden files holding the three together. Two things are deliberately recorded as unfinished: **the
+web app can export but cannot yet import** (Sprint 4b), and the live web app at **https://doorprints.web.app** is
+**not deployed yet**: the owner's Firebase Hosting setup is done, and the first push of this change set deploys it.
+The GitHub Pages deployment this change set first added — which would have served the app without security response
+headers, on an origin shared with the owner's other Pages sites — was replaced before it was ever pushed, first by a
+Cloudflare Pages plan and then by Firebase Hosting (owner decisions 2026-09-23, see *Changed*).
+
+Owner decisions (2026-09-23, later that morning): **Firebase Hosting at `https://doorprints.web.app`** replaces the
+Cloudflare Pages plan, which the owner rejected before it was set up because a `pages.dev` address reads as a test
+site; the address was chosen with a brand advisor, whose brief is now [docs/12](docs/12-brand-and-naming.md) (address,
+fallbacks, brand screening, **custom domain only later, after web import ships**, naming guidelines, and the
+import / backup / copy vocabulary in four languages). The **import definition is approved** for Sprint 4b (story
+S4b-00): only a Doorprints *Full backup* — a backup ZIP or a bare `data.json` — can be imported; it never changes
+settings, the server address, the API key, Hunt-mode or AI settings; it validates first, previews, merges by newest
+edit and never deletes; and the web gets "add as copies" too ([requirements](docs/01-requirements.md) 6.9,
+FR-089..FR-097; [backup format](docs/schemas/README.md) section 0). Importing from other apps or spreadsheets is a
+possible later feature with its own name.
+
+Whole-app UX audit (2026-09-23, **not pushed yet**): the Senior Lead UX Developer's audit of both clients, the
+go-ahead for the first deploy, is **approved** — Android at gate round 10 (`android/shared/README.md` 1.24–1.33),
+Web at gate round 4 (`web/README.md` audit rows and rounds 1–3), each with a few minors carried as Sprint 4b
+candidates. It is a code-review sign-off: the Android device checks (one of them, the Indic map labels, a release
+gate) and the web phone checks are still to run ([sprint log](docs/10-sprint-log.md) 11.7; see *Changed* and
+*Fixed*). Owner decisions of the same day ([sprint log](docs/10-sprint-log.md) 12.5, 12.6): **no Play Store release
+and no public server until the release security gate exists and passes**, and once it exists every web deploy
+passes it too. The gate has an automated part (the existing CI checks plus a MobSF static scan, a ZAP API scan
+against the backend started in CI, authorisation tests, `testssl.sh` for any self-hosted server, an AGPL-compatible
+licence scan and the LLM prompt-injection set), a manual one-hour list per release
+(`docs/13-release-security-checklist.md`, Sprint 4b) and a deep pentest before the Play Store launch and before
+Sprint 5 sign-in. The first web deploy gets the existing CI plus an OWASP ZAP baseline, the header check and a
+storage audit, run before the address is announced, with rollback through Firebase release history on any finding.
+The **first release's Definition of Done**: every review gate approved, every workflow that runs on the merge commit
+green, those checks passed, the web icons redrawn from the Android mark, and **Hindi, Tamil and Telugu shipped marked
+*under review*** (machine-drafted, native-speaker review pending). Six review-efficiency measures (screenshot tests,
+design-first specs, a component kit, review rules, a buddy pre-check, a first-pass approval metric) and the
+security playbook become Sprint 4b stories, and six of seven further process improvements are approved (smaller
+batches on hold), with new lint, Semgrep and i18n checks going inside the existing workflows, not new ones; the two self-check playbooks are published as
+[docs/05 §15](docs/05-ux-accessibility-i18n.md) and [docs/07 Appendix A](docs/07-secure-build-and-deploy.md). The
+licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved as the next, separate item:
+**`LICENSE` is still MIT** until it lands.
 
 ### Added
+
+- **Offline copies in six formats** (Sprint 4a, FR-042..FR-046): HTML, PDF, CSV (a ZIP of `houses.csv`,
+  `scores.csv`, `visits.csv`, `photos.csv`), XLSX, Markdown and the exact JSON backup `doorprints-backup/1`. Built
+  **on the device, offline, with no account and no server** — Android from Room, the web app from IndexedDB — and
+  deterministic: the same data and options give the same bytes apart from the export time on the cover. Options:
+  scope, photos, contacts (on by default, with a warning), language (en/hi/ta/te) and "include rejected". Android
+  saves through the Storage Access Framework or the share sheet, the web app downloads or uses Web Share. The
+  shared writers live in `android/shared/.../shared/export/` and are mirrored in `web/src/app/export/`.
+- **Import a backup** (FR-047): validation before any write (format, per-entry SHA-256, entry count, size, ratio,
+  and a zip-slip path check on every entry), a preview of what would change, then merge by last-write-wins or
+  "import as a copy" with fresh ids. Importing the same file twice changes nothing. **Android and the server only
+  so far.** Server: `POST /api/import`, with `?dryRun=true` as the preview and 413 for an over-large body or too
+  many rows. Android's preview also warns, in all four languages, when a newer row in the file has no checklist and would
+  clear scores this phone has; an absent or `null` `checklist` in a file reads as "no scores".
+- **Android: bring back houses deleted on this phone, and keep your own edits** (Android rounds 10–12,
+  `android/shared/README.md` 1.12–1.14; not pushed yet). In a merge, houses the backup has but the phone deleted are
+  counted as "Deleted on this phone; they stay deleted", and an opt-in switch, "Also bring back *n* houses deleted
+  on this phone" (off by default; **Bring them back** when that is the only thing the backup would change), restores
+  exactly those houses with their own ids and marks them as edited now, so the undelete survives the next sync.
+  After a delete that has already synced, the house's visits are relinked and its photos written under fresh ids
+  (the server never takes a deleted photo id back); **this last part is not yet confirmed on a device** (device
+  check 10b), so the release notes promise only that the houses come back with their own ids. The Replace dialog
+  counts houses and visits apart, names up to five houses and offers **Keep mine, add only what's new** first; a
+  stopped merge offers **Finish import**; the result says "Added … Updated …" with only the non-zero parts, and lists
+  of any length keep every item in all four languages (`import_list_middle`, `JoinListTest`). Export: a *Full
+  backup* made with narrowed options shows an amber note naming what it leaves out, with **Use everything**, and is
+  saved as a "partial backup"; results nobody was told about stay on screen until seen; notifications are asked
+  for once, in context. Tests: `ImportPlanTest` (undelete, keep mine, relink, and the preview equal to the plan for
+  every flag combination over eight phone states), `BackupCompletenessTest`, `JoinListTest`, `ImportStartOnceTest`.
+- **Android backups keep visits that belong to no house yet** (Hunt mode's dwells at places that are not houses):
+  a JSON backup of *All houses* carries them, last in `data.json`; the readable copies leave them out. The web
+  app's backup does not carry them yet.
+- **Optional weekly backup on Android** (FR-048, off by default): into a folder granted once, while charging and
+  with the battery not low, keeping the last 4 files by default. There is **no network constraint** — the file is
+  written straight into the granted folder, so there is nothing to upload. If the folder grant is revoked the
+  feature turns itself off with a reason, instead of failing quietly every week. Turning the backup off releases the
+  folder's access and forgets the folder, so turning it on again asks for a folder again.
+- **The web app is local-first and installable** (FR-070..FR-073): IndexedDB (`doorprints` v1) holds houses,
+  visits, photo blobs and settings; no route is guarded any more and the Connect page only adds sync; a
+  hand-written service worker, stamped per build, caches **this build's own files** (never an API response, nothing
+  cross-origin) and starts the app from the cache first; install is offered on *Your data* and once as a banner after
+  the first saved house ("Not now" lasts 30 days), with the Add-to-Home-Screen steps on iOS; the build writes the
+  manifest's `id` as the absolute deployment path (`/` on Firebase Hosting, where the site is served from the root); phones get a bottom navigation
+  bar; an update prompt instead of a silent reload; `navigator.storage.persist()` with an honest
+  warning when the browser will not promise durability, and a memory-only fallback that says so when IndexedDB is
+  blocked.
+- Tests: golden-file exports on both platforms from the same fixture (`ExportGoldenTest`, `exporters.spec.ts`),
+  `ImportPlanTest`, `BackupTest` (zip slip, foreign format, duplicate ids), `ExportStringsTest` (all four languages
+  complete), `BackupRoundTripTest`, `BackupApiTest`, and the canonical `docs/schemas/backup-sample.json`: the server and
+  Android (`CanonicalSampleTest`) read it, and `BackupParityTest` (backend) checks that the web writer's golden copy
+  is identical to it and that all three readers use the same 16 MiB `data.json` cap.
 
 - **Kotlin Multiplatform module `android/shared`** (Sprint 3.5): models and wire names, score, sync rules and outcome
   codes, stay detection, street alerts, distance, DTOs and the API client, for Android and (compile-only)
@@ -143,6 +257,119 @@ check are still open ([vertex-setup](docs/ai/vertex-setup.md) status).
 
 ### Changed
 
+- **CI runs on every branch** (owner decision, 2026-09-23: "We need to have the pipelines run on branches as well
+  because we need to be sure that the code is right before merging into main"; [sprint log](docs/10-sprint-log.md)
+  12.5 Decision 5). `backend.yml`, `web.yml`, `android.yml`, `shared-ios.yml`, `security.yml` and `codeql.yml` run on
+  a push to any branch with their path filters unchanged; pull requests to `main` still run (CodeQL still not on pull
+  requests). Deploying (`web.yml` `firebase-setup` / `deploy-firebase`), release signing (`android.yml`
+  `release-signing-check`, which now requires `main` too, and `release`, which runs only on its output) and the Android dependency-graph submission stay
+  on `main`; the backend image build and non-root check (never pushed) now also run on branches. For signing that
+  guard holds only while `android.yml` is unmodified, because a push runs the pushed branch's copy of the workflow and
+  the `HH_*` signing secrets are still repository secrets; moving them into a `release` environment restricted to
+  `main` is backlog ticket S4b-BL-8. A newer push to a branch or pull request cancels the older run; an in-progress
+  run on `main` is never cancelled, and when several pushes queue up only the newest waiting run starts. Required status checks stay off, and
+  with a pull request open each push runs every triggered workflow twice. Before merging, check the latest run of each
+  triggered workflow on the branch and bring the branch up to date with `main`. Not yet run in CI. See
+  [07 section 1](docs/07-secure-build-and-deploy.md#1-pipeline-overview) (*Branch runs*).
+- **Android, whole-app UX audit** (Sprint 4a, before the first deploy; `android/shared/README.md` 1.24–1.34, not
+  pushed yet). Location and notifications are asked only in context (the Hunt switch, *Save house here*, *My
+  location*, *Use my current location*, *Plan visits*), never on arrival; *Approximate* location is its own state with
+  one calm amber note per screen and *Turn on precise location*; a refusal is said once, by that note, with a "reject"
+  haptic and a one-sentence snackbar when a tap starts nothing. The Map lays itself out from measured sizes: the top
+  band stops above the controls and scrolls, a short map (under 480 dp) puts the controls in one row, markers differ
+  by size, ring and opacity with a legend (`MapLegend`) whose place follows its measured width, MapLibre's attribution
+  is lifted above the legend and its logo is off, and the map is north-up (rotation, tilt and the compass off). The
+  house form gains the unsaved-changes dialog, photo undo, a not-found state, a photo viewer, Latitude / Longitude
+  fields, a segmented checklist (0–5, then "–") and a 640 dp column; Compare keeps its selection and has an empty
+  state; the house list's first run offers **Add a house on the map** and **Import a backup** (was *Restore from a
+  backup*); a copy import can be undone for 24 hours, from the Import screen or, with a confirmation, from the list.
+  Settings and the Assistant keep the last result or error card in place, dimmed, while a new run is busy
+  ("Updating…" / "Thinking…" / "Planning…"). Dangerous confirmations use an error-outlined button; selected chips
+  and the active tab are teal (`secondaryContainer` = `--primary-soft`), never the star amber. 489 string resources in
+  each of en/hi/ta/te. Tests: `MapRulesTest`, `LocationAccessTest`, `HouseFormRulesTest`, `ServerStatusTest`,
+  `SyncHealthTest`, `CopyUndoTest`, `ImportUndoTest`, `ImportModeTagTest` ([test plan](docs/06-test-plan.md) TC-U-51,
+  TC-U-52; device checks TC-M-22, TC-M-23).
+- **Web, whole-app UX audit** (Sprint 4a, before the first deploy; `web/README.md` audit rows, rounds 1–3 and the
+  final round, not pushed yet). Under 600 px the house pages (`/houses/new`, `/houses/:id`) hide the bottom bar and
+  get the full screen with the toolbar's Back to the map (`hidesBottomBar`), as Android does; from 601 to 900 px the
+  header is one scrolling row with a fade and the current item in view. The add-house hint is a plain paragraph read
+  once by the announcer, with the shorter `map.addHintShort` under 760 px; *Show all* frames the houses clear of the
+  overlays (`fitPadding`); every map is north-up and flat; the list keeps search, filter and sort in the URL and
+  Compare its selection in `?ids=`; Back returns to where a house was opened from; *Fill in from listing text* and
+  *Fill address from map* fill only empty fields; unsaved edits survive a discarded tab; Ask, Plan and Connect keep
+  the last card in place, dimmed, while a new run is busy; the house form's Save says "Saving…"; hints say "choose",
+  not "tap"; 44 px targets on touch; Indic line heights for headings and buttons; the partial-backup note with *Use
+  everything* and the *Add a house on the map* empty state on *Your data* (Android parity). The app icons
+  (`favicon.svg`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`) are redrawn from the
+  brand mark with the same names and sizes. Tests: `fit-padding`, `nav-section`, `map-center`, `map-list`,
+  `back-target`, `house-draft-merge`, `compare-selection`, `app.config`, `session-leftovers` and
+  `backup-completeness` specs ([test plan](docs/06-test-plan.md) TC-U-53, TC-U-50; phone checks TC-M-24).
+- **Docs for the audit:** [docs/05](docs/05-ux-accessibility-i18n.md) v0.10 (Android components, the Map at large
+  text, location asks, the undo, the web shell, I18N-B06 and the design and UX self-check),
+  [docs/06](docs/06-test-plan.md) v0.21 (the new tests and device checks, the release guard),
+  [docs/07](docs/07-secure-build-and-deploy.md) v0.23 (the security self-check), [docs/10](docs/10-sprint-log.md) v0.24
+  (the sign-off, handovers 19–34, the owner's decisions), [docs/11](docs/11-feature-parity-and-export-spec.md) v0.12
+  (the Android pick-a-spot add mode for Sprint 4b) and [docs/12](docs/12-brand-and-naming.md) v0.2. Then, from the
+  owner's recorded decisions: [docs/10](docs/10-sprint-log.md) v0.25 (the full release security gate, story S4b-SEC-3
+  for `docs/13-release-security-checklist.md`, the process improvements and the first release's Definition of Done),
+  [docs/06](docs/06-test-plan.md) v0.22 (§11 *First web deploy* and *Play Store release* rows; the `announcer` and
+  `focus` specs), [docs/05](docs/05-ux-accessibility-i18n.md) v0.11 (hi/ta/te *under review*; the Telugu
+  empty-state wording differs between web and Android; a failed save cancels "Saving…"),
+  [docs/07](docs/07-secure-build-and-deploy.md) v0.24 (A.5), [docs/12](docs/12-brand-and-naming.md) v0.3 (N-06, the
+  app icon), [docs/03](docs/03-design.md) v0.15 (ADR-13) and [docs/schemas/README.md](docs/schemas/README.md) v1.5
+  (the device note under §6 rule 6, Android handover 19). Then, from the round 1 review of that change:
+  [docs/10](docs/10-sprint-log.md) v0.26 (S4b-EFF-4 states the owner-approved review rules: one complete pass in
+  round 1, later rounds the delta plus its regressions only, the blocker/major/minor rubric, out-of-scope findings as
+  `BACKLOG:` minors that never block, `NEW RULE:` for a new class; review rules and the buddy pre-check in use since
+  the final Sprint 4a round; first-pass approval target 35 % to more than 70 % by the end of Sprint 4b),
+  [docs/05](docs/05-ux-accessibility-i18n.md) v0.12 and [docs/07](docs/07-secure-build-and-deploy.md) v0.25 (the
+  same rules at the top of §15.5 and A.5) and [docs/06](docs/06-test-plan.md) v0.23 (the `connect-page` and
+  `run-result` specs; the 0.22 change-log row reattached to its table).
+- **Docs for the pre-deploy close-out** (2026-09-23): [docs/05](docs/05-ux-accessibility-i18n.md) v0.13–v0.14,
+  [docs/06](docs/06-test-plan.md) v0.24–v0.26, [docs/10](docs/10-sprint-log.md) v0.27–v0.29 and the
+  [docs index](docs/README.md) v0.27–v0.29. The last sync before the first deploy applies the Web team's close-out
+  review rows up to `web/README.md` *Pre-deploy close-out, round 3 review fixes* (the last handover applied;
+  `android/shared/README.md` up to 1.34): Plan and the new-house start in docs/05 §5, two NEW rules in docs/05 §15.3 R6
+  and R9, the new spec cases in docs/06 TC-U-53, §14.3 and TC-S-19, and backlog tickets S4b-BL-6 and S4b-BL-7 with
+  rule candidates (i)–(k) in docs/10 §12.7.
+- **The web app is hosted on Firebase Hosting at https://doorprints.web.app** (owner decisions, 2026-09-23; not
+  pushed yet). It replaces GitHub Pages, which cannot send security headers and shares one origin across the owner's
+  Pages sites, and a Cloudflare Pages plan of the same morning, which the owner rejected before it was set up because
+  a `pages.dev` address reads as a test site ([ADR-21](docs/03-design.md#14-architecture-decision-records),
+  [docs/12](docs/12-brand-and-naming.md)). Firebase project and site `doorprints`, no-cost Spark plan, no billing
+  account. `web.yml` gains `firebase-config` (checks `web/firebase.json` and installs `firebase-tools` 15.30.2, pinned,
+  without install scripts), `firebase-setup` (skips cleanly while the setup values are missing) and `deploy-firebase`,
+  which deploys the tested production build with a short-lived **Workload Identity** token — accepted only for
+  `web.yml` on `main`, for a service account whose only role is Firebase Hosting Admin; **no key exists** — and then
+  checks the live headers and caching ([build guide 6.3](docs/07-secure-build-and-deploy.md#63-web-firebase-hosting)).
+  The owner's setup was done on 2026-09-23. The security headers now live in **`web/firebase.json`** (Web team):
+  CSP with `frame-ancestors 'none'`, HSTS, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  COOP, and `Cache-Control: no-cache` on every path (Firebase's default would be an hour); the build copies the CSP
+  into `index.html` as a `<meta>` and fails if the file's policy is missing or doubled; `public/_headers`,
+  `public/_redirects` and the `build:pages` script are gone. The site is served from the root: the `**` rewrite
+  answers deep links, there is no `404.html`, the manifest `"id"` is `"/"`, and the app refuses to start inside a
+  frame. No file gets a long-lived `immutable` rule, because the rewrite answers a missing old chunk with the HTML
+  shell. Nothing was ever deployed to GitHub Pages or Cloudflare Pages. **For browser sync, `APP_CORS_ORIGINS` on your
+  server must list `https://doorprints.web.app`.** Roll back a bad release in the Firebase console
+  ([runbook](docs/08-operations-runbook.md) IR-10).
+- **Words: "import" means only a Doorprints backup** ([docs/12](docs/12-brand-and-naming.md) section G). The web's AI
+  helper is now **Fill in from listing text** (keys `listingFill.*`, was "Import from listing text"; Android already
+  used that title), and the web's readable HTML copy is named `Doorprints-copy-<date>.html`, for the download and
+  inside the backup ZIP. Android's readable copies follow in Sprint 4b.
+- **`GET /api/export` speaks the shared backup format** (Sprint 4a). It returns the `doorprints-backup/1` object —
+  the same thing a device backup carries as `data.json` — instead of the old `house-hunt-export/1` shape, so there
+  is one format and no converter, and the download is named `Doorprints-backup-<UTC date>.json`. Photo bytes are
+  not in it; fetch them from `GET /api/photos/{id}`. The old id had no reader other than the owner, so nothing
+  needs migrating. This supersedes the "export `format` id unchanged" note in ADR-13.
+- **CI path filters cover the files the tests read** (Sprint 4a, not pushed yet). `backend.yml` also runs on
+  `docs/ai/evals/**`, `docs/schemas/**`, `docker-compose.yml`, `web/src/app/export/backup-export.ts`,
+  `web/src/app/export/golden/**` and the Kotlin `Backup.kt`, because `GoldenSet`, `CanonicalSample` and
+  `BackupParityTest` read them; `android.yml` also runs on `docs/schemas/**` (`CanonicalSampleTest`). An edit to the
+  shared backup sample, the web golden or a size-cap constant alone now runs the test that checks it
+  ([build guide](docs/07-secure-build-and-deploy.md) section 1). The Pages build's manifest guard required
+  `"id": "/doorprints/"` exactly; since the move to Firebase Hosting the deploy job requires `"id": "/"`.
+- **The web app's entry point moved** (Sprint 4a): it opens on the map with the browser's own data and no route is
+  guarded. `/connect` still exists, and configuring a server now only adds sync.
 - **Ask citations need an inline marker** (commit `feb0294`, AI change set; only with AI enabled). The server now cites
   a house only when the answer marks it inline as `[house:<id>]` (in order of first appearance, retrieved houses
   only); the model's `citedHouseIds` list is used only when the answer has no marker at all, and the refusal sentence
@@ -282,10 +509,29 @@ check are still open ([vertex-setup](docs/ai/vertex-setup.md) status).
   that may be cited (such as a grounded contrast) but are not required. `citationPrecision` now counts a cited house
   as correct when it is in `expectedHouseIds` or `allowedCitations`; `citationRecall` still uses `expectedHouseIds`
   only. `ask-02` allows the Blue gate house; thresholds unchanged. `EvalScorerTest` covers the rule and checks that an
-  allowed house is neither expected nor `mustNotCite` (TC-AI-09). A new `ai-evals.yml` run is still needed to confirm
-  E-03.
+  allowed house is neither expected nor `mustNotCite` (TC-AI-09). **E-03 is confirmed fixed** by the `provider=vertex`
+  eval run 35758157317 on `19006bc` (13/13 cases, every metric passes; `citationPrecision` back above its 0.90
+  threshold).
 
 ### Fixed
+
+Found by the whole-app UX audit (2026-09-23; working tree, **not pushed yet and not built in CI**):
+
+- Android: a rotation, the language switch or reopening from Recents re-ran a notification's deep link and reopened
+  the house or stacked new-house forms (blocker; `MainActivity` handles an intent once).
+- Android: the keyboard covered the house form, Settings and the Assistant (`imePadding`); the Map never framed the
+  houses, because the first "whole of India" view was saved as the user's camera; a double Save left an empty screen; *Approximate* location was
+  treated as "location off".
+- Android: the map legend covered MapLibre's logo and attribution "i" and took their taps (the OpenStreetMap credit
+  must stay visible); the compass could land under a button, leaving a rotated map with no way back to north; a
+  refusal snackbar covered the Hunt card's own button on a short map; Settings' first *Save and test* result was not
+  announced.
+- Web: on a browser without WebGL 2 the map page offered a dead *Place here* (blocker); it now offers *Add at my
+  location* and *Type latitude and longitude*.
+- Web: a Back cancelled by the unsaved-changes guard overwrote the list's history entry; focus fell to `<body>` when
+  a button went away; the header's sync-problem dot was 1.02:1 on the teal header (WCAG 1.4.11); Telugu headings and
+  the phone toolbar title were clipped; on phones the add hint grew down onto the crosshair; the map could be rotated
+  with no way back to north.
 
 Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini eval run (2026-09-22, Actions run
 35720654442, which ran on `6a348cc`).
@@ -302,11 +548,65 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
   v0.5 has `allowedCitations` but no `mustNotCite`, and AssertJ's `doesNotContainAnyElementsOf` rejects an empty
   list (258/259 tests passed). The golden-set consistency check now skips an empty or missing id list ("no
   constraint"); `ask01AllowsOnlyTheHousesWhoseWaterFactsAreInTheFixture` compares lower-cased ids on both sides. Test
-  code only; golden set and thresholds unchanged. Not yet confirmed by a green Backend run (recorded in the
+  code only; golden set and thresholds unchanged. **Confirmed by the green Backend run on `19006bc`** (the one case that failed on `feb0294` now passes),
+  together with a green Security, Android and Shared iOS compile on the same commit (recorded in the
   [sprint log](docs/10-sprint-log.md) 9.2, TC-AI-09 in the [test plan](docs/06-test-plan.md)).
+- **Web, pre-deploy close-out (2026-09-23; not yet built in CI):** an answer from the location prompt or the 15 s fix
+  that arrives after the map, Plan or the house form was left is dropped, so leaving the page no longer opens a
+  new-house form nobody asked for or announces on another page (`shared/locate-once.ts`, `locate-once.spec.ts`,
+  [test plan](docs/06-test-plan.md) TC-U-53). A 32 px tab icon, `icons/favicon-32.png` rendered from `favicon.svg`, is
+  listed first, so browsers no longer shrink the 192 px icon for the tab.
+- **Web, pre-deploy close-out, buddy pre-review (2026-09-23; not yet built in CI):** *Plan route* with an unusable
+  start now focuses the first start field still to fix, so with the latitude typed and the longitude empty it focuses
+  the longitude, not the latitude (`pages/plan/start-field.ts`, `start-field.spec.ts`; [sprint log](docs/10-sprint-log.md)
+  §11.7 W2). The map's *Download now* no longer announces "*n* houses downloaded" on another page when the map was
+  left while the download ran (§12.7 S4b-BL-5).
+- **Web, Plan's typed start** (pre-deploy close-out, round 1 review, 2026-09-23; not yet built in CI): a coordinate
+  typed while no start is set is dropped when its field turns invalid or is cleared, so Plan never sets a start from a
+  value the user removed (`nextTypedStart` in `pages/plan/start-field.ts`, `start-field.spec.ts`;
+  [sprint log](docs/10-sprint-log.md) §11.7 W2).
+- **Web, a stale start message withdrawn by every start** (pre-deploy close-out, round 2 review, 2026-09-23; not yet
+  built in CI): a *location blocked* or *location unavailable* note under Plan's start fields now goes away however the
+  start is then set (map, marker drag, typing, the newest house, *Use my location*), so it is no longer read with the
+  fields on every focus ([docs/05](docs/05-ux-accessibility-i18n.md) §5, *Start point (web)*).
+- **Web, no start in central India on the untouched default view** (pre-deploy close-out, round 1 review, 2026-09-23;
+  not yet built in CI): the map view saved on the map page's first layout (the untouched country view) is not read as
+  the user's choice, so the new-house form opened with no position, and Plan's first start, no longer start in the
+  middle of India (`loadStartPoint` in `shared/map-center.ts`, `map-center.spec.ts`;
+  [test plan](docs/06-test-plan.md) TC-U-53).
+- **Web, the `/houses/new` read guarded after the page is gone** (pre-deploy close-out, round 2 review, 2026-09-23;
+  not yet built in CI): leaving the new-house form while it reads the houses for its starting view no longer announces
+  *Draft restored* or sets the title on the next page (`startWithoutPosition()` in `house-detail-page.ts`;
+  [sprint log](docs/10-sprint-log.md) §12.7 candidate (f); its TestBed cases are S4b-BL-7).
 
 ### Security
 
+- Sprint 4a threat model additions (v0.15..v0.20): malicious backup files (T-T8), injection into exports (T-T9),
+  static hosting without response headers (T-T13, F-31 — **fixed on 2026-09-23 by moving the host, to Firebase
+  Hosting**, see below), the PWA share target as untrusted inbound text
+  that may carry phone numbers (T-I26: shown as plain text and removed from the address bar and the URL of the
+  tab's history entry; the text itself stays in that entry's navigation state, `history.state`, until the house is
+  saved, or until the tab closes if the form is abandoned, and session restore may keep it — a recorded residual),
+  and Android's persisted document grants (T-I25: newest 5 exports and the backup folder, released when no
+  longer needed). The `data.json` size cap is now one number, **16 MiB**, on Android, the web and the server
+  (`MAX_IMPORT_BYTES`), instead of three.
+- **F-31 fixed, RR-11 closed** (threat model v0.22–v0.24, 2026-09-23): the web app moves to its own origin,
+  `https://doorprints.web.app` on Firebase Hosting, which sends every header in `web/firebase.json` (CSP with
+  `frame-ancestors 'none'`, HSTS, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP) instead
+  of the `github.io` origin shared with the owner's other Pages sites. Checked on 2026-09-23 that the other Pages site
+  on that origin (secure-doc-viewer) ran no scripts: its `gh-pages` branch at `68e3a625` (2026-09-21) holds only HTML,
+  images, a README and `.nojekyll`, with no `<script>` element, so nothing was exposed. Each deploy checks the live
+  headers (test plan TC-S-23), and `web/firebase.json` is checked before any deploy credential exists (TC-S-24: no
+  lifecycle hooks, no function rewrites, `public` only the build). The build-time `<meta>` CSP and the app's refusal
+  to run inside a frame stay as defence in depth. New threats **T-T14** (replacing the live site through the deploy
+  path: Workload Identity pinned to `web.yml` on `main`, no key, Hosting Admin only) and **T-D9** (the Spark quota
+  disables the site); new residuals **RR-13** (quota, no budget alert), **RR-14** (Firebase's reserved `/__/*` paths
+  are outside our headers; no Firebase Web App is registered) and **RR-15** (HSTS on `web.app` comes from the `.app`
+  preload); **RR-12** (Cloudflare's per-deployment addresses) is withdrawn. Live evidence is still to come: the first
+  deploy and the manual check TC-M-19.
+- To sync the web app with your own server, allow its origin: `APP_CORS_ORIGINS` must include
+  `https://doorprints.web.app` (an origin has no path); the compose default allows only `http://localhost:4200`
+  ([build guide 6.3](docs/07-secure-build-and-deploy.md#63-web-firebase-hosting)).
 - Vertex AI uses **only** Application Default Credentials (short-lived OAuth tokens; Workload Identity Federation in
   CI, the attached service account on Cloud Run); there is no Vertex API key path in the code. Threat model v0.12
   T-I22 and build guide section 4 updated: nothing to rotate for WIF and Cloud Run, quarterly rotation only for a
@@ -336,6 +636,12 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
   ([runbook 1.1](docs/08-operations-runbook.md)). Closed by lead decision (C-13, AI-010): the redaction tests TC-AI-15
   pass in the Backend workflow on `6a348cc`. The real Gemini eval run 35720654442 only shows that the AI paths still
   work with the redactor in place; its fixture houses hold no contact data, so it is not a redaction test.
+- **Web, "Remove all data" leaves less behind** (pre-deploy close-out, 2026-09-23; not yet built in CI): it now also
+  removes the app's `hh.*` and `doorprints.*` keys from `localStorage` (the install and storage-advice "Not now"
+  dates were left behind; the language choice stays) and from this tab's `sessionStorage` (every such key, not only
+  unsaved drafts and shared listing text), and unregisters this deployment's own service worker, and no
+  other (`session-leftovers.spec.ts`, `pwa.service.spec.ts`; [test plan](docs/06-test-plan.md) TC-S-19). The live
+  storage audit of the first web deploy follows `web/README.md`, *Storage audit on the live site*.
 
 ## [0.1.0] - 2026-09-22
 

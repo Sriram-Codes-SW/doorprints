@@ -1,0 +1,89 @@
+{
+  "name": "Doorprints",
+  "short_name": "Doorprints",
+  "description": "Remember every house you've seen. Save, rate and compare the houses you visit — on your own device, with no account.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1f6f5c",
+  "theme_color": "#1f6f5c",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "lifestyle",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./screenshots/map-narrow.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Your houses on the map, coloured by status, with the list below"
+    },
+    {
+      "src": "./screenshots/house-wide.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "A house's details: price, status, rating, location and checklist"
+    }
+  ],
+  "share_target": {
+    "action": "share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Your houses",
+      "short_name": "Map",
+      "url": "./",
+      "icons": [
+        {
+          "src": "./icons/shortcut-map.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Your data",
+      "short_name": "Your data",
+      "url": "./data",
+      "icons": [
+        {
+          "src": "./icons/shortcut-data.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

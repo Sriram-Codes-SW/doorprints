@@ -18,6 +18,9 @@ import java.util.concurrent.TimeUnit
  *  - when WorkManager stops the worker (constraint lost, e.g. the network went away, or the work was replaced or
  *    cancelled) the coroutine is cancelled; that is not a failed sync, so nothing is recorded (WorkManager runs
  *    stopped work again once its constraints are met).
+ *  - every recorded outcome also counts failures in a row (`SettingsStore.saveSyncResult`, [SyncHealth]); after three
+ *    AUTH or SERVER failures, or a day without a sync that worked, the house list says so with *Open Settings*
+ *    (UX review, whole-app audit), so a revoked key or a server that has gone away no longer fails only in Settings.
  */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
