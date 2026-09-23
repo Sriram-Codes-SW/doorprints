@@ -16,13 +16,32 @@ import java.io.IOException;
  * limited separately by {@code spring.servlet.multipart.*}. A declared Content-Length over the cap is answered with
  * 413 straight away; a chunked body is counted while it is read and fails once it passes the cap (Spring then answers
  * 400 because the body could not be read).
+ *
+ * <p>One path may be given a larger cap: {@code POST /api/import} carries a whole backup file
+ * ({@code app.limits.max-import-bytes}). The check runs on the raw request path, before the canonical-path check in
+ * {@link ApiKeyFilter}, so a dressed-up path such as {@code /api/import;x} does not match the larger cap here and is
+ * refused with 400 a moment later anyway.
  */
 public class RequestSizeLimitFilter extends OncePerRequestFilter {
 
     private final long maxBytes;
+    private final String largerPath;
+    private final long largerMaxBytes;
 
     public RequestSizeLimitFilter(long maxBytes) {
+        this(maxBytes, null, maxBytes);
+    }
+
+    /** @param largerPath the one path (and its sub-paths) that may send up to {@code largerMaxBytes}; may be null */
+    public RequestSizeLimitFilter(long maxBytes, String largerPath, long largerMaxBytes) {
         this.maxBytes = maxBytes;
+        this.largerPath = largerPath;
+        this.largerMaxBytes = Math.max(maxBytes, largerMaxBytes);
+    }
+
+    private long limitFor(HttpServletRequest request) {
+        if (largerPath == null) return maxBytes;
+        return RequestPaths.isUnder(RequestPaths.path(request), largerPath) ? largerMaxBytes : maxBytes;
     }
 
     @Override
@@ -34,14 +53,15 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+        long limit = limitFor(request);
         long declared = request.getContentLengthLong();
-        if (declared > maxBytes) {
+        if (declared > limit) {
             response.setStatus(413);
             response.setContentType("application/problem+json");
-            response.getWriter().write("{\"status\":413,\"detail\":\"Request body too large (max " + maxBytes + " bytes)\"}");
+            response.getWriter().write("{\"status\":413,\"detail\":\"Request body too large (max " + limit + " bytes)\"}");
             return;
         }
-        chain.doFilter(declared >= 0 ? request : new Limited(request, maxBytes), response);
+        chain.doFilter(declared >= 0 ? request : new Limited(request, limit), response);
     }
 
     /** Wraps the body stream of a request without Content-Length and stops reading after the cap. */

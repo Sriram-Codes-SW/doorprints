@@ -1,12 +1,9 @@
 package com.househunt.privacy;
 
 import com.househunt.config.AppProperties;
-import com.househunt.house.HouseDto;
 import com.househunt.house.HouseRepository;
-import com.househunt.photo.PhotoDto;
 import com.househunt.photo.PhotoRepository;
 import com.househunt.sync.SyncVersions;
-import com.househunt.visit.VisitDto;
 import com.househunt.visit.VisitRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -18,21 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
-/** Data-subject rights for the single user (FR-031 export, FR-032 erase, PRV-004/PRV-005 retention). */
+/**
+ * Data-subject rights for the single user (FR-032 erase, PRV-004/PRV-005 retention). The export half of FR-031
+ * moved to {@link com.househunt.backup.BackupService}, which speaks the shared backup format; this class keeps the
+ * destructive and the scheduled work.
+ */
 @Service
 public class DataService {
 
     private static final Logger log = LoggerFactory.getLogger(DataService.class);
-
-    /** Everything the server holds, as JSON. Photo bytes are fetched separately via {@code photoUrl}. */
-    public record Export(String format, Instant exportedAt, List<HouseDto> houses, List<VisitDto> visits,
-                         List<ExportedPhoto> photos) {
-    }
-
-    public record ExportedPhoto(PhotoDto photo, String photoUrl) {
-    }
 
     private final HouseRepository houses;
     private final VisitRepository visits;
@@ -50,17 +42,6 @@ public class DataService {
         this.photos = photos;
         this.versions = versions;
         this.retention = Duration.ofDays(props.privacy().tombstoneRetentionDays());
-    }
-
-    @Transactional(readOnly = true)
-    public Export export() {
-        var liveHouses = houses.findByDeletedFalseOrderByUpdatedAtDesc().stream().map(HouseDto::from).toList();
-        var liveVisits = visits.findByDeletedFalseOrderByArrivedAtDesc().stream().map(VisitDto::from).toList();
-        var livePhotos = photos.findAllLiveMetadata().stream()
-                .map(p -> new ExportedPhoto(p, "/api/photos/" + p.id())).toList();
-        // Format id kept from before the Doorprints rename: it versions the file layout, and tools that read
-        // older exports match on it. Only the download file name changed (DataController).
-        return new Export("house-hunt-export/1", Instant.now(), liveHouses, liveVisits, livePhotos);
     }
 
     /**
