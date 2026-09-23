@@ -8,6 +8,12 @@
 #   the project is on Java 25 LTS). See the maven ignore rule below.
 # - npm: major bumps of web dev dependencies (e.g. jsdom, vitest) are grouped into one weekly PR (npm-dev-major).
 #   Already open individual PRs (#7 jsdom 30, #8 vitest 5) are left for the Web team to evaluate.
+# 2026-09-23 (DevSecOps):
+# - npm: new entry for /.github/firebase-tools (pinned firebase-tools CLI of the Firebase Hosting deploy), with a
+#   7-day cooldown for version updates.
+# - github-actions: third-party actions are now all pinned by commit SHA with a version comment (gradle/actions
+#   v6.3.0 added; google-github-actions/auth v3.0.0 and zaproxy/action-baseline v0.15.0 already were); the entry
+#   below keeps those SHAs current.
 version: 2
 updates:
   - package-ecosystem: maven
@@ -50,6 +56,25 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: "typescript"
         update-types: [version-update:semver-major, version-update:semver-minor]
+
+  # The Firebase CLI that deploys the web app (.github/workflows/web.yml, job deploy-firebase; owner DevSecOps).
+  # firebase-tools is pinned to one exact version and runs with the deploy credential, so every update, majors
+  # included, comes as one PR that DevSecOps reviews; web.yml's firebase-config job installs it on that PR.
+  # Cooldown: a new release waits 7 days before a version-update PR proposes it (supply-chain delay; security
+  # updates are not delayed).
+  - package-ecosystem: npm
+    directory: /.github/firebase-tools
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
+    groups:
+      firebase-tools-updates:
+        applies-to: version-updates
+        patterns: ["*"]
+      firebase-tools-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: gradle
     directory: /android
