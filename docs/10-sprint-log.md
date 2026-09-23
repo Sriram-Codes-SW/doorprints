@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16 (CI green on `5af2f4d`; HEAD `9e0036e` running; not deployed)**, §12.10) |
@@ -48,6 +48,7 @@
 | 0.34 | 2026-09-24 | Claude (Cowork), Docs team | **Comment and docs sync of the India's boundaries change** (coordinator's round; branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI running; no behaviour change). Compared with the code at `3ad2b58` (`india-boundaries.ts`, `IndiaViewRules.kt`, `IndiaView.kt` and their tests). **§12.8**: the web has rule 2's adm0 clause and tile-zoom guard, so the v0.33 "open parity gap" is removed (Web row: 37 spec cases; Android row: 18 tests, the round 2 tile-zoom guard); parity paragraph: read from the renderer sources, both maplibre-gl 6.10.0 and maplibre-native android-v13.6.1 skip a minzoom 5 layer in a zoom 0-4 tile, so the guards are defence in depth on both (this corrects this round's brief, which called it "the fix on Android"; S4b-BL-13 reopened for Android's KDoc); *Open before release* and *Backlog* updated. **§11.5** items 36 (done by Web) and 38 ((b) corrected, (c) sign-off open). **§12.7 register**: S4b-BL-11's list corrected (Arunachal-Bhutan and Arunachal-Myanmar are not doubled); new **S4b-BL-13** (renderer wording in comments; Android's 1.39 wording still to correct), **S4b-BL-14** (`web/README.md` intro; done by Web this round, awaiting review), S4b-BL-10 with the measured offsets, **S4b-BL-15** (Assam-Arunachal Pradesh state line from zoom 5), **S4b-BL-16** (doubled lines in the middle sector and the Wakhan, style-side). Hand-off rule 11: last rows applied are `android/shared/README.md` 1.39 (2026-09-24) and the `web/README.md` row of 2026-09-24, *India's boundaries, comment and README sync* (its finding (4), maplibre-native's `geometry_tile.cpp:317` skip, checked in the source and adopted). |
 | 0.35 | 2026-09-24 | Claude (Code), lead | New **§12.9, story S4b-BR-1: the app icon's footprints, option C** ([14](14-lead-backlog-and-handoff.md) N3; PR #15, branch `fix/brand-footprints`): the owner's choices (left/right/left, the same prints in the favicon), what changed on each platform, the checks and the review sign-off. |
 | 0.36 | 2026-09-24 | Claude (Code), Docs team | New **§12.10, owner request of 2026-09-24: the doubled lines and the Assam-Arunachal Pradesh state line** (branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed)): the owner's summary, what was done (rule 2 leaves India's line with China to the outline; 7 shared stretches drawn by the tiles from zoom 5, connectors, no spurs; the `state` kind and layer on both apps), the design review that led to the India-China rule, how it was verified (including TC-M-25 step (3) with Google Maps' India region) and what is still unverified. **§12.7**: S4b-BL-11, S4b-BL-15 and S4b-BL-16 struck through as done on that branch; S4b-BL-9 also re-runs `find_shared_stretches.py`. **§12.8**: the known limits (with the owner's accuracy summary), *Open before release* and *Backlog* point to §12.10. Header status updated. |
+| 0.37 | 2026-09-24 | Claude (Code), Docs team | **§12.10** after the round 2 reviews of PR #16: the Singalila spur fix (a cut within 1e-4 degrees of a claim line's end counts as the end; data sha256 `25984afa…a024`, 415 608 bytes, `claim` 5 pieces), the known minors sized (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tile line's overrun at Jomotsangkha and Longwa; `INDIA_CHINA_LINE` also hiding the Tumen China-North Korea line), and the round 2 review results (code, design: changes requested, major fixed; docs: approved, minor fixed). **§12.7**: new backlog ticket **S4b-BL-17** (cleaner hand-overs at the Sikkim tri-junctions, Jomotsangkha and Longwa; lead). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -992,7 +993,7 @@ Duplicates are merged: the same `sync.service.ts` item was raised three times an
 
 **Backlog tickets (Sprint 4b candidates).** This table is the one register of backlog ids. A team README that needs a
 new ticket takes the next free number from it and says in its Docs handover that the id is new (candidate (k) below).
-S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 and round 3 rows; S4b-BL-8 in v0.31, from the Docs pre-review of Decision 5; S4b-BL-9 and S4b-BL-10 in v0.32, from the owner's boundary issue (§12.8); S4b-BL-11 and S4b-BL-12 in v0.33, from the round 1 review of that Docs change; S4b-BL-13 to S4b-BL-16 in v0.34, from the coordinator's comment and docs sync of that change (S4b-BL-15 and S4b-BL-16 proposed in `android/shared/README.md` 1.39).
+S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 and round 3 rows; S4b-BL-8 in v0.31, from the Docs pre-review of Decision 5; S4b-BL-9 and S4b-BL-10 in v0.32, from the owner's boundary issue (§12.8); S4b-BL-11 and S4b-BL-12 in v0.33, from the round 1 review of that Docs change; S4b-BL-13 to S4b-BL-16 in v0.34, from the coordinator's comment and docs sync of that change (S4b-BL-15 and S4b-BL-16 proposed in `android/shared/README.md` 1.39); S4b-BL-17 in v0.37, from the round 2 design review of PR #16 (§12.10).
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1012,6 +1013,7 @@ S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 
 | ~~S4b-BL-14~~ | Web | ~~**`web/README.md` intro for India's boundaries** (new id). The intro paragraph (*India's boundaries (2026-09-24)*) lists rules 1, 3, 4 and 5 and "starts `boundary_2` at zoom 5 without the Pakistan-China line", but not the adm0 clause or the tile-zoom guard on `boundary_2`, `boundary_3` and the other `boundary` line layers, and ends "see its README for its status" about Android although both apps now apply the same rules~~ **Done by Web in this round, awaiting review** (`web/README.md` row of 2026-09-24, *comment and README sync* (b): the intro names `COUNTRY_LINE_RULE`, `COUNTRY_LINE_RULE_LEGACY` and `TILE_ZOOM_GUARD`, says Android applies the same rules, and states the known limits) | Name `COUNTRY_LINE_RULE` (adm0 side present, not PAK/CHN) and `TILE_ZOOM_GUARD` with the layers it guards, say it is defence in depth on maplibre-gl, and replace the Android sentence with "the same rules as Android (`IndiaViewRules.kt`)" | Web |
 | ~~S4b-BL-15~~ | Both | ~~**The Assam-Arunachal Pradesh state line is not drawn from zoom 5** (coordinator's sync; proposed in `android/shared/README.md` 1.39 (c); new id). In tile 5/24/13 it is admin level 4, `disputed` 1, `claimed_by` CN; Liberty's `boundary_3` never draws a disputed line and rule 1 hides `boundary_disputed`, so on both apps Arunachal Pradesh has its external outline but no state line towards Assam ([03](03-design.md) ADR-22 Consequences, [05](05-ux-accessibility-i18n.md) §7.3 *State lines*; expected in TC-M-25)~~ **Done on branch `fix/india-boundary-lines` (PR #16; §12.10)**: new kind `state` (Natural Earth 1:10m admin-1) and layer `in-boundary-state` on both apps, from zoom 5, directly above `boundary_3` and drawn like it | Either draw India's state line from the bundled data (the lead adds a `state` kind for it in `build_in_boundaries.py` and both copies of `in-boundaries.geojson`, new sha256 in `IndiaBoundaryDataTest`; Web and Android draw it dashed like `boundary_3` from zoom 5), or show admin-level-4 disputed lines `claimed_by` CN inside India (a new rule on `boundary_3` in both apps, with tests on both sides and the ADR-22 rules updated). Settle with TC-M-25 over Arunachal Pradesh | Lead, then Web and Android |
 | ~~S4b-BL-16~~ | Both | ~~**Doubled tile and claim lines in the middle sector and the Wakhan** (coordinator's sync; proposed in `android/shared/README.md` 1.39 (d); new id). From zoom 5 the tiles' own line and India's `claim` outline both draw there, a median 1.5-2.8 km apart, at most 5.3 km (Web team's tile decode)~~ **Done with S4b-BL-11's data fix on branch `fix/india-boundary-lines` (PR #16; §12.10)**: the claim outline is trimmed in the data where the tiles already draw India's line with Nepal, Bhutan, Myanmar and in the Wakhan, and in the middle sector rule 2 leaves the tiles' India-China line out (`INDIA_CHINA_LINE`), so the outline is the only line there | A style-side fix, instead of or before S4b-BL-11's data fix: hide `boundary_2` inside the claim boxes with a `within` filter, or trim the claim outline where the tiles already draw India's line; the same rule in both apps with tests on both sides; the shared stretches in the east (Bhutan's south-east corner, Myanmar south of 26.65 N) and in Sikkim checked with it. Settle with TC-M-25 steps (2) and (10) | Web and Android, with the lead |
+| S4b-BL-17 | Both | **Cleaner hand-overs at the Sikkim tri-junctions, Jomotsangkha and Longwa** (round 2 design review of PR #16, §12.10; new id). At Sikkim's two tri-junctions India's outline and the tiles' neighbour lines meet in small loops (about 13 x 3 km at Nepal-China-India, on glaciers, from about zoom 10; about 2 km at Doklam), and at two hand-overs the tile line runs on past the hand-over and stops in open ground from zoom 11 (about 9 km at Jomotsangkha, Bhutan's south-east corner; about 3 km at Longwa, Nagaland-Myanmar); cosmetic known minors ([03](03-design.md) ADR-22 Consequences) | Make our outline end where it first crosses the tile line at the Sikkim tri-junctions, and hand over at the tile line's end at Jomotsangkha and Longwa (`find_shared_stretches.py` and `build_in_boundaries.py`; both copies of `in-boundaries.geojson`, new sha256 in `IndiaBoundaryDataTest`). Settle with renders at zoom 10-12 and TC-M-25 step (10) | Lead |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -1178,7 +1180,9 @@ line is missing. The owner asked for one line and for the state line (S4b-BL-11,
   At each hand-over the claim piece ends with a short straight connector (about 7 km at most) to the tile line, so
   the border has no gap. Where a stretch starts or ends at the end of a claim line (a box edge) there is no
   connector: on `5af2f4d` those were connector-only spurs of 2-7 km (Nagaland-Myanmar, design review). Repeated points
-  are removed. Jammu and Kashmir and Ladakh (with PoK, Gilgit-Baltistan and Shaksgam), Jammu-Sialkot and Arunachal
+  are removed. A cut within 1e-4 degrees of a claim line's end counts as the end (`SHARED` is rounded to 5
+  decimals): on `9e0036e` two connector-only pieces on the Singalila ridge (2.5 km and 2.3 km) still showed as spurs
+  into Nepal from zoom 5 (round 2 code and design reviews). Jammu and Kashmir and Ladakh (with PoK, Gilgit-Baltistan and Shaksgam), Jammu-Sialkot and Arunachal
   Pradesh with Bhutan and Myanmar keep our outline at every zoom.
 - **How the stretches were found.** New `web/scripts/geo/find_shared_stretches.py` decodes the 20260913 planet tiles
   at zooms 7, 9 and 11 and samples our outline every 250 m. A sample is shared only when, at all three zooms, a line
@@ -1196,22 +1200,32 @@ line is missing. The owner asked for one line and for the state line (S4b-BL-11,
   level 4, disputed, `claimed_by` CN, so it stays hidden there; the other hidden admin-4 lines (China's claim lines
   in the middle sector, one line in Aksai Chin marked `claimed_by` IN, Pakistan's lines in PoK and Gilgit-Baltistan)
   stay hidden on purpose.
-- **Data.** `in-boundaries.geojson`, both copies byte-identical: sha256 `2c497e2e…56d7` (was `700646ea…4954` on
-  `main`), 415 689 bytes; `world` 359 lines, `claim` 7 pieces, `state` 2 lines (213 points). The rebuild is
+- **Data.** `in-boundaries.geojson`, both copies byte-identical: sha256 `25984afa…a024` (was `700646ea…4954` on
+  `main`), 415 608 bytes; `world` 359 lines, `claim` 5 pieces (1 667 points), `state` 2 lines (213 points). The rebuild is
   reproducible from `natural-earth-vector` commit `ca96624`; the old file was first rebuilt byte for byte. CI:
   `web.yml` `pwa-files` requires the kinds `world`, `claim` and `state`.
 - **Docs.** [01](01-requirements.md) v0.24, [02](02-threat-model.md) v0.30, [03](03-design.md) v0.20,
   [05](05-ux-accessibility-i18n.md) v0.18, [06](06-test-plan.md) v0.30, [07](07-secure-build-and-deploy.md) v0.29,
   this section (v0.36), [11](11-feature-parity-and-export-spec.md) v0.16, [14](14-lead-backlog-and-handoff.md) v0.3,
-  the root README, CHANGELOG, `web/README.md` and `android/shared/README.md` 1.41 and 1.42.
+  the root README, CHANGELOG, `web/README.md` and `android/shared/README.md` 1.41 and 1.42; after the round 2
+  reviews [01](01-requirements.md) v0.25, [02](02-threat-model.md) v0.31, [03](03-design.md) v0.21,
+  [05](05-ux-accessibility-i18n.md) v0.19, [06](06-test-plan.md) v0.31, this document v0.37,
+  [11](11-feature-parity-and-export-spec.md) v0.17, [14](14-lead-backlog-and-handoff.md) v0.4 and
+  `android/shared/README.md` 1.43.
 
 **Trade-offs and known minors.** While zoom 5+ tiles load, or offline without them cached, the 7 shared stretches
 show no line at zoom 5 and above (the same degraded state as the tiles' other country lines); the India-China border
 and our outline elsewhere always show. At street zoom the other hand-overs show as a small step. At Sikkim's two
 tri-junctions (Nepal-China-India in the north-west, and Doklam, Bhutan-China-India, in the north-east) our outline
-and the tiles' neighbour lines meet in small loops of about 3-5 km, because Natural Earth and OpenStreetMap put the
-tri-junctions a few km apart (cosmetic). Where our outline is drawn it is still Natural Earth 1:10m (the accuracy
-above).
+and the tiles' neighbour lines meet in small loops, because Natural Earth and OpenStreetMap put the tri-junctions a
+few km apart: about 13 x 3 km at Nepal-China-India (on glaciers, seen only from about zoom 10) and about 2 km at
+Doklam. At two hand-overs the tile line runs on past the hand-over and stops in open ground, from zoom 11: about
+9 km at Jomotsangkha (Bhutan's south-east corner) and about 3 km at Longwa (Nagaland-Myanmar). All cosmetic;
+S4b-BL-17 (§12.7) would end our outline where it first crosses the tile line at the tri-junctions and hand over at
+the tile line's end at Jomotsangkha and Longwa. `INDIA_CHINA_LINE` is global, not limited to India: it also hides
+about 12 km of the China-North Korea line on the Tumen river islets (130.24-130.45 E, 42.55-42.78 N; tile sides
+none and CHN), which is harmless for India. Where our outline is drawn it is still Natural Earth 1:10m (the
+accuracy above).
 
 **Verified, and how.** Web: `india-boundaries.spec.ts` 41 cases (4 new, among them "rule 2: India's line with China
 is left to India's outline..."), the whole suite 463 tests passing locally. Android: `IndiaViewRulesTest` 18 tests
@@ -1226,7 +1240,15 @@ owner's Google Maps link: opened with the India region (google.co.in), Google Ma
 ours (Jammu and Kashmir and Ladakh with PoK, Gilgit-Baltistan, Shaksgam and Aksai Chin; Arunachal Pradesh); seen
 from outside India it shows the disputed (dashed) view.
 
-**Not verified:** CI on `9e0036e` (running when this was written; `IndiaView.kt` is compiled by CI only); the
-Android app on a device; TC-M-25 on the live site and on a device after the deploy, including the hand-overs, the
-Sikkim tri-junction loops, the India-China border at street zoom and the state line
+**Round 2 reviews (of `9e0036e`).** Code: changes requested, 1 major (the two connector-only spurs into Nepal on
+the Singalila ridge), fixed (a cut within 1e-4 degrees of a claim line's end counts as the end; new data file
+`25984afa…a024`); 1 minor (`INDIA_CHINA_LINE` also hides the China-North Korea line on the Tumen islets) recorded
+above. Design: changes requested, 1 major (the same spurs), fixed; 2 minors (the Sikkim tri-junction loops, sized;
+the tile line's overrun at Jomotsangkha and Longwa) recorded above, with backlog ticket S4b-BL-17. Docs: approved
+with 1 minor (RR-16 *Mitigation* did not name the India-China clause, [02](02-threat-model.md) v0.31), fixed.
+
+**Not verified:** CI on `9e0036e` (running when this was written; `IndiaView.kt` is compiled by CI only) and on the
+spur fix; the Android app on a device; TC-M-25 on the live site and on a device after the deploy, including the
+hand-overs, no spur on the Singalila ridge, the Sikkim tri-junction loops, the India-China border at street zoom and
+the state line
 ([14](14-lead-backlog-and-handoff.md) N2).

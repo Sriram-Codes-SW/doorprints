@@ -196,8 +196,10 @@ or Myanmar themselves, or in the Wakhan, the outline is drawn only in the countr
 line takes over from zoom 5, so the border is one line; the Assam-Arunachal Pradesh state line, which the tiles leave
 undrawn, is drawn from zoom 5 from the same file (branch `fix/india-boundary-lines`, PR #16, not yet deployed). Known
 limits: the outline is typically 1.5-3 km off the true line, up to about 5 km in a few mountain stretches, visible
-only when zoomed into the Himalaya; at street zoom a hand-over to the tiles' line shows as a small step, and at
-Sikkim's two tri-junctions as a small loop of about 3-5 km; and while closer tiles load, or offline without them,
+only when zoomed into the Himalaya; at street zoom a hand-over to the tiles' line shows as a small step, at
+Sikkim's two tri-junctions as a small loop (about 13 x 3 km at Nepal-China-India, on glaciers and only from about
+zoom 10; about 2 km at Doklam), and at two hand-overs (Jomotsangkha and Longwa) as the tiles' line running on for
+about 9 km and 3 km from zoom 11; and while closer tiles load, or offline without them,
 those stretches show no line from zoom 5 (ADR-22 *Consequences*).
 
 ## Deploy for free
@@ -322,3 +324,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-24 | New *Map data and credits* (owner issue P0, India's boundaries on the map): the map shows India's external boundary as the Government of India depicts it, with no Line of Control or Line of Actual Control; the outline is bundled Natural Earth data (public domain), credited on the web ([docs/03](docs/03-design.md) ADR-22). |
 | 2026-09-24 | *Map data and credits*: both apps apply the same boundary rules, and the known limits are stated with the measured figures (the outline a median of about 1.5-1.6 km off the true line; a second, close line in a few mountain stretches; no Assam-Arunachal Pradesh state line from zoom 5), from [docs/03](docs/03-design.md) ADR-22 v0.18. |
 | 2026-09-24 | *Map data and credits*: one line from zoom 5 (the outline alone draws India's border with China; where the base map draws India's border with Nepal, Bhutan, Myanmar or in the Wakhan, its line takes over, so the second, close line is gone) and the Assam-Arunachal Pradesh state line is drawn from zoom 5 (branch `fix/india-boundary-lines`, PR #16, [docs/10](docs/10-sprint-log.md) §12.10); the known limits restated (1.5-3 km, up to about 5 km in a few mountain stretches; the hand-over step and the Sikkim tri-junction loops; no line on those stretches from zoom 5 while tiles load or offline). |
+| 2026-09-24 | *Map data and credits*: the known limits sized after the round 2 reviews of PR #16 (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tiles' line running on past the hand-over at Jomotsangkha and Longwa from zoom 11; [docs/10](docs/10-sprint-log.md) §12.10, S4b-BL-17). |
