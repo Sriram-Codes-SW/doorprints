@@ -5,5 +5,5 @@
   },
   "include": ["src/**/*.ts"],
   // Test-only fixtures and golden files are compiled by tsconfig.spec.json, not shipped in the app.
-  "exclude": ["src/**/*.spec.ts", "src/app/export/golden/**"]
+  "exclude": ["src/**/*.spec.ts", "src/app/export/golden/**", "src/app/shared/testing/**"]
 }

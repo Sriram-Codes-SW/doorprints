@@ -1,5 +1,6 @@
 import { GPUInitializationError, Map as MlMap, type IControl, type MapOptions, setWorkerUrl } from 'maplibre-gl';
 import { TranslationService } from '../i18n/translation.service';
+import { applyIndiaBoundaries, type BoundaryStyleTarget, inBoundariesUrl } from './india-boundaries';
 
 /** Free OpenFreeMap vector style — no API key needed. */
 export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -110,6 +111,13 @@ export function isPhoneMap(): boolean {
  * are unchanged. Option names and methods checked against maplibre-gl-js v6.10.0 (`src/ui/map.ts` MapOptions
  * `dragRotate`, `touchPitch`, `pitchWithRotate`; `TwoFingersTouchZoomRotateHandler.disableRotation`,
  * `KeyboardHandler.disableRotation`, which also stops Shift+Up/Down pitch).
+ *
+ * Every map shows India's boundaries as the Government of India does (`india-boundaries.ts`): on **every**
+ * `style.load` (the first one, and each reload by {@link watchMapStyle}) the rules are applied to the freshly loaded
+ * Liberty style before any tile is drawn. This listener is added here, before the page adds its own, so the page's
+ * layers go on top of a style that already has them. Not `setStyle`'s `transformStyle`: in MapLibre 6.10
+ * `Map._updateStyle` with a `transformStyle` first waits for the previous style's `style.load` if that style has not
+ * loaded, and after an offline start it never does, so the retry when the connection returns would wait for ever.
  */
 export function createMlMap(
   i18n: TranslationService,
@@ -129,6 +137,7 @@ export function createMlMap(
     });
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
+    map.on('style.load', () => applyIndiaBoundaries(boundaryTarget(map), inBoundariesUrl(document.baseURI)));
     return map;
   } catch (e) {
     if (!(e instanceof GPUInitializationError)) throw e;
@@ -142,6 +151,31 @@ export function createMlMap(
     }
     return null;
   }
+}
+
+/**
+ * The six map calls `applyIndiaBoundaries` makes, on a MapLibre map (`Map.getStyle`, `addSource`, `addLayer`,
+ * `setLayoutProperty`, `setFilter`, `setLayerZoomRange`, as in maplibre-gl-js v6.10.0 `src/ui/map.ts`).
+ */
+function boundaryTarget(map: MlMap): BoundaryStyleTarget {
+  return {
+    getStyle: () => map.getStyle(),
+    addSource: (id, source) => {
+      map.addSource(id, source);
+    },
+    addLayer: (layer, beforeId) => {
+      map.addLayer(layer, beforeId);
+    },
+    setVisibility: (layerId, visibility) => {
+      map.setLayoutProperty(layerId, 'visibility', visibility);
+    },
+    setFilter: (layerId, filter) => {
+      map.setFilter(layerId, filter);
+    },
+    setZoomRange: (layerId, minzoom, maxzoom) => {
+      map.setLayerZoomRange(layerId, minzoom, maxzoom);
+    },
+  };
 }
 
 /** What {@link watchMapStyle} hands back: stop listening, and ask for the style again now. */
@@ -163,7 +197,8 @@ export interface MapStyleWatch {
  *  * `onChange(true)` on every `style.load`;
  *  * on the window `online` event, while no style has loaded, the style is requested again with `diff: false`
  *    (a fresh `Style`, not a diff against the one that never loaded). The page adds its sources and layers on
- *    `style.load`, not on the one-off `load`, so they come back with it.
+ *    `style.load`, not on the one-off `load`, so they come back with it, and so do India's boundaries
+ *    ({@link createMlMap}).
  *
  * Tile errors after the style has loaded are left to MapLibre: the pins still draw on the background.
  */
