@@ -7,8 +7,10 @@ package com.househunt.app.ui
  * de facto or claim line. Every user of the app is in India, so this is the only view; there is no switch.
  *
  * The decisions are here, with no Android or MapLibre class, so a JVM test holds them (IndiaViewRulesTest). The
- * MapLibre calls that apply them to the loaded OpenFreeMap Liberty style are in IndiaView.kt. The web map is to apply
- * the same five rules (web team; android/shared/README.md section 9 handover):
+ * MapLibre calls that apply them to the loaded OpenFreeMap Liberty style are in IndiaView.kt. The web map applies
+ * the same five rules (web/src/app/shared/india-boundaries.ts: COUNTRY_LINE_RULE and its _LEGACY twin, with `in`
+ * where this file uses `match`, and TILE_ZOOM_GUARD; android/shared/README.md section 9, item 36, done by Web on
+ * 2026-09-24):
  *  1. hide [DISPUTED_LAYER] (every disputed line: LoC, LAC, claim lines);
  *  2. [COUNTRY_LAYER] from zoom [DETAILED_FROM_ZOOM] only ([countryMinZoom]), only the lines that carry an adm0 side
  *     (so a zoom 0-4 tile's Natural Earth line is never drawn, even when MapLibre shows that tile in place of a
@@ -75,13 +77,19 @@ object IndiaViewRules {
      * admin-2 land line of the zoom 5+ tiles near India has at least one (India's side may be missing, the other one
      * set; the lines with neither are all disputed, hidden anyway): shown for zoom 5 (all 15 tiles over India's land
      * borders) and one zoom 6 tile by the decode of the 20260913 planet, zoom 6 to 14 still to be sampled
-     * (android/shared/README.md section 9, item 38 (a)). MapLibre (native and gl)
-     * draws a lower-zoom parent tile while a tile loads or when offline, and checks a layer's zoom range against the
-     * map zoom, not the tile's, so minzoom alone would let a zoom 4 tile's ISO-view line through Kashmir, Aksai Chin
-     * or Arunachal Pradesh show at zoom 5 and above. It stays next to [TILE_ZOOM_GUARD] because it also holds in the
-     * deprecated syntax, which has no zoom. The same text in both syntaxes: `has`
-     * with a property name (not `$id` / `$type`) inside `any` is read as an expression in an expression filter and
-     * converted as the deprecated `has` in a deprecated one (maplibre-native src/mln/style/conversion/filter.cpp,
+     * (android/shared/README.md section 9, item 38 (a)). MapLibre (native and gl) draws a lower-zoom parent tile
+     * while a tile loads or when offline. Both renderers leave a layer's bucket out of a tile whose zoom is below
+     * floor(minzoom): maplibre-native in `GeometryTile::setLayers` before the worker gets the layers
+     * (src/mln/tile/geometry_tile.cpp:317, called for new and relaid-out tiles, src/mln/renderer/tile_pyramid.cpp:167
+     * and 193, android-v13.6.1 c7506d6; the worker's parse loop, geometry_tile_worker.cpp lines 446-502, has no zoom
+     * check of its own and runs the filter with `overscaledZ`, line 502), maplibre-gl in src/source/worker_tile.ts
+     * line 109 and style_layer.ts lines 321-322 (v6.10.0). So by the source, minzoom 5 alone already keeps a zoom 4
+     * tile's ISO-view line through Kashmir, Aksai Chin or Arunachal Pradesh off the map on both apps (read from the
+     * source, not checked on a device). This rule is defence in depth and parity, the same on Android and the web: it
+     * keeps those lines out whatever a renderer does with minzoom. It stays next to [TILE_ZOOM_GUARD] because it also
+     * holds in the deprecated syntax, which has no zoom. The same text in both syntaxes: `has` with a property name
+     * (not `$id` / `$type`) inside `any` is read as an expression in an expression filter and converted as the
+     * deprecated `has` in a deprecated one (maplibre-native src/mln/style/conversion/filter.cpp,
      * `isExpression` and `convertLegacyHasFilter`), and means "the feature has this property" in both.
      */
     private const val ADM0_PRESENT = "[\"any\", [\"has\", \"adm0_l\"], [\"has\", \"adm0_r\"]]"
@@ -118,7 +126,10 @@ object IndiaViewRules {
     /**
      * The line layers that get [TILE_ZOOM_GUARD]: [COUNTRY_LAYER] and [STATE_LINE_LAYER] by name, and every other line
      * layer on the `boundary` source layer whose minzoom is [DETAILED_FROM_ZOOM] or more, since for those the minzoom
-     * alone keeps the zoom 0-4 tiles' lines off the map and MapLibre checks it against the map zoom. Not
+     * alone is meant to keep the zoom 0-4 tiles' lines off the map. Both renderers already skip such a layer in a zoom
+     * 0-4 tile (maplibre-native geometry_tile.cpp:317, maplibre-gl worker_tile.ts line 109; see [ADM0_PRESENT]), so on
+     * Android and the web alike the guard is defence in depth and parity: it keeps those lines out whatever a renderer
+     * does with minzoom (read from the source, not checked on a device). Not
      * [DISPUTED_LAYER] (hidden), not a symbol layer, and not a line layer meant for zoom 0-4 (lower minzoom), whose
      * low-zoom lines the guard would remove.
      */

@@ -42,9 +42,11 @@ class IndiaViewRulesTest {
 
     @Test
     fun aLineFromAZoomZeroToFourTileIsNeverDrawnEvenWhenShownAtZoomFiveOrMore() {
-        // MapLibre draws a zoom 4 tile in place of a zoom 5+ one still loading or not cached (offline), and checks
-        // boundary_2's minzoom against the map zoom, so the filter itself must drop the Natural Earth ISO-view lines
-        // of those tiles (through Jammu and Kashmir, Ladakh and Arunachal Pradesh): they carry no adm0 side.
+        // MapLibre draws a zoom 4 tile in place of a zoom 5+ one still loading or not cached (offline). By the source
+        // both renderers leave boundary_2 (minzoom 5) out of such a tile (maplibre-native geometry_tile.cpp:317,
+        // maplibre-gl worker_tile.ts:109); as defence in depth, whatever a renderer does with minzoom, the filter
+        // itself drops the Natural Earth ISO-view lines of those tiles (through Jammu and Kashmir, Ladakh and
+        // Arunachal Pradesh): they carry no adm0 side.
         val expression = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER)
         val deprecated = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY)
         val both = listOf<(Map<String, String>) -> Boolean>({ eval(expression, it) }, { legacy(deprecated, it) })
@@ -63,9 +65,10 @@ class IndiaViewRulesTest {
     fun aStateLineFromAZoomFourTileIsNeverDrawnButTheSameLineFromAZoomFiveTileIs() {
         // Tile 4/11/6 of the 20260913 planet (lead's decode): Natural Earth admin-1 lines, one along the Line of
         // Control north of the Kashmir valley and one across Aksai Chin, carrying exactly these properties. Liberty's
-        // boundary_3 filter lets them through, and its minzoom 5 is checked against the map zoom, so while a zoom 5
-        // tile loads, or offline, MapLibre would draw them at zoom 5 and above in place of the missing tile. A
-        // filter's zoom is the tile's zoom (overscaledZ), so the guard drops every feature of a zoom 0-4 tile.
+        // boundary_3 filter lets them through; only its minzoom 5 keeps them out of a zoom 4 tile drawn while a zoom
+        // 5 tile loads, or offline (both renderers skip the layer there by the source: geometry_tile.cpp:317,
+        // worker_tile.ts:109). As defence in depth, a filter's zoom is the tile's zoom (overscaledZ), so the guard
+        // drops every feature of a zoom 0-4 tile whatever a renderer does with minzoom.
         val placeholder: Map<String, Any> = mapOf("admin_level" to 4, "disputed" to 0, "maritime" to 0)
         assertTrue("Liberty alone draws it", eval(parse(LIBERTY_BOUNDARY_3), placeholder, zoom = 4f))
         val guarded = parse("[\"all\", $LIBERTY_BOUNDARY_3, ${IndiaViewRules.TILE_ZOOM_GUARD}]")
