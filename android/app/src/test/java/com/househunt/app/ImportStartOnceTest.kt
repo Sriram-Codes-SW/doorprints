@@ -159,7 +159,7 @@ class ImportStartOnceTest {
             kept()
         }
         vm.checkedForTest(ready)
-        vm.setRestoreDeleted(true)
+        vm.onRestoreDeletedChange(true)
         vm.startImport(app, skipUpdates = true)
         assertEquals(
             ImportRequest(ready.stagedPath, ImportMode.MERGE, restoreDeleted = true, skipUpdates = true),
@@ -172,7 +172,7 @@ class ImportStartOnceTest {
             kept()
         }
         copyVm.checkedForTest(ready)
-        copyVm.setRestoreDeleted(true)
+        copyVm.onRestoreDeletedChange(true)
         copyVm.startImport(app, ImportMode.COPY, skipUpdates = true)
         assertEquals(ImportRequest(ready.stagedPath, ImportMode.COPY), copyStarts.single())
     }
