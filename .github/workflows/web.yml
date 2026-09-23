@@ -38,6 +38,9 @@
 #   "claim"), and the live check (.github/firebase-tools/check-live-headers.sh) checks /geo/in-boundaries.geojson
 #   after the deploy. Triggers unchanged: web/public/** and web/scripts/** are already under "web/**". android.yml
 #   now also runs on web/public/geo/** (IndiaBoundaryDataTest compares the web copy with the app's).
+#
+# 2026-09-24 (DevSecOps), branch fix/india-boundary-lines: pwa-files also requires the kind "state" (the
+#   Assam-Arunachal Pradesh state line, india-boundaries.ts in-boundary-state; S4b-BL-15).
 name: Web
 
 # Triggers: a push to ANY branch touching the paths below (tag pushes do not trigger), a pull request to main (tests
@@ -285,7 +288,7 @@ jobs:
                 errors.push(`${boundaryFile} is not a GeoJSON FeatureCollection`);
               }
               const kinds = new Set(features.map((f) => String((f && f.properties && f.properties.kind) || '')));
-              for (const kind of ['world', 'claim']) {
+              for (const kind of ['world', 'claim', 'state']) {
                 if (!kinds.has(kind)) errors.push(`${boundaryFile} has no feature with properties.kind "${kind}"`);
               }
             } catch (e) {
