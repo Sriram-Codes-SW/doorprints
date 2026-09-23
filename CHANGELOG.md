@@ -559,8 +559,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   `web/scripts/geo/find_shared_stretches.py`, re-run after each OpenFreeMap planet or style update. The
   Assam-Arunachal Pradesh state line (Natural Earth 1:10m) is drawn from zoom 5 on both apps, dashed like the other
   state lines (web `in-boundary-state`, Android `IndiaViewRules.STATE_OVERLAY_LAYER`). New data file, byte-identical
-  in both apps (sha256 `2c497e2e…56d7`, kinds `world`, `claim`, `state`; `web.yml` requires all three). Known minors:
-  a small step at each hand-over and loops of about 3-5 km at Sikkim's two tri-junctions at street zoom; while closer
+  in both apps (sha256 `25984afa…a024`, kinds `world`, `claim`, `state`; `web.yml` requires all three), with no
+  connector-only spur (two had shown into Nepal on the Singalila ridge). Known minors: a small step at each hand-over;
+  loops at Sikkim's two tri-junctions (about 13 x 3 km at Nepal-China-India, on glaciers, from about zoom 10; about
+  2 km at Doklam); from zoom 11 the tile line running on past the hand-over at Jomotsangkha (about 9 km) and Longwa
+  (about 3 km); the India-China rule also hides about 12 km of the China-North Korea line on the Tumen islets
+  (harmless for India); while closer
   tiles load, or offline without them, those stretches show no line from zoom 5. Web: 41 spec cases, 463 tests in
   all; Android: 20 JVM tests. See [docs/03](docs/03-design.md) ADR-22, [docs/10](docs/10-sprint-log.md) §12.10.
 
