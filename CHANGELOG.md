@@ -516,7 +516,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 ### Fixed
 
 - **India's boundaries on the map** (owner issue P0 of 2026-09-24 on the live site, near Jammu and Kashmir and near
-  Arunachal Pradesh; branch `fix/india-boundaries`, **not yet built in CI or deployed**). Both apps drew OpenFreeMap
+  Arunachal Pradesh; branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, **not yet seen green in CI, not deployed**). Both apps drew OpenFreeMap
   Liberty's ISO view: the Line of Control, the Line of Actual Control and claim lines, a Pakistan line through
   Kashmir below zoom 5, the Pakistan-China line at Khunjerab, and the "Azad Kashmir" and "Gilgit-Baltistan" state
   labels. Every map on the web and Android now shows India's external boundary as the Government of India depicts
@@ -524,14 +524,20 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   and Arunachal Pradesh inside India, one solid outline, no LoC or LAC. On every style load both apps hide
   `boundary_disputed`, start `boundary_2` at zoom 5 without the Pakistan-China line, draw a bundled Natural Earth
   outline (public domain, India point of view; `in-boundary-world` below zoom 5, `in-boundary-claim` at every zoom)
-  and hide the two state labels; a missing layer is a warning, never a crash. Android also draws only tile country
-  lines that carry a country code, so a zoom 0-4 tile that MapLibre shows while a closer tile loads, or offline,
-  never brings back the Pakistan line through Kashmir or the line through Arunachal Pradesh. **The web does not do
-  this yet** (an open parity gap handed to the web team, [docs/11](docs/11-feature-parity-and-export-spec.md) §10),
-  so the web map can still show those lines briefly while zooming in, or offline. Known limit: inside the four
-  claim areas the tiles' own border lines with Nepal, Bhutan, Myanmar and parts of China are drawn beside the
-  outline, so two close lines can show when zoomed in (S4b-BL-11). Web: `shared/india-boundaries.ts`;
-  Android: `ui/IndiaView.kt`, `ui/IndiaViewRules.kt` (15 JVM tests passed locally, not yet in CI). No new network host. New CI checks (written, not yet run) cover
+  and hide the two state labels; a missing layer is a warning, never a crash. Both apps also draw only tile country
+  lines that carry a country code (`COUNTRY_LINE_RULE` on the web, `COUNTRY_LINE_EXTRA_FILTER` on Android) and take
+  `boundary_2`, `boundary_3` and every other boundary line layer from zoom 5 only from zoom 5+ tiles
+  (`TILE_ZOOM_GUARD`, `[">=", ["zoom"], 5]`), so a zoom 0-4 tile that MapLibre shows while a closer tile loads, or
+  offline, never brings back the Pakistan line through Kashmir or a line through Arunachal Pradesh. Read from the
+  renderer sources, maplibre-gl and maplibre-native already skip a minzoom 5 layer in a zoom 0-4 tile, so these two
+  guards are defence in depth on both apps ([docs/03](docs/03-design.md) ADR-22 rule 2). Known limits, both apps:
+  the outline is 1:10m Natural Earth, a median of about 1.55-1.6 km off the true line (90th percentile 3.9 km); in
+  the Wakhan, the middle sector (Himachal Pradesh, Uttarakhand, Kalapani and Dharchula), Sikkim, Bhutan's south-east
+  corner and Myanmar south of 26.65 N the tiles' own border line is drawn beside the outline, a median 1.5-2.8 km
+  apart (at most 5.3 km), so two close lines can show when zoomed in (S4b-BL-11, S4b-BL-16); from zoom 5 the
+  Assam-Arunachal Pradesh state line is not drawn, because the tiles carry it as a disputed line (S4b-BL-15). Web:
+  `shared/india-boundaries.ts` (37 spec cases); Android: `ui/IndiaView.kt`, `ui/IndiaViewRules.kt` (18 JVM tests,
+  16 + 2, reported passing locally). No new network host. New CI checks (committed, not yet seen green) cover
   the data file in the build, its byte identity in both apps, and the live copy after each deploy. See [docs/03](docs/03-design.md) ADR-22,
   [docs/01](docs/01-requirements.md) FR-098, [docs/06](docs/06-test-plan.md) §15 (TC-M-25 is a release gate).
 
