@@ -73,3 +73,9 @@ data class PhotoEntity(
 )
 
 data class HouseVisitCount(val houseId: String, val visits: Int, val lastVisit: Long)
+
+/**
+ * `id` + `updatedAt` of a row, tombstones included. Read by the import preview (Sprint 4a, S4-04) so the
+ * last-write-wins comparison does not have to load whole entities. Not a table: a Room query projection.
+ */
+data class RowVersion(val id: String, val updatedAt: Long)

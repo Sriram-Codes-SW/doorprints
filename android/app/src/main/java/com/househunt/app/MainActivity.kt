@@ -15,6 +15,9 @@ import java.util.UUID
 sealed interface DeepLink {
     data class OpenHouse(val id: String) : DeepLink
     data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
+
+    /** Export, Import or Settings, from an export/import/backup notification. Always one of Notifications.SCREENS. */
+    data class OpenScreen(val route: String) : DeepLink
 }
 
 class MainActivity : ComponentActivity() {
@@ -30,7 +33,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // Re-create the channels with this (localised) context so their names follow the app language.
         Notifications.createChannels(this)
-        handle(intent)
+        // Only on a real start (UX review, whole-app audit, blocker). After a rotation, the in-app language switch
+        // (AppLocale.set recreates the activity), a dark-mode change or process death, getIntent() still holds the
+        // notification's extras while NavController has already restored its back stack, so handling them again
+        // pushed the house (or one more new-house form) on top of it on every recreation.
+        if (savedInstanceState == null) handle(intent)
         setContent {
             HouseHuntRoot(deepLinks = deepLinks, onDeepLinkHandled = { deepLinks.value = null })
         }
@@ -38,6 +45,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // The new intent becomes getIntent(), so its extras are the ones handle() removes, and a later recreation
+        // does not see the launcher intent's (or an older notification's) extras instead.
+        setIntent(intent)
         handle(intent)
     }
 
@@ -47,19 +57,44 @@ class MainActivity : ComponentActivity() {
      */
     private fun handle(intent: Intent?) {
         intent ?: return
+        // Reopened from Recents (after process death the system replays the task's last intent, which may be an old
+        // notification's): that notification was already acted on, so its extras must not run a second time.
+        if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0) {
+            parse(intent)?.let { deepLinks.value = it }
+        }
+        // Consumed: a later getIntent() (a recreation of this same activity) carries nothing to act on.
+        DEEP_LINK_EXTRAS.forEach(intent::removeExtra)
+    }
+
+    private fun parse(intent: Intent): DeepLink? {
+        intent.getStringExtra(Notifications.EXTRA_OPEN_SCREEN)?.let {
+            // A fixed allow-list, never a route taken from the extra as-is.
+            return if (it in Notifications.SCREENS) DeepLink.OpenScreen(it) else null
+        }
         intent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE)?.let {
-            if (isUuid(it)) deepLinks.value = DeepLink.OpenHouse(it)
-            return
+            return if (isUuid(it)) DeepLink.OpenHouse(it) else null
         }
         if (intent.hasExtra(Notifications.EXTRA_NEW_LAT)) {
             val lat = intent.getDoubleExtra(Notifications.EXTRA_NEW_LAT, Double.NaN)
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
-            if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return
+            if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
             val visitId = intent.getStringExtra(Notifications.EXTRA_VISIT_ID)?.takeIf(::isUuid)
-            deepLinks.value = DeepLink.NewHouse(lat, lon, visitId)
+            return DeepLink.NewHouse(lat, lon, visitId)
         }
+        return null
     }
 
     private fun isUuid(value: String): Boolean =
         value.length == 36 && runCatching { UUID.fromString(value) }.isSuccess
+
+    private companion object {
+        /** Every extra a notification can carry into this activity; all are removed once handled. */
+        val DEEP_LINK_EXTRAS = listOf(
+            Notifications.EXTRA_OPEN_SCREEN,
+            Notifications.EXTRA_OPEN_HOUSE,
+            Notifications.EXTRA_NEW_LAT,
+            Notifications.EXTRA_NEW_LON,
+            Notifications.EXTRA_VISIT_ID,
+        )
+    }
 }

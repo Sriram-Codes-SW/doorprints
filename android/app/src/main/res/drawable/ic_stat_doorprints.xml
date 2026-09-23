@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Status-bar icon: the launcher icon's arched door and one footprint, as a single-colour silhouette on a
+    transparent background. Android draws small icons as an alpha mask, so the full-bleed launcher square showed
+    as a solid white block; only the alpha of this drawing matters, the colour is ignored.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Door with an arched top; the knob is a hole (even-odd fill). -->
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M4,20 L4,9.5 A5,5 0 0,1 14,9.5 L14,20 Z M10.6,14.5 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" />
+    <!-- Doorstep -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M3,21 h12 v1.5 h-12 Z" />
+    <!-- Footprint: sole and two toes -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M17.2,17.5 a1.8,3 0 1,0 3.6,0 a1.8,3 0 1,0 -3.6,0 Z M17.15,13.2 a0.75,0.75 0 1,0 1.5,0 a0.75,0.75 0 1,0 -1.5,0 Z M19.35,13.2 a0.75,0.75 0 1,0 1.5,0 a0.75,0.75 0 1,0 -1.5,0 Z" />
+</vector>
