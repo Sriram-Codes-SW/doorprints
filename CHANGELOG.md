@@ -548,19 +548,21 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   the data file in the build, its byte identity in both apps, and the live copy after each deploy. See [docs/03](docs/03-design.md) ADR-22,
   [docs/01](docs/01-requirements.md) FR-098, [docs/06](docs/06-test-plan.md) §15 (TC-M-25 is a release gate).
 - **India's boundary: one line from zoom 5, and the Assam-Arunachal Pradesh state line** (owner request of
-  2026-09-24; S4b-BL-11, S4b-BL-15, S4b-BL-16; branch `fix/india-boundary-lines`, commit `5af2f4d`, PR to follow,
-  **not yet seen green in CI, not deployed**). Along the 11 stretches where the OpenFreeMap tiles draw India's border
-  themselves (Himachal Pradesh and Uttarakhand with Tibet, Kalapani, Sikkim, Bhutan's south-east corner, Myanmar south
-  of about 26.65 N and the Wakhan), the Natural Earth outline now draws below zoom 5 only and the tiles' more precise
-  line takes over from zoom 5, so the two close lines are gone; each hand-over has a connector of at most 7 km, so the
-  border has no gap. Kashmir, Ladakh, Jammu-Sialkot and Arunachal Pradesh keep the outline at every zoom. The
-  stretches come from the new `web/scripts/geo/find_shared_stretches.py`, re-run after each OpenFreeMap planet or
-  style update. The Assam-Arunachal Pradesh state line (Natural Earth 1:10m) is drawn from zoom 5 on both apps,
-  dashed like the other state lines (web `in-boundary-state`, Android `IndiaViewRules.STATE_OVERLAY_LAYER`). New data
-  file, byte-identical in both apps (sha256 `8ef39ebc…42e8`, kinds `world`, `claim`, `state`). Known minors: a small
-  step at each hand-over and a 2 km loop in Sikkim at street zoom; while closer tiles load, or offline without them,
-  those stretches show no line from zoom 5. Web: 40 spec cases, 462 tests in all; Android: 19 JVM tests. See
-  [docs/03](docs/03-design.md) ADR-22, [docs/10](docs/10-sprint-log.md) §12.10.
+  2026-09-24; S4b-BL-11, S4b-BL-15, S4b-BL-16; branch `fix/india-boundary-lines`, PR #16, **not deployed**; CI green
+  on `5af2f4d`, the run on `9e0036e` pending). Both apps no longer draw the base map's own India-China line (the
+  tiles cut it into drawn and hidden pieces, which showed as stray pieces beside the outline at street zoom): the
+  Natural Earth outline draws the whole India-China border at every zoom. Along the 7 stretches where the
+  OpenFreeMap tiles draw India's border with Nepal, Bhutan or Myanmar themselves, or in the Wakhan, the outline now
+  draws below zoom 5 only and the tiles' more precise line takes over from zoom 5, so the two close lines are gone;
+  each hand-over has a connector of about 7 km at most, so the border has no gap. Kashmir, Ladakh, Jammu-Sialkot and
+  Arunachal Pradesh keep the outline at every zoom. The stretches come from the new
+  `web/scripts/geo/find_shared_stretches.py`, re-run after each OpenFreeMap planet or style update. The
+  Assam-Arunachal Pradesh state line (Natural Earth 1:10m) is drawn from zoom 5 on both apps, dashed like the other
+  state lines (web `in-boundary-state`, Android `IndiaViewRules.STATE_OVERLAY_LAYER`). New data file, byte-identical
+  in both apps (sha256 `2c497e2e…56d7`, kinds `world`, `claim`, `state`; `web.yml` requires all three). Known minors:
+  a small step at each hand-over and loops of about 3-5 km at Sikkim's two tri-junctions at street zoom; while closer
+  tiles load, or offline without them, those stretches show no line from zoom 5. Web: 41 spec cases, 463 tests in
+  all; Android: 20 JVM tests. See [docs/03](docs/03-design.md) ADR-22, [docs/10](docs/10-sprint-log.md) §12.10.
 
 Found by the whole-app UX audit (2026-09-23; working tree, **not pushed yet and not built in CI**):
 
