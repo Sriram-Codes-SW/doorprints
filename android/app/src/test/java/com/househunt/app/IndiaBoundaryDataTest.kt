@@ -60,6 +60,6 @@ class IndiaBoundaryDataTest {
     private companion object {
         const val APP_COPY = "android/app/src/main/assets/geo/in-boundaries.geojson"
         const val WEB_COPY = "web/public/geo/in-boundaries.geojson"
-        const val EXPECTED_SHA256 = "8ef39ebcb449d65e8724a0d22e608112d6fdea65c79299963769643b265a42e8"
+        const val EXPECTED_SHA256 = "2c497e2ea08069bd44fce9d72ed23000f133cc66974462dcb0f04228bc1656d7"
     }
 }

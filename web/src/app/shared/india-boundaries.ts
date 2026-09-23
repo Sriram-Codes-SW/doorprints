@@ -19,7 +19,8 @@ import type {
  *
  *  1. layer `boundary_disputed` (every disputed line: the LoC, the LAC, claim lines) is hidden;
  *  2. layer `boundary_2` (country lines) starts at zoom 5, where the tiles carry `adm0_l`/`adm0_r`, keeps only the
- *     lines with at least one of the two, and leaves out the Pakistan-China line (both sides in PAK/CHN). Below zoom
+ *     lines with at least one of the two, and leaves out the Pakistan-China line (both sides in PAK/CHN) and India's
+ *     line with China (China on one side, India or nothing on the other), which India's outline draws instead. Below zoom
  *     5 the tiles' lines come from Natural Earth's ISO view with no country codes, so no filter can take the Pakistan
  *     line through Kashmir out of them. MapLibre draws a zoom 0-4 tile, overzoomed, in place of a zoom 5+ tile that is
  *     still loading or missing offline, so `boundary_2`, `boundary_3` and every other `boundary` line layer that
@@ -111,9 +112,21 @@ export const HIDDEN_STATE_LOCAL_NAMES = ['آزاد کشمیر', 'گلگت بلت
 const ADM0_PRESENT: ExpressionSpecification = ['any', ['has', 'adm0_l'], ['has', 'adm0_r']];
 
 /**
- * Rule 2, `boundary_2`: at least one adm0 side ({@link ADM0_PRESENT}), and not a line whose both sides are Pakistan or
- * China. Android's `IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER`, with `in` for `match` (in maplibre-gl a null side is
- * simply not found in the list, the same result as `match`'s `false` branch).
+ * Rule 2: India's line with China, as the tiles carry it: China on one side and India, or no country (the tiles often
+ * leave India's side empty), on the other. The tiles cut that line into short undisputed pieces (drawn) and disputed
+ * ones (hidden), so it would show as stray pieces beside India's outline; the outline draws all of it instead.
+ */
+const INDIA_CHINA_LINE: ExpressionSpecification = [
+  'any',
+  ['all', ['==', ['get', 'adm0_l'], 'CHN'], ['==', ['coalesce', ['get', 'adm0_r'], 'IND'], 'IND']],
+  ['all', ['==', ['get', 'adm0_r'], 'CHN'], ['==', ['coalesce', ['get', 'adm0_l'], 'IND'], 'IND']],
+];
+
+/**
+ * Rule 2, `boundary_2`: at least one adm0 side ({@link ADM0_PRESENT}), not a line whose both sides are Pakistan or
+ * China, and not India's line with China ({@link INDIA_CHINA_LINE}). Android's
+ * `IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER`, with `in` for `match` (in maplibre-gl a null side is simply not found in
+ * the list, the same result as `match`'s `false` branch).
  */
 const COUNTRY_LINE_RULE: ExpressionSpecification = [
   'all',
@@ -126,6 +139,7 @@ const COUNTRY_LINE_RULE: ExpressionSpecification = [
       ['in', ['get', 'adm0_r'], ['literal', PAKISTAN_CHINA]],
     ],
   ],
+  ['!', INDIA_CHINA_LINE],
 ];
 
 /**
@@ -158,7 +172,12 @@ const NOT_HIDDEN_STATE: ExpressionSpecification[] = [
 const COUNTRY_LINE_RULE_LEGACY: unknown[] = [
   'all',
   ADM0_PRESENT,
-  ['none', ['all', ['in', 'adm0_l', ...PAKISTAN_CHINA], ['in', 'adm0_r', ...PAKISTAN_CHINA]]],
+  [
+    'none',
+    ['all', ['in', 'adm0_l', ...PAKISTAN_CHINA], ['in', 'adm0_r', ...PAKISTAN_CHINA]],
+    ['all', ['==', 'adm0_l', 'CHN'], ['any', ['!has', 'adm0_r'], ['==', 'adm0_r', 'IND']]],
+    ['all', ['==', 'adm0_r', 'CHN'], ['any', ['!has', 'adm0_l'], ['==', 'adm0_l', 'IND']]],
+  ],
 ];
 const NOT_HIDDEN_STATE_LEGACY: unknown[][] = [
   ['!in', 'name:en', ...HIDDEN_STATE_NAMES],
@@ -264,7 +283,7 @@ export function indiaBoundaryStyle(style: StyleSpecification, dataUrl: string): 
   const state = overlayLayer(IN_BOUNDARY_STATE_LAYER, 'state', statePaint, TILE_BOUNDARY_MIN_ZOOM);
   if (free(state)) {
     // Without boundary_3, directly below the other overlay layers (or where they would have gone).
-    const worldAt = indexOf(IN_BOUNDARY_WORLD_LAYER);
+    const worldAt = overlay.some((l) => l.id === IN_BOUNDARY_WORLD_LAYER) ? indexOf(IN_BOUNDARY_WORLD_LAYER) : -1;
     layers.splice(stateLines >= 0 ? stateLines + 1 : worldAt >= 0 ? worldAt : at, 0, state);
   }
 

@@ -36,8 +36,30 @@ class IndiaViewRulesTest {
         assertTrue(eval(keep, mapOf("adm0_l" to "IND", "adm0_r" to "PAK")))
         // India's side is often missing in the tiles: a missing name is "not Pakistan or China", never an error.
         assertTrue(eval(keep, mapOf("adm0_r" to "PAK")))
-        assertTrue(eval(keep, mapOf("adm0_l" to "CHN")))
         assertTrue(eval(keep, mapOf("admin_level" to "2", "adm0_r" to "NPL")))
+    }
+
+    @Test
+    fun indiasLineWithChinaIsNotDrawnFromTheTilesOurOutlineDrawsIt() {
+        // The tiles cut India's line with China into undisputed (drawn) and disputed (hidden) pieces, which showed as
+        // stray lines beside India's outline (owner, 2026-09-24); India's side is usually missing in the tiles.
+        val keep = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER)
+        val deprecated = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY)
+        val both = listOf<(Map<String, String>) -> Boolean>({ eval(keep, it) }, { legacy(deprecated, it) })
+        both.forEachIndexed { syntax, drawn ->
+            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "CHN")))
+            assertFalse("syntax $syntax", drawn(mapOf("adm0_r" to "CHN")))
+            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "IND", "adm0_r" to "CHN")))
+            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "IND")))
+            // China's lines with India's other neighbours stay: Nepal, Bhutan, Myanmar.
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "NPL")))
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "BTN", "adm0_r" to "CHN")))
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "MMR", "adm0_r" to "CHN")))
+            // India's lines with its other neighbours stay.
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_r" to "NPL")))
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "BTN")))
+            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "PAK", "adm0_r" to "AFG")))
+        }
     }
 
     @Test
@@ -322,7 +344,7 @@ class IndiaViewRulesTest {
         // A filter MapLibre Android cannot convert is a native crash (JNI toFilter), so each rule is written in one
         // syntax and the tree it makes with the layer's filter is read the same way as a whole.
         val expressionOps = setOf("all", "any", "has", "!", "match", "get", "coalesce", "==", ">=", "zoom")
-        val legacyOps = setOf("all", "any", "has", "none", "in", "!in")
+        val legacyOps = setOf("all", "any", "has", "!has", "==", "none", "in", "!in")
         listOf(
             IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER, IndiaViewRules.STATE_LABEL_EXTRA_FILTER,
             IndiaViewRules.WORLD_FILTER, IndiaViewRules.CLAIM_FILTER, IndiaViewRules.STATE_FILTER,
@@ -415,6 +437,8 @@ class IndiaViewRulesTest {
             "any" -> a.drop(1).any { legacy(it, props) }
             "none" -> a.drop(1).none { legacy(it, props) }
             "has" -> a[1].jsonPrimitive.content in props
+            "!has" -> a[1].jsonPrimitive.content !in props
+            "==" -> props[a[1].jsonPrimitive.content] == a[2].jsonPrimitive.content
             // A feature without the key is in no list.
             "in" -> props[a[1].jsonPrimitive.content]?.let { it in values() } ?: false
             "!in" -> props[a[1].jsonPrimitive.content]?.let { it !in values() } ?: true

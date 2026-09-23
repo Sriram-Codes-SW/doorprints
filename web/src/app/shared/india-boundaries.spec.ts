@@ -94,11 +94,22 @@ const LOADED_TILE_ZOOM = 14;
 const shows = (style: StyleSpecification, id: string, props: Json, tileZoom = LOADED_TILE_ZOOM) =>
   evaluate(layer(style, id)['filter'], props, tileZoom) === true;
 
-/** Rule 2 on `boundary_2`, in expression syntax: an adm0 side, and not Pakistan-China on both sides. */
+/**
+ * Rule 2 on `boundary_2`, in expression syntax: an adm0 side, not Pakistan-China on both sides, and not India's line
+ * with China (China on one side, India or nothing on the other).
+ */
 const COUNTRY_RULE = [
   'all',
   ['any', ['has', 'adm0_l'], ['has', 'adm0_r']],
   ['!', ['all', ['in', ['get', 'adm0_l'], ['literal', ['PAK', 'CHN']]], ['in', ['get', 'adm0_r'], ['literal', ['PAK', 'CHN']]]]],
+  [
+    '!',
+    [
+      'any',
+      ['all', ['==', ['get', 'adm0_l'], 'CHN'], ['==', ['coalesce', ['get', 'adm0_r'], 'IND'], 'IND']],
+      ['all', ['==', ['get', 'adm0_r'], 'CHN'], ['==', ['coalesce', ['get', 'adm0_l'], 'IND'], 'IND']],
+    ],
+  ],
 ];
 
 /**
@@ -160,6 +171,18 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
     expect(shows(style, 'boundary_2', { ...line, adm0_l: 'IND', adm0_r: 'NPL', maritime: 1 })).toBe(false);
     expect(shows(style, 'boundary_2', { ...line, disputed: 1 })).toBe(false);
     expect(shows(style, 'boundary_2', { admin_level: 4 })).toBe(false);
+  });
+
+  it("rule 2: India's line with China is left to India's outline, China's lines with its other neighbours stay", () => {
+    const line = { admin_level: 2 };
+    // The tiles cut it into undisputed (drawn) and disputed (hidden) pieces; India's side is usually missing.
+    expect(shows(style, 'boundary_2', { ...line, adm0_r: 'CHN' })).toBe(false);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'CHN' })).toBe(false);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'IND', adm0_r: 'CHN' })).toBe(false);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'CHN', adm0_r: 'IND' })).toBe(false);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'CHN', adm0_r: 'NPL' })).toBe(true);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'BTN', adm0_r: 'CHN' })).toBe(true);
+    expect(shows(style, 'boundary_2', { ...line, adm0_l: 'MMR', adm0_r: 'CHN' })).toBe(true);
   });
 
   it('rule 2: a country line with no adm0 side (the Natural Earth lines of the zoom 0-4 tiles) is never drawn', () => {
@@ -456,7 +479,12 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
       [
         'all',
         ['any', ['has', 'adm0_l'], ['has', 'adm0_r']],
-        ['none', ['all', ['in', 'adm0_l', 'PAK', 'CHN'], ['in', 'adm0_r', 'PAK', 'CHN']]],
+        [
+          'none',
+          ['all', ['in', 'adm0_l', 'PAK', 'CHN'], ['in', 'adm0_r', 'PAK', 'CHN']],
+          ['all', ['==', 'adm0_l', 'CHN'], ['any', ['!has', 'adm0_r'], ['==', 'adm0_r', 'IND']]],
+          ['all', ['==', 'adm0_r', 'CHN'], ['any', ['!has', 'adm0_l'], ['==', 'adm0_l', 'IND']]],
+        ],
       ],
     ]);
     expect(warnings).toEqual([
