@@ -6,9 +6,12 @@ A tile line counts when OpenFreeMap Liberty's boundary_2 draws it after our rule
 disputed, no claimed_by, at least one adm0 side, not Pakistan-China) and it is India's: one side is India or missing
 (the tiles leave India's side empty), or it is the Pakistan-Afghanistan line of the Wakhan, which in India's view is
 Gilgit-Baltistan's border; and the sample must lie beside it, not past one of its ends. The tiles often cut such a line into undisputed pieces (drawn) and disputed pieces (hidden),
-so the outline is checked every SAMPLE_KM: a sample is shared when, at every zoom in ZOOMS, such a line is within
+so the outline is checked every SAMPLE_KM: a sample is shared when, at every zoom in ZOOMS (7, 9 and 11: the detailed
+zooms, where two lines apart show; at zoom 5-6 a few km are a pixel or two), such a line is within
 MAX_KM and runs within MAX_ANGLE degrees of the outline's own direction (a line meeting ours at a tri-junction does
-not count). Shared runs shorter than MIN_RUN_KM stay ours. A piece of ours under BRIDGE_RUN_KM between two shared runs
+not count). Shared runs shorter than MIN_RUN_KM stay ours; each hand-over is moved, within HANDOVER_KM of the stretch's end, to
+where the two lines are closest; a stretch that reaches an end of the outline line (a claim box's edge) runs to that
+end, and a short piece of ours left at such an end is shared too when the tile line stays within BRIDGE_KM. A piece of ours under BRIDGE_RUN_KM between two shared runs
 is shared too when, at every zoom, the tile line stays within BRIDGE_KM along all of it (Natural Earth drifts up to
 about 9 km from the tile line in Bhutan's south-east corner).
 
@@ -19,14 +22,15 @@ to the tile line points, so from zoom 5 the border is one line with no gap and n
 Needs: pip install mapbox-vector-tile shapely. Network: tiles.openfreemap.org.
 Usage: build_in_boundaries.py <natural-earth-vector> whole.geojson --no-shared
        find_shared_stretches.py whole.geojson [tile cache dir]"""
-import json, math, os, sys, urllib.request
+import json, math, os, sys, time, urllib.request
 import mapbox_vector_tile
 from shapely.geometry import LineString, Point, box
 from shapely.strtree import STRtree
 
 PLANET = 'https://tiles.openfreemap.org/planet/20260913_164504_pt/{z}/{x}/{y}.pbf'
-ZOOMS = (5, 7, 9)
-SAMPLE_KM, MAX_KM, MAX_ANGLE, MIN_RUN_KM = 0.25, 7.0, 60.0, 10.0
+ZOOMS = (7, 9, 11)
+SAMPLE_KM, MAX_KM, MAX_ANGLE, MIN_RUN_KM = 0.25, 7.0, 60.0, 2.0
+HANDOVER_KM = 5.0  # a hand-over is put at the point of least separation within this distance of a stretch's end
 BRIDGE_KM, BRIDGE_RUN_KM = 12.0, 30.0
 END_DEG = 0.002  # about 200 m
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,13 +51,22 @@ def tile(z, x, y):
     os.makedirs(CACHE, exist_ok=True); path = os.path.join(CACHE, f'{z}_{x}_{y}.pbf')
     if not os.path.exists(path):
         req = urllib.request.Request(PLANET.format(z=z, x=x, y=y), headers={'User-Agent': 'doorprints-find-shared'})
-        open(path, 'wb').write(urllib.request.urlopen(req, timeout=60).read())
+        for attempt in range(4):
+            try:
+                body = urllib.request.urlopen(req, timeout=60).read(); break
+            except OSError:
+                if attempt == 3: raise
+                time.sleep(2 ** attempt)
+        open(path + '.part', 'wb').write(body); os.replace(path + '.part', path)  # never a half-written tile in the cache
     return mapbox_vector_tile.decode(open(path, 'rb').read())
 
 def drawn_and_indias(p):
     if p.get('admin_level') != 2 or p.get('maritime') == 1 or p.get('disputed') == 1 or 'claimed_by' in p: return False
     sides = {p.get('adm0_l'), p.get('adm0_r')}
     if sides == {None} or sides <= {'PAK', 'CHN'}: return False
+    # Rule 2 also hides India's line with China (one side China, the other India or missing): our outline draws all of
+    # it, because the tiles cut it into short undisputed and disputed pieces.
+    if 'CHN' in sides and sides - {'CHN'} <= {None, 'IND'}: return False
     return None in sides or 'IND' in sides or sides == {'PAK', 'AFG'}
 
 data = json.load(open(DATA))
@@ -83,14 +96,14 @@ TILES = {z: lines_at(z) for z in ZOOMS}
 
 def bearing(ax, ay, bx, by): return math.degrees(math.atan2((by - ay) * KY, (bx - ax) * KX(ay)))
 
-def nearest(z, lon, lat, direction, max_angle, buffer_deg=0.12):
+def nearest(z, lon, lat, direction, max_angle, buffer_deg=0.12, skip_ends=True):
     """(km, point on the tile line) of the nearest India's tile line at zoom z that runs within max_angle degrees."""
     lines, tree = TILES[z]; pt = Point(lon, lat); best = (1e9, None)
     for i in tree.query(pt.buffer(buffer_deg)):
         ln = lines[i]; s = ln.project(pt)
         # Beside the line, not past one of its ends: a disputed (hidden) piece of the tile line leaves such an end, and
         # a tile's clip edge does too, but the neighbouring tile's piece (tiles overlap at their edges) runs on there.
-        if s <= END_DEG or s >= ln.length - END_DEG: continue
+        if skip_ends and (s <= END_DEG or s >= ln.length - END_DEG): continue
         q = ln.interpolate(s)
         km = math.hypot((q.x - lon) * KX(lat), (q.y - lat) * KY)
         u = ln.interpolate(max(0, s - 0.004)); v = ln.interpolate(min(ln.length, s + 0.004))
@@ -114,17 +127,36 @@ for line in claim:
             if out and out[-1][0] == f: out[-1][2] = i
             else: out.append([f, i, i])
         return out
-    runs = runs_of(flag)
-    for k in range(1, len(runs) - 1):  # bridge short pieces of ours where the tile line runs on a little further off
-        f, a, b = runs[k]
-        if f or samples[b][3] - samples[a][3] >= BRIDGE_RUN_KM or not (runs[k - 1][0] and runs[k + 1][0]): continue
-        if all(nearest(z, s[0], s[1], 0, 90, 0.15)[0] <= BRIDGE_KM for z in ZOOMS for s in samples[a:b + 1]):
-            for i in range(a, b + 1): flag[i] = True
+    def bridge_middles():  # short pieces of ours between shared runs, where the tile line runs on a little further off
+        runs = runs_of(flag)
+        for k in range(1, len(runs) - 1):
+            f, a, b = runs[k]
+            if f or samples[b][3] - samples[a][3] >= BRIDGE_RUN_KM or not (runs[k - 1][0] and runs[k + 1][0]): continue
+            if all(nearest(z, s[0], s[1], 0, 90, 0.15, skip_ends=False)[0] <= BRIDGE_KM for z in ZOOMS for s in samples[a:b + 1]):
+                for i in range(a, b + 1): flag[i] = True
+    bridge_middles()
     for f, a, b in runs_of(flag):
         if f and samples[b][3] - samples[a][3] < MIN_RUN_KM:
             for i in range(a, b + 1): flag[i] = False
+    # A piece of ours at either end of this outline line (a claim box's edge) that leads into a shared run: nothing of
+    # ours joins it there from zoom 5, so drawn it would be a stub beside the tile line. Shared too when the tile line
+    # stays within BRIDGE_KM along all of it.
+    runs = runs_of(flag)
+    for k in (0, len(runs) - 1):
+        f, a, b = runs[k]
+        if f or len(runs) < 2 or samples[b][3] - samples[a][3] >= BRIDGE_RUN_KM: continue
+        if all(nearest(z, s[0], s[1], 0, 90, 0.15, skip_ends=False)[0] <= BRIDGE_KM for z in ZOOMS for s in samples[a:b + 1]):
+            for i in range(a, b + 1): flag[i] = True
+    bridge_middles()  # again: an end piece made shared can leave a short piece of ours between two shared runs
     for f, a, b in runs_of(flag):
         if not f: continue
+        # Hand over where the two lines are closest near each end, so the connector is short and never loops back.
+        def closest(indices):
+            return min(indices, key=lambda i: nearest(max(ZOOMS), samples[i][0], samples[i][1], samples[i][2], MAX_ANGLE)[0])
+        # At an end of this outline line there is nothing of ours to hand over to: the stretch runs to that end.
+        if a > 0: a = closest([i for i in range(a, b + 1) if samples[i][3] - samples[a][3] <= HANDOVER_KM])
+        if b < len(samples) - 1: b = closest([i for i in range(a, b + 1) if samples[b][3] - samples[i][3] <= HANDOVER_KM])
+        if b <= a: continue
         s0, s1 = samples[a], samples[b]
         t0 = nearest(max(ZOOMS), s0[0], s0[1], s0[2], MAX_ANGLE)[1]; t1 = nearest(max(ZOOMS), s1[0], s1[1], s1[2], MAX_ANGLE)[1]
         print(f"    (({R(s0[0])}, {R(s0[1])}), ({R(t0.x)}, {R(t0.y)}), ({R(s1[0])}, {R(s1[1])}), ({R(t1.x)}, {R(t1.y)})),"

@@ -24,20 +24,16 @@ BOXES = {  # lon_min, lon_max, lat_min, lat_max
   'sikkim': (88.0, 89.3, 27.0, 28.2),    # Sikkim with Tibet, Doklam tri-junction
   'east': (91.5, 97.5, 26.5, 29.6),      # Arunachal Pradesh
 }
-# find_shared_stretches.py: planet 20260913_164504_pt, zooms 5/7/9, samples every 0.25 km, shared within 7 km and 60 degrees, runs of 10 km or more.
+# find_shared_stretches.py: planet 20260913_164504_pt, zooms 7/9/11, samples every 0.25 km, shared within 7 km and 60 degrees, runs of 2 km or more.
 # Each: (start on our outline, start on the tile line, end on our outline, end on the tile line).
 SHARED = [
-    ((78.39001, 32.51159), (78.39964, 32.52728), (78.46098, 32.2885), (78.48856, 32.27654)),  # 27.0 km
-    ((78.67265, 31.76882), (78.70571, 31.774), (78.87698, 31.28709), (78.88199, 31.28836)),  # 79.6 km
-    ((79.39145, 31.05418), (79.41862, 31.04896), (79.69608, 30.96919), (79.6974, 30.97143)),  # 36.5 km
-    ((80.19543, 30.56263), (80.21135, 30.58458), (80.54953, 29.89368), (80.56849, 29.88727)),  # 157.7 km
-    ((88.07688, 26.99179), (88.09196, 27.00496), (87.9913, 27.0815), (87.99517, 27.1036)),  # 13.5 km
-    ((87.98934, 27.21839), (88.01199, 27.21601), (88.12566, 27.85933), (88.13919, 27.87793)),  # 79.4 km
-    ((88.10287, 27.88634), (88.12477, 27.90372), (88.73458, 27.16648), (88.75734, 27.16532)),  # 196.5 km
-    ((88.74929, 27.13956), (88.7495, 27.1417), (88.84561, 26.99494), (88.87012, 26.99536)),  # 20.8 km
-    ((91.50742, 26.80803), (91.50856, 26.79374), (92.07986, 26.91932), (92.10967, 26.8892)),  # 78.2 km
-    ((95.26977, 26.65029), (95.22932, 26.674), (95.05438, 26.49492), (95.07689, 26.47672)),  # 33.7 km
-    ((73.79894, 36.82799), (73.79997, 36.8906), (74.56178, 37.02968), (74.56168, 37.03006)),  # 108.3 km
+    ((80.92395, 30.27488), (80.90718, 30.21954), (80.54953, 29.89368), (80.56858, 29.88757)),  # 77.5 km
+    ((88.07688, 26.99179), (88.0916, 27.00515), (87.9913, 27.0815), (87.99512, 27.10364)),  # 13.5 km
+    ((87.98934, 27.21839), (88.01203, 27.2162), (88.16462, 27.84536), (88.17786, 27.85627)),  # 75.2 km
+    ((88.87192, 27.2776), (88.86834, 27.26367), (88.84561, 26.99494), (88.87021, 26.99536)),  # 44.6 km
+    ((91.48447, 26.85273), (91.45899, 26.80662), (92.06749, 26.88307), (92.0777, 26.85844)),  # 79.3 km
+    ((95.24693, 26.6489), (95.22614, 26.6697), (95.05438, 26.49492), (95.0768, 26.47664)),  # 31.3 km
+    ((73.77475, 36.83811), (73.79993, 36.8906), (74.56178, 37.02968), (74.56167, 37.02996)),  # 105.9 km
 ]
 if '--no-shared' in sys.argv: SHARED = []
 def inbox(pt):
@@ -97,11 +93,15 @@ for line in claims:
             cuts.append((a, b, t0, t1)); found.add(k)
     cuts.sort()
     pos, lead = 0.0, None  # lead: the connector point the next piece starts from
+    end = len(line) - 1
     for a, b, t0, t1 in cuts:
         if a < pos: raise SystemExit('SHARED stretches overlap')
-        piece = ([list(lead)] if lead else []) + between(line, pos, a) + [list(t0)]
-        pieces.append(piece); shared_lines.append(between(line, a, b)); pos, lead = b, t1
-    pieces.append(([list(lead)] if lead else []) + between(line, pos, len(line) - 1))
+        # A piece of ours before the stretch, ending with its connector. None when the stretch starts where this claim
+        # line starts (a box edge): there is nothing of ours to join, and a connector alone would be a spur.
+        if a > pos + 1e-9: pieces.append(([list(lead)] if lead else []) + between(line, pos, a) + [list(t0)])
+        shared_lines.append(between(line, a, b)); pos, lead = b, t1
+    # The piece after the last stretch, likewise none when the stretch runs to where this claim line ends.
+    if pos < end - 1e-9: pieces.append(([list(lead)] if lead else []) + between(line, pos, end))
 claims = [p for p in pieces if len(p) > 1]
 missing = set(range(len(SHARED))) - found
 if missing: raise SystemExit(f'SHARED stretches not found on the claim outline: {sorted(missing)}')
@@ -128,8 +128,14 @@ for f in sorted(s1['features'], key=lambda f: f['properties']['NOTE'] or ''):
     if f['properties']['ADM0_A3'] != 'IND' or f['properties']['NAME'] != 'Assam - Arunachal Pradesh': continue
     g = f['geometry']; states += g['coordinates'] if g['type'] == 'MultiLineString' else [g['coordinates']]
 if not states: raise SystemExit('Assam - Arunachal Pradesh line not found')
+def rounded(line):  # rounded to 5 decimals, without repeated points (a cut that falls on a vertex)
+    out = []
+    for x, y in line:
+        p = [R(x), R(y)]
+        if not out or out[-1] != p: out.append(p)
+    return out
 feat = lambda kind, lines: {'type': 'Feature', 'properties': {'kind': kind},
-    'geometry': {'type': 'MultiLineString', 'coordinates': [[[R(x), R(y)] for x, y in l] for l in lines]}}
+    'geometry': {'type': 'MultiLineString', 'coordinates': [l for l in map(rounded, lines) if len(l) > 1]}}
 out = {'type': 'FeatureCollection', 'features': [feat('world', world), feat('claim', claims), feat('state', states)]}
 s = json.dumps(out, separators=(',', ':')) + '\n'
 open(OUT, 'w').write(s)

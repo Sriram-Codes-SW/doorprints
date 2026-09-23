@@ -14,7 +14,8 @@ package com.househunt.app.ui
  *  1. hide [DISPUTED_LAYER] (every disputed line: LoC, LAC, claim lines);
  *  2. [COUNTRY_LAYER] from zoom [DETAILED_FROM_ZOOM] only ([countryMinZoom]), only the lines that carry an adm0 side
  *     (so a zoom 0-4 tile's Natural Earth line is never drawn, even when MapLibre shows that tile in place of a
- *     missing zoom 5+ one) and never the Pakistan-China line ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
+ *     missing zoom 5+ one) and never the Pakistan-China line or India's line with China, which India's outline draws
+ *     instead ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
  *     drawn in place of a loading or missing one;
@@ -106,13 +107,26 @@ object IndiaViewRules {
     val HIDDEN_STATE_LOCAL_NAMES = listOf("آزاد کشمیر", "گلگت بلتستان")
 
     /**
-     * ANDed with [COUNTRY_LAYER]'s own filter: a line with at least one adm0 side ([ADM0_PRESENT]), and not a line with
-     * Pakistan or China on both sides. `match` rather than `in`: a missing adm0_l / adm0_r (India's side is often
-     * null) falls to `match`'s `false` branch, so the result never depends on how a renderer's `in` treats null.
+     * India's line with China as the tiles carry it: China on one side and India, or no country (the tiles often leave
+     * India's side empty), on the other. The tiles cut it into short undisputed pieces (drawn) and disputed ones
+     * (hidden), so it would show as stray pieces beside India's outline; the outline draws all of it instead. A
+     * missing side reads as India through `coalesce`, and `==` with a missing side is false on both renderers.
+     */
+    private val INDIA_CHINA_LINE: String =
+        "[\"any\", [\"all\", [\"==\", ${get("adm0_l")}, ${quote("CHN")}], " +
+            "[\"==\", [\"coalesce\", ${get("adm0_r")}, ${quote("IND")}], ${quote("IND")}]], " +
+            "[\"all\", [\"==\", ${get("adm0_r")}, ${quote("CHN")}], " +
+            "[\"==\", [\"coalesce\", ${get("adm0_l")}, ${quote("IND")}], ${quote("IND")}]]]"
+
+    /**
+     * ANDed with [COUNTRY_LAYER]'s own filter: a line with at least one adm0 side ([ADM0_PRESENT]), not a line with
+     * Pakistan or China on both sides, and not India's line with China ([INDIA_CHINA_LINE]). `match` rather than `in`:
+     * a missing adm0_l / adm0_r (India's side is often null) falls to `match`'s `false` branch, so the result never
+     * depends on how a renderer's `in` treats null.
      */
     val COUNTRY_LINE_EXTRA_FILTER: String =
         "[\"all\", $ADM0_PRESENT, [\"!\", [\"all\", ${matchAny(get("adm0_l"), HIDDEN_LINE_COUNTRIES)}, " +
-            "${matchAny(get("adm0_r"), HIDDEN_LINE_COUNTRIES)}]]]"
+            "${matchAny(get("adm0_r"), HIDDEN_LINE_COUNTRIES)}]], [\"!\", $INDIA_CHINA_LINE]]"
 
     /**
      * ANDed with the filter of every layer [tileZoomGuardedLayers] names: only the features of a tile of zoom
@@ -166,7 +180,8 @@ object IndiaViewRules {
      */
     val COUNTRY_LINE_EXTRA_FILTER_LEGACY: String =
         "[\"all\", $ADM0_PRESENT, [\"none\", [\"all\", ${legacyIn("adm0_l", HIDDEN_LINE_COUNTRIES)}, " +
-            "${legacyIn("adm0_r", HIDDEN_LINE_COUNTRIES)}]]]"
+            "${legacyIn("adm0_r", HIDDEN_LINE_COUNTRIES)}], ${legacyIndiaChina("adm0_l", "adm0_r")}, " +
+            "${legacyIndiaChina("adm0_r", "adm0_l")}]]"
     val STATE_LABEL_EXTRA_FILTER_LEGACY: String =
         "[\"all\", ${legacyNotIn("name:en", HIDDEN_STATE_NAMES)}, " +
             "${legacyNotIn("name", HIDDEN_STATE_NAMES + HIDDEN_STATE_LOCAL_NAMES)}]"
@@ -277,6 +292,10 @@ object IndiaViewRules {
 
     private fun legacyIn(key: String, values: List<String>) =
         "[\"in\", ${quote(key)}, ${values.joinToString(", ") { quote(it) }}]"
+
+    private fun legacyIndiaChina(china: String, other: String) =
+        "[\"all\", [\"==\", ${quote(china)}, ${quote("CHN")}], " +
+            "[\"any\", [\"!has\", ${quote(other)}], [\"==\", ${quote(other)}, ${quote("IND")}]]]"
 
     private fun legacyNotIn(key: String, values: List<String>) =
         "[\"!in\", ${quote(key)}, ${values.joinToString(", ") { quote(it) }}]"

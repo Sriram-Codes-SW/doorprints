@@ -277,7 +277,7 @@ jobs:
           //    disputed lines and draws India's external boundary from this same-origin file on every style load.
           //    Without it the "**" rewrite would answer the request with index.html, the overlay would fail to parse
           //    and the map would show no boundary where the hidden lines were. So: present, valid GeoJSON, and it
-          //    holds the two kinds the layers filter on. Byte identity with the Android copy and the reviewed sha256
+          //    holds the three kinds the layers filter on. Byte identity with the Android copy and the reviewed sha256
           //    are held by IndiaBoundaryDataTest in android.yml, which this file's folder also triggers.
           const boundaryFile = 'geo/in-boundaries.geojson';
           if (required(boundaryFile, "India's boundary on the map, loaded by src/app/shared/india-boundaries.ts")) {
