@@ -8,9 +8,15 @@ name: Backend
 # and "../": the readers are GoldenSet, CanonicalSample and BackupParityTest, each named on its entries below.
 # Whoever adds such a test adds its path here.
 # The two lists below are identical and must stay that way (GitHub Actions does not support YAML anchors).
+#
+# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
+# branch that touches one of the paths below, a pull request to main (tests the merge result; also covers fork PRs,
+# which never get secrets) and manual runs. `branches: ['**']` matches branch names with "/" (feature/x,
+# dependabot/...); tag pushes do not trigger. With a pull request open, one push gives two runs (branch push +
+# pull_request); that is accepted (docs/07 section 3). Nothing in this workflow deploys, signs or pushes an image.
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "backend/**"
       # EvalScorerTest (a plain unit test in `mvn verify`) loads docs/ai/evals/golden-set.json through
@@ -45,10 +51,11 @@ on:
 # Least privilege: nothing by default; each job asks for what it needs (only contents: read).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main always finish.
 concurrency:
   group: backend-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:
@@ -126,6 +133,9 @@ jobs:
         if: failure()
         run: docker logs db | tail -200
 
+  # Build-only check of backend/Dockerfile (no registry login, no push, contents: read): runs on every push, branch
+  # pushes included since 2026-09-23, so a broken Dockerfile or a root USER is caught before the merge. Still not run
+  # for pull_request events: for a same-repository pull request the branch push of the same commit already builds it.
   image:
     name: Build container image
     needs: verify

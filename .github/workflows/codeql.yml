@@ -17,11 +17,19 @@
 #     to run here.
 #   - Java results are slightly less precise than a build-mode: manual analysis of a compiled backend. Accepted: a
 #     buildless run cannot be broken by a Maven/PostGIS problem, which keeps this workflow independent of backend.yml.
+#
+# Triggers: a push to ANY branch (since 2026-09-23, owner decision "be sure that the code is right before merging
+# into main"; buildless, so cheap; tag pushes do not trigger), the weekly schedule and manual runs. No path filter
+# on the trigger (the paths-ignore below only limits what is extracted). Deliberately NOT on pull_request: a
+# same-repository branch is analysed by its own push run (results appear under that branch in the Security tab);
+# fork pull requests get SAST from Semgrep in security.yml. Dependabot branch pushes get a read-only token by
+# default; GitHub documents that the workflow `permissions` key can raise it, so the job's explicit
+# security-events: write should allow the SARIF upload there too (not yet observed on a dependabot/** run).
 name: CodeQL
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   # Weekly, so new queries in the CodeQL bundle reach unchanged code. Monday 05:23 UTC, away from the other
   # scheduled workflows (security.yml runs at 04:17).
   schedule:
@@ -31,9 +39,11 @@ on:
 # Least privilege: nothing by default; the job below asks for what it needs.
 permissions: {}
 
+# One run per ref: a newer push to a branch cancels the older analysis; runs on main (push, schedule, manual)
+# always finish.
 concurrency:
   group: codeql-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   analyze:

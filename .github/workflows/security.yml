@@ -11,11 +11,17 @@
 # gradle-dependency-graph below submits the fully resolved Gradle graph (including transitive dependencies such as
 # Ktor, OkHttp, kotlinx-io, kotlinx-serialization) to GitHub's dependency graph, where Dependabot alerts cover it.
 # Once gradle.lockfile files are committed, the trivy fs step scans them without any change here.
+#
+# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
+# branch (no path filter, as before; tag pushes do not trigger), a pull request to main (the merge result; also
+# covers fork PRs), the weekly schedule (runs on main) and manual runs. Every scanner job runs on a branch push;
+# gradle-dependency-graph (contents: write) stays main-only and zap-baseline stays manual-only. With a pull request
+# open, one push gives two runs (branch push + pull_request); accepted (docs/07 section 3).
 name: Security
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
     branches: [main]
   schedule:
@@ -33,10 +39,11 @@ on:
 # dependency graph is confirmed on).
 permissions: {}
 
-# Superseded PR runs are cancelled; runs on main (push, weekly schedule) always finish.
+# One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
+# runs on main (push, weekly schedule, manual) always finish.
 concurrency:
   group: security-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   semgrep:
@@ -174,9 +181,11 @@ jobs:
           retention-days: 30
 
   # Dependency Submission API: needs contents: write, which is why this job is separate, never runs for pull requests
-  # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main, the weekly
-  # schedule and manual runs. No artifact is uploaded on success (generate-and-submit); results appear as Dependabot
-  # alerts. Requires the repository's dependency graph: Settings > Security (Advanced Security) > Dependency graph.
+  # (fork PRs get a read-only token, and PR code must not run with a write token) and runs only on main: a push to
+  # main, the weekly schedule and a manual run on main; never on a push to another branch (the ref check in its `if`,
+  # which matters since the push trigger covers every branch, 2026-09-23). No artifact is uploaded on success
+  # (generate-and-submit); results appear as Dependabot alerts. Requires the repository's dependency graph:
+  # Settings > Security (Advanced Security) > Dependency graph.
   #
   # Non-blocking until the owner confirms that setting (2026-09-22): the first run on main (8f583af) failed with
   # "HttpError: Dependency submission failed for dependency-graph-reports/security-gradle-dependency-graph.json"
