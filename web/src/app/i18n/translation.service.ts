@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import type { PriceType } from '../core/models';
 import { TKey, en } from './en';
 import { DICTIONARIES, LANGUAGES, Lang, LanguageInfo, isLang } from './languages';
+import { joinList } from './list-join';
 
 /** A translatable message: a key plus its placeholder values. Params may themselves be messages. */
 export interface Msg {
@@ -59,6 +60,25 @@ export class TranslationService {
   /** Translates a message object (e.g. an error stored in a signal), so it follows later language changes. */
   msg(m: Msg): string {
     return this.t(m.key, m.params);
+  }
+
+  /** "a, b and c" in the app language's own list pattern (see {@link joinList}). */
+  list(items: readonly string[]): string {
+    return joinList(
+      items,
+      (a, b) => this.t('list.two', { a, b }),
+      (a, b, c) => this.t('list.three', { a, b, c }),
+      (a, b) => this.t('list.middle', { a, b }),
+    );
+  }
+
+  /** A size in megabytes or gigabytes, with the unit written the language's own way (Intl unit formatting). */
+  size(bytes: number): string {
+    const mb = bytes / (1024 * 1024);
+    const giga = mb >= 1024;
+    const unit = giga ? 'gigabyte' : 'megabyte';
+    const value = giga ? mb / 1024 : mb;
+    return this.numberFormat(`unit-${unit}`, { style: 'unit', unit, maximumFractionDigits: 1 }).format(value);
   }
 
   number(n: number, fractionDigits = 0): string {
@@ -120,7 +140,11 @@ export class TranslationService {
   }
 }
 
-function initialLang(): Lang {
+/**
+ * The language the app starts in: the saved choice, else the first supported browser language, else English.
+ * Exported for `main.ts`, which needs it before Angular starts (the frame refusal, `core/frame-guard.ts`).
+ */
+export function initialLang(): Lang {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (isLang(saved)) return saved;

@@ -1,0 +1,385 @@
+<div class="page">
+  <header class="page-head">
+    <h1>{{ 'data.title' | t }}</h1>
+    <!-- With a server connected, what is saved does not only stay in this browser. -->
+    <p class="muted">{{ (sync.enabled() ? 'data.introSynced' : 'data.intro') | t }}</p>
+  </header>
+
+  <section class="card" aria-labelledby="export-heading">
+    <h2 id="export-heading">{{ 'data.exportHeading' | t }}</h2>
+
+    @if (!started()) {
+      <!-- Until the saved options are read and counted: a placeholder, not a form that flips to an empty state. -->
+      <div role="status">
+        <span class="sr-only">{{ 'common.loading' | t }}</span>
+        @for (i of skeletonRows; track i) {
+          <span class="skeleton wide" aria-hidden="true"></span>
+        }
+      </div>
+    } @else if (emptyReason() === 'none') {
+      <!-- Android parity: export_empty. A first-time local-first user has no house yet, so no file to make, and no
+           form of options for it either: only this. -->
+      <div class="empty-state">
+        <span class="empty-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="icons.home" /></svg>
+        </span>
+        <p>{{ 'data.empty' | t }}</p>
+        <a class="btn btn-primary" routerLink="/" [queryParams]="{ add: 1 }">{{ 'data.emptyAction' | t }}</a>
+      </div>
+    } @else {
+      <!-- Disabled while a file is built: an option changed mid-build would leave a file that no longer matches the
+           screen (Cancel is the only live control then). -->
+      <fieldset [disabled]="busy()">
+        <legend>{{ 'data.format' | t }}</legend>
+        <div class="formats">
+          @for (f of formats; track f.id) {
+            <label class="format" [class.chosen]="format() === f.id">
+              <input type="radio" name="format" [value]="f.id" [checked]="format() === f.id" (change)="setFormat(f.id)" />
+              <span>
+                <strong>{{ f.nameKey | t }}</strong>
+                <span class="muted small">{{ f.hintKey | t }}</span>
+              </span>
+            </label>
+          }
+        </div>
+      </fieldset>
+
+      @if (partialNote(); as note) {
+        <!-- A "Full backup" that leaves something out says so before it is made (Android: export_partial_note). -->
+        <div class="warn-box partial">
+          <p>{{ note }}</p>
+          <button type="button" class="btn btn-sm" [attr.aria-disabled]="busy() ? 'true' : null" (click)="useEverything()">
+            {{ 'data.useEverything' | t }}
+          </button>
+        </div>
+      }
+
+      <fieldset [disabled]="busy()">
+        <legend>{{ 'data.options' | t }}</legend>
+
+        <!-- Segmented radios, like the status picker on the house page and Android's radio rows. -->
+        <fieldset class="sub">
+          <legend>{{ 'data.scope' | t }}</legend>
+          <div class="options">
+            @for (c of scopes; track c.id) {
+              <label class="option">
+                <input type="radio" name="scope" [value]="c.id" [checked]="options().scope === c.id" (change)="setScope(c.id)" />
+                <span>{{ c.key | t }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <!-- Only for files that can carry photos, as on Android (usesPhotos); the stored choice is kept either way. -->
+        @if (usesPhotos()) {
+          <fieldset class="sub">
+            <legend>{{ 'data.photos' | t }}</legend>
+            <div class="options">
+              @for (c of photoChoices; track c.id) {
+                <label class="option">
+                  <input type="radio" name="photos" [value]="c.id" [checked]="options().photos === c.id" (change)="setPhotos(c.id)" />
+                  <span>{{ c.key | t }}</span>
+                </label>
+              }
+            </div>
+          </fieldset>
+        }
+
+        <div class="field checkbox">
+          <input
+            id="includeRejected"
+            type="checkbox"
+            name="includeRejected"
+            [ngModel]="options().includeRejected"
+            (ngModelChange)="setIncludeRejected($event)"
+          />
+          <label for="includeRejected">{{ 'data.includeRejected' | t }}</label>
+        </div>
+
+        <div class="field checkbox">
+          <input
+            id="includeContacts"
+            type="checkbox"
+            name="includeContacts"
+            [ngModel]="options().includeContacts"
+            (ngModelChange)="setIncludeContacts($event)"
+            aria-describedby="contacts-hint"
+          />
+          <label for="includeContacts">{{ 'data.includeContacts' | t }}</label>
+          <!-- A privacy warning, not a neutral hint: the warn box, so it is not missed among the grey hints. -->
+          <p id="contacts-hint" [class]="options().includeContacts ? 'warn-box small' : 'muted small'">
+            {{ (options().includeContacts ? 'data.contactsWarning' : 'data.contactsLeftOutHint') | t }}
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="fileLang">{{ 'data.language' | t }}</label>
+          <select id="fileLang" name="fileLang" [value]="options().lang" [disabled]="busy()" (change)="onLangChange($event)">
+            @for (l of languages; track l.code) {
+              <option [value]="l.code" [attr.lang]="l.code" [selected]="l.code === options().lang">{{ l.nativeName }}</option>
+            }
+          </select>
+        </div>
+      </fieldset>
+
+      <!-- While a file is built: a real progress bar with a visible label. Not a live region (the component announces
+           the start and each quarter), so a screen reader is not still reading counts after the file is saved. -->
+      @if (progress(); as p) {
+        <div class="progress-row">
+          <label for="export-progress" class="progress">{{ 'data.progressExport' | t: { done: p.done, total: p.total } }}</label>
+          <progress id="export-progress" [value]="p.done" [max]="p.total"></progress>
+        </div>
+      }
+
+      <!-- The live region for what the file will contain (throttled chips, one sentence for screen readers). -->
+      <div class="preview" role="status">
+        @if (emptyReason() === 'shortlisted') {
+          <p class="muted">{{ 'data.noShortlisted' | t }}</p>
+        } @else if (emptyReason() === 'filtered') {
+          <p class="muted">{{ 'data.noneMatch' | t }}</p>
+        } @else {
+          @if (counts(); as c) {
+            <span class="sr-only">{{ 'data.preview' | t: { houses: c.houses, visits: c.visits, photos: c.photos } }}</span>
+            <ul class="stats" aria-hidden="true">
+              <li>{{ 'data.countHouses' | t: { n: c.houses } }}</li>
+              <li>{{ 'data.countVisits' | t: { n: c.visits } }}</li>
+              <li>{{ 'data.countPhotos' | t: { n: c.photos } }}</li>
+            </ul>
+          }
+        }
+      </div>
+      @if (emptyReason() === 'shortlisted') {
+        <button type="button" class="btn" (click)="setScope('all')">{{ 'data.scopeAll' | t }}</button>
+      } @else if (emptyReason() === 'filtered' && !options().includeRejected) {
+        <button type="button" class="btn" (click)="includeRejected()">{{ 'data.includeRejected' | t }}</button>
+      }
+
+      <!-- Keyed on its run: the same failure twice in a row is a new node, so it is read again. -->
+      @if (error(); as card) {
+        @for (c of [card]; track c.run) {
+          <div class="error" role="alert">{{ c.value.key | t: c.value.params }}</div>
+        }
+      }
+
+      <!-- aria-disabled, not disabled: a focused button that became disabled dropped focus to <body>. Focus moves to
+           Cancel when a build starts and back here when it ends (run()). -->
+      <div class="actions">
+        <button
+          #runBtn
+          id="runBtn"
+          type="button"
+          class="btn btn-primary"
+          [attr.aria-disabled]="busy() || emptyReason() !== null ? 'true' : null"
+          (click)="run()"
+        >
+          {{ (busy() ? 'data.building' : format() === 'pdf' ? 'data.print' : 'data.download') | t }}
+        </button>
+        @if (canShareFiles() && format() !== 'pdf') {
+          <!-- Phones: send the copy straight to WhatsApp, Drive or Files without saving it first. Outlined: one filled
+               primary action per card (docs/05 §14.1). -->
+          <button
+            #shareBtn
+            type="button"
+            class="btn"
+            [attr.aria-disabled]="busy() || emptyReason() !== null ? 'true' : null"
+            (click)="run('share')"
+          >
+            <svg class="btn-glyph" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path [attr.d]="icons.share" /></svg>
+            {{ 'data.share' | t }}
+          </button>
+        }
+        @if (busy()) {
+          <button #cancelBtn type="button" class="btn" (click)="cancelExport()">{{ 'common.cancel' | t }}</button>
+        }
+        @if (!canShareFiles() && lastResult() && shareable()) {
+          <button type="button" class="btn" (click)="shareFile()">
+            <svg class="btn-glyph" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path [attr.d]="icons.share" /></svg>
+            {{ 'data.share' | t }}
+          </button>
+        }
+      </div>
+
+      @if (saved(); as m) {
+        <!-- No role="status": the Announcer already says this, and a second live copy was read twice. -->
+        <p class="success">{{ m.key | t: m.params }}</p>
+      }
+      @if (pdfInTab()) {
+        <p class="muted small">{{ pdfHintKey | t }}</p>
+      }
+      <p class="muted small">{{ 'data.deterministic' | t }}</p>
+    }
+  </section>
+
+  <section class="card" aria-labelledby="storage-heading">
+    <h2 id="storage-heading" tabindex="-1">{{ 'data.storageHeading' | t }}</h2>
+    <p>
+      {{ (storage.persisted() === null ? 'storage.unknown' : (storage.persisted() ? 'storage.kept' : 'storage.atRisk')) | t }}
+    </p>
+    @if (usageText(); as usage) {
+      <p class="muted small">{{ usage }}</p>
+    }
+    @if (storage.persisted() !== true) {
+      @if (persistDenied()) {
+        <!-- The refusal stays written here, not only said once. -->
+        <p id="persist-denied" class="warn-box small" tabindex="-1">{{ 'storage.denied' | t }}</p>
+      }
+      <!-- After a refusal only Firefox asks the user again; Chromium and Safari decide by themselves. -->
+      @if (!persistDenied() || persistPrompts) {
+        <div class="actions">
+          <button type="button" class="btn" (click)="askForPersistence()">
+            {{ (persistDenied() ? 'storage.askAgain' : 'storage.ask') | t }}
+          </button>
+        </div>
+      }
+      @if (isIos) {
+        <!-- iPhone-specific advice, for iPhone and iPad only (docs/05 §14.5 wording). -->
+        <p class="muted small">{{ 'storage.iosNote' | t }}</p>
+      }
+    }
+  </section>
+
+  <!-- The permanent home of the install offer (docs/05 §14.4): the banner only ever shows it once. -->
+  <section class="card" aria-labelledby="install-heading">
+    <h2 id="install-heading" #installHeading tabindex="-1">{{ 'data.installHeading' | t }}</h2>
+    @if (isStandalone) {
+      <p class="muted">{{ 'data.installed' | t }}</p>
+    } @else {
+      <p class="muted">{{ 'pwa.installBody' | t }}</p>
+      @if (pwa.canInstall()) {
+        <div class="actions">
+          <button type="button" class="btn btn-primary" (click)="install()">{{ 'pwa.install' | t }}</button>
+        </div>
+      } @else if (isIos) {
+        <ol class="steps">
+          <li>
+            <svg class="share-glyph" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.11 0-2-.9-2-2V10c0-1.11.89-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z" />
+            </svg>
+            {{ 'pwa.iosStep1' | t }}
+          </li>
+          <li>{{ 'pwa.iosStep2' | t }}</li>
+          <li>{{ 'pwa.iosStep3' | t }}</li>
+        </ol>
+      } @else {
+        <p class="muted small">{{ 'data.installUnavailable' | t }}</p>
+      }
+    }
+  </section>
+
+  <section class="card" aria-labelledby="sync-heading">
+    <h2 id="sync-heading">{{ 'data.syncHeading' | t }}</h2>
+    @if (sync.enabled()) {
+      <!-- After "Not now" or "Stop" nothing is sent or fetched; say so, and offer the download here, which is the
+           only way back (the banner does not return). -->
+      <p class="muted">{{ (sync.paused() ? 'data.syncPaused' : 'data.syncOn') | t }}</p>
+      <div role="status">
+        @if (!sync.online()) {
+          <!-- Offline is a normal state here, not a failure: a neutral line, never an alert. -->
+          <p class="small">
+            {{ (pending() > 0 ? 'data.offlinePending' : 'data.offline') | t: { n: pending() } }}
+          </p>
+        } @else if (pending() > 0 && !sync.running() && !sync.paused()) {
+          <p class="small muted">{{ 'data.pendingChanges' | t: { n: pending() } }}</p>
+        }
+        @if (sync.lastOutcome(); as outcome) {
+          <p class="small">
+            {{
+              'data.lastSync'
+                | t: { pushed: outcome.pushed, pulled: outcome.pulled, date: i18n.dateTime(outcome.at) }
+            }}
+          </p>
+        }
+        <!-- Inside the existing live region: a role="status" element that only appears with its content is not
+             reliably announced, because the region has to exist before the text arrives. -->
+        @if (sync.lastSkipped() > 0) {
+          <p class="small warn">{{ 'data.syncSkipped' | t: { n: sync.lastSkipped() } }}</p>
+        }
+        <!-- Both failures are keyed on their run: "Sync now" failing again with the same words is read again. -->
+        @if (sync.lastFailure(); as failure) {
+          @if (!sync.lastErrorForced()) {
+            @for (c of [failure]; track c.run) {
+              <p class="small warn">{{ 'data.autoSyncFailed' | t: { reason: c.value } }}</p>
+            }
+          }
+        }
+      </div>
+      @if (sync.lastFailure(); as failure) {
+        @if (sync.lastErrorForced()) {
+          @for (c of [failure]; track c.run) {
+            <div class="error" role="alert">{{ 'data.syncFailed' | t: { reason: c.value } }}</div>
+          }
+        }
+      }
+      <div class="actions">
+        <!-- One element whose label changes (Download now → Downloading… → Sync now), aria-disabled while running,
+             so focus is never dropped to <body> by a swapped or disabled button. -->
+        <button
+          #syncBtn
+          type="button"
+          [class]="sync.paused() || sync.migration() === 'running' ? 'btn btn-primary' : 'btn'"
+          [attr.aria-disabled]="sync.running() ? 'true' : null"
+          (click)="syncAction()"
+        >
+          {{
+            (sync.running()
+              ? sync.migration() === 'running'
+                ? 'data.migrationRunning'
+                : 'data.syncing'
+              : sync.paused()
+                ? 'data.migrationYes'
+                : 'data.syncNow'
+            ) | t
+          }}
+        </button>
+        @if (sync.lastError()?.key === 'error.storageFull') {
+          <!-- No space left: a backup first, then photos can be removed. -->
+          <button
+            type="button"
+            class="btn"
+            [attr.aria-disabled]="busy() || emptyReason() === 'none' ? 'true' : null"
+            (click)="backupFirst()"
+          >
+            {{ 'storage.makeBackup' | t }}
+          </button>
+        }
+        @if (sync.running() && sync.migration() === 'running') {
+          <button
+            #stopBtn
+            type="button"
+            class="btn"
+            (focus)="stopFocused = true"
+            (blur)="onStopBlur($event)"
+            (click)="stopDownload()"
+          >
+            {{ 'data.migrationStop' | t }}
+          </button>
+        }
+        <!-- On phones the bottom bar has no Connect item (five at most); this is where it lives. -->
+        <a class="btn" routerLink="/connect">{{ 'data.serverSettings' | t }}</a>
+      </div>
+    } @else {
+      <p class="muted">{{ 'data.syncOff' | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/connect">{{ 'data.serverSettings' | t }}</a>
+      </div>
+    }
+  </section>
+
+  <section class="card danger" aria-labelledby="clear-heading">
+    <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
+    <p class="muted">{{ 'data.clearBody' | t }}</p>
+    <div class="actions">
+      <button
+        type="button"
+        class="btn"
+        [attr.aria-disabled]="busy() || emptyReason() === 'none' ? 'true' : null"
+        (click)="backupFirst()"
+      >
+        {{ 'data.backupFirst' | t }}
+      </button>
+      <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="clearBrowser()">
+        {{ 'data.clear' | t }}
+      </button>
+    </div>
+  </section>
+</div>

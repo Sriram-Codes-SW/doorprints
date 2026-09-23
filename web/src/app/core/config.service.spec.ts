@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ConfigService, normalizeBaseUrl } from './config.service';
+import { ConfigService, DEFAULT_BASE_URL, initialBaseUrl, normalizeBaseUrl } from './config.service';
 
 const STORAGE_KEY = 'house-hunt.api-config';
 
@@ -133,5 +133,16 @@ describe('normalizeBaseUrl', () => {
     ['', ''],
   ])('%j -> %j', (input, expected) => {
     expect(normalizeBaseUrl(input)).toBe(expected);
+  });
+});
+
+describe('the Connect page’s starting address', () => {
+  it('is the local development server only on localhost', () => {
+    expect(initialBaseUrl('localhost')).toBe(DEFAULT_BASE_URL);
+    expect(initialBaseUrl('127.0.0.1')).toBe(DEFAULT_BASE_URL);
+  });
+
+  it('is empty on the live site, so nothing is flagged before the user types', () => {
+    expect(initialBaseUrl('doorprints.web.app')).toBe('');
   });
 });

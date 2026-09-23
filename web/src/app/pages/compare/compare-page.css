@@ -30,13 +30,23 @@ thead th {
   min-width: 9rem;
 }
 
+/* The corner cell stays with the sticky row headers when the table scrolls sideways, with its header background. */
+thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--primary-soft);
+  box-shadow: 1px 0 0 var(--border);
+}
+
+/* Underlined like every other link: the house names must not be told apart from plain text by colour alone. */
 thead th a {
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 thead th a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 thead th div {
@@ -50,6 +60,8 @@ tbody th {
   left: 0;
   background: var(--surface);
   min-width: 8rem;
+  /* An edge the scrolled columns pass under (the cell's own border scrolls away with border-collapse). */
+  box-shadow: 1px 0 0 var(--border);
 }
 
 td.best {
@@ -67,5 +79,13 @@ td.best {
 }
 
 .footnote {
+  margin-top: var(--space-2);
+}
+
+.picker-search {
+  max-width: 24rem;
+}
+
+.err-actions {
   margin-top: var(--space-2);
 }

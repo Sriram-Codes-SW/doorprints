@@ -10,6 +10,11 @@
   --on-primary: #ffffff;
   --header-bg: #1f6f5c;
   --on-header: #ffffff;
+  /*
+   * An alert mark drawn on the header (the "sync stopped" badge): 4.23:1 on --header-bg, 5.35:1 on a hovered and
+   * 6.25:1 on the current navigation item (WCAG 1.4.11). --warn-text is for light surfaces only: it was 1.02:1 here.
+   */
+  --on-header-alert: #ffd27a;
   --bg: #f4f6f5;
   --surface: #ffffff;
   --surface-2: #eef2f0;
@@ -33,6 +38,10 @@
   --success-bg: #e7f5ed;
   --success-border: #b5dcc4;
   --success-text: #1a7a43; /* 4.78:1 on --success-bg */
+  /* Caution, not failure: a privacy warning, rows a sync left out. Amber so it never reads as an error. */
+  --warn-bg: #fff4e0;
+  --warn-border: #f0c987;
+  --warn-text: #8a5a00; /* 5.44:1 on --warn-bg, 5.93:1 on white */
   --overlay: rgba(255, 255, 255, 0.94);
   --scrim: rgba(0, 0, 0, 0.88);
 
@@ -56,6 +65,8 @@
   --text-2xl: 1.75rem;
   --leading: 1.5;
   --leading-indic: 1.7;
+  /* Headings and button labels in Devanagari, Tamil and Telugu: room for matras above and vattulu below a line. */
+  --leading-tight-indic: 1.45;
 
   /* Shape and size */
   --radius-sm: 6px;
@@ -67,8 +78,20 @@
   --target-min: 32px; /* dense controls; still above the WCAG 2.5.8 minimum of 24 px */
   --header-h: 56px;
   --duration: 150ms;
+  /* A result card that a new run is replacing: its glyph and border at half strength, never its text (Android STALE_RESULT_ALPHA). */
+  --stale-alpha: 0.5;
+  /*
+   * One column width for the single-column form pages (Connect, Ask, Your data, Share), so moving between them does
+   * not change the column. The map, house, Compare and Plan layouts keep the wider .page (62rem).
+   */
+  --content-narrow: 44rem;
 
   color-scheme: light;
+  /*
+   * Every native checkbox, radio and progress bar in the brand teal, set once here (inherited, and it follows the
+   * dark-mode --primary): Connect's "Remember" tick was the browser's default blue beside Your data's teal.
+   */
+  accent-color: var(--primary);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,6 +102,7 @@
     --on-primary: #0b1f19; /* 9.35:1 on --primary */
     --header-bg: #173f35;
     --on-header: #ffffff; /* 11.67:1 */
+    --on-header-alert: #f2b84b; /* 6.52:1 on --header-bg, 7.35:1 hovered, 8.03:1 current */
     --bg: #101614;
     --surface: #19211f;
     --surface-2: #212b28;
@@ -101,6 +125,9 @@
     --success-bg: #15301f;
     --success-border: #2b5a3b;
     --success-text: #6fd69a;
+    --warn-bg: #33260f;
+    --warn-border: #6b4f1a;
+    --warn-text: #f2b84b; /* 8.23:1 on --warn-bg, 9.18:1 on --surface */
     --overlay: rgba(25, 33, 31, 0.94);
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6);
@@ -162,6 +189,16 @@ h3 {
   font-size: var(--text-md);
 }
 
+/*
+ * Two-line Indic headings: at 1.25 the vowel signs above one line (Hindi ि ी, Tamil ி ீ) met the subscript consonants
+ * below the other (Telugu vattulu, Hindi ु ू, Tamil ு ூ). Latin headings keep 1.25.
+ */
+:lang(hi) :is(h1, h2, h3),
+:lang(ta) :is(h1, h2, h3),
+:lang(te) :is(h1, h2, h3) {
+  line-height: var(--leading-tight-indic);
+}
+
 p {
   margin: 0 0 var(--space-3);
 }
@@ -199,7 +236,8 @@ p {
 
 /* ---------- Messages ---------- */
 .error,
-.success {
+.success,
+.warn-box {
   border-radius: var(--radius);
   padding: var(--space-3) var(--space-4);
   margin: var(--space-2) 0;
@@ -217,12 +255,68 @@ p {
   border: 1px solid var(--success-border);
 }
 
+.warn-box {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+}
+
 .error::before {
+  content: '⚠ ';
+}
+
+/* Same glyph as an error, so the caution is not carried by colour alone (WCAG 1.4.1). */
+.warn-box::before {
   content: '⚠ ';
 }
 
 .success::before {
   content: '✓ ';
+}
+
+/*
+ * A result that a new run is replacing (Ask, Plan visits, Connect's check; Android 1.33 RefreshableResultCard). The
+ * card keeps its slot, so what is below it does not jump up by its height and back when the run ends. Its glyph and
+ * border are dimmed to --stale-alpha, its text stays at full contrast (a 10-15 s run is readable throughout), and
+ * an indeterminate bar runs along its foot, inside its rounded corners. The slot adds no box of its own: the card's
+ * margins collapse through it, so the slot is exactly the card's border box. The bar is a role="progressbar" named
+ * by the run's busy label ("Thinking…"), a sibling of the live region rather than inside it, so a screen reader
+ * finds it by browsing but does not announce it. With reduced motion (below) the bar stands still.
+ */
+.refresh-slot {
+  position: relative;
+}
+
+.refresh-slot.stale :is(.error, .success)::before {
+  opacity: var(--stale-alpha);
+}
+
+.refresh-slot.stale .error {
+  border-color: color-mix(in srgb, var(--error-border) calc(var(--stale-alpha) * 100%), transparent);
+}
+
+.refresh-slot.stale .success {
+  border-color: color-mix(in srgb, var(--success-border) calc(var(--stale-alpha) * 100%), transparent);
+}
+
+.refresh-bar {
+  position: absolute;
+  left: var(--radius);
+  right: var(--radius);
+  bottom: 0;
+  height: var(--space-1);
+  background: linear-gradient(90deg, transparent 0 30%, var(--primary) 30% 70%, transparent 70% 100%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s linear infinite;
+}
+
+/*
+ * A message box laid out as a row (text and a button: "Unsaved changes restored" on the house page, the partial
+ * backup note on Your data) would make the glyph a flex item of its own, alone at the far left or on a line of its
+ * own when the row wraps. There the glyph starts the text item instead (see those pages' styles).
+ */
+.warn-box:is(.restored, .partial)::before {
+  content: none;
 }
 
 /* ---------- Buttons ---------- */
@@ -251,7 +345,8 @@ p {
   background: var(--surface-2);
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled='true'] {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -280,6 +375,28 @@ p {
   min-height: 36px;
   padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
+}
+
+/*
+ * Touch screens: the compact 36px size is for a mouse. On a phone .btn-sm keeps its smaller text but gets the full
+ * 44px target, everywhere (the banners, "Use my location" and "Fill address from map" on the house page, list
+ * actions), rather than each component raising it on its own.
+ */
+@media (pointer: coarse) {
+  .btn-sm {
+    min-height: var(--target);
+    padding-inline: var(--space-4);
+  }
+}
+
+/*
+ * A button label that wraps in Tamil or Telugu (the phone map's actions are capped at 60% of the width) needs the
+ * room between its lines that 1.2 does not give. Min-heights are unchanged, so one-line buttons do not move.
+ */
+:lang(hi) .btn,
+:lang(ta) .btn,
+:lang(te) .btn {
+  line-height: 1.4;
 }
 
 .btn.active,
@@ -323,6 +440,50 @@ fieldset > legend {
 .field-hint {
   font-size: var(--text-sm);
   color: var(--muted);
+}
+
+/*
+ * A field's own error, next to the field it is about (Connect's URL and key, Ask's and Plan's question, the house
+ * name and coordinates). One definition for every page.
+ */
+.field-error {
+  color: var(--error-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/*
+ * A checkbox row (Your data's export options, Connect's "Remember"): the box, then a full-row 44px label in body
+ * text like Android's 48dp switch rows — not the 14px semibold field label — and any hint under the label. Connect
+ * is reached from Your data on phones, so the rows must match. Comes after `.field > label`, which it overrides.
+ */
+.checkbox {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.checkbox input {
+  width: 1.5rem;
+  height: 1.5rem;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.checkbox > label {
+  font-size: var(--text-md);
+  font-weight: 400;
+  min-height: var(--target);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox p {
+  grid-column: 2;
+  margin: var(--space-1) 0 0;
 }
 
 fieldset {
@@ -422,9 +583,24 @@ textarea:focus-visible {
   content: '✓';
 }
 
-.chip:disabled {
-  opacity: 0.5;
+/*
+ * A chip that cannot be chosen now (Compare's limit): it stays focusable and says why when pressed, so its label
+ * keeps readable contrast (--muted: 5.55:1 on white, 7.59:1 dark) instead of being faded to ~3:1, and a dashed
+ * border tells it apart from an available chip by shape, not by colour alone.
+ */
+.chip:disabled,
+.chip[aria-disabled='true'] {
+  color: var(--muted);
+  border-style: dashed;
+  border-color: var(--border-strong);
   cursor: not-allowed;
+}
+
+/* Touch screens: filter and picker chips get the full 44px target (UX-007), like .btn-sm above. */
+@media (pointer: coarse) {
+  .chip {
+    min-height: var(--target);
+  }
 }
 
 .pill {
@@ -546,7 +722,8 @@ textarea:focus-visible {
 .page {
   max-width: 62rem;
   margin: 0 auto;
-  padding: var(--space-4);
+  /* One page-top rhythm on every screen (24px, 16px on small phones), so the title does not jump between them. */
+  padding: var(--space-5) var(--space-4) var(--space-4);
 }
 
 .empty-state {
@@ -555,16 +732,42 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
-.empty-state .empty-icon {
-  font-size: 2.5rem;
-  line-height: 1;
-  display: block;
-  margin-bottom: var(--space-2);
-}
-
 .empty-state h2,
 .empty-state strong {
   color: var(--text);
+}
+
+/* An empty state's icon: a Material glyph on a soft circle, the same iconography as the navigation bar. */
+.empty-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--space-2);
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.empty-glyph svg {
+  display: block;
+  fill: currentColor;
+}
+
+/*
+ * Every page's heading: the title and its one-line intro read as one unit (4px apart), 16px above the content.
+ * Your data and the share page lay out with a flex gap instead and drop this margin in their own styles.
+ */
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.page-head h1,
+.page-head p {
+  margin: 0;
 }
 
 .skeleton {
@@ -594,6 +797,18 @@ textarea:focus-visible {
   }
 }
 
+/*
+ * Touch screens: MapLibre's zoom and "my location" buttons get the full 44px target (UX-007) instead of 29px. The
+ * icons are centred background images, so they stay centred. The compact attribution button is a different element
+ * (.maplibregl-ctrl-attrib-button) and keeps its own size.
+ */
+@media (pointer: coarse) {
+  .maplibregl-map .maplibregl-ctrl-group button {
+    width: var(--target);
+    height: var(--target);
+  }
+}
+
 .maplibregl-popup-content {
   padding: var(--space-2) var(--space-3);
   border-radius: 8px;
@@ -604,7 +819,7 @@ textarea:focus-visible {
 
 @media (max-width: 480px) {
   .page {
-    padding: var(--space-3);
+    padding: var(--space-4) var(--space-3) var(--space-3);
   }
 
   .card {
@@ -631,6 +846,17 @@ textarea:focus-visible {
   .btn[aria-pressed='true'] {
     outline: 2px solid CanvasText;
   }
+
+  /*
+   * The "being updated" bar is only a gradient background-image, which forced colours compute to none (and the
+   * dimmed card border is forced back to CanvasText), so a stale card would look current. Keep the bar, drawn in
+   * the system Highlight colour.
+   */
+  .refresh-bar {
+    forced-color-adjust: none;
+    background: linear-gradient(90deg, transparent 0 30%, Highlight 30% 70%, transparent 70% 100%);
+    background-size: 200% 100%;
+  }
 }
 
 /* Shown instead of the map when the browser has no WebGL 2 (MapLibre GL 6 requirement). */
@@ -638,4 +864,34 @@ textarea:focus-visible {
   margin: 0;
   padding: 1rem;
   text-align: center;
+}
+
+/*
+ * Shown instead of the app when another site puts it in a frame (core/frame-guard.ts): Angular never starts there,
+ * so this is plain global CSS on the same tokens. One column that also reads in a small frame, one primary
+ * action, and the address as a block that one tap selects whole, for when the frame's sandbox blocks new tabs.
+ */
+.frame-refusal {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+.frame-refusal .btn {
+  margin-block: var(--space-1) var(--space-5);
+}
+
+.frame-refusal-hint {
+  margin-bottom: var(--space-1);
+}
+
+.frame-refusal-address {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
 }

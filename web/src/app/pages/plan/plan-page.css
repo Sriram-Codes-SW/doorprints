@@ -33,6 +33,17 @@ textarea {
   border: 1px solid var(--border);
 }
 
+/*
+ * Phones: the map is part of a page that scrolls (the form, then the route), so it is capped rather than 60% of the
+ * screen; one finger scrolls the page past it and two move it (cooperative gestures, map-style.ts).
+ */
+@media (max-width: 760px) {
+  .plan-map {
+    height: min(60vh, 26rem);
+    min-height: 16rem;
+  }
+}
+
 .stops {
   padding-left: var(--space-5);
 }
@@ -58,4 +69,14 @@ textarea {
   place-items: center;
   font-weight: 700;
   font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+fieldset .btn-sm {
+  margin-top: var(--space-2);
 }

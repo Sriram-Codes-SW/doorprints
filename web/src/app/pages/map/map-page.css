@@ -21,6 +21,11 @@
   inset: 0;
 }
 
+/* Wider screens: no box of its own; the legend and the actions are placed against the map as before. */
+.map-stack {
+  display: contents;
+}
+
 .map-actions {
   position: absolute;
   top: var(--space-3);
@@ -52,6 +57,43 @@
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
   z-index: 2;
+}
+
+/* The short phone version of the hint (below); wider screens have room for the full sentence. */
+.hint-short {
+  display: none;
+}
+
+/*
+ * Offline: the map style could not load. Same stacking level as the action row but earlier in the DOM, so it
+ * covers the blank canvas and MapLibre's own controls while "Add house" stays usable above it.
+ */
+.map-offline {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: 4.5rem var(--space-4) var(--space-4);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+  overflow-y: auto;
+}
+
+.map-offline p {
+  margin: 0;
+  max-width: 30rem;
+}
+
+.offline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .crosshair {
@@ -108,6 +150,7 @@
 
 .panel {
   grid-area: panel;
+  container-type: inline-size;
   min-height: 0;
   overflow-y: auto;
   background: var(--surface);
@@ -126,7 +169,8 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+  /* Five even columns, or 3 + 2 in a narrow panel (below): never four and one left alone on a second row. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   margin: var(--space-3) 0 0;
   background: var(--border);
@@ -152,7 +196,24 @@
 .stats dt {
   font-size: var(--text-xs);
   color: var(--text);
-  overflow-wrap: anywhere;
+  /* Breaks only a word that cannot fit at all: Tamil and Telugu words are not cut in the middle otherwise. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/*
+ * 3 + 2 up to 384px, which covers the 360px Android phones most used in India: five 72px columns left about 64px for
+ * a 12px label, and Tamil வருகைகள் or Telugu సందర్శనలు broke inside the word or touched the cell edge there.
+ */
+@container (max-width: 24rem) {
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* The fifth number takes the rest of the second row, so no empty cell shows the grid's divider colour. */
+  .stats div:last-child:nth-child(3n + 2) {
+    grid-column: span 2;
+  }
 }
 
 .controls {
@@ -219,17 +280,22 @@
   outline-offset: -3px;
 }
 
+/*
+ * Names wrap instead of being cut with an ellipsis: Tamil and Telugu names, and any name at 200% text size, must be
+ * readable in place (TC-I18N-05). When the name takes the whole row the status pill moves below it.
+ */
 .item-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
 }
 
 .label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .item-meta {
@@ -269,11 +335,86 @@
     border-right: 0;
   }
 
-  .legend {
+  /*
+   * Phones: one bottom row, which grows with whatever it holds (UX lead audit 2026-09-22). The legend is at the start
+   * and wraps inside its own space; the actions are a column at the end, the primary action ("Place here") last,
+   * nearest the thumb. Nothing is positioned on its own any more, so a two-row Tamil or Telugu legend can never
+   * cover the add-mode hint or the buttons.
+   */
+  .map-stack {
+    position: absolute;
+    left: var(--space-3);
+    right: var(--space-3);
     bottom: var(--space-2);
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+    pointer-events: none;
   }
 
+  .map-stack > * {
+    pointer-events: auto;
+  }
+
+  .legend {
+    position: static;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .map-actions {
+    position: static;
+    flex: 0 0 auto;
+    max-width: 60%;
+    margin-inline-start: auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+
+  .map-actions .btn {
+    max-width: 100%;
+  }
+
+  /*
+   * At the top on phones: the bottom row is the actions', and the crosshair is in the middle. It stops short of
+   * MapLibre's control column (a 44px control and its 10px margin, plus 2px), in portrait (bottom-right, where a
+   * 312-400px map lets the column reach the top: "My location" is its topmost button) as in landscape (top-right).
+   * Being later in the DOM at the same z-index, it would otherwise paint over "My location" and the zoom buttons.
+   */
   .add-hint {
-    bottom: 3rem;
+    top: var(--space-3);
+    bottom: auto;
+    right: calc(var(--target) + var(--space-4) + 2px);
+    max-width: none;
+  }
+
+  /*
+   * The narrower hint says the short sentence ("Move the map so the cross is on the house, then choose Place here.", device-neutral, as it also shows in desktop windows narrower than 760px):
+   * the full one took 4-5 lines in Tamil and Telugu and reached the crosshair on a 360x640 phone. The full sentence
+   * is still announced when add mode starts.
+   */
+  .hint-full {
+    display: none;
+  }
+
+  .hint-short {
+    display: inline;
+  }
+
+  /*
+   * MapLibre's bottom-right corner (zoom, my location, attribution) sits above the bottom row, whose measured height
+   * MapPage writes to --map-stack-h: one column at the end, the primary action lowest. Its elements are created by
+   * MapLibre, outside this component's view, hence ::ng-deep.
+   */
+  :host ::ng-deep .maplibregl-ctrl-bottom-right {
+    bottom: calc(var(--space-2) + var(--map-stack-h, 0px));
+  }
+
+  /* The offline overlay keeps its message clear of the bottom row instead of the top one. */
+  .map-offline {
+    padding: var(--space-4) var(--space-4) calc(var(--space-4) + var(--map-stack-h, 0px));
   }
 }

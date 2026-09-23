@@ -1,5 +1,6 @@
 import { Component, ElementRef, afterRenderEffect, inject, viewChild } from '@angular/core';
 import { ConfirmService } from '../core/confirm.service';
+import type { ConfirmAnswer } from '../core/confirm.service';
 import { TPipe } from '../i18n/t.pipe';
 
 /**
@@ -21,14 +22,18 @@ import { TPipe } from '../i18n/t.pipe';
       @if (confirm.pending(); as p) {
         <p id="confirm-message">{{ p.message.key | t: p.message.params }}</p>
         <div class="actions">
-          <button type="button" class="btn" [attr.autofocus]="p.danger ? '' : null" (click)="answer(false)">
+          <button type="button" class="btn" [attr.autofocus]="p.danger && !p.altKey ? '' : null" (click)="answer('cancel')">
             {{ 'common.cancel' | t }}
           </button>
+          @if (p.altKey) {
+            <!-- The safer way forward ("Sync first", "Save first") gets the initial focus, not the destructive one. -->
+            <button type="button" class="btn btn-primary" autofocus (click)="answer('alt')">{{ p.altKey | t }}</button>
+          }
           <button
             type="button"
-            [class]="p.danger ? 'btn btn-danger' : 'btn btn-primary'"
-            [attr.autofocus]="p.danger ? null : ''"
-            (click)="answer(true)"
+            [class]="p.danger ? 'btn btn-danger' : p.altKey ? 'btn' : 'btn btn-primary'"
+            [attr.autofocus]="p.danger || p.altKey ? null : ''"
+            (click)="answer('confirm')"
           >
             {{ p.confirmKey | t }}
           </button>
@@ -51,12 +56,34 @@ import { TPipe } from '../i18n/t.pipe';
     p {
       margin: 0 0 var(--space-4);
       font-size: var(--text-md);
+      /* A message may list changes one per line ("Street: Temple Road → 5th Cross"). */
+      white-space: pre-line;
     }
     .actions {
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: var(--space-2);
+    }
+    /*
+     * Narrow phones: stacked, full-width buttons (M3's stacked dialog actions) instead of a wrapping row, where
+     * long Tamil or Telugu labels broke into uneven rows and the destructive button could end up alone on top.
+     * Top to bottom: the safe way forward (the primary "Save first" / "Sync first", or a plain confirm), then the
+     * destructive action, then Cancel. Only the visual order changes. Focus still reads top to bottom: it starts on
+     * the safe action (autofocus), Tab goes on to the destructive one, and the dialog's Tab cycle then reaches
+     * Cancel, which is first in the DOM.
+     */
+    @media (max-width: 480px) {
+      .actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .actions .btn-primary {
+        order: -1;
+      }
+      .actions .btn:first-child {
+        order: 1;
+      }
     }
   `,
 })
@@ -82,19 +109,19 @@ export class ConfirmDialog {
     });
   }
 
-  protected answer(ok: boolean): void {
+  protected answer(choice: ConfirmAnswer): void {
     this.answered = true;
-    this.confirm.settle(ok);
+    this.confirm.settle(choice);
   }
 
   /** Esc: treat as Cancel. */
   protected onCancel(event: Event): void {
     event.preventDefault();
-    this.answer(false);
+    this.answer('cancel');
   }
 
   protected onClose(): void {
-    if (!this.answered) this.confirm.settle(false);
+    if (!this.answered) this.confirm.settle('cancel');
     this.opener?.focus();
     this.opener = null;
   }

@@ -1,8 +1,21 @@
 <div class="page">
-  <h1>{{ 'compare.title' | t }}</h1>
+  <header class="page-head">
+    <h1>{{ 'compare.title' | t }}</h1>
+  </header>
 
-  @if (error(); as e) {
-    <div class="error" role="alert">{{ e.key | t: e.params }}</div>
+  @if (error(); as card) {
+    <div class="error">
+      <!-- Only the sentence is keyed on the run (Retry failing the same way is a new node, read again); the button
+           stays the same node, so a focused Retry keeps focus (R18). Inline, so it stays on the line of the ⚠. -->
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+      <div class="err-actions">
+        <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+      </div>
+    </div>
   }
 
   @if (loading()) {
@@ -12,11 +25,14 @@
       <span class="skeleton" aria-hidden="true"></span>
       <span class="skeleton short" aria-hidden="true"></span>
     </div>
-  } @else if (candidates().length === 0) {
+  } @else if (candidates().length < minSelected) {
+    <!-- Nothing to compare yet, or only one house: the way forward is adding houses, not a picker that cannot work. -->
     <div class="card empty-state">
-      <span class="empty-icon" aria-hidden="true">⚖</span>
-      <p>{{ 'compare.empty' | t }}</p>
-      <a class="btn btn-primary" routerLink="/">{{ 'compare.addSome' | t }}</a>
+      <span class="empty-glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.compare" /></svg>
+      </span>
+      <p>{{ (candidates().length === 0 ? 'compare.empty' : 'compare.onlyOne') | t }}</p>
+      <a class="btn btn-primary" routerLink="/" [queryParams]="{ add: 1 }">{{ 'compare.addSome' | t }}</a>
     </div>
   } @else {
     <section class="picker" aria-labelledby="picker-heading">
@@ -24,13 +40,27 @@
       <p class="muted small" id="picker-hint" role="status">
         {{ 'compare.choose' | t: { min: minSelected, max: maxSelected, n: selectedIds().length } }}
       </p>
+      @if (showPickerSearch()) {
+        <div class="field picker-search">
+          <label for="picker-search">{{ 'compare.search' | t }}</label>
+          <input
+            id="picker-search"
+            type="search"
+            autocomplete="off"
+            [placeholder]="'map.searchPlaceholder' | t"
+            [value]="pickerQuery()"
+            (input)="onPickerSearch($event)"
+          />
+        </div>
+      }
       <div class="chips" role="group" [attr.aria-label]="'compare.pickerLabel' | t" aria-describedby="picker-hint">
-        @for (c of candidates(); track c.house.id) {
+        @for (c of visibleCandidates(); track c.house.id) {
+          <!-- aria-disabled, not disabled: a blocked chip stays in the tab order and says why when pressed. -->
           <button
             type="button"
             class="chip"
             [attr.aria-pressed]="isSelected(c.house.id)"
-            [disabled]="!isSelected(c.house.id) && selectedIds().length >= maxSelected"
+            [attr.aria-disabled]="isBlocked(c.house.id) ? 'true' : null"
             (click)="toggle(c.house.id)"
           >
             @if (c.house.status === 'SHORTLISTED') {
@@ -55,7 +85,8 @@
               <th scope="col"><span class="sr-only">{{ 'compare.criterion' | t }}</span></th>
               @for (h of selected(); track h.id) {
                 <th scope="col">
-                  <a [routerLink]="['/houses', h.id]">{{ h.label || ('common.untitled' | t) }}</a>
+                  <!-- Underlined, and the → used for links elsewhere: not told apart by colour alone (WCAG 1.4.1). -->
+                  <a [routerLink]="['/houses', h.id]">{{ h.label || ('common.untitled' | t) }}<span aria-hidden="true"> →</span></a>
                   <div>
                     <span [class]="'pill pill-' + h.status">
                       <span aria-hidden="true">{{ statusIcon[h.status] }}</span> {{ statusKey[h.status] | t }}
