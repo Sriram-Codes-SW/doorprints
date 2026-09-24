@@ -125,8 +125,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.service)
 
     // Room: AppDatabase, its entities and DAOs are in :shared commonMain since CMP-4 P4a (Room KMP, KSP and the schema
-    // export run there); room-runtime comes through :shared's api. room-ktx is gone: it is empty since Room 2.7, and
-    // withTransaction is in room-runtime.
+    // export run there); room-runtime comes through :shared's api. No direct room-ktx dependency (WorkManager still
+    // pulls it in; it is empty since Room 2.7, and withTransaction is in room-runtime).
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)

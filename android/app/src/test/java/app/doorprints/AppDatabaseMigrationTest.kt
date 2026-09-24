@@ -152,7 +152,8 @@ class AppDatabaseMigrationTest {
         }
 
         private fun schemaAssetManager(): AssetManager {
-            val dir = listOf(File("../shared/schemas"), File("shared/schemas")).first { it.isDirectory }
+            val dir = listOf(File("../shared/schemas"), File("shared/schemas")).firstOrNull { it.isDirectory }
+                ?: error("shared/schemas not found from ${File(".").absolutePath}")
             val zip = File.createTempFile("room-schemas", ".zip").apply { deleteOnExit() }
             ZipOutputStream(zip.outputStream()).use { out ->
                 dir.walkTopDown().filter { it.isFile }.forEach { file ->
@@ -161,9 +162,17 @@ class AppDatabaseMigrationTest {
                     out.closeEntry()
                 }
             }
-            val assets = AssetManager::class.java.getDeclaredConstructor().newInstance()
-            AssetManager::class.java.getMethod("addAssetPath", String::class.java).invoke(assets, zip.path)
-            return assets
+            return try {
+                val assets = AssetManager::class.java.getDeclaredConstructor().newInstance()
+                AssetManager::class.java.getMethod("addAssetPath", String::class.java).invoke(assets, zip.path)
+                assets
+            } catch (e: ReflectiveOperationException) {
+                throw AssertionError(
+                    "schemaAssetManager: the hidden AssetManager.addAssetPath is no longer reachable (Robolectric " +
+                        "upgrade?); load the schemas another way",
+                    e,
+                )
+            }
         }
     }
 
