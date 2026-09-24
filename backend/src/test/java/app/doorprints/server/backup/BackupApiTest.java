@@ -88,6 +88,22 @@ class BackupApiTest {
         api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
     }
 
+    /**
+     * S4b-BL-20: deleting all data is not a reset. The rows go, but {@code maxSyncVersion} in {@code GET /api/stats}
+     * comes from the sequence, which carries on, so a client's cursors stay at or below it and it does not re-send
+     * everything as it would to a server restored from an older dump.
+     */
+    @Test
+    void deleteAllKeepsTheHighestSyncVersion() {
+        var saved = api.put().uri("/api/houses/{id}", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("label", "Before the wipe", "lat", 12.9, "lon", 77.6)).retrieve().body(MAP);
+        var cursor = ((Number) saved.get("syncVersion")).longValue();
+        api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
+        var stats = api.get().uri("/api/stats").retrieve().body(MAP);
+        assertThat(((Number) stats.get("houses")).longValue()).isZero();
+        assertThat(((Number) stats.get("maxSyncVersion")).longValue()).isGreaterThanOrEqualTo(cursor);
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     /** The body of the error response {@code call} provoked (a ProblemDetail), or "" if it succeeded. */

@@ -6,10 +6,9 @@ import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 
 /*
- * The UI's names for the shared enums and checklist keys, as Compose resources (CMP-4 P4c, for Compare). `:app`'s
- * `data/ModelLabels.kt` keeps the Android-resource versions (`HouseStatus.labelRes`, `ChecklistLabels`) for the
- * screens and the Hunt notification that still read Android resources; both name the same keys with the same text
- * (`StringParityTest`).
+ * The UI's names for the shared enums and checklist keys, as Compose resources (CMP-4 P4c, for Compare; every screen's
+ * since CMP-6 P6a). `:app`'s `data/ModelLabels.kt` keeps an Android-resource version of the status labels
+ * (`HouseStatus.labelRes`) for the Hunt notification, with the same text (`StringParityTest`).
  */
 
 /** Translated label of a status (`status_*`). */

@@ -77,11 +77,18 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
                 }
               </p>
             }
-            @if (!sync.running() && sync.lastFailure(); as failure) {
-              <!-- Keyed on its run: "Try again" failing the same way again is a new node, so it is read again. -->
-              @for (c of [failure]; track c.run) {
-                <p class="failure" role="alert">{{ 'data.syncFailed' | t: { reason: c.value } }}</p>
-              }
+            @if (sync.lastFailure(); as failure) {
+              <!-- Keyed on its run: "Try again" failing the same way again is a new node, so it is read again. While
+                   "Try again" runs, the failure keeps its place, its sign dimmed, with the bar along its foot (outside
+                   the alert, so it is not announced), until the run ends (S4b-BL-1). -->
+              <div class="refresh-slot failure-slot" [class.stale]="sync.running()">
+                @for (c of [failure]; track c.run) {
+                  <p class="failure" role="alert">{{ 'data.syncFailed' | t: { reason: c.value } }}</p>
+                }
+                @if (sync.running()) {
+                  <div class="refresh-bar" role="progressbar" [attr.aria-label]="'data.migrationRunning' | t"></div>
+                }
+              </div>
               @if (failure.value.key === 'error.storageFull') {
                 <!-- No space left: Your data is where a backup is made and the space use is shown. -->
                 <p><a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a></p>
@@ -163,8 +170,19 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
     }
   `,
   styles: `
+    /*
+     * The banners sit between the header and the page, outside the page's scroller, so a long one could take the
+     * page: the iPhone install offer in Tamil was about 290px, all of a 568px iPhone SE but a strip, and every pixel
+     * of a phone in landscape or with the keyboard open (the page measured 1px). At most 40% of the visible height;
+     * a longer banner scrolls inside itself (its buttons are focusable, so Tab reaches them and scrolls it along).
+     * A banner is never that tall on a desktop, where nothing changes.
+     */
     :host {
       display: block;
+      max-height: 40vh;
+      max-height: 40dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     .banner {
       display: flex;
@@ -217,6 +235,17 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
     }
     .banner .failure::before {
       content: '⚠ ';
+    }
+    /* Room under the failure line for the "being updated" bar, kept while no run goes so the line does not move. */
+    .failure-slot {
+      padding-bottom: calc(var(--space-1) + 2px);
+    }
+    .failure-slot .refresh-bar {
+      left: 0;
+      right: 0;
+    }
+    .failure-slot.stale .failure::before {
+      opacity: var(--stale-alpha);
     }
     .banner ol {
       margin: var(--space-1) 0 0;

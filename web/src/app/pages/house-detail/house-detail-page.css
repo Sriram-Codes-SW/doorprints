@@ -99,21 +99,34 @@
    * "New house" కొత్త ఇల్లు, and Telugu house names) and grazed Hindi ु ू and Tamil ு ூ. --leading is 1.7 for Indic
    * and 1.5 for Latin (31px at 18px), and the padding gives descenders a little more; it still fits the 44px row.
    */
+  /*
+   * Up to two lines, then an ellipsis: on a 320px phone one line cut even "New house" (111px in 107px) and Tamil
+   * புதிய வீடு (103px in 88px) to an ellipsis beside Back and "Add house". Two lines keep the bar well under the
+   * three rows it once took.
+   */
   .page-title {
     flex: 1 1 auto;
     font-size: var(--text-lg);
     line-height: var(--leading);
     padding-block: 0.1em;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    overflow-wrap: normal;
+    overflow-wrap: break-word;
   }
 
+  /* At most 60% of the bar: at 200% text Tamil "Add house" (294px) pushed the bar 34px past a 360px screen. */
   .toolbar-right {
     flex: 0 0 auto;
     flex-wrap: nowrap;
     gap: var(--space-2);
+    max-width: 60%;
+  }
+
+  .toolbar-right .btn {
+    min-width: 0;
   }
 
   .save-state {
@@ -440,11 +453,18 @@ app-location-map {
   margin: 0;
 }
 
+/*
+ * dvh after each vh: on a phone 100vh is the viewport without the address bar, so the viewer ran under the bar and the
+ * photo was centred below the middle of what shows (its foot hidden). dvh is what is visible now; vh stays for a
+ * browser without it.
+ */
 .lightbox {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   max-width: 100vw;
   max-height: 100vh;
+  max-height: 100dvh;
   margin: 0;
   padding: var(--space-4);
   border: 0;
@@ -464,6 +484,7 @@ app-location-map {
 .lightbox img {
   max-width: 100%;
   max-height: calc(100vh - 6rem);
+  max-height: calc(100dvh - 6rem);
   object-fit: contain;
 }
 

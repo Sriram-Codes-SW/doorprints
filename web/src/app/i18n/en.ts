@@ -457,6 +457,8 @@ export const en = {
   'data.offlinePending': 'You are offline. Changes waiting to be sent: {n}. They are sent when you are back online.',
   'data.pendingChanges': 'Changes waiting to be sent: {n}',
   'data.autoSyncFailed': 'The last automatic sync did not work ({reason}). It will try again later.',
+  // S4b-BL-20 (2026-09-24): the sync found its server reset.
+  'data.serverReset': 'Your server seems to have been reset or set back to an older copy. Doorprints is sending everything in this browser to it again and downloading everything from it. Nothing here is lost.',
   'data.migrationDone': 'Download finished. Houses in this browser: {n}',
   'data.migrationStop': 'Stop',
   'data.migrationStopped': 'Download stopped. What arrived is kept; continue from Your data.',

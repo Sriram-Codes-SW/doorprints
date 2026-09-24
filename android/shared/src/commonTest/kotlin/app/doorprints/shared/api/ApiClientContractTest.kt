@@ -96,6 +96,13 @@ class ApiClientContractTest {
     // ---------------------------------------------------------------- happy paths, headers, URLs, JSON on the wire
 
     @Test
+    fun statsCarryTheServersHighestSyncVersionAndAnOlderServerSendsNone() = runTest {
+        // S4b-BL-20: read when present; an older server's answer (R.STATS, no field) leaves it null, i.e. unknown.
+        assertEquals(418L, FakeServer(json(200, R.STATS_WITH_MAX_VERSION)).api().stats().maxSyncVersion)
+        assertNull(FakeServer(json(200, R.STATS)).api().stats().maxSyncVersion)
+    }
+
+    @Test
     fun statsSendsTheApiKeyAndParses() = runTest {
         val server = FakeServer(json(200, R.STATS))
         assertEquals(StatsDto(houses = 12, shortlisted = 3, rejected = 2, visits = 27, streets = 9), server.api().stats())

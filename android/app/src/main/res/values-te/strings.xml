@@ -10,16 +10,6 @@
     <string name="status_NEW">కొత్తది</string>
     <string name="status_SHORTLISTED">ఎంపికైంది</string>
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
-    <string name="check_water">నీటి సరఫరా</string>
-    <string name="check_power">పవర్ బ్యాకప్</string>
-    <string name="check_parking">పార్కింగ్</string>
-    <string name="check_sunlight">సూర్యరశ్మి</string>
-    <string name="check_ventilation">గాలి ప్రసరణ</string>
-    <string name="check_noise">ప్రశాంతత (తక్కువ శబ్దం)</string>
-    <string name="check_security">భద్రత</string>
-    <string name="check_maintenance">భవనం పరిస్థితి</string>
-    <string name="check_neighbourhood">పరిసరాలు</string>
-    <string name="check_commute">రాకపోకల సౌలభ్యం</string>
     <string name="notif_channel_hunt">హంట్ మోడ్</string>
     <string name="notif_channel_hunt_desc">Doorprints మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
     <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>
@@ -70,8 +60,6 @@
     <string name="export_notif_failed">కాపీని సేవ్ చేయలేకపోయాం</string>
     <string name="import_notif_done">బ్యాకప్ దిగుమతి అయింది</string>
     <string name="import_notif_failed">బ్యాకప్‌ను దిగుమతి చేయలేకపోయాం</string>
-    <string name="import_stopped">దిగుమతి ఆపేశాం. ఇప్పటికే చేరినవి అలాగే ఉంటాయి; పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
-    <string name="import_stopped_copy">దిగుమతి ఆపేశాం. ఏదీ జోడించబడలేదు.</string>
     <string name="import_write_failed_copy">దిగుమతి పూర్తి కాలేదు, కాబట్టి ఏదీ జోడించబడలేదు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, మళ్లీ ప్రయత్నించండి.</string>
     <string name="auto_backup_stopped_title">ఆటోమేటిక్ బ్యాకప్ ఆగిపోయింది</string>
     <string name="auto_backup_stopped_text">ఆ ఫోల్డర్ ఇప్పుడు అందుబాటులో లేదు. మళ్లీ ఎంచుకోవడానికి నొక్కండి.</string>

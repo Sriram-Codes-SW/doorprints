@@ -210,6 +210,28 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  /*
+   * Each counter on one line, its number before its caption ("0 Houses"), wrapping only when the caption does not fit:
+   * the two rows are about 40% shorter, so the whole strip shows under the phone map with more map above it.
+   */
+  .stats div {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    column-gap: 0.3em;
+    padding-block: var(--space-2);
+  }
+
+  .stats dd {
+    order: -1;
+  }
+
+  /* A caption longer than its cell (Tamil at 200% text) wraps and breaks inside it instead of widening the page. */
+  .stats dt {
+    min-width: 0;
+  }
+
   /* The fifth number takes the rest of the second row, so no empty cell shows the grid's divider colour. */
   .stats div:last-child:nth-child(3n + 2) {
     grid-column: span 2;
@@ -315,6 +337,16 @@
 }
 
 @media (max-width: 760px) {
+  /*
+   * The page grows with its list and <main> scrolls it. At height: 100% the layout overflowed this box, and a scroller
+   * pads only its own children's boxes, so the end of the list stayed 40px under the bottom bar ("Add house" of the
+   * empty list could not be scrolled clear of it).
+   */
+  :host {
+    height: auto;
+    min-height: 100%;
+  }
+
   .layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
@@ -325,10 +357,27 @@
     min-height: 100%;
   }
 
+  /*
+   * The map fills the visible page area (100cqh of <main>, app.ts: between the header and the bottom bar) less the
+   * list's heading and counters (--map-peek, measured by MapPage: listPeek), so "Your houses" and every counter, number
+   * and caption, show under it before any scrolling. 55vh was 55% of the largest viewport (vh ignores the address
+   * bar): on a 384x615 Android phone the map took 391px and the counters' captions sat under the bottom bar (owner
+   * report 2026-09-24). 3.75rem (the heading) stands in until the first measurement; a short landscape page keeps at
+   * least 256px of map (or all of the page, if smaller). 55vh stays for a browser without container units.
+   */
   .map-wrap {
+    --map-peek: 3.75rem;
     height: 55vh;
-    min-height: 16rem;
+    height: max(min(256px, 100cqh), calc(100cqh - var(--map-peek)));
+    /*
+     * Never so short that MapLibre's control column (zoom in, zoom out, my location: 44px each, their 10px margins and
+     * the 24px credits button: 196px, measured) runs out of the top of the map above the bottom row (--map-stack-h,
+     * measured by MapPage), with --space-2 below and above it: with a two-row legend and 150% text at 320px, zoom in
+     * was cut off under the header.
+     */
+    min-height: calc(var(--map-stack-h, 0px) + 196px + 2 * var(--space-2));
   }
+
 
   .panel {
     overflow: visible;
@@ -348,6 +397,7 @@
     bottom: var(--space-2);
     z-index: 2;
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--space-2);
     pointer-events: none;
@@ -357,10 +407,16 @@
     pointer-events: auto;
   }
 
+  /*
+   * Beside the actions while its widest item fits there, else on a row of its own above them: at 320px with 150% text
+   * "Shortlisted" and "Rejected" ran under "Add house" (owner report 2026-09-24). It wraps from its narrowest
+   * (min-content) and grows no wider than its one-line width, so it keeps the shape of a small card.
+   */
   .legend {
     position: static;
-    flex: 0 1 auto;
-    min-width: 0;
+    flex: 1 1 0;
+    min-width: min-content;
+    max-width: max-content;
   }
 
   .map-actions {
@@ -375,6 +431,16 @@
   }
 
   .map-actions .btn {
+    max-width: 100%;
+  }
+
+  /*
+   * With the legend shown the actions keep their one-line width (the legend takes what is left, or moves to a row of
+   * its own above them). Capped at 60%, "Add house" broke onto two lines when it was alone on its row, and the taller
+   * row pushed MapLibre's zoom-in button out of the top of the map at 320px and 150% text. In add mode (no legend) the
+   * 60% cap stays, so a long Tamil "Place here" does not cover the whole width of the map.
+   */
+  .map-stack.with-legend .map-actions {
     max-width: 100%;
   }
 

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import app.doorprints.ui.res.*
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -51,11 +52,26 @@ object Formats {
      */
     fun score(score: Double?): String {
         score ?: return "–"
-        if (score.isNaN() || score.isInfinite()) return score.toString()
-        val tenths = floor(abs(score) * 10 + 0.5).toLong()
-        val sign = if (score < 0) "-" else ""
+        return oneDecimal(score)
+    }
+
+    /**
+     * [value] with one decimal, rounded half up ("1.3" for 1.25): the score's rule ([score]) and the Assistant's walking
+     * distance in km, which was `String.format(Locale.ROOT, "%.1f")` before CMP-5 (`FormatsParityTest` checks both
+     * against the JVM).
+     */
+    fun oneDecimal(value: Double): String {
+        if (value.isNaN() || value.isInfinite()) return value.toString()
+        val tenths = floor(abs(value) * 10 + 0.5).toLong()
+        val sign = if (value < 0) "-" else ""
         return "$sign${tenths / 10}.${tenths % 10}"
     }
+
+    /**
+     * A latitude or longitude as the house form shows it: six decimals (about 10 cm), a dot whatever the language.
+     * The platform's own `%.6f` ([formatSixDecimals]), so Android writes exactly what the form wrote before CMP-6.
+     */
+    fun coordinate(value: Double): String = formatSixDecimals(value)
 
     /** A medium date and a short time in [language] (default: [appLanguage]). */
     fun dateTime(epochMillis: Long, language: String = appLanguage()): String =
@@ -65,6 +81,9 @@ object Formats {
     fun date(epochMillis: Long, language: String = appLanguage()): String =
         formatDate(epochMillis, language, withTime = false)
 }
+
+/** Now, wall clock, in epoch ms (a house's `createdAt`, a run's `finishedAt`; was `System.currentTimeMillis`). */
+internal fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 /**
  * [format] (a UI string read with `stringResource`) with its positional placeholders `%1$s` and `%1$d` filled from
@@ -77,6 +96,9 @@ fun formatPositional(format: String, vararg args: Any): String =
 
 /** The placeholders Compose resources fill (its `SimpleStringFormatRegex`). */
 private val POSITIONAL_PLACEHOLDER = Regex("""%(\d+)\$[ds]""")
+
+/** [value] with six decimals, rounded as the platform's `%.6f` does, with a dot (Android: `String.format(Locale.ROOT)`). */
+internal expect fun formatSixDecimals(value: Double): String
 
 /**
  * The platform's medium date (and, [withTime], short time) for [language] with region IN, in the device's time zone.

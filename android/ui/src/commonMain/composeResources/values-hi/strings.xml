@@ -25,7 +25,7 @@
     <string name="status_REJECTED">अस्वीकृत</string>
     <string name="status_ALL">सभी</string>
     <string name="status_filter">%1$s (%2$d)</string>
-    <!-- Checklist labels: Compare's rows since CMP-4 P4c; the house form reads the Android copies until P6a. -->
+    <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
     <string name="check_water">पानी की आपूर्ति</string>
     <string name="check_power">बिजली बैकअप</string>
     <string name="check_parking">पार्किंग</string>
@@ -494,4 +494,43 @@
         <item quantity="one">योजना तैयार: %1$d पड़ाव</item>
         <item quantity="other">योजना तैयार: %1$d पड़ाव</item>
     </plurals>
+    <!-- List patterns (CMP-6): also Android resources, for the import notification (StringParityTest keeps them equal). -->
+    <string name="import_list_two">%1$s और %2$s</string>
+    <string name="import_list_three">%1$s, %2$s और %3$s</string>
+    <string name="import_list_middle">%1$s, %2$s</string>
+    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). All but import_stopped* are also Android
+         resources, for the notifications (StringParityTest keeps the two equal). -->
+    <string name="export_done">सहेजा गया: %1$s</string>
+    <string name="export_done_in">%1$s में सहेजा गया: %2$s</string>
+    <string name="export_done_plain">सहेजा गया।</string>
+    <string name="export_done_partial">अधूरा बैकअप सहेजा गया: %1$s</string>
+    <string name="export_done_partial_in">%1$s में अधूरा बैकअप सहेजा गया: %2$s</string>
+    <string name="export_done_partial_plain">अधूरा बैकअप सहेजा गया।</string>
+    <string name="export_ready">साझा करने के लिए तैयार: %1$s</string>
+    <string name="export_ready_partial">अधूरा बैकअप साझा करने के लिए तैयार: %1$s</string>
+    <string name="export_problem_no_space">पर्याप्त खाली जगह नहीं है</string>
+    <string name="export_problem_cannot_write">चुनी गई फ़ाइल या फ़ोल्डर में लिखा नहीं जा सकता</string>
+    <string name="export_problem_unknown">लिखते समय कुछ गड़बड़ हो गई</string>
+    <string name="problem_not_a_backup">यह Doorprints बैकअप नहीं है</string>
+    <string name="problem_unsupported">यह Doorprints के नए संस्करण से बना है</string>
+    <string name="problem_too_many">इसमें बहुत ज़्यादा फ़ाइलें हैं</string>
+    <string name="problem_too_large">यह बहुत बड़ी है</string>
+    <string name="problem_suspicious">इसमें एक असुरक्षित फ़ाइल नाम है</string>
+    <string name="problem_checksum">यह ख़राब है: चेकसम मेल नहीं खाता</string>
+    <string name="problem_broken">इसका डेटा पढ़ा नहीं जा सका</string>
+    <string name="problem_read_failed">इसे स्टोरेज से पढ़ा नहीं जा सका</string>
+    <string name="problem_write_failed">इसे लिखा नहीं जा सका — खाली जगह देखें</string>
+    <string name="import_added">जोड़े गए: %1$s।</string>
+    <string name="import_updated">अपडेट किए गए: %1$s।</string>
+    <string name="import_done_nothing">आयात पूरा हुआ। कुछ भी जोड़ने या अपडेट करने की ज़रूरत नहीं थी।</string>
+    <plurals name="import_restored_result">
+        <item quantity="one">%1$d मकान वापस लाया गया।</item>
+        <item quantity="other">%1$d मकान वापस लाए गए।</item>
+    </plurals>
+    <string name="import_write_failed">आयात बीच में रुक गया — कुछ चीज़ें शायद पहले ही जुड़ चुकी हैं। देखें कि फ़ोन में खाली जगह है, फिर पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
+    <string name="import_write_failed_copy">आयात पूरा नहीं हो सका, इसलिए कुछ भी नहीं जोड़ा गया। देखें कि फ़ोन में खाली जगह है, फिर दोबारा कोशिश करें।</string>
+    <string name="import_stopped">आयात रोक दिया गया। जो जुड़ चुका है वह रहेगा; पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
+    <string name="import_stopped_copy">आयात रोक दिया गया। कुछ भी नहीं जोड़ा गया।</string>
+    <!-- S4b-BL-20 (2026-09-24): under review (the web's data.serverReset, "this browser" as "this phone"). -->
+    <string name="sync_server_reset">लगता है आपका सर्वर रीसेट हो गया है या किसी पुरानी कॉपी पर लौटा दिया गया है। Doorprints इस फ़ोन की हर चीज़ उसे फिर से भेज रहा है और उस पर मौजूद सब कुछ फिर से डाउनलोड कर रहा है। यहाँ कुछ भी नहीं खोया है।</string>
 </resources>

@@ -36,6 +36,20 @@ public class SyncVersions {
         em.createNativeQuery("select count(*) from pg_advisory_xact_lock(" + LOCK_KEY + ")").getSingleResult();
     }
 
+    /**
+     * The highest sync version handed out so far: {@code sync_seq}'s last value, or 0 on a new database whose sequence
+     * has never been used. Clients compare it with their stored cursors to detect a server that was reset or restored
+     * from an older dump (S4b-BL-20): their cursors come from committed rows, whose versions never exceed this, so a
+     * cursor above it means the server lost changes. The sequence, not the rows' maximum, because rows can go (the
+     * "delete all my data" call) while the sequence never goes back on a healthy server. One row read, no lock; a
+     * version taken by a transaction still open may already count, which only makes the answer higher.
+     */
+    @Transactional(readOnly = true)
+    public long highest() {
+        return ((Number) em.createNativeQuery(
+                "select case when is_called then last_value else 0 end from sync_seq").getSingleResult()).longValue();
+    }
+
     /** Takes the writer lock (if not held yet) and returns the next sync version. */
     @Transactional(propagation = Propagation.MANDATORY)
     public long next() {

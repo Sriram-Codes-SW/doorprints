@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.31 |
+| Version | 0.32 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -43,6 +43,7 @@
 | 0.29 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a ([03](03-design.md) ADR-23 P4a): the §12 RTM row of FR-019 names the Room database in `:shared` commonMain (schema export `android/shared/schemas/…/2.json`) and adds TC-U-63 (`AppDatabaseMigrationTest`). |
 | 0.30 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): the §12 RTM rows of FR-030 and SEC-010/SEC-011 name the settings, `SecretStore` and `ServerUrl` in `:shared` commonMain and `KeystoreSecretStore` in `:app`, and the new tests TC-U-64 and TC-U-65 ([06](06-test-plan.md)). |
 | 0.31 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): the §12 RTM rows of FR-019 and FR-042..FR-048 add TC-U-66 (`RepositoryTransactionTest`); FR-011 names `CompareScreen.kt` in `:ui` commonMain (`app/ui/CompareTab.kt` is the Android wrapper) and adds TC-U-67; FR-007 names `AndroidRepository.addPhoto`. |
+| 0.32 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [03](03-design.md) ADR-23 P5-P7): the §12 RTM rows name the screens in `:ui` commonMain (FR-001, FR-009, FR-018, FR-037, FR-039, FR-042..FR-048) and the new tests TC-U-68 to TC-U-77 and TC-I-36 (FR-001, FR-021, FR-023, FR-028, FR-037, FR-039, FR-042..FR-048); FR-098 names `IndiaViewOps.kt` and the held-areas file (S4b-BL-12), adds TC-U-73, and its known limits follow S4b-BL-12 and S4b-BL-17. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -251,7 +252,7 @@ AI-assisted column mapping, is a possible later feature with its own name (11.3)
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
-| FR-098 | **Every map shows India's external boundary as the Government of India depicts it**, on Android and the web, identically, as the only view (no switch; every user is in India). All of Jammu and Kashmir and Ladakh are inside India, including the areas the tiles call Azad Kashmir, Gilgit-Baltistan, the Shaksgam valley and Aksai Chin, and so is Arunachal Pradesh. The map draws one solid outline and **no Line of Control, Line of Actual Control or other de facto or claim line** at any zoom, including while closer tiles are still loading and offline, and no "Azad Kashmir" or "Gilgit-Baltistan" state label. The rules are applied on every load of the base style (first load, retries, reloads); a base-style change that removes a layer the rules refer to never breaks the map, and India's outline is still drawn. No new network host. Design: [03](03-design.md) ADR-22. | M | **Impl on Android and the web** (branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI run on it not finished at the time of writing; not deployed). Both apps apply the same five rules of [03](03-design.md) ADR-22, including rule 2's adm0 clause and tile-zoom guard (web `shared/india-boundaries.ts` `COUNTRY_LINE_RULE`, `TILE_ZOOM_GUARD`; Android `ui/IndiaViewRules.kt` `COUNTRY_LINE_EXTRA_FILTER`, `TILE_ZOOM_GUARD`). Known limits, not failures of this requirement: along the 7 stretches where the tiles draw India's border themselves (with Nepal, Bhutan, Myanmar and, in the Wakhan, Afghanistan), a small step at street zoom where the at most 7 km connector joins the tile line, small loops at Sikkim's two tri-junctions (about 13 x 3 km at Nepal-China-India (on glaciers, seen only from about zoom 10) and about 2 km at Doklam), the tile line running on past the hand-over at Jomotsangkha (about 9 km) and Longwa (about 3 km) from about zoom 10 (a small hook at Jomotsangkha from zoom 9), and no line there at zoom 5+ while those tiles load or offline without them ([03](03-design.md) ADR-22 *Consequences*). The Assam-Arunachal Pradesh state line is drawn from zoom 5, the two close lines are gone and the whole India-China border is drawn by India's outline alone since branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed) (S4b-BL-11, S4b-BL-15, S4b-BL-16). Compared with the code as of HEAD `3ad2b58` (2026-09-24) and `9e0036e` (`fix/india-boundary-lines`) |
+| FR-098 | **Every map shows India's external boundary as the Government of India depicts it**, on Android and the web, identically, as the only view (no switch; every user is in India). All of Jammu and Kashmir and Ladakh are inside India, including the areas the tiles call Azad Kashmir, Gilgit-Baltistan, the Shaksgam valley and Aksai Chin, and so is Arunachal Pradesh. The map draws one solid outline and **no Line of Control, Line of Actual Control or other de facto or claim line** at any zoom, including while closer tiles are still loading and offline, and no "Azad Kashmir" or "Gilgit-Baltistan" state label. The rules are applied on every load of the base style (first load, retries, reloads); a base-style change that removes a layer the rules refer to never breaks the map, and India's outline is still drawn. No new network host. Design: [03](03-design.md) ADR-22. | M | **Impl on Android and the web** (branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, CI run on it not finished at the time of writing; not deployed). Both apps apply the same five rules of [03](03-design.md) ADR-22, including rule 2's adm0 clause and tile-zoom guard (web `shared/india-boundaries.ts` `COUNTRY_LINE_RULE`, `TILE_ZOOM_GUARD`; Android `ui/IndiaViewRules.kt` `COUNTRY_LINE_EXTRA_FILTER`, `TILE_ZOOM_GUARD`). Known limits, not failures of this requirement: along the 7 stretches where the tiles draw India's border themselves (with Nepal, Bhutan, Myanmar and, in the Wakhan, Afghanistan), a small step at street zoom where the at most 7 km connector joins the tile line, a small loop of about 2 km at Doklam, kept on purpose (since S4b-BL-17, PR #24, the loop at Nepal-China-India and the tile line's overrun at Jomotsangkha and Longwa are gone), at tile zoom 9-11 a few Pakistani lines near the LoC that the tiles merge with an Indian line (since S4b-BL-12, PR #24, `boundary_3` leaves out every tile line wholly inside the held areas' polygon, `geo/in-held-areas.geojson`), Pakistani, Chinese and Afghan admin lines not drawn within about 20 km outside the outline next to the held areas, and no line there at zoom 5+ while those tiles load or offline without them ([03](03-design.md) ADR-22 *Consequences*). The Assam-Arunachal Pradesh state line is drawn from zoom 5, the two close lines are gone and the whole India-China border is drawn by India's outline alone since branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed) (S4b-BL-11, S4b-BL-15, S4b-BL-16). Compared with the code as of HEAD `3ad2b58` (2026-09-24) and `9e0036e` (`fix/india-boundary-lines`) |
 
 ## 7. Non-functional requirements
 
@@ -407,7 +408,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 
 | Req | Design | Code module(s) | Test(s) |
 |---|---|---|---|
-| FR-001 | 03 §7.1 | android `ui/MapScreen.kt` (Save house here, long-press), web `pages/map`, `core/models.ts newHouse` | TC-M-01, TC-F-01, TC-U-51, TC-M-23, TC-M-24, TC-I-35 |
+| FR-001 | 03 §7.1 | android `MapScreen.kt` in `:ui` commonMain (Save house here, long-press; since CMP-7), web `pages/map`, `core/models.ts newHouse` | TC-M-01, TC-F-01, TC-U-51, TC-M-23, TC-M-24, TC-I-35, TC-U-68, TC-U-70, TC-U-76 |
 | FR-002 | 03 §6, §9 | backend `house/HouseDto`, `House`; android `data/Models.kt`; web `core/models.ts` | TC-I-03, TC-I-06 |
 | FR-003 | 03 §6 | `HouseDto.rating @Min(1) @Max(5)` | TC-I-06 |
 | FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05, TC-U-19 |
@@ -415,7 +416,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03, TC-I-35 |
 | FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `AndroidRepository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
 | FR-008 | 03 §7.3 | `visit/VisitController`, `Repository.markVisitedNow` | TC-I-07 |
-| FR-009 | 03 §4.2 | `MapScreen.kt addHouseLayers`, web `map-page` | TC-M-02 |
+| FR-009 | 03 §4.2 | `PlatformMap.android.kt` `addHouseLayers` (`:ui` androidMain since CMP-7), web `map-page` | TC-M-02, TC-I-35 |
 | FR-010 | 03 §4.2 | `HouseListScreen.kt` | TC-M-03, TC-I-35 |
 | FR-011 | 03 §4.2 | `CompareScreen.kt` (`:ui` commonMain since CMP-4 P4c; `app/ui/CompareTab.kt` is the Android wrapper), web `compare-page` | TC-M-04, TC-U-53, TC-I-35, TC-U-67 (`ModelLabelsTest`) |
 | FR-012 | 03 §10 | `HouseService.delete/purge`, `VisitController.delete` | TC-I-05, TC-I-16 |
@@ -424,17 +425,17 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-015 | 03 §7.3 | `location/StayDetector`, `HuntService.onStayStarted/Ended` | TC-U-01..03, TC-F-04 |
 | FR-016 | 03 §8.2 | `HuntService.onLocation` accuracy gate | TC-U-08, TC-F-05 |
 | FR-017 | 03 §8.2, ADR-01 | `HuntService`, `Notifications.CHANNEL_HUNT`, manifest `foregroundServiceType=location` | TC-F-01, TC-F-07 |
-| FR-018 | 03 §4.2 | `HuntState`, `MapScreen.HuntCard` | TC-F-02 |
+| FR-018 | 03 §4.2 | `HuntState` (`:shared` since CMP-7), `MapScreen.HuntCard` (`:ui`), `AppServices.mapScreen` | TC-F-02 |
 | FR-019 | 03 §10, §6.2 | `data/AppDatabase` (Room KMP in `:shared` commonMain since CMP-4 P4a; schema export `android/shared/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`), TC-U-63 (`AppDatabaseMigrationTest`), TC-U-66 (`RepositoryTransactionTest`) |
 | FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `ApiClient` + `RetryPolicy` (`:shared` api; replaced `data/RetryInterceptor` in Sprint 3.5) | TC-F-08, TC-U-17, TC-U-35 |
-| FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules`, `PhotoController.changes` | TC-U-06 (part), TC-I-05, TC-I-17 |
+| FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules` (`serverBehind`, `pushShowsReset`), `PhotoController.changes`, `StatsController` (`maxSyncVersion`), web `sync.service.ts` | TC-U-06 (part), TC-I-05, TC-I-17, TC-U-74, TC-I-36 |
 | FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `SyncRules.keepLocal` (`:shared` sync) | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |
-| FR-023 | 03 §10 | `SettingsStore.saveServer` | TC-U-06 |
+| FR-023 | 03 §10 | `SettingsStore.saveServer`, `SettingsStore.resetCursors` | TC-U-06, TC-U-74 |
 | FR-024 | 03 §4.3 | web `pages/*`, `core/config.*`, `core/api.interceptor.ts` | TC-M-05, TC-U-09, TC-U-19, TC-U-20 |
 | FR-025 | 03 §4.3 | web `core/geocode.service.ts` | TC-M-05 |
 | FR-026 | 03 §11 | `HouseRepository.findNearby` | TC-I-03, TC-I-13 |
 | FR-027 | 03 §11 | `HouseRepository.findLiveOnStreet` | TC-I-03, TC-I-19 |
-| FR-028 | 03 §9 | `StatsController` | TC-I-07 |
+| FR-028 | 03 §9 | `StatsController` | TC-I-07, TC-I-36 |
 | FR-029 | 03 §9 | actuator config in `application.yml` | TC-I-02 |
 | FR-030 | 03 §4.2 | `data/Settings.kt`, `data/ServerUrl.kt` (both `:shared` commonMain since CMP-4 P4b), `ui/SettingsScreen.kt` | TC-M-06, TC-U-15, TC-U-64, TC-U-65 |
 | FR-031 | 03 §9 | `privacy/DataController`, `DataService.export` | TC-I-18 |
@@ -443,9 +444,9 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-034 | 03 §10 | android `Repository.deletePhoto/sync`, backend `PhotoService.delete` | TC-I-17, TC-F-08 |
 | FR-035 | 09 §3 | `SyncWorker`, `Repository.sync(photosAllowed)`, `Settings.photosOnWifiOnly` | TC-F-10 |
 | FR-036 | 05 §8.2 | `android/ui/src/commonMain/composeResources/values*/strings.xml` (UI strings, since ADR-23 CMP-2), `res/values*/strings.xml` (service strings), `i18n/AppLocale.kt`, `res/xml/locales_config.xml`; web `i18n/*` | TC-L-01, TC-L-05, TC-U-21, TC-U-59, TC-U-60, TC-M-27 |
-| FR-037 | 03 §7.5 | web `pages/ask`, android `ui/AssistantScreen.kt` | TC-M-09, TC-AI-01..03 |
+| FR-037 | 03 §7.5 | web `pages/ask`, android `AssistantScreen.kt` and `AssistantViewModel` (`:ui` commonMain since CMP-5) | TC-M-09, TC-AI-01..03, TC-U-69 |
 | FR-038 | 03 §7.6 | web `house-detail-page` *Fill in from listing text* (`listingFill.*`), android `HouseEditScreen.PasteListingDialog` | TC-M-09, TC-AI-05 |
-| FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` | TC-M-09, TC-AI-07 |
+| FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` (`:ui`) | TC-M-09, TC-AI-07, TC-U-69, TC-U-76 |
 | FR-040 | 09 §2 | `HuntService.requestUpdates/stopIfBatteryLow` | TC-F-06, TC-F-09 |
 | FR-041 | 05 §4 | `ui/Theme.kt`, `res/values-night` | TC-A-06, TC-U-56, TC-M-26 |
 | FR-083, FR-084 | [11](11-feature-parity-and-export-spec.md) 5.16 | planned: reminder scheduler (alarm + WorkManager fallback), `Notifications`, Settings | Planned TC-U-38, TC-M-18 ([06](06-test-plan.md) §13, [11](11-feature-parity-and-export-spec.md) §13) |
@@ -492,9 +493,9 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-049 | [11](11-feature-parity-and-export-spec.md) 5.16..5.18 | planned: notification actions, boot/package-replaced receivers | Planned TC-S-22 |
 | PRV-001..003 | 03 §7.2, 04 §4 | `HuntService`, manifest permissions | TC-F-07, TC-S-07 |
 | PRV-024..PRV-027 | [11](11-feature-parity-and-export-spec.md) 5.18, 03 ADR-01 | planned: permission state checks on resume, rationale screen, settings deep link, area wake-up auto-off | Planned TC-U-40, TC-M-18 (permission matrix), TC-A-12 |
-| FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `app/ui/ExportScreen.kt`, `app/ui/ImportScreen.kt`, `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10, TC-U-66 |
+| FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `ExportScreen.kt`, `ImportScreen.kt`, `ImportViewModel.kt` (`:ui` commonMain since CMP-6; `app/export/AndroidBackupServices.kt`), `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10, TC-U-66, TC-U-71 |
 | FR-089..FR-097 | [schemas/README.md](schemas/README.md) §0, §6, §7; 03 §16.3; [12](12-brand-and-naming.md) G | Android `shared/export/ImportPlan.kt`, `BackupValidation`, `app/export/BackupReader.kt`, `app/ui/ImportScreen.kt`; server `backend/backup/**`; web: planned (4b) | TC-U-42, TC-U-28, TC-S-17, TC-I-33, TC-I-34; the web import's tests are planned with S4b-00 |
-| FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `ui/IndiaView.kt`, `ui/IndiaViewRules.kt`, `ui/MapScreen.kt` (`loadStyle`), `assets/geo/in-boundaries.geojson`; data builder `web/scripts/geo/build_in_boundaries.py` | TC-U-54, TC-U-55, TC-S-25, TC-M-25, TC-M-26 (screens only) |
+| FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `IndiaViewOps.kt` and `IndiaViewRules.kt` (`:ui` commonMain since CMP-7), `MapLibreStyleOps.kt` and `PlatformMap.android.kt` (`:ui` androidMain), `assets/geo/in-boundaries.geojson`, `assets/geo/in-held-areas.geojson` (and the web's `public/geo/in-held-areas.geojson`); data builders `web/scripts/geo/build_in_boundaries.py`, `build_in_held_areas.py` | TC-U-54, TC-U-55, TC-U-73, TC-S-25, TC-I-35, TC-M-25, TC-M-26 (screens only) |
 | FR-070..FR-073 | 03 §16.4 | `web/public/manifest.webmanifest`, `web/public/sw.js`, `core/pwa.service.ts`, `data/storage.service.ts`, `data/local-db.ts`, `shared/app-banners.ts`, `pages/share/share-page.ts`, `scripts/sw-precache*.mjs` | TC-U-31, TC-U-43, TC-U-44, TC-S-19, TC-M-15, TC-M-19 |
 | NFR-021..NFR-027 | 03 §16 | `shared/export/ExportModel.kt` (fixed order, passed-in clock), `web/src/app/export/zip.ts` (stored entries) | TC-U-26, TC-U-29, TC-P-05 (planned) |
 | PRV-012, PRV-018 | 03 §16.2 | `ExportBundle.build` (one redaction point), export screens | TC-U-27 |

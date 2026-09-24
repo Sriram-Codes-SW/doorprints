@@ -33,12 +33,10 @@ class ImportModeTagTest {
 
     @Test
     fun onlyACopySaysNothingWasAdded() {
-        assertEquals(R.string.import_stopped_copy, ImportWorker.stoppedRes(ImportMode.COPY))
+        // The notification's text; the Import screen's (and its stopped text) is pinned by :ui's BackupTextsTest.
         assertEquals(R.string.import_write_failed_copy, ImportWorker.writeFailedRes(ImportMode.COPY))
         // Merge, and a run of unknown mode, keep "import the same file again to finish".
-        assertEquals(R.string.import_stopped, ImportWorker.stoppedRes(ImportMode.MERGE))
         assertEquals(R.string.import_write_failed, ImportWorker.writeFailedRes(ImportMode.MERGE))
-        assertEquals(R.string.import_stopped, ImportWorker.stoppedRes(null))
         assertEquals(R.string.import_write_failed, ImportWorker.writeFailedRes(null))
     }
 }

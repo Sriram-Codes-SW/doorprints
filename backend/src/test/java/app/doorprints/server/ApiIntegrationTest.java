@@ -544,6 +544,31 @@ class ApiIntegrationTest {
     }
 
     /**
+     * S4b-BL-20: {@code GET /api/stats} carries {@code maxSyncVersion}, the highest version handed out, so a client
+     * can tell a reset server (its cursors above that) from a healthy one. It is at least every row's version in
+     * every table, and a new write moves it up to that write's version or beyond.
+     */
+    @Test
+    void statsCarryTheHighestSyncVersion() {
+        var houseId = UUID.randomUUID();
+        var house = put(houseId, house("Versioned", 12.9, 77.6, null));
+        var visit = putVisit(UUID.randomUUID(), Map.of("houseId", houseId.toString(), "lat", 12.9, "lon", 77.6,
+                "arrivedAt", "2026-09-01T10:00:00Z", "source", "MANUAL"));
+        var first = maxSyncVersion();
+        assertThat(first).isGreaterThanOrEqualTo(Math.max(version(house), version(visit)))
+                .isGreaterThanOrEqualTo(maxVersion("/api/houses"))
+                .isGreaterThanOrEqualTo(maxVersion("/api/visits"))
+                .isGreaterThanOrEqualTo(maxVersion("/api/photos"));
+        var again = put(houseId, house("Versioned again", 12.9, 77.6, null));
+        assertThat(version(again)).isGreaterThan(first);
+        assertThat(maxSyncVersion()).isGreaterThanOrEqualTo(version(again));
+    }
+
+    private long maxSyncVersion() {
+        return ((Number) api.get().uri("/api/stats").retrieve().body(MAP).get("maxSyncVersion")).longValue();
+    }
+
+    /**
      * The export speaks the shared backup format ({@code doorprints-backup/1}), the same object the Android and web
      * backups carry as {@code data.json}. Its schema is pinned against the canonical sample in
      * {@link app.doorprints.server.backup.BackupApiTest}; this test only checks that the endpoint still hands it out.

@@ -1,7 +1,7 @@
 package app.doorprints.ui
 
 /**
- * The next step a location note offers (LocationPermissionNote in :app): the same on the Map, the house form and the
+ * The next step a location note offers ([LocationPermissionNote]): the same on the Map, the house form and the
  * Assistant.
  *  - [ALLOW]: no location, Android will ask: *Allow location* launches the request.
  *  - [OPEN_SETTINGS]: no location, Android will not ask again: *Open settings*.

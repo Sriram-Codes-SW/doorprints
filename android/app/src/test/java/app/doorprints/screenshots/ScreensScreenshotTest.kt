@@ -5,6 +5,8 @@ import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -22,10 +24,12 @@ import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.DoorprintsTheme
 import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.ImportScreen
-import app.doorprints.ui.ProvidePlatformServices
+import app.doorprints.ui.LocalAppServices
+import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -50,7 +54,21 @@ import java.util.TimeZone
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-hdpi", application = ScreenshotTestApp::class)
 class ScreensScreenshotTest(private val lang: String, private val dark: Boolean) {
-    @get:Rule val compose = createComposeRule()
+    /**
+     * The screens' effects run on a [StandardTestDispatcher], so on the main (test) thread, as in the app, where they
+     * run on the main thread's dispatcher (S4b-BL-42). With the rule's default, an UnconfinedTestDispatcher wrapped in
+     * `ApplyingContinuationInterceptor`, a coroutine that resumed after a thread switch stayed on that thread: Room's
+     * and DataStore's flows collected by `collectAsStateWithLifecycle` and Export's count after
+     * `withContext(Dispatchers.Default)` wrote their state on a worker, and the interceptor applied the snapshot there
+     * too (`Snapshot.sendApplyNotifications` on DefaultDispatcher-worker and arch_disk_io threads, three to four times
+     * per Export shot). That is the only composition work these tests ran off the main thread, and the likely source of
+     * `export[hi-dark=true]`'s CalledFromWrongThreadException (once in about eight runs during CMP-6; not reproduced
+     * since in several hundred shots). Those continuations now wait in [effects]' scheduler until [awaitStableFrame]
+     * runs them on the main thread.
+     */
+    private val effects = StandardTestDispatcher()
+
+    @get:Rule val compose = createComposeRule(effects)
 
     @Before fun setUp() {
         // androidx FileProvider caches its path roots per authority in a static map, but Robolectric gives each test a
@@ -87,8 +105,8 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     private fun shoot(screen: String, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
-            // As MainActivity does: the screens read the platform seam (ADR-23 CMP-3).
-            ProvidePlatformServices {
+            // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
+            ProvideAppServices {
                 DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
             }
         }
@@ -98,24 +116,40 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     /**
      * Room answers on its own threads, which Compose's idling does not wait for (the Export screen's counts and
-     * buttons came in after the first frame on some runs): idle the main looper and wait until two frames in a row are
-     * the same, up to about 3 s.
+     * buttons came in after the first frame on some runs): idle the main looper, run the effects waiting in [effects]'
+     * scheduler, and wait until three frames in a row are the same, up to about 4.5 s.
      */
     private fun awaitStableFrame() {
         var last: IntArray? = null
-        repeat(20) {
-            Thread.sleep(150)
-            shadowOf(Looper.getMainLooper()).idle()
-            compose.waitForIdle()
+        var unchanged = 0
+        repeat(30) {
+            // About 150 ms per pass, in short steps, each running the effects that resumed since the last one (a Room
+            // or DataStore answer, Export's count) here, on the main thread: an answer that starts the next step (an
+            // effect relaunched for new rows, whose count comes back from a worker) is followed up in the same pass.
+            // runCurrent, not advanceUntilIdle, so no delay is skipped and no ticking clock runs forever.
+            repeat(10) {
+                Thread.sleep(15)
+                shadowOf(Looper.getMainLooper()).idle()
+                compose.runOnIdle { effects.scheduler.runCurrent() }
+                compose.waitForIdle()
+            }
             val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
             val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-            if (last?.contentEquals(pixels) == true) return
+            // Three passes alike, not two, so a slow answer that lands a pass late is still waited for.
+            unchanged = if (last?.contentEquals(pixels) == true) unchanged + 1 else 0
+            if (unchanged >= 2) return
             last = pixels
         }
     }
 
     @Test fun houses() = shoot("houses") { HouseListScreen(onOpenHouse = {}) }
-    @Test fun compare() = shoot("compare") { CompareScreen(onOpenHouse = {}) }
+    @Test fun compare() = shoot("compare") {
+        // As the root's Compare destination does (CMP-5): the houses (null until Room answers) and the visit counts.
+        val repo = LocalAppServices.current.repository
+        val houses by repo.houses.collectAsState(initial = null)
+        val counts by repo.visitCounts.collectAsState(initial = emptyList())
+        CompareScreen(houses, counts, onOpenHouse = {})
+    }
     @Test fun houseEdit() = shoot("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
     @Test fun houseNew() = shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
     @Test fun settings() = shoot("settings") { SettingsScreen() }

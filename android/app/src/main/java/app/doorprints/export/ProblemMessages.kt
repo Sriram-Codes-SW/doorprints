@@ -4,8 +4,9 @@ import app.doorprints.R
 import app.doorprints.shared.export.BackupProblem
 
 /**
- * The translated reason for each failure code. In one place because the screens and the completion
- * notifications must say the same thing (a stable code in the worker's output, never the exception text).
+ * The translated reason for each failure code, as Android resources for the completion notifications (a stable code in
+ * the worker's output, never the exception text). The screens read the same texts as Compose resources
+ * (`messageResource` in `:ui`, CMP-6 P6b, S4b-BL-35); `StringParityTest` keeps the two copies equal.
  */
 internal fun ExportProblem.messageRes(): Int = when (this) {
     ExportProblem.NO_SPACE -> R.string.export_problem_no_space

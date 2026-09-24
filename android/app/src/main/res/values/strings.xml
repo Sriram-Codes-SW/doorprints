@@ -10,16 +10,6 @@
     <string name="status_NEW">New</string>
     <string name="status_SHORTLISTED">Shortlisted</string>
     <string name="status_REJECTED">Rejected</string>
-    <string name="check_water">Water supply</string>
-    <string name="check_power">Power backup</string>
-    <string name="check_parking">Parking</string>
-    <string name="check_sunlight">Sunlight</string>
-    <string name="check_ventilation">Ventilation</string>
-    <string name="check_noise">Quiet (low noise)</string>
-    <string name="check_security">Safety and security</string>
-    <string name="check_maintenance">Building condition</string>
-    <string name="check_neighbourhood">Neighbourhood</string>
-    <string name="check_commute">Commute</string>
     <string name="notif_channel_hunt">Hunt mode</string>
     <string name="notif_channel_hunt_desc">Shown while Doorprints is tracking your walk</string>
     <string name="notif_channel_alerts">House and street alerts</string>
@@ -70,8 +60,6 @@
     <string name="export_notif_failed">The copy could not be saved</string>
     <string name="import_notif_done">Backup imported</string>
     <string name="import_notif_failed">The backup could not be imported</string>
-    <string name="import_stopped">Import stopped. Anything already added stays; import the same file again to finish.</string>
-    <string name="import_stopped_copy">Import stopped. Nothing was added.</string>
     <string name="import_write_failed_copy">The import could not be finished, so nothing was added. Check that the phone has free space, then try again.</string>
     <string name="auto_backup_stopped_title">Automatic backup stopped</string>
     <string name="auto_backup_stopped_text">The folder is no longer available. Tap to choose it again.</string>

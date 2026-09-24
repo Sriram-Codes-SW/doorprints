@@ -11,7 +11,9 @@ SHARED: the stretches of India's outline along which the base map's tiles draw a
 tile line is the more precise one, and drawing ours as well showed two close lines (S4b-BL-11, S4b-BL-16). Each
 stretch is cut out of kind=claim at two points on our outline and moved to kind=world; the claim pieces on either side
 end with a short connector (at most MAX_KM of find_shared_stretches.py) to the matching point on the tile line, so from
-zoom 5 the border has no gap. The list is the output of find_shared_stretches.py for the OpenFreeMap planet named
+zoom 5 the border has no gap. Where the finder moved a hand-over (S4b-BL-17), the stretch ends where our outline
+crosses a neighbour's tile line (Sikkim's north-west tri-junction: both points are that crossing, no connector) or the
+connector runs to where India's tile line stops (Jomotsangkha, Longwa). The list is the output of find_shared_stretches.py for the OpenFreeMap planet named
 there, run on a build with SHARED = []; re-run it after each planet or style update (S4b-BL-9) and paste its output.
 
 Usage: build_in_boundaries.py <natural-earth-vector checkout, commit ca96624> <output file> [--no-shared]
@@ -29,10 +31,10 @@ BOXES = {  # lon_min, lon_max, lat_min, lat_max
 SHARED = [
     ((80.92395, 30.27488), (80.90718, 30.21954), (80.54953, 29.89368), (80.56858, 29.88757)),  # 77.5 km
     ((88.07688, 26.99179), (88.0916, 27.00515), (87.9913, 27.0815), (87.99512, 27.10364)),  # 13.5 km
-    ((87.98934, 27.21839), (88.01203, 27.2162), (88.16462, 27.84536), (88.17786, 27.85627)),  # 75.2 km
+    ((87.98934, 27.21839), (88.01203, 27.2162), (88.11262, 27.8688), (88.11262, 27.8688)),  # 75.2 km before moving the hand-overs (end: crossing)
     ((88.87192, 27.2776), (88.86834, 27.26367), (88.84561, 26.99494), (88.87021, 26.99536)),  # 44.6 km
-    ((91.48447, 26.85273), (91.45899, 26.80662), (92.06749, 26.88307), (92.0777, 26.85844)),  # 79.3 km
-    ((95.24693, 26.6489), (95.22614, 26.6697), (95.05438, 26.49492), (95.0768, 26.47664)),  # 31.3 km
+    ((91.48447, 26.85273), (91.45899, 26.80662), (92.0758, 26.90129), (92.11504, 26.89452)),  # 79.3 km before moving the hand-overs (end: run-on 6.0 km)
+    ((95.24693, 26.6489), (95.23396, 26.68247), (95.05438, 26.49492), (95.0768, 26.47664)),  # 31.3 km before moving the hand-overs (start: run-on 1.7 km)
     ((73.77475, 36.83811), (73.79993, 36.8906), (74.56178, 37.02968), (74.56167, 37.02996)),  # 105.9 km
 ]
 if '--no-shared' in sys.argv: SHARED = []

@@ -1,5 +1,14 @@
 package app.doorprints.ui
 
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+
 /*
  * India's external boundary as the Government of India shows it (owner issue P0, 2026-09-24): all of Jammu and
  * Kashmir and Ladakh inside India (including the areas the tiles label "Azad Kashmir" and "Gilgit-Baltistan",
@@ -7,8 +16,9 @@ package app.doorprints.ui
  * de facto or claim line. Every user of the app is in India, so this is the only view; there is no switch.
  *
  * The decisions are here, with no Android or MapLibre class, so a JVM test holds them (IndiaViewRulesTest). The
- * MapLibre calls that apply them to the loaded OpenFreeMap Liberty style are in IndiaView.kt. The web map applies
- * the same five rules (web/src/app/shared/india-boundaries.ts: COUNTRY_LINE_RULE and its _LEGACY twin, with `in`
+ * steps that apply them to the loaded OpenFreeMap Liberty style are [applyIndiaView] (IndiaViewOps.kt, common since
+ * CMP-7; IndiaViewOpsTest), over a [StyleOps] (Android: MapLibreStyleOps over MapLibre Native's Style). The web map
+ * applies the same five rules (web/src/app/shared/india-boundaries.ts: COUNTRY_LINE_RULE and its _LEGACY twin, with `in`
  * where this file uses `match`, and TILE_ZOOM_GUARD; android/shared/README.md section 9, item 36, done by Web on
  * 2026-09-24):
  *  1. hide [DISPUTED_LAYER] (every disputed line: LoC, LAC, claim lines);
@@ -18,7 +28,10 @@ package app.doorprints.ui
  *     instead ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
- *     drawn in place of a loading or missing one;
+ *     drawn in place of a loading or missing one; and [STATE_LINE_LAYER] leaves out every tile feature wholly inside
+ *     the polygon around the parts of India that Pakistan and China hold ([heldAreasFilter], [HELD_AREAS_ASSET_PATH];
+ *     S4b-BL-12): from tile zoom 9 the tiles carry Pakistan's district and tehsil lines across Gilgit-Baltistan and PoK
+ *     and China's county lines across Aksai Chin as undisputed admin level 5-6 lines with no country code;
  *  3. the bundled outline ([SOURCE_URI], built from Natural Earth by web/scripts/geo/build_in_boundaries.py): the
  *     'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines there are Natural Earth's ISO view and
  *     cannot be filtered), which also hold the stretches of India's outline along which the tiles draw a country line
@@ -88,9 +101,11 @@ object IndiaViewRules {
      * (android/shared/README.md section 9, item 38 (a)). MapLibre (native and gl) draws a lower-zoom parent tile
      * while a tile loads or when offline. Both renderers leave a layer's bucket out of a tile whose zoom is below
      * floor(minzoom): maplibre-native in `GeometryTile::setLayers` before the worker gets the layers
-     * (src/mln/tile/geometry_tile.cpp:317, called for new and relaid-out tiles, src/mln/renderer/tile_pyramid.cpp:167
-     * and 193, android-v13.6.1 c7506d6; the worker's parse loop, geometry_tile_worker.cpp lines 446-502, has no zoom
-     * check of its own and runs the filter with `overscaledZ`, line 502), maplibre-gl in src/source/worker_tile.ts
+     * (src/mln/tile/geometry_tile.cpp:317, `if (id.overscaledZ < std::floor(layerImpl.minZoom) || id.overscaledZ
+     * >= std::ceil(layerImpl.maxZoom)) continue;`, re-read at the tag for CMP-7, S4b-BL-13; called for new and
+     * relaid-out tiles, src/mln/renderer/tile_pyramid.cpp:167 and 193, android-v13.6.1 c7506d6; the worker's parse
+     * loop, geometry_tile_worker.cpp lines 446-502, has no zoom check of its own and runs the filter with
+     * `overscaledZ`, line 502), maplibre-gl in src/source/worker_tile.ts
      * line 109 and style_layer.ts lines 321-322 (v6.10.0). So by the source, minzoom 5 alone already keeps a zoom 4
      * tile's ISO-view line through Kashmir, Aksai Chin or Arunachal Pradesh off the map on both apps (read from the
      * source, not checked on a device). This rule is defence in depth and parity, the same on Android and the web: it
@@ -101,6 +116,71 @@ object IndiaViewRules {
      * `isExpression` and `convertLegacyHasFilter`), and means "the feature has this property" in both.
      */
     private const val ADM0_PRESENT = "[\"any\", [\"has\", \"adm0_l\"], [\"has\", \"adm0_r\"]]"
+
+    /**
+     * The polygon around the held areas (S4b-BL-12), built by web/scripts/geo/build_in_held_areas.py and byte-identical
+     * to web/public/geo/in-held-areas.geojson (IndiaBoundaryDataTest; the web spec pins the same sha256). Read from
+     * the app's assets on every style load ([StyleOps.readAsset]).
+     */
+    const val HELD_AREAS_ASSET_PATH = "geo/in-held-areas.geojson"
+
+    /**
+     * The held areas' geometry as compact style JSON, from the text of [HELD_AREAS_ASSET_PATH]: a FeatureCollection
+     * with one feature whose geometry is a Polygon of closed [longitude, latitude] rings. A Polygon only: MapLibre
+     * Android's `Expression.raw` turns `within`'s argument into a Polygon (`Expression.Converter.convert`,
+     * `Polygon.fromJson`, android-v13.6.1), and maplibre-native reads only a collection's first polygon. Null (the
+     * rule is then skipped with a warning) for anything else, so a broken file never reaches MapLibre. The web's
+     * `heldAreasGeometry`.
+     */
+    fun heldAreasGeometry(fileText: String): String? {
+        val root = try {
+            Json.parseToJsonElement(fileText) as? JsonObject
+        } catch (e: SerializationException) {
+            null
+        } ?: return null
+        if ((root["type"] as? JsonPrimitive)?.contentOrNull != "FeatureCollection") return null
+        val features = root["features"] as? JsonArray ?: return null
+        if (features.size != 1) return null
+        val geometry = (features[0] as? JsonObject)?.get("geometry") as? JsonObject ?: return null
+        if ((geometry["type"] as? JsonPrimitive)?.contentOrNull != "Polygon") return null
+        val rings = geometry["coordinates"] as? JsonArray ?: return null
+        fun position(p: JsonElement): Pair<Double, Double>? {
+            val a = p as? JsonArray ?: return null
+            if (a.size != 2) return null
+            val x = (a[0] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+            val y = (a[1] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+            return if (x.isFinite() && y.isFinite()) x to y else null
+        }
+        val ok = rings.isNotEmpty() && rings.all { ring ->
+            val points = (ring as? JsonArray)?.map(::position) ?: return@all false
+            points.size >= 4 && points.all { it != null } && points.first() == points.last()
+        }
+        return if (ok) JsonObject(mapOf("type" to JsonPrimitive("Polygon"), "coordinates" to rings)).toString() else null
+    }
+
+    /**
+     * ANDed with [STATE_LINE_LAYER]'s filter (S4b-BL-12): not a tile feature wholly inside the held areas' polygon
+     * [geometryJson] ([heldAreasGeometry]). `within` on a line feature is true only when every part of it is inside, so
+     * a feature crossing the polygon's edge is drawn whole: the polygon reaches about 20 km past the held areas
+     * (further where the zoom 9-11 tiles' pieces run on) and about 700 m across the tiles' LoC/LAC, so a Pakistani or
+     * Chinese line ending on the LoC/LAC is inside it and an Indian line is not. maplibre-native android-v13.6.1
+     * src/mln/style/expression/within.cpp `featureWithinPolygons` (lines 147-177: the feature's bbox strictly inside
+     * the polygon's, then every line part within one polygon) and src/mln/util/geometry_util.cpp
+     * `lineStringWithinPolygon` (lines 116-133: every vertex strictly inside, no segment crossing an edge), on the
+     * tile's own geometry in that tile's coordinates; the filter runs with the tile's canonical id
+     * (geometry_tile_worker.cpp:502-503). The same algorithm as maplibre-gl's (style spec within.ts, geometry_util.ts),
+     * so both apps hide the same features. A feature with no geometry is not within, so it is drawn. Expression
+     * syntax only ([heldAreasFilterFor]).
+     */
+    fun heldAreasFilter(geometryJson: String): String = "[\"!\", [\"within\", $geometryJson]]"
+
+    /**
+     * [heldAreasFilter] when [STATE_LINE_LAYER]'s own [existing] filter is missing or an expression; null when it is
+     * in the deprecated syntax, which has no `within` and cannot be mixed with an expression (the layer is then left
+     * as it is, with a warning).
+     */
+    fun heldAreasFilterFor(existing: Any?, geometryJson: String): String? =
+        if (existing == null || isExpressionSyntax(existing)) heldAreasFilter(geometryJson) else null
 
     /** State labels not shown, compared with coalesce(name:en, name). */
     val HIDDEN_STATE_NAMES = listOf("Azad Kashmir", "Azad Jammu and Kashmir", "Gilgit-Baltistan")
@@ -149,10 +229,10 @@ object IndiaViewRules {
      * layer on the `boundary` source layer whose minzoom is [DETAILED_FROM_ZOOM] or more, since for those the minzoom
      * alone is meant to keep the zoom 0-4 tiles' lines off the map. Both renderers already skip such a layer in a zoom
      * 0-4 tile (maplibre-native geometry_tile.cpp:317, maplibre-gl worker_tile.ts line 109; see [ADM0_PRESENT]), so on
-     * Android and the web alike the guard is defence in depth and parity: it keeps those lines out whatever a renderer
-     * does with minzoom (read from the source, not checked on a device). Not
-     * [DISPUTED_LAYER] (hidden), not a symbol layer, and not a line layer meant for zoom 0-4 (lower minzoom), whose
-     * low-zoom lines the guard would remove.
+     * Android and the web alike the guard is defence in depth and parity, not the fix on either: it keeps those lines
+     * out whatever a renderer does with minzoom (read from the source, not checked on a device; TC-M-25 (7) to (9)
+     * would show it). Not [DISPUTED_LAYER] (hidden), not a symbol layer, and not a line layer meant for zoom 0-4 (lower
+     * minzoom), whose low-zoom lines the guard would remove.
      */
     fun tileZoomGuardedLayers(layers: List<LayerInfo>): List<String> =
         layers.filter {
