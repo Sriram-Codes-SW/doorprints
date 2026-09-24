@@ -1,14 +1,14 @@
-package app.doorprints
+package app.doorprints.data
 
-import app.doorprints.data.SyncHealth
 import app.doorprints.shared.sync.SyncOutcome.Kind
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * When the house list warns that background sync has stopped working (whole-app UX audit, 2026-09-22): three AUTH or
- * SERVER failures in a row, or a day without a sync that worked, while a server is configured.
+ * SERVER failures in a row, or a day without a sync that worked, while a server is configured. `kotlin.test` in
+ * `:shared` commonTest since CMP-4 P4c (S4b-BL-28; was a JUnit test in `:app`).
  */
 class SyncHealthTest {
 

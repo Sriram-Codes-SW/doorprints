@@ -5,7 +5,7 @@ import android.content.res.Configuration
 import androidx.work.Configuration as WorkConfiguration
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.create
-import app.doorprints.data.Repository
+import app.doorprints.data.AndroidRepository
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.SyncWorker
 import app.doorprints.export.AutoBackupWorker
@@ -21,7 +21,7 @@ import org.maplibre.android.MapLibre
 class AppContainer(app: Application) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
-    val repository = Repository(app, AppDatabase.create(app), settings)
+    val repository = AndroidRepository(app, AppDatabase.create(app), settings)
 }
 
 // open for the screenshot tests' app (ScreenshotTestApp), which skips startServices(): no MapLibre (native code) and
