@@ -1,5 +1,6 @@
 package app.doorprints.ui
 
+import android.content.res.AssetManager
 import android.util.Log
 import app.doorprints.ui.IndiaViewRules.Placement
 import org.maplibre.android.maps.Style
@@ -20,9 +21,10 @@ private const val TAG = "IndiaView"
 /**
  * [StyleOps] over MapLibre Native's [Style] (ADR-23 CMP-7): the calls `:app`'s `IndiaView.kt` made before the India
  * view's steps moved to common code ([applyIndiaView]), one member each. Nothing is caught here: [applyIndiaView]
- * catches and logs ([warn], `Log.w` with the tag `IndiaView`, as before).
+ * catches and logs ([warn], `Log.w` with the tag `IndiaView`, as before). [assets] holds the held areas' polygon
+ * (IndiaViewRules.HELD_AREAS_ASSET_PATH).
  */
-class MapLibreStyleOps(private val style: Style) : StyleOps {
+class MapLibreStyleOps(private val style: Style, private val assets: AssetManager) : StyleOps {
     override fun layers(): List<StyleOps.Layer> = style.layers.map { layer ->
         when (layer) {
             is SymbolLayer -> StyleOps.Layer(layer.id, StyleOps.Kind.SYMBOL, layer.sourceLayer)
@@ -126,6 +128,8 @@ class MapLibreStyleOps(private val style: Style) : StyleOps {
             Placement.Top -> style.addLayer(line)
         }
     }
+
+    override fun readAsset(path: String): String = assets.open(path).use { it.readBytes().decodeToString() }
 
     override fun warn(message: String, error: Throwable?) {
         if (error == null) Log.w(TAG, message) else Log.w(TAG, message, error)

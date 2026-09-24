@@ -106,6 +106,12 @@ class IndiaViewOpsTest {
                 Placement.Top -> layers.add(new)
             }
         }
+        /** The app's bundled files by path; the held areas' polygon by default (a square around Gilgit). */
+        val assets = mutableMapOf(IndiaViewRules.HELD_AREAS_ASSET_PATH to HELD_FILE)
+        override fun readAsset(path: String): String {
+            fail("asset:$path")
+            return assets[path] ?: throw IllegalStateException("no asset $path")
+        }
         override fun warn(message: String, error: Throwable?) {
             warnings += message
         }
@@ -145,8 +151,10 @@ class IndiaViewOpsTest {
             style.layer(COUNTRY_LAYER).filter,
         )
         assertEquals(5f, style.layer(COUNTRY_LAYER).minZoom)
+        // The state lines: Liberty's filter, the tile-zoom guard, then no line wholly inside the held areas.
         assertEquals(
-            "[\"all\", [\"<=\", [\"get\", \"admin_level\"], 6], ${IndiaViewRules.TILE_ZOOM_GUARD}]",
+            "[\"all\", [\"all\", [\"<=\", [\"get\", \"admin_level\"], 6], ${IndiaViewRules.TILE_ZOOM_GUARD}], " +
+                "[\"!\", [\"within\", $HELD_GEOMETRY]]]",
             style.layer(STATE_LINE_LAYER).filter,
         )
         // The disputed lines are hidden, not guarded.
@@ -273,7 +281,8 @@ class IndiaViewOpsTest {
 
         assertEquals("[\"==\", [\"get\", \"admin_level\"], 2]", style.layer(COUNTRY_LAYER).filter)
         assertEquals(5f, style.layer(COUNTRY_LAYER).minZoom)
-        assertTrue(style.layer(STATE_LINE_LAYER).filter!!.endsWith("${IndiaViewRules.TILE_ZOOM_GUARD}]"))
+        assertTrue(style.layer(STATE_LINE_LAYER).filter!!.contains("${IndiaViewRules.TILE_ZOOM_GUARD}]"))
+        assertTrue(style.layer(STATE_LINE_LAYER).filter!!.endsWith("${IndiaViewRules.heldAreasFilter(HELD_GEOMETRY)}]"))
         assertTrue(style.layer(DISPUTED_LAYER).hidden)
         // 'world' on top; 'claim' still directly above it.
         assertEquals(listOf(WORLD_LAYER, CLAIM_LAYER), style.ids().takeLast(2))
@@ -321,5 +330,69 @@ class IndiaViewOpsTest {
         assertTrue(style.warnings.contains("add the outline failed; skipped"))
         // The label rule still ran after them.
         assertTrue(style.layer("label_state").filter!!.endsWith("${IndiaViewRules.STATE_LABEL_EXTRA_FILTER}]"))
+    }
+
+    @Test
+    fun aMalformedOrUnreadableHeldAreasFileLeavesTheStateLinesGuardedOnly() {
+        val guardedOnly = "[\"all\", [\"<=\", [\"get\", \"admin_level\"], 6], ${IndiaViewRules.TILE_ZOOM_GUARD}]"
+        val malformed = liberty()
+        malformed.assets[IndiaViewRules.HELD_AREAS_ASSET_PATH] = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+        applyIndiaView(malformed)
+        assertEquals(guardedOnly, malformed.layer(STATE_LINE_LAYER).filter)
+        assertEquals(
+            listOf("the held areas' polygon is malformed; $STATE_LINE_LAYER keeps the admin lines inside them"),
+            malformed.warnings,
+        )
+        // The rest still applied: the outline is there.
+        assertTrue(CLAIM_LAYER in malformed.ids())
+
+        val unreadable = liberty()
+        unreadable.failing += "asset:${IndiaViewRules.HELD_AREAS_ASSET_PATH}"
+        applyIndiaView(unreadable)
+        assertEquals(guardedOnly, unreadable.layer(STATE_LINE_LAYER).filter)
+        assertEquals(listOf("filter $STATE_LINE_LAYER by the held areas failed; skipped"), unreadable.warnings)
+        assertTrue(CLAIM_LAYER in unreadable.ids())
+    }
+
+    @Test
+    fun aDeprecatedStateLineFilterIsLeftAsItIsAndWithoutStateLinesNothingIsSaid() {
+        val deprecated = liberty()
+        deprecated.layer(STATE_LINE_LAYER).filter = "[\"<=\", \"admin_level\", 6]"
+        applyIndiaView(deprecated)
+        assertEquals("[\"<=\", \"admin_level\", 6]", deprecated.layer(STATE_LINE_LAYER).filter)
+        assertEquals(
+            listOf(
+                "the filter of $STATE_LINE_LAYER is in the deprecated syntax, which has no zoom; not guarded",
+                "the filter of $STATE_LINE_LAYER is in the deprecated syntax, which has no within; " +
+                    "its admin lines inside the held areas are kept",
+            ),
+            deprecated.warnings,
+        )
+
+        // Without boundary_3 no admin line is drawn at all: nothing to filter, no warning, and no file read.
+        val none = liberty()
+        none.layers.removeAll { it.id == STATE_LINE_LAYER }
+        none.failing += "asset:${IndiaViewRules.HELD_AREAS_ASSET_PATH}"
+        applyIndiaView(none)
+        assertEquals(emptyList(), none.warnings)
+    }
+
+    @Test
+    fun aStateLineLayerWithoutAFilterGetsTheGuardAndTheRule() {
+        val style = liberty()
+        style.layer(STATE_LINE_LAYER).filter = null
+        applyIndiaView(style)
+        assertEquals(
+            "[\"all\", ${IndiaViewRules.TILE_ZOOM_GUARD}, ${IndiaViewRules.heldAreasFilter(HELD_GEOMETRY)}]",
+            style.layer(STATE_LINE_LAYER).filter,
+        )
+    }
+
+    private companion object {
+        /** A held-areas file as the build writes it (a square around Gilgit); the real one: IndiaBoundaryDataTest. */
+        const val HELD_FILE =
+            "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"kind\":\"held\"}," +
+                "\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[74,35],[75,35],[75,36],[74,36],[74,35]]]}}]}"
+        const val HELD_GEOMETRY = "{\"type\":\"Polygon\",\"coordinates\":[[[74,35],[75,35],[75,36],[74,36],[74,35]]]}"
     }
 }
