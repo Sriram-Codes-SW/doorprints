@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.roborazzi)
 }
 
 // Release signing (threat model F-11). The keystore never lives in the repo: CI or the developer supplies it
@@ -34,6 +35,10 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // Instrumented smoke tests on an emulator (android-emulator.yml) and in Firebase Test Lab. The test storage
+        // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
 
     signingConfigs {
@@ -79,6 +84,8 @@ android {
     testOptions {
         // JVM unit tests touch a few android.* classes (e.g. Log via data/Api.kt); return defaults instead of throwing.
         unitTests.isReturnDefaultValues = true
+        // Robolectric (screenshot tests) needs the merged resources, manifest and assets.
+        unitTests.isIncludeAndroidResources = true
     }
 
     lint {
@@ -131,6 +138,25 @@ dependencies {
     implementation(libs.maplibre.android)
 
     testImplementation(libs.junit)
+    // Screenshot tests on the JVM (docs/06 TC-U-56): Robolectric renders the screens, Roborazzi compares them.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.work.testing)
+    debugImplementation(libs.compose.ui.test.manifest)
+    // Instrumented smoke tests (docs/06 TC-I-35), run on an emulator by android-emulator.yml.
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.services.storage)
+    androidTestUtil(libs.androidx.test.services)
 }
 
 // CI runs `./gradlew assembleDebug testDebugUnitTest`. :shared is a KMP library whose Android host tests are the task

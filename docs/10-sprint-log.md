@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.38 |
+| Version | 0.44 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13) |
+| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
 
 ## Change log
 
@@ -50,6 +50,12 @@
 | 0.36 | 2026-09-24 | Claude (Code), Docs team | New **§12.10, owner request of 2026-09-24: the doubled lines and the Assam-Arunachal Pradesh state line** (branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed)): the owner's summary, what was done (rule 2 leaves India's line with China to the outline; 7 shared stretches drawn by the tiles from zoom 5, connectors, no spurs; the `state` kind and layer on both apps), the design review that led to the India-China rule, how it was verified (including TC-M-25 step (3) with Google Maps' India region) and what is still unverified. **§12.7**: S4b-BL-11, S4b-BL-15 and S4b-BL-16 struck through as done on that branch; S4b-BL-9 also re-runs `find_shared_stretches.py`. **§12.8**: the known limits (with the owner's accuracy summary), *Open before release* and *Backlog* point to §12.10. Header status updated. |
 | 0.37 | 2026-09-24 | Claude (Code), Docs team | **§12.10** after the round 2 reviews of PR #16: the Singalila spur fix (a cut within 1e-4 degrees of a claim line's end counts as the end; data sha256 `25984afa…a024`, 415 608 bytes, `claim` 5 pieces), the known minors sized (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tile line's overrun at Jomotsangkha and Longwa; `INDIA_CHINA_LINE` also hiding the Tumen China-North Korea line), and the round 2 review results (code, design: changes requested, major fixed; docs: approved, minor fixed). **§12.7**: new backlog ticket **S4b-BL-17** (cleaner hand-overs at the Sikkim tri-junctions, Jomotsangkha and Longwa; lead). |
 | 0.38 | 2026-09-24 | Claude (Code), Docs team | New **§13, the Compose Multiplatform track** (owner request of 2026-09-24: "The Compose needs to be changed to Kotlin Compose to allow easy iOS app creation"; [03](03-design.md) ADR-23): tickets **CMP-1..CMP-9** for phases P1-P8 and the maplibre-compose spike; **CMP-1 done** in commit `be86f50` (new `:ui` module, theme and pure UI code moved, no visual change; iOS compile pending on CI). §2 has a row for the track; the status line records PR #16 as merged (`4100f7a`). |
+| 0.39 | 2026-09-24 | Claude (Code), Docs team | **Owner request of 2026-09-24: "Is there any way you can test the Android APK?"** (the owner chose all three options: an emulator CI job, screenshot tests and Firebase Test Lab) **and "Test the Web UI in detail as well after every main merge"** (a standing rule). New ticket **CMP-0** in §13.1, the test harness the Compose Multiplatform phases rely on, and new **§13.3** (what was done in commit `afe4064`, how it was verified, the first live UI run, what is not verified, the owner rule, and why a new workflow was accepted against §12.5 Decision 3's constraint). PR #17 (CMP-1) merged at `75f049d`. |
+| 0.40 | 2026-09-24 | Claude (Code), Docs team | **§13.3, round 2 of the test-harness pull request.** The first emulator run (CI run 35943533129, `afe4064`) found a **real crash**: opening the app from a notification while it was not running threw "Navigation graph has not been set"; fixed in `Root.kt`. Firebase Test Lab gets a Workload Identity provider of its own and the secret `FTL_WIF_PROVIDER` (the Hosting provider is not widened), and runs only from `main`. The test changes of round 2 are listed. New backlog tickets **CMP-0-BL-1..5** (the Export screen's tall format cards; emulator runs in hi/ta/te and dark; a tablet size; a Map shot on the emulator; a workflow and a Dependabot entry for `tools/live-ui`). |
+| 0.41 | 2026-09-24 | Claude (Code), Docs team | §13.3 after the round 3 review of PR #18: the second emulator run (`ef0a5dd`: the cold-start fix worked; the add-a-house test tapped the off-screen second Save, fixed in `bc57361`, re-run pending); screenshot tests restore the time zone; new backlog ticket **CMP-0-BL-6** (cold starts from the open-house and open-screen notifications); TC-U-60 renumbered TC-U-56; the Docs line names [14] v0.7. |
+| 0.42 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 5: the smoke tests **passed on the emulator (CI, commit `bc57361`)**; Firebase Test Lab stays off by default at zero cost (option (a); a results bucket needs a billing account), options (b) and (c) for the owner; CodeQL's "Incomplete string escaping" in `tools/live-ui` fixed; the Docs line names the current versions; CMP-0's status cell updated. |
+| 0.43 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 6: a second real bug found by the pull-request emulator run on `bc57361` (the Map's camera moved off the main thread after `currentLocation()`; fixed in `MapScreen.kt` with `withContext(Dispatchers.Main.immediate)`); the result now reads "passed on the emulator; one of two runs on `bc57361` found a threading bug, fixed in the next commit; the re-run is pending". |
+| 0.44 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 7: the emulator results use the agreed wording (the threading bug fixed in `6376706`, re-run pending); the fix covers every caller of `currentLocation()`; new backlog ticket **CMP-0-BL-7** (`--results-bucket` conditional if the owner picks Test Lab option (c)); the Docs line names the current versions. Then both emulator runs on `6376706` passed (push and pull request; `ee30b92`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1276,6 +1282,7 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 
 | ID | Phase | Story | Done when | Team | Status |
 |---|---|---|---|---|---|
+| CMP-0 | Prerequisite | **Test harness for the phases** (owner request of 2026-09-24, §13.3). JVM screenshot tests of every screen except the Map in four languages and both themes (Robolectric + Roborazzi, 64 references, verified in `android.yml`); instrumented smoke tests on an API 34 emulator (`android-emulator.yml`) and in Firebase Test Lab (`main` only, push or manual, after the owner's setup); the live web UI test `tools/live-ui` after every merge to `main` | [06](06-test-plan.md) TC-U-56, TC-I-35 and TC-M-26 exist; each later phase shows "no screen changed" with an unchanged TC-U-56 and a green TC-I-35, or re-records the images it changes on purpose and says so | Android, DevSecOps, Web, Docs | **Done in code** (PR #18, open. On `bc57361` the push run passed both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request)); Test Lab off by default at zero cost, options for the owner in [07](07-secure-build-and-deploy.md) §7.2 |
 | CMP-1 | P1 | New KMP module `:ui` (`android/ui`): plugins `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`; targets Android plus compile-only `iosArm64` and `iosSimulatorArm64`; Compose Multiplatform 1.12.1, material3 1.9.0, material-icons-core 1.7.3, `api(project(":shared"))`. The theme and pure UI code move to `commonMain` with the Kotlin package kept (`com.househunt.app.ui`) | `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt`, `IndiaViewRules.kt`, `Buttons.kt` (`ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES`), `ResultTone` and `LocationFix` in `:ui`; `expect fun uiLanguage()`; `ServerStatusTest` in `:ui` `commonTest`; `android.yml` and `shared-ios.yml` cover `:ui`; no visual change | Android, DevSecOps, Docs | **Done** (`be86f50`); iOS compile pending on CI |
 | CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Next** |
 | CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | Planned. Also moves `MapRulesTest` and `IndiaViewRulesTest` (JUnit, still in `:app`) to `:ui` commonTest (kotlin.test) so they compile for iOS too (CMP-1 code review) |
@@ -1311,3 +1318,124 @@ device. The `android-reports` CI artifact now also uploads `android/ui/build/rep
 **Docs.** [03](03-design.md) v0.22 (ADR-23, ADR-14 amended, §4.2.1), [06](06-test-plan.md) v0.32,
 [07](07-secure-build-and-deploy.md) v0.30, this section (v0.38), [14](14-lead-backlog-and-handoff.md) v0.5,
 `android/ui/README.md` 1.1, `android/shared/README.md` 1.44, the root README, CHANGELOG, the docs index and CLAUDE.md.
+
+### 13.3 CMP-0, testing the APK and the live web UI (owner request of 2026-09-24)
+
+**The request.** "Is there any way you can test the Android APK?" (owner, 2026-09-24). Three options were offered and
+the owner chose all three: an emulator CI job, screenshot tests and Firebase Test Lab. The owner also asked: "Test the
+Web UI in detail as well after every main merge". It is filed here, as the prerequisite of the track, because every
+later phase ([03](03-design.md) ADR-23) now shows "no screen changed" with these tests instead of by eye.
+
+**Owner rule (2026-09-24): after every merge to `main`, the live web UI is tested in detail** with `tools/live-ui`
+([06](06-test-plan.md) TC-M-26), once the deploy has finished. The lead session runs it and reports the counts; a
+failure is a ticket before the next merge. Recorded in [14](14-lead-backlog-and-handoff.md) §5 and CLAUDE.md.
+
+**What was done** (commit `afe4064` on branch `claude/doorprints-dev-continue-fzcge2`):
+
+- **Screenshot tests on the JVM** ([06](06-test-plan.md) TC-U-56). `ScreensScreenshotTest` renders Houses, Compare,
+  the house form (edit and new), Settings, Assistant, Export and Import in en, hi, ta and te, light and dark, with
+  Robolectric 4.17 and Roborazzi 1.75.0: **64 reference PNGs** (about 3.5 MB) in `android/app/src/test/screenshots`,
+  two sample houses seeded. `android.yml` passes `-Proborazzi.test.verify=true`, so a changed screen fails CI, and
+  uploads the diffs in `android-reports`. Re-record with `./gradlew :app:recordRoborazziDebug`. The Map is left out:
+  MapLibre is native code.
+- **`HouseHuntApp` is `open`**, with `protected open fun startServices()` holding MapLibre, the notification channels,
+  the WorkManager schedules and the start-up jobs. The test application overrides it and installs a test WorkManager.
+  Production behaviour is unchanged.
+- **Instrumented smoke tests** ([06](06-test-plan.md) TC-I-35): every tab opens; a house added from a new-house intent
+  shows in the list; a screenshot per step through the test storage service.
+- **`.github/workflows/android-emulator.yml`**: job `emulator` (API 34 `google_apis` x86_64, KVM, error dialogs
+  hidden, `connectedDebugAndroidTest`, artifact `android-emulator-results`), and jobs `ftl-check` and
+  `firebase-test-lab` (Firebase Test Lab on pushes to `main` and manual runs from `main`, keyless through a Workload
+  Identity provider of its own, `FTL_WIF_PROVIDER`; the Hosting provider is not widened, as the code review asked;
+  skipped with a notice until the owner's setup in [07](07-secure-build-and-deploy.md) §7.2 and
+  [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md)).
+- **`tools/live-ui`** (Playwright 1.56.1, axe-core 4.13.0): every route x 4 languages x 2 themes x phone and desktop,
+  the add/edit/list/compare/download/offline/delete flows, the map at the TC-M-25 spots.
+
+**Verified, and how.** Locally: 220 `:app` unit tests pass (156 before plus 64 screenshots). The live UI test ran on
+2026-09-24 against the live site (deploy `4100f7a`, `main` `75f049d`): pages 720/720, i18n 240/240, theme 143/143,
+a11y 144/144, flows 12/12, pwa 4/4, map 1/1, console 145/146. The one console error was a stylesheet served once as
+`text/plain`; 100 further loads all got `text/css`, from the server and from the service worker. The same run saw one
+`502` from this container's egress proxy, so the error is put down to the test environment, not the site.
+
+**First emulator run: a real crash found and fixed.** CI run 35943533129 (commit `afe4064`): `everyTabOpens`
+passed; `addAHouseFromANewHouseIntent` failed. Opening the app from a new-house, open-house or open-screen
+notification while the app was not running crashed with "Cannot navigate … Navigation graph has not been set":
+`Root`'s deep-link `LaunchedEffect` ran before the `NavHost`, which sits inside the Scaffold's subcomposition, had set
+its graph. The fix (`android/app/src/main/java/com/househunt/app/ui/Root.kt`) waits for
+`nav.currentBackStackEntryFlow.first()` before navigating. This is a user-visible bug in the shipped app (a tap on
+"Are you at a house?" from Hunt mode could crash it), not a test artefact.
+
+**Round 2 test changes** (same pull request):
+
+- `SmokeTest` replaces the form's default name (`performTextReplacement`), waits for "House details" after Save, and
+  also opens Settings (5 tab screenshots); the Assistant tab exists only with AI on, so it is not opened.
+- The emulator job runs `adb shell settings put global hide_error_dialogs 1`: on the first run the launcher's "isn't
+  responding" dialog appeared over the app.
+- The screenshot tests wait until two frames in a row are identical before capturing (Room answers on its own
+  threads; the Export screen's counts had raced), set the time zone to Asia/Kolkata, seed distinct timestamps and wrap
+  the FileProvider cache reflection in `runCatching`. References must be recorded on Linux.
+- `tools/live-ui` exits 1 on any failure, uses one error listener per page reset before each route, reads `rgba`
+  backgrounds, checks the delete on `/` as well as Compare, and its usage line includes `npx playwright install
+  chromium`.
+
+**Second emulator run** (commit `ef0a5dd`): `everyTabOpens` passed, Settings included, and the cold-start fix
+worked: the new-house form opened from the intent. `addAHouseFromANewHouseIntent` then failed: it tapped the form's
+second Save button, which sits off screen at the end of the scrolling column. Fixed in `bc57361`: the test taps the
+top bar's Save (`!hasAnyAncestor(hasScrollAction())`). The same commit makes the screenshot tests restore the default
+time zone in `@After`.
+
+**Third and fourth emulator runs (`bc57361`).** On `bc57361` the push run passed both smoke tests; the pull-request run
+on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed
+(push and pull request).
+The push run of "Smoke tests on an emulator (API 34)" passed `everyTabOpens` and `addAHouseFromANewHouseIntent` (a cold
+start from a new-house intent, the house saved and shown in the list; screenshots in the `android-emulator-results`
+artifact). The pull-request run found a **second real bug**: `everyTabOpens` crashed with "Animators may only be run on
+Looper threads". The Map moved the MapLibre camera right after `currentLocation()`, which awaits a Play services `Task`
+that completes on a Binder thread; under the Compose test rule's coroutine interceptor the continuation was not
+dispatched back to main. The app's own main dispatcher does switch back, so it was never seen in normal use, but the
+code relied on it. Fix in `6376706` (`android/app/src/main/java/com/househunt/app/ui/MapScreen.kt`): `currentLocation()`
+returns on the main thread (`withContext(Dispatchers.Main.immediate)`), which covers every caller: on the Map the first
+framing, "go to me" and "save here", plus the house form's and the Assistant's location lookups. It was intermittent
+(timing): the push run passed.
+
+**Not verified at this writing:** Firebase Test Lab (not set up, see below); the app on a real device.
+
+**Firebase Test Lab: off by default, at zero cost.** The workflow writes Test Lab results to an owner-created bucket
+(`--results-bucket`, variable `FTL_RESULTS_BUCKET`), and a Cloud Storage bucket needs a billing account on
+`doorprints`, which the zero-cost rule excludes ([07](07-secure-build-and-deploy.md) §7.2, *Cost*). So **option (a)
+is the default**: Test Lab stays off (the job is skipped with a notice) and the emulator job covers the smoke tests.
+Options (b), linking a billing account with a ₹0 budget alert and a bucket in `us-central1`, and (c), going back to
+Test Lab's own default bucket with a workflow change and the Editor role for `ftl-runner`, are the owner's call.
+
+**Also fixed in this pull request:** CodeQL's high finding "Incomplete string escaping" in `tools/live-ui/live-ui.js`:
+the untranslated-key check escapes every regex metacharacter (`escapeRegExp`), not only dots ([06](06-test-plan.md)
+TC-M-26).
+
+**Backlog from this ticket** (the code review's out-of-scope items; also [06](06-test-plan.md) §10):
+
+| ID | Item | Team |
+|---|---|---|
+| CMP-0-BL-1 | The Export screen's format cards look very tall, with empty space, in the screenshots. Either a real layout fault in `RadioCardGroup` (`Rows.kt`, `fillMaxRowHeight` in a one-column `FlowRow`) or a Robolectric artefact: check on the emulator or a device, fix if real, re-record the Export images | Android, Design |
+| CMP-0-BL-2 | Emulator runs of the smoke tests in hi, ta and te and in dark mode | Android, DevSecOps |
+| CMP-0-BL-3 | A tablet size (emulator run and a screenshot qualifier) | Android |
+| CMP-0-BL-4 | A Map shot on the emulator that a test checks, until CMP-7 lets the Map be rendered on the JVM | Android |
+| CMP-0-BL-5 | A workflow for `tools/live-ui` after the web deploy (a new workflow: owner's yes needed, §12.5 Decision 3) and a Dependabot npm entry for `/tools/live-ui` | DevSecOps, Web |
+| CMP-0-BL-6 | Emulator cold-start cases for the other deep links: `EXTRA_OPEN_HOUSE` (a house's page) and `EXTRA_OPEN_SCREEN` (Settings, Export), which the `Root.kt` fix also covers but no test opens | Android |
+| CMP-0-BL-7 | If the owner picks Test Lab option (c), Test Lab's own default bucket ([07](07-secure-build-and-deploy.md) §7.2 *Cost*): make `--results-bucket` in `android-emulator.yml` conditional on `FTL_RESULTS_BUCKET` instead of required (and `ftl-check` stop requiring the variable) | DevSecOps |
+
+**A new workflow, against Decision 3's constraint.** §12.5 Decision 3 asks for new checks inside the existing
+workflows, with no new workflow file and a flat CI runtime. The screenshot tests follow it (inside `android.yml`,
+though they add 64 Robolectric tests to its runtime). The emulator needs a job of its own on its own runner, and the
+owner chose "an emulator CI job" explicitly on 2026-09-24, so `android-emulator.yml` is accepted as the exception; it
+runs in parallel with `android.yml` and does not lengthen it. `tools/live-ui` is not a workflow.
+
+**Relation to S4b-EFF-1** (§12.5 Decision 2). CMP-0 delivers part of it on Android (every screen but the Map, four
+languages, both themes, one size) and none of the web screenshots it asks for; the rest (the Map, 320-360 dp, 200 %
+text, landscape, the web pages) stays with S4b-EFF-1 ([06](06-test-plan.md) §10).
+
+**Docs.** [01](01-requirements.md) v0.26 (RTM), [03](03-design.md) v0.24 (ADR-23 guard rails), [06](06-test-plan.md)
+v0.38 (§16), [07](07-secure-build-and-deploy.md) v0.35 (§1, §4, §7.2), this section (v0.44),
+[14](14-lead-backlog-and-handoff.md) v0.12, [README](README.md) v0.44,
+[ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) 0.5, `android/shared/README.md` 1.46,
+`android/ui/README.md` 1.3, `web/README.md`, the CHANGELOG and CLAUDE.md.

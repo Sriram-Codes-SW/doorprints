@@ -21,3 +21,5 @@ web/.angular/
 .env
 # find_shared_stretches.py tile cache
 web/scripts/geo/.tilecache/
+tools/live-ui/node_modules/
+tools/live-ui/out/
