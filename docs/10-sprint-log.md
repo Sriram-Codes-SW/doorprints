@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.47 |
+| Version | 0.48 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -59,6 +59,7 @@
 | 0.45 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **§14**: the rename, what carries stored names over, what is kept and why, and the checks run. Paths in earlier sections follow the moved files; history is left as written. |
 | 0.46 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. §13.1: CMP-0 **done** (PR #18 merged, `6da0e56`), CMP-2 **done in code** in PR #19 (`80b198b`, review fixes `927d54b`). New **§13.4**: CMP-2 as built and its five differences from the plan. §13.2 notes that the package names are now `app.doorprints…`. §14: PR #19 on `claude/doorprints-dev-continue-fzcge2` with its commits, *Disconnect* removing a leftover `house-hunt.api-config`, and 235 `:app` unit test runs in the checks. §12.7: new backlog **S4b-BL-18** (formatting follows `locales[0]`), **S4b-BL-19** (`MainActivity` not exported), **S4b-BL-20** (clients detect a reset server) and **S4b-BL-21** (device-only checks, TC-M-27). §9.3 item 1 rewrapped. |
 | 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3. §13.1: CMP-3 **done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #20, open; the owner merges). New **§13.5**: CMP-3 as built and where it differs from the plan. §12.7: **S4b-BL-18 done** (the dates and `uiLanguage()` follow the resolved language); new **S4b-BL-22** (Export's default language follows `locales[0]`); new **CMP-0-BL-8** (§13.3 backlog). |
+| 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a. §13.1: CMP-4 **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, after PR #20 was merged as `fccf8a1`), P4b and P4c planned. New **§13.6**: the Room database in `:shared` commonMain (Room KMP), how the identity hash and the file name were kept, the migration test, what stays in `:app` and why. §12.7: new **S4b-BL-23** (the `Repository`'s Android-only Room calls, for P4c) and **S4b-BL-24** (Room never opened on iOS). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1033,6 +1034,8 @@ S4b-BL-22 in v0.47, from CMP-3 (§13.5).
 | S4b-BL-20 | Both | **Clients detect a reset server** (review of PR #19, [08](08-operations-runbook.md) §11; new id). Clients push only rows changed since their last sync and pull from a stored cursor that is reset only when the server's address changes, so a server whose database was replaced (a new, empty database; a restore from an older dump) silently loses the devices' older rows and hides changes below the cursors. | When the server's highest `syncVersion` is below a stored cursor, reset the cursors and mark every local row dirty (a full re-push and re-pull), and say so to the user; Android and web alike, with tests | Android, Web |
 | S4b-BL-21 | Android | **Device-only checks for CMP-2 and the rename** (review of PR #19; new id). A JVM test cannot show these | Run [06](06-test-plan.md) **TC-M-27** on real phones: a phone set to [Marathi, Hindi]; the in-app language switch on API 29 and 34, including the "Language changed to …" snackbar; a rotation with a non-system app language on API 32 or lower; an upgrade from a build of `main` before PR #19 (applicationId `app.doorprints`, package `com.househunt.app`) with a pinned home-screen icon and existing houses | Android, QA |
 | S4b-BL-22 | Android | **Export's default language follows `locales[0]`** (found in CMP-3; new id). `ExportBuilder.defaults` takes the saved app language, else the configuration's first locale if the app ships it, else English: a phone set to [Marathi, Hindi] with *System default* shows Hindi screens but proposes an English copy. Left out of CMP-3, which changes no export behaviour | Take the resolved language (`appLanguage()` from `:ui`, or `resolved_language`) as the fallback, with a test next to TC-U-61 | Android |
+| S4b-BL-23 | Android | **The `Repository` uses Room calls that exist only on Android** (found in CMP-4 P4a; new id). `db.withTransaction { }` (two places) and `db.invalidationTracker.createFlow("houses", "visits", "photos")` are Room's Android API; the database itself is common since P4a (§13.6). Left in `:app` with the `Repository`, which moves in P4c | In P4c, write them with Room's common API (`useWriterConnection { it.immediateTransaction { } }` and the common `InvalidationTracker.createFlow`), with the import and undo tests (TC-U-52, `CopyUndoTest`) passing unchanged | Android |
+| S4b-BL-24 | Android | **Room is compiled for iOS but never opened there** (CMP-4 P4a; new id). `iosAppDatabase()` (Documents, `BundledSQLiteDriver`) and the KSP-generated iOS code compile (`shared-ios.yml`; locally cross-compiled on Linux), but no test runs on an iOS simulator, so the bundled driver, the file path and the DAOs are unchecked on iOS | With the iOS shell (CMP-8): a `commonTest` that opens the database with a driver, writes and reads each table and runs `MIGRATION_1_2`, run on the simulator | Android |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -1297,7 +1300,7 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 | CMP-1 | P1 | New KMP module `:ui` (`android/ui`): plugins `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`; targets Android plus compile-only `iosArm64` and `iosSimulatorArm64`; Compose Multiplatform 1.12.1, material3 1.9.0, material-icons-core 1.7.3, `api(project(":shared"))`. The theme and pure UI code move to `commonMain` with the Kotlin package kept (`com.househunt.app.ui`) | `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt`, `IndiaViewRules.kt`, `Buttons.kt` (`ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES`), `ResultTone` and `LocationFix` in `:ui`; `expect fun uiLanguage()`; `ServerStatusTest` in `:ui` `commonTest`; `android.yml` and `shared-ios.yml` cover `:ui`; no visual change | Android, DevSecOps, Docs | **Done** (`be86f50`); iOS compile pending on CI |
 | CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Done in code** (PR #19, `80b198b`, review fixes `927d54b`; awaiting review and merge). Differs from the plan in five points (§13.4): the service strings stay Android resources, services keep `R.string`, `AppLocale.applyDefault` sets the default locale on every API level, the APK carries only the four languages, and `StringParityTest` checks more than the keys |
 | CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | **Done in code** (branch `claude/doorprints-dev-continue-fzcge2`; PR #20, open (the owner merges)). Also moved `MapRulesTest` and `IndiaViewRulesTest` to `:ui` commonTest (kotlin.test), removed `:app`'s blocking `UiStrings.kt` and fixed S4b-BL-18. Differs from the plan in four points (§13.5): `PlatformServices` has one member so far, `DeletedHouseUndo` takes two lambdas instead of the repository, amounts and scores need no locale, and `:app` keeps a thin `DeletedHouses.kt` |
-| CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | Planned |
+| CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, §13.6): `AppDatabase`, entities, DAOs, `Converters` and `MIGRATION_1_2` in `:shared` commonMain, identity hash and `doorprints.db` unchanged, new `AppDatabaseMigrationTest` (TC-U-63); the builder, `DatabaseFile` and the `Repository` stay in `:app`. **P4b and P4c planned** (P4b next) |
 | CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned |
 | CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
 | CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned |
@@ -1565,6 +1568,69 @@ the moved tests compile for iOS. `shared-ios.yml` on macOS stays the check of re
 **Docs.** [03](03-design.md) v0.27 (ADR-23 P3, §4.2.1), [05](05-ux-accessibility-i18n.md) v0.22 (§8.2 *Formatting*),
 [06](06-test-plan.md) v0.41 (TC-U-51, TC-U-55, TC-U-61, TC-U-62), this section (v0.47),
 [14](14-lead-backlog-and-handoff.md) v0.14, `android/ui/README.md` 1.6, the CHANGELOG and the docs index.
+
+### 13.6 CMP-4 P4a (phase 4a), done in code
+
+**What was done** (branch `claude/doorprints-dev-continue-fzcge2`, on `main` at `fccf8a1`, where PR #20 (CMP-3) was
+merged: code `ddd0b3f`, test `c6d1d50`, then these docs). The Room database moved from `:app` to `:shared` `commonMain` as Room KMP code (Room 2.8.5, the catalog's
+version), with its Kotlin package `app.doorprints.data` kept:
+
+- **`AppDatabase.kt`**: `AppDatabase` (version 2, `exportSchema`), `@ConstructedBy(AppDatabaseConstructor::class)`
+  and `expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase>` (KSP writes the actuals), the
+  three DAOs and `Converters` (the checklist as JSON through kotlinx.serialization) unchanged. Every DAO function was
+  already `suspend` or a `Flow`, so no caller changed. `MIGRATION_1_2` overrides `migrate(SQLiteConnection)`, Room's
+  common overload; Room calls that overload with the framework open helper too (it wraps the database in a
+  connection), so one migration serves Android and iOS.
+- **`Entities.kt`** (was `:app`'s `data/Models.kt`): `HouseEntity`, `VisitEntity`, `PhotoEntity`, `HouseVisitCount`,
+  `RowVersion`, unchanged.
+- **Build**: plugins `androidx.room` (`room { schemaDirectory("$projectDir/schemas") }`) and KSP in `:shared`, with
+  `room-compiler` for `kspAndroid`, `kspIosArm64` and `kspIosSimulatorArm64`; `api(room-runtime)` in commonMain;
+  `sqlite-bundled` 2.6.2 in iosMain only. `:app` no longer applies KSP, and `room-ktx` is gone (empty since Room 2.7).
+- **iosMain**: `iosAppDatabase()`: `doorprints.db` in the app's Documents folder, `BundledSQLiteDriver`,
+  `Dispatchers.IO`, `MIGRATION_1_2`. Compile-only; nothing calls it before the iOS shell (CMP-8).
+- **`:app`**: `data/AppDatabaseFactory.kt` holds `AppDatabase.create(context)` (an extension on the companion, so
+  the two callers only gained an import): `DatabaseFile.resolve(context)` first, then `Room.databaseBuilder` with
+  `MIGRATION_1_2` and **no driver**, so Room keeps the framework SQLite through its open helper as before.
+  `HouseEditScreen` reads `contactPhone` into a local: Kotlin does not smart-cast another module's public property.
+
+**How upgraded installs keep their data.** (1) The **identity hash** is unchanged: the schema folder moved as is to
+`android/shared/schemas/app.doorprints.data.AppDatabase/2.json` (git sees a pure rename; the build rewrote nothing),
+and the generated `AppDatabase_Impl` for Android, `iosArm64` and `iosSimulatorArm64` each has
+`RoomOpenDelegate(2, "539964c2013f14439605fab0d18a142a", …)`. `RoomSchemaTest` moved to `:shared` `androidHostTest`
+and checks the JSON and the Android `AppDatabase_Impl`. (2) The **file** is the same: `DatabaseFile` (the
+`househunt.db` → `doorprints.db` move) runs before Room opens, as before; `DatabaseFileTest` passes unchanged. (3)
+The **SQLite** is the same: no driver on Android, so the journal mode (WAL where the device supports it), the
+connection pool and the invalidation tracking are the framework open helper's, as before; the APK carries no bundled
+SQLite library. (4) The backup format is untouched (`CanonicalSampleTest` and `BackupRoundTripTest` pass).
+
+**Migration test** (R-06, TC-U-63). `AppDatabaseMigrationTest` (`:app`, Robolectric, 2 tests). No `1.json` was ever
+exported (the export started at version 2), so each test writes a version-1 file with `2.json`'s SQL minus
+`photos.deleted`. One runs Room's `MigrationTestHelper` (framework driver) and validates the result against the
+committed `2.json`, which the test packs as the helper's assets (Robolectric serves only the app's own assets, and
+nothing is added to the APK). The other opens a version-1 `househunt.db` through `AppDatabase.create`: the file
+moves, migrates and the DAOs read the rows. A migration without `NOT NULL DEFAULT 0` fails both (checked by hand).
+
+**Left in `:app`, and why:** the builder and `DatabaseFile` (the `Context`, `java.io.File`, the pre-rename file
+names); the `Repository`, whose `withTransaction` and `invalidationTracker.createFlow` are Android API (P4c,
+**S4b-BL-23**); the entity ↔ DTO and export mappers (`Mappers.kt`, `ExportMappers.kt`), which the `Repository` and the
+export use (P4c); settings and the API key (P4b). **New backlog:** S4b-BL-23, S4b-BL-24 (Room never opened on iOS).
+
+**Verified, and how.** Locally, the CI command of the brief with `-Proborazzi.test.verify=true` and
+`assembleDebugAndroidTest`: green. `:app` 197 unit tests (2 moved out, 2 new), `:shared` 159 host tests (2 moved
+in), `:ui` 51; the 64 screenshots match, so no screen changed. `:shared:compileCommonMainKotlinMetadata` compiles
+the database against the common libraries.
+
+**iOS klibs on Linux.** With `-Pkotlin.native.enableKlibsCrossCompilation=true`, KSP runs for both iOS targets and
+`:shared:compileKotlinIosSimulatorArm64`, `:shared:compileKotlinIosArm64`, `:shared:compileTestKotlinIosSimulatorArm64`,
+`:shared:compileTestKotlinIosArm64`, `:ui:compileKotlinIosSimulatorArm64` and `:ui:compileTestKotlinIosSimulatorArm64`
+pass, `iosAppDatabase()` included. `shared-ios.yml` on macOS stays the check of record.
+
+**Not verified:** an upgrade on a real phone from a build of `main` before this change (the kind of check TC-M-27
+item 4 makes) and Room on iOS (S4b-BL-24).
+
+**Docs.** [01](01-requirements.md) v0.29 (RTM FR-019), [03](03-design.md) v0.28 (ADR-23 P4a, §4.2.1, §6.2, R-06
+closed), [06](06-test-plan.md) v0.42 (TC-U-36, TC-U-63), this section (v0.48), [14](14-lead-backlog-and-handoff.md)
+v0.15, `android/shared/README.md` 1.48, `android/ui/README.md` 1.7, the CHANGELOG and the docs index.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
