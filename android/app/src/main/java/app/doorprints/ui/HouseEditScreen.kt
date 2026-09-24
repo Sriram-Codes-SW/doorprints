@@ -1281,7 +1281,9 @@ fun HouseEditScreen(
                         (isNew && current.label == baseline?.label)
                     val merged = mergeListing(current, draftFromAi, labelIsPlaceholder = placeholder)
                     draft = merged.house
-                    // Compose resources are read with a suspend call outside composition (cached after the first read).
+                    // Compose resources are read with a suspend call outside composition (cached after the first read),
+                    // so the summary lands one dispatch after the fields; if the screen is recreated in between, the
+                    // fields are kept and only the summary is lost (CMP-3 review: accepted).
                     scope.launch { pasteMessage = pasteResultText(context, merged, warnings) }
                 }
                 showPaste = false

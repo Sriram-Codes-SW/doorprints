@@ -157,7 +157,7 @@ Base size is the browser default (16 px), so user font settings and zoom work. N
 | `--text-2xl` | 1.75 | 28 | Reserved (stars) |
 | `--leading` | 1.5 (1.7 for `hi`, `ta`, `te`) | – | Indic scripts need room for matras and vowel signs |
 
-**Android** has no CSS, and Material 3's type scale sets a fixed line height (bodySmall 12/16 sp, bodyMedium 14/20) that overrides the taller spacing of the Indic fallback fonts, so the subscript conjuncts of one Tamil or Telugu line meet the vowel signs of the next. `DoorprintsTheme` (`ui/Theme.kt`) therefore switches to **`IndicTypography`** when the configuration's locale is `hi`, `ta` or `te` (the per-app language on every supported API level). It keeps M3's sizes and weights, sets **letter spacing 0** (Latin tracking pulls conjuncts apart) and these line heights, about 1.6–1.7× — the Android counterpart of `--leading: 1.7`:
+**Android** has no CSS, and Material 3's type scale sets a fixed line height (bodySmall 12/16 sp, bodyMedium 14/20) that overrides the taller spacing of the Indic fallback fonts, so the subscript conjuncts of one Tamil or Telugu line meet the vowel signs of the next. `DoorprintsTheme` (`ui/Theme.kt`) therefore switches to **`IndicTypography`** when the language the app's strings resolved to is `hi`, `ta` or `te` (`uiLanguage()`, which reads `appLanguage()`, the default locale that `AppLocale.applyDefault` keeps on the resolved language, and is re-read on a configuration change; S4b-BL-18, since CMP-3). It keeps M3's sizes and weights, sets **letter spacing 0** (Latin tracking pulls conjuncts apart) and these line heights, about 1.6–1.7× — the Android counterpart of `--leading: 1.7`:
 
 | M3 style | Size (sp) | Line height, default → hi/ta/te (sp) |
 |---|---|---|

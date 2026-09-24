@@ -1435,6 +1435,7 @@ TC-M-26).
 | CMP-0-BL-5 | A workflow for `tools/live-ui` after the web deploy (a new workflow: owner's yes needed, §12.5 Decision 3) and a Dependabot npm entry for `/tools/live-ui` | DevSecOps, Web |
 | CMP-0-BL-6 | Emulator cold-start cases for the other deep links: `EXTRA_OPEN_HOUSE` (a house's page) and `EXTRA_OPEN_SCREEN` (Settings, Export), which the `Root.kt` fix also covers but no test opens | Android |
 | CMP-0-BL-7 | If the owner picks Test Lab option (c), Test Lab's own default bucket ([07](07-secure-build-and-deploy.md) §7.2 *Cost*): make `--results-bucket` in `android-emulator.yml` conditional on `FTL_RESULTS_BUCKET` instead of required (and `ftl-check` stop requiring the variable) | DevSecOps |
+| CMP-0-BL-8 | The screenshot fixture has only rents under ₹1 lakh (28,000 and 22,500): lakh grouping (₹1,00,00,000), a SALE price and a dated visit row are in no reference image, only in `FormatsTest` and `FormatsParityTest` (CMP-3 design review, PR #20). Add a SALE house of ₹1 lakh or more and a visit to `ScreensScreenshotTest` in a phase that re-records images | Android |
 
 **A new workflow, against Decision 3's constraint.** §12.5 Decision 3 asks for new checks inside the existing
 workflows, with no new workflow file and a flat CI runtime. The screenshot tests follow it (inside `android.yml`,

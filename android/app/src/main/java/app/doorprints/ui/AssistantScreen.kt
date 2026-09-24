@@ -358,7 +358,6 @@ private val citationMarker = Regex("""\s*\[house:[0-9a-fA-F-]{36}]""")
  */
 @Composable
 private fun rememberResultFocus(resultKey: Any?): FocusRequester {
-    val context = LocalContext.current
     val platform = LocalPlatformServices.current
     val focus = remember { FocusRequester() }
     val first = remember { resultKey }
