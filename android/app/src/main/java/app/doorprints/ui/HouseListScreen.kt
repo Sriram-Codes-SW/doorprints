@@ -47,7 +47,6 @@ import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.data.SyncHealth
-import app.doorprints.data.glyph
 import app.doorprints.data.labelRes
 import app.doorprints.export.CopyImportUndo
 import app.doorprints.export.CopyRecord

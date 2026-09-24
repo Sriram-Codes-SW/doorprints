@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.30 |
+| Version | 0.31 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -42,6 +42,7 @@
 | 0.28 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19: the §12 RTM row of FR-036 names both homes of the Android strings (the UI strings as Compose resources in `android/ui/src/commonMain/composeResources` since [03](03-design.md) ADR-23 CMP-2, the service strings in `res/values*`) and the new tests TC-U-59, TC-U-60 and TC-M-27 ([06](06-test-plan.md) v0.40). |
 | 0.29 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a ([03](03-design.md) ADR-23 P4a): the §12 RTM row of FR-019 names the Room database in `:shared` commonMain (schema export `android/shared/schemas/…/2.json`) and adds TC-U-63 (`AppDatabaseMigrationTest`). |
 | 0.30 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): the §12 RTM rows of FR-030 and SEC-010/SEC-011 name the settings, `SecretStore` and `ServerUrl` in `:shared` commonMain and `KeystoreSecretStore` in `:app`, and the new tests TC-U-64 and TC-U-65 ([06](06-test-plan.md)). |
+| 0.31 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): the §12 RTM rows of FR-019 and FR-042..FR-048 add TC-U-66 (`RepositoryTransactionTest`); FR-011 names `CompareScreen.kt` in `:ui` commonMain (`app/ui/CompareTab.kt` is the Android wrapper) and adds TC-U-67; FR-007 names `AndroidRepository.addPhoto`. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -412,11 +413,11 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05, TC-U-19 |
 | FR-005 | 03 §6.3 | `HouseScore.of` (`:shared`), `HouseEntity.score`, web `houseScore()` | TC-U-05 (`HouseScoreTest`), TC-U-19 (`models.spec.ts`) |
 | FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03, TC-I-35 |
-| FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `Repository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
+| FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `AndroidRepository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
 | FR-008 | 03 §7.3 | `visit/VisitController`, `Repository.markVisitedNow` | TC-I-07 |
 | FR-009 | 03 §4.2 | `MapScreen.kt addHouseLayers`, web `map-page` | TC-M-02 |
 | FR-010 | 03 §4.2 | `HouseListScreen.kt` | TC-M-03, TC-I-35 |
-| FR-011 | 03 §4.2 | `CompareScreen.kt`, web `compare-page` | TC-M-04, TC-U-53, TC-I-35 |
+| FR-011 | 03 §4.2 | `CompareScreen.kt` (`:ui` commonMain since CMP-4 P4c; `app/ui/CompareTab.kt` is the Android wrapper), web `compare-page` | TC-M-04, TC-U-53, TC-I-35, TC-U-67 (`ModelLabelsTest`) |
 | FR-012 | 03 §10 | `HouseService.delete/purge`, `VisitController.delete` | TC-I-05, TC-I-16 |
 | FR-013 | 03 §7.2, §8.2 | `location/HuntService.checkNearbyHouses` | TC-U-07, TC-F-02 |
 | FR-014 | 03 §7.2 | `HuntService.checkStreet`, `StreetAlerts` (`:shared` location), `ReverseGeocoder` | TC-U-07 (`StreetAlertsTest`), TC-F-03 |
@@ -424,7 +425,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-016 | 03 §8.2 | `HuntService.onLocation` accuracy gate | TC-U-08, TC-F-05 |
 | FR-017 | 03 §8.2, ADR-01 | `HuntService`, `Notifications.CHANNEL_HUNT`, manifest `foregroundServiceType=location` | TC-F-01, TC-F-07 |
 | FR-018 | 03 §4.2 | `HuntState`, `MapScreen.HuntCard` | TC-F-02 |
-| FR-019 | 03 §10, §6.2 | `data/AppDatabase` (Room KMP in `:shared` commonMain since CMP-4 P4a; schema export `android/shared/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`), TC-U-63 (`AppDatabaseMigrationTest`) |
+| FR-019 | 03 §10, §6.2 | `data/AppDatabase` (Room KMP in `:shared` commonMain since CMP-4 P4a; schema export `android/shared/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`), TC-U-63 (`AppDatabaseMigrationTest`), TC-U-66 (`RepositoryTransactionTest`) |
 | FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `ApiClient` + `RetryPolicy` (`:shared` api; replaced `data/RetryInterceptor` in Sprint 3.5) | TC-F-08, TC-U-17, TC-U-35 |
 | FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules`, `PhotoController.changes` | TC-U-06 (part), TC-I-05, TC-I-17 |
 | FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `SyncRules.keepLocal` (`:shared` sync) | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |
@@ -491,7 +492,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-049 | [11](11-feature-parity-and-export-spec.md) 5.16..5.18 | planned: notification actions, boot/package-replaced receivers | Planned TC-S-22 |
 | PRV-001..003 | 03 §7.2, 04 §4 | `HuntService`, manifest permissions | TC-F-07, TC-S-07 |
 | PRV-024..PRV-027 | [11](11-feature-parity-and-export-spec.md) 5.18, 03 ADR-01 | planned: permission state checks on resume, rationale screen, settings deep link, area wake-up auto-off | Planned TC-U-40, TC-M-18 (permission matrix), TC-A-12 |
-| FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `app/ui/ExportScreen.kt`, `app/ui/ImportScreen.kt`, `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10 |
+| FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `app/ui/ExportScreen.kt`, `app/ui/ImportScreen.kt`, `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10, TC-U-66 |
 | FR-089..FR-097 | [schemas/README.md](schemas/README.md) §0, §6, §7; 03 §16.3; [12](12-brand-and-naming.md) G | Android `shared/export/ImportPlan.kt`, `BackupValidation`, `app/export/BackupReader.kt`, `app/ui/ImportScreen.kt`; server `backend/backup/**`; web: planned (4b) | TC-U-42, TC-U-28, TC-S-17, TC-I-33, TC-I-34; the web import's tests are planned with S4b-00 |
 | FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `ui/IndiaView.kt`, `ui/IndiaViewRules.kt`, `ui/MapScreen.kt` (`loadStyle`), `assets/geo/in-boundaries.geojson`; data builder `web/scripts/geo/build_in_boundaries.py` | TC-U-54, TC-U-55, TC-S-25, TC-M-25, TC-M-26 (screens only) |
 | FR-070..FR-073 | 03 §16.4 | `web/public/manifest.webmanifest`, `web/public/sw.js`, `core/pwa.service.ts`, `data/storage.service.ts`, `data/local-db.ts`, `shared/app-banners.ts`, `pages/share/share-page.ts`, `scripts/sw-precache*.mjs` | TC-U-31, TC-U-43, TC-U-44, TC-S-19, TC-M-15, TC-M-19 |

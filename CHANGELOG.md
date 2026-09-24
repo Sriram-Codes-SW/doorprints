@@ -280,6 +280,20 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Android: a common `Repository`, and the Compare tab in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-4 P4c;
+  [sprint log](docs/10-sprint-log.md) §13.8). The data layer's platform-neutral members and result types are a
+  `Repository` interface in `:shared` commonMain, implemented by `:app`'s `AndroidRepository` with the same code. The
+  copy import's and its undo's transactions and the Export screen's change flow use Room's common API
+  (`withImmediateTransaction`, `localTablesChanged`; S4b-BL-23): the same transaction on Android (Room's transaction
+  thread, `BEGIN IMMEDIATE` as before in WAL mode, DAO calls nested in it), pinned by the new
+  `RepositoryTransactionTest` ([docs/06](docs/06-test-plan.md) TC-U-66). The mappers are common. `CompareScreen` and
+  `HouseFormRules` are in `:ui` commonMain, with the checklist labels added to the Compose resources (same text) and
+  `ModelLabelsTest` (TC-U-67); `SyncHealthTest`, `ExportGrantsTest` and `HouseFormRulesTest` run in commonTest
+  (S4b-BL-28). No screen changed: the 64 reference screenshots are unchanged; the backup format is unchanged. Docs:
+  [01](docs/01-requirements.md) v0.31, [03](docs/03-design.md) v0.30, [05](docs/05-ux-accessibility-i18n.md) v0.23,
+  [06](docs/06-test-plan.md) v0.44, [10](docs/10-sprint-log.md) v0.50,
+  [14](docs/14-lead-backlog-and-handoff.md) v0.17, [docs/README.md](docs/README.md) v0.50, `android/shared/README.md`
+  1.50, `android/ui/README.md` 1.9.
 - **Android: settings, the API key's interface and the URL check are common code in `:shared`**
   ([docs/03](docs/03-design.md) ADR-23 CMP-4 P4b; [sprint log](docs/10-sprint-log.md) §13.7). `SettingsStore` moves to
   `:shared` commonMain on `datastore-preferences-core` 1.1.7, with `SyncHealth` and the export grant list; the API key

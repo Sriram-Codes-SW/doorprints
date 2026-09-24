@@ -1,31 +1,19 @@
-package app.doorprints
+package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.Place
-import app.doorprints.ui.LAST_FIX_MAX_AGE_MS
-import app.doorprints.ui.ListingField
-import app.doorprints.ui.PAIR_STACK_BELOW_DP
-import app.doorprints.ui.PAIR_STACK_FONT_SCALE
-import app.doorprints.ui.RECENT_VISIT_MS
-import app.doorprints.ui.canAskAgain
-import app.doorprints.ui.fillPlace
-import app.doorprints.ui.lastFixUsable
-import app.doorprints.ui.mergeListing
-import app.doorprints.ui.parseCoordinate
-import app.doorprints.ui.sortByPrice
-import app.doorprints.ui.stackFieldPair
-import app.doorprints.ui.visitIsRecent
 import app.doorprints.shared.api.HouseDraftDto
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The house form's and the lists' pure decisions from the whole-app UX audit (2026-09-22): the late address fill of a
  * new house, the listing fill that no longer overwrites typed fields, typed coordinates, "Lowest price" with rents and
- * sales apart, the "I am here now" duplicate guard, and the age and accuracy a last-known fix needs.
+ * sales apart, the "I am here now" duplicate guard, and the age and accuracy a last-known fix needs. `kotlin.test` in
+ * `:ui` commonTest since CMP-4 P4c (was a JUnit test in `:app`; the location prompt case is in `LocationAccessTest`).
  */
 class HouseFormRulesTest {
 
@@ -137,10 +125,10 @@ class HouseFormRulesTest {
 
     @Test
     fun coordinatesMustParseAndBeInRange() {
-        assertEquals(12.9716, parseCoordinate("12.9716", 90.0)!!, 0.0)
-        assertEquals(12.5, parseCoordinate(" 12,5 ", 90.0)!!, 0.0)
-        assertEquals(-33.9, parseCoordinate("-33.9", 90.0)!!, 0.0)
-        assertEquals(180.0, parseCoordinate("180", 180.0)!!, 0.0)
+        assertEquals(12.9716, parseCoordinate("12.9716", 90.0))
+        assertEquals(12.5, parseCoordinate(" 12,5 ", 90.0))
+        assertEquals(-33.9, parseCoordinate("-33.9", 90.0))
+        assertEquals(180.0, parseCoordinate("180", 180.0))
         assertNull(parseCoordinate("91", 90.0))
         assertNull(parseCoordinate("-180.5", 180.0))
         assertNull(parseCoordinate("", 90.0))
@@ -192,15 +180,5 @@ class HouseFormRulesTest {
         assertTrue(stackFieldPair(288f, 1.0f))
         assertTrue(stackFieldPair(600f, PAIR_STACK_FONT_SCALE))
         assertTrue(stackFieldPair(328f, 2.0f))
-    }
-
-    @Test
-    fun locationCanBeAskedUntilAndroidStopsShowingItsPrompt() {
-        // Never asked (by any screen): Android shows its prompt.
-        assertTrue(canAskAgain(asked = false, rationale = false))
-        // Refused once: Android asks again and says a rationale may be shown.
-        assertTrue(canAskAgain(asked = true, rationale = true))
-        // Refused twice, or "Don't ask again": only the app's settings can turn it on.
-        assertFalse(canAskAgain(asked = true, rationale = false))
     }
 }

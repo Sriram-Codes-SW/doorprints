@@ -25,6 +25,17 @@
     <string name="status_REJECTED">நிராகரிக்கப்பட்டது</string>
     <string name="status_ALL">அனைத்தும்</string>
     <string name="status_filter">%1$s (%2$d)</string>
+    <!-- Checklist labels: Compare's rows since CMP-4 P4c; the house form reads the Android copies until P6a. -->
+    <string name="check_water">தண்ணீர் வசதி</string>
+    <string name="check_power">மின் காப்பு (பவர் பேக்கப்)</string>
+    <string name="check_parking">வாகன நிறுத்தம்</string>
+    <string name="check_sunlight">சூரிய ஒளி</string>
+    <string name="check_ventilation">காற்றோட்டம்</string>
+    <string name="check_noise">அமைதி (குறைந்த இரைச்சல்)</string>
+    <string name="check_security">பாதுகாப்பு</string>
+    <string name="check_maintenance">கட்டிடத்தின் நிலை</string>
+    <string name="check_neighbourhood">சுற்றுப்புறம்</string>
+    <string name="check_commute">போக்குவரத்து வசதி</string>
     <!-- Read from Android resources for now (ui/Format.kt in :app); kept for the common Format of CMP-3. -->
     <string name="price_per_month">%1$s/மாதம்</string>
     <string name="map_hunt_mode">தேடல் பயன்முறை</string>

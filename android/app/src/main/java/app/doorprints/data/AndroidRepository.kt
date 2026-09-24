@@ -5,8 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
-import androidx.room.withTransaction
 import androidx.exifinterface.media.ExifInterface
+import app.doorprints.data.Repository.AddPhotoResult
+import app.doorprints.data.Repository.ImportResult
+import app.doorprints.data.Repository.LocalRows
+import app.doorprints.data.Repository.LocalVersions
+import app.doorprints.data.Repository.StreetInfo
+import app.doorprints.data.Repository.UndoResult
 import app.doorprints.export.CopyUndo
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.ApiException
@@ -35,45 +40,51 @@ import kotlinx.io.buffered
 import java.io.File
 import java.util.UUID
 
-class Repository(
+/**
+ * Android's [Repository] (CMP-4 P4c: the interface is common, in `:shared`): Room through the framework SQLite, the
+ * photo files in the app's private `photos` folder, WorkManager for "sync soon" and the app-wide API client. Its
+ * transactions and the export's change flow use Room's common API ([withImmediateTransaction],
+ * [localTablesChanged]), so the database code here no longer needs Android (S4b-BL-23).
+ */
+class AndroidRepository(
     private val context: Context,
     private val db: AppDatabase,
-    val settings: SettingsStore,
-) {
-    val houses = db.houses().observeAll()
-    val visitCounts = db.visits().observeCounts()
+    override val settings: SettingsStore,
+) : Repository {
+    override val houses = db.houses().observeAll()
+    override val visitCounts = db.visits().observeCounts()
 
-    fun house(id: String) = db.houses().observe(id)
-    fun visitsFor(houseId: String) = db.visits().observeForHouse(houseId)
-    fun photosFor(houseId: String) = db.photos().observeForHouse(houseId)
+    override fun house(id: String) = db.houses().observe(id)
+    override fun visitsFor(houseId: String) = db.visits().observeForHouse(houseId)
+    override fun photosFor(houseId: String) = db.photos().observeForHouse(houseId)
 
-    suspend fun houseSnapshot(): List<HouseEntity> = db.houses().all()
-    suspend fun getHouse(id: String) = db.houses().get(id)
+    override suspend fun houseSnapshot(): List<HouseEntity> = db.houses().all()
+    override suspend fun getHouse(id: String) = db.houses().get(id)
 
-    suspend fun saveHouse(house: HouseEntity) {
+    override suspend fun saveHouse(house: HouseEntity) {
         db.houses().upsert(house.copy(updatedAt = System.currentTimeMillis(), dirty = true))
         SyncWorker.syncSoon(context)
     }
 
-    suspend fun deleteHouse(id: String) {
+    override suspend fun deleteHouse(id: String) {
         val house = db.houses().get(id) ?: return
         saveHouse(house.copy(deleted = true))
     }
 
-    suspend fun saveVisit(visit: VisitEntity) {
+    override suspend fun saveVisit(visit: VisitEntity) {
         db.visits().upsert(visit.copy(updatedAt = System.currentTimeMillis(), dirty = true))
         SyncWorker.syncSoon(context)
     }
 
-    suspend fun getVisit(id: String) = db.visits().get(id)
+    override suspend fun getVisit(id: String) = db.visits().get(id)
 
-    suspend fun deleteVisit(id: String) {
+    override suspend fun deleteVisit(id: String) {
         val visit = db.visits().get(id) ?: return
         saveVisit(visit.copy(deleted = true))
     }
 
     /** Records a "been here" visit for a house, now. */
-    suspend fun markVisitedNow(house: HouseEntity) {
+    override suspend fun markVisitedNow(house: HouseEntity) {
         val now = System.currentTimeMillis()
         saveVisit(
             VisitEntity(
@@ -83,9 +94,7 @@ class Repository(
         )
     }
 
-    data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
-
-    suspend fun streetInfo(street: String) = StreetInfo(
+    override suspend fun streetInfo(street: String) = StreetInfo(
         street,
         db.houses().countOnStreet(street),
         db.visits().countOnStreet(street),
@@ -93,8 +102,6 @@ class Repository(
     )
 
     fun photoDir() = File(context.filesDir, "photos").apply { mkdirs() }
-
-    enum class AddPhotoResult { ADDED, LIMIT_REACHED, UNREADABLE }
 
     /**
      * Copies, shrinks (max 1600 px) and stores a photo locally; it uploads on the next sync.
@@ -131,7 +138,7 @@ class Repository(
      * Deletes the local file now. A photo the server already has is queued (deleted = 1) and the delete is sent on
      * the next sync, even if the phone is offline now (threat model F-15).
      */
-    suspend fun deletePhoto(photo: PhotoEntity) = withContext(Dispatchers.IO) {
+    override suspend fun deletePhoto(photo: PhotoEntity): Unit = withContext(Dispatchers.IO) {
         File(photo.path).delete()
         if (photo.uploaded) {
             db.photos().markDeleted(photo.id)
@@ -141,7 +148,7 @@ class Repository(
         }
     }
 
-    suspend fun testConnection(): Result<StatsDto> = withContext(Dispatchers.IO) {
+    override suspend fun testConnection(): Result<StatsDto> = withContext(Dispatchers.IO) {
         val s = settings.current()
         runCatching { Api.client(s.serverUrl, s.apiKey).stats() }
     }
@@ -149,14 +156,14 @@ class Repository(
     // ---- AI features (optional; hidden unless the server reports enabled = true) ----
 
     private val _aiEnabled = MutableStateFlow(false)
-    val aiEnabled: StateFlow<Boolean> = _aiEnabled.asStateFlow()
+    override val aiEnabled: StateFlow<Boolean> = _aiEnabled.asStateFlow()
 
     /**
      * Asks the server whether AI features are on. No server set up means off, and so does a real `enabled: false`
      * answer. A failed request (offline, a timeout, a server error) keeps what was known (UX review, whole-app
      * audit): turning the Assistant tab off on every network error removed it while the user was on it.
      */
-    suspend fun refreshAiStatus(): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun refreshAiStatus(): Boolean = withContext(Dispatchers.IO) {
         val s = settings.current()
         val enabled = if (!s.serverConfigured) {
             false
@@ -176,9 +183,9 @@ class Repository(
         block(Api.client(s.serverUrl, s.apiKey))
     }
 
-    suspend fun extractListing(text: String): HouseDraftDto = withApi { it.extractListing(text) }
-    suspend fun ask(question: String): AskResponseDto = withApi { it.ask(question) }
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto = withApi { it.planVisits(request) }
+    override suspend fun extractListing(text: String): HouseDraftDto = withApi { it.extractListing(text) }
+    override suspend fun ask(question: String): AskResponseDto = withApi { it.ask(question) }
+    override suspend fun planVisits(request: PlanRequest): PlanResponseDto = withApi { it.planVisits(request) }
 
     /**
      * Two-way sync: push local changes, then pull everything the server has changed since last time.
@@ -186,7 +193,7 @@ class Repository(
      * only when [photosAllowed] (the caller checks for an unmetered network when the user asked for Wi-Fi only).
      * Throws on failure; see [SyncOutcome.fromError].
      */
-    suspend fun sync(photosAllowed: Boolean = true): SyncOutcome = withContext(Dispatchers.IO) {
+    override suspend fun sync(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
         if (!s.serverConfigured) return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
         val api = Api.client(s.serverUrl, s.apiKey)
@@ -283,44 +290,7 @@ class Repository(
 
     // ---- Offline copy: export and import (Sprint 4a, S4-02/S4-04) ----
 
-    /** Everything a copy is built from, read in one pass. Tombstones are left out; the export never carries them. */
-    data class LocalRows(
-        val houses: List<HouseEntity>,
-        val visits: List<VisitEntity>,
-        val photos: List<PhotoEntity>,
-    )
-
-    /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
-    data class LocalVersions(
-        val houses: Map<String, Long>,
-        val visits: Map<String, Long>,
-        val photoIds: Set<String>,
-        /**
-         * Which of [houses] are tombstones. They belong in [houses] — a deleted house keeps its `updatedAt` so an
-         * older row in a backup cannot resurrect it — but `ImportPlan` also has to know that they are not a place
-         * a photo or a visit can be attached, or the preview counts photos that [applyImport] will not write.
-         */
-        val deletedHouseIds: Set<String>,
-        /**
-         * Live houses with at least one checklist score, so the preview can warn when a newer row without a
-         * checklist will clear them (docs/schemas/README.md section 4.4).
-         */
-        val scoredHouseIds: Set<String> = emptySet(),
-        /**
-         * Live visits with no house. After a synced house delete the server's purge sends the house's visits back
-         * this way (`houseId = null`, newer `updatedAt`), so `ImportPlan` relinks the ones a restore brings their
-         * house back for instead of leaving them as loose street visits (Android review, round 12).
-         */
-        val unlinkedVisitIds: Set<String> = emptySet(),
-        /**
-         * The tombstones of [deletedHouseIds] that have reached the server (`dirty = 0`). A restore gives fresh photo
-         * ids only to these houses: a delete still waiting to be pushed has not been purged, so the server's photos
-         * of that house are live under their old ids (Android review, round 13).
-         */
-        val syncedDeletedHouseIds: Set<String> = emptySet(),
-    )
-
-    suspend fun localRows(): LocalRows = withContext(Dispatchers.IO) {
+    override suspend fun localRows(): LocalRows = withContext(Dispatchers.IO) {
         LocalRows(db.houses().all(), db.visits().all(), db.photos().all())
     }
 
@@ -331,10 +301,10 @@ class Repository(
      * but not a single house row (Android review, 2026-09-22). Changes that arrive while a read is still going are
      * conflated into one more read.
      */
-    fun localRowsFlow(): Flow<LocalRows> =
-        db.invalidationTracker.createFlow("houses", "visits", "photos").conflate().map { localRows() }
+    override fun localRowsFlow(): Flow<LocalRows> =
+        db.localTablesChanged().conflate().map { localRows() }
 
-    suspend fun localVersions(): LocalVersions = withContext(Dispatchers.IO) {
+    override suspend fun localVersions(): LocalVersions = withContext(Dispatchers.IO) {
         LocalVersions(
             db.houses().versions().associate { it.id to it.updatedAt },
             db.visits().versions().associate { it.id to it.updatedAt },
@@ -363,38 +333,6 @@ class Repository(
         val file = photoFile(id)
         val dir = photoDir()
         return if (file.canonicalPath.startsWith(dir.canonicalPath + File.separator)) file else null
-    }
-
-    /** What an import actually managed to write. */
-    data class ImportResult(
-        /** Rows written per type, new and updated together. */
-        val houses: Int,
-        val visits: Int,
-        val photos: Int,
-        /**
-         * Photos the import did not write: bytes missing from the ZIP, unreadable, or failing their SHA-256 — or
-         * whose house was deleted on this phone between the preview and the import.
-         */
-        val photosSkipped: Int,
-        /**
-         * Of [houses] and [visits], how many replaced a row already on the phone (MERGE only, from
-         * `ImportActions.updatedHouseIds` / `updatedVisitIds`), so the result can say "Added 2 houses. Updated 3
-         * houses." in the preview's own words (UX review, 2026-09-22). Always 0 for a copy.
-         */
-        val updatedHouses: Int = 0,
-        val updatedVisits: Int = 0,
-        /** Of [houses], how many were deleted on this phone and are back (`ImportActions.restoredHouseIds`). */
-        val restoredHouses: Int = 0,
-        /**
-         * COPY only (UX review, round 16): the new house and visit ids with the `updatedAt` each was written with,
-         * and the new photo ids, for the import's undo record (`ImportUndo`). Empty for a merge.
-         */
-        val copiedHouses: Map<String, Long> = emptyMap(),
-        val copiedVisits: Map<String, Long> = emptyMap(),
-        val copiedPhotos: List<String> = emptyList(),
-    ) {
-        /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos
     }
 
     /**
@@ -429,9 +367,9 @@ class Repository(
      * copy left the user no safe way forward (UX review, 2026-09-22). Nothing a copy writes is visible until the
      * very end, and a stop or a failure leaves the phone exactly as it was.
      */
-    suspend fun applyImport(
+    override suspend fun applyImport(
         actions: ImportActions,
-        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+        onProgress: (done: Int, total: Int) -> Unit,
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
@@ -559,7 +497,7 @@ class Repository(
             // Never stamped in the future (CopyUndo.copyStamp): the server would clamp it, the pull would write the
             // clamped value back, and the undo would take every such copy for one the user edited since.
             val now = System.currentTimeMillis()
-            db.withTransaction {
+            db.withImmediateTransaction {
                 for (house in actions.houses) {
                     val row = house.toEntity(dirty = true).copy(updatedAt = CopyUndo.copyStamp(house.updatedAt, now))
                     db.houses().upsert(row)
@@ -590,13 +528,6 @@ class Repository(
     }
 
     /**
-     * What [undoCopyImport] did: houses removed, and houses kept because the user had changed them since, with the ids
-     * of those kept houses ([keptHouses]), so they can still be found behind the "Just imported" chip (UX review,
-     * round 18).
-     */
-    data class UndoResult(val removed: Int, val kept: Int, val keptHouses: Set<String> = emptySet())
-
-    /**
      * Undoes a copy import (UX review, round 16): removes exactly the rows it added, given as the ids of its
      * `ImportUndo` record ([houses] and [visits] with the `updatedAt` each was written with, and [photos]).
      *
@@ -611,7 +542,7 @@ class Repository(
      * photos of a removed house lose their row and, after the commit, their file (the server purges its copies with
      * the house).
      */
-    suspend fun undoCopyImport(
+    override suspend fun undoCopyImport(
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
@@ -620,7 +551,7 @@ class Repository(
         val files = ArrayList<File>()
         var removed = 0
         val keptHouses = HashSet<String>()
-        db.withTransaction {
+        db.withImmediateTransaction {
             val now = System.currentTimeMillis()
             val removedHouses = HashSet<String>()
             for ((id, writtenAt) in houses) {

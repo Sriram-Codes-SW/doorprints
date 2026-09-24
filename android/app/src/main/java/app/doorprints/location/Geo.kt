@@ -13,10 +13,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
 
-// Great-circle distance (Geo.distanceM) moved to :shared (app.doorprints.shared.location.Geo) in Sprint 3.5;
-// the platform geocoder stays here.
-
-data class Place(val street: String?, val locality: String?, val address: String?)
+// Great-circle distance (Geo.distanceM) moved to :shared (app.doorprints.shared.location.Geo) in Sprint 3.5, and the
+// geocoder's result, Place, to :shared in CMP-4 P4c (the house form's rules in :ui fill it in); the platform geocoder
+// stays here.
 
 /**
  * Reverse geocoding with Android's built-in (free, no key) Geocoder. Returns null when unavailable/offline.

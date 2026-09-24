@@ -67,6 +67,18 @@ object Formats {
 }
 
 /**
+ * [format] (a UI string read with `stringResource`) with its positional placeholders `%1$s` and `%1$d` filled from
+ * [args], each written with `toString()`: what Compose resources' `stringResource(res, args)` does, for a format filled
+ * outside composition (Compare's rows, CMP-4 P4c). For these placeholders it writes what `String.format` wrote in the
+ * four languages (Latin digits, no grouping; `FormatsParityTest`). Other `%` sequences are left as they are.
+ */
+fun formatPositional(format: String, vararg args: Any): String =
+    POSITIONAL_PLACEHOLDER.replace(format) { args[it.groupValues[1].toInt() - 1].toString() }
+
+/** The placeholders Compose resources fill (its `SimpleStringFormatRegex`). */
+private val POSITIONAL_PLACEHOLDER = Regex("""%(\d+)\$[ds]""")
+
+/**
  * The platform's medium date (and, [withTime], short time) for [language] with region IN, in the device's time zone.
  * Android: `java.time`'s localized formats; iOS: `NSDateFormatter`.
  */
