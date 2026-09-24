@@ -1,11 +1,19 @@
 // Detailed UI test of the live web app, run after a merge to main that runs the Web deploy (docs/06 TC-M-26).
 // Every route in 4 languages x 2 themes x phone/desktop (loads, <html lang>, title, h1, no horizontal scroll, no
 // untranslated key, the language's script, theme background, axe WCAG 2.1 A/AA serious+critical, console errors),
-// the add/edit/compare/download/offline/delete flows, and map screenshots of India's boundary (TC-M-25 spots).
+// the add/edit/compare/download/offline/delete flows, map screenshots of India's boundary (TC-M-25 spots), and a
+// mobile pass on emulated phones (Pixel 7, Galaxy S9+, iPhone SE, iPhone 14, 320 and 360px wide, landscape, 200%
+// text; touch, device pixel ratio and mobile viewport): no sideways scroll of the page or of <main>, touch targets of
+// at least 44x44 CSS px, form fields in at least 16px text (iOS zooms into smaller ones), nothing left under the
+// bottom bar at the end of a page, MapLibre's controls inside the map and clear of its legend and buttons, the map's
+// credits folded into their (i) button after 5 s, its labels drawn, the list's heading and counters on screen under
+// the phone map, and a field still visible above the on-screen keyboard.
 // Usage: npm ci && npx playwright install chromium && node live-ui.js [baseUrl] [outDir] (or CHROMIUM=<path> for a
-// local Chromium build). Exits 1 when any check fails. A slow check: the full matrix takes about 10-20 minutes.
-// It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser.
-const { chromium } = require('playwright');
+// local Chromium build; ONLY=mobile, or another comma-separated list of pages, flows, boundaries, mobile, runs only
+// those). Exits 1 when any check fails. A slow check: the full matrix takes about 20-30 minutes.
+// It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser (the mobile
+// pass adds one house per phone profile, which goes with the profile).
+const { chromium, devices } = require('playwright');
 const fs = require('fs'), path = require('path');
 const BASE = (process.argv[2] || 'https://doorprints.web.app').replace(/\/$/, '');
 const OUT = process.argv[3] || path.join(__dirname, 'out');
@@ -170,6 +178,196 @@ async function flows(browser) {
   }
 }
 
+// ---------- Mobile pass (owner report 2026-09-24: display issues on a phone browser) ----------
+/** Phones: Playwright's device profiles (touch, isMobile, device pixel ratio, mobile user agent), all in Chromium. */
+const PHONES = [
+  { name: 'pixel7', device: 'Pixel 7', langs: LANGS, themes: THEMES },
+  { name: 'galaxyS9', device: 'Galaxy S9+', langs: ['en', 'ta'] },
+  { name: 'iphoneSE', device: 'iPhone SE', langs: ['en', 'te'] },
+  { name: 'iphone14', device: 'iPhone 14', langs: ['en', 'hi'] },
+  { name: 'w320', device: 'Galaxy S9+', viewport: { width: 320, height: 640 }, langs: ['en', 'ta'] },
+  { name: 'w360', device: 'Pixel 7', viewport: { width: 360, height: 740 }, langs: ['en', 'te'] },
+  { name: 'pixel7-landscape', device: 'Pixel 7 landscape', langs: ['en', 'ta'] },
+  { name: 'iphoneSE-landscape', device: 'iPhone SE landscape', langs: ['en'] },
+  // The owner's phone (report of 2026-09-24): a 384px Android screen, about 615px left by Chrome, larger text.
+  { name: 'owner384-text130', device: 'Galaxy S9+', viewport: { width: 384, height: 615 }, text: 130, langs: ['en', 'ta'] },
+  // Large text: the root font size at 200% (Chrome's and the OS text size scale everything set in rem, as here).
+  { name: 'w360-text200', device: 'Pixel 7', viewport: { width: 360, height: 740 }, text: 200, langs: ['en', 'ta'] },
+];
+/** How long a phone map shows its credits in full before folding them (ATTRIBUTION_SHOW_MS in map-style.ts). */
+const CREDITS_FOLD_MS = 5000;
+/**
+ * Share of dark pixels (luminance under 90) in the map at the India view with its labels drawn: about 3% with the
+ * city and country names, under 1% (hillshade, rivers) without them.
+ */
+const LABEL_DARK_SHARE = 0.015;
+
+/**
+ * Whether the map draws its labels: the glyphs for its text were downloaded (MapLibre asks for a glyph range only to
+ * lay out text it will draw) and the map area, left of the control column and above the bottom row, has the dark
+ * pixels of the names. Measured in the page from a screenshot, so no image library is needed here.
+ */
+async function mapLabels(page, glyphs) {
+  const box = await page.evaluate(() => {
+    const wrap = document.querySelector('.map-wrap'), stack = document.querySelector('.map-stack');
+    if (!wrap) return null;
+    const r = wrap.getBoundingClientRect(), s = stack ? stack.getBoundingClientRect() : null;
+    const bottom = s && s.height > 0 && s.top > r.top + 80 ? s.top : r.bottom;
+    return { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width - 60), height: Math.round(bottom - r.top) };
+  });
+  if (!box || box.width < 50 || box.height < 50) return { glyphs, dark: null };
+  const png = (await page.screenshot({ clip: box })).toString('base64');
+  const dark = await page.evaluate(async (data) => {
+    // An <img>, not fetch(): the site's CSP allows data: images but not data: connections.
+    const img = new Image();
+    img.src = `data:image/png;base64,${data}`;
+    await img.decode();
+    const canvas = new OffscreenCanvas(img.naturalWidth, img.naturalHeight), g = canvas.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, img.naturalWidth, img.naturalHeight).data;
+    let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2] < 90) n++;
+    return n / (px.length / 4);
+  }, png);
+  return { glyphs, dark: Math.round(dark * 1000) / 1000 };
+}
+
+/** Runs in the page: the layout problems a phone shows, as a list of findings (empty when all is well). */
+function mobileAudit() {
+  const out = [];
+  // A page wider than the phone's screen widens the layout viewport (innerWidth) and is shown zoomed out, so the
+  // screen width is the measure (the context's screen is its viewport).
+  const W = Math.min(window.innerWidth, screen.width), H = window.innerHeight;
+  if (window.innerWidth > screen.width + 1) out.push(`page laid out ${window.innerWidth}px wide on a ${screen.width}px screen (zoomed out)`);
+  const shown = (el) => { const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
+  const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
+  const main = document.querySelector('main');
+  // Sideways scroll: the document, and <main> (the app's page scroller, which the document check does not see).
+  const doc = document.scrollingElement.scrollWidth - W;
+  if (doc > 1) out.push(`page scrolls sideways by ${doc}px`);
+  if (main && main.scrollWidth - main.clientWidth > 1) out.push(`main scrolls sideways by ${main.scrollWidth - main.clientWidth}px`);
+  // Touch targets: 44x44 CSS px (UX-007). An input inside a label counts by its label; links inside running text
+  // (WCAG 2.5.8's inline exception), MapLibre's credits (a 24px (i) and links in its text) and the house form's
+  // draggable pin (27x41; the map tap, "Use my location" and the typed coordinates do the same, 2.5.8's equivalent
+  // exception) are not counted.
+  const small = [];
+  for (const el of document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button]')) {
+    if (!shown(el) || hidden(el) || el.closest('.maplibregl-ctrl-attrib, .maplibregl-marker')) continue;
+    if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && /^(P|LI|SPAN|SMALL|DD|TD)$/.test(el.parentElement.tagName)) continue;
+    let { width: w, height: h } = el.getBoundingClientRect();
+    const label = el.tagName === 'INPUT' && (el.closest('label') || (el.id && document.querySelector(`label[for="${el.id}"]`)));
+    if (label) { const r = label.getBoundingClientRect(); const row = el.parentElement.getBoundingClientRect(); w = Math.max(w, r.width); h = Math.max(h, r.height, el.type === 'checkbox' || el.type === 'radio' ? row.height : 0); }
+    if (w < 43.5 || h < 43.5) small.push(`${name(el)} ${Math.round(w)}x${Math.round(h)}`);
+  }
+  if (small.length) out.push(`touch targets under 44px: ${small.slice(0, 4).join(', ')}`);
+  // Text fields under 16px: iOS Safari zooms the page into them on focus.
+  const tiny = [...document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), select, textarea')]
+    .filter((el) => shown(el) && !hidden(el) && parseFloat(getComputedStyle(el).fontSize) < 16).map((el) => `${name(el)} ${getComputedStyle(el).fontSize}`);
+  if (tiny.length) out.push(`fields under 16px text: ${tiny.slice(0, 3).join(', ')}`);
+  // Scrolled to the end, nothing is left under the fixed bottom bar.
+  const bar = document.querySelector('nav.nav');
+  if (main && bar && getComputedStyle(bar).position === 'fixed' && shown(bar)) {
+    const top = main.scrollTop; main.scrollTop = main.scrollHeight;
+    const barTop = bar.getBoundingClientRect().top;
+    const under = [...main.querySelectorAll('button, a[href], input, select, textarea, p, li, h2, h3')].filter((el) => shown(el) && !hidden(el) && el.getBoundingClientRect().bottom > barTop + 1);
+    if (under.length) out.push(`under the bottom bar at the end of the page: ${under.slice(0, 3).map((el) => `${name(el)} by ${Math.round(el.getBoundingClientRect().bottom - barTop)}px`).join(', ')}`);
+    main.scrollTop = top;
+  }
+  // MapLibre's controls stay inside the map and clear of the page's legend, buttons and hint.
+  const ctrl = document.querySelector('.map-wrap .maplibregl-ctrl-bottom-right, .map-wrap .maplibregl-ctrl-top-right');
+  const wrap = document.querySelector('.map-wrap');
+  if (ctrl && wrap && shown(wrap)) {
+    const box = wrap.getBoundingClientRect();
+    const parts = [...ctrl.children].filter(shown).map((c) => c.getBoundingClientRect());
+    for (const r of parts) if (r.top < box.top - 1 || r.bottom > box.bottom + 1) out.push(`a map control (${Math.round(r.top)}-${Math.round(r.bottom)}px) outside the map (${Math.round(box.top)}-${Math.round(box.bottom)}px)`);
+    for (const el of document.querySelectorAll('.map-stack > *, .add-hint')) {
+      if (!shown(el)) continue;
+      const b = el.getBoundingClientRect();
+      if (parts.some((r) => Math.min(r.right, b.right) - Math.max(r.left, b.left) > 1 && Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 1)) out.push(`a map control overlaps ${name(el)}`);
+    }
+  }
+  // The app fits the screen: header, banners and page no taller than the viewport.
+  const root = document.querySelector('app-root');
+  if (root && root.getBoundingClientRect().height > H + 1) out.push(`app taller than the screen: ${Math.round(root.getBoundingClientRect().height)}px of ${H}px`);
+  return out;
+}
+
+async function mobile(browser) {
+  for (const phone of PHONES) for (const lang of phone.langs) for (const theme of phone.themes && lang === 'en' ? phone.themes : ['light']) {
+    const { defaultBrowserType, ...profile } = devices[phone.device];
+    const viewport = phone.viewport || profile.viewport;
+    const ctx = await browser.newContext({ ...profile, viewport, screen: viewport, colorScheme: theme, serviceWorkers: 'block' });
+    await ctx.addInitScript(([lang, text]) => {
+      try { if (!sessionStorage.getItem('__init')) { sessionStorage.setItem('__init', '1'); localStorage.setItem('doorprints.lang', lang); } } catch {}
+      if (text) document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${text}%`; });
+    }, [lang, phone.text]);
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    // Glyph ranges for the map's labels (requested from MapLibre's worker, seen at the context).
+    let glyphs = 0;
+    ctx.on('response', (r) => { if (/\/fonts\/.+\.pbf/.test(r.url()) && r.status() === 200) glyphs++; });
+    // One house, so a house page is checked too (it goes with this profile).
+    await page.goto(`${BASE}/houses/new?lat=12.9716&lon=77.5946`); await settle(page);
+    await page.locator('#house-name').fill('Mobile check: a house with a fairly long name, Indiranagar 2nd Stage');
+    await page.locator('.toolbar .btn-primary').first().click();
+    await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
+    const house = (/\/houses\/(?!new)([^/?]+)/.exec(page.url()) || [])[1];
+    const tag0 = `${phone.name} ${lang} ${theme}`;
+    check('mobile', `${tag0}: a house added`, !!house, page.url());
+    for (const route of [...ROUTES, ...(house ? [`/houses/${house}`] : [])]) {
+      const tag = `${tag0} ${route.startsWith('/houses/') && route !== ROUTES[7] ? '/houses/:id' : route}`;
+      errors.reset();
+      await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await settle(page);
+      if (route === '/') await page.waitForTimeout(CREDITS_FOLD_MS + 1500);
+      const found = await page.evaluate(mobileAudit);
+      check('mobile', `${tag}: layout`, found.length === 0, found.join(' ; '));
+      if (route === '/' && viewport.width <= 640) {
+        const open = await page.evaluate(() => { const a = document.querySelector('.map-wrap .maplibregl-ctrl-attrib'); return a ? a.classList.contains('maplibregl-compact-show') : null; });
+        check('mobile', `${tag}: map credits folded after ${CREDITS_FOLD_MS / 1000} s`, open !== true, String(open));
+      }
+      if (route === '/') {
+        // The map keeps its names (country, cities): the fixes must not cost the labels.
+        const labels = await mapLabels(page, glyphs);
+        check('map', `${tag}: map labels drawn`, labels.glyphs > 0 && (labels.dark === null || theme === 'dark' || labels.dark >= LABEL_DARK_SHARE), JSON.stringify(labels));
+        // Portrait phones up to 130% text: "Your houses" and every counter, number and caption, are on screen above
+        // the bottom bar before any scrolling (owner report 2026-09-24).
+        if (viewport.height >= 560 && viewport.height > viewport.width && viewport.width <= 760 && (phone.text || 100) <= 130) {
+          const peek = await page.evaluate(() => {
+            const bar = document.querySelector('nav.nav'), limit = bar && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top : innerHeight;
+            const parts = [...document.querySelectorAll('#houses-heading, .stats dt, .stats dd')];
+            return { limit: Math.round(limit), n: parts.length, lowest: Math.round(Math.max(...parts.map((e) => e.getBoundingClientRect().bottom))) };
+          });
+          check('mobile', `${tag}: heading and counters above the bottom bar`, peek.n >= 11 && peek.lowest <= peek.limit, JSON.stringify(peek));
+        }
+      }
+      // The on-screen keyboard where the browser shrinks the page for it: the focused field stays in view, clear of
+      // the bottom bar (portrait only; a landscape phone is already that short).
+      if (viewport.height > viewport.width && !phone.text && (route === '/connect' || route.startsWith('/houses/'))) {
+        await page.setViewportSize({ width: viewport.width, height: Math.round(viewport.height * 0.55) });
+        const field = page.locator('main input[type=text], main input[type=url], main input:not([type]), main textarea').first();
+        if (await field.count()) {
+          await field.focus(); await page.waitForTimeout(400);
+          const kb = await page.evaluate(() => {
+            const r = document.activeElement.getBoundingClientRect(), bar = document.querySelector('nav.nav');
+            const barTop = bar && getComputedStyle(bar).display !== 'none' && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top : innerHeight;
+            return { top: Math.round(r.top), bottom: Math.round(r.bottom), limit: Math.round(Math.min(innerHeight, barTop)) };
+          });
+          check('mobile', `${tag}: focused field above the keyboard`, kb.top >= 0 && kb.bottom <= kb.limit, JSON.stringify(kb));
+        }
+        await page.setViewportSize(viewport);
+      }
+      check('console', `${tag} (mobile): no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
+      if (lang === 'en' || route === '/') {
+        const file = `mobile_${phone.name}_${theme}_${lang}_${route.replace(/[^a-z]+/gi, '_') || 'root'}`.slice(0, 80);
+        await page.screenshot({ path: path.join(OUT, 'shots', `${file}.png`) });
+      }
+    }
+    await ctx.close();
+  }
+}
+
 async function boundaries(browser) {
   const r = await (await browser.newContext()).request.get(`${BASE}/geo/in-boundaries.geojson`);
   const g = r.status() === 200 ? await r.json() : null;
@@ -193,7 +391,9 @@ async function boundaries(browser) {
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
-  for (const [name, fn] of [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries]]) {
+  const only = (process.env.ONLY || '').split(',').filter(Boolean);
+  for (const [name, fn] of [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile]]) {
+    if (only.length && !only.includes(name)) continue;
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }
   }
   await browser.close();
