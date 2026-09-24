@@ -72,6 +72,12 @@ describe('service worker precache stamp', () => {
       expect(precacheList([...build, 'icons/favicon-32.png'])).toContain('icons/favicon-32.png');
     });
 
+    it("precaches the map's India boundary data, so the boundary is right offline once the worker is installed", () => {
+      // web/public/geo/in-boundaries.geojson is copied by the `public` assets glob; `shared/india-boundaries.ts`
+      // loads it from the same path relative to the base href, and sw.js answers it cache-first from PRECACHED.
+      expect(precacheList([...build, 'geo/in-boundaries.geojson'])).toContain('geo/in-boundaries.geojson');
+    });
+
     it('does not depend on the order or the separator the file system reports', () => {
       const windows = [...build].reverse().map((p) => p.replaceAll('/', '\\'));
       expect(precacheList(windows)).toEqual(precacheList(build));
@@ -255,6 +261,9 @@ describe('service worker precache stamp', () => {
     it("does not insist on a script type, so a host's odd type for .mjs or none at all still installs", () => {
       expect(isAcceptable('maplibre/maplibre-gl-worker.mjs', false, answer(200, 'application/octet-stream'))).toBe(true);
       expect(isAcceptable('icons/icon-192.png', false, answer(200, null))).toBe(true);
+      // web/firebase.json types .geojson explicitly; any non-HTML type would do.
+      expect(isAcceptable('geo/in-boundaries.geojson', false, answer(200, 'application/geo+json'))).toBe(true);
+      expect(isAcceptable('geo/in-boundaries.geojson', false, html)).toBe(false);
     });
 
     it('lets an .html file be HTML, and refuses every failure', () => {

@@ -2,7 +2,8 @@
 <!--
     Status-bar icon: the launcher icon's arched door and one footprint, as a single-colour silhouette on a
     transparent background. Android draws small icons as an alpha mask, so the full-bleed launcher square showed
-    as a solid white block; only the alpha of this drawing matters, the colour is ignored.
+    as a solid white block; only the alpha of this drawing matters, the colour is ignored. The footprint is the
+    launcher's print (sole, heel, four toes; ic_launcher.xml), a right foot at scale 0.5.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
@@ -12,7 +13,10 @@
         android:pathData="M4,20 L4,9.5 A5,5 0 0,1 14,9.5 L14,20 Z M10.6,14.5 a0.9,0.9 0 1,0 1.8,0 a0.9,0.9 0 1,0 -1.8,0 Z" />
     <!-- Doorstep -->
     <path android:fillColor="#FFFFFFFF" android:pathData="M3,21 h12 v1.5 h-12 Z" />
-    <!-- Footprint: sole and two toes -->
-    <path android:fillColor="#FFFFFFFF"
-        android:pathData="M17.2,17.5 a1.8,3 0 1,0 3.6,0 a1.8,3 0 1,0 -3.6,0 Z M17.15,13.2 a0.75,0.75 0 1,0 1.5,0 a0.75,0.75 0 1,0 -1.5,0 Z M19.35,13.2 a0.75,0.75 0 1,0 1.5,0 a0.75,0.75 0 1,0 -1.5,0 Z" />
+    <!-- Footprint: sole, heel and four toes -->
+    <group android:translateX="19" android:translateY="16.3" android:rotation="-10"
+        android:scaleX="0.5" android:scaleY="0.5">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M-2.7,-1.6 a2.7,3.9 0 1,0 5.4,0 a2.7,3.9 0 1,0 -5.4,0 Z M-1.7,4.6 a2,2.4 0 1,0 4,0 a2,2.4 0 1,0 -4,0 Z M-2.9,-7.45 a0.95,0.95 0 1,0 1.9,0 a0.95,0.95 0 1,0 -1.9,0 Z M-0.9,-7.6 a0.85,0.85 0 1,0 1.7,0 a0.85,0.85 0 1,0 -1.7,0 Z M0.8,-7.1 a0.75,0.75 0 1,0 1.5,0 a0.75,0.75 0 1,0 -1.5,0 Z M2.2,-6.35 a0.65,0.65 0 1,0 1.3,0 a0.65,0.65 0 1,0 -1.3,0 Z" />
+    </group>
 </vector>

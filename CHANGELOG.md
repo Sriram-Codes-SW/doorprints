@@ -257,6 +257,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **App icon: three small footprints (option C).** On Android (`ic_launcher.xml`, and the status-bar icon
+  `ic_stat_doorprints.xml`) and on the web (`favicon.svg`, `icons/favicon-32.png`, `icon-192.png`, `icon-512.png`,
+  `icon-maskable-512.png`, `apple-touch-icon.png`), the two large gold prints beside the door (a sole with two toes; plain ovals in the favicon)
+  are now three small footprints walking up to it, left, right, left, each with a sole, a heel and four toes. Colours, the door and the
+  layout of each icon are unchanged; the favicon now shows the same prints ([12](docs/12-brand-and-naming.md) N-06,
+  [14](docs/14-lead-backlog-and-handoff.md) N3).
 - **CI runs on every branch** (owner decision, 2026-09-23: "We need to have the pipelines run on branches as well
   because we need to be sure that the code is right before merging into main"; [sprint log](docs/10-sprint-log.md)
   12.5 Decision 5). `backend.yml`, `web.yml`, `android.yml`, `shared-ios.yml`, `security.yml` and `codeql.yml` run on
@@ -514,6 +520,53 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   threshold).
 
 ### Fixed
+
+- **India's boundaries on the map** (owner issue P0 of 2026-09-24 on the live site, near Jammu and Kashmir and near
+  Arunachal Pradesh; branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, **not yet seen green in CI, not deployed**). Both apps drew OpenFreeMap
+  Liberty's ISO view: the Line of Control, the Line of Actual Control and claim lines, a Pakistan line through
+  Kashmir below zoom 5, the Pakistan-China line at Khunjerab, and the "Azad Kashmir" and "Gilgit-Baltistan" state
+  labels. Every map on the web and Android now shows India's external boundary as the Government of India depicts
+  it, the only view: all of Jammu and Kashmir and Ladakh (PoK, Gilgit-Baltistan, Shaksgam and Aksai Chin included)
+  and Arunachal Pradesh inside India, one solid outline, no LoC or LAC. On every style load both apps hide
+  `boundary_disputed`, start `boundary_2` at zoom 5 without the Pakistan-China line, draw a bundled Natural Earth
+  outline (public domain, India point of view; `in-boundary-world` below zoom 5, `in-boundary-claim` at every zoom)
+  and hide the two state labels; a missing layer is a warning, never a crash. Both apps also draw only tile country
+  lines that carry a country code (`COUNTRY_LINE_RULE` on the web, `COUNTRY_LINE_EXTRA_FILTER` on Android) and take
+  `boundary_2`, `boundary_3` and every other boundary line layer from zoom 5 only from zoom 5+ tiles
+  (`TILE_ZOOM_GUARD`, `[">=", ["zoom"], 5]`), so a zoom 0-4 tile that MapLibre shows while a closer tile loads, or
+  offline, never brings back the Pakistan line through Kashmir or a line through Arunachal Pradesh. Read from the
+  renderer sources, maplibre-gl and maplibre-native already skip a minzoom 5 layer in a zoom 0-4 tile, so these two
+  guards are defence in depth on both apps ([docs/03](docs/03-design.md) ADR-22 rule 2). Known limits, both apps:
+  the outline is 1:10m Natural Earth, a median of about 1.55-1.6 km off the true line (90th percentile 3.9 km); in
+  the Wakhan, the middle sector (Himachal Pradesh, Uttarakhand, Kalapani and Dharchula), Sikkim, Bhutan's south-east
+  corner and Myanmar south of 26.65 N the tiles' own border line is drawn beside the outline, a median 1.5-2.8 km
+  apart (at most 5.3 km), so two close lines can show when zoomed in (S4b-BL-11, S4b-BL-16); from zoom 5 the
+  Assam-Arunachal Pradesh state line is not drawn, because the tiles carry it as a disputed line (S4b-BL-15); both
+  fixed by the next entry. Web:
+  `shared/india-boundaries.ts` (37 spec cases); Android: `ui/IndiaView.kt`, `ui/IndiaViewRules.kt` (18 JVM tests,
+  16 + 2, reported passing locally). No new network host. New CI checks (committed, not yet seen green) cover
+  the data file in the build, its byte identity in both apps, and the live copy after each deploy. See [docs/03](docs/03-design.md) ADR-22,
+  [docs/01](docs/01-requirements.md) FR-098, [docs/06](docs/06-test-plan.md) §15 (TC-M-25 is a release gate).
+- **India's boundary: one line from zoom 5, and the Assam-Arunachal Pradesh state line** (owner request of
+  2026-09-24; S4b-BL-11, S4b-BL-15, S4b-BL-16; branch `fix/india-boundary-lines`, PR #16, **not deployed**; CI green
+  on `5af2f4d`, the run on `9e0036e` pending). Both apps no longer draw the base map's own India-China line (the
+  tiles cut it into drawn and hidden pieces, which showed as stray pieces beside the outline at street zoom): the
+  Natural Earth outline draws the whole India-China border at every zoom. Along the 7 stretches where the
+  OpenFreeMap tiles draw India's border with Nepal, Bhutan or Myanmar themselves, or in the Wakhan, the outline now
+  draws below zoom 5 only and the tiles' more precise line takes over from zoom 5, so the two close lines are gone;
+  each hand-over has a connector of about 7 km at most, so the border has no gap. Kashmir, Ladakh, Jammu-Sialkot and
+  Arunachal Pradesh keep the outline at every zoom. The stretches come from the new
+  `web/scripts/geo/find_shared_stretches.py`, re-run after each OpenFreeMap planet or style update. The
+  Assam-Arunachal Pradesh state line (Natural Earth 1:10m) is drawn from zoom 5 on both apps, dashed like the other
+  state lines (web `in-boundary-state`, Android `IndiaViewRules.STATE_OVERLAY_LAYER`). New data file, byte-identical
+  in both apps (sha256 `25984afa…a024`, kinds `world`, `claim`, `state`; `web.yml` requires all three), with no
+  connector-only spur (two had shown into Nepal on the Singalila ridge). Known minors: a small step at each hand-over;
+  loops at Sikkim's two tri-junctions (about 13 x 3 km at Nepal-China-India, on glaciers, from about zoom 10; about
+  2 km at Doklam); from about zoom 10 (a small hook at Jomotsangkha from zoom 9) the tile line running on past the hand-over at Jomotsangkha (about 9 km) and Longwa
+  (about 3 km); the India-China rule also hides about 12 km of the China-North Korea line on the Tumen islets
+  (harmless for India); while closer
+  tiles load, or offline without them, those stretches show no line from zoom 5. Web: 41 spec cases, 463 tests in
+  all; Android: 20 JVM tests. See [docs/03](docs/03-design.md) ADR-22, [docs/10](docs/10-sprint-log.md) §12.10.
 
 Found by the whole-app UX audit (2026-09-23; working tree, **not pushed yet and not built in CI**):
 
