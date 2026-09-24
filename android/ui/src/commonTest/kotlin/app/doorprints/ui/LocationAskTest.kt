@@ -29,6 +29,8 @@ class LocationAskTest {
             settingsOpened++
         }
         override fun canPostNotifications() = true
+        override fun dial(number: String) = Unit
+        override fun openUrl(url: String) = false
     }
 
     @Test

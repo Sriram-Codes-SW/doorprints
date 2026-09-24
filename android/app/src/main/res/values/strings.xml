@@ -10,16 +10,6 @@
     <string name="status_NEW">New</string>
     <string name="status_SHORTLISTED">Shortlisted</string>
     <string name="status_REJECTED">Rejected</string>
-    <string name="check_water">Water supply</string>
-    <string name="check_power">Power backup</string>
-    <string name="check_parking">Parking</string>
-    <string name="check_sunlight">Sunlight</string>
-    <string name="check_ventilation">Ventilation</string>
-    <string name="check_noise">Quiet (low noise)</string>
-    <string name="check_security">Safety and security</string>
-    <string name="check_maintenance">Building condition</string>
-    <string name="check_neighbourhood">Neighbourhood</string>
-    <string name="check_commute">Commute</string>
     <string name="notif_channel_hunt">Hunt mode</string>
     <string name="notif_channel_hunt_desc">Shown while Doorprints is tracking your walk</string>
     <string name="notif_channel_alerts">House and street alerts</string>

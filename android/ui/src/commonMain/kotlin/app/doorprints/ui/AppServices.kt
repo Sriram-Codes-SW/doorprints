@@ -38,6 +38,9 @@ interface AppServices {
     /** The app features the Settings screen shows: language, the weekly backup, the version. */
     val settingsScreen: SettingsServices
 
+    /** What the house form needs from the app: the geocoder, the visit alert and the photos (CMP-6 P6a). */
+    val houseForm: HouseFormServices
+
     /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".

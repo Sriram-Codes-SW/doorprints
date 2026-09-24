@@ -10,16 +10,6 @@
     <string name="status_NEW">కొత్తది</string>
     <string name="status_SHORTLISTED">ఎంపికైంది</string>
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
-    <string name="check_water">నీటి సరఫరా</string>
-    <string name="check_power">పవర్ బ్యాకప్</string>
-    <string name="check_parking">పార్కింగ్</string>
-    <string name="check_sunlight">సూర్యరశ్మి</string>
-    <string name="check_ventilation">గాలి ప్రసరణ</string>
-    <string name="check_noise">ప్రశాంతత (తక్కువ శబ్దం)</string>
-    <string name="check_security">భద్రత</string>
-    <string name="check_maintenance">భవనం పరిస్థితి</string>
-    <string name="check_neighbourhood">పరిసరాలు</string>
-    <string name="check_commute">రాకపోకల సౌలభ్యం</string>
     <string name="notif_channel_hunt">హంట్ మోడ్</string>
     <string name="notif_channel_hunt_desc">Doorprints మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
     <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>

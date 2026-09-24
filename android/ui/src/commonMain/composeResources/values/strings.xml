@@ -25,7 +25,7 @@
     <string name="status_REJECTED">Rejected</string>
     <string name="status_ALL">All</string>
     <string name="status_filter">%1$s (%2$d)</string>
-    <!-- Checklist labels: Compare's rows since CMP-4 P4c; the house form reads the Android copies until P6a. -->
+    <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
     <string name="check_water">Water supply</string>
     <string name="check_power">Power backup</string>
     <string name="check_parking">Parking</string>
@@ -495,4 +495,8 @@
         <item quantity="one">Plan ready: %1$d stop</item>
         <item quantity="other">Plan ready: %1$d stops</item>
     </plurals>
+    <!-- List patterns (CMP-6): also in Android resources, for the import notification (StringParityTest keeps them equal). -->
+    <string name="import_list_two">%1$s and %2$s</string>
+    <string name="import_list_three">%1$s, %2$s and %3$s</string>
+    <string name="import_list_middle">%1$s, %2$s</string>
 </resources>

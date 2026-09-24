@@ -10,16 +10,6 @@
     <string name="status_NEW">नया</string>
     <string name="status_SHORTLISTED">चुना गया</string>
     <string name="status_REJECTED">अस्वीकृत</string>
-    <string name="check_water">पानी की आपूर्ति</string>
-    <string name="check_power">बिजली बैकअप</string>
-    <string name="check_parking">पार्किंग</string>
-    <string name="check_sunlight">धूप</string>
-    <string name="check_ventilation">हवादारी</string>
-    <string name="check_noise">शांति (कम शोर)</string>
-    <string name="check_security">सुरक्षा</string>
-    <string name="check_maintenance">इमारत की हालत</string>
-    <string name="check_neighbourhood">आस-पड़ोस</string>
-    <string name="check_commute">आने-जाने की सुविधा</string>
     <string name="notif_channel_hunt">हंट मोड</string>
     <string name="notif_channel_hunt_desc">जब Doorprints आपकी सैर पर नज़र रखता है तब दिखता है</string>
     <string name="notif_channel_alerts">मकान और सड़क की सूचनाएँ</string>
