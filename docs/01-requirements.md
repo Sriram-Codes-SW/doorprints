@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.29 |
+| Version | 0.30 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -41,6 +41,7 @@
 | 0.27 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). SEC-019 names the app schema `doorprints` (was `househunt`). |
 | 0.28 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19: the §12 RTM row of FR-036 names both homes of the Android strings (the UI strings as Compose resources in `android/ui/src/commonMain/composeResources` since [03](03-design.md) ADR-23 CMP-2, the service strings in `res/values*`) and the new tests TC-U-59, TC-U-60 and TC-M-27 ([06](06-test-plan.md) v0.40). |
 | 0.29 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a ([03](03-design.md) ADR-23 P4a): the §12 RTM row of FR-019 names the Room database in `:shared` commonMain (schema export `android/shared/schemas/…/2.json`) and adds TC-U-63 (`AppDatabaseMigrationTest`). |
+| 0.30 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): the §12 RTM rows of FR-030 and SEC-010/SEC-011 name the settings, `SecretStore` and `ServerUrl` in `:shared` commonMain and `KeystoreSecretStore` in `:app`, and the new tests TC-U-64 and TC-U-65 ([06](06-test-plan.md)). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -434,7 +435,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-027 | 03 §11 | `HouseRepository.findLiveOnStreet` | TC-I-03, TC-I-19 |
 | FR-028 | 03 §9 | `StatsController` | TC-I-07 |
 | FR-029 | 03 §9 | actuator config in `application.yml` | TC-I-02 |
-| FR-030 | 03 §4.2 | `data/Settings.kt`, `data/ServerUrl.kt`, `ui/SettingsScreen.kt` | TC-M-06, TC-U-15 |
+| FR-030 | 03 §4.2 | `data/Settings.kt`, `data/ServerUrl.kt` (both `:shared` commonMain since CMP-4 P4b), `ui/SettingsScreen.kt` | TC-M-06, TC-U-15, TC-U-64, TC-U-65 |
 | FR-031 | 03 §9 | `privacy/DataController`, `DataService.export` | TC-I-18 |
 | FR-032 | 03 §9 | `privacy/DataController`, `DataService.deleteAll` | TC-I-18 |
 | FR-033 | 03 §7.3 | `MainActivity.handle`, `Root.kt` deep links | TC-F-04, TC-S-12 |
@@ -473,7 +474,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | SEC-007 | 03 §7.4 | `PhotoService.upload`, `ImageSanitizer` | TC-I-08, TC-I-17, TC-U-14 |
 | SEC-008 | 03 §12 | `ApiRateLimitFilter`, `ApiKeyFilter` failure bucket, `AiRateLimitFilter`; web client: `SyncService` 429 wait | TC-U-12, TC-I-12, TC-U-48 |
 | SEC-009, SEC-013, SEC-014 | 07 | CI (`security.yml`), `.gitleaksignore` (reviewed fingerprints only), `backend/pom.xml` `tomcat.version` override | TC-S-01..03 |
-| SEC-010, SEC-011 | 03 §12 | `ApiKeyCipher`, `Settings.kt`, `data_extraction_rules.xml`, web `config.service.ts` | TC-S-07, TC-M-06, TC-M-11, TC-U-19 |
+| SEC-010, SEC-011 | 03 §12 | `ApiKeyCipher`, `KeystoreSecretStore` (`:app`), `Settings.kt` and `SecretStore` (`:shared`), `data_extraction_rules.xml`, web `config.service.ts` | TC-S-07, TC-M-06, TC-M-11, TC-U-19, TC-U-64 |
 | SEC-012 | 03 §12, 07 §6.3 | `SecurityHeadersFilter`, `web/firebase.json`, `.github/firebase-tools/check-live-headers.sh` | TC-I-20, TC-S-04, TC-S-23, TC-S-24, TC-M-19 |
 | SEC-015, SEC-016 | 03 §12 | `common/ApiExceptionHandler`; Android `SyncOutcome` and `ApiException` (`:shared`) | TC-S-04, TC-U-16, TC-U-35, review |
 | SEC-017 | 08 §5.1, 07 §7 | `ApiKeyFilter` (list of current + next key), `AppProperties.apiKeyNext`, `application.yml` `app.api-key-next` | TC-U-18, TC-I-21, TC-O-02 |

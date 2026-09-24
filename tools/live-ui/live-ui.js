@@ -1,4 +1,4 @@
-// Detailed UI test of the live web app, run after every merge to main (owner rule, 2026-09-24; docs/06 TC-M-26).
+// Detailed UI test of the live web app, run after a merge to main that runs the Web deploy (docs/06 TC-M-26).
 // Every route in 4 languages x 2 themes x phone/desktop (loads, <html lang>, title, h1, no horizontal scroll, no
 // untranslated key, the language's script, theme background, axe WCAG 2.1 A/AA serious+critical, console errors),
 // the add/edit/compare/download/offline/delete flows, and map screenshots of India's boundary (TC-M-25 spots).

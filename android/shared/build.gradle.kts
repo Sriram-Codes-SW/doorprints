@@ -38,6 +38,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             // api: AppDatabase is a RoomDatabase, and :app builds it and calls its DAOs (data/AppDatabaseFactory.kt).
             api(libs.androidx.room.runtime)
+            // api: SettingsStore takes a DataStore<Preferences>, which :app opens on the settings file (CMP-4 P4b).
+            api(libs.androidx.datastore.preferences.core)
         }
         iosMain.dependencies {
             // iOS has no framework SQLite for Room: the bundled driver (compile-only until the iOS shell, CMP-8).
