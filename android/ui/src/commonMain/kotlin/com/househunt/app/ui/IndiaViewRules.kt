@@ -1,5 +1,7 @@
 package com.househunt.app.ui
 
+import kotlin.math.nextDown
+
 /*
  * India's external boundary as the Government of India shows it (owner issue P0, 2026-09-24): all of Jammu and
  * Kashmir and Ladakh inside India (including the areas the tiles label "Azad Kashmir" and "Gilgit-Baltistan",
@@ -67,7 +69,7 @@ object IndiaViewRules {
      * render_orchestrator.cpp:175), so a maxzoom of 5 would draw both layers at 5.0; maplibre-gl excludes maxzoom
      * (style_layer.ts:323). No float lies between this and 5, so there is no zoom with neither layer either.
      */
-    val WORLD_MAX_ZOOM: Float = Math.nextDown(DETAILED_FROM_ZOOM)
+    val WORLD_MAX_ZOOM: Float = DETAILED_FROM_ZOOM.nextDown()
 
     /**
      * [COUNTRY_LAYER]'s minzoom: [DETAILED_FROM_ZOOM], or the layer's own when the base style sets a higher one (the

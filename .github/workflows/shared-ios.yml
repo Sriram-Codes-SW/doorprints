@@ -1,4 +1,5 @@
-# Shared KMP module (android/shared): compiles the iOS targets on macOS so the shared code is proved to stay
+# Shared KMP modules (android/shared, and android/ui with the Compose Multiplatform UI, ADR-23): compiles the iOS
+# targets of both on macOS so the shared code is proved to stay
 # iOS-compatible without an iPhone, a Mac of our own or a paid Apple Developer account (compiling a klib needs
 # neither signing nor a device). macOS runners are free for public repositories.
 # A separate workflow (not a job in android.yml) so GitHub's own path filter limits it to shared-code changes.
@@ -12,6 +13,7 @@ on:
     branches: ["**"]
     paths:
       - "android/shared/**"
+      - "android/ui/**"
       # Root Gradle config pins the Kotlin/AGP versions and the module list, which can break the iOS build too.
       - "android/build.gradle.kts"
       - "android/settings.gradle.kts"
@@ -22,6 +24,7 @@ on:
     branches: [main]
     paths:
       - "android/shared/**"
+      - "android/ui/**"
       - "android/build.gradle.kts"
       - "android/settings.gradle.kts"
       - "android/gradle.properties"
@@ -40,7 +43,7 @@ concurrency:
 
 jobs:
   shared-ios-compile:
-    name: ":shared iOS targets compile (macOS, JDK 21)"
+    name: ":shared iOS targets compile (macOS, JDK 21)"  # name kept: it may be a required check; it covers :ui too
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
@@ -74,10 +77,13 @@ jobs:
 
       # Task names follow KGP's scheme compile[Test]Kotlin<Target>: the main klibs of both iOS targets plus the
       # simulator test klib (commonTest/iosTest code). Nothing is linked, signed or run on a simulator.
-      - name: Compile iOS targets of :shared
+      - name: Compile iOS targets of :shared and :ui
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace \
             :shared:compileKotlinIosArm64 \
             :shared:compileKotlinIosSimulatorArm64 \
-            :shared:compileTestKotlinIosSimulatorArm64
+            :shared:compileTestKotlinIosSimulatorArm64 \
+            :ui:compileKotlinIosArm64 \
+            :ui:compileKotlinIosSimulatorArm64 \
+            :ui:compileTestKotlinIosSimulatorArm64

@@ -284,7 +284,7 @@ private val HERO_MEASURE = 480.dp
  * buttons and results no longer stretch to 800+ dp, text keeps a comfortable line length, and the screens match the
  * web's pages, which sit in `--content-narrow`. The scroll stays full width, so a drag beside the column scrolls it.
  */
-internal val ContentMaxWidth = 640.dp
+val ContentMaxWidth = 640.dp
 
 /**
  * A calm privacy note (the web's `.warn-box`), such as "This copy will contain phone numbers… Share it carefully."

@@ -97,6 +97,8 @@ ksp {
 dependencies {
     // Platform-neutral logic, DTOs and the Ktor API client (Sprint 3.5, see ../shared/README.md).
     implementation(project(":shared"))
+    // Compose Multiplatform UI: theme, shared composables and UI rules (ADR-23, ../ui/README.md).
+    implementation(project(":ui"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -133,7 +135,8 @@ dependencies {
 
 // CI runs `./gradlew assembleDebug testDebugUnitTest`. :shared is a KMP library whose Android host tests are the task
 // :shared:testAndroidHostTest (it has no testDebugUnitTest), so the app's unit-test task pulls them in. That keeps the
-// existing CI command covering the commonTest suite (domain rules and the Ktor API contract tests).
+// existing CI command covering the commonTest suite (domain rules and the Ktor API contract tests). :ui's host tests
+// are pulled in the same way.
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
-    dependsOn(":shared:testAndroidHostTest")
+    dependsOn(":shared:testAndroidHostTest", ":ui:testAndroidHostTest")
 }
