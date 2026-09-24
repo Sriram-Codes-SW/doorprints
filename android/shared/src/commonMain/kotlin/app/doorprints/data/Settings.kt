@@ -108,7 +108,7 @@ class SettingsStore(
         val autoBackupKeep = intPreferencesKey("autoBackupKeep")
         val lastAutoBackupAt = longPreferencesKey("lastAutoBackupAt")
         val lastAutoBackupError = stringPreferencesKey("lastAutoBackupError")
-        /** The "Save to…" documents whose persisted grant is still held, newest first; see [ExportGrants]. */
+        /** The "Save to…" documents whose persisted grant is still held, newest first; see `ExportGrants` (`:app`). */
         val exportGrants = stringPreferencesKey("exportGrants")
         val exportDismissed = stringPreferencesKey("exportDismissedRun")
         val exportTold = stringPreferencesKey("exportToldRun")
