@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-09-24 | Section 5: `android.yml` runs the unit tests with `-Proborazzi.test.verify=true`, and each phase is checked by the JVM screenshot tests of `:app` (docs/06 TC-U-60) and the emulator smoke tests (TC-I-35, `android-emulator.yml`); CMP-0, commit `afe4064` ([docs/10](../../docs/10-sprint-log.md) §13.3). |
 | 1.1 | 2026-09-24 | Code review of CMP-1 (commit `06e482d`): `WORLD_MAX_ZOOM` is computed from the float's bits (`Float.nextDown()` is JVM-only); `android.yml` compiles `:shared` and `:ui` commonMain metadata on Linux; Room version follows the catalog. |
 | 1.0 | 2026-09-24 | First version (CMP-1, commit `be86f50`). `:ui` module created with the JetBrains Compose Multiplatform libraries; the theme, the list rows, the server status, the Map and India view rules, and a few small UI types move out of `:app` into commonMain. No visual change. |
 
@@ -71,7 +72,7 @@ From `android/`:
 ```bash
 ./gradlew :ui:testAndroidHostTest     # :ui's JVM tests; :app:testDebugUnitTest depends on it, android.yml also names it
 ./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest \
-  :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata   # what android.yml runs
+  :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true   # what android.yml runs
 ./gradlew :ui:compileCommonMainKotlinMetadata   # commonMain against the common libraries, on Linux: catches JVM-only calls
 # macOS only (shared-ios.yml): compile-only, nothing is linked, signed or run on a simulator
 ./gradlew :ui:compileKotlinIosArm64 :ui:compileKotlinIosSimulatorArm64 :ui:compileTestKotlinIosSimulatorArm64
@@ -80,6 +81,14 @@ From `android/`:
 On Linux the iOS tasks are skipped (`kotlin.native.enableKlibsCrossCompilation=false`, see the `:shared` README §5).
 `shared-ios.yml` watches `android/ui/**`; its job name is unchanged in case it is a required check. The rules for
 commonMain in the `:shared` README §6 apply here too.
+
+**How a phase shows that no screen changed.** The screens are still rendered from `:app`, so the checks live there: the
+JVM screenshot tests (`app/src/test/.../screenshots/ScreensScreenshotTest`, docs/06 TC-U-60; every screen but the Map,
+en/hi/ta/te, light and dark, 64 reference images in `app/src/test/screenshots`) fail `android.yml` on a changed screen,
+and the smoke tests (`app/src/androidTest/.../SmokeTest`, TC-I-35) run the APK on an API 34 emulator
+(`android-emulator.yml`). A phase that changes a screen on purpose re-records with `./gradlew :app:recordRoborazziDebug`
+and names the changed images in its pull request. When a screen moves into `:ui`, update the test's import, not the
+image.
 
 ## 6. Phases (ADR-23)
 
