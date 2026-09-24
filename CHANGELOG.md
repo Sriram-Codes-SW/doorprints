@@ -280,6 +280,17 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Android: the Room database is Room KMP code in `:shared`** ([docs/03](docs/03-design.md) ADR-23 CMP-4 P4a; [sprint
+  log](docs/10-sprint-log.md) §13.6). `AppDatabase`, the entities, DAOs, the checklist converter and `MIGRATION_1_2`
+  move from `:app` to `:shared` commonMain (Room 2.8.5, plugin `androidx.room`, KSP for Android and both iOS targets;
+  package `app.doorprints.data` kept). Upgraded installs open their data unchanged: same file (`doorprints.db`, the
+  `househunt.db` move still runs first), same version-2 identity hash (the schema JSON moved unchanged to
+  `android/shared/schemas/`), and Android keeps the framework SQLite (no driver). An iOS builder with the bundled
+  SQLite driver compiles, unused. `RoomSchemaTest` moves to `:shared`; new `AppDatabaseMigrationTest` migrates a
+  version-1 file ([docs/06](docs/06-test-plan.md) TC-U-63; R-06 closed). No screen changed: the 64 reference
+  screenshots are unchanged. Docs: [01](docs/01-requirements.md) v0.29, [03](docs/03-design.md) v0.28,
+  [06](docs/06-test-plan.md) v0.42, [10](docs/10-sprint-log.md) v0.48, [14](docs/14-lead-backlog-and-handoff.md)
+  v0.15, [docs/README.md](docs/README.md) v0.48, `android/shared/README.md` 1.48, `android/ui/README.md` 1.7.
 - **Android: platform seams and a common `Format` in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-3;
   [sprint log](docs/10-sprint-log.md) §13.5). A `PlatformServices` interface (the screen-reader state for now),
   provided by `LocalPlatformServices`; `Format.kt` (amounts with lakh grouping and scores in common code, dates through
