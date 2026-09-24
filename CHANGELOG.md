@@ -267,10 +267,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
-- **Docs for the Compose Multiplatform track** (2026-09-24; new `android/ui/README.md` 1.1): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
+- **Docs for the Compose Multiplatform track** (2026-09-24): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
   amended; §4.2.1), [06](docs/06-test-plan.md) v0.32, [07](docs/07-secure-build-and-deploy.md) v0.30,
   [10](docs/10-sprint-log.md) v0.38 (§13, CMP-1..CMP-9), [14](docs/14-lead-backlog-and-handoff.md) v0.5, new
-  `android/ui/README.md`, `android/shared/README.md` 1.44.
+  `android/ui/README.md` 1.1, `android/shared/README.md` 1.44.
 - **App icon: three small footprints (option C).** On Android (`ic_launcher.xml`, and the status-bar icon
   `ic_stat_doorprints.xml`) and on the web (`favicon.svg`, `icons/favicon-32.png`, `icon-192.png`, `icon-512.png`,
   `icon-maskable-512.png`, `apple-touch-icon.png`), the two large gold prints beside the door (a sole with two toes; plain ovals in the favicon)
