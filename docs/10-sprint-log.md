@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.37 |
+| Version | 0.38 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16 (CI green on `5af2f4d`; HEAD `9e0036e` running; not deployed)**, §12.10) |
+| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13) |
 
 ## Change log
 
@@ -49,6 +49,7 @@
 | 0.35 | 2026-09-24 | Claude (Code), lead | New **§12.9, story S4b-BR-1: the app icon's footprints, option C** ([14](14-lead-backlog-and-handoff.md) N3; PR #15, branch `fix/brand-footprints`): the owner's choices (left/right/left, the same prints in the favicon), what changed on each platform, the checks and the review sign-off. |
 | 0.36 | 2026-09-24 | Claude (Code), Docs team | New **§12.10, owner request of 2026-09-24: the doubled lines and the Assam-Arunachal Pradesh state line** (branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed)): the owner's summary, what was done (rule 2 leaves India's line with China to the outline; 7 shared stretches drawn by the tiles from zoom 5, connectors, no spurs; the `state` kind and layer on both apps), the design review that led to the India-China rule, how it was verified (including TC-M-25 step (3) with Google Maps' India region) and what is still unverified. **§12.7**: S4b-BL-11, S4b-BL-15 and S4b-BL-16 struck through as done on that branch; S4b-BL-9 also re-runs `find_shared_stretches.py`. **§12.8**: the known limits (with the owner's accuracy summary), *Open before release* and *Backlog* point to §12.10. Header status updated. |
 | 0.37 | 2026-09-24 | Claude (Code), Docs team | **§12.10** after the round 2 reviews of PR #16: the Singalila spur fix (a cut within 1e-4 degrees of a claim line's end counts as the end; data sha256 `25984afa…a024`, 415 608 bytes, `claim` 5 pieces), the known minors sized (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tile line's overrun at Jomotsangkha and Longwa; `INDIA_CHINA_LINE` also hiding the Tumen China-North Korea line), and the round 2 review results (code, design: changes requested, major fixed; docs: approved, minor fixed). **§12.7**: new backlog ticket **S4b-BL-17** (cleaner hand-overs at the Sikkim tri-junctions, Jomotsangkha and Longwa; lead). |
+| 0.38 | 2026-09-24 | Claude (Code), Docs team | New **§13, the Compose Multiplatform track** (owner request of 2026-09-24: "The Compose needs to be changed to Kotlin Compose to allow easy iOS app creation"; [03](03-design.md) ADR-23): tickets **CMP-1..CMP-9** for phases P1-P8 and the maplibre-compose spike; **CMP-1 done** in commit `be86f50` (new `:ui` module, theme and pure UI code moved, no visual change; iOS compile pending on CI). §2 has a row for the track; the status line records PR #16 as merged (`4100f7a`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -119,6 +120,7 @@ SDK version that Spring AI 2.0.1 uses.
 | 3 | 2026-09-22 | First real AI eval run and its fixes; contact redaction (C-13); remaining Sprint 2 candidates | Mostly met (`6a348cc`): embeddings and scorecard fixes confirmed by the first real Gemini eval run (12/13 cases passed, all metrics but `citationPrecision` pass, E-03 with the AI team — closed in Sprint 3.5 by run 35758157317, §10.2); F-30 closed as Fixed; product renamed to Doorprints (S3-07, waiting on CI). Closing | Backend ✅ · Security ✅ on `6a348cc` (Android and Web not triggered: no `android/` or `web/` changes). S3-07 rename: all four workflows pending on the merge commit |
 | 3.5 | 2026-09-22 | KMP foundation: make the Android code Kotlin Multiplatform-ready without an iOS app (section 9) | Delivered in `8f583af` (`:shared` module, Ktor client, Room schema guard, compile-only iOS CI); closed green on `19006bc` | **On `19006bc`: Backend ✅ · Security ✅ · Android ✅ · Shared iOS compile ✅** (Web not triggered; Android and Shared iOS compile are path-filtered too, see the caveat in 9.2). Earlier on the way there: Security ❌ on `8f583af` (`gradle-dependency-graph` submission), Backend ❌ on `feb0294` (`EvalScorerTest` empty-list assertion, test-only fix). The repository's **Dependency graph setting is now enabled** by the owner; the exit criterion for the `gradle-dependency-graph` job (the `Submitted dependency-graph-reports/...` notice in its log, after which the job goes back to fail-closed) is still to be read from a Security run made after that (9.2) |
 | 4a | 2026-09-22 → | Local-first web (IndexedDB), the six deterministic exporters, JSON backup import, PWA (section 11) | In progress. The whole-app UX audit, the go-ahead for the first deploy, is **approved** on both clients (Android gate round 10, Web gate round 4, 2026-09-23; §11.7) | – (first 4a commit not pushed yet) |
+| CMP | 2026-09-24 → | Compose Multiplatform track: move the Android UI to JetBrains Compose Multiplatform in a `:ui` module so an iOS app can reuse it (section 13, ADR-23) | In progress. CMP-1 (phase 1) done in `be86f50`: `:ui` module, theme and pure UI code, no visual change | – (iOS compile of `:ui` pending on `shared-ios.yml`) |
 
 ## 3. Sprint 1: initial build
 
@@ -1252,3 +1254,60 @@ spur fix; the Android app on a device; TC-M-25 on the live site and on a device 
 hand-overs, no spur on the Singalila ridge, the Sikkim tri-junction loops, the India-China border at street zoom and
 the state line
 ([14](14-lead-backlog-and-handoff.md) N2).
+
+## 13. Compose Multiplatform track (owner request of 2026-09-24)
+
+**The request.** "The Compose needs to be changed to Kotlin Compose to allow easy iOS app creation" (owner, Sriram,
+2026-09-24). That means moving the Android UI from Jetpack Compose to JetBrains **Compose Multiplatform** (CMP), so an
+iOS app can reuse it. Decision record: [03](03-design.md) **ADR-23**, which amends ADR-14 (Sprint 3.5 rejected a
+Compose Multiplatform UI) and settles its Phase 2 item (4), SwiftUI or CMP. Module detail:
+[`android/ui/README.md`](../android/ui/README.md). The lead backlog item P3 (iPhone app) now points here
+([14](14-lead-backlog-and-handoff.md)).
+
+**How the work runs.** Each phase (and each lettered sub-phase) is **one pull request to `main`** that keeps
+`android.yml` green and runs the CLAUDE.md review steps: the engineer's self-check (for UI: accessibility, all four
+languages, both themes, loading/empty/error states), one reviewer pass per area touched, then a second pass on the
+delta only. There is no visual change unless a phase says so. Anything out of scope becomes a backlog item.
+
+**Out of scope** until there is a Mac and a paid Apple Developer account (about US$99 a year, against the zero-cost
+rule): signing, device installs, TestFlight and the App Store. iPhone users keep the PWA until then.
+
+### 13.1 Tickets
+
+| ID | Phase | Story | Done when | Team | Status |
+|---|---|---|---|---|---|
+| CMP-1 | P1 | New KMP module `:ui` (`android/ui`): plugins `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`; targets Android plus compile-only `iosArm64` and `iosSimulatorArm64`; Compose Multiplatform 1.12.1, material3 1.9.0, material-icons-core 1.7.3, `api(project(":shared"))`. The theme and pure UI code move to `commonMain` with the Kotlin package kept (`com.househunt.app.ui`) | `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt`, `IndiaViewRules.kt`, `Buttons.kt` (`ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES`), `ResultTone` and `LocationFix` in `:ui`; `expect fun uiLanguage()`; `ServerStatusTest` in `:ui` `commonTest`; `android.yml` and `shared-ios.yml` cover `:ui`; no visual change | Android, DevSecOps, Docs | **Done** (`be86f50`); iOS compile pending on CI |
+| CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Next** |
+| CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | Planned. Also moves `MapRulesTest` and `IndiaViewRulesTest` (JUnit, still in `:app`) to `:ui` commonTest (kotlin.test) so they compile for iOS too (CMP-1 code review) |
+| CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | Planned |
+| CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned |
+| CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
+| CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned |
+| CMP-8 | P8 | **iOS shell.** `iosApp` in Xcode, `ComposeUIViewController`, MapLibre iOS via SPM; built for the simulator on GitHub's macOS runners with `CODE_SIGNING_ALLOWED=NO` (free) | The simulator build is green in CI; no signing, no device, no App Store | Android, DevSecOps | Planned |
+| CMP-9 | Spike | **maplibre-compose** (`org.maplibre.compose` 0.17): pre-1.0 and would replace the Android map engine | A written finding; re-assessed when it reaches 1.0 | Android | Planned |
+
+### 13.2 CMP-1 (phase 1), done
+
+**What was done** (commit `be86f50`): the new module `android/ui` (`:ui`, Android namespace `com.househunt.ui`).
+Moved to `commonMain`: `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt` and `IndiaViewRules.kt`, plus
+`ANIMATION_MS`, `ButtonLabel` and `BUTTON_LABEL_MAX_LINES` (new `Buttons.kt`, from `ActionBar.kt`), `ResultTone`
+(from `ResultCard.kt`) and `LocationFix` (from `LocationPermission.kt`). The moved files keep the Kotlin package
+`com.househunt.app.ui`, so `:app`'s imports are unchanged; declarations `:app` uses are `public` instead of
+`internal`. The theme's language lookup is `expect fun uiLanguage()`: on Android `LocalConfiguration`'s locale, as
+before; on iOS Compose's `Locale.current`. `IndiaViewRules` computes `WORLD_MAX_ZOOM` from the float's bits instead
+of `Math.nextDown` (same value, 4.9999995f; `Float.nextDown()` is JVM-only, which the code review caught with
+`:ui:compileCommonMainKotlinMetadata`, now in `android.yml`).
+`ServerStatusTest` moved to `:ui` `commonTest` (`kotlin.test`, 5 tests). `:app`'s `testDebugUnitTest` depends on
+`:ui:testAndroidHostTest`, and `android.yml` also names it. `shared-ios.yml` also watches `android/ui/**` and compiles
+`:ui:compileKotlinIosArm64`, `:ui:compileKotlinIosSimulatorArm64` and `:ui:compileTestKotlinIosSimulatorArm64`; the
+job name is unchanged, in case it is a required check. `android/.gitignore` ignores `/ui/build/`.
+
+**Verified, and how.** Locally: `assembleDebug`, the 156 `:app` unit tests, the `:shared` host tests and the 5 `:ui`
+tests pass. No visual change (no UI code changed behaviour; the files moved).
+
+**Not verified:** the iOS compile of `:ui` (CI on macOS only, `shared-ios.yml`; pending at this writing); the app on a
+device. The `android-reports` CI artifact now also uploads `android/ui/build/reports` and its test results.
+
+**Docs.** [03](03-design.md) v0.22 (ADR-23, ADR-14 amended, §4.2.1), [06](06-test-plan.md) v0.32,
+[07](07-secure-build-and-deploy.md) v0.30, this section (v0.38), [14](14-lead-backlog-and-handoff.md) v0.5,
+`android/ui/README.md` 1.1, `android/shared/README.md` 1.44, the root README, CHANGELOG, the docs index and CLAUDE.md.

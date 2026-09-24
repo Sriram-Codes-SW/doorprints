@@ -37,10 +37,10 @@ import kotlin.math.ceil
  * here*: a rotated map with no visible way back to north. MapScreen turns rotation, tilt and the compass off with
  * this, and restores a saved camera at bearing 0.
  */
-internal const val MAP_NORTH_UP = true
+const val MAP_NORTH_UP = true
 
 /** Below this map height (dp) the bottom controls are one row, not a column ([mapControlsInRow]). */
-internal const val MAP_CONTROLS_ROW_BELOW_DP = 480f
+const val MAP_CONTROLS_ROW_BELOW_DP = 480f
 
 /**
  * The least room kept free for the Map's bottom column (Zoom in, Zoom out, *My location* and *Save house here*, with
@@ -48,26 +48,26 @@ internal const val MAP_CONTROLS_ROW_BELOW_DP = 480f
  * 2 × 16 dp margin come to 268 dp. The column's measured height is used once it is known (a larger font makes it
  * taller); this is the floor before the first measure.
  */
-internal const val MAP_BOTTOM_STACK_MIN_DP = 270f
+const val MAP_BOTTOM_STACK_MIN_DP = 270f
 
 /** The same floor for the bottom row: the 56 dp extended button and 2 × 16 dp margin. */
-internal const val MAP_BOTTOM_ROW_MIN_DP = 88f
+const val MAP_BOTTOM_ROW_MIN_DP = 88f
 
 /** In the column layout the top band may always take at least this share of the map's height. */
-internal const val MAP_TOP_BAND_MIN_SHARE = 0.25f
+const val MAP_TOP_BAND_MIN_SHARE = 0.25f
 
 /**
  * The end inset (dp) the top band takes while it shares height with the bottom column ([topBandEndInsetDp]): the
  * 48 dp buttons, their 16 dp margin and a 16 dp gap, so the band and the buttons never share horizontal space.
  */
-internal const val MAP_CONTROL_COLUMN_INSET_DP = 80f
+const val MAP_CONTROL_COLUMN_INSET_DP = 80f
 
 /**
  * True when the bottom controls are one row ([MAP_CONTROLS_ROW_BELOW_DP]; UX review, whole-app audit, round 4; WCAG
  * 1.3.4, 1.4.10, 2.5.8). A column of four buttons (about 270 dp) on a 290 dp landscape map left the Hunt card a 72 dp
  * band, with Zoom in drawn on top of the Hunt switch.
  */
-internal fun mapControlsInRow(availableDp: Float): Boolean = availableDp < MAP_CONTROLS_ROW_BELOW_DP
+fun mapControlsInRow(availableDp: Float): Boolean = availableDp < MAP_CONTROLS_ROW_BELOW_DP
 
 /** The height kept for the bottom controls: their measured height, never less than the layout's floor. */
 private fun bottomControlsDp(availableDp: Float, bottomStackDp: Float): Float =
@@ -78,7 +78,7 @@ private fun bottomControlsDp(availableDp: Float, bottomStackDp: Float): Float =
  * column layout, when what is left above the column is less than a quarter of the map. [topBandEndInsetDp] then
  * keeps the band clear of the buttons.
  */
-internal fun topBandBesideControls(availableDp: Float, bottomStackDp: Float): Boolean {
+fun topBandBesideControls(availableDp: Float, bottomStackDp: Float): Boolean {
     if (mapControlsInRow(availableDp)) return false
     val height = maxOf(availableDp, 0f)
     return height - bottomControlsDp(availableDp, bottomStackDp) < height * MAP_TOP_BAND_MIN_SHARE
@@ -91,7 +91,7 @@ internal fun topBandBesideControls(availableDp: Float, bottomStackDp: Float): Bo
  * so nothing else would keep them apart). In the column layout, on a map too short for that, it still gets a
  * quarter of the height, beside the column ([topBandBesideControls], [topBandEndInsetDp]). Never more than the map.
  */
-internal fun topBandMaxHeightDp(availableDp: Float, bottomStackDp: Float): Float {
+fun topBandMaxHeightDp(availableDp: Float, bottomStackDp: Float): Float {
     val height = maxOf(availableDp, 0f)
     val free = height - bottomControlsDp(availableDp, bottomStackDp)
     val band = if (topBandBesideControls(availableDp, bottomStackDp)) height * MAP_TOP_BAND_MIN_SHARE else free
@@ -102,14 +102,14 @@ internal fun topBandMaxHeightDp(availableDp: Float, bottomStackDp: Float): Float
  * The top band's end inset, in dp: [MAP_CONTROL_COLUMN_INSET_DP] while it sits beside the bottom column
  * ([topBandBesideControls]), otherwise 0, so a tap on the Hunt switch can never land on Zoom in.
  */
-internal fun topBandEndInsetDp(availableDp: Float, bottomStackDp: Float): Float =
+fun topBandEndInsetDp(availableDp: Float, bottomStackDp: Float): Float =
     if (topBandBesideControls(availableDp, bottomStackDp)) MAP_CONTROL_COLUMN_INSET_DP else 0f
 
 /** The narrowest snackbar worth placing beside the row (dp): M3's snackbar is readable from about 288 dp. */
-internal const val MAP_SNACKBAR_MIN_WIDTH_DP = 288f
+const val MAP_SNACKBAR_MIN_WIDTH_DP = 288f
 
 /** The snackbar's 16 dp start margin and its 8 dp gap before the row's own 16 dp margin, in dp. */
-internal const val MAP_SNACKBAR_BESIDE_ROW_DP = 24f
+const val MAP_SNACKBAR_BESIDE_ROW_DP = 24f
 
 /**
  * True when the snackbar sits beside the bottom row, at the bottom start, instead of above it (UX review, whole-app
@@ -117,7 +117,7 @@ internal const val MAP_SNACKBAR_BESIDE_ROW_DP = 24f
  * leaves at least [MAP_SNACKBAR_MIN_WIDTH_DP] for it. "Finding your location…" then covers neither the top band nor
  * the row. False before the row has been measured (0), and in the column layout, which keeps its place above.
  */
-internal fun snackbarBesideRow(mapWidthDp: Float, rowWidthDp: Float): Boolean =
+fun snackbarBesideRow(mapWidthDp: Float, rowWidthDp: Float): Boolean =
     rowWidthDp > 0f && mapWidthDp - rowWidthDp - MAP_SNACKBAR_BESIDE_ROW_DP >= MAP_SNACKBAR_MIN_WIDTH_DP
 
 /**
@@ -125,24 +125,24 @@ internal fun snackbarBesideRow(mapWidthDp: Float, rowWidthDp: Float): Boolean =
  * status is not told by colour alone (UX review, whole-app audit, round 5; docs/05 UX-002, A11Y-003, WCAG 1.4.1).
  * Shortlisted is the largest, rejected the smallest, at every zoom.
  */
-internal data class MarkerRadii(val zoom: Float, val shortlisted: Float, val rejected: Float, val new: Float)
+data class MarkerRadii(val zoom: Float, val shortlisted: Float, val rejected: Float, val new: Float)
 
 /** Interpolated linearly by zoom between these stops (below the first and above the last, the end values). */
-internal val MARKER_RADII = listOf(
+val MARKER_RADII = listOf(
     MarkerRadii(zoom = 8f, shortlisted = 7f, rejected = 4f, new = 5f),
     MarkerRadii(zoom = 14f, shortlisted = 11f, rejected = 6f, new = 8f),
     MarkerRadii(zoom = 18f, shortlisted = 15f, rejected = 9f, new = 12f),
 )
 
 /** The white ring round a marker (dp): thicker on a shortlisted house, as on the web. */
-internal const val MARKER_STROKE_DP = 2f
-internal const val MARKER_STROKE_SHORTLISTED_DP = 3f
+const val MARKER_STROKE_DP = 2f
+const val MARKER_STROKE_SHORTLISTED_DP = 3f
 
 /** A rejected house's marker is drawn at this opacity (the web's 0.75), every other at full opacity. */
-internal const val MARKER_OPACITY_REJECTED = 0.75f
+const val MARKER_OPACITY_REJECTED = 0.75f
 
 /** Half of the 48 dp square a tap on the map searches for a marker (MapScreen's hit test). */
-internal const val MARKER_HIT_RADIUS_DP = 24f
+const val MARKER_HIT_RADIUS_DP = 24f
 
 /**
  * One dot of the map's legend (UX review, whole-app audit, round 6; UX-002, A11Y-003, WCAG 1.4.1), drawn like the
@@ -150,30 +150,30 @@ internal const val MARKER_HIT_RADIUS_DP = 24f
  * of black at [LEGEND_OUTLINE_ALPHA] outside it, the whole dot at [alpha]. [status] is the `HouseStatus` name, which
  * picks the colour (`MarkerColors`) and the label (`status_NEW`, `status_SHORTLISTED`, `status_REJECTED`).
  */
-internal data class LegendDot(val status: String, val diameterDp: Float, val ringDp: Float, val alpha: Float)
+data class LegendDot(val status: String, val diameterDp: Float, val ringDp: Float, val alpha: Float)
 
 /** The legend's three dots, in the web's order, with the web's sizes (12, 16 and 9 px): shortlisted largest. */
-internal val LEGEND_DOTS = listOf(
+val LEGEND_DOTS = listOf(
     LegendDot("NEW", diameterDp = 12f, ringDp = MARKER_STROKE_DP, alpha = 1f),
     LegendDot("SHORTLISTED", diameterDp = 16f, ringDp = MARKER_STROKE_SHORTLISTED_DP, alpha = 1f),
     LegendDot("REJECTED", diameterDp = 9f, ringDp = MARKER_STROKE_DP, alpha = MARKER_OPACITY_REJECTED),
 )
 
 /** The dark hairline round each legend dot (the web's `box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35)`), in dp. */
-internal const val LEGEND_OUTLINE_DP = 1f
-internal const val LEGEND_OUTLINE_ALPHA = 0.35f
+const val LEGEND_OUTLINE_DP = 1f
+const val LEGEND_OUTLINE_ALPHA = 0.35f
 
 /** The box every legend dot is centred in (dp): the largest dot (16 dp) and its 1 dp hairline on both sides. */
-internal const val LEGEND_DOT_BOX_DP = 18f
+const val LEGEND_DOT_BOX_DP = 18f
 
 /** The gap between a legend dot's box and its status name, in dp. */
-internal const val LEGEND_DOT_GAP_DP = 4f
+const val LEGEND_DOT_GAP_DP = 4f
 
 /** The legend's start and end padding inside its box, in dp. */
-internal const val LEGEND_PADDING_DP = 12f
+const val LEGEND_PADDING_DP = 12f
 
 /** The gap between two legend items on one line, in dp. */
-internal const val LEGEND_ITEM_GAP_DP = 8f
+const val LEGEND_ITEM_GAP_DP = 8f
 
 /**
  * Room kept for pixel rounding (UX review, whole-app audit, round 8), in dp. The legend's parts are laid out in whole
@@ -182,7 +182,7 @@ internal const val LEGEND_ITEM_GAP_DP = 8f
  * broke mid-word. 2 dp is at least 2 px at every density, more than the rounding of the parts and of the padding
  * that places the legend can take away.
  */
-internal const val LEGEND_ROUNDING_SLACK_DP = 2f
+const val LEGEND_ROUNDING_SLACK_DP = 2f
 
 /**
  * The narrowest the legend can be without breaking a status name (UX review, whole-app audit, round 7), in dp: one
@@ -193,7 +193,7 @@ internal const val LEGEND_ROUNDING_SLACK_DP = 2f
  * Round 8: the name is rounded up to a whole dp and [LEGEND_ROUNDING_SLACK_DP] is added, so the legend as laid out in
  * pixels never gets less than the name needs.
  */
-internal fun legendMinWidthDp(widestLabelDp: Float): Float =
+fun legendMinWidthDp(widestLabelDp: Float): Float =
     2 * LEGEND_PADDING_DP + LEGEND_DOT_BOX_DP + LEGEND_DOT_GAP_DP + ceil(maxOf(widestLabelDp, 0f)) +
         LEGEND_ROUNDING_SLACK_DP
 
@@ -202,7 +202,7 @@ internal fun legendMinWidthDp(widestLabelDp: Float): Float =
  * measured ([labelWidthsDp], rounded up), its dot box and gap, the 8 dp between items, the padding and
  * [LEGEND_ROUNDING_SLACK_DP]. 0 for no names.
  */
-internal fun legendOneLineWidthDp(labelWidthsDp: List<Float>): Float {
+fun legendOneLineWidthDp(labelWidthsDp: List<Float>): Float {
     if (labelWidthsDp.isEmpty()) return 0f
     val items = labelWidthsDp.sumOf { (LEGEND_DOT_BOX_DP + LEGEND_DOT_GAP_DP + ceil(maxOf(it, 0f))).toDouble() }
     return 2 * LEGEND_PADDING_DP + items.toFloat() + LEGEND_ITEM_GAP_DP * (labelWidthsDp.size - 1) +
@@ -215,14 +215,14 @@ internal fun legendOneLineWidthDp(labelWidthsDp: List<Float>): Float {
  * ● Shortlisted" on one line and "● Rejected" alone on the next beside *Save house here* on a 412 dp phone, a ragged
  * key whose dots did not line up. False before the names are measured (0).
  */
-internal fun legendFitsOneLine(availableDp: Float, oneLineWidthDp: Float): Boolean =
+fun legendFitsOneLine(availableDp: Float, oneLineWidthDp: Float): Boolean =
     oneLineWidthDp > 0f && availableDp >= oneLineWidthDp
 
 /** In the column layout, the legend's 16 dp start margin and its 16 dp gap before *Save house here*, in dp. */
-internal const val MAP_LEGEND_BESIDE_FAB_DP = 32f
+const val MAP_LEGEND_BESIDE_FAB_DP = 32f
 
 /** The screen-edge gutter of every map overlay (the Hunt card, the controls, the legend, the snackbar), in dp. */
-internal const val MAP_GUTTER_DP = 16f
+const val MAP_GUTTER_DP = 16f
 
 /**
  * True when, in the column layout, the legend sits at the bottom start beside *Save house here* ([fabWidthDp], its
@@ -230,11 +230,11 @@ internal const val MAP_GUTTER_DP = 16f
  * the legend's own 32 dp of margin and gap is at least the legend's narrowest width (the `legendMinWidthDp` function
  * of the measured widest name). False before the button has been measured (0).
  */
-internal fun legendBesideFab(mapWidthDp: Float, fabWidthDp: Float, legendMinWidthDp: Float): Boolean =
+fun legendBesideFab(mapWidthDp: Float, fabWidthDp: Float, legendMinWidthDp: Float): Boolean =
     fabWidthDp > 0f && mapWidthDp - fabWidthDp - MAP_GUTTER_DP - MAP_LEGEND_BESIDE_FAB_DP >= legendMinWidthDp
 
 /** Where the Map draws its legend (UX review, whole-app audit, rounds 6 and 7; [legendPlace]). */
-internal enum class LegendPlace {
+enum class LegendPlace {
     /** Column layout: bottom start, beside *Save house here*. */
     BESIDE_FAB,
 
@@ -259,7 +259,7 @@ internal enum class LegendPlace {
  *    the legend at the start and the actions at the end of one row; else [LegendPlace.IN_BAND] (a narrow
  *    split-screen, where the row may wrap).
  */
-internal fun legendPlace(
+fun legendPlace(
     controlsInRow: Boolean,
     mapWidthDp: Float,
     fabWidthDp: Float,
@@ -288,17 +288,17 @@ internal fun legendPlace(
  * ODbL and OpenFreeMap require) is 21 dp square (maplibre_info_icon_default.xml, 13.6.1). The Map turns MapLibre's
  * logo off (its BSD licence does not ask for it, and the web map shows none) and puts the button on the 16 dp gutter.
  */
-internal const val MAP_ATTRIBUTION_SIZE_DP = 21f
+const val MAP_ATTRIBUTION_SIZE_DP = 21f
 
 /** MapLibre's own distance of the attribution button from the bare map's bottom edge, in dp. */
-internal const val MAP_ATTRIBUTION_GAP_DP = 4f
+const val MAP_ATTRIBUTION_GAP_DP = 4f
 
 /**
  * The gap kept between the attribution button and an overlay under it, in dp (round 8): the 8 dp rhythm of the map's
  * overlays (8 dp in the row, 12 dp in the column). Round 7's 4 dp left the 21 dp "i" nearly touching the legend's
  * 2 dp shadow.
  */
-internal const val MAP_ATTRIBUTION_OVERLAY_GAP_DP = 8f
+const val MAP_ATTRIBUTION_OVERLAY_GAP_DP = 8f
 
 /**
  * How far the band and the snackbar keep clear of a legend at the bottom start, in dp (UX review, whole-app audit,
@@ -306,7 +306,7 @@ internal const val MAP_ATTRIBUTION_OVERLAY_GAP_DP = 8f
  * but the "i" reaches 29 dp above the legend, so a snackbar above a tall legend (Tamil at 130 %, a 700 dp landscape
  * map) covered its bottom and the band's scroll ended 1 dp from it.
  */
-internal const val MAP_ATTRIBUTION_STACK_DP = MAP_ATTRIBUTION_OVERLAY_GAP_DP + MAP_ATTRIBUTION_SIZE_DP + 8f
+const val MAP_ATTRIBUTION_STACK_DP = MAP_ATTRIBUTION_OVERLAY_GAP_DP + MAP_ATTRIBUTION_SIZE_DP + 8f
 
 /**
  * The height the band and the snackbar keep clear of at the bottom, in dp (round 9): the bottom controls' measured
@@ -314,7 +314,7 @@ internal const val MAP_ATTRIBUTION_STACK_DP = MAP_ATTRIBUTION_OVERLAY_GAP_DP + M
  * or not it is faded out for a snackbar), its top plus [MAP_ATTRIBUTION_STACK_DP] when that is higher, so the
  * attribution "i" above the legend stays uncovered.
  */
-internal fun controlsClearanceDp(measuredControlsDp: Float, legendPlaceTopDp: Float): Float =
+fun controlsClearanceDp(measuredControlsDp: Float, legendPlaceTopDp: Float): Float =
     if (legendPlaceTopDp > 0f) maxOf(measuredControlsDp, legendPlaceTopDp + MAP_ATTRIBUTION_STACK_DP) else measuredControlsDp
 
 /**
@@ -322,7 +322,7 @@ internal fun controlsClearanceDp(measuredControlsDp: Float, legendPlaceTopDp: Fl
  * a large font): the row's buttons start less than 8 dp after the button's end. [rowWidthDp] includes the row's
  * 16 dp margins, and its lines are end-aligned, so its widest line starts at `mapWidthDp - rowWidthDp + 16`.
  */
-internal fun rowReachesAttribution(mapWidthDp: Float, rowWidthDp: Float): Boolean =
+fun rowReachesAttribution(mapWidthDp: Float, rowWidthDp: Float): Boolean =
     rowWidthDp > 0f && mapWidthDp - rowWidthDp + MAP_GUTTER_DP < MAP_GUTTER_DP + MAP_ATTRIBUTION_SIZE_DP + 8f
 
 /**
@@ -333,14 +333,14 @@ internal fun rowReachesAttribution(mapWidthDp: Float, rowWidthDp: Float): Boolea
  * above its bottom stack (`--map-stack-h`); MapLibre's own 4 dp from the bare map edge when nothing is there (0). A
  * Compose surface over the button would hide the credits and take its taps.
  */
-internal fun attributionBottomDp(overlayTopDp: Float): Float =
+fun attributionBottomDp(overlayTopDp: Float): Float =
     if (overlayTopDp > 0f) overlayTopDp + MAP_ATTRIBUTION_OVERLAY_GAP_DP else MAP_ATTRIBUTION_GAP_DP
 
 /** The 12 dp padding on each side of a snackbar's action button (M3's TextButton), in dp. */
-internal const val SNACKBAR_ACTION_PADDING_DP = 24f
+const val SNACKBAR_ACTION_PADDING_DP = 24f
 
 /** The largest share of the snackbar's width an action may take and still sit on the message's line. */
-internal const val SNACKBAR_ACTION_INLINE_MAX_SHARE = 0.3f
+const val SNACKBAR_ACTION_INLINE_MAX_SHARE = 0.3f
 
 /**
  * True when a snackbar's action goes on its own line (M3's `actionOnNewLine`; UX review, whole-app audit, rounds 7
@@ -351,7 +351,7 @@ internal const val SNACKBAR_ACTION_INLINE_MAX_SHARE = 0.3f
  * inline while English "Open settings" (13) went down, and Telugu and Tamil labels full of viramas and ZWNJ count
  * far more characters than they take up. Before the snackbar's width is known (0), an action goes on its own line.
  */
-internal fun snackbarActionOnNewLine(actionWidthDp: Float, snackbarWidthDp: Float): Boolean {
+fun snackbarActionOnNewLine(actionWidthDp: Float, snackbarWidthDp: Float): Boolean {
     if (actionWidthDp <= 0f) return false
     if (snackbarWidthDp <= 0f) return true
     return actionWidthDp + SNACKBAR_ACTION_PADDING_DP > snackbarWidthDp * SNACKBAR_ACTION_INLINE_MAX_SHARE
@@ -363,27 +363,27 @@ internal fun snackbarActionOnNewLine(actionWidthDp: Float, snackbarWidthDp: Floa
  * ("Doorprints has only your approximate location.") for approximate only. The Hunt card's note carries the reason
  * and the settings sentence; round 6 put the whole note in the snackbar, which wrapped to 10-20 lines on a phone.
  */
-internal fun refusedTapSnackbarText(fix: LocationFix, offShort: String, approximateOnly: String): String = when (fix) {
+fun refusedTapSnackbarText(fix: LocationFix, offShort: String, approximateOnly: String): String = when (fix) {
     LocationFix.ALLOW, LocationFix.OPEN_SETTINGS -> offShort
     LocationFix.TURN_ON_PRECISE, LocationFix.OPEN_SETTINGS_PRECISE -> approximateOnly
 }
 
 /** The house labels' size on the map at 100 % font, in sp (MapLibre's `text-size` is in scaled pixels too). */
-internal const val MARKER_LABEL_SIZE_SP = 12f
+const val MARKER_LABEL_SIZE_SP = 12f
 
 /** The largest font scale the house labels follow: beyond it a name would cover its neighbours' dots. */
-internal const val MARKER_LABEL_MAX_SCALE = 1.5f
+const val MARKER_LABEL_MAX_SCALE = 1.5f
 
 /**
  * The house labels' `text-size` for the system [fontScale] (UX review, whole-app audit, round 6; WCAG 1.4.4): MapLibre
  * does not apply the font scale itself, so a fixed 12 stayed 12 at 200 %. It follows the scale up to
  * [MARKER_LABEL_MAX_SCALE] (18 at most); a scale below 1 makes them smaller, as it does every other text.
  */
-internal fun markerLabelSizeSp(fontScale: Float): Float =
+fun markerLabelSizeSp(fontScale: Float): Float =
     MARKER_LABEL_SIZE_SP * fontScale.coerceIn(0.5f, MARKER_LABEL_MAX_SCALE)
 
 /** Beyond this width (ems) a house label wraps to a second line, so a long name does not run across the map. */
-internal const val MARKER_LABEL_MAX_WIDTH_EM = 8f
+const val MARKER_LABEL_MAX_WIDTH_EM = 8f
 
 /**
  * True when [label] has a Devanagari, Tamil or Telugu letter, the scripts whose conjuncts MapLibre's symbol layer may
@@ -391,7 +391,7 @@ internal const val MARKER_LABEL_MAX_WIDTH_EM = 8f
  * `indic`, so the label layer can leave those names out ([MAP_LABELS_SHOW_INDIC]) rather than draw broken glyphs;
  * the house is still its dot, and its name is in the Houses tab.
  */
-internal fun hasIndicScript(label: String): Boolean = label.any { c ->
+fun hasIndicScript(label: String): Boolean = label.any { c ->
     c in '\u0900'..'\u097F' || c in '\u0B80'..'\u0BFF' || c in '\u0C00'..'\u0C7F' || c in '\uA8E0'..'\uA8FF'
 }
 
@@ -400,4 +400,4 @@ internal fun hasIndicScript(label: String): Boolean = label.any { c ->
  * shows broken conjuncts on a release candidate; then set it to false (one line, no other change): the label layer
  * filters on `indic` with this value, so only names in other scripts are drawn.
  */
-internal const val MAP_LABELS_SHOW_INDIC = true
+const val MAP_LABELS_SHOW_INDIC = true

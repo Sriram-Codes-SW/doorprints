@@ -13,7 +13,7 @@ import com.househunt.shared.sync.SyncOutcome
  * SUCCESS, "not configured" NEUTRAL (nothing failed; there is no server yet), every other kind ERROR. Null when there
  * is nothing to show.
  */
-internal fun serverStatusTone(testSucceeded: Boolean?, lastSync: SyncOutcome.Kind?): ResultTone? = when {
+fun serverStatusTone(testSucceeded: Boolean?, lastSync: SyncOutcome.Kind?): ResultTone? = when {
     testSucceeded != null -> if (testSucceeded) ResultTone.SUCCESS else ResultTone.ERROR
     lastSync == null -> null
     lastSync == SyncOutcome.Kind.OK -> ResultTone.SUCCESS
@@ -22,7 +22,7 @@ internal fun serverStatusTone(testSucceeded: Boolean?, lastSync: SyncOutcome.Kin
 }
 
 /** What the server result's slot draws (round 9; [serverStatusSlot]). */
-internal enum class ServerStatusSlot {
+enum class ServerStatusSlot {
     /** Nothing: no result, or the result was withdrawn when the address in the field failed its check. */
     NONE,
 
@@ -51,7 +51,7 @@ internal enum class ServerStatusSlot {
  * syncs the saved server and so stays enabled after a rejected address, is a new run whose result always shows.
  * A busy run with the result withdrawn is the bar alone.
  */
-internal fun serverStatusSlot(hasResult: Boolean, busy: Boolean, resultWithdrawn: Boolean): ServerStatusSlot = when {
+fun serverStatusSlot(hasResult: Boolean, busy: Boolean, resultWithdrawn: Boolean): ServerStatusSlot = when {
     hasResult && !resultWithdrawn -> if (busy) ServerStatusSlot.CARD_BUSY else ServerStatusSlot.CARD
     busy -> ServerStatusSlot.BAR
     else -> ServerStatusSlot.NONE
@@ -62,4 +62,4 @@ internal fun serverStatusSlot(hasResult: Boolean, busy: Boolean, resultWithdrawn
  * *Save and test* last rejected the address, -1 for never. A run that finishes after that bumps the count, so its
  * result shows; typing does not.
  */
-internal fun serverResultWithdrawn(withdrawnRun: Int, statusRun: Int): Boolean = withdrawnRun == statusRun
+fun serverResultWithdrawn(withdrawnRun: Int, statusRun: Int): Boolean = withdrawnRun == statusRun

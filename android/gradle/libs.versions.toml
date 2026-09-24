@@ -13,6 +13,13 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 compose-bom = "2026.09.00"
 material-icons-core = "1.7.8"
+# Compose Multiplatform (JetBrains) for the :ui module (ADR-23). CMP 1.12.1 depends on androidx.compose ui/runtime/
+# foundation 1.12.1 on Android, material3 1.9.0 on androidx material3 1.4.0 and icons 1.7.3 on androidx 1.7.3. Gradle
+# takes the higher version, so CMP's androidx mapping must not be newer than the BOM's (2026.09.00: ui 1.12.1,
+# material3 1.4.0; icons stay at :app's 1.7.8). Check both again on every CMP or BOM bump.
+cmp = "1.12.1"
+cmp-material3 = "1.9.0"
+cmp-material-icons = "1.7.3"
 androidx-core = "1.19.0"
 androidx-activity = "1.11.0"
 androidx-navigation = "2.9.5"
@@ -34,6 +41,13 @@ compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "material-icons-core" }
+
+# Compose Multiplatform libraries (commonMain of :ui)
+cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "cmp" }
+cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "cmp" }
+cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "cmp" }
+cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "cmp-material3" }
+cmp-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "cmp-material-icons" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }

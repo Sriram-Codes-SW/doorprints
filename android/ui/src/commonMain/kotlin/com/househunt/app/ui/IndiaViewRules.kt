@@ -67,7 +67,9 @@ object IndiaViewRules {
      * render_orchestrator.cpp:175), so a maxzoom of 5 would draw both layers at 5.0; maplibre-gl excludes maxzoom
      * (style_layer.ts:323). No float lies between this and 5, so there is no zoom with neither layer either.
      */
-    val WORLD_MAX_ZOOM: Float = Math.nextDown(DETAILED_FROM_ZOOM)
+    // Float.nextDown() is JVM-only (only Double's is common), and via Double it rounds back to 5f. For a positive,
+    // finite, non-zero float the next one down is its bit pattern minus one (the same as Math.nextDown, 4.9999995f).
+    val WORLD_MAX_ZOOM: Float = Float.fromBits(DETAILED_FROM_ZOOM.toRawBits() - 1)
 
     /**
      * [COUNTRY_LAYER]'s minzoom: [DETAILED_FROM_ZOOM], or the layer's own when the base style sets a higher one (the
