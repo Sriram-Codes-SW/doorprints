@@ -90,8 +90,17 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // Only the app's four languages go into the APK. Without this, the libraries' own translations (values-mr from
+    // androidx and material3, …) make Android resolve a phone set to [Marathi, Hindi] to Marathi, which the app
+    // lacks, and fall back to English; with it, Android skips to Hindi (AppLocale.applyDefault, docs/05 section 8.2).
+    androidResources {
+        localeFilters += listOf("en", "hi", "ta", "te")
+    }
+
     lint {
-        // Every string must exist in values-hi, values-ta and values-te (docs/05 section 8.2).
+        // Every Android-resource string (the services' strings in res/values*) must exist in values-hi, values-ta
+        // and values-te (docs/05 section 8.2). The UI strings are Compose resources in :ui; StringParityTest checks
+        // those.
         error += listOf("MissingTranslation", "ExtraTranslation")
     }
 }

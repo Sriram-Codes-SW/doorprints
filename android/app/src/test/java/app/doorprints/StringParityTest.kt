@@ -10,7 +10,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 /**
  * The strings live in two places since ADR-23 CMP-2: the UI strings as Compose resources in :ui, the Android services'
  * strings (notifications, workers, the hunt service) as Android resources in :app. This keeps both sound in all four
- * languages (docs/06 TC-U-57):
+ * languages (docs/06 TC-U-59):
  *  - every language has the same keys as English, in each place, and every plural has an "other" form;
  *  - every translation has the same placeholders as English, counted and in position;
  *  - the Compose side has only positional placeholders (%1$s, %1$d), the only ones Compose resources fill in, and none
