@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.doorprints.data.AppDatabase
+import app.doorprints.data.create
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.HouseEntity
 import kotlinx.coroutines.runBlocking

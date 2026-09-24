@@ -954,11 +954,14 @@ fun HouseEditScreen(
                         label = { Text(stringResource(Res.string.house_phone)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.weight(1f))
-                    if (!d.contactPhone.isNullOrBlank()) {
-                        val callDesc = stringResource(Res.string.house_call_desc, d.contactPhone)
+                    // A local: HouseEntity is in :shared since CMP-4 P4a, and Kotlin does not smart-cast another
+                    // module's public property.
+                    val phone = d.contactPhone
+                    if (!phone.isNullOrBlank()) {
+                        val callDesc = stringResource(Res.string.house_call_desc, phone)
                         TextButton(
                             onClick = {
-                                val digits = d.contactPhone.filter { it.isDigit() || it == '+' }
+                                val digits = phone.filter { it.isDigit() || it == '+' }
                                 context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")))
                             },
                             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = callDesc },
