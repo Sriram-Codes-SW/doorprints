@@ -28,6 +28,7 @@ import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.shared.sync.SyncRules
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -450,8 +451,9 @@ class AndroidRepository(
      * The slow part — reading, verifying and writing the photo files — comes first, into files that no row points
      * at yet. Then every house, visit and photo row is written in **one transaction**, which is quick (rows only)
      * and either commits all of them or none. A Stop ([onProgress] throws `CancellationException`), a system stop,
-     * a full disk or any other failure rolls the transaction back and deletes the photo files already written, so
-     * the phone is left exactly as it was and importing the file again is safe. (If the process is killed outright
+     * a full disk or any other failure rolls the transaction back and deletes the photo files already written (each
+     * one whose row is not in the database, [discardUncommittedPhotoFiles]: a cancellation that lands just after the
+     * commit keeps them), so the phone is left exactly as it was and importing the file again is safe. (If the process is killed outright
      * between the two steps, photo files without a row can be left in the app's private photo folder; no row, and
      * so nothing the user sees, refers to them.)
      *
@@ -473,7 +475,8 @@ class AndroidRepository(
         // In copy mode every photo belongs to a house of this import (ImportPlan maps it to the house's new id);
         // anything else is not written, and counted, exactly as merge mode counts a photo whose house is gone.
         val newHouseIds = actions.houses.mapTo(HashSet()) { it.id }
-        val written = ArrayList<File>()
+        // Each photo file written, with the id of the row that will point at it.
+        val written = LinkedHashMap<File, String>()
         val photoRows = ArrayList<PhotoEntity>()
         // The id and the updatedAt each row was written with, for the undo record (ImportUndo).
         val copiedHouses = LinkedHashMap<String, Long>()
@@ -484,7 +487,7 @@ class AndroidRepository(
                 val bytes = entry?.let { photoBytes(it) }
                 val out = importedPhotoFile(photo.id)
                 if (bytes != null && out != null && photo.houseId in newHouseIds) {
-                    written += out
+                    written[out] = photo.id
                     out.writeBytes(bytes)
                     photoRows += PhotoEntity(
                         photo.id, photo.houseId, out.absolutePath, uploaded = false, createdAt = photo.createdAt,
@@ -513,8 +516,10 @@ class AndroidRepository(
                 for (row in photoRows) db.photos().upsert(row)
             }
         } catch (e: Throwable) {
-            // Rolled back (or never started): the files are the only thing left to undo.
-            written.forEach { it.delete() }
+            // Rolled back (or never started): the files are the only thing left to undo. Not always, though: a
+            // cancellation can also land after the commit, as the transaction hands back to this coroutine, and then
+            // the rows are there and their files must stay (see discardUncommittedPhotoFiles).
+            discardUncommittedPhotoFiles(written)
             throw e
         }
         val result = ImportResult(
@@ -525,6 +530,22 @@ class AndroidRepository(
         )
         if (result.rows > 0) SyncWorker.syncSoon(context)
         return result
+    }
+
+    /**
+     * After a copy import that did not finish ([applyCopy]'s catch): deletes each photo file it wrote ([written], file
+     * to photo id) whose row is not in the database, and keeps the others. The transaction is all or nothing, so
+     * after a rollback no row is there and every file goes, as before; but a cancellation of the caller can also land
+     * after the commit (the rows are written, then the resumption throws), and deleting then would leave committed
+     * rows pointing at missing files (code review of PR #23). A row that cannot be read counts as missing, the old
+     * rule. `NonCancellable`, because the caller is usually being cancelled right now (Room 2.8's reads do not check
+     * that today, but nothing promises it); only these reads and deletes are, never the transaction itself.
+     */
+    internal suspend fun discardUncommittedPhotoFiles(written: Map<File, String>) = withContext(NonCancellable) {
+        for ((file, id) in written) {
+            val committed = runCatching { db.photos().get(id) != null }.getOrDefault(false)
+            if (!committed) file.delete()
+        }
     }
 
     /**
