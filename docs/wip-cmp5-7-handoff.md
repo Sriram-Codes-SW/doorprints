@@ -24,20 +24,33 @@ CMP-5 (`84fa735`, `13091ac`), MapLibre OpenGL ES fix (`b47a67a`), CMP-6 (`f7e9ec
 backend `maxSyncVersion` (`0989550`), S4b-BL-42 (`91dfa7a`), map label diagnostic (`c7d0f8b`), S4b-BL-12 (`18b631e`).
 CI green on the pushed commits (Android, emulator API 26/34/36, iOS compile, backend, web, security).
 
-## In progress: mobile web display fixes (WIP commit)
-Committed as work in progress; NOT finished. Fixed so far: the map attribution collapses to (i) on narrow screens; the
-status legend is one line above "Add house" with no overlap; a mobile pass in `tools/live-ui/live-ui.js` (Pixel 7,
-Galaxy S9+, iPhone SE, iPhone 14, 320/360 widths, landscape, text 130-200%). Still open:
-1. The after screenshot of the owner's view (384x615, text 130%) shows NO map labels (before had them): check the
-   `web/src/app/shared/map-style.ts` change, or whether the shot was taken before glyphs loaded; add a live-ui check
-   that symbol layers render.
-2. The "Your houses" counter row is still mostly under the bottom nav (numbers and captions hidden) — the owner's issue.
-   Work started in `web/src/app/pages/map/list-peek.ts`.
-3. 14 live-ui mobile failures "house-not-created" in hi/te (the script probably clicks an English label).
+## Done: mobile web display fixes (WIP commit afab9d4, finished in the commit after it)
+The owner's report ("display issues when opened on a mobile browser") is fixed on the branch; the change log row is in
+`web/README.md` (2026-09-24, "Phone display fixes"). The three items left open at the WIP commit are done:
+1. **Map labels:** not a code problem. The local test server served `/maplibre/maplibre-gl-worker.mjs` as
+   `application/octet-stream`, so the module worker never started and no vector tile was drawn (the "before" build
+   served the same way had no labels either; the live site and Firebase serve `.mjs` as JavaScript). With the MIME
+   type fixed every build draws its labels. live-ui's mobile pass now checks them on every phone at the country view:
+   glyph ranges downloaded and at least 1.5% dark (name) pixels in the map (`map labels drawn`, 23 pass).
+2. **Counters under the bottom bar:** the phone map now fills the visible page area less the list's heading and
+   counters, measured into `--map-peek` (`pages/map/list-peek.ts`, `listPeek`, with a spec), and up to 384px each
+   counter is one line ("0 Houses"). On the owner's 384x615 at 100% and 130% text, the heading and all five counters,
+   numbers and captions, are above the bottom bar (map 354px and 309px). Where they cannot both fit, MapLibre's control
+   column wins (Tamil at 130% on 384x615, 320px at 150%). live-ui checks it (`heading and counters above the bottom
+   bar`, with that exception). Possible follow-up for the backlog: the legend at the top of the map on short phones,
+   which would leave room for both.
+3. **"house-not-created" in hi/te:** those came from the scratch probe script, which clicked the English label. The
+   live-ui mobile pass uses `.toolbar .btn-primary`, so it adds a house in every language, and it now adds it after
+   the route checks (a house first made the Map page fit to it at street level).
+Also fixed after the WIP: long Tamil words at 200% text on Your data (format grid, checkbox rows, count pills) and the
+map counters; the skip link, whose wrapped Tamil label showed 31px at the top of every page at 130% text (it now
+moves up by its own height). Results: web unit tests 514 pass, `ng build` passes, live-ui against a local build of
+the branch exits 0: `{"pages":{"pass":720,"fail":0},"i18n":{"pass":240,"fail":0},"theme":{"pass":144,"fail":0},
+"a11y":{"pass":144,"fail":0},"console":{"pass":366,"fail":0},"flow":{"pass":12,"fail":0},"pwa":{"pass":4,"fail":0},
+"map":{"pass":23,"fail":0},"mobile":{"pass":324,"fail":0}}` (1172 s).
 
 ## Remaining steps
-1. Finish the mobile fixes; web tests (`cd web && npx -y node@24 node_modules/@angular/cli/bin/ng.js test
-   --watch=false` and `build`) and the live-ui mobile pass against a local build must pass.
+1. ~~Finish the mobile fixes~~ done (see above).
 2. Docs step for everything (the notes below): ADR-22 (BL-12 `within` rule, side effects, BL-17, Doklam unchanged),
    ADR-23 P5-P7 as built and the combined-PR amendment, docs/02 RR-16, docs/05, docs/06 (new tests, TC-I-35 three API
    levels, TC-M-25 zoom 9-14 and deferred to after CMP-8, emulator can't draw labels), docs/08/03 API (`maxSyncVersion`),
