@@ -1,8 +1,8 @@
 package app.doorprints
 
 import androidx.activity.ComponentActivity
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -15,7 +15,6 @@ import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
 import app.doorprints.ui.ProvideAppServices
-import app.doorprints.ui.RootScreens
 import app.doorprints.ui.Routes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -31,10 +30,10 @@ import org.robolectric.annotation.Config
  * The common root's navigation (ADR-23 CMP-5: the graph moved to `:ui`, on JetBrains navigation-compose) behaves as
  * before for the notification links MainActivity hands it (docs/06 TC-I-35 checks the same on an emulator): a link
  * present at a cold start opens its screen over the Map, the same house link twice does not stack two forms, Settings
- * opens as its tab, Export is single-top, each link is reported handled, and Back returns to the Map. The screens
- * still in `:app` are stand-ins here (RootScreens), so only the graph is under test; the house form, Export and Import
- * are the real, common ones since CMP-6 (English: "Save a house" for a new house, "House details" for a stored one,
- * "Save a copy").
+ * opens as its tab, Export is single-top, each link is reported handled, and Back returns to the Map. Every screen is
+ * the real, common one: the house form, Export and Import since CMP-6 (English: "Save a house" for a new house, "House
+ * details" for a stored one, "Save a copy"), and since CMP-7 the Map's chrome, recognised by its Hunt card ("Hunt
+ * mode"), around an empty map view (inspection mode).
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35], application = ScreenshotTestApp::class)
@@ -42,6 +41,9 @@ class RootNavigationTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val links = MutableStateFlow<DeepLink?>(null)
+
+    /** The Map's Hunt card title (map_hunt_mode, English). */
+    private val MAP = "Hunt mode"
     private var handled = 0
 
     @Before fun clearFileProviderCache() {
@@ -53,24 +55,15 @@ class RootNavigationTest {
         }
     }
 
-    private object Stand : RootScreens {
-        @Composable
-        override fun Map(
-            onOpenHouse: (String) -> Unit,
-            onNewHouse: (Double, Double) -> Unit,
-            onOpenHouses: () -> Unit,
-            showAddTip: Boolean,
-            onAddTipShown: () -> Unit,
-            deletedHouse: String?,
-            onDeletedShown: () -> Unit,
-        ) = Text("map screen")
-    }
-
     private fun start(link: DeepLink?) {
         links.value = link
         compose.setContent {
-            ProvideAppServices {
-                DoorprintsRoot(links, onDeepLinkHandled = { handled++; links.value = null }, screens = Stand)
+            // Inspection mode: MapLibre's native library cannot load on the JVM, so the Map's view (PlatformMap) is an
+            // empty box and its chrome, which is common code, is drawn around it ("Hunt mode", "Loading the map…").
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                ProvideAppServices {
+                    DoorprintsRoot(links, onDeepLinkHandled = { handled++; links.value = null })
+                }
             }
         }
         compose.waitForIdle()
@@ -93,7 +86,7 @@ class RootNavigationTest {
         assertEquals(1, handled)
         assertNull(links.value)
         back()
-        shows("map screen")
+        shows(MAP)
     }
 
     @Test
@@ -111,13 +104,13 @@ class RootNavigationTest {
         compose.waitForIdle()
         assertEquals(2, handled)
         back()
-        shows("map screen")
+        shows(MAP)
     }
 
     @Test
     fun theFormsDoneClosesIt() {
         start(null)
-        shows("map screen")
+        shows(MAP)
         // No visit id: with one, the root first looks the visit up in Room, and the test's coroutine interceptor does
         // not bring the effect back to the main thread afterwards as the app's main dispatcher does.
         links.value = DeepLink.NewHouse(13.0, 77.5, null)
@@ -126,7 +119,7 @@ class RootNavigationTest {
         // The form's back arrow: nothing typed, so it closes without asking.
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitForIdle()
-        shows("map screen")
+        shows(MAP)
     }
 
     @Test
@@ -135,7 +128,7 @@ class RootNavigationTest {
         // The Settings screen's heading (the bar's item says "Settings" too).
         compose.onNodeWithText("Server (optional)").assertExists()
         back()
-        shows("map screen")
+        shows(MAP)
     }
 
     @Test
@@ -146,6 +139,6 @@ class RootNavigationTest {
         compose.waitForIdle()
         assertEquals(2, handled)
         back()
-        shows("map screen")
+        shows(MAP)
     }
 }

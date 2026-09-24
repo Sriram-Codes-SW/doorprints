@@ -45,24 +45,6 @@ sealed interface DeepLink {
     data class OpenScreen(val route: String) : DeepLink
 }
 
-/**
- * The screens that are still Android code in `:app` (CMP-5): the root's graph calls them through this, with the same
- * arguments as before. Each slot goes when its screen moves to `:ui`: the house form's, Export's and Import's went with
- * CMP-6, the Map's goes with CMP-7. `:app`'s `AndroidRootScreens` forwards to `MapScreen`.
- */
-interface RootScreens {
-    @Composable
-    fun Map(
-        onOpenHouse: (String) -> Unit,
-        onNewHouse: (Double, Double) -> Unit,
-        onOpenHouses: () -> Unit,
-        showAddTip: Boolean,
-        onAddTipShown: () -> Unit,
-        deletedHouse: String?,
-        onDeletedShown: () -> Unit,
-    )
-}
-
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
 
 private val baseTabs = listOf(
@@ -112,11 +94,11 @@ private fun resumed(entry: NavBackStackEntry) = entry.lifecycle.currentState.isA
 /**
  * The app's root (common since CMP-5): the theme, the bottom bar and the navigation graph, with JetBrains
  * navigation-compose (on Android the same androidx navigation as before). [deepLinks] is the platform's latest checked
- * notification tap; [onDeepLinkHandled] clears it once acted on. [screens] draws the screens still in `:app`. Needs
- * [LocalAppServices] and [LocalPlatformServices].
+ * notification tap; [onDeepLinkHandled] clears it once acted on. Every screen is common since CMP-7 (the Map was the last one
+ * drawn by `:app`, through a `RootScreens` slot). Needs [LocalAppServices] and [LocalPlatformServices].
  */
 @Composable
-fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit, screens: RootScreens) {
+fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit) {
     DoorprintsTheme {
         val services = LocalAppServices.current
         val repo = services.repository
@@ -234,7 +216,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 composable("map") { entry ->
                     val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                         .collectAsStateWithLifecycle()
-                    screens.Map(
+                    MapScreen(
                         // Only from the resumed map, like every other exit (round 21): a second tap during the
                         // transition, or a slow GPS fix landing after the user left, is dropped.
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },

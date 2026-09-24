@@ -7,8 +7,9 @@ package app.doorprints.ui
  * de facto or claim line. Every user of the app is in India, so this is the only view; there is no switch.
  *
  * The decisions are here, with no Android or MapLibre class, so a JVM test holds them (IndiaViewRulesTest). The
- * MapLibre calls that apply them to the loaded OpenFreeMap Liberty style are in IndiaView.kt. The web map applies
- * the same five rules (web/src/app/shared/india-boundaries.ts: COUNTRY_LINE_RULE and its _LEGACY twin, with `in`
+ * steps that apply them to the loaded OpenFreeMap Liberty style are [applyIndiaView] (IndiaViewOps.kt, common since
+ * CMP-7; IndiaViewOpsTest), over a [StyleOps] (Android: MapLibreStyleOps over MapLibre Native's Style). The web map
+ * applies the same five rules (web/src/app/shared/india-boundaries.ts: COUNTRY_LINE_RULE and its _LEGACY twin, with `in`
  * where this file uses `match`, and TILE_ZOOM_GUARD; android/shared/README.md section 9, item 36, done by Web on
  * 2026-09-24):
  *  1. hide [DISPUTED_LAYER] (every disputed line: LoC, LAC, claim lines);

@@ -1,12 +1,22 @@
 package app.doorprints
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
@@ -23,6 +33,8 @@ import app.doorprints.export.ImportUndo
 import app.doorprints.export.Saf
 import app.doorprints.export.ScreenWatch
 import app.doorprints.i18n.AppLocale
+import app.doorprints.location.HuntService
+import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.location.ReverseGeocoder
 import app.doorprints.ui.AppServices
@@ -32,15 +44,18 @@ import app.doorprints.ui.HouseFormServices
 import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
 import app.doorprints.ui.LocationSource
+import app.doorprints.ui.MapServices
 import app.doorprints.ui.PhotoSources
 import app.doorprints.ui.PickedPhoto
 import app.doorprints.ui.SettingsServices
 import app.doorprints.ui.currentLocation
 import app.doorprints.ui.findActivity
 import app.doorprints.ui.hasLocationPermission
+import app.doorprints.ui.openAppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -80,6 +95,8 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val exportScreen: ExportServices = AndroidExportServices(app)
 
     override val importScreen: ImportServices = AndroidImportServices(app)
+
+    override val mapScreen: MapServices = AndroidMapServices(app)
 
     override fun consumeLanguageChange(): LanguageChange? =
         AppLocale.consumeChange(app)?.let { LanguageChange(it.language) }
@@ -190,4 +207,72 @@ private class AndroidHouseFormServices(
         repository.addPhoto(houseId, Uri.parse(photo.uri))
 
     override fun photoModel(path: String): Any = File(path)
+}
+
+/**
+ * [MapServices] on Android (CMP-7): `HuntService` and `HuntState`, the notification check, and the animator duration
+ * scale and font scale, the code the Map ran before it moved to `:ui`. *Allow notifications* reads the activity from
+ * the composition, as before (the settings screens are started from it).
+ */
+private class AndroidMapServices(private val app: DoorprintsApp) : MapServices {
+    override val hunt: StateFlow<HuntState.State> get() = HuntState.state
+
+    override fun startHunt(): Boolean = HuntService.start(app)
+
+    override fun stopHunt() {
+        HuntService.stop(app)
+    }
+
+    override fun clearHuntStopReason() = HuntService.clearStopReason()
+
+    /**
+     * True when a Hunt mode alert can reach the user: the app may post (POST_NOTIFICATIONS on API 33+), its
+     * notifications are on, and the Alerts channel is not silenced. `Notifications.alert` drops the alert quietly
+     * otherwise.
+     */
+    override fun notificationsReachUser(): Boolean {
+        if (!Notifications.canPost(app)) return false
+        if (!NotificationManagerCompat.from(app).areNotificationsEnabled()) return false
+        val channel = app.getSystemService(NotificationManager::class.java)
+            ?.getNotificationChannel(Notifications.CHANNEL_ALERTS)
+        return channel?.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    @Composable
+    override fun rememberAllowNotifications(onAnswered: () -> Unit): () -> Unit {
+        val context = LocalContext.current
+        // After a refusal Android may stop showing its prompt; then *Allow notifications* opens the settings instead.
+        var refused by rememberSaveable { mutableStateOf(false) }
+        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            onAnswered()
+            if (!granted) refused = true
+        }
+        return {
+            var asked = false
+            if (Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context) && !refused) {
+                try {
+                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    asked = true
+                } catch (_: ActivityNotFoundException) {
+                    // Fall through to the settings screen.
+                }
+            }
+            if (!asked) openNotificationSettings(context)
+        }
+    }
+
+    /** True under developer options' *Remove animations* (animator duration scale 0): camera moves then jump. */
+    override fun animationsOff(): Boolean =
+        Settings.Global.getFloat(app.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+
+    override fun fontScale(): Float = app.resources.configuration.fontScale
+}
+
+/** The app's notification settings (API 26+, the app's minimum). */
+private fun openNotificationSettings(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+        )
+    }.onFailure { openAppSettings(context) }
 }
