@@ -232,7 +232,7 @@ class HuntService : LifecycleService() {
             if (!StreetAlerts.shouldAlert(info.houses, info.visits, streetAlertedAt[key], now)) return@launch
             streetAlertedAt[key] = now
             val text = info.firstVisit?.let {
-                getString(R.string.notif_street_text_since, info.houses, info.visits, Formats.date(this@HuntService, it))
+                getString(R.string.notif_street_text_since, info.houses, info.visits, Formats.date(it))
             } ?: getString(R.string.notif_street_text, info.houses, info.visits)
             Notifications.alert(
                 this@HuntService, key.hashCode(),
@@ -296,9 +296,9 @@ class HuntService : LifecycleService() {
     private fun describe(h: HouseEntity): String {
         val parts = mutableListOf<String>()
         if (h.status != HouseStatus.NEW) parts += getString(h.status.labelRes)
-        Formats.price(this, h.price, h.priceType)?.let { parts += it }
+        Formats.price(h.price, h.priceType) { getString(R.string.price_per_month, it) }?.let { parts += it }
         h.rating?.let { parts += "★".repeat(it) }
-        h.score?.let { parts += getString(R.string.common_score_value, Formats.score(this, it)) }
+        h.score?.let { parts += getString(R.string.common_score_value, Formats.score(it)) }
         return parts.joinToString(" · ").ifEmpty { getString(R.string.notif_visited_before) }
     }
 

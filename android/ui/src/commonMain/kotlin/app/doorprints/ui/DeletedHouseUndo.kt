@@ -1,13 +1,12 @@
 package app.doorprints.ui
 
-import android.content.Context
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.getString
 
 /** The key under which Root hands a just-deleted house's id to the screen the form returns to. */
 const val DELETED_HOUSE_KEY = "deletedHouse"
@@ -17,24 +16,26 @@ const val DELETED_HOUSE_KEY = "deletedHouse"
  * list when the house form they opened was deleted: the user used to land there with no message and no way back.
  * *Undo* (within the snackbar's 10 s) writes the house back as a live row, a normal edit that syncs; its photos and
  * visits were never removed by the delete. Nothing happens when the house is gone or already live again.
+ *
+ * The house store is `:app`'s Room repository until CMP-4 moves it to common code, so the caller passes the two reads
+ * and writes it needs: [deletedLabel] is the house's label while it is still deleted (null when it is gone or live
+ * again), and [restore] writes it back as live if it is still deleted. The write-back is not cancelled by the screen
+ * closing.
  */
-internal suspend fun offerDeletedHouseUndo(
-    context: Context,
-    repo: Repository,
+suspend fun offerDeletedHouseUndo(
     snackbar: SnackbarHostState,
-    houseId: String,
+    deletedLabel: suspend () -> String?,
+    restore: suspend () -> Unit,
 ) {
-    val house = repo.getHouse(houseId)?.takeIf { it.deleted } ?: return
-    val name = house.label.ifBlank { context.getString(Res.string.house_unnamed) }
+    val label = deletedLabel() ?: return
+    val name = label.ifBlank { getString(Res.string.house_unnamed) }
     val result = snackbar.showSnackbar(
-        message = context.getString(Res.string.house_deleted, name),
-        actionLabel = context.getString(Res.string.common_undo),
+        message = getString(Res.string.house_deleted, name),
+        actionLabel = getString(Res.string.common_undo),
         withDismissAction = true,
         duration = SnackbarDuration.Long,
     )
     if (result == SnackbarResult.ActionPerformed) {
-        withContext(NonCancellable) {
-            repo.getHouse(houseId)?.takeIf { it.deleted }?.let { repo.saveHouse(it.copy(deleted = false)) }
-        }
+        withContext(NonCancellable) { restore() }
     }
 }

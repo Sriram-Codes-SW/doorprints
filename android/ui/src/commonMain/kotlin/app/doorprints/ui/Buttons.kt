@@ -14,5 +14,5 @@ fun ButtonLabel(text: String) {
     Text(text, maxLines = BUTTON_LABEL_MAX_LINES, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
 }
 
-/** How many lines a [ButtonLabel] wraps to before it is ellipsised; the ActionBar (in :app) stacks its buttons beyond it. */
+/** How many lines a [ButtonLabel] wraps to before it is ellipsised; the [ActionBar] stacks its buttons beyond it. */
 const val BUTTON_LABEL_MAX_LINES = 2

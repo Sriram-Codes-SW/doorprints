@@ -358,11 +358,11 @@ private val citationMarker = Regex("""\s*\[house:[0-9a-fA-F-]{36}]""")
  */
 @Composable
 private fun rememberResultFocus(resultKey: Any?): FocusRequester {
-    val context = LocalContext.current
+    val platform = LocalPlatformServices.current
     val focus = remember { FocusRequester() }
     val first = remember { resultKey }
     LaunchedEffect(resultKey) {
-        if (resultKey == null || resultKey === first || !isTouchExploring(context)) return@LaunchedEffect
+        if (resultKey == null || resultKey === first || !platform.isScreenReaderOn()) return@LaunchedEffect
         withFrameNanos { }
         runCatching { focus.requestFocus() }
     }
@@ -455,6 +455,7 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 @Composable
 private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     val context = LocalContext.current
+    val platform = LocalPlatformServices.current
     val question = vm.planQuestion
     val busy by vm.planBusy.collectAsStateWithLifecycle()
     val plan by vm.plan.collectAsStateWithLifecycle()
@@ -471,13 +472,13 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     val noteFocus = remember { FocusRequester() }
     var focusNote by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusNote) {
-        if (focusNote == 0 || !isTouchExploring(context)) return@LaunchedEffect
+        if (focusNote == 0 || !platform.isScreenReaderOn()) return@LaunchedEffect
         // Two frames later: the note arrives through the view model's flow, then is composed and laid out.
         repeat(2) { withFrameNanos { } }
         runCatching { noteFocus.requestFocus() }
     }
     val noteModifier = Modifier.focusRequester(noteFocus)
-        .then(if (isTouchExploring(context)) Modifier.focusable() else Modifier)
+        .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
         locationAsk.refresh()
         if (hasLocationPermission(context)) vm.plan() else vm.noLocation()
