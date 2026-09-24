@@ -78,7 +78,6 @@ import app.doorprints.data.labelRes
 import app.doorprints.export.ImportWorker
 import app.doorprints.location.ReverseGeocoder
 import app.doorprints.ui.res.*
-import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
@@ -1470,23 +1469,6 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
         },
         dismissButton = { TextButton(onClick = cancel) { Text(stringResource(Res.string.common_cancel)) } },
     )
-}
-
-/** Returns a function that turns an AI call failure into a translated message (read in composition). */
-@Composable
-fun aiErrorText(): (Throwable) -> String {
-    val rate = stringResource(Res.string.ai_rate_limited)
-    val down = stringResource(Res.string.ai_provider_down)
-    val offline = stringResource(Res.string.ai_offline)
-    val generic = stringResource(Res.string.ai_error)
-    return { e ->
-        when {
-            e is ApiException && e.kind == ApiException.Kind.RATE_LIMITED -> String.format(rate, e.retryAfterSeconds ?: 60L)
-            e is ApiException && e.kind == ApiException.Kind.AI_UNAVAILABLE -> down
-            e is ApiException -> String.format(generic, e.code)
-            else -> offline
-        }
-    }
 }
 
 /** 1-5 stars as a radio group: TalkBack says "3 out of 5, selected, radio button, 3 of 5". Tap again to clear. */

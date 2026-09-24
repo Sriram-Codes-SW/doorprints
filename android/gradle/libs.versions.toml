@@ -20,10 +20,18 @@ material-icons-core = "1.7.8"
 cmp = "1.12.1"
 cmp-material3 = "1.9.0"
 cmp-material-icons = "1.7.3"
+# JetBrains navigation and lifecycle for :ui commonMain (CMP-5): navigation-compose 2.9.2 (the newest stable; 2.10 is
+# beta), built on lifecycle 2.9.6, which Gradle raises to lifecycle 2.11.0 (built on Compose runtime 1.11, below CMP
+# 1.12.1). Verified on Maven Central 2026-09-24.
+jb-navigation = "2.9.2"
+jb-lifecycle = "2.11.0"
 androidx-core = "1.19.0"
 androidx-activity = "1.11.0"
-androidx-navigation = "2.9.5"
-androidx-lifecycle = "2.9.4"
+# navigation and lifecycle: the Android artifacts the JetBrains ones below map to (CMP-5). JetBrains navigation-compose
+# 2.9.2 depends on androidx navigation-compose 2.9.7 on Android, JetBrains lifecycle 2.11.0 on androidx lifecycle
+# 2.11.0; Gradle takes the higher version anyway, so :app names the same ones. Check both on every bump.
+androidx-navigation = "2.9.7"
+androidx-lifecycle = "2.11.0"
 androidx-room = "2.8.5"
 # androidx.sqlite: the version Room 2.8.5 depends on. Only iOS uses the bundled driver (CMP-4 P4a); Android keeps the
 # framework SQLite through Room's SupportSQLite open helper, as before.
@@ -61,6 +69,10 @@ cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "cmp" }
 cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "cmp-material3" }
 cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "cmp" }
 cmp-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "cmp-material-icons" }
+jb-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "jb-navigation" }
+jb-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jb-lifecycle" }
+jb-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jb-lifecycle" }
+jb-lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "jb-lifecycle" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }

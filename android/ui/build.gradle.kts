@@ -45,11 +45,28 @@ kotlin {
             api(libs.cmp.components.resources)
             // DeletedHouseUndo's NonCancellable write-back (CMP-3).
             implementation(libs.kotlinx.coroutines.core)
+            // Navigation and view models in common code (CMP-5): the nav graph (Root.kt), the screens' lifecycle-aware
+            // collection and effects, AssistantViewModel and its SavedStateHandle. api: :app's screens still call
+            // viewModel { }, collectAsStateWithLifecycle and dropUnlessResumed, and implement RootScreens' slots.
+            api(libs.jb.navigation.compose)
+            api(libs.jb.lifecycle.runtime.compose)
+            api(libs.jb.lifecycle.viewmodel.compose)
+            api(libs.jb.lifecycle.viewmodel.savedstate)
+            // The Assistant keeps its answer and plan in saved state as JSON (AssistantViewModel).
+            implementation(libs.kotlinx.serialization.json)
+        }
+        androidMain.dependencies {
+            // The Android side of the seams (CMP-5): permission checks (ContextCompat, ActivityCompat) and the
+            // permission prompts (rememberLauncherForActivityResult).
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.activity.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             // IndiaViewRulesTest evaluates the boundary filters, which are MapLibre style JSON (CMP-3).
             implementation(libs.kotlinx.serialization.json)
+            // AssistantViewModelTest: viewModelScope runs on Dispatchers.Main, replaced by a test dispatcher (CMP-5).
+            implementation(libs.kotlinx.coroutines.test)
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.kotlin.test.junit)

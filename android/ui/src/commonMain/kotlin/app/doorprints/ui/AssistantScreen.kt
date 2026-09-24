@@ -1,8 +1,5 @@
 package app.doorprints.ui
 
-import android.app.Application
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,28 +14,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.doorprints.DoorprintsApp
+import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
+import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
-import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,14 +60,21 @@ class NoLocationException(val permitted: Boolean) : Exception("No location")
  * in the [SavedStateHandle]; so are the answer and the plan, as JSON, so even process death does not spend the AI
  * quota twice. [cancel] stops a running request.
  *
+ * **Injected (CMP-5).** A common view model: it is given the [repo] and the [location] source (both application-wide,
+ * from [AppServices]) and its [SavedStateHandle], and holds no platform object, so it outlives a rotation without
+ * holding the old activity.
+ *
  * **The questions are Compose state (UX review, whole-app audit, round 2).** [askQuestion] and [planQuestion] are
  * `mutableStateOf` kept in the [SavedStateHandle] through `saveable`, not a `StateFlow` collected by the screen: a text
  * field whose value arrives asynchronously can drop characters or move the cursor with fast typing or with the
  * composing text that Hindi, Tamil and Telugu keyboards use ("Effective state management for TextField").
  */
 @OptIn(SavedStateHandleSaveableApi::class)
-class AssistantViewModel(app: Application, private val saved: SavedStateHandle) : AndroidViewModel(app) {
-    private val repo get() = getApplication<DoorprintsApp>().container.repository
+class AssistantViewModel(
+    private val repo: Repository,
+    private val location: LocationSource,
+    private val saved: SavedStateHandle,
+) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
 
     val tab: StateFlow<Int> = saved.getStateFlow(KEY_TAB, 0)
@@ -148,9 +150,8 @@ class AssistantViewModel(app: Application, private val saved: SavedStateHandle) 
         _planBusy.value = true
         planJob = viewModelScope.launch {
             try {
-                val app = getApplication<Application>()
-                val here = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { currentLocation(app) }
-                    ?: throw NoLocationException(permitted = hasLocationPermission(app))
+                val here = withTimeoutOrNull(LOCATION_TIMEOUT_MS) { location.current() }
+                    ?: throw NoLocationException(permitted = location.hasPrecisePermission())
                 val result = repo.planVisits(PlanRequest(question, here.first, here.second))
                 _plan.value = result
                 saved[KEY_ROUTE] = json.encodeToString(PlanResponseDto.serializer(), result)
@@ -238,11 +239,12 @@ class AssistantViewModel(app: Application, private val saved: SavedStateHandle) 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
-    val repo = repository()
-    val context = LocalContext.current
-    val app = context.applicationContext as DoorprintsApp
+    val services = LocalAppServices.current
+    val repo = services.repository
     val scope = rememberCoroutineScope()
-    val vm: AssistantViewModel = viewModel { AssistantViewModel(app, createSavedStateHandle()) }
+    val vm: AssistantViewModel = viewModel {
+        AssistantViewModel(services.repository, services.location, createSavedStateHandle())
+    }
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
     val tab by vm.tab.collectAsStateWithLifecycle()
     var retrying by remember { mutableStateOf(false) }
@@ -454,7 +456,6 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
-    val context = LocalContext.current
     val platform = LocalPlatformServices.current
     val question = vm.planQuestion
     val busy by vm.planBusy.collectAsStateWithLifecycle()
@@ -479,20 +480,21 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     }
     val noteModifier = Modifier.focusRequester(noteFocus)
         .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
-    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+    val askLocation = rememberLocationPermissionRequest {
         locationAsk.refresh()
-        if (hasLocationPermission(context)) vm.plan() else vm.noLocation()
+        if (platform.locationAccess() == LocationAccess.PRECISE) vm.plan() else vm.noLocation()
     }
     // *Plan visits* (button or the keyboard's Send): without precise location, the first tap asks at once while
     // Android will still ask (round 4); once it will not, the tap shows the note straight away (round 5), so
     // "Planning…" never flashes before the same note. Planning only starts with precise location.
     fun planOrAsk() {
         if (busy || vm.planQuestion.isBlank()) return
-        when (locationStart(precise = hasLocationPermission(context), canAsk = locationAsk.canAsk)) {
+        val precise = platform.locationAccess() == LocationAccess.PRECISE
+        when (locationStart(precise = precise, canAsk = locationAsk.canAsk)) {
             LocationStart.RUN -> vm.plan()
             LocationStart.ASK -> {
                 locationAsk.markAsked()
-                askLocation.launch(LOCATION_PERMISSIONS)
+                askLocation()
             }
             LocationStart.SHOW_NOTE -> {
                 vm.noLocation()
@@ -560,7 +562,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
                     ask = locationAsk,
                     deniedText = stringResource(Res.string.ai_plan_location_off),
                     approximateText = approximateLocationText(Res.string.ai_plan_needs_precise),
-                    launchRequest = { askLocation.launch(LOCATION_PERMISSIONS) },
+                    launchRequest = askLocation,
                     modifier = noteModifier,
                 )
                 // Granted since: planning starts again at once (the effect above); nothing to say meanwhile.
@@ -585,7 +587,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
                 Text(stringResource(Res.string.ai_plan_fallback), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(stringResource(Res.string.ai_plan_total, String.format(Locale.ROOT, "%.1f", p.totalMeters / 1000.0), p.totalWalkMinutes),
+            Text(stringResource(Res.string.ai_plan_total, Formats.oneDecimal(p.totalMeters / 1000.0), p.totalWalkMinutes),
                 fontWeight = FontWeight.SemiBold)
         }
         p.stops.sortedBy { it.order }.forEach { stop ->
@@ -606,3 +608,24 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 private fun Modifier.semanticsHeading(): Modifier = this.then(
     Modifier.semantics { heading() },
 )
+
+/**
+ * Returns a function that turns an AI call failure into a translated message (read in composition): the Assistant's
+ * and the house form's *Paste a listing*. [formatPositional] fills the counts as `String.format` did (CMP-5).
+ */
+@Composable
+fun aiErrorText(): (Throwable) -> String {
+    val rate = stringResource(Res.string.ai_rate_limited)
+    val down = stringResource(Res.string.ai_provider_down)
+    val offline = stringResource(Res.string.ai_offline)
+    val generic = stringResource(Res.string.ai_error)
+    return { e ->
+        when {
+            e is ApiException && e.kind == ApiException.Kind.RATE_LIMITED ->
+                formatPositional(rate, e.retryAfterSeconds ?: 60L)
+            e is ApiException && e.kind == ApiException.Kind.AI_UNAVAILABLE -> down
+            e is ApiException -> formatPositional(generic, e.code)
+            else -> offline
+        }
+    }
+}

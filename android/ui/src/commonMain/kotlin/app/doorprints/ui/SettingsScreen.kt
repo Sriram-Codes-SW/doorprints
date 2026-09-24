@@ -1,11 +1,5 @@
 package app.doorprints.ui
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -32,8 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -53,22 +45,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.work.WorkInfo
-import app.doorprints.DoorprintsApp
 import app.doorprints.data.AppSettings
 import app.doorprints.data.ServerUrl
-import app.doorprints.export.AutoBackupWorker
-import app.doorprints.export.ExportProblem
-import app.doorprints.export.Saf
-import app.doorprints.export.ScreenWatch
-import app.doorprints.export.messageRes
-import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
 import app.doorprints.shared.sync.SyncOutcome
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -90,15 +72,6 @@ fun SyncOutcome.text(): String = when (kind) {
     SyncOutcome.Kind.UNKNOWN -> stringResource(Res.string.sync_err_unknown)
 }
 
-fun Context.findActivity(): Activity? {
-    var c: Context? = this
-    while (c is ContextWrapper) {
-        if (c is Activity) return c
-        c = c.baseContext
-    }
-    return null
-}
-
 @Composable
 fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(text, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
@@ -108,8 +81,10 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {}) {
-    val repo = repository()
-    val context = LocalContext.current
+    val services = LocalAppServices.current
+    val repo = services.repository
+    // The app features that are still Android code (language, the weekly backup, the version; CMP-5).
+    val features = services.settingsScreen
     val scope = rememberCoroutineScope()
     val settings by repo.settings.settings.collectAsStateWithLifecycle(AppSettings())
     // What the user typed, kept across a rotation; null shows the saved URL. The key is plain remember on purpose:
@@ -132,7 +107,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
     // result stays withdrawn until the next run finishes (serverResultWithdrawn): typing clears the field's error but
     // does not bring an older result back, and *Sync now* after a rejected address shows its own result.
     var withdrawnRun by remember { mutableIntStateOf(-1) }
-    val language = remember { AppLocale.current(context) }
+    val language = remember { features.currentLanguage() }
+    val switchLanguage = features.rememberLanguageSwitch()
 
     Column(
         // imePadding: with edge-to-edge the window no longer resizes for the keyboard, so the server fields would sit
@@ -148,13 +124,13 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
 
         SectionHeading(stringResource(Res.string.settings_language))
         Column(Modifier.selectableGroup()) {
-            val options = listOf<String?>(null) + AppLocale.SUPPORTED
+            val options = listOf<String?>(null) + features.supportedLanguages
             options.forEach { code ->
                 val selected = language == code
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         .selectable(selected = selected, role = Role.RadioButton, onClick = {
-                            if (!selected) context.findActivity()?.let { AppLocale.set(it, code) }
+                            if (!selected) switchLanguage(code)
                         }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -187,8 +163,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         // Weekly automatic backup (S4-07). The folder is picked once with OpenDocumentTree and the grant is made
         // persistable, so the worker can still write to it weeks later and after a reboot.
         LifecycleStartEffect(Unit) {
-            ScreenWatch.settingsScreen = true
-            onStopOrDispose { ScreenWatch.settingsScreen = false }
+            features.settingsVisible(true)
+            onStopOrDispose { features.settingsVisible(false) }
         }
         // True when the folder is being picked because the switch was turned on: then picking it also turns the
         // backup on. Picking a folder with the switch off only saves the folder — except straight after the backup
@@ -197,16 +173,13 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         var enableAfterPick by rememberSaveable { mutableStateOf(false) }
         // The folder work runs in the app's scope, not this screen's: releasing an old grant waits on WorkManager
         // reads, and leaving Settings straight after picking must not skip it.
-        val app = context.applicationContext
-        val appScope = (app as DoorprintsApp).appScope
-        val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+        val appScope = services.appScope
+        // The system's folder picker; the persisted grant is taken before this runs, while the activity still holds
+        // the picker's grant (SettingsServices.rememberBackupFolderPicker).
+        val pickFolder = features.rememberBackupFolderPicker { folder ->
             val switchedOn = enableAfterPick
             enableAfterPick = false
-            if (tree == null) return@rememberLauncherForActivityResult
-            // Taken now, while this activity still holds the picker's grant.
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            runCatching { context.contentResolver.takePersistableUriPermission(tree, flags) }
-            val folder = tree.toString()
+            if (folder == null) return@rememberBackupFolderPicker
             appScope.launch {
                 // The stored settings, never `settings` above: after process death while the picker was open, this
                 // callback runs as soon as the launcher registers — before DataStore's first value, while `settings`
@@ -216,13 +189,13 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 // Picking also turns the backup on when the switch asked for the folder, when it is already on
                 // (changing folder), and straight after it switched itself off because its folder had gone.
                 val enable = switchedOn || current.autoBackup ||
-                    current.lastAutoBackupError == AutoBackupWorker.ERROR_NO_FOLDER
+                    current.lastAutoBackupError == features.backupNoFolderError
                 repo.settings.saveAutoBackup(enable, folder, current.autoBackupKeep)
-                AutoBackupWorker.schedule(app, enable)
+                features.scheduleBackup(enable)
                 // Persisted grants are capped per app; do not hold on to a folder it no longer uses. After the save,
                 // so a run still writing there sees the change and gives the grant back itself when it ends.
                 val old = current.autoBackupFolder
-                if (old != folder) AutoBackupWorker.releaseFolder(app, old)
+                if (old != folder) features.releaseBackupFolder(old)
             }
         }
         SwitchRow(
@@ -233,24 +206,24 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             onChange = { wanted ->
                 if (wanted && settings.autoBackupFolder.isBlank()) {
                     enableAfterPick = true
-                    pickFolder.launch(null)
+                    pickFolder()
                 } else {
                     appScope.launch {
                         val current = repo.settings.current()
                         if (wanted) {
                             repo.settings.saveAutoBackup(true, current.autoBackupFolder, current.autoBackupKeep)
-                            AutoBackupWorker.schedule(app, true)
+                            features.scheduleBackup(true)
                         } else {
                             // Off means off: the folder is forgotten and its grant given back (least privilege,
                             // and grants are capped per app), so turning it on again asks for a folder. The last
                             // error goes too — it described a setup that no longer exists. The grant is released
-                            // before the runs are cancelled, see AutoBackupWorker.releaseFolder.
+                            // before the runs are cancelled, see :app's AutoBackupWorker.releaseFolder.
                             repo.settings.saveAutoBackup(false, "", current.autoBackupKeep)
                             if (current.lastAutoBackupError.isNotEmpty()) {
                                 repo.settings.saveAutoBackupResult(current.lastAutoBackupAt, "")
                             }
-                            AutoBackupWorker.releaseFolder(app, current.autoBackupFolder)
-                            AutoBackupWorker.schedule(app, false)
+                            features.releaseBackupFolder(current.autoBackupFolder)
+                            features.scheduleBackup(false)
                         }
                     }
                 }
@@ -260,14 +233,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         // phone's own storage; the folder's name elsewhere.
         val folderLabel by produceState<String?>(null, settings.autoBackupFolder) {
             val folder = settings.autoBackupFolder
-            value = if (folder.isBlank()) null else withContext(Dispatchers.IO) {
-                Saf.folderLabel(context, android.net.Uri.parse(folder))
-            }
+            value = if (folder.isBlank()) null else features.backupFolderLabel(folder)
         }
-        val nowFlow = remember(context) { AutoBackupWorker.observeNow(context) }
-        val nowRuns by nowFlow.collectAsStateWithLifecycle(emptyList())
-        val backingUp = nowRuns.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
-        val folderGone = settings.lastAutoBackupError == AutoBackupWorker.ERROR_NO_FOLDER
+        // A *Back up now* run that is queued or running.
+        val backingUp by features.backingUpNow.collectAsStateWithLifecycle(false)
+        val folderGone = settings.lastAutoBackupError == features.backupNoFolderError
 
         // Everything that only applies while the backup is on, grouped in one card under its switch (Design review,
         // 2026-09-22) instead of up to seven loose items in the screen's rhythm, and easing in and out with the
@@ -317,7 +287,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedButton(onClick = { pickFolder.launch(null) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text(
                                 stringResource(
                                     if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
@@ -326,7 +296,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                             )
                         }
                         FilledTonalButton(
-                            onClick = { AutoBackupWorker.runNow(context) },
+                            onClick = { features.backUpNow() },
                             enabled = !backingUp,
                             colors = tonalPrimaryColors(),
                             modifier = Modifier.heightIn(min = 48.dp),
@@ -334,7 +304,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                     }
                     // The card's last row: running now, the last problem, the last backup, or not yet. Only while
                     // the backup is on, so it is not drawn twice while the card eases out.
-                    if (settings.autoBackup) AutoBackupStatus(settings, backingUp)
+                    if (settings.autoBackup) AutoBackupStatus(settings, backingUp, features)
                 }
             }
         }
@@ -343,9 +313,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         // with the switch off would be saved under a switch that stays off — except here, where picking a folder
         // turns the backup back on (see pickFolder).
         if (!settings.autoBackup && settings.lastAutoBackupError.isNotEmpty()) {
-            AutoBackupStatus(settings, backingUp)
+            AutoBackupStatus(settings, backingUp, features)
             if (folderGone) {
-                OutlinedButton(onClick = { pickFolder.launch(null) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(
                         stringResource(
                             if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
@@ -530,14 +500,14 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleSmall)
         Text(stringResource(Res.string.app_tagline), style = MaterialTheme.typography.bodySmall)
         // The version, which support needs first.
-        val version = remember { appVersion(context) }
+        val version = remember { features.appVersion() }
         if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
     }
 }
 
 /** One status line for the automatic backup: running now, the last problem, the last backup, or not yet. */
 @Composable
-private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean) {
+private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean, features: SettingsServices) {
     when {
         backingUp -> {
             ProgressBar()
@@ -555,14 +525,14 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean) {
         ) {
             ResultCard(
                 tone = ResultTone.ERROR,
-                text = if (settings.lastAutoBackupError == AutoBackupWorker.ERROR_NO_FOLDER) {
+                text = if (settings.lastAutoBackupError == features.backupNoFolderError) {
                     stringResource(Res.string.settings_auto_backup_no_folder)
                 } else {
                     // A stable code, shown as a translated reason (an English message saved by an older build reads
-                    // as the generic one); see ExportProblem.
+                    // as the generic one); see :app's ExportProblem.
                     stringResource(
                         Res.string.settings_auto_backup_failed,
-                        stringResource(ExportProblem.fromCode(settings.lastAutoBackupError).messageRes()),
+                        features.backupErrorText(settings.lastAutoBackupError),
                     )
                 },
             )
@@ -606,18 +576,6 @@ private fun NavRow(title: String, hint: String, onClick: () -> Unit) {
         )
     }
 }
-
-/** The installed version name ("0.1.0"), or null if the package manager cannot say. */
-private fun appVersion(context: Context): String? = runCatching {
-    val pm = context.packageManager
-    val info = if (android.os.Build.VERSION.SDK_INT >= 33) {
-        pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
-    } else {
-        @Suppress("DEPRECATION")
-        pm.getPackageInfo(context.packageName, 0)
-    }
-    info.versionName
-}.getOrNull()
 
 /** Material's "visibility" glyph (an eye), built from its path: the core icon set has none. */
 private val VisibilityIcon: ImageVector by lazy {

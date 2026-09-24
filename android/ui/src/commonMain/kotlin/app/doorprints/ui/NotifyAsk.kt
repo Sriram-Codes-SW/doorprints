@@ -1,10 +1,5 @@
 package app.doorprints.ui
 
-import android.Manifest
-import android.content.ActivityNotFoundException
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -16,11 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.doorprints.Notifications
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
@@ -37,10 +29,11 @@ import org.jetbrains.compose.resources.stringResource
  * goes ahead**: the screens show a result nobody was told about anyway (`ExportRequest.KEY_NOTIFIED`), so saying
  * no costs nothing but the notification.
  *
- * Returns a function that runs an action through this: straight away below API 33, when the permission is granted,
- * or once the app has asked before (`SettingsStore.notificationsAsked`, so the question is not repeated on every
- * tap; the system itself stops showing its prompt after two refusals). Until the stored flag has been read the app
- * assumes it has asked, so a first tap is never held up.
+ * Returns a function that runs an action through this: straight away below API 33, when the permission is granted
+ * ([PlatformServices.canPostNotifications], which is always true below API 33), or once the app has asked before
+ * (`SettingsStore.notificationsAsked`, so the question is not repeated on every tap; the system itself stops showing
+ * its prompt after two refusals). Until the stored flag has been read the app assumes it has asked, so a first tap is
+ * never held up.
  *
  * The pending action is plain `remember`: after a rotation in the middle of the question it is dropped with the
  * dialog, and the user taps again.
@@ -48,11 +41,13 @@ import org.jetbrains.compose.resources.stringResource
  * [rationale] is the one line of why (UX review, whole-app audit): Hunt mode asks with its own, "Hunt mode tells you
  * with a notification when you pass a house you have seen.", when it is turned on, instead of the Map asking for
  * notifications with no context at first launch. The stored flag is shared, so the question is asked once in all.
+ *
+ * Common code since CMP-5; the prompt itself is [rememberNotificationPermissionRequest].
  */
 @Composable
 fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_rationale): (action: () -> Unit) -> Unit {
-    val context = LocalContext.current
-    val settings = repository().settings
+    val platform = LocalPlatformServices.current
+    val settings = LocalAppServices.current.repository.settings
     val asked by settings.notificationsAsked.collectAsStateWithLifecycle(initialValue = true)
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -69,7 +64,8 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
         scope.launch { settings.setNotificationsAsked() }
     }
 
-    val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ -> proceed() }
+    // The system prompt where there is one (API 33+); either way the action goes ahead once it is answered.
+    val request = rememberNotificationPermissionRequest { proceed() }
 
     if (showing) {
         AlertDialog(
@@ -84,15 +80,7 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
                     onClick = {
                         showing = false
                         markAsked()
-                        if (Build.VERSION.SDK_INT >= 33) {
-                            try {
-                                request.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } catch (_: ActivityNotFoundException) {
-                                proceed()
-                            }
-                        } else {
-                            proceed()
-                        }
+                        request()
                     },
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) { ButtonLabel(stringResource(Res.string.notify_allow)) }
@@ -111,7 +99,7 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
     }
 
     return { action ->
-        if (Build.VERSION.SDK_INT >= 33 && !asked && !Notifications.canPost(context)) {
+        if (!asked && !platform.canPostNotifications()) {
             pending = action
             showing = true
         } else {

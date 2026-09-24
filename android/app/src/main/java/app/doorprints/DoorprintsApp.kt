@@ -18,10 +18,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 
-class AppContainer(app: Application) {
+class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
     val repository = AndroidRepository(app, AppDatabase.create(app), settings)
+
+    /** What the common screens in :ui need from the app (ADR-23 CMP-5), provided by ProvideAppServices. */
+    val services = AndroidAppServices(app, repository)
 }
 
 // open for the screenshot tests' app (ScreenshotTestApp), which skips startServices(): no MapLibre (native code) and
