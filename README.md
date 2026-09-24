@@ -106,7 +106,9 @@ flowchart LR
 
 - **Android** (Kotlin 2.4, Compose, Room, WorkManager, MapLibre 13.6; minSdk 26, targetSdk 36, compileSdk 37,
   AGP 9.4): offline-first; the platform-neutral rules and the Ktor HTTP client are in `android/shared`
-  ([module README](android/shared/README.md), [03 §4.2.1](docs/03-design.md)).
+  ([module README](android/shared/README.md), [03 §4.2.1](docs/03-design.md)). The UI is moving, phase by phase, to
+  Compose Multiplatform in `android/ui` so an iOS app can reuse it ([module README](android/ui/README.md), ADR-23 in
+  [03](docs/03-design.md)).
 - **API** (Spring Boot 4.1.1, Java 25, Flyway): last-write-wins sync with a change feed, geospatial queries in PostGIS,
   photos, export and delete-all.
 - **Web** (Angular 22, zoneless, MapLibre GL 6.10): review, edit and compare on a large screen.
@@ -229,6 +231,7 @@ Full steps and the environment variable reference: [docs/07](docs/07-secure-buil
 |---|---|
 | [`android/app/`](android/app/) | Android app: Compose UI, Room, WorkManager sync, Hunt mode service, MapLibre, translations |
 | [`android/shared/`](android/shared/) | Kotlin Multiplatform module `:shared`: models, score, sync rules, stay and street logic, DTOs, Ktor API client (Android + compile-only iOS) |
+| [`android/ui/`](android/ui/) | Compose Multiplatform module `:ui`: theme, list rows and UI rules so far; the screens move here phase by phase (Android + compile-only iOS; ADR-23) |
 | [`backend/`](backend/) | Spring Boot API, Flyway migrations (V1 schema, V2 optional pgvector, V3 photo tombstones), optional AI module, tests; `backend/db` is the PostGIS + pgvector image |
 | [`web/`](web/) | Angular 22 single-page app ([web/README.md](web/README.md)) |
 | [`docs/`](docs/) | Secure-SDLC documents 01–11 and the AI docs |
@@ -295,7 +298,7 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
    `android/app/src/main/res/values{,-hi,-ta,-te}/strings.xml` ([docs/05](docs/05-ux-accessibility-i18n.md#9-translation-workflow)).
 3. Database changes are new Flyway files `V<n>__description.sql`. Room changes need a version bump, a `Migration`
    and a new exported schema file; `RoomSchemaTest` guards version 2.
-4. `android/shared/src/commonMain` stays free of `java.*` and `android.*` (the iOS compile job enforces it).
+4. `android/shared/src/commonMain` and `android/ui/src/commonMain` stay free of `java.*` and `android.*` (the iOS compile job enforces it).
 5. Security-relevant changes update the threat model (02), the DFDs (04) and, for network behaviour, the OSI review (09).
 6. Secrets never go into git: environment variables and GitHub Secrets only. Workflow logs and artifacts are public.
 

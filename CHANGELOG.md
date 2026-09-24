@@ -115,6 +115,15 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Compose Multiplatform UI module `:ui`** (owner request of 2026-09-24, [ADR-23](docs/03-design.md); phase 1,
+  CMP-1, commit `be86f50`). The Android UI starts moving from Jetpack Compose to JetBrains Compose Multiplatform so
+  that an iOS app can reuse it later. New KMP module `android/ui` (Android plus compile-only iOS targets, like
+  `:shared`; Compose Multiplatform 1.12.1, material3 1.9.0). The theme, list rows, server status, the Map and India
+  view rules and a few small UI types moved there; `ServerStatusTest` moved with them. **No visual change.** CI:
+  `android.yml` runs `:ui:testAndroidHostTest`, and `shared-ios.yml` compiles `:ui`'s iOS klibs (pending on CI at
+  this writing). The later phases (strings, platform seams, data, screens, map, iOS shell) are tickets CMP-2..CMP-9
+  in the [sprint log](docs/10-sprint-log.md) §13 and in [`android/ui/README.md`](android/ui/README.md). No iOS app
+  is published: signing and the App Store need a paid Apple account, so iPhone users keep the PWA.
 - **Offline copies in six formats** (Sprint 4a, FR-042..FR-046): HTML, PDF, CSV (a ZIP of `houses.csv`,
   `scores.csv`, `visits.csv`, `photos.csv`), XLSX, Markdown and the exact JSON backup `doorprints-backup/1`. Built
   **on the device, offline, with no account and no server** — Android from Room, the web app from IndexedDB — and
@@ -257,6 +266,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Docs for the Compose Multiplatform track** (2026-09-24): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
+  amended; §4.2.1), [06](docs/06-test-plan.md) v0.32, [07](docs/07-secure-build-and-deploy.md) v0.30,
+  [10](docs/10-sprint-log.md) v0.38 (§13, CMP-1..CMP-9), [14](docs/14-lead-backlog-and-handoff.md) v0.5, new
+  `android/ui/README.md`, `android/shared/README.md` 1.44.
 - **App icon: three small footprints (option C).** On Android (`ic_launcher.xml`, and the status-bar icon
   `ic_stat_doorprints.xml`) and on the web (`favicon.svg`, `icons/favicon-32.png`, `icon-192.png`, `icon-512.png`,
   `icon-maskable-512.png`, `apple-touch-icon.png`), the two large gold prints beside the door (a sole with two toes; plain ovals in the favicon)
