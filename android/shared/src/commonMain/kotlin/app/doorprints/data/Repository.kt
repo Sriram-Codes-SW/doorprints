@@ -94,6 +94,7 @@ interface Repository {
 
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
 
+    /** Used by `AndroidRepository.addPhoto` until the photo seam joins this interface (CMP-6 P6a). */
     enum class AddPhotoResult { ADDED, LIMIT_REACHED, UNREADABLE }
 
     // ---- Offline copy: export and import (Sprint 4a, S4-02/S4-04) ----

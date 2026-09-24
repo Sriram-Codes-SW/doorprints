@@ -11,7 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
-| 1.9 | 2026-09-24 | **CMP-4 P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23; [docs/03](../../docs/03-design.md) ADR-23 P4c, [docs/10](../../docs/10-sprint-log.md) §13.8). Section 4: `CompareScreen` (taking the houses and visit counts), `HouseFormRules.kt` (public), `ModelLabels.kt` (`labelResource`, `glyph`, `ChecklistResources`), `formatPositional` in `Format.kt`, and `offerDeletedHouseUndo(repo, …)` over the common `Repository`; the 10 checklist labels added to the Compose resources (413 strings); `HouseFormRulesTest` and `ModelLabelsTest` in commonTest, a Compare case in `FormatsParityTest`. Section 6: P4a and P4b merged, P4c done in code. No visual change (the 64 screenshots verify). |
+| 1.9 | 2026-09-24 | **CMP-4 P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23; [docs/03](../../docs/03-design.md) ADR-23 P4c, [docs/10](../../docs/10-sprint-log.md) §13.8). Section 4: `CompareScreen` (taking the houses and visit counts), `HouseFormRules.kt` (public), `ModelLabels.kt` (`labelResource`, `glyph`, `ChecklistResources`), `formatPositional` in `Format.kt`, and `offerDeletedHouseUndo(repo, …)` over the common `Repository`; the 10 checklist labels added to the Compose resources (413 strings); `HouseFormRulesTest` and `ModelLabelsTest` in commonTest, a Compare case in `FormatsParityTest`. Section 6: P4a and P4b merged, P4c done in code; P5, P6 and P7 ship as one combined change (owner request of 2026-09-24). No visual change (the 64 screenshots verify). |
 | 1.8 | 2026-09-24 | **CMP-4 P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22; [docs/03](../../docs/03-design.md) ADR-23 P4b, [docs/10](../../docs/10-sprint-log.md) §13.7): settings, `SecretStore` and `ServerUrl` are in `:shared` commonMain; section 6's P4 row says so, and P4a is merged (PR #21). No change to `:ui` itself. |
 | 1.7 | 2026-09-24 | **CMP-4 P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`; [docs/03](../../docs/03-design.md) ADR-23 P4a, [docs/10](../../docs/10-sprint-log.md) §13.6): the Room database is in `:shared` commonMain (Room KMP); section 6's P4 row says so. No change to `:ui` itself. P2 and P3 marked **Done** (PRs #19 and #20 merged). |
 | 1.6 | 2026-09-24 | **CMP-3 done in code** (branch `claude/doorprints-dev-continue-fzcge2`; [docs/03](../../docs/03-design.md) ADR-23 P3, [docs/10](../../docs/10-sprint-log.md) §13.5). Section 4: `PlatformServices` and `LocalPlatformServices`, `Format.kt` (common amounts and scores, `expect` dates, `appLanguage()`), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `uiLanguage()` follows the resolved language (S4b-BL-18); `MapRulesTest`, `IndiaViewRulesTest` and `FormatsTest` in commonTest, `FormatsParityTest` in androidHostTest; `ui/UiStrings.kt` removed. Section 5: the iOS klibs compile on Linux with klib cross-compilation on. Section 6: P3 done in code. No visual change (the 64 screenshots verify). |
@@ -122,7 +122,10 @@ image.
 
 ## 6. Phases (ADR-23)
 
-Each phase (and each lettered sub-phase) is one pull request that keeps `android.yml` green and runs the CLAUDE.md review steps.
+Each phase (and each lettered sub-phase) is one pull request that keeps `android.yml` green and runs the CLAUDE.md
+review steps. Exception (owner request of 2026-09-24): CMP-5, CMP-6 and CMP-7 are one combined change, one branch
+and one pull request, tested together (the 64 screenshots, TC-I-35, the iOS compile, the TC-M-25 re-run), committed
+in steps that each build and pass ([docs/10](../../docs/10-sprint-log.md) §13). CMP-8 stays separate.
 
 | Phase | Ticket | Scope | Status |
 |---|---|---|---|
@@ -130,9 +133,9 @@ Each phase (and each lettered sub-phase) is one pull request that keeps `android
 | P2 | CMP-2 | UI strings to Compose resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`; service strings stay Android resources; `AppLocale.applyDefault` on every API level; `localeFilters`; `StringParityTest`, `AppLocaleTest` | **Done** (PR #19, merged as `7080a7f`) |
 | P3 | CMP-3 | `PlatformServices` seam (screen reader only, so far); `Format.kt` (common amounts, `expect` dates), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `UiStrings.kt` removed; S4b-BL-18; `MapRulesTest`, `IndiaViewRulesTest` to commonTest | **Done** (PR #20, merged as `fccf8a1`) |
 | P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | **P4a done** (the Room database in `:shared`, PR #21, merged as `e480b83`; [docs/10](../../docs/10-sprint-log.md) §13.6); **P4b done** (settings, `SecretStore`, `ServerUrl` in `:shared`, PR #22, merged as `aa8f73a`; §13.7); **P4c done in code** (a common `Repository` interface, `CompareScreen` and `HouseFormRules` in `:ui`, PR #23; §13.8) |
-| P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned |
-| P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | Planned |
-| P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | Planned |
+| P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned; one combined change with P6 and P7 (step 1: navigation, ViewModels, screens) |
+| P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | Planned; one combined change with P5 and P7 (step 2) |
+| P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | Planned; one combined change with P5 and P6 (step 3; India view checked on its own) |
 | P8 | CMP-8 | iOS shell (`iosApp`, `ComposeUIViewController`, MapLibre iOS via SPM), simulator build on macOS CI, unsigned | Planned |
 | Spike | CMP-9 | maplibre-compose (0.17, pre-1.0); re-assess at 1.0 | Planned |
 

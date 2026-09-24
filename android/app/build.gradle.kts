@@ -126,7 +126,8 @@ dependencies {
 
     // Room: AppDatabase, its entities and DAOs are in :shared commonMain since CMP-4 P4a (Room KMP, KSP and the schema
     // export run there); room-runtime comes through :shared's api. No direct room-ktx dependency (WorkManager still
-    // pulls it in; it is empty since Room 2.7, and withTransaction is in room-runtime).
+    // pulls it in; it is empty since Room 2.7). Transactions use Room's common
+    // useWriterConnection { it.immediateTransaction {} } (data/DatabaseTransactions.kt in :shared, CMP-4 P4c).
 
     implementation(libs.androidx.work.runtime.ktx)
     // SettingsStore is common code in :shared since CMP-4 P4b (datastore-preferences-core); :app opens the file with

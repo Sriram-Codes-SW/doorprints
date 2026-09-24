@@ -25,7 +25,9 @@ import app.doorprints.shared.export.ExportVisit
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -128,6 +130,26 @@ class RepositoryTransactionTest {
             fail("the copy should have stopped")
         } catch (_: Stop) {
         }
+        assertEquals(before, ids(repo.localRows()))
+        assertNull(db.houses().get("c1"))
+        assertNull(db.photos().get("cp1"))
+        // The photo file written before the transaction was deleted after the rollback.
+        assertFalse(repo.photoFile("cp1").exists())
+    }
+
+    @Test
+    fun aCopyWhoseCallerIsCancelledInsideItsTransactionLeavesThePhoneAsItWas() = runBlocking {
+        repo.saveHouse(house("h0"))
+        val before = ids(repo.localRows())
+        // A real cancellation, not a thrown exception: the caller's job is cancelled once both house rows are written
+        // inside the transaction (progress 3), so the next suspending database call fails and Room rolls back.
+        lateinit var job: Job
+        job = launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
+            repo.applyImport(copyActions(), onProgress = { done, _ -> if (done == 3) job.cancel() }, photoBytes = photoBytes)
+        }
+        job.start() // started only once `job` is assigned, so the progress callback can cancel it
+        job.join()
+        assertTrue(job.isCancelled)
         assertEquals(before, ids(repo.localRows()))
         assertNull(db.houses().get("c1"))
         assertNull(db.photos().get("cp1"))
