@@ -3,7 +3,7 @@ import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
 
 /** localStorage key holding when the user last said "Not now" to the storage-risk banner (an ISO date). */
-export const RISK_DISMISSED_KEY = 'hh.storageRiskDismissedAt';
+export const RISK_DISMISSED_KEY = 'doorprints.storageRiskDismissedAt';
 /**
  * How long "Not now" on the storage-risk banner lasts: about the iOS eviction window (seven days of use without
  * visiting the site), so the reminder comes back roughly as often as the risk it is about.

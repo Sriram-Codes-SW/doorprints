@@ -3,6 +3,7 @@ import type { PriceType } from '../core/models';
 import { TKey, en } from './en';
 import { DICTIONARIES, LANGUAGES, Lang, LanguageInfo, isLang } from './languages';
 import { joinList } from './list-join';
+import { LANG_KEY } from '../core/storage-keys';
 
 /** A translatable message: a key plus its placeholder values. Params may themselves be messages. */
 export interface Msg {
@@ -12,9 +13,8 @@ export interface Msg {
 export type Param = string | number | Msg;
 export type Params = Readonly<Record<string, Param>>;
 
-// Keeps the pre-rename 'house-hunt.' prefix on purpose: changing it would lose settings already saved in
-// users' browsers after the rename to Doorprints. Do not change it without a migration.
-const STORAGE_KEY = 'house-hunt.lang';
+// Was 'house-hunt.lang' before 2026-09-24; main.ts moves a saved value to this name first (core/storage-keys.ts).
+const STORAGE_KEY = LANG_KEY;
 
 /**
  * Runtime i18n: one build, language switchable without a reload.

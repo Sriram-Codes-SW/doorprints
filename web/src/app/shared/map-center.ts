@@ -15,7 +15,7 @@ export interface MapView {
   zoom: number;
 }
 
-export const MAP_VIEW_KEY = 'hh.mapView';
+export const MAP_VIEW_KEY = 'doorprints.mapView';
 
 /**
  * Where a map starts when nothing says where to look: the whole of India at country zoom, the market this app is

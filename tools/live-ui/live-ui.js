@@ -32,8 +32,8 @@ async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', m
   await ctx.addInitScript(([lang, mapView]) => {
     if (sessionStorage.getItem('__init')) return;
     sessionStorage.setItem('__init', '1');
-    localStorage.setItem('house-hunt.lang', lang);
-    if (mapView) localStorage.setItem('hh.mapView', JSON.stringify(mapView));
+    localStorage.setItem('doorprints.lang', lang);
+    if (mapView) localStorage.setItem('doorprints.mapView', JSON.stringify(mapView));
   }, [lang, mapView]);
   return ctx;
 }
@@ -182,7 +182,7 @@ async function boundaries(browser) {
   for (const [name, lat, lon, zoom] of views) {
     await ctx.clearCookies();
     const page = await ctx.newPage();
-    await page.addInitScript((v) => localStorage.setItem('hh.mapView', JSON.stringify(v)), { lat, lon, zoom });
+    await page.addInitScript((v) => localStorage.setItem('doorprints.mapView', JSON.stringify(v)), { lat, lon, zoom });
     await page.goto(`${BASE}/`); await settle(page); await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'shots', `map_${name}.png`) });
     await page.close();

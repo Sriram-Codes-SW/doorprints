@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService, DEFAULT_BASE_URL, initialBaseUrl, normalizeBaseUrl } from './config.service';
 
-const STORAGE_KEY = 'house-hunt.api-config';
+const STORAGE_KEY = 'doorprints.api-config';
 
 function stored(storage: Storage): unknown {
   const raw = storage.getItem(STORAGE_KEY);

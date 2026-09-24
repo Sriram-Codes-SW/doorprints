@@ -64,8 +64,8 @@ describe('PWA paths follow the base href', () => {
 });
 
 /**
- * "Not now" on the install banner is stored (localStorage `hh.installDismissedAt`) and lasts 30 days, so the banner
- * does not come back on every start; the Your data page keeps the install section either way.
+ * "Not now" on the install banner is stored (localStorage `doorprints.installDismissedAt`) and lasts 30 days, so the
+ * banner does not come back on every start; the Your data page keeps the install section either way.
  */
 describe('install dismissal', () => {
   const now = Date.parse('2026-09-22T12:00:00.000Z');

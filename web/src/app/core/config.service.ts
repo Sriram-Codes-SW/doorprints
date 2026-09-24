@@ -1,13 +1,14 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { API_CONFIG_KEY } from './storage-keys';
 
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
 }
 
-// Keeps the pre-rename 'house-hunt.' prefix on purpose: changing it would lose settings already saved in
-// users' browsers after the rename to Doorprints. Do not change it without a migration.
-const STORAGE_KEY = 'house-hunt.api-config';
+// Was 'house-hunt.api-config' before 2026-09-24; main.ts moves a saved value to this name first
+// (core/storage-keys.ts).
+const STORAGE_KEY = API_CONFIG_KEY;
 export const DEFAULT_BASE_URL = 'http://localhost:8080';
 
 /**
