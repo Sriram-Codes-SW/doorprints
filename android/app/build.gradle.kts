@@ -149,7 +149,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
     debugImplementation(libs.compose.ui.test.manifest)
-    // Instrumented smoke tests (docs/06 TC-I-10), run on an emulator by android-emulator.yml.
+    // Instrumented smoke tests (docs/06 TC-I-35), run on an emulator by android-emulator.yml.
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)

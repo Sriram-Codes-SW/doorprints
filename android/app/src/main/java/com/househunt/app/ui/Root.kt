@@ -33,6 +33,7 @@ import com.househunt.app.data.Repository
 import com.househunt.app.i18n.AppLocale
 import com.househunt.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun repository(): Repository = (LocalContext.current.applicationContext as HouseHuntApp).container.repository
@@ -114,6 +115,11 @@ fun HouseHuntRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit
         // every return to the Houses tab, including a second tap for the same run after an undo that kept houses.
         var importedOpen by rememberSaveable { mutableIntStateOf(0) }
         LaunchedEffect(deepLink) {
+            if (deepLink == null) return@LaunchedEffect
+            // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
+            // has set its graph, and navigate() would throw; wait for the graph's first entry (found by the emulator
+            // smoke test, docs/06 TC-I-35).
+            nav.currentBackStackEntryFlow.first()
             val top = nav.currentBackStackEntry
             fun onTop(route: String, arg: String, value: String?) =
                 top != null && top.destination.route == route && top.arguments?.getString(arg) == value

@@ -16,7 +16,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -29,7 +29,8 @@ import org.junit.runner.RunWith
 
 /**
  * Smoke tests of the installed debug APK on an emulator (android-emulator.yml) or a Test Lab device (docs/06
- * TC-I-10): the app starts, every tab opens, a house can be added from a "new house" intent and then shows in the
+ * TC-I-35): the app starts, every tab opens (the Assistant tab only exists with the server's AI features on, so it is
+ * not among them), a house can be added from a "new house" intent and then shows in the
  * list. Each step saves a screenshot to the test storage (CI artifact). The device language is English.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -76,7 +77,7 @@ class SmokeTest {
         launch()
         waitFor("Houses")
         shot("01_map")
-        for ((label, name) in listOf("Houses" to "02_houses", "Compare" to "03_compare", "Map" to "04_map_again")) {
+        for ((label, name) in listOf("Houses" to "02_houses", "Compare" to "03_compare", "Settings" to "04_settings", "Map" to "05_map_again")) {
             tab(label).performClick()
             shot(name)
         }
@@ -90,10 +91,12 @@ class SmokeTest {
                 .putExtra(Notifications.EXTRA_NEW_LON, 77.5946),
         )
         compose.waitUntilAtLeastOneExists(hasSetTextAction(), 20_000)
-        compose.onAllNodes(hasSetTextAction()).onFirst().performTextInput(name)
+        // Replace, not append: the form starts with a default name ("New house", or a street from the geocoder).
+        compose.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement(name)
         shot("10_new_house")
         compose.onAllNodes(hasText("Save") and hasClickAction()).onFirst().performClick()
-        waitFor(name)
+        // The name is on the new-house form already, so wait for the saved house's own page ("House details").
+        waitFor("House details")
         shot("11_saved")
         compose.onAllNodes(hasContentDescription("Back") and hasClickAction()).onFirst().performClick()
         tab("Houses").performClick()

@@ -2,7 +2,8 @@
 // Every route in 4 languages x 2 themes x phone/desktop (loads, <html lang>, title, h1, no horizontal scroll, no
 // untranslated key, the language's script, theme background, axe WCAG 2.1 A/AA serious+critical, console errors),
 // the add/edit/compare/download/offline/delete flows, and map screenshots of India's boundary (TC-M-25 spots).
-// Usage: npm ci && node live-ui.js [baseUrl] [outDir]. CHROMIUM=<path> to use a local Chromium build.
+// Usage: npm ci && npx playwright install chromium && node live-ui.js [baseUrl] [outDir] (or CHROMIUM=<path> for a
+// local Chromium build). Exits 1 when any check fails. A slow check: the full matrix takes about 10-20 minutes.
 // It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser.
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -34,8 +35,10 @@ async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', m
   }, [lang, mapView]);
   return ctx;
 }
+/** Collects errors for a page; call reset() before each route so late errors are not counted against the next. */
 function watch(page) {
   const errors = [];
+  errors.reset = () => { errors.length = 0; };
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !IGNORE_CONSOLE.some((r) => r.test(m.text()))) errors.push(`console: ${m.text().slice(0, 200)}`); });
   page.on('response', (r) => { if (r.url().startsWith(BASE) && r.status() >= 400 && !r.url().includes('does-not-exist')) errors.push(`HTTP ${r.status()} ${r.url()}`); });
@@ -50,9 +53,11 @@ async function pageMatrix(browser) {
   for (const vp of Object.keys(VIEWPORTS)) for (const theme of THEMES) for (const lang of LANGS) {
     const ctx = await newCtx(browser, { lang, theme, vp, bypassCSP: true });
     const page = await ctx.newPage();
+    const errors = watch(page);
     for (const route of ROUTES) {
       const tag = `${route} ${lang} ${theme} ${vp}`;
-      const errors = watch(page);
+      await page.waitForTimeout(300);
+      errors.reset();
       const resp = await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await settle(page);
       check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
@@ -73,7 +78,7 @@ async function pageMatrix(browser) {
         const script = { hi: /[ऀ-ॿ]/, ta: /[஀-௿]/, te: /[ఀ-౿]/ }[lang];
         check('i18n', `${tag}: text in the language's script`, script.test(info.text));
       }
-      const dark = /rgb\((\d+), (\d+), (\d+)/.exec(info.bg);
+      const dark = /rgba?\((\d+), (\d+), (\d+)/.exec(info.bg);
       if (dark) { const l = (+dark[1] + +dark[2] + +dark[3]) / 3; check('theme', `${tag}: background matches theme`, theme === 'dark' ? l < 100 : l > 150, info.bg); }
       await page.addScriptTag({ content: AXE });
       const axe = await page.evaluate(async () => {
@@ -155,7 +160,9 @@ async function flows(browser) {
     }
     await page.goto(`${BASE}/compare`); await settle(page);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_after_delete.png`) });
-    check('flow', `${vp}: houses deleted`, (await page.getByText(name).count()) === 0);
+    const leftOnCompare = await page.getByText(name).count();
+    await page.goto(`${BASE}/`); await settle(page);
+    check('flow', `${vp}: houses deleted`, leftOnCompare === 0 && (await page.getByText(name).count()) === 0);
     check('console', `${vp} flows: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
     await ctx.close();
   }
@@ -192,4 +199,5 @@ async function boundaries(browser) {
   for (const r of results) { byArea[r.area] ??= { pass: 0, fail: 0 }; byArea[r.area][r.ok ? 'pass' : 'fail']++; }
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ base: BASE, at: new Date().toISOString(), seconds: Math.round((Date.now() - t0) / 1000), byArea, results }, null, 1));
   console.log(JSON.stringify(byArea), `${Math.round((Date.now() - t0) / 1000)} s`);
+  process.exitCode = results.some((r) => !r.ok) ? 1 : 0;
 })();
