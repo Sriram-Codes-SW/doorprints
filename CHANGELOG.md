@@ -281,11 +281,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 ### Changed
 
 - **Docs for the APK and live UI tests** (2026-09-24): [01](docs/01-requirements.md) v0.26 (RTM),
-  [03](docs/03-design.md) v0.24 (ADR-23 guard rails), [06](docs/06-test-plan.md) v0.37 (§16: TC-U-56, TC-I-35, TC-M-26),
-  [07](docs/07-secure-build-and-deploy.md) v0.34 (`android-emulator.yml`, §7.2 Firebase Test Lab setup with its own
-  provider and pool), [10](docs/10-sprint-log.md) v0.43 (CMP-0, §13.3, backlog CMP-0-BL-1..6),
-  [14](docs/14-lead-backlog-and-handoff.md) v0.11 (standing rule: the live UI test after every merge),
-  [docs/README.md](docs/README.md) v0.43, new [ops/firebase-test-lab-setup.md](docs/ops/firebase-test-lab-setup.md) 0.4,
+  [03](docs/03-design.md) v0.24 (ADR-23 guard rails), [06](docs/06-test-plan.md) v0.38 (§16: TC-U-56, TC-I-35, TC-M-26),
+  [07](docs/07-secure-build-and-deploy.md) v0.35 (`android-emulator.yml`, §7.2 Firebase Test Lab setup with its own
+  provider and pool), [10](docs/10-sprint-log.md) v0.44 (CMP-0, §13.3, backlog CMP-0-BL-1..6),
+  [14](docs/14-lead-backlog-and-handoff.md) v0.12 (standing rule: the live UI test after every merge),
+  [docs/README.md](docs/README.md) v0.44, new [ops/firebase-test-lab-setup.md](docs/ops/firebase-test-lab-setup.md) 0.5,
   `android/shared/README.md` 1.46, `android/ui/README.md` 1.3, `web/README.md`, CLAUDE.md.
 - **Android: `HouseHuntApp` is `open`**, with its start-up services (MapLibre, notification channels, WorkManager
   schedules, start-up jobs) in `protected open fun startServices()`, so the screenshot tests' application can leave
@@ -562,16 +562,17 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Navigation graph has not been set"). A tap on a new-house notification such as "Are you at a house?", or on one that
   opens a house or a screen, ran the navigation before the navigation graph existed. The app now waits for the graph
   first (`Root.kt`). Found by the new emulator smoke test on its first CI run (run 35943533129;
-  [docs/06](docs/06-test-plan.md) TC-I-35, [sprint log](docs/10-sprint-log.md) §13.3). The smoke tests then
-  passed on the emulator; one of two runs on `bc57361` found a threading bug, fixed in the next commit; the re-run is
-  pending (see the next item).
+  [docs/06](docs/06-test-plan.md) TC-I-35, [sprint log](docs/10-sprint-log.md) §13.3). On `bc57361` the push run passed
+  both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in
+  `6376706`, the next item); the re-run on `6376706` is pending.
 - **Android: the Map's camera could move off the main thread after a location fix** ("Animators may only be run on
-  Looper threads"). `currentLocation()` awaits a Play services task that completes on a Binder thread, and the Map
-  moved the MapLibre camera right after it. The app's own main dispatcher switches back to the main thread, so it was
-  never seen in normal use, but the code relied on it; under the Compose test rule it crashed `everyTabOpens` in one
-  of two emulator runs on `bc57361` (the pull-request run; the push run passed). `currentLocation()` now returns on
-  the main thread (`withContext(Dispatchers.Main.immediate)`, `MapScreen.kt`), which covers its three callers: the
-  first framing, "go to me" and "save here" ([docs/06](docs/06-test-plan.md) TC-I-35).
+  Looper threads"). `currentLocation()` awaits a Play services task that completes on a Binder thread, and the Map moved
+  the MapLibre camera right after it. The app's own main dispatcher switches back to the main thread, so it was never
+  seen in normal use, but the code relied on it; under the Compose test rule it crashed `everyTabOpens` in the
+  pull-request emulator run on `bc57361` (the push run passed). `currentLocation()` now returns on the main thread
+  (`withContext(Dispatchers.Main.immediate)`, `MapScreen.kt`, commit `6376706`), which covers every caller: on the Map
+  the first framing, "go to me" and "save here", plus the house form's and the Assistant's location lookups
+  ([docs/06](docs/06-test-plan.md) TC-I-35).
 - **`tools/live-ui`: incomplete string escaping** (CodeQL, high). The untranslated-key check built its regular
   expressions escaping only dots; it now escapes every regex metacharacter (`escapeRegExp`). Test tooling only; the
   app is unchanged ([docs/06](docs/06-test-plan.md) TC-M-26).
