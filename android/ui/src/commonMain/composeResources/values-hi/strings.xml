@@ -2,7 +2,8 @@
 <!-- Hindi: the UI strings (Compose Multiplatform resources, ADR-23 CMP-2). Same keys and placeholders in every
      language (StringParityTest). Placeholders are positional (%1$s, %1$d): Compose resources substitute only those.
      Strings the Android services also use (notifications, workers) are in android/app/src/main/res as well, with the
-     same text (StringParityTest). -->
+     same text (StringParityTest). Write a plain ' (no \' or other Android escapes); rules in docs/05 section 8.2.
+     Keys mirror the web's i18n keys where both apps show the same text. -->
 <resources>
     <string name="app_name">Doorprints</string>
     <string name="app_tagline">देखा हुआ हर मकान याद रखें।</string>
@@ -24,6 +25,7 @@
     <string name="status_REJECTED">अस्वीकृत</string>
     <string name="status_ALL">सभी</string>
     <string name="status_filter">%1$s (%2$d)</string>
+    <!-- Read from Android resources for now (ui/Format.kt in :app); kept for the common Format of CMP-3. -->
     <string name="price_per_month">%1$s/माह</string>
     <string name="map_hunt_mode">हंट मोड</string>
     <string name="map_hunt_off">मकान देखने निकलें तो चालू करें</string>

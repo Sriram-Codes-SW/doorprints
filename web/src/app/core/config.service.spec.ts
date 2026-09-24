@@ -85,6 +85,16 @@ describe('ConfigService', () => {
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
+  it('clear() also removes a pre-rename config that could not be moved at start', () => {
+    localStorage.setItem('house-hunt.api-config', JSON.stringify({ baseUrl: 'https://o.example', apiKey: 'old' }));
+    sessionStorage.setItem('house-hunt.api-config', JSON.stringify({ baseUrl: 'https://o.example', apiKey: 'old' }));
+
+    new ConfigService().clear();
+
+    expect(localStorage.getItem('house-hunt.api-config')).toBeNull();
+    expect(sessionStorage.getItem('house-hunt.api-config')).toBeNull();
+  });
+
   it('loads a remembered config on start', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ baseUrl: 'https://l.example', apiKey: 'L' }));
     const service = new ConfigService();

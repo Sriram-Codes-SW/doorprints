@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { API_CONFIG_KEY } from './storage-keys';
+import { API_CONFIG_KEY, LEGACY_KEYS } from './storage-keys';
 
 export interface ApiConfig {
   baseUrl: string;
@@ -57,9 +57,11 @@ export class ConfigService {
 
   clear(): void {
     this.state.set(null);
+    // Also the pre-rename name, in case main.ts could not move it (storage full or blocked): it holds the key too.
+    const names = [STORAGE_KEY, ...[...LEGACY_KEYS].filter(([, now]) => now === STORAGE_KEY).map(([old]) => old)];
     for (const s of [localStorageOrNull(), sessionStorageOrNull()]) {
       try {
-        s?.removeItem(STORAGE_KEY);
+        for (const name of names) s?.removeItem(name);
       } catch {
         // ignore
       }

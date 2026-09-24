@@ -123,4 +123,27 @@ class DatabaseFileTest {
         assertFalse(new.exists())
         dir.deleteRecursively()
     }
+
+    @Test
+    fun aFailedRetryPutsBackTheCompanionsAnInterruptedRunMoved() {
+        // An earlier run moved the WAL and was killed; this run cannot rename the journal (a directory is in the way).
+        val dir = File(context.cacheDir, "db-retry-${System.nanoTime()}").apply { mkdirs() }
+        val old = File(dir, DatabaseFile.LEGACY_NAME).apply { writeText("old") }
+        File(old.path + "-journal").writeText("old-journal")
+        val new = File(dir, DatabaseFile.NAME)
+        File(new.path + "-wal").writeText("old-wal, moved by the interrupted run")
+        File(new.path + "-journal").mkdirs()
+        File(new.path + "-journal", "blocker").writeText("x")
+
+        val opened = DatabaseFile.resolve(legacy = old, current = new)
+
+        assertEquals(old, opened)
+        assertEquals(
+            "the WAL goes back to the file it belongs to",
+            "old-wal, moved by the interrupted run",
+            File(old.path + "-wal").readText(),
+        )
+        assertFalse(File(new.path + "-wal").exists())
+        dir.deleteRecursively()
+    }
 }

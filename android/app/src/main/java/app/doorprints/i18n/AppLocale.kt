@@ -101,7 +101,8 @@ object AppLocale {
      * rather than from a configuration, and choose from that one locale only; Android resources choose from the whole
      * list. So the default is set to the language Android resolved for [context]'s resources, read from the
      * `resolved_language` string each `values` folder carries: a phone set to [Marathi, Hindi] shows Hindi on both
-     * sides. The rest of the configuration's list follows it. The framework resets the default on a process-level
+     * sides (the APK carries only the four languages, `localeFilters` in build.gradle.kts, so Android skips Marathi;
+     * AppLocaleTest). The rest of the configuration's list follows it. The framework resets the default on a process-level
      * configuration change, so the app calls this again then (DoorprintsApp.onConfigurationChanged).
      */
     fun applyDefault(context: Context) {
