@@ -1,24 +1,16 @@
-package app.doorprints
+package app.doorprints.ui
 
-import app.doorprints.ui.LocationAccess
-import app.doorprints.ui.LocationFix
-import app.doorprints.ui.LocationStart
-import app.doorprints.ui.canAskAgain
-import app.doorprints.ui.launchesRequest
-import app.doorprints.ui.locationAccess
-import app.doorprints.ui.locationFix
-import app.doorprints.ui.locationNoteText
-import app.doorprints.ui.locationStart
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Approximate location told apart from no location (UX review, whole-app audit, round 3): the Map, the house form and
- * the Assistant show one note ([app.doorprints.ui.LocationPermissionNote]) whose text and button follow these rules.
- * Round 4: both texts are the screen's own, so the note names what the user just tried.
+ * the Assistant show one note ([LocationPermissionNote]) whose text and button follow these rules.
+ * Round 4: both texts are the screen's own, so the note names what the user just tried. In `:ui` commonTest since CMP-5
+ * (was JUnit in `:app`), with the rules it tests.
  */
 class LocationAccessTest {
 
