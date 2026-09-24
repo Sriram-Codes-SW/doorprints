@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.5 |
+| Version | 1.6 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.6 | 2026-09-24 | **CMP-3 done in code** (branch `claude/doorprints-dev-continue-fzcge2`; [docs/03](../../docs/03-design.md) ADR-23 P3, [docs/10](../../docs/10-sprint-log.md) §13.5). Section 4: `PlatformServices` and `LocalPlatformServices`, `Format.kt` (common amounts and scores, `expect` dates, `appLanguage()`), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `uiLanguage()` follows the resolved language (S4b-BL-18); `MapRulesTest`, `IndiaViewRulesTest` and `FormatsTest` in commonTest, `FormatsParityTest` in androidHostTest; `ui/UiStrings.kt` removed. Section 5: the iOS klibs compile on Linux with klib cross-compilation on. Section 6: P3 done in code. No visual change (the 64 screenshots verify). |
 | 1.5 | 2026-09-24 | **CMP-2 done in code** (PR #19, `80b198b`, review fixes `927d54b`; [docs/03](../../docs/03-design.md) ADR-23 P2, [docs/10](../../docs/10-sprint-log.md) §13.4). Section 2: the `org.jetbrains.compose` plugin and `components-resources`; section 4: the Compose resources row (403 strings and 16 plurals per language) and the service strings that stay in `:app`; section 6: P2 done. No visual change (the 64 screenshots verify). |
 | 1.4 | 2026-09-24 | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [docs/03](../../docs/03-design.md) ADR-24). Section 3: the Kotlin package and the Android namespace are both `app.doorprints.ui` (were `com.househunt.app.ui` and `com.househunt.ui`), the resources class `app.doorprints.ui.res.Res`; section 4: `DoorprintsTheme`. No visual change (the 64 screenshots verify). |
 | 1.3 | 2026-09-24 | Round 3 review of PR #18: the screenshot test id is **TC-U-56** (was TC-U-60); the android.yml command in section 5 is split over three lines. |
@@ -56,7 +57,7 @@ The Android namespace (R class) and the Kotlin package are both **`app.doorprint
 generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `public` instead of `internal`. Until
 2026-09-24 the packages kept the old product name (`com.househunt.app.ui`, namespace `com.househunt.ui`).
 
-## 4. What is in it now (phases 1 and 2)
+## 4. What is in it now (phases 1 to 3)
 
 | Source set | File | Contents |
 |---|---|---|
@@ -65,17 +66,25 @@ generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `pu
 | commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`) |
 | commonMain | `Buttons.kt` | `ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES` (from `ActionBar.kt`) |
 | commonMain | `ResultTone.kt`, `LocationFix.kt` | from `ResultCard.kt` and `LocationPermission.kt` |
-| androidMain | `UiLanguage.android.kt` | `LocalConfiguration`'s locale, as before |
-| iosMain | `UiLanguage.ios.kt` | Compose's `Locale.current` |
+| commonMain | `PlatformServices.kt` | the platform seam (phase 3): `interface PlatformServices { fun isScreenReaderOn(): Boolean }` and `LocalPlatformServices` (no default: a root must provide it); later members are listed in its KDoc |
+| commonMain | `Format.kt` | `Formats`: `rupees` (₹ and lakh grouping, `indianGrouping`), `price`, `score` (one decimal, half up) in common code; `date` and `dateTime` through `internal expect fun formatDate`; `expect fun appLanguage()`; the composables `priceText(price, priceType)` (`price_per_month` from Compose resources), `scoreText()`, `dateText()` |
+| commonMain | `LiveMessage.kt`, `DeletedHouseUndo.kt` | the live region that is there before its message; the "Deleted …" snackbar with *Undo*, given the repository's read and write as two lambdas (`:app`'s `DeletedHouses.kt` passes the Room repository until CMP-4) |
+| commonMain | `ActionBar.kt`, `ResultCard.kt` | Export's and Import's sticky bar, `StatusLine`, `WorkProgress`, `ProgressBar`, `BarButton`, `StateButton`, `DangerButton`; the result cards and `ResultActionsRow` |
+| androidMain | `PlatformServices.android.kt` | `AndroidPlatformServices` (TalkBack's touch exploration from `AccessibilityManager`) and `ProvidePlatformServices { }`, used by `MainActivity` and the screenshot tests |
+| androidMain | `Format.android.kt` | `java.time`'s medium date and short time for `<language>-IN`; `appLanguage()` is `Locale.getDefault()`, which `AppLocale.applyDefault` keeps on the resolved language |
+| androidMain | `UiLanguage.android.kt` | `appLanguage()`, read again when `LocalConfiguration` changes (since CMP-3, S4b-BL-18; was the configuration's first locale) |
+| iosMain | `UiLanguage.ios.kt`, `Format.ios.kt` | Compose's `Locale.current`; `NSDateFormatter` (medium date, short time) for `<language>_IN` |
 | commonMain | `composeResources/values{,-hi,-ta,-te}/strings.xml` | the UI strings (phase 2): 403 strings and 16 plurals per language, positional placeholders only, a plain `'` (no Android escapes); checked by `:app`'s `StringParityTest` (docs/06 TC-U-59) |
-| commonTest | `ServerStatusTest.kt` | 5 tests (`kotlin.test`) |
+| commonTest | `ServerStatusTest.kt`, `MapRulesTest.kt`, `IndiaViewRulesTest.kt`, `FormatsTest.kt` | `kotlin.test`; the Map and India view tests moved from `:app` (JUnit) in phase 3, and compile for iOS too |
+| androidHostTest | `FormatsParityTest.kt` | the common amounts and scores against the JVM's `NumberFormat` and `String.format` in the four languages |
 
 Screens, the map view and everything that touches Android services are still in `:app`, and so are the service
 strings (notifications, workers, `HuntService`) in `android/app/src/main/res/values*/strings.xml`, with `'` escaped as
-`\'`; keys both use are in both places with the same text. Outside composition `:app` reads a UI string with
-`Context.getString(StringResource)` (`ui/UiStrings.kt`, until CMP-3). Compose resources take the language from the
-process's default locale, which `:app`'s `AppLocale.applyDefault` keeps on the language Android resolved (docs/05
-§8.2, TC-U-60).
+`\'`; keys both use are in both places with the same text. Outside composition `:app` reads a UI string with Compose's
+suspend `getString(Res.string.x)` in a coroutine or effect (the blocking `ui/UiStrings.kt` helper went in CMP-3), or
+resolves it with `stringResource` in composition and hands it to the click handler. Compose resources take the language
+from the process's default locale, which `:app`'s `AppLocale.applyDefault` keeps on the language Android resolved
+(docs/05 §8.2, TC-U-60); the dates and the theme's language rules read the same (`appLanguage()`, TC-U-61).
 
 ## 5. Build and test
 
@@ -92,6 +101,8 @@ From `android/`:
 ```
 
 On Linux the iOS tasks are skipped (`kotlin.native.enableKlibsCrossCompilation=false`, see the `:shared` README §5).
+To compile the iOS klibs on Linux anyway, add `-Pkotlin.native.enableKlibsCrossCompilation=true` to the macOS line
+above (done for CMP-3; nothing is linked). `shared-ios.yml` on macOS stays the check of record.
 `shared-ios.yml` watches `android/ui/**`; its job name is unchanged in case it is a required check. The rules for
 commonMain in the `:shared` README §6 apply here too.
 
@@ -111,7 +122,7 @@ Each phase (and each lettered sub-phase) is one pull request that keeps `android
 |---|---|---|---|
 | P1 | CMP-1 | `:ui` module; theme and pure UI code | **Done** (`be86f50`); iOS compile pending on CI (macOS) |
 | P2 | CMP-2 | UI strings to Compose resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`; service strings stay Android resources; `AppLocale.applyDefault` on every API level; `localeFilters`; `StringParityTest`, `AppLocaleTest` | **Done in code** (PR #19, `80b198b`, `927d54b`; awaiting merge) |
-| P3 | CMP-3 | `PlatformServices` seam; `Format.kt`, `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`, pure helpers | Planned |
+| P3 | CMP-3 | `PlatformServices` seam (screen reader only, so far); `Format.kt` (common amounts, `expect` dates), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `UiStrings.kt` removed; S4b-BL-18; `MapRulesTest`, `IndiaViewRulesTest` to commonTest | **Done in code** (branch `claude/doorprints-dev-continue-fzcge2`; awaiting review and merge) |
 | P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | Planned |
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned |
 | P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | Planned |
