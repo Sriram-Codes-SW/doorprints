@@ -521,7 +521,7 @@ export class App {
   /**
    * An automatic sync failed (a revoked key, a server that went away) and nothing has worked since. The sync card on
    * Your data says why; the dot tells the user from any screen that there is something to read there. Cleared when
-   * the next run starts (SyncService clears lastError then), and not shown for a failure the user saw happen.
+   * a run succeeds (SyncService clears lastError only then, S4b-BL-1), and not shown for a failure the user saw happen.
    */
   protected readonly syncProblem = computed(
     () => this.sync.enabled() && this.sync.lastError() !== null && !this.sync.lastErrorForced(),
