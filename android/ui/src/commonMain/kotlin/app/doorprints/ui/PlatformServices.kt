@@ -10,10 +10,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * It holds only what the code in `:ui` needs today: the screen reader (CMP-3), and since CMP-5 the location and
  * notification permissions' state for the moved screens (the prompts themselves are [rememberLocationPermissionRequest]
  * and [rememberNotificationPermissionRequest], which need the composition). What only the app itself can do (its
- * data, the copy-import undo, Settings' backup folder and language) is [AppServices]. Planned members, added by the
- * phase that moves their first user: announce a message for accessibility, share text and open a URL (CMP-6: the house
- * form's listing link, Export's *Share this file*); pickers (photo, camera, file; CMP-6); a worker's progress (CMP-6's
- * export and import behind an interface).
+ * data, the copy-import undo, Settings' backup folder and language) is [AppServices]. Since CMP-6 also the house
+ * form's two hand-offs to other apps: a phone number to the dialler ([dial]) and a listing link to the browser
+ * ([openUrl]). The pickers, the workers and sharing a saved copy are the app's ([AppServices.houseForm],
+ * [AppServices.exportScreen], [AppServices.importScreen]).
  *
  * Read on the main thread, at the moment the answer matters: a permission or the screen reader can change while the
  * app runs (in system settings, then back), so nothing here is cached.
@@ -45,6 +45,12 @@ interface PlatformServices {
 
     /** True when the app may post notifications (Android: below API 33 always, from 33 with `POST_NOTIFICATIONS`). */
     fun canPostNotifications(): Boolean
+
+    /** Opens the phone's dialler with [number] filled in (Android: `ACTION_DIAL` with a `tel:` URI). Nothing is dialled. */
+    fun dial(number: String)
+
+    /** Opens the web link [url] in the browser; false when no app can open it. */
+    fun openUrl(url: String): Boolean
 }
 
 /**

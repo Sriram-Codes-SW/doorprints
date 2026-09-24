@@ -161,3 +161,76 @@ const val PAIR_STACK_FONT_SCALE = 1.3f
 /** True when a field pair must stack: [widthDp] is the room the pair has, [fontScale] the system font scale. */
 fun stackFieldPair(widthDp: Float, fontScale: Float): Boolean =
     widthDp < PAIR_STACK_BELOW_DP || fontScale >= PAIR_STACK_FONT_SCALE
+
+/**
+ * True for an http(s) link with a host, the only kind the house form's *Open* hands to a browser. The rule of
+ * Android's `Uri.parse(text)` that the form used before CMP-6 (`LinkParityTest` compares the two): the scheme is
+ * everything before the first `:`, compared without case; the host is the authority after `//` (up to the first `/`,
+ * `\`, `?` or `#`), less any user info (up to the last `@`) and a trailing `:port`, percent-decoded, and must not be
+ * blank.
+ */
+fun isWebLink(text: String): Boolean {
+    val schemeEnd = text.indexOf(':')
+    if (schemeEnd < 0) return false
+    val scheme = text.substring(0, schemeEnd).lowercase()
+    if (scheme != "http" && scheme != "https") return false
+    val host = linkHost(text, schemeEnd) ?: return false
+    // A malformed escape decodes to U+FFFD, which is not blank.
+    val decoded = percentDecoded(host) ?: return true
+    return decoded.isNotBlank()
+}
+
+/** The encoded host of [text] whose scheme ends at [schemeEnd], or null when there is no `//` authority. */
+private fun linkHost(text: String, schemeEnd: Int): String? {
+    if (text.length <= schemeEnd + 2 || text[schemeEnd + 1] != '/' || text[schemeEnd + 2] != '/') return null
+    var end = schemeEnd + 3
+    while (end < text.length && text[end] != '/' && text[end] != '\\' && text[end] != '?' && text[end] != '#') end++
+    val authority = text.substring(schemeEnd + 3, end)
+    val userInfoEnd = authority.lastIndexOf('@')
+    // The port: digits after the last ':', read from the end; any other character first means there is none.
+    var portStart = -1
+    for (i in authority.indices.reversed()) {
+        val c = authority[i]
+        if (c == ':') {
+            portStart = i
+            break
+        }
+        if (c !in '0'..'9') break
+    }
+    return if (portStart < 0) authority.substring(userInfoEnd + 1) else authority.substring(userInfoEnd + 1, portStart)
+}
+
+/** [s] with its `%XX` escapes decoded as UTF-8, or null when an escape is malformed. */
+private fun percentDecoded(s: String): String? {
+    val out = StringBuilder()
+    val bytes = ArrayList<Byte>()
+    fun flush() {
+        if (bytes.isNotEmpty()) out.append(bytes.toByteArray().decodeToString())
+        bytes.clear()
+    }
+    var i = 0
+    while (i < s.length) {
+        val c = s[i]
+        if (c == '%') {
+            if (i + 2 > s.lastIndex) return null
+            val high = hexValue(s[i + 1]) ?: return null
+            val low = hexValue(s[i + 2]) ?: return null
+            bytes += (high * 16 + low).toByte()
+            i += 3
+        } else {
+            flush()
+            out.append(c)
+            i++
+        }
+    }
+    flush()
+    return out.toString()
+}
+
+/** An ASCII hex digit's value, or null (as Android's `UriCodec`: no other script's digits). */
+private fun hexValue(c: Char): Int? = when (c) {
+    in '0'..'9' -> c - '0'
+    in 'a'..'f' -> c - 'a' + 10
+    in 'A'..'F' -> c - 'A' + 10
+    else -> null
+}

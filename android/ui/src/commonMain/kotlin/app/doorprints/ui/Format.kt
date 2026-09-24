@@ -66,6 +66,12 @@ object Formats {
         return "$sign${tenths / 10}.${tenths % 10}"
     }
 
+    /**
+     * A latitude or longitude as the house form shows it: six decimals (about 10 cm), a dot whatever the language.
+     * The platform's own `%.6f` ([formatSixDecimals]), so Android writes exactly what the form wrote before CMP-6.
+     */
+    fun coordinate(value: Double): String = formatSixDecimals(value)
+
     /** A medium date and a short time in [language] (default: [appLanguage]). */
     fun dateTime(epochMillis: Long, language: String = appLanguage()): String =
         formatDate(epochMillis, language, withTime = true)
@@ -86,6 +92,9 @@ fun formatPositional(format: String, vararg args: Any): String =
 
 /** The placeholders Compose resources fill (its `SimpleStringFormatRegex`). */
 private val POSITIONAL_PLACEHOLDER = Regex("""%(\d+)\$[ds]""")
+
+/** [value] with six decimals, rounded as the platform's `%.6f` does, with a dot (Android: `String.format(Locale.ROOT)`). */
+internal expect fun formatSixDecimals(value: Double): String
 
 /**
  * The platform's medium date (and, [withTime], short time) for [language] with region IN, in the device's time zone.

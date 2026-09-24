@@ -54,10 +54,12 @@ kotlin {
             api(libs.jb.lifecycle.viewmodel.savedstate)
             // The Assistant keeps its answer and plan in saved state as JSON (AssistantViewModel).
             implementation(libs.kotlinx.serialization.json)
+            // The house form's photo tiles and viewer (CMP-6 P6a): Coil 3 is multiplatform; the same library :app used.
+            implementation(libs.coil.compose)
         }
         androidMain.dependencies {
             // The Android side of the seams (CMP-5): permission checks (ContextCompat, ActivityCompat) and the
-            // permission prompts (rememberLauncherForActivityResult).
+            // permission prompts (rememberLauncherForActivityResult); since CMP-6 the house form's BackHandler.
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
         }

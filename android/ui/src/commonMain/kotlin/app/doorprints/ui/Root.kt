@@ -47,9 +47,9 @@ sealed interface DeepLink {
 
 /**
  * The screens that are still Android code in `:app` (CMP-5): the root's graph calls them through this, with the same
- * arguments as before. They move to `:ui` in CMP-6 (the house form, Export, Import) and CMP-7 (the Map), and each slot
- * goes with its screen. `:app`'s `AndroidRootScreens` forwards to `MapScreen`, `HouseEditScreen`, `ExportScreen` and
- * `ImportScreen`.
+ * arguments as before. They move to `:ui` in CMP-6 (Export, Import; the house form's slot went with CMP-6 P6a) and
+ * CMP-7 (the Map), and each slot goes with its screen. `:app`'s `AndroidRootScreens` forwards to `MapScreen`,
+ * `ExportScreen` and `ImportScreen`.
  */
 interface RootScreens {
     @Composable
@@ -61,20 +61,6 @@ interface RootScreens {
         onAddTipShown: () -> Unit,
         deletedHouse: String?,
         onDeletedShown: () -> Unit,
-    )
-
-    @Composable
-    fun HouseForm(
-        houseId: String?,
-        newLat: Double?,
-        newLon: Double?,
-        visitId: String?,
-        onDone: () -> Unit,
-        onOpenHouses: () -> Unit,
-        onCreated: (String) -> Unit,
-        onDeleted: (String) -> Unit,
-        showSaved: Boolean,
-        onSavedShown: () -> Unit,
     )
 
     @Composable
@@ -347,7 +333,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 ) { entry ->
                     val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
                         .collectAsStateWithLifecycle()
-                    screens.HouseForm(
+                    HouseEditScreen(
                         houseId = entry.arguments?.read { getStringOrNull("id") },
                         newLat = null, newLon = null, visitId = null,
                         onDone = dropUnlessResumed { nav.popBackStack() },
@@ -387,14 +373,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 ) { entry ->
                     val args = entry.arguments
                     val onDone = dropUnlessResumed { nav.popBackStack() }
-                    screens.HouseForm(
+                    HouseEditScreen(
                         houseId = null,
                         newLat = args?.read { getStringOrNull("lat") }?.toDoubleOrNull(),
                         newLon = args?.read { getStringOrNull("lon") }?.toDoubleOrNull(),
                         visitId = args?.read { getStringOrNull("visitId") },
                         onDone = onDone,
                         // A new house has no stale link and cannot be deleted from its form: both just close it, as
-                        // HouseEditScreen's defaults did before the form's call went through RootScreens.
+                        // HouseEditScreen's defaults do.
                         onOpenHouses = onDone,
                         // The first save continues on the house as an existing one, so photos can be added at once
                         // (whole-app audit; the web's New house → Create → house page). The form is replaced, so Back

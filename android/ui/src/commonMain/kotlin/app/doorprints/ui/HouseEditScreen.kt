@@ -1,14 +1,5 @@
 package app.doorprints.ui
 
-import android.app.Application
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,10 +32,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -62,28 +51,19 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.FileProvider
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import app.doorprints.DoorprintsApp
-import app.doorprints.data.ChecklistLabels
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.PhotoEntity
 import app.doorprints.data.Repository
-import app.doorprints.data.labelRes
-import app.doorprints.export.ImportWorker
-import app.doorprints.location.ReverseGeocoder
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
-import java.io.File
-import java.util.Locale
-import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -95,6 +75,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Clock
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Room's answer for the house on this route: null until the first answer, then [house] (null when there is no row).
@@ -179,16 +162,18 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
  * composition, so a rotation or the language switch during the 10 s no longer deletes the photo at once: the screen
  * shows the snackbar again for every delete still waiting. A delete is carried out when its snackbar ends without
  * *Undo* ([commit]), or when the entry is really closed ([onCleared], in the app scope). A delete still waiting when
- * the process dies keeps the photo, the safe side.
+ * the process dies keeps the photo, the safe side. Common since CMP-6 P6a: given the repository and the app scope
+ * ([AppServices]), where it read them from the application before.
  */
-class PhotoDeleteViewModel(app: Application) : AndroidViewModel(app) {
+internal class PhotoDeleteViewModel(
+    private val repository: Repository,
+    private val appScope: CoroutineScope,
+) : ViewModel() {
     /** A photo removed from the row, and its number in the row when it was deleted ("Photo 2 deleted"). */
     data class Pending(val photo: PhotoEntity, val number: Int)
 
     var pending by mutableStateOf<Map<String, Pending>>(emptyMap())
         private set
-
-    private val hunt get() = getApplication<DoorprintsApp>()
 
     fun add(photo: PhotoEntity, number: Int) {
         pending = pending + (photo.id to Pending(photo, number))
@@ -201,18 +186,20 @@ class PhotoDeleteViewModel(app: Application) : AndroidViewModel(app) {
     fun commit(id: String) {
         val p = pending[id] ?: return
         pending = pending - id
-        hunt.appScope.launch { hunt.container.repository.deletePhoto(p.photo) }
+        appScope.launch { repository.deletePhoto(p.photo) }
     }
 
     override fun onCleared() {
         val left = pending.values.toList()
         pending = emptyMap()
-        left.forEach { p -> hunt.appScope.launch { hunt.container.repository.deletePhoto(p.photo) } }
+        left.forEach { p -> appScope.launch { repository.deletePhoto(p.photo) } }
     }
 }
 
 /**
- * A house's form: a new one (from the map or a visit) or an existing one.
+ * A house's form: a new one (from the map or a visit) or an existing one. Common since CMP-6 P6a: the geocoder, the
+ * visit alert and the photos (camera, picker, storing) are the app's ([AppServices.houseForm]), the dialler, the
+ * browser and the location permission the platform's ([LocalPlatformServices]).
  *
  * **State (UX review, round 21).** The draft, the loaded version it is compared with (`baseline`), the newest row
  * version the user has seen (`seenUpdatedAt`) and a new house's id are `rememberSaveable` ([HouseDraftSaver]), so a
@@ -224,7 +211,7 @@ class PhotoDeleteViewModel(app: Application) : AndroidViewModel(app) {
  * longer silently undo the other device's change. Save with nothing changed leaves without writing.
  *
  * **Unsaved changes (UX-005).** `dirty` is `draft != baseline`. While it is set, the back arrow and system Back
- * ([BackHandler]) ask first: "Leave without saving?" (or "Discard this new house?"), with *Keep editing*, *Discard*
+ * ([PlatformBackHandler]) ask first: "Leave without saving?" (or "Discard this new house?"), with *Keep editing*, *Discard*
  * ([DangerButton]) and *Save*.
  *
  * **One exit.** A tap on either Save, *Save* in the leave dialog or the delete dialog's *Delete* sets `busy`; a second
@@ -256,7 +243,7 @@ class PhotoDeleteViewModel(app: Application) : AndroidViewModel(app) {
  * **Keyboard.** The form, Settings and the Assistant apply the IME insets (`imePadding`): with edge-to-edge, the
  * window no longer resizes for the keyboard, and fields near the bottom were left under it.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalUuidApi::class)
 @Composable
 fun HouseEditScreen(
     houseId: String?,
@@ -270,14 +257,14 @@ fun HouseEditScreen(
     showSaved: Boolean = false,
     onSavedShown: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val platform = LocalPlatformServices.current
-    val repo = repository()
-    val app = context.applicationContext as DoorprintsApp
+    val services = LocalAppServices.current
+    val repo = services.repository
+    val form = services.houseForm
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val isNew = houseId == null
-    val id = rememberSaveable { houseId ?: UUID.randomUUID().toString() }
+    val id = rememberSaveable { houseId ?: Uuid.random().toString() }
     val defaultLabel = stringResource(Res.string.house_default_label)
     val streetLabel = stringResource(Res.string.house_default_label_street)
     val unnamed = stringResource(Res.string.house_unnamed)
@@ -327,7 +314,7 @@ fun HouseEditScreen(
     LaunchedEffect(id) {
         if (!isNew) return@LaunchedEffect
         if (draft == null) {
-            val now = System.currentTimeMillis()
+            val now = nowMillis()
             val fresh = HouseEntity(
                 id = id, label = defaultLabel, lat = newLat ?: 0.0, lon = newLon ?: 0.0,
                 createdAt = now, updatedAt = now,
@@ -342,14 +329,14 @@ fun HouseEditScreen(
         }
         geocoding = true
         val place = try {
-            ReverseGeocoder(context).lookup(start.lat, start.lon)
+            form.reverseGeocode(start.lat, start.lon)
         } finally {
             geocoding = false
         }
         val d = draft ?: return@LaunchedEffect
         val b = baseline ?: return@LaunchedEffect
         if (place != null) {
-            val (filledDraft, filledBaseline) = fillPlace(d, b, place, defaultLabel) { String.format(streetLabel, it) }
+            val (filledDraft, filledBaseline) = fillPlace(d, b, place, defaultLabel) { formatPositional(streetLabel, it) }
             draft = filledDraft
             baseline = filledBaseline
         }
@@ -421,7 +408,7 @@ fun HouseEditScreen(
                 if (visitId != null) {
                     repo.getVisit(visitId)?.let { repo.saveVisit(it.copy(houseId = toSave.id)) }
                     // The "Are you at a house?" alert is answered: tapping it again must not open a second form.
-                    NotificationManagerCompat.from(context).cancel(visitId.hashCode())
+                    form.clearVisitAlert(visitId)
                 }
             }
             draft = toSave
@@ -435,9 +422,9 @@ fun HouseEditScreen(
         val d = draft ?: return
         if (busy) return
         busy = true
-        val now = System.currentTimeMillis()
+        val now = nowMillis()
         val copy = d.copy(
-            id = UUID.randomUUID().toString(), label = d.label.ifBlank { unnamed }, deleted = false,
+            id = Uuid.random().toString(), label = d.label.ifBlank { unnamed }, deleted = false,
             createdAt = now, updatedAt = now,
         )
         scope.launch {
@@ -454,11 +441,11 @@ fun HouseEditScreen(
             else -> onDone()
         }
     }
-    BackHandler(enabled = dirty || busy) { leave() }
+    PlatformBackHandler(enabled = dirty || busy) { leave() }
 
     // Photo delete with undo (see PhotoDeleteViewModel).
     val snackbar = remember { SnackbarHostState() }
-    val photoDeletes: PhotoDeleteViewModel = viewModel { PhotoDeleteViewModel(app) }
+    val photoDeletes: PhotoDeleteViewModel = viewModel { PhotoDeleteViewModel(repo, services.appScope) }
     val pendingDelete = photoDeletes.pending
     val shownPhotos = photos.filter { it.id !in pendingDelete }
     val photoFocus = remember { HashMap<String, FocusRequester>() }
@@ -510,14 +497,14 @@ fun HouseEditScreen(
         showUndo(PhotoDeleteViewModel.Pending(p, number))
     }
 
-    fun addPhoto(uri: Uri) {
+    fun addPhoto(photo: PickedPhoto) {
         if (addingPhoto) return
         addingPhoto = true
         photoProblem = null
         scope.launch {
             try {
                 // NonCancellable: a rotation while a big photo is being shrunk must not lose it.
-                val result = withContext(NonCancellable) { repo.addPhoto(id, uri) }
+                val result = withContext(NonCancellable) { form.addPhoto(id, photo) }
                 photoProblem = result.takeIf { it != Repository.AddPhotoResult.ADDED }
             } finally {
                 addingPhoto = false
@@ -525,17 +512,8 @@ fun HouseEditScreen(
         }
     }
 
-    // Camera capture goes to a temp file, then gets shrunk and stored like any picked photo.
-    val cameraFile = remember { File(context.cacheDir, "camera/capture.jpg").apply { parentFile?.mkdirs() } }
-    val cameraUri = remember {
-        FileProvider.getUriForFile(context, context.packageName + ".files", cameraFile)
-    }
-    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        if (ok) addPhoto(Uri.fromFile(cameraFile))
-    }
-    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) addPhoto(uri)
-    }
+    // The camera and the photo picker (the app's, HouseFormServices): each photo is shrunk and stored the same way.
+    val photoSources = form.rememberPhotoSources { addPhoto(it) }
 
     // "Use my current location": asks for the permission first when needed, then tries again once. The "asked" flag
     // is shared with the Map and the Assistant (LocationPermission.kt). After a refusal, or an approximate-only
@@ -543,12 +521,11 @@ fun HouseEditScreen(
     // *Allow location* / *Turn on precise location* while Android will ask, *Open settings* once it will not.
     val locationAsk = rememberLocationAsk()
     var locationGrants by remember { mutableIntStateOf(0) }
-    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+    val askLocation = rememberLocationPermissionRequest {
         locationAsk.refresh()
-        // Precise location is what the form needs (hasLocationPermission). Approximate alone shows the note ("only
-        // your approximate location", with *Turn on precise location*) and does not start the request by itself, so
-        // it cannot loop.
-        if (hasLocationPermission(context)) {
+        // Precise location is what the form needs. Approximate alone shows the note ("only your approximate
+        // location", with *Turn on precise location*) and does not start the request by itself, so it cannot loop.
+        if (platform.locationAccess() == LocationAccess.PRECISE) {
             locationDenied = false
             locationGrants++
         } else {
@@ -557,11 +534,11 @@ fun HouseEditScreen(
     }
     fun useMyLocation() {
         if (locating) return
-        if (!hasLocationPermission(context)) {
+        if (platform.locationAccess() != LocationAccess.PRECISE) {
             locationFailed = false
             if (locationAsk.canAsk) {
                 locationAsk.markAsked()
-                askLocation.launch(LOCATION_PERMISSIONS)
+                askLocation()
             } else {
                 locationDenied = true
             }
@@ -572,7 +549,7 @@ fun HouseEditScreen(
         locationDenied = false
         scope.launch {
             val here = try {
-                withTimeoutOrNull(LOCATION_TIMEOUT_MS) { currentLocation(context) }
+                withTimeoutOrNull(LOCATION_TIMEOUT_MS) { services.location.current() }
             } finally {
                 locating = false
             }
@@ -765,7 +742,7 @@ fun HouseEditScreen(
                 SectionHeading(stringResource(Res.string.house_status))
                 Column(Modifier.selectableGroup()) {
                     HouseStatus.entries.forEach { s ->
-                        val text = stringResource(s.labelRes)
+                        val text = stringResource(s.labelResource)
                         val color = s.color()
                         RadioRow(
                             label = buildAnnotatedString {
@@ -876,7 +853,7 @@ fun HouseEditScreen(
                             ask = locationAsk,
                             deniedText = stringResource(Res.string.house_location_denied),
                             approximateText = approximateLocationText(Res.string.house_needs_precise),
-                            launchRequest = { askLocation.launch(LOCATION_PERMISSIONS) },
+                            launchRequest = { askLocation() },
                         )
                         locationFailed -> Text(
                             stringResource(Res.string.house_location_failed),
@@ -888,7 +865,7 @@ fun HouseEditScreen(
                 PairOrStack(
                     first = { m ->
                         OutlinedTextField(
-                            latText ?: coordinateText(d.lat),
+                            latText ?: Formats.coordinate(d.lat),
                             { v ->
                                 latText = v
                                 parseCoordinate(v, 90.0)?.let { lat -> update { it.copy(lat = lat) } }
@@ -906,7 +883,7 @@ fun HouseEditScreen(
                     },
                     second = { m ->
                         OutlinedTextField(
-                            lonText ?: coordinateText(d.lon),
+                            lonText ?: Formats.coordinate(d.lon),
                             { v ->
                                 lonText = v
                                 parseCoordinate(v, 180.0)?.let { lon -> update { it.copy(lon = lon) } }
@@ -925,8 +902,8 @@ fun HouseEditScreen(
                 )
 
                 SectionHeading(stringResource(Res.string.house_checklist))
-                ChecklistLabels.items.forEach { (key, labelRes) ->
-                    ChecklistRow(stringResource(labelRes), d.checklist[key]) { n ->
+                ChecklistResources.items.forEach { (key, label) ->
+                    ChecklistRow(stringResource(label), d.checklist[key]) { n ->
                         update {
                             val current = it.checklist[key]
                             // "–" clears; tapping the chosen score again is kept as a shortcut for the same.
@@ -958,10 +935,7 @@ fun HouseEditScreen(
                     if (!phone.isNullOrBlank()) {
                         val callDesc = stringResource(Res.string.house_call_desc, phone)
                         TextButton(
-                            onClick = {
-                                val digits = phone.filter { it.isDigit() || it == '+' }
-                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")))
-                            },
+                            onClick = { platform.dial(phone.filter { it.isDigit() || it == '+' }) },
                             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = callDesc },
                         ) { Text(stringResource(Res.string.house_call)) }
                     }
@@ -979,11 +953,7 @@ fun HouseEditScreen(
                         val openFailed = stringResource(Res.string.house_listing_open_failed)
                         TextButton(
                             onClick = {
-                                try {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
-                                } catch (_: ActivityNotFoundException) {
-                                    scope.launch { snackbar.showSnackbar(openFailed) }
-                                }
+                                if (!platform.openUrl(link)) scope.launch { snackbar.showSnackbar(openFailed) }
                             },
                             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = openDesc },
                         ) { Text(stringResource(Res.string.house_listing_open)) }
@@ -1008,7 +978,7 @@ fun HouseEditScreen(
                             OutlinedButton(
                                 onClick = {
                                     commitPendingDelete()
-                                    takePicture.launch(cameraUri)
+                                    photoSources.takePhoto()
                                 },
                                 enabled = !addingPhoto,
                                 modifier = Modifier.heightIn(min = 48.dp).focusRequester(cameraFocus).then(
@@ -1018,7 +988,7 @@ fun HouseEditScreen(
                             OutlinedButton(
                                 onClick = {
                                     commitPendingDelete()
-                                    pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    photoSources.pickFromGallery()
                                 },
                                 enabled = !addingPhoto,
                                 modifier = Modifier.heightIn(min = 48.dp).focusRequester(galleryFocus).then(
@@ -1063,7 +1033,7 @@ fun HouseEditScreen(
                             Box {
                                 // A button: opens the photo larger (the web's photo tile, docs/05 §5).
                                 AsyncImage(
-                                    model = File(p.path),
+                                    model = form.photoModel(p.path),
                                     contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
@@ -1118,7 +1088,7 @@ fun HouseEditScreen(
                             onClick = {
                                 // A second tap within ten minutes does not add a duplicate visit; either way the snackbar
                                 // (a polite live region) says what happened, as the web's "Visit recorded".
-                                val tooSoon = visitIsRecent(visits.maxOfOrNull { it.arrivedAt }, System.currentTimeMillis())
+                                val tooSoon = visitIsRecent(visits.maxOfOrNull { it.arrivedAt }, nowMillis())
                                 scope.launch {
                                     if (!tooSoon) repo.markVisitedNow(storedHouse)
                                     snackbar.showSnackbar(if (tooSoon) recent else recorded)
@@ -1285,7 +1255,7 @@ fun HouseEditScreen(
                     // Compose resources are read with a suspend call outside composition (cached after the first read),
                     // so the summary lands one dispatch after the fields; if the screen is recreated in between, the
                     // fields are kept and only the summary is lost (CMP-3 review: accepted).
-                    scope.launch { pasteMessage = pasteResultText(context, merged, warnings) }
+                    scope.launch { pasteMessage = pasteResultText(merged, warnings) }
                 }
                 showPaste = false
             },
@@ -1323,15 +1293,8 @@ private fun PairOrStack(
     }
 }
 
-/** A coordinate as the fields show it: six decimals (about 10 cm), a dot whatever the language. */
-private fun coordinateText(value: Double): String = String.format(Locale.ROOT, "%.6f", value)
-
-/** True for an http(s) link with a host, the only kind *Open* hands to a browser. */
-private fun isWebLink(text: String): Boolean {
-    val uri = runCatching { Uri.parse(text) }.getOrNull() ?: return false
-    val scheme = uri.scheme?.lowercase(Locale.ROOT)
-    return (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
-}
+/** Now, in epoch milliseconds (the house's `createdAt` and `updatedAt`, a visit's time). */
+private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 /** The field names a listing fill reports ("Filled in: price and contact name."). */
 private val ListingField.nameRes: StringResource
@@ -1349,8 +1312,8 @@ private val ListingField.nameRes: StringResource
     }
 
 /** "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. */
-private suspend fun pasteResultText(context: Context, merge: ListingMerge, warnings: List<String>): String {
-    suspend fun names(fields: List<ListingField>) = ImportWorker.joined(context, fields.map { getString(it.nameRes) })
+private suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>): String {
+    suspend fun names(fields: List<ListingField>) = joinedListText(fields.map { getString(it.nameRes) })
     val parts = mutableListOf<String>()
     parts += if (merge.filled.isEmpty()) {
         getString(Res.string.house_paste_nothing)
@@ -1370,6 +1333,7 @@ private suspend fun pasteResultText(context: Context, merge: ListingMerge, warni
 @Composable
 private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onClose: () -> Unit) {
     val title = stringResource(Res.string.house_photo_viewer)
+    val form = LocalAppServices.current.houseForm
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val pager = rememberPagerState(initialPage = start) { photos.size }
         Surface(
@@ -1398,7 +1362,7 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
                 ) { page ->
                     photos.getOrNull(page)?.let { p ->
                         AsyncImage(
-                            model = File(p.path),
+                            model = form.photoModel(p.path),
                             contentDescription = stringResource(Res.string.house_photo_desc, page + 1, name),
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize(),
@@ -1418,7 +1382,7 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
  */
 @Composable
 private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<String>) -> Unit) {
-    val repo = repository()
+    val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
     var text by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }

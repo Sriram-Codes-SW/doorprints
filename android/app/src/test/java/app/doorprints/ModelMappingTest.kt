@@ -1,6 +1,5 @@
 package app.doorprints
 
-import app.doorprints.data.ChecklistLabels
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.data.labelRes
@@ -8,7 +7,6 @@ import app.doorprints.data.toDto
 import app.doorprints.data.toEntity
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.VisitDto
-import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRules
@@ -81,9 +79,8 @@ class ModelMappingTest {
     }
 
     @Test
-    fun everySharedKeyAndStatusHasATranslatedLabel() {
-        assertEquals(Checklist.keys, ChecklistLabels.items.keys.toList())
-        assertEquals(Checklist.keys.size, ChecklistLabels.items.values.toSet().size)
+    fun everyStatusHasATranslatedLabel() {
+        // The checklist labels are Compose resources only since CMP-6 P6a (ModelLabelsTest in :ui).
         assertEquals(HouseStatus.entries.size, HouseStatus.entries.map { it.labelRes }.toSet().size)
         assertEquals(R.string.status_NEW, HouseStatus.NEW.labelRes)
     }

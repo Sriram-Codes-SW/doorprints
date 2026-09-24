@@ -7,7 +7,8 @@ import app.doorprints.DoorprintsApp
 
 /**
  * The common root's slots for the screens still in `:app` ([RootScreens], CMP-5): each forwards to the screen with the
- * arguments the root gives it. A slot goes when its screen moves to `:ui` (CMP-6, CMP-7).
+ * arguments the root gives it. A slot goes when its screen moves to `:ui` (the house form's went with CMP-6 P6a;
+ * Export's and Import's go with P6b, the Map's with CMP-7).
  */
 object AndroidRootScreens : RootScreens {
     @Composable
@@ -27,31 +28,6 @@ object AndroidRootScreens : RootScreens {
         onAddTipShown = onAddTipShown,
         deletedHouse = deletedHouse,
         onDeletedShown = onDeletedShown,
-    )
-
-    @Composable
-    override fun HouseForm(
-        houseId: String?,
-        newLat: Double?,
-        newLon: Double?,
-        visitId: String?,
-        onDone: () -> Unit,
-        onOpenHouses: () -> Unit,
-        onCreated: (String) -> Unit,
-        onDeleted: (String) -> Unit,
-        showSaved: Boolean,
-        onSavedShown: () -> Unit,
-    ) = HouseEditScreen(
-        houseId = houseId,
-        newLat = newLat,
-        newLon = newLon,
-        visitId = visitId,
-        onDone = onDone,
-        onOpenHouses = onOpenHouses,
-        onCreated = onCreated,
-        onDeleted = onDeleted,
-        showSaved = showSaved,
-        onSavedShown = onSavedShown,
     )
 
     @Composable

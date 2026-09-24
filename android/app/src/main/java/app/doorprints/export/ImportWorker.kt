@@ -13,6 +13,7 @@ import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPlan
+import app.doorprints.ui.joinList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
@@ -299,8 +300,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         /**
          * "a", "a and b", "a, b and c", "a, b, c and d", … with each language's own list pattern; also the Replace
-         * dialog's title and the Export screen's partial-backup note. Any number of items: the note exists to say
-         * what a backup leaves out, so a fourth gap must never be dropped (Android review, round 12).
+         * dialog's title and the Export screen's partial-backup note. Any number of items ([joinList], common since
+         * CMP-6; the screens use `joinedList` with the same patterns as Compose resources).
          */
         fun joined(context: Context, items: List<String>): String = joinList(
             items,
@@ -308,22 +309,6 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             three = { a, b, c -> context.getString(R.string.import_list_three, a, b, c) },
             middle = { a, b -> context.getString(R.string.import_list_middle, a, b) },
         )
-
-        /**
-         * The rule behind [joined], without a Context so a unit test can pin it: two items use [two]; three or more
-         * use [three], with everything before the last two folded into its first slot by [middle] ("a, b").
-         */
-        internal fun joinList(
-            items: List<String>,
-            two: (String, String) -> String,
-            three: (String, String, String) -> String,
-            middle: (String, String) -> String,
-        ): String = when (items.size) {
-            0 -> ""
-            1 -> items[0]
-            2 -> two(items[0], items[1])
-            else -> three(items.subList(0, items.size - 2).reduce(middle), items[items.size - 2], items[items.size - 1])
-        }
 
         /** Prefix of the tag that records a run's [ImportMode]; tags survive a cancelled run, output data does not. */
         private const val MODE_TAG = "import-mode:"
