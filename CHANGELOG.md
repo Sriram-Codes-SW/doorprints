@@ -120,7 +120,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   that an iOS app can reuse it later. New KMP module `android/ui` (Android plus compile-only iOS targets, like
   `:shared`; Compose Multiplatform 1.12.1, material3 1.9.0). The theme, list rows, server status, the Map and India
   view rules and a few small UI types moved there; `ServerStatusTest` moved with them. **No visual change.** CI:
-  `android.yml` runs `:ui:testAndroidHostTest`, and `shared-ios.yml` compiles `:ui`'s iOS klibs (pending on CI at
+  `android.yml` runs `:ui:testAndroidHostTest` and compiles `:shared`/`:ui` commonMain metadata on Linux (catches
+  JVM-only calls in common code), and `shared-ios.yml` compiles `:ui`'s iOS klibs (pending on CI at
   this writing). The later phases (strings, platform seams, data, screens, map, iOS shell) are tickets CMP-2..CMP-9
   in the [sprint log](docs/10-sprint-log.md) §13 and in [`android/ui/README.md`](android/ui/README.md). No iOS app
   is published: signing and the App Store need a paid Apple account, so iPhone users keep the PWA.
@@ -266,7 +267,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
-- **Docs for the Compose Multiplatform track** (2026-09-24): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
+- **Docs for the Compose Multiplatform track** (2026-09-24; new `android/ui/README.md` 1.1): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
   amended; §4.2.1), [06](docs/06-test-plan.md) v0.32, [07](docs/07-secure-build-and-deploy.md) v0.30,
   [10](docs/10-sprint-log.md) v0.38 (§13, CMP-1..CMP-9), [14](docs/14-lead-backlog-and-handoff.md) v0.5, new
   `android/ui/README.md`, `android/shared/README.md` 1.44.

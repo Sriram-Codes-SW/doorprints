@@ -71,7 +71,7 @@ protocol and the same HTTP requests (checked by contract tests, section 5).
 
 ```
 android/
-├── gradle/libs.versions.toml   one version catalog for :app and :shared
+├── gradle/libs.versions.toml   one version catalog for :app, :shared and :ui
 ├── app/                        Android app (unchanged package com.househunt.app)
 ├── ui/                         Compose Multiplatform UI (since CMP-1, ADR-23; see ui/README.md)
 └── shared/                     this module

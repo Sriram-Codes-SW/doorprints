@@ -1284,7 +1284,7 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 | CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
 | CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned |
 | CMP-8 | P8 | **iOS shell.** `iosApp` in Xcode, `ComposeUIViewController`, MapLibre iOS via SPM; built for the simulator on GitHub's macOS runners with `CODE_SIGNING_ALLOWED=NO` (free) | The simulator build is green in CI; no signing, no device, no App Store | Android, DevSecOps | Planned |
-| CMP-9 | Spike | **maplibre-compose** (`org.maplibre.compose` 0.17): pre-1.0, needs Kotlin 2.4.20 and would replace the Android map engine | A written finding; re-assessed when it reaches 1.0 | Android | Planned |
+| CMP-9 | Spike | **maplibre-compose** (`org.maplibre.compose` 0.17): pre-1.0 and would replace the Android map engine | A written finding; re-assessed when it reaches 1.0 | Android | Planned |
 
 ### 13.2 CMP-1 (phase 1), done
 
@@ -1294,8 +1294,9 @@ Moved to `commonMain`: `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt` a
 (from `ResultCard.kt`) and `LocationFix` (from `LocationPermission.kt`). The moved files keep the Kotlin package
 `com.househunt.app.ui`, so `:app`'s imports are unchanged; declarations `:app` uses are `public` instead of
 `internal`. The theme's language lookup is `expect fun uiLanguage()`: on Android `LocalConfiguration`'s locale, as
-before; on iOS Compose's `Locale.current`. `IndiaViewRules` computes `WORLD_MAX_ZOOM` from the float's bits instead of `Math.nextDown` (same value, 4.9999995f; `Float.nextDown()` is JVM-only, which the code review caught with `:ui:compileCommonMainKotlinMetadata`, now in `android.yml`)
-(same value). `ServerStatusTest` moved to `:ui` `commonTest` (`kotlin.test`, 5 tests). `:app`'s `testDebugUnitTest`
+before; on iOS Compose's `Locale.current`. `IndiaViewRules` computes `WORLD_MAX_ZOOM` from the float's bits instead
+of `Math.nextDown` (same value, 4.9999995f; `Float.nextDown()` is JVM-only, which the code review caught with
+`:ui:compileCommonMainKotlinMetadata`, now in `android.yml`). `ServerStatusTest` moved to `:ui` `commonTest` (`kotlin.test`, 5 tests). `:app`'s `testDebugUnitTest`
 depends on `:ui:testAndroidHostTest`, and `android.yml` also names it. `shared-ios.yml` also watches `android/ui/**`
 and compiles `:ui:compileKotlinIosArm64`, `:ui:compileKotlinIosSimulatorArm64` and
 `:ui:compileTestKotlinIosSimulatorArm64`; the job name is unchanged, in case it is a required check.
@@ -1309,4 +1310,4 @@ device. The `android-reports` CI artifact now also uploads `android/ui/build/rep
 
 **Docs.** [03](03-design.md) v0.22 (ADR-23, ADR-14 amended, §4.2.1), [06](06-test-plan.md) v0.32,
 [07](07-secure-build-and-deploy.md) v0.30, this section (v0.38), [14](14-lead-backlog-and-handoff.md) v0.5,
-`android/ui/README.md` 1.0, `android/shared/README.md` 1.44, the root README, CHANGELOG, the docs index and CLAUDE.md.
+`android/ui/README.md` 1.1, `android/shared/README.md` 1.44, the root README, CHANGELOG, the docs index and CLAUDE.md.
