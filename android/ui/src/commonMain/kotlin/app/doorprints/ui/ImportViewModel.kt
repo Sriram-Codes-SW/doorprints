@@ -17,9 +17,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.TimeMark
-import kotlin.time.TimeSource
 
 /**
  * The import flow's state (S4-04), kept out of the composable so that it survives what the screen does not: a
@@ -152,8 +149,8 @@ class ImportViewModel(
 
     private var job: Job? = null
 
-    /** When the current preview was worked out (a monotonic clock), for [refreshPreview]; null before the first. */
-    private var checkedAt: TimeMark? = null
+    /** When the current preview was worked out ([elapsedRealtimeMillis]), for [refreshPreview]. */
+    private var checkedAt = 0L
 
     /** Bumped for every check started or cancelled; declared before `init`, which may start one. */
     private var checks = 0
@@ -230,7 +227,7 @@ class ImportViewModel(
         if (running || starting || checking || blocked) return
         val staged = saved.get<String>(KEY_STAGED) ?: return
         if (staged != ready.stagedPath || !imports.isStaged(staged)) return
-        if (checkedAt?.let { it.elapsedNow() < REFRESH_AFTER_MS.milliseconds } == true) return
+        if (elapsedRealtimeMillis() - checkedAt < REFRESH_AFTER_MS) return
         val generation = checks
         job = viewModelScope.launch {
             val result = try {
@@ -245,7 +242,7 @@ class ImportViewModel(
                 result is ImportCheck.Ready
             ) {
                 check = result
-                checkedAt = TimeSource.Monotonic.markNow()
+                checkedAt = elapsedRealtimeMillis()
             }
         }
     }
@@ -406,7 +403,7 @@ class ImportViewModel(
                     rememberFinishing(false)
                 }
                 check = result
-                checkedAt = TimeSource.Monotonic.markNow()
+                checkedAt = elapsedRealtimeMillis()
             } finally {
                 if (generation == checks) checking = false
             }
@@ -454,3 +451,9 @@ class ImportViewModel(
         const val REFRESH_AFTER_MS = 30_000L
     }
 }
+
+/**
+ * Milliseconds since boot, counting deep sleep (Android: `SystemClock.elapsedRealtime`, what the refresh read before
+ * CMP-6, so a screen come back to after the phone slept refreshes as before; iOS: the system uptime).
+ */
+internal expect fun elapsedRealtimeMillis(): Long

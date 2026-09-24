@@ -55,4 +55,14 @@ class FormatsTest {
         // Anything that is not a positional %d or %s is left alone.
         assertEquals("%d and %1\$f", formatPositional("%d and %1\$f", 1))
     }
+
+    /** The house form's coordinates (CMP-6 P6a): six decimals and a dot, as `%.6f` in `Locale.ROOT` wrote them. */
+    @Test
+    fun coordinatesHaveSixDecimalsAndADot() {
+        assertEquals("12.971600", Formats.coordinate(12.9716))
+        assertEquals("77.594600", Formats.coordinate(77.5946))
+        assertEquals("0.000000", Formats.coordinate(0.0))
+        assertEquals("-45.500000", Formats.coordinate(-45.5))
+        assertEquals("180.000000", Formats.coordinate(180.0))
+    }
 }

@@ -29,7 +29,9 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -156,6 +158,37 @@ class RepositoryTransactionTest {
         assertNull(db.photos().get("cp1"))
         // The photo file written before the transaction was deleted after the rollback.
         assertFalse(repo.photoFile("cp1").exists())
+    }
+
+    /**
+     * The copy's cleanup after a cancellation that lands after the commit (code review of PR #23): the transaction has
+     * committed, then the caller's resumption throws, and the catch block cleans up. It must keep a file whose photo
+     * row was committed and delete only one whose row is not there, even though the coroutine running it is cancelled.
+     * The commit and the late cancellation cannot be ordered from a test (Room resumes the caller on its own), so the
+     * cleanup is run as the catch block runs it: in a cancelled coroutine, over the files of a committed copy and one
+     * whose row never made it.
+     */
+    @Test
+    fun aCancellationAfterTheCommitKeepsThePhotoFilesOfCommittedRows() = runBlocking {
+        repo.applyImport(copyActions(), photoBytes = photoBytes)
+        val committed = repo.photoFile("cp1")
+        assertTrue(committed.exists())
+        val orphan = repo.photoFile("cp2").apply { writeBytes(byteArrayOf(4, 5, 6)) }
+
+        // Started at once (UNDISPATCHED), so it is waiting in the try when it is cancelled, not cancelled before it ran.
+        val job = launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
+            try {
+                awaitCancellation()
+            } finally {
+                // Cancelled here, as the copy's catch block is after a late cancellation.
+                repo.discardUncommittedPhotoFiles(mapOf(committed to "cp1", orphan to "cp2"))
+            }
+        }
+        job.cancelAndJoin()
+
+        assertTrue("the committed photo keeps its file", committed.exists())
+        assertEquals("cp1", db.photos().get("cp1")?.id)
+        assertFalse("a file without a row is deleted", orphan.exists())
     }
 
     @Test

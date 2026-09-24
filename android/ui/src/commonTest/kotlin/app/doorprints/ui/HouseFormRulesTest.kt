@@ -181,4 +181,21 @@ class HouseFormRulesTest {
         assertTrue(stackFieldPair(600f, PAIR_STACK_FONT_SCALE))
         assertTrue(stackFieldPair(328f, 2.0f))
     }
+
+    /** *Open* is only for an http(s) link with a host (CMP-6 P6a; `LinkParityTest` in `:app` pins Android's rule). */
+    @Test
+    fun onlyAnHttpLinkWithAHostCanBeOpened() {
+        assertTrue(isWebLink("https://www.99acres.com/listing?id=1"))
+        assertTrue(isWebLink("HTTP://Example.com"))
+        assertTrue(isWebLink("http://user:pw@example.com:8080/x"))
+        assertFalse(isWebLink("www.example.com"))
+        assertFalse(isWebLink("ftp://example.com"))
+        assertFalse(isWebLink("javascript:alert(1)"))
+        assertFalse(isWebLink("http:/example.com"))
+        assertFalse(isWebLink("http://"))
+        assertFalse(isWebLink("http://:80/x"))
+        // The host is percent-decoded before the blank check; a malformed escape is not blank.
+        assertFalse(isWebLink("http://%20%20/x"))
+        assertTrue(isWebLink("http://%zz"))
+    }
 }
