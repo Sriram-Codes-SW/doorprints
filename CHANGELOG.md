@@ -289,11 +289,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   `SettingsUpgradeTest` reads a file written the old way ([docs/06](docs/06-test-plan.md) TC-U-64) and
   `SettingsStoreTest` pins the names (TC-U-65). `ServerUrl` no longer uses `java.net.URI`: a port of its parser gives
   the same answers (Android's `_` in host names kept), checked by `ServerUrlTest` in commonTest and by
-  `ServerUrlParityTest` on 300 000 generated strings. iOS settings and a Keychain store compile, unused. No screen
-  changed: the 64 reference screenshots are unchanged. Docs: [01](docs/01-requirements.md) v0.30,
+  `ServerUrlParityTest` on about 300 000 generated strings plus fixed cases. iOS settings and a Keychain store
+  compile, unused. No screen changed: the 64 reference screenshots are unchanged. The live web UI test (TC-M-26) now
+  runs only after a merge that runs the `Web` deploy (owner, 2026-09-24). Docs: [01](docs/01-requirements.md) v0.30,
   [02](docs/02-threat-model.md) v0.34, [03](docs/03-design.md) v0.29, [04](docs/04-data-flow-diagrams.md) v0.17,
-  [06](docs/06-test-plan.md) v0.43, [10](docs/10-sprint-log.md) v0.49, [14](docs/14-lead-backlog-and-handoff.md)
-  v0.16, [docs/README.md](docs/README.md) v0.49, `android/shared/README.md` 1.49, `android/ui/README.md` 1.8.
+  [06](docs/06-test-plan.md) v0.43, [07](docs/07-secure-build-and-deploy.md) v0.38, [10](docs/10-sprint-log.md) v0.49,
+  [14](docs/14-lead-backlog-and-handoff.md) v0.16, [docs/README.md](docs/README.md) v0.49, `android/shared/README.md`
+  1.49, `android/ui/README.md` 1.8.
 - **Android: the Room database is Room KMP code in `:shared`** ([docs/03](docs/03-design.md) ADR-23 CMP-4 P4a; [sprint
   log](docs/10-sprint-log.md) §13.6). `AppDatabase`, the entities, DAOs, the checklist converter and `MIGRATION_1_2`
   move from `:app` to `:shared` commonMain (Room 2.8.5, plugin `androidx.room`, KSP for Android and both iOS targets;

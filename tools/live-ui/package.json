@@ -1,7 +1,7 @@
 {
   "name": "doorprints-live-ui",
   "private": true,
-  "description": "Detailed UI test of the live web app after every merge to main (docs/06 TC-M-26).",
+  "description": "Detailed UI test of the live web app after a merge to main that runs the Web deploy (docs/06 TC-M-26).",
   "scripts": { "test": "node live-ui.js" },
   "devDependencies": {
     "axe-core": "4.13.0",
