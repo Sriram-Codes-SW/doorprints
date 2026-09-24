@@ -12,7 +12,7 @@ plugins {
 kotlin {
     // AGP 9 name for the Android target of a KMP library (androidLibrary {} is deprecated since AGP 9.1).
     android {
-        namespace = "com.househunt.shared"
+        namespace = "app.doorprints.shared"
         compileSdk = 37
         minSdk = 26
         compilerOptions.jvmTarget = JvmTarget.JVM_17
