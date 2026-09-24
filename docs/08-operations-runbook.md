@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.17 |
+| Version | 0.18 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -29,6 +29,7 @@
 | 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** (Spark plan, no billing account; [03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. §1 components; **§2** new *Web host usage* row (Hosting > Usage: transfer against 360 MB/day or 10 GB/month, storage against 10 GB; there is no budget alert on Spark); **§4** monthly usage check and 10 releases kept, quarterly free-tier terms name Firebase Hosting; **§5.2** the Cloudflare token row becomes the web deploy identity (Workload Identity, nothing to rotate; what to do on suspicion); **§7 IR-5** rewritten for Firebase (a site disabled for quota; moving host); new **IR-10** *Bad web release: roll back* (Firebase console → Hosting → release history → Rollback, no build) and deploy / manual re-run; **§8** release checklist. |
 | 0.16 | 2026-09-24 | Claude (Code), engineer | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **section 11**: what changes for a self-hosted server (the compose database, user, password default and volume are `doorprints`; the MCP tool `askHouseHunt` is `askDoorprints`), that a server which sets `DB_URL`, `DB_USER` and `DB_PASSWORD` is not affected and no environment variable is renamed, and how to carry a local compose database over (dump with the old names, restore into the new one). Section 3: the dump file, schema and age key examples use `doorprints`. |
 | 0.17 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. **§11**: the dump and restore of a local compose database is **mandatory** for a database that clients have synced with; the claim that phones and the web app sync a full copy back to an empty server was false (clients push only changed rows and pull after a stored cursor, so on a new database they silently miss each other's changes; [10](10-sprint-log.md) S4b-BL-20). The steps now use `docker compose up -d --wait db`, say that `pg_restore` reports "already exists" for the PostGIS objects and exits non-zero, count the rows before and after, and give the throwaway-container fallback a build step, a `pg_isready` wait and `docker rm -f old-db`. §6.2: a pre-rename test build is `com.househunt.app` (was `app.doorprints`, a find-and-replace error). The §11 intro rewrapped. |
+| 0.18 | 2026-09-24 | Claude (Code), lead | Clients detect a reset server (S4b-BL-20, branch `claude/doorprints-dev-continue-fzcge2`, PR #24). New **§11.1**: `GET /api/stats` returns `maxSyncVersion`; what Android and the web do when it is below their cursors; the dump and restore of §11 stays mandatory; what to expect after restoring an older dump. §11's backlog pointer and IR-4 step 4 updated. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -257,7 +258,9 @@ Reset the DB password (section 5.2). Check roles (`\du`) for unknown users. Chec
 1. Stop background sync on devices: turn off network / clear the server URL in Settings. Local data is safe.
 2. Export the current server state (section 6.1) and a `pg_dump`.
 3. Compare with the latest backup and with the phone data. Find the cause (clock skew → F-08, concurrency → F-09).
-4. Fix the data, `setval` the sequence if you restored, then re-enable sync and reset cursors.
+4. Fix the data, `setval` the sequence if you restored, then re-enable sync and reset cursors. A restore that leaves
+   `sync_seq` below the clients' cursors is detected by clients from 2026-09-24 on, which then send everything again
+   (§11.1).
 
 ### IR-5 Free-tier outage, suspension or policy change
 
@@ -468,8 +471,9 @@ pushes only the rows changed on it since its last sync, and pulls only changes a
 server (the highest `syncVersion` it has seen), which is never reset while the server's address stays the same. A new
 database starts `sync_seq` at 1, so the old houses are not on the server, and every device silently skips the other
 devices' new changes until the sequence passes its cursor: no error is shown. The dump carries the rows and
-`sync_seq`'s position over, so the stored cursors stay valid. (Detecting a reset server on the clients is backlog
-[10](10-sprint-log.md) S4b-BL-20.) Only a database that no device has ever synced with can be left behind.
+`sync_seq`'s position over, so the stored cursors stay valid. Clients from 2026-09-24 on detect a reset server and
+send everything again (§11.1), but older app versions do not, and a dump keeps what no device holds any more. Only a
+database that no device has ever synced with can be left behind.
 
 ```bash
 # 1. With the checkout still on the old compose file (before pulling this change): dump the old database.
@@ -509,4 +513,30 @@ docker rm -f old-db
 ```
 
 and continue with steps 2 to 5 above.
+
+### 11.1 Clients detect a reset server (2026-09-24)
+
+`GET /api/stats` also returns **`maxSyncVersion`**: the highest sync version the server has handed out, read from
+`sync_seq` (0 before the first write; [03](03-design.md) §9). It never goes back on a healthy server, also after
+`DELETE /api/data`, which hard-deletes rows while the sequence carries on. Check it after a restore:
+
+```bash
+curl -s -H "X-API-Key: $APP_API_KEY" http://127.0.0.1:8080/api/stats   # ... "maxSyncVersion": <n>
+```
+
+Android and the web read it before each sync once they have synced ([03](03-design.md) §10.1, S4b-BL-20). A value
+below one of their stored cursors means the database was replaced: a new, empty database, or a restore from a dump
+older than their last sync. They then mark every house, visit and stored photo for upload, set their cursors to 0,
+send everything, download everything and say so (web: an announcement and a line on *Your data*; Android: the server
+status line in Settings). Nothing on a device is lost; last-write-wins still decides each row. An older server
+without the field is detected at the first accepted push instead.
+
+| Situation | What happens |
+|---|---|
+| Restore from a current dump (§11 steps) | `sync_seq` comes along; `maxSyncVersion` is at or above every cursor: nothing happens |
+| Restore from an older dump, or a new empty database | Each device re-sends all its data on its next sync (photos on Wi-Fi if that setting is on); expect a burst of uploads and more disk use |
+| `DELETE /api/data` | Not a reset (the sequence carries on); devices keep their copies and do not re-send them |
+| An app version before 2026-09-24 | No detection: it keeps pulling from its old cursors; the §11 dump and restore stays mandatory |
+
+Watch the upload burst with the monitoring of §2; a device that syncs rarely re-sends only when it next syncs.
 

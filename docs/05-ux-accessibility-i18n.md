@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.23 |
+| Version | 0.24 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -36,6 +36,7 @@
 | 0.21 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19 (CMP-2, [03](03-design.md) ADR-23). **§8.2**: the strings have two homes, the UI strings as Compose resources in `android/ui/src/commonMain/composeResources` (403 strings and 16 plurals per language) and the service strings as Android resources (83 strings and 4 plurals, plus `resolved_language`), 17 keys in both with the same text (was "197 strings each" in `res/values*`); placeholders positional only; the plurals that exist; *Per-app language* explains `AppLocale.applyDefault` on every API level and `localeFilters` ([Marathi, Hindi] resolves to Hindi); *Lint* names `StringParityTest`. **§9.1 step 5**: where a new Android string goes (UI: Compose resources with a plain `'`; service: `res/values*` with `\'`; both: both places). **§9.2 step 5**: a new language in both homes, `localeFilters` and `StringParityTest`. §14.3's intro, I18N-B06 and the §15 R2 grep include the Compose resources. |
 | 0.22 | 2026-09-24 | Claude (Code), engineer | §8.2 *Formatting*: `Format.kt` is common code in `:ui` since [03](03-design.md) ADR-23 CMP-3: amounts and scores written in common code (the same in en, hi, ta and te), dates by the platform for `<language>-IN`, and the language is the one the strings resolved to, not the phone's first language ([10](10-sprint-log.md) S4b-BL-18; [06](06-test-plan.md) TC-U-61, TC-U-62). Also §5 *Indic typography* (follows the resolved language), §8.2 *Strings* (as built after CMP-3) and the R9 check paths (`android/ui/src/commonMain`). |
 | 0.23 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): §8.2 *Strings*: 413 Compose strings (the ten `check_*` added for Compare in `:ui`); **27 keys in both places** (24 strings and 3 plurals, the ten `check_*` added; TC-U-59); the Android `check_*` copies go with [10](10-sprint-log.md) S4b-BL-31. |
+| 0.24 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change with the web backlog and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24). **§4.1, §4.2**: the invalid-field edge (S4b-BL-6) with its contrast. **§5**: the text field's visible invalid state; **§5.1** *Retry*: the scope now includes the sync card, the first-run banner (S4b-BL-1) and the house page's four cards (S4b-BL-2). New **§5.2**: the web on phones (visible-height sizing, 44 px targets, the credits fold, the legend and buttons, capped banners, the keyboard, long words, the skip link). **§8.2**: 444 Compose strings and 17 plurals, 71 service strings and 4 plurals, 46 keys in both places (S4b-BL-31, S4b-BL-35). New **§8.3**: the server-reset message in four languages (S4b-BL-20). |
 
 ---
 
@@ -116,6 +117,7 @@ Source of truth: `web/src/styles.css` (`:root` and the `prefers-color-scheme: da
 | `--border-strong` | `#7D8985` (**new**) | Input, button, chip borders | on `#FFFFFF` / `#F4F6F5` | 3.63 / 3.34 | 3:1 (1.4.11) |
 | `--border` | `#D9E0DD` | Decorative card dividers only | – | 1.34 | Not relied on |
 | `--error-text` on `--error-bg` | `#B3261E` on `#FBECEB` | Error messages | – | 5.70 | AA |
+| `--error-text` as an edge (S4b-BL-6, 2026-09-24) | `#B3261E` | Invalid field: an `input` or `textarea` with `aria-invalid="true"` gets a border and a 1 px inset ring in this colour (2 px drawn, no layout shift, kept while focused, the focus outline outside it) | on `--surface` `#FFFFFF` / `--bg` `#F4F6F5` / `--surface-2` `#EEF2F0` | 6.54 / 6.02 / 5.79 | 3:1 (1.4.11); the message under the field still says what is wrong (1.4.1) |
 | `--success-text` on `--success-bg` | `#1A7A43` on `#E7F5ED` | Success messages | – | 4.78 | AA |
 | `--warn-text` on `--warn-bg` | `#8A5A00` on `#FFF4E0` | Cautions that are not failures (`.warn-box`): the contact-details note (14.2), rows a sync left out | – | 5.44 (5.93 on white) | AA |
 | `--error-border` / `--success-border` / `--warn-border` | `#E8B4B0` / `#B5DCC4` / `#F0C987` | 1 px edge of the three message boxes; the fills alone are within about 1.1:1 of white, so the edge is what shows the box | – | – | Decorative; the ⚠ / ✓ glyph and the text carry the meaning (1.4.1) |
@@ -136,6 +138,7 @@ Source of truth: `web/src/styles.css` (`:root` and the `prefers-color-scheme: da
 | `--star` | `#F2B84B` | on `--surface` | 9.18 |
 | `--border-strong` | `#7F8C87` | on `--surface` | 4.70 |
 | `--error-text` on `--error-bg` | `#FF8E86` on `#3A1B19` | – | 7.01 |
+| `--error-text` as the invalid-field edge (S4b-BL-6) | `#FF8E86` | on `--surface` `#19211F` / `--bg` `#101614` / `--surface-2` `#212B28` | 7.40 / 8.25 / 6.57 |
 | `--success-text` on `--success-bg` | `#6FD69A` on `#15301F` | – | 7.98 |
 | `--warn-text` on `--warn-bg` | `#F2B84B` on `#33260F` | – | 8.23 (9.18 on `--surface`) |
 | `--error-border` / `--success-border` / `--warn-border` | `#6E2C27` / `#2B5A3B` / `#6B4F1A` | – | Decorative edge |
@@ -237,7 +240,7 @@ toggle chips only: exclusive choices use the segmented radio of §5.1, which has
 | Status pill (`.pill-*`) | List, compare | Icon + text, ≥ 5:1 | – |
 | Segmented radio (`.options .option`) | Status, checklist | Real `<input type="radio">` inside `<fieldset>`/`<legend>`, visually styled `<span>`, arrow keys work natively | Checklist has a "–" option ("Not scored") so a score can be cleared without "click again to clear". |
 | Star rating | House detail | Radio group 1–5 in a `<fieldset>`, ★ filled / ☆ outlined (shape, not only colour), "Clear rating" button | Screen-reader text "3 out of 5 stars". |
-| Text field | Forms | `<label for>` + `id`, required marked with * and a legend line, `aria-invalid` + `aria-describedby` on error | Placeholders are examples only, never the label. |
+| Text field | Forms | `<label for>` + `id`, required marked with * and a legend line, `aria-invalid` + `aria-describedby` on error; since 2026-09-24 (S4b-BL-6) an invalid field also **looks** invalid: a 2 px `--error-text` edge (§4.1, §4.2), one rule in `styles.css` for every `input` and `textarea` with `aria-invalid="true"` (Plan's start fields, the house name and coordinates, the Ask and Plan requests, Connect) | Placeholders are examples only, never the label. Text in fields is at least 16 px on phones (iOS zooms into smaller fields; checked by `tools/live-ui`). |
 | Map region | Map page, house detail | `role="region"` + `aria-label` + `aria-describedby` hint pointing to the list or to the coordinate fields | MapLibre control labels translated through its `locale` option. |
 | Add-house mode | Map page | One button whose label says the state (*Add house* / *Cancel adding*; no `aria-pressed` on top of it), a centre crosshair and a "Place here" button. The hint is a plain `<p id="add-hint">`, **not** a live region: *Cancel adding* points to it with `aria-describedby` while add mode is on, and turning add mode on speaks the full sentence once through the app's announcer (`map.addHint`, or `map.pickShared` for a shared listing). **Under 760 px** the hint sits at the top of the map, clear of the crosshair, the bottom row and MapLibre's control column, and shows the shorter `map.addHintShort` ("Move the map so the cross is on the house, then choose “Place here”."), so a Tamil or Telugu hint does not grow down onto the crosshair; the version not shown is `display: none`, so it is not part of the description either. Without WebGL 2 the page offers *Add at my location* and *Type latitude and longitude* instead of a dead *Place here* | Keyboard alternative to clicking the map. Android's counterpart is planned as an accessible pick-a-spot mode (Sprint 4b, [11](11-feature-parity-and-export-spec.md) §10). |
 | Coordinates fields | House detail | Latitude/longitude number inputs, validated, update the pin | Alternative to dragging (WCAG 2.5.7). |
@@ -283,6 +286,36 @@ place until the run ends, its ⚠/✓ glyph and border dimmed to the new `--stal
 `.refresh-bar` in `styles.css`). The bar is a `role="progressbar"` named "Thinking…", "Planning…" or "Testing…",
 outside the live region, so a screen reader finds it by browsing but it is not announced; each card is keyed on its
 run (`shared/run-result.ts`), so a new failure with the same words is still read.
+
+**Scope since 2026-09-24** (S4b-BL-1, S4b-BL-2; branch `claude/doorprints-dev-continue-fzcge2`, PR #24): the rule also
+covers the web's sync and house page. *Your data*'s sync failure card stays in `.refresh-slot.stale` during *Sync now*
+or *Try again*, with a bar named "Syncing…" (`data.syncing`); the first-run banner's failure line stays with its sign
+dimmed and a "Downloading…" bar. A background sync that fails the same way changes nothing on screen and is not read
+again; a new message, or a run the user asked for, is. On the house page the save error, the listing-fill error and the
+location or address message each stay in place while saving ("Saving…"), filling ("Reading the listing…"), locating
+("Finding your location…") or looking up ("Looking up…"); the run's end removes the card or puts the new failure in its
+place. Android already worked this way.
+
+### 5.2 Web on phones (owner report of 2026-09-24)
+
+The owner reported display issues on Android Chrome at a larger text size (a 384 px phone, about 615 px left by the
+browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); these rules now hold for every page:
+
+| Rule | How |
+|---|---|
+| Size to what is visible | Heights use the visible page area, not `vh` (the viewport without the address bar): `100dvh` for the shell and the photo viewer, `100cqh` of `<main>` (a size container) for the phone map, which fills it less the list's heading and counters (`--map-peek`, measured by `listPeek`), at least 256 px and never shorter than MapLibre's control column |
+| Targets | 44 x 44 CSS px on touch screens, the brand link included (it was 28 px wide where its name is hidden) |
+| Map credits | Shown for 5 s after the style first loads, then folded into the (i) button (`foldAttribution`, `ATTRIBUTION_SHOW_MS`), sooner at the first zoom or move, on maps up to 640 px wide; the (i) opens them in full (nothing hides the credit, R5) |
+| Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
+| Banners | At most 40 % of the visible height (`40dvh`), scrolling inside |
+| Keyboard | With a field focused on a phone under 500 px tall, the bottom bar steps aside, so it never covers the field |
+| Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`: no page scrolls sideways (a Tamil word had scrolled pages 32-103 px) |
+| Skip link | Hidden by its own height (`translateY(-110%)`) until focused; a fixed offset let a wrapped Tamil label show |
+| Header | 48 px on phones (was 56) |
+
+Checked by `tools/live-ui`'s mobile pass ([06](06-test-plan.md) TC-M-26) on emulated phones, 320-384 px, landscape,
+130 % and 200 % text, four languages, both themes. Known limit: on the smallest setups (Tamil at 130 % on 384 x 615,
+320 px at 150 %) the control column wins and the counters start below the bottom bar ([10](10-sprint-log.md) S4b-BL-49).
 
 ## 6. Screen flows
 
@@ -479,7 +512,7 @@ Files: `web/src/app/i18n/en.ts`, `hi.ts`, `ta.ts`, `te.ts`, `languages.ts`, `tra
 
 | Item | Implementation |
 |---|---|
-| Strings | Two homes since [03](03-design.md) ADR-23 CMP-2 (PR #19). **UI strings** (screens, dialogs, snackbars): Compose Multiplatform resources in `android/ui/src/commonMain/composeResources/values/strings.xml` (English, default) plus `values-hi/`, `values-ta/`, `values-te/`, **413 strings and 16 plurals** in each language; screens call `stringResource(Res.string.x)` (generated class `app.doorprints.ui.res.Res`), and code outside composition (click handlers, effects) calls Compose's suspend `getString` in a coroutine or effect, or resolves the string in composition first (the blocking `ui/UiStrings.kt` helper was removed in CMP-3). **Service strings** (notifications and their channels, the workers, `HuntService`, the manifest's label): Android resources in `android/app/src/main/res/values*/strings.xml`, **83 strings and 4 plurals** in each language, plus `resolved_language` (`en`, `hi`, `ta`, `te`; see *Per-app language*). **27 keys are in both places**, 24 strings and 3 plurals (`app_name`, `common_score_value`, the three `status_*`, the ten `check_*` checklist labels, the three `count_*` plurals, `price_per_month` and eight `export_*`/`import_*`/`auto_backup_*` progress strings) with the same text (TC-U-59); the Android `check_*` copies go with [10](10-sprint-log.md) S4b-BL-31 (the labels read from both homes until then); `price_per_month` is read from Compose resources by `priceText` in `:ui`'s `Format.kt`, and from Android resources by `HuntService`. Since the Doorprints rename `app_name`, `app_tagline` and `settings_about` are in every language; `app_name` is "Doorprints" in all four. Names mirror web keys with `_` instead of `.`: `house.save` → `house_save`, `check.water` → `check_water`. Screen-specific Android keys use the same `area_thing` pattern (`map_hunt_mode`, `settings_photos_wifi`, `ai_plan_leg`). |
+| Strings | Two homes since [03](03-design.md) ADR-23 CMP-2 (PR #19). **UI strings** (screens, dialogs, snackbars): Compose Multiplatform resources in `android/ui/src/commonMain/composeResources/values/strings.xml` (English, default) plus `values-hi/`, `values-ta/`, `values-te/`, **444 strings and 17 plurals** in each language (since the CMP-5..7 change, PR #24); screens call `stringResource(Res.string.x)` (generated class `app.doorprints.ui.res.Res`), and code outside composition (click handlers, effects) calls Compose's suspend `getString` in a coroutine or effect, or resolves the string in composition first (the blocking `ui/UiStrings.kt` helper was removed in CMP-3). **Service strings** (notifications and their channels, the workers, `HuntService`, the manifest's label): Android resources in `android/app/src/main/res/values*/strings.xml`, **71 strings and 4 plurals** in each language (the ten `check_*`, `import_stopped` and `import_stopped_copy` went in CMP-6), plus `resolved_language` (`en`, `hi`, `ta`, `te`; see *Per-app language*). **46 keys are in both places**, 42 strings and 4 plurals (`app_name`, `common_score_value`, the three `status_*`, the three `count_*` plurals, `price_per_month`, eight `export_*`/`import_*`/`auto_backup_*` progress strings, and since CMP-6 the list patterns `import_list_*`, the export and import results and failure reasons and `import_restored_result`, which the notifications still read; [10](10-sprint-log.md) S4b-BL-35) with the same text (TC-U-59); the Android `check_*` copies are gone (S4b-BL-31, done): every screen reads the Compose labels; `price_per_month` is read from Compose resources by `priceText` in `:ui`'s `Format.kt`, and from Android resources by `HuntService`. Since the Doorprints rename `app_name`, `app_tagline` and `settings_about` are in every language; `app_name` is "Doorprints" in all four. Names mirror web keys with `_` instead of `.`: `house.save` → `house_save`, `check.water` → `check_water`. Screen-specific Android keys use the same `area_thing` pattern (`map_hunt_mode`, `settings_photos_wifi`, `ai_plan_leg`). |
 | Placeholders | Positional only, `%1$s`, `%2$d`, in both homes: Compose resources fill in nothing else (a bare `%d` or `%s` would be shown as written). Every language keeps exactly the same placeholders as English, counted and in position (`StringParityTest`, TC-U-59). Web `{name}` maps to `%1$s`. |
 | Plurals | Mostly avoided by phrasing, as on the web ("Visits: %1$d"). Where a count reads as a word: `<plurals>` with `one` and `other`, 16 on the Compose side (`pluralStringResource`) and 4 on the Android side (`count_houses`, `count_visits`, `count_photos`, `import_restored_result`). Every plural has an `other` form in every language (TC-U-59). |
 | Per-app language | `res/xml/locales_config.xml` (`en`, `hi`, `ta`, `te`) and `android:localeConfig` in the manifest (Android 13+ system settings). In-app picker in Settings (`i18n/AppLocale.kt`): on API 33+ it calls the platform `LocaleManager.setApplicationLocales(...)` (the system stores the choice and recreates the activity); on API 26–32 it stores the tag in a small SharedPreferences file and wraps each `Activity`/`Service` base context (`attachBaseContext`) with that locale, then recreates the activity. **No AppCompat dependency** (the app is Compose-only on `ComponentActivity`). Notification channels are re-created with the localised context so their names follow the language. **Compose resources and the process's default locale:** Compose resources take the language from the default locale, not from a configuration, and match that one locale only, while Android resources choose from the configuration's whole list. So `AppLocale.applyDefault(context)` sets `LocaleList.setDefault` **on every API level** to the language Android resolved for the resources (read from the `resolved_language` string in each `res/values*` folder), followed by the rest of the configuration's list. It runs through `AppLocale.wrap()`, which activities, services and workers call and which `DoorprintsApp.onCreate` and `DoorprintsApp.onConfigurationChanged` call too (the framework resets the default on a process-level configuration change). `androidResources.localeFilters` = `en`, `hi`, `ta`, `te` in `app/build.gradle.kts` keeps the libraries' other translations (for example androidx's `values-mr`) out of the APK, so a phone set to [Marathi, Hindi] resolves to Hindi on both sides instead of to Marathi and then English (`AppLocaleTest`, TC-U-60). |
@@ -488,6 +521,25 @@ Files: `web/src/app/i18n/en.ts`, `hi.ts`, `ta.ts`, `te.ts`, `languages.ts`, `tra
 | Server-side text | The sync result is stored as a code (`SyncOutcome`) and rendered in the current language; server error bodies are never shown. |
 | Lint | `MissingTranslation` and `ExtraTranslation` are errors in `app/build.gradle.kts`; CI runs lint and reports it (not yet blocking, see 07). Lint sees only the Android resources; `StringParityTest` (TC-U-59, part of `testDebugUnitTest`, blocking) checks both homes: the same keys in every language, the same placeholders, no Android escapes on the Compose side, and the same text for a key in both places. |
 | Fonts | System Noto fonts (present on all supported Android versions). |
+
+### 8.3 New strings of 2026-09-24: a reset server (S4b-BL-20)
+
+Shown when a sync finds its server reset or set back to an older copy ([03](03-design.md) §10.1). Web
+`data.serverReset` (announced once, and on *Your data*'s sync card outside the live region); Android
+`sync_server_reset` (Compose resources; Settings' server status line and the house list's warning reason, before the
+counts), the same text with "this phone" for "this browser". Hindi, Tamil and Telugu are **under review**; Tamil uses
+சேவையகம் as the other server strings do. No "Restore" wording (brand rule, [12](12-brand-and-naming.md)).
+
+| Language | Web `data.serverReset` |
+|---|---|
+| en | Your server seems to have been reset or set back to an older copy. Doorprints is sending everything in this browser to it again and downloading everything from it. Nothing here is lost. |
+| hi | लगता है आपका सर्वर रीसेट हो गया है या किसी पुरानी कॉपी पर लौटा दिया गया है। Doorprints इस ब्राउज़र की हर चीज़ उसे फिर से भेज रहा है और उस पर मौजूद सब कुछ फिर से डाउनलोड कर रहा है। यहाँ कुछ भी नहीं खोया है। |
+| ta | உங்கள் சேவையகம் மீட்டமைக்கப்பட்டதாகவோ பழைய நகலுக்குத் திருப்பப்பட்டதாகவோ தெரிகிறது. இந்த உலாவியில் உள்ள அனைத்தையும் Doorprints அதற்கு மீண்டும் அனுப்பி, அதில் உள்ள அனைத்தையும் மீண்டும் பதிவிறக்குகிறது. இங்கே எதுவும் இழக்கப்படவில்லை. |
+| te | మీ సర్వర్ రీసెట్ అయినట్లు లేదా పాత కాపీకి తిరిగి వెళ్లినట్లు కనిపిస్తోంది. Doorprints ఈ బ్రౌజర్‌లోని ప్రతిదాన్నీ దానికి మళ్లీ పంపుతోంది, దానిలోని ప్రతిదాన్నీ మళ్లీ డౌన్‌లోడ్ చేస్తోంది. ఇక్కడ ఏదీ పోలేదు. |
+
+The other strings the change added are copies with the same text in a second home (§8.2) and the web's refresh-bar
+names, which reuse existing keys (`data.syncing`, `house.saving`, `house.locating`, `house.lookingUp`,
+`listingFill.working`, `data.migrationRunning`).
 
 ## 9. Translation workflow
 
