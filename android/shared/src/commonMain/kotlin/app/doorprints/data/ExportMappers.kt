@@ -1,6 +1,8 @@
 package app.doorprints.data
 
+import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportHouse
+import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
 import app.doorprints.shared.model.HouseStatus
@@ -45,3 +47,16 @@ fun ExportVisit.toEntity(dirty: Boolean = true) = VisitEntity(
  * system and needs no escaping — and it is what an import looks for in the ZIP.
  */
 fun PhotoEntity.toExport() = ExportPhoto(id = id, houseId = houseId, fileName = "$id.jpg", createdAt = createdAt)
+
+/**
+ * What a copy made with [options] holds, from rows already read (`Repository.localRows`). Pure CPU work (mapping and
+ * filtering every row): the workers build their file from it (`:app`'s `ExportBuilder.build`), and the Export screen's
+ * live count calls it on `Dispatchers.Default` with rows it read once, instead of re-reading the database and mapping
+ * on the main thread for every option tap. Common since ADR-23 CMP-6 P6b.
+ */
+fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = ExportBundle.build(
+    options,
+    houses.map { it.toExport() },
+    visits.map { it.toExport() },
+    photos.map { it.toExport() },
+)

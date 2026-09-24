@@ -1,48 +1,41 @@
 package app.doorprints.ui
 
-import android.app.Application
-import android.content.Context
-import android.net.Uri
-import android.os.SystemClock
-import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.doorprints.DoorprintsApp
-import app.doorprints.export.CopyImportUndo
-import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.export.CopyRecord
+import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.export.ImportCheck
 import app.doorprints.export.ImportRequest
+import app.doorprints.export.ImportStaging
 import app.doorprints.export.ImportStart
-import app.doorprints.export.ImportUndo
-import app.doorprints.export.ImportWorker
-import app.doorprints.export.Imports
 import app.doorprints.shared.export.ImportMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * The import flow's state (S4-04), kept out of the composable so that it survives what the screen does not: a
- * rotation, a language switch, and the process being killed while the file picker is open.
+ * rotation, a language switch, and the process being killed while the file picker is open. Common since ADR-23 CMP-6
+ * P6b: the file, the staging, the preview and the background import are the app's ([ImportServices]; Android:
+ * `Imports` and `ImportWorker`), the copy import's undo is [CopyImportUndoes].
  *
  * What survives how:
  *  - The **check** runs in [viewModelScope], so a rotation does not cancel it. Leaving the screen for good does,
- *    and the staging copy then stops at its next 64 KB chunk and deletes itself (see [Imports.stage]).
+ *    and the staging copy then stops at its next 64 KB chunk and deletes itself (see [ImportServices.stage]).
  *  - The **staged path, the mode and the id of the import this screen started** are in [SavedStateHandle].
  *    After process death the preview is not saved — it depends on what is on the phone *now* — but re-worked out
- *    from the staged copy ([Imports.preview]); if that copy has gone (the app sweeps staging files older than six
- *    hours on start), the screen simply starts over at the file picker, with no error about a file the user did
+ *    from the staged copy ([ImportServices.preview]); if that copy has gone (the app sweeps staging files older than
+ *    six hours on start), the screen simply starts over at the file picker, with no error about a file the user did
  *    not pick this time.
- *  - A staged copy that was never handed to [ImportWorker] is deleted when the screen is left ([onCleared]),
+ *  - A staged copy that was never handed to the background import is deleted when the screen is left ([onCleared]),
  *    instead of sitting in the cache for six hours.
  *
  * **One import per tap (UX review, 2026-09-22).** [startImport] hands a staged copy to the worker at most once:
@@ -73,25 +66,23 @@ import java.io.File
  * re-works them out quietly from the same staged copy when the screen resumes, at most every [REFRESH_AFTER_MS].
  *
  * **Undo a copy import (UX review, rounds 16 and 18).** A copy import's worker records the ids it added
- * ([ImportUndo]). While its result is on screen, [undoRecord] holds that record (loaded by [loadUndo]) and [undoCopy]
- * hands it to [CopyImportUndo], the one implementation the house list's undo row uses too, which removes exactly those
- * rows in one transaction in the application's scope. [undoing] and [undone] read its state, so the outcome of an undo
- * that ends after this ViewModel is gone is still seen by whichever screen is showing. [undone] is only an outcome
- * reached while this ViewModel exists, so a later visit to the screen does not bring back an old "Removed 40 copies".
+ * (a [CopyRecord]). While its result is on screen, [undoRecord] holds that record (loaded by [loadUndo]) and
+ * [undoCopy] hands it to [CopyImportUndoes], the one implementation the house list's undo row uses too, which removes
+ * exactly those rows in one transaction in the application's scope. [undoing] and [undone] read its state, so the
+ * outcome of an undo that ends after this ViewModel is gone is still seen by whichever screen is showing. [undone] is
+ * only an outcome reached while this ViewModel exists, so a later visit to the screen does not bring back an old
+ * "Removed 40 copies".
  *
- * [startWork] is the one seam for tests: it enqueues the run and returns its id and the "was it kept" check.
- * [scope] replaces [viewModelScope] for that check in a JVM test, which has no main dispatcher to run it on.
+ * [startWork] is the one seam for tests besides [imports]: it enqueues the run and returns its id and the "was it
+ * kept" check. [scope] replaces [viewModelScope] for that check in a test, which has no main dispatcher to run it on.
  */
 class ImportViewModel(
-    private val app: Application,
+    private val imports: ImportServices,
+    private val copyImports: CopyImportUndoes,
     private val saved: SavedStateHandle,
     private val scope: CoroutineScope? = null,
-    private val startWork: (Context, ImportRequest) -> ImportStart = { context, request ->
-        ImportWorker.start(context, request)
-    },
-) : AndroidViewModel(app) {
-
-    private val repository get() = (app as DoorprintsApp).container.repository
+    private val startWork: (ImportRequest) -> ImportStart = imports::start,
+) : ViewModel() {
 
     /** True while a picked file is being copied and checked. */
     var checking by mutableStateOf(false)
@@ -151,18 +142,18 @@ class ImportViewModel(
         private set
 
     /** True while an undo of a copy import is writing, started here or from the house list. */
-    val undoing: Boolean get() = CopyImportUndo.undoingRun != null
+    val undoing: Boolean get() = copyImports.undoingRun != null
 
     /** The outcome already there when this ViewModel was made: not news for this visit (see [undone]). */
-    private val outcomeBefore = CopyImportUndo.outcome
+    private val outcomeBefore = copyImports.outcome
 
     /** The outcome of the last undo that ended while this ViewModel existed; null otherwise. */
-    val undone: CopyUndoOutcome? get() = CopyImportUndo.outcome?.takeIf { it !== outcomeBefore }
+    val undone: CopyUndoOutcome? get() = copyImports.outcome?.takeIf { it !== outcomeBefore }
 
     private var job: Job? = null
 
-    /** When the current preview was worked out (`SystemClock.elapsedRealtime`), for [refreshPreview]. */
-    private var checkedAt = 0L
+    /** When the current preview was worked out (a monotonic clock), for [refreshPreview]; null before the first. */
+    private var checkedAt: TimeMark? = null
 
     /** Bumped for every check started or cancelled; declared before `init`, which may start one. */
     private var checks = 0
@@ -170,10 +161,10 @@ class ImportViewModel(
     init {
         val staged = saved.get<String>(KEY_STAGED)
         if (staged != null) {
-            // Checked here rather than left to [Imports.preview], which would call a vanished copy READ_FAILED and
-            // show "it could not be read" for a file the user never re-picked.
-            if (File(staged).isFile) {
-                runCheck { Imports.preview(repository, staged, fileName) }
+            // Checked here rather than left to [ImportServices.preview], which would call a vanished copy READ_FAILED
+            // and show "it could not be read" for a file the user never re-picked.
+            if (imports.isStaged(staged)) {
+                runCheck { imports.preview(staged, fileName) }
             } else {
                 saved.remove<String>(KEY_STAGED)
                 rememberFinishing(false)
@@ -181,7 +172,8 @@ class ImportViewModel(
         }
     }
 
-    fun pick(uri: Uri) {
+    /** A file picked with the screen's picker ([ImportServices.rememberBackupPicker]). */
+    fun pick(file: String) {
         blocked = false
         rememberFinishing(false)
         onRestoreDeletedChange(false)
@@ -190,13 +182,13 @@ class ImportViewModel(
         rememberFileName(null)
         runCheck {
             // First, so the header can name the file while the (possibly long) copy runs.
-            val name = Imports.displayName(app, uri)
+            val name = imports.displayName(file)
             rememberFileName(name)
-            when (val staging = Imports.stage(app, uri)) {
-                is Imports.Staging.Refused -> ImportCheck.Refused(staging.problem)
-                is Imports.Staging.Staged -> {
+            when (val staging = imports.stage(file)) {
+                is ImportStaging.Refused -> ImportCheck.Refused(staging.problem)
+                is ImportStaging.Staged -> {
                     saved[KEY_STAGED] = staging.path
-                    Imports.preview(repository, staging.path, name)
+                    imports.preview(staging.path, name)
                 }
             }
         }
@@ -237,12 +229,12 @@ class ImportViewModel(
         val ready = check as? ImportCheck.Ready ?: return
         if (running || starting || checking || blocked) return
         val staged = saved.get<String>(KEY_STAGED) ?: return
-        if (staged != ready.stagedPath || !File(staged).isFile) return
-        if (SystemClock.elapsedRealtime() - checkedAt < REFRESH_AFTER_MS) return
+        if (staged != ready.stagedPath || !imports.isStaged(staged)) return
+        if (checkedAt?.let { it.elapsedNow() < REFRESH_AFTER_MS.milliseconds } == true) return
         val generation = checks
         job = viewModelScope.launch {
             val result = try {
-                Imports.preview(repository, staged, fileName)
+                imports.preview(staged, fileName)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -253,16 +245,16 @@ class ImportViewModel(
                 result is ImportCheck.Ready
             ) {
                 check = result
-                checkedAt = SystemClock.elapsedRealtime()
+                checkedAt = TimeSource.Monotonic.markNow()
             }
         }
     }
 
     /**
-     * Hands the staged copy to [ImportWorker]; from here on the worker owns (and deletes) it. At most once per
+     * Hands the staged copy to the background import; from here on the worker owns (and deletes) it. At most once per
      * copy: [KEY_STAGED] is removed below, so a second call for the same copy is a no-op (see the class KDoc).
      */
-    fun startImport(context: Context, withMode: ImportMode = mode, skipUpdates: Boolean = false) {
+    fun startImport(withMode: ImportMode = mode, skipUpdates: Boolean = false) {
         val ready = check as? ImportCheck.Ready ?: return
         if (saved.get<String>(KEY_STAGED) != ready.stagedPath) return
         choose(withMode)
@@ -273,8 +265,8 @@ class ImportViewModel(
             restoreDeleted = merge && restoreDeleted,
             skipUpdates = merge && skipUpdates,
         )
-        val start = startWork(context, request)
-        val runId = start.id.toString()
+        val start = startWork(request)
+        val runId = start.id
         blocked = false
         rememberFinishing(false)
         starting = true
@@ -310,7 +302,7 @@ class ImportViewModel(
         saved.remove<String>(KEY_STARTED)
         val handed = saved.get<String>(KEY_HANDED)
         saved.remove<String>(KEY_HANDED)
-        if (handed != null && File(handed).isFile) {
+        if (handed != null && imports.isStaged(handed)) {
             saved[KEY_STAGED] = handed
             blocked = true
         } else {
@@ -333,7 +325,7 @@ class ImportViewModel(
             if (blocked && staged != null && saved.get<String>(KEY_HANDLED) != runId) {
                 saved[KEY_HANDLED] = runId
                 blocked = false
-                runCheck { Imports.preview(repository, staged, fileName) }
+                runCheck { imports.preview(staged, fileName) }
             }
             return
         }
@@ -342,19 +334,19 @@ class ImportViewModel(
         saved[KEY_HANDLED] = runId
         val handed = saved.get<String>(KEY_HANDED)
         saved.remove<String>(KEY_HANDED)
-        if (stopped && mode == ImportMode.MERGE && handed != null && File(handed).isFile) {
+        if (stopped && mode == ImportMode.MERGE && handed != null && imports.isStaged(handed)) {
             // A stopped merge: its copy is this screen's again, and the preview now shows what is left to import.
             // If the worker deleted the copy after all (it finished just as Stop arrived), the check comes back
             // without a Ready and the screen falls back to the stopped result card.
             saved[KEY_STAGED] = handed
             rememberFinishing(true)
             runCheck {
-                val result = Imports.preview(repository, handed, fileName)
-                if (result is ImportCheck.Refused && !File(handed).isFile) null else result
+                val result = imports.preview(handed, fileName)
+                if (result is ImportCheck.Refused && !imports.isStaged(handed)) null else result
             }
             return
         }
-        if (stopped) Imports.discard(handed)
+        if (stopped) imports.discard(handed)
         check = null
     }
 
@@ -365,7 +357,7 @@ class ImportViewModel(
 
     /**
      * Loads the undo record of [runId], the succeeded copy import on screen, or forgets it ([runId] null). Loaded
-     * again whenever an undo ends (the screen passes [CopyImportUndo.outcome] as a key), because the undo deletes or
+     * again whenever an undo ends (the screen passes [CopyImportUndoes.outcome] as a key), because the undo deletes or
      * reduces the record. A record older than a day, or the kept-houses record an undo leaves behind, offers no undo,
      * and the screen then shows none.
      */
@@ -375,22 +367,21 @@ class ImportViewModel(
             return
         }
         viewModelScope.launch {
-            val record = withContext(Dispatchers.IO) { ImportUndo.load(app, runId) }?.takeUnless { it.undone }
+            val record = copyImports.load(runId)?.takeUnless { it.undone }
             if (!undoing) undoRecord = record
         }
     }
 
     /**
-     * *Undo this import*: hands [undoRecord] to [CopyImportUndo] (see the class KDoc). No confirmation: it only
+     * *Undo this import*: hands [undoRecord] to [CopyImportUndoes] (see the class KDoc). No confirmation: it only
      * removes what that import just added, and keeps any house the user has changed since.
      */
     fun undoCopy() {
         val record = undoRecord ?: return
-        CopyImportUndo.start(app as DoorprintsApp, record)
+        copyImports.start(record)
     }
 
     /** Puts the flow in the state a finished check leaves it in (a staged copy and its preview), for unit tests. */
-    @VisibleForTesting
     internal fun checkedForTest(ready: ImportCheck.Ready) {
         saved[KEY_STAGED] = ready.stagedPath
         check = ready
@@ -415,7 +406,7 @@ class ImportViewModel(
                     rememberFinishing(false)
                 }
                 check = result
-                checkedAt = SystemClock.elapsedRealtime()
+                checkedAt = TimeSource.Monotonic.markNow()
             } finally {
                 if (generation == checks) checking = false
             }
@@ -426,15 +417,16 @@ class ImportViewModel(
      * Deletes the copy this screen still owns, and only that: [KEY_STAGED] is the one source of truth for it.
      *
      * Deliberately **not** `(check as? ImportCheck.Ready)?.stagedPath`: after [startImport] the check stays Ready
-     * until [onRunEnded], but its copy now belongs to [ImportWorker]. Deleting it from here (Import, then Back while
-     * the run is ENQUEUED or RUNNING, which clears this ViewModel) would make the worker — or its retry after a
-     * system stop, for which it keeps the copy on purpose — report a good backup as "could not be read". Nothing
-     * is lost by not falling back: [pick] sets [KEY_STAGED] before previewing, and a restored screen starts from it.
+     * until [onRunEnded], but its copy now belongs to the background import (Android: `ImportWorker`). Deleting it
+     * from here (Import, then Back while the run is ENQUEUED or RUNNING, which clears this ViewModel) would make the
+     * worker — or its retry after a system stop, for which it keeps the copy on purpose — report a good backup as
+     * "could not be read". Nothing is lost by not falling back: [pick] sets [KEY_STAGED] before previewing, and a
+     * restored screen starts from it.
      * A handed-off copy is only ever deleted by the worker, or by [onRunEnded] once WorkManager says the run was
      * cancelled and so will never need it again.
      */
     private fun discardStaged() {
-        Imports.discard(saved.get<String>(KEY_STAGED))
+        imports.discard(saved.get<String>(KEY_STAGED))
         saved.remove<String>(KEY_STAGED)
     }
 

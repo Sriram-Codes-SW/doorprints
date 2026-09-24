@@ -2,7 +2,7 @@ package app.doorprints.export
 
 import android.content.Context
 import app.doorprints.data.Repository
-import app.doorprints.data.toExport
+import app.doorprints.data.toBundle
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportOptions
@@ -20,17 +20,8 @@ object ExportBuilder {
     suspend fun bundle(repository: Repository, options: ExportOptions): ExportBundle =
         build(repository.localRows(), options)
 
-    /**
-     * The bundle from rows already read. Pure CPU work (mapping and filtering every row), so the Export screen's
-     * live count calls it on `Dispatchers.Default` with rows it read once, instead of re-reading Room and mapping on
-     * the main thread for every option tap.
-     */
-    fun build(rows: Repository.LocalRows, options: ExportOptions): ExportBundle = ExportBundle.build(
-        options,
-        rows.houses.map { it.toExport() },
-        rows.visits.map { it.toExport() },
-        rows.photos.map { it.toExport() },
-    )
+    /** The bundle from rows already read ([toBundle], common since CMP-6 P6b; the Export screen's count uses it too). */
+    fun build(rows: Repository.LocalRows, options: ExportOptions): ExportBundle = rows.toBundle(options)
 
     /**
      * The app's own version, for the backup manifest. Read from the package manager rather than `BuildConfig`,

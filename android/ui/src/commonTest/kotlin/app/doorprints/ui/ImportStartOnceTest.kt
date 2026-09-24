@@ -1,23 +1,26 @@
-package app.doorprints
+package app.doorprints.ui
 
-import android.app.Application
+import androidx.compose.runtime.Composable
 import androidx.lifecycle.SavedStateHandle
+import app.doorprints.export.CopyRecord
+import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.export.ImportCheck
 import app.doorprints.export.ImportRequest
+import app.doorprints.export.ImportStaging
 import app.doorprints.export.ImportStart
-import app.doorprints.ui.ImportViewModel
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPreview
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
-import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * UX review, 2026-09-22: a double tap on Import, or Replace followed by Import, must start **one** import. The
@@ -29,14 +32,44 @@ import java.util.UUID
  * leave the screen on "Importing…" for good.
  *
  * The "was it kept" check runs on [Dispatchers.Unconfined], so with a check that does not suspend it has finished
- * by the time `startImport` returns; a JVM test has no main dispatcher for `viewModelScope`.
+ * by the time `startImport` returns; a test has no main dispatcher for `viewModelScope`. Common since CMP-6 P6b (was
+ * `:app`'s, on the Android ViewModel): the staged copies are [FakeImports]' paths instead of temporary files.
  */
+@OptIn(ExperimentalUuidApi::class)
 class ImportStartOnceTest {
 
-    @get:Rule
-    val tmp = TemporaryFolder()
+    /** Only which staged copies exist; nothing here stages, previews or starts through it. */
+    private class FakeImports(val staged: MutableSet<String> = mutableSetOf()) : ImportServices {
+        override fun runs(): Flow<List<ImportRun>> = emptyFlow()
+        override fun stop() = Unit
+        override fun clearDoneNotification() = Unit
+        override fun screenVisible(visible: Boolean) = Unit
+        @Composable
+        override fun rememberBackupPicker(onPicked: (file: String?) -> Unit): (folder: String?) -> Boolean = { false }
+        override suspend fun displayName(file: String): String? = null
+        override suspend fun stage(file: String): ImportStaging = error("not staged in this test")
+        override suspend fun preview(stagedPath: String, displayName: String?): ImportCheck = error("no preview")
+        override fun isStaged(path: String) = path in staged
+        override fun discard(path: String?) {
+            staged.remove(path)
+        }
+        override fun start(request: ImportRequest): ImportStart = error("started through the test's startWork")
+    }
+
+    /** No undo in these tests. */
+    private object NoUndo : CopyImportUndoes {
+        override val undoingRun: String? = null
+        override val outcome: CopyUndoOutcome? = null
+        override suspend fun load(runId: String): CopyRecord? = null
+        override suspend fun latestUndoable(): CopyRecord? = null
+        override fun hideRow(runId: String) = Unit
+        override fun start(record: CopyRecord) = false
+    }
 
     private val now = CoroutineScope(Dispatchers.Unconfined)
+
+    private fun viewModel(imports: ImportServices = FakeImports(), startWork: (ImportRequest) -> ImportStart) =
+        ImportViewModel(imports, NoUndo, SavedStateHandle(), now, startWork)
 
     private fun preview(mode: ImportMode) = ImportPreview(
         mode = mode,
@@ -57,25 +90,24 @@ class ImportStartOnceTest {
     private val ready = readyAt("/cache/import/staged-1.zip")
 
     /** A start WorkManager kept, as the seam reports it. */
-    private fun kept(id: UUID = UUID.randomUUID()) = ImportStart(id) { true }
+    private fun kept(id: String = Uuid.random().toString()) = ImportStart(id) { true }
 
     @Test
     fun aSecondTapBeforeWorkManagerReportsTheRunStartsNothing() {
-        val app = Application()
         val started = mutableListOf<ImportRequest>()
-        val vm = ImportViewModel(app, SavedStateHandle(), now) { _, request ->
+        val vm = viewModel { request ->
             started += request
             kept()
         }
         vm.checkedForTest(ready)
 
-        vm.startImport(app)
+        vm.startImport()
         val first = vm.startedRunId
         assertTrue(vm.starting)
 
         // The second tap arrives while `check` is still Ready and the button is still on screen.
-        vm.startImport(app)
-        vm.startImport(app, ImportMode.COPY)
+        vm.startImport()
+        vm.startImport(ImportMode.COPY)
 
         assertEquals(1, started.size)
         assertEquals(ImportRequest(ready.stagedPath, ImportMode.MERGE), started.single())
@@ -85,13 +117,12 @@ class ImportStartOnceTest {
 
     @Test
     fun theStartedRunEndingClearsThePreviewAndTheStartingState() {
-        val app = Application()
-        val ids = ArrayDeque(listOf(UUID.randomUUID(), UUID.randomUUID()))
-        val vm = ImportViewModel(app, SavedStateHandle(), now) { _, _ -> kept(ids.removeFirst()) }
+        val ids = ArrayDeque(listOf(Uuid.random().toString(), Uuid.random().toString()))
+        val vm = viewModel { kept(ids.removeFirst()) }
         vm.checkedForTest(ready)
 
-        vm.startImport(app)
-        vm.startImport(app)
+        vm.startImport()
+        vm.startImport()
         val runId = vm.startedRunId!!
 
         vm.onRunObserved(runId)
@@ -103,29 +134,28 @@ class ImportStartOnceTest {
 
     @Test
     fun aStartWorkManagerDroppedGivesTheCopyBackInsteadOfWaitingForever() {
-        val app = Application()
-        // A real file: the copy is only taken back while it still exists.
-        val staged = tmp.newFile("staged-2.zip").absolutePath
+        // A staged copy that exists: the copy is only taken back while it still does.
+        val staged = "/cache/import/staged-2.zip"
         val readyHere = readyAt(staged)
         val started = mutableListOf<ImportRequest>()
         var keep = false
-        val vm = ImportViewModel(app, SavedStateHandle(), now) { _, request ->
+        val vm = viewModel(FakeImports(mutableSetOf(staged))) { request ->
             started += request
             val k = keep
-            ImportStart(UUID.randomUUID()) { k }
+            ImportStart(Uuid.random().toString()) { k }
         }
         vm.checkedForTest(readyHere)
 
         // KEEP dropped it: an earlier import was still running. No run with this id will ever be reported.
-        vm.startImport(app)
-        assertFalse("the bar must not wait for a run that does not exist", vm.starting)
+        vm.startImport()
+        assertFalse(vm.starting, "the bar must not wait for a run that does not exist")
         assertNull(vm.startedRunId)
         assertTrue(vm.blocked)
         assertEquals(readyHere, vm.check)
 
         // The copy is this screen's again, so once the earlier run has ended Import starts from the same file.
         keep = true
-        vm.startImport(app)
+        vm.startImport()
         assertEquals(2, started.size)
         assertEquals(ImportRequest(staged, ImportMode.MERGE), started.last())
         assertTrue(vm.starting)
@@ -134,14 +164,13 @@ class ImportStartOnceTest {
 
     @Test
     fun aFailedEnqueueIsTreatedAsDropped() {
-        val app = Application()
-        val staged = tmp.newFile("staged-3.zip").absolutePath
-        val vm = ImportViewModel(app, SavedStateHandle(), now) { _, _ ->
-            ImportStart(UUID.randomUUID()) { throw IllegalStateException("enqueue failed") }
+        val staged = "/cache/import/staged-3.zip"
+        val vm = viewModel(FakeImports(mutableSetOf(staged))) {
+            ImportStart(Uuid.random().toString()) { throw IllegalStateException("enqueue failed") }
         }
         vm.checkedForTest(readyAt(staged))
 
-        vm.startImport(app)
+        vm.startImport()
         assertFalse(vm.starting)
         assertNull(vm.startedRunId)
         assertTrue(vm.blocked)
@@ -152,28 +181,27 @@ class ImportStartOnceTest {
      */
     @Test
     fun theMergeFlagsOnScreenTravelToTheWorker() {
-        val app = Application()
         val started = mutableListOf<ImportRequest>()
-        val vm = ImportViewModel(app, SavedStateHandle(), now) { _, request ->
+        val vm = viewModel { request ->
             started += request
             kept()
         }
         vm.checkedForTest(ready)
         vm.onRestoreDeletedChange(true)
-        vm.startImport(app, skipUpdates = true)
+        vm.startImport(skipUpdates = true)
         assertEquals(
             ImportRequest(ready.stagedPath, ImportMode.MERGE, restoreDeleted = true, skipUpdates = true),
             started.single(),
         )
 
         val copyStarts = mutableListOf<ImportRequest>()
-        val copyVm = ImportViewModel(app, SavedStateHandle(), now) { _, request ->
+        val copyVm = viewModel { request ->
             copyStarts += request
             kept()
         }
         copyVm.checkedForTest(ready)
         copyVm.onRestoreDeletedChange(true)
-        copyVm.startImport(app, ImportMode.COPY, skipUpdates = true)
+        copyVm.startImport(ImportMode.COPY, skipUpdates = true)
         assertEquals(ImportRequest(ready.stagedPath, ImportMode.COPY), copyStarts.single())
     }
 }

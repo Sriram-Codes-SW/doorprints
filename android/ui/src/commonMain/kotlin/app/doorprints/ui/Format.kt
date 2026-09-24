@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import app.doorprints.ui.res.*
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -80,6 +81,9 @@ object Formats {
     fun date(epochMillis: Long, language: String = appLanguage()): String =
         formatDate(epochMillis, language, withTime = false)
 }
+
+/** Now, wall clock, in epoch ms (a house's `createdAt`, a run's `finishedAt`; was `System.currentTimeMillis`). */
+internal fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 /**
  * [format] (a UI string read with `stringResource`) with its positional placeholders `%1$s` and `%1$d` filled from

@@ -5,11 +5,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import app.doorprints.data.Repository
 import app.doorprints.shared.export.BackupFormat
-import app.doorprints.shared.export.BackupManifest
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPlan
-import app.doorprints.shared.export.ImportPreview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -18,52 +16,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.util.UUID
-
-/** What the import screen shows after a file is picked: either both previews, or why the file was refused. */
-sealed interface ImportCheck {
-    data class Ready(
-        /** The staged copy in the cache; the worker reads it, and it is deleted afterwards. */
-        val stagedPath: String,
-        val manifest: BackupManifest?,
-        val merge: ImportPreview,
-        val copy: ImportPreview,
-        /**
-         * Houses a copy would put on this phone a second time: live houses here with an id in the file
-         * ([ImportPlan.copyDuplicates]). Not derived from [merge], which counts tombstones as "already here".
-         */
-        val duplicateHouses: Int,
-        /**
-         * The picked file's name as its provider shows it (`OpenableColumns.DISPLAY_NAME`), for the file header
-         * on the Import screen; null when the provider gives none. Only ever displayed, never used as a path.
-         */
-        val displayName: String? = null,
-        /**
-         * [merge] with `restoreDeleted` (UX review, round 11): what the merge does when the user also brings back
-         * the houses deleted on this phone ([ImportPreview.restoredHouses]). The same as [merge] when there are none.
-         */
-        val mergeRestored: ImportPreview = merge,
-        /** [merge] with `skipUpdates`: the Replace dialog's "Keep mine, add only what's new". */
-        val keepMine: ImportPreview = merge,
-        /** [merge] with both flags. */
-        val keepMineRestored: ImportPreview = merge,
-        /**
-         * The labels (as the file has them; blank when the house has none) of the first [REPLACED_LABELS] houses a
-         * merge would replace, for the Replace dialog's "Replace 3 houses and 5 visits?", so the user can judge
-         * what they are overwriting. The total is [ImportPreview.updatedHouses].
-         */
-        val replacedHouseLabels: List<String> = emptyList(),
-    ) : ImportCheck {
-        /** The merge preview for the two opt-in flags; one of the four worked out in [Imports.preview]. */
-        fun mergeFor(restoreDeleted: Boolean, skipUpdates: Boolean): ImportPreview = when {
-            restoreDeleted && skipUpdates -> keepMineRestored
-            restoreDeleted -> mergeRestored
-            skipUpdates -> keepMine
-            else -> merge
-        }
-    }
-
-    data class Refused(val problem: BackupProblem) : ImportCheck
-}
 
 /**
  * Reading a backup before anything is written (S4-04).
@@ -80,20 +32,14 @@ object Imports {
 
     private fun stagingDir(context: Context) = File(context.cacheDir, "imports").apply { mkdirs() }
 
-    /** The result of copying the picked document into the cache: the staged file, or why it was refused. */
-    sealed interface Staging {
-        data class Staged(val path: String) : Staging
-        data class Refused(val problem: BackupProblem) : Staging
-    }
-
     /**
      * Copies the picked document into the cache ([stage]) and works out what each mode would do ([preview]).
      * Nothing is written to the database here — this is the "preview what will change" step.
      */
     suspend fun check(context: Context, repository: Repository, source: Uri): ImportCheck =
         when (val staging = stage(context, source)) {
-            is Staging.Refused -> ImportCheck.Refused(staging.problem)
-            is Staging.Staged -> preview(repository, staging.path, displayName(context, source))
+            is ImportStaging.Refused -> ImportCheck.Refused(staging.problem)
+            is ImportStaging.Staged -> preview(repository, staging.path, displayName(context, source))
         }
 
     /**
@@ -120,7 +66,7 @@ object Imports {
      * 64 KB chunks, so leaving the screen (or tapping Cancel) during a 1 GB copy stops it straight away, and the
      * partial copy is deleted rather than left to fill the cache for six hours.
      */
-    suspend fun stage(context: Context, source: Uri): Staging = withContext(Dispatchers.IO) {
+    suspend fun stage(context: Context, source: Uri): ImportStaging = withContext(Dispatchers.IO) {
         cleanOldStaging(context)
         // No extension on purpose: the copy may be a ZIP or a bare data.json, and BackupReader tells them apart by
         // their first bytes, never by a name the user or the provider chose.
@@ -132,10 +78,10 @@ object Imports {
             throw e
         }
         if (outcome == CopyOutcome.OK) {
-            Staging.Staged(staged.absolutePath)
+            ImportStaging.Staged(staged.absolutePath)
         } else {
             staged.delete()
-            Staging.Refused(if (outcome == CopyOutcome.TOO_LARGE) BackupProblem.TOO_LARGE else BackupProblem.READ_FAILED)
+            ImportStaging.Refused(if (outcome == CopyOutcome.TOO_LARGE) BackupProblem.TOO_LARGE else BackupProblem.READ_FAILED)
         }
     }
 
@@ -252,5 +198,3 @@ object Imports {
     private const val STALE_AFTER_MS = 6 * 60 * 60 * 1000L
 }
 
-/** How many house labels the Replace dialog names before "and *n* more". */
-const val REPLACED_LABELS = 5

@@ -60,8 +60,6 @@
     <string name="export_notif_failed">प्रति सहेजी नहीं जा सकी</string>
     <string name="import_notif_done">बैकअप आयात हो गया</string>
     <string name="import_notif_failed">बैकअप आयात नहीं हो सका</string>
-    <string name="import_stopped">आयात रोक दिया गया। जो जुड़ चुका है वह रहेगा; पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
-    <string name="import_stopped_copy">आयात रोक दिया गया। कुछ भी नहीं जोड़ा गया।</string>
     <string name="import_write_failed_copy">आयात पूरा नहीं हो सका, इसलिए कुछ भी नहीं जोड़ा गया। देखें कि फ़ोन में खाली जगह है, फिर दोबारा कोशिश करें।</string>
     <string name="auto_backup_stopped_title">अपने आप बैकअप रुक गया</string>
     <string name="auto_backup_stopped_text">वह फ़ोल्डर अब उपलब्ध नहीं है। फिर से चुनने के लिए टैप करें।</string>

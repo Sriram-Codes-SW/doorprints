@@ -60,8 +60,6 @@
     <string name="export_notif_failed">நகலைச் சேமிக்க முடியவில்லை</string>
     <string name="import_notif_done">காப்புப்பிரதி இறக்குமதி ஆனது</string>
     <string name="import_notif_failed">காப்புப்பிரதியை இறக்குமதி செய்ய முடியவில்லை</string>
-    <string name="import_stopped">இறக்குமதி நிறுத்தப்பட்டது. ஏற்கெனவே சேர்ந்தவை அப்படியே இருக்கும்; முடிக்க அதே கோப்பை மீண்டும் இறக்குமதி செய்யுங்கள்.</string>
-    <string name="import_stopped_copy">இறக்குமதி நிறுத்தப்பட்டது. எதுவும் சேர்க்கப்படவில்லை.</string>
     <string name="import_write_failed_copy">இறக்குமதியை முடிக்க முடியவில்லை, எனவே எதுவும் சேர்க்கப்படவில்லை. தொலைபேசியில் காலி இடம் உள்ளதா எனப் பார்த்து, மீண்டும் முயலுங்கள்.</string>
     <string name="auto_backup_stopped_title">தானியங்கு காப்புப்பிரதி நின்றது</string>
     <string name="auto_backup_stopped_text">அந்தக் கோப்புறை இப்போது இல்லை. மீண்டும் தேர்ந்தெடுக்கத் தட்டவும்.</string>
