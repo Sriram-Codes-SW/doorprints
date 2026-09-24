@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -46,17 +45,16 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.intl.LocaleList
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import com.househunt.app.HouseHuntApp
-import com.househunt.app.R
 import com.househunt.app.data.AppSettings
 import com.househunt.app.data.ServerUrl
 import com.househunt.app.export.AutoBackupWorker
@@ -64,28 +62,32 @@ import com.househunt.app.export.ExportProblem
 import com.househunt.app.export.Saf
 import com.househunt.app.export.ScreenWatch
 import com.househunt.app.export.messageRes
+import com.househunt.app.i18n.AppLocale
+import com.househunt.app.ui.res.*
 import com.househunt.shared.export.ExportLanguages
 import com.househunt.shared.sync.SyncOutcome
-import com.househunt.app.i18n.AppLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
 fun SyncOutcome.text(): String = when (kind) {
     SyncOutcome.Kind.OK -> if (photosWaiting > 0) {
-        stringResource(R.string.sync_ok_photos_waiting, pushed, pulled, photosWaiting)
+        stringResource(Res.string.sync_ok_photos_waiting, pushed, pulled, photosWaiting)
     } else {
-        stringResource(R.string.sync_ok, pushed, pulled)
+        stringResource(Res.string.sync_ok, pushed, pulled)
     }
-    SyncOutcome.Kind.NOT_CONFIGURED -> stringResource(R.string.sync_not_configured)
-    SyncOutcome.Kind.NETWORK -> stringResource(R.string.sync_err_network)
-    SyncOutcome.Kind.AUTH -> stringResource(R.string.sync_err_auth)
-    SyncOutcome.Kind.CAPTIVE_PORTAL -> stringResource(R.string.sync_err_captive)
-    SyncOutcome.Kind.RATE_LIMITED -> stringResource(R.string.sync_err_rate)
-    SyncOutcome.Kind.SERVER -> stringResource(R.string.sync_err_server, httpCode)
-    SyncOutcome.Kind.UNKNOWN -> stringResource(R.string.sync_err_unknown)
+    SyncOutcome.Kind.NOT_CONFIGURED -> stringResource(Res.string.sync_not_configured)
+    SyncOutcome.Kind.NETWORK -> stringResource(Res.string.sync_err_network)
+    SyncOutcome.Kind.AUTH -> stringResource(Res.string.sync_err_auth)
+    SyncOutcome.Kind.CAPTIVE_PORTAL -> stringResource(Res.string.sync_err_captive)
+    SyncOutcome.Kind.RATE_LIMITED -> stringResource(Res.string.sync_err_rate)
+    SyncOutcome.Kind.SERVER -> stringResource(Res.string.sync_err_server, httpCode)
+    SyncOutcome.Kind.UNKNOWN -> stringResource(Res.string.sync_err_unknown)
 }
 
 fun Context.findActivity(): Activity? {
@@ -117,7 +119,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
     var key by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
     val urlFocus = remember { FocusRequester() }
-    var urlError by remember { mutableStateOf<Int?>(null) }
+    var urlError by remember { mutableStateOf<StringResource?>(null) }
     var radius by remember(settings.alertRadiusM) { mutableFloatStateOf(settings.alertRadiusM.toFloat()) }
     var stay by remember(settings.minStayMinutes) { mutableFloatStateOf(settings.minStayMinutes.toFloat()) }
     /** Result of the last "Save and test": houses on the server, or the error. */
@@ -141,10 +143,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall,
+        Text(stringResource(Res.string.settings_title), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
 
-        SectionHeading(stringResource(R.string.settings_language))
+        SectionHeading(stringResource(Res.string.settings_language))
         Column(Modifier.selectableGroup()) {
             val options = listOf<String?>(null) + AppLocale.SUPPORTED
             options.forEach { code ->
@@ -158,7 +160,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 ) {
                     RadioButton(selected = selected, onClick = null)
                     if (code == null) {
-                        Text(stringResource(R.string.settings_language_system), modifier = Modifier.padding(start = 12.dp))
+                        Text(stringResource(Res.string.settings_language_system), modifier = Modifier.padding(start = 12.dp))
                     } else {
                         // Tagged with its own locale, so TalkBack reads each name with the right voice.
                         Text(
@@ -175,12 +177,12 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         }
 
         HorizontalDivider()
-        SectionHeading(stringResource(R.string.settings_data))
+        SectionHeading(stringResource(Res.string.settings_data))
         // The offline copy (Sprint 4a). Both screens work with no server and no account. Navigation rows, not
         // two buttons side by side: each title keeps its own hint (TalkBack reads them as one item), long Tamil
         // and Telugu labels wrap instead of squeezing each other, and they do not compete with "Save and test".
-        NavRow(stringResource(R.string.settings_export), stringResource(R.string.settings_export_hint), onOpenExport)
-        NavRow(stringResource(R.string.settings_import), stringResource(R.string.settings_import_hint), onOpenImport)
+        NavRow(stringResource(Res.string.settings_export), stringResource(Res.string.settings_export_hint), onOpenExport)
+        NavRow(stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport)
 
         // Weekly automatic backup (S4-07). The folder is picked once with OpenDocumentTree and the grant is made
         // persistable, so the worker can still write to it weeks later and after a reboot.
@@ -224,8 +226,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             }
         }
         SwitchRow(
-            text = stringResource(R.string.settings_auto_backup),
-            hint = stringResource(R.string.settings_auto_backup_hint),
+            text = stringResource(Res.string.settings_auto_backup),
+            hint = stringResource(Res.string.settings_auto_backup_hint),
             checked = settings.autoBackup,
             horizontalPadding = 0.dp,
             onChange = { wanted ->
@@ -281,7 +283,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     folderLabel?.let {
                         Text(
-                            stringResource(R.string.settings_auto_backup_folder_is, it),
+                            stringResource(Res.string.settings_auto_backup_folder_is, it),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -289,7 +291,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                     var keep by remember(settings.autoBackupKeep) {
                         mutableFloatStateOf(settings.autoBackupKeep.toFloat())
                     }
-                    val keepText = pluralStringResource(R.plurals.settings_auto_backup_keep, keep.toInt(), keep.toInt())
+                    val keepText = pluralStringResource(Res.plurals.settings_auto_backup_keep, keep.toInt(), keep.toInt())
                     // The visible label, for sighted users; TalkBack gets the same sentence on the slider itself.
                     Text(keepText, modifier = Modifier.clearAndSetSemantics { })
                     Slider(
@@ -318,8 +320,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                         OutlinedButton(onClick = { pickFolder.launch(null) }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text(
                                 stringResource(
-                                    if (settings.autoBackupFolder.isBlank()) R.string.settings_auto_backup_folder
-                                    else R.string.settings_auto_backup_folder_change
+                                    if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
+                                    else Res.string.settings_auto_backup_folder_change
                                 )
                             )
                         }
@@ -328,7 +330,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                             enabled = !backingUp,
                             colors = tonalPrimaryColors(),
                             modifier = Modifier.heightIn(min = 48.dp),
-                        ) { Text(stringResource(R.string.settings_auto_backup_now)) }
+                        ) { Text(stringResource(Res.string.settings_auto_backup_now)) }
                     }
                     // The card's last row: running now, the last problem, the last backup, or not yet. Only while
                     // the backup is on, so it is not drawn twice while the card eases out.
@@ -346,8 +348,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 OutlinedButton(onClick = { pickFolder.launch(null) }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(
                         stringResource(
-                            if (settings.autoBackupFolder.isBlank()) R.string.settings_auto_backup_folder
-                            else R.string.settings_auto_backup_folder_change
+                            if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
+                            else Res.string.settings_auto_backup_folder_change
                         )
                     )
                 }
@@ -355,10 +357,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         }
 
         HorizontalDivider()
-        SectionHeading(stringResource(R.string.settings_hunt))
+        SectionHeading(stringResource(Res.string.settings_hunt))
         // Each slider is named by its sentence and says its value in metres or minutes (WCAG 4.1.2), as the keep-backups
         // slider does; the visible sentence is hidden from TalkBack so it is not read twice.
-        val radiusText = stringResource(R.string.settings_alert_radius, radius.toInt())
+        val radiusText = stringResource(Res.string.settings_alert_radius, radius.toInt())
         Text(radiusText, modifier = Modifier.clearAndSetSemantics { })
         Slider(radius, { radius = it }, valueRange = 15f..100f, steps = 16, colors = brandSliderColors(),
             modifier = Modifier.semantics {
@@ -366,7 +368,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 stateDescription = radius.toInt().toString()
             },
             onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-        val stayText = stringResource(R.string.settings_min_stay, stay.toInt())
+        val stayText = stringResource(Res.string.settings_min_stay, stay.toInt())
         Text(stayText, modifier = Modifier.clearAndSetSemantics { })
         Slider(stay, { stay = it }, valueRange = 2f..15f, steps = 12, colors = brandSliderColors(),
             modifier = Modifier.semantics {
@@ -374,20 +376,20 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 stateDescription = stay.toInt().toString()
             },
             onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-        Text(stringResource(R.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
 
         HorizontalDivider()
-        SectionHeading(stringResource(R.string.settings_server))
-        Text(stringResource(R.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
+        SectionHeading(stringResource(Res.string.settings_server))
+        Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             url, { typedUrl = it; urlError = null },
-            label = { Text(stringResource(R.string.settings_url)) },
+            label = { Text(stringResource(Res.string.settings_url)) },
             isError = urlError != null,
             // The supporting text is always there, so its node exists before an error arrives; while it holds the
             // error it is an assertive live region, and focus moves to the field (3.3.1), so the message is heard.
             supportingText = {
                 Text(
-                    stringResource(urlError ?: R.string.settings_url_hint),
+                    stringResource(urlError ?: Res.string.settings_url_hint),
                     modifier = if (urlError != null) {
                         Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
                     } else {
@@ -400,11 +402,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         )
         OutlinedTextField(
             key, { key = it },
-            label = { Text(stringResource(R.string.settings_key)) },
+            label = { Text(stringResource(Res.string.settings_key)) },
             supportingText = {
                 Text(
-                    if (settings.apiKeyHint.isNotEmpty()) stringResource(R.string.settings_key_saved, settings.apiKeyHint)
-                    else stringResource(R.string.settings_key_hint)
+                    if (settings.apiKeyHint.isNotEmpty()) stringResource(Res.string.settings_key_saved, settings.apiKeyHint)
+                    else stringResource(Res.string.settings_key_hint)
                 )
             },
             // Show / Hide, as on the web (docs/05 3.3.8: the key can be pasted and checked).
@@ -412,7 +414,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 IconButton(onClick = { showKey = !showKey }, modifier = Modifier.size(48.dp)) {
                     Icon(
                         if (showKey) VisibilityOffIcon else VisibilityIcon,
-                        contentDescription = stringResource(if (showKey) R.string.settings_hide_key else R.string.settings_show_key),
+                        contentDescription = stringResource(if (showKey) Res.string.settings_hide_key else Res.string.settings_show_key),
                     )
                 }
             },
@@ -441,19 +443,19 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                     // An address that is not checked has no result (round 9): the last one ("Connected: 12 houses")
                     // would sit under a field that shows an error. Withdrawn until the next run ends (round 10).
                     ServerUrl.Result.NotHttps -> {
-                        urlError = R.string.settings_url_https
+                        urlError = Res.string.settings_url_https
                         testResult = null
                         withdrawnRun = statusRun
                         runCatching { urlFocus.requestFocus() }
                     }
                     ServerUrl.Result.Invalid, ServerUrl.Result.Empty -> {
-                        urlError = R.string.settings_url_invalid
+                        urlError = Res.string.settings_url_invalid
                         testResult = null
                         withdrawnRun = statusRun
                         runCatching { urlFocus.requestFocus() }
                     }
                 }
-            }) { Text(stringResource(R.string.settings_save_test)) }
+            }) { Text(stringResource(Res.string.settings_save_test)) }
             OutlinedButton(enabled = !busy && settings.serverConfigured, modifier = Modifier.heightIn(min = 48.dp), onClick = {
                 scope.launch {
                     busy = true
@@ -463,12 +465,12 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                     statusRun++
                     busy = false
                 }
-            }) { Text(stringResource(R.string.settings_sync_now)) }
+            }) { Text(stringResource(Res.string.settings_sync_now)) }
         }
         val lastTest = testResult
         val statusText = lastTest?.fold(
-            { stringResource(R.string.settings_connected, it) },
-            { stringResource(R.string.settings_connect_failed, SyncOutcome.fromError(it).text()) },
+            { stringResource(Res.string.settings_connected, it) },
+            { stringResource(Res.string.settings_connect_failed, SyncOutcome.fromError(it).text()) },
         ) ?: settings.lastSync?.text()
         val statusTone = serverStatusTone(lastTest?.isSuccess, settings.lastSync?.kind)
         // Always composed (UX review, whole-app audit, round 7): a live region that appears together with its text is
@@ -489,7 +491,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             busy = busy,
             resultWithdrawn = serverResultWithdrawn(withdrawnRun, statusRun),
         )
-        val updatingText = stringResource(R.string.settings_status_updating)
+        val updatingText = stringResource(Res.string.settings_status_updating)
         LiveMessage(assertive = statusTone == ResultTone.ERROR && !busy) {
             when (slot) {
                 ServerStatusSlot.CARD, ServerStatusSlot.CARD_BUSY -> if (statusText != null && statusTone != null) {
@@ -507,12 +509,12 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             }
         }
         if (settings.lastSyncAt > 0) {
-            Text(stringResource(R.string.settings_last_sync, settings.lastSyncAt.dateText()),
+            Text(stringResource(Res.string.settings_last_sync, settings.lastSyncAt.dateText()),
                 style = MaterialTheme.typography.bodySmall)
         }
         SwitchRow(
-            text = stringResource(R.string.settings_photos_wifi),
-            hint = stringResource(R.string.settings_photos_wifi_hint),
+            text = stringResource(Res.string.settings_photos_wifi),
+            hint = stringResource(Res.string.settings_photos_wifi_hint),
             checked = settings.photosOnWifiOnly,
             // This column is already padded; the shared row adds no inset of its own here.
             horizontalPadding = 0.dp,
@@ -520,16 +522,16 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         )
 
         HorizontalDivider()
-        SectionHeading(stringResource(R.string.settings_privacy))
-        Text(stringResource(R.string.settings_privacy_note), style = MaterialTheme.typography.bodySmall)
+        SectionHeading(stringResource(Res.string.settings_privacy))
+        Text(stringResource(Res.string.settings_privacy_note), style = MaterialTheme.typography.bodySmall)
 
         HorizontalDivider()
-        SectionHeading(stringResource(R.string.settings_about))
-        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleSmall)
-        Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.bodySmall)
+        SectionHeading(stringResource(Res.string.settings_about))
+        Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(Res.string.app_tagline), style = MaterialTheme.typography.bodySmall)
         // The version, which support needs first.
         val version = remember { appVersion(context) }
-        if (version != null) Text(stringResource(R.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
+        if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -540,7 +542,7 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean) {
         backingUp -> {
             ProgressBar()
             Text(
-                stringResource(R.string.auto_backup_working),
+                stringResource(Res.string.auto_backup_working),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
@@ -554,12 +556,12 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean) {
             ResultCard(
                 tone = ResultTone.ERROR,
                 text = if (settings.lastAutoBackupError == AutoBackupWorker.ERROR_NO_FOLDER) {
-                    stringResource(R.string.settings_auto_backup_no_folder)
+                    stringResource(Res.string.settings_auto_backup_no_folder)
                 } else {
                     // A stable code, shown as a translated reason (an English message saved by an older build reads
                     // as the generic one); see ExportProblem.
                     stringResource(
-                        R.string.settings_auto_backup_failed,
+                        Res.string.settings_auto_backup_failed,
                         stringResource(ExportProblem.fromCode(settings.lastAutoBackupError).messageRes()),
                     )
                 },
@@ -568,12 +570,12 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean) {
         // "Last backup", not "Last automatic backup": a Back up now run updates it too, and this polite live region
         // changing is the "done" for that tap (UX review, 2026-09-22).
         settings.lastAutoBackupAt > 0 -> Text(
-            stringResource(R.string.settings_auto_backup_last, settings.lastAutoBackupAt.dateText()),
+            stringResource(Res.string.settings_auto_backup_last, settings.lastAutoBackupAt.dateText()),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         settings.autoBackup -> Text(
-            stringResource(R.string.settings_auto_backup_never),
+            stringResource(Res.string.settings_auto_backup_never),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

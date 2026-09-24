@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -26,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
@@ -57,7 +56,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.househunt.app.R
+import com.househunt.app.ui.res.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The sticky action bar of the Export and Import screens (Design review, rounds 4 and 5): the options scroll, the
@@ -234,7 +234,7 @@ fun WorkProgress(done: Int, total: Int, text: String) {
     StatusLine(text)
     // "12 of 80", no noun (UX review, round 11): the status line above already says what is being done, and the web
     // uses the same counter after its own activity label ("Preparing photos 12 of 56…"); see README §9.
-    val progressText = if (total > 0) stringResource(R.string.export_progress_count, done, total) else null
+    val progressText = if (total > 0) stringResource(Res.string.export_progress_count, done, total) else null
     if (progressText != null) {
         Text(
             progressText,

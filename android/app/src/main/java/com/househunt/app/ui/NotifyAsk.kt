@@ -3,7 +3,6 @@ package com.househunt.app.ui
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.os.Build
-import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.heightIn
@@ -22,8 +21,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.Notifications
-import com.househunt.app.R
+import com.househunt.app.ui.res.*
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Asks for notification permission **in context**, once (UX review, round 11).
@@ -49,7 +50,7 @@ import kotlinx.coroutines.launch
  * notifications with no context at first launch. The stored flag is shared, so the question is asked once in all.
  */
 @Composable
-fun rememberNotificationAsk(@StringRes rationale: Int = R.string.notify_rationale): (action: () -> Unit) -> Unit {
+fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_rationale): (action: () -> Unit) -> Unit {
     val context = LocalContext.current
     val settings = repository().settings
     val asked by settings.notificationsAsked.collectAsStateWithLifecycle(initialValue = true)
@@ -94,7 +95,7 @@ fun rememberNotificationAsk(@StringRes rationale: Int = R.string.notify_rational
                         }
                     },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { ButtonLabel(stringResource(R.string.notify_allow)) }
+                ) { ButtonLabel(stringResource(Res.string.notify_allow)) }
             },
             dismissButton = {
                 TextButton(
@@ -104,7 +105,7 @@ fun rememberNotificationAsk(@StringRes rationale: Int = R.string.notify_rational
                         proceed()
                     },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { ButtonLabel(stringResource(R.string.notify_not_now)) }
+                ) { ButtonLabel(stringResource(Res.string.notify_not_now)) }
             },
         )
     }

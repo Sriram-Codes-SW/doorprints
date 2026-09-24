@@ -1,5 +1,6 @@
 package com.househunt.app.screenshots
 
+import android.os.LocaleList
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +14,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.househunt.app.HouseHuntApp
 import com.househunt.app.data.HouseEntity
+import com.househunt.app.i18n.AppLocale
 import com.househunt.app.ui.AssistantScreen
 import com.househunt.app.ui.CompareScreen
 import com.househunt.app.ui.ExportScreen
@@ -58,6 +60,8 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         // Dates and times are shown in the device's zone: the same one on every machine (restored in tearDown).
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"))
         RuntimeEnvironment.setQualifiers("+$lang" + if (dark) "-night" else "-notnight")
+        // As the app does (AppLocale.applyDefault): Compose resources read the language from the default locale.
+        AppLocale.applyDefault(ApplicationProvider.getApplicationContext())
         val repo = ApplicationProvider.getApplicationContext<HouseHuntApp>().container.repository
         runBlocking {
             repo.saveHouse(house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000))
@@ -66,9 +70,11 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
 
     private val timeZone: TimeZone = TimeZone.getDefault()
+    private val locales: LocaleList = LocaleList.getDefault()
 
     @After fun tearDown() {
         TimeZone.setDefault(timeZone)
+        LocaleList.setDefault(locales)
     }
 
     private fun house(id: String, label: String, status: HouseStatus, price: Long, bhk: Int, checklist: Map<String, Int>, at: Long) =

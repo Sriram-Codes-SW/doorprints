@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import com.househunt.app.R
 import com.househunt.app.data.Repository
+import com.househunt.app.ui.res.*
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -25,10 +25,10 @@ internal suspend fun offerDeletedHouseUndo(
     houseId: String,
 ) {
     val house = repo.getHouse(houseId)?.takeIf { it.deleted } ?: return
-    val name = house.label.ifBlank { context.getString(R.string.house_unnamed) }
+    val name = house.label.ifBlank { context.getString(Res.string.house_unnamed) }
     val result = snackbar.showSnackbar(
-        message = context.getString(R.string.house_deleted, name),
-        actionLabel = context.getString(R.string.common_undo),
+        message = context.getString(Res.string.house_deleted, name),
+        actionLabel = context.getString(Res.string.common_undo),
         withDismissAction = true,
         duration = SnackbarDuration.Long,
     )

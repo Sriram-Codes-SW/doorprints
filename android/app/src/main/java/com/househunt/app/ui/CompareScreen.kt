@@ -35,12 +35,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.househunt.app.R
 import com.househunt.app.data.ChecklistLabels
 import com.househunt.app.data.HouseEntity
 import com.househunt.app.data.glyph
 import com.househunt.app.data.labelRes
+import com.househunt.app.ui.res.*
 import com.househunt.shared.model.HouseStatus
+import org.jetbrains.compose.resources.stringResource
 
 /** The most houses the table compares. */
 private const val MAX_COMPARED = 4
@@ -110,23 +111,23 @@ fun CompareScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
         }
     }
     val chosen = candidates.filter { it.id in selected }
-    val unnamed = stringResource(R.string.house_unnamed)
+    val unnamed = stringResource(Res.string.house_unnamed)
     fun nameOf(h: HouseEntity) = h.label.ifBlank { unnamed }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text(stringResource(R.string.compare_title), style = MaterialTheme.typography.headlineSmall,
+        Text(stringResource(Res.string.compare_title), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
         when {
             // Room has not answered yet: the heading only.
             loaded == null -> Unit
             candidates.size < 2 -> HeroEmptyState(
                 icon = Icons.AutoMirrored.Filled.List,
-                title = stringResource(R.string.compare_empty),
-                body = stringResource(R.string.compare_empty_body),
+                title = stringResource(Res.string.compare_empty),
+                body = stringResource(Res.string.compare_empty_body),
                 horizontalPadding = 0.dp,
                 action = {
                     Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                        ButtonLabel(stringResource(R.string.common_add_on_map))
+                        ButtonLabel(stringResource(Res.string.common_add_on_map))
                     }
                 },
             )
@@ -159,20 +160,20 @@ private fun ComparePicker(
     onOpenHouse: (String) -> Unit,
 ) {
     Column {
-        Text(stringResource(R.string.compare_hint), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(Res.string.compare_hint), style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(12.dp))
 
         if (chosen.size < 2) {
-            Text(stringResource(R.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
+            Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
         } else {
             CompareTable(chosen, visits, nameOf, onOpenHouse)
-            Text(stringResource(R.string.compare_footnote),
+            Text(stringResource(Res.string.compare_footnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
 
         // The picker, below the table, collapsible.
-        val pickerTitle = stringResource(R.string.compare_choose, chosen.size, MAX_COMPARED)
-        val stateText = stringResource(if (pickerOpen) R.string.common_expanded else R.string.common_collapsed)
+        val pickerTitle = stringResource(Res.string.compare_choose, chosen.size, MAX_COMPARED)
+        val stateText = stringResource(if (pickerOpen) Res.string.common_expanded else Res.string.common_collapsed)
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .clickable(role = Role.Button) { onPickerOpen(!pickerOpen) }
@@ -216,7 +217,7 @@ private fun ComparePicker(
         LiveMessage {
             if (selected.size >= MAX_COMPARED) {
                 Text(
-                    stringResource(R.string.compare_max),
+                    stringResource(Res.string.compare_max),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -235,20 +236,20 @@ private fun CompareTable(
 ) {
     val context = LocalContext.current
     LocalConfiguration.current // read again after a language change, like priceText()
-    val notScored = stringResource(R.string.compare_not_scored)
-    val notSet = stringResource(R.string.compare_not_set)
-    val scoreRow = stringResource(R.string.compare_overall)
-    val bhkFormat = stringResource(R.string.common_bhk)
-    val starsFormat = stringResource(R.string.common_stars)
-    val checkFormat = stringResource(R.string.house_check_value)
+    val notScored = stringResource(Res.string.compare_not_scored)
+    val notSet = stringResource(Res.string.compare_not_set)
+    val scoreRow = stringResource(Res.string.compare_overall)
+    val bhkFormat = stringResource(Res.string.common_bhk)
+    val starsFormat = stringResource(Res.string.common_stars)
+    val checkFormat = stringResource(Res.string.house_check_value)
     val checklistLabels = ChecklistLabels.items.map { (key, res) -> key to stringResource(res) }
     val rows = buildList {
         add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(context, it) } }))
-        add(CompareRow(stringResource(R.string.compare_price), notSet, { h -> Formats.price(context, h.price, h.priceType) }))
-        add(CompareRow(stringResource(R.string.compare_bhk), notSet, { h -> h.bedrooms?.let { String.format(bhkFormat, it) } }))
-        add(CompareRow(stringResource(R.string.compare_rating), notScored, { h -> h.rating?.let { String.format(starsFormat, it) } }))
-        add(CompareRow(stringResource(R.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
-        add(CompareRow(stringResource(R.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
+        add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> Formats.price(context, h.price, h.priceType) }))
+        add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { String.format(bhkFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { String.format(starsFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
+        add(CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
         checklistLabels.forEach { (key, label) ->
             add(
                 CompareRow(
@@ -258,13 +259,13 @@ private fun CompareTable(
                 ),
             )
         }
-        add(CompareRow(stringResource(R.string.compare_contact), notSet, {
+        add(CompareRow(stringResource(Res.string.compare_contact), notSet, {
             it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
         }))
     }
     val best = chosen.maxByOrNull { it.score ?: -1.0 }?.takeIf { it.score != null }
-    val bestFormat = stringResource(R.string.compare_best_name)
-    val openLabel = stringResource(R.string.compare_open_house)
+    val bestFormat = stringResource(Res.string.compare_best_name)
+    val openLabel = stringResource(Res.string.compare_open_house)
     val headerName: (HouseEntity) -> String = { h -> if (h == best) String.format(bestFormat, nameOf(h)) else nameOf(h) }
     // One ScrollState for every row: the house columns scroll together, the labels stay.
     val hScroll = rememberScrollState()

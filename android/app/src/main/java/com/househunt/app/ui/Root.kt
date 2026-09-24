@@ -1,6 +1,5 @@
 package com.househunt.app.ui
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -28,25 +27,27 @@ import androidx.navigation.navArgument
 import com.househunt.app.DeepLink
 import com.househunt.app.HouseHuntApp
 import com.househunt.app.Notifications
-import com.househunt.app.R
 import com.househunt.app.data.Repository
 import com.househunt.app.i18n.AppLocale
+import com.househunt.app.ui.res.*
 import com.househunt.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun repository(): Repository = (LocalContext.current.applicationContext as HouseHuntApp).container.repository
 
-private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector)
+private data class Tab(val route: String, val label: StringResource, val icon: ImageVector)
 
 private val baseTabs = listOf(
-    Tab("map", R.string.nav_map, Icons.Default.Place),
-    Tab("houses", R.string.nav_houses, Icons.Default.Home),
-    Tab("compare", R.string.nav_compare, Icons.AutoMirrored.Filled.List),
+    Tab("map", Res.string.nav_map, Icons.Default.Place),
+    Tab("houses", Res.string.nav_houses, Icons.Default.Home),
+    Tab("compare", Res.string.nav_compare, Icons.AutoMirrored.Filled.List),
 )
-private val assistantTab = Tab("assistant", R.string.nav_assistant, Icons.Default.Search)
-private val settingsTab = Tab("settings", R.string.nav_settings, Icons.Default.Settings)
+private val assistantTab = Tab("assistant", Res.string.nav_assistant, Icons.Default.Search)
+private val settingsTab = Tab("settings", Res.string.nav_settings, Icons.Default.Settings)
 
 object Routes {
     /** The destination patterns, for popUpTo and for recognising the entry on top. */
@@ -97,8 +98,8 @@ fun HouseHuntRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit
         LaunchedEffect(Unit) {
             AppLocale.consumeChange(context)?.let { change ->
                 val name = change.language?.let { ExportLanguages.nativeName(it) }
-                    ?: context.getString(R.string.settings_language_system)
-                rootSnackbar.showSnackbar(context.getString(R.string.settings_language_changed, name))
+                    ?: context.getString(Res.string.settings_language_system)
+                rootSnackbar.showSnackbar(context.getString(Res.string.settings_language_changed, name))
             }
         }
 

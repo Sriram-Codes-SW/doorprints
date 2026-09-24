@@ -1,7 +1,6 @@
 package com.househunt.app.ui
 
 import android.view.accessibility.AccessibilityManager
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,7 +27,6 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -45,7 +43,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.househunt.app.HouseHuntApp
-import com.househunt.app.R
 import com.househunt.app.data.AppSettings
 import com.househunt.app.data.HouseEntity
 import com.househunt.app.data.HouseVisitCount
@@ -55,14 +52,18 @@ import com.househunt.app.data.labelRes
 import com.househunt.app.export.CopyImportUndo
 import com.househunt.app.export.CopyRecord
 import com.househunt.app.export.ImportUndo
+import com.househunt.app.ui.res.*
 import com.househunt.shared.model.HouseStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
-private enum class Sort(@StringRes val label: Int) {
-    RECENT(R.string.sort_recent), SCORE(R.string.sort_score), PRICE(R.string.sort_price)
+private enum class Sort(val label: StringResource) {
+    RECENT(Res.string.sort_recent), SCORE(Res.string.sort_score), PRICE(Res.string.sort_price)
 }
 
 /** Saves a nullable status filter by its enum name ("" for all), so it survives rotation and process death. */
@@ -198,9 +199,9 @@ fun HouseListScreen(
         {
             val reason = appSettings?.lastSync?.text().orEmpty()
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                WarnNote(stringResource(R.string.sync_warning, syncSince.dateText(), reason))
+                WarnNote(stringResource(Res.string.sync_warning, syncSince.dateText(), reason))
                 TextButton(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {
-                    ButtonLabel(stringResource(R.string.houses_open_settings))
+                    ButtonLabel(stringResource(Res.string.houses_open_settings))
                 }
             }
         }
@@ -450,8 +451,8 @@ fun HouseListScreen(
                 syncWarning?.invoke()
                 HeroEmptyState(
                     icon = Icons.Default.Home,
-                    title = stringResource(R.string.app_tagline),
-                    body = stringResource(R.string.houses_empty),
+                    title = stringResource(Res.string.app_tagline),
+                    body = stringResource(Res.string.houses_empty),
                     horizontalPadding = 0.dp,
                     action = {
                         // IntrinsicSize.Max + fillMaxWidth: both buttons take the wider label's width (capped by the
@@ -462,7 +463,7 @@ fun HouseListScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                ButtonLabel(stringResource(R.string.common_add_on_map))
+                                ButtonLabel(stringResource(Res.string.common_add_on_map))
                             }
                             OutlinedButton(
                                 onClick = onOpenImport,
@@ -471,7 +472,7 @@ fun HouseListScreen(
                             ) {
                                 Icon(RestoreIcon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                ButtonLabel(stringResource(R.string.import_title))
+                                ButtonLabel(stringResource(Res.string.import_title))
                             }
                         }
                     },
@@ -497,7 +498,7 @@ fun HouseListScreen(
 
 @Composable
 private fun HousesHeading() {
-    Text(stringResource(R.string.houses_title), style = MaterialTheme.typography.headlineSmall,
+    Text(stringResource(Res.string.houses_title), style = MaterialTheme.typography.headlineSmall,
         modifier = Modifier.padding(top = 16.dp).semantics { heading() })
 }
 
@@ -545,7 +546,7 @@ private fun HouseList(
     // screen's KDoc). The line on screen follows every keystroke; what TalkBack hears waits until typing has paused
     // for COUNT_ANNOUNCE_DELAY_MS, so each letter is not read out (LaunchedEffect restarts on every change, which
     // makes the delay a debounce). Reset to empty whenever no filter is on, so the first filter always changes it.
-    val shownText = stringResource(R.string.houses_shown, shown.size, houses.size)
+    val shownText = stringResource(Res.string.houses_shown, shown.size, houses.size)
     var announcedText by remember { mutableStateOf("") }
     LaunchedEffect(shownText, filtering) {
         if (!filtering) {
@@ -568,7 +569,7 @@ private fun HouseList(
         item(key = "search") {
             OutlinedTextField(
                 value = query, onValueChange = onQuery,
-                label = { Text(stringResource(R.string.houses_search)) },
+                label = { Text(stringResource(Res.string.houses_search)) },
                 singleLine = true,
                 // The Search key closes the keyboard, so it no longer covers the results or the no-match hero.
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -577,7 +578,7 @@ private fun HouseList(
                     {
                         // Focus stays in the field when its clear button disappears from under TalkBack.
                         IconButton(onClick = { onQuery(""); runCatching { searchFocus.requestFocus() } }) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.houses_clear_search))
+                            Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.houses_clear_search))
                         }
                     }
                 },
@@ -594,8 +595,8 @@ private fun HouseList(
                         selected = importedOnly,
                         onClick = { onImportedOnly(!importedOnly) },
                         label = {
-                            val label = stringResource(R.string.houses_just_imported)
-                            Text(stringResource(R.string.status_filter, label, importedCount))
+                            val label = stringResource(Res.string.houses_just_imported)
+                            Text(stringResource(Res.string.status_filter, label, importedCount))
                         },
                         leadingIcon = {
                             Icon(RestoreIcon, contentDescription = null, modifier = Modifier.size(InputChipDefaults.IconSize))
@@ -631,7 +632,7 @@ private fun HouseList(
             ) {
                 StatusChip(
                     selected = filter == null, onClick = { onFilter(null) },
-                    label = stringResource(R.string.status_filter, stringResource(R.string.status_ALL), houses.size),
+                    label = stringResource(Res.string.status_filter, stringResource(Res.string.status_ALL), houses.size),
                     modifier = Modifier.focusRequester(allChipFocus).then(
                         if (chipFocusable) Modifier.focusProperties { canFocus = true } else Modifier,
                     ),
@@ -640,7 +641,7 @@ private fun HouseList(
                     val n = houses.count { it.status == s }
                     StatusChip(
                         selected = filter == s, onClick = { onFilter(s) },
-                        label = stringResource(R.string.status_filter, stringResource(s.labelRes), n),
+                        label = stringResource(Res.string.status_filter, stringResource(s.labelRes), n),
                     )
                 }
             }
@@ -666,7 +667,7 @@ private fun HouseList(
                 Box(Modifier.animateItem()) {
                     HeroEmptyState(
                         icon = Icons.Default.Search,
-                        title = stringResource(R.string.houses_no_match),
+                        title = stringResource(Res.string.houses_no_match),
                         horizontalPadding = 0.dp,
                         action = {
                             OutlinedButton(
@@ -684,7 +685,7 @@ private fun HouseList(
                                 },
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) {
-                                ButtonLabel(stringResource(R.string.houses_clear_filters))
+                                ButtonLabel(stringResource(Res.string.houses_clear_filters))
                             }
                         },
                     )
@@ -757,10 +758,10 @@ private fun ImportUndoRow(
     val done = outcome != null && !failed && !undoing
     val offered = outcome == null && !undoing
     val text = when {
-        undoing -> stringResource(R.string.import_undoing)
-        failed -> stringResource(R.string.import_undo_failed)
+        undoing -> stringResource(Res.string.import_undoing)
+        failed -> stringResource(Res.string.import_undo_failed)
         outcome != null -> undoneSentence(outcome).orEmpty()
-        else -> pluralStringResource(R.plurals.houses_imported_row, count, count, importedAt?.dateText().orEmpty())
+        else -> pluralStringResource(Res.plurals.houses_imported_row, count, count, importedAt?.dateText().orEmpty())
     }
     val tone = when {
         failed -> ResultTone.ERROR
@@ -782,7 +783,7 @@ private fun ImportUndoRow(
                 if (until != null && offered) {
                     // Under the card's text: the 24 dp icon and its 12 dp gap.
                     Text(
-                        stringResource(R.string.import_undo_until, until.dateText()),
+                        stringResource(Res.string.import_undo_until, until.dateText()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 36.dp),
@@ -798,7 +799,7 @@ private fun ImportUndoRow(
                         modifier = Modifier.heightIn(min = 48.dp).focusRequester(focusRequester).then(
                             if (takeFocus) Modifier.focusProperties { canFocus = true } else Modifier,
                         ),
-                    ) { ButtonLabel(stringResource(if (done) R.string.common_close else R.string.import_undo_copy)) }
+                    ) { ButtonLabel(stringResource(if (done) Res.string.common_close else Res.string.import_undo_copy)) }
                 }
             },
         )
@@ -817,16 +818,16 @@ private fun ConfirmUndoDialog(count: Int, importedAt: Long, onRemove: () -> Unit
     AlertDialog(
         onDismissRequest = onKeep,
         title = {
-            Text(pluralStringResource(R.plurals.houses_undo_confirm_title, count, count, importedAt.dateText()))
+            Text(pluralStringResource(Res.plurals.houses_undo_confirm_title, count, count, importedAt.dateText()))
         },
-        text = { Text(stringResource(R.string.houses_undo_confirm_body)) },
+        text = { Text(stringResource(Res.string.houses_undo_confirm_body)) },
         confirmButton = {
             // The app's one look for an irreversible choice (Design review, round 21): as Import's *Replace*.
-            DangerButton(text = stringResource(R.string.houses_undo_confirm_remove), onClick = onRemove)
+            DangerButton(text = stringResource(Res.string.houses_undo_confirm_remove), onClick = onRemove)
         },
         dismissButton = {
             TextButton(onClick = onKeep, modifier = Modifier.heightIn(min = 48.dp)) {
-                ButtonLabel(stringResource(R.string.houses_undo_confirm_keep))
+                ButtonLabel(stringResource(Res.string.houses_undo_confirm_keep))
             }
         },
     )
@@ -844,7 +845,7 @@ private fun ConfirmUndoDialog(count: Int, importedAt: Long, onRemove: () -> Unit
 @Composable
 private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Modifier) {
     var open by rememberSaveable { mutableStateOf(false) }
-    val name = stringResource(R.string.houses_sort)
+    val name = stringResource(Res.string.houses_sort)
     val current = stringResource(sort.label)
     Box(modifier) {
         TextButton(
@@ -857,7 +858,7 @@ private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Mo
             },
         ) {
             Text(
-                stringResource(R.string.houses_sort_value, current),
+                stringResource(Res.string.houses_sort_value, current),
                 modifier = Modifier.weight(1f, fill = false),
             )
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
@@ -889,14 +890,14 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
     // (round 16) says what a double-tap does, "double-tap to open details", with the button role.
     OutlinedCard(
         modifier.fillMaxWidth().clickable(
-            onClickLabel = stringResource(R.string.house_open),
+            onClickLabel = stringResource(Res.string.house_open),
             role = Role.Button,
             onClick = onClick,
         ),
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(h.label.ifBlank { stringResource(R.string.house_unnamed) }, fontWeight = FontWeight.SemiBold,
+                Text(h.label.ifBlank { stringResource(Res.string.house_unnamed) }, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 // The status glyph (UX-002: ● ★ ✕, so the status is not colour alone), hidden from TalkBack, which
                 // reads the status text in the card's merged description.
@@ -913,9 +914,9 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
             // FlowRow wraps at large font scales instead of clipping (A11Y-A03).
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 h.priceText()?.let { Text(it, fontWeight = FontWeight.Medium) }
-                h.bedrooms?.let { Text(stringResource(R.string.common_bhk, it)) }
-                Text(stringResource(R.string.common_score_value, h.score.scoreText()))
-                Text(stringResource(R.string.common_visits_count, visits))
+                h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
+                Text(stringResource(Res.string.common_score_value, h.score.scoreText()))
+                Text(stringResource(Res.string.common_visits_count, visits))
             }
         }
     }
