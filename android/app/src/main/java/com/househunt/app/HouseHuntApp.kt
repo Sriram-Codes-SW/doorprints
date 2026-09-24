@@ -20,7 +20,9 @@ class AppContainer(app: Application) {
     val repository = Repository(app, AppDatabase.create(app), settings)
 }
 
-class HouseHuntApp : Application() {
+// open for the screenshot tests' app (ScreenshotTestApp), which skips startServices(): no MapLibre (native code) and
+// no WorkManager or notification set-up on the JVM.
+open class HouseHuntApp : Application() {
     lateinit var container: AppContainer
         private set
 
@@ -30,6 +32,11 @@ class HouseHuntApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        startServices()
+    }
+
+    /** Platform services and start-up work; the data container above is all the screens need. */
+    protected open fun startServices() {
         MapLibre.getInstance(this)
         Notifications.createChannels(AppLocale.wrap(this))
         SyncWorker.schedulePeriodic(this)

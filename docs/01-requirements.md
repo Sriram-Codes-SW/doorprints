@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.25 |
+| Version | 0.26 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -37,6 +37,7 @@
 | 0.23 | 2026-09-24 | Claude (Cowork), Docs team | Docs re-synced with the code at HEAD `3ad2b58` (comment and docs round, no behaviour change). **FR-098** is **Impl on Android and the web**: the web's `shared/india-boundaries.ts` has had rule 2's adm0 clause (`COUNTRY_LINE_RULE`, `COUNTRY_LINE_RULE_LEGACY`) and the tile-zoom guard (`TILE_ZOOM_GUARD`) as committed in `aef007c`, so the 0.22 "open parity gap (web)" no longer holds and is removed. The status names the two known limits (the Assam-Arunachal Pradesh state line from zoom 5, S4b-BL-15; two close lines in the middle sector and the Wakhan, S4b-BL-16). |
 | 0.24 | 2026-09-24 | Claude (Code), Docs team | **FR-098** known limits re-synced with branch `fix/india-boundary-lines` (PR #16; CI green on `5af2f4d`, HEAD `9e0036e` running; not deployed): the Assam-Arunachal Pradesh state line is drawn from zoom 5, the two close lines are gone and the India-China border is the outline's alone (S4b-BL-11, -15, -16); the remaining limits are the hand-over steps, the 3-5 km loops at Sikkim's two tri-junctions and no line on the 7 shared stretches at zoom 5+ while tiles load or offline. |
 | 0.25 | 2026-09-24 | Claude (Code), Docs team | **FR-098** known limits after the Singalila spur fix (round 2 reviews): the Sikkim tri-junction loops sized (about 13 x 3 km at Nepal-China-India, from about zoom 10; about 2 km at Doklam) and the tile line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9) (S4b-BL-17). |
+| 0.26 | 2026-09-24 | Claude (Code), Docs team | §12 RTM: the Android APK and live web UI tests of [06](06-test-plan.md) §16 (PR #18) added to the rows they trace to: **TC-I-35** (emulator and Test Lab smoke tests) to FR-001, FR-006, FR-010 and FR-011; **TC-U-56** (JVM screenshot tests) to FR-041 and NFR-006/NFR-007; **TC-M-26** (the live web UI test after every merge) to FR-041, NFR-006/NFR-007 and FR-098 (map screens only). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -401,17 +402,17 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 
 | Req | Design | Code module(s) | Test(s) |
 |---|---|---|---|
-| FR-001 | 03 §7.1 | android `ui/MapScreen.kt` (Save house here, long-press), web `pages/map`, `core/models.ts newHouse` | TC-M-01, TC-F-01, TC-U-51, TC-M-23, TC-M-24 |
+| FR-001 | 03 §7.1 | android `ui/MapScreen.kt` (Save house here, long-press), web `pages/map`, `core/models.ts newHouse` | TC-M-01, TC-F-01, TC-U-51, TC-M-23, TC-M-24, TC-I-35 |
 | FR-002 | 03 §6, §9 | backend `house/HouseDto`, `House`; android `data/Models.kt`; web `core/models.ts` | TC-I-03, TC-I-06 |
 | FR-003 | 03 §6 | `HouseDto.rating @Min(1) @Max(5)` | TC-I-06 |
 | FR-004 | 03 §6 | `house_checklist`, `Checklist.items`, `CHECKLIST` | TC-I-03, TC-U-05, TC-U-19 |
 | FR-005 | 03 §6.3 | `HouseScore.of` (`:shared`), `HouseEntity.score`, web `houseScore()` | TC-U-05 (`HouseScoreTest`), TC-U-19 (`models.spec.ts`) |
-| FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03 |
+| FR-006 | 03 §8.1 | `HouseStatus` (backend, android, web) | TC-I-03, TC-M-03, TC-I-35 |
 | FR-007 | 03 §7.4 | `photo/PhotoService`, `ImageSanitizer`, android `Repository.addPhoto`, web `image-resize.ts` | TC-I-08, TC-I-09, TC-U-11, TC-U-14 |
 | FR-008 | 03 §7.3 | `visit/VisitController`, `Repository.markVisitedNow` | TC-I-07 |
 | FR-009 | 03 §4.2 | `MapScreen.kt addHouseLayers`, web `map-page` | TC-M-02 |
-| FR-010 | 03 §4.2 | `HouseListScreen.kt` | TC-M-03 |
-| FR-011 | 03 §4.2 | `CompareScreen.kt`, web `compare-page` | TC-M-04, TC-U-53 |
+| FR-010 | 03 §4.2 | `HouseListScreen.kt` | TC-M-03, TC-I-35 |
+| FR-011 | 03 §4.2 | `CompareScreen.kt`, web `compare-page` | TC-M-04, TC-U-53, TC-I-35 |
 | FR-012 | 03 §10 | `HouseService.delete/purge`, `VisitController.delete` | TC-I-05, TC-I-16 |
 | FR-013 | 03 §7.2, §8.2 | `location/HuntService.checkNearbyHouses` | TC-U-07, TC-F-02 |
 | FR-014 | 03 §7.2 | `HuntService.checkStreet`, `StreetAlerts` (`:shared` location), `ReverseGeocoder` | TC-U-07 (`StreetAlertsTest`), TC-F-03 |
@@ -441,7 +442,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-038 | 03 §7.6 | web `house-detail-page` *Fill in from listing text* (`listingFill.*`), android `HouseEditScreen.PasteListingDialog` | TC-M-09, TC-AI-05 |
 | FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` | TC-M-09, TC-AI-07 |
 | FR-040 | 09 §2 | `HuntService.requestUpdates/stopIfBatteryLow` | TC-F-06, TC-F-09 |
-| FR-041 | 05 §4 | `ui/Theme.kt`, `res/values-night` | TC-A-06 |
+| FR-041 | 05 §4 | `ui/Theme.kt`, `res/values-night` | TC-A-06, TC-U-56, TC-M-26 |
 | FR-083, FR-084 | [11](11-feature-parity-and-export-spec.md) 5.16 | planned: reminder scheduler (alarm + WorkManager fallback), `Notifications`, Settings | Planned TC-U-38, TC-M-18 ([06](06-test-plan.md) §13, [11](11-feature-parity-and-export-spec.md) §13) |
 | FR-085..FR-088 | [11](11-feature-parity-and-export-spec.md) 5.17, 03 ADR-01 | planned: `HuntingArea` model and cooldown (`:shared` candidates), Room 3 table, geofence registrar, boot receiver, notifications | Planned TC-U-39, TC-U-40, TC-M-18, TC-F-12, TC-A-12 |
 | NFR-001 | 03 §11 | GIST indexes in `V1__init.sql` | TC-P-01 |
@@ -449,7 +450,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | NFR-003 | 03 §7.2 | `HuntService.checkNearbyHouses` | TC-P-03 |
 | NFR-004 | 03 §10 | Room + WorkManager | TC-F-08 |
 | NFR-005 | 03 §8.2, ADR-01 | `LocationRequest` settings | TC-F-06 |
-| NFR-006, NFR-007 | 05 | see 05; web `i18n/translation.service.ts`, dictionaries | TC-A-01..05, TC-L-01..04, TC-U-21 |
+| NFR-006, NFR-007 | 05 | see 05; web `i18n/translation.service.ts`, dictionaries | TC-A-01..05, TC-L-01..04, TC-U-21, TC-U-56, TC-M-26 |
 | NFR-008 | 03 §5, 08 | deployment, backups | TC-O-01 (restore drill) |
 | NFR-009 | 03 §6, ADR-08 | `photo` table | TC-P-04 |
 | NFR-010 | 03 §5 | `Dockerfile` JVM flags, Hikari pool | TC-P-02 |
@@ -488,7 +489,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | PRV-024..PRV-027 | [11](11-feature-parity-and-export-spec.md) 5.18, 03 ADR-01 | planned: permission state checks on resume, rationale screen, settings deep link, area wake-up auto-off | Planned TC-U-40, TC-M-18 (permission matrix), TC-A-12 |
 | FR-042..FR-048 | 03 §16, [schemas/README.md](schemas/README.md) | `shared/export/**`, `app/export/**`, `app/ui/ExportScreen.kt`, `app/ui/ImportScreen.kt`, `web/src/app/export/**`, `web/src/app/pages/data/**`, `backend/backup/**` | TC-U-26..29, TC-U-42, TC-U-45..47, TC-U-50, TC-U-52, TC-I-33, TC-I-34, TC-S-16, TC-S-17, TC-M-12, TC-M-20, TC-M-21, TC-M-22, TC-A-10 |
 | FR-089..FR-097 | [schemas/README.md](schemas/README.md) §0, §6, §7; 03 §16.3; [12](12-brand-and-naming.md) G | Android `shared/export/ImportPlan.kt`, `BackupValidation`, `app/export/BackupReader.kt`, `app/ui/ImportScreen.kt`; server `backend/backup/**`; web: planned (4b) | TC-U-42, TC-U-28, TC-S-17, TC-I-33, TC-I-34; the web import's tests are planned with S4b-00 |
-| FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `ui/IndiaView.kt`, `ui/IndiaViewRules.kt`, `ui/MapScreen.kt` (`loadStyle`), `assets/geo/in-boundaries.geojson`; data builder `web/scripts/geo/build_in_boundaries.py` | TC-U-54, TC-U-55, TC-S-25, TC-M-25 |
+| FR-098 | 03 ADR-22, §4.2, §4.3; [05](05-ux-accessibility-i18n.md) §7.3; [11](11-feature-parity-and-export-spec.md) D-26, §10 | web `shared/india-boundaries.ts`, `shared/map-style.ts` (`createMlMap`), `public/geo/in-boundaries.geojson`; Android `ui/IndiaView.kt`, `ui/IndiaViewRules.kt`, `ui/MapScreen.kt` (`loadStyle`), `assets/geo/in-boundaries.geojson`; data builder `web/scripts/geo/build_in_boundaries.py` | TC-U-54, TC-U-55, TC-S-25, TC-M-25, TC-M-26 (screens only) |
 | FR-070..FR-073 | 03 §16.4 | `web/public/manifest.webmanifest`, `web/public/sw.js`, `core/pwa.service.ts`, `data/storage.service.ts`, `data/local-db.ts`, `shared/app-banners.ts`, `pages/share/share-page.ts`, `scripts/sw-precache*.mjs` | TC-U-31, TC-U-43, TC-U-44, TC-S-19, TC-M-15, TC-M-19 |
 | NFR-021..NFR-027 | 03 §16 | `shared/export/ExportModel.kt` (fixed order, passed-in clock), `web/src/app/export/zip.ts` (stored entries) | TC-U-26, TC-U-29, TC-P-05 (planned) |
 | PRV-012, PRV-018 | 03 §16.2 | `ExportBundle.build` (one redaction point), export screens | TC-U-27 |

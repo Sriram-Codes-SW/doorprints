@@ -115,6 +115,19 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Tests of the Android APK and of the live web UI** (owner requests of 2026-09-24: "Is there any way you can test the
+  Android APK?", and "Test the Web UI in detail as well after every main merge"; PR #18, commits `afe4064`, `ef0a5dd`
+  and `bc57361`; [docs/06](docs/06-test-plan.md) §16, [sprint log](docs/10-sprint-log.md) §13.3). **Screenshot tests on
+  the JVM** (TC-U-56): Robolectric 4.17 and Roborazzi 1.75.0 render every Android screen except the Map in English,
+  Hindi, Tamil and Telugu, light and dark (64 reference images); `android.yml` fails when a screen changes and uploads
+  the diffs. **Smoke tests of the installed APK** (TC-I-35): every tab opens and a new house shows in the list, on an
+  API 34 emulator in the new workflow `android-emulator.yml`, and in Firebase Test Lab on `main` once the owner has set
+  it up (keyless, through a Workload Identity provider of its own; [docs/07](docs/07-secure-build-and-deploy.md) §7.2).
+  **The live web UI test** `tools/live-ui` (TC-M-26): every page in four languages, both themes, phone and desktop, with
+  axe, the main flows and offline, run after every merge to `main` (it exits 1 on any failure); its first run passed
+  every area except one console error that did not come back. The emulator test's first run found a real crash (see
+  *Fixed*). The Compose Multiplatform phases ([ADR-23](docs/03-design.md)) now show "no screen changed" with these
+  tests.
 - **Compose Multiplatform UI module `:ui`** (owner request of 2026-09-24, [ADR-23](docs/03-design.md); phase 1,
   CMP-1, commit `be86f50`). The Android UI starts moving from Jetpack Compose to JetBrains Compose Multiplatform so
   that an iOS app can reuse it later. New KMP module `android/ui` (Android plus compile-only iOS targets, like
@@ -267,6 +280,16 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Docs for the APK and live UI tests** (2026-09-24): [01](docs/01-requirements.md) v0.26 (RTM),
+  [03](docs/03-design.md) v0.24 (ADR-23 guard rails), [06](docs/06-test-plan.md) v0.38 (§16: TC-U-56, TC-I-35, TC-M-26),
+  [07](docs/07-secure-build-and-deploy.md) v0.35 (`android-emulator.yml`, §7.2 Firebase Test Lab setup with its own
+  provider and pool), [10](docs/10-sprint-log.md) v0.44 (CMP-0, §13.3, backlog CMP-0-BL-1..6),
+  [14](docs/14-lead-backlog-and-handoff.md) v0.12 (standing rule: the live UI test after every merge),
+  [docs/README.md](docs/README.md) v0.44, new [ops/firebase-test-lab-setup.md](docs/ops/firebase-test-lab-setup.md) 0.5,
+  `android/shared/README.md` 1.46, `android/ui/README.md` 1.3, `web/README.md`, CLAUDE.md.
+- **Android: `HouseHuntApp` is `open`**, with its start-up services (MapLibre, notification channels, WorkManager
+  schedules, start-up jobs) in `protected open fun startServices()`, so the screenshot tests' application can leave
+  them out. No change in behaviour.
 - **Docs for the Compose Multiplatform track** (2026-09-24): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
   amended; §4.2.1), [06](docs/06-test-plan.md) v0.32, [07](docs/07-secure-build-and-deploy.md) v0.30,
   [10](docs/10-sprint-log.md) v0.38 (§13, CMP-1..CMP-9), [14](docs/14-lead-backlog-and-handoff.md) v0.5, new
@@ -535,6 +558,24 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Fixed
 
+- **Android: opening the app from a notification while it was not running could crash it** ("Cannot navigate …
+  Navigation graph has not been set"). A tap on a new-house notification such as "Are you at a house?", or on one that
+  opens a house or a screen, ran the navigation before the navigation graph existed. The app now waits for the graph
+  first (`Root.kt`). Found by the new emulator smoke test on its first CI run (run 35943533129;
+  [docs/06](docs/06-test-plan.md) TC-I-35, [sprint log](docs/10-sprint-log.md) §13.3). On `bc57361` the push run passed
+  both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in
+  `6376706`, the next item); both runs on `6376706` passed (push and pull request).
+- **Android: the Map's camera could move off the main thread after a location fix** ("Animators may only be run on
+  Looper threads"). `currentLocation()` awaits a Play services task that completes on a Binder thread, and the Map moved
+  the MapLibre camera right after it. The app's own main dispatcher switches back to the main thread, so it was never
+  seen in normal use, but the code relied on it; under the Compose test rule it crashed `everyTabOpens` in the
+  pull-request emulator run on `bc57361` (the push run passed). `currentLocation()` now returns on the main thread
+  (`withContext(Dispatchers.Main.immediate)`, `MapScreen.kt`, commit `6376706`), which covers every caller: on the Map
+  the first framing, "go to me" and "save here", plus the house form's and the Assistant's location lookups
+  ([docs/06](docs/06-test-plan.md) TC-I-35).
+- **`tools/live-ui`: incomplete string escaping** (CodeQL, high). The untranslated-key check built its regular
+  expressions escaping only dots; it now escapes every regex metacharacter (`escapeRegExp`). Test tooling only; the
+  app is unchanged ([docs/06](docs/06-test-plan.md) TC-M-26).
 - **India's boundaries on the map** (owner issue P0 of 2026-09-24 on the live site, near Jammu and Kashmir and near
   Arunachal Pradesh; branch `fix/india-boundaries`, HEAD `3ad2b58` pushed, **not yet seen green in CI, not deployed**). Both apps drew OpenFreeMap
   Liberty's ISO view: the Line of Control, the Line of Actual Control and claim lines, a Pakistan line through

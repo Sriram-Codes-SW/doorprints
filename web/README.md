@@ -297,6 +297,26 @@ npm test            # watch mode while developing
 npm run test:ci     # single headless run (ng test --watch=false), used by CI
 ```
 
+### The live UI test after every merge to `main`
+
+Owner rule of 2026-09-24: after every merge to `main`, once the `Web` deploy has finished, the live site is tested in
+detail with `tools/live-ui` ([docs/06](../docs/06-test-plan.md) TC-M-26). It is not a workflow; the lead session runs
+it and reports the counts.
+
+```bash
+cd tools/live-ui && npm ci && npx playwright install chromium && node live-ui.js
+# optional: node live-ui.js <baseUrl> <outDir>; CHROMIUM=<path> instead of the install step. Exits 1 on any failure.
+```
+
+It opens every route in en/hi/ta/te, light and dark, at phone (390 px) and desktop (1280 px) width, and checks on each
+load: it loads, `<html lang>`, a title, an `h1`, no horizontal scroll, no untranslated i18n key (the keys of
+`src/app/i18n/en.ts`), text in the language's script, the theme's background, axe (WCAG 2.1 A/AA, serious and
+critical) and console errors. Then the flows: add two houses, edit and reload, the list, Compare, *Download* on *Your
+data*, the service worker, the house opening offline, and delete. Last, map screenshots at the TC-M-25 spots for a
+person to look at. Results go to `tools/live-ui/out/results.json` and `out/shots` (git-ignored). The run adds and
+deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser. The browser context turns the
+site's CSP off (`bypassCSP`) only where axe is injected, because the CSP rightly refuses inline scripts.
+
 ## Deploy (free static hosting)
 
 **Live host: Firebase Hosting, at `https://doorprints.web.app`** (Firebase project `doorprints`, site `doorprints`,
@@ -657,3 +677,4 @@ belong to the web import, which also arrives in Sprint 4b.
 | 2026-09-24 | **App icon footprints, option C (branch `fix/brand-footprints`, PR #15; [docs/14](../docs/14-lead-backlog-and-handoff.md) N3).** `favicon.svg` and the five app-icon PNGs in `public/icons` (not the shortcut icons) show three small footprints walking up beside the door, left, right, left (sole, heel, four toes), rendered from SVG with headless Chromium; each icon's layout, the door and the colours are unchanged; the favicon keeps the same prints (owner's choice). *Installable (PWA)* and the `index.html` comment updated. No code, string, CSP or dependency change. |
 | 2026-09-24 | **India's boundary: one line from zoom 5 (India's line with China ours alone, shared stretches handed to the tiles); the Assam-Arunachal Pradesh state line (branch `fix/india-boundary-lines`, PR #16, `5af2f4d` then `9e0036e` after the design review; [docs/10](../docs/10-sprint-log.md) §12.10; S4b-BL-11, S4b-BL-15, S4b-BL-16).** `shared/india-boundaries.ts`: `COUNTRY_LINE_RULE` (and its deprecated-syntax form) also leaves out India's line with China (`INDIA_CHINA_LINE`), which showed as stray pieces beside the outline at zoom 10-12 (Shipki La, the Mana Pass). `public/geo/in-boundaries.geojson` rebuilt (sha256 `2c497e2e…56d7`, 415 689 bytes; kinds `world` 359 lines, `claim` 7 pieces, `state` 2 lines), byte-identical to Android's copy: the 7 stretches where the tiles draw India's border themselves (none with China) moved from `claim` to `world` (below zoom 5 only), found by the new `scripts/geo/find_shared_stretches.py` (zooms 7, 9 and 11) and pasted into `SHARED` in `scripts/geo/build_in_boundaries.py` (`--no-shared` gives the whole outline for the finder; no connector-only spur at a box edge; repeated points removed). New layer `in-boundary-state` (`IN_BOUNDARY_STATE_LAYER`, kind `state`, minzoom 5), directly above `boundary_3` with its `line-color`, `line-width`, `line-dasharray` and `line-opacity` copied and butt caps; without `boundary_3`, directly below `in-boundary-world` with `STATE_FALLBACK_LINE_PAINT`; a taken id is a warning. `india-boundaries.spec.ts`: 41 cases (4 new: rule 2, India's line with China left to India's outline; the state line from zoom 5, dashed and drawn like `boundary_3`; without `boundary_3`; the state-line id already taken; ordering expectations updated); the whole suite, 463 tests, passes. Renders of `9e0036e` at zoom 8-12 over every hand-over and the spots flagged in review: one line; the state line dashed like the other state lines. CI green on `5af2f4d`; the run on `9e0036e` pending. |
 | 2026-09-24 | **India's boundary, round 2 review fix (branch `fix/india-boundary-lines`, PR #16; [docs/10](../docs/10-sprint-log.md) §12.10).** `scripts/geo/build_in_boundaries.py`: a `SHARED` cut within 1e-4 degrees of a claim line's end counts as the end (`SHARED` is rounded to 5 decimals), so the two connector-only pieces on the Singalila ridge (2.5 km and 2.3 km), drawn as spurs into Nepal from zoom 5, are gone. `public/geo/in-boundaries.geojson` rebuilt (sha256 `25984afa…a024`, 415 608 bytes; `world` 359 lines, `claim` 5 pieces, `state` 2 lines; the 7 shared stretches unchanged), byte-identical to Android's copy. No change to `shared/india-boundaries.ts` or its spec. Known minors recorded in the intro and in docs/03 ADR-22: the Sikkim tri-junction loops (about 13 x 3 km and 2 km), the tile line's overrun at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9) (S4b-BL-17), and `INDIA_CHINA_LINE` also hiding the Tumen China-North Korea line. |
+| 2026-09-24 | **The live UI test after every merge to `main`** (owner rule of 2026-09-24; [docs/06](../docs/06-test-plan.md) TC-M-26, [docs/10](../docs/10-sprint-log.md) §13.3; commit `afe4064`). New *Test* subsection for `tools/live-ui` (Playwright 1.56.1, axe-core 4.13.0): every route x 4 languages x 2 themes x phone and desktop, the flows, offline, the map at the TC-M-25 spots; exits 1 on any failure. First run on the live site (deploy `4100f7a`): every area passed except 1 of 146 console checks (a stylesheet served once as `text/plain`, not reproducible in 100 further loads; put down to the test environment's proxy). No change to the app. |
