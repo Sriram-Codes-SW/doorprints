@@ -6,7 +6,8 @@ import app.doorprints.shared.api.HouseDraftDto
 
 /*
  * The house form's and the lists' decisions that need no Android, written as pure functions so they are unit tested
- * (HouseFormRulesTest; UX review, whole-app audit).
+ * (HouseFormRulesTest in commonTest; UX review, whole-app audit). Common code since CMP-4 P4c (was `:app`'s), public
+ * because `:app`'s house form, list and map use them until they move here.
  */
 
 /**
@@ -16,7 +17,7 @@ import app.doorprints.shared.api.HouseDraftDto
  * never counts as an unsaved change and never overwrites what the user typed meanwhile. [streetLabel] turns a street
  * into the default name ("House on MG Road"). Returns the new draft and baseline.
  */
-internal fun fillPlace(
+fun fillPlace(
     draft: HouseEntity,
     baseline: HouseEntity,
     place: Place,
@@ -49,10 +50,10 @@ internal fun fillPlace(
 }
 
 /** A form field that "Fill in from listing text" can set, named in its result line. */
-internal enum class ListingField { NAME, ADDRESS, STREET, LOCALITY, PRICE, BHK, CONTACT, PHONE, LISTING, NOTES }
+enum class ListingField { NAME, ADDRESS, STREET, LOCALITY, PRICE, BHK, CONTACT, PHONE, LISTING, NOTES }
 
 /** What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them. */
-internal data class ListingMerge(
+data class ListingMerge(
     val house: HouseEntity,
     val filled: List<ListingField>,
     val kept: List<ListingField>,
@@ -66,7 +67,7 @@ internal data class ListingMerge(
  * The rent/buy choice goes with the price. Amenities join the listing's notes. Location, status, rating and checklist
  * are never touched, and nothing is saved until *Save*.
  */
-internal fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean): ListingMerge {
+fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean): ListingMerge {
     val filled = mutableListOf<ListingField>()
     val kept = mutableListOf<ListingField>()
     fun <T> pick(field: ListingField, current: T?, suggested: T?, isEmpty: (T?) -> Boolean): T? {
@@ -115,7 +116,7 @@ internal fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: 
  * A typed latitude or longitude: the number when it parses and lies within ±[limit] (90 or 180), otherwise null.
  * A comma is taken as the decimal point, as some keyboards type it.
  */
-internal fun parseCoordinate(text: String, limit: Double): Double? {
+fun parseCoordinate(text: String, limit: Double): Double? {
     val value = text.trim().replace(',', '.').toDoubleOrNull() ?: return null
     return value.takeIf { !it.isNaN() && it in -limit..limit }
 }
@@ -124,25 +125,25 @@ internal fun parseCoordinate(text: String, limit: Double): Double? {
  * "Lowest price" (UX review, whole-app audit): monthly rents first and then sale prices, each from low to high, so
  * ₹25,000 / month is never sorted next to ₹1,00,00,000. Houses without a price go last within their kind.
  */
-internal fun sortByPrice(houses: List<HouseEntity>): List<HouseEntity> =
+fun sortByPrice(houses: List<HouseEntity>): List<HouseEntity> =
     houses.sortedWith(compareBy<HouseEntity>({ it.priceType == "SALE" }, { it.price ?: Long.MAX_VALUE }))
 
 /** A visit recorded less than this long ago makes "I am here now" say so instead of adding another. */
-internal const val RECENT_VISIT_MS = 10 * 60_000L
+const val RECENT_VISIT_MS = 10 * 60_000L
 
 /** True when the newest visit ([lastArrivedAt]) is too recent for "I am here now" to add another. */
-internal fun visitIsRecent(lastArrivedAt: Long?, now: Long): Boolean =
+fun visitIsRecent(lastArrivedAt: Long?, now: Long): Boolean =
     lastArrivedAt != null && now - lastArrivedAt in 0 until RECENT_VISIT_MS
 
 /** How old a last-known fix may be for *Save house here* to use it when no fresh fix comes. */
-internal const val LAST_FIX_MAX_AGE_MS = 2 * 60_000L
+const val LAST_FIX_MAX_AGE_MS = 2 * 60_000L
 
 /**
  * Whether the phone's last known location may stand in for a fresh fix (UX review, whole-app audit): only when it is
  * under two minutes old and at least as accurate as Hunt mode's own threshold ([maxAccuracyM]). A fix of any age
  * saved houses in the wrong place for good.
  */
-internal fun lastFixUsable(ageMs: Long, accuracyM: Float?, maxAccuracyM: Float): Boolean =
+fun lastFixUsable(ageMs: Long, accuracyM: Float?, maxAccuracyM: Float): Boolean =
     ageMs in 0..LAST_FIX_MAX_AGE_MS && accuracyM != null && accuracyM <= maxAccuracyM
 
 /**
@@ -152,11 +153,11 @@ internal fun lastFixUsable(ageMs: Long, accuracyM: Float?, maxAccuracyM: Float):
  * checks the Tamil and Telugu labels there at 100 % and 115 % font (round 3), and the Design Director confirmed the
  * threshold (README 1.26).
  */
-internal const val PAIR_STACK_BELOW_DP = 300f
+const val PAIR_STACK_BELOW_DP = 300f
 
 /** From this font scale the pairs stack whatever the width ("வாடகை ₹/மாதம்" and "தீர்க்கரேகை" would be cut off). */
-internal const val PAIR_STACK_FONT_SCALE = 1.3f
+const val PAIR_STACK_FONT_SCALE = 1.3f
 
 /** True when a field pair must stack: [widthDp] is the room the pair has, [fontScale] the system font scale. */
-internal fun stackFieldPair(widthDp: Float, fontScale: Float): Boolean =
+fun stackFieldPair(widthDp: Float, fontScale: Float): Boolean =
     widthDp < PAIR_STACK_BELOW_DP || fontScale >= PAIR_STACK_FONT_SCALE

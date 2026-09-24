@@ -25,6 +25,17 @@
     <string name="status_REJECTED">अस्वीकृत</string>
     <string name="status_ALL">सभी</string>
     <string name="status_filter">%1$s (%2$d)</string>
+    <!-- Checklist labels: Compare's rows since CMP-4 P4c; the house form reads the Android copies until P6a. -->
+    <string name="check_water">पानी की आपूर्ति</string>
+    <string name="check_power">बिजली बैकअप</string>
+    <string name="check_parking">पार्किंग</string>
+    <string name="check_sunlight">धूप</string>
+    <string name="check_ventilation">हवादारी</string>
+    <string name="check_noise">शांति (कम शोर)</string>
+    <string name="check_security">सुरक्षा</string>
+    <string name="check_maintenance">इमारत की हालत</string>
+    <string name="check_neighbourhood">आस-पड़ोस</string>
+    <string name="check_commute">आने-जाने की सुविधा</string>
     <!-- Read from Android resources for now (ui/Format.kt in :app); kept for the common Format of CMP-3. -->
     <string name="price_per_month">%1$s/माह</string>
     <string name="map_hunt_mode">हंट मोड</string>

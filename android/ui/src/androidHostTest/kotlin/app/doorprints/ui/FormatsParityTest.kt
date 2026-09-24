@@ -1,5 +1,6 @@
 package app.doorprints.ui
 
+import java.io.File
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.test.Test
@@ -8,7 +9,8 @@ import kotlin.test.assertEquals
 /**
  * The common [Formats] write what the JVM's formatters wrote for the four languages before CMP-3 (docs/06 TC-U-62):
  * scores as `String.format(locale, "%.1f")`, and amounts below a lakh as `NumberFormat.getCurrencyInstance` with no
- * decimals (the JDK does not group lakhs; Android's ICU does, as [Formats.rupees] and FormatsTest do).
+ * decimals (the JDK does not group lakhs; Android's ICU does, as [Formats.rupees] and FormatsTest do). Since CMP-4
+ * P4c also Compare's four formats filled by [formatPositional] as `String.format` filled them.
  */
 class FormatsParityTest {
     private val locales = listOf("en", "hi", "ta", "te").map { Locale.Builder().setLanguage(it).setRegion("IN").build() }
@@ -43,5 +45,22 @@ class FormatsParityTest {
         val hindi = Formats.date(millis, "hi")
         assertEquals(hindi, hindi.filter { it !in '०'..'९' })
         assertEquals(Formats.date(millis, "en"), Formats.date(millis, ""))
+    }
+
+    @Test
+    fun compareFormatsMatchStringFormatInEveryLanguage() {
+        val keys = listOf("common_bhk", "common_stars", "house_check_value", "compare_best_name")
+        listOf("" to "en", "-hi" to "hi", "-ta" to "ta", "-te" to "te").forEach { (folder, language) ->
+            val locale = Locale.Builder().setLanguage(language).setRegion("IN").build()
+            val xml = File("src/commonMain/composeResources/values$folder/strings.xml").readText()
+            keys.forEach { key ->
+                val format = Regex("""<string name="$key">([^<]*)</string>""").find(xml)?.groupValues?.get(1)
+                    ?: error("$key missing in values$folder")
+                val args: List<Any> = if (key == "compare_best_name") listOf("Green Villa", "50% off", "A \$1 flat") else (0..12).toList()
+                args.forEach { arg ->
+                    assertEquals(String.format(locale, format, arg), formatPositional(format, arg), "$key($arg) in $language")
+                }
+            }
+        }
     }
 }

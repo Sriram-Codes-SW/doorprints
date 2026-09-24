@@ -74,7 +74,6 @@ import app.doorprints.data.ChecklistLabels
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.PhotoEntity
 import app.doorprints.data.Repository
-import app.doorprints.data.glyph
 import app.doorprints.data.labelRes
 import app.doorprints.export.ImportWorker
 import app.doorprints.location.ReverseGeocoder

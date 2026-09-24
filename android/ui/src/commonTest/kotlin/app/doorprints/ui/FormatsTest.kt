@@ -43,4 +43,16 @@ class FormatsTest {
         assertEquals("3.7", Formats.score(11.0 / 3))
         assertEquals("10.0", Formats.score(9.96))
     }
+
+    @Test
+    fun positionalPlaceholdersAreFilledAsComposeResourcesFillThem() {
+        assertEquals("2 BHK", formatPositional("%1\$d BHK", 2))
+        assertEquals("5 में से 3 स्टार", formatPositional("5 में से %1\$d स्टार", 3))
+        assertEquals("Green Villa (best)", formatPositional("%1\$s (best)", "Green Villa"))
+        // Order follows the numbers, and each argument is written as it is: a name with % or $ in it stays whole.
+        assertEquals("b, a", formatPositional("%2\$s, %1\$s", "a", "b"))
+        assertEquals("50% \$1 off (best)", formatPositional("%1\$s (best)", "50% \$1 off"))
+        // Anything that is not a positional %d or %s is left alone.
+        assertEquals("%d and %1\$f", formatPositional("%d and %1\$f", 1))
+    }
 }
