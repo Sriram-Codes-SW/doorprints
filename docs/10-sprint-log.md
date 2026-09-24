@@ -55,7 +55,7 @@
 | 0.41 | 2026-09-24 | Claude (Code), Docs team | §13.3 after the round 3 review of PR #18: the second emulator run (`ef0a5dd`: the cold-start fix worked; the add-a-house test tapped the off-screen second Save, fixed in `bc57361`, re-run pending); screenshot tests restore the time zone; new backlog ticket **CMP-0-BL-6** (cold starts from the open-house and open-screen notifications); TC-U-60 renumbered TC-U-56; the Docs line names [14] v0.7. |
 | 0.42 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 5: the smoke tests **passed on the emulator (CI, commit `bc57361`)**; Firebase Test Lab stays off by default at zero cost (option (a); a results bucket needs a billing account), options (b) and (c) for the owner; CodeQL's "Incomplete string escaping" in `tools/live-ui` fixed; the Docs line names the current versions; CMP-0's status cell updated. |
 | 0.43 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 6: a second real bug found by the pull-request emulator run on `bc57361` (the Map's camera moved off the main thread after `currentLocation()`; fixed in `MapScreen.kt` with `withContext(Dispatchers.Main.immediate)`); the result now reads "passed on the emulator; one of two runs on `bc57361` found a threading bug, fixed in the next commit; the re-run is pending". |
-| 0.44 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 7: the emulator results use the agreed wording (the threading bug fixed in `6376706`, re-run pending); the fix covers every caller of `currentLocation()`; new backlog ticket **CMP-0-BL-7** (`--results-bucket` conditional if the owner picks Test Lab option (c)); the Docs line names the current versions. |
+| 0.44 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 7: the emulator results use the agreed wording (the threading bug fixed in `6376706`, re-run pending); the fix covers every caller of `currentLocation()`; new backlog ticket **CMP-0-BL-7** (`--results-bucket` conditional if the owner picks Test Lab option (c)); the Docs line names the current versions. Then both emulator runs on `6376706` passed (push and pull request; `ee30b92`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1386,7 +1386,8 @@ top bar's Save (`!hasAnyAncestor(hasScrollAction())`). The same commit makes the
 time zone in `@After`.
 
 **Third and fourth emulator runs (`bc57361`).** On `bc57361` the push run passed both smoke tests; the pull-request run
-on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request).
+on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed
+(push and pull request).
 The push run of "Smoke tests on an emulator (API 34)" passed `everyTabOpens` and `addAHouseFromANewHouseIntent` (a cold
 start from a new-house intent, the house saved and shown in the list; screenshots in the `android-emulator-results`
 artifact). The pull-request run found a **second real bug**: `everyTabOpens` crashed with "Animators may only be run on
