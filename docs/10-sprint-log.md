@@ -1296,11 +1296,11 @@ Moved to `commonMain`: `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt` a
 `internal`. The theme's language lookup is `expect fun uiLanguage()`: on Android `LocalConfiguration`'s locale, as
 before; on iOS Compose's `Locale.current`. `IndiaViewRules` computes `WORLD_MAX_ZOOM` from the float's bits instead
 of `Math.nextDown` (same value, 4.9999995f; `Float.nextDown()` is JVM-only, which the code review caught with
-`:ui:compileCommonMainKotlinMetadata`, now in `android.yml`). `ServerStatusTest` moved to `:ui` `commonTest` (`kotlin.test`, 5 tests). `:app`'s `testDebugUnitTest`
-depends on `:ui:testAndroidHostTest`, and `android.yml` also names it. `shared-ios.yml` also watches `android/ui/**`
-and compiles `:ui:compileKotlinIosArm64`, `:ui:compileKotlinIosSimulatorArm64` and
-`:ui:compileTestKotlinIosSimulatorArm64`; the job name is unchanged, in case it is a required check.
-`android/.gitignore` ignores `/ui/build/`.
+`:ui:compileCommonMainKotlinMetadata`, now in `android.yml`).
+`ServerStatusTest` moved to `:ui` `commonTest` (`kotlin.test`, 5 tests). `:app`'s `testDebugUnitTest` depends on
+`:ui:testAndroidHostTest`, and `android.yml` also names it. `shared-ios.yml` also watches `android/ui/**` and compiles
+`:ui:compileKotlinIosArm64`, `:ui:compileKotlinIosSimulatorArm64` and `:ui:compileTestKotlinIosSimulatorArm64`; the
+job name is unchanged, in case it is a required check. `android/.gitignore` ignores `/ui/build/`.
 
 **Verified, and how.** Locally: `assembleDebug`, the 156 `:app` unit tests, the `:shared` host tests and the 5 `:ui`
 tests pass. No visual change (no UI code changed behaviour; the files moved).
