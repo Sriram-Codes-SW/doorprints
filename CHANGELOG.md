@@ -280,6 +280,29 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Legacy House Hunt names renamed to Doorprints** (owner request of 2026-09-24: "the app needs to be Doorprints and
+  also references of legacy House Hunt needs to be changed to it"; [docs/03](docs/03-design.md) ADR-24,
+  [sprint log](docs/10-sprint-log.md) §14). Code: Kotlin packages `app.doorprints`, `app.doorprints.ui`,
+  `app.doorprints.shared` (were `com.househunt.app`, `com.househunt.app.ui`, `com.househunt.shared`) and the same
+  Android namespaces; backend packages `app.doorprints.server.*` (were `com.househunt.*`); `DoorprintsApp`,
+  `DoorprintsRoot`, `DoorprintsTheme`, `DoorprintsColors`, `DoorprintsApplication`, style `Theme.Doorprints`, log tag
+  `DoorprintsApi`; Maven `app.doorprints:doorprints-api`; image tags `doorprints-api` and `doorprints-db`; CI keystore
+  temp file `doorprints-release.jks`. Stored names, each with a carry-over so nothing saved is lost: the Android Room
+  file `doorprints.db` (an existing `househunt.db` and its `-wal`, `-shm`, `-journal` are renamed before Room opens
+  it); WorkManager jobs queued under the old worker class names still run; the launcher entry keeps its old component
+  name so a home-screen icon survives the update; the web storage keys `doorprints.lang`, `doorprints.api-config` and
+  `doorprints.*` for every `hh.*` key (the old keys are moved at start, before anything reads them). **Kept on
+  purpose:** the Android Keystore alias `house_hunt_api_key_v1` (renaming it would make the saved API key unreadable),
+  the Flyway migrations (checksums) and the `HH_*` signing secret names.
+- **Breaking for self-hosters: the MCP tool `askHouseHunt` is now `askDoorprints`.** An MCP client picks the new name
+  from `tools/list`; a saved permission or prompt that names the old tool is updated by hand
+  ([docs/ai](docs/ai/ai-design.md) section 12). The other tool names and the server name `doorprints` are unchanged.
+- **Breaking for a local `docker compose` database: the database, user, dev password default and volume are now
+  `doorprints` (volume `doorprints-pgdata18`; were `househunt` and `dbdata18`).** The old volume is left untouched but
+  no longer used, so the first start has an empty database; carry dev data over with the dump-and-restore steps in
+  [docs/08](docs/08-operations-runbook.md) section 11. `application.yml`'s `DB_URL`/`DB_USER`/`DB_PASSWORD` defaults
+  changed the same way; a server that sets all three is not affected, and no Spring property prefix or environment
+  variable was renamed.
 - **Docs for the APK and live UI tests** (2026-09-24): [01](docs/01-requirements.md) v0.26 (RTM),
   [03](docs/03-design.md) v0.24 (ADR-23 guard rails), [06](docs/06-test-plan.md) v0.38 (§16: TC-U-56, TC-I-35, TC-M-26),
   [07](docs/07-secure-build-and-deploy.md) v0.35 (`android-emulator.yml`, §7.2 Firebase Test Lab setup with its own
