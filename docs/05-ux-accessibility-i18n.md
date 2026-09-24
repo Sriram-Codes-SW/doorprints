@@ -311,7 +311,7 @@ browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); 
 | Keyboard | With a field focused on a phone under 500 px tall, the bottom bar steps aside, so it never covers the field |
 | Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`: no page scrolls sideways (a Tamil word had scrolled pages 32-103 px) |
 | Skip link | Hidden by its own height (`translateY(-110%)`) until focused; a fixed offset let a wrapped Tamil label show |
-| Header | 48 px on phones (was 56) |
+| Header and toolbar | The app header is 48 px on phones (was 56); the house page's toolbar title takes up to two lines before its ellipsis (320 px cut "New house"), its actions at most 60 % of the bar |
 
 Checked by `tools/live-ui`'s mobile pass ([06](06-test-plan.md) TC-M-26) on emulated phones, 320-384 px, landscape,
 130 % and 200 % text, four languages, both themes. Known limit: on the smallest setups (Tamil at 130 % on 384 x 615,

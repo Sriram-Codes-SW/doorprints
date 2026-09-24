@@ -68,11 +68,11 @@
   (S4b-BL-23), the mappers common; `CompareScreen` and `HouseFormRules` in `:ui` commonMain; `SyncHealthTest` and
   `ExportGrantsTest` in commonTest (S4b-BL-28); new `RepositoryTransactionTest` (TC-U-66) and `ModelLabelsTest`
   (TC-U-67) ([10](10-sprint-log.md) §13.8). The 64 screenshots unchanged.
-- **PR #24, open** (branch `claude/doorprints-dev-continue-fzcge2`, 19 commits on `f8dd6f9`; the owner merges):
-  **CMP-5, CMP-6 and CMP-7 as one change** (owner request), with the web backlog S4b-BL-1, -2, -6, -7, the shared
-  items S4b-BL-12, -13, -17, -20 (with the backend's `maxSyncVersion`), S4b-BL-9's check and S4b-BL-10's finding,
-  S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build (found by the API 26 run), and the phone
-  display fixes of the owner's mobile report ([10](10-sprint-log.md) §13.9). Every screen is in `:ui` commonMain;
+- **PR #24, open** (branch `claude/doorprints-dev-continue-fzcge2`, on `f8dd6f9`, 19 code commits and the docs; the
+  owner merges): **CMP-5, CMP-6 and CMP-7 as one change** (owner request), with the web backlog S4b-BL-1, -2, -6, -7,
+  the shared items S4b-BL-12, -13, -17, -20 (with the backend's `maxSyncVersion`), S4b-BL-9's check and S4b-BL-10's
+  finding, S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build (found by the API 26 run), and the
+  phone display fixes of the owner's mobile report ([10](10-sprint-log.md) §13.9). Every screen is in `:ui` commonMain;
   new tests TC-U-68 to TC-U-77 and TC-I-36; the 64 screenshots unchanged. CI green on the pushed commits (the last
   emulator run on `18b631e`); `tools/live-ui` passed against a local build (mobile 324, map 23). Reviews to run: code,
   design/UX, web, docs, and the India view on its own.

@@ -1851,9 +1851,11 @@ and fix those as well"). Commits, in order:
 | Shared items | `eaf06a0`, `52453f7`, `0989550`, `18b631e` | S4b-BL-13 (Android wording), S4b-BL-17, S4b-BL-20 with the backend field, S4b-BL-12 |
 | Test fixes | `91dfa7a`, `c7d0f8b` | S4b-BL-42; the Map smoke test records what MapLibre placed |
 | Phone display | `afab9d4`, `2d28529` | The owner's mobile report (WIP commit with the handoff notes, then finished) |
+| Docs | `d5f9258` and the docs commits after it | This SSDLC update, the READMEs and the CHANGELOG; the handoff notes removed |
 
 - **CMP-5** (step 1). JetBrains navigation-compose 2.9.2 (androidx navigation 2.9.7 on Android) and lifecycle 2.11.0
-  as `api` in `:ui` commonMain, kotlinx-serialization-json for the routes. Moved: `Root.kt` (`DoorprintsRoot`, the
+  as `api` in `:ui` commonMain (the catalog's androidx navigation 2.9.5 to 2.9.7 and lifecycle 2.9.4 to 2.11.0, the
+  versions they resolve to), kotlinx-serialization-json for the routes. Moved: `Root.kt` (`DoorprintsRoot`, the
   bottom bar, the `NavHost`, the deep-link effect, `Routes`), `HouseListScreen`, `AssistantScreen` with a common
   `AssistantViewModel(repository, LocationSource, SavedStateHandle)`, `SettingsScreen`, `NotifyAsk`,
   `LocationPermission`. New seams: `AppServices` and `LocalAppServices` (repository, app scope, location, copy undo,
@@ -1898,7 +1900,9 @@ as real world testing after completion of development"; until then the emulator 
 (5) MapLibre's OpenGL ES build replaced the default Vulkan build (found by the API 26 job). (6) No screenshot was
 re-recorded: S4b-BL-34's `compare_empty` and `compare_picker` images were not added (the wrapper part is done).
 Equivalences, not changes: a new house id from Kotlin's `Uuid`, times from `kotlin.time`, the style-keyed effects keyed
-on a style-load counter, Hunt started with the application context, the picker's start folder computed at tap time.
+on a style-load counter, Hunt started with the application context, the picker's start folder computed at tap time,
+the house list's undo taking one IO hop per read, Settings' *Back up now* flow created once per process, and the form's
+lists and the Replace dialog read from Compose resources (the same text).
 
 **Left in `:app`, and why:** the Android implementations behind the seams (Geocoder, camera and `FileProvider`,
 WorkManager workers, SAF pickers and grants, notifications, `ExportProblem.of`, `ImportRequest`'s WorkManager data,
