@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // :ui - Compose Multiplatform module with Doorprints' UI code that is not tied to Android (ADR-23, README.md in this
 // folder). Targets: Android (AGP's KMP library plugin) and, compile-only for now, iosArm64 + iosSimulatorArm64,
 // the same as :shared. The screens move here phase by phase; :app stays the Android application around them.
-// The Kotlin package of the moved files stays com.househunt.app.ui, so :app's imports do not change.
+// The Kotlin package of the moved files stays app.doorprints.ui, so :app's imports do not change.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -14,8 +14,8 @@ plugins {
 
 kotlin {
     android {
-        // The Android namespace; the Kotlin package is com.househunt.app.ui.
-        namespace = "com.househunt.ui"
+        // The Android namespace; the Kotlin package is app.doorprints.ui.
+        namespace = "app.doorprints.ui"
         // Compose resources are packaged as Android assets, which needs Android resources on in this KMP library.
         androidResources { enable = true }
         compileSdk = 37
@@ -57,6 +57,6 @@ kotlin {
 // move to :ui, in a package next to the UI code.
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.househunt.app.ui.res"
+    packageOfResClass = "app.doorprints.ui.res"
     generateResClass = always
 }

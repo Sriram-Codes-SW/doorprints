@@ -175,12 +175,12 @@ jobs:
           HH_KEYSTORE_BASE64: ${{ secrets.HH_KEYSTORE_BASE64 }}
         run: |
           umask 077
-          printf '%s' "$HH_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/house-hunt-release.jks"
-          test -s "$RUNNER_TEMP/house-hunt-release.jks"
+          printf '%s' "$HH_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/doorprints-release.jks"
+          test -s "$RUNNER_TEMP/doorprints-release.jks"
 
       - name: assembleRelease (signed)
         env:
-          HH_KEYSTORE_FILE: ${{ runner.temp }}/house-hunt-release.jks
+          HH_KEYSTORE_FILE: ${{ runner.temp }}/doorprints-release.jks
           HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
           HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
           HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
@@ -198,7 +198,7 @@ jobs:
 
       - name: Remove keystore
         if: always()
-        run: rm -f "$RUNNER_TEMP/house-hunt-release.jks"
+        run: rm -f "$RUNNER_TEMP/doorprints-release.jks"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v7

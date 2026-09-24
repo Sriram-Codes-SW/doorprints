@@ -1,6 +1,6 @@
 <resources>
     <!-- Window background before Compose draws: light here, dark in values-night, so there is no white flash. -->
-    <style name="Theme.HouseHunt" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Doorprints" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
     </style>
 </resources>

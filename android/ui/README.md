@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.4 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4 | 2026-09-24 | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [docs/03](../../docs/03-design.md) ADR-24). Section 3: the Kotlin package and the Android namespace are both `app.doorprints.ui` (were `com.househunt.app.ui` and `com.househunt.ui`), the resources class `app.doorprints.ui.res.Res`; section 4: `DoorprintsTheme`. No visual change (the 64 screenshots verify). |
 | 1.3 | 2026-09-24 | Round 3 review of PR #18: the screenshot test id is **TC-U-56** (was TC-U-60); the android.yml command in section 5 is split over three lines. |
 | 1.2 | 2026-09-24 | Section 5: `android.yml` runs the unit tests with `-Proborazzi.test.verify=true`, and each phase is checked by the JVM screenshot tests of `:app` (docs/06 TC-U-56) and the emulator smoke tests (TC-I-35, `android-emulator.yml`); CMP-0, commit `afe4064` ([docs/10](../../docs/10-sprint-log.md) §13.3). |
 | 1.1 | 2026-09-24 | Code review of CMP-1 (commit `06e482d`): `WORLD_MAX_ZOOM` is computed from the float's bits (`Float.nextDown()` is JVM-only); `android.yml` compiles `:shared` and `:ui` commonMain metadata on Linux; Room version follows the catalog. |
@@ -47,15 +48,16 @@ Versions live in `android/gradle/libs.versions.toml` (`cmp`, `cmp-material3`, `c
 
 ## 3. Package name
 
-The Android namespace (R class) is **`com.househunt.ui`**, but the Kotlin package of the moved files stays
-**`com.househunt.app.ui`**, so `:app`'s imports do not change and every move is a plain file move. Declarations `:app`
-uses are `public` instead of `internal`. Package names keep the old product name on purpose (ADR-13).
+The Android namespace (R class) and the Kotlin package are both **`app.doorprints.ui`** (the same package as
+`:app`'s screens, so `:app`'s imports do not change and every move is a plain file move); the Compose resources'
+generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `public` instead of `internal`. Until
+2026-09-24 the packages kept the old product name (`com.househunt.app.ui`, namespace `com.househunt.ui`).
 
 ## 4. What is in it now (phase 1)
 
 | Source set | File | Contents |
 |---|---|---|
-| commonMain | `Theme.kt` | `HouseHuntTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
+| commonMain | `Theme.kt` | `DoorprintsTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
 | commonMain | `Rows.kt`, `ServerStatus.kt` | list rows; the server status line and its rules |
 | commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`) |
 | commonMain | `Buttons.kt` | `ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES` (from `ActionBar.kt`) |

@@ -33,7 +33,7 @@ on:
       # BackupParityTest.theWebGoldenIsTheCanonicalSample compares golden/backup.golden.ts byte for byte with the sample.
       - "web/src/app/export/golden/**"
       # BackupParityTest.theClientReadersUseTheSameNumber reads MAX_DATA_JSON_BYTES here (Android :shared).
-      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
       - ".github/workflows/backend.yml"
   pull_request:
     branches: [main]
@@ -44,7 +44,7 @@ on:
       - "docker-compose.yml"
       - "web/src/app/export/backup-export.ts"
       - "web/src/app/export/golden/**"
-      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
       - ".github/workflows/backend.yml"
   workflow_dispatch:
 
