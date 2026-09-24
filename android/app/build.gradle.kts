@@ -20,13 +20,15 @@ val releaseSigning = listOf("HH_KEYSTORE_FILE", "HH_KEYSTORE_PASSWORD", "HH_KEY_
 val hasReleaseSigning = releaseSigning.values.all { it != null }
 
 android {
-    // The product is called Doorprints (renamed from "House Hunt" on 2026-09-22). Only the applicationId changed:
-    // the namespace (R class, BuildConfig) and the Kotlin package stay com.househunt.app on purpose, so no source
-    // file moves. The app was never published, so the new id simply installs side by side with old
-    // com.househunt.app test builds (uninstall those by hand; their local data is not carried over).
+    // The product is called Doorprints (renamed from "House Hunt" on 2026-09-22). The applicationId changed that
+    // day; the namespace (R class, BuildConfig) and the Kotlin package followed on 2026-09-24 (were com.househunt.app).
+    // The app was never published, so the new id simply installs side by side with old com.househunt.app test
+    // builds (uninstall those by hand; their local data is not carried over). Stored names that outlive a package
+    // rename are carried over at start instead: the Room file (data/DatabaseFile.kt) and queued WorkManager jobs
+    // (LegacyWorkerFactory.kt); the Keystore alias stays (data/ApiKeyCipher.kt).
     // Everything that depends on the id follows it automatically: the FileProvider authority is
     // "${applicationId}.files" in the manifest and context.packageName + ".files" in code.
-    namespace = "com.househunt.app"
+    namespace = "app.doorprints"
     compileSdk = 37
 
     defaultConfig {
@@ -88,8 +90,17 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // Only the app's four languages go into the APK. Without this, the libraries' own translations (values-mr from
+    // androidx and material3, …) make Android resolve a phone set to [Marathi, Hindi] to Marathi, which the app
+    // lacks, and fall back to English; with it, Android skips to Hindi (AppLocale.applyDefault, docs/05 section 8.2).
+    androidResources {
+        localeFilters += listOf("en", "hi", "ta", "te")
+    }
+
     lint {
-        // Every string must exist in values-hi, values-ta and values-te (docs/05 section 8.2).
+        // Every Android-resource string (the services' strings in res/values*) must exist in values-hi, values-ta
+        // and values-te (docs/05 section 8.2). The UI strings are Compose resources in :ui; StringParityTest checks
+        // those.
         error += listOf("MissingTranslation", "ExtraTranslation")
     }
 }

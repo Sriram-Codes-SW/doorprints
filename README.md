@@ -16,9 +16,10 @@ are online.
 
 English · हिन्दी · தமிழ் · తెలుగు
 
-> Doorprints was called **House Hunt** until 2026-09-22. Code packages (`com.househunt`), storage keys and database
-> names keep the old name on purpose ([ADR-13](docs/03-design.md#14-architecture-decision-records)). The old
-> repository URL (`house-hunt`) redirects here.
+> Doorprints was called **House Hunt** until 2026-09-22. Since 2026-09-24 the code, storage keys and database names
+> use the new name too; what was saved under the old names moves over by itself, and a few stored identifiers keep
+> the old name on purpose ([ADR-24](docs/03-design.md#14-architecture-decision-records)). The old repository URL
+> (`house-hunt`) redirects here.
 
 ## Key features
 
@@ -328,3 +329,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-24 | *Map data and credits*: both apps apply the same boundary rules, and the known limits are stated with the measured figures (the outline a median of about 1.5-1.6 km off the true line; a second, close line in a few mountain stretches; no Assam-Arunachal Pradesh state line from zoom 5), from [docs/03](docs/03-design.md) ADR-22 v0.18. |
 | 2026-09-24 | *Map data and credits*: one line from zoom 5 (the outline alone draws India's border with China; where the base map draws India's border with Nepal, Bhutan, Myanmar or in the Wakhan, its line takes over, so the second, close line is gone) and the Assam-Arunachal Pradesh state line is drawn from zoom 5 (branch `fix/india-boundary-lines`, PR #16, [docs/10](docs/10-sprint-log.md) §12.10); the known limits restated (1.5-3 km, up to about 5 km in a few mountain stretches; the hand-over step and the Sikkim tri-junction loops; no line on those stretches from zoom 5 while tiles load or offline). |
 | 2026-09-24 | *Map data and credits*: the known limits sized after the round 2 reviews of PR #16 (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tiles' line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9); [docs/10](docs/10-sprint-log.md) §12.10, S4b-BL-17). |
+| 2026-09-24 | Legacy House Hunt names renamed to Doorprints (owner request; [ADR-24](docs/03-design.md#14-architecture-decision-records)): the note under the title says code, storage keys and database names use the new name since 2026-09-24, and what was saved under the old names moves over by itself. |

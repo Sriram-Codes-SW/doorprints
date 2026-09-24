@@ -28,7 +28,7 @@ needs no CSP change, is precached by `sw.js` like the rest of the build and is s
 (`firebase.json`). The attribution adds "Natural Earth". Near Arunachal Pradesh the tiles carry the India-China line
 only as disputed lines (rule 1 hides them) and the overlay's `claim` outline draws India's boundary there. **Android
 applies the same rules** to the same style and the same file
-(`android/app/src/main/java/com/househunt/app/ui/IndiaView.kt`, the rules as data in `IndiaViewRules.kt`); the only
+(`android/app/src/main/java/app/doorprints/ui/IndiaView.kt`, the rules as data in `IndiaViewRules.kt`); the only
 deliberate difference is the "Natural Earth" credit, web only. **One line from zoom
 5 (branch `fix/india-boundary-lines`, PR #16):** rule 2 also leaves out India's line with China (`INDIA_CHINA_LINE`:
 China on one side, India or no country on the other), which the tiles cut into drawn and hidden pieces, so India's
@@ -105,7 +105,7 @@ form. Those three keep their current names for now: the rename will be made toge
 different name does not affect import in either direction.
 
 **The backup is a cross-platform contract.** `src/app/export/backup-export.ts` mirrors
-`android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt` and `ExportModel.kt` field for
+`android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt` and `ExportModel.kt` field for
 field: the same `format` id, entry names, property names and order; epoch-millisecond timestamps rather than the
 API's ISO strings; no `deleted` or `syncVersion`; null optionals left out (Kotlin's `explicitNulls = false`) and
 compact JSON. A backup written on a phone must import in a browser and the other way round, so nothing in that
@@ -182,7 +182,7 @@ never saved at 0°, 0°); parsing listings is Sprint 4b.
 
 **Install** lives on **Your data** ("Install the app": the browser's install button where Chromium offers one,
 the Add-to-Home-Screen steps on iOS). The app also offers it once as a banner, only after the first saved house;
-"Not now" there is remembered for 30 days (`hh.installDismissedAt` in localStorage, which "Remove all data" clears). At most one non-error banner
+"Not now" there is remembered for 30 days (`doorprints.installDismissedAt` in localStorage, which "Remove all data" clears). At most one non-error banner
 shows at a time (migration, then update, then install, then storage advice).
 
 The postbuild step also writes the manifest's `id` as the **absolute base path** read from the built
@@ -280,8 +280,9 @@ recorded backend payloads, the exporters against checked-in golden files, and th
 from `web/firebase.json`, and `isAcceptable`, the rule for what the worker may precache), the house page's Back and
 where it goes after Delete or Discard (`back-target.spec.ts`), the router restoring history on a cancelled Back
 (`app.config.spec.ts`), which navigation item is current (`nav-section.spec.ts`), what "Remove all data" clears
-from the tab's sessionStorage and from this origin's localStorage (`session-leftovers.spec.ts`: every `hh.*` and
-`doorprints.*` key in both), that it unregisters
+from the tab's sessionStorage and from this origin's localStorage (`session-leftovers.spec.ts`: every `doorprints.*` key in
+both except the language and the server settings), the one-time move of keys saved under their pre-rename names
+(`core/storage-keys.spec.ts`), that it unregisters
 only this deployment's service worker (`pwa.service.spec.ts`, *unregisterOwnWorker*), and that a location answer
 arriving after its page was left is dropped (`shared/locate-once.spec.ts`: Map's *Add at my location*, Plan's and the
 house form's *Use my location*), which start field Plan's *Plan route* focuses when the start cannot be used, and
@@ -465,8 +466,9 @@ move before web import ships.
 Remember to add `https://doorprints.web.app` to the API's `APP_CORS_ORIGINS`, and to use an HTTPS API URL:
 browsers block calls from an HTTPS page to an HTTP API.
 
-Browser storage keys keep the old `house-hunt.` prefix (`house-hunt.lang`, `house-hunt.api-config`) so
-settings saved before the rename to Doorprints are not lost.
+Browser storage keys all start with `doorprints.` (`doorprints.lang`, `doorprints.api-config`, `doorprints.mapView`,
+…). Until 2026-09-24 they were `house-hunt.lang`, `house-hunt.api-config` and `hh.*`; `src/main.ts` moves any such
+key to its new name before the app reads storage (`core/storage-keys.ts`), so nothing saved before is lost.
 
 Address lookup ("Fill address from map") uses the public OpenStreetMap Nominatim service and is only
 called when you press the button, in line with its usage policy.
@@ -490,13 +492,13 @@ Anything that is not in this table is a finding.
 |---|---|---|---|
 | IndexedDB | database `doorprints`, stores `houses`, `visits`, `photos`, `settings` | Houses, visits, photos (each photo record holds the image as a Blob), and app settings: `storage.persist-asked`, `sync.server` (the server address, never the key), `cursor.house`, `cursor.visit`, `cursor.photo`, `migration.state`, `export.options` | The database is created on the first start, with 4 empty stores. The settings appear as they are used |
 | Cache Storage | **one** cache, `doorprints-shell-<16 hex characters>/` | Only this build's own files, from `https://doorprints.web.app/` | A few seconds after the first start: the worker registers 3 s after start and then downloads the whole build |
-| Local storage (`https://doorprints.web.app`) | `house-hunt.lang` | The chosen language (`en`, `hi`, `ta` or `te`) | After the language was changed in the header |
-| | `hh.mapView` | The last map position, `{"lat":…,"lon":…,"zoom":…}` | From the first time the map page shows: MapLibre reports its first fit to the page as a move, so the starting view is saved at once. Missing only when the map cannot be drawn (no WebGL 2) or when the browser blocks storage for the site. While it still holds that starting view, the app does not read it as a place the user chose: Plan's start and a new house's pin skip it |
-| | `hh.installDismissedAt`, `hh.storageRiskDismissedAt` | The date of a "Not now" on the install offer or the storage advice | Only after that "Not now" |
-| | `house-hunt.api-config` | `{"baseUrl":…,"apiKey":…}` | **Only when "Remember on this device" is on** |
-| Session storage (`https://doorprints.web.app`) | `house-hunt.api-config` | `{"baseUrl":…,"apiKey":…}` | When a server is connected with "Remember on this device" **off** (the default) |
-| | `hh.houseDraft:<house id>` or `hh.houseDraft:new:…` | The unsaved house form, contact included | Only while a house form has unsaved edits. It goes when the house is saved or the page is left |
-| | `hh.shareText` | Listing text shared to the app | Only while the Share page holds it |
+| Local storage (`https://doorprints.web.app`) | `doorprints.lang` | The chosen language (`en`, `hi`, `ta` or `te`) | After the language was changed in the header |
+| | `doorprints.mapView` | The last map position, `{"lat":…,"lon":…,"zoom":…}` | From the first time the map page shows: MapLibre reports its first fit to the page as a move, so the starting view is saved at once. Missing only when the map cannot be drawn (no WebGL 2) or when the browser blocks storage for the site. While it still holds that starting view, the app does not read it as a place the user chose: Plan's start and a new house's pin skip it |
+| | `doorprints.installDismissedAt`, `doorprints.storageRiskDismissedAt` | The date of a "Not now" on the install offer or the storage advice | Only after that "Not now" |
+| | `doorprints.api-config` | `{"baseUrl":…,"apiKey":…}` | **Only when "Remember on this device" is on** |
+| Session storage (`https://doorprints.web.app`) | `doorprints.api-config` | `{"baseUrl":…,"apiKey":…}` | When a server is connected with "Remember on this device" **off** (the default) |
+| | `doorprints.houseDraft:<house id>` or `doorprints.houseDraft:new:…` | The unsaved house form, contact included | Only while a house form has unsaved edits. It goes when the house is saved or the page is left |
+| | `doorprints.shareText` | Listing text shared to the app | Only while the Share page holds it |
 | Cookies | none | | Never |
 | Service workers | `https://doorprints.web.app/`, source `sw.js` | The app's worker. It holds no data itself, and its only store is the cache above | From about 3 s after the first start |
 
@@ -523,7 +525,7 @@ step 1.
      `manifest.webmanifest`, `favicon.svg` and `icons/….png`, plus `media/…` if the build has any. There is no other
      host (no map tiles, fonts, Nominatim or server), no `/api/` and no `screenshots/`.
    - **IndexedDB:** one database, `doorprints`, with the stores `houses`, `visits`, `photos` and `settings`, all empty.
-   - **Local storage:** only `hh.mapView`, the starting view over India, about
+   - **Local storage:** only `doorprints.mapView`, the starting view over India, about
      `{"lat":20.5937,"lon":78.9629,"zoom":4}`. The map page writes it as soon as it shows (see the table). Nothing
      else.
    - **Session storage:** empty. **Cookies:** none.
@@ -533,7 +535,7 @@ step 1.
       Then choose **Add photos** and pick two small pictures.
    2. Add a second house, `Audit house 2`, with nothing else, and save it.
    3. Open `Audit house 1`, add a word to **Notes**, and wait one second **without saving**.
-      **Expected:** **Session storage** now has `hh.houseDraft:<id of house 1>`, holding the unsaved form (with the
+      **Expected:** **Session storage** now has `doorprints.houseDraft:<id of house 1>`, holding the unsaved form (with the
       contact). Choose **Save**. **Expected:** that key is gone.
    4. Switch the language in the header to தமிழ் and back to English, and move the map a little.
    5. Open `https://doorprints.web.app/connect`. Enter **API address (URL)** `https://doorprints.web.app` and **API key**
@@ -549,17 +551,17 @@ step 1.
      API key** anywhere.
    - **Cache storage:** the same single cache as in step 1, still only build files. There are no photos, houses or
      `/api/` answers in it.
-   - **Local storage:** `house-hunt.lang` = `en` and `hh.mapView`. `hh.installDismissedAt` or
-     `hh.storageRiskDismissedAt` appear only if you pressed "Not now" on those notices. There is **no
-     `house-hunt.api-config`**, because "Remember on this device" was off.
-   - **Session storage:** `house-hunt.api-config` =
+   - **Local storage:** `doorprints.lang` = `en` and `doorprints.mapView`. `doorprints.installDismissedAt` or
+     `doorprints.storageRiskDismissedAt` appear only if you pressed "Not now" on those notices. There is **no
+     `doorprints.api-config`**, because "Remember on this device" was off.
+   - **Session storage:** `doorprints.api-config` =
      `{"baseUrl":"https://doorprints.web.app","apiKey":"audit-not-a-real-key-0000000000000000"}`. The key is here and
-     nowhere else. No `hh.houseDraft:*` key remains.
+     nowhere else. No `doorprints.houseDraft:*` key remains.
    - The contact's name and phone number appear only inside the `houses` record, never in local storage, in the
      cache or in the address bar.
 
    Then open `/connect` again, turn **Remember on this device** on, choose **Save and continue**, and then **Save
-   anyway**. **Expected:** `house-hunt.api-config` has moved to **Local storage** and is gone from **Session storage**.
+   anyway**. **Expected:** `doorprints.api-config` has moved to **Local storage** and is gone from **Session storage**.
 4. **Remove all data.** Open **Your data**, go to *Remove data from this browser*, and choose **Remove all data**.
    With the unsent test houses, the question is "Changes that have not reached your server yet: N. They will be
    lost. Remove all data from this browser anyway?". Choose **Remove all data** (not *Sync first*). Wait for "All
@@ -568,18 +570,18 @@ step 1.
    - **IndexedDB:** the `doorprints` database is still listed, and its 4 stores are **empty** (0 entries each). The
      database itself stays, and holds nothing.
    - **Cache storage:** **no** `doorprints-shell-…` cache. The list is empty.
-   - **Local storage:** only `house-hunt.lang`. It is kept on purpose, and Your data says "Your language choice
-     stays". There is no `hh.*` key and no `house-hunt.api-config`.
+   - **Local storage:** only `doorprints.lang`. It is kept on purpose, and Your data says "Your language choice
+     stays". There is no other `doorprints.*` key.
    - **Session storage:** empty.
    - **Service workers:** the registration for `https://doorprints.web.app/` is gone from the list, or is shown as
      deleted. The browser lets the worker go on serving this open tab until the tab is closed.
 
    Do these checks before you open another screen. Using the app again is normal use, not leftover data: the map
-   writes `hh.mapView` again as soon as the map page shows, and the worker that still serves this tab stores the app files
+   writes `doorprints.mapView` again as soon as the map page shows, and the worker that still serves this tab stores the app files
    that a newly opened screen loads.
 5. **Close the tab**, and every other `doorprints.web.app` tab. In a new tab, open `chrome://serviceworker-internals`
    and search the page (Ctrl+F or Cmd+F) for `doorprints.web.app`.
-   **Expected:** no registration is listed. Opening the site again writes `hh.mapView` again, registers a new worker
+   **Expected:** no registration is listed. Opening the site again writes `doorprints.mapView` again, registers a new worker
    after 3 s, and a new `doorprints-shell-…` cache holds the app's files again. That is the next start of the app, not leftover data.
 
 ### Pass 2: a private window (about 3 minutes)
@@ -589,14 +591,14 @@ Open a Chrome Incognito window (Ctrl+Shift+N, or Cmd+Shift+N on a Mac). It start
 
 1. Open `https://doorprints.web.app`, open DevTools, and check as in pass 1 step 1. **Expected:** the same result.
 2. Add one house with one photo. Connect as in pass 1 step 2.5, with **Remember on this device** off. Check as in
-   pass 1 step 3. **Expected:** the same result, with 1 house and 1 photo, and no `house-hunt.lang`, because the
+   pass 1 step 3. **Expected:** the same result, with 1 house and 1 photo, and no `doorprints.lang`, because the
    language was not changed in this window. Your data may say that the browser has not promised to keep the data.
    Incognito does not grant that promise, so this is expected.
 3. **Remove all data**, and check as in pass 1 step 4. **Expected:** the same result, except that local storage is
    now empty (no language was chosen in this window).
 4. Close **every** Incognito window. Open a new Incognito window, open the site, and check before you do anything
    else. **Expected:** the pass 1 step 1 result: a new `doorprints` database with 4 empty stores, local storage
-   holding only `hh.mapView` (the starting view over India), empty session storage, and after a few seconds one new
+   holding only `doorprints.mapView` (the starting view over India), empty session storage, and after a few seconds one new
    `doorprints-shell-…` cache. Nothing from the earlier Incognito
    session is left.
 
@@ -678,3 +680,4 @@ belong to the web import, which also arrives in Sprint 4b.
 | 2026-09-24 | **India's boundary: one line from zoom 5 (India's line with China ours alone, shared stretches handed to the tiles); the Assam-Arunachal Pradesh state line (branch `fix/india-boundary-lines`, PR #16, `5af2f4d` then `9e0036e` after the design review; [docs/10](../docs/10-sprint-log.md) §12.10; S4b-BL-11, S4b-BL-15, S4b-BL-16).** `shared/india-boundaries.ts`: `COUNTRY_LINE_RULE` (and its deprecated-syntax form) also leaves out India's line with China (`INDIA_CHINA_LINE`), which showed as stray pieces beside the outline at zoom 10-12 (Shipki La, the Mana Pass). `public/geo/in-boundaries.geojson` rebuilt (sha256 `2c497e2e…56d7`, 415 689 bytes; kinds `world` 359 lines, `claim` 7 pieces, `state` 2 lines), byte-identical to Android's copy: the 7 stretches where the tiles draw India's border themselves (none with China) moved from `claim` to `world` (below zoom 5 only), found by the new `scripts/geo/find_shared_stretches.py` (zooms 7, 9 and 11) and pasted into `SHARED` in `scripts/geo/build_in_boundaries.py` (`--no-shared` gives the whole outline for the finder; no connector-only spur at a box edge; repeated points removed). New layer `in-boundary-state` (`IN_BOUNDARY_STATE_LAYER`, kind `state`, minzoom 5), directly above `boundary_3` with its `line-color`, `line-width`, `line-dasharray` and `line-opacity` copied and butt caps; without `boundary_3`, directly below `in-boundary-world` with `STATE_FALLBACK_LINE_PAINT`; a taken id is a warning. `india-boundaries.spec.ts`: 41 cases (4 new: rule 2, India's line with China left to India's outline; the state line from zoom 5, dashed and drawn like `boundary_3`; without `boundary_3`; the state-line id already taken; ordering expectations updated); the whole suite, 463 tests, passes. Renders of `9e0036e` at zoom 8-12 over every hand-over and the spots flagged in review: one line; the state line dashed like the other state lines. CI green on `5af2f4d`; the run on `9e0036e` pending. |
 | 2026-09-24 | **India's boundary, round 2 review fix (branch `fix/india-boundary-lines`, PR #16; [docs/10](../docs/10-sprint-log.md) §12.10).** `scripts/geo/build_in_boundaries.py`: a `SHARED` cut within 1e-4 degrees of a claim line's end counts as the end (`SHARED` is rounded to 5 decimals), so the two connector-only pieces on the Singalila ridge (2.5 km and 2.3 km), drawn as spurs into Nepal from zoom 5, are gone. `public/geo/in-boundaries.geojson` rebuilt (sha256 `25984afa…a024`, 415 608 bytes; `world` 359 lines, `claim` 5 pieces, `state` 2 lines; the 7 shared stretches unchanged), byte-identical to Android's copy. No change to `shared/india-boundaries.ts` or its spec. Known minors recorded in the intro and in docs/03 ADR-22: the Sikkim tri-junction loops (about 13 x 3 km and 2 km), the tile line's overrun at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9) (S4b-BL-17), and `INDIA_CHINA_LINE` also hiding the Tumen China-North Korea line. |
 | 2026-09-24 | **The live UI test after every merge to `main`** (owner rule of 2026-09-24; [docs/06](../docs/06-test-plan.md) TC-M-26, [docs/10](../docs/10-sprint-log.md) §13.3; commit `afe4064`). New *Test* subsection for `tools/live-ui` (Playwright 1.56.1, axe-core 4.13.0): every route x 4 languages x 2 themes x phone and desktop, the flows, offline, the map at the TC-M-25 spots; exits 1 on any failure. First run on the live site (deploy `4100f7a`): every area passed except 1 of 146 console checks (a stylesheet served once as `text/plain`, not reproducible in 100 further loads; put down to the test environment's proxy). No change to the app. |
+| 2026-09-24 | **Legacy House Hunt names renamed to Doorprints** (owner request of 2026-09-24). Every browser storage key now starts with `doorprints.`: `house-hunt.lang` → `doorprints.lang`, `house-hunt.api-config` → `doorprints.api-config`, and each `hh.*` key → `doorprints.*` with the same suffix (`mapView`, `installDismissedAt`, `storageRiskDismissedAt`, `houseDraft:<id>`, `shareText`). New `core/storage-keys.ts`: `main.ts` runs `migrateLegacyStorage()` before anything reads storage, and it moves each pre-rename key in localStorage and sessionStorage to its new name (a value already under the new name wins; the old key is removed only once its value is safe, so a full or blocked storage loses nothing). "Remove all data" (`session-leftovers.ts`) sweeps `doorprints.*` (and a leftover `hh.*`) but keeps `doorprints.lang` and `doorprints.api-config` through an explicit `KEPT_KEYS` list, since both now share the swept prefix. Tests: new `core/storage-keys.spec.ts`, `session-leftovers.spec.ts` updated. The storage audit above names the new keys. Comments point to the moved Kotlin files (`app/doorprints/...`) and the backend's `app.doorprints.server.*`. |

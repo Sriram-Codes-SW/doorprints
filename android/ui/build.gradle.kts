@@ -3,17 +3,21 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // :ui - Compose Multiplatform module with Doorprints' UI code that is not tied to Android (ADR-23, README.md in this
 // folder). Targets: Android (AGP's KMP library plugin) and, compile-only for now, iosArm64 + iosSimulatorArm64,
 // the same as :shared. The screens move here phase by phase; :app stays the Android application around them.
-// The Kotlin package of the moved files stays com.househunt.app.ui, so :app's imports do not change.
+// The Kotlin package of the moved files stays app.doorprints.ui, so :app's imports do not change.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.compose)
+    // Compose resources: the UI strings in src/commonMain/composeResources become the generated Res class (CMP-2).
+    alias(libs.plugins.compose.multiplatform)
 }
 
 kotlin {
     android {
-        // The Android namespace only (:ui has no Android resources); the Kotlin package is com.househunt.app.ui.
-        namespace = "com.househunt.ui"
+        // The Android namespace; the Kotlin package is app.doorprints.ui.
+        namespace = "app.doorprints.ui"
+        // Compose resources are packaged as Android assets, which needs Android resources on in this KMP library.
+        androidResources { enable = true }
         compileSdk = 37
         minSdk = 26
         compilerOptions.jvmTarget = JvmTarget.JVM_17
@@ -37,6 +41,8 @@ kotlin {
             api(libs.cmp.ui)
             api(libs.cmp.material3)
             api(libs.cmp.material.icons.core)
+            // api: :app's screens call stringResource(Res.string.…) until they move here (ADR-23).
+            api(libs.cmp.components.resources)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -45,4 +51,12 @@ kotlin {
             implementation(libs.kotlin.test.junit)
         }
     }
+}
+
+// The generated resource accessors (Res.string.x, Res.plurals.x): public, because :app's screens use them until they
+// move to :ui, in a package next to the UI code.
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "app.doorprints.ui.res"
+    generateResClass = always
 }

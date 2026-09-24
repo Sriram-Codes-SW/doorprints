@@ -20,7 +20,7 @@ import type { MigrationState } from './sync.service';
  * path a browser in private mode takes).
  *
  * **The payloads are copied verbatim from
- * `android/shared/src/commonTest/kotlin/com/househunt/shared/api/RecordedResponses.kt`** and must stay
+ * `android/shared/src/commonTest/kotlin/app/doorprints/shared/api/RecordedResponses.kt`** and must stay
  * byte-identical to them, so the Kotlin contract suite and this one drift together. They are what the Spring
  * Boot backend really writes: Jackson 3 record-component order, Postgres microsecond timestamps, explicit nulls,
  * server-only fields the app has to ignore, and a status (`ARCHIVED`) this build has never heard of.

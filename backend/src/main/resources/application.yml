@@ -2,9 +2,11 @@ spring:
   application:
     name: doorprints-api
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/househunt}
-    username: ${DB_USER:househunt}
-    password: ${DB_PASSWORD:househunt}
+    # Dev defaults (docker-compose.yml). Until 2026-09-24 the database and user were named househunt; a server that
+    # sets DB_URL, DB_USER and DB_PASSWORD is not affected (docs/08 section 11, CHANGELOG).
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/doorprints}
+    username: ${DB_USER:doorprints}
+    password: ${DB_PASSWORD:doorprints}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:5}
   jpa:
@@ -25,19 +27,19 @@ spring:
       max-request-size: 6MB
   # ---------------------------------------------------------------------------------------------
   # Spring AI (only used when app.ai.enabled=true). Which Spring AI auto-configurations are active
-  # is decided by com.househunt.ai.config.AiDefaultsEnvironmentPostProcessor: with AI disabled it
+  # is decided by app.doorprints.server.ai.config.AiDefaultsEnvironmentPostProcessor: with AI disabled it
   # forces spring.ai.model.*=none, spring.ai.vectorstore.type=none and turns the MCP server off,
   # so the app starts without any key. Provider = app.ai.provider (AI_PROVIDER):
   #   aistudio (default): chat = any OpenAI-compatible endpoint (default: the Gemini API; Ollama
   #     works too), embeddings = app.ai.embedding.provider (default google-genai, the native Gemini
   #     API; openai = the settings below). See docs/ai/ai-design.md section 3.1.
   #   vertex: Google Cloud Vertex AI with Application Default Credentials: chat = spring.ai.google.genai
-  #     below, embeddings = com.househunt.ai.embedding.VertexEmbeddingModel. See docs/ai/ai-design.md
+  #     below, embeddings = app.doorprints.server.ai.embedding.VertexEmbeddingModel. See docs/ai/ai-design.md
   #     sections 2.1, 3.3 and docs/ai/vertex-setup.md.
   # ---------------------------------------------------------------------------------------------
   ai:
     # Only used with app.ai.provider=vertex. The google-genai Client (project, location, ADC, timeout,
-    # retries) is built by com.househunt.ai.vertex.VertexAiConfiguration from app.ai.vertex below; no
+    # retries) is built by app.doorprints.server.ai.vertex.VertexAiConfiguration from app.ai.vertex below; no
     # api-key / project-id / credentials-uri is set here on purpose (ADC only, no keys in config).
     google:
       genai:

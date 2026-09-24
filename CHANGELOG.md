@@ -280,6 +280,46 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Android: the UI strings are Compose Multiplatform resources in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-2,
+  PR #19, commits `80b198b` and `927d54b`; [sprint log](docs/10-sprint-log.md) §13.4). 403 strings and 16 plurals per
+  language moved to `android/ui/src/commonMain/composeResources/values{,-hi,-ta,-te}/strings.xml` (plugin
+  `org.jetbrains.compose`, generated `app.doorprints.ui.res.Res`); screens call `stringResource(Res.string.x)`. The
+  service strings (notifications, workers, `HuntService`) stay Android resources in `android/app/src/main/res`; keys
+  both use are in both places with the same text. On the Compose side placeholders are positional only and `'` is
+  written plain ([docs/05](docs/05-ux-accessibility-i18n.md) §8.2 and §9.1). `AppLocale.applyDefault` keeps the
+  process's default locale, which Compose resources read, on the language Android resolved, on every API level. The
+  APK now carries only en, hi, ta and te (`androidResources.localeFilters`), so a phone set to [Marathi, Hindi] shows
+  Hindi instead of falling back to English. New tests: `StringParityTest` (TC-U-59) and `AppLocaleTest` (TC-U-60). No
+  screen changed: the 64 reference screenshots are unchanged. Docs: [01](docs/01-requirements.md) v0.28,
+  [02](docs/02-threat-model.md) v0.33, [03](docs/03-design.md) v0.26, [05](docs/05-ux-accessibility-i18n.md) v0.21,
+  [06](docs/06-test-plan.md) v0.40, [07](docs/07-secure-build-and-deploy.md) v0.37,
+  [08](docs/08-operations-runbook.md) v0.17, [10](docs/10-sprint-log.md) v0.46,
+  [14](docs/14-lead-backlog-and-handoff.md) v0.13, [docs/README.md](docs/README.md) v0.46, `android/ui/README.md` 1.5.
+- **Legacy House Hunt names renamed to Doorprints** (owner request of 2026-09-24: "the app needs to be Doorprints and
+  also references of legacy House Hunt needs to be changed to it"; [docs/03](docs/03-design.md) ADR-24,
+  [sprint log](docs/10-sprint-log.md) §14). Code: Kotlin packages `app.doorprints`, `app.doorprints.ui`,
+  `app.doorprints.shared` (were `com.househunt.app`, `com.househunt.app.ui`, `com.househunt.shared`) and the same
+  Android namespaces; backend packages `app.doorprints.server.*` (were `com.househunt.*`); `DoorprintsApp`,
+  `DoorprintsRoot`, `DoorprintsTheme`, `DoorprintsColors`, `DoorprintsApplication`, style `Theme.Doorprints`, log tag
+  `DoorprintsApi`; Maven `app.doorprints:doorprints-api`; image tags `doorprints-api` and `doorprints-db`; CI keystore
+  temp file `doorprints-release.jks`. Stored names, each with a carry-over so nothing saved is lost: the Android Room
+  file `doorprints.db` (an existing `househunt.db` and its `-wal`, `-shm`, `-journal` are renamed before Room opens
+  it); WorkManager jobs queued under the old worker class names still run; the launcher entry keeps its old component
+  name so a home-screen icon survives the update; the web storage keys `doorprints.lang`, `doorprints.api-config` and
+  `doorprints.*` for every `hh.*` key (the old keys are moved at start, before anything reads them). **Kept on
+  purpose:** the Android Keystore alias `house_hunt_api_key_v1` (renaming it would make the saved API key unreadable),
+  the Flyway migrations (checksums) and the `HH_*` signing secret names.
+- **Breaking for self-hosters: the MCP tool `askHouseHunt` is now `askDoorprints`.** An MCP client picks the new name
+  from `tools/list`; a saved permission or prompt that names the old tool is updated by hand
+  ([docs/ai](docs/ai/ai-design.md) section 12). The other tool names and the server name `doorprints` are unchanged.
+- **Breaking for a local `docker compose` database: the database, user, dev password default and volume are now
+  `doorprints` (volume `doorprints-pgdata18`; were `househunt` and `dbdata18`).** The old volume is left untouched but
+  no longer used, so the first start has an empty database. **The dump and restore in
+  [docs/08](docs/08-operations-runbook.md) section 11 is mandatory** for a database that phones or the web app have
+  synced with: clients push only the rows changed since their last sync and pull after a stored cursor, so on a new,
+  empty database the old houses are missing and devices silently miss each other's changes (no error is shown).
+  `application.yml`'s `DB_URL`/`DB_USER`/`DB_PASSWORD` defaults changed the same way; a server that sets all three is
+  not affected, and no Spring property prefix or environment variable was renamed.
 - **Docs for the APK and live UI tests** (2026-09-24): [01](docs/01-requirements.md) v0.26 (RTM),
   [03](docs/03-design.md) v0.24 (ADR-23 guard rails), [06](docs/06-test-plan.md) v0.38 (§16: TC-U-56, TC-I-35, TC-M-26),
   [07](docs/07-secure-build-and-deploy.md) v0.35 (`android-emulator.yml`, §7.2 Firebase Test Lab setup with its own
@@ -287,9 +327,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   [14](docs/14-lead-backlog-and-handoff.md) v0.12 (standing rule: the live UI test after every merge),
   [docs/README.md](docs/README.md) v0.44, new [ops/firebase-test-lab-setup.md](docs/ops/firebase-test-lab-setup.md) 0.5,
   `android/shared/README.md` 1.46, `android/ui/README.md` 1.3, `web/README.md`, CLAUDE.md.
-- **Android: `HouseHuntApp` is `open`**, with its start-up services (MapLibre, notification channels, WorkManager
-  schedules, start-up jobs) in `protected open fun startServices()`, so the screenshot tests' application can leave
-  them out. No change in behaviour.
+- **Android: `HouseHuntApp` (now `DoorprintsApp`) is `open`**, with its start-up services (MapLibre, notification
+  channels, WorkManager schedules, start-up jobs) in `protected open fun startServices()`, so the screenshot tests'
+  application can leave them out. No change in behaviour.
 - **Docs for the Compose Multiplatform track** (2026-09-24): [03](docs/03-design.md) v0.22 (ADR-23; ADR-14
   amended; §4.2.1), [06](docs/06-test-plan.md) v0.32, [07](docs/07-secure-build-and-deploy.md) v0.30,
   [10](docs/10-sprint-log.md) v0.38 (§13, CMP-1..CMP-9), [14](docs/14-lead-backlog-and-handoff.md) v0.5, new
@@ -496,7 +536,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
     field stays `house-hunt-export/1`). Web package `doorprints-web`, Gradle root project `Doorprints`, Maven
     `<name>` `doorprints-api`. AI eval scorecard title "Doorprints AI eval scorecard"; golden set v0.4 (description
     only; cases and thresholds unchanged).
-  - Unchanged on purpose: the repository name `house-hunt`, Java/Kotlin packages and class names (`com.househunt`),
+  - Unchanged on purpose (superseded on 2026-09-24, see *Legacy House Hunt names renamed* above): the repository
+    name `house-hunt`, Java/Kotlin packages and class names (`com.househunt`),
     browser storage keys (`house-hunt.lang`, `house-hunt.api-config`), the Android Keystore alias and Room database
     file, database/user/schema names (`househunt`), the compose volume `dbdata18`, the image names `house-hunt-api`
     and `house-hunt-db`, the `HH_*` signing secrets, MCP tool names, and "Hunt mode". Existing settings, data, backups

@@ -1,13 +1,14 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { API_CONFIG_KEY, LEGACY_KEYS } from './storage-keys';
 
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;
 }
 
-// Keeps the pre-rename 'house-hunt.' prefix on purpose: changing it would lose settings already saved in
-// users' browsers after the rename to Doorprints. Do not change it without a migration.
-const STORAGE_KEY = 'house-hunt.api-config';
+// Was 'house-hunt.api-config' before 2026-09-24; main.ts moves a saved value to this name first
+// (core/storage-keys.ts).
+const STORAGE_KEY = API_CONFIG_KEY;
 export const DEFAULT_BASE_URL = 'http://localhost:8080';
 
 /**
@@ -56,9 +57,11 @@ export class ConfigService {
 
   clear(): void {
     this.state.set(null);
+    // Also the pre-rename name, in case main.ts could not move it (storage full or blocked): it holds the key too.
+    const names = [STORAGE_KEY, ...[...LEGACY_KEYS].filter(([, now]) => now === STORAGE_KEY).map(([old]) => old)];
     for (const s of [localStorageOrNull(), sessionStorageOrNull()]) {
       try {
-        s?.removeItem(STORAGE_KEY);
+        for (const name of names) s?.removeItem(name);
       } catch {
         // ignore
       }

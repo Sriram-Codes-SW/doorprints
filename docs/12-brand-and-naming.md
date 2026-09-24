@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.4 |
+| Version | 0.5 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
@@ -16,6 +16,7 @@
 | 0.2 | 2026-09-23 | Claude (Cowork), Docs team | Android §9 item 20 applied (coordinator's final review of 2026-09-23): **G.3 rule 3** now records that Android renamed *Restore from a backup* (`houses_restore`, deleted) to **Import a backup** (`import_title`) in Sprint 4a, `android/shared/README.md` 1.15, not in Sprint 4b. **G.1**: the web's Tamil `data.formatBackup` already uses the joined காப்புப்பிரதி, so that Sprint 4b item is done. |
 | 0.3 | 2026-09-23 | Claude (Cowork), Docs team | New decision **N-06, the app icon as a brand touchpoint** (Docs pre-review buddy): the owner asked for the web icons to be redrawn before the first deploy, and in the final Sprint 4a round the Web team redrew `favicon.svg`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` and `apple-touch-icon.png` from the Android launcher mark (`ic_launcher.xml`). Both platforms now show the same mark; the 16 px favicon leaves the toes out. Part of the first release's Definition of Done ([10](10-sprint-log.md) §12.5 Decision 4). |
 | 0.4 | 2026-09-24 | Claude (Code), lead | **N-06, the icon's footprints, option C** ([14](14-lead-backlog-and-handoff.md) N3): three small footprints (sole, heel, four toes) walking up beside the door, left, right, left, in place of two large gold prints (a sole with two toes; plain ovals in the favicon), on Android (`ic_launcher.xml`, and the one print of `ic_stat_doorprints.xml`) and on the web (`favicon.svg` and every app-icon PNG). Colours, the door and each icon's layout are unchanged. The favicon keeps the same prints (owner's choice; it no longer leaves the toes out). In the design review the top print moved from (79,55) to (78.5,51.5), spacing only. N-06 now names every file of the mark, says where the print's path is defined, and records the 3:1 contrast floor for gold on teal. |
+| 0.5 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). **F.1 rule 7** now says internal names follow the brand too, renamed only with a carry-over for what is stored, and names the one kept on purpose (the Android Keystore alias). F.2: the longer store listing example is "Doorprints: House Visit Diary". |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -186,8 +187,10 @@ cannot read a backup back in until the Sprint 4b web import ships ([05](05-ux-ac
 5. **Say it, then type it.** Before approving a name, say it aloud in a Hindi, Tamil or Telugu sentence and type it
    on a phone keyboard. If either needs spelling out, choose again.
 6. **One name per thing, forever.** Renaming costs user trust and, for the web app, user data. Decide once.
-7. **Internal names may keep history.** Code packages (`com.househunt`), storage keys and database names keep the
-   old name on purpose ([03](03-design.md) ADR-13), as long as users never see them.
+7. **Internal names follow the brand too.** Since 2026-09-24 code packages (`app.doorprints`), storage keys and
+   database names use Doorprints ([03](03-design.md) ADR-24; until then they kept the old name, ADR-13). A stored
+   name is renamed only with a carry-over for what is already saved under it; one that cannot be carried over, such
+   as the Android Keystore alias of the saved API key, keeps its old name on purpose.
 
 ### F.2 Do and don't
 
@@ -196,7 +199,7 @@ cannot read a backup back in until the Sprint 4b web import ships ([05](05-ux-ac
 | Web address | `https://doorprints.web.app` (or `doorprints.in` if ever bought, section D). Always share it with `https://` | `doorprints.pages.dev`, `doorprints-test…`, the `firebaseapp.com` twin, GitHub Pages addresses |
 | Subdomains or extra sites (if a custom domain is bought) | Plain English nouns: `help.`, `status.`, `api.` | `dev.`, `beta.`, `app2.`, `new.` |
 | Non-public test sites | Non-public and outside the brand: a separate Firebase project with a neutral ID, linked from nowhere. Hosting preview channels are **not** used ([07](07-secure-build-and-deploy.md) §6.3): each is a public address | Preview links sent to real users |
-| Store listing name | **"Doorprints"**. If Play requires more words: "Doorprints: House Hunt Diary" or "Doorprints – Remember every house" (listing only) | "Doorprints Lite", "Doorprints Beta", "Doorprints India", keyword stuffing ("Rent Flat PG House Finder") |
+| Store listing name | **"Doorprints"**. If Play requires more words: "Doorprints: House Visit Diary" or "Doorprints – Remember every house" (listing only) | "Doorprints Lite", "Doorprints Beta", "Doorprints India", keyword stuffing ("Rent Flat PG House Finder") |
 | Store short description | The tagline in each language, from the glossary `app.tagline` | New wording that drifts from the tagline |
 | Package / bundle IDs for new apps | The existing Android app keeps `app.doorprints` (changing it makes a new app). New apps: `in.doorprints.<app>` only if `doorprints.in` is owned; otherwise `io.github.sriramcodessw.doorprints.<app>` | IDs under a domain the owner does not control, such as `com.doorprints.*` (the `.com` is a reseller's) |
 | Feature names | Capitalised two-word names with an everyday noun: **Hunt mode**, **Street memory**, **Stay detection**. The feature name is translated (unlike the brand), with the glossary as the single source | Brand-prefixed names ("DoorHunt", "PrintMode"), jargon ("geofence alerts"), puns that do not survive translation |

@@ -12,7 +12,7 @@ import type { PhotoRecord, VisitRecord } from '../data/records';
 
 /**
  * **The format-independent model → rows logic.** The TypeScript half of
- * `android/shared/src/commonMain/kotlin/com/househunt/shared/export/ExportRows.kt`, whose own comment is the
+ * `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportRows.kt`, whose own comment is the
  * contract this file exists to keep: *"Every exporter on Android and on the web reads its rows from here, so a
  * CSV, an XLSX sheet and the HTML table always show the same values in the same order, and the two apps agree
  * cell for cell."*

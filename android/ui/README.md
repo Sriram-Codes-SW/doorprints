@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.5 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,8 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5 | 2026-09-24 | **CMP-2 done in code** (PR #19, `80b198b`, review fixes `927d54b`; [docs/03](../../docs/03-design.md) ADR-23 P2, [docs/10](../../docs/10-sprint-log.md) §13.4). Section 2: the `org.jetbrains.compose` plugin and `components-resources`; section 4: the Compose resources row (403 strings and 16 plurals per language) and the service strings that stay in `:app`; section 6: P2 done. No visual change (the 64 screenshots verify). |
+| 1.4 | 2026-09-24 | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [docs/03](../../docs/03-design.md) ADR-24). Section 3: the Kotlin package and the Android namespace are both `app.doorprints.ui` (were `com.househunt.app.ui` and `com.househunt.ui`), the resources class `app.doorprints.ui.res.Res`; section 4: `DoorprintsTheme`. No visual change (the 64 screenshots verify). |
 | 1.3 | 2026-09-24 | Round 3 review of PR #18: the screenshot test id is **TC-U-56** (was TC-U-60); the android.yml command in section 5 is split over three lines. |
 | 1.2 | 2026-09-24 | Section 5: `android.yml` runs the unit tests with `-Proborazzi.test.verify=true`, and each phase is checked by the JVM screenshot tests of `:app` (docs/06 TC-U-56) and the emulator smoke tests (TC-I-35, `android-emulator.yml`); CMP-0, commit `afe4064` ([docs/10](../../docs/10-sprint-log.md) §13.3). |
 | 1.1 | 2026-09-24 | Code review of CMP-1 (commit `06e482d`): `WORLD_MAX_ZOOM` is computed from the float's bits (`Float.nextDown()` is JVM-only); `android.yml` compiles `:shared` and `:ui` commonMain metadata on Linux; Room version follows the catalog. |
@@ -31,8 +33,9 @@ these screens; `:shared` ([README](../shared/README.md)) stays the home of the d
 | Android (`com.android.kotlin.multiplatform.library`, `kotlin { android { … withHostTest {} } }`) | ubuntu CI (`android.yml`) | consumed by `:app` |
 | `iosArm64`, `iosSimulatorArm64` | macOS CI (`shared-ios.yml`) | **compile-only**, like `:shared`: proves commonMain builds for iOS; no framework binary yet (phase 8) |
 
-Plugins: `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`. The
-`org.jetbrains.compose` plugin is not needed yet; it comes with the string resources in phase 2.
+Plugins: `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose` and, since phase 2,
+`org.jetbrains.compose` for the string resources (`compose.resources`: a public `Res` class in `app.doorprints.ui.res`;
+`androidResources { enable = true }`, because Compose resources are packaged as Android assets).
 
 commonMain dependencies (all `api`, because the theme and composables take and return Compose types):
 
@@ -41,30 +44,38 @@ commonMain dependencies (all `api`, because the theme and composables take and r
 | `org.jetbrains.compose.runtime:runtime`, `foundation:foundation`, `ui:ui` | 1.12.1 | androidx.compose 1.12.1 |
 | `org.jetbrains.compose.material3:material3` | 1.9.0 | androidx material3 1.4.0 |
 | `org.jetbrains.compose.material:material-icons-core` | 1.7.3 | androidx 1.7.3 (Gradle resolves to the 1.7.8 `:app` already uses) |
+| `org.jetbrains.compose.components:components-resources` | 1.12.1 | – (Compose Multiplatform only); `api` because `:app`'s screens call `stringResource(Res.string.…)` until they move |
 | `project(":shared")` | – | domain types the UI is built on (`HouseStatus`, `SyncOutcome`) |
 
 Versions live in `android/gradle/libs.versions.toml` (`cmp`, `cmp-material3`, `cmp-material-icons`).
 
 ## 3. Package name
 
-The Android namespace (R class) is **`com.househunt.ui`**, but the Kotlin package of the moved files stays
-**`com.househunt.app.ui`**, so `:app`'s imports do not change and every move is a plain file move. Declarations `:app`
-uses are `public` instead of `internal`. Package names keep the old product name on purpose (ADR-13).
+The Android namespace (R class) and the Kotlin package are both **`app.doorprints.ui`** (the same package as
+`:app`'s screens, so `:app`'s imports do not change and every move is a plain file move); the Compose resources'
+generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `public` instead of `internal`. Until
+2026-09-24 the packages kept the old product name (`com.househunt.app.ui`, namespace `com.househunt.ui`).
 
-## 4. What is in it now (phase 1)
+## 4. What is in it now (phases 1 and 2)
 
 | Source set | File | Contents |
 |---|---|---|
-| commonMain | `Theme.kt` | `HouseHuntTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
+| commonMain | `Theme.kt` | `DoorprintsTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
 | commonMain | `Rows.kt`, `ServerStatus.kt` | list rows; the server status line and its rules |
 | commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`) |
 | commonMain | `Buttons.kt` | `ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES` (from `ActionBar.kt`) |
 | commonMain | `ResultTone.kt`, `LocationFix.kt` | from `ResultCard.kt` and `LocationPermission.kt` |
 | androidMain | `UiLanguage.android.kt` | `LocalConfiguration`'s locale, as before |
 | iosMain | `UiLanguage.ios.kt` | Compose's `Locale.current` |
+| commonMain | `composeResources/values{,-hi,-ta,-te}/strings.xml` | the UI strings (phase 2): 403 strings and 16 plurals per language, positional placeholders only, a plain `'` (no Android escapes); checked by `:app`'s `StringParityTest` (docs/06 TC-U-59) |
 | commonTest | `ServerStatusTest.kt` | 5 tests (`kotlin.test`) |
 
-Strings, screens, the map view and everything that touches Android services are still in `:app`.
+Screens, the map view and everything that touches Android services are still in `:app`, and so are the service
+strings (notifications, workers, `HuntService`) in `android/app/src/main/res/values*/strings.xml`, with `'` escaped as
+`\'`; keys both use are in both places with the same text. Outside composition `:app` reads a UI string with
+`Context.getString(StringResource)` (`ui/UiStrings.kt`, until CMP-3). Compose resources take the language from the
+process's default locale, which `:app`'s `AppLocale.applyDefault` keeps on the language Android resolved (docs/05
+§8.2, TC-U-60).
 
 ## 5. Build and test
 
@@ -99,7 +110,7 @@ Each phase (and each lettered sub-phase) is one pull request that keeps `android
 | Phase | Ticket | Scope | Status |
 |---|---|---|---|
 | P1 | CMP-1 | `:ui` module; theme and pure UI code | **Done** (`be86f50`); iOS compile pending on CI (macOS) |
-| P2 | CMP-2 | Strings to compose-resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`, `Locale.setDefault` on API 26–32, `StringParityTest` | Next |
+| P2 | CMP-2 | UI strings to Compose resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`; service strings stay Android resources; `AppLocale.applyDefault` on every API level; `localeFilters`; `StringParityTest`, `AppLocaleTest` | **Done in code** (PR #19, `80b198b`, `927d54b`; awaiting merge) |
 | P3 | CMP-3 | `PlatformServices` seam; `Format.kt`, `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`, pure helpers | Planned |
 | P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | Planned |
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned |

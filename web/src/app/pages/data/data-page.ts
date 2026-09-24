@@ -616,7 +616,7 @@ export class DataPage implements OnInit, OnDestroy {
    * the server address and key (so nothing restarts it, and Ask and Plan leave the navigation), and only then clear
    * the store and the offline copy. This tab's sessionStorage leftovers go too: an unsaved house draft (which can
    * hold a contact's name and number) and shared listing text (see session-leftovers.ts); so do this app's
-   * `hh.*` localStorage keys, and the app's service worker is unregistered (docs/07 Appendix A.1, S10). Of the
+   * `doorprints.*` localStorage keys, and the app's service worker is unregistered (docs/07 Appendix A.1, S10). Of the
    * keys, only the chosen language stays. web/README.md, "Storage audit on the live site", checks it all by hand.
    */
   protected async clearBrowser(): Promise<void> {

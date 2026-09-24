@@ -1,6 +1,6 @@
 /**
  * Conflict rules for the web sync loop, a line-for-line port of
- * `android/shared/src/commonMain/kotlin/com/househunt/shared/sync/SyncRules.kt` so Android, iOS (later) and the
+ * `android/shared/src/commonMain/kotlin/app/doorprints/shared/sync/SyncRules.kt` so Android, iOS (later) and the
  * browser converge on the same row.
  *
  * "Last edit wins": when the server sends a row this browser also changed and has not pushed yet (dirty), the local

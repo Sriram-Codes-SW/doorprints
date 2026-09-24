@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DICTIONARIES, LANGUAGES, Lang } from './languages';
 import { TranslationService } from './translation.service';
 
-const LANG_STORAGE_KEY = 'house-hunt.lang';
+const LANG_STORAGE_KEY = 'doorprints.lang';
 
 /** Intl output in Node can use a (narrow) no-break space after the symbol depending on ICU version. */
 const RUPEES_125000 = /^₹\s?1,25,000$/;

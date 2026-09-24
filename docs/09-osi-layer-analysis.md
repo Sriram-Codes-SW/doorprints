@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Network and resilience review, layer by layer |
-| Version | 0.7 |
-| Date | 2026-09-23 |
+| Version | 0.8 |
+| Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -19,6 +19,7 @@
 | 0.5 | 2026-09-22 | Claude (Cowork), Docs team | Sprint 3.5 (KMP `:shared` module, commit `8f583af`, [03](03-design.md) ADR-14): the Android HTTP client is now the shared Ktor `ApiClient` with `RetryPolicy` on one app-wide `HttpClient` (OkHttp 5.5 engine), replacing OkHttp 4 with `RetryInterceptor`. Same numbers and rules, so no scenario changes its result; the component table and rows 2.1, 2.2, 3.1, 3.2, 4.1, 4.2, 4.4, 5.7, 6.4, 6.8 and the section 9 transport row name the new classes and tests (`ApiClientContractTest`, `RetryPolicyTest`). New in row 4.2: a connection that drops while a retriable response body is read is retried too, and every call is limited to 4 minutes including retries. |
 | 0.6 | 2026-09-23 | Claude (Cowork), Docs team | Row **7.6** corrected: it said the web app's hashed bundles are cached for a year. The live host is now Cloudflare Pages ([03](03-design.md) ADR-21), and on 2026-09-23 the Web team removed every long-lived `immutable` rule from `web/public/_headers`, because Pages matches header rules by request path and its SPA fallback answers a missing file with the HTML shell and status 200, so a year-long rule would cache HTML under an old chunk's name. The row now gives the real policy (`no-cache` for `sw.js`, the manifest and `index.html`; Pages' default `public, max-age=0, must-revalidate` with an ETag for everything else; the service worker precache after the first visit) and says why no long `max-age` may come back. No other change. |
 | 0.7 | 2026-09-23 | Claude (Cowork), Docs team | The live web host is **Firebase Hosting** at `https://doorprints.web.app` (owner decision of 2026-09-23, [03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. Row **7.6**: `Cache-Control: no-cache` on every path from `web/firebase.json` (Firebase's own default would be `max-age=3600`), and the `**` rewrite is why no path may get a long `max-age`/`immutable`; the header check now also asserts `no-cache`. Row **3.2**: whether `doorprints.web.app` publishes an AAAA record is to be checked on the first deploy (it could not be resolved from the docs environment). Row **6.2** names Firebase Hosting among the TLS-terminating hosts; row **7.7** names `web/firebase.json` as the web headers' source. |
+| 0.8 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). Code paths follow the moved packages. |
 
 Related: [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md)
 
@@ -53,13 +54,13 @@ Main code locations referenced below:
 
 | Short name | File |
 |---|---|
-| `ApiClient` | `android/shared/src/commonMain/kotlin/com/househunt/shared/api/ApiClient.kt` (Ktor, since Sprint 3.5; the app-wide `HttpClient` is created in `android/app/.../data/Api.kt` through `AndroidApiHttp`) |
+| `ApiClient` | `android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiClient.kt` (Ktor, since Sprint 3.5; the app-wide `HttpClient` is created in `android/app/.../data/Api.kt` through `AndroidApiHttp`) |
 | `RetryPolicy` | `android/shared/.../api/RetryPolicy.kt` (replaced `data/RetryInterceptor.kt`, same rules) |
 | `NetworkState` | `android/.../data/NetworkState.kt` |
 | `SyncWorker` | `android/.../data/SyncWorker.kt` |
 | `Repository` | `android/.../data/Repository.kt` |
 | `HuntService` | `android/.../location/HuntService.kt` |
-| `ApiKeyFilter`, `RequestPaths` | `backend/src/main/java/com/househunt/config/` |
+| `ApiKeyFilter`, `RequestPaths` | `backend/src/main/java/app/doorprints/server/config/` |
 | `SyncVersions`, `ClientClock` | `backend/.../sync/` |
 | `ImageSanitizer` | `backend/.../photo/ImageSanitizer.java` |
 

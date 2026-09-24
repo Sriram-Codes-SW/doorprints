@@ -1,7 +1,7 @@
 {
   "version": "0.5",
   "date": "2026-09-22",
-  "description": "Golden cases for the Doorprints AI features. Run by backend/src/test/java/com/househunt/ai/eval/GoldenSetEvalTest (skipped unless AI_API_KEY is set; CI: .github/workflows/ai-evals.yml, manual). The harness loads fixtureHouses via PUT /api/houses/{id} and fixtureVisits via PUT /api/visits/{id}, calls POST /api/ai/reindex, runs the cases, writes backend/target/ai-eval-report.md and fails when a metric misses its threshold. Metric definitions: docs/ai/ai-design.md section 8.",
+  "description": "Golden cases for the Doorprints AI features. Run by backend/src/test/java/app/doorprints/server/ai/eval/GoldenSetEvalTest (skipped unless AI_API_KEY is set; CI: .github/workflows/ai-evals.yml, manual). The harness loads fixtureHouses via PUT /api/houses/{id} and fixtureVisits via PUT /api/visits/{id}, calls POST /api/ai/reindex, runs the cases, writes backend/target/ai-eval-report.md and fails when a metric misses its threshold. Metric definitions: docs/ai/ai-design.md section 8.",
   "changes": [
     { "version": "0.1", "date": "2026-09-22", "change": "First version: fixtures, extraction, ask, refusal, prompt-injection and planning cases." },
     { "version": "0.2", "date": "2026-09-22", "change": "Added thresholds (read by GoldenSetEvalTest) and the harness description." },
