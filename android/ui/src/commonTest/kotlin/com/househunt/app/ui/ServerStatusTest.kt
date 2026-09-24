@@ -1,16 +1,11 @@
-package com.househunt.app
+package com.househunt.app.ui
 
-import com.househunt.app.ui.ResultTone
-import com.househunt.app.ui.ServerStatusSlot
-import com.househunt.app.ui.serverResultWithdrawn
-import com.househunt.app.ui.serverStatusSlot
-import com.househunt.app.ui.serverStatusTone
 import com.househunt.shared.sync.SyncOutcome
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Settings' *Save and test* / *Sync now* result is drawn in its outcome's tone (UX review, whole-app audit, round 8):
@@ -34,7 +29,7 @@ class ServerStatusTest {
         assertEquals(ResultTone.NEUTRAL, serverStatusTone(null, SyncOutcome.Kind.NOT_CONFIGURED))
         SyncOutcome.Kind.entries
             .filter { it != SyncOutcome.Kind.OK && it != SyncOutcome.Kind.NOT_CONFIGURED }
-            .forEach { assertEquals(it.name, ResultTone.ERROR, serverStatusTone(null, it)) }
+            .forEach { assertEquals(ResultTone.ERROR, serverStatusTone(null, it), it.name) }
         // Nothing to show.
         assertNull(serverStatusTone(null, null))
     }
