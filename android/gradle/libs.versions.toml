@@ -13,9 +13,10 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 compose-bom = "2026.09.00"
 material-icons-core = "1.7.8"
-# Compose Multiplatform (JetBrains) for the :ui module (ADR-23). 1.12.1 maps to androidx.compose.ui 1.12.1 on Android;
-# material3 1.9.0 maps to androidx material3 1.4.0 and icons 1.7.3 to androidx 1.7.3, which Gradle aligns with the
-# BOM (2026.09.00) and the 1.7.8 icons :app already uses (the higher version wins).
+# Compose Multiplatform (JetBrains) for the :ui module (ADR-23). CMP 1.12.1 depends on androidx.compose ui/runtime/
+# foundation 1.12.1 on Android, material3 1.9.0 on androidx material3 1.4.0 and icons 1.7.3 on androidx 1.7.3. Gradle
+# takes the higher version, so CMP's androidx mapping must not be newer than the BOM's (2026.09.00: ui 1.12.1,
+# material3 1.4.0; icons stay at :app's 1.7.8). Check both again on every CMP or BOM bump.
 cmp = "1.12.1"
 cmp-material3 = "1.9.0"
 cmp-material-icons = "1.7.3"
