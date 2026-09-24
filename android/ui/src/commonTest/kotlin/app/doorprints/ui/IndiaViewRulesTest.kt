@@ -1,6 +1,5 @@
-package app.doorprints
+package app.doorprints.ui
 
-import app.doorprints.ui.IndiaViewRules
 import app.doorprints.ui.IndiaViewRules.LayerInfo
 import app.doorprints.ui.IndiaViewRules.Placement
 import kotlinx.serialization.json.Json
@@ -12,10 +11,10 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * India's boundary on the map (owner issue P0, 2026-09-24): the decisions MapScreen applies to the Liberty style
@@ -47,18 +46,18 @@ class IndiaViewRulesTest {
         val deprecated = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY)
         val both = listOf<(Map<String, String>) -> Boolean>({ eval(keep, it) }, { legacy(deprecated, it) })
         both.forEachIndexed { syntax, drawn ->
-            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "CHN")))
-            assertFalse("syntax $syntax", drawn(mapOf("adm0_r" to "CHN")))
-            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "IND", "adm0_r" to "CHN")))
-            assertFalse("syntax $syntax", drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "IND")))
+            assertFalse(drawn(mapOf("adm0_l" to "CHN")), "syntax $syntax")
+            assertFalse(drawn(mapOf("adm0_r" to "CHN")), "syntax $syntax")
+            assertFalse(drawn(mapOf("adm0_l" to "IND", "adm0_r" to "CHN")), "syntax $syntax")
+            assertFalse(drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "IND")), "syntax $syntax")
             // China's lines with India's other neighbours stay: Nepal, Bhutan, Myanmar.
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "NPL")))
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "BTN", "adm0_r" to "CHN")))
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "MMR", "adm0_r" to "CHN")))
+            assertTrue(drawn(mapOf("adm0_l" to "CHN", "adm0_r" to "NPL")), "syntax $syntax")
+            assertTrue(drawn(mapOf("adm0_l" to "BTN", "adm0_r" to "CHN")), "syntax $syntax")
+            assertTrue(drawn(mapOf("adm0_l" to "MMR", "adm0_r" to "CHN")), "syntax $syntax")
             // India's lines with its other neighbours stay.
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_r" to "NPL")))
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "BTN")))
-            assertTrue("syntax $syntax", drawn(mapOf("adm0_l" to "PAK", "adm0_r" to "AFG")))
+            assertTrue(drawn(mapOf("adm0_r" to "NPL")), "syntax $syntax")
+            assertTrue(drawn(mapOf("adm0_l" to "BTN")), "syntax $syntax")
+            assertTrue(drawn(mapOf("adm0_l" to "PAK", "adm0_r" to "AFG")), "syntax $syntax")
         }
     }
 
@@ -73,13 +72,13 @@ class IndiaViewRulesTest {
         val deprecated = parse(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY)
         val both = listOf<(Map<String, String>) -> Boolean>({ eval(expression, it) }, { legacy(deprecated, it) })
         both.forEachIndexed { syntax, drawn ->
-            assertFalse("syntax $syntax", drawn(emptyMap()))
-            assertFalse("syntax $syntax", drawn(mapOf("admin_level" to "2")))
-            assertFalse("syntax $syntax", drawn(mapOf("admin_level" to "2", "disputed" to "0", "maritime" to "0")))
+            assertFalse(drawn(emptyMap()), "syntax $syntax")
+            assertFalse(drawn(mapOf("admin_level" to "2")), "syntax $syntax")
+            assertFalse(drawn(mapOf("admin_level" to "2", "disputed" to "0", "maritime" to "0")), "syntax $syntax")
             // A zoom 5+ line with only its non-Indian side set is still drawn; PAK/CHN still is not.
-            assertTrue("syntax $syntax", drawn(mapOf("admin_level" to "2", "adm0_r" to "BTN")))
-            assertTrue("syntax $syntax", drawn(mapOf("admin_level" to "2", "adm0_l" to "MMR")))
-            assertFalse("syntax $syntax", drawn(mapOf("admin_level" to "2", "adm0_l" to "PAK", "adm0_r" to "CHN")))
+            assertTrue(drawn(mapOf("admin_level" to "2", "adm0_r" to "BTN")), "syntax $syntax")
+            assertTrue(drawn(mapOf("admin_level" to "2", "adm0_l" to "MMR")), "syntax $syntax")
+            assertFalse(drawn(mapOf("admin_level" to "2", "adm0_l" to "PAK", "adm0_r" to "CHN")), "syntax $syntax")
         }
     }
 
@@ -92,12 +91,12 @@ class IndiaViewRulesTest {
         // worker_tile.ts:109). As defence in depth, a filter's zoom is the tile's zoom (overscaledZ), so the guard
         // drops every feature of a zoom 0-4 tile whatever a renderer does with minzoom.
         val placeholder: Map<String, Any> = mapOf("admin_level" to 4, "disputed" to 0, "maritime" to 0)
-        assertTrue("Liberty alone draws it", eval(parse(LIBERTY_BOUNDARY_3), placeholder, zoom = 4f))
+        assertTrue(eval(parse(LIBERTY_BOUNDARY_3), placeholder, zoom = 4f), "Liberty alone draws it")
         val guarded = parse("[\"all\", $LIBERTY_BOUNDARY_3, ${IndiaViewRules.TILE_ZOOM_GUARD}]")
         assertFalse(eval(guarded, placeholder, zoom = 4f))
         assertFalse(eval(guarded, placeholder, zoom = 0f))
         // The same state line in a zoom 5+ tile (and an overscaled one past the source's maxzoom 14) is drawn.
-        listOf(5f, 8f, 14f, 16f).forEach { assertTrue("tile zoom $it", eval(guarded, placeholder, zoom = it)) }
+        listOf(5f, 8f, 14f, 16f).forEach { assertTrue(eval(guarded, placeholder, zoom = it), "tile zoom $it") }
         // Liberty's own rules still apply from zoom 5: no disputed or claimed line, no country line.
         assertFalse(eval(guarded, placeholder + ("disputed" to 1), zoom = 5f))
         assertFalse(eval(guarded, placeholder + ("claimed_by" to "CN"), zoom = 5f))
@@ -172,14 +171,15 @@ class IndiaViewRulesTest {
         // below 5 for boundary_2 alone to draw at 5.0, as on the web; and no float may lie between the two, or some
         // zoom would draw neither.
         val max = IndiaViewRules.WORLD_MAX_ZOOM
-        assertTrue("$max", max < IndiaViewRules.DETAILED_FROM_ZOOM)
-        assertTrue("$max", max > IndiaViewRules.DETAILED_FROM_ZOOM - 0.001f)
-        assertEquals(IndiaViewRules.DETAILED_FROM_ZOOM, Math.nextUp(max))
+        assertTrue(max < IndiaViewRules.DETAILED_FROM_ZOOM, "$max")
+        assertTrue(max > IndiaViewRules.DETAILED_FROM_ZOOM - 0.001f, "$max")
+        // The next float up from max (Math.nextUp on the JVM; computed from the bits in common code).
+        assertEquals(IndiaViewRules.DETAILED_FROM_ZOOM, Float.fromBits(max.toBits() + 1))
         // At every float zoom exactly one of the two draws (native: minZoom <= zoom && maxZoom >= zoom).
         listOf(4f, 4.9f, max, 5f, 5.0001f, 8f).forEach { zoom ->
             val world = zoom <= max
             val country = IndiaViewRules.countryMinZoom(Float.NEGATIVE_INFINITY) <= zoom
-            assertTrue("zoom $zoom", world != country)
+            assertTrue(world != country, "zoom $zoom")
         }
     }
 
@@ -351,16 +351,16 @@ class IndiaViewRulesTest {
             IndiaViewRules.TILE_ZOOM_GUARD,
         ).forEach {
             val ops = expressionOperators(parse(it))
-            assertTrue("$it uses ${ops - expressionOps}", expressionOps.containsAll(ops))
-            assertTrue(it, IndiaViewRules.isExpressionSyntax(toList(parse(it))))
+            assertTrue(expressionOps.containsAll(ops), "$it uses ${ops - expressionOps}")
+            assertTrue(IndiaViewRules.isExpressionSyntax(toList(parse(it))), it)
         }
         val legacyRules = listOf(
             IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY, IndiaViewRules.STATE_LABEL_EXTRA_FILTER_LEGACY,
         )
         legacyRules.forEach {
             val ops = legacyOperators(parse(it))
-            assertTrue("$it uses ${ops - legacyOps}", legacyOps.containsAll(ops))
-            assertFalse(it, IndiaViewRules.isExpressionSyntax(toList(parse(it))))
+            assertTrue(legacyOps.containsAll(ops), "$it uses ${ops - legacyOps}")
+            assertFalse(IndiaViewRules.isExpressionSyntax(toList(parse(it))), it)
         }
         // As andFilter builds them: Expression.all(existing, extra).
         val liberty = listOf(
@@ -384,7 +384,7 @@ class IndiaViewRulesTest {
         val legacyCountry = listOf("all", listOf("==", "admin_level", 2f), listOf("!=", "maritime", 1f))
         val legacyState = listOf("==", "class", "state")
         listOf(legacyCountry, legacyState, listOf("!in", "class", "city"), listOf("has", "\$type"), listOf("none"))
-            .forEach { assertFalse("$it", IndiaViewRules.isExpressionSyntax(it)) }
+            .forEach { assertFalse(IndiaViewRules.isExpressionSyntax(it), "$it") }
         assertEquals(
             IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER_LEGACY,
             IndiaViewRules.extraFilterFor(
@@ -480,7 +480,7 @@ class IndiaViewRulesTest {
             "any" -> JsonPrimitive(e.drop(1).any { truth(value(it, props, zoom)) })
             "has" -> {
                 // The one-argument form: the feature's own properties.
-                assertEquals("has takes one property name here: $e", 2, e.size)
+                assertEquals(2, e.size, "has takes one property name here: $e")
                 JsonPrimitive(e[1].jsonPrimitive.content in props)
             }
             "==" -> JsonPrimitive(same(v(1), v(2)))
@@ -488,7 +488,7 @@ class IndiaViewRulesTest {
             ">=" -> JsonPrimitive(number(v(1)) >= number(v(2)))
             "<=" -> JsonPrimitive(number(v(1)) <= number(v(2)))
             "match" -> {
-                assertEquals("match takes one label list here: $e", 5, e.size)
+                assertEquals(5, e.size, "match takes one label list here: $e")
                 val input = v(1)
                 val labels = e[2].jsonArray
                 val hit = input is JsonPrimitive && input.isString && labels.any { it == input }

@@ -1,53 +1,11 @@
-package app.doorprints
+package app.doorprints.ui
 
-import app.doorprints.ui.LEGEND_DOTS
-import app.doorprints.ui.LEGEND_DOT_BOX_DP
-import app.doorprints.ui.LEGEND_DOT_GAP_DP
-import app.doorprints.ui.LEGEND_PADDING_DP
-import app.doorprints.ui.LEGEND_ROUNDING_SLACK_DP
-import app.doorprints.ui.LegendPlace
-import app.doorprints.ui.LocationFix
-import app.doorprints.ui.MAP_ATTRIBUTION_GAP_DP
-import app.doorprints.ui.MAP_ATTRIBUTION_OVERLAY_GAP_DP
-import app.doorprints.ui.MAP_ATTRIBUTION_SIZE_DP
-import app.doorprints.ui.MAP_ATTRIBUTION_STACK_DP
-import app.doorprints.ui.LEGEND_OUTLINE_ALPHA
-import app.doorprints.ui.LEGEND_OUTLINE_DP
-import app.doorprints.ui.MAP_BOTTOM_ROW_MIN_DP
-import app.doorprints.ui.MAP_BOTTOM_STACK_MIN_DP
-import app.doorprints.ui.MAP_CONTROL_COLUMN_INSET_DP
-import app.doorprints.ui.MAP_LEGEND_BESIDE_FAB_DP
-import app.doorprints.ui.MAP_NORTH_UP
-import app.doorprints.ui.MAP_SNACKBAR_MIN_WIDTH_DP
-import app.doorprints.ui.MARKER_HIT_RADIUS_DP
-import app.doorprints.ui.MARKER_LABEL_MAX_WIDTH_EM
-import app.doorprints.ui.MARKER_OPACITY_REJECTED
-import app.doorprints.ui.MARKER_RADII
-import app.doorprints.ui.MARKER_STROKE_DP
-import app.doorprints.ui.MARKER_STROKE_SHORTLISTED_DP
-import app.doorprints.ui.attributionBottomDp
-import app.doorprints.ui.controlsClearanceDp
-import app.doorprints.ui.hasIndicScript
-import app.doorprints.ui.legendBesideFab
-import app.doorprints.ui.legendFitsOneLine
-import app.doorprints.ui.legendMinWidthDp
-import app.doorprints.ui.legendOneLineWidthDp
-import app.doorprints.ui.legendPlace
-import app.doorprints.ui.mapControlsInRow
-import app.doorprints.ui.markerLabelSizeSp
-import app.doorprints.ui.refusedTapSnackbarText
-import app.doorprints.ui.rowReachesAttribution
-import app.doorprints.ui.snackbarActionOnNewLine
-import app.doorprints.ui.snackbarBesideRow
-import app.doorprints.ui.topBandBesideControls
-import app.doorprints.ui.topBandEndInsetDp
-import app.doorprints.ui.topBandMaxHeightDp
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.math.roundToInt
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The Map's top band (Hunt card and notes) never shares space with the bottom controls, at any text size and on a
@@ -100,7 +58,7 @@ class MapRulesTest {
                 val a = available.toFloat()
                 val band = topBandMaxHeightDp(a, stack)
                 val stackTop = a - maxOf(stack, MAP_BOTTOM_ROW_MIN_DP)
-                assertTrue("band $band ends below the row top $stackTop on $a dp", band <= maxOf(stackTop, 0f) + 0.01f)
+                assertTrue(band <= maxOf(stackTop, 0f) + 0.01f, "band $band ends below the row top $stackTop on $a dp")
                 assertFalse(topBandBesideControls(a, stack))
             }
         }
@@ -119,7 +77,7 @@ class MapRulesTest {
                 val band = topBandMaxHeightDp(a, stack)
                 val stackTop = a - maxOf(stack, MAP_BOTTOM_STACK_MIN_DP)
                 val clear = band <= stackTop + 0.01f || topBandEndInsetDp(a, stack) == MAP_CONTROL_COLUMN_INSET_DP
-                assertTrue("band $band overlaps the column (top $stackTop) on $a dp", clear)
+                assertTrue(clear, "band $band overlaps the column (top $stackTop) on $a dp")
             }
         }
     }
@@ -155,9 +113,9 @@ class MapRulesTest {
         // At every zoom: shortlisted largest, rejected smallest, so the shortlisted / rejected pair (about 1.3:1 in
         // luminance) differs in size for users who cannot tell the colours apart (WCAG 1.4.1).
         MARKER_RADII.forEach { r ->
-            assertTrue("zoom ${r.zoom}", r.shortlisted > r.new && r.new > r.rejected)
+            assertTrue(r.shortlisted > r.new && r.new > r.rejected, "zoom ${r.zoom}")
             // The 24 dp hit radius covers the largest dot and its ring.
-            assertTrue("zoom ${r.zoom}", r.shortlisted + MARKER_STROKE_SHORTLISTED_DP <= MARKER_HIT_RADIUS_DP)
+            assertTrue(r.shortlisted + MARKER_STROKE_SHORTLISTED_DP <= MARKER_HIT_RADIUS_DP, "zoom ${r.zoom}")
         }
         assertTrue(MARKER_STROKE_SHORTLISTED_DP > MARKER_STROKE_DP)
         assertEquals(0.75f, MARKER_OPACITY_REJECTED, 0.001f)
@@ -177,7 +135,7 @@ class MapRulesTest {
         val (new, shortlisted, rejected) = LEGEND_DOTS
         assertTrue(shortlisted.diameterDp > new.diameterDp && new.diameterDp > rejected.diameterDp)
         // Every dot has some colour inside its white ring.
-        LEGEND_DOTS.forEach { assertTrue(it.status, it.diameterDp / 2f - it.ringDp > 0f) }
+        LEGEND_DOTS.forEach { assertTrue(it.diameterDp / 2f - it.ringDp > 0f, it.status) }
         // The web's box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35).
         assertEquals(1f, LEGEND_OUTLINE_DP, 0.001f)
         assertEquals(0.35f, LEGEND_OUTLINE_ALPHA, 0.001f)
@@ -214,7 +172,7 @@ class MapRulesTest {
                     (LEGEND_DOT_BOX_DP * density).roundToInt() + (LEGEND_DOT_GAP_DP * density).roundToInt() + labelPx
                 // The width legendPlace gives the legend at its threshold, less 1 px for the rounding of its place.
                 val givenPx = legendMinWidthDp(labelDp) * density - 1f
-                assertTrue("$labelPx px name at ${density}x: laid out $laidOutPx px, given $givenPx px", laidOutPx <= givenPx)
+                assertTrue(laidOutPx <= givenPx, "$labelPx px name at ${density}x: laid out $laidOutPx px, given $givenPx px")
             }
         }
     }
