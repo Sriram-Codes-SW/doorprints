@@ -61,7 +61,7 @@
 | 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3. §13.1: CMP-3 **done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #20, open; the owner merges). New **§13.5**: CMP-3 as built and where it differs from the plan. §12.7: **S4b-BL-18 done** (the dates and `uiLanguage()` follow the resolved language); new **S4b-BL-22** (Export's default language follows `locales[0]`); new **CMP-0-BL-8** (§13.3 backlog). |
 | 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a. §13.1: CMP-4 **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, after PR #20 was merged as `fccf8a1`), P4b and P4c planned. New **§13.6**: the Room database in `:shared` commonMain (Room KMP), how the identity hash and the file name were kept, the migration test, what stays in `:app` and why. §12.7: new **S4b-BL-23** (the `Repository`'s Android-only Room calls, for P4c) and **S4b-BL-24** (Room never opened on iOS). CMP-2 and CMP-3 rows marked **Done** (PRs #19 and #20 merged). Code review: the iOS database goes in Application Support; new S4b-BL-25 (a committed v1 schema). |
 | 0.49 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b. §13.1: CMP-4 **P4a done and merged** (PR #21, `e480b83`), **P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22, open; the owner merges), P4c planned. New **§13.7**: settings, `SecretStore` and `ServerUrl` in `:shared` commonMain, how the stored names were kept, the parser port, what stays in `:app`. §9.3 items 2 and 3 marked done. §12.7: new **S4b-BL-26** (iOS settings and Keychain never run), **S4b-BL-27** (the real Keystore path has no automated test) and **S4b-BL-28** (two JUnit tests of now-common code), from the review **S4b-BL-29** (`AppSettings.toString()` prints the API key) and **S4b-BL-30** (iOS `KeychainSecretStore`: update, transform, locked device); the intro lists S4b-BL-23 to S4b-BL-30. §13.3 and CMP-0: the live UI test only after a merge that runs the `Web` deploy (owner rule refined, 2026-09-24). |
-| 0.50 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c. §13.1: CMP-4 **P4a and P4b merged** (PR #21, `e480b83`; PR #22, `aa8f73a`), **P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23, open; the owner merges). New **§13.8**: the common `Repository` interface, the transactions and change flow on Room's common API, the mappers, `CompareScreen` and `HouseFormRules` in `:ui`, how the transaction semantics were checked, what stays in `:app`. §12.7: **S4b-BL-23** and **S4b-BL-28** done; new **S4b-BL-31** to **S4b-BL-33**. |
+| 0.50 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c. §13.1: CMP-4 **P4a and P4b merged** (PR #21, `e480b83`; PR #22, `aa8f73a`), **P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23, open; the owner merges). New **§13.8**: the common `Repository` interface, the transactions and change flow on Room's common API, the mappers, `CompareScreen` and `HouseFormRules` in `:ui`, how the transaction semantics were checked, what stays in `:app`. §12.7: **S4b-BL-23** and **S4b-BL-28** done; new **S4b-BL-31** to **S4b-BL-33**. Review: §13 *How the work runs* records the owner's request of 2026-09-24 (CMP-5, CMP-6 and CMP-7 as one combined change and pull request, tested together; CMP-8 separate) and the CMP-5..7 rows say so; §13.8 names the commits (`a4e7e59` CLAUDE.md, `17cbf2d`, `c9be8e8`, `16f5bf0`); new **S4b-BL-34** (Compare's screenshots, the wrapper's name). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1012,7 +1012,8 @@ new ticket takes the next free number from it and says in its Docs handover that
 S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 and round 3 rows; S4b-BL-8 in v0.31, from the Docs pre-review of Decision 5; S4b-BL-9 and S4b-BL-10 in v0.32, from the owner's boundary issue (§12.8); S4b-BL-11 and S4b-BL-12 in v0.33, from the round 1 review of that Docs change; S4b-BL-13 to S4b-BL-16 in v0.34, from the coordinator's comment and docs sync of that change (S4b-BL-15 and S4b-BL-16 proposed in `android/shared/README.md` 1.39); S4b-BL-17 in v0.37, from the round 2 design review of PR #16 (§12.10);
 S4b-BL-18 to S4b-BL-21 in v0.46, from the reviews of PR #19 (CMP-2 and the ADR-24 rename, §13.4 and §14);
 S4b-BL-22 in v0.47, from CMP-3 (§13.5); S4b-BL-23 to S4b-BL-25 in v0.48, from CMP-4 P4a (§13.6); S4b-BL-26 to
-S4b-BL-30 in v0.49, from CMP-4 P4b (§13.7) and its review; S4b-BL-31 to S4b-BL-33 in v0.50, from CMP-4 P4c (§13.8).
+S4b-BL-30 in v0.49, from CMP-4 P4b (§13.7) and its review; S4b-BL-31 to S4b-BL-34 in v0.50, from CMP-4 P4c (§13.8)
+and its design review.
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1049,6 +1050,7 @@ S4b-BL-30 in v0.49, from CMP-4 P4b (§13.7) and its review; S4b-BL-31 to S4b-BL-
 | S4b-BL-31 | Android | **The status and checklist labels are in two places** (CMP-4 P4c; new id). Compare reads the Compose resources (`ChecklistResources`, `labelResource` in `:ui`; the 10 `check_*` strings added there), while the house form and the list still read `:app`'s Android copies (`ChecklistLabels`, `labelRes`, `check_*` in `res/values*`). `StringParityTest` keeps the texts equal | When the house form and the list move (CMP-5, CMP-6 P6a), switch them to the `:ui` versions and remove `ChecklistLabels` and the Android `check_*` strings (keep `labelRes` while `HuntService`'s notification reads it) | Android |
 | S4b-BL-32 | Android | **The data logic an iOS app needs is still in `AndroidRepository`** (CMP-4 P4c; new id). The interface is common, but the sync algorithm, the import's merge and copy writes, the undo and `CopyUndo` are Android code, because they use `java.io.File`, WorkManager and the app-wide client | Before CMP-8: a common implementation with the photo files, "sync soon" and the API client behind small interfaces, `AndroidRepository` reduced to those; `RepositoryTransactionTest` and the import tests unchanged | Android |
 | S4b-BL-33 | Android | **`parseCoordinate` on iOS is unchecked** (CMP-4 P4c; new id). It is common now and uses `String.toDoubleOrNull`, whose Kotlin/Native parser may accept other strings than the JVM's (exponents, a trailing `d` or `f`) | With the iOS shell (CMP-8): run `HouseFormRulesTest` on the simulator and add the edge cases; restrict the input to digits, sign and one separator if they differ | Android |
+| S4b-BL-34 | Android | **Compare has one reference screenshot** (CMP-4 P4c design review; new id). TC-U-56 records Compare only with two houses selected: no picker, no empty state, no filled rating row, no long best-name. Also, `:app`'s wrapper in `CompareTab.kt` is still named `CompareScreen` | Add `compare_empty` and `compare_picker` screenshots in a phase that re-records images (the combined CMP-5..7 change is a natural point, §13); rename the wrapper to `CompareTab` when CMP-5 removes it | Android |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -1302,6 +1304,14 @@ Compose Multiplatform UI) and settles its Phase 2 item (4), SwiftUI or CMP. Modu
 languages, both themes, loading/empty/error states), one reviewer pass per area touched, then a second pass on the
 delta only. There is no visual change unless a phase says so. Anything out of scope becomes a backlog item.
 
+**Exception: CMP-5, CMP-6 and CMP-7 are one change** (owner request of 2026-09-24, verbatim: "After CMP4 is done,
+make all CMP-5, CMP-6 and CMP-7 changes at once and then test them together so that time can be saved"). They run on
+one branch in **one pull request**, tested together: the 64 screenshots (TC-U-56), the emulator smoke tests
+(TC-I-35), the iOS compile, and the TC-M-25 re-run for the map (ADR-22). The commits still come in steps that each
+build and pass the tests: navigation, ViewModels and screens (CMP-5); then HouseEdit, Export and Import (CMP-6 P6a,
+P6b); then the map (CMP-7). Reviews: code, design/UX and docs, with the map's India view checked on its own. CMP-8
+stays a separate change. Trade-off: a larger review, accepted by the owner to save time ([03](03-design.md) ADR-23).
+
 **Out of scope** until there is a Mac and a paid Apple Developer account (about US$99 a year, against the zero-cost
 rule): signing, device installs, TestFlight and the App Store. iPhone users keep the PWA until then.
 
@@ -1314,9 +1324,9 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 | CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Done** (PR #19, merged as `7080a7f`). Differs from the plan in five points (§13.4): the service strings stay Android resources, services keep `R.string`, `AppLocale.applyDefault` sets the default locale on every API level, the APK carries only the four languages, and `StringParityTest` checks more than the keys |
 | CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | **Done** (PR #20, merged as `fccf8a1`). Also moved `MapRulesTest` and `IndiaViewRulesTest` to `:ui` commonTest (kotlin.test), removed `:app`'s blocking `UiStrings.kt` and fixed S4b-BL-18. Differs from the plan in four points (§13.5): `PlatformServices` has one member so far, `DeletedHouseUndo` takes two lambdas instead of the repository, amounts and scores need no locale, and `:app` keeps a thin `DeletedHouses.kt` |
 | CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | **Done in code** (P4a and P4b merged; P4c open). **P4a merged** (PR #21, `e480b83`; §13.6): `AppDatabase`, entities, DAOs, `Converters` and `MIGRATION_1_2` in `:shared` commonMain, identity hash and `doorprints.db` unchanged, new `AppDatabaseMigrationTest` (TC-U-63). **P4b merged** (PR #22, `aa8f73a`; §13.7): `SettingsStore` on `datastore-preferences-core`, the `SecretStore` interface and `ServerUrl` in `:shared` commonMain; file and key names unchanged (`SettingsUpgradeTest`, TC-U-64); `ServerUrlTest` passes on the common parser. **P4c done in code** (§13.8; PR #23, open, the owner merges): a `Repository` interface in `:shared` (`AndroidRepository` in `:app`), its transactions and change flow on Room's common API (S4b-BL-23, `RepositoryTransactionTest`, TC-U-66), the mappers common; `CompareScreen` and `HouseFormRules` in `:ui` commonMain; S4b-BL-28 done |
-| CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned |
-| CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
-| CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned |
+| CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned; ships with CMP-6 and CMP-7 as one combined change (owner, 2026-09-24; §13) |
+| CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned; ships with CMP-5 and CMP-7 as one combined change (owner, 2026-09-24; §13) |
+| CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned; ships with CMP-5 and CMP-6 as one combined change (owner, 2026-09-24; §13), its India view checked on its own |
 | CMP-8 | P8 | **iOS shell.** `iosApp` in Xcode, `ComposeUIViewController`, MapLibre iOS via SPM; built for the simulator on GitHub's macOS runners with `CODE_SIGNING_ALLOWED=NO` (free) | The simulator build is green in CI; no signing, no device, no App Store | Android, DevSecOps | Planned |
 | CMP-9 | Spike | **maplibre-compose** (`org.maplibre.compose` 0.17): pre-1.0 and would replace the Android map engine | A written finding; re-assessed when it reaches 1.0 | Android | Planned |
 
@@ -1721,7 +1731,8 @@ v0.16, `android/shared/README.md` 1.49, `android/ui/README.md` 1.8, the CHANGELO
 ### 13.8 CMP-4 P4c (phase 4c), done in code
 
 **What was done** (branch `claude/doorprints-dev-continue-fzcge2`, on `main` at `aa8f73a`, where PR #22 (CMP-4 P4b) was
-merged: code and tests in two commits, then these docs; PR #23). The data layer gets a common interface, its
+merged; PR #23): `a4e7e59` (CLAUDE.md's tickets pointer names the open-ended S4b-BL backlog and the CMP track,
+owner request), then `17cbf2d` code, `c9be8e8` tests and `16f5bf0` docs. The data layer gets a common interface, its
 transactions use Room's common API, and Compare moves to `:ui`:
 
 - **`Repository` interface** (`:shared` commonMain, `data/Repository.kt`): the members whose types are
@@ -1766,8 +1777,12 @@ nests (another `BEGIN IMMEDIATE`, a nested framework transaction, the same as un
 rolls the whole transaction back; after the commit `useWriterConnection` calls `invalidationTracker.refreshAsync()` (the
 same refresh `endTransaction` queued). The one thing the new path skips is `withTransaction`'s trigger sync before
 `BEGIN`; each `Flow` syncs its triggers when it starts collecting, and its first read waits for the writer, so no change
-is missed. (2) New `RepositoryTransactionTest` (TC-U-66, 4 tests) on the app's own database: a copy stopped after both
-house rows leaves no row and no photo file; a finished copy commits every row; DAO writes inside
+is missed. **One real difference, found in review and fixed:** the block runs in Room's transaction context, not under
+the caller's Job, so cancelling the caller no longer rolled back (`withTransaction` did; a probe on `aa8f73a` and on
+this branch showed it). `withImmediateTransaction` now checks the caller with `ensureActive()` before the commit,
+inside the transaction, so a cancelled caller rolls everything back again. (2) New `RepositoryTransactionTest`
+(TC-U-66, 5 tests) on the app's own database: a copy stopped after both house rows leaves no row and no photo file;
+so does one whose caller's job is cancelled there; a finished copy commits every row; DAO writes inside
 `withImmediateTransaction` are visible inside, a nested transaction joins it, a throw rolls back all of them;
 `localRowsFlow` emits after a house, visit and photo write, a copy's commit and a delete. (3) The same four tests run on
 `aa8f73a`, against the old `Repository` and `withTransaction` (a copy of the test with only those names changed, not
@@ -1781,7 +1796,7 @@ format did not change.
 thin `CompareTab.kt`. **New backlog:** S4b-BL-31, S4b-BL-32, S4b-BL-33 (`parseCoordinate`'s `toDoubleOrNull` on iOS).
 
 **Verified, and how.** Locally, the CI command of the brief with `-Proborazzi.test.verify=true` and
-`assembleDebugAndroidTest`: green. `:app` 176 unit tests (24 moved to commonTest, 4 new), `:shared` 196 host tests (12
+`assembleDebugAndroidTest`: green. `:app` 177 unit tests (24 moved to commonTest, 5 new), `:shared` 196 host tests (12
 moved in), `:ui` 67 (12 moved in, 4 new); the 64 screenshots match, so no screen changed. With
 `-Pkotlin.native.enableKlibsCrossCompilation=true`, `:shared:compileKotlinIosSimulatorArm64`,
 `:shared:compileTestKotlinIosSimulatorArm64`, `:ui:compileKotlinIosSimulatorArm64` and
@@ -1791,7 +1806,9 @@ moved in), `:ui` 67 (12 moved in, 4 new); the 64 screenshots match, so no screen
 
 **Docs.** [03](03-design.md) v0.30 (ADR-23 P4c, §4.2, §4.2.1, Phase 2 plan), [06](06-test-plan.md) v0.44 (TC-U-46,
 TC-U-51, TC-U-62, TC-U-66, TC-U-67), this section (v0.50), [14](14-lead-backlog-and-handoff.md) v0.17,
-`android/shared/README.md` 1.50, `android/ui/README.md` 1.9, the CHANGELOG and the docs index.
+`android/shared/README.md` 1.50, `android/ui/README.md` 1.9, the CHANGELOG and the docs index. Review round:
+[01](01-requirements.md) v0.31 (RTM), [05](05-ux-accessibility-i18n.md) v0.23 (27 keys in both homes), S4b-BL-34,
+and the owner's CMP-5..7 request (§13, [03](03-design.md) ADR-23).
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

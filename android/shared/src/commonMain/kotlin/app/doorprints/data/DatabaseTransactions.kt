@@ -2,6 +2,8 @@ package app.doorprints.data
 
 import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -18,11 +20,20 @@ import kotlinx.coroutines.flow.Flow
  * the invalidation tracker once, so each observing `Flow` re-reads once. `RepositoryTransactionTest` pins the commit,
  * the rollback and the refresh.
  */
-suspend fun <R> AppDatabase.withImmediateTransaction(block: suspend () -> R): R =
-    useWriterConnection { transactor -> transactor.immediateTransaction { block() } }
+suspend fun <R> AppDatabase.withImmediateTransaction(block: suspend () -> R): R {
+    // The block runs in Room's transaction context, not under the caller's Job, so cancelling the caller does not
+    // stop it. `withTransaction` rolled back when the caller was cancelled; to keep that, the caller is checked before
+    // the commit, inside the transaction, so a cancelled caller rolls everything back (RepositoryTransactionTest).
+    val caller = currentCoroutineContext()
+    return useWriterConnection { transactor ->
+        transactor.immediateTransaction {
+            block().also { caller.ensureActive() }
+        }
+    }
+}
 
-/** The tables a copy is built from; see [localTablesChanged]. */
-val LOCAL_TABLES = arrayOf("houses", "visits", "photos")
+/** The tables a copy is built from; see [localTablesChanged]. Private, so no caller can change what is observed. */
+private val LOCAL_TABLES = arrayOf("houses", "visits", "photos")
 
 /**
  * Emits at once, and again after each committed change to the houses, visits or photos table (Room's common
