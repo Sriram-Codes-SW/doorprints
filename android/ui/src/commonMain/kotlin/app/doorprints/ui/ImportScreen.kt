@@ -1,10 +1,5 @@
 package app.doorprints.ui
 
-import android.app.Application
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,8 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -34,30 +27,16 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.work.Data
-import androidx.work.WorkInfo
-import app.doorprints.DoorprintsApp
-import app.doorprints.Notifications
 import app.doorprints.data.AppSettings
 import app.doorprints.data.ResultMarks
 import app.doorprints.data.ResultScreen
-import app.doorprints.export.CopyImportUndo
-import app.doorprints.export.ExportRequest
-import app.doorprints.export.ExportWorker
+import app.doorprints.export.CopyRecord
 import app.doorprints.export.ImportCheck
-import app.doorprints.export.ImportUndo
-import app.doorprints.export.ImportWorker
-import app.doorprints.export.OpenBackupDocument
-import app.doorprints.export.Saf
-import app.doorprints.export.ScreenWatch
-import app.doorprints.export.backupProblemOf
-import app.doorprints.export.messageRes
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.export.BackupProblem
@@ -167,8 +146,8 @@ private class BarAction(
  *
  * **A copy import can be undone (UX review, rounds 16 and 18).** "Add everything as new copies" keeps each house's
  * name and times, so the copies sort next to their originals and sync out, and removing them one by one risked
- * deleting the wrong one of a pair. Its worker records the new ids ([ImportUndo]); for a day the result offers *Undo
- * this import* and says until when ("You can undo this until …"). The undo ([CopyImportUndo], shared with the house
+ * deleting the wrong one of a pair. Its worker records the new ids ([CopyRecord]); for a day the result offers *Undo
+ * this import* and says until when ("You can undo this until …"). The undo ([CopyImportUndoes], shared with the house
  * list) removes exactly those rows in one transaction and keeps any house edited since ("Removed 40 copies. Kept 2
  * houses you had edited since."), with no confirmation because it only takes away what that import just added.
  * *See your houses* opens the list on the copies, behind a "Just imported" chip, and the list has the same undo in a
@@ -183,17 +162,20 @@ private class BarAction(
  * read, assertively for a refused file and a failed import (A11Y-A09).
  *
  * The flow lives in [ImportViewModel], so a rotation or a process restart keeps the picked file, its name and its
- * preview; the Replace dialog is `rememberSaveable` for the same reason. The picker opens at the weekly backup
+ * preview; the Replace dialog is `rememberSaveable` for the same reason. Common since ADR-23 CMP-6 P6b: the picker,
+ * the staging, the preview and the background import are the app's ([AppServices.importScreen]). The picker opens at the weekly backup
  * folder when one is set. Tapping Import switches the bar to "Importing…" at once ([ImportViewModel.starting]),
  * and a second tap cannot start a second import.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit = { onBack() }) {
-    val context = LocalContext.current
-    val app = context.applicationContext as Application
-    val vm: ImportViewModel = viewModel { ImportViewModel(app, createSavedStateHandle()) }
-    val repo = repository()
+    val services = LocalAppServices.current
+    val imports = services.importScreen
+    val vm: ImportViewModel = viewModel {
+        ImportViewModel(imports, services.copyImports, createSavedStateHandle())
+    }
+    val repo = services.repository
     var confirm by rememberSaveable { mutableStateOf(false) }
     /** True from the tap on a choose button until the picker returns, so a double tap cannot stack two pickers. */
     var picking by rememberSaveable { mutableStateOf(false) }
@@ -206,16 +188,12 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
 
     // While this is true a finished import is shown here; while it is false the worker posts a notification.
     LifecycleStartEffect(Unit) {
-        ScreenWatch.importScreen = true
-        onStopOrDispose { ScreenWatch.importScreen = false }
+        imports.screenVisible(true)
+        onStopOrDispose { imports.screenVisible(false) }
     }
 
-    // Where the picker opens: the weekly backup folder, when there is one (see OpenBackupDocument).
+    // Where the picker opens: the weekly backup folder, when there is one (see ImportServices.rememberBackupPicker).
     val settings by repo.settings.settings.collectAsStateWithLifecycle(AppSettings())
-    val backupFolder = remember(settings.autoBackupFolder) {
-        settings.autoBackupFolder.takeIf { it.isNotBlank() }
-            ?.let { folder -> runCatching { Saf.treeRoot(Uri.parse(folder)) }.getOrNull() }
-    }
 
     /**
      * Closes the result on screen; set further down, once the result's state is known. Called only when a file has
@@ -224,28 +202,28 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
      * offering *Undo this import*.
      */
     val closeResultOnPick = remember { arrayOfNulls<() -> Unit>(1) }
-    val pick = rememberLauncherForActivityResult(OpenBackupDocument()) { uri ->
+    val pick = imports.rememberBackupPicker { file ->
         picking = false
-        if (uri != null) {
+        if (file != null) {
             // Before vm.pick: the result is still the one on screen, so it is closed rather than skipped.
             closeResultOnPick[0]?.invoke()
-            vm.pick(uri)
+            vm.pick(file)
         }
     }
 
     // remember()ed: WorkManager hands back a new Flow instance on every call, and re-subscribing on
     // every recomposition would be a new query each time.
-    val workFlow = remember(context) { ImportWorker.observe(context) }
+    val workFlow = remember(imports) { imports.runs() }
     val work by workFlow.collectAsStateWithLifecycle(emptyList())
-    val info = work.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
+    val info = work.firstOrNull { it.state == RunState.RUNNING || it.state == RunState.ENQUEUED }
         ?: work.lastOrNull()
     // From the Import tap itself, not only once WorkManager reports the run 50–300 ms later.
-    val running = vm.starting || info?.state == WorkInfo.State.RUNNING || info?.state == WorkInfo.State.ENQUEUED
+    val running = vm.starting || info?.state == RunState.RUNNING || info?.state == RunState.ENQUEUED
     // Until then, `info` may still be the previous, finished run: its numbers are not this run's.
-    val reported = info != null && info.id.toString() == vm.startedRunId
+    val reported = info != null && info.id == vm.startedRunId
 
     LaunchedEffect(info?.id) {
-        info?.let { vm.onRunObserved(it.id.toString()) }
+        info?.let { vm.onRunObserved(it.id) }
     }
 
     // Once the import this screen started has ended — any way — its preview is stale; see ImportViewModel. A
@@ -253,11 +231,11 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     LaunchedEffect(info?.id, info?.state) {
         val current = info ?: return@LaunchedEffect
         if (!current.state.isFinished) return@LaunchedEffect
-        NotificationManagerCompat.from(context).cancel(Notifications.IMPORT_DONE_ID)
+        imports.clearDoneNotification()
         vm.onRunEnded(
-            current.id.toString(),
-            stopped = current.state == WorkInfo.State.CANCELLED,
-            mode = ImportWorker.modeOf(current),
+            current.id,
+            stopped = current.state == RunState.CANCELLED,
+            mode = current.mode,
         )
     }
 
@@ -282,16 +260,14 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     // This screen's own run, one that ended moments ago, or — however old — a failure or a result nobody was told
     // about, until it has been seen here once; never one the user closed, and never under a newly picked file.
     val finished = info != null && info.state.isFinished
-    val runId = info?.id?.toString()
+    val runId = info?.id
     val loadedMarks = marks
-    val output = info?.outputData ?: Data.EMPTY
     // A copy import that succeeded and left an undo record behind (UX review, round 16); the record is loaded from
     // its file, and offers no undo once it is older than a day or has been used (closing the result keeps it).
-    val succeededRun = info?.takeIf { it.state == WorkInfo.State.SUCCEEDED }
-    val undoableCopy = succeededRun != null && ImportWorker.modeOf(succeededRun) == ImportMode.COPY &&
-        output.getBoolean(ImportWorker.KEY_UNDOABLE, false)
+    val succeededRun = info?.takeIf { it.state == RunState.SUCCEEDED }
+    val undoableCopy = succeededRun != null && succeededRun.mode == ImportMode.COPY && succeededRun.undoable
     // Loaded again when an undo ends, here or on the house list: it deletes or reduces the record.
-    val undoOutcome = CopyImportUndo.outcome
+    val undoOutcome = services.copyImports.outcome
     LaunchedEffect(runId, undoableCopy, undoOutcome) { vm.loadUndo(if (undoableCopy) runId else null) }
     val undone = vm.undone?.takeIf { it.runId == runId }
     // Not once this run's copies are gone, even for the moment before the record is loaded again.
@@ -304,10 +280,9 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                     runId == vm.startedRunId || runId == shownRunId ||
                         // A copy that can still be undone keeps its result, and so its undo, on offer.
                         undoRecord != null ||
-                        System.currentTimeMillis() - output.getLong(ExportRequest.KEY_FINISHED_AT, 0L) <
-                        RECENT_RESULT_MS ||
+                        nowMillis() - (info?.finishedAt ?: 0L) < RECENT_RESULT_MS ||
                         (runId != loadedMarks.importTold &&
-                            (info?.state == WorkInfo.State.FAILED || !ExportWorker.notifiedOf(output)))
+                            (info?.state == RunState.FAILED || !(info?.notified ?: true)))
                     )
                 )
             )
@@ -321,7 +296,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
         if (!showResult) return
         dismissedRunId = id
         // A copy's undo record is not deleted (UX review, round 18): it stays on offer from the house list.
-        (context.applicationContext as DoorprintsApp).appScope.launch {
+        services.appScope.launch {
             repo.settings.markResultDismissed(ResultScreen.IMPORT, id)
         }
     }
@@ -374,12 +349,8 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
             // The result on screen is closed only once a file is picked (see closeResultOnPick): a cancelled picker
             // leaves it, and a copy's undo, as they were.
             picking = true
-            try {
-                pick.launch(backupFolder)
-            } catch (_: ActivityNotFoundException) {
-                // No document picker on the device: nothing will call back, so do not stay locked.
-                picking = false
-            }
+            // No document picker on the device: nothing will call back, so do not stay locked.
+            if (!pick(settings.autoBackupFolder)) picking = false
         }
     }
     // Only switches the mode, like the Replace dialog's safe way out: the copy preview is seen before any write.
@@ -388,12 +359,12 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     val bringBack = { vm.onRestoreDeletedChange(true) }
     // Asks for notifications first, once, when they are off, and imports whatever the answer.
     val startImport: (Boolean) -> Unit = { skipUpdates ->
-        askNotifications { vm.startImport(context, skipUpdates = skipUpdates) }
+        askNotifications { vm.startImport(skipUpdates = skipUpdates) }
     }
 
     // What each button position of the bar says and does now: worked out here, so the bar can also measure the labels
     // it will draw (Design review, round 18: it stacks the buttons when a label would not fit side by side).
-    val succeeded = showResult && info?.state == WorkInfo.State.SUCCEEDED
+    val succeeded = showResult && info?.state == RunState.SUCCEEDED
     // The optional outlined secondary, drawn first, and the primary, drawn last (nearest the thumb when
     // the buttons stack): each position is one BarButton call site in every state (see the KDoc).
     val secondary: BarAction? = when {
@@ -418,7 +389,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
         // While blocked, the running import is the other one: say which import Stop stops.
         running -> BarAction(
             stringResource(if (vm.blocked) Res.string.import_stop_other else Res.string.export_stop),
-            { ImportWorker.cancel(context) },
+            { imports.stop() },
             BarButtonStyle.OUTLINED,
         )
         // A 1 GB file takes a while to copy; the user can change their mind.
@@ -484,19 +455,18 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                 statusKey = statusKind,
                 // A refused file, a failed import and a failed undo interrupt TalkBack; everything else is polite.
                 assertive = statusKind == ImportStatus.REFUSED ||
-                    (statusKind == ImportStatus.RESULT && info?.state == WorkInfo.State.FAILED) ||
+                    (statusKind == ImportStatus.RESULT && info?.state == RunState.FAILED) ||
                     (statusKind == ImportStatus.UNDONE && undone?.failed == true),
                 status = { kind ->
                     when (kind) {
                         ImportStatus.RUNNING -> {
-                            val (done, total) =
-                                if (reported) ExportWorker.progressOf(info?.progress ?: Data.EMPTY) else (0 to 0)
+                            val (done, total) = if (reported) (info?.done ?: 0) to (info?.total ?: 0) else (0 to 0)
                             WorkProgress(done, total, stringResource(Res.string.import_working))
                         }
                         // The run on screen is the earlier import that kept this tap from starting (see
                         // ImportViewModel); its own numbers are the honest ones to show.
                         ImportStatus.BLOCKED -> if (running) {
-                            val (done, total) = ExportWorker.progressOf(info?.progress ?: Data.EMPTY)
+                            val (done, total) = (info?.done ?: 0) to (info?.total ?: 0)
                             WorkProgress(done, total, stringResource(Res.string.import_blocked))
                         } else {
                             StatusLine(stringResource(Res.string.import_blocked))
@@ -508,7 +478,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                         ImportStatus.REFUSED -> (check as? ImportCheck.Refused)?.let {
                             ResultCard(
                                 ResultTone.ERROR,
-                                stringResource(Res.string.import_failed, stringResource(it.problem.messageRes())),
+                                stringResource(Res.string.import_failed, stringResource(it.problem.messageResource)),
                             )
                         }
                         ImportStatus.NOTHING -> nothingText?.let { ResultCard(ResultTone.NEUTRAL, it) }
@@ -644,14 +614,14 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                 // not heard twice (UX review, round 11). A success is the tick in the success colours, as Export's
                 // result card is green (Design review, round 18: in brand teal it looked like "no file yet"); what an
                 // undo did is a reversal, so it is the restore glyph in neutral colours, not a success tick.
-                showResult && info?.state == WorkInfo.State.SUCCEEDED -> HeroEmptyState(
+                showResult && info?.state == RunState.SUCCEEDED -> HeroEmptyState(
                     icon = if (undoneText != null) RestoreIcon else Icons.Default.CheckCircle,
                     // After an undo, what the undo did; the import's own sentence would name houses that are gone.
-                    title = undoneText ?: importedTextOf(context, output),
+                    title = undoneText ?: importedText(info),
                     // How long the undo is on offer (UX review, round 18): it is withdrawn after a day, and without
                     // this line the button would just be gone the next morning.
                     body = undoRecord?.let { record ->
-                        stringResource(Res.string.import_undo_until, (record.finishedAt + ImportUndo.KEEP_MS).dateText())
+                        stringResource(Res.string.import_undo_until, (record.finishedAt + CopyRecord.KEEP_MS).dateText())
                     },
                     iconTint = if (undoneText != null) {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -736,17 +706,6 @@ private fun FileHeader(name: String?, madeOn: String?, modifier: Modifier) {
     }
 }
 
-/** The success sentence of a finished import ("Brought back 3 houses. Added 20 photos. Updated 3 houses."). */
-private fun importedTextOf(context: Context, output: Data): String = ImportWorker.importedText(
-    context,
-    output.getInt(ImportWorker.KEY_HOUSES, 0),
-    output.getInt(ImportWorker.KEY_VISITS, 0),
-    output.getInt(ImportWorker.KEY_PHOTOS, 0),
-    output.getInt(ImportWorker.KEY_UPDATED_HOUSES, 0),
-    output.getInt(ImportWorker.KEY_UPDATED_VISITS, 0),
-    output.getInt(ImportWorker.KEY_RESTORED_HOUSES, 0),
-)
-
 /**
  * "Replace 3 houses and 5 visits?" (UX review, round 11: houses and visits are counted apart, not lumped together as
  * "saved items") with stacked, full-width buttons (Design review, round 5), safest first:
@@ -785,12 +744,11 @@ private fun ReplaceDialog(
     onReplace: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    val context = LocalContext.current
     val parts = buildList {
         if (houses > 0) add(pluralStringResource(Res.plurals.count_houses, houses, houses))
         if (visits > 0) add(pluralStringResource(Res.plurals.count_visits, visits, visits))
     }
-    val title = stringResource(Res.string.import_confirm_title_parts, ImportWorker.joined(context, parts))
+    val title = stringResource(Res.string.import_confirm_title_parts, joinedList(parts))
     val unnamed = stringResource(Res.string.house_unnamed)
     val more = houses - labels.size
     BasicAlertDialog(onDismissRequest = onCancel) {
@@ -890,11 +848,10 @@ private val COMPACT_DIALOG_HEIGHT = 540.dp
  * be restored, that instead, as an error card. A failure or a stop is a card here with a close button ([onDismiss]).
  */
 @Composable
-private fun ImportResult(info: WorkInfo, onDismiss: () -> Unit) {
-    val output = info.outputData
+private fun ImportResult(info: ImportRun, onDismiss: () -> Unit) {
     when (info.state) {
-        WorkInfo.State.SUCCEEDED -> {
-            val lost = output.getInt(ImportWorker.KEY_PHOTOS_SKIPPED, 0)
+        RunState.SUCCEEDED -> {
+            val lost = info.photosSkipped
             if (lost > 0) {
                 // A photo that was in the file but could not be read or verified is not a clean import; say so
                 // rather than letting the success heading imply everything arrived.
@@ -903,25 +860,25 @@ private fun ImportResult(info: WorkInfo, onDismiss: () -> Unit) {
                 StatusLine(stringResource(Res.string.import_finished))
             }
         }
-        WorkInfo.State.FAILED -> {
-            val problem = backupProblemOf(output.getString(ExportRequest.KEY_ERROR))
+        RunState.FAILED -> {
+            val problem = info.problem
             ResultCard(
                 ResultTone.ERROR,
                 // A write failure is not a problem with the file. A merge writes row by row, so it may be partial
                 // and importing the file again finishes it; a copy is rolled back, so nothing was added.
                 if (problem == BackupProblem.WRITE_FAILED) {
-                    stringResource(ImportWorker.writeFailedRes(ImportWorker.modeOf(info)))
+                    stringResource(importWriteFailedResource(info.mode))
                 } else {
-                    stringResource(Res.string.import_failed, stringResource(problem.messageRes()))
+                    stringResource(Res.string.import_failed, stringResource(problem.messageResource))
                 },
                 onDismiss = onDismiss,
             )
         }
         // A stopped merge whose file could be taken back is shown as "Finish import" instead (see ImportViewModel);
         // this is a stopped copy, or a merge whose copy had gone.
-        WorkInfo.State.CANCELLED -> ResultCard(
+        RunState.CANCELLED -> ResultCard(
             ResultTone.NEUTRAL,
-            stringResource(ImportWorker.stoppedRes(ImportWorker.modeOf(info))),
+            stringResource(importStoppedResource(info.mode)),
             onDismiss = onDismiss,
         )
         else -> Unit

@@ -47,9 +47,8 @@ sealed interface DeepLink {
 
 /**
  * The screens that are still Android code in `:app` (CMP-5): the root's graph calls them through this, with the same
- * arguments as before. They move to `:ui` in CMP-6 (Export, Import; the house form's slot went with CMP-6 P6a) and
- * CMP-7 (the Map), and each slot goes with its screen. `:app`'s `AndroidRootScreens` forwards to `MapScreen`,
- * `ExportScreen` and `ImportScreen`.
+ * arguments as before. Each slot goes when its screen moves to `:ui`: the house form's, Export's and Import's went with
+ * CMP-6, the Map's goes with CMP-7. `:app`'s `AndroidRootScreens` forwards to `MapScreen`.
  */
 interface RootScreens {
     @Composable
@@ -62,12 +61,6 @@ interface RootScreens {
         deletedHouse: String?,
         onDeletedShown: () -> Unit,
     )
-
-    @Composable
-    fun Export(onBack: () -> Unit, onOpenMap: () -> Unit)
-
-    @Composable
-    fun Import(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit)
 }
 
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
@@ -308,14 +301,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 // that finishes during the exit transition, finds the entry no longer RESUMED and is ignored, so the
                 // back stack is never popped twice (from the Map, that emptied the NavHost: a blank screen, no bar).
                 composable("export") {
-                    screens.Export(
+                    ExportScreen(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         // The same "Add a house on the map" button, so the same tip on arrival.
                         onOpenMap = openMapWithTip,
                     )
                 }
                 composable("import") {
-                    screens.Import(
+                    ImportScreen(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         onOpenHouses = { run ->
                             importedRun = run

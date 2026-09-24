@@ -41,6 +41,12 @@ interface AppServices {
     /** What the house form needs from the app: the geocoder, the visit alert and the photos (CMP-6 P6a). */
     val houseForm: HouseFormServices
 
+    /** The Export screen's background export, "Save as" picker and share sheet (CMP-6 P6b). */
+    val exportScreen: ExportServices
+
+    /** The Import screen's picker, staging and preview, and background import (CMP-6 P6b). */
+    val importScreen: ImportServices
+
     /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".
@@ -64,8 +70,7 @@ interface LocationSource {
 }
 
 /**
- * The copy imports' undo (UX review, rounds 16 to 21), as the house list uses it; the Import screen uses the same one
- * in `:app` until CMP-6. Android: `ImportUndo`'s record files and `CopyImportUndo`, which runs the undo in the
+ * The copy imports' undo (UX review, rounds 16 to 21), as the house list and the Import screen use it. Android: `ImportUndo`'s record files and `CopyImportUndo`, which runs the undo in the
  * application's scope and holds its state for the life of the process.
  */
 interface CopyImportUndoes {
@@ -132,10 +137,6 @@ interface SettingsServices {
 
     /** The stored error code of a backup whose folder is gone ("Choose it again"). */
     val backupNoFolderError: String
-
-    /** The translated reason for any other stored backup error code. */
-    @Composable
-    fun backupErrorText(code: String): String
 
     /** Settings is on screen (started): a backup that ends now is shown here, not only in a notification. */
     fun settingsVisible(visible: Boolean)

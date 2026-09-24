@@ -8,27 +8,28 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Repository
+import app.doorprints.export.AndroidExportServices
+import app.doorprints.export.AndroidImportServices
 import app.doorprints.export.AutoBackupWorker
 import app.doorprints.export.CopyImportUndo
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
-import app.doorprints.export.ExportProblem
 import app.doorprints.export.ImportUndo
 import app.doorprints.export.Saf
 import app.doorprints.export.ScreenWatch
-import app.doorprints.export.messageRes
 import app.doorprints.i18n.AppLocale
 import app.doorprints.location.Place
 import app.doorprints.location.ReverseGeocoder
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.CopyImportUndoes
+import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
+import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
 import app.doorprints.ui.LocationSource
 import app.doorprints.ui.PhotoSources
@@ -75,6 +76,10 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val settingsScreen: SettingsServices = AndroidSettingsServices(app)
 
     override val houseForm: HouseFormServices = AndroidHouseFormServices(app, repository)
+
+    override val exportScreen: ExportServices = AndroidExportServices(app)
+
+    override val importScreen: ImportServices = AndroidImportServices(app)
 
     override fun consumeLanguageChange(): LanguageChange? =
         AppLocale.consumeChange(app)?.let { LanguageChange(it.language) }
@@ -124,10 +129,6 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
     override suspend fun releaseBackupFolder(folder: String) = AutoBackupWorker.releaseFolder(app, folder)
 
     override val backupNoFolderError: String get() = AutoBackupWorker.ERROR_NO_FOLDER
-
-    /** The service strings' reason (Android resources, shared with the backup notification; S4b-BL-35). */
-    @Composable
-    override fun backupErrorText(code: String): String = stringResource(ExportProblem.fromCode(code).messageRes())
 
     override fun settingsVisible(visible: Boolean) {
         ScreenWatch.settingsScreen = visible

@@ -494,8 +494,41 @@
         <item quantity="one">திட்டம் தயார்: %1$d நிறுத்தம்</item>
         <item quantity="other">திட்டம் தயார்: %1$d நிறுத்தங்கள்</item>
     </plurals>
-    <!-- List patterns (CMP-6): also in Android resources, for the import notification (StringParityTest keeps them equal). -->
+    <!-- List patterns (CMP-6): also Android resources, for the import notification (StringParityTest keeps them equal). -->
     <string name="import_list_two">%1$s, %2$s</string>
     <string name="import_list_three">%1$s, %2$s, %3$s</string>
     <string name="import_list_middle">%1$s, %2$s</string>
+    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). All but import_stopped* are also Android
+         resources, for the notifications (StringParityTest keeps the two equal). -->
+    <string name="export_done">சேமிக்கப்பட்டது: %1$s</string>
+    <string name="export_done_in">%1$s இல் சேமிக்கப்பட்டது: %2$s</string>
+    <string name="export_done_plain">சேமிக்கப்பட்டது.</string>
+    <string name="export_done_partial">பகுதி காப்புப்பிரதி சேமிக்கப்பட்டது: %1$s</string>
+    <string name="export_done_partial_in">%1$s இல் பகுதி காப்புப்பிரதி சேமிக்கப்பட்டது: %2$s</string>
+    <string name="export_done_partial_plain">பகுதி காப்புப்பிரதி சேமிக்கப்பட்டது.</string>
+    <string name="export_ready">பகிரத் தயார்: %1$s</string>
+    <string name="export_ready_partial">பகுதி காப்புப்பிரதி பகிரத் தயார்: %1$s</string>
+    <string name="export_problem_no_space">போதுமான இடவசதி இல்லை</string>
+    <string name="export_problem_cannot_write">தேர்ந்தெடுத்த கோப்பிலோ கோப்புறையிலோ எழுத முடியவில்லை</string>
+    <string name="export_problem_unknown">எழுதும்போது ஏதோ தவறு நடந்தது</string>
+    <string name="problem_not_a_backup">இது Doorprints காப்புப்பிரதி அல்ல</string>
+    <string name="problem_unsupported">இது Doorprints-இன் புதிய பதிப்பால் உருவாக்கப்பட்டது</string>
+    <string name="problem_too_many">இதில் மிக அதிகக் கோப்புகள் உள்ளன</string>
+    <string name="problem_too_large">இது மிகப் பெரியது</string>
+    <string name="problem_suspicious">இதில் பாதுகாப்பற்ற கோப்புப் பெயர் உள்ளது</string>
+    <string name="problem_checksum">இது சிதைந்துள்ளது: செக்சம் பொருந்தவில்லை</string>
+    <string name="problem_broken">இதன் தரவைப் படிக்க முடியவில்லை</string>
+    <string name="problem_read_failed">இதைச் சேமிப்பிலிருந்து படிக்க முடியவில்லை</string>
+    <string name="problem_write_failed">அதை எழுத முடியவில்லை — இடவசதியைச் சரிபார்க்கவும்</string>
+    <string name="import_added">சேர்க்கப்பட்டவை: %1$s.</string>
+    <string name="import_updated">புதுப்பிக்கப்பட்டவை: %1$s.</string>
+    <string name="import_done_nothing">இறக்குமதி முடிந்தது. எதையும் சேர்க்கவோ புதுப்பிக்கவோ தேவையில்லை.</string>
+    <plurals name="import_restored_result">
+        <item quantity="one">%1$d வீடு திரும்பக் கொண்டுவரப்பட்டது.</item>
+        <item quantity="other">%1$d வீடுகள் திரும்பக் கொண்டுவரப்பட்டன.</item>
+    </plurals>
+    <string name="import_write_failed">இறக்குமதி பாதியில் நின்றுவிட்டது — சில உருப்படிகள் ஏற்கெனவே சேர்க்கப்பட்டிருக்கலாம். தொலைபேசியில் காலி இடம் உள்ளதா எனப் பார்த்து, முடிக்க அதே கோப்பை மீண்டும் இறக்குமதி செய்யவும்.</string>
+    <string name="import_write_failed_copy">இறக்குமதியை முடிக்க முடியவில்லை, எனவே எதுவும் சேர்க்கப்படவில்லை. தொலைபேசியில் காலி இடம் உள்ளதா எனப் பார்த்து, மீண்டும் முயலுங்கள்.</string>
+    <string name="import_stopped">இறக்குமதி நிறுத்தப்பட்டது. ஏற்கெனவே சேர்ந்தவை அப்படியே இருக்கும்; முடிக்க அதே கோப்பை மீண்டும் இறக்குமதி செய்யுங்கள்.</string>
+    <string name="import_stopped_copy">இறக்குமதி நிறுத்தப்பட்டது. எதுவும் சேர்க்கப்படவில்லை.</string>
 </resources>

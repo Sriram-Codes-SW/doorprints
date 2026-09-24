@@ -24,14 +24,6 @@ import java.io.File
 import java.util.UUID
 
 /**
- * An import handed to WorkManager: the request's [id], and [queued], which waits for the enqueue to finish and says
- * whether WorkManager kept the request. It does not when an import is already ENQUEUED or RUNNING
- * ([ExistingWorkPolicy.KEEP]); then no run with [id] is ever reported, and a screen waiting for one would wait
- * forever. [queued] throws if the enqueue itself failed.
- */
-class ImportStart(val id: UUID, val queued: suspend () -> Boolean)
-
-/**
  * Writes an already previewed and confirmed import (S4-04).
  *
  * The archive is validated a second time here, on purpose: the preview happened in another process lifetime, and
@@ -246,7 +238,7 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 .build()
             val manager = WorkManager.getInstance(context)
             val operation = manager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, work)
-            return ImportStart(work.id) {
+            return ImportStart(work.id.toString()) {
                 // The enqueue is asynchronous. Waiting for it first means the lookup below cannot run before the
                 // row is written and mistake a request that is still being queued for one KEEP dropped.
                 operation.await()
@@ -263,8 +255,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         }
 
         /**
-         * "Added 2 houses and 20 photos. Updated 3 houses.", in the app's language, for the screen and the
-         * notification (UX review, 2026-09-22). Built from the non-zero parts only, so it never says "0 houses", and
+         * "Added 2 houses and 20 photos. Updated 3 houses.", in the app's language, for the notification (the Import
+         * screen's copy is `importedText` in `:ui`, CMP-6; UX review, 2026-09-22). Built from the non-zero parts only, so it never says "0 houses", and
          * in the preview's own words: a merge's rows that replaced one on the phone are *updated*, not "imported".
          * [houses] and [visits] are everything written; [updatedHouses] and [updatedVisits] the part of them that
          * were updates; [restoredHouses] the part of [houses] that were deleted on this phone and are back ("Brought
@@ -299,9 +291,9 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         }
 
         /**
-         * "a", "a and b", "a, b and c", "a, b, c and d", … with each language's own list pattern; also the Replace
-         * dialog's title and the Export screen's partial-backup note. Any number of items ([joinList], common since
-         * CMP-6; the screens use `joinedList` with the same patterns as Compose resources).
+         * "a", "a and b", "a, b and c", "a, b, c and d", … with each language's own list pattern, for the
+         * notification's sentence. Any number of items ([joinList], common since CMP-6; the screens use `joinedList`
+         * with the same patterns as Compose resources).
          */
         fun joined(context: Context, items: List<String>): String = joinList(
             items,
@@ -326,16 +318,11 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
          * "The import stopped part-way": a merge says what finishes it (importing the same file again, which is
          * idempotent); a copy says nothing was added, because it is rolled back — and never tells the user to import
          * again "to finish", which would add every house a second time. A run of unknown mode (started before this
-         * tag existed) gets the merge text, as before.
+         * tag existed) gets the merge text, as before. The notification's; the screen's is `importWriteFailedResource`.
          */
         @StringRes
         fun writeFailedRes(mode: ImportMode?): Int =
             if (mode == ImportMode.COPY) R.string.import_write_failed_copy else R.string.import_write_failed
-
-        /** The same choice for a stopped run. */
-        @StringRes
-        fun stoppedRes(mode: ImportMode?): Int =
-            if (mode == ImportMode.COPY) R.string.import_stopped_copy else R.string.import_stopped
 
         fun observe(context: Context): Flow<List<WorkInfo>> =
             WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WORK_NAME)

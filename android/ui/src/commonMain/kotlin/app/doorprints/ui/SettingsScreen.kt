@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.AppSettings
 import app.doorprints.data.ServerUrl
+import app.doorprints.export.ExportProblem
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
 import app.doorprints.shared.sync.SyncOutcome
@@ -529,10 +530,10 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean, features
                     stringResource(Res.string.settings_auto_backup_no_folder)
                 } else {
                     // A stable code, shown as a translated reason (an English message saved by an older build reads
-                    // as the generic one); see :app's ExportProblem.
+                    // as the generic one); see ExportProblem.
                     stringResource(
                         Res.string.settings_auto_backup_failed,
-                        features.backupErrorText(settings.lastAutoBackupError),
+                        stringResource(ExportProblem.fromCode(settings.lastAutoBackupError).messageResource),
                     )
                 },
             )

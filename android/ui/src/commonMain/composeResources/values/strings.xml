@@ -495,8 +495,41 @@
         <item quantity="one">Plan ready: %1$d stop</item>
         <item quantity="other">Plan ready: %1$d stops</item>
     </plurals>
-    <!-- List patterns (CMP-6): also in Android resources, for the import notification (StringParityTest keeps them equal). -->
+    <!-- List patterns (CMP-6): also Android resources, for the import notification (StringParityTest keeps them equal). -->
     <string name="import_list_two">%1$s and %2$s</string>
     <string name="import_list_three">%1$s, %2$s and %3$s</string>
     <string name="import_list_middle">%1$s, %2$s</string>
+    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). All but import_stopped* are also Android
+         resources, for the notifications (StringParityTest keeps the two equal). -->
+    <string name="export_done">Saved: %1$s</string>
+    <string name="export_done_in">Saved to %1$s: %2$s</string>
+    <string name="export_done_plain">Saved.</string>
+    <string name="export_done_partial">Saved a partial backup: %1$s</string>
+    <string name="export_done_partial_in">Saved a partial backup to %1$s: %2$s</string>
+    <string name="export_done_partial_plain">Saved a partial backup.</string>
+    <string name="export_ready">Ready to share: %1$s</string>
+    <string name="export_ready_partial">Partial backup ready to share: %1$s</string>
+    <string name="export_problem_no_space">there is not enough free space</string>
+    <string name="export_problem_cannot_write">the chosen file or folder cannot be written to</string>
+    <string name="export_problem_unknown">something went wrong while writing it</string>
+    <string name="problem_not_a_backup">it is not a Doorprints backup</string>
+    <string name="problem_unsupported">it was made by a newer version of Doorprints</string>
+    <string name="problem_too_many">it holds too many files</string>
+    <string name="problem_too_large">it is too large</string>
+    <string name="problem_suspicious">it holds an unsafe file name</string>
+    <string name="problem_checksum">it is damaged: the checksum does not match</string>
+    <string name="problem_broken">its data could not be read</string>
+    <string name="problem_read_failed">it could not be read from storage</string>
+    <string name="problem_write_failed">it could not be written — check free space</string>
+    <string name="import_added">Added %1$s.</string>
+    <string name="import_updated">Updated %1$s.</string>
+    <string name="import_done_nothing">Import finished. Nothing needed to be added or updated.</string>
+    <plurals name="import_restored_result">
+        <item quantity="one">Brought back %1$d house.</item>
+        <item quantity="other">Brought back %1$d houses.</item>
+    </plurals>
+    <string name="import_write_failed">The import stopped part-way — some items may already be added. Check that the phone has free space, then import the same file again to finish.</string>
+    <string name="import_write_failed_copy">The import could not be finished, so nothing was added. Check that the phone has free space, then try again.</string>
+    <string name="import_stopped">Import stopped. Anything already added stays; import the same file again to finish.</string>
+    <string name="import_stopped_copy">Import stopped. Nothing was added.</string>
 </resources>

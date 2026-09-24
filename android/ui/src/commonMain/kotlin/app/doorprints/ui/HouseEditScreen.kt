@@ -75,7 +75,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
-import kotlin.time.Clock
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -1292,9 +1291,6 @@ private fun PairOrStack(
         }
     }
 }
-
-/** Now, in epoch milliseconds (the house's `createdAt` and `updatedAt`, a visit's time). */
-private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 /** The field names a listing fill reports ("Filled in: price and contact name."). */
 private val ListingField.nameRes: StringResource

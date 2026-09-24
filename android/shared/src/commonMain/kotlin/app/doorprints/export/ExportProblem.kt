@@ -11,7 +11,9 @@ package app.doorprints.export
  * [code] is what is stored: it is persisted in Settings, so it must never change once shipped. An unrecognised
  * code — including an English message saved by a build older than this class — reads as [UNKNOWN].
  *
- * Free of Android types on purpose, so `ExportProblemTest` runs as a plain JVM test.
+ * Common since ADR-23 CMP-6 P6b, so the Export and Settings screens in `:ui` can name the reason
+ * (`messageResource`); the platform classifies a failure (`:app`'s `ExportProblem.of`, which reads JVM exception
+ * types). `ExportProblemTest` pins both.
  */
 enum class ExportProblem(val code: String) {
     /** The destination ran out of space. */
@@ -26,23 +28,5 @@ enum class ExportProblem(val code: String) {
 
     companion object {
         fun fromCode(code: String?): ExportProblem = entries.firstOrNull { it.code == code } ?: UNKNOWN
-
-        /**
-         * Classifies a failure by walking its cause chain.
-         *
-         * Out-of-space is recognised by the `ENOSPC` errno name, which Android's `ErrnoException` puts in its
-         * message and `IoBridge` copies into the `IOException` it rethrows — so the check works at every level of
-         * the chain without touching `android.system` classes. "Cannot write" is a `FileNotFoundException` (what
-         * `ContentResolver.openOutputStream` throws for a document that is gone or read-only, and what
-         * [Saf.openOutput] throws when a provider hands back no stream) or a `SecurityException` (a revoked grant).
-         */
-        fun of(error: Throwable): ExportProblem {
-            val chain = generateSequence(error) { it.cause }.take(MAX_CAUSES).toList()
-            if (chain.any { it.message?.contains("ENOSPC") == true }) return NO_SPACE
-            if (chain.any { it is java.io.FileNotFoundException || it is SecurityException }) return CANNOT_WRITE
-            return UNKNOWN
-        }
-
-        private const val MAX_CAUSES = 8
     }
 }

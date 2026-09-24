@@ -32,8 +32,9 @@ import org.robolectric.annotation.Config
  * before for the notification links MainActivity hands it (docs/06 TC-I-35 checks the same on an emulator): a link
  * present at a cold start opens its screen over the Map, the same house link twice does not stack two forms, Settings
  * opens as its tab, Export is single-top, each link is reported handled, and Back returns to the Map. The screens
- * still in `:app` are stand-ins here (RootScreens), so only the graph is under test; the house form is the real,
- * common one since CMP-6 P6a (English: "Save a house" for a new house, "House details" for a stored one).
+ * still in `:app` are stand-ins here (RootScreens), so only the graph is under test; the house form, Export and Import
+ * are the real, common ones since CMP-6 (English: "Save a house" for a new house, "House details" for a stored one,
+ * "Save a copy").
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35], application = ScreenshotTestApp::class)
@@ -63,12 +64,6 @@ class RootNavigationTest {
             deletedHouse: String?,
             onDeletedShown: () -> Unit,
         ) = Text("map screen")
-
-        @Composable
-        override fun Export(onBack: () -> Unit, onOpenMap: () -> Unit) = Text("export screen")
-
-        @Composable
-        override fun Import(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit) = Text("import screen")
     }
 
     private fun start(link: DeepLink?) {
@@ -146,7 +141,7 @@ class RootNavigationTest {
     @Test
     fun exportIsSingleTop() {
         start(DeepLink.OpenScreen(Routes.EXPORT))
-        shows("export screen")
+        shows("Save a copy")
         links.value = DeepLink.OpenScreen(Routes.EXPORT)
         compose.waitForIdle()
         assertEquals(2, handled)

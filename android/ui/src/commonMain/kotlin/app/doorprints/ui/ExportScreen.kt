@@ -1,9 +1,5 @@
 package app.doorprints.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.view.accessibility.AccessibilityManager
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -28,8 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -45,24 +39,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.work.Data
-import androidx.work.WorkInfo
-import app.doorprints.DoorprintsApp
-import app.doorprints.Notifications
 import app.doorprints.data.ResultMarks
 import app.doorprints.data.ResultScreen
-import app.doorprints.export.CreateExportDocument
-import app.doorprints.export.ExportBuilder
-import app.doorprints.export.ExportGrants
-import app.doorprints.export.ExportRequest
-import app.doorprints.export.ExportWorker
-import app.doorprints.export.ImportWorker
-import app.doorprints.export.ResultActions
-import app.doorprints.export.ScreenWatch
-import app.doorprints.export.messageRes
+import app.doorprints.data.toBundle
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.BackupCompleteness
 import app.doorprints.shared.export.BackupGap
@@ -71,7 +52,6 @@ import app.doorprints.shared.export.ExportLanguages
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportScope
 import app.doorprints.shared.export.PhotoScope
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -110,8 +90,10 @@ private enum class ExportStatus { RUNNING, MESSAGE, RESULT, COUNTS, NOTHING_MATC
 
 /**
  * "Save a copy" (S4-02). Everything on this screen is a choice docs/11 section 5.2 lists: format, which houses,
- * photos, contact details and the language of the copy. The export itself runs in [ExportWorker], so leaving this
- * screen — or rotating the phone — does not interrupt it; coming back shows the same progress again.
+ * photos, contact details and the language of the copy. The export itself runs in the background (Android:
+ * `ExportWorker`), so leaving this screen — or rotating the phone — does not interrupt it; coming back shows the same
+ * progress again. Common since ADR-23 CMP-6 P6b: the run, the "Save as" picker, the share sheet and the notification
+ * are the app's ([AppServices.exportScreen]).
  *
  * **Layout (Design review, rounds 4 and 5).** The options scroll; the actions do not. Save, Share, the progress
  * bar, Stop and the result sit in the shared [ActionBar], always within thumb reach, so someone who comes back
@@ -160,7 +142,7 @@ private enum class ExportStatus { RUNNING, MESSAGE, RESULT, COUNTS, NOTHING_MATC
  *
  * **Results nobody was told about (UX review, round 11).** A run's result used to reach the user only on this
  * screen within [RECENT_RESULT_MS], or by a notification, which is silently skipped without notification
- * permission. The worker now records whether anyone was told (`ExportRequest.KEY_NOTIFIED`), and a finished run is
+ * permission. The worker now records whether anyone was told ([ExportRun.notified]), and a finished run is
  * shown however old it is when it **failed** or **nobody was told**, until the user has seen it here once. What has
  * been seen and what was closed are kept in the Settings DataStore ([app.doorprints.data.ResultMarks]), not in
  * `rememberSaveable`, so backing out of the screen does not forget them. The first *Save to…* or *Share* while
@@ -179,15 +161,19 @@ private enum class ExportStatus { RUNNING, MESSAGE, RESULT, COUNTS, NOTHING_MATC
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
-    val context = LocalContext.current
-    val repo = repository()
+    val services = LocalAppServices.current
+    val platform = LocalPlatformServices.current
+    val repo = services.repository
+    val exports = services.exportScreen
+    val defaults = exports.rememberDefaultOptions()
+    val fileActions = exports.rememberFileActions()
 
     var format by rememberSaveable { mutableStateOf(ExportFormat.HTML) }
     var scope by rememberSaveable { mutableStateOf(ExportScope.ALL) }
     var includeRejected by rememberSaveable { mutableStateOf(true) }
     var photos by rememberSaveable { mutableStateOf(PhotoScope.ALL) }
     var includeContacts by rememberSaveable { mutableStateOf(true) }
-    var language by rememberSaveable { mutableStateOf(ExportBuilder.defaults(context).language) }
+    var language by rememberSaveable { mutableStateOf(defaults().language) }
 
     /** Set while a "Share" export is running, so the share sheet opens with the finished file. */
     var pendingShare by rememberSaveable { mutableStateOf<String?>(null) }
@@ -197,7 +183,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
      * share sheet at them on return; its result card's *Share this file* does the same on a tap (Design review,
      * round 10). Not state: nothing redraws from it.
      */
-    val visibleSince = remember { longArrayOf(System.currentTimeMillis()) }
+    val visibleSince = remember { longArrayOf(nowMillis()) }
     /** The run this screen started; see [RECENT_RESULT_MS]. */
     var startedRunId by rememberSaveable { mutableStateOf<String?>(null) }
     /**
@@ -233,15 +219,15 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
 
     // While this is true a finished export is shown here; while it is false the worker posts a notification.
     LifecycleStartEffect(Unit) {
-        ScreenWatch.exportScreen = true
-        visibleSince[0] = System.currentTimeMillis()
-        onStopOrDispose { ScreenWatch.exportScreen = false }
+        exports.screenVisible(true)
+        visibleSince[0] = nowMillis()
+        onStopOrDispose { exports.screenVisible(false) }
     }
 
     // Files shared earlier are removed after a day (docs/11 section 5.2); this is the only place they pile up.
-    LaunchedEffect(Unit) { cleanSharedExports(context) }
+    LaunchedEffect(Unit) { exports.cleanShareCopies() }
 
-    fun options(): ExportOptions = ExportBuilder.defaults(context).copy(
+    fun options(): ExportOptions = defaults().copy(
         scope = scope,
         includeRejected = includeRejected,
         photos = if (format.usesPhotos) photos else PhotoScope.NONE,
@@ -263,7 +249,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
         val chosen = options()
         val backup = format == ExportFormat.BACKUP
         counts = withContext(Dispatchers.Default) {
-            val bundle = ExportBuilder.build(current, chosen)
+            val bundle = current.toBundle(chosen)
             // A JSON backup also carries the visits that belong to no house yet (Hunt mode); the tables do not.
             val unlinked = if (backup) bundle.unlinkedVisits.size else 0
             ExportCounts(bundle.houses.size, bundle.visits.size + unlinked, bundle.photos.size)
@@ -272,67 +258,60 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     val databaseEmpty = rows?.houses?.isEmpty() == true
     val matching = counts?.houses ?: 0
 
-    val saveTo = rememberLauncherForActivityResult(CreateExportDocument()) { uri ->
+    val saveTo = exports.rememberSaveToPicker { target ->
         picking = false
-        // Reads the restored options: this callback can arrive in a new activity after the picker.
-        if (uri != null) {
+        // Reads the restored options: this callback can arrive in a new activity after the picker. The app has kept a
+        // grant on the document before this runs, so the export can still write it after the screen is gone (Stop's
+        // delete, a retry, the notification's Open and Share).
+        if (target != null) {
             pendingShare = null
             message = null
-            // Before the run starts, while this activity still holds the picker's grant: that grant ends with the
-            // activity, and the export is built to outlive it (Stop's delete, a retry, the notification's Open and
-            // Share). Recorded off the main thread in the app's scope, which leaving this screen does not cancel;
-            // older grants beyond ExportGrants.KEPT are released there.
-            ExportGrants.take(context, uri)
-            val app = context.applicationContext
-            (app as DoorprintsApp).appScope.launch { ExportGrants.hold(app, uri.toString()) }
-            startedRunId = ExportWorker.start(context, ExportRequest(format, uri.toString(), options())).toString()
+            startedRunId = exports.start(format, target, options())
             awaitingRunId = startedRunId
         }
     }
 
     // remember()ed: WorkManager hands back a new Flow instance on every call, and re-subscribing on
     // every recomposition would be a new query each time.
-    val workFlow = remember(context) { ExportWorker.observe(context) }
+    val workFlow = remember(exports) { exports.runs() }
     val work by workFlow.collectAsStateWithLifecycle(emptyList())
     // REPLACE deletes a replaced run's row, so this is normally one row; but the Flow's order is not promised,
     // so if it ever holds more, a live run wins over a finished one.
-    val info = work.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
+    val info = work.firstOrNull { it.state == RunState.RUNNING || it.state == RunState.ENQUEUED }
         ?: work.lastOrNull()
     // Until WorkManager reports the run just started, the bar already shows it as running (see the KDoc). Cleared
     // as soon as the run appears, so a run WorkManager later prunes can never leave the bar stuck on "Saving".
-    val awaiting = awaitingRunId != null && work.none { it.id.toString() == awaitingRunId }
+    val awaiting = awaitingRunId != null && work.none { it.id == awaitingRunId }
     LaunchedEffect(work, awaitingRunId) {
-        if (awaitingRunId != null && work.any { it.id.toString() == awaitingRunId }) awaitingRunId = null
+        if (awaitingRunId != null && work.any { it.id == awaitingRunId }) awaitingRunId = null
     }
-    val running = awaiting || info?.state == WorkInfo.State.RUNNING || info?.state == WorkInfo.State.ENQUEUED
-    val output = info?.outputData ?: Data.EMPTY
+    val running = awaiting || info?.state == RunState.RUNNING || info?.state == RunState.ENQUEUED
 
     LaunchedEffect(info?.id, info?.state) {
         val current = info ?: return@LaunchedEffect
         if (!current.state.isFinished) return@LaunchedEffect
         // Seen here, so the "Your copy is saved" notification (posted if the run ended while the screen was in
         // the background) has done its job.
-        NotificationManagerCompat.from(context).cancel(Notifications.EXPORT_DONE_ID)
+        exports.clearDoneNotification()
         // A "Share" export finishes in the cache; when it does, hand the file to the share sheet.
         val share = pendingShare ?: return@LaunchedEffect
-        if (current.state != WorkInfo.State.SUCCEEDED) {
+        if (current.state != RunState.SUCCEEDED) {
             pendingShare = null
             return@LaunchedEffect
         }
-        if (current.outputData.getString(ExportRequest.KEY_WRITTEN) != share) return@LaunchedEffect
+        if (current.written != share) return@LaunchedEffect
         pendingShare = null
         // Only a run that finished while the screen was visible, or moments before it came back (see
         // visibleSince); otherwise the result card stays and offers *Share this file*.
-        if (ExportWorker.finishedAtOf(current.outputData) < visibleSince[0] - SHARE_GRACE_MS) return@LaunchedEffect
-        val sharedFormat = ExportWorker.formatOf(current.outputData) ?: return@LaunchedEffect
-        message = if (shareTarget(context, share, sharedFormat)) null else getString(Res.string.export_share_failed)
+        if (current.finishedAt < visibleSince[0] - SHARE_GRACE_MS) return@LaunchedEffect
+        val sharedFormat = current.format ?: return@LaunchedEffect
+        message = if (fileActions.share(share, sharedFormat)) null else getString(Res.string.export_share_failed)
     }
 
     /** The user closed the result of [id], or moved on from it; it is not shown again, now or on a later visit. */
     fun dismiss(id: String) {
         dismissedRunId = id
-        val app = context.applicationContext as DoorprintsApp
-        app.appScope.launch { repo.settings.markResultDismissed(ResultScreen.EXPORT, id) }
+        services.appScope.launch { repo.settings.markResultDismissed(ResultScreen.EXPORT, id) }
     }
 
     /**
@@ -341,21 +320,21 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
      * locked while a copy is being made, so this never hides a running export.)
      */
     fun optionChanged() {
-        if (info != null && info.state.isFinished) dismiss(info.id.toString())
+        if (info != null && info.state.isFinished) dismiss(info.id)
         message = null
         focusSaveAfterRecovery = false
     }
 
     val finished = !awaiting && info != null && info.state.isFinished
-    val runId = info?.id?.toString()
+    val runId = info?.id
     val loadedMarks = marks
     val showResult = finished && message == null && loadedMarks != null && runId != null &&
         runId != dismissedRunId && runId != loadedMarks.exportDismissed && (
             runId == startedRunId || runId == shownRunId ||
-                System.currentTimeMillis() - ExportWorker.finishedAtOf(output) < RECENT_RESULT_MS ||
+                nowMillis() - (info?.finishedAt ?: 0L) < RECENT_RESULT_MS ||
                 // However old: a failure, or a result nobody was told about, until it has been seen here once.
                 (runId != loadedMarks.exportTold &&
-                    (info?.state == WorkInfo.State.FAILED || !ExportWorker.notifiedOf(output)))
+                    (info?.state == RunState.FAILED || !(info?.notified ?: true)))
             )
     // Seen now: remembered for this visit (so it stays up) and in the DataStore (so it is not brought back later).
     LaunchedEffect(showResult, runId) {
@@ -396,9 +375,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
         focusSaveAfterRecovery = false
     }
     // TalkBack is what needs the focus moved; a touch user sees where they are.
-    val touchExploration = {
-        context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
-    }
+    val touchExploration = { platform.isScreenReaderOn() }
 
     // The labels the bar's two button positions draw now (see "actions" below), so the bar can measure them and stack
     // the buttons when one would not fit side by side (Design review, round 18). Share carries the icon.
@@ -436,13 +413,12 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 statusKey = statusKind,
                 // A problem or a failed run interrupts TalkBack; everything else is polite (see ActionBar).
                 assertive = statusKind == ExportStatus.MESSAGE ||
-                    (statusKind == ExportStatus.RESULT && info?.state == WorkInfo.State.FAILED),
+                    (statusKind == ExportStatus.RESULT && info?.state == RunState.FAILED),
                 status = { kind ->
                     when (kind) {
                         // (2) The bar carries the numbers for TalkBack, read when it is focused.
                         ExportStatus.RUNNING -> {
-                            val (done, total) =
-                                if (awaiting) (0 to 0) else ExportWorker.progressOf(info?.progress ?: Data.EMPTY)
+                            val (done, total) = if (awaiting) (0 to 0) else (info?.done ?: 0) to (info?.total ?: 0)
                             WorkProgress(done, total, stringResource(Res.string.export_working))
                         }
                         ExportStatus.MESSAGE -> message?.let { ResultCard(ResultTone.ERROR, it, onDismiss = { message = null }) }
@@ -450,7 +426,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                             RunResult(
                                 info = run,
                                 onMessage = { message = it },
-                                onDismiss = { dismiss(run.id.toString()) },
+                                onDismiss = { dismiss(run.id) },
                             )
                         }
                         ExportStatus.COUNTS -> counts?.let { CountChips(it) }
@@ -500,7 +476,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                         // The worker deletes its own half-written file once its run has really ended; see
                         // ExportWorker.cancel for why the screen does not delete anything itself.
                         // While the new run is not reported yet, `info` is the previous, finished one.
-                        ExportWorker.cancel(context, info?.takeIf { !it.state.isFinished })
+                        exports.stop(info?.takeIf { !it.state.isFinished })
                         // A run not reported yet is cancelled by name above; the bar stops waiting for it.
                         awaitingRunId = null
                     }
@@ -521,11 +497,9 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                     // Asks for notifications first, once, when they are off; goes ahead either way.
                                     askNotifications {
                                         val chosen = options()
-                                        val target = File(sharedExportDir(context), format.fileName(chosen))
-                                        pendingShare = target.absolutePath
-                                        startedRunId = ExportWorker
-                                            .start(context, ExportRequest(format, target.absolutePath, chosen))
-                                            .toString()
+                                        val target = exports.shareCopyTarget(format.fileName(chosen))
+                                        pendingShare = target
+                                        startedRunId = exports.start(format, target, chosen)
                                         awaitingRunId = startedRunId
                                     }
                                 }
@@ -554,15 +528,9 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                     message = null
                                     askNotifications {
                                         picking = true
-                                        try {
-                                            saveTo.launch(
-                                                CreateExportDocument.Request(format.mimeType, format.fileName(options())),
-                                            )
-                                        } catch (_: ActivityNotFoundException) {
-                                            // No document picker on the device: nothing will call back, so do not
-                                            // stay locked (Share still works without one).
-                                            picking = false
-                                        }
+                                        // No document picker on the device: nothing will call back, so do not stay
+                                        // locked (Share still works without one).
+                                        if (!saveTo(format.mimeType, format.fileName(options()))) picking = false
                                     }
                                 }
                             },
@@ -793,38 +761,32 @@ private fun CountChips(c: ExportCounts) {
  * close button that brings the live count back.
  */
 @Composable
-private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val output = info.outputData
+private fun RunResult(info: ExportRun, onMessage: (String?) -> Unit, onDismiss: () -> Unit) {
+    val fileActions = LocalAppServices.current.exportScreen.rememberFileActions()
     // Read in composition, for the click handlers below to show when no app can take the file.
     val openFailed = stringResource(Res.string.export_open_failed)
     val shareFailed = stringResource(Res.string.export_share_failed)
     when (info.state) {
-        WorkInfo.State.SUCCEEDED -> {
-            val target = output.getString(ExportRequest.KEY_WRITTEN)
-            val format = ExportWorker.formatOf(output)
-            val name = ExportWorker.nameOf(output)
-            val shareCopy = target != null && ResultActions.isShareCopy(target)
+        RunState.SUCCEEDED -> {
+            val target = info.written
+            val format = info.format
+            val shareCopy = target != null && isShareCopy(target)
             // The notification's own sentence: where it went when the provider says, and "partial" for a backup
             // that leaves something out (UX review, round 11).
-            val text = ExportWorker.resultText(
-                context, target, name,
-                location = output.getString(ExportRequest.KEY_LOCATION),
-                partial = output.getBoolean(ExportRequest.KEY_PARTIAL, false),
-            )
+            val text = exportResultText(target, info.name, location = info.location, partial = info.partial)
             ResultCard(ResultTone.SUCCESS, text, onDismiss = onDismiss) {
                 if (target != null && format != null) {
                     // Wraps for Tamil and Telugu at 200% font, and lines up with the message text.
                     ResultActionsRow {
                         if (!shareCopy) {
                             TextButton(
-                                onClick = { onMessage(if (openTarget(context, target, format)) null else openFailed) },
+                                onClick = { onMessage(if (fileActions.open(target, format)) null else openFailed) },
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) { ButtonLabel(stringResource(Res.string.export_open)) }
                         }
                         // Not plain "Share": the bar's Share makes a *new* copy; this one shares the file just made.
                         TextButton(
-                            onClick = { onMessage(if (shareTarget(context, target, format)) null else shareFailed) },
+                            onClick = { onMessage(if (fileActions.share(target, format)) null else shareFailed) },
                             modifier = Modifier.heightIn(min = 48.dp),
                         ) { ButtonLabel(stringResource(Res.string.export_share_file)) }
                     }
@@ -832,14 +794,14 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
             }
         }
         // A translated reason from a stable code, never the exception text (see ExportProblem).
-        WorkInfo.State.FAILED -> ResultCard(
+        RunState.FAILED -> ResultCard(
             ResultTone.ERROR,
-            stringResource(Res.string.export_failed, stringResource(ExportWorker.problemOf(output).messageRes())),
+            stringResource(Res.string.export_failed, stringResource(info.problem.messageResource)),
             onDismiss = onDismiss,
         )
         // Silence here would be the worst outcome: the progress bar vanishes and the user is left guessing
         // whether the half-finished file in their folder is usable. It is not, and the worker has deleted it.
-        WorkInfo.State.CANCELLED -> ResultCard(
+        RunState.CANCELLED -> ResultCard(
             ResultTone.NEUTRAL,
             stringResource(Res.string.export_stopped),
             onDismiss = onDismiss,
@@ -849,42 +811,11 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
 }
 
 /**
- * The share sheet for a finished copy: the `content://` document the user saved, or the cache file behind the
- * app's `FileProvider` (`file_paths.xml`), so the receiving app gets a one-off read grant and no storage
- * permission is involved. False when nothing can take it (the caller shows `export_share_failed`).
- */
-private fun shareTarget(context: Context, target: String, format: ExportFormat): Boolean {
-    val uri = ResultActions.readableUri(context, target) ?: return false
-    return try {
-        context.startActivity(ResultActions.share(context, uri, format))
-        true
-    } catch (_: ActivityNotFoundException) {
-        false
-    } catch (_: SecurityException) {
-        false
-    }
-}
-
-/** Opens a saved copy in the app that handles its format; false when there is none (`export_open_failed`). */
-private fun openTarget(context: Context, target: String, format: ExportFormat): Boolean {
-    val uri = ResultActions.readableUri(context, target) ?: return false
-    return try {
-        context.startActivity(ResultActions.view(uri, format))
-        true
-    } catch (_: ActivityNotFoundException) {
-        false
-    } catch (_: SecurityException) {
-        false
-    }
-}
-
-/**
  * "This backup leaves out houses that are not shortlisted, rejected houses and contact details. Restoring from it
  * will not bring those back." — every [BackupGap] named, in the language's own list pattern.
  */
 @Composable
 private fun partialBackupText(gaps: List<BackupGap>): String {
-    val context = LocalContext.current
     val items = gaps.map { gap ->
         stringResource(
             when (gap) {
@@ -897,14 +828,5 @@ private fun partialBackupText(gaps: List<BackupGap>): String {
             }
         )
     }
-    return stringResource(Res.string.export_partial_note, ImportWorker.joined(context, items))
-}
-
-internal fun sharedExportDir(context: Context): File =
-    File(context.cacheDir, "exports").apply { mkdirs() }
-
-/** Shared copies are deleted after 24 hours, so an old export is not left readable in the cache. */
-private fun cleanSharedExports(context: Context) {
-    val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-    sharedExportDir(context).listFiles()?.forEach { if (it.lastModified() < cutoff) it.delete() }
+    return stringResource(Res.string.export_partial_note, joinedList(items))
 }

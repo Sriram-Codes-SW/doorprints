@@ -305,12 +305,12 @@ class ExportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
          * operation has completed, deletes the document. A run that was already `RUNNING` is left to the worker,
          * so the file is never deleted under a writer that is still going. The reads block, so they run on a
          * plain thread rather than in a scope tied to the screen, which the usual "Stop, then Back" would cancel.
+         *
+         * [id] and [target] are the run's (its `WorkInfo`'s id and [targetOf]); null for either cancels by name only.
          */
-        fun cancel(context: Context, run: WorkInfo?) {
+        fun cancel(context: Context, id: UUID?, target: String?) {
             val app = context.applicationContext
             val manager = WorkManager.getInstance(app)
-            val id = run?.id
-            val target = targetOf(run)
             if (id == null || target == null) {
                 manager.cancelUniqueWork(WORK_NAME)
                 return

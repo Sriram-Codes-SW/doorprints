@@ -6,9 +6,8 @@ import androidx.compose.ui.platform.LocalContext
 import app.doorprints.DoorprintsApp
 
 /**
- * The common root's slots for the screens still in `:app` ([RootScreens], CMP-5): each forwards to the screen with the
- * arguments the root gives it. A slot goes when its screen moves to `:ui` (the house form's went with CMP-6 P6a;
- * Export's and Import's go with P6b, the Map's with CMP-7).
+ * The common root's slot for the screen still in `:app` ([RootScreens], CMP-5): the Map, with the arguments the root
+ * gives it, until it moves to `:ui` (CMP-7). The house form's, Export's and Import's slots went with CMP-6.
  */
 object AndroidRootScreens : RootScreens {
     @Composable
@@ -29,13 +28,6 @@ object AndroidRootScreens : RootScreens {
         deletedHouse = deletedHouse,
         onDeletedShown = onDeletedShown,
     )
-
-    @Composable
-    override fun Export(onBack: () -> Unit, onOpenMap: () -> Unit) = ExportScreen(onBack = onBack, onOpenMap = onOpenMap)
-
-    @Composable
-    override fun Import(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit) =
-        ImportScreen(onBack = onBack, onOpenHouses = onOpenHouses)
 }
 
 /**
