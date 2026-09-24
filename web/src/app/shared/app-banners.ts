@@ -170,8 +170,19 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
     }
   `,
   styles: `
+    /*
+     * The banners sit between the header and the page, outside the page's scroller, so a long one could take the
+     * page: the iPhone install offer in Tamil was about 290px, all of a 568px iPhone SE but a strip, and every pixel
+     * of a phone in landscape or with the keyboard open (the page measured 1px). At most 40% of the visible height;
+     * a longer banner scrolls inside itself (its buttons are focusable, so Tab reaches them and scrolls it along).
+     * A banner is never that tall on a desktop, where nothing changes.
+     */
     :host {
       display: block;
+      max-height: 40vh;
+      max-height: 40dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     .banner {
       display: flex;
