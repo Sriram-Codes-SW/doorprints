@@ -3,6 +3,7 @@ package app.doorprints
 import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.os.Build
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -32,7 +33,11 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.VectorSource
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -151,6 +156,12 @@ class SmokeTest {
             notes += "$name: fully rendered = $complete"
             Log.i("SmokeTest", "$name: fully rendered = $complete")
             screenShot(name)
+            if (name == DIAGNOSED_PLACE && mapView != null) {
+                labelDiagnostics(mapView).forEach { line ->
+                    notes += "diag: $line"
+                    Log.i(DIAG_TAG, line)
+                }
+            }
         }
         runCatching {
             TestStorage().openOutputFile("screens/map_notes.txt").use { it.write(notes.joinToString("\n").toByteArray()) }
@@ -188,6 +199,71 @@ class SmokeTest {
         return complete
     }
 
+    /**
+     * What MapLibre knows about the base map's labels at the current camera (read on the main thread, after the frame
+     * at [DIAGNOSED_PLACE] finished rendering), for `screens/map_notes.txt` and logcat (tag [DIAG_TAG]): the style's
+     * glyphs URL and whether it is fully loaded; every symbol layer with its visibility, zoom range, text-font and
+     * filter; how many symbols MapLibre has PLACED over the whole map view (queryRenderedFeatures, total and for each
+     * label/place layer); and how many `place` features the loaded tiles hold (querySourceFeatures). Placed symbols with
+     * no text on the screenshot point at drawing (the GL renderer, e.g. SwiftShader); none placed while the tiles hold
+     * places points at layout (a filter, the glyphs, a hidden layer). Each read is on its own, so one failure is
+     * reported and the rest still run.
+     */
+    private fun labelDiagnostics(mapView: MapView): List<String> {
+        val lines = mutableListOf<String>()
+        val done = CountDownLatch(1)
+        fun read(what: String, block: () -> Unit) {
+            runCatching(block).onFailure { lines += "$what failed: $it" }
+        }
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            mapView.getMapAsync { map: MapLibreMap ->
+                try {
+                    val style = map.style
+                    if (style == null) {
+                        lines += "no style"
+                        return@getMapAsync
+                    }
+                    lines += "camera: ${map.cameraPosition}"
+                    lines += "style fully loaded: ${style.isFullyLoaded}, url: ${style.uri}"
+                    read("glyphs") { lines += "glyphs: ${JSONObject(style.json).optString("glyphs", "(none)")}" }
+                    val symbols = style.layers.filterIsInstance<SymbolLayer>()
+                    lines += "symbol layers: ${symbols.size}"
+                    symbols.forEach { layer ->
+                        read("layer ${layer.id}") {
+                            lines += "layer ${layer.id}: source-layer=${layer.sourceLayer} " +
+                                "visibility=${layer.visibility.value} zoom=${layer.minZoom}..${layer.maxZoom} " +
+                                "text-font=${layer.textFont.run { if (isExpression) expression.toString() else value?.contentToString() }} " +
+                                "filter=${layer.filter}"
+                        }
+                    }
+                    val box = RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat())
+                    read("rendered symbols") {
+                        val ids = symbols.map { it.id }.toTypedArray()
+                        lines += "view ${mapView.width}x${mapView.height}: rendered symbols (all symbol layers) = " +
+                            map.queryRenderedFeatures(box, *ids).size
+                        symbols.filter { l ->
+                            listOf("label_country", "label_city", "label_state", "place", "label_town", "label_village")
+                                .any { l.id.startsWith(it) }
+                        }.forEach { l -> lines += "rendered ${l.id} = ${map.queryRenderedFeatures(box, l.id).size}" }
+                        lines += "rendered (any layer) = ${map.queryRenderedFeatures(box).size}"
+                    }
+                    read("source places") {
+                        style.sources.filterIsInstance<VectorSource>().forEach { src ->
+                            lines += "source ${src.id}: place features in loaded tiles = " +
+                                src.querySourceFeatures(arrayOf("place"), null).size
+                        }
+                    }
+                } catch (e: Exception) {
+                    lines += "diagnostics failed: $e"
+                } finally {
+                    done.countDown()
+                }
+            }
+        }
+        if (!done.await(5, TimeUnit.SECONDS)) lines += "map not ready within 5 s"
+        return lines
+    }
+
     /** The whole screen with UiAutomation, which (unlike Compose's capture) includes the map's GL surface. */
     private fun screenShot(name: String) {
         runCatching {
@@ -202,6 +278,10 @@ class SmokeTest {
         /** The start of the Map's error card (map_failed, English). */
         const val MAP_FAILED_START = "The map could not load"
         const val TILES_TIMEOUT_MS = 45_000L
+
+        /** The frame whose labels [labelDiagnostics] reads, and its logcat tag. */
+        const val DIAGNOSED_PLACE = "20_map_india_z4"
+        const val DIAG_TAG = "DoorprintsMapDiag"
 
         fun at(lat: Double, lon: Double, zoom: Double): CameraPosition =
             CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).bearing(0.0).build()
