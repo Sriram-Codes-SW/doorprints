@@ -190,7 +190,7 @@ private val INDIC_LANGUAGES = setOf("hi", "ta", "te")
 /**
  * The interface language's ISO 639 code ("en", "hi", "ta", "te"), read where it changes the UI's composition: the
  * language the app's strings resolved to ([appLanguage]; S4b-BL-18), read again when the configuration changes
- * (Android). Public since CMP-3: `:app`'s Compare table formats with it.
+ * (Android). Public since CMP-3 for `:app`'s `AppLocaleTest` (docs/06 TC-U-61).
  */
 @Composable
 expect fun uiLanguage(): String
