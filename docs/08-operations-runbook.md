@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.15 |
-| Date | 2026-09-23 |
+| Version | 0.16 |
+| Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -27,6 +27,7 @@
 | 0.13 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision (2026-09-23): the web app is hosted on Cloudflare Pages** ([03](03-design.md) ADR-21). §7 IR-5 (free-tier outage, move provider): the web can move to another host that reads `_headers` (Netlify), **not** to GitHub Pages, and `npm run build:pages` is no longer a GitHub Pages build. §8 release checklist: the web step names the `web.yml` Cloudflare Pages deploy and its header check, the `pages.dev` address, and `APP_CORS_ORIGINS`. §4 quarterly review: Cloudflare Pages terms. New note on withdrawing an old deployment ([02](02-threat-model.md) RR-12). §5.2: rotating the Cloudflare API token. |
 | 0.14 | 2026-09-23 | Claude (Cowork), Docs team | Review fix, §5.2 Cloudflare API token row: "replace the repository secret" now says to replace it where it is stored, preferably the `cloudflare-pages` environment's secrets restricted to `main` ([07](07-secure-build-and-deploy.md) v0.21 §4 and §6.3 step 4). |
 | 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** (Spark plan, no billing account; [03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. §1 components; **§2** new *Web host usage* row (Hosting > Usage: transfer against 360 MB/day or 10 GB/month, storage against 10 GB; there is no budget alert on Spark); **§4** monthly usage check and 10 releases kept, quarterly free-tier terms name Firebase Hosting; **§5.2** the Cloudflare token row becomes the web deploy identity (Workload Identity, nothing to rotate; what to do on suspicion); **§7 IR-5** rewritten for Firebase (a site disabled for quota; moving host); new **IR-10** *Bad web release: roll back* (Firebase console → Hosting → release history → Rollback, no build) and deploy / manual re-run; **§8** release checklist. |
+| 0.16 | 2026-09-24 | Claude (Code), engineer | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **section 11**: what changes for a self-hosted server (the compose database, user, password default and volume are `doorprints`; the MCP tool `askHouseHunt` is `askDoorprints`), that a server which sets `DB_URL`, `DB_USER` and `DB_PASSWORD` is not affected and no environment variable is renamed, and how to carry a local compose database over (dump with the old names, restore into the new one). Section 3: the dump file, schema and age key examples use `doorprints`. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -108,7 +109,7 @@ jobs:
           AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}   # public key
         run: |
           set -euo pipefail
-          f="househunt-$(date -u +%F).dump.age"
+          f="doorprints-$(date -u +%F).dump.age"
           pg_dump -Fc --no-owner --no-privileges --schema=public "$BACKUP_DB_URL" | age -r "$AGE_RECIPIENT" -o "$f"
           ls -l "$f"
           echo "FILE=$f" >> "$GITHUB_ENV"
@@ -118,7 +119,7 @@ jobs:
 
 Notes:
 
-- Use `--schema=househunt` if you moved the tables into their own schema (07 section 6.1). On Supabase, don't dump its internal schemas.
+- Use `--schema=doorprints` if you moved the tables into their own schema (07 section 6.1). On Supabase, don't dump its internal schemas.
 - Photos are in the DB (ADR-08), so dumps grow with them. Watch the artifact storage quota (500 MB on private Free repos). If it gets close, keep 7 days in artifacts and send weekly copies to R2.
 - Never upload **unencrypted** dumps (T-I11). Don't print row data in logs.
 - Extra copies of the data: the Android Room DB (full offline copy, not a backup of the server) and a manual export (section 6).
@@ -130,7 +131,7 @@ Notes:
 docker run -d --name restore -e POSTGRES_PASSWORD=x -p 5433:5432 postgis/postgis:17-3.5
 psql "postgresql://postgres:x@localhost:5433/postgres" -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
 # 2. Decrypt and restore
-age -d -i ~/secure/househunt-backup.agekey househunt-YYYY-MM-DD.dump.age \
+age -d -i ~/secure/doorprints-backup.agekey doorprints-YYYY-MM-DD.dump.age \
   | pg_restore --no-owner --no-privileges -d "postgresql://postgres:x@localhost:5433/postgres"
 # 3. Check
 psql "postgresql://postgres:x@localhost:5433/postgres" -c 'select count(*) from house; select max(sync_version) from house; select last_value from sync_seq;'
@@ -218,7 +219,7 @@ its photos as missing from the file. A full export for migration is the encrypte
 | One house | Delete it in the app (or `DELETE /api/houses/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
-| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
+| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `app.doorprints`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
 
 Third-party contact data (landlord/agent phone numbers) is removed with the house. If a third party asks you to delete their details, use the "one house" or field-level update (set `contact_name`/`contact_phone` to null through the app so it syncs).
 
@@ -334,7 +335,7 @@ nothing else to withdraw.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Dev/CI database container (`house-hunt-db`, `backend/db/Dockerfile`) exits on first start with a permission error: `initdb: error: could not change permissions of directory …`, `mkdir: cannot create directory '/var/lib/postgresql/18/docker': Permission denied`, or `FATAL: data directory … has wrong ownership` | Since Sprint 2 the image runs as `USER postgres` (uid 999, F-29), so the entrypoint cannot `chown` the data directory. A **host bind mount** (for example `./pgdata:/var/lib/postgresql`), or a volume first initialised by another uid, is not owned by uid 999. The default named volume `dbdata18` is not affected. | On the host: `sudo chown -R 999:999 ./pgdata` and start again, or switch back to the named volume in `docker-compose.yml`. Do **not** add `user: root` to compose (it reverts F-29). See [07 §6.2](07-secure-build-and-deploy.md#62-api). |
+| Dev/CI database container (`doorprints-db`, `backend/db/Dockerfile`) exits on first start with a permission error: `initdb: error: could not change permissions of directory …`, `mkdir: cannot create directory '/var/lib/postgresql/18/docker': Permission denied`, or `FATAL: data directory … has wrong ownership` | Since Sprint 2 the image runs as `USER postgres` (uid 999, F-29), so the entrypoint cannot `chown` the data directory. A **host bind mount** (for example `./pgdata:/var/lib/postgresql`), or a volume first initialised by another uid, is not owned by uid 999. The default named volume `dbdata18` is not affected. | On the host: `sudo chown -R 999:999 ./pgdata` and start again, or switch back to the named volume in `docker-compose.yml`. Do **not** add `user: root` to compose (it reverts F-29). See [07 §6.2](07-secure-build-and-deploy.md#62-api). |
 | API refuses to start: log names `APP_API_KEY` or `APP_API_KEY_NEXT` as too short | Key shorter than 32 characters (F-01a, since Sprint 2) | Section 5.1, "Upgrading from a 16–31 character key" |
 | All clients get 401 right after a deploy | `APP_API_KEY` changed without the `APP_API_KEY_NEXT` overlap | Section 5.1: put the old key back as `APP_API_KEY` and the new one as `APP_API_KEY_NEXT`, or finish updating the clients |
 | API with AI enabled refuses to start: log names `app.ai.embedding.provider` / `AI_EMBEDDING_PROVIDER`, or says `google-genai` needs an API key | Provider value other than `google-genai` or `openai`, or no `AI_API_KEY` / `AI_EMBEDDING_API_KEY` for the default Gemini embeddings | Section 1.1. For Ollama set `AI_EMBEDDING_PROVIDER=openai`. |
@@ -441,3 +442,42 @@ feature keep working). Owner: the product owner. Step by step for the AI part: [
 | If Vertex AI is dropped | Disable the Vertex AI API or shut down `doorprints-ai`; delete the GitHub secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL`; remove the Workload Identity principal binding; leave `ai-evals.yml` on `provider=aistudio` | No Google Cloud credential left that can call Vertex AI |
 | If Vertex AI is kept | Spend cap budget and 50/90/100 % alerts active on the paid account (section 10.2); the trial-period $50/$150/$250 alerts replaced | Budget page shows the monthly target |
 | Firebase Test Lab | Nothing to do: it keeps working within the no-cost daily quota (section 10.3) | – |
+
+## 11. Upgrading a self-hosted server to the Doorprints names (2026-09-24)
+
+On 2026-09-24 the last House Hunt names in the server were renamed ([03](03-design.md) ADR-24, [CHANGELOG](../CHANGELOG.md)).
+There is no public server yet, so this is documented rather than made backward compatible. **Breaking for a local
+`docker compose` database; nothing else changes for a server configured through its environment.**
+
+| What | Before | Now | What to do |
+|---|---|---|---|
+| Compose database, user, dev password default | `househunt` / `househunt` / `househunt` | `doorprints` / `doorprints` / `doorprints` | See the steps below for local data |
+| Compose volume | `dbdata18` | `doorprints-pgdata18` | The old volume is not touched and not removed. Remove it yourself (`docker volume rm <project>_dbdata18`) once the data is moved or no longer needed |
+| `application.yml` defaults of `DB_URL`, `DB_USER`, `DB_PASSWORD` | `…/househunt`, `househunt`, `househunt` | `…/doorprints`, `doorprints`, `doorprints` | Nothing if the server sets all three (every real deployment does: the defaults are for development only, [07](07-secure-build-and-deploy.md) §7). A server that relied on a default sets it explicitly, for example `DB_URL=jdbc:postgresql://<host>:5432/househunt`, and keeps its database as it is |
+| Spring properties and environment variables | `app.*`, `APP_*`, `AI_*`, `DB_*`, … | unchanged | Nothing: no property prefix or variable was ever named after the product |
+| MCP tool | `askHouseHunt` | `askDoorprints` | An MCP client picks the new name from `tools/list` on its next connection; a saved prompt or allow-list that names the old tool is updated by hand ([ai/ai-design.md](ai/ai-design.md) section 12) |
+| Image tags in the examples | `house-hunt-api`, `house-hunt-db` | `doorprints-api`, `doorprints-db` | Only a local tag; rebuild or retag |
+| Maven coordinates, Java packages | `com.househunt:house-hunt-api`, `com.househunt.*` | `app.doorprints:doorprints-api`, `app.doorprints.server.*` | Nothing (the image copies `target/*.jar`); log filters that match on the logger name `com.househunt` change to `app.doorprints.server` |
+| Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same |
+
+**Carry a local compose database over** (only needed for data you want to keep; the phones and the web app keep
+their own full copy and sync it back to an empty server anyway, ADR-04):
+
+```bash
+# 1. With the checkout still on the old compose file (before pulling this change): dump the old database.
+docker compose up -d db
+docker compose exec -T db pg_dump -Fc --no-owner --no-privileges -U househunt -d househunt > househunt.dump
+docker compose down
+# 2. Pull the change and start only the new, empty database (it creates the doorprints user and database).
+docker compose up -d db
+# 3. Restore. Flyway's history table comes along, so the API sees the schema as already migrated.
+docker compose exec -T db pg_restore --no-owner --no-privileges -U doorprints -d doorprints < househunt.dump
+# 4. Start the API and check it.
+docker compose up -d api
+curl -H "X-API-Key: $APP_API_KEY" http://127.0.0.1:8080/api/stats
+```
+
+If the old compose file is gone already, the old volume can still be read: start a throwaway container on it
+(`docker run -d --name old-db -v <project>_dbdata18:/var/lib/postgresql -e POSTGRES_PASSWORD=x doorprints-db:pg18`)
+and dump with `docker exec old-db pg_dump -Fc --no-owner --no-privileges -U househunt -d househunt > househunt.dump`.
+

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.44 |
+| Version | 0.45 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -56,6 +56,7 @@
 | 0.42 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 5: the smoke tests **passed on the emulator (CI, commit `bc57361`)**; Firebase Test Lab stays off by default at zero cost (option (a); a results bucket needs a billing account), options (b) and (c) for the owner; CodeQL's "Incomplete string escaping" in `tools/live-ui` fixed; the Docs line names the current versions; CMP-0's status cell updated. |
 | 0.43 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 6: a second real bug found by the pull-request emulator run on `bc57361` (the Map's camera moved off the main thread after `currentLocation()`; fixed in `MapScreen.kt` with `withContext(Dispatchers.Main.immediate)`); the result now reads "passed on the emulator; one of two runs on `bc57361` found a threading bug, fixed in the next commit; the re-run is pending". |
 | 0.44 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 7: the emulator results use the agreed wording (the threading bug fixed in `6376706`, re-run pending); the fix covers every caller of `currentLocation()`; new backlog ticket **CMP-0-BL-7** (`--results-bucket` conditional if the owner picks Test Lab option (c)); the Docs line names the current versions. Then both emulator runs on `6376706` passed (push and pull request; `ee30b92`). |
+| 0.45 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **§14**: the rename, what carries stored names over, what is kept and why, and the checks run. Paths in earlier sections follow the moved files; history is left as written. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -78,7 +79,7 @@ delivered, who signed it off and what CI said. It is the Agile record; the SSDLC
 
 | Team | Owns |
 |---|---|
-| Backend | `backend/**` (except `backend/src/main/java/com/househunt/ai/**` and its tests), `docker-compose.yml` (since Sprint 3; it passes the `AI_*` settings, see [07](07-secure-build-and-deploy.md) §7) |
+| Backend | `backend/**` (except `backend/src/main/java/app/doorprints/server/ai/**` and its tests), `docker-compose.yml` (since Sprint 3; it passes the `AI_*` settings, see [07](07-secure-build-and-deploy.md) §7) |
 | AI | Spring AI code and tests, `docs/ai/**` |
 | Android | `android/**` |
 | Web | `web/**` |
@@ -407,7 +408,7 @@ job logs), so each row needs the owner's confirmation in the Actions tab:
 | `8f583af` | Shared iOS compile (35753478002, first run) | ✅ `:shared iOS targets compile (macOS, JDK 21)`, about 3.5 min | High |
 | `8f583af` | AI evals, manual, `provider=vertex` (35753477789) | ❌ only `citationPrecision` 0.78 (7/9), see C-24 and [ai/ai-design.md](ai/ai-design.md) 8.5 | High (recorded by the AI change set in golden set v0.5) |
 | `feb0294` | Security (35755840179) | ✅ all six jobs; the dependency graph job reported that dependency results were updated | Medium: **a green Security run does not prove submission** while `dependency-graph-continue-on-failure` is on; the exit criterion stays the `Submitted dependency-graph-reports/...` notice in that job's log |
-| `feb0294` | Backend (35755840287) | ❌ **Failed** (`mvn verify` exit code 1): 258/259 tests passed; `EvalScorerTest.goldenSetFileIsConsistent` threw `IllegalArgumentException: The iterable of values to look for should not be empty`. Cause: `ask-01` in golden set v0.5 has `allowedCitations` but no `mustNotCite`, and AssertJ's `doesNotContainAnyElementsOf` throws on an empty list (a test bug, not a product bug; the new Ask citation rule tests passed). Fix: AI team, `backend/src/test/java/com/househunt/ai/eval/EvalScorerTest.java` only, in the next commit: every id-list check skips an empty or missing list ("no constraint"); golden set and thresholds unchanged ([06](06-test-plan.md) TC-AI-09, [CHANGELOG](../CHANGELOG.md)) | High: failure and cause confirmed by the AI team from the run's test report; the green Backend run on the fix commit is recorded in the `19006bc` row below |
+| `feb0294` | Backend (35755840287) | ❌ **Failed** (`mvn verify` exit code 1): 258/259 tests passed; `EvalScorerTest.goldenSetFileIsConsistent` threw `IllegalArgumentException: The iterable of values to look for should not be empty`. Cause: `ask-01` in golden set v0.5 has `allowedCitations` but no `mustNotCite`, and AssertJ's `doesNotContainAnyElementsOf` throws on an empty list (a test bug, not a product bug; the new Ask citation rule tests passed). Fix: AI team, `backend/src/test/java/app/doorprints/server/ai/eval/EvalScorerTest.java` only, in the next commit: every id-list check skips an empty or missing list ("no constraint"); golden set and thresholds unchanged ([06](06-test-plan.md) TC-AI-09, [CHANGELOG](../CHANGELOG.md)) | High: failure and cause confirmed by the AI team from the run's test report; the green Backend run on the fix commit is recorded in the `19006bc` row below |
 | `19006bc` | Backend | ✅ **Green** — `mvn verify` passes, so `EvalScorerTest.goldenSetFileIsConsistent`, the one case that failed on `feb0294` (258/259), now passes with the rest | Confirmed |
 | `19006bc` | Security | ✅ all jobs green | Confirmed |
 | `19006bc` | Android | ✅ green, `assembleDebug testDebugUnitTest :shared:testAndroidHostTest` — **but note how**: `android.yml` is path-filtered to `android/**`, and `19006bc` touches only `backend/src/test/...`, so the push itself does not trigger it. A green Android result on this commit therefore comes from a `workflow_dispatch` run (the workflow has one) rather than from the push | Confirmed as green; **the trigger should be checked in the Actions tab**, because "green on `19006bc`" and "green on the Android tree as of `19006bc`" are the same thing here only if someone dispatched it |
@@ -432,7 +433,7 @@ notice, DevSecOps removes `dependency-graph-continue-on-failure` and the job is 
 
 ### 9.3 Phase 2 plan (not scheduled)
 
-1. Room KMP (Room 2.8 in `commonMain`, bundled SQLite driver), keeping `househunt.db`, version 2, `MIGRATION_1_2` and
+1. Room KMP (Room 2.8 in `commonMain`, bundled SQLite driver), keeping `doorprints.db` (renamed from `househunt.db` since 2026-09-24, §14), version 2, `MIGRATION_1_2` and
    `2.json`; migration test from real v1/v2 files; then the mappers.
 2. DataStore KMP; `expect/actual` secret storage (Android Keystore / iOS Keychain).
 3. `ServerUrl` as a common parser or `expect/actual`.
@@ -808,7 +809,7 @@ row; [05](05-ux-accessibility-i18n.md) §14.1), so 11(a) and item 7 remain.
 | To | What | Where |
 |---|---|---|
 | **AI team** | Record **vertex-setup step 10 as done**: the owner's credit check of 2026-09-23 found **₹45 of trial credit** used for the Vertex eval runs (the cost came off the credit; nothing was charged). Add the one line from the Firebase plan: the web-hosting Firebase project `doorprints` is separate and must never be linked to the trial billing account. | [ai/vertex-setup.md](ai/vertex-setup.md) status table and step 10 |
-| **Backend** | Three `ApiIntegrationTest` cases that pin what Android 1.14's undelete relies on: (1) `PUT /houses/{id}` with `deleted=false` and a newer `updatedAt` over a purged tombstone brings the house back live; (2) a `PUT` of a visit unlinked by the purge, with `houseId` set and a newer `updatedAt`, relinks it; (3) a photo upload under a fresh id to the restored house is stored, while one under the tombstoned old id is silently ignored. Optional: Android handover 18. Also schemas §2's readable-copy name (12.3) | `backend/src/test/java/com/househunt/ApiIntegrationTest.java`; [06](06-test-plan.md) §14.2 |
+| **Backend** | Three `ApiIntegrationTest` cases that pin what Android 1.14's undelete relies on: (1) `PUT /houses/{id}` with `deleted=false` and a newer `updatedAt` over a purged tombstone brings the house back live; (2) a `PUT` of a visit unlinked by the purge, with `houseId` set and a newer `updatedAt`, relinks it; (3) a photo upload under a fresh id to the restored house is stored, while one under the tombstoned old id is silently ignored. Optional: Android handover 18. Also schemas §2's readable-copy name (12.3) | `backend/src/test/java/app/doorprints/server/ApiIntegrationTest.java`; [06](06-test-plan.md) §14.2 |
 | **DevSecOps** | Point `web.yml`'s skip notice at [07](07-secure-build-and-deploy.md) §6.3 (the `docs/ops/` page is a pointer); commit the firebase-tools lock file after the first run; decide on `.github/CODEOWNERS` | `.github/workflows/web.yml`, `.github/firebase-tools/` |
 | **Android** | Device checks 10a and 10b ([06](06-test-plan.md) TC-M-21), 16–20 (TC-M-22) and 21 (TC-M-23; **(d) is a release gate**); the readable-copy file names of 12.3; the carried minors A1–A5 of §11.7 | device time; `android/` |
 | ~~**Backend**~~ | ~~Android handover 19: the device note under `docs/schemas/README.md` §6 rule 6 (§11.5)~~ **Done by Docs** (schemas README v1.5); Backend only needs to read it | `docs/schemas/README.md` |
@@ -1362,7 +1363,7 @@ a11y 144/144, flows 12/12, pwa 4/4, map 1/1, console 145/146. The one console er
 passed; `addAHouseFromANewHouseIntent` failed. Opening the app from a new-house, open-house or open-screen
 notification while the app was not running crashed with "Cannot navigate … Navigation graph has not been set":
 `Root`'s deep-link `LaunchedEffect` ran before the `NavHost`, which sits inside the Scaffold's subcomposition, had set
-its graph. The fix (`android/app/src/main/java/com/househunt/app/ui/Root.kt`) waits for
+its graph. The fix (`android/app/src/main/java/app/doorprints/ui/Root.kt`) waits for
 `nav.currentBackStackEntryFlow.first()` before navigating. This is a user-visible bug in the shipped app (a tap on
 "Are you at a house?" from Hunt mode could crash it), not a test artefact.
 
@@ -1394,7 +1395,7 @@ artifact). The pull-request run found a **second real bug**: `everyTabOpens` cra
 Looper threads". The Map moved the MapLibre camera right after `currentLocation()`, which awaits a Play services `Task`
 that completes on a Binder thread; under the Compose test rule's coroutine interceptor the continuation was not
 dispatched back to main. The app's own main dispatcher does switch back, so it was never seen in normal use, but the
-code relied on it. Fix in `6376706` (`android/app/src/main/java/com/househunt/app/ui/MapScreen.kt`): `currentLocation()`
+code relied on it. Fix in `6376706` (`android/app/src/main/java/app/doorprints/ui/MapScreen.kt`): `currentLocation()`
 returns on the main thread (`withContext(Dispatchers.Main.immediate)`), which covers every caller: on the Map the first
 framing, "go to me" and "save here", plus the house form's and the Assistant's location lookups. It was intermittent
 (timing): the push run passed.
@@ -1439,3 +1440,29 @@ v0.38 (§16), [07](07-secure-build-and-deploy.md) v0.35 (§1, §4, §7.2), this 
 [14](14-lead-backlog-and-handoff.md) v0.12, [README](README.md) v0.44,
 [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) 0.5, `android/shared/README.md` 1.46,
 `android/ui/README.md` 1.3, `web/README.md`, the CHANGELOG and CLAUDE.md.
+
+## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
+
+**The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
+(owner, 2026-09-24). The product was renamed on 2026-09-22 (S3-07, [03](03-design.md) ADR-13), but about 1,300
+references to the old name were left in code packages, types, storage keys, database, image and tool names. Decision
+record: [03](03-design.md) ADR-24.
+
+**What was done** (branch `cmp2-wip`, four commits: Android, web, backend, docs):
+
+| Area | Renamed | Carry-over for what is stored |
+|---|---|---|
+| Android | Packages `app.doorprints`, `app.doorprints.ui` (`:ui` resources class `app.doorprints.ui.res.Res`), `app.doorprints.shared`; namespaces the same; `DoorprintsApp`, `DoorprintsRoot`, `DoorprintsTheme`, `DoorprintsColors`, `Theme.Doorprints`, log tag `DoorprintsApi`; Room file `doorprints.db` and schema folder `app/schemas/app.doorprints.data.AppDatabase/` | `DatabaseFile` renames `househunt.db` and its `-wal`, `-shm`, `-journal` before Room opens it; `LegacyWorkerFactory` runs WorkManager jobs queued under `com.househunt.app.*`; the launcher `activity-alias` keeps the component name `com.househunt.app.MainActivity`; the Keystore alias `house_hunt_api_key_v1` is kept |
+| Web | Storage keys `doorprints.lang`, `doorprints.api-config`, `doorprints.*` for every `hh.*` key | `core/storage-keys.ts` moves each old key in localStorage and sessionStorage before anything reads storage; "Remove all data" keeps the language and server settings through an explicit list |
+| Backend | Packages `app.doorprints.server.*`, `DoorprintsApplication`, Maven `app.doorprints:doorprints-api`, database, user and compose volume `doorprints`, image tags `doorprints-api`/`doorprints-db`, MCP tool `askDoorprints` | None needed for a server that sets `DB_URL`/`DB_USER`/`DB_PASSWORD`; a local compose database is dumped and restored ([08](08-operations-runbook.md) §11). Flyway migrations are not edited |
+| CI | Keystore temp file `doorprints-release.jks`, database and image names in `backend.yml` and `ai-evals.yml`, path filters | – |
+
+**Kept on purpose** (each is justified in ADR-24): the Keystore alias, the old names inside the carry-over code, the
+Flyway migrations, the `HH_*` signing secret names, history in change logs and the CHANGELOG, the `.gitleaksignore`
+fingerprints (they name paths in old commits), and ordinary English ("house hunting", "a house hunter").
+
+**Checks run.** Android: `assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest`, the
+common and iOS metadata compiles and `assembleDebugAndroidTest`, with `-Proborazzi.test.verify=true` (all 64 reference
+screenshots match). Web: `ng test` (37 files, 472 tests) and `ng build`. Backend: `mvn -B -ntp verify` on JDK 25
+against the `backend/db` PostGIS image (285 tests, one skipped: the golden-set eval without a key). Not run: the
+instrumented tests on an emulator (`android-emulator.yml`) and the live web UI test (`tools/live-ui`, after the merge).
