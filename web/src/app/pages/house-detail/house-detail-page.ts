@@ -475,12 +475,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected useMyLocation(): void {
     if (!this.canLocate || this.locating()) return;
     this.locating.set(true);
-    this.locationMsg.set(null);
+    // The last failure under the buttons stays, drawn as being updated, until this run ends (S4b-BL-2).
     // locateOnce drops the answer, found or failed, when this page is gone by then (the destroyed guard).
     locateOnce({
       gone: () => this.destroyed,
       found: (pos) => {
         this.locating.set(false);
+        this.locationMsg.set(null);
         this.coordsInvalid.set({ lat: false, lon: false });
         this.placePin(round6(pos.coords.latitude), round6(pos.coords.longitude));
         this.announcer.announce({ key: 'house.locationFound' });
@@ -543,12 +544,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     const text = this.listingText.trim();
     if (!text || this.filling()) return;
     this.filling.set(true);
-    this.fillError.set(null);
+    // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).
     this.fillWarnings.set([]);
     this.keptWarnings.set([]);
     this.fillRequest = this.ai.extractListing(text).subscribe({
       next: (draft) => {
         this.fillRequest = null;
+        this.fillError.set(null);
         this.applyDraft(draft);
         this.fillWarnings.set(draft.warnings ?? []);
         this.filling.set(false);
@@ -687,11 +689,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     const d = this.draft();
     if (!d || this.geocoding() || !this.locationSet()) return;
     this.geocoding.set(true);
-    this.locationMsg.set(null);
+    // As for "Use my location": the last failure stays, drawn as being updated, until the lookup ends (S4b-BL-2).
     this.lookupRequest = this.geocode.reverse(d.lat, d.lon).subscribe({
       next: (r) => {
         this.lookupRequest = null;
         this.geocoding.set(false);
+        this.locationMsg.set(null);
         void this.applyAddress(r);
       },
       error: (err: unknown) => {
@@ -793,10 +796,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     // withdraws it, and leaving the page does not stop the save, whose own end still does one or the other. A save
     // refused before it starts (no name, no position) never says "Saving…".
     this.announcer.announce(SAVING);
-    this.error.set(null);
+    // An earlier "Could not save" stays at the top, drawn as being updated, while this save runs; its end removes it
+    // or puts the new failure in its place, so the form does not jump up and back (S4b-BL-2).
     try {
       const saved = await firstValueFrom(this.api.saveHouse(body));
       this.saving.set(false);
+      this.error.set(null);
       this.dirty.set(false);
       this.restored.set(false);
       clearTimeout(this.draftTimer);

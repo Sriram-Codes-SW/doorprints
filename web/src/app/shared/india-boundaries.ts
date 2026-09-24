@@ -25,7 +25,9 @@ import type {
  *     line through Kashmir out of them. MapLibre draws a zoom 0-4 tile, overzoomed, in place of a zoom 5+ tile that is
  *     still loading or missing offline, so `boundary_2`, `boundary_3` and every other `boundary` line layer that
  *     starts at zoom 5 also take only the features of a zoom 5+ tile ({@link TILE_ZOOM_GUARD}): no zoom 0-4 line of
- *     any admin level is drawn through Jammu and Kashmir, Ladakh, Aksai Chin or Arunachal Pradesh at zoom 5 and above;
+ *     any admin level is drawn through Jammu and Kashmir, Ladakh, Aksai Chin or Arunachal Pradesh at zoom 5 and above.
+ *     Both renderers already leave a layer out of a tile below floor(minzoom), maplibre-gl on the web and
+ *     maplibre-native on Android, so the guard is defence in depth on both apps ({@link takesTileZoomGuard});
  *  3. GeoJSON source `in-boundaries` (the bundled `geo/in-boundaries.geojson`, Natural Earth, public domain) with
  *     two line layers directly above `boundary_2`: `in-boundary-world` (kind `world`, below zoom 5 only, in place of
  *     the tiles' lines: the world's land boundaries with India's classification, and the stretches of India's own
@@ -153,7 +155,9 @@ const COUNTRY_LINE_RULE: ExpressionSpecification = [
  * top-level step or interpolate" rule (`src/expression/index.ts:517-527`) is for paint and layout properties, and
  * `validateFilter` forbids only `feature-state` in a filter (`src/validate/validate_expression.ts:56-63`). So a zoom 0-4
  * tile draws nothing through a guarded layer at any map zoom. Expression syntax only (Android's
- * `IndiaViewRules.TILE_ZOOM_GUARD`).
+ * `IndiaViewRules.TILE_ZOOM_GUARD`). Defence in depth on both renderers: maplibre-gl and maplibre-native already skip a
+ * minzoom 5 layer in a zoom 0-4 tile (sources in {@link takesTileZoomGuard}); the guard keeps that true whatever a
+ * renderer does with minzoom.
  */
 export const TILE_ZOOM_GUARD: ExpressionSpecification = ['>=', ['zoom'], TILE_BOUNDARY_MIN_ZOOM];
 
@@ -389,16 +393,17 @@ function canShowState(layer: LayerSpecification): boolean {
  * name, and every other one whose minzoom is 5 or more. Never `boundary_disputed` (hidden), a symbol layer, or a line
  * layer meant for zoom 0-4, whose low-zoom lines the guard would remove. Android's `tileZoomGuardedLayers`.
  *
- * On the web the guard is defence in depth and parity with Android: for a layer with minzoom 5, maplibre-gl 6.10.0
- * already builds no bucket in a tile whose zoom is below floor(minzoom) (`src/source/worker_tile.ts:109`,
- * `layer.isHidden(this.zoom, true)`; `src/style/style_layer.ts:321-322`), so the minzoom alone kept the zoom 0-4
- * tiles' lines off the map. The guard makes that hold whatever the renderer does with minzoom. On Android,
+ * The guard is defence in depth on both renderers, and parity with Android. On the web, for a layer with minzoom 5,
+ * maplibre-gl 6.10.0 already builds no bucket in a tile whose zoom is below floor(minzoom)
+ * (`src/source/worker_tile.ts:109`, `layer.isHidden(this.zoom, true)`; `src/style/style_layer.ts:321-322`), so the
+ * minzoom alone kept the zoom 0-4 tiles' lines off the map. The guard makes that hold whatever the renderer does with minzoom. On Android,
  * maplibre-native android-v13.6.1 (c7506d6): the worker's parse loop (`src/mln/tile/geometry_tile_worker.cpp`,
  * lines 446-502) has no zoom check of its own and runs the filter with `overscaledZ` (line 502), but
  * `GeometryTile::setLayers` leaves out a layer whose floor(minZoom) is above the tile's `overscaledZ` before the worker
  * gets the layers (`src/mln/tile/geometry_tile.cpp:317`, called for new and relaid-out tiles,
- * `src/mln/renderer/tile_pyramid.cpp:167,193`), so by the source Android skips such a layer too and its guard is
- * also defence in depth (read from the source, not checked on a device; handed to Android and Docs, README change log).
+ * `src/mln/renderer/tile_pyramid.cpp:167,193`), so by the source maplibre-native skips such a layer too and Android's
+ * guard is also defence in depth, not the fix (read from the source, not yet checked on a device: docs/06 TC-M-25
+ * steps (7) to (9); S4b-BL-13).
  */
 function takesTileZoomGuard(layer: LayerSpecification): boolean {
   if (layer.type !== 'line' || read(layer, 'source-layer') !== BOUNDARY_SOURCE_LAYER) return false;
