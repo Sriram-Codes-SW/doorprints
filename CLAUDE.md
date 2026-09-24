@@ -2,7 +2,8 @@
 
 Doorprints remembers the houses you visit while house-hunting in India. Android app (Kotlin, Compose, Room, MapLibre),
 web app/PWA (Angular, MapLibre GL, IndexedDB) at https://doorprints.web.app, and an optional self-hosted Spring Boot
-server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/shared`.
+server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/shared`;
+`android/ui` (`:ui`) holds the Compose Multiplatform UI (ADR-23).
 
 ## Start here
 
