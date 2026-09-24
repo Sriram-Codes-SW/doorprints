@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -39,6 +39,7 @@
 | 0.25 | 2026-09-24 | Claude (Code), Docs team | **FR-098** known limits after the Singalila spur fix (round 2 reviews): the Sikkim tri-junction loops sized (about 13 x 3 km at Nepal-China-India, from about zoom 10; about 2 km at Doklam) and the tile line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9) (S4b-BL-17). |
 | 0.26 | 2026-09-24 | Claude (Code), Docs team | §12 RTM: the Android APK and live web UI tests of [06](06-test-plan.md) §16 (PR #18) added to the rows they trace to: **TC-I-35** (emulator and Test Lab smoke tests) to FR-001, FR-006, FR-010 and FR-011; **TC-U-56** (JVM screenshot tests) to FR-041 and NFR-006/NFR-007; **TC-M-26** (the live web UI test after every merge) to FR-041, NFR-006/NFR-007 and FR-098 (map screens only). |
 | 0.27 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). SEC-019 names the app schema `doorprints` (was `househunt`). |
+| 0.28 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19: the §12 RTM row of FR-036 names both homes of the Android strings (the UI strings as Compose resources in `android/ui/src/commonMain/composeResources` since [03](03-design.md) ADR-23 CMP-2, the service strings in `res/values*`) and the new tests TC-U-59, TC-U-60 and TC-M-27 ([06](06-test-plan.md) v0.40). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -438,7 +439,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-033 | 03 §7.3 | `MainActivity.handle`, `Root.kt` deep links | TC-F-04, TC-S-12 |
 | FR-034 | 03 §10 | android `Repository.deletePhoto/sync`, backend `PhotoService.delete` | TC-I-17, TC-F-08 |
 | FR-035 | 09 §3 | `SyncWorker`, `Repository.sync(photosAllowed)`, `Settings.photosOnWifiOnly` | TC-F-10 |
-| FR-036 | 05 §8.2 | `res/values*/strings.xml`, `i18n/AppLocale.kt`, `res/xml/locales_config.xml`; web `i18n/*` | TC-L-01, TC-L-05, TC-U-21 |
+| FR-036 | 05 §8.2 | `android/ui/src/commonMain/composeResources/values*/strings.xml` (UI strings, since ADR-23 CMP-2), `res/values*/strings.xml` (service strings), `i18n/AppLocale.kt`, `res/xml/locales_config.xml`; web `i18n/*` | TC-L-01, TC-L-05, TC-U-21, TC-U-59, TC-U-60, TC-M-27 |
 | FR-037 | 03 §7.5 | web `pages/ask`, android `ui/AssistantScreen.kt` | TC-M-09, TC-AI-01..03 |
 | FR-038 | 03 §7.6 | web `house-detail-page` *Fill in from listing text* (`listingFill.*`), android `HouseEditScreen.PasteListingDialog` | TC-M-09, TC-AI-05 |
 | FR-039 | 03 §7.7 | web `pages/plan`, android `AssistantScreen.PlanPane` | TC-M-09, TC-AI-07 |
