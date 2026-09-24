@@ -303,12 +303,25 @@
           }
         }
       </div>
+      <!-- A failure the user asked about stays in its place while the next run goes (S4b-BL-1): dimmed, with the bar
+           along its foot named "Syncing…" (outside the alert, found by browsing but not announced), until a run
+           succeeds (it goes) or fails (a new card, read again). Nothing below it jumps. -->
       @if (sync.lastFailure(); as failure) {
         @if (sync.lastErrorForced()) {
-          @for (c of [failure]; track c.run) {
-            <div class="error" role="alert">{{ 'data.syncFailed' | t: { reason: c.value } }}</div>
-          }
+          <div class="refresh-slot" [class.stale]="sync.running()">
+            @for (c of [failure]; track c.run) {
+              <div class="error" role="alert">{{ 'data.syncFailed' | t: { reason: c.value } }}</div>
+            }
+            @if (sync.running()) {
+              <div class="refresh-bar" role="progressbar" [attr.aria-label]="'data.syncing' | t"></div>
+            }
+          </div>
         }
+      }
+      @if (sync.serverResetAt()) {
+        <!-- Not a live region: SyncService said it through the app's announcer when it happened, on whatever page was
+             open. Here it stays for the rest of the visit, so the reason for a long sync is on the sync card. -->
+        <p class="small">{{ 'data.serverReset' | t }}</p>
       }
       <div class="actions">
         <!-- One element whose label changes (Download now → Downloading… → Sync now), aria-disabled while running,

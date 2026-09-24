@@ -439,6 +439,8 @@ export const hi: Dict = {
   'data.offlinePending': 'आप ऑफ़लाइन हैं। भेजे जाने की प्रतीक्षा में बदलाव: {n}। ऑनलाइन लौटते ही ये भेज दिए जाएँगे।',
   'data.pendingChanges': 'भेजे जाने की प्रतीक्षा में बदलाव: {n}',
   'data.autoSyncFailed': 'पिछला अपने-आप होने वाला सिंक नहीं हो सका ({reason})। यह बाद में फिर कोशिश करेगा।',
+  // S4b-BL-20 (2026-09-24): the sync found its server reset. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.serverReset': 'लगता है आपका सर्वर रीसेट हो गया है या किसी पुरानी कॉपी पर लौटा दिया गया है। Doorprints इस ब्राउज़र की हर चीज़ उसे फिर से भेज रहा है और उस पर मौजूद सब कुछ फिर से डाउनलोड कर रहा है। यहाँ कुछ भी नहीं खोया है।',
   'data.migrationDone': 'डाउनलोड पूरा हुआ। इस ब्राउज़र में मकान: {n}',
   'data.migrationStop': 'रोकें',
   'data.migrationStopped': 'डाउनलोड रोक दिया गया। जो आ चुका है वह रखा गया है; “आपका डेटा” से आगे जारी रखें।',
