@@ -10,7 +10,7 @@ import type { HouseDto } from '../../core/models';
  * One entry per route: `new:<lat>,<lon>` for a new house (the position it was opened at, or `new:` without one) and
  * the house id for an existing one. Every access is wrapped: storage may be blocked (private mode, a policy).
  */
-export const DRAFT_PREFIX = 'hh.houseDraft:';
+export const DRAFT_PREFIX = 'doorprints.houseDraft:';
 
 export interface StoredDraft {
   draft: HouseDto;

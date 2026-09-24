@@ -10,7 +10,7 @@ import type { ZipEntry } from './zip';
  * The exact, re-importable JSON backup (docs/11 §5.2, S4-03; imported by S4-04).
  *
  * **This file is one half of a cross-platform contract.** The other half is
- * `android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt` and `ExportModel.kt`: the same
+ * `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt` and `ExportModel.kt`: the same
  * `format` id, the same entry names, the same property names, the same order. A backup written on a phone must
  * import in a browser and the other way round, so nothing here may be renamed on one side only.
  *
