@@ -23,6 +23,7 @@ import com.househunt.app.ui.ImportScreen
 import com.househunt.app.ui.SettingsScreen
 import com.househunt.shared.model.HouseStatus
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,7 +55,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         runCatching {
             FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }.let { (it.get(null) as MutableMap<*, *>).clear() }
         }
-        // Dates and times are shown in the device's zone: the same one on every machine.
+        // Dates and times are shown in the device's zone: the same one on every machine (restored in tearDown).
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"))
         RuntimeEnvironment.setQualifiers("+$lang" + if (dark) "-night" else "-notnight")
         val repo = ApplicationProvider.getApplicationContext<HouseHuntApp>().container.repository
@@ -62,6 +63,12 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveHouse(house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000))
             repo.saveHouse(house("b", "Lake Road flat", HouseStatus.NEW, 22_500, 1, mapOf("water" to 3), 1_760_000_100_000))
         }
+    }
+
+    private val timeZone: TimeZone = TimeZone.getDefault()
+
+    @After fun tearDown() {
+        TimeZone.setDefault(timeZone)
     }
 
     private fun house(id: String, label: String, status: HouseStatus, price: Long, bhk: Int, checklist: Map<String, Int>, at: Long) =

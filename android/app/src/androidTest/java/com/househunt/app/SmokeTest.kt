@@ -8,8 +8,10 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -94,7 +96,8 @@ class SmokeTest {
         // Replace, not append: the form starts with a default name ("New house", or a street from the geocoder).
         compose.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement(name)
         shot("10_new_house")
-        compose.onAllNodes(hasText("Save") and hasClickAction()).onFirst().performClick()
+        // The top bar's Save: the form has a second one at its end, off screen inside the scrolling column.
+        compose.onNode(hasText("Save") and hasClickAction() and !hasAnyAncestor(hasScrollAction())).performClick()
         // The name is on the new-house form already, so wait for the saved house's own page ("House details").
         waitFor("House details")
         shot("11_saved")
