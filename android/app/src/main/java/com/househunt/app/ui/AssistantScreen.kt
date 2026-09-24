@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -35,10 +34,11 @@ import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.househunt.app.HouseHuntApp
-import com.househunt.app.R
+import com.househunt.app.ui.res.*
 import com.househunt.shared.api.AskResponseDto
 import com.househunt.shared.api.PlanRequest
 import com.househunt.shared.api.PlanResponseDto
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +47,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
-import java.util.Locale
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Plan visits could not start: there is no location fix. [permitted] says whether precise location was allowed at the
@@ -270,9 +271,9 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                     }
                     PrimaryTabRow(selectedTabIndex = tab) {
                         Tab(selected = tab == 0, onClick = { vm.selectTab(0) },
-                            text = { Text(stringResource(R.string.ai_ask_tab)) })
+                            text = { Text(stringResource(Res.string.ai_ask_tab)) })
                         Tab(selected = tab == 1, onClick = { vm.selectTab(1) },
-                            text = { Text(stringResource(R.string.ai_plan_tab)) })
+                            text = { Text(stringResource(Res.string.ai_plan_tab)) })
                     }
                 }
             }
@@ -287,8 +288,8 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                     AssistantTitle(Modifier.padding(top = 16.dp, bottom = 8.dp))
                     HeroEmptyState(
                         icon = Icons.Default.Search,
-                        title = stringResource(R.string.ai_unavailable_now),
-                        body = stringResource(R.string.ai_unavailable),
+                        title = stringResource(Res.string.ai_unavailable_now),
+                        body = stringResource(Res.string.ai_unavailable),
                         horizontalPadding = 0.dp,
                         action = {
                             Column(
@@ -310,9 +311,9 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                                     },
                                     enabled = !retrying,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                                ) { ButtonLabel(stringResource(R.string.common_try_again)) }
+                                ) { ButtonLabel(stringResource(Res.string.common_try_again)) }
                                 OutlinedButton(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                    ButtonLabel(stringResource(R.string.ai_go_to_map))
+                                    ButtonLabel(stringResource(Res.string.ai_go_to_map))
                                 }
                             }
                         },
@@ -332,7 +333,7 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(stringResource(R.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(Res.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (tab == 0) AskPane(vm, onOpenHouse) else PlanPane(vm, onOpenHouse)
                 }
@@ -344,7 +345,7 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
 /** The Assistant's title, a heading for TalkBack's heading navigation. */
 @Composable
 private fun AssistantTitle(modifier: Modifier) {
-    Text(stringResource(R.string.ai_title), style = MaterialTheme.typography.headlineSmall,
+    Text(stringResource(Res.string.ai_title), style = MaterialTheme.typography.headlineSmall,
         modifier = modifier.semanticsHeading())
 }
 
@@ -380,8 +381,8 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 
     OutlinedTextField(
         question, vm::editAsk,
-        label = { Text(stringResource(R.string.ai_ask_label)) },
-        placeholder = { Text(stringResource(R.string.ai_ask_hint)) },
+        label = { Text(stringResource(Res.string.ai_ask_label)) },
+        placeholder = { Text(stringResource(Res.string.ai_ask_hint)) },
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { vm.ask() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
@@ -389,7 +390,7 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     // One button position and one call site: Ask, or Cancel while the request runs (round 6), so TalkBack keeps focus
     // on it and the next double-tap cancels.
     StateButton(
-        text = stringResource(if (busy) R.string.common_cancel else R.string.ai_ask_go),
+        text = stringResource(if (busy) Res.string.common_cancel else Res.string.ai_ask_go),
         onClick = { if (busy) vm.cancel() else vm.ask() },
         style = if (busy) BarButtonStyle.OUTLINED else BarButtonStyle.FILLED,
         // Full width (round 7): the button keeps its size and place when it becomes Cancel, so nothing moves under the
@@ -397,8 +398,8 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         enabled = busy || question.isNotBlank(),
     )
-    val readyText = stringResource(R.string.ai_answer_ready)
-    val askingText = stringResource(R.string.ai_asking)
+    val readyText = stringResource(Res.string.ai_answer_ready)
+    val askingText = stringResource(Res.string.ai_asking)
     LiveMessage(assertive = error != null && !busy) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val e = error
@@ -425,23 +426,23 @@ private fun AskPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     }
     answer?.let { a ->
         SectionHeading(
-            stringResource(R.string.ai_answer_heading),
+            stringResource(Res.string.ai_answer_heading),
             // Focusable, so the request below can land on it (a heading is not a focus target otherwise).
             Modifier.focusRequester(headingFocus).focusable(),
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(a.answer.replace(citationMarker, "").trim(), style = MaterialTheme.typography.bodyLarge)
             if (!a.grounded) {
-                Text(stringResource(R.string.ai_not_grounded), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(Res.string.ai_not_grounded), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (a.citations.isNotEmpty()) {
-            SectionHeading(stringResource(R.string.ai_sources))
+            SectionHeading(stringResource(Res.string.ai_sources))
             a.citations.forEach { c ->
                 OutlinedCard(onClick = { onOpenHouse(c.houseId) }, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {
-                        Text(c.label ?: stringResource(R.string.house_unnamed), fontWeight = FontWeight.SemiBold)
+                        Text(c.label ?: stringResource(Res.string.house_unnamed), fontWeight = FontWeight.SemiBold)
                         c.snippet?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     }
                 }
@@ -459,7 +460,7 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     val plan by vm.plan.collectAsStateWithLifecycle()
     val error by vm.planError.collectAsStateWithLifecycle()
     val errorText = aiErrorText()
-    val noLocation = stringResource(R.string.ai_no_location)
+    val noLocation = stringResource(Res.string.ai_no_location)
     val headingFocus = rememberResultFocus(plan)
     // The location note under *Plan visits*; planning starts again once precise location is granted. The "asked" flag
     // is shared with the Map and the house form (LocationPermission.kt): once Android will not ask again, the button
@@ -511,15 +512,15 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
 
     OutlinedTextField(
         question, vm::editPlan,
-        label = { Text(stringResource(R.string.ai_plan_label)) },
-        placeholder = { Text(stringResource(R.string.ai_plan_hint)) },
+        label = { Text(stringResource(Res.string.ai_plan_label)) },
+        placeholder = { Text(stringResource(Res.string.ai_plan_hint)) },
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Send),
         keyboardActions = KeyboardActions(onSend = { planOrAsk() }),
         minLines = 2, modifier = Modifier.fillMaxWidth(),
     )
     // One call site, as on the Ask tab: Plan visits, or Cancel while planning runs.
     StateButton(
-        text = stringResource(if (busy) R.string.common_cancel else R.string.ai_plan_go),
+        text = stringResource(if (busy) Res.string.common_cancel else Res.string.ai_plan_go),
         onClick = { if (busy) vm.cancel() else planOrAsk() },
         style = if (busy) BarButtonStyle.OUTLINED else BarButtonStyle.FILLED,
         // Full width, as Ask (round 7): Plan visits and Cancel are the same size and place.
@@ -527,8 +528,8 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
         enabled = busy || question.isNotBlank(),
     )
     val stops = plan?.stops?.size ?: 0
-    val readyText = pluralStringResource(R.plurals.ai_plan_ready, stops, stops)
-    val planningText = stringResource(R.string.ai_planning)
+    val readyText = pluralStringResource(Res.plurals.ai_plan_ready, stops, stops)
+    val planningText = stringResource(Res.string.ai_planning)
     // The calm permission note is polite, as on the form; only a real failure interrupts (round 4).
     val permissionNote = error is NoLocationException && !locationAsk.granted
     val retrying = (error as? NoLocationException)?.permitted == false && locationAsk.granted
@@ -556,8 +557,8 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
                 // failure, the red error card.
                 permissionNote -> LocationPermissionNote(
                     ask = locationAsk,
-                    deniedText = stringResource(R.string.ai_plan_location_off),
-                    approximateText = approximateLocationText(R.string.ai_plan_needs_precise),
+                    deniedText = stringResource(Res.string.ai_plan_location_off),
+                    approximateText = approximateLocationText(Res.string.ai_plan_needs_precise),
                     launchRequest = { askLocation.launch(LOCATION_PERMISSIONS) },
                     modifier = noteModifier,
                 )
@@ -573,25 +574,25 @@ private fun PlanPane(vm: AssistantViewModel, onOpenHouse: (String) -> Unit) {
     }
     plan?.let { p ->
         SectionHeading(
-            stringResource(R.string.ai_route_heading),
+            stringResource(Res.string.ai_route_heading),
             // Focusable, so the request below can land on it (a heading is not a focus target otherwise).
             Modifier.focusRequester(headingFocus).focusable(),
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             p.summary?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
             if (p.fallback) {
-                Text(stringResource(R.string.ai_plan_fallback), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(Res.string.ai_plan_fallback), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(stringResource(R.string.ai_plan_total, String.format(Locale.ROOT, "%.1f", p.totalMeters / 1000.0), p.totalWalkMinutes),
+            Text(stringResource(Res.string.ai_plan_total, String.format(Locale.ROOT, "%.1f", p.totalMeters / 1000.0), p.totalWalkMinutes),
                 fontWeight = FontWeight.SemiBold)
         }
         p.stops.sortedBy { it.order }.forEach { stop ->
             OutlinedCard(onClick = { onOpenHouse(stop.houseId) }, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    Text(stringResource(R.string.ai_plan_stop, stop.order, stop.label ?: stringResource(R.string.house_unnamed)),
+                    Text(stringResource(Res.string.ai_plan_stop, stop.order, stop.label ?: stringResource(Res.string.house_unnamed)),
                         fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.ai_plan_leg, stop.legMeters.toInt(), stop.walkMinutes),
+                    Text(stringResource(Res.string.ai_plan_leg, stop.legMeters.toInt(), stop.walkMinutes),
                         style = MaterialTheme.typography.bodySmall)
                     stop.reason?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }

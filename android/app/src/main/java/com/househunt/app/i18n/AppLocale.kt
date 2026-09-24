@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
+import com.househunt.app.R
 import java.util.Locale
 
 /**
@@ -79,13 +80,35 @@ object AppLocale {
     /** A language change to confirm; [language] is null for "System default". */
     data class Change(val language: String?)
 
-    /** Applies the saved language on Android 12 and lower; a no-op on 13+ (the platform does it). */
+    /**
+     * Applies the saved language on Android 12 and lower (the platform does it on 13+), and on every API level keeps
+     * the process's default locale on the language the UI shows ([applyDefault]).
+     */
     fun wrap(base: Context): Context {
-        if (Build.VERSION.SDK_INT >= 33) return base
-        val tag = base.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return base
-        val locale = Locale.forLanguageTag(tag)
-        val config = Configuration(base.resources.configuration)
-        config.setLocales(LocaleList(locale))
-        return base.createConfigurationContext(config)
+        val tag = if (Build.VERSION.SDK_INT >= 33) null
+            else base.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+        val wrapped = if (tag == null) base else {
+            val config = Configuration(base.resources.configuration)
+            config.setLocales(LocaleList(Locale.forLanguageTag(tag)))
+            base.createConfigurationContext(config)
+        }
+        applyDefault(wrapped)
+        return wrapped
+    }
+
+    /**
+     * The UI strings are Compose resources (ADR-23 CMP-2), which take the language from the process's default locale
+     * rather than from a configuration, and choose from that one locale only; Android resources choose from the whole
+     * list. So the default is set to the language Android resolved for [context]'s resources, read from the
+     * `resolved_language` string each `values` folder carries: a phone set to [Marathi, Hindi] shows Hindi on both
+     * sides. The rest of the configuration's list follows it. The framework resets the default on a process-level
+     * configuration change, so the app calls this again then (HouseHuntApp.onConfigurationChanged).
+     */
+    fun applyDefault(context: Context) {
+        val chosen = Locale.forLanguageTag(context.getString(R.string.resolved_language))
+        if (LocaleList.getDefault()[0].language == chosen.language) return
+        val list = context.resources.configuration.locales
+        val rest = (0 until list.size()).map { list[it] }.filter { it.language != chosen.language }
+        LocaleList.setDefault(LocaleList(chosen, *rest.toTypedArray()))
     }
 }

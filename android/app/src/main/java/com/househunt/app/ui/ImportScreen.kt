@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -45,7 +44,6 @@ import androidx.work.Data
 import androidx.work.WorkInfo
 import com.househunt.app.HouseHuntApp
 import com.househunt.app.Notifications
-import com.househunt.app.R
 import com.househunt.app.data.AppSettings
 import com.househunt.app.data.ResultMarks
 import com.househunt.app.data.ResultScreen
@@ -60,11 +58,15 @@ import com.househunt.app.export.Saf
 import com.househunt.app.export.ScreenWatch
 import com.househunt.app.export.backupProblemOf
 import com.househunt.app.export.messageRes
+import com.househunt.app.ui.res.*
 import com.househunt.shared.api.IsoTime
 import com.househunt.shared.export.BackupProblem
 import com.househunt.shared.export.ImportMode
 import com.househunt.shared.export.ImportPreview
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * See ExportScreen: a finished import is shown if this screen started it or it ended this recently — or, however
@@ -353,10 +355,10 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     // versions, or a backup that is simply already here.
     val nothingText = if (ready != null && preview != null && preview.isEmpty) {
         when {
-            ready.copy.newHouses == 0 && ready.copy.newVisits == 0 -> stringResource(R.string.import_nothing_empty)
-            deletedHere > 0 -> pluralStringResource(R.plurals.import_nothing_deleted, deletedHere, deletedHere)
-            preview.newerHereHouses > 0 || preview.newerHereVisits > 0 -> stringResource(R.string.import_nothing_newer)
-            else -> stringResource(R.string.import_nothing)
+            ready.copy.newHouses == 0 && ready.copy.newVisits == 0 -> stringResource(Res.string.import_nothing_empty)
+            deletedHere > 0 -> pluralStringResource(Res.plurals.import_nothing_deleted, deletedHere, deletedHere)
+            preview.newerHereHouses > 0 || preview.newerHereVisits > 0 -> stringResource(Res.string.import_nothing_newer)
+            else -> stringResource(Res.string.import_nothing)
         }
     } else {
         null
@@ -397,43 +399,43 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
     val secondary: BarAction? = when {
         running || checking -> null
         preview != null && !preview.isEmpty ->
-            BarAction(stringResource(R.string.import_pick_another), choose, enabled = !picking)
+            BarAction(stringResource(Res.string.import_pick_another), choose, enabled = !picking)
         preview != null && deletedHere > 0 && !restore ->
-            BarAction(stringResource(R.string.import_pick_another), choose, enabled = !picking)
+            BarAction(stringResource(Res.string.import_pick_another), choose, enabled = !picking)
         check != null -> null
         // A copy that can be undone: the undo takes the secondary place (Choose a backup file moves
         // under the body's heading). Kept, disabled, while the undo runs, so focus stays on it; it
         // becomes Choose a backup file in the same place once the copies are gone.
         succeeded && undoRecord != null -> BarAction(
-            stringResource(R.string.import_undo_copy),
+            stringResource(Res.string.import_undo_copy),
             { vm.undoCopy() },
             enabled = !vm.undoing,
         )
-        succeeded -> BarAction(stringResource(R.string.import_pick), choose, enabled = !picking)
+        succeeded -> BarAction(stringResource(Res.string.import_pick), choose, enabled = !picking)
         else -> null
     }
     val primary: BarAction = when {
         // While blocked, the running import is the other one: say which import Stop stops.
         running -> BarAction(
-            stringResource(if (vm.blocked) R.string.import_stop_other else R.string.export_stop),
+            stringResource(if (vm.blocked) Res.string.import_stop_other else Res.string.export_stop),
             { ImportWorker.cancel(context) },
             BarButtonStyle.OUTLINED,
         )
         // A 1 GB file takes a while to copy; the user can change their mind.
         checking -> BarAction(
-            stringResource(R.string.common_cancel),
+            stringResource(Res.string.common_cancel),
             { vm.cancelCheck() },
             BarButtonStyle.OUTLINED,
         )
         preview != null && !preview.isEmpty -> BarAction(
             when {
-                resume -> stringResource(R.string.import_finish)
+                resume -> stringResource(Res.string.import_finish)
                 // Some houses would appear twice: the number of copies is in the verb (UX review,
                 // round 16), "Add 40 copies", not a bare "Import".
                 mode == ImportMode.COPY && duplicates > 0 -> pluralStringResource(
-                    R.plurals.import_go_copies, preview.newHouses, preview.newHouses,
+                    Res.plurals.import_go_copies, preview.newHouses, preview.newHouses,
                 )
-                else -> stringResource(R.string.import_go)
+                else -> stringResource(Res.string.import_go)
             },
             { if (preview.overwrites > 0) confirm = true else startImport(false) },
         )
@@ -441,13 +443,13 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
         // back, which turns the undelete on and shows its preview (a copy is the text button in
         // the body).
         preview != null && deletedHere > 0 && !restore ->
-            BarAction(stringResource(R.string.import_bring_back), bringBack)
+            BarAction(stringResource(Res.string.import_bring_back), bringBack)
         check != null ->
-            BarAction(stringResource(R.string.import_pick_another), choose, enabled = !picking)
+            BarAction(stringResource(Res.string.import_pick_another), choose, enabled = !picking)
         // After a successful import the next step is to look at the houses, not to import again
         // (which in copy mode would add everything a second time); picking is still offered.
         succeeded -> BarAction(
-            stringResource(R.string.import_see_houses),
+            stringResource(Res.string.import_see_houses),
             {
                 // Copies that can still be undone: the list opens on them, with the same undo in a row
                 // under the "Just imported" chip (UX review, round 18). After an undo that kept houses
@@ -460,17 +462,17 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
             // user. The same node, so TalkBack keeps its focus on it (UX review, round 18).
             enabled = !vm.undoing,
         )
-        else -> BarAction(stringResource(R.string.import_pick), choose, enabled = !picking)
+        else -> BarAction(stringResource(Res.string.import_pick), choose, enabled = !picking)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 // One line, ellipsised: "காப்புப்பிரதியை இறக்குமதி செய்" at 200% font would otherwise be clipped.
-                title = { Text(stringResource(R.string.import_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(stringResource(Res.string.import_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.back))
                     }
                 },
             )
@@ -489,54 +491,54 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                         ImportStatus.RUNNING -> {
                             val (done, total) =
                                 if (reported) ExportWorker.progressOf(info?.progress ?: Data.EMPTY) else (0 to 0)
-                            WorkProgress(done, total, stringResource(R.string.import_working))
+                            WorkProgress(done, total, stringResource(Res.string.import_working))
                         }
                         // The run on screen is the earlier import that kept this tap from starting (see
                         // ImportViewModel); its own numbers are the honest ones to show.
                         ImportStatus.BLOCKED -> if (running) {
                             val (done, total) = ExportWorker.progressOf(info?.progress ?: Data.EMPTY)
-                            WorkProgress(done, total, stringResource(R.string.import_blocked))
+                            WorkProgress(done, total, stringResource(Res.string.import_blocked))
                         } else {
-                            StatusLine(stringResource(R.string.import_blocked))
+                            StatusLine(stringResource(Res.string.import_blocked))
                         }
                         ImportStatus.CHECKING -> {
-                            StatusLine(stringResource(R.string.import_checking))
+                            StatusLine(stringResource(Res.string.import_checking))
                             ProgressBar()
                         }
                         ImportStatus.REFUSED -> (check as? ImportCheck.Refused)?.let {
                             ResultCard(
                                 ResultTone.ERROR,
-                                stringResource(R.string.import_failed, stringResource(it.problem.messageRes())),
+                                stringResource(Res.string.import_failed, stringResource(it.problem.messageRes())),
                             )
                         }
                         ImportStatus.NOTHING -> nothingText?.let { ResultCard(ResultTone.NEUTRAL, it) }
                         // One kind per preview, each saying which one is shown and that nothing is imported yet,
                         // so TalkBack hears every switch of the mode or of the undelete (UX review, round 11).
-                        ImportStatus.READY_MERGE -> StatusLine(stringResource(R.string.import_ready_merge))
+                        ImportStatus.READY_MERGE -> StatusLine(stringResource(Res.string.import_ready_merge))
                         ImportStatus.READY_RESTORE -> {
                             val n = preview?.restoredHouses ?: 0
-                            StatusLine(pluralStringResource(R.plurals.import_ready_restore, n, n))
+                            StatusLine(pluralStringResource(Res.plurals.import_ready_restore, n, n))
                         }
                         // ...and for a copy, how many houses would then be on the phone twice.
                         ImportStatus.READY_COPY -> StatusLine(
                             if (duplicates > 0) {
-                                pluralStringResource(R.plurals.import_copy_shown_duplicates, duplicates, duplicates)
+                                pluralStringResource(Res.plurals.import_copy_shown_duplicates, duplicates, duplicates)
                             } else {
-                                stringResource(R.string.import_copy_shown)
+                                stringResource(Res.string.import_copy_shown)
                             }
                         )
                         ImportStatus.FINISH ->
-                            ResultCard(ResultTone.NEUTRAL, stringResource(R.string.import_stopped_resume))
+                            ResultCard(ResultTone.NEUTRAL, stringResource(Res.string.import_stopped_resume))
                         ImportStatus.UNDOING -> {
-                            StatusLine(stringResource(R.string.import_undoing))
+                            StatusLine(stringResource(Res.string.import_undoing))
                             ProgressBar()
                         }
                         // Said once (UX review, round 11's rule): what the undo did is the body's heading, so the bar
                         // says only "Undo finished.", as it says "Import finished." (Design review, round 18).
                         ImportStatus.UNDONE -> if (undone?.failed == true) {
-                            ResultCard(ResultTone.ERROR, stringResource(R.string.import_undo_failed))
+                            ResultCard(ResultTone.ERROR, stringResource(Res.string.import_undo_failed))
                         } else {
-                            StatusLine(stringResource(R.string.import_undo_finished))
+                            StatusLine(stringResource(Res.string.import_undo_finished))
                         }
                         ImportStatus.RESULT -> info?.let { ImportResult(it, onDismiss = { dismissResult() }) }
                         ImportStatus.NONE -> Unit
@@ -565,8 +567,8 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                 // What this screen is for in one line, and which files it can read as the fine print under it.
                 idle -> HeroEmptyState(
                     icon = RestoreIcon,
-                    title = stringResource(R.string.import_lead),
-                    body = stringResource(R.string.import_intro),
+                    title = stringResource(Res.string.import_lead),
+                    body = stringResource(Res.string.import_intro),
                 )
                 // The name is known before the (possibly long) copy finishes.
                 checking -> FileHeader(fileName, madeOn = null, modifier = inset)
@@ -577,7 +579,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                         Spacer(Modifier.height(12.dp))
                     }
                     Text(
-                        stringResource(R.string.import_intro),
+                        stringResource(Res.string.import_intro),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = inset,
                     )
@@ -585,22 +587,22 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                 ready != null && preview != null -> {
                     val madeOn = ready.manifest?.createdAt
                         ?.let { iso -> runCatching { IsoTime.parseMillis(iso) }.getOrNull() }
-                        ?.let { millis -> stringResource(R.string.import_backup_of, millis.dateText()) }
+                        ?.let { millis -> stringResource(Res.string.import_backup_of, millis.dateText()) }
                     FileHeader(ready.displayName ?: fileName, madeOn, inset)
 
                     HorizontalDivider(divider)
-                    SectionHeading(stringResource(R.string.import_mode), headingPad)
+                    SectionHeading(stringResource(Res.string.import_mode), headingPad)
                     // Locked while an import runs: the preview must keep describing the work being written.
                     Column(Modifier.selectableGroup()) {
                         RadioRow(
-                            AnnotatedString(stringResource(R.string.import_mode_merge)),
-                            stringResource(R.string.import_mode_merge_hint),
+                            AnnotatedString(stringResource(Res.string.import_mode_merge)),
+                            stringResource(Res.string.import_mode_merge_hint),
                             mode == ImportMode.MERGE,
                             enabled = !running,
                         ) { vm.choose(ImportMode.MERGE) }
                         RadioRow(
-                            AnnotatedString(stringResource(R.string.import_mode_copy)),
-                            stringResource(R.string.import_mode_copy_hint),
+                            AnnotatedString(stringResource(Res.string.import_mode_copy)),
+                            stringResource(Res.string.import_mode_copy_hint),
                             mode == ImportMode.COPY,
                             enabled = !running,
                         ) { vm.choose(ImportMode.COPY) }
@@ -610,8 +612,8 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                     // of everything stays one tap away, as a secondary text button.
                     if (deletedHere > 0) {
                         SwitchRow(
-                            text = pluralStringResource(R.plurals.import_restore_switch, deletedHere, deletedHere),
-                            hint = stringResource(R.string.import_restore_switch_hint),
+                            text = pluralStringResource(Res.plurals.import_restore_switch, deletedHere, deletedHere),
+                            hint = stringResource(Res.string.import_restore_switch_hint),
                             checked = restore,
                             enabled = !running,
                             onChange = { vm.onRestoreDeletedChange(it) },
@@ -621,14 +623,14 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                             TextButton(
                                 onClick = showAsCopies,
                                 modifier = Modifier.padding(start = 4.dp, end = 16.dp).heightIn(min = 48.dp),
-                            ) { ButtonLabel(stringResource(R.string.import_show_copies)) }
+                            ) { ButtonLabel(stringResource(Res.string.import_show_copies)) }
                         }
                     }
 
                     // An empty preview is said once, in the action bar, next to the only thing left to do.
                     if (!preview.isEmpty) {
                         HorizontalDivider(divider)
-                        SectionHeading(stringResource(R.string.import_preview), headingPad)
+                        SectionHeading(stringResource(Res.string.import_preview), headingPad)
                         // 4 dp on top: the card has no row padding of its own, and heading to content is 8 dp.
                         PreviewCard(
                             preview,
@@ -649,7 +651,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                     // How long the undo is on offer (UX review, round 18): it is withdrawn after a day, and without
                     // this line the button would just be gone the next morning.
                     body = undoRecord?.let { record ->
-                        stringResource(R.string.import_undo_until, (record.finishedAt + ImportUndo.KEEP_MS).dateText())
+                        stringResource(Res.string.import_undo_until, (record.finishedAt + ImportUndo.KEEP_MS).dateText())
                     },
                     iconTint = if (undoneText != null) {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -668,7 +670,7 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                                 onClick = choose,
                                 enabled = !picking,
                                 modifier = Modifier.heightIn(min = 48.dp),
-                            ) { ButtonLabel(stringResource(R.string.import_pick)) }
+                            ) { ButtonLabel(stringResource(Res.string.import_pick)) }
                         }
                     } else {
                         null
@@ -677,8 +679,8 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                 // A stopped copy or a failed run (its card is in the bar), or a run started elsewhere.
                 else -> HeroEmptyState(
                     icon = RestoreIcon,
-                    title = stringResource(R.string.import_lead),
-                    body = stringResource(R.string.import_intro),
+                    title = stringResource(Res.string.import_lead),
+                    body = stringResource(Res.string.import_intro),
                 )
             }
         }
@@ -752,9 +754,9 @@ private fun importedTextOf(context: Context, output: Data): String = ImportWorke
 @Composable
 internal fun undoneSentence(outcome: CopyImportUndo.Outcome?): String? = outcome?.takeIf { !it.failed }?.let { u ->
     buildList {
-        if (u.removed > 0) add(pluralStringResource(R.plurals.import_undone, u.removed, u.removed))
-        if (u.kept > 0) add(pluralStringResource(R.plurals.import_undone_kept, u.kept, u.kept))
-        if (isEmpty()) add(stringResource(R.string.import_undone_nothing))
+        if (u.removed > 0) add(pluralStringResource(Res.plurals.import_undone, u.removed, u.removed))
+        if (u.kept > 0) add(pluralStringResource(Res.plurals.import_undone_kept, u.kept, u.kept))
+        if (isEmpty()) add(stringResource(Res.string.import_undone_nothing))
     }.joinToString(" ")
 }
 
@@ -798,11 +800,11 @@ private fun ReplaceDialog(
 ) {
     val context = LocalContext.current
     val parts = buildList {
-        if (houses > 0) add(pluralStringResource(R.plurals.count_houses, houses, houses))
-        if (visits > 0) add(pluralStringResource(R.plurals.count_visits, visits, visits))
+        if (houses > 0) add(pluralStringResource(Res.plurals.count_houses, houses, houses))
+        if (visits > 0) add(pluralStringResource(Res.plurals.count_visits, visits, visits))
     }
-    val title = stringResource(R.string.import_confirm_title_parts, ImportWorker.joined(context, parts))
-    val unnamed = stringResource(R.string.house_unnamed)
+    val title = stringResource(Res.string.import_confirm_title_parts, ImportWorker.joined(context, parts))
+    val unnamed = stringResource(Res.string.house_unnamed)
     val more = houses - labels.size
     BasicAlertDialog(onDismissRequest = onCancel) {
         Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
@@ -833,7 +835,7 @@ private fun ReplaceDialog(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            stringResource(R.string.import_confirm_text),
+                            stringResource(Res.string.import_confirm_text),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -849,7 +851,7 @@ private fun ReplaceDialog(
                             }
                             if (more > 0) {
                                 Text(
-                                    pluralStringResource(R.plurals.import_confirm_more, more, more),
+                                    pluralStringResource(Res.plurals.import_confirm_more, more, more),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -861,11 +863,11 @@ private fun ReplaceDialog(
                         val full = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         if (canKeepMine) {
                             FilledTonalButton(onClick = onKeepMine, modifier = full, colors = tonalPrimaryColors()) {
-                                ButtonLabel(stringResource(R.string.import_keep_mine))
+                                ButtonLabel(stringResource(Res.string.import_keep_mine))
                             }
                         } else {
                             FilledTonalButton(onClick = onCopyInstead, modifier = full, colors = tonalPrimaryColors()) {
-                                ButtonLabel(stringResource(R.string.import_as_copy))
+                                ButtonLabel(stringResource(Res.string.import_as_copy))
                             }
                         }
                         OutlinedButton(
@@ -873,14 +875,14 @@ private fun ReplaceDialog(
                             modifier = full,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        ) { ButtonLabel(stringResource(R.string.import_confirm_yes)) }
+                        ) { ButtonLabel(stringResource(Res.string.import_confirm_yes)) }
                         if (canKeepMine) {
                             TextButton(onClick = onCopyInstead, modifier = full) {
-                                ButtonLabel(stringResource(R.string.import_as_copy))
+                                ButtonLabel(stringResource(Res.string.import_as_copy))
                             }
                         }
                         TextButton(onClick = onCancel, modifier = full) {
-                            ButtonLabel(stringResource(R.string.common_cancel))
+                            ButtonLabel(stringResource(Res.string.common_cancel))
                         }
                     }
                 }
@@ -909,9 +911,9 @@ private fun ImportResult(info: WorkInfo, onDismiss: () -> Unit) {
             if (lost > 0) {
                 // A photo that was in the file but could not be read or verified is not a clean import; say so
                 // rather than letting the success heading imply everything arrived.
-                ResultCard(ResultTone.ERROR, pluralStringResource(R.plurals.import_photos_lost, lost, lost))
+                ResultCard(ResultTone.ERROR, pluralStringResource(Res.plurals.import_photos_lost, lost, lost))
             } else {
-                StatusLine(stringResource(R.string.import_finished))
+                StatusLine(stringResource(Res.string.import_finished))
             }
         }
         WorkInfo.State.FAILED -> {
@@ -923,7 +925,7 @@ private fun ImportResult(info: WorkInfo, onDismiss: () -> Unit) {
                 if (problem == BackupProblem.WRITE_FAILED) {
                     stringResource(ImportWorker.writeFailedRes(ImportWorker.modeOf(info)))
                 } else {
-                    stringResource(R.string.import_failed, stringResource(problem.messageRes()))
+                    stringResource(Res.string.import_failed, stringResource(problem.messageRes()))
                 },
                 onDismiss = onDismiss,
             )
@@ -940,7 +942,7 @@ private fun ImportResult(info: WorkInfo, onDismiss: () -> Unit) {
 }
 
 /** One preview line: its sign, its label, and its number. */
-private data class PreviewLine(val icon: ImageVector, val label: Int, val count: Int, val loss: Boolean = false)
+private data class PreviewLine(val icon: ImageVector, val label: StringResource, val count: Int, val loss: Boolean = false)
 
 /**
  * The preview (docs/05 section 14.3, "the safety mechanism"), grouped as houses / visits / photos with a thin
@@ -961,23 +963,23 @@ private data class PreviewLine(val icon: ImageVector, val label: Int, val count:
 private fun PreviewCard(preview: ImportPreview, duplicates: Int, modifier: Modifier) {
     val groups = listOf(
         listOf(
-            PreviewLine(Icons.Default.Warning, R.string.import_copy_duplicates, duplicates, loss = true),
-            PreviewLine(Icons.Default.Add, R.string.import_new_houses, preview.newHouses),
-            PreviewLine(Icons.Default.Refresh, R.string.import_updated_houses, preview.updatedHouses),
-            PreviewLine(Icons.Default.Warning, R.string.import_checklists_cleared, preview.checklistsCleared, loss = true),
+            PreviewLine(Icons.Default.Warning, Res.string.import_copy_duplicates, duplicates, loss = true),
+            PreviewLine(Icons.Default.Add, Res.string.import_new_houses, preview.newHouses),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_houses, preview.updatedHouses),
+            PreviewLine(Icons.Default.Warning, Res.string.import_checklists_cleared, preview.checklistsCleared, loss = true),
             // The undelete (UX review, round 11): houses deleted on this phone that come back with their own ids.
-            PreviewLine(RestoreIcon, R.string.import_restored_houses, preview.restoredHouses),
-            PreviewLine(Icons.Default.Info, R.string.import_newer_here, preview.newerHereHouses),
+            PreviewLine(RestoreIcon, Res.string.import_restored_houses, preview.restoredHouses),
+            PreviewLine(Icons.Default.Info, Res.string.import_newer_here, preview.newerHereHouses),
             // Not "kept": these houses are not on the phone, and a merge leaves them deleted (UX review, round 10).
-            PreviewLine(Icons.Default.Info, R.string.import_deleted_here, preview.deletedHereHouses),
+            PreviewLine(Icons.Default.Info, Res.string.import_deleted_here, preview.deletedHereHouses),
         ),
         listOf(
-            PreviewLine(Icons.Default.Add, R.string.import_new_visits, preview.newVisits),
-            PreviewLine(Icons.Default.Refresh, R.string.import_updated_visits, preview.updatedVisits),
+            PreviewLine(Icons.Default.Add, Res.string.import_new_visits, preview.newVisits),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_visits, preview.updatedVisits),
         ),
         listOf(
-            PreviewLine(Icons.Default.Add, R.string.import_new_photos, preview.newPhotos),
-            PreviewLine(Icons.Default.Warning, R.string.import_photos_missing, preview.photosMissingFromFile, loss = true),
+            PreviewLine(Icons.Default.Add, Res.string.import_new_photos, preview.newPhotos),
+            PreviewLine(Icons.Default.Warning, Res.string.import_photos_missing, preview.photosMissingFromFile, loss = true),
         ),
     ).map { group -> group.filter { it.count > 0 } }.filter { it.isNotEmpty() }
     if (groups.isEmpty()) return

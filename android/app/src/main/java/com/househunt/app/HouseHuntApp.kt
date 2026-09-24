@@ -1,6 +1,7 @@
 package com.househunt.app
 
 import android.app.Application
+import android.content.res.Configuration
 import com.househunt.app.data.AppDatabase
 import com.househunt.app.data.Repository
 import com.househunt.app.data.SettingsStore
@@ -31,8 +32,16 @@ open class HouseHuntApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The UI strings' language (Compose resources read the default locale): see AppLocale.applyDefault.
+        AppLocale.wrap(this)
         container = AppContainer(this)
         startServices()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // The framework has just reset the default locale to the system's (see AppLocale.applyDefault).
+        AppLocale.wrap(this)
     }
 
     /** Platform services and start-up work; the data container above is all the screens need. */

@@ -29,7 +29,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -53,7 +52,6 @@ import androidx.work.Data
 import androidx.work.WorkInfo
 import com.househunt.app.HouseHuntApp
 import com.househunt.app.Notifications
-import com.househunt.app.R
 import com.househunt.app.data.ResultMarks
 import com.househunt.app.data.ResultScreen
 import com.househunt.app.export.CreateExportDocument
@@ -65,6 +63,7 @@ import com.househunt.app.export.ImportWorker
 import com.househunt.app.export.ResultActions
 import com.househunt.app.export.ScreenWatch
 import com.househunt.app.export.messageRes
+import com.househunt.app.ui.res.*
 import com.househunt.shared.export.BackupCompleteness
 import com.househunt.shared.export.BackupGap
 import com.househunt.shared.export.ExportFormat
@@ -76,16 +75,19 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
-private data class FormatChoice(val format: ExportFormat, val label: Int, val hint: Int)
+private data class FormatChoice(val format: ExportFormat, val label: StringResource, val hint: StringResource)
 
 private val formatChoices = listOf(
-    FormatChoice(ExportFormat.HTML, R.string.format_html, R.string.format_html_hint),
-    FormatChoice(ExportFormat.PDF, R.string.format_pdf, R.string.format_pdf_hint),
-    FormatChoice(ExportFormat.CSV, R.string.format_csv, R.string.format_csv_hint),
-    FormatChoice(ExportFormat.XLSX, R.string.format_xlsx, R.string.format_xlsx_hint),
-    FormatChoice(ExportFormat.MARKDOWN, R.string.format_markdown, R.string.format_markdown_hint),
-    FormatChoice(ExportFormat.BACKUP, R.string.format_backup, R.string.format_backup_hint),
+    FormatChoice(ExportFormat.HTML, Res.string.format_html, Res.string.format_html_hint),
+    FormatChoice(ExportFormat.PDF, Res.string.format_pdf, Res.string.format_pdf_hint),
+    FormatChoice(ExportFormat.CSV, Res.string.format_csv, Res.string.format_csv_hint),
+    FormatChoice(ExportFormat.XLSX, Res.string.format_xlsx, Res.string.format_xlsx_hint),
+    FormatChoice(ExportFormat.MARKDOWN, Res.string.format_markdown, Res.string.format_markdown_hint),
+    FormatChoice(ExportFormat.BACKUP, Res.string.format_backup, Res.string.format_backup_hint),
 )
 
 /**
@@ -401,12 +403,12 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     // the buttons when one would not fit side by side (Design review, round 18). Share carries the icon.
     val sharingRun = pendingShare != null
     val firstLabel = if (!running || sharingRun) {
-        stringResource(if (running) R.string.export_stop else R.string.export_share)
+        stringResource(if (running) Res.string.export_stop else Res.string.export_share)
     } else {
         null
     }
     val secondLabel = if (!running || !sharingRun) {
-        stringResource(if (running) R.string.export_stop else R.string.export_save)
+        stringResource(if (running) Res.string.export_stop else Res.string.export_save)
     } else {
         null
     }
@@ -418,10 +420,10 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
         topBar = {
             TopAppBar(
                 // One line, ellipsised: the Tamil title is long, and at 200% font it would otherwise be clipped.
-                title = { Text(stringResource(R.string.export_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(stringResource(Res.string.export_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.back))
                     }
                 },
             )
@@ -440,7 +442,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                         ExportStatus.RUNNING -> {
                             val (done, total) =
                                 if (awaiting) (0 to 0) else ExportWorker.progressOf(info?.progress ?: Data.EMPTY)
-                            WorkProgress(done, total, stringResource(R.string.export_working))
+                            WorkProgress(done, total, stringResource(Res.string.export_working))
                         }
                         ExportStatus.MESSAGE -> message?.let { ResultCard(ResultTone.ERROR, it, onDismiss = { message = null }) }
                         ExportStatus.RESULT -> info?.let { run ->
@@ -453,7 +455,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                         ExportStatus.COUNTS -> counts?.let { CountChips(it) }
                         // Houses exist, but none survives these options: say so rather than make an empty file.
                         ExportStatus.NOTHING_MATCHES -> {
-                            StatusLine(stringResource(R.string.export_nothing_matches))
+                            StatusLine(stringResource(Res.string.export_nothing_matches))
                             // The web page's recovery: "Shortlisted only" with nothing shortlisted is one tap from
                             // a useful copy. So is "All houses" without rejected ones when every house is rejected
                             // (UX review, round 16): the switch that caused it may be scrolled out of view.
@@ -461,11 +463,11 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                             // nothing because every house is rejected, the same node becomes *Include rejected
                             // houses* and keeps TalkBack's focus. When the tap makes houses match, this status goes
                             // and focus moves to Save to… (focusSaveAfterRecovery).
-                            val recovery: Pair<Int, () -> Unit>? = when {
-                                scope == ExportScope.SHORTLISTED -> R.string.export_scope_all to {
+                            val recovery: Pair<StringResource, () -> Unit>? = when {
+                                scope == ExportScope.SHORTLISTED -> Res.string.export_scope_all to {
                                     scope = ExportScope.ALL
                                 }
-                                !includeRejected -> R.string.export_include_rejected to { includeRejected = true }
+                                !includeRejected -> Res.string.export_include_rejected to { includeRejected = true }
                                 else -> null
                             }
                             if (recovery != null) {
@@ -505,7 +507,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                     val sharing = pendingShare != null
                     if (!running || sharing) {
                         BarButton(
-                            text = stringResource(if (running) R.string.export_stop else R.string.export_share),
+                            text = stringResource(if (running) Res.string.export_stop else Res.string.export_share),
                             icon = if (running) null else Icons.Default.Share,
                             style = BarButtonStyle.OUTLINED,
                             enabled = running || enabled,
@@ -534,7 +536,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                     // While running it is drawn outlined, as Stop.
                     if (!running || !sharing) {
                         BarButton(
-                            text = stringResource(if (running) R.string.export_stop else R.string.export_save),
+                            text = stringResource(if (running) Res.string.export_stop else Res.string.export_save),
                             style = if (running) BarButtonStyle.OUTLINED else BarButtonStyle.FILLED,
                             enabled = running || enabled,
                             // The target of focusSaveAfterRecovery. A button only takes focus in touch mode (which
@@ -587,23 +589,23 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // houses are added. No options and no disabled buttons: there is nothing for them to act on.
                 HeroEmptyState(
                     icon = Icons.Default.Home,
-                    title = stringResource(R.string.export_empty),
+                    title = stringResource(Res.string.export_empty),
                     action = {
                         // An action, not the bare noun "Map": it says what the tap is for.
                         Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                            ButtonLabel(stringResource(R.string.common_add_on_map))
+                            ButtonLabel(stringResource(Res.string.common_add_on_map))
                         }
                     },
                 )
             } else {
-                Text(stringResource(R.string.export_intro), style = MaterialTheme.typography.bodyMedium, modifier = inset)
+                Text(stringResource(Res.string.export_intro), style = MaterialTheme.typography.bodyMedium, modifier = inset)
 
                 // The options apply to the next copy; while one is being made they are locked, so they cannot look
                 // as if they changed the running one.
                 val editable = !running
 
                 HorizontalDivider(divider)
-                SectionHeading(stringResource(R.string.export_format), heading)
+                SectionHeading(stringResource(Res.string.export_format), heading)
                 // One column on a phone, two from 600 dp (see RadioCardGroup).
                 // 4 dp on top: the cards have no row padding of their own, and heading to content is 8 dp.
                 RadioCardGroup(
@@ -624,7 +626,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 }
                 // Directly under the cards, where "Full backup" was just chosen: what this backup will not hold.
                 val partialNote = remember { arrayOfNulls<String>(1) }
-                if (gaps.isNotEmpty()) partialNote[0] = partialBackupText(context, gaps)
+                if (gaps.isNotEmpty()) partialNote[0] = partialBackupText(gaps)
                 AnimatedVisibility(visible = gaps.isNotEmpty(), enter = motionIn, exit = motionOut) {
                     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
                         partialNote[0]?.let { WarnNote(it) }
@@ -639,24 +641,24 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                             },
                             enabled = editable,
                             modifier = Modifier.offset(x = (-12).dp).heightIn(min = 48.dp),
-                        ) { ButtonLabel(stringResource(R.string.export_use_everything)) }
+                        ) { ButtonLabel(stringResource(Res.string.export_use_everything)) }
                     }
                 }
 
                 HorizontalDivider(divider)
-                SectionHeading(stringResource(R.string.export_scope), heading)
+                SectionHeading(stringResource(Res.string.export_scope), heading)
                 // docs/11 section 5.2 lists a third scope, "selected houses". ExportScope.SELECTED is implemented
                 // and tested in :shared, but picking individual houses needs a checkable list (the Compare screen's
                 // multi-select is the pattern) and is deferred to Sprint 4b — see android/shared/README.md section 8.
                 Column(Modifier.selectableGroup()) {
                     RadioRow(
-                        AnnotatedString(stringResource(R.string.export_scope_all)), null, scope == ExportScope.ALL, editable,
+                        AnnotatedString(stringResource(Res.string.export_scope_all)), null, scope == ExportScope.ALL, editable,
                     ) {
                         scope = ExportScope.ALL
                         optionChanged()
                     }
                     RadioRow(
-                        AnnotatedString(stringResource(R.string.export_scope_shortlisted)), null,
+                        AnnotatedString(stringResource(Res.string.export_scope_shortlisted)), null,
                         scope == ExportScope.SHORTLISTED, editable,
                     ) {
                         scope = ExportScope.SHORTLISTED
@@ -666,7 +668,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // Only where it changes something; the stored choice is kept while it is hidden.
                 AnimatedVisibility(visible = scope == ExportScope.ALL, enter = motionIn, exit = motionOut) {
                     SwitchRow(
-                        text = stringResource(R.string.export_include_rejected),
+                        text = stringResource(Res.string.export_include_rejected),
                         hint = null,
                         checked = includeRejected,
                         enabled = editable,
@@ -681,24 +683,24 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 AnimatedVisibility(visible = format.usesPhotos, enter = motionIn, exit = motionOut) {
                     Column {
                         HorizontalDivider(divider)
-                        SectionHeading(stringResource(R.string.export_photos), heading)
+                        SectionHeading(stringResource(Res.string.export_photos), heading)
                         Column(Modifier.selectableGroup()) {
                             RadioRow(
-                                AnnotatedString(stringResource(R.string.export_photos_all)), null,
+                                AnnotatedString(stringResource(Res.string.export_photos_all)), null,
                                 photos == PhotoScope.ALL, editable,
                             ) {
                                 photos = PhotoScope.ALL
                                 optionChanged()
                             }
                             RadioRow(
-                                AnnotatedString(stringResource(R.string.export_photos_shortlisted)), null,
+                                AnnotatedString(stringResource(Res.string.export_photos_shortlisted)), null,
                                 photos == PhotoScope.SHORTLISTED, editable,
                             ) {
                                 photos = PhotoScope.SHORTLISTED
                                 optionChanged()
                             }
                             RadioRow(
-                                AnnotatedString(stringResource(R.string.export_photos_none)), null,
+                                AnnotatedString(stringResource(Res.string.export_photos_none)), null,
                                 photos == PhotoScope.NONE, editable,
                             ) {
                                 photos = PhotoScope.NONE
@@ -714,11 +716,11 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // hint, and drawn inside the row so TalkBack reads it with the switch (UX review, round 11); left
                 // out, it is a plain hint on the row.
                 SwitchRow(
-                    text = stringResource(R.string.export_contacts),
-                    hint = if (includeContacts) null else stringResource(R.string.export_contacts_left_out),
+                    text = stringResource(Res.string.export_contacts),
+                    hint = if (includeContacts) null else stringResource(Res.string.export_contacts_left_out),
                     checked = includeContacts,
                     enabled = editable,
-                    warning = if (includeContacts) stringResource(R.string.export_contacts_hint) else null,
+                    warning = if (includeContacts) stringResource(Res.string.export_contacts_hint) else null,
                     onChange = {
                         includeContacts = it
                         optionChanged()
@@ -726,7 +728,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 )
 
                 HorizontalDivider(divider)
-                SectionHeading(stringResource(R.string.export_language), heading)
+                SectionHeading(stringResource(Res.string.export_language), heading)
                 Column(Modifier.selectableGroup()) {
                     ExportLanguages.NATIVE_NAMES.forEach { (code, name) ->
                         // Tagged with its own locale, so TalkBack reads "தமிழ்" with a Tamil voice (WCAG 3.1.2), not
@@ -754,10 +756,10 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CountChips(c: ExportCounts) {
-    val houses = pluralStringResource(R.plurals.count_houses, c.houses, c.houses)
-    val visits = pluralStringResource(R.plurals.count_visits, c.visits, c.visits)
-    val photos = pluralStringResource(R.plurals.count_photos, c.photos, c.photos)
-    val sentence = stringResource(R.string.export_counts, houses, visits, photos)
+    val houses = pluralStringResource(Res.plurals.count_houses, c.houses, c.houses)
+    val visits = pluralStringResource(Res.plurals.count_visits, c.visits, c.visits)
+    val photos = pluralStringResource(Res.plurals.count_photos, c.photos, c.photos)
+    val sentence = stringResource(Res.string.export_counts, houses, visits, photos)
     FlowRow(
         Modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = sentence
@@ -814,13 +816,13 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
                             TextButton(
                                 onClick = { onMessage(openTarget(context, target, format)) },
                                 modifier = Modifier.heightIn(min = 48.dp),
-                            ) { ButtonLabel(stringResource(R.string.export_open)) }
+                            ) { ButtonLabel(stringResource(Res.string.export_open)) }
                         }
                         // Not plain "Share": the bar's Share makes a *new* copy; this one shares the file just made.
                         TextButton(
                             onClick = { onMessage(shareTarget(context, target, format)) },
                             modifier = Modifier.heightIn(min = 48.dp),
-                        ) { ButtonLabel(stringResource(R.string.export_share_file)) }
+                        ) { ButtonLabel(stringResource(Res.string.export_share_file)) }
                     }
                 }
             }
@@ -828,14 +830,14 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
         // A translated reason from a stable code, never the exception text (see ExportProblem).
         WorkInfo.State.FAILED -> ResultCard(
             ResultTone.ERROR,
-            stringResource(R.string.export_failed, stringResource(ExportWorker.problemOf(output).messageRes())),
+            stringResource(Res.string.export_failed, stringResource(ExportWorker.problemOf(output).messageRes())),
             onDismiss = onDismiss,
         )
         // Silence here would be the worst outcome: the progress bar vanishes and the user is left guessing
         // whether the half-finished file in their folder is usable. It is not, and the worker has deleted it.
         WorkInfo.State.CANCELLED -> ResultCard(
             ResultTone.NEUTRAL,
-            stringResource(R.string.export_stopped),
+            stringResource(Res.string.export_stopped),
             onDismiss = onDismiss,
         )
         else -> Unit
@@ -848,27 +850,27 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
  * permission is involved. Returns a message to show when nothing can take it, else null.
  */
 private fun shareTarget(context: Context, target: String, format: ExportFormat): String? {
-    val uri = ResultActions.readableUri(context, target) ?: return context.getString(R.string.export_share_failed)
+    val uri = ResultActions.readableUri(context, target) ?: return context.getString(Res.string.export_share_failed)
     return try {
         context.startActivity(ResultActions.share(context, uri, format))
         null
     } catch (_: ActivityNotFoundException) {
-        context.getString(R.string.export_share_failed)
+        context.getString(Res.string.export_share_failed)
     } catch (_: SecurityException) {
-        context.getString(R.string.export_share_failed)
+        context.getString(Res.string.export_share_failed)
     }
 }
 
 /** Opens a saved copy in the app that handles its format; a message when there is none. */
 private fun openTarget(context: Context, target: String, format: ExportFormat): String? {
-    val uri = ResultActions.readableUri(context, target) ?: return context.getString(R.string.export_open_failed)
+    val uri = ResultActions.readableUri(context, target) ?: return context.getString(Res.string.export_open_failed)
     return try {
         context.startActivity(ResultActions.view(uri, format))
         null
     } catch (_: ActivityNotFoundException) {
-        context.getString(R.string.export_open_failed)
+        context.getString(Res.string.export_open_failed)
     } catch (_: SecurityException) {
-        context.getString(R.string.export_open_failed)
+        context.getString(Res.string.export_open_failed)
     }
 }
 
@@ -876,20 +878,22 @@ private fun openTarget(context: Context, target: String, format: ExportFormat): 
  * "This backup leaves out houses that are not shortlisted, rejected houses and contact details. Restoring from it
  * will not bring those back." — every [BackupGap] named, in the language's own list pattern.
  */
-private fun partialBackupText(context: Context, gaps: List<BackupGap>): String {
+@Composable
+private fun partialBackupText(gaps: List<BackupGap>): String {
+    val context = LocalContext.current
     val items = gaps.map { gap ->
-        context.getString(
+        stringResource(
             when (gap) {
-                BackupGap.HOUSES_NOT_SHORTLISTED -> R.string.export_gap_not_shortlisted
-                BackupGap.HOUSES_NOT_SELECTED -> R.string.export_gap_not_selected
-                BackupGap.REJECTED_HOUSES -> R.string.export_gap_rejected
-                BackupGap.PHOTOS_NOT_SHORTLISTED -> R.string.export_gap_photos_not_shortlisted
-                BackupGap.PHOTOS -> R.string.export_gap_photos
-                BackupGap.CONTACTS -> R.string.export_gap_contacts
+                BackupGap.HOUSES_NOT_SHORTLISTED -> Res.string.export_gap_not_shortlisted
+                BackupGap.HOUSES_NOT_SELECTED -> Res.string.export_gap_not_selected
+                BackupGap.REJECTED_HOUSES -> Res.string.export_gap_rejected
+                BackupGap.PHOTOS_NOT_SHORTLISTED -> Res.string.export_gap_photos_not_shortlisted
+                BackupGap.PHOTOS -> Res.string.export_gap_photos
+                BackupGap.CONTACTS -> Res.string.export_gap_contacts
             }
         )
     }
-    return context.getString(R.string.export_partial_note, ImportWorker.joined(context, items))
+    return stringResource(Res.string.export_partial_note, ImportWorker.joined(context, items))
 }
 
 internal fun sharedExportDir(context: Context): File =

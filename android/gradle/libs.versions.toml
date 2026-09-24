@@ -56,6 +56,7 @@ cmp-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = 
 cmp-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "cmp" }
 cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "cmp" }
 cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "cmp-material3" }
+cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "cmp" }
 cmp-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "cmp-material-icons" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -111,3 +112,5 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+# Compose Multiplatform Gradle plugin: only for :ui's resources (composeResources -> the generated Res class).
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "cmp" }

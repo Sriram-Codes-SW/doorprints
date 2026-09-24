@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import androidx.annotation.StringRes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -20,7 +19,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.househunt.app.R
+import com.househunt.app.ui.res.*
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /*
  * The location permission, shared by every screen that asks for it: the Map (Hunt switch, *Save house here*, *My
@@ -206,8 +207,8 @@ internal fun locationNoteText(
  * ([why]: `map_needs_precise`, `house_needs_precise` or `ai_plan_needs_precise`), joined by a space.
  */
 @Composable
-internal fun approximateLocationText(@StringRes why: Int): String =
-    stringResource(R.string.location_approximate_only) + " " + stringResource(why)
+internal fun approximateLocationText(why: StringResource): String =
+    stringResource(Res.string.location_approximate_only) + " " + stringResource(why)
 
 /**
  * What the note's button does for [LocationAsk.fix], the one rule every screen uses (round 4): while Android will
@@ -262,13 +263,13 @@ internal fun LocationPermissionNote(
         fix,
         deniedText = deniedText,
         approximateText = approximateText,
-        preciseInSettings = stringResource(R.string.location_precise_in_settings),
+        preciseInSettings = stringResource(Res.string.location_precise_in_settings),
     )
     val action = stringResource(
         when (fix) {
-            LocationFix.ALLOW -> R.string.map_allow_location
-            LocationFix.TURN_ON_PRECISE -> R.string.location_turn_on_precise
-            LocationFix.OPEN_SETTINGS, LocationFix.OPEN_SETTINGS_PRECISE -> R.string.perm_open_settings
+            LocationFix.ALLOW -> Res.string.map_allow_location
+            LocationFix.TURN_ON_PRECISE -> Res.string.location_turn_on_precise
+            LocationFix.OPEN_SETTINGS, LocationFix.OPEN_SETTINGS_PRECISE -> Res.string.perm_open_settings
         },
     )
     WarnNote(

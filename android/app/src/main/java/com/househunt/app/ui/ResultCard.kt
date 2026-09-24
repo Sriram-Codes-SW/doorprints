@@ -27,11 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import com.househunt.app.R
+import com.househunt.app.ui.res.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The result of an export or import as a card (Design review, round 4 and 2026-09-22), the same three looks as the
@@ -122,7 +122,7 @@ fun ResultCard(
                 Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 if (onDismiss != null) {
                     IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_close))
                     }
                 }
             }

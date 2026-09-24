@@ -70,10 +70,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.househunt.app.Notifications
-import com.househunt.app.R
 import com.househunt.app.data.HouseEntity
 import com.househunt.app.location.HuntService
 import com.househunt.app.location.HuntState
+import com.househunt.app.ui.res.*
+import kotlin.math.hypot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -81,6 +82,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.json.JSONArray
 import org.json.JSONObject
 import org.maplibre.android.camera.CameraPosition
@@ -98,7 +101,6 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
-import kotlin.math.hypot
 
 /**
  * Free vector map tiles from OpenFreeMap (OpenStreetMap data) — no API key or billing needed. Every load of it goes
@@ -281,14 +283,14 @@ fun MapScreen(
     val repo = repository()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val addTip = stringResource(R.string.map_add_tip)
-    val addTipA11y = stringResource(R.string.map_add_tip_a11y)
-    val findingText = stringResource(R.string.common_finding_location)
-    val waitingGps = stringResource(R.string.map_waiting_gps)
-    val longPressTip = stringResource(R.string.map_long_press_tip)
-    val needsLocation = stringResource(R.string.map_save_needs_location)
-    val locationNeeded = stringResource(R.string.map_location_needed)
-    val myLocationLabel = stringResource(R.string.map_my_location)
+    val addTip = stringResource(Res.string.map_add_tip)
+    val addTipA11y = stringResource(Res.string.map_add_tip_a11y)
+    val findingText = stringResource(Res.string.common_finding_location)
+    val waitingGps = stringResource(Res.string.map_waiting_gps)
+    val longPressTip = stringResource(Res.string.map_long_press_tip)
+    val needsLocation = stringResource(Res.string.map_save_needs_location)
+    val locationNeeded = stringResource(Res.string.map_location_needed)
+    val myLocationLabel = stringResource(Res.string.map_my_location)
     LaunchedEffect(showAddTip) {
         if (showAddTip) {
             onAddTipShown()
@@ -359,9 +361,9 @@ fun MapScreen(
     // snackbar of one short sentence with the note's next step, *Open settings* (round 7: the note carries the reason;
     // the whole note wrapped to 10-20 lines in a snackbar). With TalkBack, focus on the note says it once.
     val haptic = LocalHapticFeedback.current
-    val locationOffShort = stringResource(R.string.location_off_short)
-    val approximateOnlyText = stringResource(R.string.location_approximate_only)
-    val openSettingsLabel = stringResource(R.string.perm_open_settings)
+    val locationOffShort = stringResource(Res.string.location_off_short)
+    val approximateOnlyText = stringResource(Res.string.location_approximate_only)
+    val openSettingsLabel = stringResource(Res.string.perm_open_settings)
     var refusedTapSnackbar by remember { mutableStateOf<Job?>(null) }
     fun answerRefusedTap() {
         // Android will not ask again, so the note offers *Open settings* (with or without approximate location).
@@ -435,7 +437,7 @@ fun MapScreen(
         openNotificationSettings(context)
     }
     // Notifications are asked for in context, when Hunt mode is turned on; Hunt mode starts whatever the answer.
-    val notifyAsk = rememberNotificationAsk(rationale = R.string.map_hunt_notify_rationale)
+    val notifyAsk = rememberNotificationAsk(rationale = Res.string.map_hunt_notify_rationale)
 
     fun startHunt() {
         if (needsLocation(AfterGrant.HUNT)) return
@@ -567,7 +569,7 @@ fun MapScreen(
         p.target?.let { camera = CameraSpot(it.latitude, it.longitude, p.zoom, p.bearing) }
     }
 
-    val mapDescription = stringResource(R.string.map_region_desc)
+    val mapDescription = stringResource(Res.string.map_region_desc)
     // The bottom controls' height as last measured, one per layout (0 until then; a larger font makes them taller),
     // so a rotation never sizes the band from the other layout's height. The snackbar is not in it (round 4). The
     // row's width too (round 5), to decide whether the snackbar fits beside it.
@@ -764,7 +766,7 @@ fun MapScreen(
                 when {
                     mapFailed -> ResultCard(
                         tone = ResultTone.ERROR,
-                        text = stringResource(R.string.map_failed),
+                        text = stringResource(Res.string.map_failed),
                         modifier = Modifier.padding(top = 8.dp),
                         actions = {
                             ResultActionsRow {
@@ -774,9 +776,9 @@ fun MapScreen(
                                         map?.let { loadStyle(it) }
                                     },
                                     modifier = Modifier.heightIn(min = 48.dp),
-                                ) { ButtonLabel(stringResource(R.string.common_try_again)) }
+                                ) { ButtonLabel(stringResource(Res.string.common_try_again)) }
                                 TextButton(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
-                                    ButtonLabel(stringResource(R.string.map_open_houses))
+                                    ButtonLabel(stringResource(Res.string.map_open_houses))
                                 }
                             }
                         },
@@ -787,7 +789,7 @@ fun MapScreen(
                         modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
                     ) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(stringResource(R.string.map_loading), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(Res.string.map_loading), style = MaterialTheme.typography.bodyMedium)
                             ProgressBar()
                         }
                     }
@@ -811,7 +813,7 @@ fun MapScreen(
                     }
                 },
                 modifier = Modifier.size(48.dp),
-            ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.map_zoom_in)) }
+            ) { Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.map_zoom_in)) }
         }
         val zoomOutButton: @Composable () -> Unit = {
             SmallFloatingActionButton(
@@ -823,7 +825,7 @@ fun MapScreen(
                     }
                 },
                 modifier = Modifier.size(48.dp),
-            ) { Icon(MinusIcon, contentDescription = stringResource(R.string.map_zoom_out)) }
+            ) { Icon(MinusIcon, contentDescription = stringResource(Res.string.map_zoom_out)) }
         }
         val myLocationButton: @Composable () -> Unit = {
             // The name is on the button, not on the icon, so it stays while the spinner shows; the state says why.
@@ -852,7 +854,7 @@ fun MapScreen(
                         Icon(Icons.Default.Add, contentDescription = null)
                     }
                 },
-                text = { Text(stringResource(R.string.map_save_here)) },
+                text = { Text(stringResource(Res.string.map_save_here)) },
                 modifier = Modifier
                     .onSizeChanged {
                         fabWidthPx = it.width
@@ -1036,16 +1038,16 @@ private fun HuntCard(
     val weak = !stale && hunt.accuracyM != null && hunt.accuracyM > HuntService.MAX_ACCURACY_M
     val streetText = hunt.street?.let { street ->
         if (hunt.streetHouses + hunt.streetVisits > 0) {
-            stringResource(R.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
+            stringResource(Res.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
         } else {
-            stringResource(R.string.map_street_new, street)
+            stringResource(Res.string.map_street_new, street)
         }
     }
-    val nearestName = hunt.nearestHouse?.let { stringResource(R.string.map_nearest_name, it.label) }
+    val nearestName = hunt.nearestHouse?.let { stringResource(Res.string.map_nearest_name, it.label) }
     val gpsText = when {
         !hunt.active -> null
-        stale -> stringResource(R.string.map_waiting_gps)
-        weak -> stringResource(R.string.map_weak_gps_short)
+        stale -> stringResource(Res.string.map_waiting_gps)
+        weak -> stringResource(Res.string.map_weak_gps_short)
         else -> null
     }
     // What TalkBack hears: built from the events only (street, nearest house id, GPS state), never the distance, so it
@@ -1063,9 +1065,9 @@ private fun HuntCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.map_hunt_mode), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(Res.string.map_hunt_mode), fontWeight = FontWeight.SemiBold)
                         if (!hunt.active) {
-                            Text(stringResource(R.string.map_hunt_off), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(Res.string.map_hunt_off), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     Switch(checked = hunt.active, onCheckedChange = null)
@@ -1081,18 +1083,18 @@ private fun HuntCard(
                                 contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) {
-                                Text(stringResource(R.string.map_nearest, h.label, hunt.nearestDistanceM?.toInt() ?: 0))
+                                Text(stringResource(Res.string.map_nearest, h.label, hunt.nearestDistanceM?.toInt() ?: 0))
                             }
                         }
                         // A weak or missing fix is a condition, not a failure: muted, never error red (round 5).
                         when {
                             stale -> Text(
-                                stringResource(R.string.map_waiting_gps),
+                                stringResource(Res.string.map_waiting_gps),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             weak && hunt.accuracyM != null -> Text(
-                                stringResource(R.string.map_weak_gps, hunt.accuracyM.toInt()),
+                                stringResource(Res.string.map_weak_gps, hunt.accuracyM.toInt()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1104,9 +1106,9 @@ private fun HuntCard(
                         tone = ResultTone.NEUTRAL,
                         text = stringResource(
                             when (reason) {
-                                HuntState.StopReason.LOW_BATTERY -> R.string.map_hunt_stopped_battery
-                                HuntState.StopReason.NO_PERMISSION -> R.string.map_hunt_stopped_permission
-                                HuntState.StopReason.NOT_ALLOWED -> R.string.map_hunt_stopped_not_allowed
+                                HuntState.StopReason.LOW_BATTERY -> Res.string.map_hunt_stopped_battery
+                                HuntState.StopReason.NO_PERMISSION -> Res.string.map_hunt_stopped_permission
+                                HuntState.StopReason.NOT_ALLOWED -> Res.string.map_hunt_stopped_not_allowed
                             },
                         ),
                         onDismiss = onCloseStopReason,
@@ -1118,8 +1120,8 @@ private fun HuntCard(
                     if (showLocationNote) {
                         LocationPermissionNote(
                             ask = locationAsk,
-                            deniedText = stringResource(R.string.map_location_off),
-                            approximateText = approximateLocationText(R.string.map_needs_precise),
+                            deniedText = stringResource(Res.string.map_location_off),
+                            approximateText = approximateLocationText(Res.string.map_needs_precise),
                             launchRequest = onRequestLocation,
                             modifier = Modifier.padding(top = 8.dp).then(noteModifier),
                         )
@@ -1129,9 +1131,9 @@ private fun HuntCard(
                     if (notificationsOff) {
                         // bodyMedium, as the location note above it (round 7): both are blocking messages.
                         WarnNote(
-                            stringResource(R.string.map_notifications_off),
+                            stringResource(Res.string.map_notifications_off),
                             Modifier.padding(top = 8.dp),
-                            action = stringResource(R.string.notify_allow),
+                            action = stringResource(Res.string.notify_allow),
                             onAction = onAllowNotifications,
                             textStyle = MaterialTheme.typography.bodyMedium,
                         )
@@ -1166,7 +1168,7 @@ private fun HuntCard(
  */
 @Composable
 private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
-    val legend = stringResource(R.string.map_legend)
+    val legend = stringResource(Res.string.map_legend)
     val style = legendTextStyle()
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -1213,10 +1215,10 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
 private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
 
 /** The status name for a [LegendDot.status]. */
-private fun statusLabel(status: String): Int = when (status) {
-    "SHORTLISTED" -> R.string.status_SHORTLISTED
-    "REJECTED" -> R.string.status_REJECTED
-    else -> R.string.status_NEW
+private fun statusLabel(status: String): StringResource = when (status) {
+    "SHORTLISTED" -> Res.string.status_SHORTLISTED
+    "REJECTED" -> Res.string.status_REJECTED
+    else -> Res.string.status_NEW
 }
 
 /** One legend dot: the web's `.dot` (map-page.css), a fill inside a white ring, a dark hairline outside it. */

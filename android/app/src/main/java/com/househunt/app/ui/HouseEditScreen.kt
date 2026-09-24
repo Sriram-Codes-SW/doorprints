@@ -70,7 +70,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.househunt.app.HouseHuntApp
-import com.househunt.app.R
 import com.househunt.app.data.ChecklistLabels
 import com.househunt.app.data.HouseEntity
 import com.househunt.app.data.PhotoEntity
@@ -79,10 +78,14 @@ import com.househunt.app.data.glyph
 import com.househunt.app.data.labelRes
 import com.househunt.app.export.ImportWorker
 import com.househunt.app.location.ReverseGeocoder
+import com.househunt.app.ui.res.*
 import com.househunt.shared.api.ApiException
 import com.househunt.shared.api.HouseDraftDto
 import com.househunt.shared.model.HouseStatus
 import com.househunt.shared.model.MAX_PHOTOS_PER_HOUSE
+import java.io.File
+import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -91,9 +94,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import java.util.Locale
-import java.util.UUID
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Room's answer for the house on this route: null until the first answer, then [house] (null when there is no row).
@@ -276,9 +278,9 @@ fun HouseEditScreen(
     val focusManager = LocalFocusManager.current
     val isNew = houseId == null
     val id = rememberSaveable { houseId ?: UUID.randomUUID().toString() }
-    val defaultLabel = stringResource(R.string.house_default_label)
-    val streetLabel = stringResource(R.string.house_default_label_street)
-    val unnamed = stringResource(R.string.house_unnamed)
+    val defaultLabel = stringResource(Res.string.house_default_label)
+    val streetLabel = stringResource(Res.string.house_default_label_street)
+    val unnamed = stringResource(Res.string.house_unnamed)
     val touchExploration = { isTouchExploring(context) }
 
     // What is on screen, and what it was when loaded (or the new-house default); dirty when they differ.
@@ -479,7 +481,7 @@ fun HouseEditScreen(
         withFrameNanos { }
         focusTarget = null
     }
-    val undoLabel = stringResource(R.string.common_undo)
+    val undoLabel = stringResource(Res.string.common_undo)
     // A delete still waiting for its snackbar is carried out now (before another photo is added or deleted).
     fun commitPendingDelete() {
         snackbar.currentSnackbarData?.dismiss()
@@ -489,7 +491,7 @@ fun HouseEditScreen(
             // Cancelled (a rotation, or the screen closing) throws here and leaves the delete pending: the new
             // composition shows the snackbar again, or the view model carries it out when the entry is closed.
             val result = snackbar.showSnackbar(
-                message = context.getString(R.string.house_photo_deleted, p.number),
+                message = context.getString(Res.string.house_photo_deleted, p.number),
                 actionLabel = undoLabel,
                 duration = SnackbarDuration.Long,
             )
@@ -586,7 +588,7 @@ fun HouseEditScreen(
     LaunchedEffect(locationGrants) { if (locationGrants > 0) useMyLocation() }
 
     // "Saved": the first save of a new house continues here as an existing house (Root passes showSaved once).
-    val savedText = stringResource(R.string.house_saved)
+    val savedText = stringResource(Res.string.house_saved)
     LaunchedEffect(showSaved) {
         if (showSaved) {
             onSavedShown()
@@ -597,8 +599,8 @@ fun HouseEditScreen(
     // The photo viewer, by photo id so a delete elsewhere cannot shift it to another photo.
     var viewerPhotoId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val saveLabel = stringResource(R.string.common_save)
-    val savingLabel = stringResource(R.string.house_saving)
+    val saveLabel = stringResource(Res.string.common_save)
+    val savingLabel = stringResource(Res.string.house_saving)
     Scaffold(
         // Above the keyboard, so "Photo deleted / Undo" is not hidden under it.
         snackbarHost = { SnackbarHost(snackbar, Modifier.imePadding()) },
@@ -608,9 +610,9 @@ fun HouseEditScreen(
                     Text(
                         stringResource(
                             when {
-                                notFound -> R.string.house_not_found_title
-                                isNew -> R.string.house_new_title
-                                else -> R.string.house_details_title
+                                notFound -> Res.string.house_not_found_title
+                                isNew -> Res.string.house_new_title
+                                else -> Res.string.house_details_title
                             },
                         ),
                         maxLines = 1,
@@ -619,14 +621,14 @@ fun HouseEditScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { leave() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.common_back))
                     }
                 },
                 actions = {
                     // No Save or Delete for a house that is not on this phone.
                     if (!notFound) {
                         if (!isNew) IconButton(onClick = { confirmDelete = true }, enabled = !busy && !removed) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.house_delete))
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.house_delete))
                         }
                         TextButton(
                             onClick = { save() },
@@ -650,12 +652,12 @@ fun HouseEditScreen(
             ) {
                 HeroEmptyState(
                     icon = Icons.Default.Search,
-                    title = stringResource(R.string.house_not_found),
-                    body = stringResource(R.string.house_not_found_body),
+                    title = stringResource(Res.string.house_not_found),
+                    body = stringResource(Res.string.house_not_found_body),
                     horizontalPadding = 0.dp,
                     action = {
                         Button(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
-                            ButtonLabel(stringResource(R.string.house_back_to_list))
+                            ButtonLabel(stringResource(Res.string.house_back_to_list))
                         }
                     },
                 )
@@ -688,7 +690,7 @@ fun HouseEditScreen(
                         when {
                             removed -> ResultCard(
                                 tone = ResultTone.ERROR,
-                                text = stringResource(R.string.house_removed_while_open),
+                                text = stringResource(Res.string.house_removed_while_open),
                                 modifier = Modifier.padding(bottom = 12.dp),
                                 actions = {
                                     ResultActionsRow {
@@ -696,12 +698,12 @@ fun HouseEditScreen(
                                             onClick = { saveAsNew() },
                                             enabled = !busy,
                                             modifier = Modifier.heightIn(min = 48.dp),
-                                        ) { ButtonLabel(stringResource(R.string.house_save_as_new)) }
+                                        ) { ButtonLabel(stringResource(Res.string.house_save_as_new)) }
                                     }
                                 },
                             )
                             conflict -> Column(Modifier.padding(bottom = 12.dp)) {
-                                WarnNote(stringResource(R.string.house_changed_elsewhere))
+                                WarnNote(stringResource(Res.string.house_changed_elsewhere))
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     TextButton(
                                         onClick = {
@@ -715,11 +717,11 @@ fun HouseEditScreen(
                                             }
                                         },
                                         modifier = Modifier.heightIn(min = 48.dp),
-                                    ) { ButtonLabel(stringResource(R.string.house_show_theirs)) }
+                                    ) { ButtonLabel(stringResource(Res.string.house_show_theirs)) }
                                     TextButton(
                                         onClick = { saved?.let { seenUpdatedAt = it.updatedAt } },
                                         modifier = Modifier.heightIn(min = 48.dp),
-                                    ) { ButtonLabel(stringResource(R.string.house_keep_mine)) }
+                                    ) { ButtonLabel(stringResource(Res.string.house_keep_mine)) }
                                 }
                             }
                         }
@@ -729,7 +731,7 @@ fun HouseEditScreen(
                         OutlinedButton(
                             onClick = { showPaste = true },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        ) { ButtonLabel(stringResource(R.string.house_paste_title)) }
+                        ) { ButtonLabel(stringResource(Res.string.house_paste_title)) }
                         LiveMessage {
                             pasteMessage?.let {
                                 ResultCard(
@@ -743,13 +745,13 @@ fun HouseEditScreen(
                         Spacer(Modifier.height(12.dp))
                     }
                     OutlinedTextField(d.label, { v -> update { it.copy(label = v) } },
-                        label = { Text(stringResource(R.string.house_name)) },
+                        label = { Text(stringResource(Res.string.house_name)) },
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.fillMaxWidth())
                     LiveMessage {
                         if (geocoding) {
                             Text(
-                                stringResource(R.string.house_finding_address),
+                                stringResource(Res.string.house_finding_address),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp),
@@ -760,7 +762,7 @@ fun HouseEditScreen(
 
                 // Status: three whole-row radios (whole-app audit). The segmented row broke "நிராகரிக்கப்பட்டது" and
                 // "తిరస్కరించబడింది" mid-word at 100 %; rows wrap in every script. The glyph (UX-002) is not read out.
-                SectionHeading(stringResource(R.string.house_status))
+                SectionHeading(stringResource(Res.string.house_status))
                 Column(Modifier.selectableGroup()) {
                     HouseStatus.entries.forEach { s ->
                         val text = stringResource(s.labelRes)
@@ -779,7 +781,7 @@ fun HouseEditScreen(
                     }
                 }
 
-                SectionHeading(stringResource(R.string.house_rating))
+                SectionHeading(stringResource(Res.string.house_rating))
                 // The stars, then Clear rating (the web's `house.clearRating`), always there so nothing jumps when a star
                 // is picked; disabled while there is no rating. Tap-again on the chosen star still clears it too.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -788,7 +790,7 @@ fun HouseEditScreen(
                         onClick = { update { it.copy(rating = null) } },
                         enabled = d.rating != null,
                         modifier = Modifier.heightIn(min = 48.dp),
-                    ) { ButtonLabel(stringResource(R.string.house_clear_rating)) }
+                    ) { ButtonLabel(stringResource(Res.string.house_clear_rating)) }
                 }
 
                 // Rent or buy: one of two short labels, so the single-choice segmented row stays (round 21).
@@ -797,11 +799,11 @@ fun HouseEditScreen(
                     SegmentedButton(
                         selected = rent, onClick = { update { it.copy(priceType = "RENT") } },
                         shape = SegmentedButtonDefaults.itemShape(0, 2),
-                    ) { Text(stringResource(R.string.house_rent)) }
+                    ) { Text(stringResource(Res.string.house_rent)) }
                     SegmentedButton(
                         selected = !rent, onClick = { update { it.copy(priceType = "SALE") } },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text(stringResource(R.string.house_buy)) }
+                    ) { Text(stringResource(Res.string.house_buy)) }
                 }
                 // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
                 // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
@@ -810,7 +812,7 @@ fun HouseEditScreen(
                     first = { m ->
                         OutlinedTextField(
                             d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
-                            label = { Text(stringResource(if (d.priceType == "SALE") R.string.house_price_sale else R.string.house_price_rent)) },
+                            label = { Text(stringResource(if (d.priceType == "SALE") Res.string.house_price_sale else Res.string.house_price_rent)) },
                             supportingText = { Text(preview) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             singleLine = true,
@@ -820,7 +822,7 @@ fun HouseEditScreen(
                     second = { m ->
                         OutlinedTextField(
                             d.bedrooms?.toString() ?: "", { v -> update { it.copy(bedrooms = v.filter(Char::isDigit).take(2).toIntOrNull()) } },
-                            label = { Text(stringResource(R.string.house_bhk)) },
+                            label = { Text(stringResource(Res.string.house_bhk)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m,
                         )
@@ -829,19 +831,19 @@ fun HouseEditScreen(
                 )
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
-                    label = { Text(stringResource(R.string.house_address)) },
+                    label = { Text(stringResource(Res.string.house_address)) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth())
                 PairOrStack(
                     first = { m ->
                         OutlinedTextField(d.street ?: "", { v -> update { it.copy(street = v.ifBlank { null }) } },
-                            label = { Text(stringResource(R.string.house_street)) },
+                            label = { Text(stringResource(Res.string.house_street)) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
                     second = { m ->
                         OutlinedTextField(d.locality ?: "", { v -> update { it.copy(locality = v.ifBlank { null }) } },
-                            label = { Text(stringResource(R.string.house_locality)) },
+                            label = { Text(stringResource(Res.string.house_locality)) },
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                             singleLine = true, modifier = m)
                     },
@@ -851,7 +853,7 @@ fun HouseEditScreen(
                 // location", WCAG 2.5.7): a house saved from a stale fix or a stray long-press is no longer stuck there.
                 // Right after the address (round 3), in the web's order: Details, then Location. A mini-map with a
                 // draggable pin is a Sprint 4b item (README section 8).
-                SectionHeading(stringResource(R.string.house_location_heading))
+                SectionHeading(stringResource(Res.string.house_location_heading))
                 OutlinedButton(
                     onClick = { useMyLocation() },
                     enabled = !locating,
@@ -861,23 +863,23 @@ fun HouseEditScreen(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     }
-                    ButtonLabel(stringResource(R.string.house_use_location))
+                    ButtonLabel(stringResource(Res.string.house_use_location))
                 }
                 LiveMessage {
                     when {
-                        locating -> Text(stringResource(R.string.common_finding_location), style = MaterialTheme.typography.bodySmall)
+                        locating -> Text(stringResource(Res.string.common_finding_location), style = MaterialTheme.typography.bodySmall)
                         // Refused, or approximate only: the shared note (amber, not error red: it was the user's choice),
                         // with the next step visible (*Allow location*, *Turn on precise location* or *Open settings*).
                         // Both texts offer typing the coordinates below (round 4, as the web's house.locationDenied).
                         // The note's button asks again or opens the settings, as its label says.
                         locationDenied && !locationAsk.granted -> LocationPermissionNote(
                             ask = locationAsk,
-                            deniedText = stringResource(R.string.house_location_denied),
-                            approximateText = approximateLocationText(R.string.house_needs_precise),
+                            deniedText = stringResource(Res.string.house_location_denied),
+                            approximateText = approximateLocationText(Res.string.house_needs_precise),
                             launchRequest = { askLocation.launch(LOCATION_PERMISSIONS) },
                         )
                         locationFailed -> Text(
-                            stringResource(R.string.house_location_failed),
+                            stringResource(Res.string.house_location_failed),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -891,10 +893,10 @@ fun HouseEditScreen(
                                 latText = v
                                 parseCoordinate(v, 90.0)?.let { lat -> update { it.copy(lat = lat) } }
                             },
-                            label = { Text(stringResource(R.string.house_lat)) },
+                            label = { Text(stringResource(Res.string.house_lat)) },
                             isError = latInvalid,
                             supportingText = if (latInvalid) {
-                                { Text(stringResource(R.string.house_lat_range)) }
+                                { Text(stringResource(Res.string.house_lat_range)) }
                             } else {
                                 null
                             },
@@ -909,10 +911,10 @@ fun HouseEditScreen(
                                 lonText = v
                                 parseCoordinate(v, 180.0)?.let { lon -> update { it.copy(lon = lon) } }
                             },
-                            label = { Text(stringResource(R.string.house_lon)) },
+                            label = { Text(stringResource(Res.string.house_lon)) },
                             isError = lonInvalid,
                             supportingText = if (lonInvalid) {
-                                { Text(stringResource(R.string.house_lon_range)) }
+                                { Text(stringResource(Res.string.house_lon_range)) }
                             } else {
                                 null
                             },
@@ -922,7 +924,7 @@ fun HouseEditScreen(
                     },
                 )
 
-                SectionHeading(stringResource(R.string.house_checklist))
+                SectionHeading(stringResource(Res.string.house_checklist))
                 ChecklistLabels.items.forEach { (key, labelRes) ->
                     ChecklistRow(stringResource(labelRes), d.checklist[key]) { n ->
                         update {
@@ -932,46 +934,46 @@ fun HouseEditScreen(
                         }
                     }
                 }
-                Text(stringResource(R.string.house_overall, d.score.scoreText()), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(Res.string.house_overall, d.score.scoreText()), fontWeight = FontWeight.SemiBold)
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },
-                    label = { Text(stringResource(R.string.house_notes)) },
+                    label = { Text(stringResource(Res.string.house_notes)) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     minLines = 3, modifier = Modifier.fillMaxWidth())
 
-                SectionHeading(stringResource(R.string.house_contact))
+                SectionHeading(stringResource(Res.string.house_contact))
                 OutlinedTextField(d.contactName ?: "", { v -> update { it.copy(contactName = v) } },
-                    label = { Text(stringResource(R.string.house_contact_name)) },
+                    label = { Text(stringResource(Res.string.house_contact_name)) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.contactPhone ?: "", { v -> update { it.copy(contactPhone = v) } },
-                        label = { Text(stringResource(R.string.house_phone)) },
+                        label = { Text(stringResource(Res.string.house_phone)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.weight(1f))
                     if (!d.contactPhone.isNullOrBlank()) {
-                        val callDesc = stringResource(R.string.house_call_desc, d.contactPhone)
+                        val callDesc = stringResource(Res.string.house_call_desc, d.contactPhone)
                         TextButton(
                             onClick = {
                                 val digits = d.contactPhone.filter { it.isDigit() || it == '+' }
                                 context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")))
                             },
                             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = callDesc },
-                        ) { Text(stringResource(R.string.house_call)) }
+                        ) { Text(stringResource(Res.string.house_call)) }
                     }
                 }
                 // The last text field: Done closes the keyboard. *Open* (the web's "Open the listing") when it is a link.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.listingUrl ?: "", { v -> update { it.copy(listingUrl = v) } },
-                        label = { Text(stringResource(R.string.house_listing)) },
+                        label = { Text(stringResource(Res.string.house_listing)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         singleLine = true, modifier = Modifier.weight(1f))
                     val link = d.listingUrl?.trim()?.takeIf { isWebLink(it) }
                     if (link != null) {
-                        val openDesc = stringResource(R.string.house_listing_open_desc)
-                        val openFailed = stringResource(R.string.house_listing_open_failed)
+                        val openDesc = stringResource(Res.string.house_listing_open_desc)
+                        val openFailed = stringResource(Res.string.house_listing_open_failed)
                         TextButton(
                             onClick = {
                                 try {
@@ -981,21 +983,21 @@ fun HouseEditScreen(
                                 }
                             },
                             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = openDesc },
-                        ) { Text(stringResource(R.string.house_listing_open)) }
+                        ) { Text(stringResource(Res.string.house_listing_open)) }
                     }
                 }
 
                 HorizontalDivider()
-                SectionHeading(stringResource(R.string.house_photos))
+                SectionHeading(stringResource(Res.string.house_photos))
                 if (saved == null) {
                     // A new house: its photos belong to a saved row. One tap saves and continues on it (whole-app audit).
                     if (isNew) {
-                        Text(stringResource(R.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(Res.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(
                             onClick = { save() },
                             enabled = canSave,
                             modifier = Modifier.heightIn(min = 48.dp),
-                        ) { ButtonLabel(stringResource(R.string.house_save_add_photos)) }
+                        ) { ButtonLabel(stringResource(Res.string.house_save_add_photos)) }
                     }
                 } else {
                     Column {
@@ -1009,7 +1011,7 @@ fun HouseEditScreen(
                                 modifier = Modifier.heightIn(min = 48.dp).focusRequester(cameraFocus).then(
                                     if (focusTarget == FOCUS_CAMERA) Modifier.focusProperties { canFocus = true } else Modifier,
                                 ),
-                            ) { Text(stringResource(R.string.house_take_photo)) }
+                            ) { Text(stringResource(Res.string.house_take_photo)) }
                             OutlinedButton(
                                 onClick = {
                                     commitPendingDelete()
@@ -1019,22 +1021,22 @@ fun HouseEditScreen(
                                 modifier = Modifier.heightIn(min = 48.dp).focusRequester(galleryFocus).then(
                                     if (focusTarget == FOCUS_GALLERY) Modifier.focusProperties { canFocus = true } else Modifier,
                                 ),
-                            ) { Text(stringResource(R.string.house_from_gallery)) }
+                            ) { Text(stringResource(Res.string.house_from_gallery)) }
                         }
                         // Where the user is looking after taking or picking a photo (round 21), not at the top of the form.
                         LiveMessage {
                             val problem = photoProblem
                             when {
                                 addingPhoto -> Text(
-                                    stringResource(R.string.house_adding_photo),
+                                    stringResource(Res.string.house_adding_photo),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(top = 8.dp),
                                 )
                                 problem != null -> {
                                     val text = when (problem) {
                                         Repository.AddPhotoResult.LIMIT_REACHED ->
-                                            stringResource(R.string.house_photo_limit, MAX_PHOTOS_PER_HOUSE)
-                                        else -> stringResource(R.string.house_photo_unreadable)
+                                            stringResource(Res.string.house_photo_limit, MAX_PHOTOS_PER_HOUSE)
+                                        else -> stringResource(Res.string.house_photo_unreadable)
                                     }
                                     ResultCard(
                                         tone = ResultTone.ERROR,
@@ -1050,7 +1052,7 @@ fun HouseEditScreen(
                         }
                     }
                     val name = d.label.ifBlank { unnamed }
-                    val openLabel = stringResource(R.string.house_photo_open)
+                    val openLabel = stringResource(Res.string.house_photo_open)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         shownPhotos.forEachIndexed { index, p ->
                             val deleteFocus = photoFocus.getOrPut(p.id) { FocusRequester() }
@@ -1059,7 +1061,7 @@ fun HouseEditScreen(
                                 // A button: opens the photo larger (the web's photo tile, docs/05 §5).
                                 AsyncImage(
                                     model = File(p.path),
-                                    contentDescription = stringResource(R.string.house_photo_desc, index + 1, name),
+                                    contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
                                         .focusRequester(openFocus)
@@ -1082,7 +1084,7 @@ fun HouseEditScreen(
                                         ),
                                     ) {
                                         Icon(Icons.Default.Delete,
-                                            contentDescription = stringResource(R.string.house_delete_photo, index + 1))
+                                            contentDescription = stringResource(Res.string.house_delete_photo, index + 1))
                                     }
                                 }
                             }
@@ -1100,12 +1102,12 @@ fun HouseEditScreen(
 
                 HorizontalDivider()
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.house_visits, visits.size), fontWeight = FontWeight.SemiBold,
+                    Text(stringResource(Res.string.house_visits, visits.size), fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f).semantics { heading() })
                     if (saved != null) {
-                        val recorded = stringResource(R.string.house_visit_recorded)
-                        val recent = stringResource(R.string.house_visit_recent)
+                        val recorded = stringResource(Res.string.house_visit_recorded)
+                        val recent = stringResource(Res.string.house_visit_recent)
                         // The stored house, not the draft: a visit is recorded where the house is saved, never at a
                         // typed coordinate or street that has not been saved.
                         val storedHouse: HouseEntity = saved
@@ -1120,15 +1122,15 @@ fun HouseEditScreen(
                                 }
                             },
                             modifier = Modifier.heightIn(min = 48.dp),
-                        ) { Text(stringResource(R.string.house_here_now)) }
+                        ) { Text(stringResource(Res.string.house_here_now)) }
                     }
                 }
                 visits.forEach { v ->
                     key(v.id) {
-                        val source = stringResource(if (v.source.name == "AUTO") R.string.visit_auto else R.string.visit_manual)
+                        val source = stringResource(if (v.source.name == "AUTO") Res.string.visit_auto else Res.string.visit_manual)
                         val text = v.leftAt?.let {
-                            stringResource(R.string.visit_line_duration, v.arrivedAt.dateText(), ((it - v.arrivedAt) / 60_000).toInt(), source)
-                        } ?: stringResource(R.string.visit_line, v.arrivedAt.dateText(), source)
+                            stringResource(Res.string.visit_line_duration, v.arrivedAt.dateText(), ((it - v.arrivedAt) / 60_000).toInt(), source)
+                        } ?: stringResource(Res.string.visit_line, v.arrivedAt.dateText(), source)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                             // A visit Hunt mode recorded by mistake can be deleted (the web's "Remove this visit").
@@ -1137,12 +1139,12 @@ fun HouseEditScreen(
                                 IconButton(onClick = { menu = true }) {
                                     Icon(
                                         Icons.Default.MoreVert,
-                                        contentDescription = stringResource(R.string.house_visit_more, v.arrivedAt.dateText()),
+                                        contentDescription = stringResource(Res.string.house_visit_more, v.arrivedAt.dateText()),
                                     )
                                 }
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.house_visit_delete)) },
+                                        text = { Text(stringResource(Res.string.house_visit_delete)) },
                                         onClick = {
                                             menu = false
                                             confirmVisitDelete = v.id
@@ -1186,9 +1188,9 @@ fun HouseEditScreen(
         AlertDialog(
             onDismissRequest = { confirmLeave = false },
             title = {
-                Text(stringResource(if (isNew) R.string.house_discard_new_title else R.string.house_leave_title))
+                Text(stringResource(if (isNew) Res.string.house_discard_new_title else Res.string.house_leave_title))
             },
-            text = { Text(stringResource(R.string.house_unsaved_body)) },
+            text = { Text(stringResource(Res.string.house_unsaved_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -1202,10 +1204,10 @@ fun HouseEditScreen(
             dismissButton = {
                 // M3 lays both slots out in one wrapping row: Keep editing, Discard, then Save.
                 TextButton(onClick = { confirmLeave = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    ButtonLabel(stringResource(R.string.house_keep_editing))
+                    ButtonLabel(stringResource(Res.string.house_keep_editing))
                 }
                 DangerButton(
-                    text = stringResource(R.string.house_discard),
+                    text = stringResource(Res.string.house_discard),
                     onClick = {
                         confirmLeave = false
                         onDone()
@@ -1218,11 +1220,11 @@ fun HouseEditScreen(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.house_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.house_delete_confirm_body)) },
+            title = { Text(stringResource(Res.string.house_delete_confirm_title)) },
+            text = { Text(stringResource(Res.string.house_delete_confirm_body)) },
             confirmButton = {
                 DangerButton(
-                    text = stringResource(R.string.common_delete),
+                    text = stringResource(Res.string.common_delete),
                     enabled = !busy,
                     onClick = {
                         // Closed first, and busy before the coroutine starts: a second tap has nothing to hit.
@@ -1239,7 +1241,7 @@ fun HouseEditScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    ButtonLabel(stringResource(R.string.common_cancel))
+                    ButtonLabel(stringResource(Res.string.common_cancel))
                 }
             },
         )
@@ -1248,11 +1250,11 @@ fun HouseEditScreen(
     confirmVisitDelete?.let { visitToDelete ->
         AlertDialog(
             onDismissRequest = { confirmVisitDelete = null },
-            title = { Text(stringResource(R.string.house_visit_delete_title)) },
-            text = { Text(stringResource(R.string.house_visit_delete_body)) },
+            title = { Text(stringResource(Res.string.house_visit_delete_title)) },
+            text = { Text(stringResource(Res.string.house_visit_delete_body)) },
             confirmButton = {
                 DangerButton(
-                    text = stringResource(R.string.common_delete),
+                    text = stringResource(Res.string.common_delete),
                     onClick = {
                         confirmVisitDelete = null
                         scope.launch { withContext(NonCancellable) { repo.deleteVisit(visitToDelete) } }
@@ -1261,7 +1263,7 @@ fun HouseEditScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmVisitDelete = null }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    ButtonLabel(stringResource(R.string.common_cancel))
+                    ButtonLabel(stringResource(Res.string.common_cancel))
                 }
             },
         )
@@ -1326,18 +1328,18 @@ private fun isWebLink(text: String): Boolean {
 }
 
 /** The field names a listing fill reports ("Filled in: price and contact name."). */
-private val ListingField.nameRes: Int
+private val ListingField.nameRes: StringResource
     get() = when (this) {
-        ListingField.NAME -> R.string.paste_field_name
-        ListingField.ADDRESS -> R.string.paste_field_address
-        ListingField.STREET -> R.string.paste_field_street
-        ListingField.LOCALITY -> R.string.paste_field_locality
-        ListingField.PRICE -> R.string.paste_field_price
-        ListingField.BHK -> R.string.paste_field_bhk
-        ListingField.CONTACT -> R.string.paste_field_contact
-        ListingField.PHONE -> R.string.paste_field_phone
-        ListingField.LISTING -> R.string.paste_field_listing
-        ListingField.NOTES -> R.string.paste_field_notes
+        ListingField.NAME -> Res.string.paste_field_name
+        ListingField.ADDRESS -> Res.string.paste_field_address
+        ListingField.STREET -> Res.string.paste_field_street
+        ListingField.LOCALITY -> Res.string.paste_field_locality
+        ListingField.PRICE -> Res.string.paste_field_price
+        ListingField.BHK -> Res.string.paste_field_bhk
+        ListingField.CONTACT -> Res.string.paste_field_contact
+        ListingField.PHONE -> Res.string.paste_field_phone
+        ListingField.LISTING -> Res.string.paste_field_listing
+        ListingField.NOTES -> Res.string.paste_field_notes
     }
 
 /** "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. */
@@ -1345,12 +1347,12 @@ private fun pasteResultText(context: Context, merge: ListingMerge, warnings: Lis
     fun names(fields: List<ListingField>) = ImportWorker.joined(context, fields.map { context.getString(it.nameRes) })
     val parts = mutableListOf<String>()
     parts += if (merge.filled.isEmpty()) {
-        context.getString(R.string.house_paste_nothing)
+        context.getString(Res.string.house_paste_nothing)
     } else {
-        context.getString(R.string.house_paste_filled, names(merge.filled))
+        context.getString(Res.string.house_paste_filled, names(merge.filled))
     }
-    if (merge.kept.isNotEmpty()) parts += context.getString(R.string.house_paste_kept, names(merge.kept))
-    if (warnings.isNotEmpty()) parts += context.getString(R.string.house_paste_check, warnings.joinToString("; "))
+    if (merge.kept.isNotEmpty()) parts += context.getString(Res.string.house_paste_kept, names(merge.kept))
+    if (warnings.isNotEmpty()) parts += context.getString(Res.string.house_paste_check, warnings.joinToString("; "))
     return parts.joinToString(" ")
 }
 
@@ -1361,7 +1363,7 @@ private fun pasteResultText(context: Context, merge: ListingMerge, warnings: Lis
  */
 @Composable
 private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onClose: () -> Unit) {
-    val title = stringResource(R.string.house_photo_viewer)
+    val title = stringResource(Res.string.house_photo_viewer)
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val pager = rememberPagerState(initialPage = start) { photos.size }
         Surface(
@@ -1375,12 +1377,12 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        stringResource(R.string.house_photo_position, pager.currentPage + 1, photos.size),
+                        stringResource(Res.string.house_photo_position, pager.currentPage + 1, photos.size),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f).padding(start = 12.dp),
                     )
                     IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                        Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_close))
                     }
                 }
                 HorizontalPager(
@@ -1391,7 +1393,7 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
                     photos.getOrNull(page)?.let { p ->
                         AsyncImage(
                             model = File(p.path),
-                            contentDescription = stringResource(R.string.house_photo_desc, page + 1, name),
+                            contentDescription = stringResource(Res.string.house_photo_desc, page + 1, name),
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -1424,22 +1426,22 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
     AlertDialog(
         onDismissRequest = cancel,
         properties = DialogProperties(dismissOnClickOutside = text.isBlank() && !busy),
-        title = { Text(stringResource(R.string.house_paste_title)) },
+        title = { Text(stringResource(Res.string.house_paste_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
                     text, { text = it.take(8000) },
-                    label = { Text(stringResource(R.string.house_paste_field)) },
+                    label = { Text(stringResource(Res.string.house_paste_field)) },
                     minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth(),
                 )
-                Text(stringResource(R.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(Res.string.ai_disclosure), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (busy) {
                             ProgressBar()
-                            Text(stringResource(R.string.house_paste_busy))
+                            Text(stringResource(Res.string.house_paste_busy))
                         }
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
@@ -1457,19 +1459,19 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
                     result.onSuccess { onDraft(it, it.warnings) }.onFailure { error = errorText(it) }
                     busy = false
                 }
-            }) { Text(stringResource(R.string.house_paste_go)) }
+            }) { Text(stringResource(Res.string.house_paste_go)) }
         },
-        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(R.string.common_cancel)) } },
+        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(Res.string.common_cancel)) } },
     )
 }
 
 /** Returns a function that turns an AI call failure into a translated message (read in composition). */
 @Composable
 fun aiErrorText(): (Throwable) -> String {
-    val rate = stringResource(R.string.ai_rate_limited)
-    val down = stringResource(R.string.ai_provider_down)
-    val offline = stringResource(R.string.ai_offline)
-    val generic = stringResource(R.string.ai_error)
+    val rate = stringResource(Res.string.ai_rate_limited)
+    val down = stringResource(Res.string.ai_provider_down)
+    val offline = stringResource(Res.string.ai_offline)
+    val generic = stringResource(Res.string.ai_error)
     return { e ->
         when {
             e is ApiException && e.kind == ApiException.Kind.RATE_LIMITED -> String.format(rate, e.retryAfterSeconds ?: 60L)
@@ -1484,12 +1486,12 @@ fun aiErrorText(): (Throwable) -> String {
 @Composable
 private fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
     val starColor = LocalHouseHuntColors.current.star
-    val none = stringResource(R.string.house_no_rating)
-    val current = rating?.let { stringResource(R.string.common_stars, it) } ?: none
+    val none = stringResource(Res.string.house_no_rating)
+    val current = rating?.let { stringResource(Res.string.common_stars, it) } ?: none
     Row(Modifier.selectableGroup().semantics { stateDescription = current }) {
         (1..5).forEach { star ->
             val selected = rating == star
-            val desc = stringResource(R.string.common_stars, star)
+            val desc = stringResource(Res.string.common_stars, star)
             Box(
                 Modifier.size(48.dp)
                     .selectable(selected = selected, role = Role.RadioButton, onClick = { onPick(star) })
@@ -1523,7 +1525,7 @@ private val CHECK_OPTIONS: List<Int?> = listOf(0, 1, 2, 3, 4, 5, null)
 @Composable
 private fun ChecklistRow(label: String, value: Int?, onPick: (Int?) -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val state = value?.let { stringResource(R.string.house_check_value, it) } ?: stringResource(R.string.house_not_rated)
+    val state = value?.let { stringResource(Res.string.house_check_value, it) } ?: stringResource(Res.string.house_not_rated)
     val shape = RoundedCornerShape(8.dp)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("$label · $state", style = MaterialTheme.typography.bodyMedium)
@@ -1534,8 +1536,8 @@ private fun ChecklistRow(label: String, value: Int?, onPick: (Int?) -> Unit) {
         ) {
             CHECK_OPTIONS.forEach { n ->
                 val sel = value == n
-                val desc = if (n == null) stringResource(R.string.house_check_option_none, label)
-                else stringResource(R.string.house_check_option, label, n)
+                val desc = if (n == null) stringResource(Res.string.house_check_option_none, label)
+                else stringResource(Res.string.house_check_option, label, n)
                 Box(
                     Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                         .clip(shape)
