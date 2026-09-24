@@ -9,9 +9,10 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRecord
 
-// Room entities stay in :app until the Room KMP migration (Phase 2, see android/shared/README.md). Their table and
-// column layout is unchanged by Sprint 3.5: HouseStatus and VisitSource moved to :shared with the same constant
-// names, and Room still stores them by name. The pure rules (score, sync conflicts) now live in :shared.
+// Room entities, in :shared commonMain since CMP-4 P4a (Room KMP; this file was :app's data/Models.kt). The table and
+// column layout is the one shipped as database version 2: HouseStatus and VisitSource are stored by their constant
+// names, and RoomSchemaTest pins the identity hash. The package stays app.doorprints.data, so :app's imports and the
+// schema folder name do not change.
 
 @Entity(tableName = "houses", indices = [Index("street")])
 data class HouseEntity(

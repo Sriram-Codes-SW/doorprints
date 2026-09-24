@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.26 | 2026-09-24 | Claude (Code), Docs team | §12 RTM: the Android APK and live web UI tests of [06](06-test-plan.md) §16 (PR #18) added to the rows they trace to: **TC-I-35** (emulator and Test Lab smoke tests) to FR-001, FR-006, FR-010 and FR-011; **TC-U-56** (JVM screenshot tests) to FR-041 and NFR-006/NFR-007; **TC-M-26** (the live web UI test after every merge) to FR-041, NFR-006/NFR-007 and FR-098 (map screens only). |
 | 0.27 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). SEC-019 names the app schema `doorprints` (was `househunt`). |
 | 0.28 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19: the §12 RTM row of FR-036 names both homes of the Android strings (the UI strings as Compose resources in `android/ui/src/commonMain/composeResources` since [03](03-design.md) ADR-23 CMP-2, the service strings in `res/values*`) and the new tests TC-U-59, TC-U-60 and TC-M-27 ([06](06-test-plan.md) v0.40). |
+| 0.29 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a ([03](03-design.md) ADR-23 P4a): the §12 RTM row of FR-019 names the Room database in `:shared` commonMain (schema export `android/shared/schemas/…/2.json`) and adds TC-U-63 (`AppDatabaseMigrationTest`). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -422,7 +423,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | FR-016 | 03 §8.2 | `HuntService.onLocation` accuracy gate | TC-U-08, TC-F-05 |
 | FR-017 | 03 §8.2, ADR-01 | `HuntService`, `Notifications.CHANNEL_HUNT`, manifest `foregroundServiceType=location` | TC-F-01, TC-F-07 |
 | FR-018 | 03 §4.2 | `HuntState`, `MapScreen.HuntCard` | TC-F-02 |
-| FR-019 | 03 §10, §6.2 | `data/AppDatabase` (schema export, `app/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`) |
+| FR-019 | 03 §10, §6.2 | `data/AppDatabase` (Room KMP in `:shared` commonMain since CMP-4 P4a; schema export `android/shared/schemas/…/2.json`), `Repository` | TC-F-08, TC-U-36 (`RoomSchemaTest`), TC-U-63 (`AppDatabaseMigrationTest`) |
 | FR-020 | 03 §10, 09 §5 | `data/SyncWorker`, `ApiClient` + `RetryPolicy` (`:shared` api; replaced `data/RetryInterceptor` in Sprint 3.5) | TC-F-08, TC-U-17, TC-U-35 |
 | FR-021 | 03 §7.1, §10 | `Repository.sync`, `data/SyncRules`, `PhotoController.changes` | TC-U-06 (part), TC-I-05, TC-I-17 |
 | FR-022 | 03 §10 | `HouseService.upsert`, `VisitController.upsert`, `SyncVersions`, `Repository.sync`, `SyncRules.keepLocal` (`:shared` sync) | TC-I-04, TC-U-06 (`SyncRulesTest`), TC-I-14 |

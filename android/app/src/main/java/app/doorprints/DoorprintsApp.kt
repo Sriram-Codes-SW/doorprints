@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.res.Configuration
 import androidx.work.Configuration as WorkConfiguration
 import app.doorprints.data.AppDatabase
+import app.doorprints.data.create
 import app.doorprints.data.Repository
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.SyncWorker

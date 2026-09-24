@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.47 |
+| Version | 1.48 |
 | Date | 2026-09-24 |
 | Sprint | 4a "offline copy" (was 3.5 "KMP foundation") |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.48 | 2026-09-24 | **Room KMP in `:shared` (CMP-4 P4a; [docs/03](../../docs/03-design.md) ADR-23 P4a, [docs/10](../../docs/10-sprint-log.md) §13.6).** `AppDatabase`, the entities (`Entities.kt`, was `:app`'s `Models.kt`), DAOs, `Converters` and `MIGRATION_1_2` (on `SQLiteConnection`) are in `commonMain`, package `app.doorprints.data` kept; `@ConstructedBy` with `expect object AppDatabaseConstructor`; plugins `androidx.room` and KSP (android, `iosArm64`, `iosSimulatorArm64`); `api(room-runtime)`; `sqlite-bundled` and `iosAppDatabase()` in iosMain (compile-only). Schemas in `shared/schemas/` (moved unchanged); `RoomSchemaTest` in `androidHostTest`. The Android builder and `DatabaseFile` stay in `:app` (framework SQLite, no driver). Sections 2, 3, 5 and 7 updated; new `AppDatabaseMigrationTest` in `:app` (TC-U-63). |
 | 1.47 | 2026-09-24 | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [docs/03](../../docs/03-design.md) ADR-24). Package `app.doorprints.shared` (was `com.househunt.shared`), next to `app.doorprints` and the backend's `app.doorprints.server.*`; `DoorprintsApp`, `LocalDoorprintsColors`, log tag `DoorprintsApi`; the Room file is `doorprints.db` (an existing `househunt.db` is renamed at start by `DatabaseFile`) and the schema folder `app/schemas/app.doorprints.data.AppDatabase/`. |
 | 1.46 | 2026-09-24 | Round 3 review of PR #18: the screenshot test id is **TC-U-56** (was TC-U-60; docs/06 v0.35). |
 | 1.45 | 2026-09-24 | **Testing the APK (owner request of 2026-09-24; commit `afe4064`; [docs/06](../../docs/06-test-plan.md) §16, [docs/10](../../docs/10-sprint-log.md) §13.3, CMP-0).** Section 5 lists the JVM screenshot tests (`app/src/test/.../screenshots`, Robolectric 4.17 + Roborazzi 1.75.0, 64 reference images in `app/src/test/screenshots`, TC-U-56) and the instrumented smoke tests (`app/src/androidTest`, `SmokeTest`, TC-I-35, run by `android-emulator.yml`), with the verify and record commands. `HouseHuntApp` is `open` with `protected open fun startServices()` so the test application can skip MapLibre, notification channels and scheduled work; production behaviour unchanged. No change to `:shared` itself. |
@@ -78,10 +79,13 @@ android/
 ├── app/                        Android app (package app.doorprints)
 ├── ui/                         Compose Multiplatform UI (since CMP-1, ADR-23; see ui/README.md)
 └── shared/                     this module
-    └── src/
-        ├── commonMain/         platform-neutral code (no java.*, no android.*)
-        ├── commonTest/         kotlin.test suites for everything in commonMain
-        └── androidMain/        Android-only glue (Ktor OkHttp engine)
+    ├── src/
+    │   ├── commonMain/         platform-neutral code (no java.*, no android.*); Room since CMP-4 P4a
+    │   ├── commonTest/         kotlin.test suites for everything in commonMain
+    │   ├── androidMain/        Android-only glue (Ktor OkHttp engine)
+    │   ├── androidHostTest/    JVM-only tests (RoomSchemaTest)
+    │   └── iosMain/            iOS-only glue (the Room builder with the bundled SQLite driver, compile-only)
+    └── schemas/                Room's exported schemas (app.doorprints.data.AppDatabase/2.json), committed
 ```
 
 | Target | Plugin / DSL | Built where | Purpose |
@@ -101,13 +105,15 @@ Package: **`app.doorprints.shared`**, next to the app's `app.doorprints` and the
 | `sync` | `SyncRecord` (implemented by the Room entities), `SyncRules` (last-edit-wins), `SyncOutcome` (stored sync result code) |
 | `location` | `Geo.distanceM` (haversine, pure math), `StayDetector`, `StreetAlerts` |
 | `api` | DTOs (`HouseDto`, `VisitDto`, `PhotoChangeDto`, AI DTOs, …), `IsoTime`, `ApiException`, `RetryPolicy`, `ApiClient`, `ApiHttp`; `AndroidApiHttp` in androidMain |
+| `app.doorprints.data` (CMP-4 P4a) | The Room KMP database: `AppDatabase` (version 2), `AppDatabaseConstructor`, `HouseEntity`, `VisitEntity`, `PhotoEntity`, `HouseVisitCount`, `RowVersion`, `HouseDao`, `VisitDao`, `PhotoDao`, `Converters`, `MIGRATION_1_2`; `iosAppDatabase()` in iosMain. Package kept from `:app`, so the schema folder and `:app`'s imports did not change |
 | `export` | The offline copy (section 8): `ExportHouse`/`ExportVisit`/`ExportPhoto`, `ExportOptions`, `ExportBundle`, `ExportTime`, `ExportRows` + `Cell`/`ExportTable`, `CsvWriter`, `MarkdownWriter`, `HtmlWriter`, `XlsxWriter`, `ExportFormat`, `ExportStrings`, `BackupFormat`/`BackupData`/`BackupManifest`/`BackupValidation`, `ImportPlan`, `BackupCompleteness`/`BackupGap` |
 
 ## 3. What stays in `:app` and why
 
 | Stays in `:app` | Why |
 |---|---|
-| Room database (`AppDatabase`, DAOs, entities `HouseEntity`/`VisitEntity`/`PhotoEntity`) | Moving Room to KMP (Room 2.7+ `commonMain` + `BundledSQLiteDriver` or the Android driver) touches the on-device database of every tester: schema export, identity hash, migrations 1→2, the checklist `TypeConverter`. That deserves its own sprint with migration tests on real devices. The entities already implement the shared `SyncRecord` and use the shared enums, so they can move almost unchanged. |
+| The Room builder (`data/AppDatabaseFactory.kt`, `AppDatabase.create(context)`) and `DatabaseFile` | **Since CMP-4 P4a the database itself is in `commonMain`** (package table in section 2). The builder needs the `Context`, and `DatabaseFile` moves a `househunt.db` from before the rename with `java.io.File`; both are Android-only. No driver is set, so Room keeps the framework SQLite (same file, journal mode and threads as before). |
+| `Repository` | Uses Room's Android API (`withTransaction`, `invalidationTracker.createFlow`); a common `Repository` interface is CMP-4 P4c (docs/10 S4b-BL-23). |
 | Entity ↔ DTO mappers (`data/Mappers.kt`) | They reference the Room entities; all the logic they use (`IsoTime`, `fromWire`) is shared. |
 | `ServerUrl` validation | Uses `java.net.URI`, whose exact parsing (IPv6, spaces, user-info) is what the tests pin. A common rewrite would need an `expect/actual` (NSURLComponents on iOS); Phase 2. |
 | DataStore settings, Keystore API-key encryption (`ApiKeyCipher`) | Android APIs; DataStore has a KMP artifact (Phase 2), the key store needs `expect/actual` (Android Keystore / iOS Keychain). |
@@ -166,7 +172,9 @@ Known, intentional differences from the OkHttp client (none visible to the user)
 | `commonTest/export` | `ExportGoldenTest`, `ExportRowsTest`, `ExportStringsTest`, `XlsxWriterTest`, `BackupTest`, `ImportPlanTest`, `ExportFormatTest` | Golden output of every copy for `ExportFixture` (see section 8), ordering/filtering/redaction, ₹ and date formatting, the four languages, the SpreadsheetML package, the backup round trip, `data.json` grouped by house with sorted checklist keys, required fields refused, the zip-slip/ratio guards, every merge case |
 | `app/src/test/.../screenshots` | `ScreensScreenshotTest` (with `ScreenshotTestApp`) | Screenshots of Houses, Compare, the house form (edit and new), Settings, Assistant, Export and Import in en/hi/ta/te and light/dark, rendered by Robolectric on the JVM and compared by Roborazzi with the 64 references in `app/src/test/screenshots` (docs/06 TC-U-56); the Map is left out (MapLibre is native code) |
 | `app/src/androidTest` | `SmokeTest` (instrumented, emulator or Test Lab) | The debug APK starts, every tab opens, a house added from a new-house intent shows in the list; a screenshot per step (docs/06 TC-I-35) |
-| `app/src/test` | `ModelMappingTest`, `ServerUrlTest`, `RoomSchemaTest`, `ExportMappingTest`, `BackupRoundTripTest`, `ExportGrantsTest`, `CanonicalSampleTest`, `ImportStartOnceTest`, `JoinListTest` | Entity ↔ DTO mapping, labels for every shared key/status, shared rules on Room entities; URL validation; Room identity hash of database version 2 (see below); Room entity ↔ export model; a real backup ZIP written and read back on the JVM; which persisted export grants are kept and which released; Android's `data.json` against `docs/schemas/backup-sample.json` as parsed JSON, and the bare `data.json` import; one import per tap, and a start WorkManager drops or fails gives the staged copy back; a list of any length keeps every item; since 1.18 `ImportUndoTest` (the copy import's undo record file) and since 1.19 `CopyUndoTest` (every keep/remove/skip rule of the undo, its tombstones — visits without a house, so they are pushed first — and the copy's stamp never in the future); since 1.20 `ImportUndoTest` also covers the record an undo leaves for kept houses (`keptOnly`, no undo), a record written before the `undone` flag, and which record the house list offers (`latestUndoable`); since 1.24 `HouseFormRulesTest` (the late address fill that never overwrites typing and is not an unsaved change, the listing fill that fills only empty fields and reports what it kept, typed coordinates, rents before sales, the ten-minute visit guard, the last-known fix's age and accuracy, when the form's field pairs stack, and when Android will still show the location prompt) and `SyncHealthTest` (failures in a row, when the list warns); since 1.26 `LocationAccessTest` (approximate location told apart from none, and which note and button each state gets) and `MapRulesTest` (the Map's top band ends above the bottom stack, with a 25 % floor) |
+| `androidHostTest/data` | `RoomSchemaTest` (moved from `:app` in CMP-4 P4a) | The Room identity hash of database version 2, in `schemas/…/2.json` and the generated Android `AppDatabase_Impl` (see below) |
+| `app/src/test` | `AppDatabaseMigrationTest` (CMP-4 P4a) | A version-1 database migrated to 2 by Room's `MigrationTestHelper` (validated against `2.json`) and by the app's builder from a `househunt.db` (docs/06 TC-U-63) |
+| `app/src/test` | `ModelMappingTest`, `ServerUrlTest`, `ExportMappingTest`, `BackupRoundTripTest`, `ExportGrantsTest`, `CanonicalSampleTest`, `ImportStartOnceTest`, `JoinListTest` | Entity ↔ DTO mapping, labels for every shared key/status, shared rules on Room entities; URL validation; Room entity ↔ export model; a real backup ZIP written and read back on the JVM; which persisted export grants are kept and which released; Android's `data.json` against `docs/schemas/backup-sample.json` as parsed JSON, and the bare `data.json` import; one import per tap, and a start WorkManager drops or fails gives the staged copy back; a list of any length keeps every item; since 1.18 `ImportUndoTest` (the copy import's undo record file) and since 1.19 `CopyUndoTest` (every keep/remove/skip rule of the undo, its tombstones — visits without a house, so they are pushed first — and the copy's stamp never in the future); since 1.20 `ImportUndoTest` also covers the record an undo leaves for kept houses (`keptOnly`, no undo), a record written before the `undone` flag, and which record the house list offers (`latestUndoable`); since 1.24 `HouseFormRulesTest` (the late address fill that never overwrites typing and is not an unsaved change, the listing fill that fills only empty fields and reports what it kept, typed coordinates, rents before sales, the ten-minute visit guard, the last-known fix's age and accuracy, when the form's field pairs stack, and when Android will still show the location prompt) and `SyncHealthTest` (failures in a row, when the list warns); since 1.26 `LocationAccessTest` (approximate location told apart from none, and which note and button each state gets) and `MapRulesTest` (the Map's top band ends above the bottom stack, with a 25 % floor) |
 
 Commands (from `android/`):
 
@@ -190,13 +198,13 @@ skipped, and `kotlin.native.ignoreDisabledTargets=true` hides the "cannot be bui
 check therefore happens only on macOS (`shared-ios.yml`), where the flag has no effect. The iOS tests themselves
 (`:shared:iosSimulatorArm64Test`) are not run anywhere yet; that needs a simulator and is Phase 2.
 
-**Room identity-hash guard.** `AppDatabase` exports its schema (`exportSchema = true`, KSP argument
-`room.schemaLocation`), and `app/schemas/app.doorprints.data.AppDatabase/2.json` is committed. `RoomSchemaTest`
-checks that both that file and the generated `AppDatabase_Impl` carry the identity hash of the version-2 layout the
-app shipped with (`539964c2013f14439605fab0d18a142a`). Any drift in the tables, for example through the
-`HouseStatus`/`VisitSource` types that now live in `:shared`, fails `testDebugUnitTest` instead of crashing upgraded
-installs with "Room cannot verify the data integrity". A real schema change needs a version bump, a migration and a
-new `<version>.json`, never an edit to `2.json`.
+**Room identity-hash guard.** `AppDatabase` exports its schema (`exportSchema = true`; since CMP-4 P4a the Room Gradle
+plugin's `room { schemaDirectory }`), and `shared/schemas/app.doorprints.data.AppDatabase/2.json` is committed.
+`RoomSchemaTest` checks that both that file and the generated `AppDatabase_Impl` carry the identity hash of the
+version-2 layout the app shipped with (`539964c2013f14439605fab0d18a142a`). Any drift in the tables, for example through
+the `HouseStatus`/`VisitSource` types that now live in `:shared`, fails `testDebugUnitTest` instead of crashing upgraded
+installs with "Room cannot verify the data integrity". A real schema change needs a version bump, a migration and a new
+`<version>.json`, never an edit to `2.json`.
 
 **Manual smoke test on a device** (no automated test covers this; run it for every build that changes the Ktor,
 OkHttp or MapLibre version, see section 4):
@@ -226,10 +234,10 @@ OkHttp or MapLibre version, see section 4):
 §13): items 1-3 are its phase P4 (CMP-4), item 4 is decided for Compose Multiplatform (the `:ui` module,
 [README](../ui/README.md)), and item 5 comes with the iOS shell (P8) behind the platform seams of P3.
 
-1. **Room KMP.** Move entities, DAOs and `AppDatabase` to commonMain (Room 2.8 KMP + `androidx.sqlite`
-   bundled driver), keep the file name `doorprints.db` (renamed from `househunt.db` at start by `DatabaseFile`),
-   version 2 and `MIGRATION_1_2`; the exported `2.json` and `RoomSchemaTest` (section 5) must keep passing, and add
-   a migration test that opens a v1/v2 database created by the current app. Then the mappers move too.
+1. **Room KMP.** **Done in CMP-4 P4a** (docs/10 §13.6): entities, DAOs and `AppDatabase` in commonMain (Room 2.8.5;
+   the bundled driver on iOS, the framework SQLite on Android), `doorprints.db`, version 2, `MIGRATION_1_2` and
+   `2.json` kept, `RoomSchemaTest` passing, and `AppDatabaseMigrationTest` opens a version-1 file. The mappers move
+   with the `Repository` in P4c.
 2. **DataStore KMP** (`datastore-preferences-core` + okio) for settings and sync cursors; `expect/actual` secret
    storage (Android Keystore today, iOS Keychain).
 3. **`ServerUrl`** as `expect/actual` or a common parser with the existing test cases.

@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.roborazzi)
 }
 
@@ -105,13 +104,6 @@ android {
     }
 }
 
-ksp {
-    arg("room.generateKotlin", "true")
-    // Schema export (Sprint 3.5): the JSON files in app/schemas are committed and checked by RoomSchemaTest.
-    // Phase 2 (Room KMP) can switch to the androidx.room Gradle plugin's room { schemaDirectory(...) }.
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
-
 dependencies {
     // Platform-neutral logic, DTOs and the Ktor API client (Sprint 3.5, see ../shared/README.md).
     implementation(project(":shared"))
@@ -132,9 +124,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.service)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    // Room: AppDatabase, its entities and DAOs are in :shared commonMain since CMP-4 P4a (Room KMP, KSP and the schema
+    // export run there); room-runtime comes through :shared's api. No direct room-ktx dependency (WorkManager still
+    // pulls it in; it is empty since Room 2.7, and withTransaction is in room-runtime).
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.datastore.preferences)
@@ -142,7 +134,7 @@ dependencies {
 
     implementation(libs.play.services.location)
     implementation(libs.kotlinx.coroutines.play.services)
-    // Room's checklist converter (AppDatabase.kt) still encodes JSON here; the DTOs moved to :shared.
+    // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)
     // No direct OkHttp dependency any more: HTTP goes through :shared's Ktor client (OkHttp engine, OkHttp 5.x).
     implementation(libs.coil.compose)
@@ -159,6 +151,9 @@ dependencies {
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
+    // Room's MigrationTestHelper for AppDatabaseMigrationTest (CMP-4 P4a), with the framework SQLite driver.
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.sqlite.framework)
     debugImplementation(libs.compose.ui.test.manifest)
     // Instrumented smoke tests (docs/06 TC-I-35), run on an emulator by android-emulator.yml.
     androidTestImplementation(platform(libs.compose.bom))
