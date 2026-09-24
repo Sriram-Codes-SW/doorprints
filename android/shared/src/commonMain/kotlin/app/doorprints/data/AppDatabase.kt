@@ -1,9 +1,9 @@
 package app.doorprints.data
 
-import android.content.Context
 import androidx.room.*
 import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -157,29 +157,37 @@ interface PhotoDao {
     suspend fun liveForHouse(houseId: String): List<PhotoEntity>
 }
 
-// exportSchema (Sprint 3.5): Room writes app/schemas/app.doorprints.data.AppDatabase/<version>.json on every build
-// (room.schemaLocation in app/build.gradle.kts). The committed 2.json and RoomSchemaTest pin the identity hash, so a
-// change to the table layout (for example through the HouseStatus/VisitSource types now defined in :shared) fails
-// the unit tests instead of crashing upgraded installs with "Room cannot verify the data integrity".
+// Room KMP since CMP-4 P4a (ADR-23): this file moved from :app to :shared commonMain with its package, tables,
+// columns, version and migration unchanged. Every DAO function is suspend or returns a Flow, as common code requires.
+// exportSchema (Sprint 3.5): Room writes shared/schemas/app.doorprints.data.AppDatabase/<version>.json on every build
+// (room { schemaDirectory } in shared/build.gradle.kts). The committed 2.json and RoomSchemaTest pin the identity hash,
+// so a change to the table layout fails the unit tests instead of crashing upgraded installs with "Room cannot verify
+// the data integrity". The builders are per platform: :app's data/AppDatabaseFactory.kt (the Context, the file name
+// through DatabaseFile, the framework SQLite) and iosMain's AppDatabaseIos.kt (the bundled driver).
 @Database(entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class], version = 2, exportSchema = true)
 @TypeConverters(Converters::class)
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun houses(): HouseDao
     abstract fun visits(): VisitDao
     abstract fun photos(): PhotoDao
 
     companion object {
-        /** v2: photos.deleted, the local queue of photo deletes to send to the server (threat model F-15). */
+        /**
+         * v2: photos.deleted, the local queue of photo deletes to send to the server (threat model F-15). Written
+         * against Room's common [SQLiteConnection]: Room calls this overload with the framework open helper on Android
+         * too (wrapped in a connection), so one migration serves both platforms (`AppDatabaseMigrationTest`).
+         */
         val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE photos ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE photos ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
             }
         }
-
-        /** Opens the database file [DatabaseFile.NAME], first moving one saved under its pre-rename name. */
-        fun create(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, DatabaseFile.resolve(context))
-                .addMigrations(MIGRATION_1_2)
-                .build()
     }
+}
+
+/** Room's generated constructor for [AppDatabase] on each platform (Room KMP: no reflection on iOS). */
+@Suppress("KotlinNoActualForExpect")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
 }

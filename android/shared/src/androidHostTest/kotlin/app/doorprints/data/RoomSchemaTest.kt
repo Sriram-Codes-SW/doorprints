@@ -1,4 +1,4 @@
-package app.doorprints
+package app.doorprints.data
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -10,7 +10,8 @@ import java.io.File
 
 /**
  * Guards the on-device database (Sprint 3.5). HouseStatus and VisitSource moved to :shared and the entities now
- * implement shared interfaces; none of that may change the table layout of AppDatabase version 2, or every upgraded
+ * implement shared interfaces, and since CMP-4 P4a the whole database is Room KMP code in :shared commonMain (this test
+ * moved from :app with it); none of that may change the table layout of AppDatabase version 2, or every upgraded
  * install would crash with "Room cannot verify the data integrity".
  *
  * Room's identity hash is a digest of the tables, columns (name, affinity, NOT NULL, default), primary keys and
@@ -28,15 +29,15 @@ class RoomSchemaTest {
         const val SCHEMA_PATH = "schemas/app.doorprints.data.AppDatabase/2.json"
     }
 
-    /** Gradle runs unit tests with the module directory (android/app) as working directory; allow android/ too. */
+    /** Gradle runs host tests with the module directory (android/shared) as working directory; allow android/ too. */
     private fun moduleFile(path: String): File =
-        listOf(File(path), File("app", path)).firstOrNull { it.exists() } ?: File(path)
+        listOf(File(path), File("shared", path)).firstOrNull { it.exists() } ?: File(path)
 
     @Test
     fun exportedSchemaV2KeepsTheShippedIdentityHash() {
         // Room rewrites this file during the build whenever the generated schema differs from it.
         val schema = moduleFile(SCHEMA_PATH)
-        assertTrue("Room schema not exported to ${schema.absolutePath} (exportSchema / room.schemaLocation)", schema.exists())
+        assertTrue("Room schema not exported to ${schema.absolutePath} (exportSchema / room { schemaDirectory })", schema.exists())
         val database = Json.parseToJsonElement(schema.readText()).jsonObject.getValue("database").jsonObject
         assertEquals(2, database.getValue("version").jsonPrimitive.content.toInt())
         assertEquals(IDENTITY_HASH_V2, database.getValue("identityHash").jsonPrimitive.content)
@@ -45,7 +46,8 @@ class RoomSchemaTest {
     @Test
     fun generatedDatabaseOpensWithTheShippedIdentityHash() {
         // The hash Room checks at runtime is compiled into AppDatabase_Impl: RoomOpenDelegate(2, "<hash>", "<legacy>").
-        val generated = moduleFile("build/generated").walkTopDown()
+        // KSP writes the Android one under build/generated/ksp/android (the iOS ones, on macOS, under ksp/ios*).
+        val generated = moduleFile("build/generated/ksp/android").walkTopDown()
             .firstOrNull { it.isFile && (it.name == "AppDatabase_Impl.kt" || it.name == "AppDatabase_Impl.java") }
         assertTrue("AppDatabase_Impl not found under build/generated (Room KSP output)", generated != null)
         val match = Regex("RoomOpenDelegate\\(\\s*(\\d+)\\s*,\\s*\"([0-9a-f]{32})\"").find(generated!!.readText())
