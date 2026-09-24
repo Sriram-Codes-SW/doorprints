@@ -59,8 +59,19 @@ data class PhotoChangeDto(
     val syncVersion: Long = 0,
 )
 
+/**
+ * `GET /api/stats`. [maxSyncVersion] is the highest sync version the server has handed out (added 2026-09-24,
+ * S4b-BL-20): null from an older server that does not send it, which counts as unknown (no reset detected from it).
+ */
 @Serializable
-data class StatsDto(val houses: Long, val shortlisted: Long, val rejected: Long, val visits: Long, val streets: Long)
+data class StatsDto(
+    val houses: Long,
+    val shortlisted: Long,
+    val rejected: Long,
+    val visits: Long,
+    val streets: Long,
+    val maxSyncVersion: Long? = null,
+)
 
 // ---- AI endpoints (docs/ai/ai-design.md section 13; backend app.doorprints.server.ai.*) ----
 

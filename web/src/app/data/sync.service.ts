@@ -66,7 +66,8 @@ class SyncCancelled extends Error {}
 class SyncStopped extends Error {}
 /**
  * Thrown inside a push when the server's answer shows that its change log is behind this browser's cursors
- * ({@link serverWasReset}): the run resets and starts over as a full two-way sync (S4b-BL-20).
+ * ({@link serverWasReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
+ * its highest version in `GET /api/stats` is checked before the push instead ({@link serverBehind}).
  */
 class ServerReset extends Error {}
 
@@ -376,15 +377,38 @@ export class SyncService {
    * again in the same run (a version is never at or below 0), so it restarts once at most.
    */
   private async pass(gen: number): Promise<{ pushed: number; pulled: number; skipped: number }> {
-    try {
-      const pushed = await this.push(gen);
-      return { pushed, ...(await this.pull(gen)) };
-    } catch (err: unknown) {
-      if (!(err instanceof ServerReset)) throw err;
+    if (!(await this.statsShowReset(gen))) {
+      try {
+        const pushed = await this.push(gen);
+        return { pushed, ...(await this.pull(gen)) };
+      } catch (err: unknown) {
+        if (!(err instanceof ServerReset)) throw err;
+      }
     }
     await this.resetForServer(gen);
     const pushed = await this.push(gen);
     return { pushed, ...(await this.pull(gen)) };
+  }
+
+  /**
+   * Whether `GET /api/stats` shows the server behind this browser's cursors ({@link serverBehind}), asked at the
+   * start of every pass once something has been pulled: this sees a reset even when this browser has nothing to push.
+   * An older server without `maxSyncVersion`, or a failed request, is unknown (false); a real failure then shows in
+   * the push that follows, and the push answers are still checked ({@link serverWasReset}).
+   */
+  private async statsShowReset(gen: number): Promise<boolean> {
+    const cursors = await this.store.cursors();
+    this.live(gen);
+    const stored = [cursors.house, cursors.visit, cursors.photo];
+    if (!stored.some((c) => c > 0)) return false;
+    let highest: unknown = null;
+    try {
+      highest = (await this.call(gen, () => this.api.stats()))?.maxSyncVersion;
+    } catch (err: unknown) {
+      if (err instanceof SyncCancelled) throw err;
+    }
+    this.live(gen);
+    return serverBehind(highest, stored);
   }
 
   /**
@@ -747,8 +771,9 @@ export class SyncService {
  * later than the one sent; a kept row's is always later. "Remove all my data" on the server is not a reset: the
  * sequence carries on, so the next write is still above every cursor.
  *
- * Limit: the reset is seen at the first push after it, the next time this browser has a change to send; a browser
- * with nothing to send keeps pulling from its old cursors until then (a later server version for that is backlog).
+ * A server that sends `maxSyncVersion` in `GET /api/stats` (2026-09-24) is checked before every push as well
+ * ({@link serverBehind}), so a browser with nothing to send sees the reset too; with an older server the reset is
+ * seen at the first push after it, the next time this browser has a change to send.
  */
 export function serverWasReset(
   sentUpdatedAt: string | null | undefined,
@@ -762,6 +787,19 @@ export function serverWasReset(
   const stored = millis(answer.updatedAt);
   if (sent === 0 || stored === 0 || stored > sent) return false;
   return version <= highestCursor;
+}
+
+/**
+ * True when the server's highest sync version (`maxSyncVersion` from `GET /api/stats`) is below one of this browser's
+ * stored `cursors` (S4b-BL-20; Android: `SyncRules.serverBehind`). A cursor only ever holds a version the server
+ * handed out, and the server's sequence never goes back while it keeps its data (not even after "delete all my
+ * data"), so on a healthy server no cursor is above it. A missing or unreadable value (an older server) is unknown:
+ * false.
+ */
+export function serverBehind(maxSyncVersion: unknown, cursors: readonly number[]): boolean {
+  const highest = wireVersion(maxSyncVersion);
+  if (highest === null) return false;
+  return cursors.some((cursor) => cursor > highest);
 }
 
 /** Two messages say the same thing: the same key and the same parameters. */

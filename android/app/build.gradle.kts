@@ -154,6 +154,8 @@ dependencies {
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
+    // SyncServerResetTest: the repository's sync against a fake server (S4b-BL-20); the engine :shared's tests use.
+    testImplementation(libs.ktor.client.mock)
     // Room's MigrationTestHelper for AppDatabaseMigrationTest (CMP-4 P4a), with the framework SQLite driver.
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.sqlite.framework)

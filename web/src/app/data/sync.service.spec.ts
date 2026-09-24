@@ -8,7 +8,7 @@ import { ConfigService } from '../core/config.service';
 import type { ApiConfig } from '../core/config.service';
 import { Announcer } from '../core/announcer.service';
 import { HouseApiService } from '../core/house-api.service';
-import type { HouseDto, PhotoChangeDto, VisitDto } from '../core/models';
+import type { HouseDto, PhotoChangeDto, StatsDto, VisitDto } from '../core/models';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
 import {
@@ -17,6 +17,7 @@ import {
   SyncService,
   rateLimitWaitMs,
   resumeCursor,
+  serverBehind,
   serverWasReset,
   wireVersion,
 } from './sync.service';
@@ -66,6 +67,10 @@ class FakeApi {
   photoChanges: () => Observable<PhotoChangeDto[]> = () => of([]);
   photoBytes: () => Observable<Blob> = () => of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
 
+  /** `GET /api/stats`; by default an older server's answer, without `maxSyncVersion`. */
+  statsAnswer: () => Observable<StatsDto> = () => of({ houses: 0, shortlisted: 0, rejected: 0, visits: 0, streets: 0 });
+  statsCalls = 0;
+
   readonly since = { house: [] as number[], visit: [] as number[], photo: [] as number[] };
   readonly pushedHouses: HouseDto[] = [];
   readonly pushedVisits: VisitDto[] = [];
@@ -73,6 +78,10 @@ class FakeApi {
   readonly uploadedPhotos: string[] = [];
   readonly fetchedPhotos: string[] = [];
 
+  stats(): Observable<StatsDto> {
+    this.statsCalls++;
+    return this.statsAnswer();
+  }
   housesSince(since: number): Observable<HouseDto[]> {
     this.since.house.push(since);
     return this.houses();
@@ -864,6 +873,74 @@ describe('SyncService', () => {
       expect(api.pushedHouses.map((h) => h.id)).toEqual([HOUSE_ID]);
       expect(api.since.house).toEqual([42]);
       expect(sync.serverResetAt()).toBeNull();
+    });
+
+    /** A server that sends its highest sync version in `GET /api/stats` (2026-09-24). */
+    function statsSay(maxSyncVersion: number | null | undefined): void {
+      api.statsAnswer = () => of({ houses: 0, shortlisted: 0, rejected: 0, visits: 0, streets: 0, maxSyncVersion });
+    }
+
+    it('sees the reset in the stats before any push, with nothing to send, and sends everything again', async () => {
+      await syncedWithRecordedServer();
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      // Restored from a dump taken at version 30, below the house cursor 42; nothing changed in this browser.
+      statsSay(30);
+      api.houses = () => of([]);
+      api.visits = () => of([]);
+      api.photoChanges = () => of([]);
+
+      await sync.syncNow(true);
+
+      expect(api.pushedHouses.map((h) => h.id).sort()).toEqual([HOUSE_ID, VILLA_ID].sort());
+      expect(api.pushedVisits.map((v) => v.id)).toEqual(['0c6f5a2b-7d4e-4b8a-9c1d-3e2f1a0b9c88']);
+      expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
+      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0] });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(sync.serverResetAt()).not.toBeNull();
+      expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
+      expect(sync.lastError()).toBeNull();
+    });
+
+    it('leaves a server whose highest version is at or above the cursors alone', async () => {
+      await syncedWithRecordedServer();
+      statsSay(42);
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      expect(api.statsCalls).toBe(1);
+      expect(api.pushedHouses).toEqual([]);
+      expect(api.since.house).toEqual([42]);
+      expect(sync.serverResetAt()).toBeNull();
+    });
+
+    it('treats stats without maxSyncVersion (an older server), or a failed stats request, as unknown', async () => {
+      await syncedWithRecordedServer();
+      statsSay(undefined);
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      api.statsAnswer = () => throwError(() => new HttpErrorResponse({ status: 500, url: '/api/stats' }));
+      await sync.syncNow(true);
+      expect(api.since.house).toEqual([42, 42]);
+      expect(api.pushedHouses).toEqual([]);
+      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.lastError()).toBeNull();
+    });
+
+    it('does not ask for the stats before anything was pulled', async () => {
+      recordedServer();
+      await sync.syncNow(true);
+      expect(api.statsCalls).toBe(0);
+    });
+
+    it('is decided by serverBehind: the highest version below a stored cursor', () => {
+      expect(serverBehind(0, [42, 17, 8])).toBe(true);
+      expect(serverBehind(30, [42, 17, 8])).toBe(true);
+      expect(serverBehind('30', [42, 17, 8])).toBe(true);
+      expect(serverBehind(42, [42, 17, 8])).toBe(false);
+      expect(serverBehind(0, [0, 0, 0])).toBe(false);
+      // An older server, or a value that cannot be read: unknown.
+      expect(serverBehind(undefined, [42, 17, 8])).toBe(false);
+      expect(serverBehind(null, [42, 17, 8])).toBe(false);
+      expect(serverBehind('many', [42, 17, 8])).toBe(false);
     });
 
     it('is decided by serverWasReset: an accepted write at or below the highest cursor', () => {

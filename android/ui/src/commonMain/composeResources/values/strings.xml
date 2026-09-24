@@ -532,4 +532,6 @@
     <string name="import_write_failed_copy">The import could not be finished, so nothing was added. Check that the phone has free space, then try again.</string>
     <string name="import_stopped">Import stopped. Anything already added stays; import the same file again to finish.</string>
     <string name="import_stopped_copy">Import stopped. Nothing was added.</string>
+    <!-- S4b-BL-20 (2026-09-24): the sync found the server behind this phone (web: data.serverReset). -->
+    <string name="sync_server_reset">Your server seems to have been reset or set back to an older copy. Doorprints is sending everything on this phone to it again and downloading everything from it. Nothing here is lost.</string>
 </resources>

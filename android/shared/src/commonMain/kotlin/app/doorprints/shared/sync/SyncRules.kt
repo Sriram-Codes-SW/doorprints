@@ -46,4 +46,25 @@ object SyncRules {
         deleted: (V) -> Boolean,
         houseId: (V) -> String?,
     ): Pair<List<V>, List<V>> = visits.partition { pushesBeforeHouses(deleted(it), houseId(it)) }
+
+    /**
+     * S4b-BL-20: the server is behind this device (its database was replaced by a new, empty one, or restored from an
+     * older dump) when its highest sync version ([maxSyncVersion], `GET /api/stats`) is below one of the stored pull
+     * [cursors]. A cursor only ever holds a version the server handed out, and the server's sequence never goes back
+     * while it keeps its data (not even after "delete all my data"), so on a healthy server no cursor is above it.
+     * Null (an older server without the field) is unknown: false.
+     */
+    fun serverBehind(maxSyncVersion: Long?, cursors: List<Long>): Boolean =
+        maxSyncVersion != null && cursors.any { it > maxSyncVersion }
+
+    /**
+     * S4b-BL-20, from a push's answer (the web's `serverWasReset`): every accepted write takes a new version above
+     * every cursor on a healthy server, so an accepted write answered with a version at or below [highestCursor]
+     * shows a server that went back. Accepted means the answer's [answerUpdatedAt] is not later than the
+     * [sentUpdatedAt]: when last-write-wins keeps the server's newer row, the server answers with that row, its old
+     * version and a later time, which says nothing. A missing time or version ([answerVersion] 0) is unknown: false.
+     */
+    fun pushShowsReset(sentUpdatedAt: Long, answerUpdatedAt: Long?, answerVersion: Long, highestCursor: Long): Boolean =
+        highestCursor > 0 && answerVersion > 0 && sentUpdatedAt > 0 && answerUpdatedAt != null &&
+            answerUpdatedAt > 0 && answerUpdatedAt <= sentUpdatedAt && answerVersion <= highestCursor
 }
