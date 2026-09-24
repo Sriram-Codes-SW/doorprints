@@ -562,7 +562,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   in both apps (sha256 `25984afa…a024`, kinds `world`, `claim`, `state`; `web.yml` requires all three), with no
   connector-only spur (two had shown into Nepal on the Singalila ridge). Known minors: a small step at each hand-over;
   loops at Sikkim's two tri-junctions (about 13 x 3 km at Nepal-China-India, on glaciers, from about zoom 10; about
-  2 km at Doklam); from zoom 11 the tile line running on past the hand-over at Jomotsangkha (about 9 km) and Longwa
+  2 km at Doklam); from about zoom 10 (a small hook at Jomotsangkha from zoom 9) the tile line running on past the hand-over at Jomotsangkha (about 9 km) and Longwa
   (about 3 km); the India-China rule also hides about 12 km of the China-North Korea line on the Tumen islets
   (harmless for India); while closer
   tiles load, or offline without them, those stretches show no line from zoom 5. Web: 41 spec cases, 463 tests in
