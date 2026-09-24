@@ -1,0 +1,170 @@
+# Android on a real Android runtime (owner request 2026-09-24, "Is there any way you can test the Android APK?"):
+# - emulator: boots an Android emulator on a GitHub Linux runner (KVM, free for public repositories), installs the
+#   debug APK and runs the instrumented smoke tests (app/src/androidTest, docs/06 TC-I-10). Screenshots of each step
+#   and the test report are the artifact android-emulator-results.
+# - firebase-test-lab: the same tests on a Firebase Test Lab device, within the free Spark quota. Only for a push to
+#   main or a manual run, and only when the owner has set it up (docs/07 section 7.4): the variable
+#   FIREBASE_PROJECT_ID and the secrets FIREBASE_WIF_PROVIDER (as for the Hosting deploy) and FTL_SA_EMAIL (a service
+#   account allowed to run Test Lab). Keyless: Workload Identity Federation, no JSON key.
+# Same triggers and path filters as android.yml (the two path lists are identical and must stay that way).
+name: Android emulator
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-emulator.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-emulator.yml"
+  workflow_dispatch:
+    inputs:
+      ftl_device:
+        description: "Firebase Test Lab device (gcloud firebase test android models list)"
+        required: false
+        default: "model=MediumPhone.arm,version=34"
+
+permissions: {}
+
+concurrency:
+  group: android-emulator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  emulator:
+    name: Smoke tests on an emulator (API 34)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # Hardware acceleration for the emulator: GitHub's Linux runners have KVM, but the device node is root-only.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build the APKs
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest
+
+      - name: Run the smoke tests on the emulator
+        uses: ReactiveCircus/android-emulator-runner@c9c93e6ba9c4194322e114c40970d5983d9a07cc # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          working-directory: android
+          script: ./gradlew --no-daemon connectedDebugAndroidTest
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-emulator-results
+          path: |
+            android/app/build/outputs/connected_android_test_additional_output/
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+          retention-days: 14
+
+  ftl-check:
+    name: Firebase Test Lab set up?
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+          WIF: ${{ secrets.FIREBASE_WIF_PROVIDER }}
+          SA: ${{ secrets.FTL_SA_EMAIL }}
+        run: |
+          if [ -n "$PROJECT" ] && [ -n "$WIF" ] && [ -n "$SA" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Firebase Test Lab::Skipped: FIREBASE_PROJECT_ID (variable), FIREBASE_WIF_PROVIDER and FTL_SA_EMAIL (secrets) are not all set (owner setup, docs/07 section 7.4)."
+          fi
+
+  firebase-test-lab:
+    name: Smoke tests in Firebase Test Lab
+    needs: ftl-check
+    if: needs.ftl-check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build the APKs
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.FIREBASE_WIF_PROVIDER }}
+          service_account: ${{ secrets.FTL_SA_EMAIL }}
+          project_id: ${{ vars.FIREBASE_PROJECT_ID }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # One device per run keeps within the free quota (Spark: 10 virtual and 5 physical device runs a day).
+      - name: Run the smoke tests
+        env:
+          PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+          DEVICE: ${{ github.event.inputs.ftl_device || 'model=MediumPhone.arm,version=34' }}
+        run: |
+          set -euo pipefail
+          gcloud firebase test android run \
+            --project "$PROJECT" \
+            --type instrumentation \
+            --app app/build/outputs/apk/debug/app-debug.apk \
+            --test app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --device "$DEVICE" \
+            --timeout 15m \
+            --no-record-video
