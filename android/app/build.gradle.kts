@@ -129,6 +129,8 @@ dependencies {
     // pulls it in; it is empty since Room 2.7, and withTransaction is in room-runtime).
 
     implementation(libs.androidx.work.runtime.ktx)
+    // SettingsStore is common code in :shared since CMP-4 P4b (datastore-preferences-core); :app opens the file with
+    // the Android artifact's preferencesDataStoreFile (data/SettingsStoreFactory.kt).
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.exifinterface)
 
