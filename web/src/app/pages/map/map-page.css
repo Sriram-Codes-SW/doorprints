@@ -227,6 +227,11 @@
     order: -1;
   }
 
+  /* A caption longer than its cell (Tamil at 200% text) wraps and breaks inside it instead of widening the page. */
+  .stats dt {
+    min-width: 0;
+  }
+
   /* The fifth number takes the rest of the second row, so no empty cell shows the grid's divider colour. */
   .stats div:last-child:nth-child(3n + 2) {
     grid-column: span 2;

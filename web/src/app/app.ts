@@ -158,7 +158,9 @@ const NAV_ICONS = {
        * (உள்ளடக்கத்திற்குச்…) was 422px, which made a 360px phone lay the page out 438px wide and zoom it out.
        */
       max-width: calc(100% - 2 * var(--space-2));
-      top: -100px;
+      /* Moved up by its own height, not a fixed 100px: wrapped onto three lines (Tamil at 130%) it showed below that. */
+      top: 0;
+      transform: translateY(-110%);
       z-index: 1000;
       padding: var(--space-2) var(--space-4);
       background: var(--surface);
@@ -169,6 +171,7 @@ const NAV_ICONS = {
     }
     .skip-link:focus {
       top: var(--space-2);
+      transform: none;
     }
     /*
      * Safe areas: index.html asks for viewport-fit=cover with a black-translucent status bar, so an app added to
