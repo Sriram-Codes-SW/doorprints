@@ -227,9 +227,9 @@ OkHttp or MapLibre version, see section 4):
 [README](../ui/README.md)), and item 5 comes with the iOS shell (P8) behind the platform seams of P3.
 
 1. **Room KMP.** Move entities, DAOs and `AppDatabase` to commonMain (Room 2.8 KMP + `androidx.sqlite`
-   bundled driver), keep the file name `doorprints.db` (renamed from `househunt.db` at start by `DatabaseFile`), version 2 and `MIGRATION_1_2`; the exported `2.json` and
-   `RoomSchemaTest` (section 5) must keep passing, and add a migration test that opens a v1/v2 database created by
-   the current app. Then the mappers move too.
+   bundled driver), keep the file name `doorprints.db` (renamed from `househunt.db` at start by `DatabaseFile`),
+   version 2 and `MIGRATION_1_2`; the exported `2.json` and `RoomSchemaTest` (section 5) must keep passing, and add
+   a migration test that opens a v1/v2 database created by the current app. Then the mappers move too.
 2. **DataStore KMP** (`datastore-preferences-core` + okio) for settings and sync cursors; `expect/actual` secret
    storage (Android Keystore today, iOS Keychain).
 3. **`ServerUrl`** as `expect/actual` or a common parser with the existing test cases.

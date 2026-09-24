@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.16 |
+| Version | 0.17 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -28,6 +28,7 @@
 | 0.14 | 2026-09-23 | Claude (Cowork), Docs team | Review fix, §5.2 Cloudflare API token row: "replace the repository secret" now says to replace it where it is stored, preferably the `cloudflare-pages` environment's secrets restricted to `main` ([07](07-secure-build-and-deploy.md) v0.21 §4 and §6.3 step 4). |
 | 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** (Spark plan, no billing account; [03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. §1 components; **§2** new *Web host usage* row (Hosting > Usage: transfer against 360 MB/day or 10 GB/month, storage against 10 GB; there is no budget alert on Spark); **§4** monthly usage check and 10 releases kept, quarterly free-tier terms name Firebase Hosting; **§5.2** the Cloudflare token row becomes the web deploy identity (Workload Identity, nothing to rotate; what to do on suspicion); **§7 IR-5** rewritten for Firebase (a site disabled for quota; moving host); new **IR-10** *Bad web release: roll back* (Firebase console → Hosting → release history → Rollback, no build) and deploy / manual re-run; **§8** release checklist. |
 | 0.16 | 2026-09-24 | Claude (Code), engineer | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **section 11**: what changes for a self-hosted server (the compose database, user, password default and volume are `doorprints`; the MCP tool `askHouseHunt` is `askDoorprints`), that a server which sets `DB_URL`, `DB_USER` and `DB_PASSWORD` is not affected and no environment variable is renamed, and how to carry a local compose database over (dump with the old names, restore into the new one). Section 3: the dump file, schema and age key examples use `doorprints`. |
+| 0.17 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. **§11**: the dump and restore of a local compose database is **mandatory** for a database that clients have synced with; the claim that phones and the web app sync a full copy back to an empty server was false (clients push only changed rows and pull after a stored cursor, so on a new database they silently miss each other's changes; [10](10-sprint-log.md) S4b-BL-20). The steps now use `docker compose up -d --wait db`, say that `pg_restore` reports "already exists" for the PostGIS objects and exits non-zero, count the rows before and after, and give the throwaway-container fallback a build step, a `pg_isready` wait and `docker rm -f old-db`. §6.2: a pre-rename test build is `com.househunt.app` (was `app.doorprints`, a find-and-replace error). The §11 intro rewrapped. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -219,7 +220,7 @@ its photos as missing from the file. A full export for migration is the encrypte
 | One house | Delete it in the app (or `DELETE /api/houses/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
-| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `app.doorprints`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
+| Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
 
 Third-party contact data (landlord/agent phone numbers) is removed with the house. If a third party asks you to delete their details, use the "one house" or field-level update (set `contact_name`/`contact_phone` to null through the app so it syncs).
 
@@ -445,7 +446,8 @@ feature keep working). Owner: the product owner. Step by step for the AI part: [
 
 ## 11. Upgrading a self-hosted server to the Doorprints names (2026-09-24)
 
-On 2026-09-24 the last House Hunt names in the server were renamed ([03](03-design.md) ADR-24, [CHANGELOG](../CHANGELOG.md)).
+On 2026-09-24 the last House Hunt names in the server were renamed ([03](03-design.md) ADR-24,
+[CHANGELOG](../CHANGELOG.md)).
 There is no public server yet, so this is documented rather than made backward compatible. **Breaking for a local
 `docker compose` database; nothing else changes for a server configured through its environment.**
 
@@ -460,24 +462,50 @@ There is no public server yet, so this is documented rather than made backward c
 | Maven coordinates, Java packages | `com.househunt:house-hunt-api`, `com.househunt.*` | `app.doorprints:doorprints-api`, `app.doorprints.server.*` | Nothing (the image copies `target/*.jar`); log filters that match on the logger name `com.househunt` change to `app.doorprints.server` |
 | Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same |
 
-**Carry a local compose database over** (only needed for data you want to keep; the phones and the web app keep
-their own full copy and sync it back to an empty server anyway, ADR-04):
+**Carry a local compose database over: mandatory** for a server that phones or the web app have synced with. Do
+not start the new, empty database in its place. The clients do not send everything again to an empty server: each
+pushes only the rows changed on it since its last sync, and pulls only changes after the cursor it stored for that
+server (the highest `syncVersion` it has seen), which is never reset while the server's address stays the same. A new
+database starts `sync_seq` at 1, so the old houses are not on the server, and every device silently skips the other
+devices' new changes until the sequence passes its cursor: no error is shown. The dump carries the rows and
+`sync_seq`'s position over, so the stored cursors stay valid. (Detecting a reset server on the clients is backlog
+[10](10-sprint-log.md) S4b-BL-20.) Only a database that no device has ever synced with can be left behind.
 
 ```bash
 # 1. With the checkout still on the old compose file (before pulling this change): dump the old database.
-docker compose up -d db
+docker compose up -d --wait db
 docker compose exec -T db pg_dump -Fc --no-owner --no-privileges -U househunt -d househunt > househunt.dump
+docker compose exec -T db psql -U househunt -d househunt -c 'select count(*) from house'   # note the number
 docker compose down
 # 2. Pull the change and start only the new, empty database (it creates the doorprints user and database).
-docker compose up -d db
-# 3. Restore. Flyway's history table comes along, so the API sees the schema as already migrated.
+#    Not the API yet: Flyway would create empty tables and the restore would clash with them.
+docker compose up -d --wait db
+# 3. Restore. Flyway's history table and sync_seq's position come along, so the API sees the schema as migrated.
+#    pg_restore prints "already exists" errors for the PostGIS extensions and the topology and tiger objects the
+#    image created, and exits non-zero: expected (a script with `set -e` stops here; run it on its own line).
 docker compose exec -T db pg_restore --no-owner --no-privileges -U doorprints -d doorprints < househunt.dump
-# 4. Start the API and check it.
+# 4. Check the rows arrived: the same number as in step 1.
+docker compose exec db psql -U doorprints -d doorprints -c 'select count(*) from house'
+# 5. Start the API and check it.
 docker compose up -d api
 curl -H "X-API-Key: $APP_API_KEY" http://127.0.0.1:8080/api/stats
 ```
 
-If the old compose file is gone already, the old volume can still be read: start a throwaway container on it
-(`docker run -d --name old-db -v <project>_dbdata18:/var/lib/postgresql -e POSTGRES_PASSWORD=x doorprints-db:pg18`)
-and dump with `docker exec old-db pg_dump -Fc --no-owner --no-privileges -U househunt -d househunt > househunt.dump`.
+Any error in step 3 other than "already exists" (for example a missing role or a failed `COPY`) means the restore is
+incomplete: fix it before step 5. If the API was started on the new database before the restore, stop everything
+(`docker compose down`), remove the new volume (`docker volume rm <project>_doorprints-pgdata18`) and start again at
+step 2.
+
+If the old compose file is gone already, the old volume can still be read with a throwaway container. Build the
+image first (`docker compose build db`, which tags `doorprints-db:pg18`), then:
+
+```bash
+docker run -d --name old-db -v <project>_dbdata18:/var/lib/postgresql -e POSTGRES_PASSWORD=x doorprints-db:pg18
+until docker exec old-db pg_isready -U househunt -d househunt; do sleep 1; done
+docker exec old-db pg_dump -Fc --no-owner --no-privileges -U househunt -d househunt > househunt.dump
+docker exec old-db psql -U househunt -d househunt -c 'select count(*) from house'   # note the number
+docker rm -f old-db
+```
+
+and continue with steps 2 to 5 above.
 
