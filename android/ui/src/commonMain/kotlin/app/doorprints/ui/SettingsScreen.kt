@@ -57,12 +57,19 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 
+/**
+ * The outcome in the current language. After a server reset (S4b-BL-20, [SyncOutcome.serverReset]) the sentence that
+ * says so comes first ("Your server seems to have been reset…", the web's `data.serverReset`), then the counts.
+ */
 @Composable
 fun SyncOutcome.text(): String = when (kind) {
-    SyncOutcome.Kind.OK -> if (photosWaiting > 0) {
-        stringResource(Res.string.sync_ok_photos_waiting, pushed, pulled, photosWaiting)
-    } else {
-        stringResource(Res.string.sync_ok, pushed, pulled)
+    SyncOutcome.Kind.OK -> {
+        val counts = if (photosWaiting > 0) {
+            stringResource(Res.string.sync_ok_photos_waiting, pushed, pulled, photosWaiting)
+        } else {
+            stringResource(Res.string.sync_ok, pushed, pulled)
+        }
+        if (serverReset) stringResource(Res.string.sync_server_reset) + " " + counts else counts
     }
     SyncOutcome.Kind.NOT_CONFIGURED -> stringResource(Res.string.sync_not_configured)
     SyncOutcome.Kind.NETWORK -> stringResource(Res.string.sync_err_network)

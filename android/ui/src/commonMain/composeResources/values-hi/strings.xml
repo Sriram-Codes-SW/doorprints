@@ -531,4 +531,6 @@
     <string name="import_write_failed_copy">आयात पूरा नहीं हो सका, इसलिए कुछ भी नहीं जोड़ा गया। देखें कि फ़ोन में खाली जगह है, फिर दोबारा कोशिश करें।</string>
     <string name="import_stopped">आयात रोक दिया गया। जो जुड़ चुका है वह रहेगा; पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
     <string name="import_stopped_copy">आयात रोक दिया गया। कुछ भी नहीं जोड़ा गया।</string>
+    <!-- S4b-BL-20 (2026-09-24): under review (the web's data.serverReset, "this browser" as "this phone"). -->
+    <string name="sync_server_reset">लगता है आपका सर्वर रीसेट हो गया है या किसी पुरानी कॉपी पर लौटा दिया गया है। Doorprints इस फ़ोन की हर चीज़ उसे फिर से भेज रहा है और उस पर मौजूद सब कुछ फिर से डाउनलोड कर रहा है। यहाँ कुछ भी नहीं खोया है।</string>
 </resources>

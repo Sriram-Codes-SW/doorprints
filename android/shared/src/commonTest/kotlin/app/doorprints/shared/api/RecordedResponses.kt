@@ -12,6 +12,10 @@ package app.doorprints.shared.api
 object RecordedResponses {
     const val STATS = """{"houses":12,"shortlisted":3,"rejected":2,"visits":27,"streets":9}"""
 
+    /** The same from a server with S4b-BL-20 (2026-09-24): the highest sync version it has handed out. */
+    const val STATS_WITH_MAX_VERSION =
+        """{"houses":12,"shortlisted":3,"rejected":2,"visits":27,"streets":9,"maxSyncVersion":418}"""
+
     const val HOUSES_SINCE = """[
   {"id":"5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10","label":"2BHK near Indiranagar metro","address":"12, 5th Cross, HAL 2nd Stage, Indiranagar, Bengaluru","street":"5th Cross","locality":"Indiranagar","lat":12.978321,"lon":77.640812,"status":"SHORTLISTED","price":32000,"priceType":"RENT","bedrooms":2,"rating":4,"contactName":null,"contactPhone":null,"listingUrl":"https://example.com/listing/123","notes":"Water 24x7, lift, 1 covered parking","checklist":{"water":5,"parking":4,"noise":2},"createdAt":"2026-09-20T08:30:12.345678Z","updatedAt":"2026-09-21T17:02:44.901234Z","deleted":false,"syncVersion":41,"distanceMeters":null},
   {"id":"9e7c2a44-1b3f-4f0e-8a77-2c5d9e0f1a22","label":"Old villa","address":null,"street":null,"locality":null,"lat":12.9352,"lon":77.6245,"status":"ARCHIVED","price":null,"priceType":null,"bedrooms":null,"rating":null,"contactName":null,"contactPhone":null,"listingUrl":null,"notes":null,"checklist":{},"createdAt":"2026-09-01T10:00:00Z","updatedAt":"2026-09-22T06:15:00Z","deleted":true,"syncVersion":42,"distanceMeters":null}

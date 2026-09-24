@@ -230,6 +230,16 @@ class SettingsStore(
     suspend fun savePhotoCursor(photo: Long) = dataStore.edit { it[Keys.photoCursor] = photo }
 
     /**
+     * Back to a full download (S4b-BL-20): the server was found behind this phone. The caller marks every row for
+     * upload first, so a sync cut off in between finds the server behind again on its next run.
+     */
+    suspend fun resetCursors() = dataStore.edit {
+        it[Keys.houseCursor] = 0
+        it[Keys.visitCursor] = 0
+        it[Keys.photoCursor] = 0
+    }
+
+    /**
      * Turns the weekly backup on or off. [folder] is the persisted `content://` tree from `OpenDocumentTree`;
      * a blank one always means "off", because there would be nowhere to write.
      *

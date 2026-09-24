@@ -64,6 +64,11 @@ export interface StatsDto {
   rejected: number;
   visits: number;
   streets: number;
+  /**
+   * The highest sync version the server has handed out (S4b-BL-20, added to the backend on 2026-09-24). Absent from
+   * an older server and from this browser's own count (`LocalStore.stats`): unknown, so no reset is read from it.
+   */
+  maxSyncVersion?: number | null;
 }
 
 export interface ChecklistItem {

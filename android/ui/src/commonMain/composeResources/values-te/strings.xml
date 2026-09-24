@@ -531,4 +531,6 @@
     <string name="import_write_failed_copy">దిగుమతి పూర్తి కాలేదు, కాబట్టి ఏదీ జోడించబడలేదు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, మళ్లీ ప్రయత్నించండి.</string>
     <string name="import_stopped">దిగుమతి ఆపేశాం. ఇప్పటికే చేరినవి అలాగే ఉంటాయి; పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
     <string name="import_stopped_copy">దిగుమతి ఆపేశాం. ఏదీ జోడించబడలేదు.</string>
+    <!-- S4b-BL-20 (2026-09-24): under review (the web's data.serverReset, "this browser" as "this phone"). -->
+    <string name="sync_server_reset">మీ సర్వర్ రీసెట్ అయినట్లు లేదా పాత కాపీకి తిరిగి వెళ్లినట్లు కనిపిస్తోంది. Doorprints ఈ ఫోన్‌లోని ప్రతిదాన్నీ దానికి మళ్లీ పంపుతోంది, దానిలోని ప్రతిదాన్నీ మళ్లీ డౌన్‌లోడ్ చేస్తోంది. ఇక్కడ ఏదీ పోలేదు.</string>
 </resources>

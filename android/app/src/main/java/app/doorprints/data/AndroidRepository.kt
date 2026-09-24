@@ -14,6 +14,7 @@ import app.doorprints.data.Repository.StreetInfo
 import app.doorprints.data.Repository.UndoResult
 import app.doorprints.export.CopyUndo
 import app.doorprints.shared.api.ApiClient
+import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
@@ -51,6 +52,8 @@ class AndroidRepository(
     private val context: Context,
     private val db: AppDatabase,
     override val settings: SettingsStore,
+    /** The API client for a server address and key: the app-wide HTTP stack ([Api.client]); a test's fake engine. */
+    private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient = Api::client,
 ) : Repository {
     override val houses = db.houses().observeAll()
     override val visitCounts = db.visits().observeCounts()
@@ -192,52 +195,47 @@ class AndroidRepository(
      * Two-way sync: push local changes, then pull everything the server has changed since last time.
      * Conflicts are "last edit wins" (by updatedAt), on both sides. Houses and visits always sync; photo transfers
      * only when [photosAllowed] (the caller checks for an unmetered network when the user asked for Wi-Fi only).
-     * Throws on failure; see [SyncOutcome.fromError].
+     * A server found behind this phone (S4b-BL-20: its highest version below a stored cursor, or a push answered
+     * with a version at or below one) gets everything again and is pulled from 0, and the outcome says so
+     * ([SyncOutcome.serverReset]). Throws on failure; see [SyncOutcome.fromError].
      */
     override suspend fun sync(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
         if (!s.serverConfigured) return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
-        val api = Api.client(s.serverUrl, s.apiKey)
+        val api = apiFor(s.serverUrl, s.apiKey)
 
-        var pushed = 0
-        // Visit tombstones without a house go first, before any house tombstone can make the server unlink (and
-        // re-stamp) them; see SyncRules.pushesBeforeHouses (Android review, round 17). The houses are read BEFORE the
-        // visits: an undo writes its house and visit tombstones in one transaction, so every house tombstone this
-        // sync pushes has its visit tombstones in the list read after it, even when the undo lands mid-sync.
-        val dirtyHouses = db.houses().dirty()
-        val (visitsFirst, visitsAfter) =
-            SyncRules.visitsByPushOrder(db.visits().dirty(), { it.deleted }, { it.houseId })
-        for (v in visitsFirst) {
-            api.putVisit(v.toDto()); db.visits().markClean(v.id, v.updatedAt); pushed++
-        }
-        for (h in dirtyHouses) {
-            api.putHouse(h.toDto()); db.houses().markClean(h.id, h.updatedAt); pushed++
-        }
-        for (v in visitsAfter) {
-            api.putVisit(v.toDto()); db.visits().markClean(v.id, v.updatedAt); pushed++
-        }
-        // Deletes are tiny, so they go out on any network.
-        for (p in db.photos().pendingDelete()) {
-            api.deletePhoto(p.id); db.photos().delete(p.id); pushed++
-        }
-        var photosWaiting = 0
-        for (p in db.photos().pendingUpload()) {
-            val file = File(p.path)
-            if (!file.exists() || db.houses().get(p.houseId)?.deleted != false) continue
-            if (!photosAllowed) {
-                photosWaiting++; continue
+        // S4b-BL-20: a server whose database was replaced (a new, empty one; a restore from an older dump) is behind
+        // the stored cursors. Its highest version (GET /api/stats, maxSyncVersion; null from an older server, which
+        // is unknown) below a cursor means it lost what this phone sent and hides changes below the cursors, so
+        // everything goes again and the pull starts from 0. A push answer can show the same ([pushAll]).
+        val stored = settings.cursors()
+        val storedCursors = listOf(stored.house, stored.visit, stored.photo)
+        var serverReset = false
+        if (storedCursors.any { it > 0 }) {
+            val highest = try {
+                api.stats().maxSyncVersion
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null // Unknown; a real failure shows in the push that follows.
             }
-            try {
-                // Streamed from the file, not read into memory; each (re)try opens the file again.
-                api.uploadPhoto(p.houseId, p.id, file.name, file.length()) { file.inputStream().asSource().buffered() }
-            } catch (e: ApiException) {
-                // Permanent rejections (not an image, too big, over the per-house limit) would fail on every sync;
-                // keep the photo on this phone only and move on. Anything else (5xx, auth) aborts the sync.
-                if (e.kind != ApiException.Kind.CLIENT && e.kind != ApiException.Kind.CONFLICT &&
-                    e.kind != ApiException.Kind.NOT_FOUND
-                ) throw e
+            if (SyncRules.serverBehind(highest, storedCursors)) {
+                resetForServer()
+                serverReset = true
             }
-            db.photos().upsert(p.copy(uploaded = true)); pushed++
+        }
+        var pushed: Int
+        var photosWaiting: Int
+        try {
+            val first = pushAll(api, photosAllowed, if (serverReset) 0L else storedCursors.max())
+            pushed = first.first
+            photosWaiting = first.second
+        } catch (e: ServerWasReset) {
+            resetForServer()
+            serverReset = true
+            val again = pushAll(api, photosAllowed, highestCursor = 0L)
+            pushed = e.pushed + again.first
+            photosWaiting = again.second
         }
 
         val cursors = settings.cursors()
@@ -286,7 +284,85 @@ class AndroidRepository(
         }
         settings.savePhotoCursor(photoCursor)
 
-        SyncOutcome(SyncOutcome.Kind.OK, pushed = pushed, pulled = pulled, photosWaiting = photosWaiting)
+        SyncOutcome(
+            SyncOutcome.Kind.OK, pushed = pushed, pulled = pulled, photosWaiting = photosWaiting,
+            serverReset = serverReset,
+        )
+    }
+
+    /** Thrown by [pushAll] when a push answer shows the server behind this phone; [pushed] rows went before it. */
+    private class ServerWasReset(val pushed: Int) : Exception()
+
+    /**
+     * Marks every house and visit for upload and every live photo for upload again, then resets the pull cursors
+     * (S4b-BL-20). Rows first: a sync cut off in between finds the server behind again on its next run, instead of
+     * leaving rows marked clean that the server does not have.
+     */
+    private suspend fun resetForServer() {
+        db.houses().markAllDirty()
+        db.visits().markAllDirty()
+        db.photos().markAllForUpload()
+        settings.resetCursors()
+    }
+
+    /**
+     * Pushes local changes: visit tombstones without a house, houses, the other visits, photo deletes, photo uploads.
+     * Returns the rows pushed and the photos left waiting for Wi-Fi. With a [highestCursor] above 0, an accepted
+     * house or visit write answered with a version at or below it ([SyncRules.pushShowsReset]) stops the push with
+     * [ServerWasReset].
+     */
+    private suspend fun pushAll(api: ApiClient, photosAllowed: Boolean, highestCursor: Long): Pair<Int, Int> {
+        var pushed = 0
+        fun check(sentUpdatedAt: Long, answerUpdatedAt: String?, answerVersion: Long) {
+            val at = answerUpdatedAt?.let { runCatching { IsoTime.parseMillis(it) }.getOrNull() }
+            if (SyncRules.pushShowsReset(sentUpdatedAt, at, answerVersion, highestCursor)) throw ServerWasReset(pushed)
+        }
+        // Visit tombstones without a house go first, before any house tombstone can make the server unlink (and
+        // re-stamp) them; see SyncRules.pushesBeforeHouses (Android review, round 17). The houses are read BEFORE the
+        // visits: an undo writes its house and visit tombstones in one transaction, so every house tombstone this
+        // sync pushes has its visit tombstones in the list read after it, even when the undo lands mid-sync.
+        val dirtyHouses = db.houses().dirty()
+        val (visitsFirst, visitsAfter) =
+            SyncRules.visitsByPushOrder(db.visits().dirty(), { it.deleted }, { it.houseId })
+        for (v in visitsFirst) {
+            val answer = api.putVisit(v.toDto())
+            check(v.updatedAt, answer.updatedAt, answer.syncVersion)
+            db.visits().markClean(v.id, v.updatedAt); pushed++
+        }
+        for (h in dirtyHouses) {
+            val answer = api.putHouse(h.toDto())
+            check(h.updatedAt, answer.updatedAt, answer.syncVersion)
+            db.houses().markClean(h.id, h.updatedAt); pushed++
+        }
+        for (v in visitsAfter) {
+            val answer = api.putVisit(v.toDto())
+            check(v.updatedAt, answer.updatedAt, answer.syncVersion)
+            db.visits().markClean(v.id, v.updatedAt); pushed++
+        }
+        // Deletes are tiny, so they go out on any network.
+        for (p in db.photos().pendingDelete()) {
+            api.deletePhoto(p.id); db.photos().delete(p.id); pushed++
+        }
+        var photosWaiting = 0
+        for (p in db.photos().pendingUpload()) {
+            val file = File(p.path)
+            if (!file.exists() || db.houses().get(p.houseId)?.deleted != false) continue
+            if (!photosAllowed) {
+                photosWaiting++; continue
+            }
+            try {
+                // Streamed from the file, not read into memory; each (re)try opens the file again.
+                api.uploadPhoto(p.houseId, p.id, file.name, file.length()) { file.inputStream().asSource().buffered() }
+            } catch (e: ApiException) {
+                // Permanent rejections (not an image, too big, over the per-house limit) would fail on every sync;
+                // keep the photo on this phone only and move on. Anything else (5xx, auth) aborts the sync.
+                if (e.kind != ApiException.Kind.CLIENT && e.kind != ApiException.Kind.CONFLICT &&
+                    e.kind != ApiException.Kind.NOT_FOUND
+                ) throw e
+            }
+            db.photos().upsert(p.copy(uploaded = true)); pushed++
+        }
+        return pushed to photosWaiting
     }
 
     // ---- Offline copy: export and import (Sprint 4a, S4-02/S4-04) ----
