@@ -151,6 +151,9 @@ dependencies {
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
+    // Room's MigrationTestHelper for AppDatabaseMigrationTest (CMP-4 P4a), with the framework SQLite driver.
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.sqlite.framework)
     debugImplementation(libs.compose.ui.test.manifest)
     // Instrumented smoke tests (docs/06 TC-I-35), run on an emulator by android-emulator.yml.
     androidTestImplementation(platform(libs.compose.bom))
