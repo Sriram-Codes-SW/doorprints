@@ -62,6 +62,9 @@ kotlin {
             // permission prompts (rememberLauncherForActivityResult); since CMP-6 the house form's BackHandler.
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
+            // The Map's view (CMP-7, PlatformMap.android.kt, MapLibreStyleOps): MapLibre Native, the OpenGL ES build
+            // :app already used (the catalog's maplibre-android).
+            implementation(libs.maplibre.android)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

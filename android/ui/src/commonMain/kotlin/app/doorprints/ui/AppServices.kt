@@ -6,7 +6,9 @@ import app.doorprints.data.Repository
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import kotlinx.coroutines.CoroutineScope
+import app.doorprints.location.HuntState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * What the common screens need from the app around them (ADR-23 CMP-5), as opposed to the operating system's
@@ -46,6 +48,9 @@ interface AppServices {
 
     /** The Import screen's picker, staging and preview, and background import (CMP-6 P6b). */
     val importScreen: ImportServices
+
+    /** The Map's Hunt mode, its notification check and the system's motion and font settings (CMP-7). */
+    val mapScreen: MapServices
 
     /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
@@ -143,6 +148,48 @@ interface SettingsServices {
 
     /** The installed version name ("0.1.0"), or null. */
     fun appVersion(): String?
+}
+
+/**
+ * What the Map needs from the app around it (ADR-23 CMP-7), besides the map view itself ([PlatformMap]) and the
+ * location ([AppServices.location]): Hunt mode (Android: `HuntService`, a foreground service), whether its alerts can
+ * reach the user, and two system settings the Map reads again on every resume. Android: `AndroidMapServices` in `:app`,
+ * with the code `MapScreen` called before it moved to `:ui`.
+ */
+interface MapServices {
+    /** Hunt mode's live state (the background service writes it, the Hunt card reads it). */
+    val hunt: StateFlow<HuntState.State>
+
+    /**
+     * Starts Hunt mode; false without starting when the location permission is missing (revoked since the Map last
+     * checked) or the system refuses the start.
+     */
+    fun startHunt(): Boolean
+
+    /** The user turned Hunt mode off. */
+    fun stopHunt()
+
+    /** Closes the "Hunt mode stopped because…" card. */
+    fun clearHuntStopReason()
+
+    /**
+     * True when a Hunt mode alert can reach the user (Android: the app may post, its notifications are on, and the
+     * Alerts channel is not silenced).
+     */
+    fun notificationsReachUser(): Boolean
+
+    /**
+     * Returns what the Hunt card's *Allow notifications* does: the system's notification prompt while it can still be
+     * shown, otherwise the app's notification settings. [onAnswered] runs after the prompt's answer.
+     */
+    @Composable
+    fun rememberAllowNotifications(onAnswered: () -> Unit): () -> Unit
+
+    /** True under *Remove animations* (Android: animator duration scale 0): camera moves then jump. */
+    fun animationsOff(): Boolean
+
+    /** The system font scale now, for the house names on the map (read again on every resume). */
+    fun fontScale(): Float
 }
 
 /**

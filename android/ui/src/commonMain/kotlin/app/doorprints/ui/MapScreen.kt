@@ -1,18 +1,5 @@
 package app.doorprints.ui
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.app.NotificationManager
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.graphics.RectF
-import android.os.Build
-import android.os.Bundle
-import android.os.SystemClock
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -30,7 +17,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,10 +29,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -60,58 +44,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import app.doorprints.Notifications
 import app.doorprints.data.HouseEntity
-import app.doorprints.location.HuntService
 import app.doorprints.location.HuntState
 import app.doorprints.ui.res.*
-import kotlin.math.hypot
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
-import org.json.JSONArray
-import org.json.JSONObject
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.camera.CameraUpdateFactory
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.modes.RenderMode
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.CircleLayer
-import org.maplibre.android.style.layers.PropertyFactory
-import org.maplibre.android.style.layers.SymbolLayer
-import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.geojson.Point
-
-/**
- * Free vector map tiles from OpenFreeMap (OpenStreetMap data) — no API key or billing needed. Every load of it goes
- * through [applyIndiaView] (India's boundary as the Government of India shows it; IndiaViewRules), so any new place
- * that loads a style must call it too.
- */
-const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
-
-private const val SOURCE = "houses"
-private const val DOTS = "houses-dots"
-private const val LABELS = "houses-labels"
 
 /** How long *Save house here* and *My location* wait for a GPS fix before giving up. */
 private const val LOCATE_TIMEOUT_MS = 15_000L
@@ -119,62 +62,14 @@ private const val LOCATE_TIMEOUT_MS = 15_000L
 /** A fix older than this makes Hunt mode's card say it is waiting for GPS. */
 private const val STALE_FIX_MS = 120_000L
 
-fun housesGeoJson(houses: List<HouseEntity>): String {
-    val features = JSONArray()
-    houses.forEach { h ->
-        features.put(
-            JSONObject()
-                .put("type", "Feature")
-                .put("geometry", JSONObject().put("type", "Point").put("coordinates", JSONArray().put(h.lon).put(h.lat)))
-                .put(
-                    "properties",
-                    JSONObject().put("id", h.id).put("label", h.label).put("status", h.status.name)
-                        // For the label layer's Indic filter (MAP_LABELS_SHOW_INDIC, device check 21 (d)).
-                        .put("indic", hasIndicScript(h.label)),
-                )
-        )
-    }
-    return JSONObject().put("type", "FeatureCollection").put("features", features).toString()
-}
-
-/**
- * A current location fix, or null. The phone's last known location stands in only when it is under two minutes old
- * and accurate to [HuntService.MAX_ACCURACY_M] ([lastFixUsable]; UX review, whole-app audit): a fix of any age put a
- * house in the wrong place for good. Null makes the caller say it is waiting for GPS.
- *
- * Returns on the main thread: Play services completes its tasks on a Binder thread, and callers move the MapLibre
- * camera next, which throws off the main thread (found by the emulator smoke test, docs/06 TC-I-35, under the test's
- * coroutine interceptor, which does not switch back the way the app's main dispatcher does).
- * Callers may touch main-thread-only APIs (MapLibre, snapshot state) right after this returns.
- */
-suspend fun currentLocation(context: Context): Pair<Double, Double>? =
-    withContext(Dispatchers.Main.immediate) { lookUpLocation(context) }
-
-@SuppressLint("MissingPermission")
-private suspend fun lookUpLocation(context: Context): Pair<Double, Double>? {
-    if (!hasLocationPermission(context)) return null
-    val client = LocationServices.getFusedLocationProviderClient(context)
-    val fresh = runCatching { client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await() }.getOrNull()
-    if (fresh != null) return fresh.latitude to fresh.longitude
-    val last = runCatching { client.lastLocation.await() }.getOrNull() ?: return null
-    val ageMs = (SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000L
-    val accuracy = if (last.hasAccuracy()) last.accuracy else null
-    return if (lastFixUsable(ageMs, accuracy, HuntService.MAX_ACCURACY_M)) last.latitude to last.longitude else null
-}
-
-/** The map's camera, kept in saved state so the map comes back where the user left it. */
-private data class CameraSpot(val lat: Double, val lon: Double, val zoom: Double, val bearing: Double)
-
-private val CameraSpotSaver = Saver<CameraSpot?, DoubleArray>(
-    save = { it?.let { c -> doubleArrayOf(c.lat, c.lon, c.zoom, c.bearing) } },
-    restore = { a -> if (a.size == 4) CameraSpot(a[0], a[1], a[2], a[3]) else null },
-)
-
 /** What to do once the location permission has been granted. */
 private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION }
 
 /**
- * The map.
+ * The map. Common since CMP-7 (ADR-23; was `:app`'s `MapScreen`): this is the chrome (the Hunt card, the notes, the
+ * controls, the legend, the snackbar and the camera's saved state); the map view itself is [PlatformMap] (Android:
+ * MapLibre's `MapView`, with India's boundary through [applyIndiaView]), and Hunt mode, the notification check and the
+ * system's motion and font settings come from [MapServices].
  *
  * [showAddTip] is set when the user came here from the empty house list's **Add a house on the map** (UX review,
  * round 15). The map then says how to add a house in a [Snackbar], which `SnackbarHost` announces as a polite live
@@ -279,9 +174,10 @@ fun MapScreen(
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val platform = LocalPlatformServices.current
-    val repo = repository()
+    val services = LocalAppServices.current
+    val mapServices = services.mapScreen
+    val repo = services.repository
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val addTip = stringResource(Res.string.map_add_tip)
@@ -295,7 +191,7 @@ fun MapScreen(
     LaunchedEffect(showAddTip) {
         if (showAddTip) {
             onAddTipShown()
-            val tip = if (platform.isScreenReaderOn() || !hasLocationPermission(context)) addTipA11y else addTip
+            val tip = if (platform.isScreenReaderOn() || !hasPreciseLocation(platform)) addTipA11y else addTip
             // In the screen's scope, not this effect's: clearing the flag restarts this effect, which must not
             // cancel the snackbar it has just shown.
             scope.launch { snackbar.showSnackbar(tip, withDismissAction = true, duration = SnackbarDuration.Long) }
@@ -310,9 +206,11 @@ fun MapScreen(
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
     val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
     val houses = loadedHouses.orEmpty()
-    val hunt by HuntState.state.collectAsStateWithLifecycle()
-    var map by remember { mutableStateOf<MapLibreMap?>(null) }
-    var style by remember { mutableStateOf<Style?>(null) }
+    val hunt by mapServices.hunt.collectAsStateWithLifecycle()
+    var map by remember { mutableStateOf<MapControl?>(null) }
+    // How many times the base style has loaded (0: not yet): the effects that follow a style load key on it, as they
+    // keyed on MapLibre's Style object before CMP-7.
+    var styleLoads by remember { mutableIntStateOf(0) }
     var mapFailed by remember { mutableStateOf(false) }
     var camera by rememberSaveable(stateSaver = CameraSpotSaver) { mutableStateOf<CameraSpot?>(null) }
     // False until the map has been placed once: by the first framing, a restored camera, or the user moving it. Until
@@ -325,16 +223,14 @@ fun MapScreen(
     // Whether location was asked, and whether Android will still ask, is shared with the house form and the Assistant
     // (LocationPermission.kt) and recomputed after every answer, not during composition.
     val locationAsk = rememberLocationAsk()
-    var permissionGranted by remember { mutableStateOf(hasLocationPermission(context)) }
-    var notificationsReach by remember { mutableStateOf(notificationsReachUser(context)) }
-    // After a refusal Android may stop showing its prompt; then *Allow notifications* opens the settings instead.
-    var notificationsRefused by rememberSaveable { mutableStateOf(false) }
+    var permissionGranted by remember { mutableStateOf(hasPreciseLocation(platform)) }
+    var notificationsReach by remember { mutableStateOf(mapServices.notificationsReachUser()) }
     // Under *Remove animations* the camera jumps; read again on resume, so the setting counts when the user is back.
-    var noAnimations by remember { mutableStateOf(animationsOff(context)) }
+    var noAnimations by remember { mutableStateOf(mapServices.animationsOff()) }
     LifecycleResumeEffect(Unit) {
-        permissionGranted = hasLocationPermission(context)
-        notificationsReach = notificationsReachUser(context)
-        noAnimations = animationsOff(context)
+        permissionGranted = hasPreciseLocation(platform)
+        notificationsReach = mapServices.notificationsReachUser()
+        noAnimations = mapServices.animationsOff()
         onPauseOrDispose { }
     }
     // A refusal is said once, by the Hunt card's note with its next step (round 5): no snackbar. The note is hidden
@@ -381,13 +277,13 @@ fun MapScreen(
                 // Long, as it carries an action (M3): time to read it and reach *Open settings*.
                 duration = SnackbarDuration.Long,
             )
-            if (result == SnackbarResult.ActionPerformed) openAppSettings(context)
+            if (result == SnackbarResult.ActionPerformed) platform.openAppSettings()
         }
     }
     var afterGrant by remember { mutableStateOf<AfterGrant?>(null) }
     var grantedFor by remember { mutableStateOf<AfterGrant?>(null) }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
-        permissionGranted = hasLocationPermission(context)
+    val requestLocation = rememberLocationPermissionRequest {
+        permissionGranted = hasPreciseLocation(platform)
         locationAsk.refresh()
         asking = false
         val next = afterGrant
@@ -412,7 +308,7 @@ fun MapScreen(
                 afterGrant = next
                 asking = true
                 locationAsk.markAsked()
-                permissionLauncher.launch(LOCATION_PERMISSIONS)
+                requestLocation()
             }
             LocationStart.SHOW_NOTE -> {
                 revealLocationNote(focus = true)
@@ -422,20 +318,9 @@ fun MapScreen(
         return true
     }
 
-    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        notificationsReach = notificationsReachUser(context)
-        if (!granted) notificationsRefused = true
-    }
-    fun allowNotifications() {
-        if (Build.VERSION.SDK_INT >= 33 && !Notifications.canPost(context) && !notificationsRefused) {
-            try {
-                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return
-            } catch (_: ActivityNotFoundException) {
-                // Fall through to the settings screen.
-            }
-        }
-        openNotificationSettings(context)
+    // *Allow notifications*: the system's prompt while it will still show, otherwise the notification settings.
+    val allowNotifications = mapServices.rememberAllowNotifications {
+        notificationsReach = mapServices.notificationsReachUser()
     }
     // Notifications are asked for in context, when Hunt mode is turned on; Hunt mode starts whatever the answer.
     val notifyAsk = rememberNotificationAsk(rationale = Res.string.map_hunt_notify_rationale)
@@ -444,11 +329,11 @@ fun MapScreen(
         if (needsLocation(AfterGrant.HUNT)) return
         notifyAsk {
             // start() returns false when the permission was revoked since this screen last checked.
-            if (!HuntService.start(context)) {
-                permissionGranted = hasLocationPermission(context)
+            if (!mapServices.startHunt()) {
+                permissionGranted = hasPreciseLocation(platform)
                 scope.launch { snackbar.showSnackbar(locationNeeded, withDismissAction = true) }
             }
-            notificationsReach = notificationsReachUser(context)
+            notificationsReach = mapServices.notificationsReachUser()
         }
     }
 
@@ -463,7 +348,7 @@ fun MapScreen(
             snackbar.currentSnackbarData?.dismiss()
             val finding = launch { snackbar.showSnackbar(findingText, duration = SnackbarDuration.Indefinite) }
             val here = try {
-                withTimeoutOrNull(LOCATE_TIMEOUT_MS) { currentLocation(context) }
+                withTimeoutOrNull(LOCATE_TIMEOUT_MS) { services.location.current() }
             } finally {
                 finding.cancel()
                 locating = false
@@ -484,11 +369,10 @@ fun MapScreen(
     fun goToMe() {
         if (needsLocation(AfterGrant.MY_LOCATION)) return
         locate { (lat, lon) ->
-            val update = CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 17.0)
             map?.let {
                 // The user chose where to look: the first framing must not move the map away afterwards.
                 framed = true
-                if (noAnimations) it.moveCamera(update) else it.animateCamera(update)
+                it.moveTo(lat, lon, 17.0, animate = !noAnimations)
             }
         }
     }
@@ -503,71 +387,34 @@ fun MapScreen(
         }
     }
 
-    val mapView = rememberMapViewWithLifecycle()
-    // The map callbacks below are registered once, in the AndroidView factory; read the latest values through
-    // these instead of the ones captured on the first composition.
-    val currentOnOpenHouse by rememberUpdatedState(onOpenHouse)
     val density = LocalDensity.current
-    // Half of a 48 dp touch target: a tap anywhere within it hits the marker (whole-app audit, motor access).
-    val hitRadiusPx = with(density) { MARKER_HIT_RADIUS_DP.dp.toPx() }
     val framePaddingPx = with(density) { 64.dp.roundToPx() }
     // The house labels follow the font scale (round 6; WCAG 1.4.4): read at style load and again on every resume, so
     // a change in system settings counts when the user comes back.
     var labelFontScale by remember { mutableFloatStateOf(density.fontScale) }
     LifecycleResumeEffect(Unit) {
-        labelFontScale = context.resources.configuration.fontScale
+        labelFontScale = mapServices.fontScale()
         onPauseOrDispose { }
-    }
-
-    fun loadStyle(m: MapLibreMap) {
-        m.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { s ->
-            // Before the house layers, on every load (the first one and each retry): India's own boundary, no LoC/LAC.
-            applyIndiaView(s)
-            addHouseLayers(s, markerLabelSizeSp(labelFontScale))
-            style = s
-        }
-    }
-
-    LaunchedEffect(style, labelFontScale) {
-        val labels = style?.getLayer(LABELS) as? SymbolLayer ?: return@LaunchedEffect
-        labels.setProperties(PropertyFactory.textSize(markerLabelSizeSp(labelFontScale)))
-    }
-
-    // Keep the markers in sync with the database.
-    LaunchedEffect(style, houses) {
-        (style?.getSource(SOURCE) as? GeoJsonSource)?.setGeoJson(housesGeoJson(houses))
-    }
-
-    // Show the blue "you are here" dot once we have permission.
-    LaunchedEffect(style, permissionGranted) {
-        val s = style ?: return@LaunchedEffect
-        val m = map ?: return@LaunchedEffect
-        if (permissionGranted) enableLocationDot(context, m, s)
     }
 
     // The first framing only (see "Where the map is"): once the style and the houses are both loaded. Keyed on framed,
     // so a pan while the user's location is being looked up cancels it.
-    LaunchedEffect(style, loadedHouses != null, permissionGranted, framed) {
+    LaunchedEffect(styleLoads, loadedHouses != null, permissionGranted, framed) {
         if (framed) return@LaunchedEffect
         val m = map ?: return@LaunchedEffect
         val list = loadedHouses ?: return@LaunchedEffect
-        if (style == null) return@LaunchedEffect
+        if (styleLoads == 0) return@LaunchedEffect
         when {
-            list.size == 1 -> m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(list[0].lat, list[0].lon), 15.0))
-            list.size > 1 -> runCatching {
-                val bounds = LatLngBounds.Builder().apply { list.forEach { include(LatLng(it.lat, it.lon)) } }.build()
-                m.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, framePaddingPx))
-                // Houses on one spot give an empty box, which zooms in as far as the map goes.
-                if (m.cameraPosition.zoom > 16.0) m.moveCamera(CameraUpdateFactory.zoomTo(16.0))
-            }
-            permissionGranted -> currentLocation(context)?.let { (lat, lon) ->
-                m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 16.0))
+            list.size == 1 -> m.moveTo(list[0].lat, list[0].lon, 15.0, animate = false)
+            // Houses on one spot give an empty box, which zooms in as far as the map goes: at most 16.
+            list.size > 1 -> m.frame(list.map { it.lat to it.lon }, framePaddingPx, maxZoom = 16.0)
+            permissionGranted -> services.location.current()?.let { (lat, lon) ->
+                m.moveTo(lat, lon, 16.0, animate = false)
             } ?: return@LaunchedEffect
             else -> return@LaunchedEffect
         }
         framed = true
-        val p = m.cameraPosition
-        p.target?.let { camera = CameraSpot(it.latitude, it.longitude, p.zoom, p.bearing) }
+        m.camera()?.let { camera = it }
     }
 
     val mapDescription = stringResource(Res.string.map_region_desc)
@@ -599,7 +446,7 @@ fun MapScreen(
     // The snackbar action's style (M3's labelLarge), to measure its label (round 8; snackbarActionOnNewLine).
     val snackbarActionStyle = MaterialTheme.typography.labelLarge
     // The web's mapUsable(): the legend explains markers that are on screen, so not while the map failed or loads.
-    val mapUsable = !mapFailed && style != null
+    val mapUsable = !mapFailed && styleLoads > 0
     // With TalkBack on, the location note can take focus (see "A refusal is said once"); otherwise it is no tab stop.
     val noteModifier = Modifier.bringIntoViewRequester(noteView).focusRequester(noteFocus)
         .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
@@ -662,12 +509,6 @@ fun MapScreen(
         // 21 dp "i" about 54-75 dp up, which looks like a rendering bug; "Finding your location…" can stay 15 s). It
         // is not moved, so it comes back in the same place, whole and tappable, as soon as the snackbar goes; the
         // credits are one tap away again then (MapLibre's setAttributionEnabled only toggles the view's visibility).
-        LaunchedEffect(map, attributionBottomPx, gutterPx, snackbarAtStart) {
-            val ui = map?.uiSettings ?: return@LaunchedEffect
-            ui.setLogoEnabled(false)
-            ui.setAttributionMargins(gutterPx, 0, 0, attributionBottomPx)
-            ui.isAttributionEnabled = !snackbarAtStart
-        }
         // The snackbar's width (its host less the margins), for where its action goes (round 8).
         val snackbarWidthDp = if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
             maxWidth - 16.dp - rowWidthDp - 8.dp
@@ -676,58 +517,48 @@ fun MapScreen(
         }
         val topBandMax = topBandMaxHeightDp(maxHeight.value, controlsDp.value).dp
         val topBandEndInset = topBandEndInsetDp(maxHeight.value, controlsDp.value).dp
-        AndroidView(
-            factory = {
-                mapView.apply {
-                    addOnDidFailLoadingMapListener { mapFailed = true }
-                    getMapAsync { m ->
-                        map = m
-                        // North-up (round 8; MAP_NORTH_UP, WCAG 2.5.1): no two-finger rotation or tilt, so no compass
-                        // is needed to undo one, as on the web map.
-                        m.uiSettings.isRotateGesturesEnabled = !MAP_NORTH_UP
-                        m.uiSettings.isTiltGesturesEnabled = !MAP_NORTH_UP
-                        m.uiSettings.isCompassEnabled = !MAP_NORTH_UP
-                        // Where the user left it (that counts as framed); the whole of India only before the first
-                        // framing, and not saved as a place. A camera saved while rotation was allowed comes back
-                        // north-up.
-                        val restored = camera
-                        framed = restored != null
-                        m.cameraPosition = restored?.let { c ->
-                            val bearing = if (MAP_NORTH_UP) 0.0 else c.bearing
-                            CameraPosition.Builder().target(LatLng(c.lat, c.lon)).zoom(c.zoom).bearing(bearing).build()
-                        } ?: CameraPosition.Builder().target(LatLng(20.59, 78.96)).zoom(4.0).build()
-                        // A pan, pinch or double-tap by the user (even before the style arrives) keeps their place:
-                        // the first framing then never runs.
-                        m.addOnCameraMoveStartedListener { reason ->
-                            if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) framed = true
-                        }
-                        m.addOnCameraIdleListener {
-                            if (framed) {
-                                val p = m.cameraPosition
-                                p.target?.let { camera = CameraSpot(it.latitude, it.longitude, p.zoom, p.bearing) }
-                            }
-                        }
-                        loadStyle(m)
-                        m.addOnMapClickListener { point ->
-                            val screen = m.projection.toScreenLocation(point)
-                            val area = RectF(
-                                screen.x - hitRadiusPx, screen.y - hitRadiusPx,
-                                screen.x + hitRadiusPx, screen.y + hitRadiusPx,
-                            )
-                            // The marker nearest the finger, when several are inside the 48 dp square.
-                            val hit = m.queryRenderedFeatures(area, DOTS, LABELS).minByOrNull { f ->
-                                (f.geometry() as? Point)?.let { pt ->
-                                    val at = m.projection.toScreenLocation(LatLng(pt.latitude(), pt.longitude()))
-                                    hypot((at.x - screen.x).toDouble(), (at.y - screen.y).toDouble())
-                                } ?: Double.MAX_VALUE
-                            }
-                            hit?.getStringProperty("id")?.let { currentOnOpenHouse(it); true } ?: false
-                        }
-                        m.addOnMapLongClickListener { point ->
-                            currentOnNewHouse(point.latitude, point.longitude); true
-                        }
+        PlatformMap(
+            houses = houses,
+            labelSizeSp = markerLabelSizeSp(labelFontScale),
+            showLocation = permissionGranted,
+            attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
+            events = object : MapEvents {
+                override fun onReady(control: MapControl) {
+                    map = control
+                    // Where the user left it (that counts as framed); the whole of India only before the first
+                    // framing, and not saved as a place. A camera saved while rotation was allowed comes back
+                    // north-up.
+                    val restored = camera
+                    framed = restored != null
+                    if (restored != null) {
+                        val bearing = if (MAP_NORTH_UP) 0.0 else restored.bearing
+                        control.setCamera(restored.lat, restored.lon, restored.zoom, bearing)
+                    } else {
+                        control.setCamera(INDIA_START_LAT, INDIA_START_LON, INDIA_START_ZOOM, bearing = null)
                     }
                 }
+
+                override fun onStyleLoaded() {
+                    styleLoads++
+                }
+
+                override fun onFailed() {
+                    mapFailed = true
+                }
+
+                // A pan, pinch or double-tap by the user (even before the style arrives) keeps their place: the first
+                // framing then never runs.
+                override fun onUserGesture() {
+                    framed = true
+                }
+
+                override fun onCameraIdle(spot: CameraSpot) {
+                    if (framed) camera = spot
+                }
+
+                override fun onHouseTap(id: String) = onOpenHouse(id)
+
+                override fun onLongPress(lat: Double, lon: Double) = currentOnNewHouse(lat, lon)
             },
             // The canvas itself is not navigable with TalkBack; every house is also in the Houses tab (A11Y-B02).
             modifier = Modifier.fillMaxSize().semantics { contentDescription = mapDescription },
@@ -746,7 +577,7 @@ fun MapScreen(
         ) {
             HuntCard(
                 hunt = hunt,
-                onToggle = { on -> if (!on) HuntService.stop(context) else startHunt() },
+                onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
                 onOpenHouse = onOpenHouse,
                 // Refused, or approximate only (which is a grant, so it shows whether or not this app asked); not
                 // while Android's prompt is up, so it appears, and is read, after the answer.
@@ -756,11 +587,11 @@ fun MapScreen(
                 // The note records the ask and picks request or settings itself (LocationPermissionNote).
                 onRequestLocation = {
                     afterGrant = null
-                    permissionLauncher.launch(LOCATION_PERMISSIONS)
+                    requestLocation()
                 },
                 notificationsOff = hunt.active && !notificationsReach,
-                onAllowNotifications = { allowNotifications() },
-                onCloseStopReason = { HuntService.clearStopReason() },
+                onAllowNotifications = allowNotifications,
+                onCloseStopReason = { mapServices.clearHuntStopReason() },
             )
             // Always composed, so the error or the loading line is announced when it appears.
             LiveMessage(assertive = mapFailed) {
@@ -774,7 +605,7 @@ fun MapScreen(
                                 TextButton(
                                     onClick = {
                                         mapFailed = false
-                                        map?.let { loadStyle(it) }
+                                        map?.reloadStyle()
                                     },
                                     modifier = Modifier.heightIn(min = 48.dp),
                                 ) { ButtonLabel(stringResource(Res.string.common_try_again)) }
@@ -784,7 +615,7 @@ fun MapScreen(
                             }
                         },
                     )
-                    style == null -> Surface(
+                    styleLoads == 0 -> Surface(
                         shape = MaterialTheme.shapes.medium,
                         tonalElevation = 2.dp,
                         modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
@@ -807,10 +638,9 @@ fun MapScreen(
             // Zoom without pinch or double-tap (docs/05, 2.5.1).
             SmallFloatingActionButton(
                 onClick = {
-                    val update = CameraUpdateFactory.zoomIn()
                     map?.let {
                         framed = true
-                        if (noAnimations) it.moveCamera(update) else it.animateCamera(update)
+                        it.zoomIn(animate = !noAnimations)
                     }
                 },
                 modifier = Modifier.size(48.dp),
@@ -819,10 +649,9 @@ fun MapScreen(
         val zoomOutButton: @Composable () -> Unit = {
             SmallFloatingActionButton(
                 onClick = {
-                    val update = CameraUpdateFactory.zoomOut()
                     map?.let {
                         framed = true
-                        if (noAnimations) it.moveCamera(update) else it.animateCamera(update)
+                        it.zoomOut(animate = !noAnimations)
                     }
                 },
                 modifier = Modifier.size(48.dp),
@@ -957,31 +786,6 @@ fun MapScreen(
     }
 }
 
-/**
- * True when a Hunt mode alert can reach the user: the app may post (POST_NOTIFICATIONS on API 33+), its notifications
- * are on, and the Alerts channel is not silenced. `Notifications.alert` drops the alert quietly otherwise.
- */
-private fun notificationsReachUser(context: Context): Boolean {
-    if (!Notifications.canPost(context)) return false
-    if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
-    val channel = context.getSystemService(NotificationManager::class.java)
-        ?.getNotificationChannel(Notifications.CHANNEL_ALERTS)
-    return channel?.importance != NotificationManager.IMPORTANCE_NONE
-}
-
-/** The app's notification settings (API 26+, the app's minimum). */
-private fun openNotificationSettings(context: Context) {
-    runCatching {
-        context.startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
-        )
-    }.onFailure { openAppSettings(context) }
-}
-
-/** True under developer options' *Remove animations* (animator duration scale 0): camera moves then jump. */
-private fun animationsOff(context: Context): Boolean =
-    Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-
 /** Material's "remove" glyph (a minus), built from its path: the core icon set has none. */
 private val MinusIcon: ImageVector by lazy {
     ImageVector.Builder(
@@ -1029,14 +833,17 @@ private fun HuntCard(
     onCloseStopReason: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val now by produceState(System.currentTimeMillis()) {
+    val now by produceState(nowMillis()) {
         while (true) {
             delay(15_000)
-            value = System.currentTimeMillis()
+            value = nowMillis()
         }
     }
-    val stale = hunt.lastFixAt == null || now - hunt.lastFixAt > STALE_FIX_MS
-    val weak = !stale && hunt.accuracyM != null && hunt.accuracyM > HuntService.MAX_ACCURACY_M
+    // Locals: HuntState is in :shared since CMP-7, so its properties no longer smart-cast here.
+    val lastFixAt = hunt.lastFixAt
+    val accuracyM = hunt.accuracyM
+    val stale = lastFixAt == null || now - lastFixAt > STALE_FIX_MS
+    val weak = !stale && accuracyM != null && accuracyM > HuntState.MAX_ACCURACY_M
     val streetText = hunt.street?.let { street ->
         if (hunt.streetHouses + hunt.streetVisits > 0) {
             stringResource(Res.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
@@ -1094,8 +901,8 @@ private fun HuntCard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            weak && hunt.accuracyM != null -> Text(
-                                stringResource(Res.string.map_weak_gps, hunt.accuracyM.toInt()),
+                            weak && accuracyM != null -> Text(
+                                stringResource(Res.string.map_weak_gps, accuracyM.toInt()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -1249,148 +1056,5 @@ private fun LegendDotMark(dot: LegendDot) {
     }
 }
 
-private fun addHouseLayers(style: Style, labelSizeSp: Float) {
-    style.addSource(GeoJsonSource(SOURCE, housesGeoJson(emptyList())))
-    val statusColor = Expression.match(
-        Expression.get("status"),
-        Expression.literal("SHORTLISTED"), Expression.color(MarkerColors.SHORTLISTED),
-        Expression.literal("REJECTED"), Expression.color(MarkerColors.REJECTED),
-        Expression.color(MarkerColors.NEW),
-    )
-    // Status is told by size, ring and opacity as well as colour (round 5; docs/05 UX-002, A11Y-003, WCAG 1.4.1): the
-    // shortlisted and rejected colours are about 1.3:1 apart in luminance, the same to deuteranopes and protanopes.
-    // The web map's encoding (map-page.ts), from MapRules: shortlisted largest with a 3 dp ring, rejected smallest
-    // at 75 % opacity, growing with the zoom. The 24 dp hit radius covers the largest dot (15 dp and its ring).
-    fun byStatus(shortlisted: Float, rejected: Float, new: Float): Expression = Expression.match(
-        Expression.get("status"),
-        Expression.literal(new),
-        Expression.stop("SHORTLISTED", shortlisted),
-        Expression.stop("REJECTED", rejected),
-    )
-    val radius = Expression.interpolate(
-        Expression.linear(),
-        Expression.zoom(),
-        *MARKER_RADII.map { r -> Expression.stop(r.zoom, byStatus(r.shortlisted, r.rejected, r.new)) }.toTypedArray(),
-    )
-    style.addLayer(
-        CircleLayer(DOTS, SOURCE).withProperties(
-            PropertyFactory.circleRadius(radius),
-            PropertyFactory.circleColor(statusColor),
-            PropertyFactory.circleStrokeWidth(
-                Expression.match(
-                    Expression.get("status"),
-                    Expression.literal(MARKER_STROKE_DP),
-                    Expression.stop("SHORTLISTED", MARKER_STROKE_SHORTLISTED_DP),
-                ),
-            ),
-            PropertyFactory.circleOpacity(
-                Expression.match(
-                    Expression.get("status"),
-                    Expression.literal(1f),
-                    Expression.stop("REJECTED", MARKER_OPACITY_REJECTED),
-                ),
-            ),
-            PropertyFactory.circleStrokeColor(0xFFFFFFFF.toInt()),
-        )
-    )
-    // House names as labels. MapLibre's symbol layer may not shape Devanagari, Tamil or Telugu conjuncts: README
-    // section 8, device check 21 (d) (a release gate) checks a Tamil-named house; if it renders broken, set
-    // MAP_LABELS_SHOW_INDIC to false and this filter leaves those names out rather than draw broken text. The size
-    // follows the font scale up to 1.5× (markerLabelSizeSp, set again on resume by MapScreen; round 6, WCAG 1.4.4),
-    // and a long name wraps after 8 ems.
-    style.addLayer(
-        SymbolLayer(LABELS, SOURCE).withProperties(
-            PropertyFactory.textField(Expression.get("label")),
-            PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-            PropertyFactory.textSize(labelSizeSp),
-            PropertyFactory.textMaxWidth(MARKER_LABEL_MAX_WIDTH_EM),
-            // Below the largest dot (15 dp and a 3 dp ring at zoom 18), so a name never sits on its marker.
-            PropertyFactory.textOffset(arrayOf(0f, 1.6f)),
-            PropertyFactory.textAnchor("top"),
-            PropertyFactory.textHaloColor(0xFFFFFFFF.toInt()),
-            PropertyFactory.textHaloWidth(1.5f),
-            PropertyFactory.textOptional(true),
-        ).withFilter(
-            Expression.any(
-                Expression.literal(MAP_LABELS_SHOW_INDIC),
-                Expression.not(Expression.toBool(Expression.get("indic"))),
-            ),
-        )
-    )
-}
-
-@SuppressLint("MissingPermission")
-private fun enableLocationDot(context: Context, map: MapLibreMap, style: Style) {
-    runCatching {
-        val lc = map.locationComponent
-        if (!lc.isLocationComponentActivated) {
-            lc.activateLocationComponent(LocationComponentActivationOptions.builder(context, style).build())
-        }
-        lc.isLocationComponentEnabled = true
-        lc.renderMode = RenderMode.COMPASS
-    }
-}
-
-/**
- * A MapView driven by the screen's lifecycle. MapView crashes or leaks when its callbacks arrive out of order or
- * twice (onDestroy after onDestroy, onStop without onStart), so:
- *  - onStart/onResume/onPause/onStop are tracked and only ever called in pairs; leaving the screen (or the
- *    lifecycle owner changing) unwinds pause/stop before anything else,
- *  - onDestroy runs exactly once, when the MapView itself leaves the composition. Before this change it ran in
- *    the same effect as the observer, so a new lifecycle owner destroyed the map and then kept using it.
- * Compose disposes effects in reverse order, so the destroy effect is declared first and runs last.
- */
-@Composable
-private fun rememberMapViewWithLifecycle(): MapView {
-    val context = LocalContext.current
-    val mapView = remember { MapView(context).apply { onCreate(Bundle()) } }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(mapView) {
-        onDispose { mapView.onDestroy() }
-    }
-    DisposableEffect(lifecycle, mapView) {
-        var started = false
-        var resumed = false
-        fun start() {
-            if (!started) {
-                mapView.onStart()
-                started = true
-            }
-        }
-        fun resume() {
-            start()
-            if (!resumed) {
-                mapView.onResume()
-                resumed = true
-            }
-        }
-        fun pause() {
-            if (resumed) {
-                mapView.onPause()
-                resumed = false
-            }
-        }
-        fun stop() {
-            pause()
-            if (started) {
-                mapView.onStop()
-                started = false
-            }
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> start()
-                Lifecycle.Event.ON_RESUME -> resume()
-                Lifecycle.Event.ON_PAUSE -> pause()
-                Lifecycle.Event.ON_STOP -> stop()
-                else -> Unit
-            }
-        }
-        lifecycle.addObserver(observer)
-        onDispose {
-            lifecycle.removeObserver(observer)
-            stop()
-        }
-    }
-    return mapView
-}
+/** Precise location is allowed: what Hunt mode, *Save house here* and *My location* need. */
+private fun hasPreciseLocation(platform: PlatformServices): Boolean = platform.locationAccess() == LocationAccess.PRECISE

@@ -17,9 +17,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * India's boundary on the map (owner issue P0, 2026-09-24): the decisions MapScreen applies to the Liberty style
- * through IndiaView.kt. The filters are evaluated here by a small evaluator for the operators they use, against
- * feature properties as the OpenFreeMap tiles carry them, so the test checks what they select, not only their text.
+ * India's boundary on the map (owner issue P0, 2026-09-24): the decisions the Map applies to the Liberty style through
+ * applyIndiaView (IndiaViewOps.kt). The filters are evaluated here by a small evaluator for the operators they use,
+ * against feature properties as the OpenFreeMap tiles carry them, so the test checks what they select, not only their text.
  */
 class IndiaViewRulesTest {
 
