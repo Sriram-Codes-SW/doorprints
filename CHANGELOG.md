@@ -280,6 +280,16 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Android: platform seams and a common `Format` in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-3;
+  [sprint log](docs/10-sprint-log.md) §13.5). A `PlatformServices` interface (the screen-reader state for now),
+  provided by `LocalPlatformServices`; `Format.kt` (amounts with lakh grouping and scores in common code, dates through
+  an `expect` function), `LiveMessage`, `DeletedHouseUndo`, `ActionBar` and `ResultCard` move to `:ui` commonMain.
+  `:app`'s blocking `Context.getString(StringResource)` helper is gone: UI strings outside composition are read with
+  Compose's suspend `getString` in a coroutine, or resolved in composition. `MapRulesTest` and `IndiaViewRulesTest`
+  move to `:ui` commonTest; new `FormatsTest`, `FormatsParityTest` ([docs/06](docs/06-test-plan.md) TC-U-62). No
+  screen changed: the 64 reference screenshots are unchanged. Docs: [03](docs/03-design.md) v0.27,
+  [05](docs/05-ux-accessibility-i18n.md) v0.22, [06](docs/06-test-plan.md) v0.41, [10](docs/10-sprint-log.md) v0.47,
+  [14](docs/14-lead-backlog-and-handoff.md) v0.14, [docs/README.md](docs/README.md) v0.47, `android/ui/README.md` 1.6.
 - **Android: the UI strings are Compose Multiplatform resources in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-2,
   PR #19, commits `80b198b` and `927d54b`; [sprint log](docs/10-sprint-log.md) §13.4). 403 strings and 16 plurals per
   language moved to `android/ui/src/commonMain/composeResources/values{,-hi,-ta,-te}/strings.xml` (plugin
@@ -599,6 +609,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Fixed
 
+- **Android: dates and Indic typography follow the language the app shows** (S4b-BL-18,
+  [sprint log](docs/10-sprint-log.md) §12.7 and §13.5). They followed the phone's first language: a phone set to
+  [Marathi, Hindi] showed Hindi text with Marathi dates and the Latin line heights. They now take the language the
+  strings resolved to ([docs/06](docs/06-test-plan.md) TC-U-61).
 - **Android: opening the app from a notification while it was not running could crash it** ("Cannot navigate …
   Navigation graph has not been set"). A tap on a new-house notification such as "Are you at a house?", or on one that
   opens a house or a screen, ran the navigation before the navigation graph existed. The app now waits for the graph

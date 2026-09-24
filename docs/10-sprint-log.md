@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.46 |
+| Version | 0.47 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -58,6 +58,7 @@
 | 0.44 | 2026-09-24 | Claude (Code), Docs team | §13.3, PR #18 round 7: the emulator results use the agreed wording (the threading bug fixed in `6376706`, re-run pending); the fix covers every caller of `currentLocation()`; new backlog ticket **CMP-0-BL-7** (`--results-bucket` conditional if the owner picks Test Lab option (c)); the Docs line names the current versions. Then both emulator runs on `6376706` passed (push and pull request; `ee30b92`). |
 | 0.45 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **§14**: the rename, what carries stored names over, what is kept and why, and the checks run. Paths in earlier sections follow the moved files; history is left as written. |
 | 0.46 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. §13.1: CMP-0 **done** (PR #18 merged, `6da0e56`), CMP-2 **done in code** in PR #19 (`80b198b`, review fixes `927d54b`). New **§13.4**: CMP-2 as built and its five differences from the plan. §13.2 notes that the package names are now `app.doorprints…`. §14: PR #19 on `claude/doorprints-dev-continue-fzcge2` with its commits, *Disconnect* removing a leftover `house-hunt.api-config`, and 235 `:app` unit test runs in the checks. §12.7: new backlog **S4b-BL-18** (formatting follows `locales[0]`), **S4b-BL-19** (`MainActivity` not exported), **S4b-BL-20** (clients detect a reset server) and **S4b-BL-21** (device-only checks, TC-M-27). §9.3 item 1 rewrapped. |
+| 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3. §13.1: CMP-3 **done in code** (branch `claude/doorprints-dev-continue-fzcge2`, awaiting a pull request). New **§13.5**: CMP-3 as built and where it differs from the plan. §12.7: **S4b-BL-18 done** (the dates and `uiLanguage()` follow the resolved language); new **S4b-BL-22** (Export's default language follows `locales[0]`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1005,7 +1006,8 @@ Duplicates are merged: the same `sync.service.ts` item was raised three times an
 **Backlog tickets (Sprint 4b candidates).** This table is the one register of backlog ids. A team README that needs a
 new ticket takes the next free number from it and says in its Docs handover that the id is new (candidate (k) below).
 S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 and round 3 rows; S4b-BL-8 in v0.31, from the Docs pre-review of Decision 5; S4b-BL-9 and S4b-BL-10 in v0.32, from the owner's boundary issue (§12.8); S4b-BL-11 and S4b-BL-12 in v0.33, from the round 1 review of that Docs change; S4b-BL-13 to S4b-BL-16 in v0.34, from the coordinator's comment and docs sync of that change (S4b-BL-15 and S4b-BL-16 proposed in `android/shared/README.md` 1.39); S4b-BL-17 in v0.37, from the round 2 design review of PR #16 (§12.10);
-S4b-BL-18 to S4b-BL-21 in v0.46, from the reviews of PR #19 (CMP-2 and the ADR-24 rename, §13.4 and §14).
+S4b-BL-18 to S4b-BL-21 in v0.46, from the reviews of PR #19 (CMP-2 and the ADR-24 rename, §13.4 and §14);
+S4b-BL-22 in v0.47, from CMP-3 (§13.5).
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1026,10 +1028,11 @@ S4b-BL-18 to S4b-BL-21 in v0.46, from the reviews of PR #19 (CMP-2 and the ADR-2
 | ~~S4b-BL-15~~ | Both | ~~**The Assam-Arunachal Pradesh state line is not drawn from zoom 5** (coordinator's sync; proposed in `android/shared/README.md` 1.39 (c); new id). In tile 5/24/13 it is admin level 4, `disputed` 1, `claimed_by` CN; Liberty's `boundary_3` never draws a disputed line and rule 1 hides `boundary_disputed`, so on both apps Arunachal Pradesh has its external outline but no state line towards Assam ([03](03-design.md) ADR-22 Consequences, [05](05-ux-accessibility-i18n.md) §7.3 *State lines*; expected in TC-M-25)~~ **Done on branch `fix/india-boundary-lines` (PR #16; §12.10)**: new kind `state` (Natural Earth 1:10m admin-1) and layer `in-boundary-state` on both apps, from zoom 5, directly above `boundary_3` and drawn like it | Either draw India's state line from the bundled data (the lead adds a `state` kind for it in `build_in_boundaries.py` and both copies of `in-boundaries.geojson`, new sha256 in `IndiaBoundaryDataTest`; Web and Android draw it dashed like `boundary_3` from zoom 5), or show admin-level-4 disputed lines `claimed_by` CN inside India (a new rule on `boundary_3` in both apps, with tests on both sides and the ADR-22 rules updated). Settle with TC-M-25 over Arunachal Pradesh | Lead, then Web and Android |
 | ~~S4b-BL-16~~ | Both | ~~**Doubled tile and claim lines in the middle sector and the Wakhan** (coordinator's sync; proposed in `android/shared/README.md` 1.39 (d); new id). From zoom 5 the tiles' own line and India's `claim` outline both draw there, a median 1.5-2.8 km apart, at most 5.3 km (Web team's tile decode)~~ **Done with S4b-BL-11's data fix on branch `fix/india-boundary-lines` (PR #16; §12.10)**: the claim outline is trimmed in the data where the tiles already draw India's line with Nepal, Bhutan, Myanmar and in the Wakhan, and in the middle sector rule 2 leaves the tiles' India-China line out (`INDIA_CHINA_LINE`), so the outline is the only line there | A style-side fix, instead of or before S4b-BL-11's data fix: hide `boundary_2` inside the claim boxes with a `within` filter, or trim the claim outline where the tiles already draw India's line; the same rule in both apps with tests on both sides; the shared stretches in the east (Bhutan's south-east corner, Myanmar south of 26.65 N) and in Sikkim checked with it. Settle with TC-M-25 steps (2) and (10) | Web and Android, with the lead |
 | S4b-BL-17 | Both | **Cleaner hand-overs at the Sikkim tri-junctions, Jomotsangkha and Longwa** (round 2 design review of PR #16, §12.10; new id). At Sikkim's two tri-junctions India's outline and the tiles' neighbour lines meet in small loops (about 13 x 3 km at Nepal-China-India, on glaciers, from about zoom 10; about 2 km at Doklam), and at two hand-overs the tile line runs on past the hand-over and stops in open ground from about zoom 10 (a small hook at Jomotsangkha from zoom 9) (about 9 km at Jomotsangkha, Bhutan's south-east corner; about 3 km at Longwa, Nagaland-Myanmar); cosmetic known minors ([03](03-design.md) ADR-22 Consequences) | Make our outline end where it first crosses the tile line at the Sikkim tri-junctions, and hand over at the tile line's end at Jomotsangkha and Longwa (`find_shared_stretches.py` and `build_in_boundaries.py`; both copies of `in-boundaries.geojson`, new sha256 in `IndiaBoundaryDataTest`). Settle with renders at zoom 10-12 and TC-M-25 step (10) | Lead |
-| S4b-BL-18 | Android | **Prices, dates and Indic typography can follow a different language than the text** (review of PR #19; new id; pre-existing on `main`). `ui/Format.kt` `indianLocale` and `:ui`'s `UiLanguage.android.kt` read `configuration.locales[0]`, not the language Android resolved for the strings (`resolved_language`, `AppLocale.applyDefault`). A phone set to [Marathi, Hindi] shows Hindi text with Marathi-locale number and date formatting and the Latin line-height rules. | Take the language from the resolved one (for example `Locale.getDefault()` after `applyDefault`, or `resolved_language`), with a test next to TC-U-60; best done with CMP-3's common `Format` | Android |
+| ~~S4b-BL-18~~ | Android | ~~**Prices, dates and Indic typography can follow a different language than the text** (review of PR #19; new id; pre-existing on `main`). `ui/Format.kt` `indianLocale` and `:ui`'s `UiLanguage.android.kt` read `configuration.locales[0]`, not the language Android resolved for the strings (`resolved_language`, `AppLocale.applyDefault`). A phone set to [Marathi, Hindi] shows Hindi text with Marathi-locale number and date formatting and the Latin line-height rules.~~ **Done in CMP-3** (§13.5): `appLanguage()` in `:ui` is `Locale.getDefault()` on Android, which `AppLocale.applyDefault` keeps on the resolved language; `Formats.date`, `Formats.dateTime` and `uiLanguage()` read it (TC-U-61). Prices and scores no longer depend on a locale | Take the language from the resolved one (for example `Locale.getDefault()` after `applyDefault`, or `resolved_language`), with a test next to TC-U-60; best done with CMP-3's common `Format` | Android |
 | S4b-BL-19 | Android | **`MainActivity` could be `exported="false"`** (review of PR #19; new id). Since the rename the launcher `activity-alias` `com.househunt.app.MainActivity` is the only external entry; notifications and widgets reach the activity through explicit `PendingIntent`s, which work on a non-exported activity. | Set `android:exported="false"` on `MainActivity` after checking every intent that opens it (TC-S-12, TC-I-35's new-house intent) | Android |
 | S4b-BL-20 | Both | **Clients detect a reset server** (review of PR #19, [08](08-operations-runbook.md) §11; new id). Clients push only rows changed since their last sync and pull from a stored cursor that is reset only when the server's address changes, so a server whose database was replaced (a new, empty database; a restore from an older dump) silently loses the devices' older rows and hides changes below the cursors. | When the server's highest `syncVersion` is below a stored cursor, reset the cursors and mark every local row dirty (a full re-push and re-pull), and say so to the user; Android and web alike, with tests | Android, Web |
 | S4b-BL-21 | Android | **Device-only checks for CMP-2 and the rename** (review of PR #19; new id). A JVM test cannot show these | Run [06](06-test-plan.md) **TC-M-27** on real phones: a phone set to [Marathi, Hindi]; the in-app language switch on API 29 and 34, including the "Language changed to …" snackbar; a rotation with a non-system app language on API 32 or lower; an upgrade from a build of `main` before PR #19 (applicationId `app.doorprints`, package `com.househunt.app`) with a pinned home-screen icon and existing houses | Android, QA |
+| S4b-BL-22 | Android | **Export's default language follows `locales[0]`** (found in CMP-3; new id). `ExportBuilder.defaults` takes the saved app language, else the configuration's first locale if the app ships it, else English: a phone set to [Marathi, Hindi] with *System default* shows Hindi screens but proposes an English copy. Left out of CMP-3, which changes no export behaviour | Take the resolved language (`appLanguage()` from `:ui`, or `resolved_language`) as the fallback, with a test next to TC-U-61 | Android |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -1293,7 +1296,7 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 | CMP-0 | Prerequisite | **Test harness for the phases** (owner request of 2026-09-24, §13.3). JVM screenshot tests of every screen except the Map in four languages and both themes (Robolectric + Roborazzi, 64 references, verified in `android.yml`); instrumented smoke tests on an API 34 emulator (`android-emulator.yml`) and in Firebase Test Lab (`main` only, push or manual, after the owner's setup); the live web UI test `tools/live-ui` after every merge to `main` | [06](06-test-plan.md) TC-U-56, TC-I-35 and TC-M-26 exist; each later phase shows "no screen changed" with an unchanged TC-U-56 and a green TC-I-35, or re-records the images it changes on purpose and says so | Android, DevSecOps, Web, Docs | **Done** (PR #18, merged to `main` as `6da0e56`. On `bc57361` the push run passed both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request)); Test Lab off by default at zero cost, options for the owner in [07](07-secure-build-and-deploy.md) §7.2 |
 | CMP-1 | P1 | New KMP module `:ui` (`android/ui`): plugins `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`; targets Android plus compile-only `iosArm64` and `iosSimulatorArm64`; Compose Multiplatform 1.12.1, material3 1.9.0, material-icons-core 1.7.3, `api(project(":shared"))`. The theme and pure UI code move to `commonMain` with the Kotlin package kept (`com.househunt.app.ui`) | `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt`, `IndiaViewRules.kt`, `Buttons.kt` (`ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES`), `ResultTone` and `LocationFix` in `:ui`; `expect fun uiLanguage()`; `ServerStatusTest` in `:ui` `commonTest`; `android.yml` and `shared-ios.yml` cover `:ui`; no visual change | Android, DevSecOps, Docs | **Done** (`be86f50`); iOS compile pending on CI |
 | CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Done in code** (PR #19, `80b198b`, review fixes `927d54b`; awaiting review and merge). Differs from the plan in five points (§13.4): the service strings stay Android resources, services keep `R.string`, `AppLocale.applyDefault` sets the default locale on every API level, the APK carries only the four languages, and `StringParityTest` checks more than the keys |
-| CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | Planned. Also moves `MapRulesTest` and `IndiaViewRulesTest` (JUnit, still in `:app`) to `:ui` commonTest (kotlin.test) so they compile for iOS too (CMP-1 code review) |
+| CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | **Done in code** (branch `claude/doorprints-dev-continue-fzcge2`; awaiting a pull request, review and merge). Also moved `MapRulesTest` and `IndiaViewRulesTest` to `:ui` commonTest (kotlin.test), removed `:app`'s blocking `UiStrings.kt` and fixed S4b-BL-18. Differs from the plan in four points (§13.5): `PlatformServices` has one member so far, `DeletedHouseUndo` takes two lambdas instead of the repository, amounts and scores need no locale, and `:app` keeps a thin `DeletedHouses.kt` |
 | CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | Planned |
 | CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned |
 | CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
@@ -1493,6 +1496,74 @@ reset server) and S4b-BL-21 (§12.7).
 **Docs.** [01](01-requirements.md) v0.28, [03](03-design.md) v0.26 (ADR-23 P2), [05](05-ux-accessibility-i18n.md)
 v0.21 (§8.2, §9.1, §9.2), [06](06-test-plan.md) v0.40 (TC-U-59, TC-U-60, TC-M-27), this section (v0.46),
 [14](14-lead-backlog-and-handoff.md) v0.13, `android/ui/README.md` 1.5, the CHANGELOG and the docs index.
+
+### 13.5 CMP-3 (phase 3), done in code
+
+**What was done** (branch `claude/doorprints-dev-continue-fzcge2`, on `main` at `7080a7f`: code `e563e2b`, tests
+`3e5cdd5`, then these docs). The platform seam and the next UI files moved to `:ui` `commonMain`, package
+`app.doorprints.ui` kept:
+
+- **`PlatformServices.kt`**: `interface PlatformServices { fun isScreenReaderOn(): Boolean }` and
+  `LocalPlatformServices` (a `staticCompositionLocalOf` with no default, so a root without it fails loudly). androidMain
+  has `AndroidPlatformServices` (`AccessibilityManager.isTouchExplorationEnabled`, what `isTouchExploring(context)`
+  read) and `ProvidePlatformServices { }`, which wraps `MainActivity`'s content and each screenshot test's. The Map,
+  the Assistant and the house form read `LocalPlatformServices.current.isScreenReaderOn()` at the same moments as
+  before.
+- **`Format.kt`**: `Formats.rupees` (`₹` and lakh grouping, `indianGrouping`), `Formats.price` (with the
+  `price_per_month` wording passed in) and `Formats.score` (one decimal, half up) in common code; `Formats.date` and
+  `Formats.dateTime` through `internal expect fun formatDate` (androidMain: `java.time`'s medium date and short time for
+  `<language>-IN`, as before; iosMain: `NSDateFormatter`); `expect fun appLanguage()`. The composables
+  `priceText(price, priceType)` (`price_per_month` from Compose resources), `scoreText()` and `dateText()`.
+  `HuntService` passes its Android `R.string.price_per_month`.
+- **`LiveMessage.kt`**, **`ActionBar.kt`** and **`ResultCard.kt`** unchanged (public where `:app` uses them);
+  **`DeletedHouseUndo.kt`** with Compose's suspend `getString`.
+- **`ui/UiStrings.kt` is gone.** Root's "Language changed to …" and the photo-delete snackbar use the suspend
+  `getString` in their effect or coroutine; the listing fill's summary is built in a coroutine; Export's *Open* and
+  *Share this file* resolve their failure messages with `stringResource` and show them when the start fails, and the
+  automatic share after a *Share* run reads its message in the effect. Service strings are untouched.
+- **S4b-BL-18**: `appLanguage()` on Android is `Locale.getDefault()`, which `AppLocale.applyDefault` keeps on the
+  resolved language; the dates and `uiLanguage()` (the theme's Indic line heights) read it, and `uiLanguage()` still
+  reads `LocalConfiguration` so it recomposes on a change. A phone set to [Marathi, Hindi] now gets Hindi dates and
+  the Indic typography with the Hindi text.
+- **Tests**: `MapRulesTest` (22) and `IndiaViewRulesTest` (18) moved from `:app` to `:ui` commonTest (kotlin.test;
+  `Math.nextUp` became the float's bits; the style JSON through `kotlinx-serialization-json` in commonTest). New
+  `FormatsTest` (commonTest, 3), `FormatsParityTest` (androidHostTest, 3; TC-U-62) and two `AppLocaleTest` cases
+  (TC-U-61).
+
+**Where it differs from the plan in §13.1:**
+
+1. **`PlatformServices` has one member.** The moved code needed only the screen-reader state; announce, share and
+   URLs, pickers, permission state and work progress are listed in its KDoc for the phase that moves their first user
+   (CMP-5, CMP-6), rather than defined unused now.
+2. **`DeletedHouseUndo` takes two lambdas** (the house's label while it is deleted, and the write-back), not the
+   Room `Repository`, which moves in CMP-4 (P4c). `:app` keeps a three-line adapter, `ui/DeletedHouses.kt`.
+3. **Amounts and scores need no locale.** en, hi, ta and te write them alike in their `IN` locales (`₹` before the
+   digits, `#,##,##0`, a `.`, Latin digits), so only the dates are `expect`. The JVM's `NumberFormat` groups in
+   thousands (`₹1,250,000`), which Android's ICU and the common code do not; the screenshots show amounts below a
+   lakh, which read the same either way.
+4. **Compare's prices** are read per house with `priceText` in composition (`key(h.id)`), since the row lambdas run
+   outside it; Compare no longer reads `LocalConfiguration` (scores do not depend on the language).
+
+**Left in `:app`, and why:** `HouseEntity.priceText()` became `priceText(h.price, h.priceType)` at its one caller;
+the Android-only share and open intents (`ResultActions`), the listing link's `ACTION_VIEW` and the rest of the screens
+move with their phases. **New backlog:** S4b-BL-22 (Export's default language still follows `locales[0]`).
+
+**Verified, and how.** Locally, the CI command of the brief, with `-Proborazzi.test.verify=true` and
+`assembleDebugAndroidTest`: green. `:app` 197 unit tests (40 fewer that moved, 2 new), `:ui` 51 host tests (5
+`ServerStatusTest`, 22 `MapRulesTest`, 18 `IndiaViewRulesTest`, 3 `FormatsTest`, 3 `FormatsParityTest`), `:shared`
+157; the 64 screenshots match the references, so no screen changed. `:ui:compileCommonMainKotlinMetadata` compiles the
+moved code against the common libraries.
+
+**iOS klibs on Linux.** With `-Pkotlin.native.enableKlibsCrossCompilation=true` (off in `gradle.properties`, see the
+`:shared` README §5), `:ui:compileKotlinIosSimulatorArm64`, `:ui:compileTestKotlinIosSimulatorArm64`,
+`:ui:compileKotlinIosArm64` and `:ui:compileTestKotlinIosArm64` pass locally: `iosMain`'s `NSDateFormatter` actual and
+the moved tests compile for iOS. `shared-ios.yml` on macOS stays the check of record.
+
+**Not verified:** TalkBack on a device (the screen-reader reads are the same calls at the same places) and TC-M-27.
+
+**Docs.** [03](03-design.md) v0.27 (ADR-23 P3, §4.2.1), [05](05-ux-accessibility-i18n.md) v0.22 (§8.2 *Formatting*),
+[06](06-test-plan.md) v0.41 (TC-U-51, TC-U-55, TC-U-61, TC-U-62), this section (v0.47),
+[14](14-lead-backlog-and-handoff.md) v0.14, `android/ui/README.md` 1.6, the CHANGELOG and the docs index.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
