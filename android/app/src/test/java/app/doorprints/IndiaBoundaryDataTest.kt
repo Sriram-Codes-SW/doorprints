@@ -15,7 +15,8 @@ import java.security.MessageDigest
  * India's boundary file (owner issue P0, 2026-09-24): the phone and the web draw the same outline, so the file the
  * app bundles (android/app/src/main/assets/geo/) and the one the web serves (web/public/geo/) must be the same bytes,
  * and those bytes are the reviewed build of web/scripts/geo/build_in_boundaries.py (Natural Earth, commit ca96624;
- * since 2026-09-24 with the SHARED stretches of find_shared_stretches.py and the Assam-Arunachal Pradesh state line).
+ * since 2026-09-24 with the SHARED stretches of find_shared_stretches.py, their hand-overs tidied (S4b-BL-17), and the
+ * Assam-Arunachal Pradesh state line).
  * A change to either file without the other, or a rebuild nobody reviewed, fails here.
  *
  * Like CanonicalSampleTest it walks up from the working directory to the repository root, because the web copy is
@@ -60,6 +61,6 @@ class IndiaBoundaryDataTest {
     private companion object {
         const val APP_COPY = "android/app/src/main/assets/geo/in-boundaries.geojson"
         const val WEB_COPY = "web/public/geo/in-boundaries.geojson"
-        const val EXPECTED_SHA256 = "25984afa459110523eec6088ee0440eca95567dd290541c9ccb8c5ad2c3ea024"
+        const val EXPECTED_SHA256 = "c3cdf5fb79cf3620526b6ec9906c8c6a38999091eb5821a799f3cc1efa8bf63f"
     }
 }
