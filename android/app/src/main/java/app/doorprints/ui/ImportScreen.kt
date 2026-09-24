@@ -748,19 +748,6 @@ private fun importedTextOf(context: Context, output: Data): String = ImportWorke
 )
 
 /**
- * What an undo of a copy import did, as one sentence ("Removed 40 copies. Kept 2 houses you had edited since."), or
- * null for no outcome or a failed one. The Import screen's heading and the house list's undo row both say it.
- */
-@Composable
-internal fun undoneSentence(outcome: CopyImportUndo.Outcome?): String? = outcome?.takeIf { !it.failed }?.let { u ->
-    buildList {
-        if (u.removed > 0) add(pluralStringResource(Res.plurals.import_undone, u.removed, u.removed))
-        if (u.kept > 0) add(pluralStringResource(Res.plurals.import_undone_kept, u.kept, u.kept))
-        if (isEmpty()) add(stringResource(Res.string.import_undone_nothing))
-    }.joinToString(" ")
-}
-
-/**
  * "Replace 3 houses and 5 visits?" (UX review, round 11: houses and visits are counted apart, not lumped together as
  * "saved items") with stacked, full-width buttons (Design review, round 5), safest first:
  *

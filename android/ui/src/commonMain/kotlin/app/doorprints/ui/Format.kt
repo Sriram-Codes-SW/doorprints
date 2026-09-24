@@ -51,9 +51,18 @@ object Formats {
      */
     fun score(score: Double?): String {
         score ?: return "–"
-        if (score.isNaN() || score.isInfinite()) return score.toString()
-        val tenths = floor(abs(score) * 10 + 0.5).toLong()
-        val sign = if (score < 0) "-" else ""
+        return oneDecimal(score)
+    }
+
+    /**
+     * [value] with one decimal, rounded half up ("1.3" for 1.25): the score's rule ([score]) and the Assistant's walking
+     * distance in km, which was `String.format(Locale.ROOT, "%.1f")` before CMP-5 (`FormatsParityTest` checks both
+     * against the JVM).
+     */
+    fun oneDecimal(value: Double): String {
+        if (value.isNaN() || value.isInfinite()) return value.toString()
+        val tenths = floor(abs(value) * 10 + 0.5).toLong()
+        val sign = if (value < 0) "-" else ""
         return "$sign${tenths / 10}.${tenths % 10}"
     }
 

@@ -10,8 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,11 +22,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import app.doorprints.DeepLink
-import app.doorprints.DoorprintsApp
-import app.doorprints.Notifications
-import app.doorprints.data.AndroidRepository
-import app.doorprints.i18n.AppLocale
+import androidx.savedstate.read
+import app.doorprints.data.HouseEntity
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
@@ -37,20 +32,77 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
-@Composable
-fun repository(): AndroidRepository = (LocalContext.current.applicationContext as DoorprintsApp).container.repository
+/**
+ * Where a notification tap should take the user (CMP-5: common, was `app.doorprints.DeepLink` in `:app`). The platform
+ * reads its own intent or URL, checks it (`:app`'s MainActivity accepts only a well-formed UUID, in-range coordinates
+ * and the screens in [Routes.NOTIFICATION_SCREENS]; threat model F-25) and hands [DoorprintsRoot] one of these.
+ */
+sealed interface DeepLink {
+    data class OpenHouse(val id: String) : DeepLink
+    data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
 
-private data class Tab(val route: String, val label: StringResource, val icon: ImageVector)
+    /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
+    data class OpenScreen(val route: String) : DeepLink
+}
+
+/**
+ * The screens that are still Android code in `:app` (CMP-5): the root's graph calls them through this, with the same
+ * arguments as before. They move to `:ui` in CMP-6 (the house form, Export, Import) and CMP-7 (the Map), and each slot
+ * goes with its screen. `:app`'s `AndroidRootScreens` forwards to `MapScreen`, `HouseEditScreen`, `ExportScreen` and
+ * `ImportScreen`.
+ */
+interface RootScreens {
+    @Composable
+    fun Map(
+        onOpenHouse: (String) -> Unit,
+        onNewHouse: (Double, Double) -> Unit,
+        onOpenHouses: () -> Unit,
+        showAddTip: Boolean,
+        onAddTipShown: () -> Unit,
+        deletedHouse: String?,
+        onDeletedShown: () -> Unit,
+    )
+
+    @Composable
+    fun HouseForm(
+        houseId: String?,
+        newLat: Double?,
+        newLon: Double?,
+        visitId: String?,
+        onDone: () -> Unit,
+        onOpenHouses: () -> Unit,
+        onCreated: (String) -> Unit,
+        onDeleted: (String) -> Unit,
+        showSaved: Boolean,
+        onSavedShown: () -> Unit,
+    )
+
+    @Composable
+    fun Export(onBack: () -> Unit, onOpenMap: () -> Unit)
+
+    @Composable
+    fun Import(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit)
+}
+
+private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
 
 private val baseTabs = listOf(
-    Tab("map", Res.string.nav_map, Icons.Default.Place),
-    Tab("houses", Res.string.nav_houses, Icons.Default.Home),
-    Tab("compare", Res.string.nav_compare, Icons.AutoMirrored.Filled.List),
+    NavTab("map", Res.string.nav_map, Icons.Default.Place),
+    NavTab("houses", Res.string.nav_houses, Icons.Default.Home),
+    NavTab("compare", Res.string.nav_compare, Icons.AutoMirrored.Filled.List),
 )
-private val assistantTab = Tab("assistant", Res.string.nav_assistant, Icons.Default.Search)
-private val settingsTab = Tab("settings", Res.string.nav_settings, Icons.Default.Settings)
+private val assistantTab = NavTab("assistant", Res.string.nav_assistant, Icons.Default.Search)
+private val settingsTab = NavTab("settings", Res.string.nav_settings, Icons.Default.Settings)
 
 object Routes {
+    /** The routes a notification may open; `:app`'s `Notifications.SCREEN_*` are these. */
+    const val SETTINGS = "settings"
+    const val EXPORT = "export"
+    const val IMPORT = "import"
+
+    /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
+    val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
+
     /** The destination patterns, for popUpTo and for recognising the entry on top. */
     const val HOUSE = "house/{id}"
     const val NEW_HOUSE = "new?lat={lat}&lon={lon}&visitId={visitId}"
@@ -78,13 +130,19 @@ private fun NavController.openTab(route: String) {
 /** Whether [entry] is the resumed destination: a tap or a finished write during a transition is dropped. */
 private fun resumed(entry: NavBackStackEntry) = entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
 
+/**
+ * The app's root (common since CMP-5): the theme, the bottom bar and the navigation graph, with JetBrains
+ * navigation-compose (on Android the same androidx navigation as before). [deepLinks] is the platform's latest checked
+ * notification tap; [onDeepLinkHandled] clears it once acted on. [screens] draws the screens still in `:app`. Needs
+ * [LocalAppServices] and [LocalPlatformServices].
+ */
 @Composable
-fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit) {
+fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Unit, screens: RootScreens) {
     DoorprintsTheme {
-        val repo = repository()
+        val services = LocalAppServices.current
+        val repo = services.repository
         val nav = rememberNavController()
         val deepLink by deepLinks.collectAsStateWithLifecycle()
-        val context = LocalContext.current
         // AI features appear only when the server says they are on (and it is reachable). Asked once per process, in
         // DoorprintsApp (whole-app audit): asking on every recreation hid the tab on a rotation while offline.
         val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
@@ -97,7 +155,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // "Language changed to தமிழ்", once, after the recreate that the language switch causes (AppLocale.set).
         val rootSnackbar = remember { SnackbarHostState() }
         LaunchedEffect(Unit) {
-            AppLocale.consumeChange(context)?.let { change ->
+            services.consumeLanguageChange()?.let { change ->
                 val name = change.language?.let { ExportLanguages.nativeName(it) }
                     ?: getString(Res.string.settings_language_system)
                 rootSnackbar.showSnackbar(getString(Res.string.settings_language_changed, name))
@@ -124,7 +182,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             nav.currentBackStackEntryFlow.first()
             val top = nav.currentBackStackEntry
             fun onTop(route: String, arg: String, value: String?) =
-                top != null && top.destination.route == route && top.arguments?.getString(arg) == value
+                top != null && top.destination.route == route && top.arguments?.read { getStringOrNull(arg) } == value
             fun openHouse(id: String) {
                 // The same alert tapped twice must not stack two copies of the form.
                 if (!onTop(Routes.HOUSE, "id", id)) nav.navigate(Routes.house(id))
@@ -143,10 +201,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
-                    Notifications.SCREEN_SETTINGS -> nav.openTab(d.route)
+                    Routes.SETTINGS -> nav.openTab(d.route)
                     else -> {
                         // A new import makes the list's "Just imported" run stale (see importedRun above).
-                        if (d.route == "import") importedRun = null
+                        if (d.route == Routes.IMPORT) importedRun = null
                         // Export and Import are single-top: a notification tapped while the screen is open must not
                         // stack a second copy of it.
                         nav.navigate(d.route) { launchSingleTop = true }
@@ -197,7 +255,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 composable("map") { entry ->
                     val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                         .collectAsStateWithLifecycle()
-                    MapScreen(
+                    screens.Map(
                         // Only from the resumed map, like every other exit (round 21): a second tap during the
                         // transition, or a slow GPS fix landing after the user left, is dropped.
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
@@ -229,7 +287,13 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     )
                 }
                 composable("compare") { entry ->
+                    // null until the database answers, so the empty state does not flash on the way in (CMP-4 P4c's
+                    // CompareScreen in :app's CompareTab.kt, collected here since CMP-5).
+                    val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+                    val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
                     CompareScreen(
+                        loaded = loaded,
+                        counts = counts,
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                         onOpenMap = openMapWithTip,
                     )
@@ -258,14 +322,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 // that finishes during the exit transition, finds the entry no longer RESUMED and is ignored, so the
                 // back stack is never popped twice (from the Map, that emptied the NavHost: a blank screen, no bar).
                 composable("export") {
-                    ExportScreen(
+                    screens.Export(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         // The same "Add a house on the map" button, so the same tip on arrival.
                         onOpenMap = openMapWithTip,
                     )
                 }
                 composable("import") {
-                    ImportScreen(
+                    screens.Import(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         onOpenHouses = { run ->
                             importedRun = run
@@ -283,8 +347,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 ) { entry ->
                     val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
                         .collectAsStateWithLifecycle()
-                    HouseEditScreen(
-                        houseId = entry.arguments?.getString("id"),
+                    screens.HouseForm(
+                        houseId = entry.arguments?.read { getStringOrNull("id") },
                         newLat = null, newLon = null, visitId = null,
                         onDone = dropUnlessResumed { nav.popBackStack() },
                         // "Save as a new house" after this one was removed elsewhere: continue on the copy.
@@ -321,12 +385,17 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         navArgument("visitId") { type = NavType.StringType; nullable = true; defaultValue = null },
                     ),
                 ) { entry ->
-                    HouseEditScreen(
+                    val args = entry.arguments
+                    val onDone = dropUnlessResumed { nav.popBackStack() }
+                    screens.HouseForm(
                         houseId = null,
-                        newLat = entry.arguments?.getString("lat")?.toDoubleOrNull(),
-                        newLon = entry.arguments?.getString("lon")?.toDoubleOrNull(),
-                        visitId = entry.arguments?.getString("visitId"),
-                        onDone = dropUnlessResumed { nav.popBackStack() },
+                        newLat = args?.read { getStringOrNull("lat") }?.toDoubleOrNull(),
+                        newLon = args?.read { getStringOrNull("lon") }?.toDoubleOrNull(),
+                        visitId = args?.read { getStringOrNull("visitId") },
+                        onDone = onDone,
+                        // A new house has no stale link and cannot be deleted from its form: both just close it, as
+                        // HouseEditScreen's defaults did before the form's call went through RootScreens.
+                        onOpenHouses = onDone,
                         // The first save continues on the house as an existing one, so photos can be added at once
                         // (whole-app audit; the web's New house → Create → house page). The form is replaced, so Back
                         // goes to where it was opened from.
@@ -336,6 +405,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                                 nav.currentBackStackEntry?.savedStateHandle?.set(JUST_SAVED_KEY, true)
                             }
                         },
+                        onDeleted = { onDone() },
+                        showSaved = false,
+                        onSavedShown = {},
                     )
                 }
             }

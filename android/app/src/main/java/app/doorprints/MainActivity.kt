@@ -7,19 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.i18n.AppLocale
+import app.doorprints.ui.AndroidRootScreens
+import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
-import app.doorprints.ui.ProvidePlatformServices
+import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
-
-/** Where a notification tap should take the user. */
-sealed interface DeepLink {
-    data class OpenHouse(val id: String) : DeepLink
-    data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
-
-    /** Export, Import or Settings, from an export/import/backup notification. Always one of Notifications.SCREENS. */
-    data class OpenScreen(val route: String) : DeepLink
-}
 
 class MainActivity : ComponentActivity() {
 
@@ -40,9 +33,15 @@ class MainActivity : ComponentActivity() {
         // pushed the house (or one more new-house form) on top of it on every recreation.
         if (savedInstanceState == null) handle(intent)
         setContent {
-            // The platform seam of the common UI (ADR-23 CMP-3): screen-reader state, and later sharing and pickers.
-            ProvidePlatformServices {
-                DoorprintsRoot(deepLinks = deepLinks, onDeepLinkHandled = { deepLinks.value = null })
+            // The common UI's seams (ADR-23 CMP-3, CMP-5): the platform's (screen reader, permissions) and the app's
+            // (data, backup, language). The root and its graph are common code; the intent is read here and handed
+            // over as a DeepLink, and the screens still in :app are drawn through AndroidRootScreens.
+            ProvideAppServices {
+                DoorprintsRoot(
+                    deepLinks = deepLinks,
+                    onDeepLinkHandled = { deepLinks.value = null },
+                    screens = AndroidRootScreens,
+                )
             }
         }
     }

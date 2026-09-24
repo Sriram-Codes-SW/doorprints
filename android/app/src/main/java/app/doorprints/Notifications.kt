@@ -1,15 +1,14 @@
 package app.doorprints
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
+import app.doorprints.ui.Routes
+import app.doorprints.ui.canPostNotifications
 
 object Notifications {
     const val CHANNEL_HUNT = "hunt"
@@ -64,11 +63,14 @@ object Notifications {
 
     const val EXTRA_OPEN_HOUSE = "openHouse"
 
-    /** Which screen a notification opens; only the values in [SCREENS] are accepted (threat model F-25). */
+    /**
+     * Which screen a notification opens; only the values in [SCREENS] are accepted (threat model F-25). They are the
+     * common root's routes ([Routes], `:ui`), which MainActivity hands over as they are.
+     */
     const val EXTRA_OPEN_SCREEN = "openScreen"
-    const val SCREEN_EXPORT = "export"
-    const val SCREEN_IMPORT = "import"
-    const val SCREEN_SETTINGS = "settings"
+    const val SCREEN_EXPORT = Routes.EXPORT
+    const val SCREEN_IMPORT = Routes.IMPORT
+    const val SCREEN_SETTINGS = Routes.SETTINGS
     val SCREENS = setOf(SCREEN_EXPORT, SCREEN_IMPORT, SCREEN_SETTINGS)
     const val EXTRA_NEW_LAT = "newLat"
     const val EXTRA_NEW_LON = "newLon"
@@ -192,10 +194,7 @@ object Notifications {
     }
 
     /** True when this app may post notifications at all: below API 33 always, from 33 with `POST_NOTIFICATIONS`. */
-    fun canPost(context: Context): Boolean =
-        android.os.Build.VERSION.SDK_INT < 33 ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
+    fun canPost(context: Context): Boolean = canPostNotifications(context)
 
     fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?) {
         if (!canPost(context)) return

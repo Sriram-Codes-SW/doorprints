@@ -13,6 +13,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import app.doorprints.DoorprintsApp
 import app.doorprints.export.CopyImportUndo
+import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.ImportCheck
 import app.doorprints.export.ImportRequest
@@ -156,7 +157,7 @@ class ImportViewModel(
     private val outcomeBefore = CopyImportUndo.outcome
 
     /** The outcome of the last undo that ended while this ViewModel existed; null otherwise. */
-    val undone: CopyImportUndo.Outcome? get() = CopyImportUndo.outcome?.takeIf { it !== outcomeBefore }
+    val undone: CopyUndoOutcome? get() = CopyImportUndo.outcome?.takeIf { it !== outcomeBefore }
 
     private var job: Job? = null
 

@@ -1,6 +1,5 @@
 package app.doorprints.ui
 
-import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,9 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -42,21 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.doorprints.DoorprintsApp
 import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.data.SyncHealth
-import app.doorprints.data.labelRes
-import app.doorprints.export.CopyImportUndo
 import app.doorprints.export.CopyRecord
-import app.doorprints.export.ImportUndo
+import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
+import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HouseStatus
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -173,8 +166,10 @@ fun HouseListScreen(
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
 ) {
-    val repo = repository()
-    val context = LocalContext.current
+    val services = LocalAppServices.current
+    val repo = services.repository
+    val undoes = services.copyImports
+    val platform = LocalPlatformServices.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     // A house deleted from its form: "Deleted Green Villa" with Undo (whole-app audit).
@@ -185,10 +180,10 @@ fun HouseListScreen(
     }
     // Background sync that has been failing: said here, not only in Settings (see SyncHealth).
     val appSettings: AppSettings? by repo.settings.settings.collectAsStateWithLifecycle(initialValue = null)
-    val now by produceState(System.currentTimeMillis()) {
+    val now by produceState(IsoTime.nowMillis()) {
         while (true) {
             delay(60_000)
-            value = System.currentTimeMillis()
+            value = IsoTime.nowMillis()
         }
     }
     val syncSince = appSettings?.let {
@@ -221,24 +216,23 @@ fun HouseListScreen(
     // The copy import the list shows (see the KDoc): the one it was opened for, unless a newer one can still be
     // undone, else the newest that can. Read again whenever an undo ends, because the undo deletes or reduces the
     // record.
-    val undoOutcome = CopyImportUndo.outcome
-    val undoingRun = CopyImportUndo.undoingRun
+    val undoOutcome = undoes.outcome
+    val undoingRun = undoes.undoingRun
     val loadedImport by produceState<ShownImport?>(initialValue = null, importedRun, undoOutcome) {
         val requested = importedRun
         // After an undo of the run on screen, stay on it (its record is gone or reduced), so the row can say what
         // the undo did.
         val onScreen = value?.takeIf { it.requested == requested }?.runId
         val stay = undoOutcome?.runId?.takeIf { it == onScreen }
-        value = withContext(Dispatchers.IO) {
-            if (stay != null) {
-                ShownImport(requested, stay, ImportUndo.load(context, stay))
-            } else {
-                val asked = requested?.let { ImportUndo.load(context, it) }
-                val latest = ImportUndo.latestUndoable(context)
-                val newer = latest != null && asked != null && latest.finishedAt > asked.finishedAt
-                val pick = if (asked == null || newer) latest else asked
-                ShownImport(requested, pick?.runId, pick)
-            }
+        // The records are read off the main thread (CopyImportUndoes).
+        value = if (stay != null) {
+            ShownImport(requested, stay, undoes.load(stay))
+        } else {
+            val asked = requested?.let { undoes.load(it) }
+            val latest = undoes.latestUndoable()
+            val newer = latest != null && asked != null && latest.finishedAt > asked.finishedAt
+            val pick = if (asked == null || newer) latest else asked
+            ShownImport(requested, pick?.runId, pick)
         }
     }
     // null while the record is being read for this importedRun ("loading").
@@ -303,7 +297,6 @@ fun HouseListScreen(
     LaunchedEffect(rowOutcome) {
         if (rowOutcome != null && !rowOutcome.failed) importedOnly = false
     }
-    val app = context.applicationContext as DoorprintsApp
     // The confirmation (UX-005, round 19), and where focus goes back to when it closes (round 20; the Export screen's
     // focusSaveAfterRecovery pattern). Set when the dialog is closed with either button (or Back, or a tap outside),
     // and only while TalkBack's touch exploration is on: a touch user sees where they are. Remembered here, not in the
@@ -311,9 +304,7 @@ fun HouseListScreen(
     var confirmUndo by rememberSaveable { mutableStateOf(false) }
     val undoButtonFocus = remember { FocusRequester() }
     var focusUndoButton by remember { mutableStateOf(false) }
-    val touchExploration = {
-        context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
-    }
+    val touchExploration = { platform.isScreenReaderOn() }
     // The row's one button is enabled as *Close* after an undo, or as *Undo this import* while one can be started
     // (again, after a failure). It is disabled while the undo runs, and a disabled button has no focus target at all,
     // so after *Remove copies* the focus waits for the result: *Close*, or *Undo this import* if the undo failed.
@@ -346,7 +337,7 @@ fun HouseListScreen(
             ImportUndoRow(
                 count = importedCount ?: 0,
                 importedAt = record?.finishedAt,
-                until = undoable?.let { it.finishedAt + ImportUndo.KEEP_MS },
+                until = undoable?.let { it.finishedAt + CopyRecord.KEEP_MS },
                 undoing = undoingThis,
                 outcome = rowOutcome,
                 canUndo = undoable != null && undoingRun == null,
@@ -370,7 +361,7 @@ fun HouseListScreen(
                             // Before an undo the choice is kept with the record; after one there is nothing to offer.
                             rowOutcome == null -> {
                                 hiddenRun = run
-                                app.appScope.launch(Dispatchers.IO) { ImportUndo.hideRow(app, run) }
+                                undoes.hideRow(run)
                             }
                             else -> {
                                 hiddenRun = run
@@ -396,7 +387,7 @@ fun HouseListScreen(
                 // Starts the undo at once (undoingRun is set before this returns), so the row's button is disabled
                 // in the same frame and the focus waits for Close (or, after a failure, Undo this import).
                 focusUndoButton = touchExploration()
-                CopyImportUndo.start(app, confirmable)
+                undoes.start(confirmable)
             },
             // Keep them, Back or a tap outside: back to Undo this import.
             onKeep = {
@@ -640,7 +631,7 @@ private fun HouseList(
                     val n = houses.count { it.status == s }
                     StatusChip(
                         selected = filter == s, onClick = { onFilter(s) },
-                        label = stringResource(Res.string.status_filter, stringResource(s.labelRes), n),
+                        label = stringResource(Res.string.status_filter, stringResource(s.labelResource), n),
                     )
                 }
             }
@@ -743,7 +734,7 @@ private fun ImportUndoRow(
     importedAt: Long?,
     until: Long?,
     undoing: Boolean,
-    outcome: CopyImportUndo.Outcome?,
+    outcome: CopyUndoOutcome?,
     canUndo: Boolean,
     onUndo: () -> Unit,
     onHide: () -> Unit,
@@ -906,7 +897,7 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.clearAndSetSemantics { },
                 )
-                Text(stringResource(h.status.labelRes), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(h.status.labelResource), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
             }
             val place = listOfNotNull(h.street, h.locality).joinToString(", ")
             if (place.isNotBlank()) Text(place, style = MaterialTheme.typography.bodySmall)
@@ -919,4 +910,17 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
             }
         }
     }
+}
+
+/**
+ * What an undo of a copy import did, as one sentence ("Removed 40 copies. Kept 2 houses you had edited since."), or
+ * null for no outcome or a failed one. The Import screen's heading and the house list's undo row both say it.
+ */
+@Composable
+fun undoneSentence(outcome: CopyUndoOutcome?): String? = outcome?.takeIf { !it.failed }?.let { u ->
+    buildList {
+        if (u.removed > 0) add(pluralStringResource(Res.plurals.import_undone, u.removed, u.removed))
+        if (u.kept > 0) add(pluralStringResource(Res.plurals.import_undone_kept, u.kept, u.kept))
+        if (isEmpty()) add(stringResource(Res.string.import_undone_nothing))
+    }.joinToString(" ")
 }
