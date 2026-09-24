@@ -3,6 +3,7 @@ package app.doorprints
 import app.doorprints.ui.LocationAccess
 import app.doorprints.ui.LocationFix
 import app.doorprints.ui.LocationStart
+import app.doorprints.ui.canAskAgain
 import app.doorprints.ui.launchesRequest
 import app.doorprints.ui.locationAccess
 import app.doorprints.ui.locationFix
@@ -93,5 +94,15 @@ class LocationAccessTest {
         // Android will not ask again (no location, or approximate only): the note, never a "Planning…" or "Finding
         // your location…" state that can only end in the same note.
         assertEquals(LocationStart.SHOW_NOTE, locationStart(precise = false, canAsk = false))
+    }
+
+    @Test
+    fun locationCanBeAskedUntilAndroidStopsShowingItsPrompt() {
+        // Never asked (by any screen): Android shows its prompt.
+        assertTrue(canAskAgain(asked = false, rationale = false))
+        // Refused once: Android asks again and says a rationale may be shown.
+        assertTrue(canAskAgain(asked = true, rationale = true))
+        // Refused twice, or "Don't ask again": only the app's settings can turn it on.
+        assertFalse(canAskAgain(asked = true, rationale = false))
     }
 }

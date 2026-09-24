@@ -1,11 +1,8 @@
-package app.doorprints
+package app.doorprints.export
 
-import app.doorprints.export.decodeGrants
-import app.doorprints.export.encodeGrants
-import app.doorprints.export.retainNewestGrants
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Which persisted "Save to…" grants the app keeps (see `ExportGrants`).
@@ -15,7 +12,8 @@ import org.junit.Test
  * kept. What must hold: the grant just taken is never the one released, a document saved to twice holds one slot,
  * not two, and the list never grows past its limit whatever is stored.
  *
- * Pure functions, so this is a plain JVM test like `SafTrimTest`.
+ * Pure common functions (`ExportGrantList.kt`), so a `kotlin.test` suite in `:shared` commonTest since CMP-4 P4c
+ * (S4b-BL-28; was a JUnit test in `:app`); `ExportGrants` itself stays in `:app`.
  */
 class ExportGrantsTest {
 

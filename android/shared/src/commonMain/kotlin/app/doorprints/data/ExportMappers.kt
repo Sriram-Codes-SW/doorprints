@@ -6,10 +6,10 @@ import app.doorprints.shared.export.ExportVisit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 
-// Room entity <-> the platform-neutral export model (Sprint 4a, S4-02/S4-04). The export model is deliberately
-// *not* the API DTO: a backup is a copy of the local store, so it keeps epoch milliseconds and leaves out the
-// server-only fields (syncVersion) and the local-only ones (dirty, deleted, the photo's file path). Everything a
-// round trip needs is here; everything else is re-derived on import.
+// Room entity <-> the platform-neutral export model (Sprint 4a, S4-02/S4-04; common code since CMP-4 P4c). The
+// export model is deliberately *not* the API DTO: a backup is a copy of the local store, so it keeps epoch
+// milliseconds and leaves out the server-only fields (syncVersion) and the local-only ones (dirty, deleted, the
+// photo's file path). Everything a round trip needs is here; everything else is re-derived on import.
 
 fun HouseEntity.toExport() = ExportHouse(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,

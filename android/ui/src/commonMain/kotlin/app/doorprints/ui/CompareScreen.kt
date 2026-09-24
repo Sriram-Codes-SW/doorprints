@@ -17,7 +17,6 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -32,11 +31,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.doorprints.data.ChecklistLabels
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.glyph
-import app.doorprints.data.labelRes
+import app.doorprints.data.HouseVisitCount
 import app.doorprints.ui.res.*
 import app.doorprints.shared.model.HouseStatus
 import org.jetbrains.compose.resources.stringResource
@@ -82,14 +78,19 @@ private val SelectionSaver = listSaver<Set<String>, String>(save = { it.toList()
  *
  * **Empty.** Fewer than two houses to compare (rejected ones are left out) is a designed empty state with *Add a house
  * on the map* ([onOpenMap]).
+ *
+ * **Data.** [loaded] is the repository's live houses, null until the database answers, so the empty state does not
+ * flash on the way in; [counts] its visits per house. Common code since CMP-4 P4c: `:app`'s `CompareScreen(onOpenHouse,
+ * onOpenMap)` (`ui/CompareTab.kt`) collects both from the repository with the activity's lifecycle and passes them in.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CompareScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
-    val repo = repository()
-    // null until Room answers, so the empty state does not flash on the way in.
-    val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
-    val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
+fun CompareScreen(
+    loaded: List<HouseEntity>?,
+    counts: List<HouseVisitCount>,
+    onOpenHouse: (String) -> Unit,
+    onOpenMap: () -> Unit = {},
+) {
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
     var defaulted by rememberSaveable { mutableStateOf(false) }
@@ -189,7 +190,7 @@ private fun ComparePicker(
         if (pickerOpen) {
             candidates.forEach { h ->
                 val checked = h.id in selected
-                val statusText = stringResource(h.status.labelRes)
+                val statusText = stringResource(h.status.labelResource)
                 val statusColor = h.status.color()
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
@@ -240,12 +241,12 @@ private fun CompareTable(
     val bhkFormat = stringResource(Res.string.common_bhk)
     val starsFormat = stringResource(Res.string.common_stars)
     val checkFormat = stringResource(Res.string.house_check_value)
-    val checklistLabels = ChecklistLabels.items.map { (key, res) -> key to stringResource(res) }
+    val checklistLabels = ChecklistResources.items.map { (key, res) -> key to stringResource(res) }
     val rows = buildList {
         add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(it) } }))
         add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
-        add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { String.format(bhkFormat, it) } }))
-        add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { String.format(starsFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { formatPositional(bhkFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
         add(CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
         checklistLabels.forEach { (key, label) ->
@@ -253,7 +254,7 @@ private fun CompareTable(
                 CompareRow(
                     label, notScored,
                     value = { h -> h.checklist[key]?.toString() },
-                    spoken = { h -> h.checklist[key]?.let { String.format(checkFormat, it) } },
+                    spoken = { h -> h.checklist[key]?.let { formatPositional(checkFormat, it) } },
                 ),
             )
         }
@@ -264,7 +265,7 @@ private fun CompareTable(
     val best = chosen.maxByOrNull { it.score ?: -1.0 }?.takeIf { it.score != null }
     val bestFormat = stringResource(Res.string.compare_best_name)
     val openLabel = stringResource(Res.string.compare_open_house)
-    val headerName: (HouseEntity) -> String = { h -> if (h == best) String.format(bestFormat, nameOf(h)) else nameOf(h) }
+    val headerName: (HouseEntity) -> String = { h -> if (h == best) formatPositional(bestFormat, nameOf(h)) else nameOf(h) }
     // One ScrollState for every row: the house columns scroll together, the labels stay.
     val hScroll = rememberScrollState()
 

@@ -5,24 +5,17 @@ import app.doorprints.R
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.HouseStatus
 
-/** Translated label of a status (values/strings.xml status_*). The enum itself lives in :shared. */
+/**
+ * Translated label of a status (values/strings.xml status_*), as an Android resource for the screens and the Hunt
+ * notification that still read Android resources. The enum itself lives in :shared; the Compose resource version and
+ * the status glyph are in :ui (`ui/ModelLabels.kt`, CMP-4 P4c).
+ */
 @get:StringRes
 val HouseStatus.labelRes: Int
     get() = when (this) {
         HouseStatus.NEW -> R.string.status_NEW
         HouseStatus.SHORTLISTED -> R.string.status_SHORTLISTED
         HouseStatus.REJECTED -> R.string.status_REJECTED
-    }
-
-/**
- * The status glyph shown before the status text (UX-002): ● New, ★ Shortlisted, ✕ Rejected, so the status never rests
- * on colour alone. Decorative: every place that draws it keeps it out of TalkBack's speech, which reads the text.
- */
-val HouseStatus.glyph: String
-    get() = when (this) {
-        HouseStatus.NEW -> "●"
-        HouseStatus.SHORTLISTED -> "★"
-        HouseStatus.REJECTED -> "✕"
     }
 
 /**

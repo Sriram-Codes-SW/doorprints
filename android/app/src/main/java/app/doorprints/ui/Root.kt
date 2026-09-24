@@ -27,7 +27,7 @@ import androidx.navigation.navArgument
 import app.doorprints.DeepLink
 import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
-import app.doorprints.data.Repository
+import app.doorprints.data.AndroidRepository
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
@@ -38,7 +38,7 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun repository(): Repository = (LocalContext.current.applicationContext as DoorprintsApp).container.repository
+fun repository(): AndroidRepository = (LocalContext.current.applicationContext as DoorprintsApp).container.repository
 
 private data class Tab(val route: String, val label: StringResource, val icon: ImageVector)
 
