@@ -4,9 +4,11 @@ import android.app.Application
 import android.content.res.Configuration
 import android.os.LocaleList
 import androidx.test.core.app.ApplicationProvider
-import app.doorprints.ui.getString
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.nav_map
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -44,7 +46,7 @@ class AppLocaleTest {
         AppLocale.applyDefault(phone)
 
         assertEquals("hi", Locale.getDefault().language)
-        assertEquals("नक्शा", phone.getString(Res.string.nav_map))
+        assertEquals("नक्शा", uiString(Res.string.nav_map))
     }
 
     @Test
@@ -54,6 +56,9 @@ class AppLocaleTest {
         AppLocale.applyDefault(phone)
 
         assertEquals("en", Locale.getDefault().language)
-        assertEquals("Map", phone.getString(Res.string.nav_map))
+        assertEquals("Map", uiString(Res.string.nav_map))
     }
+
+    /** A Compose string outside composition, as the app reads one in a coroutine. */
+    private fun uiString(resource: StringResource) = runBlocking { getString(resource) }
 }

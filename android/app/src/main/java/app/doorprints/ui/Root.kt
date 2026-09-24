@@ -34,6 +34,7 @@ import app.doorprints.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -98,8 +99,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         LaunchedEffect(Unit) {
             AppLocale.consumeChange(context)?.let { change ->
                 val name = change.language?.let { ExportLanguages.nativeName(it) }
-                    ?: context.getString(Res.string.settings_language_system)
-                rootSnackbar.showSnackbar(context.getString(Res.string.settings_language_changed, name))
+                    ?: getString(Res.string.settings_language_system)
+                rootSnackbar.showSnackbar(getString(Res.string.settings_language_changed, name))
             }
         }
 

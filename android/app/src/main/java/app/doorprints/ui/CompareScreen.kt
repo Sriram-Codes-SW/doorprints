@@ -17,8 +17,6 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -234,8 +232,8 @@ private fun CompareTable(
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    LocalConfiguration.current // read again after a language change, like priceText()
+    // Each chosen house's price as the list shows it (priceText reads price_per_month from Compose resources).
+    val prices = chosen.associate { h -> h.id to key(h.id) { priceText(h.price, h.priceType) } }
     val notScored = stringResource(Res.string.compare_not_scored)
     val notSet = stringResource(Res.string.compare_not_set)
     val scoreRow = stringResource(Res.string.compare_overall)
@@ -244,8 +242,8 @@ private fun CompareTable(
     val checkFormat = stringResource(Res.string.house_check_value)
     val checklistLabels = ChecklistLabels.items.map { (key, res) -> key to stringResource(res) }
     val rows = buildList {
-        add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(context, it) } }))
-        add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> Formats.price(context, h.price, h.priceType) }))
+        add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(it) } }))
+        add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
         add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { String.format(bhkFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { String.format(starsFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))

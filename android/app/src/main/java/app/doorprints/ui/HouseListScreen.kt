@@ -182,7 +182,7 @@ fun HouseListScreen(
     LaunchedEffect(deletedHouse) {
         val id = deletedHouse ?: return@LaunchedEffect
         onDeletedShown()
-        scope.launch { offerDeletedHouseUndo(context, repo, snackbar, id) }
+        scope.launch { offerDeletedHouseUndo(repo, snackbar, id) }
     }
     // Background sync that has been failing: said here, not only in Settings (see SyncHealth).
     val appSettings: AppSettings? by repo.settings.settings.collectAsStateWithLifecycle(initialValue = null)
@@ -913,7 +913,7 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
             if (place.isNotBlank()) Text(place, style = MaterialTheme.typography.bodySmall)
             // FlowRow wraps at large font scales instead of clipping (A11Y-A03).
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                h.priceText()?.let { Text(it, fontWeight = FontWeight.Medium) }
+                priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
                 h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
                 Text(stringResource(Res.string.common_score_value, h.score.scoreText()))
                 Text(stringResource(Res.string.common_visits_count, visits))

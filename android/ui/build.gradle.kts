@@ -43,6 +43,8 @@ kotlin {
             api(libs.cmp.material.icons.core)
             // api: :app's screens call stringResource(Res.string.…) until they move here (ADR-23).
             api(libs.cmp.components.resources)
+            // DeletedHouseUndo's NonCancellable write-back (CMP-3).
+            implementation(libs.kotlinx.coroutines.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
