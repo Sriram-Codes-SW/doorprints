@@ -564,7 +564,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   first (`Root.kt`). Found by the new emulator smoke test on its first CI run (run 35943533129;
   [docs/06](docs/06-test-plan.md) TC-I-35, [sprint log](docs/10-sprint-log.md) §13.3). On `bc57361` the push run passed
   both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in
-  `6376706`, the next item); the re-run on `6376706` is pending.
+  `6376706`, the next item); both runs on `6376706` passed (push and pull request).
 - **Android: the Map's camera could move off the main thread after a location fix** ("Animators may only be run on
   Looper threads"). `currentLocation()` awaits a Play services task that completes on a Binder thread, and the Map moved
   the MapLibre camera right after it. The app's own main dispatcher switches back to the main thread, so it was never
