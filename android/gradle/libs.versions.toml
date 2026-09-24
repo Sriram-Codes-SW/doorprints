@@ -99,7 +99,10 @@ kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-cor
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
-maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+# The OpenGL ES build, not the default `android-sdk` (which renders with Vulkan): without a Vulkan GPU, as on the API 26
+# emulator and many older phones, the Vulkan build throws "No Vulkan compatible GPU found" when the map opens (found by
+# the API 26 emulator job, 2026-09-24). A Vulkan build for Vulkan phones would need a second APK (backlog).
+maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 
 # Ktor client (shared module). commonMain: core only; androidMain: the OkHttp engine; commonTest: MockEngine.
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
