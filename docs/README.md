@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.50 |
+| Version | 0.51 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -62,6 +62,7 @@
 | 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a, the Room database as Room KMP code in `:shared` ([03](03-design.md) ADR-23 P4a). Versions: 01 v0.29 (RTM FR-019), 03 v0.28 (ADR-23 P4a as built, §4.2.1, §6.2, R-06 closed), 06 v0.42 (TC-U-36 in `:shared`, TC-U-63), 10 v0.48 (CMP-4 row, §13.6, S4b-BL-23, S4b-BL-24), 14 v0.15 (§1, N6, N7, N9), 11 v0.19 (the Room migration test is done); the others unchanged. Also `android/shared/README.md` 1.48, `android/ui/README.md` 1.7 and the CHANGELOG. |
 | 0.49 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b, settings on DataStore KMP, a `SecretStore` interface and `ServerUrl` in `:shared` ([03](03-design.md) ADR-23 P4b). Versions: 01 v0.30 (RTM FR-030, SEC-010), 02 v0.34 (F-02, F-03 files), 03 v0.29 (ADR-23 P4b as built, §4.2, §4.2.1), 04 v0.17 (D3), 06 v0.43 (TC-U-15, TC-U-64, TC-U-65; TC-M-26 only after a web change), 10 v0.49 (CMP-4 row, §13.7, S4b-BL-26 to S4b-BL-30; §13.3 owner rule refined), 14 v0.16 (§1, N6, N7, N8, N9, §5), 07 v0.38 (§1: the live UI test only after a web change); the others unchanged. Also `android/shared/README.md` 1.49 and `android/ui/README.md` 1.8. |
 | 0.50 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c, a common `Repository` interface, transactions on Room's common API, and Compare in `:ui` ([03](03-design.md) ADR-23 P4c). Versions: 03 v0.30 (ADR-23 P4c as built, §4.2, §4.2.1, Phase 2 plan), 06 v0.44 (TC-U-46, TC-U-51, TC-U-62, TC-U-66, TC-U-67), 10 v0.50 (CMP-4 row, §13.8, S4b-BL-23 and S4b-BL-28 done, S4b-BL-31 to S4b-BL-34), 14 v0.17 (§1, N6, N7, N9); 01 v0.31 (RTM: FR-007, FR-011, FR-019, FR-042..FR-048), 05 v0.23 (§8.2: 27 keys in both homes); the others unchanged. Also `android/shared/README.md` 1.50 and `android/ui/README.md` 1.9. Review round: the owner's request to ship CMP-5, CMP-6 and CMP-7 as one combined change (03 ADR-23, 10 §13, 14 N7); S4b-BL-34. |
+| 0.51 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change**, with the web backlog (S4b-BL-1, -2, -6, -7), the shared items (S4b-BL-9, -10, -12, -13, -17, -20), S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [03](03-design.md) ADR-23 P5-P7). Versions: 01 v0.32 (RTM), 02 v0.35 (RR-16 held areas and the S4b-BL-10 finding, new RR-17), 03 v0.31 (ADR-23 P5-P7 as built, ADR-22, §4.2, §4.2.1, §9, §10), 05 v0.24 (§4 invalid-field edge, §5.1 retry scope, new §5.2 web on phones, §8.2 counts, new §8.3), 06 v0.45 (TC-U-68 to TC-U-77, TC-I-36, TC-I-35 on three levels, TC-M-25, TC-M-26 mobile pass), 07 v0.39 (emulator matrix), 08 v0.18 (new §11.1, `maxSyncVersion`), 10 v0.51 (§13.9, S4b-BL-35 to S4b-BL-50), 14 v0.18; the others unchanged. Also `android/ui/README.md` 1.10, `android/shared/README.md` 1.51, `web/README.md` (rows of 2026-09-24) and the CHANGELOG. The session's handoff notes `wip-cmp5-7-handoff.md` are folded in and removed. |
 
 ---
 
