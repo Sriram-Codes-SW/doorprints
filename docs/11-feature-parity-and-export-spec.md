@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.18 |
+| Version | 0.19 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -30,6 +30,7 @@
 | 0.16 | 2026-09-24 | Claude (Code), Docs team | **§10 *Map boundaries (India)*** re-synced with branch `fix/india-boundary-lines` (PR #16, HEAD `9e0036e`): both apps' country-line rule also leaves out India's line with China (`INDIA_CHINA_LINE`, both syntaxes), both have the new state layer `in-boundary-state` (from zoom 5, directly above `boundary_3`, drawn like it), and the data file stays byte-identical (sha256 `2c497e2e…56d7`, kinds `world`, `claim`, `state`); the known limits of the state line and the two close lines are fixed (S4b-BL-11, -15, -16). |
 | 0.17 | 2026-09-24 | Claude (Code), Docs team | **§10 *Map boundaries (India)*** after the Singalila spur fix (round 2 reviews): sha256 `25984afa…a024`; the shared known limits sized (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tile line's overrun at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9)). No parity change. |
 | 0.18 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). The repository note says packages, storage keys and database names follow the brand since 2026-09-24. |
+| 0.19 | 2026-09-24 | Claude (Code), engineer | The Room migration test (R-06) is done: CMP-4 P4a, [06](06-test-plan.md) TC-U-63 (the Room row and S4-00). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -677,7 +678,7 @@ erDiagram
 
 | Store | Version | Change | Sprint |
 |---|---|---|---|
-| Room | 2 (unchanged) | 4a exporters read today's schema. `exportSchema` is on since Sprint 3.5 (`2.json` committed, `RoomSchemaTest`); still add a `MigrationTestHelper` test (R-06) | 4a |
+| Room | 2 (unchanged) | 4a exporters read today's schema. `exportSchema` is on since Sprint 3.5 (`2.json` committed, `RoomSchemaTest`); the `MigrationTestHelper` test (R-06) is done in CMP-4 P4a ([06](06-test-plan.md) TC-U-63) | 4a |
 | Room | 3 | `criteria`, `questions`, `viewings` (+ `huntReminder`, 5.16), `preferences` (+ `huntReminderMin`, `huntRemindersOn`, `areaWakeUpOn`), `hunting_areas` (`id`, `name`, `lat`, `lon`, `radiusM`, `enabled`, `lastNotifiedAt`, `updatedAt`, `dirty`; 5.17); `houses.rooms`/`answers` (JSON), `areaSqft`, `locationSource`; `photos.roomId`, `tags`, `caption`, `metaUpdatedAt`, `metaDirty`; `visits.notes`, `viewingId`. New `3.json` schema file, migration 2→3 tested | 4b |
 | Room | 4 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
 | IndexedDB | 1 → 3 | Mirrors Room 2 (4a), 3 (4b), 4 (5); Dexie version upgrades with tests | 4a–5 |
@@ -853,7 +854,7 @@ Goal: anyone can install Doorprints (APK or PWA), use it without an account, and
 
 | ID | Story | Teams | Pts | Depends on |
 |---|---|---|---|---|
-| S4-00 | Foundations: HouseDto null semantics (NFR-025), Room migration test (R-06; `exportSchema` and `RoomSchemaTest` already landed in Sprint 3.5), shared fixture files (scores, parser, export golden files) | Backend, Android, Web | 3 | – |
+| S4-00 | Foundations: HouseDto null semantics (NFR-025), Room migration test (R-06, done in CMP-4 P4a, [06](06-test-plan.md) TC-U-63; `exportSchema` and `RoomSchemaTest` already landed in Sprint 3.5), shared fixture files (scores, parser, export golden files) | Backend, Android, Web | 3 | – |
 | S4-01 | Web local-first: IndexedDB repository, TS sync engine against today's API-key server (optional), "download my houses to this browser" migration, persistent storage | Web | 13 | S4-00 |
 | S4-02 | Android exporters: HTML, PDF, CSV, XLSX, Markdown, JSON backup; options; SAF, share | Android, Design | 13 | S4-00 |
 | S4-03 | Web exporters: same six formats (PDF via print view) from IndexedDB; download, Web Share | Web, Design | 8 | S4-01 |
