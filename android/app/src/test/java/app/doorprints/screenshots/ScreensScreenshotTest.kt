@@ -22,6 +22,7 @@ import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.DoorprintsTheme
 import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.ImportScreen
+import app.doorprints.ui.ProvidePlatformServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.runBlocking
@@ -85,7 +86,12 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     private fun shoot(screen: String, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
-        compose.setContent { DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } } }
+        compose.setContent {
+            // As MainActivity does: the screens read the platform seam (ADR-23 CMP-3).
+            ProvidePlatformServices {
+                DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
+            }
+        }
         awaitStableFrame()
         compose.onRoot().captureRoboImage("src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png")
     }
