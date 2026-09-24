@@ -11,9 +11,9 @@ import java.io.File
  * the old file exists and the new one does not, it renames the old file and its companions (`-wal`, `-shm`,
  * `-journal`) to [NAME]. The companions move first and the main file last, so a process killed halfway leaves the
  * old main file in place and the next start finishes the move; if a rename fails, the moved companions (including
- * any an interrupted earlier run moved) go back and
- * the database is opened under its old name, so a house is never hidden behind a new, empty file. When both files
- * exist (which only a hand-made copy produces) nothing is touched and the new one is used; the old one stays on disk.
+ * any an interrupted earlier run moved) go back and the database is opened under its old name, so a house is never
+ * hidden behind a new, empty file. When both files exist (which only a hand-made copy produces) nothing is touched
+ * and the new one is used; the old one stays on disk.
  */
 object DatabaseFile {
     const val NAME = "doorprints.db"
