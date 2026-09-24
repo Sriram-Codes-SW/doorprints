@@ -48,6 +48,8 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            // IndiaViewRulesTest evaluates the boundary filters, which are MapLibre style JSON (CMP-3).
+            implementation(libs.kotlinx.serialization.json)
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.kotlin.test.junit)
