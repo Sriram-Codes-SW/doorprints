@@ -1,22 +1,24 @@
 package app.doorprints.data
 
-import android.content.Context
-import androidx.datastore.preferences.core.*
-import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.sync.SyncOutcome
-import app.doorprints.export.ExportGrants
 import app.doorprints.export.decodeGrants
 import app.doorprints.export.encodeGrants
 import app.doorprints.export.retainNewestGrants
 
-private val Context.dataStore by preferencesDataStore("settings")
-
 data class AppSettings(
     val serverUrl: String = "",
-    /** Decrypted in memory only; stored encrypted with a Keystore key (see [ApiKeyCipher]). */
+    /** Decrypted in memory only; stored protected by the platform's [SecretStore] (Android: the Keystore). */
     val apiKey: String = "",
     /** Alert when you pass within this many metres of a saved house. */
     val alertRadiusM: Int = 30,
@@ -65,12 +67,31 @@ data class ResultMarks(
 /** Which screen a [ResultMarks] entry is for. */
 enum class ResultScreen { EXPORT, IMPORT }
 
-class SettingsStore(private val context: Context) {
+/**
+ * The app's settings, in one Preferences DataStore (common code since CMP-4 P4b, ADR-23; was `:app`).
+ *
+ * The file and the key names below are stored names: an upgraded install reads the settings it already has only
+ * because they did not change (ADR-24). Android opens the file in `:app` (`data/SettingsStoreFactory.kt`,
+ * `files/datastore/settings.preferences_pb`, the path `preferencesDataStore("settings")` gave before);
+ * `SettingsUpgradeTest` writes it the old way and reads it through this class.
+ *
+ * [dataStore] must be the only DataStore open on its file in the process. [secrets] keeps the API key; [now] is the
+ * clock for sync times (epoch milliseconds).
+ */
+class SettingsStore(
+    private val dataStore: DataStore<Preferences>,
+    private val secrets: SecretStore,
+    private val now: () -> Long = { IsoTime.nowMillis() },
+) {
+    companion object {
+        /** The DataStore's name: Android's file is `datastore/settings.preferences_pb`. Do not change it. */
+        const val FILE_NAME = "settings"
+    }
+
     private object Keys {
         val serverUrl = stringPreferencesKey("serverUrl")
-        /** Legacy plaintext key (v0.1). Migrated to [apiKeyEnc] and removed on first start. */
+        /** Legacy plaintext key (v0.1). Moved into the [SecretStore] and removed on first start. */
         val apiKeyPlain = stringPreferencesKey("apiKey")
-        val apiKeyEnc = stringPreferencesKey("apiKeyEnc")
         val alertRadius = intPreferencesKey("alertRadius")
         val minStay = intPreferencesKey("minStay")
         val photosOnWifiOnly = booleanPreferencesKey("photosOnWifiOnly")
@@ -87,7 +108,7 @@ class SettingsStore(private val context: Context) {
         val autoBackupKeep = intPreferencesKey("autoBackupKeep")
         val lastAutoBackupAt = longPreferencesKey("lastAutoBackupAt")
         val lastAutoBackupError = stringPreferencesKey("lastAutoBackupError")
-        /** The "Save to…" documents whose persisted grant is still held, newest first; see [ExportGrants]. */
+        /** The "Save to…" documents whose persisted grant is still held, newest first; see `ExportGrants` (`:app`). */
         val exportGrants = stringPreferencesKey("exportGrants")
         val exportDismissed = stringPreferencesKey("exportDismissedRun")
         val exportTold = stringPreferencesKey("exportToldRun")
@@ -97,10 +118,10 @@ class SettingsStore(private val context: Context) {
         val notificationsAsked = booleanPreferencesKey("notificationsAsked")
     }
 
-    val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
+    val settings: Flow<AppSettings> = dataStore.data.map { p ->
         AppSettings(
             serverUrl = p[Keys.serverUrl] ?: "",
-            apiKey = ApiKeyCipher.decrypt(p[Keys.apiKeyEnc]) ?: p[Keys.apiKeyPlain] ?: "",
+            apiKey = secrets.get(p) ?: p[Keys.apiKeyPlain] ?: "",
             alertRadiusM = p[Keys.alertRadius] ?: 30,
             minStayMinutes = p[Keys.minStay] ?: 4,
             photosOnWifiOnly = p[Keys.photosOnWifiOnly] ?: true,
@@ -120,31 +141,31 @@ class SettingsStore(private val context: Context) {
     suspend fun current() = settings.first()
 
     /** See [ResultMarks]. */
-    val resultMarks: Flow<ResultMarks> = context.dataStore.data.map { p ->
+    val resultMarks: Flow<ResultMarks> = dataStore.data.map { p ->
         ResultMarks(p[Keys.exportDismissed], p[Keys.exportTold], p[Keys.importDismissed], p[Keys.importTold])
     }
 
     /** Records that the result of [runId] on [screen] has been shown to the user. */
-    suspend fun markResultTold(screen: ResultScreen, runId: String) = context.dataStore.edit {
+    suspend fun markResultTold(screen: ResultScreen, runId: String) = dataStore.edit {
         it[if (screen == ResultScreen.EXPORT) Keys.exportTold else Keys.importTold] = runId
     }
 
     /** Records that the user closed or moved on from the result of [runId] on [screen]; it is not shown again. */
-    suspend fun markResultDismissed(screen: ResultScreen, runId: String) = context.dataStore.edit {
+    suspend fun markResultDismissed(screen: ResultScreen, runId: String) = dataStore.edit {
         it[if (screen == ResultScreen.EXPORT) Keys.exportDismissed else Keys.importDismissed] = runId
         it[if (screen == ResultScreen.EXPORT) Keys.exportTold else Keys.importTold] = runId
     }
 
     /** Whether the in-context notification request has been made already (it is made once). */
-    val notificationsAsked: Flow<Boolean> = context.dataStore.data.map { it[Keys.notificationsAsked] ?: false }
+    val notificationsAsked: Flow<Boolean> = dataStore.data.map { it[Keys.notificationsAsked] ?: false }
 
-    suspend fun setNotificationsAsked() = context.dataStore.edit { it[Keys.notificationsAsked] = true }
+    suspend fun setNotificationsAsked() = dataStore.edit { it[Keys.notificationsAsked] = true }
 
     /** Moves a plaintext key from v0.1 into the encrypted slot. Safe to call on every start. */
     suspend fun migrateLegacyKey() {
-        context.dataStore.edit {
+        dataStore.edit {
             val plain = it[Keys.apiKeyPlain] ?: return@edit
-            if (plain.isNotBlank()) it[Keys.apiKeyEnc] = ApiKeyCipher.encrypt(plain)
+            if (plain.isNotBlank()) secrets.put(it, plain)
             it.remove(Keys.apiKeyPlain)
         }
     }
@@ -153,12 +174,12 @@ class SettingsStore(private val context: Context) {
      * Saves the server. [url] must already be validated with [ServerUrl.check]. A blank [key] keeps the saved key,
      * so the key never has to be shown in the text field again (threat model AB-02).
      */
-    suspend fun saveServer(url: String, key: String) = context.dataStore.edit {
+    suspend fun saveServer(url: String, key: String) = dataStore.edit {
         val clean = url.trim().trimEnd('/')
         val changed = it[Keys.serverUrl] != clean
         it[Keys.serverUrl] = clean
         if (key.isNotBlank()) {
-            it[Keys.apiKeyEnc] = ApiKeyCipher.encrypt(key.trim())
+            secrets.put(it, key.trim())
             it.remove(Keys.apiKeyPlain)
         }
         // A different server means a fresh full download.
@@ -175,38 +196,38 @@ class SettingsStore(private val context: Context) {
         }
     }
 
-    suspend fun saveTracking(alertRadiusM: Int, minStayMinutes: Int) = context.dataStore.edit {
+    suspend fun saveTracking(alertRadiusM: Int, minStayMinutes: Int) = dataStore.edit {
         it[Keys.alertRadius] = alertRadiusM
         it[Keys.minStay] = minStayMinutes
     }
 
-    suspend fun savePhotosOnWifiOnly(value: Boolean) = context.dataStore.edit { it[Keys.photosOnWifiOnly] = value }
+    suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
 
     /** Records a sync's outcome, and counts failures in a row for the house list's warning ([SyncHealth]). */
-    suspend fun saveSyncResult(outcome: SyncOutcome) = context.dataStore.edit {
-        val now = System.currentTimeMillis()
+    suspend fun saveSyncResult(outcome: SyncOutcome) = dataStore.edit {
+        val at = now()
         val failures = it[Keys.syncFailures] ?: 0
-        it[Keys.lastSyncAt] = now
+        it[Keys.lastSyncAt] = at
         it[Keys.lastSyncOutcome] = outcome.encode()
         it[Keys.syncFailingSince] =
-            SyncHealth.nextFailingSince(outcome.kind, failures, it[Keys.syncFailingSince] ?: 0L, now)
+            SyncHealth.nextFailingSince(outcome.kind, failures, it[Keys.syncFailingSince] ?: 0L, at)
         it[Keys.syncFailures] = SyncHealth.nextFailures(outcome.kind, failures)
-        if (outcome.kind == SyncOutcome.Kind.OK) it[Keys.lastSyncOkAt] = now
+        if (outcome.kind == SyncOutcome.Kind.OK) it[Keys.lastSyncOkAt] = at
     }
 
     data class Cursors(val house: Long, val visit: Long, val photo: Long)
 
     suspend fun cursors(): Cursors {
-        val p = context.dataStore.data.first()
+        val p = dataStore.data.first()
         return Cursors(p[Keys.houseCursor] ?: 0L, p[Keys.visitCursor] ?: 0L, p[Keys.photoCursor] ?: 0L)
     }
 
-    suspend fun saveCursors(house: Long, visit: Long) = context.dataStore.edit {
+    suspend fun saveCursors(house: Long, visit: Long) = dataStore.edit {
         it[Keys.houseCursor] = house
         it[Keys.visitCursor] = visit
     }
 
-    suspend fun savePhotoCursor(photo: Long) = context.dataStore.edit { it[Keys.photoCursor] = photo }
+    suspend fun savePhotoCursor(photo: Long) = dataStore.edit { it[Keys.photoCursor] = photo }
 
     /**
      * Turns the weekly backup on or off. [folder] is the persisted `content://` tree from `OpenDocumentTree`;
@@ -216,7 +237,7 @@ class SettingsStore(private val context: Context) {
      * setup, and a "The folder is no longer available" left on screen for a week after the user fixed exactly
      * that makes the fix look as if it failed.
      */
-    suspend fun saveAutoBackup(enabled: Boolean, folder: String, keep: Int) = context.dataStore.edit {
+    suspend fun saveAutoBackup(enabled: Boolean, folder: String, keep: Int) = dataStore.edit {
         val on = enabled && folder.isNotBlank()
         val wasOn = it[Keys.autoBackup] ?: false
         val folderChanged = folder.isNotBlank() && folder != (it[Keys.autoBackupFolder] ?: "")
@@ -226,7 +247,7 @@ class SettingsStore(private val context: Context) {
         it[Keys.autoBackupKeep] = keep.coerceIn(1, 20)
     }
 
-    suspend fun saveAutoBackupResult(at: Long, error: String) = context.dataStore.edit {
+    suspend fun saveAutoBackupResult(at: Long, error: String) = dataStore.edit {
         it[Keys.lastAutoBackupAt] = at
         it[Keys.lastAutoBackupError] = error
     }
@@ -237,7 +258,7 @@ class SettingsStore(private val context: Context) {
      */
     suspend fun holdExportGrant(uri: String, keep: Int): List<String> {
         var released = emptyList<String>()
-        context.dataStore.edit {
+        dataStore.edit {
             val retention = retainNewestGrants(decodeGrants(it[Keys.exportGrants]), uri, keep)
             it[Keys.exportGrants] = encodeGrants(retention.kept)
             released = retention.released
@@ -247,7 +268,7 @@ class SettingsStore(private val context: Context) {
 
     /** Forgets [uri] as a held export grant (its grant has been, or is about to be, released). */
     suspend fun dropExportGrant(uri: String) {
-        context.dataStore.edit {
+        dataStore.edit {
             val held = decodeGrants(it[Keys.exportGrants])
             if (uri in held) it[Keys.exportGrants] = encodeGrants(held.filter { h -> h != uri })
         }

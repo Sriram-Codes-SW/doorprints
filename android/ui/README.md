@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.7 |
+| Version | 1.8 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.8 | 2026-09-24 | **CMP-4 P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22; [docs/03](../../docs/03-design.md) ADR-23 P4b, [docs/10](../../docs/10-sprint-log.md) §13.7): settings, `SecretStore` and `ServerUrl` are in `:shared` commonMain; section 6's P4 row says so, and P4a is merged (PR #21). No change to `:ui` itself. |
 | 1.7 | 2026-09-24 | **CMP-4 P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`; [docs/03](../../docs/03-design.md) ADR-23 P4a, [docs/10](../../docs/10-sprint-log.md) §13.6): the Room database is in `:shared` commonMain (Room KMP); section 6's P4 row says so. No change to `:ui` itself. P2 and P3 marked **Done** (PRs #19 and #20 merged). |
 | 1.6 | 2026-09-24 | **CMP-3 done in code** (branch `claude/doorprints-dev-continue-fzcge2`; [docs/03](../../docs/03-design.md) ADR-23 P3, [docs/10](../../docs/10-sprint-log.md) §13.5). Section 4: `PlatformServices` and `LocalPlatformServices`, `Format.kt` (common amounts and scores, `expect` dates, `appLanguage()`), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `uiLanguage()` follows the resolved language (S4b-BL-18); `MapRulesTest`, `IndiaViewRulesTest` and `FormatsTest` in commonTest, `FormatsParityTest` in androidHostTest; `ui/UiStrings.kt` removed. Section 5: the iOS klibs compile on Linux with klib cross-compilation on. Section 6: P3 done in code. No visual change (the 64 screenshots verify). |
 | 1.5 | 2026-09-24 | **CMP-2 done in code** (PR #19, `80b198b`, review fixes `927d54b`; [docs/03](../../docs/03-design.md) ADR-23 P2, [docs/10](../../docs/10-sprint-log.md) §13.4). Section 2: the `org.jetbrains.compose` plugin and `components-resources`; section 4: the Compose resources row (403 strings and 16 plurals per language) and the service strings that stay in `:app`; section 6: P2 done. No visual change (the 64 screenshots verify). |
@@ -124,7 +125,7 @@ Each phase (and each lettered sub-phase) is one pull request that keeps `android
 | P1 | CMP-1 | `:ui` module; theme and pure UI code | **Done** (`be86f50`); iOS compile pending on CI (macOS) |
 | P2 | CMP-2 | UI strings to Compose resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`; service strings stay Android resources; `AppLocale.applyDefault` on every API level; `localeFilters`; `StringParityTest`, `AppLocaleTest` | **Done** (PR #19, merged as `7080a7f`) |
 | P3 | CMP-3 | `PlatformServices` seam (screen reader only, so far); `Format.kt` (common amounts, `expect` dates), `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`; `UiStrings.kt` removed; S4b-BL-18; `MapRulesTest`, `IndiaViewRulesTest` to commonTest | **Done** (PR #20, merged as `fccf8a1`) |
-| P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | **P4a done in code** (the Room database in `:shared`, [docs/10](../../docs/10-sprint-log.md) §13.6); P4b and P4c planned |
+| P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | **P4a done** (the Room database in `:shared`, PR #21, merged as `e480b83`; [docs/10](../../docs/10-sprint-log.md) §13.6); **P4b done in code** (settings, `SecretStore`, `ServerUrl` in `:shared`, PR #22; §13.7); P4c planned |
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned |
 | P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | Planned |
 | P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | Planned |

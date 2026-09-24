@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.33 |
+| Version | 0.34 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -45,6 +45,7 @@
 | 0.31 | 2026-09-24 | Claude (Code), Docs team | **RR-16** after the Singalila spur fix (round 2 reviews): the reviewed sha256 is `25984afa…a024`; the *Mitigation* names rule 2's India-China clause (`INDIA_CHINA_LINE`; Docs review round 2). |
 | 0.32 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). T-E5 names the dev credentials `doorprints/doorprints` (the pre-rename `househunt/househunt` in brackets). Code paths in the findings follow the moved packages. No threat or rating change. |
 | 0.33 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19: T-T8's zip-slip example names the database `doorprints.db` (a find-and-replace had left `househunt.db`). |
+| 0.34 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): the settings code and the URL check moved to `:shared` commonMain; where the key is kept did not change. §5.1 **F-02** and **F-03** name the new files: `ServerUrl` in `:shared` (a port of `java.net.URI`'s parser, `ServerUrlTest` and `ServerUrlParityTest`); `SettingsStore` in `:shared` behind a `SecretStore` interface, `KeystoreSecretStore` in `:app` around the unchanged `ApiKeyCipher` (alias `house_hunt_api_key_v1`, entry `apiKeyEnc`; `SettingsUpgradeTest`). |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -290,8 +291,8 @@ Severity uses the same L×I scale. Status per finding (v0.6) is in section 5.1. 
 |---|---|---|---|
 | F-01a | **Fixed** | Minimum key length raised to **32** (`ApiKeyFilter.MIN_KEY_LENGTH`, checked at startup by `WebConfig` through `validateKeys`; the error names the variable, never the value). Optional second key `APP_API_KEY_NEXT` (also ≥ 32) is accepted alongside the current one for zero-downtime rotation (SEC-017, 08 §5.1); both keys are always compared in constant time. CI-verified (all four workflows green on `f7da5ab` and `0e4e22a`). **Upgrade note:** deployments with a 16–31 character key must set a new 32+ key before upgrading. | TC-U-18, TC-I-10b, TC-I-21 |
 | F-01b | Open (backlog: C-04 in [10](10-sprint-log.md) §6, SEC-025) | Still one shared key for all clients; no per-device revocation, expiry or read-only scope. Risk accepted for v1 (ADR-03 in [03](03-design.md)) and reduced by F-01a, TLS (F-02), the failed-key throttle (F-05) and key encryption at rest (F-03, F-04). | – |
-| F-02 | **Fixed** | `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for localhost, 127.0.0.1, 10.0.2.2; system CAs only), manifest `usesCleartextTraffic` removed, `data/ServerUrl.kt` (Settings rejects non-HTTPS URLs) | `ServerUrlTest`, TC-S-07 |
-| F-03 | **Fixed** | `allowBackup="false"`, `res/xml/data_extraction_rules.xml` (no cloud backup; device transfer only of the DB and photos, never settings), `data/ApiKeyCipher.kt` (AES-256-GCM, Android Keystore key), `data/Settings.kt` (migrates the old plaintext key) | TC-S-07, TC-M-06 |
+| F-02 | **Fixed** | `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for localhost, 127.0.0.1, 10.0.2.2; system CAs only), manifest `usesCleartextTraffic` removed, `android/shared/src/commonMain/kotlin/app/doorprints/data/ServerUrl.kt` (Settings rejects non-HTTPS URLs; moved from `:app` to `:shared` commonMain in CMP-4 P4b, with the same answers) | `ServerUrlTest`, `ServerUrlParityTest`, TC-S-07 |
+| F-03 | **Fixed** | `allowBackup="false"`, `res/xml/data_extraction_rules.xml` (no cloud backup; device transfer only of the DB and photos, never settings), `data/ApiKeyCipher.kt` (AES-256-GCM, Android Keystore key), `data/Settings.kt` (migrates the old plaintext key). Since CMP-4 P4b `Settings.kt` is in `:shared` commonMain and reaches the key only through `SecretStore`; `:app`'s `KeystoreSecretStore` seals it with `ApiKeyCipher` into the same `apiKeyEnc` entry (same alias, same file) | TC-S-07, TC-M-06, `SettingsUpgradeTest` |
 | F-04 | **Fixed** | `web/src/app/core/config.service.ts`: sessionStorage by default, localStorage only with "Remember on this device" (Connect page) | TC-U-09, TC-M-05 |
 | F-05 | **Fixed** | `config/ApiRateLimitFilter.java` (600/min, burst 300 per address), failed-key throttle in `ApiKeyFilter` (10/min), `RequestSizeLimitFilter` (JSON 256 KB), Tomcat connection timeout; AI limits unchanged | `ApiKeyFilterTest`, `rejectsOversizedJsonBodies` |
 | F-06 | Part | 20 photos per house (`PhotoService`, Android `MAX_PHOTOS_PER_HOUSE`), 5 MB per upload. Photos still live in `bytea` and are buffered in the heap; object storage is ADR-08 backlog. | `photoUploadStripsMetadataAndDeletesSyncAsTombstones` |

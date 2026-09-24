@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.48 |
+| Version | 0.49 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -60,6 +60,7 @@
 | 0.46 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. §13.1: CMP-0 **done** (PR #18 merged, `6da0e56`), CMP-2 **done in code** in PR #19 (`80b198b`, review fixes `927d54b`). New **§13.4**: CMP-2 as built and its five differences from the plan. §13.2 notes that the package names are now `app.doorprints…`. §14: PR #19 on `claude/doorprints-dev-continue-fzcge2` with its commits, *Disconnect* removing a leftover `house-hunt.api-config`, and 235 `:app` unit test runs in the checks. §12.7: new backlog **S4b-BL-18** (formatting follows `locales[0]`), **S4b-BL-19** (`MainActivity` not exported), **S4b-BL-20** (clients detect a reset server) and **S4b-BL-21** (device-only checks, TC-M-27). §9.3 item 1 rewrapped. |
 | 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3. §13.1: CMP-3 **done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #20, open; the owner merges). New **§13.5**: CMP-3 as built and where it differs from the plan. §12.7: **S4b-BL-18 done** (the dates and `uiLanguage()` follow the resolved language); new **S4b-BL-22** (Export's default language follows `locales[0]`); new **CMP-0-BL-8** (§13.3 backlog). |
 | 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a. §13.1: CMP-4 **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, after PR #20 was merged as `fccf8a1`), P4b and P4c planned. New **§13.6**: the Room database in `:shared` commonMain (Room KMP), how the identity hash and the file name were kept, the migration test, what stays in `:app` and why. §12.7: new **S4b-BL-23** (the `Repository`'s Android-only Room calls, for P4c) and **S4b-BL-24** (Room never opened on iOS). CMP-2 and CMP-3 rows marked **Done** (PRs #19 and #20 merged). Code review: the iOS database goes in Application Support; new S4b-BL-25 (a committed v1 schema). |
+| 0.49 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b. §13.1: CMP-4 **P4a done and merged** (PR #21, `e480b83`), **P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22, open; the owner merges), P4c planned. New **§13.7**: settings, `SecretStore` and `ServerUrl` in `:shared` commonMain, how the stored names were kept, the parser port, what stays in `:app`. §9.3 items 2 and 3 marked done. §12.7: new **S4b-BL-26** (iOS settings and Keychain never run), **S4b-BL-27** (the real Keystore path has no automated test) and **S4b-BL-28** (two JUnit tests of now-common code), from the review **S4b-BL-29** (`AppSettings.toString()` prints the API key) and **S4b-BL-30** (iOS `KeychainSecretStore`: update, transform, locked device); the intro lists S4b-BL-23 to S4b-BL-30. §13.3 and CMP-0: the live UI test only after a merge that runs the `Web` deploy (owner rule refined, 2026-09-24). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -439,8 +440,9 @@ notice, DevSecOps removes `dependency-graph-continue-on-failure` and the job is 
 1. Room KMP (Room 2.8 in `commonMain`, bundled SQLite driver), keeping `doorprints.db` (renamed from `househunt.db`
    since 2026-09-24, §14), version 2, `MIGRATION_1_2` and `2.json`;
    migration test from real v1/v2 files; then the mappers.
-2. DataStore KMP; `expect/actual` secret storage (Android Keystore / iOS Keychain).
-3. `ServerUrl` as a common parser or `expect/actual`.
+2. DataStore KMP; `expect/actual` secret storage (Android Keystore / iOS Keychain). **Done in CMP-4 P4b** (§13.7): a
+   common `SecretStore` interface, Keystore on Android, Keychain on iOS compile-only.
+3. `ServerUrl` as a common parser or `expect/actual`. **Done in CMP-4 P4b** (§13.7): a common parser.
 4. iOS app (SwiftUI over the shared framework, or Compose Multiplatform) only when a Mac and the Apple Developer
    Program are available; `iosMain` with `ktor-client-darwin`; run the iOS tests on a simulator in CI.
 5. iOS platform services: `CLLocationManager` (region monitoring also suits Hunting areas, 20 regions per app),
@@ -1008,7 +1010,8 @@ Duplicates are merged: the same `sync.service.ts` item was raised three times an
 new ticket takes the next free number from it and says in its Docs handover that the id is new (candidate (k) below).
 S4b-BL-6 and S4b-BL-7 were added in v0.29 that way, from the Web team's round 2 and round 3 rows; S4b-BL-8 in v0.31, from the Docs pre-review of Decision 5; S4b-BL-9 and S4b-BL-10 in v0.32, from the owner's boundary issue (§12.8); S4b-BL-11 and S4b-BL-12 in v0.33, from the round 1 review of that Docs change; S4b-BL-13 to S4b-BL-16 in v0.34, from the coordinator's comment and docs sync of that change (S4b-BL-15 and S4b-BL-16 proposed in `android/shared/README.md` 1.39); S4b-BL-17 in v0.37, from the round 2 design review of PR #16 (§12.10);
 S4b-BL-18 to S4b-BL-21 in v0.46, from the reviews of PR #19 (CMP-2 and the ADR-24 rename, §13.4 and §14);
-S4b-BL-22 in v0.47, from CMP-3 (§13.5).
+S4b-BL-22 in v0.47, from CMP-3 (§13.5); S4b-BL-23 to S4b-BL-25 in v0.48, from CMP-4 P4a (§13.6); S4b-BL-26 to
+S4b-BL-30 in v0.49, from CMP-4 P4b (§13.7) and its review.
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1037,6 +1040,11 @@ S4b-BL-22 in v0.47, from CMP-3 (§13.5).
 | S4b-BL-23 | Android | **The `Repository` uses Room calls that exist only on Android** (found in CMP-4 P4a; new id). `db.withTransaction { }` (two places) and `db.invalidationTracker.createFlow("houses", "visits", "photos")` are Room's Android API; the database itself is common since P4a (§13.6). Left in `:app` with the `Repository`, which moves in P4c | In P4c, write them with Room's common API (`useWriterConnection { it.immediateTransaction { } }` and the common `InvalidationTracker.createFlow`), with the import and undo tests (TC-U-52, `CopyUndoTest`) passing unchanged | Android |
 | S4b-BL-24 | Android | **Room is compiled for iOS but never opened there** (CMP-4 P4a; new id). `iosAppDatabase()` (Application Support, `BundledSQLiteDriver`) and the KSP-generated iOS code compile (`shared-ios.yml`; locally cross-compiled on Linux), but no test runs on an iOS simulator, so the bundled driver, the file path and the DAOs are unchecked on iOS | With the iOS shell (CMP-8): a `commonTest` that opens the database with a driver, writes and reads each table and runs `MIGRATION_1_2`, run on the simulator | Android |
 | S4b-BL-25 | Android | **No committed v1 schema** (CMP-4 P4a code review; new id). `AppDatabaseMigrationTest` rebuilds the version-1 layout from `2.json` minus `photos.deleted`, because `1.json` was never exported. | Commit that layout as `shared/schemas/app.doorprints.data.AppDatabase/1.json` with a note, so `MigrationTestHelper.createDatabase(1)` works and later migrations can reuse it | Android |
+| S4b-BL-26 | Android | **The iOS settings and the Keychain store are compiled but never run** (CMP-4 P4b; new id). `iosSettingsStore()` (Application Support, `createWithPath`) and `KeychainSecretStore` (generic password, this device only, a counter entry in the settings) compile for both iOS targets, but no test runs them on a simulator | With the iOS shell (CMP-8): a simulator test that saves, reads and clears a key through `SettingsStore`, and checks that a Keychain item left from an earlier install is not read into fresh settings | Android |
+| S4b-BL-27 | Android | **The real Keystore path has no automated test** (CMP-4 P4b; new id). `SettingsUpgradeTest` (TC-U-64) runs `KeystoreSecretStore` with a stand-in cipher, because the JVM has no Android Keystore; `ApiKeyCipher` itself did not change, and before P4b it had no automated test either | An instrumented test (`app/src/androidTest`, run by `android-emulator.yml`) that saves a key through `SettingsStore.create(context)` and reads it back sealed in `apiKeyEnc`; and on a real phone, an upgrade from a build before PR #22 with a saved key (the TC-M-27 kind of check) | Android, QA |
+| S4b-BL-28 | Android | **Two JUnit tests still test code that is now common** (CMP-4 P4b; new id). `SyncHealthTest` and `ExportGrantsTest` stay in `:app` (JUnit) while `SyncHealth` and the grant list (`retainNewestGrants`, `encodeGrants`, `decodeGrants`) moved to `:shared` commonMain with `SettingsStore`; they pass unchanged, but do not compile for iOS | Move both to `:shared` commonTest with `kotlin.test` (the pure grant cases only; `ExportGrants` itself stays Android) | Android |
+| S4b-BL-29 | Android | **`AppSettings.toString()` includes the API key** (CMP-4 P4b review; new id). `AppSettings` is a data class, so its generated `toString()` prints `apiKey` in plain text; nothing logs it today, but a later log line or crash report could | Override `toString()` to redact the key (for example `apiKey=<set>` or `<none>`), with a common test that the key never appears in it | Android |
+| S4b-BL-30 | Android | **The iOS `KeychainSecretStore` has three weak spots** (CMP-4 P4b review; new id). `put` deletes and then adds, so a failed add leaves no key; the Keychain is changed inside the DataStore transform, so a failed settings write leaves the two out of step; `get` returns null on `errSecInteractionNotAllowed` (device locked), which reads as "no key" | Update with `SecItemUpdate`, falling back to `SecItemAdd` when the item is missing; keep the Keychain and the settings in step when the write fails; tell "locked" apart from "no key". Fix with the CMP-8 simulator tests (S4b-BL-26) | Android |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -1297,11 +1305,11 @@ rule): signing, device installs, TestFlight and the App Store. iPhone users keep
 
 | ID | Phase | Story | Done when | Team | Status |
 |---|---|---|---|---|---|
-| CMP-0 | Prerequisite | **Test harness for the phases** (owner request of 2026-09-24, §13.3). JVM screenshot tests of every screen except the Map in four languages and both themes (Robolectric + Roborazzi, 64 references, verified in `android.yml`); instrumented smoke tests on an API 34 emulator (`android-emulator.yml`) and in Firebase Test Lab (`main` only, push or manual, after the owner's setup); the live web UI test `tools/live-ui` after every merge to `main` | [06](06-test-plan.md) TC-U-56, TC-I-35 and TC-M-26 exist; each later phase shows "no screen changed" with an unchanged TC-U-56 and a green TC-I-35, or re-records the images it changes on purpose and says so | Android, DevSecOps, Web, Docs | **Done** (PR #18, merged to `main` as `6da0e56`. On `bc57361` the push run passed both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request)); Test Lab off by default at zero cost, options for the owner in [07](07-secure-build-and-deploy.md) §7.2 |
+| CMP-0 | Prerequisite | **Test harness for the phases** (owner request of 2026-09-24, §13.3). JVM screenshot tests of every screen except the Map in four languages and both themes (Robolectric + Roborazzi, 64 references, verified in `android.yml`); instrumented smoke tests on an API 34 emulator (`android-emulator.yml`) and in Firebase Test Lab (`main` only, push or manual, after the owner's setup); the live web UI test `tools/live-ui` after each merge to `main` that runs the `Web` deploy | [06](06-test-plan.md) TC-U-56, TC-I-35 and TC-M-26 exist; each later phase shows "no screen changed" with an unchanged TC-U-56 and a green TC-I-35, or re-records the images it changes on purpose and says so | Android, DevSecOps, Web, Docs | **Done** (PR #18, merged to `main` as `6da0e56`. On `bc57361` the push run passed both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request)); Test Lab off by default at zero cost, options for the owner in [07](07-secure-build-and-deploy.md) §7.2 |
 | CMP-1 | P1 | New KMP module `:ui` (`android/ui`): plugins `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose`; targets Android plus compile-only `iosArm64` and `iosSimulatorArm64`; Compose Multiplatform 1.12.1, material3 1.9.0, material-icons-core 1.7.3, `api(project(":shared"))`. The theme and pure UI code move to `commonMain` with the Kotlin package kept (`com.househunt.app.ui`) | `Theme.kt`, `Rows.kt`, `ServerStatus.kt`, `MapRules.kt`, `IndiaViewRules.kt`, `Buttons.kt` (`ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES`), `ResultTone` and `LocationFix` in `:ui`; `expect fun uiLanguage()`; `ServerStatusTest` in `:ui` `commonTest`; `android.yml` and `shared-ios.yml` cover `:ui`; no visual change | Android, DevSecOps, Docs | **Done** (`be86f50`); iOS compile pending on CI |
 | CMP-2 | P2 | **Strings to compose-resources.** The four `strings.xml` files move to `ui/src/commonMain/composeResources/values{,-hi,-ta,-te}`; add the `org.jetbrains.compose` plugin; code uses `Res.string`, service code `getString(Res.string)`; on API 26-32 `AppLocale` calls `Locale.setDefault` | Every screen shows the same text in en, hi, ta and te as before; a new `StringParityTest` checks that the four languages have the same keys; hi, ta and te stay marked *under review* | Android, Docs | **Done** (PR #19, merged as `7080a7f`). Differs from the plan in five points (§13.4): the service strings stay Android resources, services keep `R.string`, `AppLocale.applyDefault` sets the default locale on every API level, the APK carries only the four languages, and `StringParityTest` checks more than the keys |
 | CMP-3 | P3 | **Platform seams.** A `PlatformServices` interface for announce, the screen reader, share and URLs, pickers, permission state and work progress. `Format.kt` moves (an `expect` date format; Indian digit grouping in common), with `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard` and the pure helpers | The moved code has no `android.*` import; TalkBack announcements and share targets behave as before | Android | **Done** (PR #20, merged as `fccf8a1`). Also moved `MapRulesTest` and `IndiaViewRulesTest` to `:ui` commonTest (kotlin.test), removed `:app`'s blocking `UiStrings.kt` and fixed S4b-BL-18. Differs from the plan in four points (§13.5): `PlatformServices` has one member so far, `DeletedHouseUndo` takes two lambdas instead of the repository, amounts and scores need no locale, and `:app` keeps a thin `DeletedHouses.kt` |
-| CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, §13.6): `AppDatabase`, entities, DAOs, `Converters` and `MIGRATION_1_2` in `:shared` commonMain, identity hash and `doorprints.db` unchanged, new `AppDatabaseMigrationTest` (TC-U-63); the builder, `DatabaseFile` and the `Repository` stay in `:app`. **P4b and P4c planned** (P4b next) |
+| CMP-4 | P4a, P4b, P4c | **Data in common.** P4a: Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared`, keeping the db v2 identity hash (`RoomSchemaTest`) and adding a migration test. P4b: DataStore KMP, a `SecretStore` interface (Android Keystore, later iOS Keychain) and `ServerUrl` in common. P4c: a `Repository` interface in common; `CompareScreen` and `HouseFormRules` move | Upgraded installs open their data unchanged; settings and the saved key survive; `ServerUrlTest` passes on the common parser | Android | **P4a done in code** (branch `claude/doorprints-dev-continue-fzcge2`, §13.6): `AppDatabase`, entities, DAOs, `Converters` and `MIGRATION_1_2` in `:shared` commonMain, identity hash and `doorprints.db` unchanged, new `AppDatabaseMigrationTest` (TC-U-63); the builder, `DatabaseFile` and the `Repository` stay in `:app`. **P4a merged** (PR #21, `e480b83`). **P4b done in code** (§13.7; PR #22, open, the owner merges): `SettingsStore` on `datastore-preferences-core`, the `SecretStore` interface (`KeystoreSecretStore` in `:app` around the unchanged `ApiKeyCipher`; Keychain on iOS, compile-only) and `ServerUrl` in `:shared` commonMain; file and key names unchanged (`SettingsUpgradeTest`, TC-U-64); `ServerUrlTest` passes on the common parser. **P4c planned** (next) |
 | CMP-5 | P5 | **Navigation and view models.** JetBrains navigation-compose 2.9.2 and lifecycle 2.11.0; ViewModels with injected dependencies; HouseList, Assistant, Settings, NotifyAsk and LocationPermission move | Deep links and Back behave as before; the moved screens pass the UI self-check | Android | Planned |
 | CMP-6 | P6a, P6b | **Edit, export and import.** P6a: `HouseEditScreen`, with the photo picker and camera behind a seam. P6b: the Export and Import screens and `ImportViewModel`; the workers behind an interface | Photos, copies and imports work as before (TC-U-52 and the Sprint 4a export and import cases) | Android | Planned |
 | CMP-7 | P7 | **Map.** The common `MapScreen` chrome and `expect PlatformMap`: on Android the existing MapLibre `MapView` in `AndroidView`, on iOS `UIKitView` around `MLNMapView` from Swift. India's boundary logic lifted into a common `applyIndiaView(ops: StyleOps)`, with `IndiaViewOpsTest` in `commonTest` | **TC-M-25 re-run** and passed (ADR-22); the map looks and behaves as before | Android, Docs | Planned |
@@ -1343,8 +1351,10 @@ Web UI in detail as well after every main merge". It is filed here, as the prere
 later phase ([03](03-design.md) ADR-23) now shows "no screen changed" with these tests instead of by eye.
 
 **Owner rule (2026-09-24): after every merge to `main`, the live web UI is tested in detail** with `tools/live-ui`
-([06](06-test-plan.md) TC-M-26), once the deploy has finished. The lead session runs it and reports the counts; a
-failure is a ticket before the next merge. Recorded in [14](14-lead-backlog-and-handoff.md) §5 and CLAUDE.md.
+([06](06-test-plan.md) TC-M-26), once the deploy has finished; refined the same day: only after a merge that runs the
+`Web` deploy ([06](06-test-plan.md) TC-M-26); an Android-only or docs-only merge skips it. The lead session runs it
+and reports the counts; a failure is a ticket before the next merge. Recorded in [14](14-lead-backlog-and-handoff.md)
+§5 and CLAUDE.md.
 
 **What was done** (commit `afe4064` on branch `claude/doorprints-dev-continue-fzcge2`):
 
@@ -1632,6 +1642,77 @@ item 4 makes) and Room on iOS (S4b-BL-24).
 **Docs.** [01](01-requirements.md) v0.29 (RTM FR-019), [03](03-design.md) v0.28 (ADR-23 P4a, §4.2.1, §6.2, R-06
 closed), [06](06-test-plan.md) v0.42 (TC-U-36, TC-U-63), this section (v0.48), [14](14-lead-backlog-and-handoff.md)
 v0.15, `android/shared/README.md` 1.48, `android/ui/README.md` 1.7, the CHANGELOG and the docs index.
+
+### 13.7 CMP-4 P4b (phase 4b), done in code
+
+**What was done** (branch `claude/doorprints-dev-continue-fzcge2`, on `main` at `e480b83`, where PR #21 (CMP-4 P4a)
+was merged: code `f4f782e`, test `383c591`, then these docs; PR #22). The settings, the API key's interface and the
+URL check moved from `:app` to `:shared` `commonMain`, with their packages kept (`app.doorprints.data`, and
+`app.doorprints.export` for the grant list), so the screens, workers and `Repository` did not change:
+
+- **`Settings.kt`**: `SettingsStore`, `AppSettings`, `ResultMarks`, `ResultScreen`, on
+  `androidx.datastore:datastore-preferences-core` 1.1.7 (the catalog's DataStore version, which publishes Android and
+  both iOS targets; new catalog entry, `api` in commonMain). `SettingsStore` now takes a `DataStore<Preferences>`, a
+  `SecretStore` and a clock (`IsoTime.nowMillis()`, was `System.currentTimeMillis()`); every rule is unchanged.
+  `SyncHealth` and the export grant list (`GrantRetention`, `retainNewestGrants`, `encodeGrants`, `decodeGrants`,
+  split out of `:app`'s `ExportGrants.kt`) moved with it, because `SettingsStore` uses them.
+- **`SecretStore.kt`**: `get(settings)`, `put(settings, apiKey)`, `clear(settings)`. Each call gets the settings being
+  read or edited, so on Android the sealed key stays one entry of the settings file and saving an address with its key
+  stays one DataStore transaction, as before. The plaintext v0.1 entry `apiKey` and its move are still handled by
+  `SettingsStore` (`migrateLegacyKey`), unchanged.
+- **`:app`**: `data/SettingsStoreFactory.kt` (`SettingsStore.create(context)`, `openSettingsDataStore`,
+  `settingsDataStoreFile`) and `data/KeystoreSecretStore.kt` (the entry `apiKeyEnc`, sealed and opened by
+  `ApiKeyCipher`, which did not change: alias `house_hunt_api_key_v1`, AES-256-GCM, `v1:` format). `AppContainer`
+  opens the store once per process, as the old property delegate did.
+- **iosMain** (compile-only, nothing calls it before CMP-8): `iosSettingsStore()` (`settings.preferences_pb` in
+  Application Support, `PreferenceDataStoreFactory.createWithPath`) and `KeychainSecretStore` (a generic password,
+  service `app.doorprints`, account `api_key`, `AfterFirstUnlockThisDeviceOnly`, so it is not in backups; the settings
+  keep a counter `apiKeyKeychain` that each save moves on, so the settings emit and a Keychain item left over from an
+  earlier install is not read). **S4b-BL-26**.
+- **`ServerUrl.kt`**: `check` is unchanged; `java.net.URI` is replaced by `UriParts`, described below.
+
+**How the stored names were kept.** (1) The **file**: the old store was the delegate `preferencesDataStore("settings")`,
+which calls `PreferenceDataStoreFactory.create(scope = CoroutineScope(Dispatchers.IO + SupervisorJob())) {
+applicationContext.preferencesDataStoreFile("settings") }`; `openSettingsDataStore` makes that call, with
+`SettingsStore.FILE_NAME` = `settings`, so the file is `files/datastore/settings.preferences_pb`. (2) The **keys**: the
+`Keys` object moved as is (24 names) but for `apiKeyEnc`, which `KeystoreSecretStore` now holds, unchanged. (3)
+The **Keystore alias** and cipher: `ApiKeyCipher.kt` is byte-identical (`git diff` is empty). Evidence:
+`SettingsUpgradeTest` (TC-U-64, 5 tests) writes a file the old way with the old names spelled out and reads every
+field through the new code, then writes through the new code and reads the old names back; `SettingsStoreTest`
+(TC-U-65) pins the 24 names in common code.
+
+**`ServerUrl` without `java.net.URI`.** `UriParts` is a line-by-line port of the part of OpenJDK 21's `URI.Parser` that
+`check` reads (scheme, user info, host, query, fragment; path and port checked, not kept), with its character masks,
+the registry-name fallback for an authority that is not a server, IPv4 (bytes up to 255), host names (the last label
+of a dotted name starts with a letter), IPv6 literals with scope ids, `%` escapes and visible non-ASCII characters
+(`isSpaceChar` on `Char.category`, `isISOControl` on code ranges). One deliberate difference from OpenJDK: the
+app ran on Android's `java.net.URI` (libcore), which also allows `_` inside a host name label ("Android-changed"), so
+`ServerUrl` keeps that (`https://my_api.example` is accepted, as on the phone before); the JVM rule is kept behind an
+internal flag for the parity test. Tests: `ServerUrlTest` moved to commonTest (the 6 old tests unchanged, 6 new for
+the re-implemented parts); `ServerUrlParityTest` (androidHostTest, 4 tests) compares the port with `java.net.URI` on
+the fixed cases and on about 300 000 generated and mutated strings (fixed seeds), for the JVM rule, and for the app's
+rule on every string without a `_`.
+
+**Left in `:app`, and why:** opening the file (`Context`, `preferencesDataStoreFile`), the Keystore (`ApiKeyCipher`,
+`KeystoreSecretStore`), and the `Repository` (P4c). `datastore-preferences` stays in `:app` for
+`preferencesDataStoreFile`. **New backlog:** S4b-BL-26 (iOS settings never run), S4b-BL-27 (the real Keystore path
+has no automated test), S4b-BL-28 (`SyncHealthTest` and `ExportGrantsTest` still JUnit in `:app`); from the review,
+S4b-BL-29 (`AppSettings.toString()` prints the API key) and S4b-BL-30 (iOS `KeychainSecretStore` fixes).
+
+**Verified, and how.** Locally, the CI command of the brief with `-Proborazzi.test.verify=true` and
+`assembleDebugAndroidTest`: green. `:app` 196 unit tests (6 moved out, 5 new), `:shared` 184 host tests (12 moved or
+new in `ServerUrlTest`, 9 in `SettingsStoreTest`, 4 in `ServerUrlParityTest`), `:ui` 51; the 64 screenshots match,
+so no screen changed. With `-Pkotlin.native.enableKlibsCrossCompilation=true`, `:shared:compileKotlinIosSimulatorArm64`,
+`:shared:compileKotlinIosArm64` and `:shared:compileTestKotlinIosSimulatorArm64` pass (the Keychain store included).
+`shared-ios.yml` on macOS stays the check of record.
+
+**Not verified:** the real Keystore through the new code on a device or emulator, and an upgrade on a real phone with a
+saved key (S4b-BL-27); the iOS settings (S4b-BL-26).
+
+**Docs.** [01](01-requirements.md) v0.30 (RTM FR-030, SEC-010), [02](02-threat-model.md) v0.34 (F-02, F-03 files),
+[03](03-design.md) v0.29 (ADR-23 P4b, §4.2, §4.2.1, Phase 2 plan), [04](04-data-flow-diagrams.md) v0.17 (D3),
+[06](06-test-plan.md) v0.43 (TC-U-15, TC-U-64, TC-U-65), this section (v0.49), [14](14-lead-backlog-and-handoff.md)
+v0.16, `android/shared/README.md` 1.49, `android/ui/README.md` 1.8, the CHANGELOG and the docs index.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

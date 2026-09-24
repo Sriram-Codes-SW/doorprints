@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.48 |
+| Version | 0.49 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -60,6 +60,7 @@
 | 0.46 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19 (CMP-2, the UI strings as Compose resources, [03](03-design.md) ADR-23; and the ADR-24 rename). Row 0.45 now lists the versions that change set gave 06, 07 and 10 (v0.39, v0.36, v0.45; it said v0.38, v0.35, v0.44). Versions: 01 v0.28 (RTM FR-036), 02 v0.33 (T-T8 example), 03 v0.26 (ADR-23 P2 as built), 05 v0.21 (§8.2 two homes of the strings, §9.1 and §9.2 step 5), 06 v0.40 (TC-U-59, TC-U-60, TC-M-27; TC-U-57 and TC-U-58 traceability), 07 v0.37 (rename errors), 08 v0.17 (§11: dump and restore mandatory), 10 v0.46 (§13.4 CMP-2, S4b-BL-18..21), 14 v0.13 (PR #19, N7, N9, self-hoster to-dos); 04 v0.16, 09 v0.8, 11 v0.18 and 12 v0.5 unchanged. Also `android/ui/README.md` 1.5 and the CHANGELOG. |
 | 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3, the platform seams and a common `Format` ([03](03-design.md) ADR-23 P3). Versions: 03 v0.27 (ADR-23 P3 as built, §4.2.1), 05 v0.22 (§8.2 *Formatting*), 06 v0.41 (TC-U-51 and TC-U-55 in `:ui`, TC-U-61, TC-U-62), 10 v0.47 (§13.5 CMP-3, S4b-BL-18 done, S4b-BL-22), 14 v0.14 (§1, N6, N7, N9); the others unchanged. Also `android/ui/README.md` 1.6 and the CHANGELOG. |
 | 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a, the Room database as Room KMP code in `:shared` ([03](03-design.md) ADR-23 P4a). Versions: 01 v0.29 (RTM FR-019), 03 v0.28 (ADR-23 P4a as built, §4.2.1, §6.2, R-06 closed), 06 v0.42 (TC-U-36 in `:shared`, TC-U-63), 10 v0.48 (CMP-4 row, §13.6, S4b-BL-23, S4b-BL-24), 14 v0.15 (§1, N6, N7, N9), 11 v0.19 (the Room migration test is done); the others unchanged. Also `android/shared/README.md` 1.48, `android/ui/README.md` 1.7 and the CHANGELOG. |
+| 0.49 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b, settings on DataStore KMP, a `SecretStore` interface and `ServerUrl` in `:shared` ([03](03-design.md) ADR-23 P4b). Versions: 01 v0.30 (RTM FR-030, SEC-010), 02 v0.34 (F-02, F-03 files), 03 v0.29 (ADR-23 P4b as built, §4.2, §4.2.1), 04 v0.17 (D3), 06 v0.43 (TC-U-15, TC-U-64, TC-U-65; TC-M-26 only after a web change), 10 v0.49 (CMP-4 row, §13.7, S4b-BL-26 to S4b-BL-30; §13.3 owner rule refined), 14 v0.16 (§1, N6, N7, N8, N9, §5), 07 v0.38 (§1: the live UI test only after a web change); the others unchanged. Also `android/shared/README.md` 1.49 and `android/ui/README.md` 1.8. |
 
 ---
 

@@ -76,6 +76,9 @@ androidx-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", versi
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidx-work" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
+# The KMP core of Preferences DataStore (CMP-4 P4b): SettingsStore in :shared commonMain. Same version as the Android
+# artifact above, which depends on it; 1.1.7 publishes android, jvm, iosArm64 and iosSimulatorArm64.
+androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "androidx-exifinterface" }
 
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
