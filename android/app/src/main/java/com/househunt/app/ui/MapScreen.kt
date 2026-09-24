@@ -74,10 +74,12 @@ import com.househunt.app.R
 import com.househunt.app.data.HouseEntity
 import com.househunt.app.location.HuntService
 import com.househunt.app.location.HuntState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
@@ -137,9 +139,16 @@ fun housesGeoJson(houses: List<HouseEntity>): String {
  * A current location fix, or null. The phone's last known location stands in only when it is under two minutes old
  * and accurate to [HuntService.MAX_ACCURACY_M] ([lastFixUsable]; UX review, whole-app audit): a fix of any age put a
  * house in the wrong place for good. Null makes the caller say it is waiting for GPS.
+ *
+ * Returns on the main thread: Play services completes its tasks on a Binder thread, and callers move the MapLibre
+ * camera next, which throws off the main thread (found by the emulator smoke test, docs/06 TC-I-35, under the test's
+ * coroutine interceptor, which does not switch back the way the app's main dispatcher does).
  */
+suspend fun currentLocation(context: Context): Pair<Double, Double>? =
+    withContext(Dispatchers.Main.immediate) { lookUpLocation(context) }
+
 @SuppressLint("MissingPermission")
-suspend fun currentLocation(context: Context): Pair<Double, Double>? {
+private suspend fun lookUpLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocationPermission(context)) return null
     val client = LocationServices.getFusedLocationProviderClient(context)
     val fresh = runCatching { client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await() }.getOrNull()

@@ -38,7 +38,7 @@ import java.util.TimeZone
 /**
  * Screenshots of every screen except the Map (MapLibre is native code), in both themes and all four languages,
  * rendered on the JVM by Robolectric and compared by Roborazzi with the reference images in src/test/screenshots
- * (docs/06 TC-U-60). They show that a refactor, such as each Compose Multiplatform phase (ADR-23), leaves the screens
+ * (docs/06 TC-U-56). They show that a refactor, such as each Compose Multiplatform phase (ADR-23), leaves the screens
  * unchanged. Record new references with `./gradlew :app:recordRoborazziDebug`, on Linux (other platforms' Skia can
  * differ by a pixel); CI runs the unit tests with `-Proborazzi.test.verify=true`. Settings shows "System default"
  * selected: the language here comes from the configuration, not from a saved choice.

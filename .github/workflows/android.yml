@@ -73,7 +73,7 @@ jobs:
       # Multiplatform UI module, ADR-23): :ui:testAndroidHostTest. compileCommonMainKotlinMetadata compiles each KMP
       # module's commonMain against the common (non-JVM) libraries, on Linux without Kotlin/Native, so a JVM-only API in
       # common code (it caught Float.nextDown) fails here before the macOS iOS job (shared-ios.yml) runs.
-      # -Proborazzi.test.verify=true: the screenshot tests (app/src/test/.../screenshots, docs/06 TC-U-60) compare each
+      # -Proborazzi.test.verify=true: the screenshot tests (app/src/test/.../screenshots, docs/06 TC-U-56) compare each
       # screen with its reference image in app/src/test/screenshots and fail on a difference; the diff images are in
       # the android-reports artifact (app/build/outputs/roborazzi). Re-record with ./gradlew :app:recordRoborazziDebug.
       # :shared:allTests is deliberately not run here: on Linux it would only add the cross-compiled iOS test klibs,
