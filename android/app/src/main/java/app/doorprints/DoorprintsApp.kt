@@ -19,7 +19,8 @@ import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 
 class AppContainer(app: Application) {
-    val settings = SettingsStore(app)
+    // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
+    val settings = SettingsStore.create(app)
     val repository = Repository(app, AppDatabase.create(app), settings)
 }
 
