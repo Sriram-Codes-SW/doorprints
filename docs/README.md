@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.47 |
+| Version | 0.48 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -59,6 +59,7 @@
 | 0.45 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). The introduction says code packages, storage keys and database names follow the brand since 2026-09-24. Versions: 01 v0.27, 02 v0.32, 03 v0.25, 04 v0.16, 05 v0.20, 06 v0.39, 07 v0.36, 08 v0.16, 09 v0.8, 10 v0.45, 11 v0.18, 12 v0.5, schemas 1.6, ai-design v0.20. |
 | 0.46 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19 (CMP-2, the UI strings as Compose resources, [03](03-design.md) ADR-23; and the ADR-24 rename). Row 0.45 now lists the versions that change set gave 06, 07 and 10 (v0.39, v0.36, v0.45; it said v0.38, v0.35, v0.44). Versions: 01 v0.28 (RTM FR-036), 02 v0.33 (T-T8 example), 03 v0.26 (ADR-23 P2 as built), 05 v0.21 (§8.2 two homes of the strings, §9.1 and §9.2 step 5), 06 v0.40 (TC-U-59, TC-U-60, TC-M-27; TC-U-57 and TC-U-58 traceability), 07 v0.37 (rename errors), 08 v0.17 (§11: dump and restore mandatory), 10 v0.46 (§13.4 CMP-2, S4b-BL-18..21), 14 v0.13 (PR #19, N7, N9, self-hoster to-dos); 04 v0.16, 09 v0.8, 11 v0.18 and 12 v0.5 unchanged. Also `android/ui/README.md` 1.5 and the CHANGELOG. |
 | 0.47 | 2026-09-24 | Claude (Code), engineer | CMP-3, the platform seams and a common `Format` ([03](03-design.md) ADR-23 P3). Versions: 03 v0.27 (ADR-23 P3 as built, §4.2.1), 05 v0.22 (§8.2 *Formatting*), 06 v0.41 (TC-U-51 and TC-U-55 in `:ui`, TC-U-61, TC-U-62), 10 v0.47 (§13.5 CMP-3, S4b-BL-18 done, S4b-BL-22), 14 v0.14 (§1, N6, N7, N9); the others unchanged. Also `android/ui/README.md` 1.6 and the CHANGELOG. |
+| 0.48 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4a, the Room database as Room KMP code in `:shared` ([03](03-design.md) ADR-23 P4a). Versions: 01 v0.29 (RTM FR-019), 03 v0.28 (ADR-23 P4a as built, §4.2.1, §6.2, R-06 closed), 06 v0.42 (TC-U-36 in `:shared`, TC-U-63), 10 v0.48 (CMP-4 row, §13.6, S4b-BL-23, S4b-BL-24), 14 v0.15 (§1, N6, N7, N9), 11 v0.19 (the Room migration test is done); the others unchanged. Also `android/shared/README.md` 1.48, `android/ui/README.md` 1.7 and the CHANGELOG. |
 
 ---
 
