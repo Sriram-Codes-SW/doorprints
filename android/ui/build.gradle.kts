@@ -45,11 +45,33 @@ kotlin {
             api(libs.cmp.components.resources)
             // DeletedHouseUndo's NonCancellable write-back (CMP-3).
             implementation(libs.kotlinx.coroutines.core)
+            // Navigation and view models in common code (CMP-5): the nav graph (Root.kt), the screens' lifecycle-aware
+            // collection and effects, AssistantViewModel and its SavedStateHandle. api: :app's screens still call
+            // viewModel { }, collectAsStateWithLifecycle and dropUnlessResumed, and implement RootScreens' slots.
+            api(libs.jb.navigation.compose)
+            api(libs.jb.lifecycle.runtime.compose)
+            api(libs.jb.lifecycle.viewmodel.compose)
+            api(libs.jb.lifecycle.viewmodel.savedstate)
+            // The Assistant keeps its answer and plan in saved state as JSON (AssistantViewModel).
+            implementation(libs.kotlinx.serialization.json)
+            // The house form's photo tiles and viewer (CMP-6 P6a): Coil 3 is multiplatform; the same library :app used.
+            implementation(libs.coil.compose)
+        }
+        androidMain.dependencies {
+            // The Android side of the seams (CMP-5): permission checks (ContextCompat, ActivityCompat) and the
+            // permission prompts (rememberLauncherForActivityResult); since CMP-6 the house form's BackHandler.
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.activity.compose)
+            // The Map's view (CMP-7, PlatformMap.android.kt, MapLibreStyleOps): MapLibre Native, the OpenGL ES build
+            // :app already used (the catalog's maplibre-android).
+            implementation(libs.maplibre.android)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             // IndiaViewRulesTest evaluates the boundary filters, which are MapLibre style JSON (CMP-3).
             implementation(libs.kotlinx.serialization.json)
+            // AssistantViewModelTest: viewModelScope runs on Dispatchers.Main, replaced by a test dispatcher (CMP-5).
+            implementation(libs.kotlinx.coroutines.test)
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.kotlin.test.junit)

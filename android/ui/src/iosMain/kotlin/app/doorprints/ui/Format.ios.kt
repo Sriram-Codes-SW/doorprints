@@ -13,5 +13,8 @@ internal actual fun formatDate(epochMillis: Long, language: String, withTime: Bo
     return formatter.stringFromDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0))
 }
 
+// NSString's format uses the POSIX locale, so the decimal separator is a dot, as on Android.
+internal actual fun formatSixDecimals(value: Double): String = NSString.stringWithFormat("%.6f", value)
+
 // Compose's current locale reads NSLocale's preferred language. The iOS app's own language setting is ADR-23 phase 8.
 actual fun appLanguage(): String = Locale.current.language

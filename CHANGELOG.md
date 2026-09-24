@@ -115,6 +115,23 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Clients detect a reset server** (S4b-BL-20; PR #24; [docs/03](docs/03-design.md) §10.1,
+  [docs/08](docs/08-operations-runbook.md) §11.1). `GET /api/stats` returns `maxSyncVersion`, the position of the
+  server's `sync_seq`. Android and the web read it before a sync once they have synced; a value below a stored cursor
+  (an empty database, or a restore from an older dump) makes them mark every house, visit and stored photo for upload,
+  set their cursors to 0, send everything and download everything, and say so (web: an announcement and a line on
+  *Your data*; Android: the server status line). An older server is detected from an accepted push answered at or
+  below a cursor. New strings `data.serverReset` and `sync_server_reset` in four languages (Hindi, Tamil and Telugu
+  *under review*). Tests TC-U-74, TC-I-36; threat model RR-17.
+- **The emulator smoke tests on API 26, 34 and 36** (owner request of 2026-09-24; `e5e43af`;
+  [docs/06](docs/06-test-plan.md) TC-I-35), and a Map smoke test that saves screenshots of India at zoom 4, Jammu and
+  Kashmir with Ladakh and Arunachal Pradesh at zoom 6. The emulator lays out the map's labels but does not draw them
+  (maplibre-native #3939, #3617; S4b-BL-48), so labels are checked on a device (TC-M-25, the owner, after CMP-8).
+- **A phone pass in the live web UI test** (`tools/live-ui`, `ONLY=mobile`; [docs/06](docs/06-test-plan.md) TC-M-26):
+  emulated Pixel 7 in four languages and both themes, Galaxy S9+, iPhone SE, iPhone 14, 320 and 360 px, landscape,
+  the owner's 384 x 615 at 130 % text and 360 px at 200 %; 324 checks. Against a local build of the branch every area
+  passes (pages 720, i18n 240, theme 144, a11y 144, console 366, flow 12, pwa 4, map 23, mobile 324).
+
 - **Tests of the Android APK and of the live web UI** (owner requests of 2026-09-24: "Is there any way you can test the
   Android APK?", and "Test the Web UI in detail as well after every main merge"; PR #18, commits `afe4064`, `ef0a5dd`
   and `bc57361`; [docs/06](docs/06-test-plan.md) §16, [sprint log](docs/10-sprint-log.md) §13.3). **Screenshot tests on
@@ -279,6 +296,21 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   [07 section 7](docs/07-secure-build-and-deploy.md#7-environment-variables).
 
 ### Changed
+
+- **Android: every screen is Compose Multiplatform code in `:ui`** (ADR-23 CMP-5, CMP-6 and CMP-7 as one change, the
+  owner's request; PR #24; [docs/03](docs/03-design.md) ADR-23 P5-P7, [sprint log](docs/10-sprint-log.md) §13.9).
+  Navigation, the Houses, Assistant and Settings screens and their view models (CMP-5), the house form, Export, Import
+  and `ImportViewModel` (CMP-6), and the Map's chrome with `expect PlatformMap` and India's view over `StyleOps`
+  (CMP-7) are in `:ui` commonMain behind `AppServices` and `PlatformServices`; `:app` keeps the Android
+  implementations. No screen changed (the 64 reference screenshots verify, none re-recorded). The iOS actuals are
+  compile-only until CMP-8. New tests TC-U-68 to TC-U-73.
+- **India's boundary: Pakistani and Chinese admin lines hidden inside India's outline, cleaner hand-overs** (both
+  apps; PR #24; [docs/03](docs/03-design.md) ADR-22). From tile zoom 9 the tiles carry Pakistan's district and tehsil
+  lines and China's county lines inside India's outline as undisputed lines; `boundary_3` now leaves out every tile
+  line wholly inside a bundled polygon (`geo/in-held-areas.geojson`, S4b-BL-12). The outline's hand-overs at Sikkim's
+  north-west tri-junction, Jomotsangkha and Longwa no longer loop or overrun (S4b-BL-17; new `in-boundaries.geojson`
+  sha256 `c3cdf5fb…f63f`); Doklam is unchanged on purpose. No Survey of India outline was found on redistributable
+  terms, so Natural Earth stays (S4b-BL-10). TC-M-25 now covers zoom 9-14; its device run is the owner's, after CMP-8.
 
 - **Android: a common `Repository`, and the Compare tab in `:ui`** ([docs/03](docs/03-design.md) ADR-23 CMP-4 P4c;
   [sprint log](docs/10-sprint-log.md) §13.8). The data layer's platform-neutral members and result types are a
@@ -649,6 +681,26 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   threshold).
 
 ### Fixed
+
+- **Android: the map crashed on phones without a Vulkan GPU** ("No Vulkan compatible GPU found", found by the new API
+  26 emulator job). The app uses MapLibre's OpenGL ES build (`b47a67a`); a Vulkan build would need a second APK
+  (S4b-BL-47). iOS will render with Metal.
+- **Web: failure cards stay through a retry, and an invalid field looks invalid** (S4b-BL-1, S4b-BL-2, S4b-BL-6;
+  [docs/05](docs/05-ux-accessibility-i18n.md) §4.1, §5.1). The sync card, the first-run banner and the house page's
+  save, listing, location and address cards stay in place, dimmed, with a named progress bar, until the run ends; an
+  invalid field has a 2 px error edge (5.8:1 or more on its backgrounds). New specs for the Plan page and the
+  new-house start (S4b-BL-7; TC-U-75, TC-U-76).
+- **Web on phones** (the owner's report of 2026-09-24; [docs/05](docs/05-ux-accessibility-i18n.md) §5.2). The map's
+  credits fold into the (i) button after 5 s or at the first move on maps up to 640 px; the map fills the visible
+  page so the list's heading and counters show above the bottom bar on the owner's 384 x 615 phone at 130 % text;
+  the legend takes its own row when needed; banners are capped at 40 % of the height; the bottom bar steps aside for
+  the keyboard on short screens; long Tamil words at 200 % text no longer scroll pages sideways; the skip link stays
+  hidden until focused; 44 px targets; a 48 px phone header. Known limit: on the smallest setups the counters start
+  below the bar (S4b-BL-49).
+- **Android: a copy import cancelled after its commit kept its rows but lost their photo files** (`cff4a63`, found in
+  the PR #23 review); the cleanup now deletes only files with no committed row.
+- **Android: a flaky screenshot test** (S4b-BL-42): a test-harness race on the unconfined test dispatcher; the
+  screenshot tests now run their effects on the main thread (12 full runs in a row green, no image changed).
 
 - **Android: dates and Indic typography follow the language the app shows** (S4b-BL-18,
   [sprint log](docs/10-sprint-log.md) §12.7 and §13.5). They followed the phone's first language: a phone set to

@@ -68,7 +68,7 @@
       reach, the primary action last (Android MapScreen: zoom, my location, then "Save here"). Its measured height
       lifts MapLibre's bottom-right controls above it.
     -->
-    <div #stack class="map-stack">
+    <div #stack class="map-stack" [class.with-legend]="mapUsable() && !addMode()">
       <!-- Not needed while a pin is being placed, and it would crowd the hint and the crosshair. -->
       @if (mapUsable() && !addMode()) {
         <div class="legend" role="group" [attr.aria-label]="'map.legend' | t">
@@ -102,7 +102,7 @@
     </div>
   </section>
 
-  <section class="panel" aria-labelledby="houses-heading">
+  <section #panel class="panel" aria-labelledby="houses-heading">
     <div class="panel-head">
       <h1 id="houses-heading">{{ 'map.heading' | t }}</h1>
     </div>

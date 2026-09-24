@@ -153,7 +153,14 @@ const NAV_ICONS = {
     .skip-link {
       position: absolute;
       left: var(--space-2);
-      top: -100px;
+      /*
+       * No wider than the screen: an absolute box is as wide as its longest word, and at 200% text the Tamil label
+       * (உள்ளடக்கத்திற்குச்…) was 422px, which made a 360px phone lay the page out 438px wide and zoom it out.
+       */
+      max-width: calc(100% - 2 * var(--space-2));
+      /* Moved up by its own height, not a fixed 100px: wrapped onto three lines (Tamil at 130%) it showed below that. */
+      top: 0;
+      transform: translateY(-110%);
       z-index: 1000;
       padding: var(--space-2) var(--space-4);
       background: var(--surface);
@@ -164,6 +171,7 @@ const NAV_ICONS = {
     }
     .skip-link:focus {
       top: var(--space-2);
+      transform: none;
     }
     /*
      * Safe areas: index.html asks for viewport-fit=cover with a black-translucent status bar, so an app added to
@@ -197,6 +205,9 @@ const NAV_ICONS = {
       font-weight: 700;
       font-size: var(--text-lg);
       margin-right: auto;
+      /* Where the name is hidden (phones, tablets, landscape) the 28px mark alone is still a 44px target (UX-007). */
+      min-width: var(--target);
+      justify-content: center;
     }
     .brand img {
       border-radius: 6px;
@@ -320,15 +331,28 @@ const NAV_ICONS = {
        * a sticky page toolbar. A page with one (house details) measures it into --sticky-top on #main.
        */
       scroll-padding-top: var(--sticky-top, var(--space-4));
+      /*
+       * A size container, so a page can size a part of itself to the visible page area (100cqh: the space between
+       * the header and the bottom bar, whatever the browser's toolbars take). The Map page fits its map to it, so the
+       * map is not 55% of the *largest* viewport (vh ignores the address bar) with its list cut at the fold.
+       */
+      container-type: size;
     }
     .content:focus {
       outline: none;
     }
 
-    /* Phones: brand and language in one 56px row; the navigation is a Material 3 bottom bar. */
+    /*
+     * Phones: brand and language in one 48px row (the 44px picker and 2px above and below: more of the screen for the
+     * map, owner report 2026-09-24); the navigation is a Material 3 bottom bar. The brand is its mark only (it
+     * measured 28x44 before .brand got its 44px min-width).
+     */
     @media (max-width: 600px) {
       .topbar {
         flex-wrap: nowrap;
+        min-height: 48px;
+        padding-top: max(2px, env(safe-area-inset-top));
+        padding-bottom: 2px;
         padding-left: max(var(--space-2), env(safe-area-inset-left));
         padding-right: max(var(--space-2), env(safe-area-inset-right));
       }
@@ -342,7 +366,8 @@ const NAV_ICONS = {
         z-index: 20;
         display: grid;
         grid-auto-flow: column;
-        grid-auto-columns: 1fr;
+        /* minmax(0, …): a plain 1fr column is never narrower than its longest word ("உங்கள் தரவு" at 200% text). */
+        grid-auto-columns: minmax(0, 1fr);
         gap: 0;
         min-height: 64px;
         align-items: stretch;
@@ -521,7 +546,7 @@ export class App {
   /**
    * An automatic sync failed (a revoked key, a server that went away) and nothing has worked since. The sync card on
    * Your data says why; the dot tells the user from any screen that there is something to read there. Cleared when
-   * the next run starts (SyncService clears lastError then), and not shown for a failure the user saw happen.
+   * a run succeeds (SyncService clears lastError only then, S4b-BL-1), and not shown for a failure the user saw happen.
    */
   protected readonly syncProblem = computed(
     () => this.sync.enabled() && this.sync.lastError() !== null && !this.sync.lastErrorForced(),

@@ -55,6 +55,7 @@ import {
   timeOf,
 } from './map-list';
 import { ListReturn } from './list-return';
+import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
 
@@ -172,6 +173,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
   private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
   private readonly stack = viewChild.required<ElementRef<HTMLElement>>('stack');
+  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private map: MlMap | null = null;
   private controls: IControl[] = [];
   private controlPosition: ControlPosition = 'top-right';
@@ -711,16 +713,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
    * The phone layout's bottom row (legend and actions) is measured into `--map-stack-h` on the map region, so
    * MapLibre's bottom-right controls and the offline message sit above it whatever its height (a two-row legend in
    * Tamil, two stacked buttons, 200% text). On wider screens the row has no box and measures 0, which nothing uses.
+   * The list's heading and counters are measured into `--map-peek` the same way (used by the phone layout only).
    */
   private watchStack(): void {
     if (typeof ResizeObserver === 'undefined') return;
     const wrap = this.wrap().nativeElement;
     const stack = this.stack().nativeElement;
+    const panel = this.panel().nativeElement;
     const update = () => {
       wrap.style.setProperty('--map-stack-h', `${Math.ceil(stack.getBoundingClientRect().height)}px`);
+      // The phone map leaves room under it for the list's heading and counters (listPeek, map-page.css).
+      const head = panel.querySelector('.panel-head');
+      const stats = panel.querySelector('.stats');
+      if (head) wrap.style.setProperty('--map-peek', `${listPeek(head.getBoundingClientRect(), stats?.getBoundingClientRect() ?? null)}px`);
     };
     this.stackObserver = new ResizeObserver(update);
     this.stackObserver.observe(stack);
+    // The panel changes size when the counters first appear, and with the text size or the language.
+    this.stackObserver.observe(panel);
     update();
   }
 

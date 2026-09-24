@@ -1,7 +1,8 @@
 # Android on a real Android runtime (owner request 2026-09-24, "Is there any way you can test the Android APK?"):
 # - emulator: boots an Android emulator on a GitHub Linux runner (KVM, free for public repositories), installs the
-#   debug APK and runs the instrumented smoke tests (app/src/androidTest, docs/06 TC-I-35). Screenshots of each step
-#   and the test report are the artifact android-emulator-results.
+#   debug APK and runs the instrumented smoke tests (app/src/androidTest, docs/06 TC-I-35), on three Android versions:
+#   API 26 (minSdk), 34 and 36 (targetSdk) (owner request of 2026-09-24; the real-device check comes after CMP-8).
+#   Screenshots of each step and the test report are the artifacts android-emulator-results-api-<level>.
 # - firebase-test-lab: the same tests on a Firebase Test Lab device. The device runs fit the Spark quota, but the
 #   results bucket needs a billing account (docs/07 §7.2 *Cost*), so this job stays off unless the owner decides
 #   otherwise. Only for a push to main or a manual run on main, and only when the owner has set it up
@@ -41,9 +42,15 @@ concurrency:
 
 jobs:
   emulator:
-    name: Smoke tests on an emulator (API 34)
+    # Three Android versions (owner request of 2026-09-24): the oldest the app supports (minSdk 26), a current one (34)
+    # and the newest it targets (targetSdk 36). They run side by side; one failing does not cancel the others.
+    name: Smoke tests on an emulator (API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 34, 36]
     permissions:
       contents: read
     defaults:
@@ -78,7 +85,7 @@ jobs:
       - name: Run the smoke tests on the emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           profile: pixel_6
@@ -94,7 +101,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: android-emulator-results
+          name: android-emulator-results-api-${{ matrix.api-level }}
           path: |
             android/app/build/outputs/connected_android_test_additional_output/
             android/app/build/reports/androidTests/

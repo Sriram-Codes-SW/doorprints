@@ -54,17 +54,24 @@
 
   <!-- Save failures only (they also move focus to the field concerned). Other failures are shown next to the control
        that failed, in their own card. Every message below that a button can give twice in a row with the same words
-       is keyed on its run (RunResult), so the second one is a new node and is read again (web UX gate R9). -->
+       is keyed on its run (RunResult), so the second one is a new node and is read again (web UX gate R9). While the
+       next run goes, each card keeps its place, dimmed, with the bar along its foot named by the run ("Saving…",
+       outside the alert, found by browsing but not announced), and the run's end replaces or removes it (S4b-BL-2). -->
   @if (error(); as card) {
-    @for (c of [card]; track c.run) {
-      <div class="error" role="alert">
-        {{ c.value.key | t: c.value.params }}
-        @if (isStorageFull(c.value)) {
-          <!-- No space left: Your data is where a backup is made and the space use is shown. -->
-          <a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a>
-        }
-      </div>
-    }
+    <div class="refresh-slot" [class.stale]="saving()">
+      @for (c of [card]; track c.run) {
+        <div class="error" role="alert">
+          {{ c.value.key | t: c.value.params }}
+          @if (isStorageFull(c.value)) {
+            <!-- No space left: Your data is where a backup is made and the space use is shown. -->
+            <a routerLink="/data" [queryParams]="{ export: 'backup' }">{{ 'nav.data' | t }}</a>
+          }
+        </div>
+      }
+      @if (saving()) {
+        <div class="refresh-bar" role="progressbar" [attr.aria-label]="'house.saving' | t"></div>
+      }
+    </div>
   }
 
   @if (loading()) {
@@ -106,11 +113,16 @@
         >
           {{ (filling() ? 'listingFill.working' : 'listingFill.submit') | t }}
         </button>
-        <div role="alert">
-          @if (fillError(); as card) {
-            @for (c of [card]; track c.run) {
-              <p class="error">{{ c.value.key | t: c.value.params }}</p>
+        <div class="refresh-slot" [class.stale]="filling()">
+          <div role="alert">
+            @if (fillError(); as card) {
+              @for (c of [card]; track c.run) {
+                <p class="error">{{ c.value.key | t: c.value.params }}</p>
+              }
             }
+          </div>
+          @if (filling() && fillError()) {
+            <div class="refresh-bar" role="progressbar" [attr.aria-label]="'listingFill.working' | t"></div>
           }
         </div>
         @if (fillWarnings().length > 0 || keptWarnings().length > 0) {
@@ -348,12 +360,22 @@
             {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
           </button>
         </div>
-        <!-- Why "Use my location" or "Fill address from map" did not work, right under them. -->
-        <div role="alert">
-          @if (locationMsg(); as card) {
-            @for (c of [card]; track c.run) {
-              <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+        <!-- Why "Use my location" or "Fill address from map" did not work, right under them. Kept, dimmed, while
+             either runs again (S4b-BL-2). -->
+        <div class="refresh-slot" [class.stale]="locating() || geocoding()">
+          <div role="alert">
+            @if (locationMsg(); as card) {
+              @for (c of [card]; track c.run) {
+                <p class="error small">{{ c.value.key | t: c.value.params }}</p>
+              }
             }
+          </div>
+          @if ((locating() || geocoding()) && locationMsg()) {
+            <div
+              class="refresh-bar"
+              role="progressbar"
+              [attr.aria-label]="(locating() ? 'house.locating' : 'house.lookingUp') | t"
+            ></div>
           }
         </div>
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>

@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FilterSpecification, LayerSpecification, SourceSpecification, StyleSpecification } from 'maplibre-gl';
+import { featureFilter } from '@maplibre/maplibre-gl-style-spec';
+import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loader: 'text' };
 import {
   applyIndiaBoundaries,
   type BoundaryStyleTarget,
   FALLBACK_LINE_PAINT,
+  HELD_AREAS,
+  heldAreasGeometry,
+  heldAreasRule,
   HIDDEN_STATE_LOCAL_NAMES,
   HIDDEN_STATE_NAMES,
   inBoundariesUrl,
@@ -15,6 +20,8 @@ import {
 import { libertyExcerpt } from './testing/liberty-style.fixture';
 
 const URL_ = 'https://doorprints.web.app/geo/in-boundaries.geojson';
+/** Rule 2 on boundary_3 with the bundled polygon (S4b-BL-12). */
+const HELD_RULE = heldAreasRule(HELD_AREAS!);
 
 type Json = Record<string, unknown>;
 const ids = (style: StyleSpecification) => style.layers.map((l) => l.id);
@@ -82,6 +89,11 @@ function evaluate(expr: unknown, props: Json, tileZoom?: number): unknown {
       return args.every((_, i) => arg(i) === true);
     case 'any':
       return args.some((_, i) => arg(i) === true);
+    case 'within':
+      // These features have properties only, no geometry: MapLibre's `within` is false for them (within.ts
+      // `evaluate`; within.cpp `Within::evaluate`). What it selects by geometry is checked with MapLibre's own
+      // featureFilter in the held-areas cases below.
+      return false;
     default:
       throw new Error(`test evaluator: no operator "${op}"`);
   }
@@ -206,7 +218,7 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
   it('rule 2: state lines (boundary_3) take only the features of a zoom 5+ tile, and keep their minzoom and paint', () => {
     const before = layer(liberty, 'boundary_3');
     const after = layer(style, 'boundary_3');
-    expect(after['filter']).toEqual(['all', before['filter'], ['>=', ['zoom'], 5]]);
+    expect(after['filter']).toEqual(['all', ['all', before['filter'], ['>=', ['zoom'], 5]], HELD_RULE]);
     expect({ ...after, filter: undefined }).toEqual({ ...before, filter: undefined });
     expect(after['minzoom']).toBe(5);
     // Tile 4/11/6 has an undisputed admin-4 line along the Line of Control north of the Kashmir valley and one across
@@ -348,7 +360,11 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
   it('without boundary_2: warns, puts the overlay directly above the first boundary layer, with the fallback paint', () => {
     const { style, warnings } = indiaBoundaryStyle(without(libertyExcerpt(), ['boundary_2']), URL_);
     expect(warnings).toEqual(['layer "boundary_2" not found; the overlay is placed by the fallback rule']);
-    expect(layer(style, 'boundary_3')['filter']).toEqual(['all', layer(libertyExcerpt(), 'boundary_3')['filter'], TILE_ZOOM_GUARD]);
+    expect(layer(style, 'boundary_3')['filter']).toEqual([
+      'all',
+      ['all', layer(libertyExcerpt(), 'boundary_3')['filter'], TILE_ZOOM_GUARD],
+      HELD_RULE,
+    ]);
     const at = ids(style).indexOf('boundary_3');
     expect(ids(style).slice(at, at + 5)).toEqual([
       'boundary_3',
@@ -491,8 +507,8 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
       'layer "boundary_2" has a filter in the deprecated syntax, which has no zoom; not guarded against zoom 0-4 tiles',
     ]);
     expect(layer(style, 'boundary_2')['minzoom']).toBe(5);
-    // boundary_3 is still in expression syntax, so it is still guarded.
-    expect(layer(style, 'boundary_3')['filter']).toEqual(['all', layer(base, 'boundary_3')['filter'], TILE_ZOOM_GUARD]);
+    // boundary_3 is still in expression syntax, so it is still guarded and still leaves out the held areas' lines.
+    expect(layer(style, 'boundary_3')['filter']).toEqual(['all', ['all', layer(base, 'boundary_3')['filter'], TILE_ZOOM_GUARD], HELD_RULE]);
     expect(state).toEqual([
       'all',
       ['==', 'class', 'state'],
@@ -513,6 +529,7 @@ describe('the tile-zoom guard (rule 2): which layers get it', () => {
     const { style, warnings } = indiaBoundaryStyle(legacy, URL_);
     expect(warnings).toEqual([
       'layer "boundary_3" has a filter in the deprecated syntax, which has no zoom; not guarded against zoom 0-4 tiles',
+      'layer "boundary_3" has a filter in the deprecated syntax, which has no "within"; its admin lines inside the held areas are kept',
     ]);
     expect(layer(style, 'boundary_3')).toBe(layer(legacy, 'boundary_3'));
     expect(shows(style, 'boundary_2', { admin_level: 2, adm0_r: 'BTN' }, 4)).toBe(false);
@@ -550,6 +567,141 @@ describe('the tile-zoom guard (rule 2): which layers get it', () => {
     }
     // boundary_disputed is hidden, never filtered.
     expect(layer(style, 'boundary_disputed')['filter']).toEqual(layer(base, 'boundary_disputed')['filter']);
+  });
+});
+
+/** The renderers' tile extent (EXTENT in maplibre-gl and maplibre-native): a feature's coordinates in its tile. */
+const EXTENT = 8192;
+
+/**
+ * A line feature as a vector tile of zoom `z` carries it: the tile the first point falls in, and every point in that
+ * tile's coordinates (a point past the tile's edge lies outside 0..8192, as a tile's buffer does). `parts` are
+ * [longitude, latitude] lines; several parts make one multi-line feature, as the tiles merge the lines of one level.
+ */
+function tileLine(z: number, ...parts: [number, number][][]) {
+  const world = ([lon, lat]: [number, number]) => {
+    const size = EXTENT * 2 ** z;
+    const y = (180 - (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))) * (size / 360);
+    return [((lon + 180) * size) / 360, y];
+  };
+  const [x0, y0] = world(parts[0][0]);
+  const canonical = { z, x: Math.floor(x0 / EXTENT), y: Math.floor(y0 / EXTENT) };
+  const geometry = parts.map((part) =>
+    part.map((p) => {
+      const [x, y] = world(p);
+      return { x: Math.round(x - canonical.x * EXTENT), y: Math.round(y - canonical.y * EXTENT) };
+    }),
+  );
+  return { canonical, feature: { type: 2 as const, properties: { admin_level: 6, disputed: 0, maritime: 0 }, geometry } };
+}
+
+/** Whether `filter`, compiled by MapLibre's own style spec as a layer filter, draws `line` from its tile. */
+function draws(filter: unknown, line: ReturnType<typeof tileLine>): boolean {
+  const compiled = featureFilter(filter as FilterSpecification, 'layers[0].filter');
+  return compiled.filter({ zoom: line.canonical.z }, line.feature as never, line.canonical as never);
+}
+
+describe('the held areas (rule 2 on boundary_3, S4b-BL-12)', () => {
+  const liberty = libertyExcerpt();
+  const { style } = indiaBoundaryStyle(liberty, URL_);
+  const filter = layer(style, 'boundary_3')['filter'];
+
+  it('bundles the reviewed polygon, the same bytes as the Android asset (IndiaBoundaryDataTest pins this sha256)', async () => {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(heldAreasText));
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    expect(hex).toBe('8fa2db123b4c4370a88ca9b3da31b212b847205c2ba529ca43b4afbb27b780c3');
+    expect(HELD_AREAS?.type).toBe('Polygon');
+    const rings = HELD_AREAS!.coordinates as number[][][];
+    const vertices = rings.reduce((n, ring) => n + ring.length, 0);
+    // Modest, so evaluating the filter per boundary_3 feature stays cheap on a phone.
+    expect(vertices).toBeLessThanOrEqual(700);
+    for (const ring of rings) expect(ring[ring.length - 1]).toEqual(ring[0]);
+  });
+
+  it('boundary_3 keeps Liberty\'s filter and the tile-zoom guard, and leaves out the lines inside the polygon', () => {
+    expect(filter).toEqual(['all', ['all', layer(liberty, 'boundary_3')['filter'], TILE_ZOOM_GUARD], ['!', ['within', HELD_AREAS]]]);
+    expect(isLegacyFilter(filter)).toBe(false);
+    // MapLibre compiles it, and it needs the features' geometry.
+    expect(featureFilter(filter as FilterSpecification, 'layers[0].filter').needGeometry).toBe(true);
+  });
+
+  it('hides a Pakistani or Chinese admin line inside the held areas, at tile zoom 9 and 14', () => {
+    const held: [string, [number, number][]][] = [
+      ['Gilgit', [[74.3, 35.9], [74.4, 35.95]]],
+      ['Skardu', [[75.6, 35.3], [75.65, 35.33]]],
+      ['Muzaffarabad (PoK)', [[73.47, 34.37], [73.5, 34.4]]],
+      ['Shaksgam', [[76.5, 36.1], [76.55, 36.12]]],
+      ['Aksai Chin', [[79.3, 35.0], [79.4, 35.1]]],
+    ];
+    for (const z of [9, 14]) {
+      for (const [where, line] of held) expect(draws(filter, tileLine(z, line)), `${where}, z${z}`).toBe(false);
+    }
+  });
+
+  it('keeps every Indian admin line, at tile zoom 9 and 14', () => {
+    const indian: [string, [number, number][]][] = [
+      ['Srinagar', [[74.75, 34.05], [74.85, 34.1]]],
+      ['Leh', [[77.55, 34.1], [77.65, 34.2]]],
+      ['Kargil', [[76.1, 34.5], [76.2, 34.6]]],
+      ['Poonch, 3 km from the LoC', [[74.1, 33.77], [74.13, 33.8]]],
+      ['Jammu', [[74.85, 32.7], [74.9, 32.75]]],
+    ];
+    for (const z of [9, 14]) {
+      for (const [where, line] of indian) expect(draws(filter, tileLine(z, line)), `${where}, z${z}`).toBe(true);
+    }
+  });
+
+  it('keeps a line that crosses the polygon\'s edge, and a tile feature with an Indian part (within is all or nothing)', () => {
+    // From Gilgit to Peshawar: it leaves the polygon, so it is drawn whole.
+    expect(draws(filter, tileLine(9, [[74.3, 35.9], [71.6, 34.0]]))).toBe(true);
+    // From Muzaffarabad (PoK) across the LoC to Srinagar.
+    expect(draws(filter, tileLine(9, [[73.47, 34.37], [74.8, 34.08]]))).toBe(true);
+    // One multi-line feature, a part in PoK and a part in the Kashmir valley: drawn, so the Indian part shows.
+    expect(draws(filter, tileLine(9, [[73.47, 34.37], [73.5, 34.4]], [[74.75, 34.05], [74.85, 34.1]]))).toBe(true);
+    // A line elsewhere in India, far from the polygon.
+    expect(draws(filter, tileLine(12, [[77.2, 28.6], [77.25, 28.65]]))).toBe(true);
+  });
+
+  it('still applies Liberty\'s conditions and the guard inside the held areas', () => {
+    const inside = tileLine(12, [[74.3, 35.9], [74.4, 35.95]]);
+    const outside = tileLine(12, [[74.75, 34.05], [74.85, 34.1]]);
+    expect(draws(filter, { ...outside, feature: { ...outside.feature, properties: { admin_level: 6, disputed: 1, maritime: 0 } } })).toBe(false);
+    expect(draws(filter, { ...inside, feature: { ...inside.feature, properties: { admin_level: 2, disputed: 0, maritime: 0 } } })).toBe(false);
+  });
+
+  it('with a missing or malformed polygon: warns, and boundary_3 is only guarded (rule 5)', () => {
+    const { style: without_, warnings } = indiaBoundaryStyle(libertyExcerpt(), URL_, null);
+    expect(warnings).toEqual([
+      'the held areas\' polygon is missing or malformed; "boundary_3" keeps the admin lines inside them',
+    ]);
+    expect(layer(without_, 'boundary_3')['filter']).toEqual(['all', layer(liberty, 'boundary_3')['filter'], TILE_ZOOM_GUARD]);
+  });
+
+  it('a boundary_3 with no filter gets the guard and the rule; without boundary_3 nothing is said', () => {
+    const bare = { ...liberty, layers: liberty.layers.map((l) => (l.id === 'boundary_3' ? ({ ...l, filter: undefined } as LayerSpecification) : l)) };
+    const { style: s, warnings } = indiaBoundaryStyle(bare, URL_);
+    expect(warnings).toEqual([]);
+    expect(layer(s, 'boundary_3')['filter']).toEqual(['all', TILE_ZOOM_GUARD, HELD_RULE]);
+    expect(indiaBoundaryStyle(without(liberty, ['boundary_3']), URL_).warnings).toEqual([]);
+  });
+
+  it('heldAreasGeometry takes one Polygon feature with closed rings and nothing else (as Android)', () => {
+    const ring = [[74, 35], [75, 35], [75, 36], [74, 35]];
+    const fc = (geometry: unknown, n = 1) =>
+      JSON.stringify({ type: 'FeatureCollection', features: Array.from({ length: n }, () => ({ type: 'Feature', properties: {}, geometry })) });
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [ring] }))).toEqual({ type: 'Polygon', coordinates: [ring] });
+    expect(heldAreasGeometry(heldAreasText)).toEqual(HELD_AREAS);
+    // MapLibre Android's Expression.raw reads within's argument as a Polygon only.
+    expect(heldAreasGeometry(fc({ type: 'MultiPolygon', coordinates: [[ring]] }))).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [[[74, 35], [75, 35], [75, 36], [74, 36]]] }))).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [] }))).toBeNull();
+    expect(heldAreasGeometry('null')).toBeNull();
+    expect(heldAreasGeometry('not json')).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [ring] }, 2))).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'LineString', coordinates: ring }))).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [ring.slice(0, 3)] }))).toBeNull();
+    expect(heldAreasGeometry(fc({ type: 'Polygon', coordinates: [[[74, 35], [75, 'x'], [75, 36], [74, 35]]] }))).toBeNull();
+    expect(heldAreasGeometry(JSON.stringify({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] } }))).toBeNull();
   });
 });
 

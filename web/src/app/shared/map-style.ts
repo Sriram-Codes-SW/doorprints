@@ -137,6 +137,7 @@ export function createMlMap(
     });
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
+    foldAttributionLater(map);
     map.on('style.load', () => applyIndiaBoundaries(boundaryTarget(map), inBoundariesUrl(document.baseURI)));
     return map;
   } catch (e) {
@@ -151,6 +152,56 @@ export function createMlMap(
     }
     return null;
   }
+}
+
+/** How long a narrow map shows its credits in full, after its style first loads, before they fold into the (i) button. */
+export const ATTRIBUTION_SHOW_MS = 5000;
+
+/** MapLibre's own width for folding the credits (maplibre-gl-js v6.10.0 `AttributionControl._updateCompact`: 640). */
+const COMPACT_MAX_WIDTH = 640;
+
+/**
+ * Folds a narrow map's credits into MapLibre's (i) button; true when it did. Nothing happens on a map wider than
+ * 640px (desktop keeps MapLibre's behaviour) or when the credits are already folded.
+ *
+ * MapLibre opens compact credits when a map loads and folds them only on the first one-finger drag. On a phone every
+ * map has cooperative gestures, so one finger scrolls the page and that drag never comes: the two-line credits
+ * stayed open across the bottom of the Map page's map for good (owner report 2026-09-24, a 384px Android phone).
+ * Folded, they are one tap away and read in full (the button toggles them; its name is `map.attribution`), which
+ * OpenFreeMap and the OpenStreetMap attribution guidelines accept for small screens.
+ */
+export function foldAttribution(root: HTMLElement): boolean {
+  if (root.offsetWidth > COMPACT_MAX_WIDTH) return false;
+  const credits = root.querySelector<HTMLElement>('.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show');
+  if (!credits) return false;
+  credits.classList.remove('maplibregl-compact-show');
+  return true;
+}
+
+/**
+ * The credits are shown in full for {@link ATTRIBUTION_SHOW_MS} after the map's style first loads, then folded
+ * ({@link foldAttribution}); sooner when the user zooms or moves the map (a pinch, the zoom buttons, the keyboard).
+ */
+function foldAttributionLater(map: MlMap): void {
+  let folded = false;
+  const fold = () => {
+    if (folded) return;
+    folded = true;
+    foldAttribution(map.getContainer());
+  };
+  // From the first style.load, when the credits appear (`load` waits for every tile, which on a slow connection may
+  // be a long time or never). `on` with a flag rather than `once`: only the first one counts.
+  let loaded = false;
+  map.on('style.load', () => {
+    if (loaded) return;
+    loaded = true;
+    setTimeout(fold, ATTRIBUTION_SHOW_MS);
+  });
+  const onUserMove = (e: { originalEvent?: unknown }) => {
+    if (e.originalEvent) fold();
+  };
+  map.on('zoomstart', onUserMove);
+  map.on('movestart', onUserMove);
 }
 
 /**

@@ -20,7 +20,8 @@ textarea {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  /* min(…, 100%): never a column wider than the page (10rem at 200% text on a 320px phone). */
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
   gap: var(--space-3);
 }
 

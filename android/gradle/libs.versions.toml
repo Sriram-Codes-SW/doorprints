@@ -20,10 +20,18 @@ material-icons-core = "1.7.8"
 cmp = "1.12.1"
 cmp-material3 = "1.9.0"
 cmp-material-icons = "1.7.3"
+# JetBrains navigation and lifecycle for :ui commonMain (CMP-5): navigation-compose 2.9.2 (the newest stable; 2.10 is
+# beta), built on lifecycle 2.9.6, which Gradle raises to lifecycle 2.11.0 (built on Compose runtime 1.11, below CMP
+# 1.12.1). Verified on Maven Central 2026-09-24.
+jb-navigation = "2.9.2"
+jb-lifecycle = "2.11.0"
 androidx-core = "1.19.0"
 androidx-activity = "1.11.0"
-androidx-navigation = "2.9.5"
-androidx-lifecycle = "2.9.4"
+# navigation and lifecycle: the Android artifacts the JetBrains ones below map to (CMP-5). JetBrains navigation-compose
+# 2.9.2 depends on androidx navigation-compose 2.9.7 on Android, JetBrains lifecycle 2.11.0 on androidx lifecycle
+# 2.11.0; Gradle takes the higher version anyway, so :app names the same ones. Check both on every bump.
+androidx-navigation = "2.9.7"
+androidx-lifecycle = "2.11.0"
 androidx-room = "2.8.5"
 # androidx.sqlite: the version Room 2.8.5 depends on. Only iOS uses the bundled driver (CMP-4 P4a); Android keeps the
 # framework SQLite through Room's SupportSQLite open helper, as before.
@@ -61,6 +69,10 @@ cmp-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "cmp" }
 cmp-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "cmp-material3" }
 cmp-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "cmp" }
 cmp-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "cmp-material-icons" }
+jb-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "jb-navigation" }
+jb-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jb-lifecycle" }
+jb-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jb-lifecycle" }
+jb-lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "jb-lifecycle" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -87,7 +99,10 @@ kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-cor
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
-maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+# The OpenGL ES build, not the default `android-sdk` (which renders with Vulkan): without a Vulkan GPU, as on the API 26
+# emulator and many older phones, the Vulkan build throws "No Vulkan compatible GPU found" when the map opens (found by
+# the API 26 emulator job, 2026-09-24). A Vulkan build for Vulkan phones would need a second APK (backlog).
+maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 
 # Ktor client (shared module). commonMain: core only; androidMain: the OkHttp engine; commonTest: MockEngine.
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

@@ -304,7 +304,7 @@ class HuntService : LifecycleService() {
 
     companion object {
         private const val ACTION_STOP = "stop"
-        const val MAX_ACCURACY_M = 50f
+        const val MAX_ACCURACY_M = HuntState.MAX_ACCURACY_M
         const val LOW_BATTERY_PERCENT = 15
 
         fun hasLocationPermission(context: Context): Boolean =

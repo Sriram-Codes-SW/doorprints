@@ -156,6 +156,12 @@ body {
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /*
+   * A word longer than its line breaks instead of running off the screen: at 200% text on a 360px phone single Tamil
+   * words (நிராகரிக்கப்பட்டது, திட்டமிடு headings) were wider than the page, which then scrolled sideways by 30-100px.
+   * Only a word that cannot fit on a line of its own is broken; nothing changes at ordinary sizes.
+   */
+  overflow-wrap: break-word;
 }
 
 /* Indic scripts have taller glyphs (matras, vowel signs): give them more line height. */
@@ -459,7 +465,8 @@ fieldset > legend {
  */
 .checkbox {
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* minmax(0, …): a plain 1fr is never narrower than its longest word (58px past a 360px phone at 200% Tamil). */
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   column-gap: var(--space-2);
 }
@@ -527,6 +534,20 @@ textarea:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 0;
   border-color: var(--focus);
+}
+
+/*
+ * A field marked invalid (S4b-BL-6): Plan's start fields, the house name and coordinates, the Ask and Plan requests,
+ * Connect. The edge is drawn in --error-text, 2px (the 1px border plus a 1px inset ring, so nothing moves), and stays
+ * while the field has focus (the focus ring is the outline outside it). WCAG 1.4.11, against what the edge touches:
+ * light #b3261e is 6.54:1 on --surface #ffffff (the field and the cards), 6.02:1 on --bg #f4f6f5; dark #ff8e86 is
+ * 7.40:1 on --surface #19211f, 8.25:1 on --bg #101614 (docs/05 §4). The message under the field still says why
+ * (colour is not the only cue, 1.4.1); in forced colours the system border stands in.
+ */
+input[aria-invalid='true'],
+textarea[aria-invalid='true'] {
+  border-color: var(--error-text);
+  box-shadow: inset 0 0 0 1px var(--error-text);
 }
 
 .row {
@@ -815,6 +836,34 @@ textarea:focus-visible {
   font: inherit;
   font-size: var(--text-sm);
   color: #1c2421; /* popups keep a white background in both themes */
+}
+
+/*
+ * Phones: a button, chip, choice or checkbox label whose one word is wider than the screen (Tamil at 200% text) wraps
+ * inside itself. Their text is a flex item, sized no narrower than its longest word, which break-word above does not
+ * change.
+ */
+@media (max-width: 600px) {
+  .btn,
+  .chip,
+  .option > span,
+  .checkbox > label {
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
+ * Phones, the on-screen keyboard where the browser shrinks the page for it (Firefox, Chrome with resizes-content, a
+ * phone in landscape): the bottom bar (app.ts) would ride above the keyboard and cover the field being typed in, in
+ * a page a few hundred pixels tall. It steps aside while a text field has focus (--nav-h then measures 0) and comes
+ * back when focus leaves. Where the keyboard only overlays the page (Chrome's default, Safari) the viewport keeps its
+ * height and nothing changes. Here, not in app.ts: the fields are in the pages, outside the shell's style scope.
+ */
+@media (max-width: 600px) and (max-height: 500px) {
+  app-root:has(main :is(input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']), textarea):focus)
+    nav.nav {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {

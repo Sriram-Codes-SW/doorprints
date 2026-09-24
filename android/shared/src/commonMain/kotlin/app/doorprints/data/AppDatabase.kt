@@ -43,6 +43,10 @@ interface HouseDao {
     @Query("UPDATE houses SET dirty = 0 WHERE id = :id AND updatedAt = :updatedAt")
     suspend fun markClean(id: String, updatedAt: Long)
 
+    /** Every house, tombstones too, to be sent again: the server was found behind this phone (S4b-BL-20). */
+    @Query("UPDATE houses SET dirty = 1")
+    suspend fun markAllDirty()
+
     @Query("SELECT COUNT(*) FROM houses WHERE deleted = 0 AND street IS NOT NULL AND LOWER(street) = LOWER(:street)")
     suspend fun countOnStreet(street: String): Int
 
@@ -92,6 +96,10 @@ interface VisitDao {
     @Query("UPDATE visits SET dirty = 0 WHERE id = :id AND updatedAt = :updatedAt")
     suspend fun markClean(id: String, updatedAt: Long)
 
+    /** Every visit, tombstones too, to be sent again (S4b-BL-20). */
+    @Query("UPDATE visits SET dirty = 1")
+    suspend fun markAllDirty()
+
     @Query("SELECT COUNT(*) FROM visits WHERE deleted = 0 AND street IS NOT NULL AND LOWER(street) = LOWER(:street)")
     suspend fun countOnStreet(street: String): Int
 
@@ -134,6 +142,10 @@ interface PhotoDao {
 
     @Query("UPDATE photos SET deleted = 1 WHERE id = :id")
     suspend fun markDeleted(id: String)
+
+    /** Every live photo to be uploaded again (S4b-BL-20); the deletes still queued stay queued. */
+    @Query("UPDATE photos SET uploaded = 0 WHERE deleted = 0")
+    suspend fun markAllForUpload()
 
     @Upsert
     suspend fun upsert(photo: PhotoEntity)

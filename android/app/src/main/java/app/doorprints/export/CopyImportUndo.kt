@@ -31,28 +31,12 @@ import kotlinx.coroutines.withContext
  */
 object CopyImportUndo {
 
-    /**
-     * What an undo did, for the run it undid; [failed] means nothing was changed. [finishedAt] tells two outcomes for
-     * the same run apart (a failure, then a retry), so a screen can save "this one was already shown" as
-     * [key] across a rotation or process death instead of comparing objects (UX review, round 21).
-     */
-    data class Outcome(
-        val runId: String,
-        val removed: Int,
-        val kept: Int,
-        val failed: Boolean = false,
-        val finishedAt: Long = 0L,
-    ) {
-        /** runId plus finishedAt: stable across a saved-state round trip, unique per undo. */
-        val key: String get() = "$runId@$finishedAt"
-    }
-
     /** The run whose copies are being removed right now, or null. */
     var undoingRun by mutableStateOf<String?>(null)
         private set
 
     /** The outcome of the last undo in this process, or null before the first one. */
-    var outcome by mutableStateOf<Outcome?>(null)
+    var outcome by mutableStateOf<CopyUndoOutcome?>(null)
         private set
 
     /**
@@ -63,7 +47,7 @@ object CopyImportUndo {
         if (undoingRun != null || record.undone) return false
         undoingRun = record.runId
         app.appScope.launch {
-            var result = Outcome(record.runId, 0, 0, failed = true)
+            var result = CopyUndoOutcome(record.runId, 0, 0, failed = true)
             try {
                 val repository = app.container.repository
                 val done = repository.undoCopyImport(record.houses, record.visits, record.photos)
@@ -74,7 +58,7 @@ object CopyImportUndo {
                     ImportUndo.delete(app, record.runId)
                 }
                 runCatching { repository.settings.markResultDismissed(ResultScreen.IMPORT, record.runId) }
-                result = Outcome(record.runId, done.removed, done.kept)
+                result = CopyUndoOutcome(record.runId, done.removed, done.kept)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

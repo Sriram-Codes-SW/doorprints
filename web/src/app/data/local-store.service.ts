@@ -258,6 +258,26 @@ export class LocalStore {
     this.touch();
   }
 
+  /**
+   * After the sync found its server reset (S4b-BL-20, `SyncService`): every house and visit, tombstones included, is
+   * marked dirty and every stored photo not uploaded, so the next push sends everything this browser holds. The
+   * edit times are kept: the server's last-write-wins rule still decides against rows another device sent since.
+   * Photo deletes waiting to be sent stay as they are (a delete of a photo the server does not have is a no-op).
+   */
+  async markAllForResync(): Promise<void> {
+    const db = await this.db();
+    for (const house of await db.getAll<HouseRecord>('houses')) {
+      if (!house.dirty) await db.put('houses', { ...house, dirty: true });
+    }
+    for (const visit of await db.getAll<VisitRecord>('visits')) {
+      if (!visit.dirty) await db.put('visits', { ...visit, dirty: true });
+    }
+    for (const photo of await db.getAll<PhotoRecord>('photos')) {
+      if (!photo.deleted && photo.blob && photo.uploaded) await db.put('photos', { ...photo, uploaded: false });
+    }
+    this.touch();
+  }
+
   // ---- Settings ----
 
   async setting(key: string): Promise<string | null> {

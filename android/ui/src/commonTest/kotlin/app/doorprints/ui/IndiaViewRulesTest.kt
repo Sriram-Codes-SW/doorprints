@@ -6,20 +6,29 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.math.PI
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.roundToLong
+import kotlin.math.tan
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * India's boundary on the map (owner issue P0, 2026-09-24): the decisions MapScreen applies to the Liberty style
- * through IndiaView.kt. The filters are evaluated here by a small evaluator for the operators they use, against
- * feature properties as the OpenFreeMap tiles carry them, so the test checks what they select, not only their text.
+ * India's boundary on the map (owner issue P0, 2026-09-24): the decisions the Map applies to the Liberty style through
+ * applyIndiaView (IndiaViewOps.kt). The filters are evaluated here by a small evaluator for the operators they use,
+ * against feature properties as the OpenFreeMap tiles carry them, so the test checks what they select, not only their text.
  */
 class IndiaViewRulesTest {
 
@@ -408,6 +417,70 @@ class IndiaViewRulesTest {
         assertTrue(legacy(state, emptyMap()))
     }
 
+    // --- Rule 2c: the admin lines inside the held areas (S4b-BL-12) -------------------------------------------------
+
+    @Test
+    fun theHeldAreasFileIsReadAsOnePolygonAndNothingElse() {
+        val ring = "[[74,35],[75,35],[75,36],[74,35]]"
+        assertEquals("{\"type\":\"Polygon\",\"coordinates\":[$ring]}", IndiaViewRules.heldAreasGeometry(file("Polygon", "[$ring]")))
+        // MapLibre Android's Expression.raw reads within's argument as a Polygon only (Polygon.fromJson).
+        assertNull(IndiaViewRules.heldAreasGeometry(file("MultiPolygon", "[[$ring]]")))
+        assertNull(IndiaViewRules.heldAreasGeometry(file("Polygon", "[[[74,35],[75,35],[75,36],[74,36]]]")), "not closed")
+        assertNull(IndiaViewRules.heldAreasGeometry(file("Polygon", "[[[74,35],[75,35],[74,35]]]")), "3 points")
+        assertNull(IndiaViewRules.heldAreasGeometry(file("Polygon", "[[[74,35],[75,\"x\"],[75,36],[74,35]]]")))
+        assertNull(IndiaViewRules.heldAreasGeometry(file("Polygon", "[]")))
+        assertNull(IndiaViewRules.heldAreasGeometry(file("LineString", ring)))
+        val one = "{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[$ring]}}"
+        assertNull(IndiaViewRules.heldAreasGeometry("{\"type\":\"FeatureCollection\",\"features\":[$one,$one]}"))
+        assertNull(IndiaViewRules.heldAreasGeometry(one))
+        assertNull(IndiaViewRules.heldAreasGeometry("not json"))
+        assertNull(IndiaViewRules.heldAreasGeometry("null"))
+    }
+
+    @Test
+    fun theHeldAreasRuleIsWithinNegatedInExpressionSyntaxOnly() {
+        val geometry = IndiaViewRules.heldAreasGeometry(TEST_HELD_FILE)!!
+        assertEquals("[\"!\", [\"within\", $geometry]]", IndiaViewRules.heldAreasFilter(geometry))
+        assertEquals(IndiaViewRules.heldAreasFilter(geometry), IndiaViewRules.heldAreasFilterFor(null, geometry))
+        assertEquals(
+            IndiaViewRules.heldAreasFilter(geometry),
+            IndiaViewRules.heldAreasFilterFor(toList(parse(LIBERTY_BOUNDARY_3)), geometry),
+        )
+        // The deprecated syntax has no within: that layer is left as it is (IndiaViewOps warns).
+        assertNull(IndiaViewRules.heldAreasFilterFor(listOf("all", listOf(">=", "admin_level", 3f)), geometry))
+    }
+
+    @Test
+    fun aLineInsideTheHeldAreasIsNotDrawnAnIndianOneAndACrossingOneAre() {
+        // boundary_3's filter as applyIndiaView leaves it: all(all(Liberty's, guard), rule), with a test polygon
+        // around Gilgit (74-75 E, 35-36 N) standing in for the held areas (the real file: IndiaBoundaryDataTest).
+        val geometry = IndiaViewRules.heldAreasGeometry(TEST_HELD_FILE)!!
+        val filter = parse(
+            "[\"all\", [\"all\", $LIBERTY_BOUNDARY_3, ${IndiaViewRules.TILE_ZOOM_GUARD}], " +
+                "${IndiaViewRules.heldAreasFilter(geometry)}]",
+        )
+        val tehsil: Map<String, Any> = mapOf("admin_level" to 6, "disputed" to 0, "maritime" to 0)
+        listOf(9, 14).forEach { z ->
+            assertFalse(eval(filter, tehsil, z.toFloat(), tileLine(z, listOf(74.3 to 35.9, 74.4 to 35.95))), "inside, z$z")
+            assertTrue(eval(filter, tehsil, z.toFloat(), tileLine(z, listOf(74.75 to 34.05, 74.85 to 34.1))), "Srinagar, z$z")
+        }
+        // Crossing the polygon's edge: drawn whole (within is all or nothing).
+        assertTrue(eval(filter, tehsil, 9f, tileLine(9, listOf(74.3 to 35.9, 73.5 to 35.5))))
+        // One tile feature with a part inside and a part outside: drawn, so the outside part shows.
+        assertTrue(
+            eval(filter, tehsil, 9f, tileLine(9, listOf(74.3 to 35.9, 74.4 to 35.95), listOf(74.75 to 34.05, 74.85 to 34.1))),
+        )
+        // A line that reaches the polygon's edge is not within it (strict bbox, a vertex on an edge is outside): drawn.
+        assertTrue(eval(filter, tehsil, 14f, tileLine(14, listOf(74.5 to 35.5, 75.0 to 35.5))))
+        // A feature without geometry is not within: drawn (the other conditions still apply).
+        assertTrue(eval(filter, tehsil, 12f))
+        // Liberty's conditions and the guard still hold inside.
+        val inside = tileLine(12, listOf(74.3 to 35.9, 74.4 to 35.95))
+        assertFalse(eval(filter, tehsil + ("disputed" to 1), 12f, tileLine(12, listOf(74.75 to 34.05, 74.85 to 34.1))))
+        assertFalse(eval(filter, tehsil + ("admin_level" to 2), 12f, inside))
+        assertFalse(eval(filter, tehsil, 4f, tileLine(4, listOf(74.75 to 34.05, 74.85 to 34.1))))
+    }
+
     // --- helpers ---------------------------------------------------------------------------------------------------
 
     private companion object {
@@ -416,6 +489,16 @@ class IndiaViewRulesTest {
             "[\"all\", [\">=\", [\"get\", \"admin_level\"], 3], [\"<=\", [\"get\", \"admin_level\"], 6], " +
                 "[\"!=\", [\"get\", \"maritime\"], 1], [\"!=\", [\"get\", \"disputed\"], 1], " +
                 "[\"!\", [\"has\", \"claimed_by\"]]]"
+        /** A held-areas file as the build writes it, with a square around Gilgit (74-75 E, 35-36 N) for the tests. */
+        val TEST_HELD_FILE = file("Polygon", "[[[74,35],[75,35],[75,36],[74,36],[74,35]]]")
+
+        fun file(type: String, coordinates: String) =
+            "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"kind\":\"held\"}," +
+                "\"geometry\":{\"type\":\"$type\",\"coordinates\":$coordinates}}]}"
+
+        /** The renderers' tile extent (EXTENT in maplibre-native and maplibre-gl). */
+        const val EXTENT = 8192.0
+
         const val LIBERTY_BOUNDARY_2 =
             "[\"all\", [\"==\", [\"get\", \"admin_level\"], 2], [\"!=\", [\"get\", \"maritime\"], 1], " +
                 "[\"!=\", [\"get\", \"disputed\"], 1], [\"!\", [\"has\", \"claimed_by\"]]]"
@@ -457,15 +540,90 @@ class IndiaViewRulesTest {
      * [props] as the tiles carry them (strings, or numbers for admin_level, disputed and maritime); [zoom] is the
      * TILE's zoom, which is what MapLibre gives a filter's `zoom` (IndiaViewRules.TILE_ZOOM_GUARD).
      */
-    private fun eval(filter: JsonElement, props: Map<String, Any>, zoom: Float = 14f): Boolean =
-        (value(filter, props, zoom) as JsonPrimitive).booleanOrNull
+    private fun eval(filter: JsonElement, props: Map<String, Any>, zoom: Float = 14f, geometry: TileLine? = null): Boolean =
+        (value(filter, props, zoom, geometry) as JsonPrimitive).booleanOrNull
             ?: throw AssertionError("not a boolean filter: $filter")
 
+    /** A line feature as a tile of zoom [z] carries it: the tile's id and each part in that tile's coordinates. */
+    private class TileLine(val z: Int, val x: Long, val y: Long, val parts: List<List<Pair<Long, Long>>>)
+
+    /** Web Mercator "world" coordinates at zoom [z], in tile units of [EXTENT] (within.cpp latLonToTileCoodinates). */
+    private fun world(lon: Double, lat: Double, z: Int): Pair<Double, Double> {
+        val size = EXTENT * 2.0.pow(z)
+        val y = (180 - ln(tan(PI / 4 + lat * PI / 360)) * 180 / PI) * size / 360
+        return (lon + 180) * size / 360 to y
+    }
+
+    /** [parts] ([longitude, latitude] lines) as one feature of the zoom [z] tile that holds the first point. */
+    private fun tileLine(z: Int, vararg parts: List<Pair<Double, Double>>): TileLine {
+        val (x0, y0) = world(parts[0][0].first, parts[0][0].second, z)
+        val tx = floor(x0 / EXTENT).toLong()
+        val ty = floor(y0 / EXTENT).toLong()
+        return TileLine(
+            z, tx, ty,
+            parts.map { part ->
+                part.map { (lon, lat) ->
+                    val (x, y) = world(lon, lat, z)
+                    (x - tx * EXTENT).roundToLong() to (y - ty * EXTENT).roundToLong()
+                }
+            },
+        )
+    }
+
+    /**
+     * `within` for a line feature, ported from maplibre-native android-v13.6.1 src/mln/style/expression/within.cpp
+     * (`featureWithinPolygons`, `getTileLines`) and src/mln/util/geometry_util.cpp (`boxWithinBox`,
+     * `pointWithinPolygon`, `lineIntersectPolygon`, `lineStringWithinPolygon`): the feature's bbox strictly inside the
+     * polygon's, then every part with every vertex strictly inside (on an edge is outside) and no segment crossing an
+     * edge; in int64 world coordinates. (The antimeridian shift of `updatePoint` is left out: no test line is near it.)
+     */
+    private fun within(line: TileLine, polygon: JsonObject): Boolean {
+        assertEquals("Polygon", polygon.getValue("type").jsonPrimitive.content, "the rule's polygon")
+        val rings = polygon.getValue("coordinates").jsonArray.map { ring ->
+            ring.jsonArray.map { p ->
+                val (x, y) = world(p.jsonArray[0].jsonPrimitive.doubleOrNull!!, p.jsonArray[1].jsonPrimitive.doubleOrNull!!, line.z)
+                x.toLong() to y.toLong()
+            }
+        }
+        val all = rings.flatten()
+        val (px0, py0) = all.minOf { it.first } to all.minOf { it.second }
+        val (px1, py1) = all.maxOf { it.first } to all.maxOf { it.second }
+        val parts = line.parts.map { part -> part.map { (x, y) -> x + line.x * EXTENT.toLong() to y + line.y * EXTENT.toLong() } }
+        val points = parts.flatten()
+        if (points.minOf { it.first } <= px0 || points.maxOf { it.first } >= px1) return false
+        if (points.minOf { it.second } <= py0 || points.maxOf { it.second } >= py1) return false
+        fun inside(p: Pair<Long, Long>): Boolean {
+            var odd = false
+            for (r in rings) for (i in 0 until r.size - 1) {
+                val (x1, y1) = r[i]
+                val (x2, y2) = r[i + 1]
+                val a1 = p.first - x1; val b1 = p.second - y1; val a2 = p.first - x2; val b2 = p.second - y2
+                if (a1 * b2 - a2 * b1 == 0L && a1 * a2 <= 0 && b1 * b2 <= 0) return false
+                if ((y1 > p.second) != (y2 > p.second) && p.first < (x2 - x1) * (p.second - y1) / (y2 - y1) + x1) odd = !odd
+            }
+            return odd
+        }
+        fun twoSided(p1: Pair<Long, Long>, p2: Pair<Long, Long>, q1: Pair<Long, Long>, q2: Pair<Long, Long>): Boolean {
+            val x3 = q2.first - q1.first; val y3 = q2.second - q1.second
+            val r1 = (p1.first - q1.first) * y3 - x3 * (p1.second - q1.second)
+            val r2 = (p2.first - q1.first) * y3 - x3 * (p2.second - q1.second)
+            return (r1 > 0 && r2 < 0) || (r1 < 0 && r2 > 0)
+        }
+        fun crosses(a: Pair<Long, Long>, b: Pair<Long, Long>) = rings.any { r ->
+            (0 until r.size - 1).any { i ->
+                val c = r[i]; val d = r[i + 1]
+                val parallel = (d.first - c.first) * (b.second - a.second) - (d.second - c.second) * (b.first - a.first) == 0L
+                !parallel && twoSided(a, b, c, d) && twoSided(c, d, a, b)
+            }
+        }
+        return parts.all { part -> part.all(::inside) && part.zipWithNext().none { (a, b) -> crosses(a, b) } }
+    }
+
     /** The style-spec operators the filters use; anything else fails the test, so a new operator gets a case here. */
-    private fun value(e: JsonElement, props: Map<String, Any>, zoom: Float): JsonElement {
+    private fun value(e: JsonElement, props: Map<String, Any>, zoom: Float, geometry: TileLine? = null): JsonElement {
         if (e !is JsonArray) return e
         val op = e[0].jsonPrimitive.content
-        fun v(i: Int) = value(e[i], props, zoom)
+        fun v(i: Int) = value(e[i], props, zoom, geometry)
         return when (op) {
             "get" -> when (val p = props[e[1].jsonPrimitive.content]) {
                 null -> JsonNull
@@ -474,10 +632,12 @@ class IndiaViewRulesTest {
                 else -> throw AssertionError("property type ${p::class} has no case in this test")
             }
             "zoom" -> JsonPrimitive(zoom)
-            "coalesce" -> e.drop(1).map { value(it, props, zoom) }.firstOrNull { it !is JsonNull } ?: JsonNull
+            "coalesce" -> e.drop(1).map { value(it, props, zoom, geometry) }.firstOrNull { it !is JsonNull } ?: JsonNull
             "!" -> JsonPrimitive(!truth(v(1)))
-            "all" -> JsonPrimitive(e.drop(1).all { truth(value(it, props, zoom)) })
-            "any" -> JsonPrimitive(e.drop(1).any { truth(value(it, props, zoom)) })
+            "all" -> JsonPrimitive(e.drop(1).all { truth(value(it, props, zoom, geometry)) })
+            "any" -> JsonPrimitive(e.drop(1).any { truth(value(it, props, zoom, geometry)) })
+            // A feature without geometry is not within (within.cpp `Within::evaluate`, within.ts `evaluate`).
+            "within" -> JsonPrimitive(geometry != null && within(geometry, e[1].jsonObject))
             "has" -> {
                 // The one-argument form: the feature's own properties.
                 assertEquals(2, e.size, "has takes one property name here: $e")

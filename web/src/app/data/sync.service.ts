@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { ConfigService, normalizeBaseUrl } from '../core/config.service';
 import { HouseApiService } from '../core/house-api.service';
+import { Announcer } from '../core/announcer.service';
 import { errorMsg, isQuotaError, retryAfterSeconds } from '../core/format';
 import type { Msg } from '../i18n/translation.service';
 import type { RunResult } from '../shared/run-result';
@@ -14,6 +15,7 @@ import {
   houseToDto,
   isRecordId,
   isoNow,
+  millis,
   tryHouseFromDto,
   tryVisitFromDto,
   visitToDto,
@@ -62,6 +64,12 @@ export type MigrationState = 'unknown' | 'offered' | 'running' | 'done' | 'skipp
 class SyncCancelled extends Error {}
 /** Thrown inside a pull the user stopped: the cursors reached so far are already stored. */
 class SyncStopped extends Error {}
+/**
+ * Thrown inside a push when the server's answer shows that its change log is behind this browser's cursors
+ * ({@link serverWasReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
+ * its highest version in `GET /api/stats` is checked before the push instead ({@link serverBehind}).
+ */
+class ServerReset extends Error {}
 
 /**
  * Two-way sync between this browser's IndexedDB and the optional API-key server (S4-01).
@@ -86,18 +94,30 @@ export class SyncService {
   private readonly api = inject(HouseApiService);
   private readonly config = inject(ConfigService);
   private readonly store = inject(LocalStore);
+  private readonly announcer = inject(Announcer);
 
   /** True when a server is configured; until Sprint 5 that is the API-key server. */
   readonly enabled = computed(() => this.config.configured());
   readonly running = signal(false);
   readonly lastOutcome = signal<SyncOutcome | null>(null);
+  /**
+   * Why the last run that ended in a failure failed, until a run **succeeds** (S4b-BL-1). A new run does not clear
+   * it: the failure card and the first-run banner keep their place while the retry runs (drawn as being updated,
+   * `.refresh-slot.stale`), so nothing below them jumps, and the run's end replaces or removes it.
+   */
   readonly lastError = signal<Msg | null>(null);
   /**
    * True when {@link lastError} came from something the user asked for ("Sync now", "Download now"). A failed
-   * background run is reported quietly; only a failure the user is waiting for is an alert.
+   * background run is reported quietly; only a failure the user is waiting for is an alert. A background run that
+   * fails with the same words leaves it as it is, so a card the user saw fail does not move to the quiet line.
    */
   readonly lastErrorForced = signal(false);
-  /** Bumped by every failed run, so the same failure twice in a row renders as a new node (see {@link lastFailure}). */
+  /**
+   * Bumped by a failed run the user asked for, or one whose message differs from the one on screen, so the same
+   * failure twice in a row after *Sync now* or *Try again* renders as a new node (see {@link lastFailure}). A
+   * background pass (every 30 minutes, 3 s after an edit) failing the same way again keeps the node, so the polite
+   * "Automatic sync failed" note is not read out again on every pass (S4b-BL-1).
+   */
   private readonly failureRun = signal(0);
   /**
    * {@link lastError} keyed on the run that produced it, for the screens that show it in a live region: "Sync now"
@@ -115,6 +135,11 @@ export class SyncService {
   readonly paused = computed(() => this.enabled() && this.migration() === 'skipped');
   /** Progress of the running pass, or null when nothing is running. */
   readonly progress = signal<SyncProgress | null>(null);
+  /**
+   * When this browser last found its server reset (S4b-BL-20): the server's change log was behind the stored
+   * cursors, so everything here was sent again and everything there fetched again. Your data says so; null otherwise.
+   */
+  readonly serverResetAt = signal<string | null>(null);
   /** Mirrors `navigator.onLine`, so the Your data page can say "offline, N changes waiting" instead of an error. */
   readonly online = signal(typeof navigator === 'undefined' || navigator.onLine !== false);
 
@@ -142,6 +167,7 @@ export class SyncService {
           this.migration.set('unknown');
           this.lastError.set(null);
           this.lastErrorForced.set(false);
+          this.serverResetAt.set(null);
         }
       });
     });
@@ -212,6 +238,8 @@ export class SyncService {
       this.lastOutcome.set(null);
       this.lastSkipped.set(0);
       this.lastError.set(null);
+      this.lastErrorForced.set(false);
+      this.serverResetAt.set(null);
     }
     await this.store.setSetting(SETTING_KEYS.syncServer, current);
   }
@@ -296,14 +324,14 @@ export class SyncService {
     const gen = this.generation;
     this.stopRequested = false;
     this.running.set(true);
-    this.lastError.set(null);
-    this.lastErrorForced.set(false);
+    // lastError is not cleared here: the card that shows it stays, drawn as being updated, until this run ends.
     try {
-      const pushed = await this.push(gen);
-      const { pulled, skipped } = await this.pull(gen);
+      const { pushed, pulled, skipped } = await this.pass(gen);
       this.live(gen);
       this.lastSkipped.set(skipped);
       this.lastOutcome.set({ pushed, pulled, skipped, at: isoNow() });
+      this.lastError.set(null);
+      this.lastErrorForced.set(false);
       if (this.migration() === 'running') {
         this.migration.set('done');
         await this.store.setSetting(SETTING_KEYS.migration, 'done');
@@ -318,9 +346,7 @@ export class SyncService {
         return;
       }
       if (gen !== this.generation) return;
-      this.failureRun.update((n) => n + 1);
-      this.lastError.set(errorMsg(err));
-      this.lastErrorForced.set(force);
+      this.recordFailure(errorMsg(err), force);
     } finally {
       // A cancelled run must not switch off the indicator of the run that replaced it.
       if (gen === this.generation) {
@@ -329,6 +355,79 @@ export class SyncService {
         this.stopRequested = false;
       }
     }
+  }
+
+  /**
+   * A failed run's message. A run the user asked for, or a message other than the one on screen, is a new failure
+   * (a new node, read out again); a background run failing the same way again changes nothing on screen.
+   */
+  private recordFailure(error: Msg, force: boolean): void {
+    const previous = this.lastError();
+    const changed = previous === null || !sameMsg(previous, error);
+    if (!force && !changed) return;
+    this.failureRun.update((n) => n + 1);
+    this.lastError.set(error);
+    this.lastErrorForced.set(force);
+  }
+
+  /**
+   * Push, then pull. When a push shows that the server was reset ({@link ServerReset}), this browser is made to hold
+   * nothing the server is assumed to have — every row dirty, every photo not uploaded, every cursor 0 — and the
+   * pass starts again: a full re-push and a full re-pull (S4b-BL-20). With the cursors at 0 the check cannot fire
+   * again in the same run (a version is never at or below 0), so it restarts once at most.
+   */
+  private async pass(gen: number): Promise<{ pushed: number; pulled: number; skipped: number }> {
+    if (!(await this.statsShowReset(gen))) {
+      try {
+        const pushed = await this.push(gen);
+        return { pushed, ...(await this.pull(gen)) };
+      } catch (err: unknown) {
+        if (!(err instanceof ServerReset)) throw err;
+      }
+    }
+    await this.resetForServer(gen);
+    const pushed = await this.push(gen);
+    return { pushed, ...(await this.pull(gen)) };
+  }
+
+  /**
+   * Whether `GET /api/stats` shows the server behind this browser's cursors ({@link serverBehind}), asked at the
+   * start of every pass once something has been pulled: this sees a reset even when this browser has nothing to push.
+   * An older server without `maxSyncVersion`, or a failed request, is unknown (false); a real failure then shows in
+   * the push that follows, and the push answers are still checked ({@link serverWasReset}).
+   */
+  private async statsShowReset(gen: number): Promise<boolean> {
+    const cursors = await this.store.cursors();
+    this.live(gen);
+    const stored = [cursors.house, cursors.visit, cursors.photo];
+    if (!stored.some((c) => c > 0)) return false;
+    let highest: unknown = null;
+    try {
+      highest = (await this.call(gen, () => this.api.stats()))?.maxSyncVersion;
+    } catch (err: unknown) {
+      if (err instanceof SyncCancelled) throw err;
+    }
+    this.live(gen);
+    return serverBehind(highest, stored);
+  }
+
+  /**
+   * The server's change log is behind this browser (a new, empty database; a restore from an older dump): what it
+   * lost can only come back from the devices, and what changed on it below the old cursors is only seen from 0.
+   * Rows are marked first and the cursors reset after, so a run cut off in between (a closed tab) finds the server
+   * reset again on its next push instead of leaving rows marked clean that the server does not have.
+   */
+  private async resetForServer(gen: number): Promise<void> {
+    this.live(gen);
+    await this.store.markAllForResync();
+    this.live(gen);
+    await this.store.setSetting(SETTING_KEYS.houseCursor, '0');
+    await this.store.setSetting(SETTING_KEYS.visitCursor, '0');
+    await this.store.setSetting(SETTING_KEYS.photoCursor, '0');
+    this.live(gen);
+    this.serverResetAt.set(isoNow());
+    // Heard on whatever page is open; Your data also shows it (data.serverReset), outside its live region.
+    this.announcer.announce({ key: 'data.serverReset' });
   }
 
   /**
@@ -366,6 +465,12 @@ export class SyncService {
   }
 
   private async push(gen: number): Promise<number> {
+    // The highest position this browser has reached in the server's change log. The server hands every accepted
+    // write the next number of one sequence shared by houses, visits and photos, so an accepted push that comes back
+    // at or below it means the log went backwards: the server was reset (serverWasReset).
+    const cursors = await this.store.cursors();
+    this.live(gen);
+    const highest = Math.max(cursors.house, cursors.visit, cursors.photo);
     const houses = await this.store.dirtyHouses();
     this.live(gen);
     const visits = await this.store.dirtyVisits();
@@ -384,15 +489,17 @@ export class SyncService {
     if (total > 0) this.progress.set({ phase: 'sending', done: 0, total });
 
     for (const house of houses) {
-      await this.call(gen, () => this.api.pushHouse(houseToDto(house)));
+      const saved = await this.call(gen, () => this.api.pushHouse(houseToDto(house)));
       this.live(gen);
+      if (serverWasReset(house.updatedAt, saved, highest)) throw new ServerReset();
       await this.store.markHouseClean(house.id, house.updatedAt);
       this.live(gen);
       step();
     }
     for (const visit of visits) {
-      await this.call(gen, () => this.api.pushVisit(visitToDto(visit)));
+      const saved = await this.call(gen, () => this.api.pushVisit(visitToDto(visit)));
       this.live(gen);
+      if (serverWasReset(visit.updatedAt, saved, highest)) throw new ServerReset();
       await this.store.markVisitClean(visit.id, visit.updatedAt);
       this.live(gen);
       step();
@@ -646,6 +753,58 @@ export class SyncService {
     this.migration.set('skipped');
     await this.store.setSetting(SETTING_KEYS.migration, 'skipped');
   }
+}
+
+/**
+ * True when the answer to a pushed house or visit shows that the server was reset (S4b-BL-20): it **accepted** the
+ * write and gave it a `syncVersion` at or below `highestCursor`, the highest cursor this browser has stored for it.
+ *
+ * The signal. The API has no "highest version" call, and a pull cannot tell: `?since=<cursor>` returns `[]` from a
+ * reset server and from an unchanged one alike. But every accepted write takes `nextval('sync_seq')`, one sequence
+ * for houses, visits and photos, under an advisory lock (backend `SyncVersions`), so on a healthy server it is above
+ * every version handed out before it, and so above every cursor. At or below one, the server's highest
+ * `syncVersion` is below that cursor: its database was replaced or restored from an older dump (docs/08 §11).
+ *
+ * Only an accepted write counts. When the server keeps its own, newer row (last write wins, `upsert` in the backend)
+ * it answers with that row and its old version, which can legitimately be below the cursor. The server stores the
+ * `updatedAt` it was sent, or its own clock when that is too far ahead, so an accepted answer's `updatedAt` is never
+ * later than the one sent; a kept row's is always later. "Remove all my data" on the server is not a reset: the
+ * sequence carries on, so the next write is still above every cursor.
+ *
+ * A server that sends `maxSyncVersion` in `GET /api/stats` (2026-09-24) is checked before every push as well
+ * ({@link serverBehind}), so a browser with nothing to send sees the reset too; with an older server the reset is
+ * seen at the first push after it, the next time this browser has a change to send.
+ */
+export function serverWasReset(
+  sentUpdatedAt: string | null | undefined,
+  answer: { syncVersion?: unknown; updatedAt?: string | null } | null | undefined,
+  highestCursor: number,
+): boolean {
+  if (!(highestCursor > 0) || !answer) return false;
+  const version = wireVersion(answer.syncVersion);
+  if (version === null) return false;
+  const sent = millis(sentUpdatedAt);
+  const stored = millis(answer.updatedAt);
+  if (sent === 0 || stored === 0 || stored > sent) return false;
+  return version <= highestCursor;
+}
+
+/**
+ * True when the server's highest sync version (`maxSyncVersion` from `GET /api/stats`) is below one of this browser's
+ * stored `cursors` (S4b-BL-20; Android: `SyncRules.serverBehind`). A cursor only ever holds a version the server
+ * handed out, and the server's sequence never goes back while it keeps its data (not even after "delete all my
+ * data"), so on a healthy server no cursor is above it. A missing or unreadable value (an older server) is unknown:
+ * false.
+ */
+export function serverBehind(maxSyncVersion: unknown, cursors: readonly number[]): boolean {
+  const highest = wireVersion(maxSyncVersion);
+  if (highest === null) return false;
+  return cursors.some((cursor) => cursor > highest);
+}
+
+/** Two messages say the same thing: the same key and the same parameters. */
+function sameMsg(a: Msg, b: Msg): boolean {
+  return a.key === b.key && JSON.stringify(a.params ?? null) === JSON.stringify(b.params ?? null);
 }
 
 /**

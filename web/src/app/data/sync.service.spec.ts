@@ -6,11 +6,21 @@ import { Observable, Subject, defer, from, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '../core/config.service';
 import type { ApiConfig } from '../core/config.service';
+import { Announcer } from '../core/announcer.service';
 import { HouseApiService } from '../core/house-api.service';
-import type { HouseDto, PhotoChangeDto, VisitDto } from '../core/models';
+import type { HouseDto, PhotoChangeDto, StatsDto, VisitDto } from '../core/models';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
-import { MAX_RATE_LIMIT_WAIT_MS, RATE_LIMIT_ATTEMPTS, SyncService, rateLimitWaitMs, resumeCursor, wireVersion } from './sync.service';
+import {
+  MAX_RATE_LIMIT_WAIT_MS,
+  RATE_LIMIT_ATTEMPTS,
+  SyncService,
+  rateLimitWaitMs,
+  resumeCursor,
+  serverBehind,
+  serverWasReset,
+  wireVersion,
+} from './sync.service';
 import type { MigrationState } from './sync.service';
 
 /**
@@ -57,6 +67,10 @@ class FakeApi {
   photoChanges: () => Observable<PhotoChangeDto[]> = () => of([]);
   photoBytes: () => Observable<Blob> = () => of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
 
+  /** `GET /api/stats`; by default an older server's answer, without `maxSyncVersion`. */
+  statsAnswer: () => Observable<StatsDto> = () => of({ houses: 0, shortlisted: 0, rejected: 0, visits: 0, streets: 0 });
+  statsCalls = 0;
+
   readonly since = { house: [] as number[], visit: [] as number[], photo: [] as number[] };
   readonly pushedHouses: HouseDto[] = [];
   readonly pushedVisits: VisitDto[] = [];
@@ -64,6 +78,10 @@ class FakeApi {
   readonly uploadedPhotos: string[] = [];
   readonly fetchedPhotos: string[] = [];
 
+  stats(): Observable<StatsDto> {
+    this.statsCalls++;
+    return this.statsAnswer();
+  }
   housesSince(since: number): Observable<HouseDto[]> {
     this.since.house.push(since);
     return this.houses();
@@ -80,13 +98,19 @@ class FakeApi {
     this.fetchedPhotos.push(id);
     return this.photoBytes();
   }
+  /**
+   * The server's `sync_seq`: an accepted push is stored with the next number, as the backend's upsert does. Well above
+   * the recorded rows' versions (42, 17, 8), as on a real server that handed those out earlier; a test of a reset
+   * server sets it lower.
+   */
+  version = 1000;
   pushHouse(house: HouseDto): Observable<HouseDto> {
     this.pushedHouses.push(house);
-    return of(house);
+    return of({ ...house, syncVersion: ++this.version });
   }
   pushVisit(visit: VisitDto): Observable<VisitDto> {
     this.pushedVisits.push(visit);
-    return of(visit);
+    return of({ ...visit, syncVersion: ++this.version });
   }
   deletePhoto(id: string): Observable<unknown> {
     this.deletedPhotos.push(id);
@@ -669,6 +693,65 @@ describe('SyncService', () => {
       expect(sync.lastFailure()).toBeNull();
     });
 
+    it('keeps the failure on screen while the next run goes, and clears it only when a run succeeds (S4b-BL-1)', async () => {
+      api.houses = () => throwError(() => offline());
+      await sync.syncNow(true);
+      const failed = sync.lastFailure();
+      expect(failed?.value).toEqual({ key: 'error.network' });
+
+      const houses = new Subject<HouseDto[]>();
+      api.houses = () => houses;
+      const retry = sync.syncNow(true);
+      await settle();
+      // Running: the card keeps its node (same run) and its words, drawn as being updated by the page.
+      expect(sync.running()).toBe(true);
+      expect(sync.lastFailure()).toEqual(failed);
+      expect(sync.lastErrorForced()).toBe(true);
+
+      houses.next([]);
+      houses.complete();
+      await retry;
+      expect(sync.lastError()).toBeNull();
+      expect(sync.lastErrorForced()).toBe(false);
+    });
+
+    it('does not renew the failure when a background run fails the same way again (S4b-BL-1)', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await sync.start();
+      api.houses = () => throwError(() => offline());
+      await sync.syncNow();
+      const first = sync.lastFailure();
+      expect(first?.value).toEqual({ key: 'error.network' });
+      expect(sync.lastErrorForced()).toBe(false);
+
+      // Every 30 minutes, 3 s after an edit: the same words keep the same node, so the polite note is not read again.
+      await sync.syncNow();
+      await sync.syncNow();
+      expect(sync.lastFailure()).toEqual(first);
+
+      // A different reason is news: a new node, read once.
+      api.houses = () => throwError(() => rateLimited(null));
+      await sync.syncNow();
+      expect(sync.lastFailure()?.value.key).toBe('error.rateLimited');
+      expect(sync.lastFailure()?.run).not.toBe(first?.run);
+    });
+
+    it('keeps a failure the user saw as theirs when a background run then fails the same way (S4b-BL-1)', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await sync.start();
+      api.houses = () => throwError(() => offline());
+      await sync.syncNow(true);
+      const forced = sync.lastFailure();
+      expect(sync.lastErrorForced()).toBe(true);
+      await sync.syncNow();
+      // Still the alert the user saw, the same node: it neither moves to the quiet line nor is read again.
+      expect(sync.lastFailure()).toEqual(forced);
+      expect(sync.lastErrorForced()).toBe(true);
+      // "Sync now" failing the same way again is a new node (R9).
+      await sync.syncNow(true);
+      expect(sync.lastFailure()?.run).not.toBe(forced?.run);
+    });
+
     it('stops the photo phase on the first "storage full" and says so in the app language', async () => {
       recordedServer();
       const put = vi
@@ -691,6 +774,190 @@ describe('SyncService', () => {
       recordedServer();
       await Promise.all([sync.syncNow(true), sync.syncNow(true)]);
       expect(api.since.house).toEqual([0, 42]);
+    });
+  });
+
+  // ---- a server whose database was replaced or set back (S4b-BL-20, docs/08 §11) ----
+
+  describe('a reset server', () => {
+    /** The browser has synced with the recorded server (cursors 42, 17, 8) and holds its rows and photo. */
+    async function syncedWithRecordedServer(): Promise<void> {
+      recordedServer();
+      await sync.syncNow(true);
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      for (const list of [api.since.house, api.since.visit, api.since.photo]) list.length = 0;
+      api.pushedHouses.length = 0;
+      api.pushedVisits.length = 0;
+      api.uploadedPhotos.length = 0;
+    }
+
+    it('sees the reset in a push the server accepted below the cursor, sends everything again and pulls from 0', async () => {
+      await syncedWithRecordedServer();
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-23T00:00:00.000Z'));
+      // A new, empty database: its sequence starts again at 1, so the edit comes back as version 1.
+      api.version = 0;
+      api.houses = () => of([]);
+      api.visits = () => of([]);
+      api.photoChanges = () => of([]);
+
+      await sync.syncNow(true);
+
+      // First the edit alone (which showed the reset), then every row this browser holds (export order, by createdAt).
+      expect(api.pushedHouses.map((h) => h.id)).toEqual(['local-1', VILLA_ID, HOUSE_ID, 'local-1']);
+      expect(api.pushedVisits.map((v) => v.id)).toEqual(['0c6f5a2b-7d4e-4b8a-9c1d-3e2f1a0b9c88']);
+      // The stored photo goes up again (its bytes are here; the new server has none).
+      expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
+      // One pull, from 0: whatever the server holds now, below the old cursors too.
+      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0] });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(await store.dirtyHouses()).toEqual([]);
+      expect(await store.dirtyVisits()).toEqual([]);
+      expect(await sync.pendingCount()).toBe(0);
+      // Said calmly, once: a note, not a failure.
+      expect(sync.serverResetAt()).not.toBeNull();
+      expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
+      expect(sync.lastError()).toBeNull();
+      expect(sync.lastOutcome()?.pushed).toBe(5);
+    });
+
+    it('sees a server set back to an older copy the same way, and pulls what that copy holds', async () => {
+      await syncedWithRecordedServer();
+      await store.saveVisit(
+        { ...parse<VisitDto>(VISITS_SINCE)[0], street: '6th Cross' },
+        Date.parse('2026-09-23T00:00:00.000Z'),
+      );
+      // Restored from a dump taken at version 30: the next write gets 31, below the house cursor 42.
+      api.version = 30;
+      recordedServer();
+      await sync.syncNow(true);
+      expect(sync.serverResetAt()).not.toBeNull();
+      expect(api.since.house).toEqual([0]);
+      // The pull from 0 brings the recorded rows (versions up to 42) back, so the cursors are where they were.
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+    });
+
+    it('does not take an ordinary empty pull for a reset: nothing sent, the cursors kept', async () => {
+      await syncedWithRecordedServer();
+      api.houses = () => of([]);
+      api.visits = () => of([]);
+      api.photoChanges = () => of([]);
+      await sync.syncNow(true);
+      await sync.syncNow(true);
+      expect(api.since).toEqual({ house: [42, 42], visit: [17, 17], photo: [8, 8] });
+      expect(api.pushedHouses).toEqual([]);
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(sync.serverResetAt()).toBeNull();
+    });
+
+    it('does not take a push answered above the cursors for a reset', async () => {
+      await syncedWithRecordedServer();
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-23T00:00:00.000Z'));
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      expect(api.pushedHouses.map((h) => h.id)).toEqual(['local-1']);
+      expect(api.since.house).toEqual([42]);
+      expect(sync.serverResetAt()).toBeNull();
+    });
+
+    it('does not take the server keeping its own newer row (last write wins) for a reset', async () => {
+      await syncedWithRecordedServer();
+      await store.saveHouse({ ...house(HOUSE_ID), label: 'Older edit' }, Date.parse('2026-09-01T00:00:00.000Z'));
+      // The server's copy is newer, so it answers with that row and its old version, 42: not a reset.
+      api.pushHouse = (pushed: HouseDto) => {
+        api.pushedHouses.push(pushed);
+        return of({ ...pushed, label: 'Server copy', updatedAt: '2026-09-22T00:00:00.000Z', syncVersion: 42 });
+      };
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      expect(api.pushedHouses.map((h) => h.id)).toEqual([HOUSE_ID]);
+      expect(api.since.house).toEqual([42]);
+      expect(sync.serverResetAt()).toBeNull();
+    });
+
+    /** A server that sends its highest sync version in `GET /api/stats` (2026-09-24). */
+    function statsSay(maxSyncVersion: number | null | undefined): void {
+      api.statsAnswer = () => of({ houses: 0, shortlisted: 0, rejected: 0, visits: 0, streets: 0, maxSyncVersion });
+    }
+
+    it('sees the reset in the stats before any push, with nothing to send, and sends everything again', async () => {
+      await syncedWithRecordedServer();
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      // Restored from a dump taken at version 30, below the house cursor 42; nothing changed in this browser.
+      statsSay(30);
+      api.houses = () => of([]);
+      api.visits = () => of([]);
+      api.photoChanges = () => of([]);
+
+      await sync.syncNow(true);
+
+      expect(api.pushedHouses.map((h) => h.id).sort()).toEqual([HOUSE_ID, VILLA_ID].sort());
+      expect(api.pushedVisits.map((v) => v.id)).toEqual(['0c6f5a2b-7d4e-4b8a-9c1d-3e2f1a0b9c88']);
+      expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
+      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0] });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(sync.serverResetAt()).not.toBeNull();
+      expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
+      expect(sync.lastError()).toBeNull();
+    });
+
+    it('leaves a server whose highest version is at or above the cursors alone', async () => {
+      await syncedWithRecordedServer();
+      statsSay(42);
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      expect(api.statsCalls).toBe(1);
+      expect(api.pushedHouses).toEqual([]);
+      expect(api.since.house).toEqual([42]);
+      expect(sync.serverResetAt()).toBeNull();
+    });
+
+    it('treats stats without maxSyncVersion (an older server), or a failed stats request, as unknown', async () => {
+      await syncedWithRecordedServer();
+      statsSay(undefined);
+      api.houses = () => of([]);
+      await sync.syncNow(true);
+      api.statsAnswer = () => throwError(() => new HttpErrorResponse({ status: 500, url: '/api/stats' }));
+      await sync.syncNow(true);
+      expect(api.since.house).toEqual([42, 42]);
+      expect(api.pushedHouses).toEqual([]);
+      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.lastError()).toBeNull();
+    });
+
+    it('does not ask for the stats before anything was pulled', async () => {
+      recordedServer();
+      await sync.syncNow(true);
+      expect(api.statsCalls).toBe(0);
+    });
+
+    it('is decided by serverBehind: the highest version below a stored cursor', () => {
+      expect(serverBehind(0, [42, 17, 8])).toBe(true);
+      expect(serverBehind(30, [42, 17, 8])).toBe(true);
+      expect(serverBehind('30', [42, 17, 8])).toBe(true);
+      expect(serverBehind(42, [42, 17, 8])).toBe(false);
+      expect(serverBehind(0, [0, 0, 0])).toBe(false);
+      // An older server, or a value that cannot be read: unknown.
+      expect(serverBehind(undefined, [42, 17, 8])).toBe(false);
+      expect(serverBehind(null, [42, 17, 8])).toBe(false);
+      expect(serverBehind('many', [42, 17, 8])).toBe(false);
+    });
+
+    it('is decided by serverWasReset: an accepted write at or below the highest cursor', () => {
+      const sent = '2026-09-23T00:00:00.000Z';
+      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: sent }, 42)).toBe(true);
+      expect(serverWasReset(sent, { syncVersion: 42, updatedAt: sent }, 42)).toBe(true);
+      // The server clamped a clock that ran ahead: still accepted.
+      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-22T23:59:00.000Z' }, 42)).toBe(true);
+      expect(serverWasReset(sent, { syncVersion: 43, updatedAt: sent }, 42)).toBe(false);
+      // Nothing synced yet: no cursor to be below.
+      expect(serverWasReset(sent, { syncVersion: 1, updatedAt: sent }, 0)).toBe(false);
+      // The server kept its newer row.
+      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-23T00:00:01.000Z' }, 42)).toBe(false);
+      // An answer that cannot be read proves nothing.
+      expect(serverWasReset(sent, { syncVersion: null, updatedAt: sent }, 42)).toBe(false);
+      expect(serverWasReset(sent, { syncVersion: 5 }, 42)).toBe(false);
+      expect(serverWasReset(sent, null, 42)).toBe(false);
     });
   });
 

@@ -25,7 +25,7 @@
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
     <string name="status_ALL">అన్నీ</string>
     <string name="status_filter">%1$s (%2$d)</string>
-    <!-- Checklist labels: Compare's rows since CMP-4 P4c; the house form reads the Android copies until P6a. -->
+    <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
     <string name="check_water">నీటి సరఫరా</string>
     <string name="check_power">పవర్ బ్యాకప్</string>
     <string name="check_parking">పార్కింగ్</string>
@@ -494,4 +494,43 @@
         <item quantity="one">ప్రణాళిక సిద్ధం: %1$d స్టాప్</item>
         <item quantity="other">ప్రణాళిక సిద్ధం: %1$d స్టాప్‌లు</item>
     </plurals>
+    <!-- List patterns (CMP-6): also Android resources, for the import notification (StringParityTest keeps them equal). -->
+    <string name="import_list_two">%1$s, %2$s</string>
+    <string name="import_list_three">%1$s, %2$s, %3$s</string>
+    <string name="import_list_middle">%1$s, %2$s</string>
+    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). All but import_stopped* are also Android
+         resources, for the notifications (StringParityTest keeps the two equal). -->
+    <string name="export_done">సేవ్ అయింది: %1$s</string>
+    <string name="export_done_in">%1$sలో సేవ్ అయింది: %2$s</string>
+    <string name="export_done_plain">సేవ్ అయింది.</string>
+    <string name="export_done_partial">పాక్షిక బ్యాకప్ సేవ్ అయింది: %1$s</string>
+    <string name="export_done_partial_in">%1$sలో పాక్షిక బ్యాకప్ సేవ్ అయింది: %2$s</string>
+    <string name="export_done_partial_plain">పాక్షిక బ్యాకప్ సేవ్ అయింది.</string>
+    <string name="export_ready">పంచుకోవడానికి సిద్ధం: %1$s</string>
+    <string name="export_ready_partial">పాక్షిక బ్యాకప్ పంచుకోవడానికి సిద్ధం: %1$s</string>
+    <string name="export_problem_no_space">తగినంత ఖాళీ స్థలం లేదు</string>
+    <string name="export_problem_cannot_write">ఎంచుకున్న ఫైల్ లేదా ఫోల్డర్‌లో రాయలేకపోయాం</string>
+    <string name="export_problem_unknown">రాస్తున్నప్పుడు ఏదో తప్పు జరిగింది</string>
+    <string name="problem_not_a_backup">ఇది Doorprints బ్యాకప్ కాదు</string>
+    <string name="problem_unsupported">ఇది Doorprints కొత్త వెర్షన్‌తో తయారైంది</string>
+    <string name="problem_too_many">ఇందులో చాలా ఎక్కువ ఫైళ్లు ఉన్నాయి</string>
+    <string name="problem_too_large">ఇది చాలా పెద్దది</string>
+    <string name="problem_suspicious">ఇందులో సురక్షితం కాని ఫైల్ పేరు ఉంది</string>
+    <string name="problem_checksum">ఇది పాడైంది: చెక్‌సమ్ సరిపోలలేదు</string>
+    <string name="problem_broken">దీని డేటాను చదవలేకపోయాం</string>
+    <string name="problem_read_failed">దీన్ని స్టోరేజ్ నుండి చదవలేకపోయాం</string>
+    <string name="problem_write_failed">రాయలేకపోయాం — ఖాళీ స్థలం చూడండి</string>
+    <string name="import_added">జోడించినవి: %1$s.</string>
+    <string name="import_updated">నవీకరించినవి: %1$s.</string>
+    <string name="import_done_nothing">దిగుమతి పూర్తయింది. ఏదీ జోడించాల్సిన లేదా నవీకరించాల్సిన అవసరం లేదు.</string>
+    <plurals name="import_restored_result">
+        <item quantity="one">%1$d ఇల్లు తిరిగి తీసుకురాబడింది.</item>
+        <item quantity="other">%1$d ఇళ్లు తిరిగి తీసుకురాబడ్డాయి.</item>
+    </plurals>
+    <string name="import_write_failed">దిగుమతి మధ్యలో ఆగిపోయింది — కొన్ని అంశాలు ఇప్పటికే జోడించబడి ఉండవచ్చు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
+    <string name="import_write_failed_copy">దిగుమతి పూర్తి కాలేదు, కాబట్టి ఏదీ జోడించబడలేదు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, మళ్లీ ప్రయత్నించండి.</string>
+    <string name="import_stopped">దిగుమతి ఆపేశాం. ఇప్పటికే చేరినవి అలాగే ఉంటాయి; పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
+    <string name="import_stopped_copy">దిగుమతి ఆపేశాం. ఏదీ జోడించబడలేదు.</string>
+    <!-- S4b-BL-20 (2026-09-24): under review (the web's data.serverReset, "this browser" as "this phone"). -->
+    <string name="sync_server_reset">మీ సర్వర్ రీసెట్ అయినట్లు లేదా పాత కాపీకి తిరిగి వెళ్లినట్లు కనిపిస్తోంది. Doorprints ఈ ఫోన్‌లోని ప్రతిదాన్నీ దానికి మళ్లీ పంపుతోంది, దానిలోని ప్రతిదాన్నీ మళ్లీ డౌన్‌లోడ్ చేస్తోంది. ఇక్కడ ఏదీ పోలేదు.</string>
 </resources>

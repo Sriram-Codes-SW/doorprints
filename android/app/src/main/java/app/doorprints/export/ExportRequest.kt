@@ -95,38 +95,21 @@ data class ExportRequest(
     }
 }
 
-/**
- * What the import worker is asked to do. The ZIP is already staged in the cache (see `ImportStaging`).
- * [restoreDeleted] and [skipUpdates] are the two opt-in MERGE flags of `ImportPlan` (UX review, round 11): bring
- * back houses deleted on this phone, and keep the phone's version of every row the file has a newer one of.
- */
-data class ImportRequest(
-    val stagedPath: String,
-    val mode: ImportMode,
-    val restoreDeleted: Boolean = false,
-    val skipUpdates: Boolean = false,
-) {
-    fun toData(): Data = workDataOf(
-        KEY_PATH to stagedPath,
-        KEY_MODE to mode.name,
-        KEY_RESTORE to restoreDeleted,
-        KEY_SKIP_UPDATES to skipUpdates,
+/** The [ImportRequest] (common since ADR-23 CMP-6 P6b) packed into WorkManager's [Data], under its `KEY_*` names. */
+fun ImportRequest.toData(): Data = workDataOf(
+    ImportRequest.KEY_PATH to stagedPath,
+    ImportRequest.KEY_MODE to mode.name,
+    ImportRequest.KEY_RESTORE to restoreDeleted,
+    ImportRequest.KEY_SKIP_UPDATES to skipUpdates,
+)
+
+/** The [ImportRequest] in a worker's input [data], or null when it is not one. */
+fun ImportRequest.Companion.fromData(data: Data): ImportRequest? {
+    val path = data.getString(ImportRequest.KEY_PATH) ?: return null
+    val mode = ImportMode.entries.firstOrNull { it.name == data.getString(ImportRequest.KEY_MODE) } ?: return null
+    return ImportRequest(
+        path, mode,
+        restoreDeleted = data.getBoolean(ImportRequest.KEY_RESTORE, false),
+        skipUpdates = data.getBoolean(ImportRequest.KEY_SKIP_UPDATES, false),
     )
-
-    companion object {
-        const val KEY_PATH = "path"
-        const val KEY_MODE = "mode"
-        const val KEY_RESTORE = "restoreDeleted"
-        const val KEY_SKIP_UPDATES = "skipUpdates"
-
-        fun fromData(data: Data): ImportRequest? {
-            val path = data.getString(KEY_PATH) ?: return null
-            val mode = ImportMode.entries.firstOrNull { it.name == data.getString(KEY_MODE) } ?: return null
-            return ImportRequest(
-                path, mode,
-                restoreDeleted = data.getBoolean(KEY_RESTORE, false),
-                skipUpdates = data.getBoolean(KEY_SKIP_UPDATES, false),
-            )
-        }
-    }
 }
