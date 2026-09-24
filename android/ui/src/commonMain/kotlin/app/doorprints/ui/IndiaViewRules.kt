@@ -89,9 +89,11 @@ object IndiaViewRules {
      * (android/shared/README.md section 9, item 38 (a)). MapLibre (native and gl) draws a lower-zoom parent tile
      * while a tile loads or when offline. Both renderers leave a layer's bucket out of a tile whose zoom is below
      * floor(minzoom): maplibre-native in `GeometryTile::setLayers` before the worker gets the layers
-     * (src/mln/tile/geometry_tile.cpp:317, called for new and relaid-out tiles, src/mln/renderer/tile_pyramid.cpp:167
-     * and 193, android-v13.6.1 c7506d6; the worker's parse loop, geometry_tile_worker.cpp lines 446-502, has no zoom
-     * check of its own and runs the filter with `overscaledZ`, line 502), maplibre-gl in src/source/worker_tile.ts
+     * (src/mln/tile/geometry_tile.cpp:317, `if (id.overscaledZ < std::floor(layerImpl.minZoom) || id.overscaledZ
+     * >= std::ceil(layerImpl.maxZoom)) continue;`, re-read at the tag for CMP-7, S4b-BL-13; called for new and
+     * relaid-out tiles, src/mln/renderer/tile_pyramid.cpp:167 and 193, android-v13.6.1 c7506d6; the worker's parse
+     * loop, geometry_tile_worker.cpp lines 446-502, has no zoom check of its own and runs the filter with
+     * `overscaledZ`, line 502), maplibre-gl in src/source/worker_tile.ts
      * line 109 and style_layer.ts lines 321-322 (v6.10.0). So by the source, minzoom 5 alone already keeps a zoom 4
      * tile's ISO-view line through Kashmir, Aksai Chin or Arunachal Pradesh off the map on both apps (read from the
      * source, not checked on a device). This rule is defence in depth and parity, the same on Android and the web: it
@@ -150,10 +152,10 @@ object IndiaViewRules {
      * layer on the `boundary` source layer whose minzoom is [DETAILED_FROM_ZOOM] or more, since for those the minzoom
      * alone is meant to keep the zoom 0-4 tiles' lines off the map. Both renderers already skip such a layer in a zoom
      * 0-4 tile (maplibre-native geometry_tile.cpp:317, maplibre-gl worker_tile.ts line 109; see [ADM0_PRESENT]), so on
-     * Android and the web alike the guard is defence in depth and parity: it keeps those lines out whatever a renderer
-     * does with minzoom (read from the source, not checked on a device). Not
-     * [DISPUTED_LAYER] (hidden), not a symbol layer, and not a line layer meant for zoom 0-4 (lower minzoom), whose
-     * low-zoom lines the guard would remove.
+     * Android and the web alike the guard is defence in depth and parity, not the fix on either: it keeps those lines
+     * out whatever a renderer does with minzoom (read from the source, not checked on a device; TC-M-25 (7) to (9)
+     * would show it). Not [DISPUTED_LAYER] (hidden), not a symbol layer, and not a line layer meant for zoom 0-4 (lower
+     * minzoom), whose low-zoom lines the guard would remove.
      */
     fun tileZoomGuardedLayers(layers: List<LayerInfo>): List<String> =
         layers.filter {

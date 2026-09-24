@@ -66,7 +66,7 @@ generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `pu
 |---|---|---|
 | commonMain | `Theme.kt` | `DoorprintsTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
 | commonMain | `Rows.kt`, `ServerStatus.kt` | list rows; the server status line and its rules |
-| commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`) |
+| commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`). By the renderers' sources both maplibre-native (`src/mln/tile/geometry_tile.cpp:317` at `android-v13.6.1`, `GeometryTile::setLayers` skips a layer when `id.overscaledZ < floor(minZoom)`) and maplibre-gl (`src/source/worker_tile.ts:109`, 6.10.0) leave a minzoom 5 layer out of a zoom 0-4 tile, so the adm0 rule and the tile-zoom guard are defence in depth and parity on Android and the web alike, not the fix on either (S4b-BL-13; not yet checked on a device, TC-M-25 (7) to (9)) |
 | commonMain | `Buttons.kt` | `ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES` (from `ActionBar.kt`) |
 | commonMain | `ResultTone.kt`, `LocationFix.kt` | from `ResultCard.kt` and `LocationPermission.kt` |
 | commonMain | `PlatformServices.kt` | the platform seam (phase 3): `interface PlatformServices { fun isScreenReaderOn(): Boolean }` and `LocalPlatformServices` (no default: a root must provide it); later members are listed in its KDoc |
