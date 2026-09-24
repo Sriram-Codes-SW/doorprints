@@ -36,7 +36,7 @@ English · हिन्दी · தமிழ் · తెలుగు
 | **Checklist and scoring** | Water, power, parking, sunlight, noise, security and four more, each 0–5, blended with your star rating into one score | Yes | Yes |
 | **Compare** | Two to four houses side by side: checklist, rating, price in ₹, score | Yes | Yes |
 | **Photos** | Camera or gallery, resized, location metadata removed; optional upload on Wi-Fi only | Yes | Yes |
-| **Map and list** | OpenFreeMap vector tiles (no API key), markers by status, search, filter, sort | Yes | Yes |
+| **Map and list** | OpenFreeMap vector tiles (no API key), India's boundaries as the Government of India shows them, markers by status, search, filter, sort | Yes | Yes |
 | **Offline copies** (**4a**) | Save everything as HTML, PDF, CSV, XLSX, Markdown or a JSON backup, built on the device; the JSON backup can be read back in | Yes (import too) | Export yes; **import in Sprint 4b** (only a Doorprints *Full backup* can be imported: [docs/01 §6.9](docs/01-requirements.md)) |
 | **Offline-first** | Everything works without a network; sync resumes by itself with retries and captive-portal detection | Yes | Yes (**4a**: the web app keeps your houses and photos in the browser with IndexedDB and needs no server; before 4a it needed one) |
 | **Four languages** | English, Hindi, Tamil, Telugu, switchable in the app; ₹ with lakh/crore grouping. **Hindi, Tamil and Telugu are *under review***: machine-drafted, with the native-speaker review still to come (owner decision of 2026-09-23, [docs/05](docs/05-ux-accessibility-i18n.md) I18N-B03) | Yes (hi/ta/te under review) | Yes (hi/ta/te under review) |
@@ -181,6 +181,27 @@ app, open **Connect** and enter `http://localhost:8080` and the API key; that is
 
 JDK 21 and the Android SDK (compileSdk 37): `cd android && ./gradlew assembleDebug testDebugUnitTest`.
 
+## Map data and credits
+
+Both apps draw OpenFreeMap vector tiles (OpenStreetMap data, ODbL, credited in the map's attribution) with
+OpenFreeMap's "liberty" style. **India's boundaries are shown as the Government of India depicts them**, the only view,
+because every user is in India: all of Jammu and Kashmir and Ladakh and Arunachal Pradesh inside India, one solid
+outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.md) ADR-22). That outline comes from
+[Natural Earth](https://www.naturalearthdata.com/) (public domain; `natural-earth-vector` commit `ca96624`, India
+point of view), bundled as `web/public/geo/in-boundaries.geojson` and `android/app/src/main/assets/geo/in-boundaries.geojson`
+and built by `web/scripts/geo/build_in_boundaries.py`. Public-domain data needs no credit; the web app credits
+"Natural Earth" in the map attribution anyway. Both apps apply the same rules. The outline alone draws India's whole border with China (the
+base map's own pieces of that line are left out). Where the base map's tiles draw India's border with Nepal, Bhutan
+or Myanmar themselves, or in the Wakhan, the outline is drawn only in the country view and the tiles' more precise
+line takes over from zoom 5, so the border is one line; the Assam-Arunachal Pradesh state line, which the tiles leave
+undrawn, is drawn from zoom 5 from the same file (branch `fix/india-boundary-lines`, PR #16, not yet deployed). Known
+limits: the outline is typically 1.5-3 km off the true line, up to about 5 km in a few mountain stretches, visible
+only when zoomed into the Himalaya; at street zoom a hand-over to the tiles' line shows as a small step, at
+Sikkim's two tri-junctions as a small loop (about 13 x 3 km at Nepal-China-India, on glaciers and only from about
+zoom 10; about 2 km at Doklam), and at two hand-overs (Jomotsangkha and Longwa) as the tiles' line running on for
+about 9 km and 3 km from zoom 11; and while closer tiles load, or offline without them,
+those stretches show no line from zoom 5 (ADR-22 *Consequences*).
+
 ## Deploy for free
 
 Full steps and the environment variable reference: [docs/07](docs/07-secure-build-and-deploy.md#6-free-tier-deployment).
@@ -300,3 +321,7 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-23 | The **Four languages** feature row says that Hindi, Tamil and Telugu ship *under review* (machine-drafted, native-speaker review pending), the owner's decision in the first release's Definition of Done ([docs/10](docs/10-sprint-log.md) §12.5 Decision 4). The **Android** row's release-guard link now leads to the full release security gate as the owner approved it (§12.5 Decision 1). |
 | 2026-09-23 | **CI on every branch** (owner decision): the CI paragraph under *Repository structure* says the workflows run on a push to any branch as well as on pull requests to `main`, with deploying and release signing on `main` only; house rule 1 asks for green branch runs before a merge ([docs/10](docs/10-sprint-log.md) §12.5 Decision 5). |
 | 2026-09-23 | Review fixes to the CI-on-every-branch rows: the CI paragraph lists `codeql.yml` and says it runs on a push to any branch but not on pull requests; deploying stays on `main` and signing does so only while the workflow is unmodified, until the `HH_*` secrets move to a `main`-only environment; house rule 1 says what green means (the latest run of each triggered workflow on the branch, with the branch up to date with `main`; [docs/07](docs/07-secure-build-and-deploy.md) §3.1). |
+| 2026-09-24 | New *Map data and credits* (owner issue P0, India's boundaries on the map): the map shows India's external boundary as the Government of India depicts it, with no Line of Control or Line of Actual Control; the outline is bundled Natural Earth data (public domain), credited on the web ([docs/03](docs/03-design.md) ADR-22). |
+| 2026-09-24 | *Map data and credits*: both apps apply the same boundary rules, and the known limits are stated with the measured figures (the outline a median of about 1.5-1.6 km off the true line; a second, close line in a few mountain stretches; no Assam-Arunachal Pradesh state line from zoom 5), from [docs/03](docs/03-design.md) ADR-22 v0.18. |
+| 2026-09-24 | *Map data and credits*: one line from zoom 5 (the outline alone draws India's border with China; where the base map draws India's border with Nepal, Bhutan, Myanmar or in the Wakhan, its line takes over, so the second, close line is gone) and the Assam-Arunachal Pradesh state line is drawn from zoom 5 (branch `fix/india-boundary-lines`, PR #16, [docs/10](docs/10-sprint-log.md) §12.10); the known limits restated (1.5-3 km, up to about 5 km in a few mountain stretches; the hand-over step and the Sikkim tri-junction loops; no line on those stretches from zoom 5 while tiles load or offline). |
+| 2026-09-24 | *Map data and credits*: the known limits sized after the round 2 reviews of PR #16 (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tiles' line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9); [docs/10](docs/10-sprint-log.md) §12.10, S4b-BL-17). |

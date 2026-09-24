@@ -16,12 +16,18 @@ on:
       # The export/backup contract sample. Load-bearing: CanonicalSampleTest (app JVM unit tests) walks up to
       # docs/schemas/backup-sample.json, so editing the shared format sample alone can turn this workflow red.
       - "docs/schemas/**"
+      # India's boundary file, web copy (owner issue P0, 2026-09-24). Load-bearing: IndiaBoundaryDataTest (app JVM
+      # unit tests) walks up to web/public/geo/in-boundaries.geojson and fails unless it is byte-identical to
+      # android/app/src/main/assets/geo/in-boundaries.geojson with the reviewed sha256, so editing the web copy
+      # alone can turn this workflow red (android/shared/README.md section 9, item 35).
+      - "web/public/geo/**"
       - ".github/workflows/android.yml"
   pull_request:
     branches: [main]
     paths:
       - "android/**"
       - "docs/schemas/**"
+      - "web/public/geo/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 

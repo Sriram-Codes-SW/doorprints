@@ -19,3 +19,5 @@ web/.angular/
 *.iml
 .DS_Store
 .env
+# find_shared_stretches.py tile cache
+web/scripts/geo/.tilecache/
