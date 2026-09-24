@@ -8,7 +8,8 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 ## Start here
 
 1. Read `docs/14-lead-backlog-and-handoff.md`: current state, open pull requests and the next steps, in order.
-2. Team-level tickets: `docs/10-sprint-log.md` §12 (Sprint 4b) and §12.7 (S4b-BL-1..17).
+2. Team-level tickets: `docs/10-sprint-log.md` §12 (Sprint 4b), §12.7 (the S4b-BL backlog, S4b-BL-1 onwards) and §13
+   (the Compose Multiplatform track, CMP-0..CMP-9).
 3. The SSDLC set is `docs/01`..`docs/12` (index: `docs/README.md`). Docs are updated in the same change as code.
 
 ## Rules (owner decisions)
