@@ -199,11 +199,15 @@ class SettingsUpgradeTest {
             val dataStore = openSettingsDataStore(context, CoroutineScope(Dispatchers.IO + job))
             // As ApiKeyCipher.decrypt does for a restored copy whose Keystore key stayed on the old phone.
             val unreadable = KeystoreSecretStore(seal) { null }
-            val store = SettingsStore(dataStore, unreadable)
-            assertEquals("", store.current().apiKey)
-            dataStore.edit { unreadable.clear(it) }
-            assertNull(dataStore.data.first()[stringPreferencesKey("apiKeyEnc")])
-            job.cancelAndJoin()
+            try {
+                val store = SettingsStore(dataStore, unreadable)
+                assertEquals("", store.current().apiKey)
+                dataStore.edit { unreadable.clear(it) }
+                assertNull(dataStore.data.first()[stringPreferencesKey("apiKeyEnc")])
+            } finally {
+                // Closes the DataStore even when an assert fails, so later tests can open the same file.
+                job.cancelAndJoin()
+            }
         }
     }
 }

@@ -93,6 +93,8 @@ class ServerUrlTest {
         ok("https://a_.example.com")
         assertEquals(ServerUrl.Result.NotHttps, ServerUrl.check("http://my_pc:8080"))
         invalid("https://_a.example.com")
+        invalid("https://a._b.c")
+        ok("https://a_b_.c")
         invalid("https://ex_ample.com", underscoreInHostnames = false)
     }
 

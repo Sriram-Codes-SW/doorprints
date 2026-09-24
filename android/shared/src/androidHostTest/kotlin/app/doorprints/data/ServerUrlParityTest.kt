@@ -31,7 +31,9 @@ class ServerUrlParityTest {
 
     private fun assertSame(url: String) {
         assertEquals(reference(url), ServerUrl.check(url, underscoreInHostnames = false), "for \"$url\"")
-        // Android's own parser differs from the JVM's only by allowing '_' in host names (see ServerUrl).
+        // Android's own parser (libcore ojluni/src/main/java/java/net/URI.java, "Android-changed: Allow underscore in
+        // hostname") differs from the JVM's in its parser only by allowing '_' in host names; ServerUrlTest pins those
+        // cases, so the default mode is compared here only on strings without '_'.
         if ('_' !in url) assertEquals(reference(url), ServerUrl.check(url), "for \"$url\"")
     }
 
@@ -46,8 +48,9 @@ class ServerUrlParityTest {
         "https://[12345::1]", "https://a.b-c.d:0/e;f=g/h",
     )
 
-    // Characters java.net.URI treats specially, a few ordinary ones, and non-ASCII (visible, a space, a control).
-    private val alphabet = "aZz09-._~!$&'()*+,;=:@/?#[]%fF1 \t\\\"<>^`{|}ä \u0085 म\u0000"
+    // Characters java.net.URI treats specially, a few ordinary ones, and non-ASCII: visible, spaces (U+00A0, U+2028,
+    // U+3000), controls (U+0085, NUL, LF) and a lone surrogate.
+    private val alphabet = "aZz09-._~!$&'()*+,;=:@/?#[]%fF1 \t\\\"<>^`{|}ä \u0085 म\u0000\u3000\uD800\n"
 
     @Test
     fun theFixedCasesMatchJavaNetUri() {
