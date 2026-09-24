@@ -13,6 +13,8 @@ fs.mkdirSync(path.join(OUT, 'shots'), { recursive: true });
 const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const EN = fs.readFileSync(path.join(__dirname, '../../web/src/app/i18n/en.ts'), 'utf8');
 const KEYS = [...EN.matchAll(/^\s*'([a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)+)':/gm)].map((m) => m[1]);
+/** Every regular-expression metacharacter escaped, so a key is matched literally. */
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const results = [];
 const check = (area, name, ok, detail = '') => {
   results.push({ area, name, ok, detail });
@@ -72,7 +74,7 @@ async function pageMatrix(browser) {
       check('pages', `${tag}: title`, info.title.trim().length > 0, info.title);
       check('pages', `${tag}: one h1`, info.h1.length >= 1, JSON.stringify(info.h1));
       check('pages', `${tag}: no horizontal scroll`, info.overflow <= 1, `${info.overflow}px`);
-      const raw = KEYS.filter((k) => new RegExp(`(^|[^\\w.])${k.replace(/\./g, '\\.')}($|[^\\w.])`).test(info.text));
+      const raw = KEYS.filter((k) => new RegExp(`(^|[^\\w.])${escapeRegExp(k)}($|[^\\w.])`).test(info.text));
       check('i18n', `${tag}: no untranslated keys`, raw.length === 0, raw.slice(0, 5).join(', '));
       if (lang !== 'en' && route !== '/does-not-exist') {
         const script = { hi: /[ऀ-ॿ]/, ta: /[஀-௿]/, te: /[ఀ-౿]/ }[lang];

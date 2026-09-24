@@ -4,7 +4,8 @@
 #   and the test report are the artifact android-emulator-results.
 # - firebase-test-lab: the same tests on a Firebase Test Lab device, within the free Spark quota. Only for a push to
 #   main or a manual run on main, and only when the owner has set it up (docs/ops/firebase-test-lab-setup.md): the
-#   variable FIREBASE_PROJECT_ID and the secrets FTL_WIF_PROVIDER (a Workload Identity provider of its own, whose
+#   variables FIREBASE_PROJECT_ID and FTL_RESULTS_BUCKET (a Cloud Storage bucket the owner creates for the results)
+#   and the secrets FTL_WIF_PROVIDER (a Workload Identity provider of its own, whose
 #   condition names this workflow on main; the Hosting deploy's provider accepts only web.yml) and FTL_SA_EMAIL (a
 #   service account allowed to run Test Lab). Keyless: no JSON key. Test Lab keeps its results in the Firebase
 #   console; the screenshots are only kept by the emulator job (the test storage service is not installed there).
@@ -110,13 +111,14 @@ jobs:
       - id: check
         env:
           PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+          BUCKET: ${{ vars.FTL_RESULTS_BUCKET }}
           WIF: ${{ secrets.FTL_WIF_PROVIDER }}
           SA: ${{ secrets.FTL_SA_EMAIL }}
         run: |
-          if [ -n "$PROJECT" ] && [ -n "$WIF" ] && [ -n "$SA" ]; then
+          if [ -n "$PROJECT" ] && [ -n "$BUCKET" ] && [ -n "$WIF" ] && [ -n "$SA" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice title=Firebase Test Lab::Skipped: FIREBASE_PROJECT_ID (variable), FTL_WIF_PROVIDER and FTL_SA_EMAIL (secrets) are not all set (owner setup, docs/ops/firebase-test-lab-setup.md)."
+            echo "::notice title=Firebase Test Lab::Skipped: FIREBASE_PROJECT_ID and FTL_RESULTS_BUCKET (variables), FTL_WIF_PROVIDER and FTL_SA_EMAIL (secrets) are not all set (owner setup, docs/ops/firebase-test-lab-setup.md)."
           fi
 
   firebase-test-lab:
@@ -163,6 +165,9 @@ jobs:
       - name: Run the smoke tests
         env:
           PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+          # An owner-created bucket: Firebase documents Test Lab Admin + Analytics Viewer (no Editor) only for runs
+          # that write to your own results bucket (docs/07 section 7.2).
+          BUCKET: ${{ vars.FTL_RESULTS_BUCKET }}
           DEVICE: ${{ github.event.inputs.ftl_device || 'model=MediumPhone.arm,version=34' }}
         run: |
           set -euo pipefail
@@ -170,6 +175,7 @@ jobs:
           [[ "$DEVICE" =~ ^[A-Za-z0-9=.,_-]+$ ]] || { echo "::error::Invalid device spec"; exit 1; }
           gcloud firebase test android run \
             --project "$PROJECT" \
+            --results-bucket "$BUCKET" \
             --type instrumentation \
             --app app/build/outputs/apk/debug/app-debug.apk \
             --test app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \

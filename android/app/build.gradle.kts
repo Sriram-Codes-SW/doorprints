@@ -138,7 +138,7 @@ dependencies {
     implementation(libs.maplibre.android)
 
     testImplementation(libs.junit)
-    // Screenshot tests on the JVM (docs/06 TC-U-60): Robolectric renders the screens, Roborazzi compares them.
+    // Screenshot tests on the JVM (docs/06 TC-U-56): Robolectric renders the screens, Roborazzi compares them.
     testImplementation(libs.robolectric)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)

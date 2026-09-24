@@ -41,6 +41,6 @@ backlog item instead of expanding the change.
   with `./gradlew :app:recordRoborazziDebug`).
 - Backend: `cd backend && mvn -B -ntp verify` (JDK 25; needs the PostGIS container from `backend/db`, see
   `.github/workflows/backend.yml`).
-- After every merge to `main`, once the deploy has finished, test the live web UI with `tools/live-ui`
+- Not CI: after every merge to `main`, once the deploy has finished, test the live web UI with `tools/live-ui`
   (`npm ci && npx playwright install chromium && node live-ui.js`; owner rule 2026-09-24, `docs/06` TC-M-26).
 - The workflow files in `.github/workflows` are the source of truth for exact steps and path filters.
