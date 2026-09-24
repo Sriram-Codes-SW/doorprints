@@ -482,7 +482,8 @@ docker compose down
 docker compose up -d --wait db
 # 3. Restore. Flyway's history table and sync_seq's position come along, so the API sees the schema as migrated.
 #    pg_restore prints "already exists" errors for the PostGIS extensions and the topology and tiger objects the
-#    image created, and exits non-zero: expected (a script with `set -e` stops here; run it on its own line).
+#    image created (and possibly "duplicate key" errors on tiger.* loader tables), and exits non-zero: expected
+#    (a script with `set -e` stops here; run it on its own line). Step 4 is the real check.
 docker compose exec -T db pg_restore --no-owner --no-privileges -U doorprints -d doorprints < househunt.dump
 # 4. Check the rows arrived: the same number as in step 1.
 docker compose exec db psql -U doorprints -d doorprints -c 'select count(*) from house'
@@ -491,7 +492,7 @@ docker compose up -d api
 curl -H "X-API-Key: $APP_API_KEY" http://127.0.0.1:8080/api/stats
 ```
 
-Any error in step 3 other than "already exists" (for example a missing role or a failed `COPY`) means the restore is
+Any error in step 3 other than "already exists" or a duplicate key in a `tiger.*` table (for example a missing role or a failed `COPY`) means the restore is
 incomplete: fix it before step 5. If the API was started on the new database before the restore, stop everything
 (`docker compose down`), remove the new volume (`docker volume rm <project>_doorprints-pgdata18`) and start again at
 step 2.

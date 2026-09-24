@@ -1470,8 +1470,8 @@ Android's escapes as written ([05](05-ux-accessibility-i18n.md) §8.2 and §9.1)
 3. **The default locale is set on every API level**, not `Locale.setDefault` on API 26-32. Compose resources read the
    process's default locale and match that one locale only, while Android resources choose from the whole list. So
    `AppLocale.applyDefault(context)` sets `LocaleList.setDefault` to the language Android resolved (the
-   `resolved_language` string in each `res/values*` folder), from `AppLocale.wrap()`, `DoorprintsApp.onCreate` and
-   `DoorprintsApp.onConfigurationChanged`.
+   `resolved_language` string in each `res/values*` folder), through `AppLocale.wrap()`, which
+   `DoorprintsApp.onCreate` and `DoorprintsApp.onConfigurationChanged` also call.
 4. **The APK carries only en, hi, ta and te** (`androidResources.localeFilters`, `927d54b`): without it a library's
    `values-mr` made Android resolve a phone set to [Marathi, Hindi] to Marathi and fall back to English.
 5. **`StringParityTest` checks more than the keys** (TC-U-59): placeholders counted and in position, a plural's
