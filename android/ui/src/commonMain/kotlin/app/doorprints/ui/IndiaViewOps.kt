@@ -67,6 +67,12 @@ interface StyleOps {
     /** Adds [layer] at [at]: above or below a layer, or on top of all ([Placement.Top]). */
     fun addLineLayer(layer: NewLineLayer, at: Placement)
 
+    /**
+     * The text of the app's bundled file [path] (Android: from the APK's assets), for the held areas' polygon
+     * ([IndiaViewRules.HELD_AREAS_ASSET_PATH]). May throw when the file cannot be read.
+     */
+    fun readAsset(path: String): String
+
     /** Logs a warning (Android: `Log.w` with the tag `IndiaView`). */
     fun warn(message: String, error: Throwable? = null)
 }
@@ -169,6 +175,26 @@ fun applyIndiaView(ops: StyleOps) {
                 } else {
                     ops.andFilter(id, guard)
                 }
+            }
+        }
+    }
+
+    // 2c. No Pakistani or Chinese admin line inside India's outline (S4b-BL-12): the state lines leave out every tile
+    //     feature wholly inside the held areas' polygon. After the guard, so the layer's filter reads
+    //     all(all(Liberty's, guard), rule), as on the web. Nothing to do without the state lines.
+    ops.step("filter $STATE_LINE_LAYER by the held areas") {
+        if (ops.kind(STATE_LINE_LAYER) == StyleOps.Kind.LINE) {
+            val geometry = IndiaViewRules.heldAreasGeometry(ops.readAsset(IndiaViewRules.HELD_AREAS_ASSET_PATH))
+            val rule = geometry?.let { IndiaViewRules.heldAreasFilterFor(ops.filter(STATE_LINE_LAYER), it) }
+            when {
+                geometry == null -> ops.warn(
+                    "the held areas' polygon is malformed; $STATE_LINE_LAYER keeps the admin lines inside them",
+                )
+                rule == null -> ops.warn(
+                    "the filter of $STATE_LINE_LAYER is in the deprecated syntax, which has no within; " +
+                        "its admin lines inside the held areas are kept",
+                )
+                else -> ops.andFilter(STATE_LINE_LAYER, rule)
             }
         }
     }

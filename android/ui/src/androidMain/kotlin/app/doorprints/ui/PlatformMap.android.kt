@@ -109,7 +109,7 @@ actual fun PlatformMap(
     fun loadStyle(m: MapLibreMap) {
         m.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { s ->
             // Before the house layers, on every load (the first one and each retry): India's own boundary, no LoC/LAC.
-            applyIndiaView(MapLibreStyleOps(s))
+            applyIndiaView(MapLibreStyleOps(s, context.assets))
             addHouseLayers(s, currentLabelSize)
             style = s
             currentEvents.onStyleLoaded()

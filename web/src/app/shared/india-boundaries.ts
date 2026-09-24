@@ -7,6 +7,9 @@ import type {
   SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl';
+// The held areas' polygon (S4b-BL-12), bundled into the app as text: the rule needs it when the style loads, before
+// any fetch could answer. Byte-identical to Android's asset (IndiaBoundaryDataTest; the spec pins the same sha256).
+import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loader: 'text' };
 
 /**
  * India's external boundary as the Government of India shows it, on top of the OpenFreeMap "liberty" style.
@@ -27,7 +30,11 @@ import type {
  *     starts at zoom 5 also take only the features of a zoom 5+ tile ({@link TILE_ZOOM_GUARD}): no zoom 0-4 line of
  *     any admin level is drawn through Jammu and Kashmir, Ladakh, Aksai Chin or Arunachal Pradesh at zoom 5 and above.
  *     Both renderers already leave a layer out of a tile below floor(minzoom), maplibre-gl on the web and
- *     maplibre-native on Android, so the guard is defence in depth on both apps ({@link takesTileZoomGuard});
+ *     maplibre-native on Android, so the guard is defence in depth on both apps ({@link takesTileZoomGuard}).
+ *     And `boundary_3` leaves out every tile feature that lies wholly inside the polygon around the parts of India
+ *     that Pakistan and China hold ({@link heldAreasRule}, `geo/in-held-areas.geojson`): from tile zoom 9 the tiles
+ *     carry Pakistan's district and tehsil lines across Gilgit-Baltistan and PoK and China's county lines across
+ *     Aksai Chin as undisputed admin level 5-6 lines with no country code, so only where they lie tells them apart;
  *  3. GeoJSON source `in-boundaries` (the bundled `geo/in-boundaries.geojson`, Natural Earth, public domain) with
  *     two line layers directly above `boundary_2`: `in-boundary-world` (kind `world`, below zoom 5 only, in place of
  *     the tiles' lines: the world's land boundaries with India's classification, and the stretches of India's own
@@ -161,6 +168,66 @@ const COUNTRY_LINE_RULE: ExpressionSpecification = [
  */
 export const TILE_ZOOM_GUARD: ExpressionSpecification = ['>=', ['zoom'], TILE_BOUNDARY_MIN_ZOOM];
 
+/**
+ * The polygon for the `within` expression, as a bare GeoJSON geometry. A Polygon only, on both apps: maplibre-native
+ * reads only the first polygon feature of a collection (within.cpp `Within::parse`), and MapLibre Android's
+ * `Expression.raw` turns `within`'s argument into a Polygon (`Expression.Converter.convert`, `Polygon.fromJson`).
+ */
+export interface HeldAreasGeometry {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+/**
+ * The polygon of `geo/in-held-areas.geojson` (web/scripts/geo/build_in_held_areas.py): a FeatureCollection with one
+ * feature whose geometry is a Polygon of closed [longitude, latitude] rings. Null (and the rule is skipped with a
+ * warning) when the text is anything else, so a broken file can never break the style. Android's
+ * `IndiaViewRules.heldAreasGeometry`.
+ */
+export function heldAreasGeometry(text: string): HeldAreasGeometry | null {
+  let root: unknown;
+  try {
+    root = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const features = (root as { type?: unknown; features?: unknown } | null)?.features;
+  if ((root as { type?: unknown } | null)?.type !== 'FeatureCollection' || !Array.isArray(features) || features.length !== 1) {
+    return null;
+  }
+  const geometry = (features[0] as { geometry?: { type?: unknown; coordinates?: unknown } } | null)?.geometry;
+  const isPosition = (p: unknown) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number' && Number.isFinite(v));
+  const isRing = (ring: unknown) =>
+    Array.isArray(ring) &&
+    ring.length >= 4 &&
+    ring.every(isPosition) &&
+    ring[0][0] === ring[ring.length - 1][0] &&
+    ring[0][1] === ring[ring.length - 1][1];
+  const rings = geometry?.coordinates;
+  if (geometry?.type !== 'Polygon' || !Array.isArray(rings) || rings.length === 0 || !rings.every(isRing)) return null;
+  return { type: 'Polygon', coordinates: rings as number[][][] };
+}
+
+/** The bundled polygon, read once; null when the bundled file is not what {@link heldAreasGeometry} expects. */
+export const HELD_AREAS: HeldAreasGeometry | null = heldAreasGeometry(heldAreasText);
+
+/**
+ * Rule 2, `boundary_3` (S4b-BL-12): not a tile feature that lies wholly inside the held areas' polygon. `within` on a
+ * line feature is true only when every part of it is inside, so a feature that crosses the polygon's edge is drawn
+ * whole: the polygon reaches about 20 km past the held areas (further where the zoom 9-11 tiles' pieces run on) and
+ * about 700 m across the tiles' LoC/LAC, so a Pakistani or Chinese line ending on the LoC/LAC is inside it and an
+ * Indian line is not. Same algorithm on both renderers: style spec 26.4.4 `src/expression/definitions/within.ts`
+ * (`linesWithinPolygons`: the feature's bbox strictly inside the polygon's, then `lineStringWithinPolygon` in
+ * `src/util/geometry_util.ts`: every vertex strictly inside, no segment crossing an edge) and maplibre-native
+ * android-v13.6.1 `src/mln/style/expression/within.cpp` (`featureWithinPolygons`, lines 147-177) with
+ * `src/mln/util/geometry_util.cpp` (`lineStringWithinPolygon`, lines 116-133); both run on the tile's own geometry
+ * (buffer included) in that tile's coordinates. A feature with no geometry is not within (both), so it is drawn.
+ * Expression syntax only (Android's `IndiaViewRules.heldAreasFilter`).
+ */
+export function heldAreasRule(geometry: HeldAreasGeometry): ExpressionSpecification {
+  return ['!', ['within', geometry]];
+}
+
 /** Rule 4: neither the English (or default) name nor the local name is one of the hidden state labels. */
 const NOT_HIDDEN_STATE: ExpressionSpecification[] = [
   ['!', ['in', ['coalesce', ['get', 'name:en'], ['get', 'name']], ['literal', HIDDEN_STATE_NAMES]]],
@@ -202,10 +269,15 @@ export function inBoundariesUrl(baseUri: string): string {
 /**
  * `style` with the five rules above applied. Pure: `style` is not changed, and each changed layer is a new object.
  *
- * `dataUrl` is where MapLibre loads the GeoJSON from ({@link inBoundariesUrl} on the web). A style that already has
- * the `in-boundaries` source is returned as it is, so applying the rules twice changes nothing.
+ * `dataUrl` is where MapLibre loads the GeoJSON from ({@link inBoundariesUrl} on the web); `heldAreas` is the polygon
+ * for `boundary_3` ({@link HELD_AREAS} unless a test gives another). A style that already has the `in-boundaries`
+ * source is returned as it is, so applying the rules twice changes nothing.
  */
-export function indiaBoundaryStyle(style: StyleSpecification, dataUrl: string): IndiaBoundaryResult {
+export function indiaBoundaryStyle(
+  style: StyleSpecification,
+  dataUrl: string,
+  heldAreas: HeldAreasGeometry | null = HELD_AREAS,
+): IndiaBoundaryResult {
   const warnings: string[] = [];
   if (style.sources && IN_BOUNDARIES_SOURCE in style.sources) return { style, warnings };
 
@@ -256,6 +328,26 @@ export function indiaBoundaryStyle(style: StyleSpecification, dataUrl: string): 
   }
   if (guarded === 0) {
     warnings.push(`no line layer on source-layer "${BOUNDARY_SOURCE_LAYER}" starts at zoom 5; no tile-zoom guard added`);
+  }
+
+  // 2c. No Pakistani or Chinese admin line inside India's outline: boundary_3 leaves out every tile feature wholly
+  //     inside the held areas' polygon. Nothing to do without boundary_3 (no admin line is drawn at all).
+  const stateLinesAt = indexOf(STATE_LINES_LAYER);
+  if (stateLinesAt >= 0) {
+    const layer = layers[stateLinesAt];
+    const existing = read(layer, 'filter') as FilterSpecification | undefined;
+    if (!heldAreas) {
+      warnings.push(`the held areas' polygon is missing or malformed; "${STATE_LINES_LAYER}" keeps the admin lines inside them`);
+    } else if (existing !== undefined && existing !== true && isLegacyFilter(existing)) {
+      warnings.push(
+        `layer "${STATE_LINES_LAYER}" has a filter in the deprecated syntax, which has no "within"; its admin lines inside the held areas are kept`,
+      );
+    } else {
+      const rule = heldAreasRule(heldAreas);
+      layers[stateLinesAt] = patch(layer, {
+        filter: existing === undefined || existing === true ? rule : ['all', existing, rule],
+      });
+    }
   }
 
   // 4. No "Azad Kashmir" or "Gilgit-Baltistan" state label. (Before 3, so the indexes of 3 are final.)

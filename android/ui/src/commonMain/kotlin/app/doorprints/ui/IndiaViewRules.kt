@@ -1,5 +1,14 @@
 package app.doorprints.ui
 
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+
 /*
  * India's external boundary as the Government of India shows it (owner issue P0, 2026-09-24): all of Jammu and
  * Kashmir and Ladakh inside India (including the areas the tiles label "Azad Kashmir" and "Gilgit-Baltistan",
@@ -19,7 +28,10 @@ package app.doorprints.ui
  *     instead ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
- *     drawn in place of a loading or missing one;
+ *     drawn in place of a loading or missing one; and [STATE_LINE_LAYER] leaves out every tile feature wholly inside
+ *     the polygon around the parts of India that Pakistan and China hold ([heldAreasFilter], [HELD_AREAS_ASSET_PATH];
+ *     S4b-BL-12): from tile zoom 9 the tiles carry Pakistan's district and tehsil lines across Gilgit-Baltistan and PoK
+ *     and China's county lines across Aksai Chin as undisputed admin level 5-6 lines with no country code;
  *  3. the bundled outline ([SOURCE_URI], built from Natural Earth by web/scripts/geo/build_in_boundaries.py): the
  *     'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines there are Natural Earth's ISO view and
  *     cannot be filtered), which also hold the stretches of India's outline along which the tiles draw a country line
@@ -104,6 +116,71 @@ object IndiaViewRules {
      * `isExpression` and `convertLegacyHasFilter`), and means "the feature has this property" in both.
      */
     private const val ADM0_PRESENT = "[\"any\", [\"has\", \"adm0_l\"], [\"has\", \"adm0_r\"]]"
+
+    /**
+     * The polygon around the held areas (S4b-BL-12), built by web/scripts/geo/build_in_held_areas.py and byte-identical
+     * to web/public/geo/in-held-areas.geojson (IndiaBoundaryDataTest; the web spec pins the same sha256). Read from
+     * the app's assets on every style load ([StyleOps.readAsset]).
+     */
+    const val HELD_AREAS_ASSET_PATH = "geo/in-held-areas.geojson"
+
+    /**
+     * The held areas' geometry as compact style JSON, from the text of [HELD_AREAS_ASSET_PATH]: a FeatureCollection
+     * with one feature whose geometry is a Polygon of closed [longitude, latitude] rings. A Polygon only: MapLibre
+     * Android's `Expression.raw` turns `within`'s argument into a Polygon (`Expression.Converter.convert`,
+     * `Polygon.fromJson`, android-v13.6.1), and maplibre-native reads only a collection's first polygon. Null (the
+     * rule is then skipped with a warning) for anything else, so a broken file never reaches MapLibre. The web's
+     * `heldAreasGeometry`.
+     */
+    fun heldAreasGeometry(fileText: String): String? {
+        val root = try {
+            Json.parseToJsonElement(fileText) as? JsonObject
+        } catch (e: SerializationException) {
+            null
+        } ?: return null
+        if ((root["type"] as? JsonPrimitive)?.contentOrNull != "FeatureCollection") return null
+        val features = root["features"] as? JsonArray ?: return null
+        if (features.size != 1) return null
+        val geometry = (features[0] as? JsonObject)?.get("geometry") as? JsonObject ?: return null
+        if ((geometry["type"] as? JsonPrimitive)?.contentOrNull != "Polygon") return null
+        val rings = geometry["coordinates"] as? JsonArray ?: return null
+        fun position(p: JsonElement): Pair<Double, Double>? {
+            val a = p as? JsonArray ?: return null
+            if (a.size != 2) return null
+            val x = (a[0] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+            val y = (a[1] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: return null
+            return if (x.isFinite() && y.isFinite()) x to y else null
+        }
+        val ok = rings.isNotEmpty() && rings.all { ring ->
+            val points = (ring as? JsonArray)?.map(::position) ?: return@all false
+            points.size >= 4 && points.all { it != null } && points.first() == points.last()
+        }
+        return if (ok) JsonObject(mapOf("type" to JsonPrimitive("Polygon"), "coordinates" to rings)).toString() else null
+    }
+
+    /**
+     * ANDed with [STATE_LINE_LAYER]'s filter (S4b-BL-12): not a tile feature wholly inside the held areas' polygon
+     * [geometryJson] ([heldAreasGeometry]). `within` on a line feature is true only when every part of it is inside, so
+     * a feature crossing the polygon's edge is drawn whole: the polygon reaches about 20 km past the held areas
+     * (further where the zoom 9-11 tiles' pieces run on) and about 700 m across the tiles' LoC/LAC, so a Pakistani or
+     * Chinese line ending on the LoC/LAC is inside it and an Indian line is not. maplibre-native android-v13.6.1
+     * src/mln/style/expression/within.cpp `featureWithinPolygons` (lines 147-177: the feature's bbox strictly inside
+     * the polygon's, then every line part within one polygon) and src/mln/util/geometry_util.cpp
+     * `lineStringWithinPolygon` (lines 116-133: every vertex strictly inside, no segment crossing an edge), on the
+     * tile's own geometry in that tile's coordinates; the filter runs with the tile's canonical id
+     * (geometry_tile_worker.cpp:502-503). The same algorithm as maplibre-gl's (style spec within.ts, geometry_util.ts),
+     * so both apps hide the same features. A feature with no geometry is not within, so it is drawn. Expression
+     * syntax only ([heldAreasFilterFor]).
+     */
+    fun heldAreasFilter(geometryJson: String): String = "[\"!\", [\"within\", $geometryJson]]"
+
+    /**
+     * [heldAreasFilter] when [STATE_LINE_LAYER]'s own [existing] filter is missing or an expression; null when it is
+     * in the deprecated syntax, which has no `within` and cannot be mixed with an expression (the layer is then left
+     * as it is, with a warning).
+     */
+    fun heldAreasFilterFor(existing: Any?, geometryJson: String): String? =
+        if (existing == null || isExpressionSyntax(existing)) heldAreasFilter(geometryJson) else null
 
     /** State labels not shown, compared with coalesce(name:en, name). */
     val HIDDEN_STATE_NAMES = listOf("Azad Kashmir", "Azad Jammu and Kashmir", "Gilgit-Baltistan")
