@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | 2026-09-24 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-09-24 | Code review of CMP-1 (commit `06e482d`): `WORLD_MAX_ZOOM` is computed from the float's bits (`Float.nextDown()` is JVM-only); `android.yml` compiles `:shared` and `:ui` commonMain metadata on Linux; Room version follows the catalog. |
 | 1.0 | 2026-09-24 | First version (CMP-1, commit `be86f50`). `:ui` module created with the JetBrains Compose Multiplatform libraries; the theme, the list rows, the server status, the Map and India view rules, and a few small UI types move out of `:app` into commonMain. No visual change. |
 
 ## 1. What this module is
@@ -69,7 +70,9 @@ From `android/`:
 
 ```bash
 ./gradlew :ui:testAndroidHostTest     # :ui's JVM tests; :app:testDebugUnitTest depends on it, android.yml also names it
-./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest   # what android.yml runs
+./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest \
+  :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata   # what android.yml runs
+./gradlew :ui:compileCommonMainKotlinMetadata   # commonMain against the common libraries, on Linux: catches JVM-only calls
 # macOS only (shared-ios.yml): compile-only, nothing is linked, signed or run on a simulator
 ./gradlew :ui:compileKotlinIosArm64 :ui:compileKotlinIosSimulatorArm64 :ui:compileTestKotlinIosSimulatorArm64
 ```
@@ -87,7 +90,7 @@ Each phase (and each lettered sub-phase) is one pull request that keeps `android
 | P1 | CMP-1 | `:ui` module; theme and pure UI code | **Done** (`be86f50`); iOS compile pending on CI (macOS) |
 | P2 | CMP-2 | Strings to compose-resources (`values{,-hi,-ta,-te}`), `org.jetbrains.compose` plugin, `Res.string`, `Locale.setDefault` on API 26–32, `StringParityTest` | Next |
 | P3 | CMP-3 | `PlatformServices` seam; `Format.kt`, `LiveMessage`, `DeletedHouseUndo`, `ActionBar`, `ResultCard`, pure helpers | Planned |
-| P4a, P4b, P4c | CMP-4 | Room KMP 2.8.4 in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | Planned |
+| P4a, P4b, P4c | CMP-4 | Room KMP (the catalog's version, 2.8.5 since Dependabot #12) in `:shared` (db v2 identity hash kept, migration test); DataStore KMP, `SecretStore`, `ServerUrl` in common; `Repository` interface in common, `CompareScreen` and `HouseFormRules` move | Planned |
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | Planned |
 | P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | Planned |
 | P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | Planned |
