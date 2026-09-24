@@ -6,52 +6,52 @@ Angular 22 installable web app (PWA): a map + list of houses, house details (che
 a side-by-side comparison and an offline copy of your data in six formats. Uses MapLibre GL with the free
 [OpenFreeMap](https://openfreemap.org) "liberty" style (no API key).
 
-**India's boundaries (2026-09-24).** Every map shows India's external boundary as the Government of India does, the
-only view, because every user is in India: all of Jammu and Kashmir and Ladakh (Pakistan-occupied Kashmir,
-Gilgit-Baltistan, Shaksgam and Aksai Chin included) and Arunachal Pradesh inside India, one solid outline, no Line of
-Control or Line of Actual Control. Liberty itself draws the ISO view, so `src/app/shared/india-boundaries.ts` changes it
-on every `style.load` (`createMlMap` in `shared/map-style.ts`, used by the Map, Plan and house pages). It hides
-`boundary_disputed`. It starts `boundary_2` at zoom 5 and keeps only the lines that carry an `adm0_l` or `adm0_r`
-side and are not the Pakistan-China line (`COUNTRY_LINE_RULE`, the adm0 clause; `COUNTRY_LINE_RULE_LEGACY` for a
-filter in the deprecated syntax). It adds the tile-zoom guard `TILE_ZOOM_GUARD`, `[">=", ["zoom"], 5]` (the zoom of
-the tile a feature comes from), to `boundary_2`, `boundary_3` and every other `boundary` line layer from zoom 5, never
+**India's boundaries (2026-09-24).** Every map shows India's external boundary as the Government of India does, the only
+view, because every user is in India: all of Jammu and Kashmir and Ladakh (Pakistan-occupied Kashmir, Gilgit-Baltistan,
+Shaksgam and Aksai Chin included) and Arunachal Pradesh inside India, one solid outline, no Line of Control or Line of
+Actual Control. Liberty itself draws the ISO view, so `src/app/shared/india-boundaries.ts` changes it on every
+`style.load` (`createMlMap` in `shared/map-style.ts`, used by the Map, Plan and house pages). It hides
+`boundary_disputed`. It starts `boundary_2` at zoom 5 and keeps only the lines that carry an `adm0_l` or `adm0_r` side
+and are not the Pakistan-China line (`COUNTRY_LINE_RULE`, the adm0 clause; `COUNTRY_LINE_RULE_LEGACY` for a filter in
+the deprecated syntax). It adds the tile-zoom guard `TILE_ZOOM_GUARD`, `[">=", ["zoom"], 5]` (the zoom of the tile a
+feature comes from), to `boundary_2`, `boundary_3` and every other `boundary` line layer from zoom 5, never
 `boundary_disputed`, so a zoom 0-4 tile shown while a zoom 5+ tile loads, or offline, draws no line through them.
-maplibre-gl already skips those layers in such a tile because of their minzoom, and maplibre-native on Android does
-too (`GeometryTile::setLayers`, `geometry_tile.cpp:317`), so on both apps the guard is defence in depth (S4b-BL-13). It adds the bundled
-`public/geo/in-boundaries.geojson` (Natural Earth, public domain; built by the lead's `scripts/geo/build_in_boundaries.py`,
-byte-identical to Android's copy) as source `in-boundaries` with layers `in-boundary-world` (below zoom 5) and
-`in-boundary-claim` (every zoom) directly above `boundary_2`, and `in-boundary-state` (`IN_BOUNDARY_STATE_LAYER`, the
-Assam-Arunachal Pradesh state line, from zoom 5) directly above `boundary_3`, copying its colour, width, dashes and
-opacity (`STATE_FALLBACK_LINE_PAINT` without it), and filters the "Azad Kashmir" and "Gilgit-Baltistan"
-state labels out. A missing layer is a console warning, never a broken map. The file is same-origin (base href), so it
-needs no CSP change, is precached by `sw.js` like the rest of the build and is served as `application/geo+json`
-(`firebase.json`). The attribution adds "Natural Earth". Near Arunachal Pradesh the tiles carry the India-China line
-only as disputed lines (rule 1 hides them) and the overlay's `claim` outline draws India's boundary there. **Android
-applies the same rules** to the same style and the same file
-(`android/ui/src/commonMain/kotlin/app/doorprints/ui/IndiaViewOps.kt`, the rules as data in `IndiaViewRules.kt`); the only
-deliberate difference is the "Natural Earth" credit, web only. **One line from zoom
-5 (branch `fix/india-boundary-lines`, PR #16):** rule 2 also leaves out India's line with China (`INDIA_CHINA_LINE`:
-China on one side, India or no country on the other), which the tiles cut into drawn and hidden pieces, so India's
-outline draws that whole border at every zoom; China's lines with Nepal, Bhutan and Myanmar still draw. Along the 7
-stretches where the tiles draw India's border themselves (Nepal near Kalapani; Sikkim and the Darjeeling and Kalimpong
-hills with Nepal and with Bhutan; Bhutan's south-east corner; Myanmar south of about 26.65°N; the Wakhan), the file
-holds India's outline as kind `world`, so it draws below zoom 5 only and the tiles' line takes over from zoom 5; each
-`claim` piece ends with a connector of about 7 km at most to the tile line (none at a box edge). The stretches come
-from `scripts/geo/find_shared_stretches.py` (planet 20260913, zooms 7, 9 and 11; tile cache `scripts/geo/.tilecache`,
+maplibre-gl already skips those layers in such a tile because of their minzoom, and maplibre-native on Android does too
+(`GeometryTile::setLayers`, `geometry_tile.cpp:317`), so on both apps the guard is defence in depth (S4b-BL-13). It adds
+the bundled `public/geo/in-boundaries.geojson` (Natural Earth, public domain; built by the lead's
+`scripts/geo/build_in_boundaries.py`, byte-identical to Android's copy) as source `in-boundaries` with layers
+`in-boundary-world` (below zoom 5) and `in-boundary-claim` (every zoom) directly above `boundary_2`, and
+`in-boundary-state` (`IN_BOUNDARY_STATE_LAYER`, the Assam-Arunachal Pradesh state line, from zoom 5) directly above
+`boundary_3`, copying its colour, width, dashes and opacity (`STATE_FALLBACK_LINE_PAINT` without it), and filters the
+"Azad Kashmir" and "Gilgit-Baltistan" state labels out. A missing layer is a console warning, never a broken map. The
+file is same-origin (base href), so it needs no CSP change, is precached by `sw.js` like the rest of the build and is
+served as `application/geo+json` (`firebase.json`). The attribution adds "Natural Earth". Near Arunachal Pradesh the
+tiles carry the India-China line only as disputed lines (rule 1 hides them) and the overlay's `claim` outline draws
+India's boundary there. **Android applies the same rules** to the same style and the same file
+(`android/ui/src/commonMain/kotlin/app/doorprints/ui/IndiaViewOps.kt`, the rules as data in `IndiaViewRules.kt`); the
+only deliberate difference is the "Natural Earth" credit, web only. **One line from zoom 5 (branch
+`fix/india-boundary-lines`, PR #16):** rule 2 also leaves out India's line with China (`INDIA_CHINA_LINE`: China on one
+side, India or no country on the other), which the tiles cut into drawn and hidden pieces, so India's outline draws that
+whole border at every zoom; China's lines with Nepal, Bhutan and Myanmar still draw. Along the 7 stretches where the
+tiles draw India's border themselves (Nepal near Kalapani; Sikkim and the Darjeeling and Kalimpong hills with Nepal and
+with Bhutan; Bhutan's south-east corner; Myanmar south of about 26.65°N; the Wakhan), the file holds India's outline as
+kind `world`, so it draws below zoom 5 only and the tiles' line takes over from zoom 5; each `claim` piece ends with a
+connector of about 7 km at most to the tile line (none at a box edge). The stretches come from
+`scripts/geo/find_shared_stretches.py` (planet 20260913, zooms 7, 9 and 11; tile cache `scripts/geo/.tilecache`,
 git-ignored), pasted into `SHARED` in `build_in_boundaries.py`; re-run it after each OpenFreeMap planet or style update
 (S4b-BL-9). The Assam-Arunachal Pradesh state line, which the tiles carry as a disputed admin-4 line claimed by China,
 comes from the file's `state` kind. **Held areas (S4b-BL-12):** from tile zoom 9 the tiles draw Pakistan's and China's
 unit lines inside India's outline as undisputed admin 5-6 lines, so `boundary_3` also leaves out every tile line that
-lies wholly inside the polygon of `public/geo/in-held-areas.geojson` (`heldAreasRule`, `["!", ["within", P]]`;
-built by `scripts/geo/build_in_held_areas.py`). **Known limits, both apps:** the `claim` outline (Natural Earth 1:10m) is
+lies wholly inside the polygon of `public/geo/in-held-areas.geojson` (`heldAreasRule`, `["!", ["within", P]]`; built by
+`scripts/geo/build_in_held_areas.py`). **Known limits, both apps:** the `claim` outline (Natural Earth 1:10m) is
 typically 1.5-3 km off the true line, up to about 5 km in a few mountain stretches; at street zoom a hand-over to the
-tile line shows as a small step, and at Sikkim's two tri-junctions as a loop (about 13 x 3 km at Nepal-China-India,
-on glaciers, from about zoom 10; about 2 km at Doklam) and from zoom 11 the tile line ran on past the hand-over at
-Jomotsangkha (about 9 km) and Longwa (about 3 km), until S4b-BL-17 (only the Doklam loop is left, on purpose); at
-zoom 9-11 a few Pakistani lines the tiles merge with an Indian line near the LoC still draw, and foreign admin lines
-within about 20 km outside the outline next to the held areas do not; `INDIA_CHINA_LINE` also hides about 12 km of the China-North Korea
-line on the Tumen islets (harmless for India); while zoom 5+ tiles load, or offline without them, the 7 shared stretches show no line at zoom 5 and above
-([docs/03](../docs/03-design.md) ADR-22).
+tile line shows as a small step, and at Sikkim's two tri-junctions as a loop (about 13 x 3 km at Nepal-China-India, on
+glaciers, from about zoom 10; about 2 km at Doklam) and from zoom 11 the tile line ran on past the hand-over at
+Jomotsangkha (about 9 km) and Longwa (about 3 km), until S4b-BL-17 (only the Doklam loop is left, on purpose); at zoom
+9-11 a few Pakistani lines the tiles merge with an Indian line near the LoC still draw, and foreign admin lines within
+about 20 km outside the outline next to the held areas do not; `INDIA_CHINA_LINE` also hides about 12 km of the
+China-North Korea line on the Tumen islets (harmless for India); while zoom 5+ tiles load, or offline without them, the
+7 shared stretches show no line at zoom 5 and above ([docs/03](../docs/03-design.md) ADR-22).
 
 **Local-first (Sprint 4a, [docs/11](../docs/11-feature-parity-and-export-spec.md) D-01).** Everything you save
 lives in this browser, in IndexedDB. There is no sign-in and no server to set up: the app opens straight on the

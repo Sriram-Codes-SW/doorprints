@@ -33,12 +33,12 @@
 ## 1. Where things stand (2026-09-24; updated for the combined CMP-5..7 change)
 
 - **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity Federation, main only).
-- **`main` = `f8dd6f9`** (PR #23, CMP-4 P4c, merged on top of `aa8f73a`, PR #22, CMP-4 P4b; `e480b83`, PR #21, CMP-4 P4a; `fccf8a1`, PR #20; PR #19,
-  `7080a7f`; PR #18, CMP-0, `6da0e56`; PR #17, CMP-1, on `01937f6`, Dependabot #12 on `4100f7a`): Sprint 4a (PR #11),
-  the India boundary fix (PR #13, [03](03-design.md) ADR-22) and its docs and comment sync with this file (PR #14,
-  merged on the owner's instruction on 2026-09-24), the icon's footprints (PR #15), the one-line and state-line fix
-  (PR #16), CMP-1 (PR #17), the test harness, CMP-0 (PR #18), CMP-2 and the rename (PR #19), CMP-3 (PR #20), CMP-4 P4a
-  (PR #21), CMP-4 P4b (PR #22) and CMP-4 P4c (PR #23).
+- **`main` = `f8dd6f9`** (PR #23, CMP-4 P4c, merged on top of `aa8f73a`, PR #22, CMP-4 P4b; `e480b83`, PR #21, CMP-4
+  P4a; `fccf8a1`, PR #20; PR #19, `7080a7f`; PR #18, CMP-0, `6da0e56`; PR #17, CMP-1, on `01937f6`, Dependabot #12 on
+  `4100f7a`): Sprint 4a (PR #11), the India boundary fix (PR #13, [03](03-design.md) ADR-22) and its docs and comment
+  sync with this file (PR #14, merged on the owner's instruction on 2026-09-24), the icon's footprints (PR #15), the
+  one-line and state-line fix (PR #16), CMP-1 (PR #17), the test harness, CMP-0 (PR #18), CMP-2 and the rename (PR #19),
+  CMP-3 (PR #20), CMP-4 P4a (PR #21), CMP-4 P4b (PR #22) and CMP-4 P4c (PR #23).
 - **PR #15** (branch `fix/brand-footprints`): N3, the icon's footprints (story S4b-BR-1, [10](10-sprint-log.md) §12.9), merged on the owner's instruction after all reviews approved (`76449fb`) and deployed.
 - **PR #16** (branch `fix/india-boundary-lines`), **merged (`4100f7a`)**; it was open at v0.4 of this file: from zoom 5 one line everywhere. The whole India-China border is drawn by India's outline alone (rule 2 leaves the tiles' pieces of it out); along the 7 stretches with Nepal, Bhutan, Myanmar and in the Wakhan the tiles' line takes over from zoom 5, so the two close lines are gone; and the Assam-Arunachal Pradesh state line is drawn from zoom 5 ([03](03-design.md) ADR-22, [10](10-sprint-log.md) §12.10; S4b-BL-11, -15, -16 done there). CI green on `5af2f4d` before the merge. Android not yet checked on a device; the owner's check is N2.
 - **Compose Multiplatform track** (owner request of 2026-09-24, [03](03-design.md) ADR-23, [10](10-sprint-log.md) §13): **CMP-1 done** in commit `be86f50` (new `:ui` module, [`android/ui/README.md`](../android/ui/README.md); theme and pure UI code moved; no visual change), **merged as PR #17 (`75f049d`)**.
@@ -63,11 +63,11 @@
   compile-only) and `ServerUrl` (a port of `java.net.URI`'s parser) in `:shared` commonMain; the settings file and
   every key name unchanged; new `SettingsUpgradeTest` (TC-U-64) and `SettingsStoreTest` (TC-U-65)
   ([10](10-sprint-log.md) §13.7). The 64 screenshots unchanged.
-- **PR #23, merged (`f8dd6f9`)**: **CMP-4 P4c** (on `aa8f73a`): a `Repository` interface in `:shared` commonMain (`AndroidRepository` in `:app`), its transactions and the
-  Export screen's change flow on Room's common API (S4b-BL-23), the mappers common; `CompareScreen` and
-  `HouseFormRules` in `:ui` commonMain; `SyncHealthTest` and `ExportGrantsTest` in commonTest (S4b-BL-28); new
-  `RepositoryTransactionTest` (TC-U-66) and `ModelLabelsTest` (TC-U-67) ([10](10-sprint-log.md) §13.8). The 64
-  screenshots unchanged.
+- **PR #23, merged (`f8dd6f9`)**: **CMP-4 P4c** (on `aa8f73a`): a `Repository` interface in `:shared` commonMain
+  (`AndroidRepository` in `:app`), its transactions and the Export screen's change flow on Room's common API
+  (S4b-BL-23), the mappers common; `CompareScreen` and `HouseFormRules` in `:ui` commonMain; `SyncHealthTest` and
+  `ExportGrantsTest` in commonTest (S4b-BL-28); new `RepositoryTransactionTest` (TC-U-66) and `ModelLabelsTest`
+  (TC-U-67) ([10](10-sprint-log.md) §13.8). The 64 screenshots unchanged.
 - **PR #24, open** (branch `claude/doorprints-dev-continue-fzcge2`, 19 commits on `f8dd6f9`; the owner merges):
   **CMP-5, CMP-6 and CMP-7 as one change** (owner request), with the web backlog S4b-BL-1, -2, -6, -7, the shared
   items S4b-BL-12, -13, -17, -20 (with the backend's `maxSyncVersion`), S4b-BL-9's check and S4b-BL-10's finding,
