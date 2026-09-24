@@ -22,7 +22,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -188,13 +187,18 @@ val IndicTypography: Typography = BaseTypography.copy(
 /** The interface languages whose scripts need [IndicTypography]. */
 private val INDIC_LANGUAGES = setOf("hi", "ta", "te")
 
+/**
+ * The interface language's ISO 639 code ("en", "hi", "ta", "te"), read where it changes the UI's composition (Android:
+ * the configuration's locale, which is the per-app language on every supported API level).
+ */
+@Composable
+internal expect fun uiLanguage(): String
+
 val LocalHouseHuntColors = staticCompositionLocalOf { LightExtra }
 
 @Composable
 fun HouseHuntTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    // The configuration's locale is the per-app language on every supported API level (AppLocale): the platform
-    // applies it on 13+, and AppLocale.wrap puts it in the activity's configuration on 8–12.
-    val language = LocalConfiguration.current.locales[0]?.language.orEmpty()
+    val language = uiLanguage()
     CompositionLocalProvider(LocalHouseHuntColors provides if (dark) DarkExtra else LightExtra) {
         MaterialTheme(
             colorScheme = if (dark) DarkScheme else LightScheme,

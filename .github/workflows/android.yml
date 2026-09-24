@@ -69,13 +69,17 @@ jobs:
       # compile-only iOS targets). It has no testDebugUnitTest; its JVM tests (commonTest + androidHostTest, enabled
       # with withHostTest {}) are the task :shared:testAndroidHostTest. The app's testDebugUnitTest already depends on
       # it (app/build.gradle.kts); it is named here as well so the shared tests run even if that wiring changes, and so
-      # a moved or renamed module fails this step loudly instead of being skipped.
+      # a moved or renamed module fails this step loudly instead of being skipped. The same holds for :ui (the Compose
+      # Multiplatform UI module, ADR-23): :ui:testAndroidHostTest. compileCommonMainKotlinMetadata compiles each KMP
+      # module's commonMain against the common (non-JVM) libraries, on Linux without Kotlin/Native, so a JVM-only API in
+      # common code (it caught Float.nextDown) fails here before the macOS iOS job (shared-ios.yml) runs.
       # :shared:allTests is deliberately not run here: on Linux it would only add the cross-compiled iOS test klibs,
       # which downloads the Kotlin/Native toolchain (~/.konan) on every run. iOS is covered on macOS by shared-ios.yml.
       - name: Build and test
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :shared:testAndroidHostTest
+          ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest \
+            :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata
 
       # Android lint (includes MissingTranslation as an error, see app/build.gradle.kts). Reported, not yet
       # blocking: switch continue-on-error off once the first report is clean.
@@ -102,6 +106,8 @@ jobs:
             android/app/build/test-results/
             android/shared/build/reports/
             android/shared/build/test-results/
+            android/ui/build/reports/
+            android/ui/build/test-results/
           retention-days: 7
 
   # Only for a push to main or a manual run on main: never for pull requests and never for a push to (or a manual

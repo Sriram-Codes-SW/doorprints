@@ -53,8 +53,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -195,9 +193,6 @@ fun <S> ActionBar(
         }
     }
 }
-
-/** The web's `--duration`: how long options and the action bar take to appear, disappear or resize. */
-const val ANIMATION_MS = 150
 
 /** From this font scale the action bar's buttons stack, one per row, whatever their labels (see [ActionBar]). */
 private const val STACK_FONT_SCALE = 1.3f
@@ -347,15 +342,6 @@ fun StateButton(
         ButtonLabel(text)
     }
 }
-
-/** A button label that wraps to two centred lines instead of being clipped (Tamil and Telugu at 200% font). */
-@Composable
-fun ButtonLabel(text: String) {
-    Text(text, maxLines = BUTTON_LABEL_MAX_LINES, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
-}
-
-/** How many lines a [ButtonLabel] wraps to before it is ellipsised; the [ActionBar] stacks its buttons beyond it. */
-const val BUTTON_LABEL_MAX_LINES = 2
 
 /**
  * The one irreversible choice in a confirmation dialog, in every such dialog (Design review, round 21): the Import

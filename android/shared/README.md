@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.43 |
+| Version | 1.44 |
 | Date | 2026-09-24 |
 | Sprint | 4a "offline copy" (was 3.5 "KMP foundation") |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.44 | 2026-09-24 | **Compose Multiplatform track, phase 1 (CMP-1, commit `be86f50`; [docs/03](../../docs/03-design.md) ADR-23, [docs/10](../../docs/10-sprint-log.md) §13).** New sibling module `:ui` ([README](../ui/README.md)) with the Compose Multiplatform UI; it depends on `:shared` with `api`. Section 2 shows it in the layout; section 3's Compose UI row and section 7 item (4) point to `:ui` and ADR-23 (Compose Multiplatform chosen over SwiftUI; items (1)-(3) are ADR-23 phase P4, CMP-4). No change to `:shared` itself. |
 | 1.43 | 2026-09-24 | **India's boundary data, round 2 review fix (branch `fix/india-boundary-lines`, PR #16; docs/10 §12.10).** `assets/geo/in-boundaries.geojson` rebuilt by the lead, byte-identical to the web copy (sha256 `25984afa459110523eec6088ee0440eca95567dd290541c9ccb8c5ad2c3ea024`, 415 608 bytes; `world` 359 lines, `claim` 5 pieces, `state` 2 lines; the 7 shared stretches unchanged): a `SHARED` cut within 1e-4 degrees of a claim line's end now counts as the end, so the two connector-only pieces on the Singalila ridge (2.5 km and 2.3 km), drawn as spurs into Nepal from zoom 5, are gone. `IndiaBoundaryDataTest` expects the new sha256. No rule, layer, string or other test change; en/hi/ta/te unchanged. 1.42 (b)'s file and figures are replaced. |
 | 1.42 | 2026-09-24 | **India's boundary: India's line with China drawn by the outline only; clean hand-overs (branch `fix/india-boundary-lines`, PR #16, HEAD `9e0036e`; design review of 1.41; docs/10 §12.10).** (a) **Rule 2:** `IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER` and `COUNTRY_LINE_EXTRA_FILTER_LEGACY` also leave out India's line with China (`INDIA_CHINA_LINE`: `CHN` on one side and `IND` or no country on the other; `coalesce` in the expression syntax, `!has`/`==` in the deprecated one). The tiles cut that line into short undisputed (drawn) and disputed (hidden) pieces, which showed at zoom 10-12 as stray pieces beside the outline (Shipki La, the Mana Pass); the outline draws the whole India-China border at every zoom with no hand-over. China's lines with Nepal, Bhutan and Myanmar still draw. (b) **Data:** `assets/geo/in-boundaries.geojson` rebuilt by the lead, byte-identical to the web copy (sha256 `2c497e2ea08069bd44fce9d72ed23000f133cc66974462dcb0f04228bc1656d7`, 415 689 bytes; `world` 359 lines, `claim` 7 pieces, `state` 2 lines): 7 shared stretches instead of 11, none with China (Nepal near Kalapani; Sikkim and the Darjeeling and Kalimpong hills with Nepal and with Bhutan; Bhutan's south-east corner; Myanmar south of about 26.65 N; the Wakhan); no connector-only spur at a box edge. 1.41 (a)'s file and figures are replaced. (c) **Tests:** `IndiaViewRulesTest` 18 (new `indiasLineWithChinaIsNotDrawnFromTheTilesOurOutlineDrawsIt`, both syntaxes; the old assertion that a line with `adm0_l` CHN and no other side is drawn was removed; the test's deprecated-syntax evaluator gained `==` and `!has`), `IndiaBoundaryDataTest` 2 (the new sha256): 20 of 20 pass on the JVM with kotlinc 2.0.21 `-Werror`. `IndiaView.kt` unchanged. No string change; en/hi/ta/te unchanged. (d) **CI:** green on `5af2f4d` (1.41); the run on `9e0036e` pending. **Not verified:** the Map tab on a device (TC-M-25: one line along the India-China border at street zoom, the hand-overs, the Sikkim tri-junction loops of about 3-5 km, the state line). |
 | 1.41 | 2026-09-24 | **India's boundary: one line from zoom 5 on shared stretches; the Assam-Arunachal Pradesh state line (branch `fix/india-boundary-lines`, commit `5af2f4d`; docs/10 §12.10; S4b-BL-11, S4b-BL-15, S4b-BL-16).** (a) **Data:** `assets/geo/in-boundaries.geojson` rebuilt by the lead, byte-identical to the web copy (sha256 `8ef39ebcb449d65e8724a0d22e608112d6fdea65c79299963769643b265a42e8`, 418 518 bytes; kinds `world`, `claim`, `state`). The 11 stretches where the tiles draw India's border themselves are now kind `world` (drawn below zoom 5 only), so from zoom 5 the tiles' line is the only line there; no Android rule changed for this. (b) **State line:** `IndiaViewRules.STATE_OVERLAY_LAYER` (`in-boundary-state`), `STATE_FILTER` (kind `state`), `STATE_MIN_ZOOM` = 5, `STATE_FALLBACK_LINE_COLOR`/`WIDTH`/`DASHARRAY` (Liberty's `boundary_3`: `hsl(0,0%,70%)`, 1, `[1, 1]`) and `statePlacement()` (directly above `boundary_3`; without it directly below `in-boundary-world`; without that either, where the outline goes). `IndiaView.kt` step 3b adds the layer, with `statePaint()` copying `boundary_3`'s colour, width, dashes and opacity (each read on its own; one that cannot be read is logged and Liberty's value used), round joins and butt caps; a failed placement adds it on top with a warning. (c) **Tests:** `IndiaViewRulesTest` 17 (new `indiasStateLineGoesDirectlyAboveTheStateLinesFromZoomFive`; the state filter in the kind and one-syntax tests), `IndiaBoundaryDataTest` 2 (`theFileHoldsTheThreeKindsTheMapLayersFilterOn` expects `world`, `claim`, `state`; the new sha256): 19 of 19 pass on the JVM with kotlinc 2.0.21 `-Werror`. `IndiaView.kt` is compiled by CI only (no SDK in the session). No string change; en/hi/ta/te unchanged. (d) **Not verified:** CI on the branch; the Map tab on a device (TC-M-25: one line from zoom 5, the hand-overs, the state line). |
@@ -70,8 +71,9 @@ protocol and the same HTTP requests (checked by contract tests, section 5).
 
 ```
 android/
-├── gradle/libs.versions.toml   one version catalog for :app and :shared
+├── gradle/libs.versions.toml   one version catalog for :app, :shared and :ui
 ├── app/                        Android app (unchanged package com.househunt.app)
+├── ui/                         Compose Multiplatform UI (since CMP-1, ADR-23; see ui/README.md)
 └── shared/                     this module
     └── src/
         ├── commonMain/         platform-neutral code (no java.*, no android.*)
@@ -107,7 +109,7 @@ Package: **`com.househunt.shared`**, next to the app's `com.househunt.app` and t
 | `ServerUrl` validation | Uses `java.net.URI`, whose exact parsing (IPv6, spaces, user-info) is what the tests pin. A common rewrite would need an `expect/actual` (NSURLComponents on iOS); Phase 2. |
 | DataStore settings, Keystore API-key encryption (`ApiKeyCipher`) | Android APIs; DataStore has a KMP artifact (Phase 2), the key store needs `expect/actual` (Android Keystore / iOS Keychain). |
 | WorkManager (`SyncWorker`), `NetworkState`, `HuntService`, fused location, `ReverseGeocoder`, notifications | Platform services. iOS equivalents: `BGTaskScheduler`, `NWPathMonitor`, `CLLocationManager`, `CLGeocoder`. |
-| Compose UI, MapLibre, string resources, `HouseStatus.labelRes`, `ChecklistLabels` | UI and translations stay per platform in this phase. |
+| Compose UI, MapLibre, string resources, `HouseStatus.labelRes`, `ChecklistLabels` | UI and translations stay per platform in this phase. **Since 2026-09-24 (ADR-23)** the UI moves phase by phase to the Compose Multiplatform module `:ui` ([README](../ui/README.md)); phase 1 moved the theme, list rows and UI rules, and the strings follow in phase 2 (CMP-2). |
 
 ## 4. Decisions
 
@@ -211,6 +213,10 @@ OkHttp or MapLibre version, see section 4):
   than hiding the clash with `@JvmName`.
 
 ## 7. Phase 2 plan (not in this sprint)
+
+**Since 2026-09-24 this plan is part of ADR-23** ([docs/03](../../docs/03-design.md) §14, [docs/10](../../docs/10-sprint-log.md)
+§13): items 1-3 are its phase P4 (CMP-4), item 4 is decided for Compose Multiplatform (the `:ui` module,
+[README](../ui/README.md)), and item 5 comes with the iOS shell (P8) behind the platform seams of P3.
 
 1. **Room KMP.** Move entities, DAOs and `AppDatabase` to commonMain (Room 2.8 KMP + `androidx.sqlite`
    bundled driver), keep the file name `househunt.db`, version 2 and `MIGRATION_1_2`; the exported `2.json` and

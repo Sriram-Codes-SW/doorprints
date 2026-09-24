@@ -2,7 +2,8 @@
 
 Doorprints remembers the houses you visit while house-hunting in India. Android app (Kotlin, Compose, Room, MapLibre),
 web app/PWA (Angular, MapLibre GL, IndexedDB) at https://doorprints.web.app, and an optional self-hosted Spring Boot
-server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/shared`.
+server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/shared`;
+`android/ui` (`:ui`) holds the Compose Multiplatform UI (ADR-23).
 
 ## Start here
 
@@ -34,7 +35,9 @@ backlog item instead of expanding the change.
 ## Build and test (what CI runs)
 
 - Web: `cd web && npm ci && npx ng test --watch=false && npx ng build` (Node 24).
-- Android: `cd android && ./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest` (JDK 21).
+- Android: `cd android && ./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest
+  :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata` (JDK 21; the metadata tasks catch
+  JVM-only calls in common code on Linux).
 - Backend: `cd backend && mvn -B -ntp verify` (JDK 25; needs the PostGIS container from `backend/db`, see
   `.github/workflows/backend.yml`).
 - The workflow files in `.github/workflows` are the source of truth for exact steps and path filters.

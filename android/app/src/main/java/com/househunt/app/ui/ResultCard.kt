@@ -33,9 +33,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.househunt.app.R
 
-/** How a finished export or import went, which decides the card's colours, icon and how urgently it is read out. */
-enum class ResultTone { SUCCESS, ERROR, NEUTRAL }
-
 /**
  * The result of an export or import as a card (Design review, round 4 and 2026-09-22), the same three looks as the
  * web page's `.success` / `.error` cards, which must not look alike:
