@@ -6,7 +6,7 @@ import { ConfigService } from './config.service';
 import { errorMsg } from './format';
 import type { HouseStatus, PriceType } from './models';
 
-// Types follow docs/ai/ai-design.md section 13 and the backend records in com.househunt.ai.*
+// Types follow docs/ai/ai-design.md section 13 and the backend records in app.doorprints.server.ai.*
 // (AiStatusController.AiStatus, extract.HouseDraft, rag.AskModels, agent.PlanModels).
 
 export interface AiStatus {

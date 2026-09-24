@@ -15,7 +15,7 @@ const REGISTER_DELAY_MS = 3000;
 export const UPDATE_FALLBACK_MS = 3000;
 
 /** localStorage key holding when the user last said "Not now" to the install offer (an ISO date). */
-export const INSTALL_DISMISSED_KEY = 'hh.installDismissedAt';
+export const INSTALL_DISMISSED_KEY = 'doorprints.installDismissedAt';
 /** How long "Not now" on the install banner lasts. The install section on Your data is always there. */
 export const INSTALL_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 

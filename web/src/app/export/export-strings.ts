@@ -3,7 +3,7 @@ import type { Lang } from '../i18n/languages';
 /**
  * The words that appear **inside** an exported table, in the export language.
  *
- * This is the TypeScript half of `android/shared/src/commonMain/kotlin/com/househunt/shared/export/
+ * This is the TypeScript half of `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/
  * ExportStrings.kt`: the same keys, the same wordings, in the same order. The two files are a contract, like
  * `sync-rules.ts` and `SyncRules.kt`: a change on one side that is not made on the other shows up as a failing
  * golden test rather than as two apps quietly writing different files.

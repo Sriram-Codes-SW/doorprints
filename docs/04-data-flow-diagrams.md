@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.15 |
-| Date | 2026-09-23 |
+| Version | 0.16 |
+| Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -27,6 +27,7 @@
 | 0.13 | 2026-09-22 | Claude (Cowork), Docs team | Sixth review round. **DF-47** and section 6b overstated the share-target control: navigation state is stored by Angular in `history.state`, so the listing text (often with a phone number) stays in session history — in the `/` entry until the map's `forgetHandover()` strips it, and in an unsaved `/houses/new` entry until the tab closes — and survives a reload and possibly session restore. New bullet in 6b, DF-47 lists it as residual ([02](02-threat-model.md) T-I26 v0.21). The 0.12 row is annotated. |
 | 0.14 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision (2026-09-23): the web app is hosted on Cloudflare Pages** ([03](03-design.md) ADR-21), at the root of its own origin `https://<project>.pages.dev`. **DF-45**, **DF-46**, **D5** and **D10** no longer say the origin is shared with the owner's other GitHub Pages sites: it is Doorprints' own, so IndexedDB, `localStorage` and Cache Storage are readable only by Doorprints (the path-scoped cache names and the prefix-only deletion stay, as a guard for any other deployment path). §6 share-target diagram: the static host is Cloudflare Pages, and a first-visit `/share` request is answered by its SPA fallback (`index.html`), not `404.html` ([02](02-threat-model.md) T-I26). |
 | 0.15 | 2026-09-23 | Claude (Cowork), Docs team | **Owner decision of 2026-09-23: the web app is on Firebase Hosting at `https://doorprints.web.app`** ([03](03-design.md) ADR-21), replacing the Cloudflare Pages plan, which was never set up. **DF-45**, **DF-46**, **D5** and **D10** name that origin (Doorprints' own; the twin `doorprints.firebaseapp.com` is a different origin with its own, separate browser storage and is never shared); the §6b share-target diagram and its note name Firebase Hosting and its `**` rewrite. No flow changes. |
+| 0.16 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). D1 is the Room file `doorprints.db` (renamed from `househunt.db` at start), D5 the key `doorprints.api-config` (moved from `house-hunt.api-config` at start); paths follow the moved packages. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -148,13 +149,13 @@ flowchart TB
 | P2 | Hunt foreground service | `location/HuntService`, `StayDetector`, `ReverseGeocoder` |
 | P3 | WorkManager sync | `data/SyncWorker`, `Repository.sync`, `ApiClient` |
 | P4 | Angular SPA | `web/src/app/*` |
-| P5 | Spring Boot API | `backend/src/main/java/com/househunt/*` |
+| P5 | Spring Boot API | `backend/src/main/java/app/doorprints/server/*` |
 | P6, P7 | AI service, MCP server (planned) | [ai/](ai/) |
-| D1 | `househunt.db`: `houses`, `visits`, `photos` | `data/AppDatabase` |
+| D1 | `doorprints.db` (`househunt.db` until 2026-09-24, renamed at start): `houses`, `visits`, `photos` | `data/AppDatabase` |
 | D2 | `filesDir/photos/*.jpg` (and `cache/camera/` for captures) | `Repository.addPhoto`, `res/xml/file_paths.xml` |
 | D3 | DataStore `settings`: serverUrl, **apiKey**, radius, stay minutes, cursors, last sync | `data/Settings.kt` |
 | D4 | Postgres `house`, `house_checklist`, `visit`, `photo`, `sync_seq` | `V1__init.sql` |
-| D5 | `house-hunt.api-config` = {baseUrl, **apiKey**} (key name kept at the Doorprints rename) | `core/config.service.ts` |
+| D5 | `doorprints.api-config` = {baseUrl, **apiKey**} (`house-hunt.api-config` until 2026-09-24; moved to the new name at start, `core/storage-keys.ts`) | `core/config.service.ts` |
 | D6 | Vector store (planned) | AI team |
 | D7 | Nightly `pg_dump`, encrypted with age | 08 section 3 |
 

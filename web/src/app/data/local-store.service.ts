@@ -320,7 +320,7 @@ export class LocalStore {
    *
    * Two things it deliberately does **not** touch, because they are settings rather than data, and both are
    * spelled out in the confirm dialog so the promise matches the behaviour:
-   *  * the chosen language (`house-hunt.lang`), which is a preference, not a record of anything;
+   *  * the chosen language (`doorprints.lang`), which is a preference, not a record of anything;
    *  * the saved server address and API key — that is `ConfigService.clear()`'s job, and the "Your data" screen
    *    calls it alongside this so the sensitive half is gone too.
    */

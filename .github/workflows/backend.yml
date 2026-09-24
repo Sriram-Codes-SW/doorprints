@@ -33,7 +33,7 @@ on:
       # BackupParityTest.theWebGoldenIsTheCanonicalSample compares golden/backup.golden.ts byte for byte with the sample.
       - "web/src/app/export/golden/**"
       # BackupParityTest.theClientReadersUseTheSameNumber reads MAX_DATA_JSON_BYTES here (Android :shared).
-      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
       - ".github/workflows/backend.yml"
   pull_request:
     branches: [main]
@@ -44,7 +44,7 @@ on:
       - "docker-compose.yml"
       - "web/src/app/export/backup-export.ts"
       - "web/src/app/export/golden/**"
-      - "android/shared/src/commonMain/kotlin/com/househunt/shared/export/Backup.kt"
+      - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
       - ".github/workflows/backend.yml"
   workflow_dispatch:
 
@@ -71,16 +71,16 @@ jobs:
 
       # Service containers cannot be built from a Dockerfile, so build backend/db and run it by hand.
       - name: Build database image (PostGIS + pgvector)
-        run: docker build -t house-hunt-db:ci backend/db
+        run: docker build -t doorprints-db:ci backend/db
 
       - name: Start database
         run: |
           docker run -d --name db \
-            -e POSTGRES_DB=househunt -e POSTGRES_USER=househunt -e POSTGRES_PASSWORD=househunt \
-            -p 127.0.0.1:5432:5432 house-hunt-db:ci
+            -e POSTGRES_DB=doorprints -e POSTGRES_USER=doorprints -e POSTGRES_PASSWORD=doorprints \
+            -p 127.0.0.1:5432:5432 doorprints-db:ci
           # Wait for the final server on TCP (the image's init phase only listens on the unix socket).
           for i in $(seq 1 60); do
-            if docker exec db pg_isready -h 127.0.0.1 -U househunt -d househunt >/dev/null 2>&1; then
+            if docker exec db pg_isready -h 127.0.0.1 -U doorprints -d doorprints >/dev/null 2>&1; then
               echo "database ready"; exit 0
             fi
             sleep 2
@@ -97,9 +97,9 @@ jobs:
       - name: mvn verify
         working-directory: backend
         env:
-          DB_URL: jdbc:postgresql://127.0.0.1:5432/househunt
-          DB_USER: househunt
-          DB_PASSWORD: househunt
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/doorprints
+          DB_USER: doorprints
+          DB_PASSWORD: doorprints
           # Tests set app.api-key themselves; AI and MCP stay off (their unit tests need no provider).
           APP_AI_ENABLED: "false"
           APP_MCP_ENABLED: "false"
@@ -149,9 +149,9 @@ jobs:
         with:
           persist-credentials: false
       - name: docker build (runs as UID 10001, see backend/Dockerfile)
-        run: docker build -t house-hunt-api:${{ github.sha }} backend
+        run: docker build -t doorprints-api:${{ github.sha }} backend
       - name: Check the image does not run as root
         run: |
-          user=$(docker image inspect --format '{{.Config.User}}' house-hunt-api:${{ github.sha }})
+          user=$(docker image inspect --format '{{.Config.User}}' doorprints-api:${{ github.sha }})
           echo "image user: $user"
           test -n "$user" && test "$user" != "root" && test "$user" != "0"

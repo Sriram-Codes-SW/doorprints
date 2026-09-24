@@ -5,7 +5,7 @@ import { CHECKLIST, STATUSES } from '../core/models';
 
 /**
  * The export vocabulary is the other half of a cross-platform contract with
- * `android/shared/src/commonMain/kotlin/com/househunt/shared/export/ExportStrings.kt`, whose own
+ * `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportStrings.kt`, whose own
  * `ExportStringsTest` checks the same properties on the Kotlin side. Keep the two suites in step.
  */
 describe('ExportStrings', () => {

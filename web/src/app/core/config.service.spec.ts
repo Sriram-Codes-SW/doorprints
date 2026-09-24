@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService, DEFAULT_BASE_URL, initialBaseUrl, normalizeBaseUrl } from './config.service';
 
-const STORAGE_KEY = 'house-hunt.api-config';
+const STORAGE_KEY = 'doorprints.api-config';
 
 function stored(storage: Storage): unknown {
   const raw = storage.getItem(STORAGE_KEY);
@@ -83,6 +83,16 @@ describe('ConfigService', () => {
     expect(service.configured()).toBe(false);
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('clear() also removes a pre-rename config that could not be moved at start', () => {
+    localStorage.setItem('house-hunt.api-config', JSON.stringify({ baseUrl: 'https://o.example', apiKey: 'old' }));
+    sessionStorage.setItem('house-hunt.api-config', JSON.stringify({ baseUrl: 'https://o.example', apiKey: 'old' }));
+
+    new ConfigService().clear();
+
+    expect(localStorage.getItem('house-hunt.api-config')).toBeNull();
+    expect(sessionStorage.getItem('house-hunt.api-config')).toBeNull();
   });
 
   it('loads a remembered config on start', () => {

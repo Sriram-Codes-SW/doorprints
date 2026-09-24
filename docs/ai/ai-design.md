@@ -21,8 +21,9 @@
 | v0.17   | 2026-09-22 | Claude (Cowork) – Docs team   | **Vertex AI setup outcome (owner, 2026-09-22)** recorded; the AI team is idle this sprint, so the Docs team made this change. Project `doorprints-ai`; [vertex-setup.md](vertex-setup.md) step 8: chat `gemini-3.5-flash` verified in `asia-south1`, `gemini-embedding-2` **not** offered in `asia-south1` (404) and verified on `global`; GitHub variables `GCP_PROJECT_ID=doorprints-ai`, `GCP_LOCATION=asia-south1`, `AI_VERTEX_EMBEDDING_LOCATION=global`. 2.1: new *Data residency (this project)* paragraph (chat stays in India, embedding text is processed on `global`) and the trial end date (**22 Dec 2026**; export by about 15 Dec, then AI Studio or a paid upgrade). 3.3 *Locations and models*: verified results replace the unverified note for these two models. Section 14: Vertex item (b) resolved for chat and embeddings (Flash-Lite still unchecked); merge gate 2 closed with the DevSecOps sign-off from the `ai-evals.yml` header (SHA-pinned `google-github-actions/auth` v3.0.0, `id-token: write` accepted with the residual risk, stricter WIF attribute condition open on the owner side). No code change. |
 | v0.18   | 2026-09-22 | Claude (Cowork) – Docs team   | Synced with commit `feb0294` (AI change set; the AI team is idle, so Docs made this change). **Ask citation rule** (5 sequence, 6, 8.2, 13): inline `[house:id]` markers are authoritative, `citedHouseIds` is only a fallback when the answer has no marker, unmarked listed ids are dropped, the refusal has no citations. **8.5**: first `provider=vertex` eval run 35753477789 (`gemini-3.5-flash` in `asia-south1`, `gemini-embedding-2` on `global`, commit `8f583af`) failed only on `citationPrecision` 0.78 (7/9) from `ask-01`; answered by golden set v0.5 (`ask-01` allowedCitations) and the rule above; **thresholds not lowered**; full output for failing cases in the scorecard. Status and 14: re-run on `feb0294`, credit check and step 9 still open. 8.3 header names golden set v0.5. |
 | v0.19   | 2026-09-22 | Claude (Cowork) – AI team     | 8: golden set reference corrected to v0.5 (was v0.4). 8.1: `EvalScorerTest` golden-set consistency treats an empty or missing id list as "no constraint" and skips it; the `feb0294` Backend run (35755840287) failed because `ask-01` has no `mustNotCite` and AssertJ `doesNotContainAnyElementsOf` throws on an empty list (test-only fix; golden set and thresholds unchanged). |
+| v0.20   | 2026-09-24 | Claude (Code), engineer       | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](../03-design.md) ADR-24): backend package `app.doorprints.server.ai` (was `com.househunt.ai`) and the code paths that name it; the MCP tool `askHouseHunt` is now **`askDoorprints`** (12: saved client permissions or prompts that name it are updated by hand); the compose volume is `doorprints-pgdata18`. No behaviour, prompt or eval change. |
 
-Status: implemented in `backend/` (package `com.househunt.ai`), **off by default**. Not yet compiled in this
+Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
 `AI_PROVIDER=vertex` (2.1, 3.3); the product owner's target setup is Vertex AI. The v0.15/v0.16 code is on `main`
 (commit `16cb3ef`). The owner finished the Google Cloud setup on 2026-09-22 (project `doorprints-ai`, chat in
@@ -220,7 +221,7 @@ Why the native starter is unsuitable here:
    starter, so point 4 no longer holds as a reason; points 1-3 still do, and on Vertex the embedding starter would
    also fail for batches (3.3). AI Studio embeddings stay on `GeminiEmbeddingModel`.
 
-**What we built** (`com.househunt.ai.embedding`):
+**What we built** (`app.doorprints.server.ai.embedding`):
 - `GeminiEmbeddingModel implements EmbeddingModel`: batches of at most 100 texts per call, `outputDimensionality` =
   `AI_EMBEDDING_DIMENSIONS` (768), optional `AI_EMBEDDING_TASK_TYPE` (only for `gemini-embedding-001`), L2
   normalisation (harmless for Embedding 2, needed for 001 at 768-d), size check against the configured dimensions,
@@ -309,7 +310,7 @@ for ADC) and `spring-ai-autoconfigure-model-google-genai`. Checked in tag `v2.0.
 | Errors | `ClientException` / `ServerException` extend `ApiException(code, status, message)`; `status` is the HTTP reason phrase, the google.rpc `status` is in the message | java-genai `errors/ApiException` |
 | Response needs | `modelVersion` is read with `Optional.get()`: a response without it would fail (canary test) | `GoogleGenAiChatModel#internalCall` |
 
-The app does not use the auto-configured client: `com.househunt.ai.vertex.VertexAiConfiguration` defines the
+The app does not use the auto-configured client: `app.doorprints.server.ai.vertex.VertexAiConfiguration` defines the
 `Client` bean (the starter's is `@ConditionalOnMissingBean`) with `vertexAI(true)`, explicit `project`/`location`, ADC
 credentials loaded once (`GoogleAccessTokenSource`), `AI_TIMEOUT` and a bounded retry policy (`AI_MAX_RETRIES` + 1
 attempts, 1 s initial backoff, +/-50% jitter, at most 10 s), and never an API key (the SDK ignores `GOOGLE_API_KEY`
@@ -411,7 +412,7 @@ flowchart LR
   Q --> PG
 ```
 
-Code map (`backend/src/main/java/com/househunt/ai/`):
+Code map (`backend/src/main/java/app/doorprints/server/ai/`):
 
 | Package | Classes |
 |---|---|
@@ -549,13 +550,13 @@ sequenceDiagram
   participant T as McpHouseTools
   CD->>B: stdio JSON-RPC
   B->>API: POST /mcp + X-API-Key (ApiKeyFilter, rate limit)
-  API->>T: tools/list → searchHouses, houseDetails, nearbyHouses, askHouseHunt
+  API->>T: tools/list → searchHouses, houseDetails, nearbyHouses, askDoorprints
   API->>T: tools/call searchHouses {status:"SHORTLISTED"}
   T-->>CD: JSON result
 ```
 
 Only one `ToolCallbackProvider` bean exists (`McpServerConfig`), so only these four read-only tools are exposed — the
-agent's route tools are per-request objects, not beans. `askHouseHunt` needs `APP_AI_ENABLED=true`; the other three
+agent's route tools are per-request objects, not beans. `askDoorprints` needs `APP_AI_ENABLED=true`; the other three
 work with AI off.
 
 ## 6. Prompts
@@ -620,7 +621,7 @@ count), only retrieved ids are kept, and the refusal sentence (curly apostrophes
   `AI_VECTOR_INIT_SCHEMA=true` once (PgVectorStore then also creates the `hstore` and `uuid-ossp` extensions) or run
   the V2 statements by hand. Supabase ships both PostGIS and pgvector.
 - **Database image**: `backend/db/Dockerfile` = `postgis/postgis:18-3.6` + `postgresql-18-pgvector` from PGDG apt;
-  docker-compose builds it (new volume `dbdata18`, mounted at `/var/lib/postgresql` as PostgreSQL 18 images expect).
+  docker-compose builds it (volume `doorprints-pgdata18`, `dbdata18` before 2026-09-24, mounted at `/var/lib/postgresql` as PostgreSQL 18 images expect).
 
 ## 8. Evaluation plan and harness
 
@@ -632,7 +633,7 @@ extraction, Q&A, refusal, prompt injection and planning, and the pass **threshol
 
 | Piece | Where | Runs |
 |---|---|---|
-| `GoldenSetEvalTest` (JUnit 5, `@Tag("llm-eval")`) | `backend/src/test/java/com/househunt/ai/eval/` | Only when a provider is configured: `AI_API_KEY` (AI Studio) or `AI_PROVIDER=vertex` + `GCP_PROJECT_ID` (`@EnabledIf("providerConfigured")`, v0.15); skipped in `backend.yml` |
+| `GoldenSetEvalTest` (JUnit 5, `@Tag("llm-eval")`) | `backend/src/test/java/app/doorprints/server/ai/eval/` | Only when a provider is configured: `AI_API_KEY` (AI Studio) or `AI_PROVIDER=vertex` + `GCP_PROJECT_ID` (`@EnabledIf("providerConfigured")`, v0.15); skipped in `backend.yml` |
 | `EvalScorer` + `GoldenSet` (pure scoring, report) | same package | Used by the eval |
 | `EvalScorerTest` (scoring rules + golden-set consistency; an empty or missing id list such as `mustNotCite` means no constraint and is skipped, since AssertJ `doesNotContainAnyElementsOf` throws on an empty list, which failed Backend run 35755840287 on `feb0294`) | same package | Every `mvn verify`, no model needed |
 | `.github/workflows/ai-evals.yml` | `workflow_dispatch` only | Input `provider` (default `aistudio` since v0.16, until the owner has finished vertex-setup.md steps 1-8 and 10; the input description says so. `vertex`: Workload Identity Federation with secrets `GCP_WIF_PROVIDER`, `GCP_SA_EMAIL` and variable `GCP_PROJECT_ID` (+ optional `GCP_LOCATION`); `aistudio`: secret `AI_API_KEY`); same PostGIS + pgvector image as `backend.yml` |
@@ -729,7 +730,7 @@ null-expected fields (missing contact, missing URL, missing bedrooms) to new ext
 threshold.
 
 Deterministic parts (sanitizer, prompt delimiting, filters, citations filtering, route optimisation, rate limiter,
-env switch, eval scoring) are covered by unit tests in `backend/src/test/java/com/househunt/ai/**` that need no LLM.
+env switch, eval scoring) are covered by unit tests in `backend/src/test/java/app/doorprints/server/ai/**` that need no LLM.
 
 ### 8.4 Known risks for the first real run
 
@@ -854,14 +855,14 @@ Also: `/mcp` sits behind the same API key (header or `Authorization: Bearer`) an
 provider in the embedding text on every index/reindex (DF-32), in the Ask context (DF-21) and in the planner/MCP
 `houseDetails` result; free-text notes could carry the name and number too.
 
-**Control: one sanitizer, `com.househunt.ai.ContactRedactor`, on every path that leaves for a model.**
+**Control: one sanitizer, `app.doorprints.server.ai.ContactRedactor`, on every path that leaves for a model.**
 
 | Provider-bound path | Where | What is sent now |
 |---|---|---|
 | Embedding text (DF-32) | `HouseDocuments.text()` / `metadata()` | No Contact line; label, checklist keys and notes redacted with `freeText()`, address, street and locality with `place()`; `label` metadata (`freeText()`) and `locality` metadata (`place()`) redacted |
 | Ask context (DF-21) and citations | `RagService.redacted()` on the retrieved chunks, with each house's current contact from `HouseRepository.findAllById` | `Contact:` lines dropped (chunks indexed before v0.7), name and phones redacted, citation labels redacted |
 | Agent tool results | `HouseSearchService.HouseSummary.of`, `HouseQueries.HouseDetails.of` | No contact fields (`HouseDetails.contactName` removed); label, checklist keys, listing URL and notes redacted with `freeText()`, address, street and locality with `place()`; the `searchHouses` text filter matches this redacted text, not the raw fields |
-| MCP tool results (Claude Desktop is a provider too) | `McpHouseTools` → same `HouseQueries` | as above; `askHouseHunt` returns the redacted citations; the MCP server instructions say contacts are withheld |
+| MCP tool results (Claude Desktop is a provider too) | `McpHouseTools` → same `HouseQueries` | as above; `askDoorprints` returns the redacted citations; the MCP server instructions say contacts are withheld |
 
 Rules (`ContactRedactor.Redactor`), all case-insensitive and on word boundaries (Indic scripts included):
 
@@ -903,7 +904,7 @@ sent at all.
 
 **What the apps see.** Labels that come back from the AI endpoints are the redacted ones: the planner's user-facing
 stop labels (from the redacted summary) and the **Ask citation labels** returned by `POST /api/ai/ask` (and by the
-MCP `askHouseHunt` tool) show `[contact]` where the label contained the name or a name part. Each citation and stop
+MCP `askDoorprints` tool) show `[contact]` where the label contained the name or a name part. Each citation and stop
 carries its `houseId`, so the web and Android apps can show the real label by looking the house up in their own
 local data (the normal house API is unchanged). Hand-off to the web and Android teams (their files): use the local
 label for `houseId` in Ask citation chips and plan stops when they want the real one.
@@ -935,7 +936,7 @@ agent and MCP result; search cannot confirm a guessed name or phone).
   `MCP_RATE_LIMIT_PER_MINUTE` for `/mcp` (an MCP session makes several protocol calls). 429 + `Retry-After`.
 - Provider errors (quota exhausted, 5xx, bad JSON) → `503` ProblemDetail with `retryable: true`. Since v0.15 a
   provider quota error (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex, detected by type and status code
-  in the cause chain by `com.househunt.ai.ProviderErrors`, never by message text) additionally carries
+  in the cause chain by `app.doorprints.server.ai.ProviderErrors`, never by message text) additionally carries
   `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`; the status stays 503 so the web and Android apps need no change.
   Since v0.16 a Vertex AI 401 / 403 / 404 adds a `setupHint` (3.3) naming the setting to change (`GCP_LOCATION`,
   `AI_VERTEX_EMBEDDING_LOCATION`, IAM, ADC); the eval harness does not retry such a 503 and lists the hint once.
@@ -981,7 +982,7 @@ supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_T
 
 ## 12. Connecting Claude Desktop / Cowork to the MCP server
 
-1. Start the API with `APP_MCP_ENABLED=true` (and `APP_AI_ENABLED=true` + `AI_API_KEY` if you want `askHouseHunt`).
+1. Start the API with `APP_MCP_ENABLED=true` (and `APP_AI_ENABLED=true` + `AI_API_KEY` if you want `askDoorprints`).
    Use HTTPS when it is not on localhost.
 2. Claude Desktop's remote connectors expect OAuth, and our server uses a static API key, so bridge with
    [`mcp-remote`](https://github.com/geelen/mcp-remote) [MR] (needs Node.js). In `claude_desktop_config.json`
@@ -1004,10 +1005,11 @@ supports `reasoning_effort` [G1]); on Vertex with `SPRING_AI_GOOGLE_GENAI_CHAT_T
    The server identifies itself to clients as `doorprints` (MCP `serverInfo.name`, set by
    `spring.ai.mcp.server.name` in `application.yml`); the endpoint path stays `/mcp`. The `"doorprints"` key above is
    only the local label Claude Desktop shows, so an existing `"house-hunt"` entry keeps working after the rename; if
-   you rename it, also rename the env variable. Tool names (`askHouseHunt` etc.) are unchanged so saved client
-   permissions and prompts keep working. `McpServerIdentityTest` guards the server name, the `/mcp` path and the
-   instructions text against a silent revert.
-3. Restart Claude Desktop; the tools `searchHouses`, `houseDetails`, `nearbyHouses`, `askHouseHunt` appear.
+   you rename it, also rename the env variable. The tool `askHouseHunt` is called `askDoorprints` since 2026-09-24
+   (CHANGELOG, [08](../08-operations-runbook.md) section 11): a saved client permission or prompt that names the old
+   tool is updated by hand; the other tool names did not change. `McpServerIdentityTest` guards the server name,
+   the `/mcp` path and the instructions text against a silent revert.
+3. Restart Claude Desktop; the tools `searchHouses`, `houseDetails`, `nearbyHouses`, `askDoorprints` appear.
    Try: "Which of my shortlisted houses in Indiranagar are under 30k? Show details of the best rated one."
 4. Local testing: `npx @modelcontextprotocol/inspector` → Streamable HTTP → `http://localhost:8080/mcp` with header
    `X-API-Key`.
@@ -1115,7 +1117,7 @@ No body. Response `{ "indexed": 42 }`. Admin/maintenance action (e.g. a button i
 
 ### 13.1 Client implementations (wave 2)
 
-| Feature | Web (`web/src/app/`) | Android (`android/app/src/main/java/com/househunt/app/`) |
+| Feature | Web (`web/src/app/`) | Android (`android/app/src/main/java/app/doorprints/`) |
 |---|---|---|
 | Status / hiding | `core/ai.service.ts` `AiService.enabled` (refreshed on start and after Connect/Disconnect); nav links Ask and Plan visits and the import panel render only when enabled | `Repository.refreshAiStatus()` → `aiEnabled` StateFlow; the Assistant tab and the "Paste listing" button appear only when enabled (offline counts as disabled) |
 | `extract-listing` | New-house form, "Import from listing text" (`pages/house-detail`): fills only fields the listing provided, appends amenities to notes, lists `warnings`, never saves | `HouseEditScreen` → `PasteListingDialog`, same merge rules (`mergeDraft`) |
