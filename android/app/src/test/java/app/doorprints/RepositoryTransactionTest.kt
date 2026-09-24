@@ -142,7 +142,8 @@ class RepositoryTransactionTest {
         repo.saveHouse(house("h0"))
         val before = ids(repo.localRows())
         // A real cancellation, not a thrown exception: the caller's job is cancelled once both house rows are written
-        // inside the transaction (progress 3), so the next suspending database call fails and Room rolls back.
+        // inside the transaction (progress 3). Room runs the block outside the caller's Job, so the block runs to its
+        // end; then withImmediateTransaction's ensureActive() throws before the commit and Room rolls back.
         lateinit var job: Job
         job = launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
             repo.applyImport(copyActions(), onProgress = { done, _ -> if (done == 3) job.cancel() }, photoBytes = photoBytes)

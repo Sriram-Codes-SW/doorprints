@@ -1784,9 +1784,9 @@ inside the transaction, so a cancelled caller rolls everything back again. (2) N
 (TC-U-66, 5 tests) on the app's own database: a copy stopped after both house rows leaves no row and no photo file;
 so does one whose caller's job is cancelled there; a finished copy commits every row; DAO writes inside
 `withImmediateTransaction` are visible inside, a nested transaction joins it, a throw rolls back all of them;
-`localRowsFlow` emits after a house, visit and photo write, a copy's commit and a delete. (3) The same four tests run on
+`localRowsFlow` emits after a house, visit and photo write, a copy's commit and a delete. (3) The first four tests run on
 `aa8f73a`, against the old `Repository` and `withTransaction` (a copy of the test with only those names changed, not
-committed): all four pass, so the behaviour they pin is the same before and after. (4) The import and undo tests
+committed): all four pass (the cancellation test came later; the probe above covers that case), so the behaviour they pin is the same before and after. (4) The import and undo tests
 (TC-U-52, `CopyUndoTest`, `ImportUndoTest`), `CanonicalSampleTest` and `BackupRoundTripTest` pass unchanged; the backup
 format did not change.
 

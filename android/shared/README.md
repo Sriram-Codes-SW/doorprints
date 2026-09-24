@@ -784,8 +784,8 @@ Sixteenth round (2026-09-22, UX review of 1.17):
   and it stays shown for the record's day, however old, until it is closed (*Choose a backup file* closes it and
   deletes the record once a file is picked; since 1.19 a cancelled picker leaves both; since 1.20 the record is never deleted by closing, only by an undo or its 24 h) — the bar's secondary place is **Undo this import** (`import_undo_copy`), with *Choose a backup
   file* under the body's heading. One tap, no confirmation, runs `AndroidRepository.undoCopyImport` in the application
-  scope: in one `withImmediateTransaction` each recorded house that is unchanged becomes a tombstone (`deleted`, stamped now,
-  `dirty`, as `deleteHouse` does, so sync removes it from the server and other devices); a house whose `updatedAt`
+  scope: in one `withImmediateTransaction` each recorded house that is unchanged becomes a tombstone (`deleted`,
+  stamped now, `dirty`, as `deleteHouse` does, so sync removes it from the server and other devices); a house whose `updatedAt`
   changed, one of whose visits was edited, or that has a visit or photo the import did not add is kept and counted;
   the import's unchanged visits go with their removed house (and its loose street visits), and the removed houses'
   photos lose their row and, after the commit, their file. The bar says "Removing the copies…", then "Removed *n*

@@ -290,7 +290,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   `HouseFormRules` are in `:ui` commonMain, with the checklist labels added to the Compose resources (same text) and
   `ModelLabelsTest` (TC-U-67); `SyncHealthTest`, `ExportGrantsTest` and `HouseFormRulesTest` run in commonTest
   (S4b-BL-28). No screen changed: the 64 reference screenshots are unchanged; the backup format is unchanged. Docs:
-  [03](docs/03-design.md) v0.30, [06](docs/06-test-plan.md) v0.44, [10](docs/10-sprint-log.md) v0.50,
+  [01](docs/01-requirements.md) v0.31, [03](docs/03-design.md) v0.30, [05](docs/05-ux-accessibility-i18n.md) v0.23,
+  [06](docs/06-test-plan.md) v0.44, [10](docs/10-sprint-log.md) v0.50,
   [14](docs/14-lead-backlog-and-handoff.md) v0.17, [docs/README.md](docs/README.md) v0.50, `android/shared/README.md`
   1.50, `android/ui/README.md` 1.9.
 - **Android: settings, the API key's interface and the URL check are common code in `:shared`**
