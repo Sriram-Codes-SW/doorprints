@@ -12,7 +12,7 @@ plugins {
 
 kotlin {
     android {
-        // Android resources (R class) of this module; the Kotlin package is com.househunt.app.ui (see above).
+        // The Android namespace only (:ui has no Android resources); the Kotlin package is com.househunt.app.ui.
         namespace = "com.househunt.ui"
         compileSdk = 37
         minSdk = 26

@@ -54,7 +54,7 @@ uses are `public` instead of `internal`. Package names keep the old product name
 |---|---|---|
 | commonMain | `Theme.kt` | `HouseHuntTheme`, colours, type; the language lookup is `expect fun uiLanguage()` |
 | commonMain | `Rows.kt`, `ServerStatus.kt` | list rows; the server status line and its rules |
-| commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), now with `kotlin.math.nextDown` (same value as `Math.nextDown`) |
+| commonMain | `MapRules.kt`, `IndiaViewRules.kt` | the Map's layout rules; India's boundary rules as data (ADR-22), `WORLD_MAX_ZOOM` computed from the float's bits (common code; the same value as `Math.nextDown`) |
 | commonMain | `Buttons.kt` | `ANIMATION_MS`, `ButtonLabel`, `BUTTON_LABEL_MAX_LINES` (from `ActionBar.kt`) |
 | commonMain | `ResultTone.kt`, `LocationFix.kt` | from `ResultCard.kt` and `LocationPermission.kt` |
 | androidMain | `UiLanguage.android.kt` | `LocalConfiguration`'s locale, as before |
