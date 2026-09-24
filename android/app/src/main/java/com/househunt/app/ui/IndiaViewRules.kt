@@ -14,13 +14,18 @@ package com.househunt.app.ui
  *  1. hide [DISPUTED_LAYER] (every disputed line: LoC, LAC, claim lines);
  *  2. [COUNTRY_LAYER] from zoom [DETAILED_FROM_ZOOM] only ([countryMinZoom]), only the lines that carry an adm0 side
  *     (so a zoom 0-4 tile's Natural Earth line is never drawn, even when MapLibre shows that tile in place of a
- *     missing zoom 5+ one) and never the Pakistan-China line ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
+ *     missing zoom 5+ one) and never the Pakistan-China line or India's line with China, which India's outline draws
+ *     instead ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
  *     drawn in place of a loading or missing one;
  *  3. the bundled outline ([SOURCE_URI], built from Natural Earth by web/scripts/geo/build_in_boundaries.py): the
  *     'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines there are Natural Earth's ISO view and
- *     cannot be filtered) and India's 'claim' outline at every zoom, directly above [COUNTRY_LAYER] and drawn like it;
+ *     cannot be filtered), which also hold the stretches of India's outline along which the tiles draw a country line
+ *     of their own from zoom 5 (so the two never show side by side), and India's 'claim' outline, the rest, at every
+ *     zoom, directly above [COUNTRY_LAYER] and drawn like it; and India's 'state' line that the tiles leave undrawn
+ *     (Assam-Arunachal Pradesh, marked disputed and claimed by China) from zoom 5, directly above [STATE_LINE_LAYER]
+ *     and drawn like it ([STATE_OVERLAY_LAYER], [statePlacement]);
  *  4. no state label for the areas above ([STATE_LABEL_EXTRA_FILTER]);
  *  5. a missing layer is skipped with a warning, never a crash, and the outline is still added; a layer whose own
  *     filter is in the deprecated syntax gets the same rules in that syntax ([extraFilterFor]), except the tile-zoom
@@ -35,6 +40,7 @@ object IndiaViewRules {
 
     const val WORLD_LAYER = "in-boundary-world"
     const val CLAIM_LAYER = "in-boundary-claim"
+    const val STATE_OVERLAY_LAYER = "in-boundary-state"
 
     /** Liberty's solid country lines (admin level 2, not maritime, not disputed, not a claim). */
     const val COUNTRY_LAYER = "boundary_2"
@@ -101,13 +107,26 @@ object IndiaViewRules {
     val HIDDEN_STATE_LOCAL_NAMES = listOf("آزاد کشمیر", "گلگت بلتستان")
 
     /**
-     * ANDed with [COUNTRY_LAYER]'s own filter: a line with at least one adm0 side ([ADM0_PRESENT]), and not a line with
-     * Pakistan or China on both sides. `match` rather than `in`: a missing adm0_l / adm0_r (India's side is often
-     * null) falls to `match`'s `false` branch, so the result never depends on how a renderer's `in` treats null.
+     * India's line with China as the tiles carry it: China on one side and India, or no country (the tiles often leave
+     * India's side empty), on the other. The tiles cut it into short undisputed pieces (drawn) and disputed ones
+     * (hidden), so it would show as stray pieces beside India's outline; the outline draws all of it instead. A
+     * missing side reads as India through `coalesce`, and `==` with a missing side is false on both renderers.
+     */
+    private val INDIA_CHINA_LINE: String =
+        "[\"any\", [\"all\", [\"==\", ${get("adm0_l")}, ${quote("CHN")}], " +
+            "[\"==\", [\"coalesce\", ${get("adm0_r")}, ${quote("IND")}], ${quote("IND")}]], " +
+            "[\"all\", [\"==\", ${get("adm0_r")}, ${quote("CHN")}], " +
+            "[\"==\", [\"coalesce\", ${get("adm0_l")}, ${quote("IND")}], ${quote("IND")}]]]"
+
+    /**
+     * ANDed with [COUNTRY_LAYER]'s own filter: a line with at least one adm0 side ([ADM0_PRESENT]), not a line with
+     * Pakistan or China on both sides, and not India's line with China ([INDIA_CHINA_LINE]). `match` rather than `in`:
+     * a missing adm0_l / adm0_r (India's side is often null) falls to `match`'s `false` branch, so the result never
+     * depends on how a renderer's `in` treats null.
      */
     val COUNTRY_LINE_EXTRA_FILTER: String =
         "[\"all\", $ADM0_PRESENT, [\"!\", [\"all\", ${matchAny(get("adm0_l"), HIDDEN_LINE_COUNTRIES)}, " +
-            "${matchAny(get("adm0_r"), HIDDEN_LINE_COUNTRIES)}]]]"
+            "${matchAny(get("adm0_r"), HIDDEN_LINE_COUNTRIES)}]], [\"!\", $INDIA_CHINA_LINE]]"
 
     /**
      * ANDed with the filter of every layer [tileZoomGuardedLayers] names: only the features of a tile of zoom
@@ -161,13 +180,26 @@ object IndiaViewRules {
      */
     val COUNTRY_LINE_EXTRA_FILTER_LEGACY: String =
         "[\"all\", $ADM0_PRESENT, [\"none\", [\"all\", ${legacyIn("adm0_l", HIDDEN_LINE_COUNTRIES)}, " +
-            "${legacyIn("adm0_r", HIDDEN_LINE_COUNTRIES)}]]]"
+            "${legacyIn("adm0_r", HIDDEN_LINE_COUNTRIES)}], ${legacyIndiaChina("adm0_l", "adm0_r")}, " +
+            "${legacyIndiaChina("adm0_r", "adm0_l")}]]"
     val STATE_LABEL_EXTRA_FILTER_LEGACY: String =
         "[\"all\", ${legacyNotIn("name:en", HIDDEN_STATE_NAMES)}, " +
             "${legacyNotIn("name", HIDDEN_STATE_NAMES + HIDDEN_STATE_LOCAL_NAMES)}]"
 
     val WORLD_FILTER: String = "[\"==\", ${get("kind")}, ${quote("world")}]"
     val CLAIM_FILTER: String = "[\"==\", ${get("kind")}, ${quote("claim")}]"
+    val STATE_FILTER: String = "[\"==\", ${get("kind")}, ${quote("state")}]"
+
+    /** [STATE_OVERLAY_LAYER]'s minzoom: from where [STATE_LINE_LAYER] draws the other state lines. */
+    const val STATE_MIN_ZOOM = DETAILED_FROM_ZOOM
+
+    /**
+     * Liberty's `boundary_3` paint (its colour and dashes, its width at zoom 7), used only when that layer is missing
+     * or a property cannot be read; the web's STATE_FALLBACK_LINE_PAINT.
+     */
+    const val STATE_FALLBACK_LINE_COLOR = "hsl(0,0%,70%)"
+    const val STATE_FALLBACK_LINE_WIDTH = 1f
+    val STATE_FALLBACK_LINE_DASHARRAY: Array<Float> get() = arrayOf(1f, 1f)
 
     /** Liberty's `boundary_2` paint, used only when that layer is missing and there is nothing to copy. */
     const val FALLBACK_LINE_COLOR = "hsl(248,1%,41%)"
@@ -203,6 +235,16 @@ object IndiaViewRules {
         layers.firstOrNull { it.sourceLayer == BOUNDARY_SOURCE_LAYER }?.let { return Placement.Above(it.id) }
         layers.firstOrNull { it.isSymbol }?.let { return Placement.Below(it.id) }
         return Placement.Top
+    }
+
+    /**
+     * Where [STATE_OVERLAY_LAYER] goes: directly above [STATE_LINE_LAYER]; without it, directly below [WORLD_LAYER]
+     * (the web puts it where the outline starts); without that either, where [placement] puts the outline.
+     */
+    fun statePlacement(layers: List<LayerInfo>): Placement = when {
+        layers.any { it.id == STATE_LINE_LAYER } -> Placement.Above(STATE_LINE_LAYER)
+        layers.any { it.id == WORLD_LAYER } -> Placement.Below(WORLD_LAYER)
+        else -> placement(layers)
     }
 
     /**
@@ -250,6 +292,10 @@ object IndiaViewRules {
 
     private fun legacyIn(key: String, values: List<String>) =
         "[\"in\", ${quote(key)}, ${values.joinToString(", ") { quote(it) }}]"
+
+    private fun legacyIndiaChina(china: String, other: String) =
+        "[\"all\", [\"==\", ${quote(china)}, ${quote("CHN")}], " +
+            "[\"any\", [\"!has\", ${quote(other)}], [\"==\", ${quote(other)}, ${quote("IND")}]]]"
 
     private fun legacyNotIn(key: String, values: List<String>) =
         "[\"!in\", ${quote(key)}, ${values.joinToString(", ") { quote(it) }}]"
