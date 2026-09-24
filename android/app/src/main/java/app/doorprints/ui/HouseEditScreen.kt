@@ -95,6 +95,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -272,6 +273,7 @@ fun HouseEditScreen(
     onSavedShown: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val platform = LocalPlatformServices.current
     val repo = repository()
     val app = context.applicationContext as DoorprintsApp
     val scope = rememberCoroutineScope()
@@ -281,7 +283,7 @@ fun HouseEditScreen(
     val defaultLabel = stringResource(Res.string.house_default_label)
     val streetLabel = stringResource(Res.string.house_default_label_street)
     val unnamed = stringResource(Res.string.house_unnamed)
-    val touchExploration = { isTouchExploring(context) }
+    val touchExploration = { platform.isScreenReaderOn() }
 
     // What is on screen, and what it was when loaded (or the new-house default); dirty when they differ.
     var draft by rememberSaveable(stateSaver = HouseDraftSaver) { mutableStateOf<HouseEntity?>(null) }
@@ -491,7 +493,7 @@ fun HouseEditScreen(
             // Cancelled (a rotation, or the screen closing) throws here and leaves the delete pending: the new
             // composition shows the snackbar again, or the view model carries it out when the entry is closed.
             val result = snackbar.showSnackbar(
-                message = context.getString(Res.string.house_photo_deleted, p.number),
+                message = getString(Res.string.house_photo_deleted, p.number),
                 actionLabel = undoLabel,
                 duration = SnackbarDuration.Long,
             )
@@ -807,7 +809,7 @@ fun HouseEditScreen(
                 }
                 // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
                 // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
-                val preview = Formats.price(context, d.price, d.priceType).orEmpty()
+                val preview = priceText(d.price, d.priceType).orEmpty()
                 PairOrStack(
                     first = { m ->
                         OutlinedTextField(
@@ -1279,7 +1281,8 @@ fun HouseEditScreen(
                         (isNew && current.label == baseline?.label)
                     val merged = mergeListing(current, draftFromAi, labelIsPlaceholder = placeholder)
                     draft = merged.house
-                    pasteMessage = pasteResultText(context, merged, warnings)
+                    // Compose resources are read with a suspend call outside composition (cached after the first read).
+                    scope.launch { pasteMessage = pasteResultText(context, merged, warnings) }
                 }
                 showPaste = false
             },
@@ -1343,16 +1346,16 @@ private val ListingField.nameRes: StringResource
     }
 
 /** "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. */
-private fun pasteResultText(context: Context, merge: ListingMerge, warnings: List<String>): String {
-    fun names(fields: List<ListingField>) = ImportWorker.joined(context, fields.map { context.getString(it.nameRes) })
+private suspend fun pasteResultText(context: Context, merge: ListingMerge, warnings: List<String>): String {
+    suspend fun names(fields: List<ListingField>) = ImportWorker.joined(context, fields.map { getString(it.nameRes) })
     val parts = mutableListOf<String>()
     parts += if (merge.filled.isEmpty()) {
-        context.getString(Res.string.house_paste_nothing)
+        getString(Res.string.house_paste_nothing)
     } else {
-        context.getString(Res.string.house_paste_filled, names(merge.filled))
+        getString(Res.string.house_paste_filled, names(merge.filled))
     }
-    if (merge.kept.isNotEmpty()) parts += context.getString(Res.string.house_paste_kept, names(merge.kept))
-    if (warnings.isNotEmpty()) parts += context.getString(Res.string.house_paste_check, warnings.joinToString("; "))
+    if (merge.kept.isNotEmpty()) parts += getString(Res.string.house_paste_kept, names(merge.kept))
+    if (warnings.isNotEmpty()) parts += getString(Res.string.house_paste_check, warnings.joinToString("; "))
     return parts.joinToString(" ")
 }
 

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.DoorprintsRoot
+import app.doorprints.ui.ProvidePlatformServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 
@@ -39,7 +40,10 @@ class MainActivity : ComponentActivity() {
         // pushed the house (or one more new-house form) on top of it on every recreation.
         if (savedInstanceState == null) handle(intent)
         setContent {
-            DoorprintsRoot(deepLinks = deepLinks, onDeepLinkHandled = { deepLinks.value = null })
+            // The platform seam of the common UI (ADR-23 CMP-3): screen-reader state, and later sharing and pickers.
+            ProvidePlatformServices {
+                DoorprintsRoot(deepLinks = deepLinks, onDeepLinkHandled = { deepLinks.value = null })
+            }
         }
     }
 

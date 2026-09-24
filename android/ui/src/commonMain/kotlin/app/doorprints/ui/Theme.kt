@@ -188,11 +188,12 @@ val IndicTypography: Typography = BaseTypography.copy(
 private val INDIC_LANGUAGES = setOf("hi", "ta", "te")
 
 /**
- * The interface language's ISO 639 code ("en", "hi", "ta", "te"), read where it changes the UI's composition (Android:
- * the configuration's locale, which is the per-app language on every supported API level).
+ * The interface language's ISO 639 code ("en", "hi", "ta", "te"), read where it changes the UI's composition: the
+ * language the app's strings resolved to ([appLanguage]; S4b-BL-18), read again when the configuration changes
+ * (Android). Public since CMP-3: `:app`'s Compare table formats with it.
  */
 @Composable
-internal expect fun uiLanguage(): String
+expect fun uiLanguage(): String
 
 val LocalDoorprintsColors = staticCompositionLocalOf { LightExtra }
 

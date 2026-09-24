@@ -76,6 +76,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -324,7 +325,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
         // visibleSince); otherwise the result card stays and offers *Share this file*.
         if (ExportWorker.finishedAtOf(current.outputData) < visibleSince[0] - SHARE_GRACE_MS) return@LaunchedEffect
         val sharedFormat = ExportWorker.formatOf(current.outputData) ?: return@LaunchedEffect
-        message = shareTarget(context, share, sharedFormat)
+        message = if (shareTarget(context, share, sharedFormat)) null else getString(Res.string.export_share_failed)
     }
 
     /** The user closed the result of [id], or moved on from it; it is not shown again, now or on a later visit. */
@@ -795,6 +796,9 @@ private fun CountChips(c: ExportCounts) {
 private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val output = info.outputData
+    // Read in composition, for the click handlers below to show when no app can take the file.
+    val openFailed = stringResource(Res.string.export_open_failed)
+    val shareFailed = stringResource(Res.string.export_share_failed)
     when (info.state) {
         WorkInfo.State.SUCCEEDED -> {
             val target = output.getString(ExportRequest.KEY_WRITTEN)
@@ -814,13 +818,13 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
                     ResultActionsRow {
                         if (!shareCopy) {
                             TextButton(
-                                onClick = { onMessage(openTarget(context, target, format)) },
+                                onClick = { onMessage(if (openTarget(context, target, format)) null else openFailed) },
                                 modifier = Modifier.heightIn(min = 48.dp),
                             ) { ButtonLabel(stringResource(Res.string.export_open)) }
                         }
                         // Not plain "Share": the bar's Share makes a *new* copy; this one shares the file just made.
                         TextButton(
-                            onClick = { onMessage(shareTarget(context, target, format)) },
+                            onClick = { onMessage(if (shareTarget(context, target, format)) null else shareFailed) },
                             modifier = Modifier.heightIn(min = 48.dp),
                         ) { ButtonLabel(stringResource(Res.string.export_share_file)) }
                     }
@@ -847,30 +851,30 @@ private fun RunResult(info: WorkInfo, onMessage: (String?) -> Unit, onDismiss: (
 /**
  * The share sheet for a finished copy: the `content://` document the user saved, or the cache file behind the
  * app's `FileProvider` (`file_paths.xml`), so the receiving app gets a one-off read grant and no storage
- * permission is involved. Returns a message to show when nothing can take it, else null.
+ * permission is involved. False when nothing can take it (the caller shows `export_share_failed`).
  */
-private fun shareTarget(context: Context, target: String, format: ExportFormat): String? {
-    val uri = ResultActions.readableUri(context, target) ?: return context.getString(Res.string.export_share_failed)
+private fun shareTarget(context: Context, target: String, format: ExportFormat): Boolean {
+    val uri = ResultActions.readableUri(context, target) ?: return false
     return try {
         context.startActivity(ResultActions.share(context, uri, format))
-        null
+        true
     } catch (_: ActivityNotFoundException) {
-        context.getString(Res.string.export_share_failed)
+        false
     } catch (_: SecurityException) {
-        context.getString(Res.string.export_share_failed)
+        false
     }
 }
 
-/** Opens a saved copy in the app that handles its format; a message when there is none. */
-private fun openTarget(context: Context, target: String, format: ExportFormat): String? {
-    val uri = ResultActions.readableUri(context, target) ?: return context.getString(Res.string.export_open_failed)
+/** Opens a saved copy in the app that handles its format; false when there is none (`export_open_failed`). */
+private fun openTarget(context: Context, target: String, format: ExportFormat): Boolean {
+    val uri = ResultActions.readableUri(context, target) ?: return false
     return try {
         context.startActivity(ResultActions.view(uri, format))
-        null
+        true
     } catch (_: ActivityNotFoundException) {
-        context.getString(Res.string.export_open_failed)
+        false
     } catch (_: SecurityException) {
-        context.getString(Res.string.export_open_failed)
+        false
     }
 }
 

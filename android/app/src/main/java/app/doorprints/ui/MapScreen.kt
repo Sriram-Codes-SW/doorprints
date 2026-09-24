@@ -280,6 +280,7 @@ fun MapScreen(
     onDeletedShown: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val platform = LocalPlatformServices.current
     val repo = repository()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -294,7 +295,7 @@ fun MapScreen(
     LaunchedEffect(showAddTip) {
         if (showAddTip) {
             onAddTipShown()
-            val tip = if (isTouchExploring(context) || !hasLocationPermission(context)) addTipA11y else addTip
+            val tip = if (platform.isScreenReaderOn() || !hasLocationPermission(context)) addTipA11y else addTip
             // In the screen's scope, not this effect's: clearing the flag restarts this effect, which must not
             // cancel the snackbar it has just shown.
             scope.launch { snackbar.showSnackbar(tip, withDismissAction = true, duration = SnackbarDuration.Long) }
@@ -304,7 +305,7 @@ fun MapScreen(
     LaunchedEffect(deletedHouse) {
         val id = deletedHouse ?: return@LaunchedEffect
         onDeletedShown()
-        scope.launch { offerDeletedHouseUndo(context, repo, snackbar, id) }
+        scope.launch { offerDeletedHouseUndo(repo, snackbar, id) }
     }
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
     val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
@@ -355,7 +356,7 @@ fun MapScreen(
         noteView.bringIntoView()
         // Only when nothing new appeared (Android will not ask, so the note was already there and already read):
         // with TalkBack on, focus moves to the note, so the tap is answered by its reason and *Open settings*.
-        if (focusNoteOnReveal && isTouchExploring(context)) runCatching { noteFocus.requestFocus() }
+        if (focusNoteOnReveal && platform.isScreenReaderOn()) runCatching { noteFocus.requestFocus() }
     }
     // Without TalkBack, a tap that starts nothing is answered next to the thumb (round 6): a "reject" haptic and a
     // snackbar of one short sentence with the note's next step, *Open settings* (round 7: the note carries the reason;
@@ -415,7 +416,7 @@ fun MapScreen(
             }
             LocationStart.SHOW_NOTE -> {
                 revealLocationNote(focus = true)
-                if (!isTouchExploring(context)) answerRefusedTap()
+                if (!platform.isScreenReaderOn()) answerRefusedTap()
             }
         }
         return true
@@ -471,7 +472,7 @@ fun MapScreen(
                 then(here)
             } else {
                 // Long-press is no way out for a TalkBack user (A11Y-B02): say what the button needs instead.
-                val tip = if (isTouchExploring(context)) needsLocation else longPressTip
+                val tip = if (platform.isScreenReaderOn()) needsLocation else longPressTip
                 snackbar.showSnackbar("$waitingGps $tip", withDismissAction = true, duration = SnackbarDuration.Long)
             }
         }
@@ -601,7 +602,7 @@ fun MapScreen(
     val mapUsable = !mapFailed && style != null
     // With TalkBack on, the location note can take focus (see "A refusal is said once"); otherwise it is no tab stop.
     val noteModifier = Modifier.bringIntoViewRequester(noteView).focusRequester(noteFocus)
-        .then(if (isTouchExploring(context)) Modifier.focusable() else Modifier)
+        .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // A short map (landscape, split-screen, a half-open foldable) lays the controls out in one row (MapRules).
         val controlsInRow = mapControlsInRow(maxHeight.value)

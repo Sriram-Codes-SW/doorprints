@@ -1,7 +1,5 @@
 package app.doorprints.ui
 
-import android.content.Context
-import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -20,7 +18,7 @@ import androidx.compose.ui.unit.dp
  * (interrupting for [assertive]).
  */
 @Composable
-internal fun LiveMessage(
+fun LiveMessage(
     modifier: Modifier = Modifier,
     assertive: Boolean = false,
     content: @Composable () -> Unit,
@@ -31,7 +29,3 @@ internal fun LiveMessage(
         },
     ) { content() }
 }
-
-/** True while TalkBack (or another touch-exploration service) is on. */
-internal fun isTouchExploring(context: Context): Boolean =
-    context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
