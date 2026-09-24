@@ -2,13 +2,15 @@
 # - emulator: boots an Android emulator on a GitHub Linux runner (KVM, free for public repositories), installs the
 #   debug APK and runs the instrumented smoke tests (app/src/androidTest, docs/06 TC-I-35). Screenshots of each step
 #   and the test report are the artifact android-emulator-results.
-# - firebase-test-lab: the same tests on a Firebase Test Lab device, within the free Spark quota. Only for a push to
-#   main or a manual run on main, and only when the owner has set it up (docs/ops/firebase-test-lab-setup.md): the
-#   variables FIREBASE_PROJECT_ID and FTL_RESULTS_BUCKET (a Cloud Storage bucket the owner creates for the results)
-#   and the secrets FTL_WIF_PROVIDER (a Workload Identity provider of its own, whose
-#   condition names this workflow on main; the Hosting deploy's provider accepts only web.yml) and FTL_SA_EMAIL (a
-#   service account allowed to run Test Lab). Keyless: no JSON key. Test Lab keeps its results in the Firebase
-#   console; the screenshots are only kept by the emulator job (the test storage service is not installed there).
+# - firebase-test-lab: the same tests on a Firebase Test Lab device. The device runs fit the Spark quota, but the
+#   results bucket needs a billing account (docs/07 §7.2 *Cost*), so this job stays off unless the owner decides
+#   otherwise. Only for a push to main or a manual run on main, and only when the owner has set it up
+#   (docs/ops/firebase-test-lab-setup.md): the variables FIREBASE_PROJECT_ID and FTL_RESULTS_BUCKET (a Cloud Storage
+#   bucket the owner creates for the results) and the secrets FTL_WIF_PROVIDER (a Workload Identity provider of its
+#   own, whose condition names this workflow on main; the Hosting deploy's provider accepts only web.yml) and
+#   FTL_SA_EMAIL (a service account allowed to run Test Lab). Keyless: no JSON key. The Firebase console links the
+#   run, raw results are in the bucket; the screenshots are only kept by the emulator job (the test storage service
+#   is not installed there).
 # Same triggers as android.yml. Paths: android/** only; the JVM tests that read docs/schemas and web/public/geo run
 # in android.yml. The two path lists below are identical and must stay that way.
 name: Android emulator

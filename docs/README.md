@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.43 |
+| Version | 0.44 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -55,6 +55,7 @@
 | 0.41 | 2026-09-24 | Claude (Code), Docs team | Round 4 of PR #18: 07 v0.34 (§7.2: an owner-created Test Lab results bucket and the variable `FTL_RESULTS_BUCKET`; the cost check finds that a bucket needs a billing account, so the step waits for an owner decision), 14 v0.9, ops/firebase-test-lab-setup.md 0.4. |
 | 0.42 | 2026-09-24 | Claude (Code), Docs team | PR #18 round 5: 06 v0.36 (TC-I-35 passed on the emulator, CI, commit `bc57361`; TC-M-26 escapes every regex metacharacter, CodeQL fix), 10 v0.42 (§13.3: the result, Test Lab off by default at zero cost, current doc versions), 14 v0.10. |
 | 0.43 | 2026-09-24 | Claude (Code), Docs team | PR #18 round 6 (06 v0.37, 10 v0.43, 14 v0.11): a second real bug found by the pull-request emulator run on `bc57361` (the Map's camera moved off the main thread after `currentLocation()`; fixed in `MapScreen.kt` with `withContext(Dispatchers.Main.immediate)`); the result now reads "passed on the emulator; one of two runs on `bc57361` found a threading bug, fixed in the next commit; the re-run is pending". |
+| 0.44 | 2026-09-24 | Claude (Code), Docs team | PR #18 round 7: 06 v0.38 (Test Lab off by default at zero cost in §1, §2, §10 and TC-I-35; the agreed emulator wording), 07 v0.35 (bucket in `us-central1`; why the bucket grant is kept), 10 v0.44 (CMP-0-BL-7), 14 v0.12, ops/firebase-test-lab-setup.md 0.5. |
 
 ---
 

@@ -143,6 +143,7 @@ fun housesGeoJson(houses: List<HouseEntity>): String {
  * Returns on the main thread: Play services completes its tasks on a Binder thread, and callers move the MapLibre
  * camera next, which throws off the main thread (found by the emulator smoke test, docs/06 TC-I-35, under the test's
  * coroutine interceptor, which does not switch back the way the app's main dispatcher does).
+ * Callers may touch main-thread-only APIs (MapLibre, snapshot state) right after this returns.
  */
 suspend fun currentLocation(context: Context): Pair<Double, Double>? =
     withContext(Dispatchers.Main.immediate) { lookUpLocation(context) }

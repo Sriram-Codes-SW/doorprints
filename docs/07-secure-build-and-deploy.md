@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.34 |
+| Version | 0.35 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -46,6 +46,7 @@
 | 0.32 | 2026-09-24 | Claude (Code), Docs team | **Round 2 of the test-harness pull request.** **§7.2 rewritten**: Firebase Test Lab uses a **Workload Identity provider of its own** (`github-test-lab`, in the pool `github` or a new pool; condition: `android-emulator.yml` on `main`, push or manual) and the new secret **`FTL_WIF_PROVIDER`**; the Hosting provider `github-web-deploy` is no longer widened (code review: "Don't widen the Hosting provider"); `ftl-runner` is granted only to that pool's principal set for this repository; the observation that `firebase-hosting-deploy` trusts the whole repository is kept as an optional hardening note. §1: `ftl-check` runs only on `refs/heads/main`; the `ftl_device` input is validated; the emulator job hides error dialogs; the emulator runner's pin is `a421e438…` (v2.38.0); the flowchart and the *Branch runs* row follow. §4: new row for `FTL_WIF_PROVIDER` and `FTL_SA_EMAIL`. |
 | 0.33 | 2026-09-24 | Claude (Code), Docs team | Round 3 review of PR #18. §1: `emulator` is not main-only (it runs on every triggering push or PR; `ftl-check` runs only on `refs/heads/main`, `firebase-test-lab` only on its output); `android-emulator.yml` is path-filtered on `android/**` and the workflow itself only, unlike `android.yml` (intro, flowchart, workflow row; row 0.31 corrected). §7.2: a **new pool** `github-test-lab` is required (sharing the pool `github` would let the workflow act as the Hosting deploy account); the role pair is sourced to Firebase's IAM permissions page; `roles/storage.legacyBucketReader` on the bucket if the first run fails on `storage.buckets.get`; `ftl-runner` also reads Firebase Analytics (none in this project); Test Lab also runs on pushes to `main` that change the workflow file; the *New?* column says where each value comes from. |
 | 0.34 | 2026-09-24 | Claude (Code), Docs team | Round 4 of PR #18: Test Lab writes to an **owner-created results bucket** (`--results-bucket`, new repository variable **`FTL_RESULTS_BUCKET`**, required by `ftl-check`), so Test Lab Admin plus Analytics Viewer is exactly Firebase's documented setup (the Editor caveat is gone). §7.2 step 3: the bucket (uniform access, 30-day delete rule), Storage Object Admin on it only, Legacy Bucket Reader if needed; **cost check: a bucket needs a billing account** (Cloud Storage for Firebase no longer supports Spark; Always Free needs billing and is US-only), so the step conflicts with the zero-cost rule and needs an owner decision. §1 rows, the flowchart and §4 name the variable. |
+| 0.35 | 2026-09-24 | Claude (Code), Docs team | PR #18 round 7: §7.2 step 3 puts the bucket in `us-central1` (the only way to stay inside Always Free, option (b)) and says why the bucket grant is kept; Analytics Viewer is named as Firebase's documented pair; line wraps. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -845,8 +846,9 @@ points here.
 
 **Status (2026-09-24): not set up, and step 3 conflicts with the zero-cost rule** (see *Cost* below). Until all four
 values below exist, the job `ftl-check` posts the notice "Skipped: FIREBASE_PROJECT_ID and FTL_RESULTS_BUCKET
-(variables), FTL_WIF_PROVIDER and FTL_SA_EMAIL (secrets) are not all set" and the Test Lab job is skipped. `ftl-check` runs only on `refs/heads/main` (a push or a manual run); a run from any other branch
-skips both Test Lab jobs. The emulator job does not depend on any of this.
+(variables), FTL_WIF_PROVIDER and FTL_SA_EMAIL (secrets) are not all set" and the Test Lab job is skipped.
+`ftl-check` runs only on `refs/heads/main` (a push or a manual run); a run from any other branch skips both Test Lab
+jobs. The emulator job does not depend on any of this.
 
 **Design: a provider of its own.** Test Lab uses the Firebase project `doorprints` (Spark plan, no billing account), but
 **not** the Hosting deploy's Workload Identity provider: `github-web-deploy` keeps accepting only `web.yml` on `main`
@@ -879,7 +881,7 @@ SERVICE ACCOUNT**. Name `ftl-runner`, description `GitHub Actions: Firebase Test
 tests`. At **Grant this service account access to project**, add exactly two roles:
 
 - **Firebase Test Lab Admin** (`roles/cloudtestservice.testAdmin`): start test runs and read their state;
-- **Firebase Analytics Viewer** (`roles/firebase.analyticsViewer`): read the results in Tool Results.
+- **Firebase Analytics Viewer** (`roles/firebase.analyticsViewer`) (Firebase's documented pair).
 
 With the owner's own results bucket (step 3), this pair is **exactly the setup Firebase documents** for tests started
 from the gcloud CLI (Firebase, [*IAM permissions*, section "Firebase Test Lab
@@ -893,13 +895,16 @@ Add no other project role. The email is `ftl-runner@doorprints.iam.gserviceaccou
 console is expected to ask for billing here, and then the stop rule applies.** If it does not:
 
 1. Menu > **Cloud Storage** > **Buckets** > **+ CREATE**. **Name**: `doorprints-test-lab-results` (bucket names are
-   global; add a suffix if it is taken). **Location type**: *Region*, the same region as the project's resources.
-   **Storage class**: *Standard*. **Access control**: *Uniform* (keep *Enforce public access prevention* on).
+   global; add a suffix if it is taken). **Location type**: *Region*, **`us-central1`**: the only way to stay inside
+   Google Cloud's Always Free storage (option (b) under *Cost*), not the project's own region. **Storage class**:
+   *Standard*. **Access control**: *Uniform* (keep *Enforce public access prevention* on).
    **Protection**: no versioning, no retention policy. Create.
 2. Bucket > **Lifecycle** > **ADD A RULE** > *Delete object*, condition *Age* **30** days. Results older than a month
    are removed, which keeps the bucket small.
 3. Bucket > **Permissions** > **GRANT ACCESS**. **New principals**: the `ftl-runner` email. **Role**: **Storage
-   Object Admin** (`roles/storage.objectAdmin`). Save. Grant nothing on the project.
+   Object Admin** (`roles/storage.objectAdmin`). Save. Grant nothing on the project. This grant is kept even though
+   the Test Lab roles already reach the project's buckets, so the job's access does not depend on that project-wide
+   reach.
 4. Only if the first Test Lab run fails on `storage.buckets.get`: also grant **Storage Legacy Bucket Reader**
    (`roles/storage.legacyBucketReader`) on the same bucket. For any other storage error, send us the red line.
 5. The bucket's name is the value of the variable `FTL_RESULTS_BUCKET` (step 5).
@@ -972,8 +977,8 @@ Leave `FIREBASE_WIF_PROVIDER`, `FIREBASE_SA_EMAIL` and the variables unchanged: 
 
 **Step 6. First run.** **Actions** > **Android emulator** > **Run workflow**, branch **`main`** (the `ftl_device` input
 can stay empty for the default device). The job **Smoke tests in Firebase Test Lab** should turn green; its log links
-to the run in the Firebase console (Test Lab); the raw results are in the bucket. The per-step screenshots are kept only by
-the emulator job (Test Lab runs without the test storage service, which the tests allow). If it fails with
+to the run in the Firebase console (Test Lab); the raw results are in the bucket. The per-step screenshots are kept
+only by the emulator job (Test Lab runs without the test storage service, which the tests allow). If it fails with
 `PERMISSION_DENIED`, copy the red line (it holds no secret) and send it to us.
 
 **Quota and cost.** Each push to `main` that touches `android/**` or the workflow file, and each manual run from
