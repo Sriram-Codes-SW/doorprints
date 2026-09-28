@@ -1032,7 +1032,7 @@ fun HouseEditScreen(
                             Box {
                                 // A button: opens the photo larger (the web's photo tile, docs/05 §5).
                                 AsyncImage(
-                                    model = form.photoModel(p.path),
+                                    model = form.photoModel(p.id),
                                     contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
@@ -1358,7 +1358,7 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
                 ) { page ->
                     photos.getOrNull(page)?.let { p ->
                         AsyncImage(
-                            model = form.photoModel(p.path),
+                            model = form.photoModel(p.id),
                             contentDescription = stringResource(Res.string.house_photo_desc, page + 1, name),
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize(),

@@ -44,8 +44,10 @@ import kotlin.uuid.Uuid
  * with the optional server, the offline copy's reads and writes, the import's merge and copy and their undo. Moved
  * from `:app`'s `AndroidRepository` unchanged in behaviour; what needs the platform comes in through the constructor.
  *
- * - [photoDir]: the folder the photo files live in (Android: `filesDir/photos`). A photo row's `path` is the file's
- *   full path in it, as before. The files are read and written with kotlinx-io's [SystemFileSystem].
+ * - [photoDir]: the folder the photo files live in (Android: `filesDir/photos`). A photo row's `path` is still written
+ *   as the file's full path in it, but never read to reach the file: the file is found from the row's id
+ *   ([photoFileOf]), because an iOS app's container folder moves when the app is updated (S4b-BL-52). The files are
+ *   read and written with kotlinx-io's [SystemFileSystem].
  * - [syncSoon]: asks for a sync shortly (Android: `SyncWorker.syncSoon`, a WorkManager job).
  * - [apiFor]: the API client for a server address and key (Android: the app-wide HTTP stack; a test's fake engine).
  *
@@ -83,8 +85,6 @@ open class CommonRepository(
     private fun deleteFile(path: Path) {
         runCatching { fs.delete(path, mustExist = false) }
     }
-
-    private fun deleteFile(path: String) = deleteFile(Path(path))
 
     override val houses = db.houses().observeAll()
     override val visitCounts = db.visits().observeCounts()
@@ -141,7 +141,7 @@ open class CommonRepository(
      * the next sync, even if the phone is offline now (threat model F-15).
      */
     override suspend fun deletePhoto(photo: PhotoEntity): Unit = withContext(Dispatchers.IO) {
-        deleteFile(photo.path)
+        deleteFile(photoFileOf(photo.id))
         if (photo.uploaded) {
             db.photos().markDeleted(photo.id)
             syncSoon()
@@ -263,7 +263,7 @@ open class CommonRepository(
             val local = db.photos().get(change.id)
             if (change.deleted) {
                 if (local != null) {
-                    deleteFile(local.path); db.photos().delete(change.id); pulled++
+                    deleteFile(photoFileOf(local.id)); db.photos().delete(change.id); pulled++
                 }
             } else if (local == null && BackupValidation.isValidId(change.id)) {
                 // The id becomes a file name: a server id outside the backup id rule is not downloaded (defence in
@@ -345,7 +345,7 @@ open class CommonRepository(
         }
         var photosWaiting = 0
         for (p in db.photos().pendingUpload()) {
-            val file = Path(p.path)
+            val file = photoFileOf(p.id)
             val size = fs.metadataOrNull(file)?.size
             if (size == null || db.houses().get(p.houseId)?.deleted != false) continue
             if (!photosAllowed) {
@@ -395,7 +395,18 @@ open class CommonRepository(
     }
 
     /** The path a photo row's bytes live in, for the exporter and the importer; the folder is created when missing. */
-    fun photoPath(id: String): Path = Path(photoDirPath(), "$id.jpg")
+    fun photoPath(id: String): Path {
+        photoDirPath()
+        return photoFileOf(id)
+    }
+
+    /**
+     * The file photo [id]'s bytes live in, built from the photo folder and the id; creates nothing. Every read of a
+     * photo row's file goes through this rather than the row's stored `path` (S4b-BL-52): on iOS the app's container
+     * folder changes when the app is updated, so a stored full path goes stale, while the id does not. On Android the
+     * folder does not move, so this is the same file the row names.
+     */
+    fun photoFileOf(id: String): Path = photoFileIn(photoDir, id)
 
     /**
      * The photo path for an id that came out of a backup, or null when it would not land in the photo
@@ -652,7 +663,7 @@ open class CommonRepository(
         photos: Collection<String>,
     ): UndoResult = withContext(Dispatchers.IO) {
         val photoIds = photos.toHashSet()
-        val files = ArrayList<String>()
+        val files = ArrayList<Path>()
         var removed = 0
         val keptHouses = HashSet<String>()
         db.withImmediateTransaction {
@@ -689,12 +700,17 @@ open class CommonRepository(
                 val photo = db.photos().get(id) ?: continue
                 if (!CopyUndo.removesPhoto(photo.houseId, removedHouses)) continue
                 db.photos().delete(id)
-                files += photo.path
+                files += photoFileOf(photo.id)
             }
         }
         // After the commit: a rolled-back undo must not have deleted a single photo file.
         files.forEach { deleteFile(it) }
         if (removed > 0) syncSoon()
         UndoResult(removed, keptHouses.size, keptHouses)
+    }
+
+    companion object {
+        /** Photo [id]'s file in the photo folder [photoDir]: `<photoDir>/<id>.jpg` ([photoFileOf]; `PhotoFileTest`). */
+        internal fun photoFileIn(photoDir: String, id: String): Path = Path(photoDir, "$id.jpg")
     }
 }

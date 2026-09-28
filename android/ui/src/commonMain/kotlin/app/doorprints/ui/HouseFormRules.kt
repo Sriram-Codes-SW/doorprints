@@ -113,13 +113,22 @@ fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean):
 }
 
 /**
- * A typed latitude or longitude: the number when it parses and lies within ±[limit] (90 or 180), otherwise null.
- * A comma is taken as the decimal point, as some keyboards type it.
+ * A typed latitude or longitude: the number when the text (its ends trimmed) is a plain decimal ([COORDINATE_TEXT])
+ * within ±[limit] (90 or 180), otherwise null. A comma is taken as the decimal point, as some keyboards type it.
+ *
+ * Only ASCII digits, one leading sign and one separator pass (S4b-BL-33): `toDoubleOrNull` alone also took exponents
+ * ("1e1"), a trailing `d` or `f`, "Infinity" and hex on the JVM, and Kotlin/Native's parser need not agree with it on
+ * those, so the text is checked first and both platforms accept the same set.
  */
 fun parseCoordinate(text: String, limit: Double): Double? {
-    val value = text.trim().replace(',', '.').toDoubleOrNull() ?: return null
-    return value.takeIf { !it.isNaN() && it in -limit..limit }
+    val trimmed = text.trim()
+    if (!COORDINATE_TEXT.matches(trimmed)) return null
+    val value = trimmed.replace(',', '.').toDoubleOrNull() ?: return null
+    return value.takeIf { it in -limit..limit }
 }
+
+/** An optional sign, then ASCII digits with at most one `.` or `,` and at least one digit ("12.5", "-7,25", ".5", "3."). */
+private val COORDINATE_TEXT = Regex("""[+-]?([0-9]+([.,][0-9]*)?|[.,][0-9]+)""")
 
 /**
  * "Lowest price" (UX review, whole-app audit): monthly rents first and then sale prices, each from low to high, so
