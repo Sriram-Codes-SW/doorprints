@@ -6,12 +6,19 @@
 # Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
 # branch that touches one of the paths below, a pull request to main and manual runs. The two path lists are
 # identical and must stay that way. Tag pushes do not trigger.
+# CMP-8a (2026-09-29): Xcode is pinned (DEVELOPER_DIR, runner macos-26), and a second job, ios-sim-tests, runs the
+# commonTest and iosTest suites of :shared and :ui on an iPhone simulator (Room with the bundled SQLite, the Keychain
+# settings, the data folder's backup flag). It is a job of its own so a slow or failed simulator boot never fails the
+# compile check, which may be required. `ios/**` and the Android copy of the boundary data are in the path lists for
+# the iOS app of CMP-8b/8c, which bundles that file.
 name: Shared iOS compile
 
 on:
   push:
     branches: ["**"]
     paths:
+      - "ios/**"
+      - "android/app/src/main/assets/geo/**"
       - "android/shared/**"
       - "android/ui/**"
       # Root Gradle config pins the Kotlin/AGP versions and the module list, which can break the iOS build too.
@@ -23,6 +30,8 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "ios/**"
+      - "android/app/src/main/assets/geo/**"
       - "android/shared/**"
       - "android/ui/**"
       - "android/build.gradle.kts"
@@ -35,6 +44,11 @@ on:
 # Least privilege: nothing by default; the job asks only for contents: read.
 permissions: {}
 
+# Xcode 26.4.1 on the macos-26 image (checked in each job: a missing Xcode fails loudly instead of silently using
+# whatever the image's default is).
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+
 # One run per ref: a newer push to a branch (or a pull request, ref refs/pull/<n>/merge) cancels the older run;
 # runs on main always finish.
 concurrency:
@@ -44,7 +58,7 @@ concurrency:
 jobs:
   shared-ios-compile:
     name: ":shared iOS targets compile (macOS, JDK 21)"  # name kept: it may be a required check; it covers :ui too
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     permissions:
       contents: read
@@ -52,6 +66,10 @@ jobs:
       run:
         working-directory: android
     steps:
+      - name: Xcode 26.4.1 present
+        working-directory: .
+        run: test -d "$DEVELOPER_DIR" || { echo "::error::Xcode 26.4.1 missing at $DEVELOPER_DIR"; exit 1; }
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -87,3 +105,80 @@ jobs:
             :ui:compileKotlinIosArm64 \
             :ui:compileKotlinIosSimulatorArm64 \
             :ui:compileTestKotlinIosSimulatorArm64
+
+  ios-sim-tests:
+    name: ":shared and :ui tests on the iOS simulator"
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Xcode 26.4.1 present
+        working-directory: .
+        run: test -d "$DEVELOPER_DIR" || { echo "::error::Xcode 26.4.1 missing at $DEVELOPER_DIR"; exit 1; }
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
+          restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-
+
+      # The newest available iPhone of the pinned Xcode's newest iOS runtime; its UDID goes to the test tasks
+      # (android/shared and android/ui build.gradle.kts, property iosSimulatorDevice).
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          ios = sorted((r for r in runtimes if ".iOS-" in r), key=lambda r: [int(x) for x in r.rsplit("iOS-", 1)[1].split("-")])
+          for runtime in reversed(ios):
+              phones = [d for d in runtimes[runtime] if d["name"].startswith("iPhone")]
+              if phones:
+                  print(phones[-1]["udid"]); break
+          ')
+          test -n "$udid" || { echo "::error::no available iPhone simulator"; xcrun simctl list devices available; exit 1; }
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices available | grep "$udid"
+
+      # The real-Keychain round trip needs a Keychain the test process may write; where the simulator refuses it
+      # (errSecMissingEntitlement), the test prints "SKIPPED realKeychainRoundTrip" instead of failing, and this
+      # step turns that line into a visible warning (the Keychain logic itself is covered by the fakes).
+      - name: Run the simulator tests
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace -PiosSimulatorDevice=${{ steps.sim.outputs.udid }} \
+            :shared:iosSimulatorArm64Test :ui:iosSimulatorArm64Test 2>&1 | tee "$RUNNER_TEMP/sim-tests.log"
+          if grep -rqs "SKIPPED realKeychainRoundTrip" "$RUNNER_TEMP/sim-tests.log" shared/build/test-results; then
+            echo "::warning::realKeychainRoundTrip skipped: the simulator refused the real Keychain; only the fakes ran"
+          fi
+
+      - name: Upload the test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-sim-test-reports
+          path: |
+            android/shared/build/reports/tests
+            android/shared/build/test-results
+            android/ui/build/reports/tests
+            android/ui/build/test-results
+          retention-days: 14
