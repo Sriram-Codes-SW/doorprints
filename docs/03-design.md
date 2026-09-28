@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.33 |
+| Version | 0.34 |
 | Date | 2026-09-28 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -45,6 +45,7 @@
 | 0.31 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change** (owner amendment of 2026-09-24; branch `claude/doorprints-dev-continue-fzcge2` on `f8dd6f9`, PR #24, open). **ADR-23 P5, P6 and P7 as built**: navigation, view models and five screens, the house form, Export, Import and `ImportViewModel`, and the Map chrome in `:ui` commonMain behind `AppServices`, `PlatformServices`, `PlatformMap` and `StyleOps`; `RootScreens` gone; `HuntState`, `CopyRecord`, `ExportProblem` and `ImportFlow` in `:shared`; the emulator job on API 26, 34 and 36. **ADR-22**: the held-areas rule on `boundary_3` (S4b-BL-12, `geo/in-held-areas.geojson`, its side effects and the zoom 9-11 pieces left); the hand-overs at Sikkim's north-west tri-junction, Jomotsangkha and Longwa (S4b-BL-17; new data sha256 `c3cdf5fb…f63f`), Doklam unchanged on purpose; the renderer wording settled (S4b-BL-13); MapLibre's OpenGL ES build and why, a Vulkan variant as a future option, Metal on iOS. §4.2 and §4.2.1 diagrams and tables; §9 `GET /api/stats` `maxSyncVersion`; §10.1 and §10.2 reset-server detection (S4b-BL-20). |
 | 0.32 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32**: the `Repository` implementation is common (`CommonRepository` in `:shared`, [10](10-sprint-log.md) §13.10); `AndroidRepository` extends it with the photo decoding and the `java.io.File` helpers. Component table, the module diagram and the module table (`commonMain` data and `:app` rows) updated. |
 | 0.33 | 2026-09-28 | Claude (Code), lead | **The Government of India's geospatial guidelines** (owner request of 2026-09-28: "There are these guidelines for using the country map. Please refer to them and upgrade the procedures we have as needed", with the Survey of India's page of the DST guidelines of 15 February 2021). New **§11.1**, Doorprints' self-certification against each clause that applies (clause 8 ii(1) asks for self-certification). **ADR-22**: the Survey of India's maps and boundary data are *the standard* (clause 8 xiii), so they, not Google Maps, are the reference the outline is checked against; alternative (c) records the free SoI Administrative Boundary Database and the open licence question ([10](10-sprint-log.md) S4b-BL-10). |
+| 0.34 | 2026-09-28 | Claude (Code), lead | Web stack row: Angular 22.2, MapLibre GL 6.11 (the web dependency update that supersedes Dependabot #25). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -57,7 +58,7 @@ Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md
 | Android app | Kotlin 2.4.20, Jetpack Compose (Material 3), moving to JetBrains Compose Multiplatform 1.12.1 (ADR-23), Navigation, Room 2.8, WorkManager 2.10, DataStore, Play services location, MapLibre Android 13.6, Ktor client 3.6 (OkHttp 5.5 engine), kotlinx.serialization, Coil 3. minSdk 26, targetSdk 36, compileSdk 37 (AGP 9.4, built-in Kotlin). Two Gradle modules since Sprint 3.5: `:app` and the Kotlin Multiplatform module `:shared` (platform-neutral rules, DTOs and the API client; ADR-14); a third since 2026-09-24, the Compose Multiplatform module `:ui` (the UI an iOS app would reuse; ADR-23). Versions in one catalog, `android/gradle/libs.versions.toml`. | Offline-first capture, Hunt mode, map/list/compare, background sync | `android/` |
 | API | Java 25, Spring Boot 4.1.1 (Web MVC, Data JPA, Validation, Actuator, Flyway; embedded Tomcat pinned to 11.0.25 by `tomcat.version`, F-28), PostgreSQL JDBC | REST API, LWW upserts, change feed, geospatial queries, photo storage | `backend/` |
 | Database | PostgreSQL 15+ with PostGIS 3 (pgvector planned) | System of record, spatial indexes, `sync_seq` | `backend/src/main/resources/db/migration/V1__init.sql` |
-| Web app | Angular 22 (standalone, zoneless, signals), MapLibre GL 6.10 (ESM, module worker from `/maplibre/`), static build | Desktop review/edit/compare | `web/` |
+| Web app | Angular 22 (22.2 since 2026-09-28; standalone, zoneless, signals), MapLibre GL 6.11 (ESM, module worker from `/maplibre/`), static build | Desktop review/edit/compare | `web/` |
 | AI (planned) | Spring AI 2.0.1, pgvector, Gemini free tier or Ollama, MCP server | RAG Q&A, listing extraction, route planner, MCP tools | [ai/](ai/) |
 
 Main ideas:
