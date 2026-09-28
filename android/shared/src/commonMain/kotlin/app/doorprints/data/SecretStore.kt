@@ -16,7 +16,12 @@ import androidx.datastore.preferences.core.Preferences
  * Implementations never log, print or throw the key, and never put the plain key in the settings.
  */
 interface SecretStore {
-    /** The saved API key, or null when there is none or it cannot be read (a restored copy without its device key). */
+    /**
+     * The saved API key, or null when there is none or it cannot be read (a restored copy without its device key).
+     *
+     * @throws SecretUnavailableException when a key is saved but cannot be read now (iOS: the device has not been
+     *   unlocked since it started, S4b-BL-30). That is not "no key": the caller changes nothing and tries later.
+     */
     fun get(settings: Preferences): String?
 
     /** Saves [apiKey] (already trimmed and not blank) in place of any saved key. */
@@ -24,4 +29,17 @@ interface SecretStore {
 
     /** Forgets the saved API key. */
     fun clear(settings: MutablePreferences)
+
+    /**
+     * Runs [block], a settings edit that may call [put] or [clear], so that the key and the settings stay in step
+     * when the edit fails (S4b-BL-30). A store that keeps the key in the settings needs nothing: a failed edit writes
+     * neither. A store that keeps it elsewhere (the iOS Keychain) puts its own item back when [block] throws.
+     */
+    suspend fun <T> editing(block: suspend () -> T): T = block()
 }
+
+/**
+ * A saved API key that cannot be read right now, as opposed to no key (S4b-BL-30). The message names the platform's
+ * status only, never the key.
+ */
+class SecretUnavailableException(message: String) : IllegalStateException(message)

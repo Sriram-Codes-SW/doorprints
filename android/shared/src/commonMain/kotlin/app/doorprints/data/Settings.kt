@@ -118,6 +118,7 @@ class SettingsStore(
         val notificationsAsked = booleanPreferencesKey("notificationsAsked")
     }
 
+    /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
     val settings: Flow<AppSettings> = dataStore.data.map { p ->
         AppSettings(
             serverUrl = p[Keys.serverUrl] ?: "",
@@ -163,18 +164,23 @@ class SettingsStore(
 
     /** Moves a plaintext key from v0.1 into the encrypted slot. Safe to call on every start. */
     suspend fun migrateLegacyKey() {
-        dataStore.edit {
-            val plain = it[Keys.apiKeyPlain] ?: return@edit
-            if (plain.isNotBlank()) secrets.put(it, plain)
-            it.remove(Keys.apiKeyPlain)
+        secrets.editing {
+            dataStore.edit {
+                val plain = it[Keys.apiKeyPlain] ?: return@edit
+                if (plain.isNotBlank()) secrets.put(it, plain)
+                it.remove(Keys.apiKeyPlain)
+            }
         }
     }
 
     /**
      * Saves the server. [url] must already be validated with [ServerUrl.check]. A blank [key] keeps the saved key,
-     * so the key never has to be shown in the text field again (threat model AB-02).
+     * so the key never has to be shown in the text field again (threat model AB-02). Inside [SecretStore.editing],
+     * so a key kept outside the settings is put back if the settings cannot be written (S4b-BL-30).
      */
-    suspend fun saveServer(url: String, key: String) = dataStore.edit {
+    suspend fun saveServer(url: String, key: String) = secrets.editing { saveServerEdit(url, key) }
+
+    private suspend fun saveServerEdit(url: String, key: String) = dataStore.edit {
         val clean = url.trim().trimEnd('/')
         val changed = it[Keys.serverUrl] != clean
         it[Keys.serverUrl] = clean
