@@ -44,7 +44,8 @@ kotlin {
             api(libs.androidx.datastore.preferences.core)
         }
         iosMain.dependencies {
-            // iOS has no framework SQLite for Room: the bundled driver (compile-only until the iOS shell, CMP-8).
+            // iOS has no framework SQLite for Room: the bundled driver, used by iosAppDatabase and run by the iosTest
+            // simulator suite.
             implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
