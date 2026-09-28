@@ -36,6 +36,15 @@ updates:
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
     open-pull-requests-limit: 5
     groups:
+      # Angular's packages in their own PR, before the catch-all group (a dependency joins the first group that
+      # matches). 2026-09-28: #25 moved the runtime packages to 22.2.0 but left @angular/compiler-cli, @angular/build
+      # and @angular/cli at 22.1.x (compiler-cli pins @angular/compiler exactly), so `npm ci` failed and the
+      # maplibre-gl bump in the same PR was held up with it. Apart, a failing Angular group no longer blocks the others,
+      # and when it fails, `ng update @angular/core @angular/cli` does it by hand (docs/07 section 1).
+      npm-angular:
+        applies-to: version-updates
+        patterns: ["@angular/*", "@angular-devkit/*"]
+        update-types: [minor, patch]
       npm-minor-patch:
         applies-to: version-updates
         update-types: [minor, patch]
