@@ -4,7 +4,7 @@
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
 | Version | 0.40 |
-| Date | 2026-09-28 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -51,7 +51,7 @@
 | 0.37 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19, two find-and-replace errors of the rename: builds made before the Doorprints rename have the applicationId `com.househunt.app` (not `app.doorprints`), and the CI keystore's temporary file was `house-hunt-release.jks` until 2026-09-24 and is now `doorprints-release.jks` (it was not kept). |
 | 0.38 | 2026-09-24 | Claude (Code), engineer | Owner rule refined (2026-09-24: "Do the web app testing only if the web app changes"): §1 says the live web UI test ([06](06-test-plan.md) TC-M-26) runs only after a merge to `main` that runs the `Web` deploy (`web.yml` path filter); an Android-only or docs-only merge skips it. |
 | 0.39 | 2026-09-24 | Claude (Code), lead | Owner request of 2026-09-24 ("extend the emulator job in GitHub Actions to two or three Android versions"; `e5e43af`, PR #24): §1 `android-emulator.yml` job `emulator` runs on API 26, 34 and 36 side by side (fail-fast off) with one artifact per level, `android-emulator-results-api-<level>`; diagram and artifacts row updated. |
-| 0.40 | 2026-09-28 | Claude (Code), lead | Section 1: `security.yml` job **`commit-identity`** (author and committer emails of new commits against an allowlist; S4b-BL-53, TC-S-26); the Dependabot table's new npm group **`npm-angular`** (Angular apart from the catch-all group, after #25's `npm ci` failure). |
+| 0.40 | 2026-09-29 | Claude (Code), lead | Section 1: `security.yml` job **`commit-identity`** (author and committer emails of new commits against an allowlist; S4b-BL-53, TC-S-26); the Dependabot table's new npm group **`npm-angular`** (Angular apart from the catch-all group, after #25's `npm ci` failure). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 

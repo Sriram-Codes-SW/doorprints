@@ -4,7 +4,7 @@
 |---|---|
 | Document | Software Design Document (SDD) |
 | Version | 0.34 |
-| Date | 2026-09-28 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -45,7 +45,7 @@
 | 0.31 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change** (owner amendment of 2026-09-24; branch `claude/doorprints-dev-continue-fzcge2` on `f8dd6f9`, PR #24, open). **ADR-23 P5, P6 and P7 as built**: navigation, view models and five screens, the house form, Export, Import and `ImportViewModel`, and the Map chrome in `:ui` commonMain behind `AppServices`, `PlatformServices`, `PlatformMap` and `StyleOps`; `RootScreens` gone; `HuntState`, `CopyRecord`, `ExportProblem` and `ImportFlow` in `:shared`; the emulator job on API 26, 34 and 36. **ADR-22**: the held-areas rule on `boundary_3` (S4b-BL-12, `geo/in-held-areas.geojson`, its side effects and the zoom 9-11 pieces left); the hand-overs at Sikkim's north-west tri-junction, Jomotsangkha and Longwa (S4b-BL-17; new data sha256 `c3cdf5fb…f63f`), Doklam unchanged on purpose; the renderer wording settled (S4b-BL-13); MapLibre's OpenGL ES build and why, a Vulkan variant as a future option, Metal on iOS. §4.2 and §4.2.1 diagrams and tables; §9 `GET /api/stats` `maxSyncVersion`; §10.1 and §10.2 reset-server detection (S4b-BL-20). |
 | 0.32 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32**: the `Repository` implementation is common (`CommonRepository` in `:shared`, [10](10-sprint-log.md) §13.10); `AndroidRepository` extends it with the photo decoding and the `java.io.File` helpers. Component table, the module diagram and the module table (`commonMain` data and `:app` rows) updated. |
 | 0.33 | 2026-09-28 | Claude (Code), lead | **The Government of India's geospatial guidelines** (owner request of 2026-09-28: "There are these guidelines for using the country map. Please refer to them and upgrade the procedures we have as needed", with the Survey of India's page of the DST guidelines of 15 February 2021). New **§11.1**, Doorprints' self-certification against each clause that applies (clause 8 ii(1) asks for self-certification). **ADR-22**: the Survey of India's maps and boundary data are *the standard* (clause 8 xiii), so they, not Google Maps, are the reference the outline is checked against; alternative (c) records the free SoI Administrative Boundary Database and the open licence question ([10](10-sprint-log.md) S4b-BL-10). |
-| 0.34 | 2026-09-28 | Claude (Code), lead | Web stack row: Angular 22.2, MapLibre GL 6.11 (the web dependency update that supersedes Dependabot #25). ADR-22: the web renderer is maplibre-gl 6.11.2 (`worker_tile.ts:110`; checked against the boundary rules, [10](10-sprint-log.md) §16). |
+| 0.34 | 2026-09-29 | Claude (Code), lead | Web stack row: Angular 22.2, MapLibre GL 6.11 (the web dependency update that supersedes Dependabot #25). ADR-22: the web renderer is maplibre-gl 6.11.2 (`worker_tile.ts:110`; checked against the boundary rules, [10](10-sprint-log.md) §16). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
