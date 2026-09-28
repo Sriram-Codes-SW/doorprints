@@ -11,6 +11,8 @@ ksp = "2.3.12"
 ktor = "3.6.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
+# The version Ktor 3.6.0 is built against (header note); :shared names it directly for CommonRepository's photo files.
+kotlinx-io = "0.9.1"
 compose-bom = "2026.09.00"
 material-icons-core = "1.7.8"
 # Compose Multiplatform (JetBrains) for the :ui module (ADR-23). CMP 1.12.1 depends on androidx.compose ui/runtime/
@@ -98,6 +100,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 # The OpenGL ES build, not the default `android-sdk` (which renders with Vulkan): without a Vulkan GPU, as on the API 26
 # emulator and many older phones, the Vulkan build throws "No Vulkan compatible GPU found" when the map opens (found by

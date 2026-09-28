@@ -36,6 +36,8 @@ kotlin {
             api(libs.ktor.client.core)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            // The photo files of CommonRepository (S4b-BL-32); also reached through Ktor, named here so it cannot drift.
+            implementation(libs.kotlinx.io.core)
             // api: AppDatabase is a RoomDatabase, and :app builds it and calls its DAOs (data/AppDatabaseFactory.kt).
             api(libs.androidx.room.runtime)
             // api: SettingsStore takes a DataStore<Preferences>, which :app opens on the settings file (CMP-4 P4b).
