@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 1.10 |
-| Date | 2026-09-24 |
+| Version | 1.11 |
+| Date | 2026-09-29 |
 | Sprint | Compose Multiplatform track ([docs/10](../../docs/10-sprint-log.md) §13, CMP-1..CMP-9) |
 | Owner | Android team |
 
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.11 | 2026-09-29 | **CMP-8a** ([docs/10](../../docs/10-sprint-log.md) §13.11): `parseCoordinate` takes only a sign, ASCII digits and one separator (S4b-BL-33); iOS coordinates round halves up like the JVM (`sixDecimalsHalfUp`), the iOS clock is `CLOCK_MONOTONIC` and the iOS language one of the four shipped (S4b-BL-40); `HouseFormServices.photoModel` takes the photo id (S4b-BL-52). New iosTests, run with every commonTest by `ios-sim-tests` (TC-U-78). |
 | 1.10 | 2026-09-24 | **CMP-5, CMP-6 and CMP-7 done in code as one change** (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [docs/03](../../docs/03-design.md) ADR-23 P5-P7, [docs/10](../../docs/10-sprint-log.md) §13.9). Section 2: navigation-compose 2.9.2 and lifecycle 2.11.0 (`api`), kotlinx-serialization-json, Coil 3, MapLibre (OpenGL ES build) in androidMain. Section 4: every screen, `Root.kt`, the seams `AppServices`, `PlatformServices` (grown), `PlatformMap`, `StyleOps` (`IndiaViewOps.kt`, with the held-areas rule of S4b-BL-12), the backup seams and texts, the androidMain and iosMain actuals, the new commonTests; `RootScreens` gone. Section 5: the emulator on API 26, 34 and 36. Section 6: P5, P6 and P7 done in code. |
 | 1.9 | 2026-09-24 | **CMP-4 P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23; [docs/03](../../docs/03-design.md) ADR-23 P4c, [docs/10](../../docs/10-sprint-log.md) §13.8). Section 4: `CompareScreen` (taking the houses and visit counts), `HouseFormRules.kt` (public), `ModelLabels.kt` (`labelResource`, `glyph`, `ChecklistResources`), `formatPositional` in `Format.kt`, and `offerDeletedHouseUndo(repo, …)` over the common `Repository`; the 10 checklist labels added to the Compose resources (413 strings); `HouseFormRulesTest` and `ModelLabelsTest` in commonTest, a Compare case in `FormatsParityTest`. Section 6: P4a and P4b merged, P4c done in code; P5, P6 and P7 ship as one combined change (owner request of 2026-09-24). No visual change (the 64 screenshots verify). |
 | 1.8 | 2026-09-24 | **CMP-4 P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22; [docs/03](../../docs/03-design.md) ADR-23 P4b, [docs/10](../../docs/10-sprint-log.md) §13.7): settings, `SecretStore` and `ServerUrl` are in `:shared` commonMain; section 6's P4 row says so, and P4a is merged (PR #21). No change to `:ui` itself. |
@@ -94,10 +95,11 @@ generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `pu
 | androidMain | `PlatformServices.android.kt` | `AndroidPlatformServices` (TalkBack's touch exploration, the location grants, the app's settings, dial and URLs, from the composition's context) and `ProvidePlatformServices { }`, used by `MainActivity` and the screenshot tests |
 | androidMain | `LocationPermission.android.kt`, `PermissionRequests.android.kt`, `BackHandler.android.kt`, `Clock.android.kt` | the permission prefs file `map_permissions` (unchanged), the system prompts, androidx `BackHandler`, `SystemClock.elapsedRealtime` |
 | androidMain | `PlatformMap.android.kt`, `MapLibreStyleOps.kt` | the MapLibre `MapView` in `AndroidView` (an empty box in inspection mode: MapLibre's native library does not load on the JVM), the house layers, `MAP_STYLE_URL`; `StyleOps` over MapLibre's `Style` and the asset manager (log tag `IndiaView`) |
-| iosMain | `PlatformMap.ios.kt`, `PermissionRequests.ios.kt`, `BackHandler.ios.kt`, `Clock.ios.kt` | compile-only stand-ins until CMP-8: an empty map box, no-op permission requests and back handler, `systemUptime` ([docs/10](../../docs/10-sprint-log.md) S4b-BL-36, -40, -43) |
+| iosMain | `PlatformMap.ios.kt`, `PermissionRequests.ios.kt`, `BackHandler.ios.kt`, `Clock.ios.kt` | stand-ins until CMP-8b and 8c: an empty map box, no-op permission requests and back handler; the clock is `CLOCK_MONOTONIC` (CMP-8a) ([docs/10](../../docs/10-sprint-log.md) S4b-BL-36, -40, -43) |
 | androidMain | `Format.android.kt` | `java.time`'s medium date and short time for `<language>-IN`; `appLanguage()` is `Locale.getDefault()`, which `AppLocale.applyDefault` keeps on the resolved language |
 | androidMain | `UiLanguage.android.kt` | `appLanguage()`, read again when `LocalConfiguration` changes (since CMP-3, S4b-BL-18; was the configuration's first locale) |
-| iosMain | `UiLanguage.ios.kt`, `Format.ios.kt` | Compose's `Locale.current`; `NSDateFormatter` (medium date, short time) for `<language>_IN` |
+| iosMain | `UiLanguage.ios.kt`, `Format.ios.kt` | the device's first preferred language mapped to one of en, hi, ta, te (English otherwise; CMP-8a); `NSDateFormatter` (medium date, short time) for `<language>_IN`; coordinates through the common `sixDecimalsHalfUp` |
+| iosTest | `ClockIosTest.kt`, `UiLanguageIosTest.kt` | run with every commonTest on the simulator by `shared-ios.yml`'s `ios-sim-tests` (CMP-8a, TC-U-78) |
 | commonMain | `composeResources/values{,-hi,-ta,-te}/strings.xml` | the UI strings (phase 2): 444 strings and 17 plurals per language since PR #24 (413 and 16 before: the backup results and reasons, the list patterns and `sync_server_reset` added), positional placeholders only, a plain `'` (no Android escapes); checked by `:app`'s `StringParityTest` (docs/06 TC-U-59) |
 | commonTest | `ServerStatusTest.kt`, `MapRulesTest.kt`, `IndiaViewRulesTest.kt`, `IndiaViewOpsTest.kt`, `FormatsTest.kt`, `HouseFormRulesTest.kt`, `ModelLabelsTest.kt`, `LocationAccessTest.kt`, `LocationAskTest.kt`, `AssistantViewModelTest.kt`, `ImportStartOnceTest.kt`, `JoinListTest.kt`, `BackupTextsTest.kt` | `kotlin.test`, 105 tests; the Map and India view tests moved from `:app` (JUnit) in phase 3, `HouseFormRulesTest` in P4c, `LocationAccessTest`, `ImportStartOnceTest` and `JoinListTest` in CMP-5..7; all compile for iOS too (docs/06 TC-U-50, -51, -69, -70, -71, -73) |
 | androidHostTest | `FormatsParityTest.kt` | the common amounts and scores against the JVM's `NumberFormat` and `String.format` in the four languages; since P4c Compare's four formats through `formatPositional` |
@@ -122,8 +124,9 @@ From `android/`:
   :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata \
   -Proborazzi.test.verify=true   # what android.yml runs
 ./gradlew :ui:compileCommonMainKotlinMetadata   # commonMain against the common libraries, on Linux: catches JVM-only calls
-# macOS only (shared-ios.yml): compile-only, nothing is linked, signed or run on a simulator
+# macOS only (shared-ios.yml): the compile job, then the simulator job (ios-sim-tests, since CMP-8a); nothing is signed
 ./gradlew :ui:compileKotlinIosArm64 :ui:compileKotlinIosSimulatorArm64 :ui:compileTestKotlinIosSimulatorArm64
+./gradlew -PiosSimulatorDevice=<UDID> :ui:iosSimulatorArm64Test
 ```
 
 On Linux the iOS tasks are skipped (`kotlin.native.enableKlibsCrossCompilation=false`, see the `:shared` README §5).
