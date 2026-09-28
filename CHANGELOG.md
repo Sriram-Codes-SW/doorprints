@@ -297,6 +297,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Web: Angular 22.2 and maplibre-gl 6.11.2** (supersedes Dependabot #25, whose `npm ci` failed because it moved
+  Angular's runtime packages to 22.2.0 but left `@angular/compiler-cli`, `@angular/build` and `@angular/cli` at
+  22.1.x). Done with `ng update`; the maplibre-gl bump was checked against the India boundary rules and the renderer
+  source lines the boundary code cites ([sprint log](docs/10-sprint-log.md) §16). Dependabot now groups Angular's
+  packages apart from the other npm updates.
 - **Maps: the Survey of India's boundary is the standard the map is checked against** (owner request of 2026-09-28;
   the DST *Guidelines for acquiring and producing Geospatial Data and Geospatial Data Services including Maps* of
   15 February 2021, clause 8 xiii). Docs only: Doorprints' self-certification against each clause that applies
@@ -850,6 +855,11 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
   [sprint log](docs/10-sprint-log.md) §12.7 candidate (f); its TestBed cases are S4b-BL-7).
 
 ### Security
+
+- **CI: new commits must carry an allowlisted author and committer email** (`security.yml` job `commit-identity`,
+  [test plan](docs/06-test-plan.md) TC-S-26). GitHub credits `NAME@users.noreply.github.com` to the account NAME;
+  17 commits of 2026-09-23 made as `noreply@users.noreply.github.com` list the unrelated account `noreply` as a
+  contributor ([sprint log](docs/10-sprint-log.md) S4b-BL-53).
 
 - Sprint 4a threat model additions (v0.15..v0.20): malicious backup files (T-T8), injection into exports (T-T9),
   static hosting without response headers (T-T13, F-31 — **fixed on 2026-09-23 by moving the host, to Firebase
