@@ -316,7 +316,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   of the four shipped. A photo's file is found by its id, not by the stored path, so an iOS update cannot strand
   photos. No iOS app yet (CMP-8b).
 - **Android: a coordinate is read only when typed as a plain decimal** (S4b-BL-33): an optional sign, digits and
-  one `.` or `,`. Exponents, hex and `Infinity` were read before and now show the field's range hint.
+  one `.` or `,`. Exponents and hex were read before; they now show the field's range hint, as `Infinity` already
+  did.
 - **Android: the data layer's implementation is common** (S4b-BL-32, before the iOS shell CMP-8;
   [sprint log](docs/10-sprint-log.md) §13.10). `CommonRepository` in `:shared` commonMain holds the reads and writes,
   the two-way sync, the AI calls, the import's merge and copy and the copy's undo, moved from `AndroidRepository`

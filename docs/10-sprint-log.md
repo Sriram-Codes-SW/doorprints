@@ -1066,7 +1066,7 @@ check (§16); S4b-BL-56 and S4b-BL-57 in v0.55, from CMP-8a (§13.11).
 | S4b-BL-37 | Android | **`AppServices` features that only Android has** (CMP-5; new id). Copy and import undo on `java.io.File`, `AppLocale`, the WorkManager and SAF backup, Play services location sit behind `AppServices` with no iOS implementation (related S4b-BL-32) | Decide per feature for CMP-8: an iOS implementation or a hidden entry point | Android |
 | S4b-BL-38 | Android | **The stay-alert link with a visit id has no JVM test** (CMP-5; new id). `RootNavigationTest` avoids the visit-id path because of the test dispatcher (S4b-BL-46) | Cover it in the emulator smoke test (TC-I-35) or after S4b-BL-46 | Android, QA |
 | S4b-BL-39 | Android | **The Android implementations behind the CMP-6 seams have no iOS counterpart** (CMP-6; new id): `HouseFormServices` (Geocoder, camera and `FileProvider`, photo picker, `addPhoto`), `ExportServices` and `ImportServices` (WorkManager workers, SAF pickers and grants, share and open, notifications, staging and preview), `ExportProblem.of`, `ImportRequest`'s WorkManager data, `ExportBuilder.defaults` | iOS implementations with CMP-8 (related S4b-BL-32, -36, -37) | Android |
-| S4b-BL-40 | Android | **iOS stand-ins added by CMP-6 are unverified** (new id): `PlatformBackHandler` is a no-op (swipe-back), `Formats.coordinate` uses `NSString` `%.6f` (may round exact halves unlike Java's HALF_UP), `elapsedRealtimeMillis` uses `systemUptime` (excludes sleep), `isWebLink` and `joinList` are JVM-tested only **Mostly done in code** (CMP-8a, §13.11): `Formats.coordinate` rounds halves up on iOS as on the JVM (common `sixDecimalsHalfUp`, `FormatsTest.everyWrittenHalfRoundsUp`), the clock uses `CLOCK_MONOTONIC` (`ClockIosTest`), and every commonTest, `isWebLink` and `joinList` included, now runs on the simulator. **Left:** `PlatformBackHandler` (the back gesture) with the app shell, CMP-8b | Run the commonTests on the simulator with CMP-8 (like S4b-BL-33) and fix what differs | Android |
+| S4b-BL-40 | Android | **iOS stand-ins added by CMP-6 are unverified** (new id): `PlatformBackHandler` is a no-op (swipe-back), `Formats.coordinate` uses `NSString` `%.6f` (may round exact halves unlike Java's HALF_UP), `elapsedRealtimeMillis` uses `systemUptime` (excludes sleep), `isWebLink` and `joinList` are JVM-tested only. **Mostly done in code** (CMP-8a, §13.11): `Formats.coordinate` rounds halves up on iOS as on the JVM (common `sixDecimalsHalfUp`, `FormatsTest.everyWrittenHalfRoundsUp`), the clock uses `CLOCK_MONOTONIC` (`ClockIosTest`), and every commonTest, `isWebLink` and `joinList` included, now runs on the simulator. **Left:** `PlatformBackHandler` (the back gesture) with the app shell, CMP-8b | Run the commonTests on the simulator with CMP-8 (like S4b-BL-33) and fix what differs | Android |
 | S4b-BL-41 | Android | **Result sentences built twice** (CMP-6; new id). `ExportWorker.resultText` and `exportResultText`, `ImportWorker.importedText` and `importedText`, `writeFailedRes` and `importWriteFailedResource`, `ProblemMessages` and `messageResource`, `ImportWorker.joined` and `joinedList`: `StringParityTest` pins the texts, but the branching is written twice | One common builder taking a string lookup, used by the notification and the screen | Android |
 | ~~S4b-BL-42~~ | Android | ~~**Flaky Export screenshot** (CMP-6; new id). `export[hi-dark=true]` once failed with `CalledFromWrongThreadException` (1 in 5 full runs)~~ **Done** (PR #24, `91dfa7a`): a test-harness race (the unconfined test dispatcher applied snapshots on worker threads; also before CMP-6; the app is not affected); `ScreensScreenshotTest` uses a `StandardTestDispatcher` run on the main thread and three identical frames; 12 full runs in a row green, no image changed ([06](06-test-plan.md) TC-U-56) | A main-thread effect dispatcher in the test | Android |
 | S4b-BL-43 | Android | **The iOS side of the Map** (CMP-7; new id). `PlatformMap.ios` is an empty box (the chrome shows "Loading the map…"); no `StyleOps` over `MLNStyle`, no `MapServices` (Hunt mode, notification check, motion and font settings) | CMP-8: `UIKitView` around `MLNMapView`, an `MLNStyle` `StyleOps`, `IndiaViewOpsTest` on the simulator (with S4b-BL-36, -39, -40) | Android |
@@ -2015,7 +2015,8 @@ per part, each first built and reviewed on its own branch, then a fix round and 
   lists gain `ios/**` and the Android copy of the boundary data (for 8b and 8c).
 - **Room on iOS** (S4b-BL-24, `eb0e1ab`): `iosAppDatabase(path)`; the app's file is `Application
   Support/Doorprints/doorprints.db`. `AppDatabaseIosTest`: every table, a rolled-back transaction, the change flow
-  (bounded by a real-time timeout) and the version 1 to 2 migration from a file written with version 1's SQL (the
+  (the change after a write is awaited with a real-time timeout) and the version 1 to 2 migration from a file written
+  with version 1's SQL (the
   version 1 schema JSON was never committed, S4b-BL-25).
 - **Settings and the Keychain** (S4b-BL-26 and -30, `353d05c`): the Keychain calls behind a small seam, so the tests
   run the real `KeychainSecretStore` logic against a fake. `put` calls `SecItemUpdate` and falls back to `SecItemAdd`
@@ -2023,12 +2024,13 @@ per part, each first built and reviewed on its own branch, then a fix round and 
   (`errSecInteractionNotAllowed`) is `SecretUnavailableException` on read and write, never "no key". A settings write
   runs inside `SecretStore.editing` (a no-op on Android), which puts the old key back when the write fails and runs
   `NonCancellable`, so a cancellation cannot leave the two out of step. `KeychainSettingsTest` (13 tests), with a
-  real-Keychain round trip that prints `SKIPPED realKeychainRoundTrip` where the simulator refuses the Keychain; CI
-  turns that line into a warning.
+  real-Keychain round trip that prints `SKIPPED realKeychainRoundTrip` where the simulator gives the test binary no
+  Keychain (-34018 or -25291); CI turns that line into a warning.
 - **The iOS stand-ins agree with Android** (S4b-BL-33 and -40, `6f221af`): `parseCoordinate` takes only an optional
   sign, ASCII digits and one `.` or `,` separator, on both platforms (before, `toDoubleOrNull` also took exponents, a
-  trailing `d` or `f`, `Infinity` and hex, and Kotlin/Native's parser need not agree with the JVM's on those). `Formats.coordinate` on iOS rounds halves up like Java's
-  `%.6f` (`sixDecimalsHalfUp` in common code, checked against `String.format` on the JVM by `FormatsParityTest`).
+  trailing `d` or `f`, `Infinity` and hex, and Kotlin/Native's parser need not agree with the JVM's on those).
+  `Formats.coordinate` on iOS rounds halves up like Java's `%.6f` (`sixDecimalsHalfUp` in common code, checked
+  against `String.format` on the JVM by `FormatsParityTest`).
   The iOS clock is `CLOCK_MONOTONIC` (keeps counting while the phone sleeps, like `elapsedRealtime`). The iOS app
   language is one of the four shipped languages, English for any other.
 - **Photo files by id** (S4b-BL-52, `14d8160`): `CommonRepository.photoFileOf(id)`, which creates nothing, replaces
@@ -2040,8 +2042,8 @@ per part, each first built and reviewed on its own branch, then a fix round and 
   (`IosDataDirectoryTest`). No iOS build has shipped, so nothing moves.
 
 **Differences from the plan:** none in scope. The user-visible change on Android is the coordinate field: a
-coordinate typed as an exponent or a hex number now shows the field's existing range hint ("Between −90 and 90", in
-all four languages) instead of being read. UX pass: nobody types those on the field's decimal keyboard, and every
+coordinate typed as an exponent or a hex number now shows the field's existing range hint (for example "Between −90 and
+90", in all four languages) instead of being read. UX pass: nobody types those on the field's decimal keyboard, and every
 plain decimal is read as before.
 
 **How it was verified:** on Linux, the iOS klibs and test klibs of both modules cross-compiled

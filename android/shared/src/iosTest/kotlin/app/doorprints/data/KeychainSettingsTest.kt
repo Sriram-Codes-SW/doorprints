@@ -287,16 +287,18 @@ class KeychainSettingsTest {
 
     /**
      * Save, read and clear on the real Keychain, under a service of its own. An unsigned simulator test binary may have
-     * no Keychain access (`errSecMissingEntitlement`); then the test is skipped, with a line in the log, not failed.
+     * no Keychain access (`errSecMissingEntitlement`), and KGP runs it with `simctl spawn --standalone` on a device that
+     * is not booted, where the Keychain service may be missing (`errSecNotAvailable`); on either the test is skipped,
+     * with a line naming the status in the results, not failed. Any other status fails.
      */
     @Test
     fun realKeychainRoundTrip() = runTest {
         val service = "app.doorprints.test." + NSUUID().UUIDString
         val probe = SecurityKeychain.add(service, "probe", byteArrayOf(1))
-        if (probe == ERR_SEC_MISSING_ENTITLEMENT) {
+        if (probe == ERR_SEC_MISSING_ENTITLEMENT || probe == ERR_SEC_NOT_AVAILABLE) {
             println(
-                "SKIPPED realKeychainRoundTrip: this test binary has no Keychain access " +
-                    "(errSecMissingEntitlement, -34018); the fake-Keychain tests above still ran",
+                "SKIPPED realKeychainRoundTrip: no Keychain for this test binary (status $probe; -34018 " +
+                    "errSecMissingEntitlement, -25291 errSecNotAvailable); the fake-Keychain tests above still ran",
             )
             return@runTest
         }

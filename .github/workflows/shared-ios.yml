@@ -41,7 +41,7 @@ on:
       - ".github/workflows/shared-ios.yml"
   workflow_dispatch:
 
-# Least privilege: nothing by default; the job asks only for contents: read.
+# Least privilege: nothing by default; each job asks only for contents: read.
 permissions: {}
 
 # Xcode 26.4.1 on the macos-26 image (checked in each job: a missing Xcode fails loudly instead of silently using
@@ -140,32 +140,37 @@ jobs:
           restore-keys: |
             konan-${{ runner.os }}-${{ runner.arch }}-
 
-      # The newest available iPhone of the pinned Xcode's newest iOS runtime; its UDID goes to the test tasks
-      # (android/shared and android/ui build.gradle.kts, property iosSimulatorDevice).
+      # An available iPhone on the iOS runtime that matches the pinned Xcode's simulator SDK (26.4 for Xcode 26.4.1);
+      # the image installs other runtimes too (26.2, 26.5), so the newest one is not taken. The iPhone chosen is the
+      # last in name order. Its UDID goes to the test tasks (android/shared and android/ui build.gradle.kts, property
+      # iosSimulatorDevice).
       - name: Pick an iPhone simulator
         id: sim
         run: |
-          udid=$(xcrun simctl list devices available --json | python3 -c '
-          import json, sys
-          runtimes = json.load(sys.stdin)["devices"]
-          ios = sorted((r for r in runtimes if ".iOS-" in r), key=lambda r: [int(x) for x in r.rsplit("iOS-", 1)[1].split("-")])
-          for runtime in reversed(ios):
-              phones = [d for d in runtimes[runtime] if d["name"].startswith("iPhone")]
-              if phones:
-                  print(phones[-1]["udid"]); break
+          sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
+          runtime="iOS-$(echo "$sdk" | tr . -)"
+          udid=$(xcrun simctl list devices available --json | RUNTIME="$runtime" python3 -c '
+          import json, os, sys
+          devices = json.load(sys.stdin)["devices"]
+          wanted = [r for r in devices if r.endswith("." + os.environ["RUNTIME"])]
+          phones = sorted((d for r in wanted for d in devices[r] if d["name"].startswith("iPhone")), key=lambda d: d["name"])
+          if phones:
+              print(phones[-1]["udid"])
           ')
-          test -n "$udid" || { echo "::error::no available iPhone simulator"; xcrun simctl list devices available; exit 1; }
+          test -n "$udid" || { echo "::error::no available iPhone simulator on runtime $runtime (SDK $sdk)"; xcrun simctl list devices available; exit 1; }
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
           xcrun simctl list devices available | grep "$udid"
 
-      # The real-Keychain round trip needs a Keychain the test process may write; where the simulator refuses it
-      # (errSecMissingEntitlement), the test prints "SKIPPED realKeychainRoundTrip" instead of failing, and this
+      # The real-Keychain round trip needs a Keychain the test process may write; where the simulator has none for it
+      # (errSecMissingEntitlement or errSecNotAvailable), the test prints "SKIPPED realKeychainRoundTrip" instead of failing, and this
       # step turns that line into a visible warning (the Keychain logic itself is covered by the fakes).
       - name: Run the simulator tests
+        env:
+          SIM_UDID: ${{ steps.sim.outputs.udid }}
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew --no-daemon --stacktrace -PiosSimulatorDevice=${{ steps.sim.outputs.udid }} \
+          ./gradlew --no-daemon --stacktrace -PiosSimulatorDevice="$SIM_UDID" \
             :shared:iosSimulatorArm64Test :ui:iosSimulatorArm64Test 2>&1 | tee "$RUNNER_TEMP/sim-tests.log"
           if grep -rqs "SKIPPED realKeychainRoundTrip" "$RUNNER_TEMP/sim-tests.log" shared/build/test-results; then
             echo "::warning::realKeychainRoundTrip skipped: the simulator refused the real Keychain; only the fakes ran"

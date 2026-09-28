@@ -76,7 +76,7 @@ dependencies {
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 }
 
-// The simulator the iosSimulatorArm64Test task boots (CMP-8a): CI passes -PiosSimulatorDevice=<UDID> of an iPhone
+// The simulator the iosSimulatorArm64Test task runs on (CMP-8a; `simctl spawn --standalone`): CI passes -PiosSimulatorDevice=<UDID> of an iPhone
 // that exists on the runner image, so the run does not depend on KGP's default device name being installed.
 providers.gradleProperty("iosSimulatorDevice").orNull?.let { simulator ->
     tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
