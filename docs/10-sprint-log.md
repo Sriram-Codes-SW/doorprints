@@ -2048,7 +2048,10 @@ plain decimal is read as before.
 
 **How it was verified:** on Linux, the iOS klibs and test klibs of both modules cross-compiled
 (`-Pkotlin.native.enableKlibsCrossCompilation=true`), and the full Android command of `CLAUDE.md` (the 64 screenshots
-unchanged). The iosTests run for the first time in CI (`ios-sim-tests`) on this branch's push. Two review notes are
+unchanged). The first `ios-sim-tests` run (PR #29, `fd960cd`) passed all 237 `:shared` tests, the
+real-Keychain round trip skipped (status -25291) as designed, and 113 of 114 `:ui` tests: `ClockIosTest` had assumed
+the monotonic clock is never behind `systemUptime`, but each counts from its own start (0.4 s apart on the VM), so
+that test was removed. Two review notes are
 left open as **S4b-BL-57**.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
