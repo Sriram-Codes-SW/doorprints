@@ -30,8 +30,11 @@ interface HouseFormServices {
      */
     suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult
 
-    /** What the image loader (Coil) is given for a stored photo's [path] (Android: the file). */
-    fun photoModel(path: String): Any
+    /**
+     * What the image loader (Coil) is given for the stored photo [photoId] (Android: the file). By id, not by the row's
+     * stored path, which goes stale on iOS when the app's container folder moves (S4b-BL-52).
+     */
+    fun photoModel(photoId: String): Any
 }
 
 /** A photo just taken or picked, before it is stored: [uri] is the platform's reference to it (Android: a `Uri`). */

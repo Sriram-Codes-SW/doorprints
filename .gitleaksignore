@@ -2,3 +2,6 @@
 # Tests now generate a random key at runtime. See docs/07-secure-build-and-deploy.md.
 4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:34
 4b034d3b993eca0104c99e42e66fa5c35506fc53:backend/src/test/java/com/househunt/ApiIntegrationTest.java:generic-api-key:44
+# Reviewed 2026-09-29: a made-up key in an iOS simulator test (CMP-8a, KeychainSettingsTest's KEY_2, never a real
+# key); the test now uses "test-key-one" and "test-key-two". docs/07-secure-build-and-deploy.md.
+353d05c7c36a98cc80198ddd07a212e4cd28c687:android/shared/src/iosTest/kotlin/app/doorprints/data/KeychainSettingsTest.kt:generic-api-key:325

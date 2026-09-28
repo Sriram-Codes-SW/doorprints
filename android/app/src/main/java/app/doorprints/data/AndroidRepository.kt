@@ -49,7 +49,7 @@ class AndroidRepository(
     suspend fun addPhoto(houseId: String, source: Uri): AddPhotoResult = withContext(Dispatchers.IO) {
         if (db.photos().countLive(houseId) >= MAX_PHOTOS_PER_HOUSE) return@withContext AddPhotoResult.LIMIT_REACHED
         val id = Uuid.random().toString()
-        val out = File(photoDir(), "$id.jpg")
+        val out = photoFile(id)
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openInputStream(source)?.use { BitmapFactory.decodeStream(it, null, bounds) }

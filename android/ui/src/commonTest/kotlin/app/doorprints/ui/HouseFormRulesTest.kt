@@ -136,6 +136,26 @@ class HouseFormRulesTest {
         assertNull(parseCoordinate("NaN", 90.0))
     }
 
+    /** S4b-BL-33: the JVM and Kotlin/Native take the same text, so only plain decimals pass. */
+    @Test
+    fun coordinatesTakeOnlyASignAsciiDigitsAndOneSeparator() {
+        assertEquals(12.0, parseCoordinate("+12", 90.0))
+        assertEquals(0.5, parseCoordinate(".5", 90.0))
+        assertEquals(-0.5, parseCoordinate("-,5", 90.0))
+        assertEquals(3.0, parseCoordinate("3.", 90.0))
+        assertEquals(-7.25, parseCoordinate("\t-7,25\n", 90.0))
+        assertEquals(12.971599, parseCoordinate("0012.971599", 90.0))
+        assertEquals(-90.0, parseCoordinate("-90.000", 90.0))
+        // Exponents, type suffixes, hex and the special values: the JVM's toDoubleOrNull takes most of these.
+        listOf("1e1", "1E1", "1.5e-3", "12d", "12D", "12f", "12F", "0x1p3", "Infinity", "-Infinity", "NaN", "-NaN")
+            .forEach { assertNull(parseCoordinate(it, 180.0), it) }
+        // Non-ASCII digits: Devanagari, Tamil, Telugu, full-width.
+        listOf("१२.५", "௧௨.௫", "౧౨.౫", "１２.５").forEach { assertNull(parseCoordinate(it, 90.0), it) }
+        // A space inside, two signs, a trailing sign, two separators or both kinds, a bare sign or separator.
+        listOf("12 .5", "- 12", "--12", "+-12", "12-", "1.2.3", "1,2,3", "1,234.5", "12.5,3", "-", "+", ".", ",", "-.")
+            .forEach { assertNull(parseCoordinate(it, 180.0), it) }
+    }
+
     @Test
     fun lowestPricePutsRentsBeforeSalesEachFromLowToHigh() {
         val rentHigh = house(price = 40_000, priceType = "RENT").copy(id = "r40")

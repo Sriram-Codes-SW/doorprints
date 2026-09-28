@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Version | 1.52 |
-| Date | 2026-09-28 |
+| Version | 1.53 |
+| Date | 2026-09-29 |
 | Sprint | 4a "offline copy" (was 3.5 "KMP foundation") |
 | Owner | Android team |
 
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.53 | 2026-09-29 | **CMP-8a: the iOS code is tested on a simulator** ([docs/10](../../docs/10-sprint-log.md) §13.11). `iosAppDatabase(path)`; the database and the settings live in `Application Support/Doorprints`, excluded from backup (`IosDataDirectory.kt`, S4b-BL-56). `KeychainSecretStore` behind a seam: update then add, locked is `SecretUnavailableException`, a failed settings write puts the old key back (`SecretStore.editing`, S4b-BL-26 and -30). `CommonRepository.photoFileOf(id)` replaces the row's stored path (S4b-BL-52). New iosTests `AppDatabaseIosTest`, `IosDataDirectoryTest`, `KeychainSettingsTest`, run by `ios-sim-tests` (TC-U-78); section 5 updated. |
 | 1.52 | 2026-09-28 | **The repository's implementation is common (S4b-BL-32; [docs/10](../../docs/10-sprint-log.md) §13.10).** `CommonRepository` in `app.doorprints.data` (commonMain) holds what `AndroidRepository` did: the reads and writes, the two-way sync with the S4b-BL-20 reset check, the AI calls, the copy's reads, the import's merge and copy and the copy's undo, unchanged in behaviour. The photo files go through kotlinx-io's `SystemFileSystem` under a folder the platform names (Android: `filesDir/photos`, as before; a row's `path` is unchanged), "sync soon" and the API client come in through the constructor, the clock is `kotlin.time.Clock` and new ids `kotlin.uuid.Uuid`. `CopyUndo` moved with it (package `app.doorprints.export`) and `CopyUndoTest` to commonTest (`kotlin.test`, the same cases). `AndroidRepository` extends it with `addPhoto` (`Bitmap`, `ExifInterface`, a `Uri`) and the `java.io.File` helpers the exporters use. The imported-photo path check keeps its two halves: the id check, and a resolved existing file must sit in the photo folder. After the code review: a dangling link at an imported photo's name is not caught (KDoc corrected; the old check did not catch it either), a file that vanishes mid-check counts the photo as skipped, the photo folder's creation tolerates a first-run race on iOS, `kotlinx-io-core` 0.9.1 is a named dependency, and a server photo id outside the backup id rule is not downloaded; docs/10 S4b-BL-52 records the absolute paths on iOS. `RepositoryTransactionTest` and `SyncServerResetTest` unchanged. Section 2's package table, section 3, section 5 and section 8's `CopyUndo` note. |
 | 1.51 | 2026-09-24 | **The combined CMP-5..7 change (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [docs/03](../../docs/03-design.md) ADR-23 P5-P7, [docs/10](../../docs/10-sprint-log.md) §13.9).** Moved to `commonMain`: `CopyRecord` and `CopyUndoOutcome` (CMP-5), `ExportProblem` (codes; `ExportProblem.of` stays in `:app`) and `ImportFlow.kt` (`ImportCheck`, `ImportStaging`, `ImportRequest`, `ImportStart`; CMP-6), `Repository.LocalRows.toBundle` in `ExportMappers.kt`, `HuntState` with `MAX_ACCURACY_M` (CMP-7). **S4b-BL-20:** `StatsDto.maxSyncVersion` (null from an older server), `SyncRules.serverBehind` and `pushShowsReset`, `SyncOutcome.serverReset` (a sixth stored field only when true; old values decode as before), `SettingsStore.resetCursors()`, DAO queries `HouseDao.markAllDirty`, `VisitDao.markAllDirty`, `PhotoDao.markAllForUpload` (schema and identity hash unchanged); tests +4 (`SyncRulesTest` 2, `SyncOutcomeTest` 1, `ApiClientContractTest` 1), 200 host tests. **India's boundary data:** `in-boundaries.geojson` rebuilt for S4b-BL-17, sha256 `c3cdf5fb…f63f` (415 606 bytes; the hand-overs at Sikkim's north-west tri-junction, Jomotsangkha and Longwa; Doklam unchanged on purpose), and a second asset `geo/in-held-areas.geojson` (`8fa2db12…80c3`, S4b-BL-12), both pinned by `IndiaBoundaryDataTest` (4 tests). S4b-BL-13: the 1.37-1.39 rows stay as history; the KDoc now quotes `geometry_tile.cpp:317`. Sections 2 and 3 updated. |
 | 1.50 | 2026-09-24 | **A common `Repository` (CMP-4 P4c; [docs/03](../../docs/03-design.md) ADR-23 P4c, [docs/10](../../docs/10-sprint-log.md) §13.8).** The `Repository` interface (its platform-neutral members and result types) in `commonMain`, `app.doorprints.data`; `:app`'s `AndroidRepository` implements it. `withImmediateTransaction` and `localTablesChanged` put the transactions and the export's change flow on Room's common API (S4b-BL-23). The mappers (`Mappers.kt`, `ExportMappers.kt`) and `Place` are common. `SyncHealthTest` and `ExportGrantsTest` in commonTest (S4b-BL-28). Sections 2, 3, 5 and 7 updated; section 2 names the AI calls among the interface's members, and section 3 points the labels row to docs/10 S4b-BL-31. |
@@ -88,7 +89,7 @@ android/
     │   ├── commonTest/         kotlin.test suites for everything in commonMain
     │   ├── androidMain/        Android-only glue (Ktor OkHttp engine)
     │   ├── androidHostTest/    JVM-only tests (RoomSchemaTest, ServerUrlParityTest)
-    │   └── iosMain/            iOS-only glue (Room builder, settings, Keychain store; compile-only)
+    │   └── iosMain/            iOS-only glue (Room builder, settings, Keychain store, the data folder; tested on the simulator)
     └── schemas/                Room's exported schemas (app.doorprints.data.AppDatabase/2.json), committed
 ```
 
@@ -196,8 +197,9 @@ Commands (from `android/`):
 ./gradlew testDebugUnitTest -Proborazzi.test.verify=true   # android.yml: screenshots must match the references
 ./gradlew :app:recordRoborazziDebug            # re-record the reference images after an approved change; commit them
 ./gradlew connectedDebugAndroidTest            # smoke tests on a running emulator or device (android-emulator.yml)
-# macOS only (shared-ios.yml, DevSecOps): compile-only, nothing is linked or run on a simulator
+# macOS only (shared-ios.yml, DevSecOps): the compile job, then the simulator job (ios-sim-tests, since CMP-8a)
 ./gradlew :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64 :shared:compileTestKotlinIosSimulatorArm64
+./gradlew -PiosSimulatorDevice=<UDID> :shared:iosSimulatorArm64Test   # UDID from `xcrun simctl list devices available`
 ```
 
 Reports: `shared/build/reports/tests/testAndroidHostTest/` and `shared/build/test-results/testAndroidHostTest/`.
@@ -206,8 +208,9 @@ Reports: `shared/build/reports/tests/testAndroidHostTest/` and `shared/build/tes
 `:shared:allTests` on ubuntu would compile the iOS main and test klibs. `gradle.properties` sets
 `kotlin.native.enableKlibsCrossCompilation=false`, so on Linux the iOS compile, link and test tasks are disabled and
 skipped, and `kotlin.native.ignoreDisabledTargets=true` hides the "cannot be built on this host" notice. The iOS
-check therefore happens only on macOS (`shared-ios.yml`), where the flag has no effect. The iOS tests themselves
-(`:shared:iosSimulatorArm64Test`) are not run anywhere yet; that needs a simulator and is Phase 2.
+check therefore happens only on macOS (`shared-ios.yml`), where the flag has no effect. Since CMP-8a the iOS tests
+(`:shared:iosSimulatorArm64Test`: every commonTest plus the iosTests) run on an iPhone simulator in `shared-ios.yml`'s
+`ios-sim-tests` job ([docs/06](../../docs/06-test-plan.md) TC-U-78).
 
 **Room identity-hash guard.** `AppDatabase` exports its schema (`exportSchema = true`; since CMP-4 P4a the Room Gradle
 plugin's `room { schemaDirectory }`), and `shared/schemas/app.doorprints.data.AppDatabase/2.json` is committed.

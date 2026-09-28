@@ -309,6 +309,15 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   the boundary-source ticket S4b-BL-10 re-read (SoI's Administrative Boundary Database is free; shipping it still
   needs SoI's word), a check at each release (S4b-BL-51) and a draft letter to SoI
   ([docs/ops/soi-boundary-data-request.md](docs/ops/soi-boundary-data-request.md)). The map itself is unchanged.
+- **iOS groundwork (CMP-8a; [sprint log](docs/10-sprint-log.md) §13.11).** CI's new `ios-sim-tests` job runs the
+  shared code's tests on an iPhone simulator (Xcode 26.4.1 pinned). On iOS: the database opens and migrates, the
+  settings and the Keychain key stay in step (update first, locked told apart from missing, the old key put back
+  when a settings write fails), coordinates round and the clock counts as on Android, and the app's language is one
+  of the four shipped. A photo's file is found by its id, not by the stored path, so an iOS update cannot strand
+  photos. No iOS app yet (CMP-8b).
+- **Android: a coordinate is read only when typed as a plain decimal** (S4b-BL-33): an optional sign, digits and
+  one `.` or `,`. Exponents and hex were read before; they now show the field's range hint, as `Infinity` already
+  did.
 - **Android: the data layer's implementation is common** (S4b-BL-32, before the iOS shell CMP-8;
   [sprint log](docs/10-sprint-log.md) §13.10). `CommonRepository` in `:shared` commonMain holds the reads and writes,
   the two-way sync, the AI calls, the import's merge and copy and the copy's undo, moved from `AndroidRepository`
@@ -856,6 +865,8 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
 
 ### Security
 
+- **iOS: the database and the settings are kept out of backups** (S4b-BL-56; threat model F-03, SEC-011): both live in
+  `Application Support/Doorprints`, which is created with the exclude-from-backup flag and read back.
 - **CI: new commits must carry an allowlisted author and committer email** (`security.yml` job `commit-identity`,
   [test plan](docs/06-test-plan.md) TC-S-26). GitHub credits `NAME@users.noreply.github.com` to the account NAME;
   17 commits of 2026-09-23 made as `noreply@users.noreply.github.com` list the unrelated account `noreply` as a

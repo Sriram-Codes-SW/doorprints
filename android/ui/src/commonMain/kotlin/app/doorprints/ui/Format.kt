@@ -69,7 +69,7 @@ object Formats {
 
     /**
      * A latitude or longitude as the house form shows it: six decimals (about 10 cm), a dot whatever the language.
-     * The platform's own `%.6f` ([formatSixDecimals]), so Android writes exactly what the form wrote before CMP-6.
+     * Java's `%.6f` ([formatSixDecimals]), so Android writes exactly what the form wrote before CMP-6 and iOS agrees.
      */
     fun coordinate(value: Double): String = formatSixDecimals(value)
 
@@ -97,8 +97,54 @@ fun formatPositional(format: String, vararg args: Any): String =
 /** The placeholders Compose resources fill (its `SimpleStringFormatRegex`). */
 private val POSITIONAL_PLACEHOLDER = Regex("""%(\d+)\$[ds]""")
 
-/** [value] with six decimals, rounded as the platform's `%.6f` does, with a dot (Android: `String.format(Locale.ROOT)`). */
+/**
+ * [value] with six decimals and a dot, rounded as Java's `%.6f` rounds (Android: `String.format(Locale.ROOT)`; iOS:
+ * [sixDecimalsHalfUp]).
+ */
 internal expect fun formatSixDecimals(value: Double): String
+
+/**
+ * [value] with six decimals and a dot, as Java's `String.format(Locale.ROOT, "%.6f")` writes it (S4b-BL-40): half up
+ * on the double's shortest decimal ("12.345679" for 12.3456785, "0.000001" for 5.0E-7), where C's `%.6f` (iOS's
+ * `NSString` format) rounds the exact binary value and writes "12.345678" and "0.000000". The sign stays on a value
+ * that rounds to zero ("-0.000000"), as in both. `FormatsParityTest` checks it against the JVM.
+ */
+internal fun sixDecimalsHalfUp(value: Double): String {
+    if (value.isNaN() || value.isInfinite()) return value.toString()
+    // The shortest decimal as digits and the place of the point: "1.2345E-7" → "12345", point at -6.
+    val text = abs(value).toString().uppercase()
+    val mantissa = text.substringBefore('E')
+    val exponent = text.substringAfter('E', "0").toInt()
+    val whole = mantissa.substringBefore('.')
+    var digits = whole + mantissa.substringAfter('.', "")
+    var point = whole.length + exponent
+    if (point < 1) {
+        digits = "0".repeat(1 - point) + digits
+        point = 1
+    }
+    digits = digits.padEnd(point + 7, '0')
+    // The whole part and six decimals as one number, plus one when the seventh decimal is 5 or more.
+    var kept = digits.take(point + 6)
+    if (digits[point + 6] >= '5') kept = incrementDigits(kept)
+    val intPart = kept.dropLast(6).trimStart('0').ifEmpty { "0" }
+    val sign = if (value.toRawBits() < 0) "-" else ""
+    return "$sign$intPart.${kept.takeLast(6)}"
+}
+
+/** [digits] (0-9 only) plus one, carried as in writing ("0999" → "1000", "999" → "1000"). */
+private fun incrementDigits(digits: String): String {
+    val chars = digits.toCharArray()
+    var i = chars.lastIndex
+    while (i >= 0) {
+        if (chars[i] != '9') {
+            chars[i] = chars[i] + 1
+            return chars.concatToString()
+        }
+        chars[i] = '0'
+        i--
+    }
+    return "1" + chars.concatToString()
+}
 
 /**
  * The platform's medium date (and, [withTime], short time) for [language] with region IN, in the device's time zone.
@@ -109,7 +155,8 @@ internal expect fun formatDate(epochMillis: Long, language: String, withTime: Bo
 /**
  * The language the app's strings are shown in, outside composition (a service's notification text): Android's default
  * locale, which `AppLocale.applyDefault` in `:app` keeps on the language Android resolved for the strings (docs/05
- * §8.2); iOS: Compose's current locale. In composition use [uiLanguage], which also recomposes on a change.
+ * §8.2); iOS: the first preferred language when the app ships it, else "en", as Compose resources pick the strings.
+ * Always one of en, hi, ta, te on iOS. In composition use [uiLanguage], which also recomposes on a change.
  */
 expect fun appLanguage(): String
 

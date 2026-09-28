@@ -33,6 +33,18 @@ class FormatsParityTest {
         kms.forEach { km -> assertEquals(String.format(Locale.ROOT, "%.1f", km), Formats.oneDecimal(km), "$km") }
     }
 
+    /** S4b-BL-40: iOS's coordinates ([sixDecimalsHalfUp]) write what Android's `%.6f` writes, halves included. */
+    @Test
+    fun iosCoordinatesMatchStringFormatInTheRootLocale() {
+        val halves = (0..2_000).map { it / 1_000_000.0 + 0.0000005 } + (0..360).map { it - 180 + 0.1234565 }
+        val values = halves + halves.map { -it } + (0..20_000).map { it * 0.009 - 90 } +
+            listOf(0.0, -0.0, 1e-7, 2.5e-7, 1e-3, 1.23e-4, 179.9999995, 12345678.9, 1e21, 5e-324, Double.MAX_VALUE) +
+            listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)
+        values.forEach { value ->
+            assertEquals(String.format(Locale.ROOT, "%.6f", value), sixDecimalsHalfUp(value), "$value")
+        }
+    }
+
     @Test
     fun amountsBelowALakhMatchTheCurrencyFormat() {
         locales.forEach { locale ->

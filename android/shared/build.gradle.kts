@@ -44,7 +44,8 @@ kotlin {
             api(libs.androidx.datastore.preferences.core)
         }
         iosMain.dependencies {
-            // iOS has no framework SQLite for Room: the bundled driver (compile-only until the iOS shell, CMP-8).
+            // iOS has no framework SQLite for Room: the bundled driver, used by iosAppDatabase and run by the iosTest
+            // simulator suite.
             implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
@@ -73,4 +74,12 @@ dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+}
+
+// The simulator the iosSimulatorArm64Test task runs on (CMP-8a; `simctl spawn --standalone`): CI passes -PiosSimulatorDevice=<UDID> of an iPhone
+// that exists on the runner image, so the run does not depend on KGP's default device name being installed.
+providers.gradleProperty("iosSimulatorDevice").orNull?.let { simulator ->
+    tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+        device.set(simulator)
+    }
 }
