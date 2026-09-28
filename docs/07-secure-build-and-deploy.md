@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.40 |
+| Version | 0.41 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -52,6 +52,7 @@
 | 0.38 | 2026-09-24 | Claude (Code), engineer | Owner rule refined (2026-09-24: "Do the web app testing only if the web app changes"): §1 says the live web UI test ([06](06-test-plan.md) TC-M-26) runs only after a merge to `main` that runs the `Web` deploy (`web.yml` path filter); an Android-only or docs-only merge skips it. |
 | 0.39 | 2026-09-24 | Claude (Code), lead | Owner request of 2026-09-24 ("extend the emulator job in GitHub Actions to two or three Android versions"; `e5e43af`, PR #24): §1 `android-emulator.yml` job `emulator` runs on API 26, 34 and 36 side by side (fail-fast off) with one artifact per level, `android-emulator-results-api-<level>`; diagram and artifacts row updated. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | Section 1: `security.yml` job **`commit-identity`** (author and committer emails of new commits against an allowlist; S4b-BL-53, TC-S-26); the Dependabot table's new npm group **`npm-angular`** (Angular apart from the catch-all group, after #25's `npm ci` failure). |
+| 0.41 | 2026-09-29 | Claude (Code), lead | gitleaks: a third reviewed `.gitleaksignore` fingerprint (a made-up key in the CMP-8a iOS test, commit `353d05c`); test keys are written as low-entropy values. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -179,7 +180,7 @@ The containers run as the runner's user (`--user $(id -u):$(id -g)`) with `--cac
 
 **Version overrides for security fixes.** When Trivy reports a Critical/High in a library whose version the Spring Boot BOM manages, and Boot has not shipped a patch yet, override only that version property in `backend/pom.xml` with a comment naming the CVEs and when to remove it. Sprint 2: `<tomcat.version>11.0.25</tomcat.version>` for tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 (F-28). Remove the property when the Spring Boot parent manages 11.0.25 or later (Dependabot's grouped Boot patch PR is the trigger to check). Never override across a major or minor line without the framework's support.
 
-**gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
+**gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). A third entry (reviewed 2026-09-29) is a made-up key in the CMP-8a iOS test `KeychainSettingsTest` (commit `353d05c`); the test now uses low-entropy values (`"test-key-one"`), which is how test keys are written from now on. No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
 
 **Dependabot** (`.github/dependabot.yml`). The first push opened many PRs at once, so it is tuned:
 
