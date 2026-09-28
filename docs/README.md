@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.52 |
+| Version | 0.53 |
 | Date | 2026-09-28 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -64,6 +64,7 @@
 | 0.50 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c, a common `Repository` interface, transactions on Room's common API, and Compare in `:ui` ([03](03-design.md) ADR-23 P4c). Versions: 03 v0.30 (ADR-23 P4c as built, §4.2, §4.2.1, Phase 2 plan), 06 v0.44 (TC-U-46, TC-U-51, TC-U-62, TC-U-66, TC-U-67), 10 v0.50 (CMP-4 row, §13.8, S4b-BL-23 and S4b-BL-28 done, S4b-BL-31 to S4b-BL-34), 14 v0.17 (§1, N6, N7, N9); 01 v0.31 (RTM: FR-007, FR-011, FR-019, FR-042..FR-048), 05 v0.23 (§8.2: 27 keys in both homes); the others unchanged. Also `android/shared/README.md` 1.50 and `android/ui/README.md` 1.9. Review round: the owner's request to ship CMP-5, CMP-6 and CMP-7 as one combined change (03 ADR-23, 10 §13, 14 N7); S4b-BL-34. |
 | 0.51 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change**, with the web backlog (S4b-BL-1, -2, -6, -7), the shared items (S4b-BL-9, -10, -12, -13, -17, -20), S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [03](03-design.md) ADR-23 P5-P7). Versions: 01 v0.32 (RTM), 02 v0.35 (RR-16 held areas and the S4b-BL-10 finding, new RR-17), 03 v0.31 (ADR-23 P5-P7 as built, ADR-22, §4.2, §4.2.1, §9, §10), 05 v0.24 (§4 invalid-field edge, §5.1 retry scope, new §5.2 web on phones, §8.2 counts, new §8.3), 06 v0.45 (TC-U-68 to TC-U-77, TC-I-36, TC-I-35 on three levels, TC-M-25, TC-M-26 mobile pass), 07 v0.39 (emulator matrix), 08 v0.18 (new §11.1, `maxSyncVersion`), 10 v0.51 (§13.9, S4b-BL-35 to S4b-BL-50), 14 v0.18; the others unchanged. Also `android/ui/README.md` 1.10, `android/shared/README.md` 1.51, `web/README.md` (rows of 2026-09-24) and the CHANGELOG. The session's handoff notes `wip-cmp5-7-handoff.md` are folded in and removed. |
 | 0.52 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32, the common repository** (branch `claude/sleepy-brown-479259`): 03 v0.32, 06 v0.46 (TC-U-52's test moved; TC-M-26's live run after PR #24), 10 v0.52 (§13.10; §15, the owner's feature requests of 2026-09-28), 14 v0.19, `android/shared/README.md` 1.52, CHANGELOG. |
+| 0.53 | 2026-09-28 | Claude (Code), lead | **The DST geospatial guidelines of 2021** (owner request of 2026-09-28): 01 v0.33 (FR-098), 02 v0.36 (RR-16), 03 v0.33 (new §11.1, the self-certification; ADR-22), 06 v0.47 (TC-M-25 against the Survey of India's boundary), 10 v0.53 (S4b-BL-10 re-read, new S4b-BL-51), 14 v0.20 (N11), new [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) (a draft letter to SoI), CLAUDE.md's boundary rule. |
 
 ---
 

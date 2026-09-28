@@ -297,6 +297,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Maps: the Survey of India's boundary is the standard the map is checked against** (owner request of 2026-09-28;
+  the DST *Guidelines for acquiring and producing Geospatial Data and Geospatial Data Services including Maps* of
+  15 February 2021, clause 8 xiii). Docs only: Doorprints' self-certification against each clause that applies
+  ([design](docs/03-design.md) §11.1), TC-M-25 compares with SoI's boundary first and Google Maps from India second,
+  the boundary-source ticket S4b-BL-10 re-read (SoI's Administrative Boundary Database is free; shipping it still
+  needs SoI's word), a check at each release (S4b-BL-51) and a draft letter to SoI
+  ([docs/ops/soi-boundary-data-request.md](docs/ops/soi-boundary-data-request.md)). The map itself is unchanged.
 - **Android: the data layer's implementation is common** (S4b-BL-32, before the iOS shell CMP-8;
   [sprint log](docs/10-sprint-log.md) §13.10). `CommonRepository` in `:shared` commonMain holds the reads and writes,
   the two-way sync, the AI calls, the import's merge and copy and the copy's undo, moved from `AndroidRepository`
