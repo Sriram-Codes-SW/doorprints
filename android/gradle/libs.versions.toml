@@ -27,18 +27,18 @@ cmp-material-icons = "1.7.3"
 # 1.12.1). Verified on Maven Central 2026-09-24.
 jb-navigation = "2.9.2"
 jb-lifecycle = "2.11.0"
-androidx-core = "1.19.0"
+androidx-core = "1.19.1"
 androidx-activity = "1.11.0"
 # navigation and lifecycle: the Android artifacts the JetBrains ones below map to (CMP-5). JetBrains navigation-compose
 # 2.9.2 depends on androidx navigation-compose 2.9.7 on Android, JetBrains lifecycle 2.11.0 on androidx lifecycle
 # 2.11.0; Gradle takes the higher version anyway, so :app names the same ones. Check both on every bump.
-androidx-navigation = "2.9.7"
+androidx-navigation = "2.10.2"
 androidx-lifecycle = "2.11.0"
 androidx-room = "2.8.5"
 # androidx.sqlite: the version Room 2.8.5 depends on. Only iOS uses the bundled driver (CMP-4 P4a); Android keeps the
 # framework SQLite through Room's SupportSQLite open helper, as before.
 androidx-sqlite = "2.6.2"
-androidx-work = "2.10.1"
+androidx-work = "2.12.0"
 androidx-datastore = "1.1.7"
 androidx-exifinterface = "1.4.2"
 play-services-location = "21.4.0"
