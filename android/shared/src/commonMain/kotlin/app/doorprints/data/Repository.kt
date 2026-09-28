@@ -16,9 +16,9 @@ import kotlinx.coroutines.flow.StateFlow
  * server and the offline copy's reads and writes (common since CMP-4 P4c, ADR-23).
  *
  * The members here are the ones whose types are platform-neutral, so common UI code (`:ui`) can take a [Repository].
- * Android's implementation is `:app`'s `AndroidRepository`, which also has the members that need the platform: adding
- * a photo from a `Uri` and the photo files (`photoDir`, `photoFile`). The behaviour of each member is documented on
- * the implementation.
+ * The implementation is common too, [CommonRepository] (S4b-BL-32), where the behaviour of each member is documented.
+ * Android's `AndroidRepository` (`:app`) extends it with what needs the platform: adding a photo from a `Uri` and the
+ * photo files as `java.io.File` (`photoDir`, `photoFile`).
  */
 interface Repository {
     val settings: SettingsStore
