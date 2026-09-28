@@ -46,8 +46,12 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
    Hathibarkala Estate, New Cantt Road, Dehradun, Uttarakhand 248001; `mtr.soi@gov.in`; +91-135-2970896.
 4. **The letter is a draft in your Gmail** (subject "Request for permission to use the Administrative Boundary
    Database (OVSF/1M/7) in a free, open-source app", to `mtr.soi@gov.in`). Replace `[YOUR FULL NAME]` (twice),
-   `[POSTAL ADDRESS]`, `[PHONE]` and `[DATE]`, attach the screenshots (step 5), read it once more and send it yourself,
-   or give a Claude session the details and a clear go-ahead to fill them in and send it.
+   `[POSTAL ADDRESS]`, `[PHONE]` and `[DATE]`, attach the screenshots (step 5), read it once more and send it yourself.
+   **Finish it in Gmail itself, not through a Claude session's Gmail connector:** the connector rewrites every link it
+   writes into a `https://www.google.com/url?q=…&ust=…` redirect whose `ust` expires (checked on 2026-09-28 in the stored
+   raw message), and it can only attach files passed inline, which is impractical for screenshots. In Gmail, point each
+   link at its plain address (*Change* on the link) and attach the files there; Gmail rebuilds the plain-text copy on
+   send.
 5. **Attach** (optional, but it shows what the permission is for): the web map at the whole-of-India view and zoomed
    over Jammu and Kashmir and Ladakh and over Arunachal Pradesh (the live UI test's screenshots `map_india_z4.png`,
    `map_kashmir_z6.png`, `map_arunachal_z7.png`, or your own), the Android Map tab the same way (a phone screenshot,

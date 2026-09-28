@@ -65,7 +65,7 @@
 | 0.51 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change, with the web backlog, the shared items and the phone display fixes** (owner requests of 2026-09-24; branch `claude/doorprints-dev-continue-fzcge2` on `f8dd6f9`, PR #24, open; the owner merges). §13.1: CMP-4 **merged** (PR #23, `f8dd6f9`); CMP-5, CMP-6 and CMP-7 **done in code**. New **§13.9**: the combined change as built, its steps and commits, the differences from the plan, what stays in `:app`, how it was verified. §12.7: **S4b-BL-1, -2, -6, -7, -12, -13, -17, -20 and -31 done**, S4b-BL-34's wrapper part done, S4b-BL-9's check of 2026-09-24 recorded, S4b-BL-10's finding (no redistributable Survey of India outline); new **S4b-BL-35** (done) to **S4b-BL-50**, among them S4b-BL-42 (done), the Vulkan variant (S4b-BL-47), the emulator's undrawn map labels (S4b-BL-48), the Android reset notice (S4b-BL-45) and the counters on the smallest phones (S4b-BL-49). |
 | 0.52 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32 done** (branch `claude/sleepy-brown-479259`, on `main` at `3b33d37`, where PR #24 was merged): the `Repository` implementation is common, new **§13.10**. §12.7: S4b-BL-32 struck through. §13.1: CMP-8 row notes the prerequisite is done. New **§15**: the owner's four feature requests of 2026-09-28 (search, the travelled path, sharing between two people, a house from a portal link), recorded as S4b-FR-1 to S4b-FR-4, after CMP-8. |
 | 0.53 | 2026-09-28 | Claude (Code), lead | **The DST geospatial guidelines of 2021** (owner request of 2026-09-28, with the Survey of India's page; [03](03-design.md) §11.1, the self-certification). §12.7: **S4b-BL-10** re-read against the full text (clause 8 xiii: SoI boundary data are the standard and others may publish maps that adhere to it; the free Administrative Boundary Database; the SoI boundary now the reference TC-M-25 checks against; a draft letter to SoI) and new **S4b-BL-51** (the self-certification and DST's negative list at each release). §13.10: the code review of S4b-BL-32 and its fixes; new **S4b-BL-52** (iOS photo paths). §15: S4b-FR-2 and S4b-FR-4 note the guidelines. |
-| 0.54 | 2026-09-28 | Claude (Code), lead | S4b-BL-53: the `commit-identity` CI job is done (TC-S-26), in the web dependency pull request (Angular 22.2, maplibre-gl 6.11.2, Dependabot's `npm-angular` group) that supersedes Dependabot #25. |
+| 0.54 | 2026-09-28 | Claude (Code), lead | S4b-BL-53: the `commit-identity` CI job is done (TC-S-26), in the web dependency pull request (Angular 22.2, maplibre-gl 6.11.2, Dependabot's `npm-angular` group) that supersedes Dependabot #25. New **§16**: that update and the maplibre-gl 6.11.2 check against the India boundary rules (no regression; 17 views pixel-identical); new **S4b-BL-54** and **S4b-BL-55**. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1021,7 +1021,8 @@ and its design review; S4b-BL-35 to S4b-BL-50 in v0.51, from the combined CMP-5.
 Vulkan question, the emulator's map labels, the phone display fixes and the S4b-BL-10 finding; S4b-BL-51 in v0.53,
 from the owner's request to follow the DST geospatial guidelines of 2021; S4b-BL-52 in v0.53, from the code review of
 S4b-BL-32 (§13.10); S4b-BL-53 in v0.53, from the owner's question about the `noreply`
-contributor.
+contributor; S4b-BL-54 and S4b-BL-55 in v0.54, from the maplibre-gl 6.11.2
+check (§16).
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1078,6 +1079,8 @@ contributor.
 | S4b-BL-51 | Both | **Self-certification against the DST geospatial guidelines at each release** (owner request of 2026-09-28; new id). Clause 8 ii(1) conveys adherence by self-certification; [03](03-design.md) §11.1 is Doorprints' | In the release security gate's manual list (S4b-SEC-3, `docs/13-release-security-checklist.md`): re-read §11.1 against the guidelines on the SoI and DST sites (a newer version, or the National Geospatial Policy's rules, may change them); look for DST's notified negative list of sensitive attributes on `https://geospatial.dst.gov.in` and check the house fields and base-map layers against it; confirm no feature records positions finer than 1 m outside India; update §11.1's date | Lead, with Docs |
 | S4b-BL-52 | Android | **Photo rows keep an absolute path, which goes stale on iOS** (code review of S4b-BL-32; new id). `PhotoEntity.path` holds the file's full path; on Android `filesDir` does not move, but an iOS app's container path changes when the app is updated, so after an update uploads would skip the photo (no file at that path) and deletes would miss it | With CMP-8, before any iOS install keeps data: resolve a photo's file from its id (`CommonRepository.photoPath(id)`) wherever the row's `path` is read, or store the path relative to the photo folder with a migration; Android's rows unchanged, `RepositoryTransactionTest` and `SyncServerResetTest` green | Android |
 | S4b-BL-53 | Both | **A stranger's account, `noreply`, is listed as a contributor** (owner question of 2026-09-28; new id). 17 commits on `main` of 2026-09-23 (PRs #11, #13, #14; `ff3246c` to `0e3dd1c`), made by a Cowork session, have author and committer `Sriram-Codes-SW <noreply@users.noreply.github.com>`, the owner's no-reply address without its `329133251+Sriram-Codes-SW` prefix. GitHub credits the legacy form `NAME@users.noreply.github.com` to the account NAME, so it credits them to `noreply` (id 1239515, created before 2012, no access to the repo). Verified: the contributors API lists `noreply` with 17; each of the 17 commits resolves to login `noreply`; no other email does. `.mailmap` does not change GitHub's list; GitHub Support cannot re-attribute them; only a history rewrite from `ff3246c` removes it, at a high cost (disable the `protect-main` ruleset and force-push; 123 of 137 commits re-hashed, all 137 if the tool drops signatures; about 109 lose their Verified badge; 373 hash citations in `docs/` go stale; deployments and open pull requests point at old hashes). Also found: Claude's commits (`noreply@anthropic.com`) are credited to the account `claude`; the 14 commits of 2026-09-22 made as `sriram19kaushal96+claude@gmail.com` show as anonymous | Prevention: the CLAUDE.md commit-identity rule (done); **done 2026-09-28**, job `commit-identity` in `security.yml` ([06](06-test-plan.md) TC-S-26), a step (no new workflow) that fails a pull request whose commits carry an author or committer email outside an allowlist (the owner's ID no-reply address, `noreply@anthropic.com`, `noreply@github.com`, Dependabot's) or a `*@users.noreply.github.com` address without a numeric ID. The owner may add and verify `sriram19kaushal96+claude@gmail.com` in GitHub's email settings to claim the 14 anonymous commits. The rewrite only if the owner decides the listing is worth that cost, run by the owner | Lead, DevSecOps; owner decision on the rewrite |
+| S4b-BL-54 | Web | **CI does not check that MapLibre's worker files ship** (maplibre-gl 6.11.2 check, §16; new id). `angular.json` copies `maplibre-gl-worker.mjs` and `maplibre-gl-shared.mjs` to `/maplibre/` by glob; a release that renamed or split them would match nothing, the build would stay green, and the deployed worker URL would get `index.html` through the `**` rewrite: a map with India's outline and no tiles | `web.yml` `pwa-files` (`check-pwa.cjs`): require both files, non-empty, with the licence header and the worker's `import ... from"./maplibre-gl-shared.mjs"`; `check-live-headers.sh`: one `.mjs` served as JavaScript | Web, DevSecOps |
+| S4b-BL-55 | Web | **The MapLibre main thread and worker must come from the same version** (maplibre-gl 6.11.2 check, §16; new id). 6.11.2 changed the glyph message format; the skeptic reproduced that a 6.10.0 bundle with a 6.11.2 worker (or the reverse) fails every vector tile, leaving the outline over bare relief. The normal update flow (`sw.js`, `Cache-Control: no-cache`) should not mix them (inferred); a partial deploy or a caching proxy could. Also: a worker that fails to load now fires a map `error` (6.11.0), which `watchMapStyle` shows as the offline message even when online | Serve the worker under a versioned path (`/maplibre/<version>/`), or compare the version on both sides and reload; tell "worker failed to load" apart from offline in the map's message | Web |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
@@ -2031,3 +2034,57 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is geospatial data under the DST guidelines of 2021 (phone accuracy, coarser than their 1 m threshold, so no storage rule applies; [03](03-design.md) §11.1) and location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | Planned |
 | S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | Planned |
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
+
+## 16. Web dependency update of 2026-09-28: Angular 22.2 and maplibre-gl 6.11.2
+
+**Why.** Dependabot #25 moved Angular's runtime packages to 22.2.0 but left `@angular/compiler-cli` (which pins
+`@angular/compiler` exactly), `@angular/build` and `@angular/cli` at 22.1.x, so `npm ci` failed with ERESOLVE, and the
+maplibre-gl bump in the same group was held up with it. This change supersedes #25 (branch
+`claude/sleepy-brown-479259`, on `main` at `8ad682c`).
+
+**What.** `ng update @angular/core@22.2.0 @angular/cli@22.2.0` (all nine `@angular/*` packages; no migrations for a
+minor release); `maplibre-gl` ^6.11.2; Dependabot's `npm-angular` group (Angular apart from the catch-all group). With
+it, S4b-BL-53's `commit-identity` job ([06](06-test-plan.md) TC-S-26). Node 24 is needed locally (the CLI refuses
+22.22.2; CI already uses 24).
+
+**The maplibre-gl bump against the India boundary rules** ([03](03-design.md) ADR-22; a base-map renderer change). A
+workflow checked it from four sides, each told to separate what it verified from what it inferred:
+
+- *Source parity* (shallow clones of maplibre-gl-js `v6.10.0` `d1934699` and `v6.11.2` `acb7b722`, style spec
+  `v26.4.4`; the installed package's sources byte-identical to the tag): every claim the boundary code relies on holds
+  in 6.11.2. A layer gets no bucket in a tile below `floor(minzoom)` (`worker_tile.ts:110`, was `:109`: one import
+  was added at line 15, so `:50/:109/:115` are now `:51/:110/:116`); `style_layer.ts:321-323` (`isHidden`) unchanged;
+  line filters run at the tile's zoom (`line_bucket.ts:155-160`, file identical; `vector_tile_source.ts:211`
+  `overscaledZ` unchanged); `within` unchanged (both versions bundle style spec 26.4.4); `setWorkerUrl` and the ESM
+  worker with its one import of `maplibre-gl-shared.mjs` unchanged (so `angular.json`'s two asset globs still cover
+  it); every `MapOptions` field and `Map` method the web uses unchanged; `AttributionControl` still folds at 640 px;
+  `Map._updateStyle`'s wait for `style.load` with a `transformStyle` unchanged (`map.ts:2725`).
+- *Release notes* (6.10.x to 6.11.2): no change to filters, expressions, `within`, minzoom or line rendering. New
+  behaviour: a worker that fails to load now fires a map `error` event (6.11.0 #8018); a long press fires a map
+  `contextmenu` (6.11.0; the app ignores it); canvas sizing at fractional device pixel ratios (6.11.2); glyph requests
+  carry variants (6.11.2 #8488), which changes the main-thread/worker message format; the attribution sanitizer is an
+  allow-list now (6.11.1 #8532, a hardening of F-27's fix).
+- *Build and packaging*: the worker and shared chunk keep their file names; the build and `sw-precache` stamp include
+  them.
+- *Skeptic*: rendered 17 desktop views at zoom 4 to 13 with live OpenFreeMap tiles under 6.10.0 and 6.11.2 (SwiftShader):
+  **pixel-identical**, the outline around all of Jammu and Kashmir and Ladakh (Gilgit-Baltistan, PoK, Aksai Chin) and
+  Arunachal Pradesh, no LoC or LAC, no Pakistani or Chinese admin line inside the outline at zoom 9 to 12, Indian district
+  lines still drawn. **No regression.**
+
+Comments that describe the shipped renderer now say 6.11.2 with the new line numbers (`india-boundaries.ts`,
+`map-style.ts`, [03](03-design.md) ADR-22, [02](02-threat-model.md) RR-16, [11](11-feature-parity-and-export-spec.md)
+§10, [01](01-requirements.md) CON-03, the root README). Android's comments keep "maplibre-gl ... (v6.10.0)": still
+true at that tag, and the Android renderer (maplibre-native) did not change. Dated history rows are left as written.
+
+**Verified locally** (Node 24): `ng test` 41 files and 514 tests; `npm run build` (with the `sw-precache` stamp and the
+CSP `<meta>`); `tools/live-ui` against that build served locally ([06](06-test-plan.md) TC-M-26). A first local run
+built with `npx ng build` alone, so the service worker had no precache list and the two offline checks failed; with
+`npm run build` flows 12/12, pwa 4/4, and the full run all green: pages 720, i18n 240, theme 144, a11y 144, console 366, flow 12,
+pwa 4, map 23, mobile 324.
+
+**Still owed after the deploy:** TC-M-26 on the live site (labels in all four scripts, the credits still naming
+OpenStreetMap, the map screenshots looked at); TC-M-25 on the live site on a phone and a desktop with a hardware GPU
+(6.11.2 changed how uniforms are uploaded, which SwiftShader cannot vouch for); on a phone, a tap still places the house
+pin and the Plan start point, and a long press does nothing. **New backlog:** S4b-BL-54, S4b-BL-55; and take the next
+maplibre-gl patch (6.11.3 or later) through the same check, because upstream `main` fixes an attribution sanitizer
+issue that a changed OpenFreeMap credit could trigger (#8569).
