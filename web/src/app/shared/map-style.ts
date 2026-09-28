@@ -108,15 +108,15 @@ export function isPhoneMap(): boolean {
  * Every map is north-up and flat (Android handover 33; Android 1.31 did the same, WCAG 2.5.1): no right-drag or
  * Ctrl-drag rotate or tilt, no two-finger twist or tilt, no Shift+arrow rotate or tilt. The zoom control is built
  * with `showCompass: false`, so a rotated map had no way back to north. Pan and zoom (mouse, touch, keyboard, +/-)
- * are unchanged. Option names and methods checked against maplibre-gl-js v6.10.0 (`src/ui/map.ts` MapOptions
+ * are unchanged. Option names and methods checked against maplibre-gl-js v6.11.2 (`src/ui/map.ts` MapOptions
  * `dragRotate`, `touchPitch`, `pitchWithRotate`; `TwoFingersTouchZoomRotateHandler.disableRotation`,
  * `KeyboardHandler.disableRotation`, which also stops Shift+Up/Down pitch).
  *
  * Every map shows India's boundaries as the Government of India does (`india-boundaries.ts`): on **every**
  * `style.load` (the first one, and each reload by {@link watchMapStyle}) the rules are applied to the freshly loaded
  * Liberty style before any tile is drawn. This listener is added here, before the page adds its own, so the page's
- * layers go on top of a style that already has them. Not `setStyle`'s `transformStyle`: in MapLibre 6.10
- * `Map._updateStyle` with a `transformStyle` first waits for the previous style's `style.load` if that style has not
+ * layers go on top of a style that already has them. Not `setStyle`'s `transformStyle`: in MapLibre 6.10 and 6.11
+ * `Map._updateStyle` (`src/ui/map.ts:2725` at v6.11.2) with a `transformStyle` first waits for the previous style's `style.load` if that style has not
  * loaded, and after an offline start it never does, so the retry when the connection returns would wait for ever.
  */
 export function createMlMap(
@@ -157,7 +157,7 @@ export function createMlMap(
 /** How long a narrow map shows its credits in full, after its style first loads, before they fold into the (i) button. */
 export const ATTRIBUTION_SHOW_MS = 5000;
 
-/** MapLibre's own width for folding the credits (maplibre-gl-js v6.10.0 `AttributionControl._updateCompact`: 640). */
+/** MapLibre's own width for folding the credits (maplibre-gl-js v6.11.2 `AttributionControl._updateCompact`: 640). */
 const COMPACT_MAX_WIDTH = 640;
 
 /**
@@ -206,7 +206,7 @@ function foldAttributionLater(map: MlMap): void {
 
 /**
  * The six map calls `applyIndiaBoundaries` makes, on a MapLibre map (`Map.getStyle`, `addSource`, `addLayer`,
- * `setLayoutProperty`, `setFilter`, `setLayerZoomRange`, as in maplibre-gl-js v6.10.0 `src/ui/map.ts`).
+ * `setLayoutProperty`, `setFilter`, `setLayerZoomRange`, as in maplibre-gl-js v6.11.2 `src/ui/map.ts`).
  */
 function boundaryTarget(map: MlMap): BoundaryStyleTarget {
   return {

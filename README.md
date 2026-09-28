@@ -112,7 +112,7 @@ flowchart LR
   [03](docs/03-design.md)).
 - **API** (Spring Boot 4.1.1, Java 25, Flyway): last-write-wins sync with a change feed, geospatial queries in PostGIS,
   photos, export and delete-all.
-- **Web** (Angular 22, zoneless, MapLibre GL 6.10): review, edit and compare on a large screen.
+- **Web** (Angular 22, zoneless, MapLibre GL 6.11): review, edit and compare on a large screen.
 - **AI** (Spring AI 2.0.1, off unless `APP_AI_ENABLED=true`): **Vertex AI** is the provider this project is set up
   for (project `doorprints-ai`: chat in Mumbai, `asia-south1`; embeddings on Google's `global` endpoint), and
   **AI Studio** stays one setting away (`AI_PROVIDER=aistudio`, also the code default until the first Vertex eval

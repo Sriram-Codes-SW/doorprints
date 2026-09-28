@@ -153,9 +153,9 @@ const COUNTRY_LINE_RULE: ExpressionSpecification = [
 
 /**
  * Rule 2, tile-zoom guard: only the features of a tile of zoom 5 or more. A filter's `zoom` is the zoom of the TILE
- * the feature comes from, not the map's: maplibre-gl 6.10.0 builds a line bucket with
+ * the feature comes from, not the map's: maplibre-gl 6.11.2 builds a line bucket with
  * `new EvaluationParameters(this.zoom)` and runs the layer filter with it (`src/data/bucket/line_bucket.ts:155-160`),
- * where `this.zoom` is the worker tile's (`src/source/worker_tile.ts:50,115`) and that is `tile.tileID.overscaledZ`
+ * where `this.zoom` is the worker tile's (`src/source/worker_tile.ts:51,116`) and that is `tile.tileID.overscaledZ`
  * (`src/source/vector_tile_source.ts:211`). `zoom` is allowed anywhere in a filter: the filter is compiled with
  * `createExpression` and a spec whose parameters are `['zoom', 'feature']` (style spec 26.4.4
  * `src/feature_filter/index.ts:222-265`), not with `createPropertyExpression`, whose "zoom only as the input of a
@@ -486,8 +486,8 @@ function canShowState(layer: LayerSpecification): boolean {
  * layer meant for zoom 0-4, whose low-zoom lines the guard would remove. Android's `tileZoomGuardedLayers`.
  *
  * The guard is defence in depth on both renderers, and parity with Android. On the web, for a layer with minzoom 5,
- * maplibre-gl 6.10.0 already builds no bucket in a tile whose zoom is below floor(minzoom)
- * (`src/source/worker_tile.ts:109`, `layer.isHidden(this.zoom, true)`; `src/style/style_layer.ts:321-322`), so the
+ * maplibre-gl 6.11.2 already builds no bucket in a tile whose zoom is below floor(minzoom)
+ * (`src/source/worker_tile.ts:110`, `layer.isHidden(this.zoom, true)`; `src/style/style_layer.ts:321-322`), so the
  * minzoom alone kept the zoom 0-4 tiles' lines off the map. The guard makes that hold whatever the renderer does with minzoom. On Android,
  * maplibre-native android-v13.6.1 (c7506d6): the worker's parse loop (`src/mln/tile/geometry_tile_worker.cpp`,
  * lines 446-502) has no zoom check of its own and runs the filter with `overscaledZ` (line 502), but
