@@ -89,6 +89,56 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${GITHUB_WORKSPACE}:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --verbose --exit-code 1
 
+  # Commit identity (docs/10 S4b-BL-53): GitHub credits a commit to the account its author email belongs to, and the
+  # legacy form NAME@users.noreply.github.com belongs to the account NAME. 17 commits of 2026-09-23 made as
+  # noreply@users.noreply.github.com list the stranger's account "noreply" as a contributor, which only a history
+  # rewrite can undo. This fails a pull request (or a branch push) whose NEW commits carry an author or committer email
+  # outside the allowlist, before they can reach main. Commits already on main are not checked.
+  commit-identity:
+    name: Commit author emails (allowlist)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the range below needs main's history
+          persist-credentials: false
+      - name: Only allowlisted author and committer emails in the new commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # The owner's ID no-reply address and gmail (not linked to the account until verified in GitHub's email
+          # settings), Claude sessions, GitHub's web-flow committer, Dependabot. Extend here, never with a bare
+          # NAME@users.noreply.github.com address.
+          ALLOWED: >-
+            329133251+Sriram-Codes-SW@users.noreply.github.com
+            sriram19kaushal96+claude@gmail.com
+            noreply@anthropic.com
+            noreply@github.com
+            49699333+dependabot[bot]@users.noreply.github.com
+        run: |
+          set -f # $ALLOWED is split into words but never glob-expanded: "dependabot[bot]" must match literally
+          if [ -n "$BASE_SHA" ]; then range="$BASE_SHA..$HEAD_SHA"; else range="origin/main..HEAD"; fi
+          echo "Checking $range"
+          commits="$(git log --format='%h %ae %ce' "$range")" # fails the step on a bad range (bash -e)
+          bad=0
+          while IFS=' ' read -r sha author committer; do
+            [ -n "$sha" ] || continue
+            for email in "$author" "$committer"; do
+              ok=0
+              for allowed in $ALLOWED; do [ "$email" = "$allowed" ] && ok=1; done
+              if [ "$ok" -eq 0 ]; then
+                echo "::error::$sha uses '$email', which is not on the allowlist (docs/10 S4b-BL-53; CLAUDE.md, commit identity)"
+                bad=1
+              fi
+            done
+          done <<< "$commits"
+          [ "$bad" -eq 0 ] && echo "All commits in $range use allowlisted emails."
+          exit "$bad"
+
   trivy:
     name: Dependencies and IaC (Trivy)
     runs-on: ubuntu-latest

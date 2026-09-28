@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.33 |
-| Date | 2026-09-28 |
+| Version | 0.34 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -45,6 +45,7 @@
 | 0.31 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): the §12 RTM rows of FR-019 and FR-042..FR-048 add TC-U-66 (`RepositoryTransactionTest`); FR-011 names `CompareScreen.kt` in `:ui` commonMain (`app/ui/CompareTab.kt` is the Android wrapper) and adds TC-U-67; FR-007 names `AndroidRepository.addPhoto`. |
 | 0.32 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [03](03-design.md) ADR-23 P5-P7): the §12 RTM rows name the screens in `:ui` commonMain (FR-001, FR-009, FR-018, FR-037, FR-039, FR-042..FR-048) and the new tests TC-U-68 to TC-U-77 and TC-I-36 (FR-001, FR-021, FR-023, FR-028, FR-037, FR-039, FR-042..FR-048); FR-098 names `IndiaViewOps.kt` and the held-areas file (S4b-BL-12), adds TC-U-73, and its known limits follow S4b-BL-12 and S4b-BL-17. |
 | 0.33 | 2026-09-28 | Claude (Code), lead | **FR-098**: the Survey of India's boundary is the reference the depiction is checked against (DST geospatial guidelines of 2021, clause 8 xiii; owner request of 2026-09-28; [03](03-design.md) §11.1). No status changed. |
+| 0.34 | 2026-09-29 | Claude (Code), lead | CON-03: MapLibre GL 6.11 (web; the web dependency update, [10](10-sprint-log.md) §16). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -385,7 +386,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 |---|---|
 | CON-01 | **Zero running cost.** Only free tiers: Oracle Cloud Always Free, Render/Koyeb for the API; Supabase/Neon for Postgres + PostGIS (+ pgvector); Firebase Hosting on the no-cost Spark plan with no billing account for the web (`https://doorprints.web.app`, [03](03-design.md) ADR-21; a custom domain only later, [12](12-brand-and-naming.md) section D); OpenFreeMap tiles; Nominatim; Android Geocoder; GitHub Actions; Ollama or an AI free tier for synthetic-data evals. **One exception (product owner, 2026-09-22):** cloud AI for the owner and invited users runs on the owner's paid, hard-capped key (AI-015); users never pay. A time-limited Google Cloud trial credit may fund Vertex AI, Test Lab and a staging backend ([10](10-sprint-log.md)). |
 | CON-02 | The APK is sideloaded. Play Store publishing ($25 one-time) is deferred. |
-| CON-03 | Stack: Java 25, Spring Boot 4.1.1 (embedded Tomcat overridden to 11.0.25), Flyway, PostGIS; Kotlin 2.4.10, Compose, Room, WorkManager, Ktor client 3.6 in the Kotlin Multiplatform module `:shared` (Android + compile-only iOS, ADR-14), minSdk 26 / targetSdk 36 / compileSdk 37; Angular 22, MapLibre GL 6.10 (web), MapLibre Android 13. Node is a build tool for the web app only (ADR-06). |
+| CON-03 | Stack: Java 25, Spring Boot 4.1.1 (embedded Tomcat overridden to 11.0.25), Flyway, PostGIS; Kotlin 2.4.10, Compose, Room, WorkManager, Ktor client 3.6 in the Kotlin Multiplatform module `:shared` (Android + compile-only iOS, ADR-14), minSdk 26 / targetSdk 36 / compileSdk 37; Angular 22, MapLibre GL 6.11 (web), MapLibre Android 13. Node is a build tool for the web app only (ADR-06). |
 | CON-04 | Free-tier limits: sleeping instances (cold start 30 to 60 s), about 500 MB DB, projects paused after inactivity (Supabase), GitHub Actions minutes (unlimited for public repos, 2 000 min/month for private). |
 | CON-05 | Third-party policies: Nominatim (at most 1 req/s, no bulk use), OpenFreeMap fair use, LLM free-tier terms (the free AI Studio tier may use prompts to improve Google products, so real user data goes only to a paid tier or Vertex AI, PRV-022; AI-010 discloses the provider). |
 

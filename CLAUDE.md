@@ -21,12 +21,18 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
   `web/src/app/shared/india-boundaries.ts`, `android/.../ui/IndiaViewRules.kt`;
   data `web/public/geo/in-boundaries.geojson`, byte-identical Android copy). Any base-map change re-runs TC-M-25.
 - **No Play Store release and no public server** until the release security gate exists and passes (`docs/10` §12.5).
+- **Search grows with the house values** (owner, 2026-09-28): a change that adds a house field or changes what one holds
+  also updates both apps' search (web `searchText` in `pages/map/map-list.ts`, Android `HouseListScreen.kt`), with a test.
 - **Brand words:** *Import a backup*, *Save a copy*, *readable copies*, *Add a shared listing*; never "Restore" as a
   button label (`docs/12`). Hindi, Tamil and Telugu strings ship marked *under review*.
 - **Every change goes through a pull request to `main`; the owner merges.** Do not merge your own pull request.
 - Work on a branch; CI runs on every branch push (Web, Backend, Android, Shared-iOS, Security, CodeQL). Deploy,
   signing and the dependency graph run on `main` only.
 - Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`.
+- **Commit identity:** Claude sessions commit as `Claude <noreply@anthropic.com>`; the owner as
+  `329133251+Sriram-Codes-SW@users.noreply.github.com`. Never a bare `*@users.noreply.github.com` address: GitHub credits
+  `NAME@users.noreply.github.com` to the account NAME (17 commits of 2026-09-23 made as `noreply@users.noreply.github.com`
+  list the unrelated account `noreply` as a contributor; `docs/10` S4b-BL-53). Check `git config user.email` first.
 
 ## How changes are reviewed (keep it lean)
 
