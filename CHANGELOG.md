@@ -297,6 +297,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Android: the data layer's implementation is common** (S4b-BL-32, before the iOS shell CMP-8;
+  [sprint log](docs/10-sprint-log.md) §13.10). `CommonRepository` in `:shared` commonMain holds the reads and writes,
+  the two-way sync, the AI calls, the import's merge and copy and the copy's undo, moved from `AndroidRepository`
+  unchanged in behaviour; the photo files go through kotlinx-io, and "sync soon" and the API client are passed in.
+  `CopyUndo` and `CopyUndoTest` moved to `:shared`. `AndroidRepository` keeps adding a photo from a `Uri` and the
+  `java.io.File` helpers of the exporters. No change a user can see; the photo folder and every stored path are as
+  before.
 - **Android: every screen is Compose Multiplatform code in `:ui`** (ADR-23 CMP-5, CMP-6 and CMP-7 as one change, the
   owner's request; PR #24; [docs/03](docs/03-design.md) ADR-23 P5-P7, [sprint log](docs/10-sprint-log.md) §13.9).
   Navigation, the Houses, Assistant and Settings screens and their view models (CMP-5), the house form, Export, Import

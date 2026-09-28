@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.51 |
-| Date | 2026-09-24 |
+| Version | 0.52 |
+| Date | 2026-09-28 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
 
@@ -63,6 +63,7 @@
 | 0.49 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b. §13.1: CMP-4 **P4a done and merged** (PR #21, `e480b83`), **P4b done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #22, open; the owner merges), P4c planned. New **§13.7**: settings, `SecretStore` and `ServerUrl` in `:shared` commonMain, how the stored names were kept, the parser port, what stays in `:app`. §9.3 items 2 and 3 marked done. §12.7: new **S4b-BL-26** (iOS settings and Keychain never run), **S4b-BL-27** (the real Keystore path has no automated test) and **S4b-BL-28** (two JUnit tests of now-common code), from the review **S4b-BL-29** (`AppSettings.toString()` prints the API key) and **S4b-BL-30** (iOS `KeychainSecretStore`: update, transform, locked device); the intro lists S4b-BL-23 to S4b-BL-30. §13.3 and CMP-0: the live UI test only after a merge that runs the `Web` deploy (owner rule refined, 2026-09-24). |
 | 0.50 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c. §13.1: CMP-4 **P4a and P4b merged** (PR #21, `e480b83`; PR #22, `aa8f73a`), **P4c done in code** (branch `claude/doorprints-dev-continue-fzcge2`, PR #23, open; the owner merges). New **§13.8**: the common `Repository` interface, the transactions and change flow on Room's common API, the mappers, `CompareScreen` and `HouseFormRules` in `:ui`, how the transaction semantics were checked, what stays in `:app`. §12.7: **S4b-BL-23** and **S4b-BL-28** done; new **S4b-BL-31** to **S4b-BL-33**. Review: §13 *How the work runs* records the owner's request of 2026-09-24 (CMP-5, CMP-6 and CMP-7 as one combined change and pull request, tested together; CMP-8 separate) and the CMP-5..7 rows say so; §13.8 names the commits (`a4e7e59` CLAUDE.md, `17cbf2d`, `c9be8e8`, `16f5bf0`); new **S4b-BL-34** (Compare's screenshots, the wrapper's name). |
 | 0.51 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change, with the web backlog, the shared items and the phone display fixes** (owner requests of 2026-09-24; branch `claude/doorprints-dev-continue-fzcge2` on `f8dd6f9`, PR #24, open; the owner merges). §13.1: CMP-4 **merged** (PR #23, `f8dd6f9`); CMP-5, CMP-6 and CMP-7 **done in code**. New **§13.9**: the combined change as built, its steps and commits, the differences from the plan, what stays in `:app`, how it was verified. §12.7: **S4b-BL-1, -2, -6, -7, -12, -13, -17, -20 and -31 done**, S4b-BL-34's wrapper part done, S4b-BL-9's check of 2026-09-24 recorded, S4b-BL-10's finding (no redistributable Survey of India outline); new **S4b-BL-35** (done) to **S4b-BL-50**, among them S4b-BL-42 (done), the Vulkan variant (S4b-BL-47), the emulator's undrawn map labels (S4b-BL-48), the Android reset notice (S4b-BL-45) and the counters on the smallest phones (S4b-BL-49). |
+| 0.52 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32 done** (branch `claude/sleepy-brown-479259`, on `main` at `3b33d37`, where PR #24 was merged): the `Repository` implementation is common, new **§13.10**. §12.7: S4b-BL-32 struck through. §13.1: CMP-8 row notes the prerequisite is done. New **§15**: the owner's four feature requests of 2026-09-28 (search, the travelled path, sharing between two people, a house from a portal link), recorded as S4b-FR-1 to S4b-FR-4, after CMP-8. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1050,7 +1051,7 @@ Vulkan question, the emulator's map labels, the phone display fixes and the S4b-
 | S4b-BL-29 | Android | **`AppSettings.toString()` includes the API key** (CMP-4 P4b review; new id). `AppSettings` is a data class, so its generated `toString()` prints `apiKey` in plain text; nothing logs it today, but a later log line or crash report could | Override `toString()` to redact the key (for example `apiKey=<set>` or `<none>`), with a common test that the key never appears in it | Android |
 | S4b-BL-30 | Android | **The iOS `KeychainSecretStore` has three weak spots** (CMP-4 P4b review; new id). `put` deletes and then adds, so a failed add leaves no key; the Keychain is changed inside the DataStore transform, so a failed settings write leaves the two out of step; `get` returns null on `errSecInteractionNotAllowed` (device locked), which reads as "no key" | Update with `SecItemUpdate`, falling back to `SecItemAdd` when the item is missing; keep the Keychain and the settings in step when the write fails; tell "locked" apart from "no key". Fix with the CMP-8 simulator tests (S4b-BL-26) | Android |
 | ~~S4b-BL-31~~ | Android | ~~**The status and checklist labels are in two places** (CMP-4 P4c; new id). Compare reads the Compose resources (`ChecklistResources`, `labelResource` in `:ui`; the 10 `check_*` strings added there), while the house form and the list still read `:app`'s Android copies (`ChecklistLabels`, `labelRes`, `check_*` in `res/values*`). `StringParityTest` keeps the texts equal~~ **Done** (PR #24, branch `claude/doorprints-dev-continue-fzcge2`; §13.9): the list (CMP-5) and the house form (CMP-6) read the `:ui` labels; `ChecklistLabels` and the Android `check_*` strings are gone; `HouseStatus.labelRes` stays for `HuntService`'s notification | When the house form and the list move (CMP-5, CMP-6 P6a), switch them to the `:ui` versions and remove `ChecklistLabels` and the Android `check_*` strings (keep `labelRes` while `HuntService`'s notification reads it) | Android |
-| S4b-BL-32 | Android | **The data logic an iOS app needs is still in `AndroidRepository`** (CMP-4 P4c; new id). The interface is common, but the sync algorithm, the import's merge and copy writes, the undo and `CopyUndo` are Android code, because they use `java.io.File`, WorkManager and the app-wide client | Before CMP-8: a common implementation with the photo files, "sync soon" and the API client behind small interfaces, `AndroidRepository` reduced to those; `RepositoryTransactionTest` and the import tests unchanged | Android |
+| ~~S4b-BL-32~~ | Android | ~~**The data logic an iOS app needs is still in `AndroidRepository`** (CMP-4 P4c; new id). The interface is common, but the sync algorithm, the import's merge and copy writes, the undo and `CopyUndo` are Android code, because they use `java.io.File`, WorkManager and the app-wide client~~ **Done** (branch `claude/sleepy-brown-479259`; §13.10): `CommonRepository` in `:shared` commonMain, the photo files through kotlinx-io, "sync soon" and the API client passed in; `CopyUndo` and `CopyUndoTest` moved to `:shared` | Before CMP-8: a common implementation with the photo files, "sync soon" and the API client behind small interfaces, `AndroidRepository` reduced to those; `RepositoryTransactionTest` and the import tests unchanged | Android |
 | S4b-BL-33 | Android | **`parseCoordinate` on iOS is unchecked** (CMP-4 P4c; new id). It is common now and uses `String.toDoubleOrNull`, whose Kotlin/Native parser may accept other strings than the JVM's (exponents, a trailing `d` or `f`) | With the iOS shell (CMP-8): run `HouseFormRulesTest` on the simulator and add the edge cases; restrict the input to digits, sign and one separator if they differ | Android |
 | S4b-BL-34 | Android | **Compare has one reference screenshot** (CMP-4 P4c design review; new id). TC-U-56 records Compare only with two houses selected: no picker, no empty state, no filled rating row, no long best-name. Also, `:app`'s wrapper in `CompareTab.kt` is still named `CompareScreen` **Wrapper part done** in CMP-5 (PR #24): `:app`'s `CompareTab.kt` is gone, the root calls the common `CompareScreen`. **Open:** the `compare_empty` and `compare_picker` screenshots (no image was re-recorded in PR #24) | Add `compare_empty` and `compare_picker` screenshots in a phase that re-records images (the combined CMP-5..7 change is a natural point, §13); rename the wrapper to `CompareTab` when CMP-5 removes it | Android |
 | ~~S4b-BL-35~~ | Android | ~~**Export and import texts only in Android resources** (CMP-5; new id). `ExportProblem.messageRes` and the result sentences were Android strings, which common screens cannot read~~ **Done in CMP-6 P6b** (PR #24): copied to Compose resources in four languages with the same text (`StringParityTest`); `import_stopped*` moved; the notifications keep the Android copies | Copy them to Compose resources when Export and Import move | Android |
@@ -1930,6 +1931,48 @@ deploy); map labels on a device (the emulator lays them out but does not draw th
 v0.51, `android/ui/README.md` 1.10, `android/shared/README.md` 1.51, `web/README.md` (rows of 2026-09-24) and the
 CHANGELOG. The session's handoff notes (`docs/wip-cmp5-7-handoff.md`) are folded into these and removed.
 
+### 13.10 S4b-BL-32, the common repository (before CMP-8), done in code
+
+**What was done** (branch `claude/sleepy-brown-479259`, on `main` at `3b33d37`, where PR #24 was merged): the
+`Repository`'s implementation moves to `:shared` commonMain, so the iOS shell (CMP-8) gets the sync, the import and the
+undo without a second copy of them.
+
+- **`CommonRepository`** (`:shared` commonMain, `data/CommonRepository.kt`, `open`): what `AndroidRepository` held,
+  moved with its KDoc and unchanged in behaviour. The reads and writes, the two-way sync with the S4b-BL-20 reset
+  check, the AI calls, the copy's reads, `applyImport` (merge row by row, copy all or nothing) and `undoCopyImport`.
+  The platform parts come in through the constructor: the photo folder (a path), `syncSoon` and `apiFor` (the API
+  client for an address and key). The clock is `kotlin.time.Clock` and new visit ids `kotlin.uuid.Uuid` (what `:ui`'s
+  house form already used).
+- **Photo files through kotlinx-io** (`SystemFileSystem`, already on the classpath through Ktor): write, delete,
+  size, a streamed upload source and the downloaded bytes. A row's `path` is the full path in the folder, as before
+  (the Android folder is still `filesDir/photos`), so existing rows stay valid. Deletes stay best-effort, as
+  `File.delete` was: a failure leaves the file and never hides the error that led to the delete. The imported-photo
+  check keeps its two halves: the id check (no separator, no `..`), and an existing file at that name must resolve
+  into the photo folder.
+- **`CopyUndo`** moved to `:shared` (`app.doorprints.export`, the same package) and **`CopyUndoTest`** to commonTest
+  (`kotlin.test` in place of JUnit, the same cases), so the undo's rules run on iOS too.
+- **`AndroidRepository`** (`:app`) extends `CommonRepository` with the Android folder, `SyncWorker.syncSoon` and
+  `Api.client`, and keeps only what has no common form: `addPhoto(houseId, Uri)` (`Bitmap`, `ExifInterface`, the
+  Exif strip, docs/09 L6) and `photoDir()` / `photoFile(id)` as `java.io.File` for the exporters.
+  `testConnection`, `refreshAiStatus` and the AI calls now use the injected `apiFor` too (the app passes
+  `Api::client`, the call they made before).
+- **Tests unchanged**, as the ticket asked: `RepositoryTransactionTest` (it calls `discardUncommittedPhotoFiles`
+  with `java.io.File`s through a thin `AndroidRepository` overload) and `SyncServerResetTest` run on the new code.
+
+**Verified, and how.** Locally on JDK 21 (Android SDK platform 37.0 installed in the session): `assembleDebug
+testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest :shared:compileCommonMainKotlinMetadata
+:ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true`, and the iOS klibs with
+`-Pkotlin.native.enableKlibsCrossCompilation=true` (`:shared:compileKotlinIosArm64`, `compileKotlinIosSimulatorArm64`,
+`compileTestKotlinIosSimulatorArm64`), so kotlinx-io's file calls build for Kotlin/Native. Counts: `:app` 160 JVM test
+runs (180 at `18b631e`, less `CopyUndoTest`'s 20), `:shared` 220 (200, plus those 20), `:ui` 110; no failures; the
+64 screenshots match (none re-recorded). The first run found one difference, fixed before the commit: the old
+`photoFile(id)` created the photo folder, and `SyncServerResetTest` writes a photo through it on a fresh install; the
+common `photoPath` creates the folder the same way. A line-by-line diff of the moved body against the old class shows
+only the substitutions listed above. CI (Android, Shared-iOS) runs on the push.
+
+**For CMP-8:** iOS builds a `CommonRepository` with a folder in Application Support, a "sync soon" of its own
+(`BGTaskScheduler`, or none at first) and a Darwin-engine client. Photo decoding on iOS is S4b-BL-39's.
+
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
 **The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
@@ -1958,3 +2001,16 @@ screenshots match): **235 `:app` unit test runs** (179 `@Test` methods counted i
 tests, with `927d54b`) and `ng build`. Backend: `mvn -B -ntp verify` on JDK 25
 against the `backend/db` PostGIS image (285 tests, one skipped: the golden-set eval without a key). Not run: the
 instrumented tests on an emulator (`android-emulator.yml`) and the live web UI test (`tools/live-ui`, after the merge).
+
+## 15. Owner feature requests of 2026-09-28
+
+After S4b-BL-32 and CMP-8, in this order (owner, 2026-09-28). Each follows the design-first step of §12
+(Design Director and UX lead first, all four languages, both themes, loading, empty and error states), on web and
+Android alike, and keeps the owner rules (zero cost; no public server until the release security gate passes).
+
+| ID | Feature | Notes for the design step | Status |
+|---|---|---|---|
+| S4b-FR-1 | **Search the saved houses.** | **Both apps already search** the house list as you type, offline: the web over the label, address, street, locality, notes and contact name (`searchText`, `pages/map/map-list.ts`), Android over the same without the contact name (`HouseListScreen.kt`). What is left for the design step: the owner's idea of search beyond that box (for example price or BHK ranges, a search on the Map tab, or across visits), and the contact-name parity gap on Android. | Owner to say what is missing |
+| S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | Planned |
+| S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | Planned |
+| S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038. | Planned |

@@ -1,17 +1,16 @@
-package app.doorprints
+package app.doorprints.export
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.VisitEntity
-import app.doorprints.export.CopyUndo
 import app.doorprints.export.CopyUndo.Decision
 import app.doorprints.export.CopyUndo.HouseNow
 import app.doorprints.export.CopyUndo.VisitNow
 import app.doorprints.shared.sync.SyncRules
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.Test
 
 /**
  * Android review, round 17: *Undo this import* writes tombstones that sync, so a wrong keep-or-remove decision deletes
