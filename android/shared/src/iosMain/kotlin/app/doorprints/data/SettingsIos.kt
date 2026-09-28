@@ -31,10 +31,7 @@ import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
 import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
-import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSData
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSUserDomainMask
 import platform.Foundation.dataWithBytes
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
@@ -56,24 +53,13 @@ import platform.Security.kSecValueData
 import platform.darwin.OSStatus
 
 /**
- * The iOS settings (CMP-4 P4b): the same [SettingsStore] on `settings.preferences_pb` in the app's Application Support
- * folder, with the API key in the Keychain ([KeychainSecretStore]). Nothing calls it until the iOS shell (CMP-8); the
- * simulator tests (iosTest, S4b-BL-26) run the same store through [iosSettingsStore] with a path. Call it once per
- * process.
+ * The iOS settings (CMP-4 P4b): the same [SettingsStore] on `settings.preferences_pb` in the app's data folder,
+ * `Application Support/Doorprints`, which is excluded from backup ([iosDataDirectory]; threat model F-03, SEC-011),
+ * with the API key in the Keychain ([KeychainSecretStore]). Nothing calls it until the iOS shell (CMP-8); the simulator
+ * tests (iosTest, S4b-BL-26) run the same store through [iosSettingsStore] with a path. Call it once per process.
  */
-@OptIn(ExperimentalForeignApi::class)
-fun iosSettingsStore(): SettingsStore {
-    val support = NSFileManager.defaultManager.URLForDirectory(
-        directory = NSApplicationSupportDirectory,
-        inDomain = NSUserDomainMask,
-        appropriateForURL = null,
-        create = true,
-        error = null,
-    )
-    val path = requireNotNull(support?.path) { "No Application Support folder" } +
-        "/" + SettingsStore.FILE_NAME + ".preferences_pb"
-    return iosSettingsStore(path, KeychainSecretStore())
-}
+fun iosSettingsStore(): SettingsStore =
+    iosSettingsStore(iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore())
 
 /**
  * The iOS settings on the file at [path] with the key in [secrets] (for the simulator tests, S4b-BL-26). [path] must
