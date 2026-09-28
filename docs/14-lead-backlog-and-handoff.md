@@ -142,10 +142,8 @@
   [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.3). **No account is needed.** (1) Download the
   free Administrative Boundary Database **OVSF/1M/7** (whole country, district level) from the portal's *Quick Access*;
   the download asks for a CAPTCHA and a tick-box, which only you can do; keep the ZIP out of the repository and attach
-  it in a session to have the outline measured. (2) **The letter is a draft in your Gmail** to `mtr.soi@gov.in` (The
-  Director, NGDR & UGI Directorate): fill in your name (twice), postal address, phone and date, attach the three web map
-  screenshots sent to you in the session of 2026-09-28, and send it (or give a session the details and a clear
-  go-ahead to send it).
+  it in a session to have the outline measured. (2) **The letter was sent** on 2026-09-28 (22:11 UTC) to `mtr.soi@gov.in` (The Director, NGDR & UGI
+  Directorate) with the three web map screenshots; tell the next session when the reply comes (S4b-BL-10).
 - **GitHub contributor list** ([10](10-sprint-log.md) S4b-BL-53): `noreply` is listed because of 17 commits of
   2026-09-23 made as `noreply@users.noreply.github.com`. Decide whether it is worth a history rewrite (costly, see the
   ticket); optionally add and verify `owner-email-removed` in GitHub's email settings so the 14
