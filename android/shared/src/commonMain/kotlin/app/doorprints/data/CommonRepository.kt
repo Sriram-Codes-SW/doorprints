@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
@@ -63,8 +64,18 @@ open class CommonRepository(
     /** The clock every local edit is stamped with. */
     protected fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
-    /** The photo folder, created when missing. */
-    protected fun photoDirPath(): Path = Path(photoDir).also { fs.createDirectories(it) }
+    /**
+     * The photo folder, created when missing. Two calls on the IO pool can race to create it on a first run, and
+     * kotlinx-io's native `createDirectories` then fails with "File exists" where `java.io.File.mkdirs` did not; a
+     * folder that is there afterwards is all that counts.
+     */
+    protected fun photoDirPath(): Path = Path(photoDir).also { dir ->
+        try {
+            fs.createDirectories(dir)
+        } catch (e: IOException) {
+            if (fs.metadataOrNull(dir)?.isDirectory != true) throw e
+        }
+    }
 
     private fun writeFile(path: Path, bytes: ByteArray) = fs.sink(path).buffered().use { it.write(bytes) }
 
@@ -254,7 +265,9 @@ open class CommonRepository(
                 if (local != null) {
                     deleteFile(local.path); db.photos().delete(change.id); pulled++
                 }
-            } else if (local == null) {
+            } else if (local == null && BackupValidation.isValidId(change.id)) {
+                // The id becomes a file name: a server id outside the backup id rule is not downloaded (defence in
+                // depth; the server issues UUIDs), and the cursor moves past it like any handled row.
                 val house = db.houses().get(change.houseId)
                 if (house != null && !house.deleted) {
                     if (!photosAllowed) {
@@ -391,16 +404,19 @@ open class CommonRepository(
      * `BackupValidation.checkData` already refuses a backup whose ids are not `[A-Za-z0-9_-]{1,64}`, so this
      * never fires on a file that got this far; it is here because [photoPath] interpolates its argument straight
      * into a path, and a second, independent check costs one path resolution per photo. The id check alone keeps
-     * the name inside the folder (no separator, no `..`); an existing file is resolved as well, so a link left at
-     * that name cannot send the write elsewhere. Defence in depth for the same bug class as the zip-slip guard on
-     * entry names.
+     * the name inside the folder (no separator, no `..`); a file already at that name is resolved as well, so a link
+     * to an existing file elsewhere is refused. A dangling link is not caught (`exists` follows links), as the old
+     * `canonicalPath` check did not catch it either; the folder is the app's private one. A file that vanishes between
+     * the two calls makes the photo count as skipped rather than stopping the import. Defence in depth for the same
+     * bug class as the zip-slip guard on entry names.
      */
     private fun importedPhotoPath(id: String): Path? {
         if (!BackupValidation.isValidId(id)) return null
         val path = photoPath(id)
         if (!fs.exists(path)) return path
-        val dir = fs.resolve(photoDirPath())
-        return if (fs.resolve(path).parent == dir) path else null
+        return runCatching {
+            if (fs.resolve(path).parent == fs.resolve(photoDirPath())) path else null
+        }.getOrNull()
     }
 
     /**
