@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-09-28 |
 | Author | Claude (Code), lead |
 | Status | Draft for the owner; not sent |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.3 | 2026-09-28 | Claude (Code), lead | Owner request to do the whole process (email access given): the portal read on 2026-09-28. **No account is needed** for the free database (its FAQ: free to all users, downloadable without registration from *Quick Access*); the download dialog asks for a CAPTCHA and a tick-box, which the owner does. Registration, if ever wanted, needs the owner's mobile OTP and an ID card (PDF) and SoI's approval, so it was not done. Contact found: The Director, NGDR & UGI Directorate (`mtr.soi@gov.in`). The letter is a **Gmail draft** in the owner's account (not sent), with product OVSF/1M/7 named; the web map screenshots were handed to the owner to attach. Steps rewritten to match. |
 | 0.2 | 2026-09-28 | Claude (Code), lead | Owner request: steps for the web and the Android app. The letter names both apps (web address, Android package `app.doorprints`) and the iOS app to come (CMP-8), so one permission covers all three; the repository is public, so the source-code sentence is no longer conditional; new *Steps* section with what to attach. |
 | 0.1 | 2026-09-28 | Claude (Code), lead | First draft (owner request of 2026-09-28 to follow the DST geospatial guidelines of 2021; [10](../10-sprint-log.md) S4b-BL-10 step (3), [03](../03-design.md) §11.1). |
 
@@ -32,15 +33,21 @@ One request covers both apps, because both ship the same boundary file (`web/pub
 its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.geojson`, pinned by
 `IndiaBoundaryDataTest`), and the iOS app of CMP-8 will ship it too.
 
-1. **Sign in to the Survey of India's Online Maps Portal** (`https://onlinemaps.surveyofindia.gov.in`, *Login*; register
-   first if you have no account).
-2. **Download the free Administrative Boundary Database, whole country, district level (1:1M, shapefile)** from
-   *Products* (`Digital_Product_Show.aspx`). Keep it outside the repository: until SoI says yes, it is only the
-   reference TC-M-25 and the outline check (S4b-BL-10 step (2)) measure against. To have a Claude session measure the
-   outline against it, attach the ZIP in that session (it is not committed).
-3. **Find the contact** on the portal's *FAQs* (`FAQs.aspx`) or *Contact* (`contactus.aspx`) page and check the
-   current address before sending. Email is enough; keep a copy and the date.
-4. **Fill in the letter below**: your name, postal address, email, phone and the date.
+1. **No account is needed.** The portal's FAQ says the Administrative Boundary Database is free to all users and can
+   be downloaded without registration (checked 2026-09-28). Registration (for priced products) would need your mobile
+   number's OTP, an ID card upload (PDF) and SoI's approval of the profile; it was not done.
+2. **Download the free database yourself:** `https://onlinemaps.surveyofindia.gov.in` → *Quick Access* →
+   *Administrative Boundary Database* → the first product, **OVSF/1M/7** ("Entire country Upto Distt. level with HQ",
+   ₹0, shapefile, 1:1M) → *DOWNLOAD* → read the declaration before ticking its box, type the CAPTCHA → *Download*.
+   The CAPTCHA and the tick-box are yours to do (a session does not solve CAPTCHAs or accept terms for you). Keep the
+   ZIP outside the repository: until SoI says yes, it is only the reference TC-M-25 and the outline check (S4b-BL-10
+   step (2)) measure against. To have a Claude session measure the outline against it, attach the ZIP in that session.
+3. **The contact** (portal *Contact Us* and FAQ, 2026-09-28): The Director, NGDR & UGI Directorate, Survey of India,
+   Hathibarkala Estate, New Cantt Road, Dehradun, Uttarakhand 248001; `mtr.soi@gov.in`; +91-135-2970896.
+4. **The letter is a draft in your Gmail** (subject "Request for permission to use the Administrative Boundary
+   Database (OVSF/1M/7) in a free, open-source app", to `mtr.soi@gov.in`). Replace `[YOUR FULL NAME]` (twice),
+   `[POSTAL ADDRESS]`, `[PHONE]` and `[DATE]`, attach the screenshots (step 5), read it once more and send it yourself,
+   or give a Claude session the details and a clear go-ahead to fill them in and send it.
 5. **Attach** (optional, but it shows what the permission is for): the web map at the whole-of-India view and zoomed
    over Jammu and Kashmir and Ladakh and over Arunachal Pradesh (the live UI test's screenshots `map_india_z4.png`,
    `map_kashmir_z6.png`, `map_arunachal_z7.png`, or your own), the Android Map tab the same way (a phone screenshot,
@@ -53,12 +60,18 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
 
 ## Draft
 
-> **Subject:** Request for permission to use the Survey of India's Administrative Boundary Database in a free,
-> open-source app
+> **Subject:** Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source
+> app (to `mtr.soi@gov.in`)
+>
+> To
+> The Director
+> NGDR & UGI Directorate, Survey of India
+> Hathibarkala Estate, New Cantt Road
+> Dehradun, Uttarakhand 248001
 >
 > Dear Sir or Madam,
 >
-> I am [name], an Indian citizen, and I maintain Doorprints, a free, non-commercial app that helps a person keep a
+> I am [YOUR FULL NAME], an Indian citizen, and I maintain Doorprints, a free, non-commercial app that helps a person keep a
 > private record of the houses they visit while looking for a home to rent or buy in India. It runs as a web app at
 > https://doorprints.web.app and as an Android app (package app.doorprints, not yet on Google Play); an iPhone
 > version built from the same code is in progress. Its source code is public at
@@ -67,7 +80,8 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
 > The app's map, on the web and on Android, shows India's external boundary as the Government of India depicts it:
 > all of Jammu and Kashmir and Ladakh, including the areas under the occupation of Pakistan and China, and all of
 > Arunachal Pradesh are inside India, with no other line drawn. Today the outline comes from a public-domain world
-> dataset, which is correct in extent but about 1.5 km off the true line in mountain areas.
+> dataset, which is correct in extent but about 1.5 km off the true line in mountain areas. Screenshots of the web
+> map are attached.
 >
 > Under clause 8 (xiii) of the Department of Science & Technology's Guidelines for acquiring and producing Geospatial
 > Data and Geospatial Data Services including Maps (F.No.SM/25/02/2020 (Part-I), 15 February 2021), the Survey of
@@ -77,8 +91,8 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
 >
 > I would like to follow that standard exactly. May I have the Survey of India's written permission to:
 >
-> 1. use the Administrative Boundary Database (whole country, district level, 1:1M), downloaded from the Online Maps
->    Portal, to prepare the outline of India's external boundary, and where needed state boundaries, shown on the
+> 1. use the Administrative Boundary Database for the entire country up to district level (product OVSF/1M/7, 1:1M),
+>    downloaded free of charge from the Online Maps Portal, to prepare the outline of India's external boundary, and where needed state boundaries, shown on the
 >    app's map; and
 > 2. include that outline, as a small data file inside the web app, the Android app, the iPhone app and their public
 >    source code, so that every copy of the app shows the same boundary, with the credit "Boundary: Survey of India"
@@ -89,8 +103,9 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
 > route, I would be grateful to be told which.
 >
 > Yours faithfully,
-> [name]
-> [address, email, phone]
-> [date]
+> [YOUR FULL NAME]
+> [POSTAL ADDRESS]
+> [PHONE]
+> [DATE]
 
 This draft records the owner's request, not legal advice.
