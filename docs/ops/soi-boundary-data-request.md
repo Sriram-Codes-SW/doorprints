@@ -3,15 +3,16 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.3 |
+| Version | 0.4 |
 | Date | 2026-09-28 |
 | Author | Claude (Code), lead |
-| Status | Draft for the owner; not sent |
+| Status | **Sent** by the owner on 2026-09-28 22:11 UTC (29 September, 03:41 IST) to `mtr.soi@gov.in`, with the three web map screenshots; awaiting the reply |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.4 | 2026-09-28 | Claude (Code), lead | **Sent** by the owner (2026-09-28 22:11 UTC) to `mtr.soi@gov.in` with `map_india_z4.png`, `map_kashmir_z6.png` and `map_arunachal_z7.png` attached (checked in the owner's Sent folder). The two links show the right addresses as text; their targets still pass through Google's redirect (the connector's wrapping), which after about a day shows Google's redirect notice before the site. No follow-up needed for that. |
 | 0.3 | 2026-09-28 | Claude (Code), lead | Owner request to do the whole process (email access given): the portal read on 2026-09-28. **No account is needed** for the free database (its FAQ: free to all users, downloadable without registration from *Quick Access*); the download dialog asks for a CAPTCHA and a tick-box, which the owner does. Registration, if ever wanted, needs the owner's mobile OTP and an ID card (PDF) and SoI's approval, so it was not done. Contact found: The Director, NGDR & UGI Directorate (`mtr.soi@gov.in`). The letter is a **Gmail draft** in the owner's account (not sent), with product OVSF/1M/7 named; the web map screenshots were handed to the owner to attach. Steps rewritten to match. |
 | 0.2 | 2026-09-28 | Claude (Code), lead | Owner request: steps for the web and the Android app. The letter names both apps (web address, Android package `app.doorprints`) and the iOS app to come (CMP-8), so one permission covers all three; the repository is public, so the source-code sentence is no longer conditional; new *Steps* section with what to attach. |
 | 0.1 | 2026-09-28 | Claude (Code), lead | First draft (owner request of 2026-09-28 to follow the DST geospatial guidelines of 2021; [10](../10-sprint-log.md) S4b-BL-10 step (3), [03](../03-design.md) §11.1). |
