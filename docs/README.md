@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.53 |
-| Date | 2026-09-28 |
+| Version | 0.54 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -65,6 +65,7 @@
 | 0.51 | 2026-09-24 | Claude (Code), lead | **CMP-5, CMP-6 and CMP-7 as one change**, with the web backlog (S4b-BL-1, -2, -6, -7), the shared items (S4b-BL-9, -10, -12, -13, -17, -20), S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24; [03](03-design.md) ADR-23 P5-P7). Versions: 01 v0.32 (RTM), 02 v0.35 (RR-16 held areas and the S4b-BL-10 finding, new RR-17), 03 v0.31 (ADR-23 P5-P7 as built, ADR-22, §4.2, §4.2.1, §9, §10), 05 v0.24 (§4 invalid-field edge, §5.1 retry scope, new §5.2 web on phones, §8.2 counts, new §8.3), 06 v0.45 (TC-U-68 to TC-U-77, TC-I-36, TC-I-35 on three levels, TC-M-25, TC-M-26 mobile pass), 07 v0.39 (emulator matrix), 08 v0.18 (new §11.1, `maxSyncVersion`), 10 v0.51 (§13.9, S4b-BL-35 to S4b-BL-50), 14 v0.18; the others unchanged. Also `android/ui/README.md` 1.10, `android/shared/README.md` 1.51, `web/README.md` (rows of 2026-09-24) and the CHANGELOG. The session's handoff notes `wip-cmp5-7-handoff.md` are folded in and removed. |
 | 0.52 | 2026-09-28 | Claude (Code), engineer | **S4b-BL-32, the common repository** (branch `claude/sleepy-brown-479259`): 03 v0.32, 06 v0.46 (TC-U-52's test moved; TC-M-26's live run after PR #24), 10 v0.52 (§13.10; §15, the owner's feature requests of 2026-09-28), 14 v0.19, `android/shared/README.md` 1.52, CHANGELOG. |
 | 0.53 | 2026-09-28 | Claude (Code), lead | **The DST geospatial guidelines of 2021** (owner request of 2026-09-28): 01 v0.33 (FR-098), 02 v0.36 (RR-16), 03 v0.33 (new §11.1, the self-certification; ADR-22), 06 v0.47 (TC-M-25 against the Survey of India's boundary), 10 v0.53 (S4b-BL-10 re-read, new S4b-BL-51), 14 v0.20 (N11), new [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) (a draft letter to SoI), CLAUDE.md's boundary rule. |
+| 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 
 ---
 

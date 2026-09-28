@@ -4,7 +4,7 @@
 |---|---|
 | Document | Threat model (STRIDE) |
 | Version | 0.37 |
-| Date | 2026-09-28 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -48,7 +48,7 @@
 | 0.34 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4b ([03](03-design.md) ADR-23 P4b): the settings code and the URL check moved to `:shared` commonMain; where the key is kept did not change. §5.1 **F-02** and **F-03** name the new files: `ServerUrl` in `:shared` (a port of `java.net.URI`'s parser, `ServerUrlTest` and `ServerUrlParityTest`); `SettingsStore` in `:shared` behind a `SecretStore` interface, `KeystoreSecretStore` in `:app` around the unchanged `ApiKeyCipher` (alias `house_hunt_api_key_v1`, entry `apiKeyEnc`; `SettingsUpgradeTest`). |
 | 0.35 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change (branch `claude/doorprints-dev-continue-fzcge2`, PR #24). **RR-16**: the held-areas rule on `boundary_3` (S4b-BL-12; second bundled file `in-held-areas.geojson`, sha256 `8fa2db12…80c3`, pinned like the outline) and its residuals (zoom 9-11 merged pieces, foreign admin lines hidden within about 20 km outside the outline); the outline's new sha256 `c3cdf5fb…f63f` (S4b-BL-17; Doklam unchanged on purpose); the S4b-BL-10 finding: no Survey of India outline file whose licence allows redistribution in an AGPL app (sources cited); the renderer wording settled (S4b-BL-13); Android's OpenGL ES build. New **RR-17**: a detected server reset re-sends all local data to the configured server (S4b-BL-20). |
 | 0.36 | 2026-09-28 | Claude (Code), lead | **RR-16 and the DST geospatial guidelines of 2021** (owner request of 2026-09-28), read in full: the reading recorded on 2026-09-24 ("display and printing, not redistribution") left out clause 8 xiii's last sentence (others may publish maps that adhere to the SoI standard), clause 8 ii(1) (no licence to build applications with geospatial data and publish them) and paragraph 8's supersession of earlier DST and other Government instructions to the contrary. The shipping question stays open against SoI's Digital Licence ([10](10-sprint-log.md) S4b-BL-10). New mitigation: the Survey of India's boundary is the reference TC-M-25 checks against, and the self-certification of [03](03-design.md) §11.1 is re-read at each release. Score unchanged. |
-| 0.37 | 2026-09-28 | Claude (Code), lead | F-27's row: maplibre-gl ^6.11.2 (the web dependency update of 2026-09-28, which supersedes Dependabot #25). No new finding. RR-16: maplibre-gl 6.11.2 `worker_tile.ts:110` (the same skip, one line lower; [10](10-sprint-log.md) §16). |
+| 0.37 | 2026-09-29 | Claude (Code), lead | F-27's row: maplibre-gl ^6.11.2 (the web dependency update of 2026-09-28, which supersedes Dependabot #25). No new finding. RR-16: maplibre-gl 6.11.2 `worker_tile.ts:110` (the same skip, one line lower; [10](10-sprint-log.md) §16). |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 

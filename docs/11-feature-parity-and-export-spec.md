@@ -4,7 +4,7 @@
 |---|---|
 | Document | Feature parity and offline-copy export specification |
 | Version | 0.20 |
-| Date | 2026-09-28 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
 
@@ -31,7 +31,7 @@
 | 0.17 | 2026-09-24 | Claude (Code), Docs team | **§10 *Map boundaries (India)*** after the Singalila spur fix (round 2 reviews): sha256 `25984afa…a024`; the shared known limits sized (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tile line's overrun at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9)). No parity change. |
 | 0.18 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). The repository note says packages, storage keys and database names follow the brand since 2026-09-24. |
 | 0.19 | 2026-09-24 | Claude (Code), engineer | The Room migration test (R-06) is done: CMP-4 P4a, [06](06-test-plan.md) TC-U-63 (the Room row and S4-00). |
-| 0.20 | 2026-09-28 | Claude (Code), lead | Map boundaries row: maplibre-gl 6.11.2 `worker_tile.ts:110` ([10](10-sprint-log.md) §16). |
+| 0.20 | 2026-09-29 | Claude (Code), lead | Map boundaries row: maplibre-gl 6.11.2 `worker_tile.ts:110` ([10](10-sprint-log.md) §16). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 

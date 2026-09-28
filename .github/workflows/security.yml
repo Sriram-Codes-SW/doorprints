@@ -120,6 +120,7 @@ jobs:
             noreply@github.com
             49699333+dependabot[bot]@users.noreply.github.com
         run: |
+          set -f # $ALLOWED is split into words but never glob-expanded: "dependabot[bot]" must match literally
           if [ -n "$BASE_SHA" ]; then range="$BASE_SHA..$HEAD_SHA"; else range="origin/main..HEAD"; fi
           echo "Checking $range"
           commits="$(git log --format='%h %ae %ce' "$range")" # fails the step on a bad range (bash -e)
