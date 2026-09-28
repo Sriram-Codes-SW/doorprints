@@ -454,6 +454,7 @@ class ImportViewModel(
 
 /**
  * Milliseconds since boot, counting deep sleep (Android: `SystemClock.elapsedRealtime`, what the refresh read before
- * CMP-6, so a screen come back to after the phone slept refreshes as before; iOS: the system uptime).
+ * CMP-6, so a screen come back to after the phone slept refreshes as before; iOS: `CLOCK_MONOTONIC`, which also counts
+ * sleep on Darwin).
  */
 internal expect fun elapsedRealtimeMillis(): Long
