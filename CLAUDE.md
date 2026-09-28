@@ -29,6 +29,10 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 - Work on a branch; CI runs on every branch push (Web, Backend, Android, Shared-iOS, Security, CodeQL). Deploy,
   signing and the dependency graph run on `main` only.
 - Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`.
+- **Commit identity:** Claude sessions commit as `Claude <noreply@anthropic.com>`; the owner as
+  `329133251+Sriram-Codes-SW@users.noreply.github.com`. Never a bare `*@users.noreply.github.com` address: GitHub credits
+  `NAME@users.noreply.github.com` to the account NAME (17 commits of 2026-09-23 made as `noreply@users.noreply.github.com`
+  list the unrelated account `noreply` as a contributor; `docs/10` S4b-BL-53). Check `git config user.email` first.
 
 ## How changes are reviewed (keep it lean)
 
