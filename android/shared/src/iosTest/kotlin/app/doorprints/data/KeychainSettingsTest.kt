@@ -321,8 +321,8 @@ class KeychainSettingsTest {
     private companion object {
         const val SERVICE = "app.doorprints.test"
         const val ACCOUNT = "api_key"
-        const val KEY_1 = "first-key-1234567890"
-        const val KEY_2 = "second-key-0987654321"
+        const val KEY_1 = "test-key-one"
+        const val KEY_2 = "test-key-two"
         const val ERR_SEC_DUPLICATE_ITEM: OSStatus = -25299
         const val ERR_SEC_MISSING_ENTITLEMENT: OSStatus = -34018
         const val ERR_SEC_NOT_AVAILABLE: OSStatus = -25291
