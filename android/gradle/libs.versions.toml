@@ -31,7 +31,9 @@ androidx-core = "1.19.1"
 androidx-activity = "1.11.0"
 # navigation and lifecycle: the Android artifacts the JetBrains ones below map to (CMP-5). JetBrains navigation-compose
 # 2.9.2 depends on androidx navigation-compose 2.9.7 on Android, JetBrains lifecycle 2.11.0 on androidx lifecycle
-# 2.11.0; Gradle takes the higher version anyway, so :app names the same ones. Check both on every bump.
+# 2.11.0; Gradle takes the higher version anyway, so :app names the same ones. Check both on every bump. 2026-09-28
+# (Dependabot #26): androidx navigation 2.10.2 while JetBrains' latest stable is still 2.9.2, so on Android the
+# JetBrains artifacts run on androidx 2.10.2 (compatible within the major; emulator smoke tests passed).
 androidx-navigation = "2.10.2"
 androidx-lifecycle = "2.11.0"
 androidx-room = "2.8.5"
