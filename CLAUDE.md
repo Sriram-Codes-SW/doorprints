@@ -15,8 +15,10 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 ## Rules (owner decisions)
 
 - **Zero cost.** No paid services, plans or data.
-- **India's boundaries** are shown as the Government of India depicts them, on web and Android alike
-  (`docs/03-design.md` ADR-22; `web/src/app/shared/india-boundaries.ts`, `android/.../ui/IndiaViewRules.kt`;
+- **India's boundaries** are shown as the Government of India depicts them, on web and Android alike; the Survey of
+  India's maps and boundary data are the standard (DST geospatial guidelines of 2021, clause 8 xiii; self-certification
+  in `docs/03-design.md` §11.1, re-read at each release) (`docs/03-design.md` ADR-22;
+  `web/src/app/shared/india-boundaries.ts`, `android/.../ui/IndiaViewRules.kt`;
   data `web/public/geo/in-boundaries.geojson`, byte-identical Android copy). Any base-map change re-runs TC-M-25.
 - **No Play Store release and no public server** until the release security gate exists and passes (`docs/10` §12.5).
 - **Brand words:** *Import a backup*, *Save a copy*, *readable copies*, *Add a shared listing*; never "Restore" as a
