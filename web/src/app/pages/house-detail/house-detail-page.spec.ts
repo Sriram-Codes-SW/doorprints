@@ -85,7 +85,7 @@ function create(
       { provide: GeocodeService, useValue: { reverse: fakes.reverse ?? (() => of({})) } },
       {
         provide: AiService,
-        useValue: { enabled: signal(fakes.aiEnabled ?? false), extractListing: fakes.extractListing ?? (() => of()) },
+        useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(false), extractListing: fakes.extractListing ?? (() => of()) },
       },
     ],
   });

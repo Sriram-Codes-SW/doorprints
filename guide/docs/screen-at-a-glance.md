@@ -4,7 +4,7 @@
 
 ![The Doorprints website on a computer: the house list on the left, the map on the right with four coloured pins, with numbered badges 1 to 11](images/web-map.png)
 
-1. **Menu:** **Map**, **Compare**, **Your data** and **Connect**. **Ask** and **Plan** show here only when your own server has AI turned on.
+1. **Menu:** **Map**, **Compare**, **Your data** and **Connect**. **Ask** and **Plan** show here once you turn on AI features (see [AI without a server](settings-and-privacy.md#ai-without-a-server)).
 2. **Language:** English, हिन्दी, தமிழ், తెలుగు.
 3. **Your houses:** how many houses, shortlisted houses, rejected houses, visits and streets you have.
 4. **Search houses:** type part of a name, street, locality or note.
@@ -31,7 +31,7 @@ and **Your data**. **Connect** is inside **Your data**.
 4. **Save house here** saves a house at the spot where you are standing. You can also press and hold the map anywhere.
 5. The colour key: **New**, **Shortlisted**, **Rejected**.
 6. Map credits (who made the map).
-7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows when your server has AI turned on.
+7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows once you turn on AI features, through your server or with your own Gemini key.
 
 This picture was taken by an automatic test on a pretend phone on a computer. That pretend phone does not show place
 names. On a real phone, the map has place names and shows your houses as coloured pins, like the website's map.

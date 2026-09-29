@@ -10,7 +10,8 @@ Think of it as a home post office that all your devices send to and collect from
 You don't need a server to use Doorprints. A server only adds three things:
 
 - the same houses on your phone and in your browser. This is called sync: the apps keep in step with each other;
-- the AI features: **Ask**, **Plan**, the Android **Assistant** and **Fill in from listing text**;
+- the AI features: **Ask**, **Plan**, the Android **Assistant** and **Fill in from listing text**, with its owner's
+  Gemini key (without a server, you can [use your own key](settings-and-privacy.md#ai-without-a-server));
 - an extra copy of your houses on a computer you own.
 
 ## Two different keys
