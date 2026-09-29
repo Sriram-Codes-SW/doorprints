@@ -56,6 +56,8 @@
 	<!-- A plain launch screen (the system background); Compose draws the first frame. -->
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Doorprints uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Doorprints uses your location to place the houses you save and to plan visits from where you are.</string>
 	<key>NSLocalNetworkUsageDescription</key>

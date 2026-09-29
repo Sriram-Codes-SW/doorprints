@@ -692,6 +692,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             ),
             style = MaterialTheme.typography.bodySmall,
         )
+        // The app lock (docs/11 5.19): the phone's own screen lock when Doorprints opens.
+        AppLockSection(settings)
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_about))

@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import android.app.KeyguardManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -67,6 +68,14 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
 
     /** The model, as the phone's own settings name it ("Pixel 9"), with the maker only when the model lacks it. */
     override fun deviceName(): String = androidDeviceName(android.os.Build.MANUFACTURER, android.os.Build.MODEL)
+
+    override fun hasScreenLock(): Boolean = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
+    override fun isRecreating(): Boolean = context.findActivity()?.isChangingConfigurations == true
+
+    override fun leaveApp() {
+        context.findActivity()?.moveTaskToBack(true)
+    }
 }
 
 /** "Pixel 9 (Android app)", "Samsung SM-S921B (Android app)": the maker is added unless the model starts with it. */

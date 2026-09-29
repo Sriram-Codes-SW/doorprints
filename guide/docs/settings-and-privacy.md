@@ -22,6 +22,19 @@ Light and dark themes follow your device's setting on all three.
 - Hunt mode's location stays on your phone.
 - India's boundaries on the map are shown as the Government of India depicts them.
 
+## Lock Doorprints on your phone
+
+If you share your phone, or hand it to someone to show a house, you can make Doorprints ask for your phone's own
+screen lock (PIN, pattern, password, fingerprint or face) before it opens.
+
+1. Open **Settings** and find **Privacy**.
+2. Turn on **Lock Doorprints**. Your phone asks you to confirm it is you.
+3. Choose when it locks again after you leave it: **Right away**, **1 minute**, **5 minutes** or **15 minutes**.
+
+While the lock is on, Doorprints is hidden in the phone's list of recent apps. Doorprints keeps no PIN of its own, so
+there is nothing new to remember. Your phone needs a screen lock first: set one in the phone's settings. The website
+has no lock; on a shared computer, use **Clear everything** on **Your data** when you are done.
+
 ## AI without a server
 
 You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then

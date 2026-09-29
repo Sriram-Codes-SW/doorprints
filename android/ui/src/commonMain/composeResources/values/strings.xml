@@ -615,4 +615,20 @@
     <string name="settings_gemini_free_tier">On Google's free tier, Google may use what you send to improve its products, and people may read it. Keep personal details out of your notes, or use a key with billing turned on.</string>
     <string name="settings_ai_needs_key">Save your Gemini key to turn AI on.</string>
     <string name="ai_key_rejected">Google did not accept your Gemini key. Check it in Settings, under AI features.</string>
+    <!-- S4b-FR-5, the app lock (2026-09-29). -->
+    <string name="app_lock_title">Doorprints is locked</string>
+    <string name="app_lock_body">Unlock with this phone’s screen lock: PIN, pattern, password, fingerprint or face.</string>
+    <string name="app_lock_unlock">Unlock</string>
+    <string name="app_lock_prompt_title">Unlock Doorprints</string>
+    <string name="app_lock_not_unlocked">Not unlocked. Tap Unlock to try again.</string>
+    <string name="settings_app_lock">Lock Doorprints</string>
+    <string name="settings_app_lock_hint">Ask for this phone’s screen lock when Doorprints opens, and hide it in the recent apps. Doorprints keeps no PIN of its own.</string>
+    <string name="settings_app_lock_no_screen_lock">Set a screen lock on this phone first, in the phone’s settings.</string>
+    <string name="settings_app_lock_confirm">Confirm it’s you</string>
+    <string name="settings_app_lock_not_changed">Not changed: this phone’s screen lock was not confirmed.</string>
+    <string name="settings_app_lock_after">Lock again after Doorprints has been in the background</string>
+    <string name="settings_app_lock_now">Right away</string>
+    <string name="settings_app_lock_1m">1 minute</string>
+    <string name="settings_app_lock_5m">5 minutes</string>
+    <string name="settings_app_lock_15m">15 minutes</string>
 </resources>
