@@ -35,6 +35,9 @@
 # checkouts cached), with India's geo files bundled from android/app/src/main/assets/geo; ios-app checks both are in
 # the app, and the launch smoke passes only with the self-check's indiaView and map lines (the in-app boundary check,
 # the owner's CI gate for the iOS map; the on-device review is TC-M-28).
+# S4b-BL-69 (2026-09-29): Hunt mode on iPhone. ios-app checks the location background mode is in the bundle, and the
+# launch smoke grants the app location, sets a simulated location next to a house the self-check saves and requires
+# its hunt line too (the device check is TC-M-31).
 name: Shared iOS compile
 
 on:
@@ -319,6 +322,9 @@ jobs:
           for lang in en hi ta te; do
             test -f "$app/$lang.lproj/InfoPlist.strings" || { echo "::error::$lang.lproj/InfoPlist.strings missing"; exit 1; }
           done
+          # Hunt mode (S4b-BL-69): background location updates need the mode, or Core Location throws at start.
+          /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' "$app/Info.plist" | grep -q '^ *location$' \
+            || { echo "::error::UIBackgroundModes in the built Info.plist lacks 'location' (Hunt mode)"; exit 1; }
           # The map (CMP-8c): MapLibre iOS embedded at the pinned revision, and India's geo files bundled unchanged.
           test -d "$app/Frameworks/MapLibre.framework" || { echo "::error::MapLibre.framework is not embedded in the app"; exit 1; }
           resolved=ios/Doorprints.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.37 |
+| Version | 0.38 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -49,6 +49,7 @@
 | 0.35 | 2026-09-29 | Claude (Code), lead | Device keys, pairing and the owner page ([03](03-design.md) §12.1, ADR-25): new FR-099..FR-101, SEC-050, SEC-051; SEC-025 reworded and server side done. |
 | 0.36 | 2026-09-29 | Claude (Code), lead | New SEC-052: the Gemini key on the owner page, stored encrypted. |
 | 0.37 | 2026-09-29 | Claude (Code), lead | New PRV-028: the path trace (S4b-FR-2) stays on the phone. |
+| 0.38 | 2026-09-29 | Claude (Code), lead | PRV-001: Hunt mode on iPhone (S4b-BL-69) collects in the background through Core Location under *When in use*, with the indicator shown; never *Always*. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -343,7 +344,7 @@ Location history and third-party contact details are the most sensitive data her
 
 | ID | Requirement | Pri | Status |
 |---|---|---|---|
-| PRV-001 | Location is collected only while Hunt mode is on or the map screen is open. The foreground service is the only background collector. `ACCESS_BACKGROUND_LOCATION` is not requested (today) and, from Sprint 4b, only when the user turns on area wake-up (PRV-025); even then the app itself collects no location in the background: Google Play services watches the geofences and the app is only told that an area was entered. | M | Impl (amended 2026-09-22 for 4b) |
+| PRV-001 | Location is collected only while Hunt mode is on or the map screen is open. The foreground service is the only background collector (iPhone, since S4b-BL-69: Core Location's background updates under the *When in use* permission while Hunt mode runs, the blue indicator shown; *Always* is never asked for). `ACCESS_BACKGROUND_LOCATION` is not requested (today) and, from Sprint 4b, only when the user turns on area wake-up (PRV-025); even then the app itself collects no location in the background: Google Play services watches the geofences and the app is only told that an area was entered. | M | Impl (amended 2026-09-22 for 4b) |
 | PRV-002 | Tracking is always visible (ongoing notification) and can be stopped in one tap. | M | Impl |
 | PRV-003 | Raw GPS tracks are **not** stored. Only visits (stay points) and house points are stored. | M | Impl |
 | PRV-004 | Right to access / portability: export all data (FR-031). | S | Impl (API) |

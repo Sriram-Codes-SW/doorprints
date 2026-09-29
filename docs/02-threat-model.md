@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.44 |
+| Version | 0.45 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -56,6 +56,7 @@
 | 0.42 | 2026-09-29 | Claude (Code), lead | T-I28: the website keeps the key like the device key (T-I3). |
 | 0.43 | 2026-09-29 | Claude (Code), lead | New T-I29 (a shared or handed-over unlocked phone) with the app lock ([11](11-feature-parity-and-export-spec.md) 5.19, S4b-FR-5); OWASP Mobile M3 now Part. |
 | 0.44 | 2026-09-29 | Claude (Code), lead | New T-I30 (the path trace is location history) with S4b-FR-2 ([11](11-feature-parity-and-export-spec.md) 5.27). |
+| 0.45 | 2026-09-29 | Claude (Code), lead | F-14 on iPhone (S4b-BL-69): the lock screen's preview is iOS's *Show Previews* setting; Hunt mode's alerts are the iPhone app's only notifications. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -320,7 +321,7 @@ Severity uses the same L×I scale. Status per finding (v0.6) is in section 5.1. 
 | F-11 | Part | `app/build.gradle.kts`: `signingConfigs.release` from `HH_KEYSTORE_FILE`, `HH_KEYSTORE_PASSWORD`, `HH_KEY_ALIAS`, `HH_KEY_PASSWORD` (Gradle properties or env vars, created only when all four are set). `android.yml` job `release` (push to `main`/manual only, never PRs) decodes `HH_KEYSTORE_BASE64` into `$RUNNER_TEMP`, runs `assembleRelease`, verifies with `apksigner verify --print-certs`, deletes the keystore in `always()` and uploads `doorprints-release-apk` (`house-hunt-release-apk` before the rename). R8 (`isMinifyEnabled`) stays **off** on purpose until keep rules and a release smoke test exist; publishing the SHA-256 with a GitHub Release (`release.yml`) is next sprint. | TC-S-06, TC-S-15 |
 | F-12 | **Fixed** | Android shows a translated error category (`SyncOutcome`, in the KMP module since Sprint 3.5: `android/shared/.../sync/SyncOutcome.kt`), never the server body; the shared Ktor `ApiClient` logs only status, method and path, and only when debug logging is on for the `DoorprintsApi` tag | `SyncOutcomeTest` (commonTest), `ApiClientContractTest` |
 | F-13 | Open (accepted) | Room DB and photos rely on device encryption (AS-02) | – |
-| F-14 | **Fixed** | `Notifications.kt`: `VISIBILITY_PRIVATE` with a public version "Doorprints alert" (string `notif_public`, translated); channel lock-screen visibility private | TC-M-07 |
+| F-14 | **Fixed** | `Notifications.kt`: `VISIBILITY_PRIVATE` with a public version "Doorprints alert" (string `notif_public`, translated); channel lock-screen visibility private. iPhone (S4b-BL-69, `IosNotifications`): iOS has no per-notification public version; what the lock screen shows is the system's *Show Previews* setting (default *When Unlocked* on phones with Face ID), noted for TC-M-31 | TC-M-07, TC-M-31 |
 | F-15 | **Fixed** | V3 migration (`photo.deleted`, `sync_version`), `PhotoService.delete` tombstones, `GET /api/photos?since=`; Android queues offline deletes (`photos.deleted`, Room v2) and applies remote tombstones | `photoUploadStripsMetadataAndDeletesSyncAsTombstones` |
 | F-16 | **Fixed** | Delete (DELETE or PUT `deleted:true`) blanks house content, tombstones photos, unlinks visits (`HouseService.purge`); deleted visits lose their place; tombstones purged after 90 days (`DataService.purgeTombstones`); `GET /api/export`, `DELETE /api/data` with a confirmation header | `deletingAHousePurgesItsContent`, `exportContainsLiveDataAsAnAttachment`, `deleteAllNeedsTheConfirmationHeader` |
 | F-17 | **Fixed** | `docker-compose.yml`: ports bound to 127.0.0.1, no default API key (`${APP_API_KEY:?}`), healthchecks, read-only API filesystem, `cap_drop: ALL`, `no-new-privileges`. DB password default kept for local use only (loopback). | TC-S-05 |

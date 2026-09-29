@@ -28,6 +28,9 @@ struct DoorprintsApp: App {
         // The map view (CMP-8c): Kotlin's common map asks this factory for MapLibre map views
         // (MapLibreMapView.swift). Registered before the first view controller, which may start on the Map.
         IosMap.shared.factory = MapLibreMapViewFactory()
+        // Hunt mode's alerts (S4b-BL-69): the notification centre's delegate, set before the app finishes launching so
+        // a tapped alert that starts the app opens its house.
+        MainViewControllerKt.installNotifications()
     }
 
     var body: some Scene {
