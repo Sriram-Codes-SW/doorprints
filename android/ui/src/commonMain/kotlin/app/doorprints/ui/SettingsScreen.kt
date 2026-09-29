@@ -568,6 +568,40 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         // The version, which support needs first.
         val version = remember { features.appVersion() }
         if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
+        LegalNoticeBlock(openUrl = platform::openUrl)
+    }
+}
+
+/**
+ * The copyright, the licence and "no warranty", with links to the source and the licence (S4b-BL-65, [LegalNotice]).
+ * When no app can open a link, its address is shown instead, so the source can still be reached.
+ */
+@Composable
+fun LegalNoticeBlock(openUrl: (String) -> Boolean) {
+    var failedUrl by remember { mutableStateOf<String?>(null) }
+    Text(LegalNotice.COPYRIGHT, style = MaterialTheme.typography.bodySmall)
+    Text(
+        stringResource(Res.string.settings_licence) + " " + stringResource(Res.string.settings_warranty),
+        style = MaterialTheme.typography.bodySmall,
+    )
+    val sourceDesc = stringResource(Res.string.settings_source_desc)
+    val licenceDesc = stringResource(Res.string.settings_licence_link_desc)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(
+            onClick = { failedUrl = LegalNotice.SOURCE_URL.takeUnless { openUrl(it) } },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = sourceDesc },
+        ) { Text(stringResource(Res.string.settings_source)) }
+        TextButton(
+            onClick = { failedUrl = LegalNotice.LICENCE_URL.takeUnless { openUrl(it) } },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = licenceDesc },
+        ) { Text(stringResource(Res.string.settings_licence_link)) }
+    }
+    failedUrl?.let { url ->
+        Text(
+            stringResource(Res.string.settings_link_failed, url),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
     }
 }
 

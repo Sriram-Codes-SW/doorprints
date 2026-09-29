@@ -413,4 +413,32 @@
       </button>
     </div>
   </section>
+
+  <!-- The AGPL's legal notices and the source offer (FSF, "How to Use GNU Licenses"; docs/10 S4b-BL-65). "Copyright"
+       stays English in every language, as the FSF asks. -->
+  <section class="card" aria-labelledby="about-heading">
+    <h2 id="about-heading">{{ 'data.aboutHeading' | t }}</h2>
+    <p lang="en" translate="no">{{ legal.copyright }}</p>
+    <p class="muted">{{ 'data.aboutLicence' | t }} {{ 'data.aboutWarranty' | t }}</p>
+    <div class="actions">
+      <a
+        class="btn"
+        [href]="legal.sourceUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="'data.aboutSourceAria' | t"
+      >
+        {{ 'data.aboutSource' | t }} <span aria-hidden="true">↗</span>
+      </a>
+      <a
+        class="btn"
+        [href]="legal.licenceUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="'data.aboutLicenceAria' | t"
+      >
+        {{ 'data.aboutLicenceLink' | t }} <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </section>
 </div>
