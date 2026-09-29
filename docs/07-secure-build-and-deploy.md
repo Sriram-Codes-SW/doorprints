@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.45 |
+| Version | 0.46 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -57,6 +57,7 @@
 | 0.43 | 2026-09-29 | Claude (Code), lead | *Version overrides*: `jackson-bom.version` 3.1.7 and `jackson-2-bom.version` 2.21.7 for jackson-databind (Jackson 3 and 2) CVE-2026-68497 (HIGH), found by the `trivy sbom` gate on PR #30. |
 | 0.44 | 2026-09-29 | Claude (Code), lead | §1: every Linux job names its runner image, `ubuntu-26.04`, instead of `ubuntu-latest` (actions/runner-images#14748: `ubuntu-latest` moves to 26.04 between 19 October and 19 November 2026); a trial pull request proved each workflow on 26.04 first ([10](10-sprint-log.md) S4b-BL-62). |
 | 0.45 | 2026-09-29 | Claude (Code), lead | §2 Pinning: MapLibre iOS (CMP-8c) pinned by commit in `ios/project.yml`, updated by hand with the `ios-app` job's `Package.resolved` check ([10](10-sprint-log.md) §13.13). |
+| 0.46 | 2026-09-29 | Claude (Code), lead | The repository's licence is `AGPL-3.0-only` with `NOTICE` (section 7 permission for EPL and Google Play services libraries, trademark notice), owner decision of 2026-09-23 carried out ([10](10-sprint-log.md) §12.6); the licence check in `security.yml` is blocking. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -218,7 +219,7 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 ## 3. Repository and branch protection
 
 The repository is **`Sriram-Codes-SW/doorprints`** (renamed from `house-hunt` on 2026-09-22; GitHub redirects the old
-URL) and is **public** with an MIT `LICENSE` and a `SECURITY.md` that points to GitHub's **private vulnerability
+URL) and is **public**, licensed `AGPL-3.0-only` since 2026-09-29 (`LICENSE`, with the section 7 permissions and the trademark notice in `NOTICE`; MIT before), with a `SECURITY.md` that points to GitHub's **private vulnerability
 reporting** (Security → Report a vulnerability).
 
 | Setting | Value |

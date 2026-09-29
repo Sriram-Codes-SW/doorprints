@@ -7,7 +7,7 @@ app and the iPhone app screen by screen.
 
 [![Backend](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml) [![Web](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml) [![Android](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml) [![Security](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml) [![Shared iOS compile](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml)
 
-MIT licensed ([LICENSE](LICENSE)) · Report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
+AGPL-3.0-only ([LICENSE](LICENSE), with the permissions and trademark notice in [NOTICE](NOTICE)) · Report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
 Repository: [`Sriram-Codes-SW/doorprints`](https://github.com/Sriram-Codes-SW/doorprints)
 
 Doorprints is a personal, zero-cost app for keeping track of the houses you visit while looking for a home to rent
@@ -271,7 +271,7 @@ Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 | [User guide](https://sriram-codes-sw.github.io/doorprints/) ([`guide/`](guide/docs/index.md)) | For people using Doorprints: the screens, adding and comparing houses, copies and backups, Hunt mode, privacy |
 | [AI design](docs/ai/ai-design.md) | Providers, RAG, extractor, planner, MCP, evals, API contract |
 | [Vertex AI setup](docs/ai/vertex-setup.md) | Owner's step-by-step Google Cloud setup and this project's results |
-| [CHANGELOG](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [LICENSE](LICENSE) | Changes per version · private vulnerability reporting · MIT |
+| [CHANGELOG](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [LICENSE](LICENSE) · [NOTICE](NOTICE) | Changes per version · private vulnerability reporting · `AGPL-3.0-only` (MIT before 2026-09-29) · the section 7 permission for EPL and Google Play services libraries, and the trademark notice |
 
 ## Roadmap
 
@@ -289,7 +289,7 @@ Plan and sizing: [docs/11 §14](docs/11-feature-parity-and-export-spec.md) and t
 
 Doorprints is a personal project built in the open. **External pull requests are not expected** and may be closed
 without review; issues with ideas are welcome. Security problems: never open a public issue, use private
-vulnerability reporting ([SECURITY.md](SECURITY.md)). Anything you do contribute is under the MIT [LICENSE](LICENSE).
+vulnerability reporting ([SECURITY.md](SECURITY.md)). Anything you do contribute is under the [LICENSE](LICENSE) (`AGPL-3.0-only`, with the [NOTICE](NOTICE) permissions).
 
 House rules for the maintainers (full list in [docs/README.md](docs/README.md#how-to-update-these-documents)):
 
@@ -337,3 +337,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-24 | *Map data and credits*: the known limits sized after the round 2 reviews of PR #16 (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tiles' line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9); [docs/10](docs/10-sprint-log.md) §12.10, S4b-BL-17). |
 | 2026-09-24 | Legacy House Hunt names renamed to Doorprints (owner request; [ADR-24](docs/03-design.md#14-architecture-decision-records)): the note under the title says code, storage keys and database names use the new name since 2026-09-24, and what was saved under the old names moves over by itself. |
 | 2026-09-29 | **User guide**: a line under the tagline and a row in *Documentation* link the new illustrated [user guide](https://sriram-codes-sw.github.io/doorprints/) (owner request of 2026-09-29). |
+| 2026-09-29 | **Licence**: the line under the title, the documents table and *Contributing* say `AGPL-3.0-only` with [NOTICE](NOTICE) (owner decision of 2026-09-23, carried out on 2026-09-29) instead of MIT. |

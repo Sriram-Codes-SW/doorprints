@@ -321,6 +321,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **The licence is now `AGPL-3.0-only`** (owner decision of 2026-09-23, [sprint log](docs/10-sprint-log.md) §12.6):
+  `LICENSE` is the GNU AGPL version 3 as published by the FSF, and the new [NOTICE](NOTICE) holds the copyright line,
+  an additional permission to combine Doorprints with Eclipse Public License libraries and with Google Play services
+  (which Hunt mode uses), and a trademark notice for the name and icon. Versions before 2026-09-29 stay MIT. The
+  dependency licence check is now blocking.
 - **Ready for the AGPL licence** ([sprint log](docs/10-sprint-log.md) §12.6): the backend no longer ships AspectJ's
   weaver (EPL-2.0 and Apache-1.1, which cannot be combined with the AGPL; it was unused), and the two ANTLR libraries
   Spring AI brings are confirmed 3-clause BSD. The licence scan now finds nothing to review. A section 7 permission for
