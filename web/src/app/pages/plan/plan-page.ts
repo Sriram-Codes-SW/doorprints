@@ -41,7 +41,7 @@ import {
   Marker,
   NavigationControl,
 } from 'maplibre-gl';
-import { AI_MAX_QUESTION_CHARS, AiService, PlanResponse, aiErrorMsg } from '../../core/ai.service';
+import { AI_MAX_QUESTION_CHARS, AiService, PlanResponse, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
@@ -80,6 +80,7 @@ const ROUTE_SOURCE = 'plan-route';
 export class PlanPage implements AfterViewInit, OnDestroy {
   protected readonly ai = inject(AiService);
   protected readonly config = inject(ConfigService);
+  protected readonly aiOffMsg = aiOffMsg;
   protected readonly i18n = inject(TranslationService);
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);

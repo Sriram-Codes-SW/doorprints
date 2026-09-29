@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -39,6 +39,7 @@
 | 0.26 | 2026-09-29 | Claude (Code), lead | N13: the release security gate exists (automated in CI, the manual list in the new [13](13-release-security-checklist.md)); it has not yet passed on a release candidate. |
 | 0.27 | 2026-09-29 | Claude (Code), lead | N4 done: the licence is `AGPL-3.0-only` with `NOTICE`; the backlog range is S4b-BL-1..65. |
 | 0.28 | 2026-09-29 | Claude (Code), lead | N13: device pairing and the owner page next, then Google sign-in with Drive sync and no hosted server (D-28); the owner's principle recorded. |
+| 0.29 | 2026-09-29 | Claude (Code), lead | N13 (3): the server side and the Gemini key on the owner page are merged (#43, #45); the website's *Connect* by code or link is on branch `feat/connect-by-code-or-qr`; Android and iPhone next. |
 
 ## 1. Where things stand (2026-09-29)
 

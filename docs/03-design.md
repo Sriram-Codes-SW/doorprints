@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.37 |
+| Version | 0.38 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -49,6 +49,7 @@
 | 0.35 | 2026-09-29 | Claude (Code), lead | CMP-8c: the iOS map. The `MapScreen`/`PlatformMap` row and the module diagram name the iOS view (`MLNMapView` from Swift in `UIKitView`); ADR-22 says how the rules reach MapLibre iOS (the common steps over the style's JSON, `JsonStyleOps`, loaded whole; `IndiaViewCheck` as the CI gate, TC-I-38; the device look TC-M-28). |
 | 0.36 | 2026-09-29 | Claude (Code), lead | New §12.1 and **ADR-25** (owner request of 2026-09-29): per-device keys obtained by pairing (a code typed on the owner page, or a QR code or link), the owner page served by the server, AI per device (off for a new device), the Gemini key on the owner page; the owner page is the self-hoster's, and with D-28 there is no hosted server. Security design table row updated. |
 | 0.37 | 2026-09-29 | Claude (Code), lead | §12.1: the Gemini key on the owner page (encryption, key derivation, rotation, read per request with no restart) and the *AI on this server* switch. |
+| 0.38 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on the website (ADR-25 step 3, branch `feat/connect-by-code-or-qr`): the code, the connect link and its confirmation, and the *AI features* switch. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -966,6 +967,27 @@ someone else holds (a partner's phone on a shared server) would spend the owner'
 calls with 403 (`AI_OFF_FOR_DEVICE`) and its AI status as off, and nothing else changes for it. The owner key (MCP) is
 not affected. Separately, each app has its own *AI features* switch in Settings, **off until the person turns it on**
 (after reading what is sent to Google); AI shows only when both are on.
+
+**The website's *Connect*** (ADR-25's third step, branch `feat/connect-by-code-or-qr`; `pages/connect`,
+`core/pairing.service.ts`):
+- **By code**, the usual way: the address, then *Get a code*. The page shows the code large (and announces it letter by
+  letter), polls at the server's interval, tolerates two network failures in a row, and stops at *Cancel*, at an edit
+  of the address, on leaving the page, or at the code's expiry. On `approved` it saves the device key for that
+  address, as a typed key was saved; `denied` and `expired` say so; a 404 says the server is older than pairing. The
+  name sent is the browser and system (`Chrome on Windows (website)`), the words the owner page uses for its own
+  sign-ins.
+- **By connect link** (`/connect?server=…&invite=…`, from the owner page's QR code or *Open the website connected to
+  this server*): the page reads the two values, replaces the address with `/connect` at once, and accepts only an
+  `https://` origin (or `http://localhost`) with no path, and an invite that looks like one. It then shows *Connect to
+  a server?* with the server's address and a warning, and sends nothing until *Connect*: anyone can send such a link,
+  and connecting to a stranger's server would copy the person's houses to it. A used or expired invite (410) says so.
+- **The older way**, a typed key, folds out under *Use an API key instead*, open when the browser already uses a key
+  that is not a device key (`dpk_`).
+- **AI features** (a card on *Connect*, once connected): this browser's own switch, off until turned on, kept in
+  `localStorage` (`doorprints.ai-features`, a preference; *Remove all data* turns it off). AI shows only when the
+  server says `enabled`, the owner's switch for this device is on (`offForDevice` false) and this switch is on; Ask and
+  Plan say which one is off (`AiService.offReason`), with a link to *Connect* where the fix is there. A 403
+  `AI_OFF_FOR_DEVICE` or `AI_PAUSED` during a request is shown in the same words.
 
 **Where the apps keep a device key:** as they keep the key today: Android Keystore-encrypted (`ApiKeyCipher`), iOS
 Keychain, and the website's `sessionStorage` or, with *Remember on this device*, `localStorage`.
