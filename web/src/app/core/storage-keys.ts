@@ -35,6 +35,9 @@ export const LANG_KEY = `${STORAGE_PREFIX}lang`;
 /** The server address and API key (localStorage when remembered, else sessionStorage). See ConfigService. */
 export const API_CONFIG_KEY = `${STORAGE_PREFIX}api-config`;
 
+/** This browser's *AI features* switch (localStorage, '1' when on; off until the person turns it on). See AiService. */
+export const AI_OPT_IN_KEY = `${STORAGE_PREFIX}ai-features`;
+
 /**
  * Stored names from before the rename, kept only so {@link migrateLegacyStorage} can find them: a key in this
  * list moves to the name beside it, and a key starting with {@link LEGACY_PREFIX} moves to the same suffix after

@@ -11,21 +11,28 @@ you get two extras:
 Doorprints does not run a public server. You, or someone you trust, run one on a home computer.
 **[Set up your own server](set-up-a-server.md)** walks you through it step by step. No programming is needed.
 
-The server gives you two things to type into the apps:
+To connect, you need the server's **address**, like a website address. Then:
 
-- its **address**, like a website address;
-- your **Doorprints API key**. This is a long password the apps show to your server, so it knows they are yours.
+- **the website** shows a short code, and the server's owner approves it. No password to type;
+- **the phone apps**, until their next update, also need the **Doorprints API key**. This is a long password the apps
+  show to your server, so it knows they are yours.
 
 The AI has its own key (the Gemini key). It stays on the server; the apps never ask for it.
 
 **On the website:**
 
-1. Open **Connect**.
-2. Fill in **API address (URL)** and **API key**.
-3. Choose **Test connection**.
-4. Choose **Save and continue**.
+1. Open **Connect** and fill in **API address (URL)**.
+2. Choose **Get a code**. The website shows a code like `K7MQ-4XRD`.
+3. The server's owner types that code on their owner page and chooses **Approve**
+   ([how](set-up-a-server.md#step-9-connect-the-apps)).
+4. A few seconds later the website says it is connected.
 
-On a shared computer, leave **Remember on this device** off.
+On a shared computer, leave **Remember on this device** off. For an older server that has no codes yet, open
+**Use an API key instead**, fill in **API key**, and choose **Save and continue**.
+
+**AI on the website** stays off until you turn it on: on the **Connect** page, under **AI features**, tick
+**Use AI features in this browser**. It says there what is sent to Google. The server's owner also has to turn on AI
+for your browser.
 
 **On Android and iPhone:**
 
@@ -38,7 +45,7 @@ On a shared computer, leave **Remember on this device** off.
 The address must start with `https://`. (HTTPS means the connection is locked, so no one on the way can read it.)
 **Disconnect** on the website forgets the address and key on that device.
 
-![Connect to your server on the website: API address, API key, Remember on this device, Test connection and Save and continue](images/web-connect.png)
+![Connect to your server on the website: the API address, Remember on this device, and Connect with a code with its Get a code button; Use an API key instead folds out below](images/web-connect.png)
 
 ## Add a shared listing
 

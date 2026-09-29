@@ -26,6 +26,7 @@ import {
   AskFilters,
   AskResponse,
   aiErrorMsg,
+  aiOffMsg,
   splitCitations,
 } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
@@ -58,6 +59,7 @@ import { focusIfLost } from '../../shared/focus';
 export class AskPage implements OnDestroy {
   protected readonly ai = inject(AiService);
   protected readonly config = inject(ConfigService);
+  protected readonly aiOffMsg = aiOffMsg;
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);
   private readonly injector = inject(Injector);

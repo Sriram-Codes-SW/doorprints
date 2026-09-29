@@ -23,14 +23,17 @@
   </header>
 
   @if (!ai.enabled()) {
-    @if (config.configured()) {
-      <p class="card">{{ 'ai.disabled' | t }}</p>
-    } @else {
-      <!-- No server at all: "turned off on your server" would be untrue. Say what is needed, and where. -->
+    <!-- Why AI is off, in words that are true for this case (no server; off on the server; off for this device on
+         the owner page; this browser's own switch), with a link where the fix is on the Connect page. -->
+    @if (ai.offReason(); as reason) {
       <p class="card">
-        {{ 'ai.noServer' | t }}
-        <a routerLink="/connect">{{ 'nav.connect' | t }}</a>
+        {{ aiOffMsg(reason).key | t: aiOffMsg(reason).params }}
+        @if (reason === 'noServer' || reason === 'optIn') {
+          <a routerLink="/connect" [fragment]="reason === 'optIn' ? 'ai' : undefined">{{ 'nav.connect' | t }}</a>
+        }
       </p>
+    } @else {
+      <p class="card">{{ 'ai.disabled' | t }}</p>
     }
   } @else {
     <form class="card" (ngSubmit)="submit()" novalidate>

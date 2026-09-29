@@ -661,6 +661,7 @@ export class DataPage implements OnInit, OnDestroy {
     }
     this.sync.cancel();
     this.config.clear();
+    this.ai.setOptIn(false);
     this.ai.refresh();
     this.aiSession.clear();
     this.abort?.abort();
