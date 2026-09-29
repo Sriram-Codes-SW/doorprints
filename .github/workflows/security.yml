@@ -168,6 +168,12 @@ jobs:
             -DoutputFormat=json -DoutputName=bom -DincludeTestScope=false
           test -s target/bom.json
 
+      # Release security gate (S4b-SEC-1): every runtime dependency's licence can be combined with AGPL-3.0-only, the
+      # licence the project is moving to (docs/07 A.5 item 5). Warnings while LICENSE is still MIT (the owner decides
+      # on each finding); blocking once LICENSE is the AGPL. Reviewed exceptions: .github/licence-exceptions.json.
+      - name: Licence check (runtime dependencies, AGPL-3.0-only compatible)
+        run: python3 .github/scripts/licence-check.py backend/target/bom.json LICENSE .github/licence-exceptions.json
+
       # Trivy vulnerability DB (about 80 MB) cached per day; Trivy re-downloads it only when the cached copy is stale.
       # The default --db-repository already tries mirror.gcr.io before ghcr.io.
       - name: Cache key for the Trivy DB
