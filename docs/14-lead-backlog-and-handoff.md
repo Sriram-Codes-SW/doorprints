@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.34 |
+| Version | 0.35 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -45,63 +45,35 @@
 | 0.32 | 2026-09-29 | Claude (Code), lead | N13 (3a): ADR-26 merged (#48); the core (#49) and the phones (`feat/ai-own-key-phones`); the website next, then (3b) Google sign-in. |
 | 0.33 | 2026-09-29 | Claude (Code), lead | N13 (3a): the phones merged (#51); the website on `feat/ai-own-key-web`; then (3b) Google sign-in. |
 | 0.34 | 2026-09-29 | Claude (Code), lead | N13 (3a) done: phones (#51) and website (#52); a real-key smoke test in *AI evals* (TC-U-88); next (3b) Google sign-in. |
+| 0.35 | 2026-09-29 | Claude (Code), lead | Saved the state for a fresh session (owner request): §1 rewritten as today's state (per-PR history in git and [10](10-sprint-log.md)); N13 status; §5 the owner's merge permission; new §7, how a Claude session works here. |
 
-## 1. Where things stand (2026-09-29)
+## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
-- **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity Federation, main only).
-- **User guide** (owner request of 2026-09-29): the user guide ([`guide/`](../guide/docs/index.md)) v0.1, an illustrated guide for first-time users of the website, Android and iPhone, with 27 screenshots in `guide/docs/images/` (web from the live site with made-up houses, Android from the screenshot tests and the emulator run, iPhone from the screenshot tests and the simulator launch); linked from the root README and the docs index. On `claude/sleepy-brown-479259`, PR #31; after the merge the owner turns on Pages (N12; [10](10-sprint-log.md) §17).
-- **`main` = `22b43fd`** (PR #28, the web dependency update: Angular 22.2, maplibre-gl 6.11.2, the `commit-identity` CI job and Dependabot's `npm-angular` group, merged on 2026-09-29 and deployed; the live UI test after the deploy passed **1 977 of 1 977** checks, N8). Before it **`8ad682c`** (PR #26, Dependabot's Gradle minor and patch group, merged on 2026-09-28 after a local run on the merged tree; on `b222d66`, PR #27, S4b-BL-32 and the DST geospatial guidelines, merged the same day on the owner's instruction "Merge any PRs as needed"; neither changes the web, so no deploy and no live UI run). Before it `3b33d37` (PR #24, the combined CMP-5..7 change, merged on 2026-09-24 and deployed by Web run 36011033945; before it `f8dd6f9`, PR #23, CMP-4 P4c, merged on top of `aa8f73a`, PR #22, CMP-4 P4b; `e480b83`, PR #21, CMP-4
-  P4a; `fccf8a1`, PR #20; PR #19, `7080a7f`; PR #18, CMP-0, `6da0e56`; PR #17, CMP-1, on `01937f6`, Dependabot #12 on
-  `4100f7a`): Sprint 4a (PR #11), the India boundary fix (PR #13, [03](03-design.md) ADR-22) and its docs and comment
-  sync with this file (PR #14, merged on the owner's instruction on 2026-09-24), the icon's footprints (PR #15), the
-  one-line and state-line fix (PR #16), CMP-1 (PR #17), the test harness, CMP-0 (PR #18), CMP-2 and the rename (PR #19),
-  CMP-3 (PR #20), CMP-4 P4a (PR #21), CMP-4 P4b (PR #22) and CMP-4 P4c (PR #23).
-- **PR #15** (branch `fix/brand-footprints`): N3, the icon's footprints (story S4b-BR-1, [10](10-sprint-log.md) §12.9), merged on the owner's instruction after all reviews approved (`76449fb`) and deployed.
-- **PR #16** (branch `fix/india-boundary-lines`), **merged (`4100f7a`)**; it was open at v0.4 of this file: from zoom 5 one line everywhere. The whole India-China border is drawn by India's outline alone (rule 2 leaves the tiles' pieces of it out); along the 7 stretches with Nepal, Bhutan, Myanmar and in the Wakhan the tiles' line takes over from zoom 5, so the two close lines are gone; and the Assam-Arunachal Pradesh state line is drawn from zoom 5 ([03](03-design.md) ADR-22, [10](10-sprint-log.md) §12.10; S4b-BL-11, -15, -16 done there). CI green on `5af2f4d` before the merge. Android not yet checked on a device; the owner's check is N2.
-- **Compose Multiplatform track** (owner request of 2026-09-24, [03](03-design.md) ADR-23, [10](10-sprint-log.md) §13): **CMP-1 done** in commit `be86f50` (new `:ui` module, [`android/ui/README.md`](../android/ui/README.md); theme and pure UI code moved; no visual change), **merged as PR #17 (`75f049d`)**.
-- **Testing the APK and the live web UI** (owner requests of 2026-09-24, [10](10-sprint-log.md) §13.3, CMP-0): commits `afe4064`, `ef0a5dd` and `bc57361` on branch `claude/doorprints-dev-continue-fzcge2`, **merged as PR #18 (`6da0e56`)**. JVM screenshot tests of every screen but the Map in 4 languages x 2 themes (64 images, verified by `android.yml`), smoke tests on an API 34 emulator (`android-emulator.yml`) and in Firebase Test Lab (off by default at zero cost: a results bucket needs a billing account; options for the owner in [07](07-secure-build-and-deploy.md) §7.2), and `tools/live-ui` ([06](06-test-plan.md) §16). Locally 220 `:app` unit tests pass. The first emulator run (CI run 35943533129) **found a real crash**: opening the app from a notification while it was not running ("Navigation graph has not been set"); fixed in `Root.kt` in the same PR. **On `bc57361` the push run passed both smoke tests; the pull-request run on the same commit crashed in `everyTabOpens` (a threading bug, fixed in `6376706`); both runs on `6376706` passed (push and pull request)** (the Map's camera moved off the main thread after a location fix, fixed in `MapScreen.kt`; the push run's cold start from a new-house intent passed; screenshots in the `android-emulator-results` artifact). First live UI run (deploy `4100f7a`): every area passed except one console error out of 146, put down to the test environment.
-- **PR #19, merged (`7080a7f`)** (branch `claude/doorprints-dev-continue-fzcge2`): **CMP-2** (`80b198b`,
-  [10](10-sprint-log.md) §13.4), the UI strings as Compose resources in `:ui` (403 strings and 16 plurals per language;
-  the service strings stay Android resources; `AppLocale.applyDefault` on every API level; the APK carries only en, hi,
-  ta and te), and the **rename of the legacy House Hunt names** ([03](03-design.md) ADR-24, [10](10-sprint-log.md) §14:
-  `0d502f6` Android, `bc9d5ea` web, `828845a` backend, `6f392dc` docs), with review fixes in `927d54b`. New tests
-  TC-U-57 to TC-U-60 ([06](06-test-plan.md) §16); the 64 screenshots unchanged. After the merge: the live UI test (N8)
-  and the self-hoster steps in §6.
-- **PR #20, merged (`fccf8a1`)**: **CMP-3** (`e563e2b` and `3e5cdd5` on `7080a7f`): the `PlatformServices` seam, a
-  common `Format`, `LiveMessage`, `DeletedHouseUndo`, `ActionBar` and `ResultCard` in `:ui`; `UiStrings.kt` removed;
-  S4b-BL-18 fixed; `MapRulesTest` and `IndiaViewRulesTest` in `:ui` commonTest ([10](10-sprint-log.md) §13.5). The 64
-  screenshots unchanged.
-- **PR #21, merged (`e480b83`)**: **CMP-4 P4a** (on `fccf8a1`): the Room database (`AppDatabase`, entities, DAOs,
-  `MIGRATION_1_2`) in `:shared` commonMain with Room KMP, identity hash and `doorprints.db` unchanged, the Android
-  builder and `DatabaseFile` still in `:app`; new `AppDatabaseMigrationTest` (TC-U-63) ([10](10-sprint-log.md) §13.6).
-  The 64 screenshots unchanged.
-- **PR #22, merged (`aa8f73a`)**: **CMP-4 P4b** (on `e480b83`): `SettingsStore` on `datastore-preferences-core`, a
-  `SecretStore` interface (Android: `KeystoreSecretStore` in `:app` around the unchanged `ApiKeyCipher`; iOS Keychain,
-  compile-only) and `ServerUrl` (a port of `java.net.URI`'s parser) in `:shared` commonMain; the settings file and
-  every key name unchanged; new `SettingsUpgradeTest` (TC-U-64) and `SettingsStoreTest` (TC-U-65)
-  ([10](10-sprint-log.md) §13.7). The 64 screenshots unchanged.
-- **PR #23, merged (`f8dd6f9`)**: **CMP-4 P4c** (on `aa8f73a`): a `Repository` interface in `:shared` commonMain
-  (`AndroidRepository` in `:app`), its transactions and the Export screen's change flow on Room's common API
-  (S4b-BL-23), the mappers common; `CompareScreen` and `HouseFormRules` in `:ui` commonMain; `SyncHealthTest` and
-  `ExportGrantsTest` in commonTest (S4b-BL-28); new `RepositoryTransactionTest` (TC-U-66) and `ModelLabelsTest`
-  (TC-U-67) ([10](10-sprint-log.md) §13.8). The 64 screenshots unchanged.
-- **PR #24, merged (`3b33d37`)** (branch `claude/doorprints-dev-continue-fzcge2`, on `f8dd6f9`, 19 code commits and
-  the docs): **CMP-5, CMP-6 and CMP-7 as one change** (owner request), with the web backlog S4b-BL-1, -2, -6, -7,
-  the shared items S4b-BL-12, -13, -17, -20 (with the backend's `maxSyncVersion`), S4b-BL-9's check and S4b-BL-10's
-  finding, S4b-BL-42, the emulator on API 26, 34 and 36, MapLibre's OpenGL ES build (found by the API 26 run), and the
-  phone display fixes of the owner's mobile report ([10](10-sprint-log.md) §13.9). Every screen is in `:ui` commonMain;
-  new tests TC-U-68 to TC-U-77 and TC-I-36; the 64 screenshots unchanged. CI green on the pushed commits (the last
-  emulator run on `18b631e`); `tools/live-ui` passed against a local build (mobile 324, map 23). **Live UI test after
-  the deploy (N8), 2026-09-28:** 1 972 of 1 977 checks passed; the 5 failures were two page loads this session's proxy
-  broke (a stylesheet as `text/plain`, a `502`), and a re-check of those pages passed ([06](06-test-plan.md) TC-M-26).
-- **S4b-BL-32** (the `Repository` implementation in `:shared`, [10](10-sprint-log.md) §13.10) was merged with PR #27.
-- **Branch `claude/sleepy-brown-479259`** (on `64ceabd`; a pull request to `main`): **CMP-8c**, the iPhone map
-  ([10](10-sprint-log.md) §13.13). India's boundary rules are applied to the style JSON in common code
-  (`JsonStyleOps`, the same `applyIndiaView` steps as Android) and checked in the app (`IndiaViewCheck`); the iOS launch
-  smoke passes only with that check and the loaded map both PASS (TC-I-38, the owner's CI gate). CMP-8a (PR #29) and
-  CMP-8b (PR #30), the user guide (PR #31, #33) and the Ubuntu 26.04 runners (PR #32) are merged.
-- **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1). Deploy, signing and the dependency graph are main-only.
-- **Merging is the owner's click.** An automated session must not merge its own pull request.
+The history of each merged pull request is in [10](10-sprint-log.md) and the [CHANGELOG](../CHANGELOG.md); this
+section is only today's state. Earlier versions of this file (git history) carry the per-PR detail up to CMP-8c.
+
+- **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity
+  Federation, main only). The user guide is built by `pages.yml` (GitHub Pages).
+- **Done and merged, in order:** CMP-0..CMP-8 (the Compose Multiplatform track, iPhone app on the simulator with the
+  map, PRs #17-#35); the **release security gate** exists (automated checks in CI, PRs #36, #37; manual list
+  [13](13-release-security-checklist.md); **not yet passed** on a release candidate); **device pairing and the owner
+  page** (ADR-25: per-device `dpk_` keys by code or QR/connect link, the owner page with per-device AI switches and the
+  Gemini key stored encrypted; PRs #43, #45, #46, #47); the plain-language guide (#44); **AI with your own Gemini key on
+  the device, next to server AI** (ADR-26, D-29: the common core in `:shared` #49 with parity vectors shared by Java,
+  Kotlin and TypeScript; phones #51; website #52; live-UI test fix #50).
+- **Open when this was written:** #53 (merged; the real-key smoke test of the own-key AI in the manual *AI evals* workflow,
+  TC-U-88) and #54 (`refactor/fewer-full-reads`: the reindex's N+1 visit query, a
+  tombstone-id query, and fewer full IndexedDB reads and sorts on the website). Check them first: merge when green.
+- **Last live UI test** (after the #52 deploy, 2026-09-29): 1 433 of 1 434 checks passed; the one failure was a page
+  load this session's proxy broke (502 and a stylesheet served as `text/plain`, as on 2026-09-28); a re-run passed the
+  step that had failed.
+- **Owner checks still open:** a real Gemini key on a phone and in the browser (after #53 merges, *AI evals* with
+  `suites: on-device` does the same with the `AI_API_KEY` secret); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
+  a release candidate through [13](13-release-security-checklist.md).
+- **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
+  Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
+  and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the
+  merge result, the owner can decide to skip the `pull_request` run for same-repository branches (fork PRs keep it).
 
 ## 2. Next, in order
 
@@ -119,7 +91,7 @@
 | N10 | **The owner's feature requests of 2026-09-28** ([10](10-sprint-log.md) §15), after CMP-8, in this order: **S4b-FR-1** search the saved houses (**both apps already search the list** as you type: the web over label, address, street, locality, notes and contact name, Android the same without the contact name; **owner decision of 2026-09-28: search grows with the house values**, so each change that adds or changes a house field updates both apps' search with it, and the next one closes the Android contact-name gap; rule in CLAUDE.md); **S4b-FR-2** the path travelled as a coloured line on the map while visiting houses (privacy review first: a stored track is location history); **S4b-FR-3** sharing list updates between two people who know each other (zero cost, no public server); **S4b-FR-4** a house from a MagicBricks, 99acres, Housing.com, NoBroker, Square Yards or NestAway listing link (the portals' terms and the photos' copyright checked first; the web cannot read those pages from the browser). | Design Director and UX lead first, then Web and Android | Each a Sprint 4b story with the design-first step; one pull request each. |
 | N11 | **The Government of India's geospatial guidelines** (owner request of 2026-09-28, with `https://onlinemaps.surveyofindia.gov.in/GeospatialGuidelines.aspx`: the DST guidelines of 15 February 2021, read in full). **Done in docs:** Doorprints' self-certification clause by clause ([03](03-design.md) §11.1, clause 8 ii(1)); the Survey of India's boundary is now the primary reference for TC-M-25 step (3) and FR-098 (clause 8 xiii: SoI maps and boundary data are the standard; Google Maps from India is the second check); [02](02-threat-model.md) RR-16 and S4b-BL-10 re-read (the earlier "display and printing only" reading missed "Others may publish such maps that adhere to these standards"); new S4b-BL-51 (re-read the self-certification and look for DST's negative list at each release); a draft letter to SoI ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md)). **Next:** the owner downloads SoI's free Administrative Boundary Database (§6); the lead measures the outline against it (S4b-BL-10 step (2)) and, with SoI's permission or a clear licence, rebuilds the outline from it and re-runs TC-M-25. | Owner, then lead | Docs only so far; no map change. Not legal advice. |
 | N12 | **User guide** (owner request of 2026-09-29, [10](10-sprint-log.md) §17). **Done in docs:** the user guide ([`guide/`](../guide/docs/index.md)) v0.1 in English. **Next:** S4b-BL-60 (the guide in Hindi, Tamil and Telugu, *under review*, and an in-app **Help** link on the web and in Android's Settings); keep the guide (`guide/docs/`) in step whenever a label, screen or feature it names changes; when the iPhone gets the map (CMP-8c) and adding houses, update the guide's platform table (`index.md`) and its iPhone section (`screen-at-a-glance.md`). **Owner to-do:** Settings > Pages > Source: *GitHub Actions*; the site is then https://sriram-codes-sw.github.io/doorprints/ (`.github/workflows/pages.yml`). S4b-BL-61 (found while taking the screenshots): the web Plan page shows its form under the no-server note. | Docs; Web and Android for the Help link | Docs only; no code change. |
-| N13 | **Order after CMP-8c** (owner decisions of 2026-09-29): (1) the owner's look at the iPhone map, TC-M-28 ([06](06-test-plan.md)); (2) the **release security gate**, S4b-SEC-1..3 ([10](10-sprint-log.md) §12.5), which a public server needs first (**exists since 2026-09-29**: the automated checks of [06](06-test-plan.md) §11.1 in CI, PRs #36 and #37 and branch `docs/release-security-checklist`, and the manual list [13](13-release-security-checklist.md); **not yet passed** on a release candidate); (3) **device pairing and the owner page for self-hosted servers** ([03](03-design.md) §12.1, ADR-25; owner, 2026-09-29: no pasting of the API key; per-device keys by code or QR; per-device AI, new devices off; the Gemini key on the owner page), then (3b) **Google sign-in with Drive sync, no hosted server** ([11](11-feature-parity-and-export-spec.md) D-28, replacing "Google sign-in with a hosted server"; owner: "a flow for Google Single Sign On for easy setup for non tech users", then "I don't want to host a server for the Google Sign in"): sign in with Google on the website, Android and iPhone, the houses synced through the person's own Google Drive (non-sensitive scopes), AI on the device with their own Gemini key (D-27), the owner hosting nothing and holding nobody's data; the self-hosted server and its owner page stay the advanced option. Owner's principle (2026-09-29): "Users should take care of how they use the app. I am only creating the means for them to easily utilize the services." (4) then the features S4b-FR-2..4 of N10; (5) S4b-BL-63, the end-to-end test of the guide's server setup with the owner, after the last sprint. | Lead, all | The guard rule stays: no public server until the gate passes. The deep self-run pentest comes before sign-in ships ([10](10-sprint-log.md) §12.5). |
+| N13 | **Order after CMP-8c** (owner decisions of 2026-09-29): (1) the owner's look at the iPhone map, TC-M-28 ([06](06-test-plan.md)); (2) the **release security gate**, S4b-SEC-1..3 ([10](10-sprint-log.md) §12.5), which a public server needs first (**exists since 2026-09-29**: the automated checks of [06](06-test-plan.md) §11.1 in CI, PRs #36 and #37 and branch `docs/release-security-checklist`, and the manual list [13](13-release-security-checklist.md); **not yet passed** on a release candidate); (3) **device pairing and the owner page for self-hosted servers** ([03](03-design.md) §12.1, ADR-25; owner, 2026-09-29: no pasting of the API key; per-device keys by code or QR; per-device AI, new devices off; the Gemini key on the owner page), then (3b) **Google sign-in with Drive sync, no hosted server** ([11](11-feature-parity-and-export-spec.md) D-28, replacing "Google sign-in with a hosted server"; owner: "a flow for Google Single Sign On for easy setup for non tech users", then "I don't want to host a server for the Google Sign in"): sign in with Google on the website, Android and iPhone, the houses synced through the person's own Google Drive (non-sensitive scopes), AI on the device with their own Gemini key (D-27), the owner hosting nothing and holding nobody's data; the self-hosted server and its owner page stay the advanced option. Owner's principle (2026-09-29): "Users should take care of how they use the app. I am only creating the means for them to easily utilize the services." **Status 2026-09-29:** (1) waits on the owner; (2) exists, not yet passed on a release candidate; (3) and (3a) done (ADR-25, ADR-26, PRs #43-#53); **next (3b)**. (4) then the features S4b-FR-2..4 of N10; (5) S4b-BL-63, the end-to-end test of the guide's server setup with the owner, after the last sprint. | Lead, all | The guard rule stays: no public server until the gate passes. The deep self-run pentest comes before sign-in ships ([10](10-sprint-log.md) §12.5). |
 
 ## 3. From the first deploy's ZAP baseline (2026-09-23; 0 fail, 7 warn)
 
@@ -149,7 +121,7 @@
 - Brand vocabulary: *Import a backup* (in), *Save a copy* (out), *readable copies*, *Add a shared listing*; never "Restore" as a button label ([12](12-brand-and-naming.md)).
 - Hindi, Tamil and Telugu ship marked *under review* until a native speaker checks them.
 - "Save the state" requests from the owner are top priority.
-- Every change is reviewed before it reaches `main`; the owner merges.
+- Every change is reviewed before it reaches `main`. **Since 2026-09-29 the owner lets a Claude session merge its own pull request once it is good** (all checks green, no conflict, no open review thread; §7).
 - **After a merge to `main` that runs the `Web` deploy, the live web UI is tested in detail** with `tools/live-ui`
   once the deploy has finished; an Android-only or docs-only merge skips it (owner, 2026-09-24, refined the same day;
   N8, [06](06-test-plan.md) TC-M-26).
@@ -182,3 +154,57 @@
   re-send everything, but the §11 dump and restore stays mandatory ([08](08-operations-runbook.md) §11.1).
 - **MCP clients:** the tool `askHouseHunt` is now `askDoorprints`; update any saved permission, allow-list or prompt
   that names the old tool.
+
+## 7. How a Claude session works here (owner's standing instructions, 2026-09-29)
+
+A new session reads CLAUDE.md, then this file, and continues from §2 without asking again for what is below.
+
+**Standing permissions (owner, 2026-09-29)**
+
+- **Merge your own pull request when it is good:** CI green on the head (every check, including the macOS iOS jobs and
+  the three emulators), no conflict, no open review thread; squash merge. ("Yes go ahead and merge if PR is good.")
+- **Git commands with a valid cause are allowed**, including merging `main` into a working branch. If the session's
+  safety check blocks one, do not work around it: ask the owner in one line.
+- **Go with your best judgement** on design choices that do not compromise function or design; say what you chose and
+  why, and treat it as the default unless the owner objects.
+- The owner may say "save the state": that is top priority (§5).
+
+**Order of work** is §2 N13 (then N10, then S4b-BL-63). Pick up open pull requests first.
+
+**Per change**
+
+1. A branch `<type>/<topic>` from the latest `main` (CLAUDE.md); never a session's generated name; one PR each.
+2. Code, tests, and the docs in the same change: the SSDLC doc sections touched, their version and change-log rows
+   (01-14, `docs/ai/ai-design.md`), the CHANGELOG *Unreleased* entry, and the user guide (`guide/docs`) when a label,
+   screen or feature it names changes. UI text in en, hi, ta and te (hi/ta/te marked *under review*).
+3. Self-check (CLAUDE.md "How changes are reviewed"): accessibility, four languages, both themes, loading/empty/error.
+   For UI: screenshots checked by eye (Android `recordRoborazziDebug`; web: Playwright against the built site, in all
+   four languages and both themes).
+4. Local checks before every push: web `npx ng test --watch=false && npx ng build`; Android
+   `./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest
+   :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true` (add
+   `-Pkotlin.incremental=false` after switching branches); backend `mvn -B -ntp verify` (needs PostGIS, see
+   `backend.yml`); `python3 .github/scripts/licence-headers.py --fix` (new files: `git add -N` first); the guide with
+   `mkdocs build --strict` **and read its output for WARNING lines** (an anchor warning once passed locally and failed
+   CI).
+5. Commit as `Claude <noreply@anthropic.com>` with the trailers `Co-Authored-By: Claude <noreply@anthropic.com>` and
+   the session link; push; open the PR with What / Tests / Docs sections in plain words; subscribe to its activity and
+   set one check-in about 50 minutes out.
+6. On CI red: find the cause in the job log, reproduce it locally, fix, push. Never skip a test.
+7. When green: merge (above). After a merge that runs the `Web` deploy, wait for the deploy, then run
+   `tools/live-ui` (`npm ci && node live-ui.js`; Chromium at `/opt/pw-browsers/chromium` in cloud sessions) and report
+   the counts per area. This session's proxy sometimes breaks a page load (a 502, a stylesheet as `text/plain`): re-run
+   the failing area (`ONLY=mobile node live-ui.js`) before calling it a bug.
+8. Report to the owner in short, plain language: what changed, what was checked, what is next, and anything only the
+   owner can do.
+
+**Things that are easy to get wrong**
+
+- Personal data: never write the owner's name, address or phone beyond "Sriram (Sriram-Codes-SW)".
+- A real Gemini key is never needed in a session: the `AI_API_KEY` secret is used only by *AI evals*; sessions test
+  against fakes, or with a made-up key to check that Google is reached.
+- Keep the three AI implementations in step: a change to a prompt, redaction or check goes to the Java server, the
+  Kotlin core (`android/shared/.../shared/ai`) and the TypeScript core (`web/src/app/core/ai`) together, and the parity
+  vectors are refilled (`ParityVectorsTest -Dparity.write=true`, then `.github/scripts/parity-vectors-kotlin.py`).
+- Search grows with the house values (CLAUDE.md).
+- Zero cost; no Play release and no public server until the release security gate passes on a release candidate.
