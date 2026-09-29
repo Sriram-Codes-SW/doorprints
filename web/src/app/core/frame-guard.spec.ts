@@ -17,7 +17,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { DICTIONARIES, LANGUAGES, Lang } from '../i18n/languages';
+import { LANGUAGES, Lang } from '../i18n/languages';
+import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { FrameCheckWindow, isFramed, renderFrameRefusal, startUnlessFramed } from './frame-guard';
 
 /** A page like the built index.html: an `<app-root>` and the `<noscript>` after it. */

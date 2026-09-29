@@ -720,8 +720,11 @@ export class App {
   protected onLang(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     if (!isLang(value)) return;
-    this.i18n.setLang(value);
-    this.announcer.announce({ key: 'lang.changed' });
+    // Announced once the language is loaded and shown, in that language.
+    this.i18n.setLang(value).then(
+      () => this.announcer.announce({ key: 'lang.changed' }),
+      () => undefined,
+    );
   }
 
   private focusHeading(): void {

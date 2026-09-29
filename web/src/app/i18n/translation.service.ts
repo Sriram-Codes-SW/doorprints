@@ -19,7 +19,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { PriceType } from '../core/models';
 import { TKey, en } from './en';
-import { DICTIONARIES, LANGUAGES, Lang, LanguageInfo, isLang } from './languages';
+import { LANGUAGES, Lang, LanguageInfo, dictionary, isLang, loadDictionary } from './languages';
 import { joinList } from './list-join';
 import { LANG_KEY } from '../core/storage-keys';
 
@@ -46,24 +46,56 @@ export class TranslationService {
   readonly lang = this.state.asReadonly();
   readonly info = computed<LanguageInfo>(() => LANGUAGES.find((l) => l.code === this.state()) ?? LANGUAGES[0]);
   readonly locale = computed(() => this.info().locale);
-  private readonly dict = computed(() => DICTIONARIES[this.state()]);
+  /** Bumped when a dictionary finishes loading, so `dict` is read again. */
+  private readonly loads = signal(0);
+  private readonly dict = computed(() => {
+    this.loads();
+    return dictionary(this.state()) ?? en;
+  });
+  /** The language last asked for, so a slow load cannot override a later choice. */
+  private requested: Lang = this.state();
 
   private readonly numberFormats = new Map<string, Intl.NumberFormat>();
   private readonly dateFormats = new Map<string, Intl.DateTimeFormat>();
 
   constructor() {
     applyDocumentLang(this.state());
+    // main.ts loads the saved language before the app starts; if it could not (or in a test), load it now and
+    // show English until it arrives.
+    if (!dictionary(this.state())) {
+      loadDictionary(this.state()).then(
+        () => this.loads.update((n) => n + 1),
+        () => undefined,
+      );
+    }
   }
 
-  setLang(lang: Lang): void {
-    if (!isLang(lang)) return;
-    this.state.set(lang);
-    applyDocumentLang(lang);
-    try {
-      localStorage.setItem(STORAGE_KEY, lang);
-    } catch {
-      // Storage unavailable (private mode etc.): the choice lasts for this session only.
+  /**
+   * Switches the language. A language not loaded yet is fetched first (its own chunk) and the switch happens when it
+   * arrives, so the page never shows a mix; the promise settles then. If it cannot be fetched (offline before it was
+   * ever cached), the language stays as it was and the promise rejects.
+   */
+  setLang(lang: Lang): Promise<void> {
+    if (!isLang(lang)) return Promise.resolve();
+    this.requested = lang;
+    const apply = () => {
+      if (this.requested !== lang) return; // a later choice won
+      this.state.set(lang);
+      applyDocumentLang(lang);
+      try {
+        localStorage.setItem(STORAGE_KEY, lang);
+      } catch {
+        // Storage unavailable (private mode etc.): the choice lasts for this session only.
+      }
+    };
+    if (dictionary(lang)) {
+      apply();
+      return Promise.resolve();
     }
+    return loadDictionary(lang).then(() => {
+      this.loads.update((n) => n + 1);
+      apply();
+    });
   }
 
   /** Translates a key, filling `{name}` placeholders. Reading it inside a template or computed() tracks `lang`. */

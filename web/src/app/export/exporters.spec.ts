@@ -17,7 +17,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DICTIONARIES, LANGUAGES } from '../i18n/languages';
+import { LANGUAGES } from '../i18n/languages';
+import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { buildCsvTables } from './csv-export';
 import { buildMarkdown } from './markdown-export';
 import { buildHtml } from './html-export';
