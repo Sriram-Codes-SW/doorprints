@@ -36,19 +36,31 @@ import java.io.IOException;
  */
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 
+    public static final String OWNER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            + "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("X-Frame-Options", "DENY");
         response.setHeader("Referrer-Policy", "no-referrer");
-        response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
-        response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        var path = RequestPaths.path(request);
+        if (path.equals("/owner") || RequestPaths.isUnder(path, "/owner")) {
+            // The owner page (docs/03 §12.1): its own script and style only, the server-drawn QR code as a data: image,
+            // calls to this server only; never framed, never cached.
+            response.setHeader("Content-Security-Policy", OWNER_CSP);
+            response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+            response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+        } else {
+            response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+            response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        }
         response.setHeader("Permissions-Policy", "geolocation=(), camera=(), microphone=()");
         if (request.isSecure()) {
             response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
         }
-        if (!RequestPaths.path(request).startsWith("/api/photos/")) {
+        if (!path.startsWith("/api/photos/")) {
             response.setHeader("Cache-Control", "no-store");
         }
         chain.doFilter(request, response);

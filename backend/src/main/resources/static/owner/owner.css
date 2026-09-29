@@ -1,0 +1,56 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f4f5f2; --card: #ffffff; --text: #1b1c1a; --muted: #5a5f58; --line: #d4d8d0;
+  --accent: #1f6b53; --accent-text: #ffffff; --danger: #a4262c; --focus: #1f6b53;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #121411; --card: #1c1f1b; --text: #e6e8e3; --muted: #a9afa5; --line: #3a3f38;
+          --accent: #7fd1b0; --accent-text: #0c2a20; --danger: #ffb4ab; --focus: #7fd1b0; }
+}
+* { box-sizing: border-box; }
+body { margin: 0 auto; max-width: 760px; padding: 16px; background: var(--bg); color: var(--text);
+       font: 16px/1.5 system-ui, "Noto Sans", "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Telugu", sans-serif; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+h1 { font-size: 1.4rem; margin: 8px 0; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 16px 0; }
+.muted { color: var(--muted); }
+.status { min-height: 1.5em; font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+label { font-weight: 600; }
+input, select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); min-height: 44px; }
+#code { text-transform: uppercase; letter-spacing: 0.1em; width: 12em; max-width: 100%; }
+button, .button { font: inherit; min-height: 44px; padding: 8px 14px; border-radius: 22px; border: 1px solid var(--line);
+                  background: var(--card); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.danger { color: var(--danger); border-color: var(--danger); }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+a { color: var(--accent); }
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { border-top: 1px solid var(--line); padding: 12px 0; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+.list li:first-child { border-top: 0; }
+.list .name { font-weight: 600; overflow-wrap: anywhere; }
+.list .revoked { color: var(--muted); }
+.list label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.list input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin: 0; }
+#qr { display: block; background: #fff; padding: 8px; border-radius: 8px; margin: 12px 0; }
+code { overflow-wrap: anywhere; }
+footer { margin: 24px 0 8px; font-size: 0.9rem; }
