@@ -22,8 +22,8 @@ fi
 app=$1
 out=$2
 bundle_id=app.doorprints
-# The map check alone may take 90 s (MAP_TIMEOUT_MS in SelfCheck.kt) while the others run.
-wait_seconds=180
+# The checks run one after another: four of up to 30 s, indiaView up to 60 s and map up to 90 s (SelfCheck.kt).
+wait_seconds=300
 [ -d "$app" ] || { echo "::error::no app bundle at $app"; exit 2; }
 mkdir -p "$out"
 log="$out/launch.log"

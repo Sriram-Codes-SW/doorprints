@@ -20,6 +20,9 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
     private static let hitRadius: CGFloat = 24
     private static let housesSource = "houses"
     private static let houseLayers: Set<String> = ["houses-dots", "houses-labels"]
+    /// What the view shows until Kotlin hands over the prepared style: nothing. `MLNMapView(frame:)` alone would load
+    /// MapLibre's demo style, whose borders ignore India's boundary rules (ADR-22) until Liberty replaces it.
+    private static let emptyStyle = #"{"version":8,"sources":{},"layers":[]}"#
 
     private let listener: IosMapListener
     private let mapView: MLNMapView
@@ -28,7 +31,7 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
 
     init(listener: IosMapListener) {
         self.listener = listener
-        mapView = MLNMapView(frame: .zero)
+        mapView = MLNMapView(frame: .zero, styleJSON: Self.emptyStyle)
         super.init()
         mapView.delegate = self
         mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -36,7 +39,7 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
         // on Android. The attribution button stays (setAttribution places it).
         mapView.isRotateEnabled = false
         mapView.isPitchEnabled = false
-        mapView.compassView.isHidden = true
+        mapView.compassView.compassVisibility = .hidden
         mapView.logoView.isHidden = true
         mapView.attributionButtonPosition = .bottomLeft
 
@@ -83,7 +86,8 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
         mapView.setCenter(
             CLLocationCoordinate2D(latitude: lat, longitude: lon),
             zoomLevel: zoom,
-            direction: setBearing ? bearing : mapView.direction,
+            // A negative direction keeps the map's own (MLNMapView.h).
+            direction: setBearing ? bearing : -1,
             animated: false
         )
     }
@@ -111,6 +115,11 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
         if mapView.zoomLevel > maxZoom {
             mapView.setZoomLevel(maxZoom, animated: false)
         }
+    }
+
+    func release() {
+        mapView.showsUserLocation = false
+        mapView.delegate = nil
     }
 
     func centerLatitude() -> Double { mapView.centerCoordinate.latitude }

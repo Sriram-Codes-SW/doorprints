@@ -2,6 +2,7 @@ package app.doorprints.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,18 +56,27 @@ actual fun PlatformMap(
     var style by remember { mutableStateOf<PreparedMapStyle?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf<Job?>(null) }
+    // True from handing MapLibre a prepared style until it loads or fails. The view starts on an empty style of its
+    // own (MapLibreMapView.swift), whose load and any failure before ours are not the map's state.
+    var awaitingStyle by remember { mutableStateOf(false) }
 
     val map = remember {
         factory.create(
             object : IosMapListener {
                 override fun onStyleLoaded(layerIds: List<String>, hiddenIds: List<String>) {
-                    style?.let { IosMapStyle.loaded(it, layerIds, hiddenIds) }
+                    // Only a style we prepared (it has the house layers) counts; the view's empty start style does not.
+                    val prepared = style
+                    if (!awaitingStyle || prepared == null || HOUSE_DOTS_LAYER !in layerIds) return
+                    awaitingStyle = false
+                    IosMapStyle.loaded(prepared, layerIds, hiddenIds)
                     styleLoaded = true
                     currentEvents.onStyleLoaded()
                 }
 
                 override fun onFailed(message: String) {
                     logLine("DOORPRINTS-MAP failed: $message")
+                    if (!awaitingStyle) return
+                    awaitingStyle = false
                     currentEvents.onFailed()
                 }
 
@@ -91,6 +101,8 @@ actual fun PlatformMap(
             try {
                 val prepared = IosMapStyle.prepare(currentLabelSize)
                 style = prepared
+                styleLoaded = false
+                awaitingStyle = true
                 map.loadStyle(prepared.json)
             } catch (e: CancellationException) {
                 throw e
@@ -101,10 +113,14 @@ actual fun PlatformMap(
         }
     }
 
+    val currentDensity by rememberUpdatedState(density)
     LaunchedEffect(map) {
         // The chrome places the camera (a restored one, or the whole of India) before the style loads, as on Android.
-        currentEvents.onReady(IosMapControl(map, density) { loadStyle() })
+        currentEvents.onReady(IosMapControl(map, { currentDensity }) { loadStyle() })
         loadStyle()
+    }
+    DisposableEffect(map) {
+        onDispose { map.release() }
     }
 
     LaunchedEffect(styleLoaded, houses) {
@@ -141,7 +157,7 @@ actual fun PlatformMap(
 /** [MapControl] over an [IosMapView]; pixels from the chrome become points at [density]. */
 private class IosMapControl(
     private val map: IosMapView,
-    private val density: Float,
+    private val density: () -> Float,
     private val reload: () -> Unit,
 ) : MapControl {
     override fun setCamera(lat: Double, lon: Double, zoom: Double, bearing: Double?) =
@@ -158,7 +174,7 @@ private class IosMapControl(
         map.frame(
             south = points.minOf { it.first }, west = points.minOf { it.second },
             north = points.maxOf { it.first }, east = points.maxOf { it.second },
-            paddingPt = paddingPx / density.toDouble(), maxZoom = maxZoom,
+            paddingPt = paddingPx / density().toDouble(), maxZoom = maxZoom,
         )
     }
 

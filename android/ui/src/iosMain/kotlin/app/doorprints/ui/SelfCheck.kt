@@ -44,6 +44,9 @@ private const val CHECK_TIMEOUT_MS = 30_000L
  */
 private const val MAP_TIMEOUT_MS = 90_000L
 
+/** The style's download: two tries of up to 20 s each (IosMapStyle), then the cached copy. */
+private const val INDIA_VIEW_TIMEOUT_MS = 60_000L
+
 /** A separate Keychain service, so the check never touches the app's API key item (`app.doorprints`). */
 private const val SELF_CHECK_SERVICE = "app.doorprints.selfcheck"
 
@@ -99,7 +102,7 @@ private suspend fun runSelfCheck() {
         check("keychain") { keychainRoundTrip() },
         // The in-app boundary check (CMP-8c; the owner's CI gate for the iOS map): the style the map gets has India's
         // boundary as the Government of India shows it (IndiaViewCheck), and the map on screen loaded all of it.
-        check("indiaView") { indiaViewCheck() },
+        check("indiaView", INDIA_VIEW_TIMEOUT_MS) { indiaViewCheck() },
         check("map", MAP_TIMEOUT_MS) { mapCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
