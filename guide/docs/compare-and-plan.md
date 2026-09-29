@@ -2,9 +2,11 @@
 
 ## Compare houses
 
-Open **Compare** and pick two to four houses; shortlisted ones are offered first, and rejected houses are left
-out. Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item.
-On the website the best value in each row is highlighted and marked ✓. Choose a house's name to open it.
+1. Open **Compare**.
+2. Pick two to four houses. Shortlisted houses are offered first. Rejected houses are left out.
+
+Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item. On the
+website, the best value in each row is highlighted and marked ✓. Choose a house's name to open it.
 
 ![Compare on the website: Green Villa and Sunrise Apartments side by side, with the best values highlighted](images/web-compare.png)
 
@@ -12,17 +14,31 @@ On the website the best value in each row is highlighted and marked ✓. Choose 
 
 ## Plan a round of visits
 
-**Plan visits** puts the houses you want to see into a walking route, and **Ask** answers questions such as "Which
-house had the best water supply?" from your own notes. Both use AI, so they need
-[your own server](server-and-sharing.md#connect-your-own-server-optional) with AI features turned on. Without one, **Ask** and **Plan** do
-not appear in the website's menu, and Android has no **Assistant** tab.
+Two features use AI (the computer reads your notes and works things out for you):
 
-When they are on: on the website, open **Plan**, describe what you want to see (for example "Shortlisted 2BHKs under
-35k this afternoon"), set the **Start point** and choose **Plan route**. On Android, open **Assistant**, then
-**Plan visits**, and tap **Plan from my location**. Walking times are estimates.
+- **Plan visits** puts the houses you want to see into a walking route.
+- **Ask** answers questions from your own notes, such as "Which house had the best water supply?"
+
+Both need [your own server](server-and-sharing.md#connect-your-own-server-optional) with AI features turned on.
+Without one, **Ask** and **Plan** do not show in the website's menu, and Android has no **Assistant** tab.
+
+When AI is on, to plan on the website:
+
+1. Open **Plan**.
+2. Describe what you want to see, for example "Shortlisted 2BHKs under 35k this afternoon".
+3. Set the **Start point**.
+4. Choose **Plan route**.
+
+To plan on Android:
+
+1. Open **Assistant**.
+2. Open **Plan visits**.
+3. Tap **Plan from my location**.
+
+The walking times are only a rough guess.
 
 ![Plan my visits on the website without a server: a note says this needs your own server with AI turned on, with a Connect link](images/web-plan.png)
 
-(Without AI you only reach this page by typing its address; the menu hides **Plan** until AI is on.)
+(Without AI, you reach this page only by typing its address. The menu hides **Plan** until AI is on.)
 
 <img src="images/android-assistant.png" width="300" alt="The Android Assistant screen when AI is off: The assistant is not available right now, with Try again and Go to the map">

@@ -333,6 +333,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **The user guide in plain language** (owner request of 2026-09-29): every page now uses short sentences and
+  numbered steps with one action each, and explains words such as server, sync, API key, Docker, Tailscale, HTTPS and
+  GPS the first time they appear. Button names, facts, links and images are unchanged.
 - **Every source file names its copyright and licence**, as the FSF asks: the copyright line, the AGPL notice (version 3
   only) and an SPDX tag, added to all 558 source files; CI now fails on a new file without it. `NOTICE` gains the
   licences of the third-party map-style excerpt used in two tests.

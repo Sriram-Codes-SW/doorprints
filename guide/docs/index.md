@@ -1,25 +1,29 @@
 # Doorprints user guide
 
-This guide shows how to use Doorprints on the website, on Android and on iPhone.
+This guide shows you how to use Doorprints on the website, on Android and on iPhone.
 
-The houses in the pictures are made up for this guide ("Green Villa, 2BHK" and friends). The names, rents and phone numbers are not real.
+The houses in the pictures are made up for this guide ("Green Villa, 2BHK" and friends). Their names, rents and phone numbers are not real.
 
 ## What Doorprints is
 
 Doorprints remembers the houses you visit while you look for a home to rent or buy in India. It is not a listings
-site: it holds only the houses you have seen yourself.
+site. It holds only the houses you have seen yourself.
 
-For each house you can keep the rent or price, BHK, address, the owner's or broker's contact, notes, photos, a star
-rating and a ten-item checklist (water supply, power backup, parking and so on). Doorprints puts every house on a map,
-lets you search and sort them, and compares your favourites side by side.
+For each house you can keep the rent or price, BHK, address and the owner's or broker's contact. You can add notes,
+photos, a star rating and a ten-item checklist (water supply, power backup, parking and so on). Doorprints shows every
+house on a map. You can search the houses, put them in order and compare your favourites side by side.
 
-You need no account. Your houses stay on your phone or in your browser. A server of your own is optional.
+You need no account. Your houses stay on your phone or in your browser. A server of your own (a computer that stays on
+and keeps a copy of your houses) is optional.
 
 ## Website, Android or iPhone?
 
-Open the website at **https://doorprints.web.app** in any modern browser, on a computer or a phone. The Android app
-is installed from the project's GitHub page (see the [README](https://github.com/Sriram-Codes-SW/doorprints/blob/main/README.md#install-the-android-app-no-build-needed));
-it is not in the Play Store yet. The iPhone app is new and still being tested; it is not in the App Store.
+- **Website:** open **https://doorprints.web.app** in any up-to-date browser, on a computer or a phone.
+- **Android app:** install it from the project's GitHub page (see the [README](https://github.com/Sriram-Codes-SW/doorprints/blob/main/README.md#install-the-android-app-no-build-needed)).
+  It is not in the Play Store yet.
+- **iPhone app:** it is new and still being tested. It is not in the App Store.
+
+What each one can do ("offline" means without internet; "AI" means the computer reads your notes and answers you):
 
 | What you can do | Website | Android app | iPhone app (early) |
 |---|---|---|---|
