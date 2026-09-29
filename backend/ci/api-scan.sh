@@ -66,7 +66,8 @@ done
 docker run -d --name "$net-api" --network "$net" --network-alias api \
   -e DB_URL=jdbc:postgresql://db:5432/doorprints -e DB_USER=doorprints -e DB_PASSWORD=doorprints \
   -e APP_API_KEY="$key" -e APP_AI_ENABLED=false -e APP_MCP_ENABLED=false \
-  -e RATE_LIMIT_PER_MINUTE=1000000 -e RATE_LIMIT_BURST=1000000 "$api_image" >/dev/null
+  -e RATE_LIMIT_PER_MINUTE=1000000 -e RATE_LIMIT_BURST=1000000 \
+  -e PAIRING_RATE_LIMIT_PER_MINUTE=1000000 -e PAIRING_RATE_LIMIT_BURST=1000000 "$api_image" >/dev/null
 up=0
 for _ in $(seq 1 90); do
   if docker exec "$net-db" bash -c 'exec 3<>/dev/tcp/api/8080 && printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 && grep -q "\"UP\"" <&3' 2>/dev/null; then
