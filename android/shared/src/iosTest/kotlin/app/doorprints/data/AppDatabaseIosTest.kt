@@ -114,11 +114,11 @@ class AppDatabaseIosTest {
         try {
             val changes = Channel<Set<String>>(Channel.UNLIMITED)
             val collector = launch { db.localTablesChanged().collect { changes.send(it) } }
-            changes.receive() // the emission at once
+            // Real time, not runTest's virtual clock: a missing emission fails in seconds instead of hanging.
+            withContext(Dispatchers.Default) { withTimeout(10.seconds) { changes.receive() } } // the emission at once
 
             db.visits().upsert(VisitEntity(id = "v1", lat = 1.0, lon = 2.0, arrivedAt = 3, updatedAt = 3))
 
-            // Real time, not runTest's virtual clock: a missing emission fails in seconds instead of hanging.
             val next = withContext(Dispatchers.Default) { withTimeout(10.seconds) { changes.receive() } }
             assertTrue("visits" in next)
             collector.cancel()

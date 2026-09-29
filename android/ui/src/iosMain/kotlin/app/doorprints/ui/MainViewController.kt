@@ -1,0 +1,60 @@
+package app.doorprints.ui
+
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.window.ComposeUIViewController
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.setUnhandledExceptionHook
+import kotlin.native.terminateWithUnhandledException
+import kotlinx.coroutines.flow.MutableStateFlow
+import platform.UIKit.UIViewController
+
+/**
+ * The iOS app's root view controller (ADR-23 CMP-8b), what MainActivity's `setContent` is on Android: the common root
+ * ([DoorprintsRoot]) with the iOS seams ([IosPlatformServices], the process's [IosAppContainer] services) and the iOS
+ * feature set ([PlatformFeatures.Ios]: the features not on iPhone yet are hidden). The Swift app (ios/) calls it once,
+ * as `MainViewControllerKt.MainViewController()`, and makes it the window's root.
+ *
+ * Also starts the process's start-up work ([IosAppContainer.start]) and, in a debug build launched with
+ * `-DoorprintsSelfCheck`, the launch self-check ([startSelfCheckIfRequested]). Main thread.
+ */
+fun MainViewController(): UIViewController {
+    logUncaughtExceptions()
+    IosAppContainer.start()
+    startSelfCheckIfRequested()
+    val platform = IosPlatformServices()
+    val services = IosAppContainer.services
+    // No notifications on iOS yet, so nothing opens the app at a house or a screen: no deep link ever arrives.
+    val deepLinks = MutableStateFlow<DeepLink?>(null)
+    return ComposeUIViewController {
+        CompositionLocalProvider(
+            LocalPlatformServices provides platform,
+            LocalAppServices provides services,
+            LocalPlatformFeatures provides PlatformFeatures.Ios,
+        ) {
+            DoorprintsRoot(
+                deepLinks = deepLinks,
+                onDeepLinkHandled = { deepLinks.value = null },
+            )
+        }
+    }
+}
+
+/** Whether [logUncaughtExceptions] has installed its hook; main thread only. */
+private var crashHookInstalled = false
+
+/**
+ * An uncaught Kotlin exception ends the app; before it does, its type, message and stack trace go to stdout and the
+ * unified log as `DOORPRINTS-CRASH …` lines, so a crash in the simulator's launch smoke (or a tester's device log)
+ * says what failed. Exceptions carry no keys or house data in this app; the stack trace names only code.
+ */
+@OptIn(ExperimentalNativeApi::class)
+private fun logUncaughtExceptions() {
+    if (crashHookInstalled) return
+    crashHookInstalled = true
+    setUnhandledExceptionHook { e ->
+        val text = "DOORPRINTS-CRASH ${e::class.qualifiedName}: ${e.message}\n${e.stackTraceToString()}"
+        println(text)
+        logLine(text)
+        terminateWithUnhandledException(e)
+    }
+}

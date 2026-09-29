@@ -174,6 +174,13 @@ fun MapScreen(
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
 ) {
+    // No map on this platform yet (iOS; PlatformFeatures.map): a note that points to the Houses tab instead, and none
+    // of the map's state, permissions or Hunt mode below. The flag is fixed per process, so returning early never
+    // changes this composable's call order between compositions.
+    if (!LocalPlatformFeatures.current.map) {
+        MapNotOnThisPhone(onOpenHouses)
+        return
+    }
     val platform = LocalPlatformServices.current
     val services = LocalAppServices.current
     val mapServices = services.mapScreen
@@ -798,6 +805,38 @@ private val MinusIcon: ImageVector by lazy {
         pathData = addPathNodes("M19,13H5v-2h14v2z"),
         fill = SolidColor(Color.Black),
     ).build()
+}
+
+/**
+ * The Map tab where the platform has no map yet (iOS, CMP-8b; [PlatformFeatures.map]): the tab's title, as the other
+ * tabs have theirs (Houses, Compare), then a card with one sentence, that the map is not on this phone yet and every
+ * house is in the Houses tab, and *Open Houses*, the same button the map's error card offers. From the top, at most
+ * [ContentMaxWidth] wide with the 16 dp gutter, and scrolling at large text sizes.
+ */
+@Composable
+private fun MapNotOnThisPhone(onOpenHouses: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            stringResource(Res.string.nav_map),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 2.dp,
+            modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.map_not_on_this_phone), style = MaterialTheme.typography.bodyLarge)
+                Button(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
+                    ButtonLabel(stringResource(Res.string.map_open_houses))
+                }
+            }
+        }
+    }
 }
 
 /**

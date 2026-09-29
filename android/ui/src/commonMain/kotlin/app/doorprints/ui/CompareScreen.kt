@@ -124,10 +124,15 @@ fun CompareScreen(
                 title = stringResource(Res.string.compare_empty),
                 body = stringResource(Res.string.compare_empty_body),
                 horizontalPadding = 0.dp,
-                action = {
-                    Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                        ButtonLabel(stringResource(Res.string.common_add_on_map))
+                // Houses are added on the map; without one (iOS for now; PlatformFeatures.map) there is no button.
+                action = if (LocalPlatformFeatures.current.map) {
+                    {
+                        Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
+                            ButtonLabel(stringResource(Res.string.common_add_on_map))
+                        }
                     }
+                } else {
+                    null
                 },
             )
             else -> ComparePicker(

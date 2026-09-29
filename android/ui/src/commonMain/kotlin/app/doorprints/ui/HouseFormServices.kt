@@ -8,7 +8,7 @@ import app.doorprints.location.Place
  * The app features the house form ([HouseEditScreen]) needs that are still Android code in `:app` (ADR-23 CMP-6 P6a):
  * the reverse geocoder, the "Are you at a house?" alert, and the photos (the camera and the photo picker, shrinking and
  * storing a picked photo, and what the image loader reads for a stored one). Android: `AndroidHouseFormServices` in
- * `:app`. iOS: with the iOS shell (CMP-8).
+ * `:app`. iOS: `IosHouseFormServices` (CMP-8b), with no photos added and no geocoder yet.
  */
 interface HouseFormServices {
     /** The street, locality and address at a point, or null when there is no geocoder or it has no answer. */
