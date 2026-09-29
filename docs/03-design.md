@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.38 |
+| Version | 0.39 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -50,6 +50,7 @@
 | 0.36 | 2026-09-29 | Claude (Code), lead | New §12.1 and **ADR-25** (owner request of 2026-09-29): per-device keys obtained by pairing (a code typed on the owner page, or a QR code or link), the owner page served by the server, AI per device (off for a new device), the Gemini key on the owner page; the owner page is the self-hoster's, and with D-28 there is no hosted server. Security design table row updated. |
 | 0.37 | 2026-09-29 | Claude (Code), lead | §12.1: the Gemini key on the owner page (encryption, key derivation, rotation, read per request with no restart) and the *AI on this server* switch. |
 | 0.38 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on the website (ADR-25 step 3, branch `feat/connect-by-code-or-qr`): the code, the connect link and its confirmation, and the *AI features* switch. |
+| 0.39 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on Android and iPhone (branch `feat/app-connect-by-code`): code, connect link (`doorprints://connect`) with confirmation, *Use AI features on this phone*. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -988,6 +989,17 @@ not affected. Separately, each app has its own *AI features* switch in Settings,
   server says `enabled`, the owner's switch for this device is on (`offForDevice` false) and this switch is on; Ask and
   Plan say which one is off (`AiService.offReason`), with a link to *Connect* where the fix is there. A 403
   `AI_OFF_FOR_DEVICE` or `AI_PAUSED` during a request is shown in the same words.
+
+**Android and iPhone** (branch `feat/app-connect-by-code`; `:shared` `ConnectLink`, `ApiClient.pair*`,
+`Repository.aiOff`; `:ui` `SettingsScreen`, `CodePairing.kt`, `ConnectLinkDialog.kt`): Settings → *Server* has the
+same parts as the website: *Connect with a code* (`pairByCode`: the code large and read letter by letter, *Cancel*,
+the owner page link; two network failures in a row tolerated), the typed key under *Use an API key instead*, and
+*Use AI features on this phone* (`AppSettings.aiFeatures`, off by default; `Repository.aiEnabled` is on only when it,
+the server and the owner's switch for this device are on). A connect link opens the app: Android's intent filter for
+`doorprints://connect` on `MainActivity`, iOS's URL scheme `doorprints` and SwiftUI's `onOpenURL`
+(`handleOpenUrl`); both become `DeepLink.Connect`, and *Connect to a server?* asks before the invite is redeemed. The
+pairing calls send no `X-API-Key` header. The name on the owner page is the model ("Pixel 9 (Android app)", "iPhone
+(Doorprints app)").
 
 **Where the apps keep a device key:** as they keep the key today: Android Keystore-encrypted (`ApiKeyCipher`), iOS
 Keychain, and the website's `sessionStorage` or, with *Remember on this device*, `localStorage`.

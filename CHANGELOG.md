@@ -115,6 +115,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Android and iPhone connect by code or QR code** ([design](docs/03-design.md) §12.1): Settings → *Server* has
+  *Get a code*, which the server's owner types on the owner page, and a phone's camera on the owner page's QR code
+  opens the app at *Connect to a server?*, which sends nothing until *Connect*. Each phone gets a key of its own, so
+  the owner can revoke one without touching the others (threat model F-01b fixed). The typed key stays under *Use an
+  API key instead*. New *Use AI features on this phone*, off until turned on; the Assistant says why AI is off.
 - **The website connects by code** ([design](docs/03-design.md) §12.1, ADR-25): on **Connect**, *Get a code* shows a
   short code; the server's owner types it on the owner page and approves, and the website gets a key of its own, with
   no password to type. A connect link from the owner page's QR code or link opens a *Connect to a server?* card that
