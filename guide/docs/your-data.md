@@ -42,8 +42,9 @@ can do this. The website cannot import yet. But you can import a full backup mad
 1. On Android, open **Settings**, then **Import a backup**.
 2. Tap **Choose a backup file**.
 3. Doorprints checks the file and shows **What this would change**. Nothing changes yet.
-4. Choose **Merge with what I have** or **Add everything as new copies**. With a merge, a house is updated only if
-   the backup's version is newer.
+4. Choose how to import:
+    - **Merge with what I have:** a house already on this phone is updated only if the backup's version is newer.
+    - **Add everything as new copies:** nothing on this phone is changed. Houses you already have will appear twice.
 5. Tap **Import**.
 
 Readable copies (HTML, PDF, CSV, Excel, Markdown) cannot be imported.
