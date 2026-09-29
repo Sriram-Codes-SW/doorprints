@@ -60,13 +60,20 @@ object IosAppContainer {
     private val syncRequests = Channel<Unit>(Channel.CONFLATED)
 
     val repository: CommonRepository by lazy {
+        // Breadcrumbs in the unified log: a native crash while the data opens leaves no Kotlin trace, and these say
+        // which step it was in (CMP-8b, the first launches in CI).
+        startupStep("database")
+        val db = iosAppDatabase()
+        startupStep("settings")
+        val settings = iosSettingsStore()
+        startupStep("repository")
         CommonRepository(
-            iosAppDatabase(),
-            iosSettingsStore(),
+            db,
+            settings,
             photoDir = iosDataDirectory() + "/photos",
             syncSoon = { syncRequests.trySend(Unit) },
             apiFor = { url, key -> ApiClient(url, key, http) },
-        )
+        ).also { startupStep("ready") }
     }
 
     val services: AppServices by lazy { IosAppServices(repository, appScope) }
@@ -293,4 +300,9 @@ private object NoImportServices : ImportServices {
 
     /** Never queued, so no screen waits for a run ([ImportStart.queued]). */
     override fun start(request: ImportRequest): ImportStart = ImportStart(Uuid.random().toString()) { false }
+}
+
+/** One `DOORPRINTS-STARTUP <step>` line in the unified log as the app's data opens; names a step only. */
+private fun startupStep(step: String) {
+    platform.Foundation.NSLog("%@", "DOORPRINTS-STARTUP $step")
 }

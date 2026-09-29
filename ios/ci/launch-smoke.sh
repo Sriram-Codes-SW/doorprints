@@ -120,9 +120,19 @@ xcrun simctl io "$udid" screenshot "$out/launch.png" || echo "::warning::no scre
 # Crash reports of this run, if any (the simulator's processes report to the host's DiagnosticReports, named after
 # the process: Doorprints-<date>.ips), and everything the app wrote to the unified log in the last minutes, for a
 # crash that left no report (an uncaught Kotlin exception logs DOORPRINTS-CRASH lines there).
+# ReportCrash writes the report some seconds after the app ends, so wait for one (up to a minute) when it failed.
+if [ "$result" != "DOORPRINTS-SELFCHECK done PASS" ]; then
+  for ((i = 0; i < 60; i++)); do
+    find "$HOME/Library/Logs/DiagnosticReports" -name '*.ips' -newer "$started" 2>/dev/null | grep -q . && break
+    sleep 1
+  done
+fi
 find "$HOME/Library/Logs/DiagnosticReports" -name '*.ips' -newer "$started" -exec cp {} "$out/" \; 2>/dev/null || true
 xcrun simctl spawn "$udid" log show --last 5m --style compact --predicate 'process == "Doorprints"' \
   > "$out/app-unified.log" 2>&1 || true
+# What the simulator's own processes (launchd, runningboardd, FrontBoard) logged about the app, e.g. why it ended.
+xcrun simctl spawn "$udid" log show --last 5m --style compact \
+  --predicate 'process != "Doorprints" AND eventMessage CONTAINS[c] "doorprints"' > "$out/system-unified.log" 2>&1 || true
 
 # The self-check's lines from the console, or from the unified log when the console has none.
 lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
@@ -131,6 +141,10 @@ if [ -z "$lines" ] && [ -f "$unified" ]; then
 fi
 echo "--- self-check lines ---"
 echo "${lines:-(none)}"
+echo "--- start-up steps ---"
+grep -ho 'DOORPRINTS-STARTUP .*' "$out/app-unified.log" 2>/dev/null || echo "(none)"
+echo "--- how the app ended (system log) ---"
+grep -iE 'exit|termin|signal|crash|kill|reason' "$out/system-unified.log" 2>/dev/null | tail -15 | cut -c1-300 || true
 crash=$(grep -h -A 25 'DOORPRINTS-CRASH' "$log" "$out/app-unified.log" 2>/dev/null | head -40 || true)
 if [ -n "$crash" ]; then
   echo "--- uncaught exception ---"
