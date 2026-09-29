@@ -114,6 +114,52 @@ jobs:
             android/app/build/outputs/roborazzi/
           retention-days: 7
 
+  # Release security gate (S4b-SEC-1, docs/06 TC-S-06): MobSF's static scan of the release build, in parallel with
+  # `build` so the workflow takes no longer. The release variant unsigned (the signing key stays on main; the signed
+  # APK's signature is checked by `release`, TC-S-15), scanned through MobSF's REST API (android/ci/mobsf-scan.sh,
+  # MobSF pinned by digest). Blocking: a High finding not reviewed in android/ci/mobsf-accepted.json, or any tracker.
+  mobsf:
+    name: MobSF static scan of the release APK
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: assembleRelease (unsigned)
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace :app:assembleRelease
+
+      - name: MobSF static scan
+        run: |
+          chmod +x ci/mobsf-scan.sh
+          ci/mobsf-scan.sh app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/mobsf" ci/mobsf-accepted.json
+
+      - name: Upload the MobSF report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-mobsf-report
+          path: ${{ runner.temp }}/mobsf
+          if-no-files-found: ignore
+          retention-days: 30
+
   # Only for a push to main or a manual run on main: never for pull requests and never for a push to (or a manual
   # run on) any other branch, because code that has not been merged into main must not run with the signing key.
   # Since 2026-09-23 this workflow runs on every branch push, so the ref check is what keeps the key on main.
