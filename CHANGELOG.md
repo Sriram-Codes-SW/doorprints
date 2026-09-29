@@ -115,6 +115,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Release security gate, Android part** (S4b-SEC-1): every Android push also builds the release APK and scans it with
+  MobSF, in parallel with the main build; a High finding that has not been reviewed, or any tracker, fails it.
 - **The iPhone map** (CMP-8c, [sprint log](docs/10-sprint-log.md) §13.13): the iPhone app gets the map (MapLibre iOS
   6.31.0, pinned by commit) with India's boundary as the Government of India shows it, applied to the style's JSON by
   the same common steps as Android and checked in the app; the iOS launch smoke fails unless that check and the loaded

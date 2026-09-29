@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.51 |
+| Version | 0.52 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -63,6 +63,7 @@
 | 0.49 | 2026-09-29 | Claude (Code), lead | CMP-8a ([10](10-sprint-log.md) §13.11). New **TC-U-78** (the iOS simulator suites: Room, the data folder, the Keychain settings, the clock and the app language, plus every commonTest, in CI job `ios-sim-tests`) and **TC-U-79** (photo files by id, S4b-BL-52). TC-U-72: the stand-ins checked, and the stricter coordinate text. TC-M-26: the run after PR #28's deploy (1 977 of 1 977). |
 | 0.50 | 2026-09-29 | Claude (Code), lead | CMP-8b ([10](10-sprint-log.md) §13.12). New **TC-U-80** (`PlatformFeatures` and the 48 `ios_*` screenshots of what the iPhone hides, after the design review's fixes) and **TC-I-37** (the `ios-app` job: the iPhone app builds ad-hoc signed, launches on a simulator and passes its self-check). |
 | 0.51 | 2026-09-29 | Claude (Code), lead | CMP-8c ([10](10-sprint-log.md) §13.13). New **TC-U-81** (`JsonStyleOpsTest`: India's view on a style held as JSON and the in-app boundary check), **TC-I-38** (the iPhone map's boundary gate in the `ios-app` job) and **TC-M-28** (the owner's look at the iPhone map). **TC-U-80**: the iPhone now has the map, so `PlatformFeatures.Ios` turns it on and the `ios_*` screenshots show the map's chrome without the Hunt card. |
+| 0.52 | 2026-09-29 | Claude (Code), lead | Release security gate, Android part (S4b-SEC-1): **TC-S-06** MobSF automated and blocking in `android.yml` (job `mobsf`). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -232,7 +233,7 @@ Record: device model, Android version, alerts expected/received, false alerts, b
 | TC-S-03 | **gitleaks** (full history on first run, then on PRs) | repo | No secrets (tests generate their API keys at runtime; none are committed) | SEC-009 |
 | TC-S-04 | **OWASP ZAP baseline** (`zaproxy/action-baseline`) against the CI-started API and a preview of the web build | API, web | No High alerts. Headers (SEC-012) present after the fix. No stack traces. | SEC-012, SEC-015 |
 | TC-S-05 | **Trivy image** scan of `doorprints-api` | container | No Critical. Runs as non-root (after F-23). | SEC-024 |
-| TC-S-06 | **MobSF** static scan (Docker, local) + Android Lint security checks on the release APK | APK | No cleartext, `allowBackup` false/rules, `debuggable` false, signed with the release cert, exported components reviewed | SEC-004, SEC-011, SEC-018, SEC-021 |
+| TC-S-06 | **MobSF** static scan + Android Lint security checks on the release APK. **MobSF automated since 2026-09-29** (release security gate, S4b-SEC-1): `android.yml` job `mobsf`, in parallel with `build`, scans the unsigned release build with MobSF v4.5.4 (pinned by digest) through its REST API (`android/ci/mobsf-scan.sh`); report uploaded as `android-mobsf-report`. First run: score 53, 2 High (both reviewed and accepted in `android/ci/mobsf-accepted.json`: the unsigned CI build, and cleartext for `localhost`, `127.0.0.1` and `10.0.2.2` only), 8 warnings (exported launcher activity and its old-package alias, AndroidX's permission-protected receivers and job service, minSdk 26, system CAs trusted, "hardcoded secrets" that are MapLibre's native symbol names), 0 trackers | APK | **No High finding outside the reviewed list and no tracker** (blocking). No cleartext beyond the development hosts, `allowBackup` false/rules, `debuggable` false, signed with the release cert (TC-S-15), exported components reviewed | SEC-004, SEC-011, SEC-018, SEC-021 |
 | TC-S-07 | Manifest/config assertion (script in CI) | `AndroidManifest.xml`, network security config | `usesCleartextTraffic` not true in release, backup excluded | SEC-004, SEC-010, SEC-011 |
 | TC-S-08 | Auth tests: wrong key, empty key, key with a different length, timing check (informational) | API | 401 in all cases. No difference in response body. | SEC-001, SEC-003 |
 | TC-S-09 | TLS check (`testssl.sh` or SSL Labs) on the prod API and web | prod | TLS 1.2+, HSTS, valid cert | SEC-004 |
