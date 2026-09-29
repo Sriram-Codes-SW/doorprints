@@ -1,0 +1,39 @@
+Doorprints
+Copyright (C) 2026 Sriram (Sriram-Codes-SW)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+Public License as published by the Free Software Foundation, version 3 of the License only (SPDX: AGPL-3.0-only).
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+details.
+
+You should have received a copy of the GNU Affero General Public License along with this program, in the file
+LICENSE. If not, see <https://www.gnu.org/licenses/>.
+
+The source code is at <https://github.com/Sriram-Codes-SW/doorprints>. Versions before 2026-09-29 were released
+under the MIT License; copies obtained under it keep that licence.
+
+
+Additional permission under GNU AGPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or combining it with
+
+  (a) a library licensed under the Eclipse Public License version 1.0 or 2.0, or
+  (b) Google Play services client libraries (Maven group com.google.android.gms), or another Google client library
+      for Android distributed under the Android Software Development Kit License,
+
+(or a modified version of that library), containing parts covered by the terms of that library's licence, the
+licensors of this Program grant you additional permission to convey the resulting work. Corresponding Source for a
+non-source form of such a combination shall include the source code for the parts of a library under (a) that are
+used, as well as that of the covered work.
+
+As section 7 of the licence allows, anyone conveying a copy may remove this additional permission from that copy.
+
+
+Trademarks (section 7(e))
+
+"Doorprints" and the Doorprints app icon (the door with footprints) are unregistered trademarks of the copyright
+holder. The licence does not grant rights to use them. You may say truthfully that your work is based on
+Doorprints, but a modified version that you distribute or offer to others must use a different name and icon, so
+that no one mistakes it for this project.
