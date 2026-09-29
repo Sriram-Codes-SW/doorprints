@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.cinterop.ExperimentalForeignApi
 import platform.LocalAuthentication.LAContext
 import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthentication
 import platform.darwin.dispatch_async
@@ -35,11 +36,13 @@ actual fun rememberDeviceCredentialCheck(title: String, onResult: (CredentialChe
     val latest by rememberUpdatedState(onResult)
     return remember(title) {
         {
-            val context = LAContext()
-            if (!context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error = null)) {
+            if (!iosHasScreenLock()) {
                 latest(CredentialCheck.NO_SCREEN_LOCK)
             } else {
+                // Held by its own reply block, so the context lives until the person has answered.
+                val context = LAContext()
                 context.evaluatePolicy(LAPolicyDeviceOwnerAuthentication, localizedReason = title) { passed, _ ->
+                    context.invalidate()
                     // The reply comes on a private queue; the UI state is changed on the main one.
                     dispatch_async(dispatch_get_main_queue()) {
                         latest(if (passed) CredentialCheck.PASSED else CredentialCheck.CANCELLED)
@@ -54,5 +57,9 @@ actual fun rememberDeviceCredentialCheck(title: String, onResult: (CredentialChe
 @Composable
 actual fun AppLockWindowGuard(on: Boolean) {}
 
-/** A passcode is set (Face ID and Touch ID need one), so the device-owner policy can be asked. */
+/**
+ * A passcode is set (Face ID and Touch ID need one), so the device-owner policy can be asked. The error out-parameter
+ * is a C pointer (ExperimentalForeignApi); none is wanted, the answer is enough.
+ */
+@OptIn(ExperimentalForeignApi::class)
 internal fun iosHasScreenLock(): Boolean = LAContext().canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, error = null)
