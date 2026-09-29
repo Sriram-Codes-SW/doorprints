@@ -10,7 +10,16 @@ Screen and save a backup regularly.
 **The map is blank or grey.** The map needs an internet connection; your houses are still in the list. On the
 website you can still add one offline with **Add at my location** or **Type latitude and longitude**.
 
-**I don't see Ask, Plan or Assistant.** They appear only when a connected server has AI turned on.
+**I don't see Ask, Plan or Assistant.** They appear only when a connected server has AI turned on. See
+[Set up your own server](set-up-a-server.md) to set one up, and its
+[troubleshooting table](set-up-a-server.md#if-something-goes-wrong) if AI is on but they still don't appear.
+
+**Where do I get an API key?** You make the Doorprints API key yourself when you set up your server, and a free
+Gemini key for AI comes from Google. [Two different keys](set-up-a-server.md#two-different-keys) explains which goes
+where.
+
+**Do I need both keys at once?** No. The Doorprints API key is needed from the start: the server won't run without it.
+The Gemini key is only for AI, and you can add it any time later ([step 5](set-up-a-server.md#step-5-write-the-servers-settings-file)).
 
 **Can I move my houses from the website to the Android app?** Yes: on the website, **Save a copy** as a **Full backup (ZIP)**,
 then on Android use **Import a backup**. Or connect both to the same server.
