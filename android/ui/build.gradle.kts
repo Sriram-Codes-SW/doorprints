@@ -1,8 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // :ui - Compose Multiplatform module with Doorprints' UI code that is not tied to Android (ADR-23, README.md in this
-// folder). Targets: Android (AGP's KMP library plugin) and, compile-only for now, iosArm64 + iosSimulatorArm64,
-// the same as :shared. The screens move here phase by phase; :app stays the Android application around them.
+// folder). Targets: Android (AGP's KMP library plugin) and iosArm64 + iosSimulatorArm64, the same as :shared, which
+// build the iOS app's framework (CMP-8b). The screens move here phase by phase; :app stays the Android application
+// around them, and the Swift app in ios/ around the framework.
 // The Kotlin package of the moved files stays app.doorprints.ui, so :app's imports do not change.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -26,10 +27,18 @@ kotlin {
         withHostTest {}
     }
 
-    // Compile-only, like :shared: shared-ios.yml compiles the iOS klibs on macOS; on ubuntu these tasks are skipped
-    // (gradle.properties: kotlin.native.enableKlibsCrossCompilation=false). No framework binary yet (ADR-23 phase 8).
-    iosArm64()
-    iosSimulatorArm64()
+    // The iOS app's framework (ADR-23 CMP-8b): DoorprintsKit, static, with this module, :shared and the libraries in
+    // it; the Swift app calls MainViewControllerKt.MainViewController(). Xcode builds it through
+    // embedAndSignAppleFrameworkForXcode (ios/), CI also links it (linkDebugFrameworkIosSimulatorArm64). Linking needs
+    // Xcode, so only macOS runs these tasks; on ubuntu the iOS tasks are skipped (gradle.properties:
+    // kotlin.native.enableKlibsCrossCompilation=false), and with that flag set to true the klibs also compile there.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "DoorprintsKit"
+            // Static: linked into the app binary, so there is no dynamic framework to embed and sign separately.
+            isStatic = true
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -65,6 +74,11 @@ kotlin {
             // The Map's view (CMP-7, PlatformMap.android.kt, MapLibreStyleOps): MapLibre Native, the OpenGL ES build
             // :app already used (the catalog's maplibre-android).
             implementation(libs.maplibre.android)
+        }
+        iosMain.dependencies {
+            // The swipe-back for PlatformBackHandler (CMP-8b, BackHandler.ios.kt): NavigationBackHandler, the API the
+            // navigation graph already listens to on iOS.
+            implementation(libs.jb.navigationevent.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

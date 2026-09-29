@@ -19,10 +19,11 @@ import platform.Foundation.NSUserDomainMask
  * The folder that holds Doorprints' data on iOS (CMP-8; threat model F-03, SEC-011): `Application Support/Doorprints`,
  * Apple's place for internal app data (Documents is visible to the user when file sharing is on), created on first
  * use and excluded from iCloud and computer backups (`NSURLIsExcludedFromBackupKey`), as Android keeps the database
- * out of its backups. Returns the folder's path.
+ * out of its backups. Returns the folder's path. Public since CMP-8b: the iOS shell (`:ui`'s `IosAppContainer`) keeps
+ * the photo files in its `photos` folder.
  */
 @OptIn(ExperimentalForeignApi::class)
-internal fun iosDataDirectory(): String {
+fun iosDataDirectory(): String {
     val support = NSFileManager.defaultManager.URLForDirectory(
         directory = NSApplicationSupportDirectory,
         inDomain = NSUserDomainMask,

@@ -27,6 +27,10 @@ cmp-material-icons = "1.7.3"
 # 1.12.1). Verified on Maven Central 2026-09-24.
 jb-navigation = "2.9.2"
 jb-lifecycle = "2.11.0"
+# JetBrains navigationevent for the iOS swipe-back (CMP-8b, BackHandler.ios.kt): the version navigation-compose 2.9.2
+# and CMP 1.12.1's ui-backhandler already resolve on iOS (it maps to androidx navigationevent 1.1.1), named here because
+# :ui calls it directly. Check it on every navigation or CMP bump.
+jb-navigationevent = "1.1.0"
 androidx-core = "1.19.1"
 androidx-activity = "1.11.0"
 # navigation and lifecycle: the Android artifacts the JetBrains ones below map to (CMP-5). JetBrains navigation-compose
@@ -77,6 +81,7 @@ jb-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation
 jb-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jb-lifecycle" }
 jb-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jb-lifecycle" }
 jb-lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "jb-lifecycle" }
+jb-navigationevent-compose = { module = "org.jetbrains.androidx.navigationevent:navigationevent-compose", version.ref = "jb-navigationevent" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -109,9 +114,11 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 # the API 26 emulator job, 2026-09-24). A Vulkan build for Vulkan phones would need a second APK (backlog).
 maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 
-# Ktor client (shared module). commonMain: core only; androidMain: the OkHttp engine; commonTest: MockEngine.
+# Ktor client (shared module). commonMain: core only; androidMain: the OkHttp engine; iosMain: the Darwin engine
+# (NSURLSession, CMP-8b); commonTest: MockEngine.
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
