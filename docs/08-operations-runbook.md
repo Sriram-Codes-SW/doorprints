@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.19 |
+| Version | 0.20 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -31,6 +31,7 @@
 | 0.17 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. **§11**: the dump and restore of a local compose database is **mandatory** for a database that clients have synced with; the claim that phones and the web app sync a full copy back to an empty server was false (clients push only changed rows and pull after a stored cursor, so on a new database they silently miss each other's changes; [10](10-sprint-log.md) S4b-BL-20). The steps now use `docker compose up -d --wait db`, say that `pg_restore` reports "already exists" for the PostGIS objects and exits non-zero, count the rows before and after, and give the throwaway-container fallback a build step, a `pg_isready` wait and `docker rm -f old-db`. §6.2: a pre-rename test build is `com.househunt.app` (was `app.doorprints`, a find-and-replace error). The §11 intro rewrapped. |
 | 0.18 | 2026-09-24 | Claude (Code), lead | Clients detect a reset server (S4b-BL-20, branch `claude/doorprints-dev-continue-fzcge2`, PR #24). New **§11.1**: `GET /api/stats` returns `maxSyncVersion`; what Android and the web do when it is below their cursors; the dump and restore of §11 stays mandatory; what to expect after restoring an older dump. §11's backlog pointer and IR-4 step 4 updated. |
 | 0.19 | 2026-09-29 | Claude (Code), lead | The backup workflow sketch names its runner image (`ubuntu-26.04`), as the real workflows do ([07](07-secure-build-and-deploy.md) §1). |
+| 0.20 | 2026-09-29 | Claude (Code), lead | New §5.1a: devices and the owner page (first sign-in, a lost phone, AI per device, signing other browsers out) ([03](03-design.md) §12.1, ADR-25). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -177,6 +178,22 @@ Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys 
 **Emergency rotation (key leaked or suspected, IR-2)**: do **not** use the overlap. Set `APP_API_KEY=<new>`, make sure `APP_API_KEY_NEXT` is empty, redeploy, confirm the old key gets `401`, then update the clients (steps 3 to 5). Clients get 401 until they are updated; sync retries later and the phone stays fully usable offline.
 
 **Upgrading from a 16–31 character key** (before Sprint 2 the minimum was 16): the new version will not start with it. Set a new 32+ key as `APP_API_KEY` in the same deploy (emergency-style swap, then update the clients), or rotate to a 32+ key with the old version first.
+
+### 5.1a Devices and the owner page (ADR-25)
+
+Each app install has its own key, obtained by pairing ([03](03-design.md) §12.1). The server's owner manages them on
+the **owner page**, `https://<server>/owner`.
+
+- **First sign-in, or a lost browser:** the server writes a one-time link to its log at every start
+  (`docker compose logs api`, look for "Doorprints owner page"). It works once, for one hour. Restart the server
+  (`docker compose restart api`) for a new one; a signed-in browser can also make one (*Add another browser*).
+- **A lost or sold phone:** owner page → *Devices* → *Revoke*. Its key stops working at once; the other devices are
+  not affected and the owner key does not change.
+- **Someone else's phone on your server:** it starts with AI off; turn *AI* on for it only if it may use your Gemini
+  key.
+- **Someone may have used a setup link or a browser that is not yours:** *Sign out everywhere else*, then check the
+  device list and revoke anything you do not recognise.
+- The owner key (`APP_API_KEY`) is still needed for MCP clients and is rotated as in §5.1.
 
 ### 5.2 Other secrets
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.35 |
+| Version | 0.36 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -47,6 +47,7 @@
 | 0.33 | 2026-09-28 | Claude (Code), lead | **The Government of India's geospatial guidelines** (owner request of 2026-09-28: "There are these guidelines for using the country map. Please refer to them and upgrade the procedures we have as needed", with the Survey of India's page of the DST guidelines of 15 February 2021). New **§11.1**, Doorprints' self-certification against each clause that applies (clause 8 ii(1) asks for self-certification). **ADR-22**: the Survey of India's maps and boundary data are *the standard* (clause 8 xiii), so they, not Google Maps, are the reference the outline is checked against; alternative (c) records the free SoI Administrative Boundary Database and the open licence question ([10](10-sprint-log.md) S4b-BL-10). |
 | 0.34 | 2026-09-29 | Claude (Code), lead | Web stack row: Angular 22.2, MapLibre GL 6.11 (the web dependency update that supersedes Dependabot #25). ADR-22: the web renderer is maplibre-gl 6.11.2 (`worker_tile.ts:110`; checked against the boundary rules, [10](10-sprint-log.md) §16). |
 | 0.35 | 2026-09-29 | Claude (Code), lead | CMP-8c: the iOS map. The `MapScreen`/`PlatformMap` row and the module diagram name the iOS view (`MLNMapView` from Swift in `UIKitView`); ADR-22 says how the rules reach MapLibre iOS (the common steps over the style's JSON, `JsonStyleOps`, loaded whole; `IndiaViewCheck` as the CI gate, TC-I-38; the device look TC-M-28). |
+| 0.36 | 2026-09-29 | Claude (Code), lead | New §12.1 and **ADR-25** (owner request of 2026-09-29): per-device keys obtained by pairing (a code typed on the owner page, or a QR code or link), the owner page served by the server, AI per device (off for a new device), the Gemini key on the owner page; the owner page is the self-hoster's, and with D-28 there is no hosted server. Security design table row updated. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

@@ -20,6 +20,7 @@ package app.doorprints.server.config;
 
 import app.doorprints.server.ai.web.TokenBucketRateLimiter;
 import app.doorprints.server.backup.BackupController;
+import app.doorprints.server.device.DeviceKeyStore;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,10 +95,11 @@ public class WebConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<ApiKeyFilter> apiKeyFilter() {
+    public FilterRegistrationBean<ApiKeyFilter> apiKeyFilter(DeviceKeyStore devices) {
         var rl = props.rateLimit();
         var failures = new TokenBucketRateLimiter(rl.authFailureBurst(), rl.authFailuresPerMinute());
-        var bean = new FilterRegistrationBean<>(new ApiKeyFilter(props.apiKey(), props.apiKeyNext(), failures));
+        var bean = new FilterRegistrationBean<>(
+                new ApiKeyFilter(props.apiKey(), props.apiKeyNext(), failures, devices::check));
         bean.setOrder(2);
         return bean;
     }

@@ -35,13 +35,29 @@ public record AppProperties(
         RateLimit rateLimit,
         Limits limits,
         Sync sync,
-        Privacy privacy) {
+        Privacy privacy,
+        /* The web app's address, for the owner page's connect links (APP_WEB_URL); docs/03 §12.1. */
+        String webUrl,
+        Pairing pairing) {
 
     public AppProperties {
         rateLimit = rateLimit == null ? new RateLimit(null, null, null, null) : rateLimit;
         limits = limits == null ? new Limits(null, null, null, null, null) : limits;
         sync = sync == null ? new Sync(null, null) : sync;
         privacy = privacy == null ? new Privacy(null) : privacy;
+        webUrl = webUrl == null || webUrl.isBlank() ? "https://doorprints.web.app" : webUrl.replaceAll("/+$", "");
+        pairing = pairing == null ? new Pairing(null, null) : pairing;
+    }
+
+    /**
+     * The calls anyone can make without a key (pairing, signing in to the owner page), per client address (docs/03
+     * §12.1): a device polling every 3 seconds needs 20 a minute.
+     */
+    public record Pairing(Integer requestsPerMinute, Integer burst) {
+        public Pairing {
+            requestsPerMinute = positiveOr(requestsPerMinute, 40);
+            burst = positiveOr(burst, 20);
+        }
     }
 
     /**
