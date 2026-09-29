@@ -18,7 +18,12 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.config.AppProperties;
+import app.doorprints.server.secrets.GeminiKey;
+import app.doorprints.server.secrets.ServerSecrets;
+import app.doorprints.server.secrets.ServerSettings;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -74,19 +79,80 @@ public class OwnerApiController {
     public record LinkView(String link, Instant expiresAt) {
     }
 
+    public record KeyRequest(@NotBlank @Size(min = 20, max = 200) String key) {
+    }
+
+    public record PausedRequest(@NotNull Boolean paused) {
+    }
+
+    /**
+     * AI on this server as the owner page shows it: whether AI is set up at all ({@code APP_AI_ENABLED}), which provider,
+     * where the Gemini key comes from (the owner page, the settings file, or none) and its last four characters, and
+     * whether the owner paused AI. Never the key.
+     */
+    public record AiView(boolean enabledOnServer, String provider, String keySource, String keyLast4,
+                         Instant keySetAt, boolean paused) {
+    }
+
     private final OwnerAuth auth;
     private final DeviceKeyStore devices;
     private final PairingService pairing;
     private final AppProperties props;
+    private final GeminiKey geminiKey;
+    private final ServerSecrets secrets;
+    private final ServerSettings settings;
+    private final boolean aiEnabled;
+    private final String aiProvider;
     /** Wrong codes typed on the owner page, per session: 5 a minute. */
     private final app.doorprints.server.ai.web.TokenBucketRateLimiter wrongCodes =
             new app.doorprints.server.ai.web.TokenBucketRateLimiter(5, 5);
 
-    public OwnerApiController(OwnerAuth auth, DeviceKeyStore devices, PairingService pairing, AppProperties props) {
+    public OwnerApiController(OwnerAuth auth, DeviceKeyStore devices, PairingService pairing, AppProperties props,
+                              GeminiKey geminiKey, ServerSecrets secrets, ServerSettings settings,
+                              @Value("${app.ai.enabled:false}") boolean aiEnabled,
+                              @Value("${app.ai.provider:aistudio}") String aiProvider) {
         this.auth = auth;
         this.devices = devices;
         this.pairing = pairing;
         this.props = props;
+        this.geminiKey = geminiKey;
+        this.secrets = secrets;
+        this.settings = settings;
+        this.aiEnabled = aiEnabled;
+        this.aiProvider = AiProperties.normalizeProvider(aiProvider);
+    }
+
+    @GetMapping("/owner/api/ai")
+    public AiView ai() {
+        var stored = secrets.describe(GeminiKey.SECRET);
+        return new AiView(aiEnabled, aiProvider, geminiKey.source().name().toLowerCase(java.util.Locale.ROOT),
+                geminiKey.last4().orElse(null), stored.map(ServerSecrets.Stored::updatedAt).orElse(null),
+                settings.aiPaused());
+    }
+
+    /** Sets the Gemini key, stored encrypted; it cannot be read back, only replaced or removed. */
+    @PostMapping("/owner/api/ai/key")
+    public ResponseEntity<?> setGeminiKey(@Valid @RequestBody KeyRequest body) {
+        var key = body.key().strip();
+        if (!key.matches("[\\x21-\\x7e]+")) {
+            return ResponseEntity.badRequest().body(Map.of("status", 400,
+                    "detail", "A Gemini key is one line of letters, digits and symbols, with no spaces."));
+        }
+        geminiKey.set(key);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/owner/api/ai/key/remove")
+    public ResponseEntity<Void> removeGeminiKey() {
+        geminiKey.remove();
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Pauses or resumes AI for the whole server: every device and the owner key. */
+    @PostMapping("/owner/api/ai/paused")
+    public ResponseEntity<Void> pauseAi(@Valid @RequestBody PausedRequest body) {
+        settings.put(ServerSettings.AI_PAUSED, Boolean.toString(body.paused()));
+        return ResponseEntity.noContent().build();
     }
 
     private static UUID session(HttpServletRequest request) {

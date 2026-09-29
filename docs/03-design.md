@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -48,6 +48,7 @@
 | 0.34 | 2026-09-29 | Claude (Code), lead | Web stack row: Angular 22.2, MapLibre GL 6.11 (the web dependency update that supersedes Dependabot #25). ADR-22: the web renderer is maplibre-gl 6.11.2 (`worker_tile.ts:110`; checked against the boundary rules, [10](10-sprint-log.md) §16). |
 | 0.35 | 2026-09-29 | Claude (Code), lead | CMP-8c: the iOS map. The `MapScreen`/`PlatformMap` row and the module diagram name the iOS view (`MLNMapView` from Swift in `UIKitView`); ADR-22 says how the rules reach MapLibre iOS (the common steps over the style's JSON, `JsonStyleOps`, loaded whole; `IndiaViewCheck` as the CI gate, TC-I-38; the device look TC-M-28). |
 | 0.36 | 2026-09-29 | Claude (Code), lead | New §12.1 and **ADR-25** (owner request of 2026-09-29): per-device keys obtained by pairing (a code typed on the owner page, or a QR code or link), the owner page served by the server, AI per device (off for a new device), the Gemini key on the owner page; the owner page is the self-hoster's, and with D-28 there is no hosted server. Security design table row updated. |
+| 0.37 | 2026-09-29 | Claude (Code), lead | §12.1: the Gemini key on the owner page (encryption, key derivation, rotation, read per request with no restart) and the *AI on this server* switch. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -945,8 +946,19 @@ data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 
   and must come from the page's own origin (checked on `Origin`), so a cross-site form cannot act.
 - **What it shows:** devices (name, added, last used, *AI* on or off, *Revoke*); *Connect a device* (type the code); *Add a device with
   a QR code* (the invite as QR and link, with a countdown); owner browsers (*Sign out*, *Sign out everywhere else*,
-  *Add another browser*, which makes a one-time link); from ADR-25's second step, the **Gemini key** (write-only,
-  stored encrypted with AES-256-GCM under `APP_ENCRYPTION_KEY`, shown as its last four characters, *Remove*).
+  *Add another browser*, which makes a one-time link); and *AI (Google Gemini)*: the **Gemini key** and one switch,
+  *AI on this server*, which pauses AI for everyone (403 `AI_PAUSED`).
+
+**The Gemini key on the owner page** (ADR-25's second step, branch `feat/owner-gemini-key`): write-only, shown as its
+last four characters, *Remove key*. It is stored in `server_secret` with AES-256-GCM (a random 12-byte nonce per write,
+the secret's name as associated data) under a key derived with HKDF-SHA256 from the owner key `APP_API_KEY`, so there is
+no extra setting to keep and a copy of the database alone does not reveal it; while `APP_API_KEY_NEXT` is set the
+server re-encrypts it under the next key at start. The key in use (`GeminiKey`) is the owner page's, else `AI_API_KEY`;
+it is read on every request: the OpenAI-compatible chat client through an OkHttp interceptor that replaces the
+`Authorization` header (`GeminiKeyInterceptor`, registered with Spring AI's `OpenAiHttpClientBuilderCustomizer`), the
+embedding client through a key supplier (`GeminiEmbeddingModel`), so a key set, changed or removed takes effect with
+no restart. A server with `APP_AI_ENABLED=true` and no key starts (a placeholder stands in for Spring AI) and reads AI
+as off until a key exists. Vertex AI needs no key and is unchanged.
 
 **AI per device** (owner, 2026-09-29): every AI request runs on the server with the owner's Gemini key, so a device
 someone else holds (a partner's phone on a shared server) would spend the owner's quota. Each device therefore has an

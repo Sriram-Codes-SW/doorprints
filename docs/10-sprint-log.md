@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.68 |
+| Version | 0.69 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -80,6 +80,7 @@
 | 0.66 | 2026-09-29 | Claude (Code), lead | §12.6: the FSF's checklist item by item; every source file carries the copyright and licence notice (`licence-headers.py`, checked in CI, TC-S-27); S4b-BL-65 widened to an About section with the legal notices. |
 | 0.67 | 2026-09-29 | Claude (Code), lead | S4b-BL-65 done: the About section's legal notices and source link on web, Android and iOS (TC-U-82); §12.6's FSF checklist is complete apart from the owner's item 1. |
 | 0.68 | 2026-09-29 | Claude (Code), lead | **Device pairing and the owner page, server side** (owner request of 2026-09-29, "not paste the API key but set it in their account"; [03](03-design.md) §12.1, ADR-25), branch `feat/device-pairing-server`: per-device keys (hashed), pairing by code and by QR code or link, the owner page at `/owner` (four languages), AI per device (off for a new device); 306 backend tests pass. Decisions of the same day: D-27 (a signed-in person's own Gemini key stays on their device) and D-28 (no hosted server; Google sign-in with Drive sync). Next: the Gemini key on the owner page, then *Connect to a server* in the three apps, and the user guide in plain language. |
+| 0.69 | 2026-09-29 | Claude (Code), lead | **The Gemini key on the owner page** (ADR-25 step 2, branch `feat/owner-gemini-key`): write-only, stored encrypted, used at once with no restart; *AI on this server* pauses AI for everyone; a server with AI on no longer needs `AI_API_KEY` to start. Next: *Connect to a server* in the three apps. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 

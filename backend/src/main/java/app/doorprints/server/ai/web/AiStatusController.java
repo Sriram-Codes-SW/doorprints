@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import app.doorprints.server.config.ApiKeyFilter;
 import app.doorprints.server.device.DeviceKeyStore;
+import app.doorprints.server.secrets.GeminiKey;
+import app.doorprints.server.secrets.ServerSettings;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -39,13 +41,21 @@ public class AiStatusController {
     }
 
     private final AiStatus status;
+    private final boolean needsKey;
+    private final GeminiKey geminiKey;
+    private final ServerSettings settings;
 
     public AiStatusController(@Value("${app.ai.enabled:false}") boolean enabled,
                               @Value("${app.mcp.enabled:false}") boolean mcpEnabled,
                               @Value("${app.ai.provider:aistudio}") String provider,
                               @Value("${spring.ai.openai.chat.model:}") String openAiChatModel,
                               @Value("${spring.ai.google.genai.chat.model:}") String vertexChatModel,
-                              @Value("${app.ai.embedding.model:}") String embeddingModel) {
+                              @Value("${app.ai.embedding.model:}") String embeddingModel,
+                              GeminiKey geminiKey, ServerSettings settings) {
+        this.geminiKey = geminiKey;
+        this.settings = settings;
+        // Only AI Studio (the default) runs on a Gemini key; Vertex AI uses the server's Google Cloud credentials.
+        this.needsKey = !AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider));
         // The provider itself is not exposed (the response shape is shared with the web and Android apps).
         var chatModel = AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider)) ? vertexChatModel
                 : openAiChatModel;
@@ -54,8 +64,12 @@ public class AiStatusController {
 
     @GetMapping("/api/ai/status")
     public AiStatus status(HttpServletRequest request) {
-        if (status.enabled() && request.getAttribute(ApiKeyFilter.DEVICE_ATTRIBUTE) instanceof DeviceKeyStore.Caller c
-                && !c.aiAllowed()) {
+        if (!status.enabled()) return status;
+        // No Gemini key yet, or the owner paused AI for the whole server (owner page, docs/03 §12.1): off for everyone.
+        if ((needsKey && geminiKey.current().isEmpty()) || settings.aiPaused()) {
+            return new AiStatus(false, status.mcpEnabled(), null, null, false);
+        }
+        if (request.getAttribute(ApiKeyFilter.DEVICE_ATTRIBUTE) instanceof DeviceKeyStore.Caller c && !c.aiAllowed()) {
             return new AiStatus(false, status.mcpEnabled(), null, null, true);
         }
         return status;

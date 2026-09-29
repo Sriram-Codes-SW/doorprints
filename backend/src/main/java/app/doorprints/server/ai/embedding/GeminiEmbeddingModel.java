@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
@@ -88,6 +89,7 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
     private static final Pattern RETRY_DELAY = Pattern.compile("\"retryDelay\"\\s*:\\s*\"(\\d{1,6})(?:\\.(\\d{1,9}))?s\"");
 
     private final RestClient client;
+    private final Supplier<String> apiKey;
     private final String model;
     private final int dimensions;
     private final String taskType;
@@ -113,9 +115,29 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
     /** As above, with the wait between attempts injectable (tests record the waits instead of sleeping). */
     GeminiEmbeddingModel(RestClient.Builder builder, String baseUrl, String apiKey, String model, int dimensions,
                          String taskType, int maxRetries, Duration backoff, Consumer<Duration> sleeper) {
+        this(builder, baseUrl, fixedKey(apiKey), model, dimensions, taskType, maxRetries, backoff, sleeper);
+    }
+
+    private static Supplier<String> fixedKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("Gemini embedding API key is empty");
         }
+        var key = apiKey.strip();
+        return () -> key;
+    }
+
+    /**
+     * With the key read on every request (docs/03 §12.1): the owner may set, change or remove it on the owner page while
+     * the server runs. A request with no key fails at once, before anything is sent.
+     */
+    public GeminiEmbeddingModel(RestClient.Builder builder, String baseUrl, Supplier<String> apiKey, String model,
+                                int dimensions, String taskType, int maxRetries, Duration backoff) {
+        this(builder, baseUrl, apiKey, model, dimensions, taskType, maxRetries, backoff, GeminiEmbeddingModel::sleep);
+    }
+
+    GeminiEmbeddingModel(RestClient.Builder builder, String baseUrl, Supplier<String> apiKey, String model,
+                         int dimensions, String taskType, int maxRetries, Duration backoff, Consumer<Duration> sleeper) {
+        this.apiKey = apiKey;
         var name = model == null ? "" : model.strip();
         if (name.startsWith("models/")) name = name.substring("models/".length());
         if (!MODEL_NAME.matcher(name).matches()) {
@@ -127,7 +149,7 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
         if (!base.startsWith("https://") && !base.startsWith("http://")) {
             throw new IllegalArgumentException("Gemini embedding base URL must be http(s)");
         }
-        this.client = builder.baseUrl(base).defaultHeader(API_KEY_HEADER, apiKey.strip()).build();
+        this.client = builder.baseUrl(base).build();
         this.model = name;
         this.dimensions = dimensions;
         this.taskType = taskType == null || taskType.isBlank() ? null : taskType.strip();
@@ -198,11 +220,16 @@ public class GeminiEmbeddingModel implements EmbeddingModel {
     }
 
     private BatchResponse post(BatchRequest body) {
+        var key = apiKey.get();
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("No Gemini key is set: add one on the server's owner page, or AI_API_KEY");
+        }
         for (int attempt = 0; ; attempt++) {
             Duration wait = backoff.multipliedBy(attempt + 1L);
             try {
                 return client.post()
                         .uri("/models/{model}:batchEmbedContents", model)
+                        .header(API_KEY_HEADER, key.strip())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON)
                         .body(body)
