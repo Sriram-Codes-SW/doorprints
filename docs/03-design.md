@@ -953,8 +953,12 @@ Keychain, and the website's `sessionStorage` or, with *Remember on this device*,
 **Rate limits:** `/api/pair/*` is public, so it has its own bucket per address (10 starts, 60 polls and 10 redeems a
 minute), besides the general limit; at most 50 open requests at once, the oldest dropped.
 
-**Later:** with Google sign-in (D-01, Sprint 5), a device key belongs to a Google account instead of to the owner, and
-the owner page becomes the account page.
+**Owner page, not a user page.** The owner page belongs to whoever runs the server. A self-hoster is the owner of their
+own server, so their Gemini key stays on their own machine. On a hosted server (Sprint 5) other people are users, not
+owners: they never see the owner page; each gets an account page with their own devices only.
+
+**Later:** with Google sign-in (D-01, Sprint 5), a device key belongs to a Google account, and a signed-in user's own
+Gemini key stays on their device and never reaches the hosted server ([11](11-feature-parity-and-export-spec.md) D-27).
 
 ## 13. AI integration design (overview)
 
