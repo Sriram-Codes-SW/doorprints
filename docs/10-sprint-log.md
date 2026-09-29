@@ -2190,7 +2190,7 @@ MapLibre's demo style (`MLNMapView.mm`: `[MLNStyle defaultStyleURL]`), whose bor
 replaces it, and its load (or, offline, its failure) was taken as the map's own; the view now starts on an empty style
 and Kotlin counts only the load or failure of the style it handed over. Should-fix, fixed: the smoke's wait (300 s,
 the checks run one after another), `indiaView`'s own 60 s limit, one retry of the style's download, the view released
-when it leaves the screen (`release()`: no location updates, no callbacks). Nits, fixed: `compassVisibility`, a
+when it leaves the screen (`shutDown()`: no location updates, no callbacks; first named `release()`, which the Swift build refused because `NSObject` has one). Nits, fixed: `compassVisibility`, a
 negative direction to keep the bearing, the density read when it is used. No problem found in the Swift names Kotlin
 exports, the MapLibre 6.31.0 calls, the XcodeGen spec or `JsonStyleOps`' equivalence with `MapLibreStyleOps`.
 
