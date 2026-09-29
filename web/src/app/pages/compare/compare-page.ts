@@ -66,7 +66,6 @@ export class ComparePage {
   protected readonly selectedIds = signal<string[]>([]);
   /** Visit count per house id; missing = not loaded yet. */
   private readonly visitCounts = signal<Record<string, number>>({});
-  private readonly requestedVisits = new Set<string>();
   /**
    * The selection is chosen once per page, not again on every sync: from `?ids=` when the URL has it (Back from a
    * house, a bookmark), else the default pick.
@@ -190,21 +189,15 @@ export class ComparePage {
       this.api.settled();
       this.reload();
     });
-    // Fetch visit counts for the selected houses, and again after any local write: a visit added on the house
-    // screen, or one that arrived with a sync pull, changes these numbers.
+    // Visit counts for the selected houses, again after any local write: a visit added on the house screen, or one
+    // that arrived with a sync pull, changes these numbers. One read of the visits store for all of them.
     effect(() => {
       this.api.settled();
       const ids = this.selectedIds();
-      this.requestedVisits.clear();
-      for (const id of ids) {
-        if (this.requestedVisits.has(id)) continue;
-        this.requestedVisits.add(id);
-        this.api.visits(id).subscribe({
-          next: (list) =>
-            this.visitCounts.update((c) => ({ ...c, [id]: list.filter((v) => !v.deleted).length })),
-          error: () => this.requestedVisits.delete(id),
-        });
-      }
+      if (ids.length === 0) return;
+      this.api.visitCounts().subscribe((counts) =>
+        this.visitCounts.update((c) => ({ ...c, ...Object.fromEntries(ids.map((id) => [id, counts.get(id) ?? 0])) })),
+      );
     });
   }
 

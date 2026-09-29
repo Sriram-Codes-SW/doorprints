@@ -174,6 +174,10 @@ describe('LocalStore', () => {
     await store.saveVisit(visit('v4', 'h1', '2026-09-07T00:00:00.000Z'), T1);
     await store.deleteVisit('v4', T2);
     expect((await store.visitsOf('h1')).map((v) => v.id)).toEqual(['v1', 'v2']);
+    // Compare's counts, from one read of the store: deleted visits not counted.
+    expect(await store.visitCountsByHouse()).toEqual(new Map([['h1', 2], ['h2', 1]]));
+    // Only the changed ones, still in visit order.
+    expect((await store.dirtyVisits()).map((v) => v.id)).toEqual(['v1', 'v3', 'v4', 'v2']);
   });
 
   it('keeps a photo’s bytes and removes them again', async () => {
