@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.util.stream.Collectors;
@@ -44,6 +45,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ProblemDetail tooLarge(MaxUploadSizeExceededException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "Upload too large (max 5 MB per photo)");
+    }
+
+    /**
+     * A body that says it is multipart but cannot be read as one (no boundary, a broken part): the client's error,
+     * not a 500 with a stack trace in the log. Found by the release security gate's ZAP API scan (TC-S-04, 2026-09-29).
+     * A too-large upload is its own subclass and keeps its 413 above.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ProblemDetail malformedUpload(MultipartException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed multipart upload");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
