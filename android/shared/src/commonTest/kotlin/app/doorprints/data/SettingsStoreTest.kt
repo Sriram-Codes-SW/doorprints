@@ -273,6 +273,19 @@ class SettingsStoreTest {
         assertEquals(0, store.current().appLockAfterSeconds)
         assertEquals(AppLockSetting(on = true, afterSeconds = 0), store.appLockSetting.first())
     }
+
+    @Test
+    fun theSettingsPrintNeitherKey() = runTest {
+        val gemini = FakeSecrets("gemini")
+        val withGemini = SettingsStore(dataStore, secrets, gemini) { clock }
+        withGemini.saveServer("https://api.example.com", TEST_KEY)
+        withGemini.saveGeminiKey("g-$TEST_KEY")
+        val printed = withGemini.current().toString()
+        // S4b-BL-29: a data class's toString() would print both keys into any log that prints the settings.
+        assertFalse(printed.contains(TEST_KEY), printed)
+        assertTrue(printed.contains("apiKey=set") && printed.contains("geminiKey=set"), printed)
+        assertTrue(AppSettings().toString().contains("apiKey=none"))
+    }
 }
 
 /** A made-up key, built at run time so no key-like literal is committed (docs/07, secret scan). */

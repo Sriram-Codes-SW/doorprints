@@ -87,6 +87,20 @@ data class AppSettings(
 
     /** Last four characters of the key, for a masked hint in Settings (the full key is never shown again). */
     val apiKeyHint get() = if (apiKey.length >= 8) apiKey.takeLast(4) else ""
+
+    /**
+     * Never the keys (S4b-BL-29; readiness review 2026-09-29, docs/14 §8 finding 7a): a data class's generated
+     * `toString()` would print [apiKey] and [geminiKey] into any log or crash report that prints the settings, and
+     * sign-in tokens will join these fields. Only whether each is set.
+     */
+    override fun toString(): String =
+        "AppSettings(serverUrl=$serverUrl, apiKey=${if (apiKey.isEmpty()) "none" else "set"}, " +
+            "alertRadiusM=$alertRadiusM, minStayMinutes=$minStayMinutes, photosOnWifiOnly=$photosOnWifiOnly, " +
+            "lastSyncAt=$lastSyncAt, lastSync=$lastSync, syncFailures=$syncFailures, syncFailingSince=$syncFailingSince, " +
+            "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
+            "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
+            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
+            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds)"
 }
 
 /**

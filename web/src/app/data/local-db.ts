@@ -42,7 +42,8 @@ export const STORE_KEY_PATH: Readonly<Record<StoreName, string>> = {
   settings: 'key',
 };
 
-// Bumped when the stores change. Version 1 is Sprint 4a; Sprint 4b adds criteria, questions and viewings.
+// Bumped when the stores change. Version 1 is Sprint 4a; the data-model sprint (docs/14 N13 4c: cost fields, rooms,
+// viewings, areas, places) adds stores, and the upgrade path is S4b-BL-71 (docs/14 §8 finding 2).
 export const DB_NAME = 'doorprints';
 export const DB_VERSION = 1;
 
