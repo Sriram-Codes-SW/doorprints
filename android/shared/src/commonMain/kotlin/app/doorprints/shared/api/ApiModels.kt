@@ -99,7 +99,31 @@ data class AiStatusDto(
     val mcpEnabled: Boolean = false,
     val chatModel: String? = null,
     val embeddingModel: String? = null,
+    /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
+    val offForDevice: Boolean = false,
 )
+
+// ---- Pairing (docs/03 §12.1, ADR-25; backend app.doorprints.server.device.PairingController) ----
+
+@Serializable
+data class PairStartRequest(val deviceName: String)
+
+/** A code to type on the owner page (shown as `K7MQ-4XRD`), the token to poll with, and its timing in seconds. */
+@Serializable
+data class PairStartedDto(val userCode: String, val pollToken: String, val expiresIn: Long, val interval: Int)
+
+@Serializable
+data class PairPollRequest(val pollToken: String)
+
+/** [status] is pending, approved, denied or expired; [deviceKey] only with approved, and only once. */
+@Serializable
+data class PairPolledDto(val status: String, val deviceKey: String? = null)
+
+@Serializable
+data class PairRedeemRequest(val invite: String, val deviceName: String)
+
+@Serializable
+data class DeviceKeyDto(val deviceKey: String)
 
 @Serializable
 data class ExtractListingRequest(val text: String)

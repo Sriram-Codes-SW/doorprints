@@ -41,6 +41,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.savedstate.read
+import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
@@ -61,6 +62,9 @@ sealed interface DeepLink {
 
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
     data class OpenScreen(val route: String) : DeepLink
+
+    /** A connect link from the server's owner page (its QR code), already checked ([ConnectLink.parse]). */
+    data class Connect(val link: ConnectLink) : DeepLink
 }
 
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
@@ -163,6 +167,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // Counts the "See your houses" taps, so the list turns its "Just imported" filter on once per tap and not on
         // every return to the Houses tab, including a second tap for the same run after an undo that kept houses.
         var importedOpen by rememberSaveable { mutableIntStateOf(0) }
+        // A connect link waiting for *Connect* or *Not now* (docs/03 §12.1). Plain remember on purpose: its invite is a
+        // one-time secret and stays out of the saved-state Bundle, so a rotation closes the question (scan again).
+        var pendingConnect by remember { mutableStateOf<ConnectLink?>(null) }
         LaunchedEffect(deepLink) {
             if (deepLink == null) return@LaunchedEffect
             // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
@@ -187,6 +194,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         d.visitId != null && onTop(Routes.NEW_HOUSE, "visitId", d.visitId) -> Unit
                         else -> nav.navigate(Routes.newHouse(d.lat, d.lon, d.visitId))
                     }
+                }
+                is DeepLink.Connect -> {
+                    // Asked on Settings, where the server's address and status are.
+                    nav.openTab(Routes.SETTINGS)
+                    pendingConnect = d.link
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
@@ -214,6 +226,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 popUpTo(home)
                 launchSingleTop = true
             }
+        }
+        pendingConnect?.let { link ->
+            val platform = LocalPlatformServices.current
+            ConnectLinkDialog(link, repo, remember { platform.deviceName() }, onDone = { pendingConnect = null })
         }
         Scaffold(
             snackbarHost = { SnackbarHost(rootSnackbar) },

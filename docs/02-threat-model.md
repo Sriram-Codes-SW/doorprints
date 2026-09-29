@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.39 |
+| Version | 0.40 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -51,6 +51,7 @@
 | 0.37 | 2026-09-29 | Claude (Code), lead | F-27's row: maplibre-gl ^6.11.2 (the web dependency update of 2026-09-28, which supersedes Dependabot #25). No new finding. RR-16: maplibre-gl 6.11.2 `worker_tile.ts:110` (the same skip, one line lower; [10](10-sprint-log.md) §16). |
 | 0.38 | 2026-09-29 | Claude (Code), lead | CMP-8a ([10](10-sprint-log.md) §13.11, S4b-BL-56): F-03's row notes the iOS side. The iOS database and settings live in `Application Support/Doorprints`, excluded from backup; the API key is a this-device-only Keychain item. |
 | 0.39 | 2026-09-29 | Claude (Code), lead | Device keys, pairing and the owner page ([03](03-design.md) §12.1, ADR-25): new T-S8 (a misleading pairing request), T-I27 (the setup link in the log), T-E9 (the owner page: CSRF and injected script), AB-11; F-01b in progress; RR-01 reworded. |
+| 0.40 | 2026-09-29 | Claude (Code), lead | **F-01b Fixed**: the website, Android and iPhone connect by pairing ([03](03-design.md) §12.1); residual: the owner key, no expiry or read-only scope. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -299,7 +300,7 @@ Severity uses the same L×I scale. Status per finding (v0.6) is in section 5.1. 
 | ID | Status | Fix (file references) | Test |
 |---|---|---|---|
 | F-01a | **Fixed** | Minimum key length raised to **32** (`ApiKeyFilter.MIN_KEY_LENGTH`, checked at startup by `WebConfig` through `validateKeys`; the error names the variable, never the value). Optional second key `APP_API_KEY_NEXT` (also ≥ 32) is accepted alongside the current one for zero-downtime rotation (SEC-017, 08 §5.1); both keys are always compared in constant time. CI-verified (all four workflows green on `f7da5ab` and `0e4e22a`). **Upgrade note:** deployments with a 16–31 character key must set a new 32+ key before upgrading. | TC-U-18, TC-I-10b, TC-I-21 |
-| F-01b | **In progress** (server side on branch `feat/device-pairing-server`, 2026-09-29: per-device keys stored as SHA-256 hashes, with names, last use and *Revoke*, obtained by pairing, [03](03-design.md) §12.1, ADR-25; closes when the apps connect by pairing) | Until then the apps still use one shared key; no per-device revocation, expiry or read-only scope. Risk accepted for v1 (ADR-03 in [03](03-design.md)) and reduced by F-01a, TLS (F-02), the failed-key throttle (F-05) and key encryption at rest (F-03, F-04). | – |
+| F-01b | **Fixed** (2026-09-29, [03](03-design.md) §12.1, ADR-25): every app gets a key of its own by pairing (the website in PR #46; Android and iPhone on branch `feat/app-connect-by-code`), stored on the server as a SHA-256 hash with its name and last use; the owner revokes one device on the owner page without touching the others, and turns AI on per device (off for a new one) | Residual: the owner key (`APP_API_KEY`) remains for MCP clients and for the older way of typing a key, and is still one shared secret; device keys do not expire and have no read-only scope. Reduced by F-01a, TLS (F-02), the failed-key throttle (F-05) and key encryption at rest (F-03, F-04). | – |
 | F-02 | **Fixed** | `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for localhost, 127.0.0.1, 10.0.2.2; system CAs only), manifest `usesCleartextTraffic` removed, `android/shared/src/commonMain/kotlin/app/doorprints/data/ServerUrl.kt` (Settings rejects non-HTTPS URLs; moved from `:app` to `:shared` commonMain in CMP-4 P4b, with the same answers) | `ServerUrlTest`, `ServerUrlParityTest`, TC-S-07 |
 | F-03 | **Fixed** | `allowBackup="false"`, `res/xml/data_extraction_rules.xml` (no cloud backup; device transfer only of the DB and photos, never settings), `data/ApiKeyCipher.kt` (AES-256-GCM, Android Keystore key), `data/Settings.kt` (migrates the old plaintext key). Since CMP-4 P4b `Settings.kt` is in `:shared` commonMain and reaches the key only through `SecretStore`; `:app`'s `KeystoreSecretStore` seals it with `ApiKeyCipher` into the same `apiKeyEnc` entry (same alias, same file) | TC-S-07, TC-M-06, `SettingsUpgradeTest` |
 | F-04 | **Fixed** | `web/src/app/core/config.service.ts`: sessionStorage by default, localStorage only with "Remember on this device" (Connect page) | TC-U-09, TC-M-05 |

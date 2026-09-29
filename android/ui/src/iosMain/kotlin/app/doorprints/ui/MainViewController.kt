@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.ComposeUIViewController
+import app.doorprints.data.ConnectLink
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.setUnhandledExceptionHook
 import kotlin.native.terminateWithUnhandledException
@@ -41,8 +42,8 @@ fun MainViewController(): UIViewController {
     startSelfCheckIfRequested()
     val platform = IosPlatformServices()
     val services = IosAppContainer.services
-    // No notifications on iOS yet, so nothing opens the app at a house or a screen: no deep link ever arrives.
-    val deepLinks = MutableStateFlow<DeepLink?>(null)
+    // No notifications on iOS yet; the one deep link is a connect link from the owner page's QR code (handleOpenUrl).
+    val deepLinks = iosDeepLinks
     return ComposeUIViewController {
         CompositionLocalProvider(
             LocalPlatformServices provides platform,
@@ -55,6 +56,20 @@ fun MainViewController(): UIViewController {
             )
         }
     }
+}
+
+/** The deep links of this process; main thread only. */
+private val iosDeepLinks = MutableStateFlow<DeepLink?>(null)
+
+/**
+ * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code): the
+ * Swift app's `onOpenURL` hands it over as `MainViewControllerKt.handleOpenUrl(url:)`. Only a checked connect link is
+ * acted on ([ConnectLink.parse]); the app then asks before connecting. Returns whether it was one. Main thread.
+ */
+fun handleOpenUrl(url: String): Boolean {
+    val link = ConnectLink.parse(url) ?: return false
+    iosDeepLinks.value = DeepLink.Connect(link)
+    return true
 }
 
 /** Whether [logUncaughtExceptions] has installed its hook; main thread only. */

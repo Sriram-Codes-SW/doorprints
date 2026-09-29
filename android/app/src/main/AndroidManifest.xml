@@ -50,7 +50,16 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize">
+            <!-- doorprints://connect?server=…&invite=… from the server's owner page (its QR code, docs/03 §12.1).
+                 Checked by ConnectLink.parse, and the app asks before connecting: any app or page can send one. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="doorprints" android:host="connect" />
+            </intent-filter>
+        </activity>
 
         <!-- The launcher entry. Its name is the activity's class name from before the package rename of 2026-09-24,
              a stored identifier kept on purpose: launchers remember an app icon placed on the home screen by this
