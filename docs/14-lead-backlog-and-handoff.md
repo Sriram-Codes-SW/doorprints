@@ -64,10 +64,9 @@ section is only today's state. Earlier versions of this file (git history) carry
 - **Real-key check passed** (2026-09-29, *AI evals* run 36601652513, `suites: on-device`, TC-U-88): the phones' and
   the website's own-key AI made a real Extract (2BHK, 25 000, 2 bedrooms), Ask (grounded, citing only the houses sent)
   and Plan (2 stops, 9.5 km, not the fallback) with `AI_API_KEY`, and no saved contact left the device (#53 merged).
-- **Open when this was written:** #54 (`refactor/fewer-full-reads`: the reindex's N+1 visit query, a tombstone-id
-  query, fewer full IndexedDB reads and sorts on the website; backend `mvn verify` 315 tests and web 554 tests passed
-  locally) and the pull request carrying this file. Check them first: merge when green, then run the live UI test
-  (both change the web).
+- **Optimisation review merged** (#54: the reindex's N+1 visit query, a tombstone-id query, fewer full IndexedDB reads
+  and sorts on the website; backend `mvn verify` 315 tests and web 554 tests passed locally before the push).
+- **This file's pull request (#55)** is the last of the session; if it is still open, merge it when green.
 - **Last live UI test** (after the #52 deploy, 2026-09-29): 1 433 of 1 434 checks passed; the one failure was a page
   load this session's proxy broke (502 and a stylesheet served as `text/plain`, as on 2026-09-28); a re-run passed the
   step that had failed.
