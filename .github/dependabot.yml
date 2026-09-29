@@ -94,6 +94,11 @@ updates:
     groups:
       guide-pip:
         patterns: ["*"]
+    ignore:
+      # MkDocs 2.0 drops the plugin and theme system Material for MkDocs is built on (Material's own notice,
+      # 2026-02); stay on 1.x until Material supports a way forward.
+      - dependency-name: "mkdocs"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: gradle
     directory: /android
