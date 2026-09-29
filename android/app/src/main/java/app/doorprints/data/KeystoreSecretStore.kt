@@ -33,11 +33,20 @@ import androidx.datastore.preferences.core.stringPreferencesKey
  */
 class KeystoreSecretStore(
     private val seal: (String) -> String = ApiKeyCipher::encrypt,
+    /**
+     * The settings entry: `apiKeyEnc` for the server key (a stored name, ADR-24: every saved key since v0.1's move
+     * off plaintext; keep it), [GEMINI_ENTRY] for the person's own Gemini key (docs/03 §13.1). Before [open], so a
+     * test's trailing lambda is still [open].
+     */
+    entry: String = "apiKeyEnc",
     private val open: (String?) -> String? = ApiKeyCipher::decrypt,
 ) : SecretStore {
 
-    /** A stored name (ADR-24): the entry that holds every saved key since v0.1's move off plaintext. Keep it. */
-    private val apiKeyEnc = stringPreferencesKey("apiKeyEnc")
+    companion object {
+        const val GEMINI_ENTRY = "geminiKeyEnc"
+    }
+
+    private val apiKeyEnc = stringPreferencesKey(entry)
 
     override fun get(settings: Preferences): String? = open(settings[apiKeyEnc])
 

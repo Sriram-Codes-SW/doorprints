@@ -66,7 +66,14 @@ data class AppSettings(
      * sent to Google. AI shows only when this, the server and the owner's switch for this device are all on.
      */
     val aiFeatures: Boolean = false,
+    /** Who answers AI requests (docs/03 §13.1, ADR-26): the server, or Gemini directly with [geminiKey]. */
+    val aiProvider: AiProviderChoice = AiProviderChoice.SERVER,
+    /** The person's own Gemini key, decrypted in memory only; kept like [apiKey] by its own [SecretStore]. */
+    val geminiKey: String = "",
 ) {
+    /** Last four characters of the Gemini key, for Settings' masked hint. */
+    val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
+
     val serverConfigured get() = serverUrl.isNotBlank() && apiKey.isNotBlank()
 
     /** Last four characters of the key, for a masked hint in Settings (the full key is never shown again). */
@@ -101,9 +108,14 @@ enum class ResultScreen { EXPORT, IMPORT }
  * [dataStore] must be the only DataStore open on its file in the process. [secrets] keeps the API key; [now] is the
  * clock for sync times (epoch milliseconds).
  */
+/** Who answers AI requests: the connected server, or Gemini directly with the person's own key (ADR-26). */
+enum class AiProviderChoice { SERVER, DEVICE }
+
 class SettingsStore(
     private val dataStore: DataStore<Preferences>,
     private val secrets: SecretStore,
+    /** Where the person's own Gemini key is kept (docs/03 §13.1); null where a platform has none (tests). */
+    private val geminiSecrets: SecretStore? = null,
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -141,6 +153,8 @@ class SettingsStore(
         val notificationsAsked = booleanPreferencesKey("notificationsAsked")
         /** [AppSettings.aiFeatures]. */
         val aiFeatures = booleanPreferencesKey("aiFeatures")
+        /** [AppSettings.aiProvider], by name. */
+        val aiProvider = stringPreferencesKey("aiProvider")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -162,6 +176,8 @@ class SettingsStore(
             lastAutoBackupAt = p[Keys.lastAutoBackupAt] ?: 0,
             lastAutoBackupError = p[Keys.lastAutoBackupError] ?: "",
             aiFeatures = p[Keys.aiFeatures] ?: false,
+            aiProvider = AiProviderChoice.entries.firstOrNull { it.name == p[Keys.aiProvider] } ?: AiProviderChoice.SERVER,
+            geminiKey = geminiSecrets?.get(p) ?: "",
         )
     }
 
@@ -236,6 +252,30 @@ class SettingsStore(
     suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
 
     suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
+
+    suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
+
+    /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI. */
+    suspend fun saveGeminiKey(key: String) {
+        val store = checkNotNull(geminiSecrets) { "No place for a Gemini key on this platform" }
+        store.editing {
+            dataStore.edit {
+                store.put(it, key.trim())
+                it[Keys.aiProvider] = AiProviderChoice.DEVICE.name
+            }
+        }
+    }
+
+    /** Forgets the Gemini key; AI goes back to the server. */
+    suspend fun removeGeminiKey() {
+        val store = geminiSecrets ?: return
+        store.editing {
+            dataStore.edit {
+                store.clear(it)
+                it[Keys.aiProvider] = AiProviderChoice.SERVER.name
+            }
+        }
+    }
 
     /** Records a sync's outcome, and counts failures in a row for the house list's warning ([SyncHealth]). */
     suspend fun saveSyncResult(outcome: SyncOutcome) = dataStore.edit {

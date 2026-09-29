@@ -39,7 +39,10 @@ import java.io.File
  * DataStore on the file in one process would make DataStore throw. `SettingsUpgradeTest` pins the file and the keys.
  */
 fun SettingsStore.Companion.create(context: Context): SettingsStore =
-    SettingsStore(openSettingsDataStore(context), KeystoreSecretStore())
+    SettingsStore(
+        openSettingsDataStore(context), KeystoreSecretStore(),
+        geminiSecrets = KeystoreSecretStore(entry = KeystoreSecretStore.GEMINI_ENTRY),
+    )
 
 /** `files/datastore/settings.preferences_pb`: the settings file of every install since v0.1. Do not rename it. */
 fun settingsDataStoreFile(context: Context): File =

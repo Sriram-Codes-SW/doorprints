@@ -77,14 +77,17 @@ import platform.darwin.OSStatus
  * tests (iosTest, S4b-BL-26) run the same store through [iosSettingsStore] with a path. Call it once per process.
  */
 fun iosSettingsStore(): SettingsStore =
-    iosSettingsStore(iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore())
+    iosSettingsStore(
+        iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore(),
+        KeychainSecretStore(account = "gemini_key", markerName = "geminiKeyKeychain"),
+    )
 
 /**
  * The iOS settings on the file at [path] with the key in [secrets] (for the simulator tests, S4b-BL-26). [path] must
  * end in `.preferences_pb` and have no other DataStore open on it in the process.
  */
-internal fun iosSettingsStore(path: String, secrets: SecretStore): SettingsStore =
-    SettingsStore(PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets)
+internal fun iosSettingsStore(path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null): SettingsStore =
+    SettingsStore(PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets)
 
 /**
  * The iOS [SecretStore]: the API key as a generic-password Keychain item (service `app.doorprints`, account
@@ -103,12 +106,14 @@ class KeychainSecretStore internal constructor(
     private val service: String,
     private val account: String,
     private val keychain: Keychain,
+    /** The settings marker: `apiKeyKeychain` for the server key, `geminiKeyKeychain` for the Gemini key (docs/03 §13.1). */
+    markerName: String = "apiKeyKeychain",
 ) : SecretStore {
 
-    constructor(service: String = "app.doorprints", account: String = "api_key") :
-        this(service, account, SecurityKeychain)
+    constructor(service: String = "app.doorprints", account: String = "api_key", markerName: String = "apiKeyKeychain") :
+        this(service, account, SecurityKeychain, markerName)
 
-    private val marker = longPreferencesKey("apiKeyKeychain")
+    private val marker = longPreferencesKey(markerName)
 
     /** One [editing] at a time, so one edit's undo cannot overwrite another edit's key. */
     private val edits = Mutex()

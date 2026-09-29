@@ -95,6 +95,20 @@ interface Repository {
     /** Turns this phone's *AI features* switch on or off; [aiEnabled] follows at once. */
     suspend fun setAiFeatures(on: Boolean)
 
+    // On-device AI with the person's own Gemini key (docs/03 §13.1, ADR-26).
+
+    /** Saves the person's own Gemini key and answers AI requests with it on this device. */
+    suspend fun saveGeminiKey(key: String)
+
+    /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
+    suspend fun removeGeminiKey()
+
+    /** Chooses who answers AI requests; the Gemini key, if any, is kept. */
+    suspend fun setAiProvider(choice: AiProviderChoice)
+
+    /** Whether Google accepts [key]: one tiny request, nothing saved. */
+    suspend fun testGeminiKey(key: String): Result<Unit>
+
     // Pairing (docs/03 §12.1, ADR-25): the app gets a device key of its own, with no key typed.
 
     /** Asks [serverUrl] (already checked with [ServerUrl.check]) for a code to type on its owner page. */
