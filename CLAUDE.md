@@ -7,7 +7,8 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 
 ## Start here
 
-1. Read `docs/14-lead-backlog-and-handoff.md`: current state, open pull requests and the next steps, in order.
+1. Read `docs/14-lead-backlog-and-handoff.md`: current state (§1), the next steps in order (§2, N13), and how a
+   session works here (§7: standing permissions, per-change steps, pitfalls). Pick up open pull requests first.
 2. Team-level tickets: `docs/10-sprint-log.md` §12 (Sprint 4b), §12.7 (the S4b-BL backlog, S4b-BL-1 onwards) and §13
    (the Compose Multiplatform track, CMP-0..CMP-9).
 3. The SSDLC set is `docs/01`..`docs/12` (index: `docs/README.md`). Docs are updated in the same change as code.
@@ -25,7 +26,9 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
   also updates both apps' search (web `searchText` in `pages/map/map-list.ts`, Android `HouseListScreen.kt`), with a test.
 - **Brand words:** *Import a backup*, *Save a copy*, *readable copies*, *Add a shared listing*; never "Restore" as a
   button label (`docs/12`). Hindi, Tamil and Telugu strings ship marked *under review*.
-- **Every change goes through a pull request to `main`; the owner merges.** Do not merge your own pull request.
+- **Every change goes through a pull request to `main`.** Since 2026-09-29 the owner lets a Claude session merge its
+  own pull request once it is good (all checks green, no conflict, no open review thread); how a session works here,
+  step by step, is `docs/14-lead-backlog-and-handoff.md` §7.
 - Work on a branch; CI runs on every branch push (Web, Backend, Android, Shared-iOS, Security, CodeQL). Deploy,
   signing and the dependency graph run on `main` only.
 - **Branch names say what the work is** (owner, 2026-09-29): `<type>/<topic>`, the topic a few lowercase words joined
