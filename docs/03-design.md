@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.40 |
+| Version | 0.41 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -52,6 +52,7 @@
 | 0.38 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on the website (ADR-25 step 3, branch `feat/connect-by-code-or-qr`): the code, the connect link and its confirmation, and the *AI features* switch. |
 | 0.39 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on Android and iPhone (branch `feat/app-connect-by-code`): code, connect link (`doorprints://connect`) with confirmation, *Use AI features on this phone*. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | New §13.1 and **ADR-26**: server AI or the person's own Gemini key on the device, behind one interface (owner, 2026-09-29). |
+| 0.41 | 2026-09-29 | Claude (Code), lead | §13.1: on-device AI as built on Android and iPhone (own key slot, provider choice, *AI features* in Settings). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1067,6 +1068,13 @@ try again later", a 400 or 403 on the key as "Google did not accept this key". P
 **Choosing:** Settings (phones) and *Connect* (website) → *AI features* has the switch and, below it, **Use my own
 Gemini key on this device** (paste a key; *Test key*; *Remove key*) and **Use my server** (when one is connected).
 With both set up, the person picks one; with one, that one is used. Houses, sync and the map do not change.
+
+**As built on Android and iPhone** (PRs #49, #51): `:shared` `app.doorprints.shared.ai` (the core, `GeminiClient`,
+`OnDeviceAi`); `CommonRepository` answers `extractListing`, `ask` and `planVisits` with `OnDeviceAi` when
+`AppSettings.aiProvider` is `DEVICE` and a key is saved, else through the server; the key in its own slot
+(`KeystoreSecretStore(entry = "geminiKeyEnc")`, `KeychainSecretStore(account = "gemini_key")`); Settings → *AI
+features* (`AiSettingsSection`). *Save key* first makes one tiny request (`testGeminiKey`), so a mistyped key is not
+saved. A refused key is `ApiException.Kind.AI_KEY_REJECTED`, worded "Google did not accept your Gemini key".
 
 **Order of work:** this record; the common core in `:shared` with the test vectors; the on-device provider and the
 Settings choice on Android and iPhone; the same on the website (TypeScript, same vectors). Google sign-in with Drive

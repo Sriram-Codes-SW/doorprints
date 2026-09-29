@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.31 |
+| Version | 0.32 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -42,6 +42,7 @@
 | 0.29 | 2026-09-29 | Claude (Code), lead | N13 (3): the server side and the Gemini key on the owner page are merged (#43, #45); the website's *Connect* by code or link is on branch `feat/connect-by-code-or-qr`; Android and iPhone next. |
 | 0.30 | 2026-09-29 | Claude (Code), lead | N13 (3): the website's *Connect* merged (#46); Android and iPhone on branch `feat/app-connect-by-code`; F-01b fixed. Next: (3b) Google sign-in with Drive sync. |
 | 0.31 | 2026-09-29 | Claude (Code), lead | N13: (3) done (#43, #45, #46, #47); new (3a) AI with your own Gemini key on the device, next to server AI (D-29, [03](03-design.md) ADR-26), before (3b) Google sign-in. |
+| 0.32 | 2026-09-29 | Claude (Code), lead | N13 (3a): ADR-26 merged (#48); the core (#49) and the phones (`feat/ai-own-key-phones`); the website next, then (3b) Google sign-in. |
 
 ## 1. Where things stand (2026-09-29)
 
