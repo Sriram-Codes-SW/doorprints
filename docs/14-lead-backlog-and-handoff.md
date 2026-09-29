@@ -61,14 +61,18 @@ section is only today's state. Earlier versions of this file (git history) carry
   Gemini key stored encrypted; PRs #43, #45, #46, #47); the plain-language guide (#44); **AI with your own Gemini key on
   the device, next to server AI** (ADR-26, D-29: the common core in `:shared` #49 with parity vectors shared by Java,
   Kotlin and TypeScript; phones #51; website #52; live-UI test fix #50).
-- **Open when this was written:** #53 (merged; the real-key smoke test of the own-key AI in the manual *AI evals* workflow,
-  TC-U-88) and #54 (`refactor/fewer-full-reads`: the reindex's N+1 visit query, a
-  tombstone-id query, and fewer full IndexedDB reads and sorts on the website). Check them first: merge when green.
+- **Real-key check passed** (2026-09-29, *AI evals* run 36601652513, `suites: on-device`, TC-U-88): the phones' and
+  the website's own-key AI made a real Extract (2BHK, 25 000, 2 bedrooms), Ask (grounded, citing only the houses sent)
+  and Plan (2 stops, 9.5 km, not the fallback) with `AI_API_KEY`, and no saved contact left the device (#53 merged).
+- **Open when this was written:** #54 (`refactor/fewer-full-reads`: the reindex's N+1 visit query, a tombstone-id
+  query, fewer full IndexedDB reads and sorts on the website; backend `mvn verify` 315 tests and web 554 tests passed
+  locally) and the pull request carrying this file. Check them first: merge when green, then run the live UI test
+  (both change the web).
 - **Last live UI test** (after the #52 deploy, 2026-09-29): 1 433 of 1 434 checks passed; the one failure was a page
   load this session's proxy broke (502 and a stylesheet served as `text/plain`, as on 2026-09-28); a re-run passed the
   step that had failed.
-- **Owner checks still open:** a real Gemini key on a phone and in the browser (after #53 merges, *AI evals* with
-  `suites: on-device` does the same with the `AI_API_KEY` secret); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
+- **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
+  real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
