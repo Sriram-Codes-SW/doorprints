@@ -40,7 +40,7 @@ Open a house from the list or the map. There you can:
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;
-- add photos: **Add photos** on the website, **Take photo** or **From gallery** on Android. On Android, save the house first.
+- add photos: **Add photos** on the website, **Take photo** or **From gallery** on Android. Save the house first.
 
 Doorprints gives each house an overall **score** out of 5. It works this out from your rating and the checklist.
 Remember to choose **Save**.
