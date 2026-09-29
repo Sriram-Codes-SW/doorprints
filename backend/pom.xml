@@ -53,6 +53,15 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
+      <exclusions>
+        <!-- spring-aspects brings aspectjweaver (EPL-2.0 AND Apache-1.1, neither combinable with AGPL-3.0-only;
+             docs/10 §12.6). It is only for AspectJ weaving (@Configurable, aspectj-mode transactions), which the
+             backend does not use: Spring's proxy-based AOP needs neither. -->
+        <exclusion>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-aspects</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
