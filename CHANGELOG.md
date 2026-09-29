@@ -115,6 +115,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **AI without a server, with your own Gemini key (Android and iPhone)** ([design](docs/03-design.md) §13.1, ADR-26):
+  Settings → *AI features* → *Use my own Gemini key on this phone*. The phone asks Google Gemini itself, with the same
+  prompts, contact removal and checks as the server (held to the server's answers by shared test vectors). The key is
+  kept encrypted on the phone and sent only to Google; *Save key* checks it first. With a server connected too, the
+  person chooses which answers.
 - **Android and iPhone connect by code or QR code** ([design](docs/03-design.md) §12.1): Settings → *Server* has
   *Get a code*, which the server's owner types on the owner page, and a phone's camera on the owner page's QR code
   opens the app at *Connect to a server?*, which sends nothing until *Connect*. Each phone gets a key of its own, so
