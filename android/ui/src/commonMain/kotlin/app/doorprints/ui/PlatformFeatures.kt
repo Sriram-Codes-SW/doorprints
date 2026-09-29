@@ -34,9 +34,11 @@ data class PlatformFeatures(
     val inAppLanguage: Boolean = true,
 ) {
     companion object {
-        /** The iPhone app of CMP-8b: the list, the house form without new photos, Compare, the Assistant, Settings. */
+        /**
+         * The iPhone app: since CMP-8c the map (with India's boundary rules, adding a house on it), and since CMP-8b the
+         * list, the house form without new photos, Compare, the Assistant and Settings.
+         */
         val Ios = PlatformFeatures(
-            map = false,
             huntMode = false,
             addPhotos = false,
             copiesAndImports = false,

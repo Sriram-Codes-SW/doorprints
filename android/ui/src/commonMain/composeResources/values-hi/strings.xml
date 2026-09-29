@@ -538,6 +538,8 @@
     <string name="map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी मकान ‘मकान’ टैब में हैं।</string>
     <string name="settings_language_phone">Doorprints आपके iPhone की भाषा इस्तेमाल करता है। सिर्फ़ Doorprints के लिए कोई दूसरी भाषा चाहिए, तो सेटिंग्स ऐप में सामान्य › भाषा और क्षेत्र में उसे जोड़ें, फिर सेटिंग्स ऐप के Doorprints पेज पर उसे चुनें।</string>
     <string name="settings_language_open_settings">iPhone सेटिंग्स खोलें</string>
-    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं।</string>
+    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं।</string>
     <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।</string>
+    <string name="map_location_off_no_hunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="map_needs_precise_no_hunt">‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।</string>
 </resources>

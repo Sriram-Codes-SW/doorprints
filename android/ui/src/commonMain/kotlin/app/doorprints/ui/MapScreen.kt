@@ -182,6 +182,7 @@ fun MapScreen(
         return
     }
     val platform = LocalPlatformServices.current
+    val platformFeatures = LocalPlatformFeatures.current
     val services = LocalAppServices.current
     val mapServices = services.mapScreen
     val repo = services.repository
@@ -582,24 +583,44 @@ fun MapScreen(
                 .padding(end = topBandEndInset).padding(12.dp)
                 .verticalScroll(rememberScrollState()).padding(4.dp),
         ) {
-            HuntCard(
-                hunt = hunt,
-                onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
-                onOpenHouse = onOpenHouse,
-                // Refused, or approximate only (which is a grant, so it shows whether or not this app asked); not
-                // while Android's prompt is up, so it appears, and is read, after the answer.
-                showLocationNote = !permissionGranted && !asking && (locationAsk.asked || locationAsk.approximateOnly),
-                locationAsk = locationAsk,
-                noteModifier = noteModifier,
-                // The note records the ask and picks request or settings itself (LocationPermissionNote).
-                onRequestLocation = {
-                    afterGrant = null
-                    requestLocation()
-                },
-                notificationsOff = hunt.active && !notificationsReach,
-                onAllowNotifications = allowNotifications,
-                onCloseStopReason = { mapServices.clearHuntStopReason() },
-            )
+            // Refused, or approximate only (which is a grant, so it shows whether or not this app asked); not while the
+            // system's prompt is up, so it appears, and is read, after the answer.
+            val showLocationNote = !permissionGranted && !asking && (locationAsk.asked || locationAsk.approximateOnly)
+            // The note records the ask and picks request or settings itself (LocationPermissionNote).
+            val onRequestLocation = {
+                afterGrant = null
+                requestLocation()
+            }
+            if (platformFeatures.huntMode) {
+                HuntCard(
+                    hunt = hunt,
+                    onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
+                    onOpenHouse = onOpenHouse,
+                    showLocationNote = showLocationNote,
+                    locationAsk = locationAsk,
+                    noteModifier = noteModifier,
+                    onRequestLocation = onRequestLocation,
+                    notificationsOff = hunt.active && !notificationsReach,
+                    onAllowNotifications = allowNotifications,
+                    onCloseStopReason = { mapServices.clearHuntStopReason() },
+                )
+            } else {
+                // No Hunt mode on this platform (iOS, CMP-8c): no card, only the location note when it applies, in a
+                // card of its own over the map, naming only what is on this screen.
+                LiveMessage {
+                    if (showLocationNote) {
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            LocationPermissionNote(
+                                ask = locationAsk,
+                                deniedText = stringResource(Res.string.map_location_off_no_hunt),
+                                approximateText = approximateLocationText(Res.string.map_needs_precise_no_hunt),
+                                launchRequest = onRequestLocation,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).then(noteModifier),
+                            )
+                        }
+                    }
+                }
+            }
             // Always composed, so the error or the loading line is announced when it appears.
             LiveMessage(assertive = mapFailed) {
                 when {

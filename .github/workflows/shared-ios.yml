@@ -15,6 +15,10 @@
 # DoorprintsKit of :ui) for the arm64 simulator, ad-hoc signed (no identity or Apple account), and launches it with its self-check on an iPhone simulator
 # (ios/ci/launch-smoke.sh); the screenshot and the logs are uploaded. Again a job of its own, so the app's build or
 # launch never fails the compile check.
+# CMP-8c (2026-09-29): the app has the map, MapLibre iOS from its Swift package (pinned by revision in ios/project.yml,
+# checkouts cached), with India's geo files bundled from android/app/src/main/assets/geo; ios-app checks both are in
+# the app, and the launch smoke passes only with the self-check's indiaView and map lines (the in-app boundary check,
+# the owner's CI gate for the iOS map; the on-device review is TC-M-28).
 name: Shared iOS compile
 
 on:
@@ -260,6 +264,13 @@ jobs:
       # errSecMissingEntitlement, and the self-check's keychain line would only SKIP). project.yml signs manually with
       # the same identity for the simulator, so xcodebuild asks for no team; CODE_SIGNING_REQUIRED=NO lets it build
       # without a provisioning profile. CODE_SIGNING_ALLOWED stays at its default (YES).
+      # MapLibre iOS's Swift package (ios/project.yml, pinned by revision): its checkout and xcframework (about 100 MB)
+      # kept between runs; the key changes when project.yml, and so the pin, does.
+      - uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/spm
+          key: spm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/project.yml') }}
+
       - name: Build the app (Debug, arm64 simulator)
         run: |
           mkdir -p "$RUNNER_TEMP/ios-app"
@@ -270,11 +281,12 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/spm" \
             ARCHS=arm64 CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO 2>&1 | tee "$RUNNER_TEMP/ios-app/xcodebuild.log"
 
       # What the Gradle step and the plist must have put in the bundle: the Compose resources (without them every
-      # string lookup fails at run time), the 120 Hz key, the four localisations of the purpose strings and the
-      # ad-hoc signature.
+      # string lookup fails at run time), the 120 Hz key, the four localisations of the purpose strings, MapLibre and
+      # the geo files (CMP-8c) and the ad-hoc signature.
       - name: Check the app bundle
         run: |
           app="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/Doorprints.app"
@@ -290,6 +302,14 @@ jobs:
           done
           for lang in en hi ta te; do
             test -f "$app/$lang.lproj/InfoPlist.strings" || { echo "::error::$lang.lproj/InfoPlist.strings missing"; exit 1; }
+          done
+          # The map (CMP-8c): MapLibre iOS embedded at the pinned revision, and India's geo files bundled unchanged.
+          test -d "$app/Frameworks/MapLibre.framework" || { echo "::error::MapLibre.framework is not embedded in the app"; exit 1; }
+          resolved=ios/Doorprints.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          grep -q '"revision" *: *"13e41ab3d77ff5113e7e5d4ee87803b1f81f5683"' "$resolved" \
+            || { echo "::error::$resolved does not pin MapLibre to the revision in ios/project.yml"; cat "$resolved"; exit 1; }
+          for f in in-boundaries.geojson in-held-areas.geojson; do
+            cmp "$app/geo/$f" "android/app/src/main/assets/geo/$f" || { echo "::error::geo/$f in the app differs from the repository's"; exit 1; }
           done
           # The ad-hoc signature the Keychain needs (see the build step).
           codesign --verify "$app" || { echo "::error::the app bundle is not signed"; exit 1; }
