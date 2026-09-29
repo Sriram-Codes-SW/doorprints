@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 // The iOS app shell (CMP-8b): all of Doorprints' UI is Compose Multiplatform code in the Gradle module :ui, built as
 // the static framework DoorprintsKit (ios/project.yml). This file only hosts it; there is no Swift UI of our own. The
 // one other Swift file is the map view (MapLibreMapView.swift, CMP-8c), which Kotlin cannot build itself.
