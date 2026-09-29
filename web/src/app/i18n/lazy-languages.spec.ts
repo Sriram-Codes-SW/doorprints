@@ -16,21 +16,29 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { en } from './en';
 import { hi } from './hi';
 import { ta } from './ta';
-import { dictionary, loadDictionary } from './languages';
+import { dictionary, forgetDictionaries, loadDictionary, loadedDictionaries, registerDictionaries } from './languages';
 import { TranslationService } from './translation.service';
 
 /**
  * Only English is in the first download; Hindi, Tamil and Telugu are loaded when chosen (languages.ts). This file
- * deliberately does not import all-dictionaries.ts, so nothing is registered in advance.
+ * starts from English only and puts back what other spec files had loaded (in CI they share this module).
  */
 describe('languages loaded on demand', () => {
+  let before: ReturnType<typeof loadedDictionaries>;
+
   beforeEach(() => {
     localStorage.clear();
     TestBed.resetTestingModule();
+    before = loadedDictionaries();
+    forgetDictionaries();
+  });
+
+  afterEach(() => {
+    registerDictionaries(before);
   });
 
   it('has English at once and loads another language when asked', async () => {

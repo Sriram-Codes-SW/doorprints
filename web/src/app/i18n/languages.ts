@@ -63,6 +63,16 @@ export async function loadDictionary(lang: Lang): Promise<Dict> {
   return dict;
 }
 
+/** The dictionaries loaded so far (a copy; tests restore it with {@link registerDictionaries}). */
+export function loadedDictionaries(): Partial<Record<Lang, Dict>> {
+  return { ...loaded };
+}
+
+/** Forgets every dictionary but English (tests of the loading itself; spec files share this module in CI). */
+export function forgetDictionaries(): void {
+  for (const lang of Object.keys(loaded) as Lang[]) if (lang !== 'en') delete loaded[lang];
+}
+
 /** Makes [dicts] available at once, without loading (all-dictionaries.ts, for tests). */
 export function registerDictionaries(dicts: Partial<Record<Lang, Dict>>): void {
   Object.assign(loaded, dicts);
