@@ -22,12 +22,14 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** The common tests' copy of the AI test vectors is the file's current text (run `.github/scripts/parity-vectors-kotlin.py`). */
+/** The common tests' and the website's copies of the AI test vectors are the file's current text (run `.github/scripts/parity-vectors-kotlin.py`). */
 class ParityVectorsFileTest {
     @Test
     fun theCopyMatchesTheFile() {
         val file = generateSequence(File("").absoluteFile) { it.parentFile }
             .map { File(it, "docs/ai/evals/parity-vectors.json") }.first { it.isFile }
         assertEquals(file.readText(), PARITY_VECTORS_JSON, "run .github/scripts/parity-vectors-kotlin.py")
+        val web = File(file.parentFile.parentFile.parentFile.parentFile, "web/src/app/core/ai/parity-vectors.json")
+        assertEquals(file.readText(), web.readText(), "the website's copy: run .github/scripts/parity-vectors-kotlin.py")
     }
 }

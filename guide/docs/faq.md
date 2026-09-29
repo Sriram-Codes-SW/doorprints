@@ -13,8 +13,8 @@ browsers may delete a website's data when space runs low. To protect it:
 **The map is blank or grey.** The map needs an internet connection. Your houses are still in the list. On the
 website you can still add a house offline with **Add at my location** or **Type latitude and longitude**.
 
-**I don't see Ask, Plan or Assistant.** They appear once AI is turned on: on a phone, with
-[your own Gemini key](settings-and-privacy.md#ai-without-a-server-android-and-iphone), no server needed; or through
+**I don't see Ask, Plan or Assistant.** They appear once AI is turned on: with
+[your own Gemini key](settings-and-privacy.md#ai-without-a-server), no server needed; or through
 [your own server](set-up-a-server.md). With a server, if AI is on but they still don't appear, see its
 [troubleshooting table](set-up-a-server.md#if-something-goes-wrong).
 
