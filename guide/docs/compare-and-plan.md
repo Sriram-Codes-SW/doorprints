@@ -19,8 +19,10 @@ Two features use AI (the computer reads your notes and works things out for you)
 - **Plan visits** puts the houses you want to see into a walking route.
 - **Ask** answers questions from your own notes, such as "Which house had the best water supply?"
 
-Both need [your own server](server-and-sharing.md#connect-your-own-server-optional) with AI features turned on.
-Without one, **Ask** and **Plan** do not show in the website's menu, and Android has no **Assistant** tab.
+Both need AI turned on, in one of two ways: [your own server](server-and-sharing.md#connect-your-own-server-optional)
+with AI features on, or, on Android and iPhone, [your own free Gemini key](settings-and-privacy.md#ai-without-a-server-android-and-iphone)
+with no server at all. Until then, **Ask** and **Plan** do not show in the website's menu, and the phones have no
+**Assistant** tab.
 
 When AI is on, to plan on the website:
 

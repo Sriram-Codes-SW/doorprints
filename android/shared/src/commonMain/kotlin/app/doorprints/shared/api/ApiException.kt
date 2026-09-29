@@ -32,7 +32,11 @@ class ApiException(
     val code: Int = 0,
     val retryAfterSeconds: Long? = null,
 ) : IOException("HTTP $code ($kind)") {
-    enum class Kind { AUTH, CAPTIVE_PORTAL, RATE_LIMITED, NOT_FOUND, CONFLICT, CLIENT, SERVER, AI_UNAVAILABLE }
+    enum class Kind {
+        AUTH, CAPTIVE_PORTAL, RATE_LIMITED, NOT_FOUND, CONFLICT, CLIENT, SERVER, AI_UNAVAILABLE,
+        /** Google did not accept the person's own Gemini key (on-device AI, docs/03 §13.1). */
+        AI_KEY_REJECTED,
+    }
 
     companion object {
         /** Maps a non-2xx status to a [Kind]. [encodedPath] is the request's URL path (without the query). */

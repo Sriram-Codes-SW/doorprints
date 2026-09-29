@@ -51,6 +51,7 @@ class AndroidRepository(
     photoDir = File(context.filesDir, "photos").path,
     syncSoon = { SyncWorker.syncSoon(context) },
     apiFor = apiFor,
+    geminiFor = Api::gemini,
 ) {
     fun photoDir() = File(photoDirPath().toString())
 

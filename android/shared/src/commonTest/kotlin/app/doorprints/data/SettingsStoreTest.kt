@@ -55,8 +55,8 @@ class SettingsStoreTest {
     }
 
     /** Seals by reversing, in the entry `sealed`; stands in for the Keystore or the Keychain. */
-    private class FakeSecrets : SecretStore {
-        val slot = stringPreferencesKey("sealed")
+    private class FakeSecrets(name: String = "sealed") : SecretStore {
+        val slot = stringPreferencesKey(name)
         override fun get(settings: Preferences) = settings[slot]?.removePrefix("s:")?.reversed()
         override fun put(settings: MutablePreferences, apiKey: String) {
             settings[slot] = "s:" + apiKey.reversed()
@@ -90,6 +90,26 @@ class SettingsStoreTest {
         assertEquals(true, raw()["aiFeatures"])
         store.saveAiFeatures(false)
         assertFalse(store.current().aiFeatures)
+    }
+
+    @Test
+    fun theGeminiKeyHasItsOwnSlotAndChoosesOnDeviceAi() = runTest {
+        val gemini = FakeSecrets("gemini")
+        val withGemini = SettingsStore(dataStore, secrets, geminiSecrets = gemini) { clock }
+        assertEquals(AiProviderChoice.SERVER, withGemini.current().aiProvider)
+        withGemini.saveServer("https://api.example.com", TEST_KEY)
+        withGemini.saveGeminiKey("  AIzaOwnKeyForTests1234  ")
+        val saved = withGemini.current()
+        assertEquals("AIzaOwnKeyForTests1234", saved.geminiKey)
+        assertEquals("1234", saved.geminiKeyHint)
+        assertEquals(AiProviderChoice.DEVICE, saved.aiProvider)
+        assertEquals(TEST_KEY, saved.apiKey) // the server key is untouched
+        assertTrue(raw().values.none { "AIzaOwnKey" in it.toString() }, "plain Gemini key in the settings")
+        withGemini.saveAiProvider(AiProviderChoice.SERVER)
+        assertEquals("AIzaOwnKeyForTests1234", withGemini.current().geminiKey) // kept when choosing the server
+        withGemini.removeGeminiKey()
+        assertEquals("", withGemini.current().geminiKey)
+        assertEquals(AiProviderChoice.SERVER, withGemini.current().aiProvider)
     }
 
     @Test

@@ -581,11 +581,11 @@
     <string name="settings_key_way">బదులుగా API కీ వాడండి</string>
     <string name="settings_key_way_intro">ఇంకా అప్‌డేట్ కాని సర్వర్ కోసం, లేదా సర్వర్ సెట్టింగ్‌ల ఫైల్‌లోని కీతో.</string>
     <string name="settings_ai_switch">ఈ ఫోన్‌లో AI ఫీచర్లు వాడండి</string>
-    <string name="settings_ai_hint">ఇది ఆన్‌లో ఉన్నప్పుడు, AI ఫీచర్‌లో మీరు అడిగేది లేదా పేస్ట్ చేసేది, సరిపోయే ఇంటి నోట్స్‌తో కలిసి మీ సర్వర్‌కి వెళ్తుంది; సర్వర్ దాన్ని Google Gemini కి పంపుతుంది. ఇంటితో సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు పంపబడవు. సర్వర్ యజమాని కూడా ఈ ఫోన్‌కి AI ఆన్ చేయాలి.</string>
+    <string name="settings_ai_hint">ఇది ఆన్‌లో ఉన్నప్పుడు, AI ఫీచర్‌లో మీరు అడిగేది లేదా పేస్ట్ చేసేది, సరిపోయే ఇంటి నోట్స్‌తో కలిసి Google Gemini కి వెళ్తుంది: మీ సర్వర్ ద్వారా, లేదా మీ సొంత కీతో ఈ ఫోన్ నుండి నేరుగా. ఇంటితో సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు పంపబడవు.</string>
     <string name="settings_ai_on">AI ఫీచర్లు ఆన్‌లో ఉన్నాయి.</string>
     <string name="settings_ai_server_off">మీ సర్వర్‌లో AI ఫీచర్లు ఆఫ్‌లో ఉన్నాయి.</string>
     <string name="ai_off_for_device">సర్వర్ యజమాని ఇంకా ఈ పరికరానికి AI ఆన్ చేయలేదు. వారు దాన్ని యజమాని పేజీలో చేయవచ్చు.</string>
-    <string name="ai_opt_in_needed">ఈ ఫోన్‌లో AI ఫీచర్లు ఆఫ్‌లో ఉన్నాయి. సెట్టింగ్‌లలో సర్వర్ కింద వాటిని ఆన్ చేయండి.</string>
+    <string name="ai_opt_in_needed">ఈ ఫోన్‌లో AI ఫీచర్లు ఆఫ్‌లో ఉన్నాయి. సెట్టింగ్‌లలో AI ఫీచర్లు కింద వాటిని ఆన్ చేయండి.</string>
     <string name="connect_link_title">సర్వర్‌కి కనెక్ట్ చేయాలా?</string>
     <string name="connect_link_body">ఈ లింక్ ఈ ఫోన్‌ని కింది సర్వర్‌కి కనెక్ట్ చేస్తుంది. మీ ఇళ్లు దానితో సింక్ అవుతాయి.</string>
     <string name="connect_link_warning">ఈ QR కోడ్ లేదా లింక్ చేసినవారిని నమ్మి, ఈ చిరునామా మీకు తెలిస్తేనే కనెక్ట్ చేయండి. మీరు ‘కనెక్ట్ చేయండి’ ఎంచుకునేవరకు ఏదీ పంపబడదు.</string>
@@ -595,4 +595,22 @@
     <string name="connect_link_used">ఈ లింక్ ఇప్పటికే వాడబడింది లేదా గడువు ముగిసింది. సర్వర్ యజమానిని కొత్తది అడగండి.</string>
     <string name="connect_link_done_title">కనెక్ట్ అయింది</string>
     <string name="connect_link_saved">కనెక్ట్ అయింది. ఇప్పుడు ఈ ఫోన్‌కి సొంత కీ ఉంది.</string>
+    <string name="settings_ai_heading">AI ఫీచర్లు</string>
+    <string name="settings_ai_use_server">నా సర్వర్ వాడండి</string>
+    <string name="settings_ai_use_server_hint">మీ సర్వర్ దాని యజమాని కీతో అభ్యర్థనలను Google Gemini కి పంపుతుంది.</string>
+    <string name="settings_ai_use_server_none">దీన్ని వాడటానికి పైన ఒక సర్వర్‌ని కనెక్ట్ చేయండి.</string>
+    <string name="settings_ai_use_own_key">ఈ ఫోన్‌లో నా సొంత Gemini కీ వాడండి</string>
+    <string name="settings_ai_use_own_key_hint">సర్వర్ అవసరం లేదు. అభ్యర్థనలు ఈ ఫోన్ నుండి నేరుగా Google Gemini కి వెళ్తాయి. కీ ఈ ఫోన్‌లోనే ఉంటుంది.</string>
+    <string name="settings_gemini_key">Gemini API కీ</string>
+    <string name="settings_gemini_key_hint">Google AI Studio లో Doorprints కోసం మాత్రమే ఒక ఉచిత కీ చేయండి, అక్కడ దాన్ని ఎప్పుడైనా తొలగించవచ్చు.</string>
+    <string name="settings_gemini_key_saved">%1$s తో ముగిసే కీ సేవ్ అయింది (ఎన్‌క్రిప్ట్ చేయబడింది). దాన్ని మార్చడానికి కొత్త కీని పేస్ట్ చేయండి.</string>
+    <string name="settings_gemini_get_key">Google AI Studio తెరవండి</string>
+    <string name="settings_gemini_save">కీ సేవ్ చేయండి</string>
+    <string name="settings_gemini_test">కీ పరీక్షించండి</string>
+    <string name="settings_gemini_ok">Google ఈ కీని అంగీకరించింది.</string>
+    <string name="settings_gemini_rejected">Google ఈ కీని అంగీకరించలేదు. దాన్ని సరిచూసి మళ్లీ ప్రయత్నించండి.</string>
+    <string name="settings_gemini_remove">కీ తొలగించండి</string>
+    <string name="settings_gemini_free_tier">Google ఉచిత స్థాయిలో, మీరు పంపేదాన్ని Google తన ఉత్పత్తులను మెరుగుపరచడానికి వాడవచ్చు, మనుషులు చదవవచ్చు. మీ నోట్స్‌లో వ్యక్తిగత వివరాలు ఉంచకండి, లేదా బిల్లింగ్ ఆన్ చేసిన కీని వాడండి.</string>
+    <string name="settings_ai_needs_key">AI ఆన్ చేయడానికి మీ Gemini కీని సేవ్ చేయండి.</string>
+    <string name="ai_key_rejected">Google మీ Gemini కీని అంగీకరించలేదు. సెట్టింగ్‌లలో AI ఫీచర్లు కింద దాన్ని సరిచూడండి.</string>
 </resources>

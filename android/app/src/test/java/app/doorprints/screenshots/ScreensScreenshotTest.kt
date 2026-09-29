@@ -25,8 +25,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import app.doorprints.data.AiProviderChoice
+import app.doorprints.data.AppSettings
+import app.doorprints.ui.AiSettingsSection
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -176,6 +184,20 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun houseEdit() = shoot("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
     @Test fun houseNew() = shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
     @Test fun settings() = shoot("settings") { SettingsScreen() }
+
+    /** Settings → AI features turned on with "Use my own Gemini key on this phone" chosen (docs/03 §13.1, ADR-26). */
+    @Test fun settingsAiOwnKey() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            repo.setAiFeatures(true)
+            repo.setAiProvider(AiProviderChoice.DEVICE)
+        }
+        shoot("settings_ai_own_key") {
+            val settings by repo.settings.settings.collectAsState(AppSettings())
+            val off by repo.aiOff.collectAsState()
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+        }
+    }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
     @Test fun import() = shoot("import") { ImportScreen(onBack = {}) }
