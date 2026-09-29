@@ -17,7 +17,7 @@
 # The user guide site (owner request of 2026-09-29: the user guide as a GitHub-hosted website; guide/docs/,
 # docs/10 §17). MkDocs Material builds guide/ into a static site; GitHub Pages serves it at
 # https://sriram-codes-sw.github.io/doorprints/ (free for a public repository: zero-cost rule).
-# - build: on a push to any branch or a pull request to main that touches the guide, so a broken page, link or image
+# - build: on a push to main or a pull request to main that touches the guide, so a broken page, link or image
 #   fails before it can reach main (`mkdocs build --strict`).
 # - deploy: main only (push or manual run), like the web deploy; needs Pages' source set to "GitHub Actions" in the
 #   repository settings (owner, one time). Until then the deploy job fails and the build job still checks the site.
@@ -27,7 +27,7 @@ name: User guide site
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths:
       - "guide/**"
       - ".github/workflows/pages.yml"
