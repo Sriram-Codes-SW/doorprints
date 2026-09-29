@@ -21,7 +21,6 @@ Always make one before you change phones or clear your browser.
 3. Tap **Save to…** or **Share**.
 
 **Weekly automatic backup** saves a backup once a week while the phone is charging. It goes to a folder you choose.
-(A backup is a full copy of your houses that Doorprints can read back in later.)
 
 - **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*. They are good for
   reading, printing and sharing with family.

@@ -6,22 +6,15 @@ The houses in the pictures are made up for this guide ("Green Villa, 2BHK" and f
 
 ## What Doorprints is
 
-Doorprints helps you remember the houses you visit. It is for people looking for a home to rent or buy in India.
-It is not a listings site. It holds only the houses you have seen yourself.
+Doorprints remembers the houses you visit while you look for a home to rent or buy in India. It is not a listings
+site. It holds only the houses you have seen yourself.
 
-For each house you can keep:
+For each house you can keep the rent or price, BHK, address and the owner's or broker's contact. You can add notes,
+photos, a star rating and a ten-item checklist (water supply, power backup, parking and so on). Doorprints shows every
+house on a map. You can search the houses, put them in order and compare your favourites side by side.
 
-- the rent or price, BHK (number of bedrooms, hall and kitchen) and address;
-- the phone number of the owner or broker;
-- your notes and photos;
-- a star rating;
-- a checklist of ten things, such as water supply, power backup and parking.
-
-Doorprints shows every house on a map. You can search the houses and put them in order. You can also compare your
-favourites side by side.
-
-You do not need an account. Your houses stay on your phone or in your browser. You can also run a server of your own,
-but you do not need one. (A server is a computer that stays on and keeps a copy of your houses.)
+You need no account. Your houses stay on your phone or in your browser. A server of your own (a computer that stays on
+and keeps a copy of your houses) is optional.
 
 ## Website, Android or iPhone?
 
@@ -30,7 +23,7 @@ but you do not need one. (A server is a computer that stays on and keeps a copy 
   It is not in the Play Store yet.
 - **iPhone app:** it is new and still being tested. It is not in the App Store.
 
-The table shows what each one can do. "Offline" means without internet.
+What each one can do ("offline" means without internet; "AI" means the computer reads your notes and answers you):
 
 | What you can do | Website | Android app | iPhone app (early) |
 |---|---|---|---|
@@ -45,5 +38,3 @@ The table shows what each one can do. "Offline" means without internet.
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | No |
 | Ask and Plan visits (AI) | Only with [your own server](set-up-a-server.md) with AI turned on | Same | Same |
 | Works offline | Yes, after the first visit | Yes | Yes |
-
-"AI" (artificial intelligence) means the computer reads your notes and answers questions about them.
