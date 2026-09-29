@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.39 |
+| Version | 0.40 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -50,6 +50,7 @@
 | 0.37 | 2026-09-29 | Claude (Code), lead | §1: #56 and #57 merged; §7: the session's learnings (tools and traps) and the efficiency list, done and open. |
 | 0.38 | 2026-09-29 | Claude (Code), lead | N13: the order from the owner's decision D-30 (new features from the gap review, folded into the planned work). |
 | 0.39 | 2026-09-29 | Claude (Code), lead | N13 (3b): **the app lock (S4b-FR-5) built first**, on `feat/s4b-fr-5-app-lock`, because Google sign-in waits on the owner's OAuth client (§6). New owner rule in §5 and §7: **keep the repository optimised** on every branch, pull request and `main`. |
+| 0.40 | 2026-09-29 | Claude (Code), lead | **Delivery-speed review** (owner: "go with your recommendation while ensuring quality is not compromised"): the SessionStart hook (`.claude/hooks/session-start.sh`), Robolectric offline, the local iOS klib compile in §7, check-ins at 20 minutes for a fresh PR; the workflow-trigger change (push on `main` only) is the owner's step (§6). |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -146,6 +147,14 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 ## 6. Owner to-dos
 
+- **One CI run per push, not two** (delivery-speed review of 2026-09-29; the session's safety check refuses to edit
+  workflow triggers, so this is yours): in `.github/workflows/{android,android-emulator,shared-ios,security,web,backend,
+  codeql,pages}.yml` change `push:` / `branches: ["**"]` to `branches: [main]` (the `pull_request` triggers stay, and
+  their path filters compare the whole pull request, so a docs-only last commit still gets every check). Then update
+  [07](07-secure-build-and-deploy.md) §1 (*Branch runs*: one run per push, the branch run on `main` only) in the same
+  change. Saves about 15 minutes of macOS and emulator time per push. A branch without a pull request then gets no CI:
+  open the PR first (a draft is fine).
+
 - **Google sign-in with Drive sync (N13 3b) needs a free OAuth client** that only you can make: in the Google Cloud
   project `doorprints`, the OAuth consent screen (app name, logo, privacy policy, the `doorprints.web.app` domain;
   scopes `drive.appdata` and `drive.file`, both non-sensitive) and OAuth client ids for the website, Android (package
@@ -198,6 +207,10 @@ A new session reads CLAUDE.md, then this file, and continues from §2 without as
 **Test locally, not in CI (owner, 2026-09-29: "Get Docker here. Don't use CI if there is another way.")** Every
 suite runs in a cloud session; CI is the second check, never the first:
 
+- **A cloud session starts with `.claude/hooks/session-start.sh`** (SessionStart hook, 2026-09-29): the Android SDK
+  under `~/android-sdk` (`ANDROID_HOME` exported), a Gradle init script with Google's Maven Central mirror (Maven
+  Central answers 429 through the session proxy), `web/node_modules` and MkDocs. Idempotent; about 2 minutes on a
+  fresh container, seconds on a cached one. Change its SDK versions when `compileSdk` moves.
 - Docker: the daemon is installed but not started. `rm -f /var/run/docker.pid /var/run/docker.sock; nohup dockerd
   >/tmp/dockerd.log 2>&1 &`, then wait for `docker info`. Builds need `docker build --network host` (the session
   proxy; `/root/.ccr/README.md`).
@@ -220,13 +233,17 @@ suite runs in a cloud session; CI is the second check, never the first:
 4. Local checks before every push: web `npx ng test --watch=false && npx ng build`; Android
    `./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest
    :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true` (add
-   `-Pkotlin.incremental=false` after switching branches); backend `mvn -B -ntp verify` (needs PostGIS, see
+   `-Pkotlin.incremental=false` after switching branches), **and the iOS klib compile on Linux**
+   `./gradlew -Pkotlin.native.enableKlibsCrossCompilation=true :ui:compileKotlinIosSimulatorArm64` (about a minute
+   once the toolchain is cached; it catches Kotlin/Native-only errors such as a missing `ExperimentalForeignApi` opt-in,
+   which otherwise surface 13 minutes later on the macOS runner); backend `mvn -B -ntp verify` (needs PostGIS, see
    `backend.yml`); `python3 .github/scripts/licence-headers.py --fix` (new files: `git add -N` first); the guide with
    `mkdocs build --strict` **and read its output for WARNING lines** (an anchor warning once passed locally and failed
    CI).
 5. Commit as `Claude <noreply@anthropic.com>` with the trailers `Co-Authored-By: Claude <noreply@anthropic.com>` and
    the session link; push; open the PR with What / Tests / Docs sections in plain words; subscribe to its activity and
-   set one check-in about 50 minutes out.
+   set one check-in about **20 minutes** out for a fresh push (CI takes about 15) and 50-60 minutes for a PR that waits
+   on the owner.
 6. On CI red: find the cause in the job log, reproduce it locally, fix, push. Never skip a test.
 7. When green: merge (above). After a merge that runs the `Web` deploy, wait for the deploy, then run
    `tools/live-ui` (`npm ci && node live-ui.js`; Chromium at `/opt/pw-browsers/chromium` in cloud sessions) and report
@@ -284,6 +301,17 @@ to branches or PRs or main")**
   *denies* something with a reason, do not work around it: ask the owner in one line.
 - **Disk:** the per-session allowance is small; the Docker image, JDK and Gradle caches need about 3 GB, so delete
   scratch downloads first.
+
+**Learnings of 2026-09-29, evening (the app lock, #60)**
+
+- **iOS-only compile errors are catchable on Linux:** `kotlin.native.enableKlibsCrossCompilation=true` (as a `-P`
+  flag; `gradle.properties` keeps it off so CI's Linux jobs do not download the toolchain) compiles the iOS klibs here.
+  #60 went red once for a `@OptIn(ExperimentalForeignApi::class)` that this would have caught.
+- **Robolectric's android-all jar** is now a Gradle dependency copied into `app/build/robolectric-deps`
+  (`robolectric.offline`), so no HTTP fetch runs during the tests; it failed once for the first parameter set.
+- **Roborazzi record mode rewrites only changed images**, so re-recording the whole class after a change costs no
+  churn; a Settings change below the first screen leaves the `settings_*` shots as they are.
+- **Path filters on `pull_request` compare the whole PR**, on `push` only the pushed commits.
 
 **Efficiency: done and still open (2026-09-29, #54 and #57)**
 
