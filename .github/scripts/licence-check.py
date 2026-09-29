@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The release security gate's licence scan (S4b-SEC-1; docs/07 A.5 item 5): every runtime dependency of the backend,
-as the CycloneDX SBOM lists them, must carry a licence that can be combined with `AGPL-3.0-only`, the licence the
-project is moving to (docs/10 §12.6, docs/14 N4).
+as the CycloneDX SBOM lists them, must carry a licence that can be combined with `AGPL-3.0-only`, the project's licence
+(docs/10 §12.6, NOTICE).
 
 Usage: licence-check.py <bom.json> <LICENSE file> [<reviewed exceptions JSON>]
 
@@ -9,8 +9,8 @@ A component passes when one of its licences (a dual-licensed component lists eac
 alternatives count the same way) is on ALLOWED, or when it is in the reviewed exceptions file ({"<group>:<name>":
 "<who decided, when, why>"}). Everything else is listed.
 
-Blocking only once the repository's LICENSE is the AGPL: until then the licence is still MIT, the scan's question is
-"can we move to the AGPL?", and the answer is for the owner, so the findings are GitHub warnings, not a red job.
+Blocking when the repository's LICENSE is the AGPL (since 2026-09-29); with any other LICENSE the findings are
+GitHub warnings only (the question is then "could we move to the AGPL?", which is for the owner).
 """
 import json
 import re
@@ -25,6 +25,9 @@ ALLOWED = {
     "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later",
     "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later",
     "GPL-2.0-with-classpath-exception", "Classpath-exception-2.0",
+    # Not GPL-compatible on their own, but NOTICE's section 7 permission (owner, 2026-09-29) lets Doorprints' own
+    # code be combined with them.
+    "EPL-1.0", "EPL-2.0",
 }
 
 
