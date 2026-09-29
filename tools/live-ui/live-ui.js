@@ -257,7 +257,9 @@ function mobileAudit() {
   // screen width is the measure (the context's screen is its viewport).
   const W = Math.min(window.innerWidth, screen.width), H = window.innerHeight;
   if (window.innerWidth > screen.width + 1) out.push(`page laid out ${window.innerWidth}px wide on a ${screen.width}px screen (zoomed out)`);
-  const shown = (el) => { const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  // checkVisibility(): content inside a closed <details> keeps a box in Chrome but is not drawn (the Connect page's
+  // "Use an API key instead" was reported as under the bottom bar on 2026-09-29).
+  const shown = (el) => { if (el.checkVisibility && !el.checkVisibility()) return false; const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
   const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
   const main = document.querySelector('main');
