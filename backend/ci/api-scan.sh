@@ -62,11 +62,14 @@ done
 # As a deployment runs it (docs/07 section 7), with AI and MCP off; the database is thrown away afterwards, so the
 # active scan may write and delete freely. The per-client rate limit is lifted for the scan only: its thousands of
 # requests would otherwise get 429s, which ZAP reads as answers to its payloads (the first run's "SQL injection"
-# alerts were all 429s). The limiter has its own tests (ai/web/TokenBucketRateLimiterTest, config/ApiKeyFilterTest).
+# alerts were all 429s). The pairing limit (the calls that need no key: /api/pair/**, owner sign-in) is lifted for the
+# same reason: a 429 from /api/pair/redeem was read as a "SQL injection" on 2026-09-29. The limits have their own tests
+# (ai/web/TokenBucketRateLimiterTest, config/ApiKeyFilterTest, device/PairingRateLimitFilterTest).
 docker run -d --name "$net-api" --network "$net" --network-alias api \
   -e DB_URL=jdbc:postgresql://db:5432/doorprints -e DB_USER=doorprints -e DB_PASSWORD=doorprints \
   -e APP_API_KEY="$key" -e APP_AI_ENABLED=false -e APP_MCP_ENABLED=false \
-  -e RATE_LIMIT_PER_MINUTE=1000000 -e RATE_LIMIT_BURST=1000000 "$api_image" >/dev/null
+  -e RATE_LIMIT_PER_MINUTE=1000000 -e RATE_LIMIT_BURST=1000000 \
+  -e PAIRING_RATE_LIMIT_PER_MINUTE=1000000 -e PAIRING_RATE_LIMIT_BURST=1000000 "$api_image" >/dev/null
 up=0
 for _ in $(seq 1 90); do
   if docker exec "$net-db" bash -c 'exec 3<>/dev/tcp/api/8080 && printf "GET /actuator/health HTTP/1.0\r\n\r\n" >&3 && grep -q "\"UP\"" <&3' 2>/dev/null; then

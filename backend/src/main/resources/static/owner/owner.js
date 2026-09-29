@@ -58,6 +58,24 @@ const TEXT = {
     othersClosed: 'Signed out everywhere else.', signedOut: 'Signed out.',
     failed: 'That did not work. Check the connection and try again.',
     sessionEnded: 'Your sign-in on this page has ended. Open a new link from the server\'s log.',
+    aiHeading: "AI (Google Gemini)",
+    aiNotSetUp: "AI is not set up on this server. To use it, set APP_AI_ENABLED=true in the server's settings file and restart the server.",
+    aiVertex: "This server uses Google Cloud Vertex AI, which needs no Gemini key.",
+    keyLabel: "Gemini key",
+    saveKey: "Save key",
+    keyHelp: "Make a separate key just for Doorprints in Google AI Studio, so you can delete it there at any time. The key is stored encrypted and cannot be shown again.",
+    keyLink: "Open Google AI Studio",
+    removeKey: "Remove key",
+    aiOnServer: "AI on this server",
+    keyFromPage: "Gemini key: set on this page, ends in {last4}.",
+    keyFromFile: "Gemini key: from the server's settings file, ends in {last4}. A key saved here replaces it.",
+    keyNone: "No Gemini key yet: AI stays off until you add one.",
+    keySaved: "Key saved.",
+    keyRemoved: "Key removed.",
+    keyInvalid: "A Gemini key is one line of letters, digits and symbols, with no spaces.",
+    confirmRemoveKey: "Remove the Gemini key? AI stops until you add a key again.",
+    aiResumed: "AI is on for this server.",
+    aiPausedMsg: "AI is paused for the whole server.",
   },
   hi: {
     title: 'Doorprints मालिक पेज', language: 'भाषा',
@@ -95,6 +113,24 @@ const TEXT = {
     othersClosed: 'बाकी सब जगह से साइन आउट हो गया।', signedOut: 'साइन आउट हो गया।',
     failed: 'यह नहीं हुआ। कनेक्शन जाँचकर फिर कोशिश करें।',
     sessionEnded: 'इस पेज पर आपका साइन इन ख़त्म हो गया है। सर्वर के लॉग से नया लिंक खोलें।',
+    aiHeading: "AI (Google Gemini)",
+    aiNotSetUp: "इस सर्वर पर AI सेट नहीं है। इसे इस्तेमाल करने के लिए सर्वर की सेटिंग्स फ़ाइल में APP_AI_ENABLED=true लिखें और सर्वर फिर से शुरू करें।",
+    aiVertex: "यह सर्वर Google Cloud Vertex AI इस्तेमाल करता है, जिसे Gemini कुंजी की ज़रूरत नहीं है।",
+    keyLabel: "Gemini कुंजी",
+    saveKey: "कुंजी सहेजें",
+    keyHelp: "Google AI Studio में सिर्फ़ Doorprints के लिए एक अलग कुंजी बनाएँ, ताकि आप उसे वहाँ कभी भी मिटा सकें। कुंजी एन्क्रिप्ट करके रखी जाती है और दोबारा दिखाई नहीं जा सकती।",
+    keyLink: "Google AI Studio खोलें",
+    removeKey: "कुंजी हटाएँ",
+    aiOnServer: "इस सर्वर पर AI",
+    keyFromPage: "Gemini कुंजी: इस पेज पर सेट की गई, आख़िरी अक्षर {last4}।",
+    keyFromFile: "Gemini कुंजी: सर्वर की सेटिंग्स फ़ाइल से, आख़िरी अक्षर {last4}। यहाँ सहेजी गई कुंजी उसकी जगह ले लेगी।",
+    keyNone: "अभी कोई Gemini कुंजी नहीं: जब तक आप कुंजी नहीं जोड़ते, AI बंद रहेगा।",
+    keySaved: "कुंजी सहेजी गई।",
+    keyRemoved: "कुंजी हटा दी गई।",
+    keyInvalid: "Gemini कुंजी अक्षरों, अंकों और चिह्नों की एक पंक्ति होती है, बिना खाली जगह के।",
+    confirmRemoveKey: "Gemini कुंजी हटाएँ? जब तक आप फिर से कुंजी नहीं जोड़ते, AI बंद रहेगा।",
+    aiResumed: "इस सर्वर पर AI चालू है।",
+    aiPausedMsg: "पूरे सर्वर के लिए AI रोका गया है।",
   },
   ta: {
     title: 'Doorprints உரிமையாளர் பக்கம்', language: 'மொழி',
@@ -132,6 +168,24 @@ const TEXT = {
     othersClosed: 'மற்ற எல்லா இடங்களிலும் வெளியேறினீர்கள்.', signedOut: 'வெளியேறினீர்கள்.',
     failed: 'அது நடக்கவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
     sessionEnded: 'இந்தப் பக்கத்தில் உங்கள் உள்நுழைவு முடிந்தது. சேவையகப் பதிவிலிருந்து புதிய இணைப்பைத் திறக்கவும்.',
+    aiHeading: "AI (Google Gemini)",
+    aiNotSetUp: "இந்தச் சேவையகத்தில் AI அமைக்கப்படவில்லை. அதைப் பயன்படுத்த, சேவையகத்தின் அமைப்புக் கோப்பில் APP_AI_ENABLED=true என அமைத்து சேவையகத்தை மீண்டும் தொடங்கவும்.",
+    aiVertex: "இந்தச் சேவையகம் Google Cloud Vertex AI ஐப் பயன்படுத்துகிறது; அதற்கு Gemini சாவி தேவையில்லை.",
+    keyLabel: "Gemini சாவி",
+    saveKey: "சாவியைச் சேமி",
+    keyHelp: "Google AI Studio இல் Doorprints க்கு மட்டும் தனிச் சாவியை உருவாக்கவும், அப்போது அதை எப்போது வேண்டுமானாலும் அங்கே நீக்கலாம். சாவி குறியாக்கம் செய்து சேமிக்கப்படும், மீண்டும் காட்ட முடியாது.",
+    keyLink: "Google AI Studio ஐத் திற",
+    removeKey: "சாவியை நீக்கு",
+    aiOnServer: "இந்தச் சேவையகத்தில் AI",
+    keyFromPage: "Gemini சாவி: இந்தப் பக்கத்தில் அமைக்கப்பட்டது, கடைசி எழுத்துகள் {last4}.",
+    keyFromFile: "Gemini சாவி: சேவையக அமைப்புக் கோப்பிலிருந்து, கடைசி எழுத்துகள் {last4}. இங்கே சேமிக்கும் சாவி அதற்குப் பதிலாக இருக்கும்.",
+    keyNone: "இன்னும் Gemini சாவி இல்லை: நீங்கள் சேர்க்கும் வரை AI அணைந்திருக்கும்.",
+    keySaved: "சாவி சேமிக்கப்பட்டது.",
+    keyRemoved: "சாவி நீக்கப்பட்டது.",
+    keyInvalid: "Gemini சாவி என்பது இடைவெளி இல்லாத எழுத்துகள், எண்கள், குறியீடுகள் கொண்ட ஒரு வரி.",
+    confirmRemoveKey: "Gemini சாவியை நீக்கவா? மீண்டும் சாவி சேர்க்கும் வரை AI நிற்கும்.",
+    aiResumed: "இந்தச் சேவையகத்தில் AI இயங்குகிறது.",
+    aiPausedMsg: "முழுச் சேவையகத்துக்கும் AI நிறுத்தப்பட்டுள்ளது.",
   },
   te: {
     title: 'Doorprints యజమాని పేజీ', language: 'భాష',
@@ -169,6 +223,24 @@ const TEXT = {
     othersClosed: 'మిగతా అన్నిచోట్ల సైన్ అవుట్ అయ్యారు.', signedOut: 'సైన్ అవుట్ అయ్యారు.',
     failed: 'అది పనిచేయలేదు. కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.',
     sessionEnded: 'ఈ పేజీలో మీ సైన్ ఇన్ ముగిసింది. సర్వర్ లాగ్ నుండి కొత్త లింక్‌ను తెరవండి.',
+    aiHeading: "AI (Google Gemini)",
+    aiNotSetUp: "ఈ సర్వర్‌లో AI సెటప్ కాలేదు. దాన్ని వాడాలంటే, సర్వర్ సెట్టింగ్స్ ఫైల్‌లో APP_AI_ENABLED=true పెట్టి సర్వర్‌ను మళ్లీ ప్రారంభించండి.",
+    aiVertex: "ఈ సర్వర్ Google Cloud Vertex AI ని వాడుతుంది, దానికి Gemini కీ అవసరం లేదు.",
+    keyLabel: "Gemini కీ",
+    saveKey: "కీని సేవ్ చేయండి",
+    keyHelp: "Google AI Studio లో Doorprints కోసం మాత్రమే వేరే కీ తయారు చేయండి, అప్పుడు దాన్ని ఎప్పుడైనా అక్కడ తొలగించవచ్చు. కీ ఎన్‌క్రిప్ట్ చేసి దాచబడుతుంది, మళ్లీ చూపించలేం.",
+    keyLink: "Google AI Studio తెరవండి",
+    removeKey: "కీని తొలగించండి",
+    aiOnServer: "ఈ సర్వర్‌లో AI",
+    keyFromPage: "Gemini కీ: ఈ పేజీలో సెట్ చేసింది, చివరి అక్షరాలు {last4}.",
+    keyFromFile: "Gemini కీ: సర్వర్ సెట్టింగ్స్ ఫైల్ నుండి, చివరి అక్షరాలు {last4}. ఇక్కడ సేవ్ చేసే కీ దాని స్థానంలో వస్తుంది.",
+    keyNone: "ఇంకా Gemini కీ లేదు: మీరు జోడించేవరకు AI ఆఫ్‌లో ఉంటుంది.",
+    keySaved: "కీ సేవ్ అయింది.",
+    keyRemoved: "కీ తొలగించబడింది.",
+    keyInvalid: "Gemini కీ అంటే ఖాళీలు లేని అక్షరాలు, అంకెలు, గుర్తుల ఒక లైన్.",
+    confirmRemoveKey: "Gemini కీని తొలగించాలా? మళ్లీ కీ జోడించేవరకు AI ఆగిపోతుంది.",
+    aiResumed: "ఈ సర్వర్‌లో AI ఆన్‌లో ఉంది.",
+    aiPausedMsg: "మొత్తం సర్వర్‌కి AI నిలిపివేయబడింది.",
   },
 };
 
@@ -200,6 +272,7 @@ function applyText() {
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   document.getElementById('lang').value = lang;
   if (overview) render(overview);
+  renderAi();
 }
 
 function say(message) {
@@ -241,9 +314,31 @@ function showSignedOut() {
   document.getElementById('signed-out').hidden = false;
 }
 
+let ai = null;
+
+function renderAi() {
+  if (!ai) return;
+  document.getElementById('ai-not-set-up').hidden = ai.enabledOnServer;
+  const vertex = ai.provider === 'vertex';
+  document.getElementById('ai-vertex').hidden = !(ai.enabledOnServer && vertex);
+  document.getElementById('ai-panel').hidden = !ai.enabledOnServer || vertex;
+  document.getElementById('ai-switch-row').hidden = !ai.enabledOnServer;
+  document.getElementById('ai-on').checked = !ai.paused;
+  const status = ai.keySource === 'owner_page' ? t('keyFromPage', { last4: ai.keyLast4 })
+    : ai.keySource === 'settings_file' ? t('keyFromFile', { last4: ai.keyLast4 }) : t('keyNone');
+  document.getElementById('ai-key-status').textContent = status;
+  document.getElementById('remove-key').hidden = ai.keySource !== 'owner_page';
+}
+
+async function loadAi() {
+  const r = await call('GET', '/ai');
+  if (r.ok) { ai = await r.json(); renderAi(); }
+}
+
 async function load() {
   const response = await call('GET', '/overview');
   if (!response.ok) { say(t('failed')); return; }
+  loadAi();
   overview = await response.json();
   document.getElementById('signed-out').hidden = true;
   document.getElementById('signed-in').hidden = false;
@@ -368,6 +463,29 @@ function wire() {
       document.getElementById('found').hidden = true;
       document.getElementById('code').value = '';
     }
+  });
+  document.getElementById('key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('gemini-key');
+    const key = input.value.trim();
+    if (!/^[\x21-\x7e]{20,200}$/.test(key)) { say(t('keyInvalid')); return; }
+    const r = await call('POST', '/ai/key', { key });
+    input.value = '';
+    say(r.ok ? t('keySaved') : r.status === 400 ? t('keyInvalid') : t('failed'));
+    loadAi();
+  });
+  document.getElementById('remove-key').addEventListener('click', async () => {
+    if (!confirm(t('confirmRemoveKey'))) return;
+    const r = await call('POST', '/ai/key/remove');
+    say(r.ok ? t('keyRemoved') : t('failed'));
+    loadAi();
+  });
+  document.getElementById('ai-on').addEventListener('change', async (e) => {
+    const on = e.target.checked;
+    const r = await call('POST', '/ai/paused', { paused: !on });
+    if (!r.ok) { e.target.checked = !on; say(t('failed')); return; }
+    say(t(on ? 'aiResumed' : 'aiPausedMsg'));
+    loadAi();
   });
   document.getElementById('make-qr').addEventListener('click', async () => {
     const r = await call('POST', '/invites');

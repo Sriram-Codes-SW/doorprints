@@ -20,6 +20,7 @@ package app.doorprints.server.ai.embedding;
 
 import app.doorprints.server.ai.config.AiProperties;
 import org.springframework.ai.embedding.EmbeddingModel;
+import app.doorprints.server.secrets.GeminiKey;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -43,16 +44,14 @@ import java.time.Duration;
         matchIfMissing = true)
 public class GeminiEmbeddingConfiguration {
 
-    static final String API_KEY_PROPERTY = "app.ai.embedding.api-key";
 
     @Bean
-    public EmbeddingModel geminiEmbeddingModel(AiProperties props, Environment env) {
+    public EmbeddingModel geminiEmbeddingModel(AiProperties props, Environment env, GeminiKey geminiKey) {
         var e = props.embedding();
-        var key = env.getProperty(API_KEY_PROPERTY, "");
-        if (key.isBlank()) {
-            throw new IllegalStateException("app.ai.embedding.provider=google-genai needs an API key: set AI_API_KEY "
-                    + "(a free Gemini API key from https://aistudio.google.com/apikey) or AI_EMBEDDING_API_KEY");
-        }
+        // AI_EMBEDDING_API_KEY, when set on its own, wins; otherwise the key in use for AI: the owner page's, or
+        // AI_API_KEY (docs/03 §12.1). Read on every request.
+        var own = env.getProperty("AI_EMBEDDING_API_KEY", "").strip();
+        java.util.function.Supplier<String> key = own.isEmpty() ? () -> geminiKey.current().orElse(null) : () -> own;
         var http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NEVER)
