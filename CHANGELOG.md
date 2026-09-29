@@ -115,6 +115,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The owner page and device pairing, server side** ([design](docs/03-design.md) §12.1, ADR-25): a self-hosted server
+  now has an owner page at `/owner`, opened the first time with a one-time link from the server's log. It lists every
+  connected device with its last use and a *Revoke* button, lets the owner approve a new device by typing the code the
+  device shows or by showing it a QR code, and has an AI switch per device, off for a new device. Each device gets its
+  own key, which the server keeps only in scrambled (hashed) form. The apps learn to connect this way next; until then
+  they keep working with the server key as before.
 - **About Doorprints** (S4b-BL-65): the website's *Your data* page and the apps' Settings → About show the copyright,
   that Doorprints is free software under the GNU AGPL version 3 with no warranty, and links to the source code and the
   licence, in all four languages.

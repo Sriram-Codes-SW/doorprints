@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.46 |
+| Version | 0.47 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -58,6 +58,7 @@
 | 0.44 | 2026-09-29 | Claude (Code), lead | §1: every Linux job names its runner image, `ubuntu-26.04`, instead of `ubuntu-latest` (actions/runner-images#14748: `ubuntu-latest` moves to 26.04 between 19 October and 19 November 2026); a trial pull request proved each workflow on 26.04 first ([10](10-sprint-log.md) S4b-BL-62). |
 | 0.45 | 2026-09-29 | Claude (Code), lead | §2 Pinning: MapLibre iOS (CMP-8c) pinned by commit in `ios/project.yml`, updated by hand with the `ios-app` job's `Package.resolved` check ([10](10-sprint-log.md) §13.13). |
 | 0.46 | 2026-09-29 | Claude (Code), lead | The repository's licence is `AGPL-3.0-only` with `NOTICE` (section 7 permission for EPL and Google Play services libraries, trademark notice), owner decision of 2026-09-23 carried out ([10](10-sprint-log.md) §12.6); the licence check in `security.yml` is blocking. |
+| 0.47 | 2026-09-29 | Claude (Code), lead | §7: `APP_WEB_URL` and the pairing rate limit for device pairing and the owner page ([03](03-design.md) §12.1, ADR-25). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -813,6 +814,8 @@ The **Dev compose** column says whether the local `docker-compose.yml` passes th
 | `SYNC_MAX_CLOCK_SKEW_SECONDS`, `SYNC_MAX_FUTURE_DAYS` | No | `300`, `365` | Client clock clamp / reject (F-08) | No | No (code default) |
 | `TOMBSTONE_RETENTION_DAYS` | No | `90` | Daily purge at 03:30 server time | No | No (code default) |
 | `APP_API_KEY_NEXT` | No (SEC-017, Sprint 2) | empty (= no second key) | Second key accepted alongside `APP_API_KEY` during a rotation; ≥ 32 chars when set, blank means unset. Procedure: 08 §5.1 | Yes | Yes (empty) |
+| `APP_WEB_URL` | No (ADR-25) | `https://doorprints.web.app` | The web app's address, put into the owner page's connect links ([03](03-design.md) §12.1) | No | No (code default) |
+| `PAIRING_RATE_LIMIT_PER_MINUTE`, `PAIRING_RATE_LIMIT_BURST` | No (ADR-25) | `40`, `20` | Pairing calls and owner-page sign-ins per client address (they need no key) | No | No (code default) |
 | `APP_AI_ENABLED`, `APP_MCP_ENABLED` | No, off by default (AI-001) | `false`, `false` | `true` turns on the AI endpoints / the MCP server ([ai/](ai/ai-design.md) §11) | No | Yes (`false`) |
 | `AI_BASE_URL` | No | `https://generativelanguage.googleapis.com/v1beta/openai/` | Chat endpoint (OpenAI-compatible). Ollama in dev compose: `http://host.docker.internal:11434/v1` (compose maps `host.docker.internal` to `host-gateway`) | No | Yes |
 | `AI_API_KEY` | Yes when `APP_AI_ENABLED=true` and `AI_PROVIDER=aistudio` (not used with `vertex`) | empty | Gemini API key (paid tier for real data, PRV-022; a free key only for synthetic evals); any non-empty value for Ollama | **Yes** | Yes (empty) |
