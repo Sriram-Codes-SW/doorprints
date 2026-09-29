@@ -21,8 +21,10 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.ProviderErrors;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.house.HouseChangedEvent;
+import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
+import app.doorprints.server.visit.Visit;
 import app.doorprints.server.visit.VisitDto;
 import app.doorprints.server.visit.VisitRepository;
 import org.slf4j.Logger;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
 
 /**
  * Keeps the pgvector index in sync with houses. Changes are indexed asynchronously after the write transaction
@@ -136,8 +139,17 @@ public class HouseIndexer {
         for (int b = 0; b < batches; b++) {
             var slice = live.subList(b * BATCH, Math.min(live.size(), (b + 1) * BATCH));
             try {
+                // One visits query per batch, not one per house; each house's visits stay newest first.
+                var visitsByHouse = visits
+                        .findByDeletedFalseAndHouseIdInOrderByArrivedAtDesc(slice.stream().map(House::getId).toList())
+                        .stream()
+                        .collect(Collectors.groupingBy(Visit::getHouseId,
+                                Collectors.mapping(VisitDto::from, Collectors.toList())));
                 var docs = new ArrayList<Document>(slice.size());
-                for (var house : slice) docs.add(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(house.getId())));
+                for (var house : slice) {
+                    docs.add(HouseDocuments.toDocument(HouseDto.from(house),
+                            visitsByHouse.getOrDefault(house.getId(), List.of())));
+                }
                 vectorStore.add(docs);
                 indexed += slice.size();
             } catch (RuntimeException e) {
@@ -156,10 +168,7 @@ public class HouseIndexer {
                 }
             }
         }
-        var deletedIds = houses.findBySyncVersionGreaterThanOrderBySyncVersion(0).stream()
-                .filter(h -> h.isDeleted())
-                .map(h -> h.getId().toString())
-                .toList();
+        var deletedIds = houses.findDeletedIds().stream().map(UUID::toString).toList();
         if (!deletedIds.isEmpty()) vectorStore.delete(deletedIds);
         if (failedBatches > 0) {
             var failed = new ReindexFailedException(indexed, failedHouses, failedBatches, batches, quotaExhausted);

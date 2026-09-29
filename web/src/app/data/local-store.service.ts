@@ -100,12 +100,17 @@ export class LocalStore {
 
   /** Every house, tombstones included, in export order. */
   async allHouses(): Promise<HouseRecord[]> {
+    return sortByCreated(await this.rawHouses());
+  }
+
+  /** The houses store as read, unsorted: callers that filter first sort only what they keep. */
+  private async rawHouses(): Promise<HouseRecord[]> {
     const db = await this.db();
-    return sortByCreated(await db.getAll<HouseRecord>('houses'));
+    return db.getAll<HouseRecord>('houses');
   }
 
   async liveHouses(): Promise<HouseRecord[]> {
-    return (await this.allHouses()).filter((h) => !h.deleted);
+    return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted));
   }
 
   async getHouse(id: string): Promise<HouseRecord | undefined> {
@@ -156,19 +161,31 @@ export class LocalStore {
   }
 
   async dirtyHouses(): Promise<HouseRecord[]> {
-    return (await this.allHouses()).filter((h) => h.dirty);
+    return sortByCreated((await this.rawHouses()).filter((h) => h.dirty));
   }
 
   // ---- Visits ----
 
   async allVisits(): Promise<VisitRecord[]> {
+    return sortVisits(await this.rawVisits());
+  }
+
+  private async rawVisits(): Promise<VisitRecord[]> {
     const db = await this.db();
-    const visits = await db.getAll<VisitRecord>('visits');
-    return [...visits].sort((a, b) => cmp(a.arrivedAt, b.arrivedAt) || cmp(a.id, b.id));
+    return db.getAll<VisitRecord>('visits');
   }
 
   async visitsOf(houseId: string): Promise<VisitRecord[]> {
-    return (await this.allVisits()).filter((v) => v.houseId === houseId && !v.deleted);
+    return sortVisits((await this.rawVisits()).filter((v) => v.houseId === houseId && !v.deleted));
+  }
+
+  /** Live visits per house id, from one read of the store (Compare's columns, instead of one read per house). */
+  async visitCountsByHouse(): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    for (const v of await this.rawVisits()) {
+      if (!v.deleted && v.houseId) counts.set(v.houseId, (counts.get(v.houseId) ?? 0) + 1);
+    }
+    return counts;
   }
 
   async saveVisit(visit: VisitDto, now: number = Date.now()): Promise<VisitRecord> {
@@ -207,7 +224,7 @@ export class LocalStore {
   }
 
   async dirtyVisits(): Promise<VisitRecord[]> {
-    return (await this.allVisits()).filter((v) => v.dirty);
+    return sortVisits((await this.rawVisits()).filter((v) => v.dirty));
   }
 
   // ---- Photos ----
@@ -345,7 +362,7 @@ export class LocalStore {
 
   /** True when this browser holds nothing yet: used to offer the first-run download from a configured server. */
   async isEmpty(): Promise<boolean> {
-    return (await this.allHouses()).length === 0 && (await this.allVisits()).length === 0;
+    return (await this.rawHouses()).length === 0 && (await this.rawVisits()).length === 0;
   }
 
   /**
@@ -407,6 +424,11 @@ async function clearCacheStorage(): Promise<void> {
 }
 
 /** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
+/** Visits in export order: by arrival, then id. */
+function sortVisits(rows: readonly VisitRecord[]): VisitRecord[] {
+  return [...rows].sort((a, b) => cmp(a.arrivedAt, b.arrivedAt) || cmp(a.id, b.id));
+}
+
 function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => cmp(a.createdAt ?? '', b.createdAt ?? '') || cmp(a.id, b.id));
 }
