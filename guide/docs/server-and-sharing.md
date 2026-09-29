@@ -5,7 +5,7 @@
 Doorprints works fully without a server. A server is a computer you own that keeps a copy of your houses. With one,
 you get two extras:
 
-- **Sync:** the same houses on your phone and in your browser. A change on one shows up on the other.
+- **Sync:** the same houses on your phone and in your browser.
 - **AI features**, if the server's owner set them up.
 
 Doorprints does not run a public server. You, or someone you trust, run one on a home computer.
