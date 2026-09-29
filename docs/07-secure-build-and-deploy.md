@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.41 |
+| Version | 0.42 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -53,6 +53,7 @@
 | 0.39 | 2026-09-24 | Claude (Code), lead | Owner request of 2026-09-24 ("extend the emulator job in GitHub Actions to two or three Android versions"; `e5e43af`, PR #24): §1 `android-emulator.yml` job `emulator` runs on API 26, 34 and 36 side by side (fail-fast off) with one artifact per level, `android-emulator-results-api-<level>`; diagram and artifacts row updated. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | Section 1: `security.yml` job **`commit-identity`** (author and committer emails of new commits against an allowlist; S4b-BL-53, TC-S-26); the Dependabot table's new npm group **`npm-angular`** (Angular apart from the catch-all group, after #25's `npm ci` failure). |
 | 0.41 | 2026-09-29 | Claude (Code), lead | gitleaks: a third reviewed `.gitleaksignore` fingerprint (a made-up key in the CMP-8a iOS test, commit `353d05c`); test keys are written as low-entropy values. |
+| 0.42 | 2026-09-29 | Claude (Code), lead | §1: `shared-ios.yml` has three jobs since CMP-8a and 8b ([10](10-sprint-log.md) §13.11, §13.12): the compile check, `ios-sim-tests` (the `:shared` and `:ui` tests on an iPhone simulator) and `ios-app` (the iPhone app built unsigned with XcodeGen 2.46.0, pinned by SHA-256, and `xcodebuild`, then launched on a simulator with its self-check; [06](06-test-plan.md) TC-I-37). All on macos-26 with Xcode 26.4.1 pinned, free runners, no signing identity or Apple account. The diagram is updated. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -120,9 +121,11 @@ flowchart LR
         e1["JDK 21 + setup-gradle,<br/>assembleDebug assembleDebugAndroidTest"] --> e2["API 26, 34 and 36 emulators (KVM):<br/>connectedDebugAndroidTest,<br/>upload android-emulator-results-api-*"]
         e3["main only, push or manual:<br/>ftl-check - four values set?"] --> e4["firebase-test-lab: WIF token<br/>(own provider),<br/>gcloud firebase test android run,<br/>one device"]
     end
-    ios_trigger["Push to any branch / PR to main<br/>touching android/shared/**, android/ui/**<br/>or root Gradle files"] --> ios
-    subgraph ios["shared-ios.yml (macOS)"]
-        i1["JDK 21, setup-gradle,<br/>~/.konan cache"] --> i2["compile :shared and :ui iOS klibs<br/>iosArm64, iosSimulatorArm64 (+ test)<br/>no link, no signing, no simulator"]
+    ios_trigger["Push to any branch / PR to main<br/>touching android/shared/**, android/ui/**,<br/>ios/** or root Gradle files"] --> ios
+    subgraph ios["shared-ios.yml (macos-26, Xcode 26.4.1)"]
+        i1["JDK 21, setup-gradle,<br/>~/.konan cache"] --> i2["compile :shared and :ui iOS klibs<br/>iosArm64, iosSimulatorArm64 (+ test)"]
+        i1 --> i3["ios-sim-tests: :shared and :ui tests<br/>on an iPhone simulator"]
+        i1 --> i4["ios-app: XcodeGen (SHA-256 pinned),<br/>xcodebuild unsigned, launch smoke<br/>with the self-check, screenshot"]
     end
     ql_trigger["Push to any branch / weekly / manual<br/>(not on PRs)"] --> ql
     subgraph ql["codeql.yml"]

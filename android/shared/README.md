@@ -96,7 +96,7 @@ android/
 | Target | Plugin / DSL | Built where | Purpose |
 |---|---|---|---|
 | Android | `com.android.kotlin.multiplatform.library` (AGP 9.4.0), `kotlin { android { … } }` | ubuntu CI (`android.yml`) | consumed by `:app` |
-| `iosArm64`, `iosSimulatorArm64` | `org.jetbrains.kotlin.multiplatform` (Kotlin 2.4.10) | macOS CI job (DevSecOps) | **compile-only** guard: proves commonMain has no JVM/Android APIs; no framework binary is produced |
+| `iosArm64`, `iosSimulatorArm64` | `org.jetbrains.kotlin.multiplatform` (Kotlin 2.4.10) | macOS CI jobs (DevSecOps) | the compile guard, the simulator tests (CMP-8a), and part of `:ui`'s `DoorprintsKit` framework for the iOS app (CMP-8b) |
 
 `android {}` is the AGP 9 name of the Android target block (`androidLibrary {}` is deprecated since AGP 9.1).
 Host tests are opt-in with this plugin; `withHostTest {}` enables them.
@@ -254,12 +254,13 @@ OkHttp or MapLibre version, see section 4):
    `Repository` interface followed in P4c (docs/10 §13.8).
 2. **DataStore KMP** (`datastore-preferences-core` + okio) for settings and sync cursors; `expect/actual` secret
    storage (Android Keystore today, iOS Keychain). **Done in CMP-4 P4b** (docs/10 §13.7): `SettingsStore` in
-   commonMain, a `SecretStore` interface (Keystore in `:app`, Keychain in iosMain, compile-only).
+   commonMain, a `SecretStore` interface (Keystore in `:app`, Keychain in iosMain, run on the simulator since CMP-8a).
 3. **`ServerUrl`** as `expect/actual` or a common parser with the existing test cases. **Done in CMP-4 P4b**: a common
    parser, `ServerUrlTest` in commonTest and `ServerUrlParityTest` against `java.net.URI`.
 4. **iOS app**: SwiftUI over the shared module (SKIE or plain Kotlin/Native framework), or Compose Multiplatform
    if the Compose UI is to be shared. Decide when a Mac and the Apple Developer Program are available; until then
-   only the compile-only check runs. `iosMain` then gets `ktor-client-darwin` and its timeouts.
+   only the compile-only check runs. **Done in CMP-8b** with Compose Multiplatform: `iosMain` has `ktor-client-darwin`
+   (`IosApiHttp`, 90 s per request; App Transport Security at its default, so the server must be `https://`).
 5. **iOS platform services**: location via `CLLocationManager` (significant-change + region monitoring feeding the
    shared `StayDetector` and `StreetAlerts`), reverse geocoding via `CLGeocoder`, background sync via
    `BGTaskScheduler`, reachability via `NWPathMonitor` (captive-portal detection stays in the shared client).
