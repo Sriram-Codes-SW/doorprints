@@ -46,6 +46,9 @@ interface IosMapView {
     /** Frames the box at once with [paddingPt] around it, at most at [maxZoom]. */
     fun frame(south: Double, west: Double, north: Double, east: Double, paddingPt: Double, maxZoom: Double)
 
+    /** The view leaves the screen for good: stop the location updates and the callbacks. */
+    fun release()
+
     fun centerLatitude(): Double
 
     fun centerLongitude(): Double

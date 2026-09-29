@@ -2166,7 +2166,7 @@ boundary as the Government of India shows it (ADR-22), and adding a house on it 
   tests, TC-U-81) on an excerpt of the real Liberty style; by hand, the full Liberty style of 2026-09-29 prepared the
   same way passed the check and MapLibre's style-spec validator (0 errors).
 - **iOS** (`iosMain`, `ios/`): `IosMap.kt`, the seam (Kotlin interfaces the Swift app implements: text and numbers
-  only); `IosMapStyle` (downloads Liberty with a 30 s limit, keeps the last good copy in Caches for an offline start,
+  only); `IosMapStyle` (downloads Liberty, two tries of up to 20 s, keeps the last good copy in Caches for an offline start,
   reads the geo files from the bundle); `PlatformMap.ios.kt` (`UIKitView`, touches straight to the map, VoiceOver
   into MapLibre's own elements); `ios/Doorprints/MapLibreMapView.swift` (`MLNMapView`: north-up, no logo, the
   attribution where the chrome says, camera, houses, label size, the location dot, a tap within 24 pt picks the
@@ -2174,7 +2174,7 @@ boundary as the Government of India shows it (ADR-22), and adding a house on it 
   `13e41ab3d77ff5113e7e5d4ee87803b1f81f5683` in `project.yml` (its binary target pins the xcframework's SHA-256);
   `android/app/src/main/assets/geo` is bundled as `geo/`, so there is no third copy of the boundary data.
 - **The gate in CI** (TC-I-38): the self-check gains `indiaView` (prepare the style as the map does; the check finds
-  nothing) and `map` (the map on screen loaded all of it, up to 90 s); `launch-smoke.sh` waits up to 180 s and passes
+  nothing) and `map` (the map on screen loaded all of it, up to 90 s); `launch-smoke.sh` waits up to 300 s and passes
   only with both lines PASS; `ios-app` caches the Swift package checkouts and checks that `MapLibre.framework` is
   embedded, that `Package.resolved` holds the pinned revision and that both geo files match the repository's.
 - **The iPhone's features**: `PlatformFeatures.Ios` now has the map, so the app starts on the Map, *Add a house on
@@ -2184,6 +2184,15 @@ boundary as the Government of India shows it (ADR-22), and adding a house on it 
   languages); it still leaves out the geocoder and photos, which iOS has not got. 38 `ios_*` screenshots re-recorded
   (the Map's chrome, rendered with the map view as an empty box, since MapLibre cannot run under Robolectric; the
   empty list, Compare's and the Assistant's ways to the map; Settings); Android's 64 unchanged.
+
+**Review.** Code review (one pass, before the first CI run): **blocking, fixed:** `MLNMapView(frame:)` loads
+MapLibre's demo style (`MLNMapView.mm`: `[MLNStyle defaultStyleURL]`), whose borders ignore ADR-22, until Liberty
+replaces it, and its load (or, offline, its failure) was taken as the map's own; the view now starts on an empty style
+and Kotlin counts only the load or failure of the style it handed over. Should-fix, fixed: the smoke's wait (300 s,
+the checks run one after another), `indiaView`'s own 60 s limit, one retry of the style's download, the view released
+when it leaves the screen (`release()`: no location updates, no callbacks). Nits, fixed: `compassVisibility`, a
+negative direction to keep the bearing, the density read when it is used. No problem found in the Swift names Kotlin
+exports, the MapLibre 6.31.0 calls, the XcodeGen spec or `JsonStyleOps`' equivalence with `MapLibreStyleOps`.
 
 **How it was verified:** on Linux, the full Android command of `CLAUDE.md`; the iOS Kotlin cross-compiled
 (`:ui:compileKotlinIosSimulatorArm64` with `-Pkotlin.native.enableKlibsCrossCompilation=true`, which caught one

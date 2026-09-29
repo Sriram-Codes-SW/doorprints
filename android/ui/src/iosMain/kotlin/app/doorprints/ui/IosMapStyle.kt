@@ -27,8 +27,11 @@ import platform.Foundation.writeToFile
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** How long the base style's download may take before the cached copy is used (or the map shows *Try again*). */
-private const val STYLE_TIMEOUT_S = 30.0
+/**
+ * How long one try at the base style's download may wait (NSURLSession's timeout, between data); two tries, then the
+ * cached copy (or the map shows *Try again*).
+ */
+private const val STYLE_TIMEOUT_S = 20.0
 
 /** The last base style that downloaded, in the app's Caches folder, so the map also starts offline. */
 private const val STYLE_CACHE_FILE = "liberty-style.json"
@@ -52,7 +55,8 @@ internal object IosMapStyle {
     /** Downloads (or reads the cached) base style and prepares it, off the main thread; throws when neither works. */
     suspend fun prepare(labelSizeSp: Float): PreparedMapStyle = withContext(Dispatchers.Default) {
         val base = try {
-            download().also { saveCache(it) }
+            // One retry: a single dropped connection should not cost the map its fresh style (or CI its gate).
+            (runCatching { download() }.getOrNull() ?: download()).also { saveCache(it) }
         } catch (e: Exception) {
             warn("the base style did not download; the cached copy is used", e)
             readCache() ?: throw IllegalStateException("the base style could not be downloaded and none is cached", e)
