@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.25 |
+| Version | 0.26 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -37,6 +37,7 @@
 | 0.23 | 2026-09-29 | Claude (Code), lead | New **D-29**: AI with the person's own Gemini key on the device, next to server AI ([03](03-design.md) ADR-26). |
 | 0.24 | 2026-09-29 | Claude (Code), lead | New **D-30** and 5.19..5.26 (app lock, offline maps, the real cost of a house, my places, area notes, moving in, brokers; voice notes parked); 14.2: S4-11 widened, new S4-20..22. |
 | 0.25 | 2026-09-29 | Claude (Code), lead | 5.19 **app lock built** on Android and iPhone (S4b-FR-5): the choices of time, turning it on or off behind the credential, the fail-closed read. |
+| 0.26 | 2026-09-29 | Claude (Code), lead | New **5.27**: the path trace built (S4b-FR-2) on Android, inside `HuntEngine` so the iPhone gets it with S4b-BL-69. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -556,6 +557,24 @@ from a listing link* (S4b-FR-4), since listings bring the broker's details with 
 
 Parked: the phones' keyboards already turn speech into text in Hindi, Tamil and Telugu, and audio files would add to
 every sync, backup and Drive copy. Revisit if users ask for recordings rather than text.
+
+### 5.27 The path trace (S4b-FR-2)
+
+**Built (2026-09-29, Android; the iPhone with S4b-BL-69).** Settings > Hunt mode > *Trace my path on the map*, off by
+default. While it is on and Hunt mode runs, the engine keeps the fixes that pass Hunt mode's accuracy gate (50 m or
+better), thinned to one point per 20 m or 5 minutes (`TrackRecorder`), and the Map draws them as a purple line under
+the house markers, split into one line per walk (a gap of 30 minutes or more starts a new line, so the map never draws
+a leap between two walks). The privacy review ([02](02-threat-model.md) T-I30, [01](01-requirements.md) PRV-028): the
+trace is location history, so it stays on the phone only, in its own table (`track_points`, Room version 3), and is
+never in a backup, a readable copy, the sync to a self-hosted server or an AI request; it is pruned to the last 30
+days each time Hunt mode starts, and *Clear the path* under the switch removes it at once. Turning the switch off
+stops recording and keeps what is there until it ages out or is cleared, so a day with the trace off does not lose
+the week. The line's colour (`#8E24AA`) is none of the marker colours and none of the base map's own line colours
+(roads, India's boundary, the state lines), readable on the light tiles both themes show; TC-M-30 checks it on a
+device. Phone accuracy only, so the DST guidelines' 1 m threshold does not apply ([03](03-design.md) §11.1). The
+website has no Hunt mode and so no trace. Tests: `HuntEngineTest` (the trace and the pruning), `TrackGeoJsonTest`,
+`JsonStyleOpsTest` (the layer under the houses on iOS), `AppDatabaseMigrationTest` (2 to 3), the `hunt_trace`
+screenshots ([06](06-test-plan.md) TC-U-94).
 
 ## 6. User stories
 

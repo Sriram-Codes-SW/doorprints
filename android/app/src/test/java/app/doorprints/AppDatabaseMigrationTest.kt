@@ -97,6 +97,20 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    /** v3 (S4b-FR-2): the whole chain from version 1 ends in the committed `3.json`, with `track_points` empty. */
+    @Test
+    fun migrations1To3MatchTheExportedSchemaAndStartWithAnEmptyTrace() {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(3, AppDatabase.MIGRATIONS.toList())
+        try {
+            assertEquals(listOf("h1"), db.rows("SELECT id FROM houses"))
+            assertEquals(listOf("0"), db.rows("SELECT COUNT(*) FROM track_points"))
+        } finally {
+            db.close()
+        }
+    }
+
     @Test
     fun aVersion1HousehuntDatabaseMovesMigratesAndOpensWithItsRows() = runBlocking {
         val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)

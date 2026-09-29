@@ -77,6 +77,14 @@ interface Repository {
 
     suspend fun streetInfo(street: String): StreetInfo
 
+    /** The path trace of the last [TRACK_KEPT_DAYS] days, oldest first (docs/11 5.27; this phone only). */
+    val trackPoints: Flow<List<TrackPointEntity>>
+    suspend fun saveTrackPoint(point: TrackPointEntity)
+    /** Points older than [before] go (the retention limit; the engine calls it when Hunt mode starts). */
+    suspend fun pruneTrack(before: Long)
+    /** *Clear the path* in Settings. */
+    suspend fun clearTrack()
+
     /** Deletes the photo's local file now; a photo the server has is queued for deletion on the next sync. */
     suspend fun deletePhoto(photo: PhotoEntity)
 
@@ -153,6 +161,12 @@ interface Repository {
     ): UndoResult
 
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
+
+    companion object {
+        /** How long the path trace is kept (docs/11 5.27). */
+        const val TRACK_KEPT_DAYS = 30
+        const val TRACK_KEPT_MS = TRACK_KEPT_DAYS * 24 * 60 * 60_000L
+    }
 
     /** Used by `AndroidRepository.addPhoto` until the photo seam joins this interface (CMP-6 P6a). */
     enum class AddPhotoResult { ADDED, LIMIT_REACHED, UNREADABLE }

@@ -45,7 +45,7 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Room on iOS (S4b-BL-24): [iosAppDatabase] on a file in a temporary folder, with the bundled SQLite driver the app
  * uses. Every table is written and read back through its DAO, [withImmediateTransaction] rolls back on a throw,
- * [localTablesChanged] emits after a write, and a version-1 file opens through [AppDatabase.MIGRATION_1_2] with its
+ * [localTablesChanged] emits after a write, and a version-1 file opens through [AppDatabase.MIGRATIONS] with its
  * rows. Runs on the iOS simulator only (macOS CI); on Linux the test code is compiled, not run.
  */
 @OptIn(ExperimentalForeignApi::class)
@@ -166,8 +166,10 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            assertEquals(listOf("2"), connection.rows("PRAGMA user_version"))
+            // The current version (3 since S4b-FR-2: track_points, empty after the migration).
+            assertEquals(listOf("3"), connection.rows("PRAGMA user_version"))
             assertEquals(listOf("p1|0"), connection.rows("SELECT id, deleted FROM photos"))
+            assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM track_points"))
         } finally {
             connection.close()
         }

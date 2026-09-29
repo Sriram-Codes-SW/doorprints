@@ -631,4 +631,9 @@
     <string name="settings_app_lock_1m">1 minute</string>
     <string name="settings_app_lock_5m">5 minutes</string>
     <string name="settings_app_lock_15m">15 minutes</string>
+    <!-- S4b-FR-2, the path trace (2026-09-29). -->
+    <string name="settings_path_trace">Trace my path on the map</string>
+    <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days.</string>
+    <string name="settings_path_trace_clear">Clear the path</string>
+    <string name="settings_path_trace_cleared">The path is cleared.</string>
 </resources>

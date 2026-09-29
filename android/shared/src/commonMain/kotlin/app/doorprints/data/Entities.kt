@@ -98,3 +98,20 @@ data class HouseVisitCount(val houseId: String, val visits: Int, val lastVisit: 
  * last-write-wins comparison does not have to load whole entities. Not a table: a Room query projection.
  */
 data class RowVersion(val id: String, val updatedAt: Long)
+
+/**
+ * One point of the path trace (docs/11 5.27, S4b-FR-2): where the phone was while Hunt mode ran with *Trace my path*
+ * on. Kept on this phone only: never synced, exported or backed up (a track is location history; a house is not),
+ * thinned to about [app.doorprints.location.TrackRecorder] and deleted after 30 days (`Repository.pruneTrack`). Room
+ * version 3 (`AppDatabase.MIGRATION_2_3`); the table name and columns are stored names.
+ */
+@Entity(tableName = "track_points", indices = [Index("at")])
+data class TrackPointEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** When the fix was taken (epoch milliseconds, the fix's own time). */
+    val at: Long,
+    val lat: Double,
+    val lon: Double,
+    /** The fix's reported accuracy in metres, for the map to know how rough the line is. */
+    val accuracyM: Float,
+)

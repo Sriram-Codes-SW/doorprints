@@ -629,4 +629,9 @@
     <string name="settings_app_lock_1m">1 నిమిషం</string>
     <string name="settings_app_lock_5m">5 నిమిషాలు</string>
     <string name="settings_app_lock_15m">15 నిమిషాలు</string>
+    <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
+    <string name="settings_path_trace">నా దారిని మ్యాప్‌లో చూపించు</string>
+    <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది.</string>
+    <string name="settings_path_trace_clear">దారిని తొలగించు</string>
+    <string name="settings_path_trace_cleared">దారి తొలగించబడింది.</string>
 </resources>

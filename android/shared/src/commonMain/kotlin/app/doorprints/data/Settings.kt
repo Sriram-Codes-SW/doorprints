@@ -79,6 +79,11 @@ data class AppSettings(
     val appLock: Boolean = false,
     /** How long the app may be in the background before it locks again; 0 locks every time it is left. */
     val appLockAfterSeconds: Int = AppLockTimes.DEFAULT,
+    /**
+     * *Trace my path on the map* (docs/11 5.27, S4b-FR-2): while Hunt mode runs, keep where the phone was, on this
+     * phone only, for 30 days. Off by default.
+     */
+    val pathTrace: Boolean = false,
 ) {
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
@@ -100,7 +105,7 @@ data class AppSettings(
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
             "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
-            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds)"
+            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace)"
 }
 
 /**
@@ -194,6 +199,8 @@ class SettingsStore(
         /** [AppSettings.appLock] and [AppSettings.appLockAfterSeconds]. */
         val appLock = booleanPreferencesKey("appLock")
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
+        /** [AppSettings.pathTrace]. */
+        val pathTrace = booleanPreferencesKey("pathTrace")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -219,6 +226,7 @@ class SettingsStore(
             geminiKey = geminiSecrets?.get(p) ?: "",
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
+            pathTrace = p[Keys.pathTrace] ?: false,
         )
     }
 
@@ -309,6 +317,8 @@ class SettingsStore(
 
     /** How long the app may stay in the background before it locks; one of [AppLockTimes.CHOICES]. */
     suspend fun saveAppLockAfter(seconds: Int) = dataStore.edit { it[Keys.appLockAfter] = AppLockTimes.valid(seconds) }
+
+    suspend fun savePathTrace(on: Boolean) = dataStore.edit { it[Keys.pathTrace] = on }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 

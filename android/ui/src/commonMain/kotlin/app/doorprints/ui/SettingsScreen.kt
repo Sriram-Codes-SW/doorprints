@@ -420,6 +420,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 },
                 onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
             Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+            PathTraceSection(settings)
         }
 
         HorizontalDivider()
