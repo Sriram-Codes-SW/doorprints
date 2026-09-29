@@ -2,20 +2,32 @@
 
 ## Save a copy of your data
 
-A copy is a file that is yours. It opens without Doorprints and without the internet. Make one now and then, and
-before you change phones or clear your browser.
+A copy is a file that belongs to you. It opens without Doorprints and without the internet. Make one now and then.
+Always make one before you change phones or clear your browser.
 
-**On the website:** open **Your data**. Under **Save a copy**, choose a **Format**, then **What to include** (all
-houses or **Shortlisted only**, which photos, **Include rejected houses**, **Include contact names and phone numbers**),
-and the **Language of the file**. Choose **Download** (for PDF, **Open print view**, then "Save as PDF").
+**On the website:**
 
-**On Android:** open **Settings**, then **Save a copy**, pick the format and options, and tap **Save to…** or **Share**.
-**Weekly automatic backup** saves a backup once a week while the phone is charging, to a folder you choose.
+1. Open **Your data**.
+2. Under **Save a copy**, choose a **Format**.
+3. Under **What to include**, choose all houses or **Shortlisted only**, and which photos. You can also turn on
+   **Include rejected houses** and **Include contact names and phone numbers**.
+4. Choose the **Language of the file**.
+5. Choose **Download**. For a PDF, choose **Open print view**, then "Save as PDF".
 
-- **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*: good for reading,
-  printing and sharing with family.
-- **Full backup (ZIP)** holds your houses, visits and photos (everything, unless you left some out under *What to
-  include*). It is the file Doorprints can read back in; Android can also read a backup file from your server.
+**On Android:**
+
+1. Open **Settings**, then **Save a copy**.
+2. Pick the format and options.
+3. Tap **Save to…** or **Share**.
+
+**Weekly automatic backup** saves a backup once a week while the phone is charging. It goes to a folder you choose.
+(A backup is a full copy of your houses that Doorprints can read back in later.)
+
+- **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*. They are good for
+  reading, printing and sharing with family.
+- **Full backup (ZIP)** holds your houses, visits and photos. It holds everything, unless you left some out under
+  *What to include*. It is the only file Doorprints can read back in. Android can also read a backup file from your
+  server.
 
 A copy with contact details holds owners' and brokers' phone numbers. Share it carefully.
 
@@ -26,13 +38,14 @@ A copy with contact details holds owners' and brokers' phone numbers. Share it c
 ## Import a backup
 
 **Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**. Today only the Android app
-can do this; the website cannot import yet. A full backup made on the website can be imported on Android.
+can do this. The website cannot import yet. But you can import a full backup made on the website into Android.
 
-1. On Android, open **Settings**, then **Import a backup**, and tap **Choose a backup file**.
-2. Doorprints checks the file and shows **What this would change**. Nothing changes yet.
-3. Choose how: **Merge with what I have** (a house is updated only if the backup's version is newer) or **Add
-   everything as new copies**.
-4. Tap **Import**.
+1. On Android, open **Settings**, then **Import a backup**.
+2. Tap **Choose a backup file**.
+3. Doorprints checks the file and shows **What this would change**. Nothing changes yet.
+4. Choose **Merge with what I have** or **Add everything as new copies**. With a merge, a house is updated only if
+   the backup's version is newer.
+5. Tap **Import**.
 
 Readable copies (HTML, PDF, CSV, Excel, Markdown) cannot be imported.
 
