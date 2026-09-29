@@ -275,6 +275,14 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun thePathTraceIsOffUntilTurnedOn() = runTest {
+        assertFalse(store.current().pathTrace)
+        store.savePathTrace(true)
+        assertTrue(store.current().pathTrace)
+        assertEquals(true, raw()["pathTrace"])
+    }
+
+    @Test
     fun theSettingsPrintNeitherKey() = runTest {
         val gemini = FakeSecrets("gemini")
         val withGemini = SettingsStore(dataStore, secrets, gemini) { clock }

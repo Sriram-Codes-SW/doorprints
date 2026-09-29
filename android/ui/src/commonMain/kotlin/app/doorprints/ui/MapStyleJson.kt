@@ -19,6 +19,7 @@
 package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.TrackPointEntity
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -43,6 +44,85 @@ import kotlinx.serialization.json.putJsonObject
  * that loads a style must call it too (iOS: [prepareMapStyle]).
  */
 const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+
+/** The path trace's GeoJSON source and its line layer (docs/11 5.27, S4b-FR-2), drawn under the houses. */
+const val TRACK_SOURCE = "track"
+const val TRACK_LAYER = "track-line"
+
+/**
+ * The trace's colour and width: a purple no base-map line uses (roads are white, yellow or grey, India's boundary
+ * dark grey, the state lines light grey) and none of the three marker colours, readable on the light tiles both
+ * themes show; the width grows with the zoom so the line stays a line, not a smear, at street zoom.
+ */
+const val TRACK_COLOR = "#8E24AA"
+
+/** A gap longer than this between two points starts a new line (a new walk), so the map draws no leap between them. */
+const val TRACK_GAP_MS = 30 * 60_000L
+
+/**
+ * The path trace as GeoJSON: one LineString per walk (the points split at [TRACK_GAP_MS] gaps; a lone point draws
+ * nothing, MapLibre needs two). [points] oldest first, as `Repository.trackPoints` gives them.
+ */
+fun trackGeoJson(points: List<TrackPointEntity>): String = buildJsonObject {
+    put("type", "FeatureCollection")
+    putJsonArray("features") {
+        splitTrack(points).forEach { walk ->
+            add(
+                buildJsonObject {
+                    put("type", "Feature")
+                    putJsonObject("properties") { put("from", walk.first().at); put("to", walk.last().at) }
+                    putJsonObject("geometry") {
+                        put("type", "LineString")
+                        putJsonArray("coordinates") {
+                            walk.forEach { p -> add(buildJsonArray { add(JsonPrimitive(p.lon)); add(JsonPrimitive(p.lat)) }) }
+                        }
+                    }
+                },
+            )
+        }
+    }
+}.toString()
+
+/** The walks in [points]: runs of at least two points with no gap of [TRACK_GAP_MS] or more between neighbours. */
+fun splitTrack(points: List<TrackPointEntity>): List<List<TrackPointEntity>> {
+    val walks = mutableListOf<MutableList<TrackPointEntity>>()
+    points.forEach { p ->
+        val last = walks.lastOrNull()
+        if (last == null || p.at - last.last().at >= TRACK_GAP_MS) walks += mutableListOf(p) else last += p
+    }
+    return walks.filter { it.size >= 2 }
+}
+
+/** The trace's empty source for a style built as JSON (iOS); the view sets its data afterwards. */
+fun trackSourceJson(): JsonObject = buildJsonObject {
+    put("type", "geojson")
+    put("data", Json.parseToJsonElement(trackGeoJson(emptyList())))
+}
+
+/** The trace's line layer, the same on both platforms (Android builds it from these values in `PlatformMap`). */
+fun trackLayerJson(): JsonObject = buildJsonObject {
+    put("id", TRACK_LAYER)
+    put("type", "line")
+    put("source", TRACK_SOURCE)
+    putJsonObject("layout") {
+        put("line-cap", "round")
+        put("line-join", "round")
+    }
+    putJsonObject("paint") {
+        put("line-color", TRACK_COLOR)
+        put("line-opacity", 0.85)
+        put(
+            "line-width",
+            buildJsonArray {
+                add("interpolate"); add(buildJsonArray { add("linear") }); add(buildJsonArray { add("zoom") })
+                TRACK_WIDTHS.forEach { (zoom, width) -> add(JsonPrimitive(zoom)); add(JsonPrimitive(width)) }
+            },
+        )
+    }
+}
+
+/** The trace's width by zoom, in px: thin at city zoom, a clear line at street zoom. */
+val TRACK_WIDTHS = listOf(10 to 1.5, 14 to 3.0, 18 to 5.0)
 
 /** The houses' GeoJSON source and the two layers drawn from it. */
 const val HOUSES_SOURCE = "houses"
@@ -213,6 +293,9 @@ fun prepareMapStyle(
         ?: throw IllegalArgumentException("the base style is not a JSON object")
     val ops = JsonStyleOps(base, readAsset, warn)
     applyIndiaView(ops)
+    // The trace under the houses, so a dot is never hidden by the line.
+    ops.putSource(TRACK_SOURCE, trackSourceJson())
+    ops.addLayerOnTop(trackLayerJson())
     ops.putSource(HOUSES_SOURCE, housesSourceJson())
     houseLayersJson(labelSizeSp).forEach(ops::addLayerOnTop)
     val style = ops.toJson()

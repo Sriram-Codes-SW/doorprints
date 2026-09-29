@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **The path trace on Android** (S4b-FR-2, [spec](docs/11-feature-parity-and-export-spec.md) 5.27): Settings >
+  Hunt mode > *Trace my path on the map*, off by default. While Hunt mode runs, the phone keeps where you walked (one
+  point per 20 m or 5 minutes) and the Map draws it as a purple line under the house dots, one line per walk. It stays
+  on the phone only: never in a backup, a readable copy, the sync or an AI request; gone after 30 days, or at once with
+  *Clear the path*. Database version 3 (`track_points`). The iPhone gets it with its Hunt mode (S4b-BL-69). Threat
+  model T-I30.
 - **App lock on Android and iPhone** (S4b-FR-5, [spec](docs/11-feature-parity-and-export-spec.md) 5.19): Settings >
   Privacy > *Lock Doorprints* asks for the phone's own screen lock (PIN, pattern, password, fingerprint or face) when
   the app opens and after it has been in the background for the chosen time (right away, 1, 5 or 15 minutes; 1 by

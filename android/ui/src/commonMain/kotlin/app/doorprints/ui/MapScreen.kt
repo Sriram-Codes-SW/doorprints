@@ -232,6 +232,8 @@ fun MapScreen(
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
     val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
     val houses = loadedHouses.orEmpty()
+    // The path trace (docs/11 5.27): the last 30 days, drawn under the houses; empty while off.
+    val track by repo.trackPoints.collectAsStateWithLifecycle(initialValue = emptyList())
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
     var map by remember { mutableStateOf<MapControl?>(null) }
     // How many times the base style has loaded (0: not yet): the effects that follow a style load key on it, as they
@@ -545,6 +547,7 @@ fun MapScreen(
         val topBandEndInset = topBandEndInsetDp(maxHeight.value, controlsDp.value).dp
         PlatformMap(
             houses = houses,
+            track = track,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
             attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),

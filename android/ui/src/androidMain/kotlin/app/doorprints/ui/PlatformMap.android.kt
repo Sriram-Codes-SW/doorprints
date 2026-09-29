@@ -41,6 +41,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.TrackPointEntity
 import kotlin.math.hypot
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdate
@@ -54,6 +55,8 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -72,6 +75,7 @@ import org.maplibre.geojson.Point
 @Composable
 actual fun PlatformMap(
     houses: List<HouseEntity>,
+    track: List<TrackPointEntity>,
     labelSizeSp: Float,
     showLocation: Boolean,
     attribution: MapAttribution,
@@ -111,6 +115,11 @@ actual fun PlatformMap(
     // Keep the markers in sync with the database.
     LaunchedEffect(style, houses) {
         (style?.getSource(HOUSES_SOURCE) as? GeoJsonSource)?.setGeoJson(housesGeoJson(houses))
+    }
+
+    // And the path trace (docs/11 5.27).
+    LaunchedEffect(style, track) {
+        (style?.getSource(TRACK_SOURCE) as? GeoJsonSource)?.setGeoJson(trackGeoJson(track))
     }
 
     // Show the blue "you are here" dot once we have permission.
@@ -215,6 +224,22 @@ private class MapLibreControl(private val m: MapLibreMap, private val reload: ()
 }
 
 private fun addHouseLayers(style: Style, labelSizeSp: Float) {
+    // The path trace first, so it is drawn under the houses (the same values as trackLayerJson, iOS's copy).
+    style.addSource(GeoJsonSource(TRACK_SOURCE, trackGeoJson(emptyList())))
+    style.addLayer(
+        LineLayer(TRACK_LAYER, TRACK_SOURCE).withProperties(
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineColor(TRACK_COLOR),
+            PropertyFactory.lineOpacity(0.85f),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    *TRACK_WIDTHS.map { (zoom, width) -> Expression.stop(zoom, width.toFloat()) }.toTypedArray(),
+                ),
+            ),
+        ),
+    )
     style.addSource(GeoJsonSource(HOUSES_SOURCE, housesGeoJson(emptyList())))
     val statusColor = Expression.match(
         Expression.get("status"),

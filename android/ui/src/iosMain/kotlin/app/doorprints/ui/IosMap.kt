@@ -45,6 +45,9 @@ interface IosMapView {
     /** Replaces the data of the houses' source ([HOUSES_SOURCE]) with [geoJson]; nothing before a style has loaded. */
     fun setHouses(geoJson: String)
 
+    /** Replaces the data of the path trace's source ([TRACK_SOURCE]) with [geoJson]; nothing before a style has loaded. */
+    fun setTrack(geoJson: String)
+
     /** The house names' text size ([HOUSE_LABELS_LAYER]), in points. */
     fun setLabelSize(size: Double)
 
