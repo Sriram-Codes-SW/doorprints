@@ -1,3 +1,26 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * The style JSON in this file is an excerpt of OpenFreeMap's Liberty style (MIT License,
+ * https://github.com/hyperknot/openfreemap-styles), a fork of OSM Liberty (https://github.com/maputnik/osm-liberty),
+ * which derives from OSM Bright of the Mapbox Open Styles: copyright (c) 2014, Mapbox, all rights reserved, under
+ * the BSD licence. Their licence texts are in the file NOTICE, section "Third-party material".
+ */
+
 /**
  * Test fixture: the OpenFreeMap "liberty" style as both apps load it (https://tiles.openfreemap.org/styles/liberty,
  * copy of 2026-09-23 in `.claude-state/map/liberty.json`), cut down to what the India boundary rules touch and

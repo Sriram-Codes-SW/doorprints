@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 /* Hindi, under review (owner rule for hi, ta and te). The English texts (en.lproj) in the words of values-hi/strings.xml. */
 "NSLocationWhenInUseUsageDescription" = "Doorprints आपकी जगह का इस्तेमाल सहेजे गए मकानों की जगह दर्ज करने और आपकी जगह से दौरों की योजना बनाने के लिए करता है।";
 "NSLocalNetworkUsageDescription" = "जब आपका अपना Doorprints सर्वर आपके लोकल नेटवर्क पर हो, तो Doorprints उससे जुड़ता है।";
