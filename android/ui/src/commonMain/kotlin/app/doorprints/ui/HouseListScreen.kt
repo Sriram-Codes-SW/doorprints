@@ -449,7 +449,7 @@ fun HouseListScreen(
                         body = stringResource(Res.string.houses_empty_ios),
                         horizontalPadding = 0.dp,
                         action = {
-                            Button(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Button(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {
                                 ButtonLabel(stringResource(Res.string.houses_open_settings))
                             }
                         },

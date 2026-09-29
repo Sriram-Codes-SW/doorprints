@@ -539,5 +539,5 @@
     <string name="settings_language_phone">Doorprints మీ iPhone భాషనే ఉపయోగిస్తుంది. Doorprints కోసం మాత్రమే వేరే భాష కావాలంటే, సెట్టింగ్‌ల యాప్‌లో సాధారణం › భాష &amp; ప్రాంతంలో దాన్ని జోడించి, ఆపై అదే యాప్‌లోని Doorprints పేజీలో దాన్ని ఎంచుకోండి.</string>
     <string name="settings_language_open_settings">iPhone సెట్టింగ్‌లు తెరవండి</string>
     <string name="settings_privacy_note_ios">మీ ఇళ్లు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి.</string>
-    <string name="houses_empty_ios">ఇంకా ఇళ్లు లేవు. iPhoneలో ఇప్పుడే ఇళ్లు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ ఇళ్లు ఇక్కడ కనిపిస్తాయి.</string>
+    <string name="houses_empty_ios">ఇంకా ఇళ్లు లేవు. iPhoneలో ఇంకా ఇళ్లు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ ఇళ్లు ఇక్కడ కనిపిస్తాయి.</string>
 </resources>

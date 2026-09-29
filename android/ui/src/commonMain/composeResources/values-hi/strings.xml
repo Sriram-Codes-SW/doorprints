@@ -539,5 +539,5 @@
     <string name="settings_language_phone">Doorprints आपके iPhone की भाषा इस्तेमाल करता है। सिर्फ़ Doorprints के लिए कोई दूसरी भाषा चाहिए, तो सेटिंग्स ऐप में सामान्य › भाषा और क्षेत्र में उसे जोड़ें, फिर सेटिंग्स ऐप के Doorprints पेज पर उसे चुनें।</string>
     <string name="settings_language_open_settings">iPhone सेटिंग्स खोलें</string>
     <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं।</string>
-    <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, आपके मकान यहाँ दिखने लगेंगे।</string>
+    <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।</string>
 </resources>
