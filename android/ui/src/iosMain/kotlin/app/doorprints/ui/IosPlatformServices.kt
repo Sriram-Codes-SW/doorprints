@@ -47,8 +47,8 @@ class IosPlatformServices : PlatformServices {
         NSURL.URLWithString(UIApplicationOpenSettingsURLString)?.let(::open)
     }
 
-    /** No notifications on iOS yet (Hunt mode, their only sender, is hidden by [PlatformFeatures.Ios]): never asked. */
-    override fun canPostNotifications(): Boolean = false
+    /** Whether Hunt mode's alerts may be posted ([IosNotifications]; asked in context when Hunt mode is turned on). */
+    override fun canPostNotifications(): Boolean = IosNotifications.canPost()
 
     /** iOS shows "Call …?" before it dials; digits and `+` only, so the number cannot carry another URL part. */
     override fun dial(number: String) {

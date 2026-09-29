@@ -19,14 +19,19 @@
 package app.doorprints.ui
 
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import app.doorprints.data.HouseEntity
 import app.doorprints.data.KeychainSecretStore
+import app.doorprints.location.HuntState
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.app_name
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlin.time.Clock
 import org.jetbrains.compose.resources.getString
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSUUID
@@ -40,7 +45,9 @@ import kotlin.native.Platform
  * the argument: a release build, or a normal launch, never runs it.
  *
  * Since CMP-8c also the map: `indiaView` (the style the map is given keeps India's boundary rules) and `map` (the map on
- * screen loaded all of it), the in-app boundary check that makes the iOS map's India view a CI gate.
+ * screen loaded all of it), the in-app boundary check that makes the iOS map's India view a CI gate. Since S4b-BL-69
+ * also `hunt`: with the simulator's location set next to a house saved for the check (ios/ci/launch-smoke.sh), Hunt
+ * mode starts and the engine reports that house as the nearest; SKIP without the location permission.
  *
  * Each check prints exactly one line, `DOORPRINTS-SELFCHECK <name> PASS`, `… FAIL <short reason>` or
  * `… SKIP <reason>`, then `DOORPRINTS-SELFCHECK done PASS` (every check passed or was skipped) or `done FAIL`. The
@@ -64,6 +71,16 @@ private const val MAP_TIMEOUT_MS = 90_000L
 
 /** The style's download: two tries of up to 20 s each (IosMapStyle), then the cached copy. */
 private const val INDIA_VIEW_TIMEOUT_MS = 60_000L
+
+/** How long Hunt mode may take to get its first fix from the simulator and name the check's house. */
+private const val HUNT_TIMEOUT_MS = 60_000L
+
+/**
+ * Where the check's house is; the launch smoke sets the simulator's location about 15 m away (12.9701, 77.6401),
+ * within the default alert radius and well within the 150 m the Hunt card names the nearest house from.
+ */
+private const val HUNT_HOUSE_LAT = 12.9700
+private const val HUNT_HOUSE_LON = 77.6400
 
 /** A separate Keychain service, so the check never touches the app's API key item (`app.doorprints`). */
 private const val SELF_CHECK_SERVICE = "app.doorprints.selfcheck"
@@ -122,6 +139,8 @@ private suspend fun runSelfCheck() {
         // boundary as the Government of India shows it (IndiaViewCheck), and the map on screen loaded all of it.
         check("indiaView", INDIA_VIEW_TIMEOUT_MS) { indiaViewCheck() },
         check("map", MAP_TIMEOUT_MS) { mapCheck() },
+        // Hunt mode on iPhone (S4b-BL-69): the adapter around the common engine gets a fix and finds the house.
+        check("hunt", HUNT_TIMEOUT_MS) { huntCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
 }
@@ -189,6 +208,36 @@ private suspend fun indiaViewCheck(): Result {
 private suspend fun mapCheck(): Result {
     val problems = IosMapStyle.loadedProblems.filterNotNull().first()
     return if (problems.isEmpty()) Result.Pass else Result.Fail(problems.take(3).joinToString("; "))
+}
+
+/**
+ * Saves a house at [HUNT_HOUSE_LAT], [HUNT_HOUSE_LON], starts Hunt mode ([IosHunt]) and waits until the engine names
+ * it as the nearest house from a fix; then stops Hunt mode and deletes the house. SKIP when the app has no location
+ * permission (the smoke grants it with `simctl privacy`); FAIL when the start is refused or no fix names the house in
+ * time. Alerts need the notification permission, which the simulator cannot grant, so iOS drops them; the engine's
+ * state is what is checked.
+ */
+private suspend fun huntCheck(): Result {
+    if (iosLocationAccess() == LocationAccess.NONE) return Result.Skip("location not authorized")
+    val repo = IosAppContainer.repository
+    val now = Clock.System.now().toEpochMilliseconds()
+    val house = HouseEntity(
+        id = NSUUID().UUIDString.lowercase(), label = "Self-check house", lat = HUNT_HOUSE_LAT, lon = HUNT_HOUSE_LON,
+        createdAt = now, updatedAt = now,
+    )
+    repo.saveHouse(house)
+    try {
+        val started = withContext(Dispatchers.Main) { IosHunt.start() }
+        if (!started) return Result.Fail("Hunt mode did not start")
+        try {
+            HuntState.state.first { it.nearestHouse?.id == house.id }
+        } finally {
+            withContext(Dispatchers.Main) { IosHunt.stop() }
+        }
+    } finally {
+        repo.deleteHouse(house.id)
+    }
+    return Result.Pass
 }
 
 /** The Keychain status in a [KeychainSecretStore] error ("… (status -34018)"), or null. */

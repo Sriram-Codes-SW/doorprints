@@ -16,11 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-/* The location purpose string iOS shows when Doorprints first asks for location (CMP-8b). It names only what the
-   iOS app has from the start (placing a saved house, planning visits from here; Hunt mode is hidden on iOS at first,
-   docs/10 §13.11), in the words of the app's own strings (android/ui composeResources: house_use_location,
-   ai_plan_location_off). Keep Info.plist's English value the same. */
-"NSLocationWhenInUseUsageDescription" = "Doorprints uses your location to place the houses you save and to plan visits from where you are.";
+/* The location purpose string iOS shows when Doorprints first asks for location (CMP-8b; Hunt mode since S4b-BL-69):
+   placing a saved house, planning visits from here and, with Hunt mode on, the alert when you pass a saved house, in
+   the words of the app's own strings (android/ui composeResources: house_use_location, ai_plan_location_off,
+   map_hunt_notify_rationale). Keep Info.plist's English value the same. */
+"NSLocationWhenInUseUsageDescription" = "Doorprints uses your location to place the houses you save, to plan visits from where you are and, while Hunt mode is on, to tell you when you pass a house you have saved.";
 
 /* Shown when Doorprints first reaches a server on the local network (a LAN IP address or a .local name, CMP-8b).
    Keep Info.plist's English value the same. */

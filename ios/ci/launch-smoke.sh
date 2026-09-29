@@ -65,6 +65,7 @@ echo "Simulator: $(xcrun simctl list devices available | grep "$udid" | sed 's/^
 
 # shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
+  xcrun simctl location "$udid" clear 2>/dev/null || true
   xcrun simctl shutdown "$udid" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -83,6 +84,12 @@ fi
 # steps write them with NSLog: a `log stream` started before the launch, so nothing is missed, and a `log show` at
 # the end as a second source. (The first CI launches crashed with SIGSEGV inside NSLog, a Kotlin String passed as a
 # variadic argument, fixed in the app's IosLog.kt; launching detached also lets ReportCrash's report be found.)
+# Hunt mode's self-check (S4b-BL-69): the location permission, which the prompt would otherwise ask for, and a
+# simulated location about 15 m from the house the check saves (SelfCheck.kt, HUNT_HOUSE_LAT/LON). If the grant fails
+# the check SKIPs and the gate below fails with its line.
+xcrun simctl privacy "$udid" grant location "$bundle_id" || echo "::warning::simctl could not grant location to $bundle_id"
+xcrun simctl location "$udid" set 12.9701,77.6401 || echo "::warning::simctl could not set the simulated location"
+
 stream_pid=""
 # shellcheck disable=SC2329  # called by the EXIT trap
 stop_stream() {
@@ -188,10 +195,10 @@ for report in "$out"/*.ips; do
 done
 
 if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
-  # The boundary gate: both map checks must have passed, not merely not failed.
-  for gate in indiaView map; do
+  # The gates: both map checks (India's boundary) and the Hunt mode check must have passed, not merely not failed.
+  for gate in indiaView map hunt; do
     if ! echo "$lines" | grep -q "DOORPRINTS-SELFCHECK $gate PASS"; then
-      echo "::error::the self-check passed without '$gate PASS' (the iOS map's boundary gate)"
+      echo "::error::the self-check passed without '$gate PASS' (the iOS map's boundary gate, or Hunt mode's)"
       exit 1
     fi
   done

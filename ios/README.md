@@ -42,13 +42,24 @@ languages) into the app as `compose-resources/`. It takes JDK 21 from `JAVA_HOME
 
 **Self-check.** A Debug build started with the argument `-DoorprintsSelfCheck` (in Xcode: Edit Scheme, Run,
 Arguments) prints `DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...` for resources, database, settings, keychain, `indiaView`
-and `map` (CMP-8c: the map's style keeps India's boundary rules, and the map on screen loaded all of it), and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`, to the console and to the unified log (`NSLog`).
+and `map` (CMP-8c: the map's style keeps India's boundary rules, and the map on screen loaded all of it) and `hunt`
+(S4b-BL-69: with the location permission and a simulated location next to a house the check saves, Hunt mode starts
+and names that house), and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`, to the console and to the unified
+log (`NSLog`).
 
 ## What iOS does not have yet
 
-Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): Hunt mode (the Map shows no Hunt
-card, only the location note), the camera and gallery, *Save a copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
+Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the camera and gallery, *Save a
+copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
+
+## Hunt mode (S4b-BL-69)
+
+`IosHunt.kt` (android/ui's iosMain) is the iPhone's adapter around the common `HuntEngine`: `CLLocationManager` with
+background updates under the *When in use* permission (`UIBackgroundModes` `location` in `Info.plist`; the blue
+indicator shows while it runs; *Always* is never asked for), the alerts as local notifications (`IosNotifications.kt`;
+the Swift app sets the notification delegate in its `init`, `MainViewControllerKt.installNotifications()`), street
+names and the new house's address from Apple's `CLGeocoder`, the battery from `UIDevice`. `docs/10` §13.14.
 
 ## The map (CMP-8c)
 
@@ -63,7 +74,9 @@ boundary files are Android's own (`android/app/src/main/assets/geo`), bundled as
 Job `ios-app` in `.github/workflows/shared-ios.yml` (macOS runner, free for public repositories): installs XcodeGen
 from its pinned release zip, generates the project, checks the plists, builds the Debug app for the arm64 simulator
 ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`; owner-approved, no identity or Apple account), checks
-that the app holds `compose-resources`, the 120 Hz key, both purpose strings and a valid signature, and runs
-`ci/launch-smoke.sh`: it installs the app on an iPhone simulator, launches it with `-DoorprintsSelfCheck`, passes only
-on `DOORPRINTS-SELFCHECK done PASS` (read from the console, or from the simulator's unified log when the console has
-no `done` line) and saves a screenshot. The screenshot and the logs are uploaded as the `ios-app-launch` artifact.
+that the app holds `compose-resources`, the 120 Hz key, both purpose strings, the location background mode and a
+valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
+sets a simulated location next to the self-check's house (`simctl privacy`, `simctl location`), launches it with
+`-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `indiaView`, `map` and `hunt` lines
+(read from the console, or from the simulator's unified log when the console has no `done` line) and saves a
+screenshot. The screenshot and the logs are uploaded as the `ios-app-launch` artifact.

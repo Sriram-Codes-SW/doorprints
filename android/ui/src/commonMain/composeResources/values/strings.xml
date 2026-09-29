@@ -564,7 +564,7 @@
     <string name="map_not_on_this_phone">The map isn’t on iPhone yet. All your houses are in the ‘Houses’ tab.</string>
     <string name="settings_language_phone">Doorprints uses your iPhone’s language. To use another language just for Doorprints, add it under General › Language &amp; Region in the Settings app, then choose it on the Doorprints page there.</string>
     <string name="settings_language_open_settings">Open iPhone Settings</string>
-    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap.</string>
+    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap, and street names from Apple’s geocoder.</string>
     <string name="houses_empty_ios">No houses yet. You can’t add houses on iPhone yet. If you have a Doorprints server, connect it in Settings and your houses will show up here.</string>
     <!-- The Map's location note where Hunt mode is not on the platform (iOS, CMP-8c): it names only what is on the screen. -->
     <string name="map_location_off_no_hunt">Location is off for Doorprints. ‘Save house here’ needs it.</string>
@@ -636,4 +636,17 @@
     <string name="settings_path_trace_hint">While hunt mode is on, keep where you walked and draw it on the map, so you can see which streets you have covered. Stays on this phone only: never in a backup, a copy or on the server, and gone after 30 days.</string>
     <string name="settings_path_trace_clear">Clear the path</string>
     <string name="settings_path_trace_cleared">The path is cleared.</string>
+    <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): the alerts' wording as Compose resources, the same text as the
+         Android services' strings of the same name (StringParityTest keeps them equal); hunt_battery_text says
+         "percent" because Compose resources show a bare % as written. -->
+    <string name="notif_seen_house">You have seen this one: %1$s</string>
+    <string name="notif_distance">%1$s · %2$d m away</string>
+    <string name="notif_visited_before">Visited before</string>
+    <string name="notif_street_title">You have been on %1$s before</string>
+    <string name="notif_street_text">Saved houses: %1$d, visits: %2$d</string>
+    <string name="notif_street_text_since">Saved houses: %1$d, visits: %2$d, first on %3$s</string>
+    <string name="notif_stay_title">Are you at a house?</string>
+    <string name="notif_stay_text">You have been here a few minutes. Tap to save it with notes and photos.</string>
+    <string name="notif_battery_title">Hunt mode stopped</string>
+    <string name="hunt_battery_text">Battery is low (%1$d percent). Turn hunt mode on again when charging.</string>
 </resources>

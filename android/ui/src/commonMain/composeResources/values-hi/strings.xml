@@ -563,7 +563,7 @@
     <string name="map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी मकान ‘मकान’ टैब में हैं।</string>
     <string name="settings_language_phone">Doorprints आपके iPhone की भाषा इस्तेमाल करता है। सिर्फ़ Doorprints के लिए कोई दूसरी भाषा चाहिए, तो सेटिंग्स ऐप में सामान्य › भाषा और क्षेत्र में उसे जोड़ें, फिर सेटिंग्स ऐप के Doorprints पेज पर उसे चुनें।</string>
     <string name="settings_language_open_settings">iPhone सेटिंग्स खोलें</string>
-    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं।</string>
+    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम Apple के जियोकोडर से।</string>
     <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।</string>
     <string name="map_location_off_no_hunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
     <string name="map_needs_precise_no_hunt">‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।</string>
@@ -634,4 +634,15 @@
     <string name="settings_path_trace_hint">हंट मोड चालू रहते आप जहाँ चले, उसे रखें और नक़्शे पर बनाएँ, ताकि दिखे कि कौन-सी गलियाँ हो चुकीं। सिर्फ़ इसी फ़ोन पर रहता है: न बैकअप में, न कॉपी में, न सर्वर पर; 30 दिन बाद मिट जाता है।</string>
     <string name="settings_path_trace_clear">रास्ता मिटाएँ</string>
     <string name="settings_path_trace_cleared">रास्ता मिटा दिया गया।</string>
+    <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
+    <string name="notif_seen_house">यह मकान आप देख चुके हैं: %1$s</string>
+    <string name="notif_distance">%1$s · %2$d मी दूर</string>
+    <string name="notif_visited_before">पहले देखा गया</string>
+    <string name="notif_street_title">आप %1$s पर पहले आ चुके हैं</string>
+    <string name="notif_street_text">सहेजे मकान: %1$d, दौरे: %2$d</string>
+    <string name="notif_street_text_since">सहेजे मकान: %1$d, दौरे: %2$d, पहली बार %3$s</string>
+    <string name="notif_stay_title">क्या आप किसी मकान पर हैं?</string>
+    <string name="notif_stay_text">आप कुछ मिनट से यहाँ हैं। नोट और तस्वीरों के साथ सहेजने के लिए दबाएँ।</string>
+    <string name="notif_battery_title">हंट मोड बंद हुआ</string>
+    <string name="hunt_battery_text">बैटरी कम है (%1$d प्रतिशत)। चार्ज करते समय हंट मोड फिर चालू करें।</string>
 </resources>

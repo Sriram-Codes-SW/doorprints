@@ -46,9 +46,9 @@ class PlatformFeaturesTest {
     fun iosHidesTheFeaturesItDoesNotHaveYet() {
         assertEquals(
             PlatformFeatures(
-                // The map came in CMP-8c.
+                // The map came in CMP-8c, Hunt mode in S4b-BL-69.
                 map = true,
-                huntMode = false,
+                huntMode = true,
                 addPhotos = false,
                 copiesAndImports = false,
                 weeklyBackup = false,

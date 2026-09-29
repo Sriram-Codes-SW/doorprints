@@ -563,7 +563,7 @@
     <string name="map_not_on_this_phone">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ ఇళ్లన్నీ ‘ఇళ్లు’ ట్యాబ్‌లో ఉన్నాయి.</string>
     <string name="settings_language_phone">Doorprints మీ iPhone భాషనే ఉపయోగిస్తుంది. Doorprints కోసం మాత్రమే వేరే భాష కావాలంటే, సెట్టింగ్‌ల యాప్‌లో సాధారణం › భాష &amp; ప్రాంతంలో దాన్ని జోడించి, ఆపై అదే యాప్‌లోని Doorprints పేజీలో దాన్ని ఎంచుకోండి.</string>
     <string name="settings_language_open_settings">iPhone సెట్టింగ్‌లు తెరవండి</string>
-    <string name="settings_privacy_note_ios">మీ ఇళ్లు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి వస్తాయి.</string>
+    <string name="settings_privacy_note_ios">మీ ఇళ్లు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు Apple జియోకోడర్ నుండి వస్తాయి.</string>
     <string name="houses_empty_ios">ఇంకా ఇళ్లు లేవు. iPhoneలో ఇంకా ఇళ్లు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ ఇళ్లు ఇక్కడ కనిపిస్తాయి.</string>
     <string name="map_location_off_no_hunt">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం.</string>
     <string name="map_needs_precise_no_hunt">‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
@@ -634,4 +634,15 @@
     <string name="settings_path_trace_hint">హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు మీరు నడిచిన చోట్లను ఉంచి మ్యాప్‌లో గీస్తుంది; ఏ వీధులు చూశారో తెలుస్తుంది. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది: బ్యాకప్‌లో, కాపీలో, సర్వర్‌లో ఉండదు; 30 రోజుల తర్వాత పోతుంది.</string>
     <string name="settings_path_trace_clear">దారిని తొలగించు</string>
     <string name="settings_path_trace_cleared">దారి తొలగించబడింది.</string>
+    <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
+    <string name="notif_seen_house">దీన్ని మీరు ఇప్పటికే చూశారు: %1$s</string>
+    <string name="notif_distance">%1$s · %2$d మీ దూరంలో</string>
+    <string name="notif_visited_before">ఇంతకు ముందు చూసింది</string>
+    <string name="notif_street_title">మీరు ఇంతకు ముందు %1$sలో ఉన్నారు</string>
+    <string name="notif_street_text">సేవ్ చేసిన ఇళ్లు: %1$d, సందర్శనలు: %2$d</string>
+    <string name="notif_street_text_since">సేవ్ చేసిన ఇళ్లు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s</string>
+    <string name="notif_stay_title">మీరు ఏదైనా ఇంటి దగ్గర ఉన్నారా?</string>
+    <string name="notif_stay_text">మీరు కొన్ని నిమిషాలుగా ఇక్కడ ఉన్నారు. గమనికలు, ఫోటోలతో సేవ్ చేయడానికి నొక్కండి.</string>
+    <string name="notif_battery_title">హంట్ మోడ్ ఆగింది</string>
+    <string name="hunt_battery_text">బ్యాటరీ తక్కువగా ఉంది (%1$d శాతం). ఛార్జ్ చేస్తున్నప్పుడు హంట్ మోడ్ మళ్లీ ఆన్ చేయండి.</string>
 </resources>

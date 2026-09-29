@@ -25,8 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 
 // The iOS prompts (CMP-8b). Location: Core Location's "Allow Doorprints to use your location?" ([LocationPrompt]).
-// Notifications: none on iOS yet (Hunt mode, their only sender, is hidden by PlatformFeatures.Ios), so the action
-// goes ahead as after a refusal.
+// Notifications (S4b-BL-69): "Doorprints would like to send you notifications" ([IosNotifications.request]) while iOS
+// will still show it; afterwards the action goes ahead at once, as after an answer.
 
 @Composable
 actual fun rememberLocationPermissionRequest(onResult: () -> Unit): () -> Unit {
@@ -40,5 +40,5 @@ actual fun rememberLocationPermissionRequest(onResult: () -> Unit): () -> Unit {
 @Composable
 actual fun rememberNotificationPermissionRequest(onResult: () -> Unit): () -> Unit {
     val latest by rememberUpdatedState(onResult)
-    return remember { { latest() } }
+    return remember { { if (IosNotifications.canAsk()) IosNotifications.request { latest() } else latest() } }
 }
