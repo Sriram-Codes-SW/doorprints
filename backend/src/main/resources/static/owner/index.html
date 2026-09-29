@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Doorprints owner page</title>
+  <link rel="stylesheet" href="/owner/owner.css">
+  <script src="/owner/owner.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <h1 data-t="title">Doorprints owner page</h1>
+    <label class="lang"><span data-t="language">Language</span>
+      <select id="lang">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="ta">தமிழ்</option>
+        <option value="te">తెలుగు</option>
+      </select>
+    </label>
+  </header>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <main id="signed-out" hidden>
+    <section class="card">
+      <h2 data-t="signInHeading">Sign in</h2>
+      <p data-t="signInBody">Open the one-time link your server wrote to its log when it started. It works once, for one hour.</p>
+      <p class="muted" data-t="signInHow">With Docker: run docker compose logs api and look for "Doorprints owner page". Restart the server for a new link.</p>
+    </section>
+  </main>
+
+  <main id="signed-in" hidden>
+    <section class="card" aria-labelledby="connect-heading">
+      <h2 id="connect-heading" data-t="connectHeading">Connect a device</h2>
+      <p data-t="connectBody">On the device, choose Connect to a server. Type the code it shows here.</p>
+      <form id="code-form" class="row">
+        <label for="code" data-t="codeLabel">Code on the device</label>
+        <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="K7MQ-4XRD" required>
+        <button type="submit" data-t="find">Find</button>
+      </form>
+      <div id="found" hidden>
+        <p><span data-t="deviceAsking">Device asking to connect:</span> <strong id="found-name"></strong></p>
+        <p class="muted" data-t="checkName">Approve only if this is the device in front of you.</p>
+        <div class="row">
+          <button id="approve" class="primary" data-t="approve">Approve</button>
+          <button id="deny" data-t="deny">Deny</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="qr-heading">
+      <h2 id="qr-heading" data-t="qrHeading">Add a device with a QR code</h2>
+      <p data-t="qrBody">Scan it with the phone's camera: the Doorprints app opens and connects. It works once, within 10 minutes, so show it only to your own device.</p>
+      <button id="make-qr" data-t="makeQr">Make a QR code</button>
+      <div id="invite" hidden>
+        <img id="qr" alt="" width="240" height="240">
+        <p><span data-t="validUntil">Valid until</span> <span id="invite-expiry"></span></p>
+        <p><a id="web-link" target="_blank" rel="noopener noreferrer" data-t="openWeb">Open the website connected to this server</a></p>
+        <button id="copy-web" data-t="copyWeb">Copy the website link</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="devices-heading">
+      <h2 id="devices-heading" data-t="devicesHeading">Devices</h2>
+      <p class="muted" data-t="devicesBody">Each device has its own key. AI requests use your Gemini key, so AI is off for a new device until you turn it on here.</p>
+      <p id="no-devices" data-t="noDevices" hidden>No devices yet.</p>
+      <ul id="devices" class="list"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="browsers-heading">
+      <h2 id="browsers-heading" data-t="browsersHeading">Browsers signed in to this page</h2>
+      <ul id="sessions" class="list"></ul>
+      <div class="row">
+        <button id="add-browser" data-t="addBrowser">Add another browser</button>
+        <button id="others-out" data-t="othersOut">Sign out everywhere else</button>
+        <button id="sign-out" data-t="signOut">Sign out</button>
+      </div>
+      <div id="browser-link" hidden>
+        <p data-t="browserLinkBody">Open this link once, within one hour, in the other browser:</p>
+        <p><code id="browser-link-text"></code></p>
+        <button id="copy-browser-link" data-t="copyLink">Copy the link</button>
+      </div>
+    </section>
+  </main>
+  <footer class="muted"><span data-t="footer">Doorprints is free software under the GNU AGPL version 3, with no warranty.</span></footer>
+</body>
+</html>

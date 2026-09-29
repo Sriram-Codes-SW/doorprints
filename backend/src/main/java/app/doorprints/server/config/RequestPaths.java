@@ -78,7 +78,7 @@ public final class RequestPaths {
     }
 
     /** Shortened path with control and non-ASCII characters replaced, safe for one log line. */
-    static String forLog(String path) {
+    public static String forLog(String path) {
         var p = path == null ? "" : path;
         p = p.length() > 120 ? p.substring(0, 120) + "..." : p;
         return p.replaceAll("[^\\x20-\\x7e]", "?");

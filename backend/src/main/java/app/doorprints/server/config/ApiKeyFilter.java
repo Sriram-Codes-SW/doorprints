@@ -35,6 +35,10 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
+
+import app.doorprints.server.device.DeviceKeyStore;
 
 /**
  * Single-user protection, <b>deny by default</b> (threat model F-20): every request must carry the shared key in the
@@ -57,6 +61,8 @@ import java.util.List;
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-API-Key";
+    /** Set on a request made with a device key: its {@link DeviceKeyStore.Caller} (docs/03 §12.1). */
+    public static final String DEVICE_ATTRIBUTE = "doorprints.device";
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyFilter.class);
     /** Per-process salt so hashed client addresses in the logs can be correlated but not reversed by a table. */
@@ -68,6 +74,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     /** The current key and, during a rotation, the next one (SEC-017). Never empty. */
     private final List<byte[]> expected;
     private final TokenBucketRateLimiter failures;
+    /** Device keys (ADR-25): the device a presented value belongs to, if it is an active device key. */
+    private final Function<String, Optional<DeviceKeyStore.Caller>> devices;
 
     public ApiKeyFilter(String apiKey) {
         this(apiKey, null, new TokenBucketRateLimiter(10, 10));
@@ -86,7 +94,17 @@ public class ApiKeyFilter extends OncePerRequestFilter {
      * @throws IllegalStateException if a key is missing or shorter than {@link #MIN_KEY_LENGTH}
      */
     public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures) {
+        this(apiKey, nextKey, failures, key -> Optional.empty());
+    }
+
+    /**
+     * @param devices looks a presented value up among the device keys (docs/03 §12.1); the owner key is checked
+     *                first, in constant time, as before
+     */
+    public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures,
+                        Function<String, Optional<DeviceKeyStore.Caller>> devices) {
         validateKeys(apiKey, nextKey);
+        this.devices = devices;
         var keys = new ArrayList<byte[]>(2);
         keys.add(apiKey.getBytes(StandardCharsets.UTF_8));
         if (hasText(nextKey)) keys.add(nextKey.getBytes(StandardCharsets.UTF_8));
@@ -132,12 +150,19 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         return match;
     }
 
-    /** Public without a key. Everything else, including unknown paths, needs the key. */
+    /**
+     * Public without a key. Everything else, including unknown paths, needs the key. Pairing ({@code /api/pair/**}) is
+     * for devices that have no key yet, and the owner page ({@code /owner}, its two files and {@code /owner/api/**})
+     * has its own guard, {@code OwnerFilter}; both have their own rate limit (docs/03 §12.1).
+     */
     static boolean isPublic(HttpServletRequest request, String path) {
         if (RequestPaths.isPreflight(request)) return true;
         var method = request.getMethod();
         boolean read = "GET".equals(method) || "HEAD".equals(method);
-        return read && RequestPaths.isUnder(path, "/actuator/health");
+        if (read && RequestPaths.isUnder(path, "/actuator/health")) return true;
+        if ("POST".equals(method) && RequestPaths.isUnder(path, "/api/pair")) return true;
+        if (RequestPaths.isUnder(path, "/owner/api")) return true;
+        return read && (path.equals("/owner") || path.equals("/owner/owner.js") || path.equals("/owner/owner.css"));
     }
 
     @Override
@@ -155,6 +180,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         }
         var given = presentedKey(request);
         if (given != null && matches(given)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        var device = given == null ? Optional.<DeviceKeyStore.Caller>empty() : devices.apply(given);
+        if (device.isPresent()) {
+            request.setAttribute(DEVICE_ATTRIBUTE, device.get());
             chain.doFilter(request, response);
             return;
         }
