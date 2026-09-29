@@ -23,6 +23,7 @@
 | v0.19   | 2026-09-22 | Claude (Cowork) – AI team     | 8: golden set reference corrected to v0.5 (was v0.4). 8.1: `EvalScorerTest` golden-set consistency treats an empty or missing id list as "no constraint" and skips it; the `feb0294` Backend run (35755840287) failed because `ask-01` has no `mustNotCite` and AssertJ `doesNotContainAnyElementsOf` throws on an empty list (test-only fix; golden set and thresholds unchanged). |
 | v0.20   | 2026-09-24 | Claude (Code), engineer       | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](../03-design.md) ADR-24): backend package `app.doorprints.server.ai` (was `com.househunt.ai`) and the code paths that name it; the MCP tool `askHouseHunt` is now **`askDoorprints`** (12: saved client permissions or prompts that name it are updated by hand); the compose volume is `doorprints-pgdata18`. No behaviour, prompt or eval change. |
 | v0.21   | 2026-09-29 | Claude (Code), lead           | 8, 8.1: golden set **v0.6**, the prompt-injection set grown from 3 to 25 cases for the release security gate (TC-AI-04, S4b-SEC-1), two fixture houses with payloads in their notes (one with contact data, so contact redaction is now exercised end to end), and the guard keys `draftMustNotContain` and `summaryMustNotContain`. Thresholds unchanged. Not yet run against a model: the next manual AI evals run is the first on v0.6. |
+| v0.22   | 2026-09-29 | Claude (Code), lead           | 8: `ai-evals.yml` gains input `suites` and the job *On-device AI, real key*: one real Extract, Ask and Plan through the phones' and the website's own-key AI (ADR-26), with `AI_API_KEY` (docs/06 TC-U-88). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -664,7 +665,14 @@ Flow of one run:
    cases still run. A metric with nothing to measure (for example no plan cases because `AI_EVAL_TYPES=extract,ask`)
    shows `n/a` and does not fail on its own. Before v0.5 an all-`n/a` run printed "Result: PASS" with 0/0 cases.
 
-Run it: Actions → **AI evals** → Run workflow (inputs: provider, case types, delay, optional chat and embedding
+**On-device AI, real key** (job `on-device`, input `suites`, since v0.22): after the golden set (whatever its result,
+so the two never share the per-minute quota), `OnDeviceAiLiveTest` (Kotlin, `android/shared` androidHostTest, on the
+Android HTTP stack) and `on-device-ai.live.spec.ts` (web, Vitest with fetch) each make one real Extract, Ask and Plan
+call to Gemini with `AI_API_KEY` (whatever `provider` says) and read every request body as sent: no saved contact name
+or phone number leaves the device. Both skip themselves without `DOORPRINTS_LIVE_GEMINI_KEY`, so the Android and Web
+workflows never call Google; the job fails if either was skipped. Six requests per run.
+
+Run it: Actions → **AI evals** → Run workflow (inputs: suites, provider, case types, delay, optional chat and embedding
 model), or locally against an empty PostGIS + pgvector database, in `backend/`:
 `AI_API_KEY=… DB_URL=… mvn -Dtest=GoldenSetEvalTest -Dsurefire.failIfNoSpecifiedTests=false test`, or for Vertex
 after `gcloud auth application-default login`:

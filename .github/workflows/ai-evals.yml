@@ -66,6 +66,14 @@ name: AI evals
 on:
   workflow_dispatch:
     inputs:
+      suites:
+        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider)
+        type: choice
+        default: golden-set,on-device
+        options:
+          - golden-set,on-device
+          - golden-set
+          - on-device
       types:
         description: Case types to run
         type: choice
@@ -107,6 +115,7 @@ concurrency:
 jobs:
   eval:
     name: Golden-set eval (JDK 25, PostGIS 18 + pgvector, real model)
+    if: contains(inputs.suites, 'golden-set')
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     permissions:
@@ -275,3 +284,83 @@ jobs:
       - name: Database logs
         if: failure()
         run: docker logs db | tail -200
+
+  # On-device AI with the person's own key (docs/03 §13.1, ADR-26; docs/06 TC-U-88): the phones' OnDeviceAi (JVM test on
+  # the Android HTTP stack) and the website's OnDeviceAiService (Vitest, fetch) each make one real Extract, Ask and Plan
+  # call to Gemini with AI_API_KEY and check that no saved contact name or phone number is in what they send. Both tests
+  # skip themselves without DOORPRINTS_LIVE_GEMINI_KEY, so the normal Android and Web workflows never call Google. Runs
+  # after the golden set (whatever its result) so the two never share the per-minute quota. No id-token: this job
+  # needs only the key, which is passed to the test step alone.
+  on-device:
+    name: On-device AI, real key (phones and website)
+    needs: eval
+    if: always() && contains(inputs.suites, 'on-device')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check AI_API_KEY is set
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          if [ -z "$AI_API_KEY" ]; then
+            echo "::error::Repository secret AI_API_KEY is not set (Settings > Secrets and variables > Actions). The on-device tests need a Gemini Developer API key."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Caches Gradle and validates the wrapper JAR checksum (protects against a tampered gradle-wrapper.jar).
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+      - name: Phones (Kotlin OnDeviceAi, real Gemini)
+        working-directory: android
+        env:
+          DOORPRINTS_LIVE_GEMINI_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :shared:testAndroidHostTest --tests 'app.doorprints.shared.ai.OnDeviceAiLiveTest' --rerun -i \
+            | grep -E '^(Extract|Ask|Plan):|OnDeviceAiLiveTest' || true
+          report=shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.OnDeviceAiLiveTest.xml
+          test -f "$report" || { echo "::error::The phones' live test did not run"; exit 1; }
+          if grep -q '<skipped' "$report"; then echo "::error::The phones' live test was skipped (no key reached it)"; exit 1; fi
+          if grep -q '<failure' "$report"; then
+            grep -o 'message="[^"]*"' "$report" | head -3
+            echo "::error::The phones' live test failed (see the report artifact)"; exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Website (TypeScript OnDeviceAiService, real Gemini)
+        working-directory: web
+        env:
+          DOORPRINTS_LIVE_GEMINI_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          npm ci --no-audit --no-fund
+          status=0
+          npx ng test --watch=false --include src/app/core/ai/on-device-ai.live.spec.ts > live.log 2>&1 || status=$?
+          sed 's/\x1b\[[0-9;]*m//g' live.log > live.txt
+          grep -E '^(Extract|Ask|Plan):|Tests |Error' live.txt || true
+          if grep -q 'skipped' live.txt; then echo "::error::The website's live test was skipped (no key reached it)"; exit 1; fi
+          if [ "$status" -ne 0 ] || ! grep -qE 'Tests +1 passed' live.txt; then
+            echo "::error::The website's live test failed"; exit 1
+          fi
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: on-device-live-reports
+          path: android/shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.OnDeviceAiLiveTest.xml
+          if-no-files-found: ignore
+          retention-days: 7
