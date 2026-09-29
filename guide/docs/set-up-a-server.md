@@ -1,40 +1,45 @@
 # Set up your own server
 
-This page is for anyone who wants to sync or use the AI features and is not a programmer. It walks you through every
-step, from an empty computer to **Ask** and **Plan** working on your phone. It takes about an hour, most of it
-waiting for downloads. Everything on this page is free.
+This page is for you if you want sync or the AI features and you are not a programmer. It takes you through every
+step, from an empty computer to **Ask** and **Plan** working on your phone. It takes about an hour. Most of that time
+is waiting for downloads. Everything on this page is free.
 
-You don't need a server to use Doorprints. It only adds three things:
+A **server** is a program that runs all the time on one computer and looks after your houses for your other devices.
+Think of it as a home post office that all your devices send to and collect from.
 
-- the same houses on your phone and in your browser (sync);
+You don't need a server to use Doorprints. A server only adds three things:
+
+- the same houses on your phone and in your browser. This is called sync: the apps keep in step with each other;
 - the AI features: **Ask**, **Plan**, the Android **Assistant** and **Fill in from listing text**;
 - an extra copy of your houses on a computer you own.
 
 ## Two different keys
 
-People mix these two up most often. They are not the same thing.
+People mix up these two keys more than anything else. They are not the same thing.
 
 | | **Doorprints API key** | **Gemini API key** |
 |---|---|---|
 | What it is | A long password that you make up for your server | A key from Google that lets your server use Google's AI |
-| Needed for | Syncing, and the AI features | Only the AI features |
+| Needed for | Sync, and the AI features | Only the AI features |
 | Needed at the start? | **Yes.** The server won't start without it. | **No.** Add it later, whenever you want AI. |
-| Where you get it | You create it yourself in [step 3](#step-3-make-your-doorprints-api-key) | From Google AI Studio, in [step 4](#step-4-optional-get-a-free-gemini-key-for-ai) |
+| Where you get it | You make it yourself in [step 3](#step-3-make-your-doorprints-api-key) | From Google AI Studio, in [step 4](#step-4-optional-get-a-free-gemini-key-for-ai) |
 | Where you type it | In the server's settings file **and** in each app (**Connect** or **Settings**) | **Only** in the server's settings file. The apps never ask for it. |
 
 !!! tip "Keep both keys secret"
     Anyone with your Doorprints API key and your server's address can read and change your houses. Anyone with your
-    Gemini key can use up your AI allowance. Keep them in a password manager, not in a chat or an email.
+    Gemini key can use up your AI allowance. Keep both keys in a password manager. Don't put them in a chat or an
+    email.
 
 ## What you need
 
-- **A computer that stays on:** a Windows 10 or 11 PC, or a Mac. It is your server, so it has to be on and awake
-  whenever you want to sync or use AI. When it is off, the apps keep working as normal and sync the next time they can
-  reach it.
-- **At least 8 GB of memory (RAM), about 10 GB of free disk space**, and a Wi-Fi connection for the first download.
-- **No sleeping:** set the computer not to go to sleep by itself. On Windows: **Settings → System → Power** (**Power &
-  sleep** on Windows 10), then set **Sleep** to **Never** when plugged in. On a Mac: **System Settings → Battery** (or
-  **Energy**) **→ Options**, then turn on **Prevent automatic sleeping**.
+- **A computer that stays on:** a Windows 10 or 11 PC, or a Mac. This computer is your server. It must be on and
+  awake whenever you want to sync or use AI. When it is off, the apps still work as normal. They sync the next time
+  they can reach it.
+- **At least 8 GB of memory (RAM) and about 10 GB of free disk space.** You also need Wi-Fi for the first download.
+- **No sleeping:** stop the computer from going to sleep by itself.
+    - Windows: open **Settings → System → Power** (**Power & sleep** on Windows 10). Set **Sleep** to **Never** when
+      plugged in.
+    - Mac: open **System Settings → Battery** (or **Energy**) **→ Options**. Turn on **Prevent automatic sleeping**.
 - **Free accounts:** Docker (for the server), Tailscale (so your phone can reach the server safely) and, for AI, a
   Google account.
 
@@ -43,64 +48,71 @@ People mix these two up most often. They are not the same thing.
 ![How it fits together: your phone and browser reach the Doorprints server on your computer through a private Tailscale https address with your Doorprints API key; only if AI is on, the server sends questions to Google Gemini with your Gemini key](images/server-setup-diagram.svg)
 
 1. **Docker** runs the Doorprints server on your computer.
-2. **Tailscale** gives the server a private `https://` address that only your own devices can open. (The address's
-   name is not secret, but nobody else can open it.)
+2. **Tailscale** gives the server a private `https://` address. Only your own devices can open it. (Other people may
+   see the address's name, but they cannot open it.)
 3. The Doorprints apps on your phone and in your browser use that address and your Doorprints API key.
-4. If you turn on AI, the server (never the apps) sends your questions to Google's Gemini with your Gemini key.
+4. If you turn on AI, the server sends your questions to Google's Gemini, with your Gemini key. The apps never talk to
+   Gemini themselves.
 
 ## A few words you'll meet
 
+- **Docker:** a free program that runs the Doorprints server for you. It is like a box that holds everything the
+  server needs, so you don't install each part yourself.
+- **Tailscale:** a free app that joins your own devices into a private network. It is like a private road between
+  your phone and your computer that nobody else can use.
 - **Terminal:** a window where you type commands instead of clicking. Step 2 shows how to open one.
-- **API key:** a long password that an app sends to a server to prove it is allowed in.
-- **HTTPS:** the secure kind of web address, starting with `https://`, the one with the padlock in a browser.
+- **API key:** a long password. The apps show it to your server to prove they are allowed in.
+- **Address:** where to find your server, like a website address (for example `https://…`).
+- **HTTPS:** the safe kind of web address. It starts with `https://` and shows a padlock in a browser.
 
 ## Step 1: Install Docker Desktop
 
-1. Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) and download Docker
+1. Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/). Download Docker
    Desktop for your computer. It is free for personal use.
-2. Install it and open it. On Windows the installer may ask to restart the computer, or to install "WSL": say yes. If
-   it says virtualisation is turned off, the computer's maker's help pages show how to turn it on (it is a setting in
-   the BIOS); this is the one step you may want a friend's help with.
-3. Wait until Docker Desktop says **Engine running** (bottom left). You can skip signing in.
+2. Install it, then open it.
+3. On Windows, the installer may ask to restart the computer, or to install "WSL". Say yes.
+4. It may say virtualisation is turned off. This is a setting in the BIOS, the computer's built-in setup screen. Your
+   computer maker's help pages show how to turn it on. You may want a friend's help with this one step.
+5. Wait until Docker Desktop says **Engine running** (bottom left). You don't need to sign in.
 
 ## Step 2: Download Doorprints
 
-1. Open [the Doorprints code page](https://github.com/Sriram-Codes-SW/doorprints), choose the green **Code** button,
+1. Open [the Doorprints code page](https://github.com/Sriram-Codes-SW/doorprints). Choose the green **Code** button,
    then **Download ZIP**.
-2. Unzip it into your **Documents** folder. You now have a folder called **doorprints-main**. Open it: if you see
-   another **doorprints-main** folder inside, open that one too. The right folder is the one that contains a file
-   called **docker-compose.yml**. In the rest of this page, **doorprints-main** means that folder.
-3. Open a terminal in that folder:
-    - **Windows:** open **doorprints-main** in File Explorer, right-click an empty space in the folder and choose
+2. Unzip it into your **Documents** folder. You now have a folder called **doorprints-main**.
+3. Open that folder. If you see another **doorprints-main** folder inside, open that one too. The right folder has a
+   file called **docker-compose.yml** in it. On the rest of this page, **doorprints-main** means that folder.
+4. Open a terminal in that folder:
+    - **Windows:** open **doorprints-main** in File Explorer. Right-click an empty space in the folder and choose
       **Open in Terminal**. (On Windows 10: hold **Shift** while you right-click, then choose
       **Open PowerShell window here**.)
     - **Mac:** in Finder, right-click the **doorprints-main** folder and choose **New Terminal at Folder**. (If you
       don't see it, turn it on in **System Settings → Keyboard → Keyboard Shortcuts → Services → Files and Folders**.)
 
-Keep this terminal window open for the next steps. You'll type (or paste) the commands shown below into it and press
-**Enter**.
+Keep this terminal window open for the next steps. You will type (or paste) the commands below into it. Press
+**Enter** after each one.
 
 !!! warning "Keep the folder name"
-    Your houses are stored under the folder's name. If you later rename or move **doorprints-main**, the server
-    starts with an empty list. (Your houses are not lost; move the folder back to see them again.)
+    The server stores your houses under the folder's name. If you later rename or move **doorprints-main**, the
+    server starts with an empty list. Your houses are not lost. Move the folder back to see them again.
 
 ## Step 3: Make your Doorprints API key
 
-Your key must be at least 32 characters long and hard to guess. Let the computer make one:
+Your key must be at least 32 characters long and hard to guess. Let the computer make one for you.
 
-- **Windows** (in the terminal from step 2):
+- **Windows** (in the terminal from step 2). This command makes a long random key:
 
     ```powershell
     [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
     ```
 
-- **Mac:**
+- **Mac.** This command makes a long random key:
 
     ```bash
     openssl rand -hex 32
     ```
 
-You get one long line of letters and numbers, like `3f9c…e71a`. Copy it into your password manager as
+You get one long line of letters and numbers, like `3f9c…e71a`. Copy it into your password manager. Name it
 **Doorprints API key**.
 
 ## Step 4 (optional): Get a free Gemini key for AI
@@ -108,55 +120,63 @@ You get one long line of letters and numbers, like `3f9c…e71a`. Copy it into y
 Skip this step if you only want sync. You can come back to it later.
 
 1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with a Google account.
-2. Accept Google's terms if asked, then choose **Create API key**.
-3. Copy the key into your password manager as **Gemini API key**.
+2. Accept Google's terms if it asks.
+3. Choose **Create API key**.
+4. Copy the key into your password manager. Name it **Gemini API key**.
 
-The free tier has a daily limit. When it runs out, AI answers fail until the next day, and everything else keeps
+The free tier has a daily limit. When you reach it, AI answers fail until the next day. Everything else keeps
 working.
 
 !!! warning "What the AI sees, and Google's free-tier terms"
-    Before anything goes to the AI, Doorprints removes each house's saved contact name and most phone numbers. Other
-    names you wrote in your notes, your questions, and the other details of your houses are still sent, and so is text
-    you paste into **Fill in from listing text**. For its free tier, Google says that people may read what is sent,
-    that it may be used to improve Google's products, and that you should not send personal information
-    ([Gemini API terms](https://ai.google.dev/gemini-api/terms)). If that worries you, use the paid tier (below), leave
-    AI off, or keep personal details out of your notes.
+    Before anything goes to the AI, Doorprints removes each house's saved contact name and most phone numbers. Some
+    things are still sent: other names in your notes, your questions, and the other details of your houses. Text you
+    paste into **Fill in from listing text** is sent too. For its free tier, Google says three things
+    ([Gemini API terms](https://ai.google.dev/gemini-api/terms)): people may read what you send; Google may use it to
+    improve its products; and you should not send personal information. If that worries you, use the paid tier
+    (below), leave AI off, or keep personal details out of your notes.
 
 ### The paid tier: a small cost, more privacy
 
-You can move the same key to Google's paid tier. It helps in two ways:
+You can move the same key to Google's paid tier. This helps in two ways:
 
 - **Privacy:** on the paid tier, Google says it does **not** use what you send to improve its products. This is the
   main reason to pay.
 - **No daily limit to run out of** in normal use.
 
-**What it costs.** You pay for what you use; there is no monthly fee. On Google's price list of September 2026, the
-model Doorprints uses (Gemini 3.5 Flash) costs US$1.50 for every million word-pieces ("tokens") sent and US$9 for
-every million received. One **Ask** question sends a few thousand tokens and gets a few hundred back, so it costs about
-**one US cent** (around a rupee). **Plan** makes several AI calls, so a plan costs a few cents. Keeping your houses
-searchable costs far less. A month of house-hunting with a hundred questions comes to roughly US$1 to US$2. Prices
-change; check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
+**What it costs.** You pay only for what you use. There is no monthly fee. The AI counts text in small pieces called
+"tokens" (a token is roughly part of a word). On Google's price list of September 2026, the model Doorprints uses
+(Gemini 3.5 Flash) costs US$1.50 for every million tokens sent and US$9 for every million received.
+
+- One **Ask** question sends a few thousand tokens and gets a few hundred back. It costs about **one US cent**
+  (around a rupee).
+- **Plan** asks the AI several times, so one plan costs a few cents.
+- Keeping your houses searchable costs far less.
+- A month of house-hunting with a hundred questions costs roughly US$1 to US$2.
+
+Prices change. Check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
 
 **How to switch:**
 
 1. Open [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Next to your project, in the
    **Billing Tier** column, choose **Set up billing**.
 2. Create or pick a Google Cloud billing account and add a payment card.
-3. Choose **Prepay** and add the minimum, US$5. With Prepay, and automatic top-up left off, you are never charged more than you put in.
-4. Optional but wise: on the **Spend** page, under **Monthly spend cap**, choose **Edit spend cap** and set a small
-   limit, for example US$2. (Google says the cap can take about ten minutes to take effect.)
+3. Choose **Prepay** and add the minimum, US$5. Prepay means you pay first. With automatic top-up left off, Google
+   never charges you more than you put in.
+4. Optional but wise: on the **Spend** page, under **Monthly spend cap**, choose **Edit spend cap**. Set a small
+   limit, for example US$2. (Google says the cap can take about ten minutes to start working.)
 
-Your Gemini key stays the same, so there is nothing to change on your server. Doorprints also limits AI use on its own:
-at most 10 AI requests a minute, and each answer is kept short.
+Your Gemini key stays the same, so you don't change anything on your server. Doorprints also limits AI use by
+itself: at most 10 AI requests a minute, and each answer is kept short.
 
 ## Step 5: Write the server's settings file
 
-The settings live in a file called `.env` (a dot, then "env") inside **doorprints-main**. Open it with this command:
+The server reads its settings from a file called `.env` (a dot, then "env") in **doorprints-main**. Type this command
+in the terminal to open it:
 
-- **Windows:** `notepad .env`, then choose **Yes** when Notepad asks to create a new file.
+- **Windows:** `notepad .env`. When Notepad asks to create a new file, choose **Yes**.
 - **Mac:** `touch .env && open -e .env`
 
-Paste these lines into it, then put in your own keys:
+Paste these lines into the file. Then replace the two "paste-your" parts with your own keys:
 
 ```ini
 APP_API_KEY=paste-your-Doorprints-API-key-here
@@ -166,7 +186,7 @@ AI_API_KEY=paste-your-Gemini-API-key-here
 ```
 
 - **Without AI:** leave out the last two lines.
-- Check that there are no spaces around the `=` signs and no quotation marks.
+- Put no spaces around the `=` signs, and no quotation marks.
 - `APP_CORS_ORIGINS` lets the Doorprints website at `https://doorprints.web.app` talk to your server. Type it exactly
   as shown.
 
@@ -174,122 +194,128 @@ Save the file and close the editor.
 
 ## Step 6: Start the server
 
-In the terminal, run:
+In the terminal, run this command. It downloads what the server needs, builds it and starts it:
 
 ```bash
 docker compose up --build -d
 ```
 
-The first start downloads and builds everything and takes 10 to 20 minutes. Later starts take seconds. When the
-terminal shows it is done, open [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) in a
-browser **on that computer**. It should show `{"status":"UP"}`. The server may need another minute after the command
-finishes; reload the page if it doesn't show yet.
+The first start takes 10 to 20 minutes. Later starts take seconds.
+
+To check it works:
+
+1. Wait until the terminal says it is done.
+2. **On that computer**, open [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) in a
+   browser.
+3. You should see `{"status":"UP"}`. The server may need one more minute. If you don't see it yet, reload the page.
 
 Docker Desktop now shows **doorprints-main** under **Containers**, with a green dot.
 
 ## Step 7: Reach your server from your phone (Tailscale)
 
-The apps only connect to addresses that start with `https://`, and your server should not be open to the whole
-internet. Tailscale solves both: it gives the server a private `https://` address that only devices signed in to your
-Tailscale account can open.
+The apps only connect to addresses that start with `https://`. Also, your server should not be open to the whole
+internet. Tailscale solves both. It gives the server a private `https://` address. Only devices signed in to your
+Tailscale account can open it.
 
-1. Create a free account at [tailscale.com](https://tailscale.com/) (you can sign in with Google or Apple).
+1. Make a free account at [tailscale.com](https://tailscale.com/). You can sign in with Google or Apple.
 2. Install Tailscale **on the server computer** and sign in.
-3. Install the Tailscale app **on your phone** (Play Store or App Store), and on any other computer where you'll use
-   the Doorprints website. Sign in to the **same** account on each, and switch Tailscale on.
-4. In the terminal on the server computer, run:
+3. Install the Tailscale app **on your phone** (Play Store or App Store). Also install it on any other computer where
+   you'll use the Doorprints website. Sign in to the **same** account on each, and switch Tailscale on.
+4. **Windows only:** close the terminal and open a new one in **doorprints-main** (step 2). A terminal opened
+   before you installed Tailscale can't find the `tailscale` command. On a Mac, go straight to the next step.
+5. Run this command. It shares your server with your own Tailscale devices, at a private `https://` address:
 
     ```bash
     tailscale serve --bg 8080
     ```
 
-    - **Windows:** close the terminal and open a new one in **doorprints-main** first (a terminal opened before
-      Tailscale was installed can't find the `tailscale` command).
-    - **Mac:** type this longer form instead, because the Mac app doesn't add the short `tailscale` command:
+    On a **Mac**, type this longer form instead. It does the same thing; the Mac app doesn't add the short
+    `tailscale` command:
 
-        ```bash
-        /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 8080
-        ```
+    ```bash
+    /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 8080
+    ```
 
-    The first time, it prints a link and asks you to turn on HTTPS for your account. Open the link, allow it, and then
-    run the same command again.
+6. The first time, it shows a link and asks you to turn on HTTPS for your account. Open the link and allow it. Then
+   run the same command again.
+7. The command shows your server's address. It looks like `https://my-pc.tail1234.ts.net`. Save it in your password
+   manager, next to your Doorprints API key.
 
-5. The command prints your server's address. It looks like `https://my-pc.tail1234.ts.net`. Save it in your password
-   manager next to your Doorprints API key.
+To test it: on your phone, switch Tailscale on. Open your address with `/actuator/health` added to the end (for
+example `https://my-pc.tail1234.ts.net/actuator/health`). You should see `{"status":"UP"}`.
 
-To test: on your phone, with Tailscale on, open that address followed by `/actuator/health` (for example
-`https://my-pc.tail1234.ts.net/actuator/health`). You should see `{"status":"UP"}`.
-
-`tailscale serve` keeps running after a restart. To stop sharing the server, run `tailscale serve reset` (on a Mac,
-with the longer form of `tailscale` shown above).
+`tailscale serve` keeps working after the computer restarts. To stop sharing the server, run
+`tailscale serve reset`. (On a Mac, use the longer form of `tailscale` shown above.)
 
 ## Step 8: Connect the apps
 
-Use the address from step 7 and your Doorprints API key (not the Gemini key). See
-[Connect your own server](server-and-sharing.md#connect-your-own-server-optional) for where to type them in each
+Use the address from step 7 and your Doorprints API key (not the Gemini key).
+[Connect your own server](server-and-sharing.md#connect-your-own-server-optional) shows where to type them in each
 app. Keep Tailscale switched on on your phone whenever you want to sync.
 
-If you turned on AI, **Ask** and **Plan** appear in the website's menu, and the Android **Assistant** tab appears,
-once the app is connected.
+If you turned on AI, you will see new items once the app is connected: **Ask** and **Plan** in the website's menu,
+and the **Assistant** tab on Android.
 
 ## Everyday use
 
-- **After the computer restarts:** open Docker Desktop, then in a terminal in **doorprints-main** run
-  `docker compose up -d`. To skip this in future, turn on **Start Docker Desktop when you sign in to your computer** in Docker
-  Desktop's settings (the server itself still needs the command).
-- **To turn AI on or off later:** change the lines in `.env` (step 5), save, then run `docker compose up -d` again.
+- **After the computer restarts:** open Docker Desktop. Then open a terminal in **doorprints-main** and run
+  `docker compose up -d`. To save one step next time, turn on
+  **Start Docker Desktop when you sign in to your computer** in Docker Desktop's settings. (You still need to run the
+  command.)
+- **To turn AI on or off later:** change the lines in `.env` (step 5) and save. Then run `docker compose up -d` again.
 - **To update the server:** first choose **Save a copy** in one of the apps (see [Your data](your-data.md)). Then:
     1. run `docker compose stop` in **doorprints-main**;
     2. download the new ZIP and unzip it somewhere else, for example your **Downloads** folder;
     3. copy your `.env` file from the old **doorprints-main** into the new folder (the one with
-       **docker-compose.yml**). On a Mac, press **Cmd + Shift + .** in Finder to see files whose names start with a
-       dot;
-    4. rename the old folder to **doorprints-old**, and move the new folder into **Documents** with the name
+       **docker-compose.yml**). On a Mac, files whose names start with a dot are hidden. Press **Cmd + Shift + .** in
+       Finder to see them;
+    4. rename the old folder to **doorprints-old**. Move the new folder into **Documents** and name it
        **doorprints-main**;
     5. open a terminal in the new **doorprints-main** and run `docker compose up --build -d`.
 
     When everything works, you can delete **doorprints-old**.
 
-- **To stop the server:** `docker compose stop`. Your houses stay on the computer.
+- **To stop the server:** run `docker compose stop`. Your houses stay on the computer.
 
 ## Sharing your list with someone you trust
 
 The other person needs three things:
 
-1. access to your server in Tailscale: in the Tailscale admin console, open **Machines**, choose the server computer,
-   then **Share**, and send them the invite;
+1. access to your server in Tailscale. In the Tailscale admin console (its settings website), open **Machines**.
+   Choose the server computer, then **Share**, and send them the invite;
 2. your server's address;
 3. your Doorprints API key.
 
-Anyone with these can read and change every house on the server, so share them only with someone you'd give your
-house keys to.
+Anyone with these can read and change every house on the server. Share them only with someone you'd give your house
+keys to.
 
 !!! warning "Sharing a computer in Tailscale shares all of it"
-    The other person can reach anything else that computer offers on the network, such as shared folders or Remote
-    Desktop, not only Doorprints. Share only with someone you trust with that computer, or turn those features off
-    first.
+    The other person can reach anything else that computer shares on the network, not only Doorprints. For example,
+    shared folders or Remote Desktop. Share only with someone you trust with that computer, or turn those features
+    off first.
 
 ## If something goes wrong
 
-First, to see what the server says about a problem: in Docker Desktop open **Containers**, then **doorprints-main**,
-then the **api** container, and read its **Logs**. (Or run `docker compose logs api` in the terminal.)
+First, see what the server says about the problem. These messages are called logs. In Docker Desktop, open
+**Containers**, then **doorprints-main**, then the **api** container, and read its **Logs**. (Or run
+`docker compose logs api` in the terminal.)
 
 | What you see | What to do |
 |---|---|
-| `no configuration file provided` | The terminal is in the wrong folder. Open it in the folder that contains **docker-compose.yml** (step 2). |
-| `Set APP_API_KEY to a random secret…` when you start the server | The `.env` file is missing, in the wrong folder, or has no `APP_API_KEY` line. Check that it is named exactly `.env` and sits in **doorprints-main**. |
-| The server starts and then stops again | Read the logs (above). Most often the key is shorter than 32 characters. Make a new one (step 3) and put it in `.env` and in the apps. |
+| `no configuration file provided` | The terminal is in the wrong folder. Open it in the folder that has **docker-compose.yml** in it (step 2). |
+| `Set APP_API_KEY to a random secret…` when you start the server | The `.env` file is missing, in the wrong folder, or has no `APP_API_KEY` line. Check that its name is exactly `.env` and that it is in **doorprints-main**. |
+| The server starts and then stops again | Read the logs (above). Most often, the key is shorter than 32 characters. Make a new one (step 3). Put it in `.env` and in the apps. |
 | `docker: command not found`, `The term 'docker' is not recognized`, or the command doesn't work at all | Docker Desktop is not running. Open it, wait for **Engine running**, and try again. |
-| **Save and test** (Android) or **Test connection** (website) fails | Tailscale is switched off on the phone, the server computer is asleep or off, or the address doesn't start with `https://`. Open the `/actuator/health` address on the phone to check (step 7). |
-| The phone connects but the website doesn't | Check the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`, then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
-| **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` and an `AI_API_KEY` line. Run `docker compose up -d` after changing it, then reconnect the app. |
+| **Save and test** (Android) or **Test connection** (website) fails | One of these: Tailscale is off on the phone; the server computer is asleep or off; or the address doesn't start with `https://`. To check, open the `/actuator/health` address on the phone (step 7). |
+| The phone connects but the website doesn't | Check that the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`. Then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
+| **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` and an `AI_API_KEY` line. After you change it, run `docker compose up -d`. Then connect the app again. |
 | `tailscale` is not recognized, or `command not found` | Windows: open a new terminal after installing Tailscale. Mac: use the longer form in step 7. |
-| AI answers fail after working earlier | The free daily limit has probably run out. Try again the next day. |
+| AI answers fail after working earlier | You have probably reached the free daily limit. Try again the next day. |
 | All your houses are gone from the server | The folder was renamed or moved (see step 2). Move it back. Or, on Android, use **Import a backup** with your latest copy, then **Sync now**. |
 
 ## Other ways to run a server
 
-If you are comfortable with cloud services, the server can also run on a free cloud host with a free database, so it
-doesn't depend on your computer being on. That takes more technical setup, and it puts your server on the public internet, so read the security notes there
-first. The steps are in the project's
+You can also run the server on a free cloud service (someone else's computer on the internet), with a free database.
+Then it doesn't need your computer to be on. This needs more technical setup. It also puts your server on the public
+internet, so read the security notes there first. The steps are in the project's
 [deployment notes](https://github.com/Sriram-Codes-SW/doorprints/blob/main/docs/07-secure-build-and-deploy.md#6-free-tier-deployment).
