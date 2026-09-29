@@ -1,7 +1,8 @@
 # The Doorprints iOS app (CMP-8b; ADR-23): a thin SwiftUI shell around the Compose Multiplatform UI of the Gradle
 # module :ui (android/ui), which Gradle builds as the static framework DoorprintsKit. XcodeGen 2.46.0 turns this file
 # into Doorprints.xcodeproj (not committed; ios/.gitignore): `cd ios && xcodegen generate`. CI: the ios-app job of
-# .github/workflows/shared-ios.yml. No signing, no Apple account, no App Store (owner rules; ios/README.md).
+# .github/workflows/shared-ios.yml. Ad-hoc signed for the simulator: no certificate, no Apple account, no App Store
+# (owner rules; ios/README.md).
 #
 # The Kotlin framework is wired in the way JetBrains' "direct integration" describes (Kotlin Multiplatform docs,
 # "Connect the framework to your iOS project"): a Run Script before the Swift sources calls Gradle's
@@ -17,7 +18,7 @@ options:
   # iOS 17.0. Compose Multiplatform 1.12 and Kotlin/Native support older iOS versions, so this is our choice, not a
   # library minimum: iOS 17 runs on every iPhone from 2018 (XS, XR) on, and one floor keeps the untested surface
   # (older UIKit and SwiftUI behaviour, the simulator runtimes CI would need) small. Lower it only with a reason and
-  # a simulator run on that version.
+  # a simulator run on that version. Set here only: XcodeGen applies it to the target too.
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -31,7 +32,6 @@ targets:
   Doorprints:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
     # Swift files, the hand-written Info.plist (XcodeGen leaves a file named Info.plist out of the build phases) and
     # the <lang>.lproj folders, which XcodeGen turns into a localised InfoPlist.strings in Copy Bundle Resources
     # (en, hi, ta, te: the location purpose string).
@@ -58,10 +58,14 @@ targets:
           - "$(inherited)"
           - "-framework"
           - "DoorprintsKit"
-        # No team and no signing identity: CI builds with CODE_SIGNING_ALLOWED=NO (or ad-hoc, CODE_SIGN_IDENTITY=-);
-        # on a Mac, Xcode signs to run locally for the simulator.
-        CODE_SIGN_STYLE: Automatic
+        # No team, no certificate: simulator builds are signed ad hoc (identity "-"), which needs no Apple account
+        # and gives the app a real signature, so the simulator gives it its own Keychain (owner-approved; CI passes
+        # the same identity, with CODE_SIGNING_REQUIRED=NO). Manual, not Automatic: automatic signing with no team
+        # can make xcodebuild ask for a team, and an identity given on the command line conflicts with it. To run on
+        # an iPhone, choose a team and Automatic in Xcode (a free Apple ID is enough for your own device).
+        CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
+        CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: "-"
     preBuildScripts:
       - name: Build the Kotlin framework (Gradle, :ui)
         shell: /bin/bash

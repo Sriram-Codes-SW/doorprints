@@ -9,11 +9,10 @@ struct DoorprintsApp: App {
         WindowGroup {
             ComposeView()
                 // Edge to edge, as on Android: Compose draws behind the status bar and the home indicator and pads
-                // its content with the window insets itself.
+                // its content with the window insets itself. With no argument this covers every safe-area region,
+                // the keyboard's included, so SwiftUI does not shrink the view while Compose moves its content above
+                // the keyboard (the IME insets).
                 .ignoresSafeArea()
-                // The keyboard too: Compose moves its content above the keyboard (the IME insets), so SwiftUI must not
-                // shrink the view as well (Compose Multiplatform's iOS integration guidance).
-                .ignoresSafeArea(.keyboard)
         }
     }
 }

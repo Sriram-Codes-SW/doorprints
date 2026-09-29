@@ -6,9 +6,11 @@
 # (the same choice as ios-sim-tests' "Pick an iPhone simulator" step), launches it with -DoorprintsSelfCheck and reads
 # the app's console. The self-check (Kotlin, Debug builds only) prints one line per check,
 #   DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...   for resources, database, settings and keychain,
-# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS"; no done line within
-# the time limit (a crash, a hang) fails too. It writes <out>/launch.log, <out>/launch.png and any crash reports, and
-# always shuts the simulator down.
+# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. It prints each line to stdout and with NSLog; when the
+# console has no done line, the simulator's unified log (where NSLog lands) is read too, every few seconds and once at
+# the end. The script passes only on "done PASS"; no done line within the time limit (a crash, a hang) fails too. It
+# writes <out>/launch.log (the console), <out>/unified.log (the self-check's lines from the unified log, when read),
+# <out>/launch.png and any crash reports, and always shuts the simulator down.
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -22,6 +24,7 @@ wait_seconds=120
 [ -d "$app" ] || { echo "::error::no app bundle at $app"; exit 2; }
 mkdir -p "$out"
 log="$out/launch.log"
+unified="$out/unified.log"
 : > "$log"
 
 sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
@@ -55,11 +58,35 @@ trap cleanup EXIT
 xcrun simctl bootstatus "$udid" -b
 
 if ! xcrun simctl install "$udid" "$app"; then
-  # An unsigned app (CODE_SIGNING_ALLOWED=NO) the simulator refuses: the owner-approved fallback is ad-hoc signing,
-  # CODE_SIGN_IDENTITY=- in the xcodebuild step of shared-ios.yml.
-  echo "::error::simctl install failed; if the simulator refuses the unsigned app, build with ad-hoc signing (CODE_SIGN_IDENTITY=-)"
+  # The app is ad-hoc signed (CODE_SIGN_IDENTITY=- in the xcodebuild step of shared-ios.yml), which the simulator
+  # accepts; a refusal points at the build's signing settings.
+  echo "::error::simctl install failed; check the app's ad-hoc signature (codesign -dv \"$app\")"
   exit 1
 fi
+
+# The self-check's lines from the simulator's unified log (NSLog), into $unified; never fails the script by itself.
+read_unified_log() {
+  xcrun simctl spawn "$udid" log show --last 3m --style compact \
+    --predicate 'eventMessage CONTAINS "DOORPRINTS-SELFCHECK"' > "$unified" 2>&1 || true
+}
+
+# Sets result to the last "DOORPRINTS-SELFCHECK done <OUTCOME>" in the console, or else in the unified log (read now
+# when read_log is 1). Returns 1 while there is none.
+find_done() {
+  local read_log=$1
+  if grep -q 'DOORPRINTS-SELFCHECK done' "$log"; then
+    result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$log" | tail -n 1)
+    return 0
+  fi
+  if [ "$read_log" = 1 ]; then
+    read_unified_log
+    if grep -q 'DOORPRINTS-SELFCHECK done' "$unified" 2>/dev/null; then
+      result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$unified" | tail -n 1)
+      return 0
+    fi
+  fi
+  return 1
+}
 
 started=$(mktemp)  # marks the launch time for the crash report search
 # --console-pty connects the app's stdout and stderr to a pseudo-terminal, so its lines arrive unbuffered; simctl stays
@@ -70,8 +97,8 @@ launch_pid=$!
 
 result=""
 for ((waited = 0; waited < wait_seconds; waited++)); do
-  if grep -q 'DOORPRINTS-SELFCHECK done' "$log"; then
-    result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$log" | tail -n 1)
+  # The console every second; the unified log (slower to query) every fifth.
+  if find_done "$(( waited % 5 == 4 ? 1 : 0 ))"; then
     break
   fi
   if ! kill -0 "$launch_pid" 2>/dev/null; then
@@ -79,9 +106,9 @@ for ((waited = 0; waited < wait_seconds; waited++)); do
   fi
   sleep 1
 done
-# The app may have printed its last line just before it ended.
-if [ -z "$result" ] && grep -q 'DOORPRINTS-SELFCHECK done' "$log"; then
-  result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$log" | tail -n 1)
+# The app may have printed its last line just before it ended, or only to the unified log.
+if [ -z "$result" ]; then
+  find_done 1 || true
 fi
 
 # A screenshot of what the app shows once it has settled (also after a failure: it may show why).
@@ -94,12 +121,18 @@ xcrun simctl io "$udid" screenshot "$out/launch.png" || echo "::warning::no scre
 find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'Doorprints*' -newer "$started" \
   -exec cp {} "$out/" \; 2>/dev/null || true
 
+# The self-check's lines from the console, or from the unified log when the console has none.
+lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
+if [ -z "$lines" ] && [ -f "$unified" ]; then
+  lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$unified" 2>/dev/null | tr -d '\r' || true)
+fi
 echo "--- self-check lines ---"
-grep 'DOORPRINTS-SELFCHECK' "$log" | tr -d '\r' || echo "(none)"
+echo "${lines:-(none)}"
 
 if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
-  if grep -q 'DOORPRINTS-SELFCHECK [a-z]* SKIP' "$log"; then
-    echo "::warning::self-check skipped a check: $(grep 'DOORPRINTS-SELFCHECK [a-z]* SKIP' "$log" | tr -d '\r' | tr '\n' ' ')"
+  skipped=$(echo "$lines" | grep 'DOORPRINTS-SELFCHECK [a-z]* SKIP' || true)
+  if [ -n "$skipped" ]; then
+    echo "::warning::self-check skipped a check: $(echo "$skipped" | tr '\n' ' ')"
   fi
   echo "Launch smoke test passed."
   exit 0

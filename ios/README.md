@@ -3,7 +3,8 @@
 The iOS app (CMP-8b, ADR-23) is a small SwiftUI shell, `Doorprints/DoorprintsApp.swift`, around the Compose
 Multiplatform UI of the Gradle module `:ui` (`android/ui`). Gradle builds that UI as the static framework
 `DoorprintsKit`; Swift calls `MainViewControllerKt.MainViewController()` and shows it edge to edge. There is no
-Swift UI of our own. Owner rules: no paid Apple account, no signing, no App Store; the app runs on the simulator.
+Swift UI of our own. Owner rules: no paid Apple account, no certificate or signing identity, no App Store; the app
+runs on the simulator, ad-hoc signed (below).
 
 ## Build on a Mac
 
@@ -22,6 +23,16 @@ Swift UI of our own. Owner rules: no paid Apple account, no signing, no App Stor
 
 `Doorprints.xcodeproj` is generated from `project.yml` and not committed; change `project.yml` and generate again.
 
+**Signing.** Simulator builds are ad-hoc signed (`CODE_SIGN_STYLE: Manual`, `CODE_SIGN_IDENTITY` `-` for the
+simulator SDK in `project.yml`): no team, certificate or Apple account, but a real signature, so the simulator gives
+the app its own Keychain for the server's API key. To run on your own iPhone, choose a team and automatic signing in
+Xcode (a free Apple ID is enough for your own device); do not commit that change.
+
+**Servers over `http://`.** App Transport Security stays at its default (no exceptions in `Info.plist`). It refuses
+plain `http://` to a domain name, so such a server must be `https://`. A server on a LAN IP address
+(`http://192.168.1.20:8080`) or a `.local` name is not covered by ATS and connects without TLS, as on Android; iOS
+first asks for local network access (`NSLocalNetworkUsageDescription`, in the four languages).
+
 The first build step runs `./gradlew :ui:embedAndSignAppleFrameworkForXcode` in `android/` (JetBrains' "direct
 integration"): it builds the framework for the chosen configuration and SDK into
 `android/ui/build/xcode-frameworks/<Configuration>/<SDK>` and copies the Compose resources (the strings of the four
@@ -31,21 +42,23 @@ languages) into the app as `compose-resources/`. It takes JDK 21 from `JAVA_HOME
 
 **Self-check.** A Debug build started with the argument `-DoorprintsSelfCheck` (in Xcode: Edit Scheme, Run,
 Arguments) prints `DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...` for resources, database, settings and keychain,
-and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`.
+and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`, to the console and to the unified log (`NSLog`).
 
 ## What iOS does not have yet
 
-Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.11): the Hunt card, the camera and
-gallery, *Save a copy*, *Import a backup* and the weekly backup. The map is a placeholder until CMP-8c (MapLibre iOS
-with the India view). Hindi, Tamil and Telugu strings, the location purpose string included
+Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the Hunt card, the camera and
+gallery, *Save a copy*, *Import a backup*, the weekly backup and every *Add a house on the map* or *Go to the map*
+button. The app opens on the Houses tab; the Map tab stays, with its title and a note, until CMP-8c (MapLibre iOS
+with the India view). An empty house list says that houses cannot be added on iPhone yet and that a connected server
+brings them, with *Open Settings*. Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
 
 ## CI
 
 Job `ios-app` in `.github/workflows/shared-ios.yml` (macOS runner, free for public repositories): installs XcodeGen
 from its pinned release zip, generates the project, checks the plists, builds the Debug app for the arm64 simulator
-with `CODE_SIGNING_ALLOWED=NO`, checks that the app holds `compose-resources` and the 120 Hz key, and runs
+ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`; owner-approved, no identity or Apple account), checks
+that the app holds `compose-resources`, the 120 Hz key, both purpose strings and a valid signature, and runs
 `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, launches it with `-DoorprintsSelfCheck`, passes only
-on `DOORPRINTS-SELFCHECK done PASS` and saves a screenshot. The screenshot and the logs are uploaded as the
-`ios-app-launch` artifact. If the simulator ever refuses the unsigned app, the owner-approved fallback is ad-hoc
-signing (`CODE_SIGN_IDENTITY=-`), still without an Apple account.
+on `DOORPRINTS-SELFCHECK done PASS` (read from the console, or from the simulator's unified log when the console has
+no `done` line) and saves a screenshot. The screenshot and the logs are uploaded as the `ios-app-launch` artifact.

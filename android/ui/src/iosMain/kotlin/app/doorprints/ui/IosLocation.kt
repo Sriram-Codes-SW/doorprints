@@ -16,6 +16,7 @@ import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreLocation.kCLAuthorizationStatusNotDetermined
 import platform.CoreLocation.kCLLocationAccuracyBest
 import platform.Foundation.NSError
+import platform.Foundation.NSThread
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
@@ -29,11 +30,26 @@ import kotlin.coroutines.resume
 private const val FIX_TIMEOUT_MS = 30_000L
 
 /**
+ * The manager the status reads below ask ([iosLocationAccess], [iosCanAskLocation]): one for the process, made on first
+ * use on the main thread and never given a delegate. Main thread only.
+ */
+private val statusManager: CLLocationManager by lazy { CLLocationManager() }
+
+/**
+ * The manager to read the authorization from: [statusManager] on the main thread, where every screen reads it; a
+ * short-lived one on any other thread (a status read has no callbacks, so its thread does not matter), so the shared
+ * one is never made off the main thread.
+ */
+private fun managerForStatus(): CLLocationManager =
+    if (NSThread.isMainThread) statusManager else CLLocationManager()
+
+/**
  * [LocationAccess] from Core Location: while in use (or always) with full accuracy is [LocationAccess.PRECISE], with
  * reduced accuracy (the prompt's *Precise: Off*) [LocationAccess.APPROXIMATE]; not asked yet, denied or restricted
  * (parental controls) is [LocationAccess.NONE].
  */
-internal fun iosLocationAccess(manager: CLLocationManager = CLLocationManager()): LocationAccess {
+internal fun iosLocationAccess(): LocationAccess {
+    val manager = managerForStatus()
     val status = manager.authorizationStatus
     if (status != kCLAuthorizationStatusAuthorizedWhenInUse && status != kCLAuthorizationStatusAuthorizedAlways) {
         return LocationAccess.NONE
@@ -46,12 +62,12 @@ internal fun iosLocationAccess(manager: CLLocationManager = CLLocationManager())
 }
 
 /** True while iOS will still show its location prompt: only before the first answer (it never asks twice). */
-internal fun iosCanAskLocation(): Boolean = CLLocationManager().authorizationStatus == kCLAuthorizationStatusNotDetermined
+internal fun iosCanAskLocation(): Boolean = managerForStatus().authorizationStatus == kCLAuthorizationStatusNotDetermined
 
 /**
  * [LocationSource] on Core Location: one `requestLocation()` fix, the best Core Location has within about ten
  * seconds, or null after [FIX_TIMEOUT_MS], on an error, or without precise location (as Android's
- * `currentLocation`). Returns on the main thread.
+ * `currentLocation`). Talks to Core Location on the main thread.
  */
 internal class IosLocationSource : LocationSource {
     override suspend fun current(): Pair<Double, Double>? = withContext(Dispatchers.Main) {

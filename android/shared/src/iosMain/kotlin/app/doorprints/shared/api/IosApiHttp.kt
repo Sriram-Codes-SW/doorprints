@@ -16,9 +16,10 @@ import platform.Foundation.setHTTPShouldHandleCookies
  *  - no disk cache and no cookies: OkHttp had neither, and an API answer (houses, addresses) must not be left in
  *    `Library/Caches` (threat model F-03).
  *
- * App Transport Security stays at its default (no exceptions in Info.plist, ios/): only `https://` servers can be
- * reached. A self-hosted server on plain `http://` (a laptop on the home network) is refused by iOS before any byte is
- * sent, and the call fails as a network error; the Android app still allows it (network security config).
+ * App Transport Security stays at its default (no exceptions in Info.plist, ios/). ATS refuses plain `http://` to a
+ * domain name: iOS fails the call as a network error before any byte is sent. A server on a LAN IP address
+ * (`http://192.168.1.20:8080`) or a `.local` name is not covered by ATS, so it connects without TLS, as on Android
+ * (network security config); iOS first asks the user for local network access (`NSLocalNetworkUsageDescription`).
  *
  * Create one client for the whole app and share it, as on Android.
  */
