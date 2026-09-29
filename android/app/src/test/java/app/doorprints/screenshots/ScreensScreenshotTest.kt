@@ -163,9 +163,11 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     /**
      * The screens that hide what the iPhone app does not have yet (CMP-8b, [PlatformFeatures.Ios]), as the iOS shell
-     * provides it: the Map's note in place of the map (so no MapLibre here), Settings without the language choice, the
-     * copies, the weekly backup and Hunt mode, the empty list without *Import a backup*, and a house with no photos
-     * without its Photos section. Android provides nothing, so the screens above are unchanged.
+     * provides it: the Map tab's title and note in place of the map (so no MapLibre here), Settings without the language
+     * choice, the copies, the weekly backup and Hunt mode (and with the iPhone's privacy note), the empty list that points
+     * to Settings instead of the map or *Import a backup*, a house with no photos without its Photos section, Compare's
+     * empty state and the Assistant's "off" state without their way to the map. Android provides nothing, so the
+     * screens above are unchanged.
      */
     private fun shootIos(screen: String, content: @Composable () -> Unit) = shoot("ios_$screen") {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios, content = content)
@@ -178,6 +180,18 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         runBlocking { listOf("a", "b").forEach { repo.deleteHouse(it) } }
         shootIos("houses_empty") { HouseListScreen(onOpenHouse = {}) }
     }
+    // One house: fewer than Compare needs, so its empty state, without "Add a house on the map".
+    @Test fun iosCompareEmpty() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.deleteHouse("b") }
+        shootIos("compare_empty") {
+            val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
+            val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
+            CompareScreen(houses, counts, onOpenHouse = {})
+        }
+    }
+    // The Assistant with AI off (as in the Android shot): Try again, without "Go to the map".
+    @Test fun iosAssistant() = shootIos("assistant") { AssistantScreen(onOpenHouse = {}) }
     // On a screen tall enough for the whole form, so the shot shows the listing and Visits with no Photos section
     // between them (the house has no photos); the top of the form is the same as Android's.
     @Test fun iosHouseEdit() {

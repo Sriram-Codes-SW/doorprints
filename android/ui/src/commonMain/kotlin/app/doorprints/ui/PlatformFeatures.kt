@@ -13,7 +13,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
  */
 @Immutable
 data class PlatformFeatures(
-    /** The map view. Off: the Map tab says the map is not on this phone yet and points to the Houses tab. */
+    /**
+     * The map view. Off: the app starts on the Houses tab; the Map tab (still in the bar) says the map is not on this
+     * phone yet and points to the Houses tab; no *Add a house on the map* or *Go to the map* anywhere, and the empty
+     * house list says houses come from a connected server instead; the privacy note names no map tiles or geocoder.
+     */
     val map: Boolean = true,
     /** Hunt mode (the Map's Hunt card) and its settings (the alert radius and the minimum stay). */
     val huntMode: Boolean = true,

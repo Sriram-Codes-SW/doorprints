@@ -314,8 +314,14 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                                     enabled = !retrying,
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                                 ) { ButtonLabel(stringResource(Res.string.common_try_again)) }
-                                OutlinedButton(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                    ButtonLabel(stringResource(Res.string.ai_go_to_map))
+                                // Not where the platform has no map yet (iOS; PlatformFeatures.map).
+                                if (LocalPlatformFeatures.current.map) {
+                                    OutlinedButton(
+                                        onClick = onOpenMap,
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    ) {
+                                        ButtonLabel(stringResource(Res.string.ai_go_to_map))
+                                    }
                                 }
                             }
                         },

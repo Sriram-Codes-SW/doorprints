@@ -170,9 +170,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                 }
             }
         } else {
-            Text(stringResource(Res.string.settings_language_phone))
+            // The same text style as the Server section's intro, the screen's other explaining sentence.
+            Text(stringResource(Res.string.settings_language_phone), style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { platform.openAppSettings() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(Res.string.settings_language_open_settings))
+                ButtonLabel(stringResource(Res.string.settings_language_open_settings))
             }
         }
 
@@ -533,7 +534,14 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))
-        Text(stringResource(Res.string.settings_privacy_note), style = MaterialTheme.typography.bodySmall)
+        // Without the map (iOS) there are no map tiles, no street-name lookup and no photos taken: the note says only
+        // where the houses are kept, and names the iPhone.
+        Text(
+            stringResource(
+                if (platformFeatures.map) Res.string.settings_privacy_note else Res.string.settings_privacy_note_ios,
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_about))
