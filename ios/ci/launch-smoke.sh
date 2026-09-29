@@ -4,13 +4,13 @@
 #
 # Installs the Debug build on an available iPhone of the iOS runtime that matches the selected Xcode's simulator SDK
 # (the same choice as ios-sim-tests' "Pick an iPhone simulator" step), launches it with -DoorprintsSelfCheck and reads
-# the app's console. The self-check (Kotlin, Debug builds only) prints one line per check,
-#   DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...   for resources, database, settings and keychain,
-# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. It prints each line to stdout and with NSLog; when the
-# console has no done line, the simulator's unified log (where NSLog lands) is read too, every few seconds and once at
-# the end. The script passes only on "done PASS"; no done line within the time limit (a crash, a hang) fails too. It
-# writes <out>/launch.log (the console), <out>/unified.log (the self-check's lines from the unified log, when read),
-# <out>/launch.png and any crash reports, and always shuts the simulator down.
+# the simulator's unified log. The self-check (Kotlin, Debug builds only) writes one line per check with NSLog,
+#   DOORPRINTS-SELFCHECK <name> START, then PASS|FAIL|SKIP ...   for resources, database, settings and keychain,
+# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS"; no done line within
+# the time limit (a crash, a hang) fails too. It writes <out>/launch.log (the streamed DOORPRINTS- lines),
+# <out>/unified.log (the same from `log show`), <out>/app-unified.log and <out>/system-unified.log (everything the app
+# logged, and what the system logged about it), <out>/launch.png and any crash reports, and always shuts the
+# simulator down.
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -44,12 +44,8 @@ if [ -z "$udid" ]; then
 fi
 echo "Simulator: $(xcrun simctl list devices available | grep "$udid" | sed 's/^ *//')"
 
-launch_pid=""
 # shellcheck disable=SC2329  # called by the EXIT trap
 cleanup() {
-  if [ -n "$launch_pid" ]; then
-    kill "$launch_pid" 2>/dev/null || true
-  fi
   xcrun simctl shutdown "$udid" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -64,52 +60,69 @@ if ! xcrun simctl install "$udid" "$app"; then
   exit 1
 fi
 
-# The self-check's lines from the simulator's unified log (NSLog), into $unified; never fails the script by itself.
-read_unified_log() {
-  xcrun simctl spawn "$udid" log show --last 3m --style compact \
-    --predicate 'eventMessage CONTAINS "DOORPRINTS-SELFCHECK"' > "$unified" 2>&1 || true
-}
-
-# Sets result to the last "DOORPRINTS-SELFCHECK done <OUTCOME>" in the console, or else in the unified log (read now
-# when read_log is 1). Returns 1 while there is none.
-find_done() {
-  local read_log=$1
-  if grep -q 'DOORPRINTS-SELFCHECK done' "$log"; then
-    result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$log" | tail -n 1)
-    return 0
+# The app is launched detached, not with `simctl launch --console-pty`: attached that way with no input (stdin from
+# /dev/null, in the background), the app was ended about half a second after launch every time, with no exception
+# and no crash report (the first CI runs, 2026-09-29). Its lines are read from the unified log instead, where the
+# self-check and the start-up steps write them with NSLog: a `log stream` started before the launch, so nothing is
+# missed, and a `log show` at the end as a second source.
+stream_pid=""
+# shellcheck disable=SC2329  # called by the EXIT trap
+stop_stream() {
+  if [ -n "$stream_pid" ]; then
+    kill "$stream_pid" 2>/dev/null || true
   fi
-  if [ "$read_log" = 1 ]; then
-    read_unified_log
-    if grep -q 'DOORPRINTS-SELFCHECK done' "$unified" 2>/dev/null; then
-      result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$unified" | tail -n 1)
+}
+read_unified_log() {
+  xcrun simctl spawn "$udid" log show --last 5m --style compact \
+    --predicate 'eventMessage CONTAINS "DOORPRINTS-"' > "$unified" 2>&1 || true
+}
+# Sets result to the last "DOORPRINTS-SELFCHECK done <OUTCOME>" in the streamed log (and, when read_log is 1, in a
+# fresh `log show`). Returns 1 while there is none.
+find_done() {
+  local read_log=$1 file
+  [ "$read_log" = 1 ] && read_unified_log
+  for file in "$log" "$unified"; do
+    if grep -q 'DOORPRINTS-SELFCHECK done' "$file" 2>/dev/null; then
+      result=$(grep -o 'DOORPRINTS-SELFCHECK done [A-Z]*' "$file" | tail -n 1)
       return 0
     fi
-  fi
+  done
   return 1
 }
+# True while the app runs: launchd inside the simulator lists it as UIKitApplication:app.doorprints[...].
+app_running() {
+  xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$bundle_id"
+}
+
+xcrun simctl spawn "$udid" log stream --style compact --level debug \
+  --predicate 'eventMessage CONTAINS "DOORPRINTS-"' > "$log" 2>&1 &
+stream_pid=$!
+trap 'stop_stream; cleanup' EXIT
+sleep 2  # let the stream attach before the app starts
 
 started=$(mktemp)  # marks the launch time for the crash report search
-# --console-pty connects the app's stdout and stderr to a pseudo-terminal, so its lines arrive unbuffered; simctl stays
-# in the foreground until the app exits, hence the background job.
-xcrun simctl launch --console-pty --terminate-running-process "$udid" "$bundle_id" -DoorprintsSelfCheck \
-  < /dev/null > "$log" 2>&1 &
-launch_pid=$!
+xcrun simctl launch --terminate-running-process "$udid" "$bundle_id" -DoorprintsSelfCheck
 
 result=""
+seen_running=0
 for ((waited = 0; waited < wait_seconds; waited++)); do
-  # The console every second; the unified log (slower to query) every fifth.
-  if find_done "$(( waited % 5 == 4 ? 1 : 0 ))"; then
+  # The stream every second; a full `log show` (slower) every tenth.
+  if find_done "$(( waited % 10 == 9 ? 1 : 0 ))"; then
     break
   fi
-  if ! kill -0 "$launch_pid" 2>/dev/null; then
-    break  # the app (and so simctl launch) ended before the self-check finished
+  if app_running; then
+    seen_running=1
+  elif [ "$seen_running" = 1 ] || [ "$waited" -ge 10 ]; then
+    break  # the app ended (or never showed up) before the self-check finished
   fi
   sleep 1
 done
-# The app may have printed its last line just before it ended, or only to the unified log.
+# The app may have logged its last line just before it ended.
 if [ -z "$result" ]; then
+  sleep 2
   find_done 1 || true
 fi
+stop_stream
 
 # A screenshot of what the app shows once it has settled (also after a failure: it may show why).
 if [ -n "$result" ]; then
@@ -134,7 +147,7 @@ xcrun simctl spawn "$udid" log show --last 5m --style compact --predicate 'proce
 xcrun simctl spawn "$udid" log show --last 5m --style compact \
   --predicate 'process != "Doorprints" AND eventMessage CONTAINS[c] "doorprints"' > "$out/system-unified.log" 2>&1 || true
 
-# The self-check's lines from the console, or from the unified log when the console has none.
+# The self-check's lines from the stream, or from `log show` when the stream has none.
 lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
 if [ -z "$lines" ] && [ -f "$unified" ]; then
   lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$unified" 2>/dev/null | tr -d '\r' || true)
@@ -165,10 +178,10 @@ if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
   exit 0
 fi
 
-echo "--- last 80 lines of the app's console ($log) ---"
+echo "--- last 80 streamed lines ($log) ---"
 tail -n 80 "$log" || true
 if [ -z "$result" ]; then
-  if kill -0 "$launch_pid" 2>/dev/null; then
+  if app_running; then
     echo "::error::no 'DOORPRINTS-SELFCHECK done' line within ${wait_seconds} s (the app hangs, or the self-check never ran)"
   else
     echo "::error::the app ended before 'DOORPRINTS-SELFCHECK done' (a crash at launch?); crash reports, if any, are in $out"
