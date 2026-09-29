@@ -1,0 +1,56 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The "always report" twin of shared-ios.yml (docs/07 section 3): the same workflow and job names, triggered by the
+# complement of its paths (paths-ignore mirrors them exactly), succeeding at once on a Linux runner (no macOS minute
+# spent), so the required checks report on a pull request that touches no iOS input. See android-required.yml.
+name: Shared iOS compile
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "ios/**"
+      - "android/app/src/main/assets/geo/**"
+      - "android/shared/**"
+      - "android/ui/**"
+      - "android/build.gradle.kts"
+      - "android/settings.gradle.kts"
+      - "android/gradle.properties"
+      - "android/gradle/**"
+      - ".github/workflows/shared-ios.yml"
+
+permissions: {}
+
+jobs:
+  compile:
+    name: ":shared iOS targets compile (macOS, JDK 21)"
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No iOS input changed in this pull request; shared-ios.yml did not run."
+  simulator-tests:
+    name: ":shared and :ui tests on the iOS simulator"
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No iOS input changed in this pull request; shared-ios.yml did not run."
+  ios-app:
+    name: iOS app builds and launches (simulator)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No iOS input changed in this pull request; shared-ios.yml did not run."

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.50 |
+| Version | 0.51 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -62,6 +62,7 @@
 | 0.48 | 2026-09-29 | Claude (Code), lead | §7: `AI_API_KEY` is optional; the Gemini key can be set on the owner page instead, stored encrypted under a key derived from `APP_API_KEY` ([03](03-design.md) §12.1). |
 | 0.49 | 2026-09-29 | Claude (Code), lead | §1 `web.yml`: `npm ci` only, with npm's download cache on the committed lock file (the `npm install` fallback and the lock-file upload are gone); §2 the lock file is committed. |
 | 0.50 | 2026-09-29 | Claude (Code), lead | **One CI run per push** (delivery-speed review, owner permission of 2026-09-29): the `push` trigger of the eight branch workflows is `main` only; the `pull_request` run is the pre-merge signal (its path filters compare the whole pull request). `codeql.yml` gains a `pull_request` trigger for same-repository pull requests; `backend.yml`'s `image` job (the release gate's Trivy and ZAP checks) runs on same-repository pull requests too. §1 *Branch runs* and §3 updated. |
+| 0.51 | 2026-09-29 | Claude (Code), lead | **Required status checks are on** (the owner's ruleset on `main`, 2026-09-29, with auto-merge allowed): every workflow check of §1 is required, so the six path-filtered workflows get an "always report" twin (`*-required.yml`: the same workflow and job names, `paths-ignore` mirroring the real `paths`, success at once). §3 updated. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -82,7 +83,7 @@ The workflows live in `.github/workflows/` (F-22 fixed). **Runner images are nam
 | Gradle cache | Read-only (`cache-read-only: ${{ github.ref != 'refs/heads/main' }}`), unchanged | Written |
 | Concurrency | A newer push to the same branch **cancels** the older run (`cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`) | An in-progress run is never cancelled; if several pushes queue up, only the newest waiting run starts (GitHub replaces a pending run in the same group with the newer one) |
 
-**Since 2026-09-29 one push gives one run per workflow:** the `pull_request` run (ref `refs/pull/<n>/merge`, the merge result with `main`; fork PRs arrive only this way and get no secrets). A branch without a pull request gets no CI, so the pull request is opened first (a draft is fine). From 2026-09-23 to 2026-09-29 the branch push (ref `refs/heads/<branch>`) ran as well, in its own concurrency group, so one push gave two runs and the doubled minutes were accepted (Actions minutes are free for a public repository, CON-04); the delivery-speed review of 2026-09-29 ([14](14-lead-backlog-and-handoff.md) §7) ended that, about 15 minutes of macOS and emulator time per push. `codeql.yml` now runs on same-repository pull requests too, and `backend.yml`'s `image` job (the release gate's Trivy and ZAP checks) on same-repository pull requests as well as pushes to `main`. Dependabot's branches (`dependabot/**`) live in this repository, so its update PRs now get a branch-push run as well as the PR run; GitHub gives Dependabot-triggered runs Dependabot secrets only (not repository secrets) and a read-only token unless a job's `permissions` raises it, and every `main`-only job is skipped there anyway (`codeql.yml`'s SARIF upload from a `dependabot/**` branch is expected to work through its job-level `security-events: write` but has not been observed yet, per the workflow's own comment). Path filters on a push compare the pushed head with the branch's previous head; on the first push of a new branch GitHub diffs against the parent of the deepest pushed commit (GitHub *Workflow syntax*, "Git diff comparisons"). On a `pull_request` event the filters compare the whole pull request against its base, so a docs-only last commit still gets every check the pull request's files need. **Required status checks stay off** (§3): a red branch run does not block a merge by itself, it is the signal to fix the branch before merging. `ai-evals.yml` is unchanged (manual only). **Not yet run in CI**: this paragraph is written from the workflow files in the working tree.
+**Since 2026-09-29 one push gives one run per workflow:** the `pull_request` run (ref `refs/pull/<n>/merge`, the merge result with `main`; fork PRs arrive only this way and get no secrets). A branch without a pull request gets no CI, so the pull request is opened first (a draft is fine). From 2026-09-23 to 2026-09-29 the branch push (ref `refs/heads/<branch>`) ran as well, in its own concurrency group, so one push gave two runs and the doubled minutes were accepted (Actions minutes are free for a public repository, CON-04); the delivery-speed review of 2026-09-29 ([14](14-lead-backlog-and-handoff.md) §7) ended that, about 15 minutes of macOS and emulator time per push. `codeql.yml` now runs on same-repository pull requests too, and `backend.yml`'s `image` job (the release gate's Trivy and ZAP checks) on same-repository pull requests as well as pushes to `main`. Dependabot's branches (`dependabot/**`) live in this repository, so its update PRs now get a branch-push run as well as the PR run; GitHub gives Dependabot-triggered runs Dependabot secrets only (not repository secrets) and a read-only token unless a job's `permissions` raises it, and every `main`-only job is skipped there anyway (`codeql.yml`'s SARIF upload from a `dependabot/**` branch is expected to work through its job-level `security-events: write` but has not been observed yet, per the workflow's own comment). Path filters on a push compare the pushed head with the branch's previous head; on the first push of a new branch GitHub diffs against the parent of the deepest pushed commit (GitHub *Workflow syntax*, "Git diff comparisons"). On a `pull_request` event the filters compare the whole pull request against its base, so a docs-only last commit still gets every check the pull request's files need. **Required status checks are on since 2026-09-29** (§3): the owner's ruleset on `main` requires every check listed in the tables below, so a red or missing check blocks the merge; the path-filtered workflows report through their `*-required.yml` twins on pull requests that do not touch their paths. `ai-evals.yml` is unchanged (manual only). **Not yet run in CI**: this paragraph is written from the workflow files in the working tree.
 
 | Run | Backend | Web | Android | Security |
 |---|---|---|---|---|
@@ -221,6 +222,24 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 | Record the image digest in the release notes. Deploy by digest. | Integrity |
 
 ## 3. Repository and branch protection
+
+**Since 2026-09-29 (owner, after the delivery-speed review):** a **ruleset on `main`** requires a pull request (0
+approvals: the owner is the only human and a session cannot approve), squash merges only, and **every status check**
+of §1's tables: `assembleDebug + unit tests (JDK 21)`, the three `Smoke tests on an emulator (API …)`, the three
+`shared-ios.yml` jobs, `mvn verify (…)` and `Build container image`, `ng test + ng build (Node 24)`, `Build the user
+guide (MkDocs, strict)`, `SAST (Semgrep OSS)`, `Secret scan (gitleaks)`, `Dependencies and IaC (Trivy)`, `Commit
+author emails (allowlist)` and the two CodeQL `Analyze (…)` jobs; **auto-merge is allowed**, so a session turns it on
+when it opens a pull request and the merge happens the moment the last check is green. Because six of those
+workflows are path-filtered and a required check that never runs stays *Expected* for ever, each has an **"always
+report" twin** (`android-required.yml`, `android-emulator-required.yml`, `shared-ios-required.yml`,
+`backend-required.yml`, `web-required.yml`, `pages-required.yml`; GitHub's documented pattern for skipped but required
+checks): the same workflow and job names, `pull_request` only, `paths-ignore` mirroring the real workflow's `paths`
+list exactly (a test in the delivery-speed pull request checked the six pairs are equal), one `echo` step, Linux
+runners only (no macOS minute). On a pull request that touches both kinds of files both run and the later, real
+result decides. Keep the pairs in step: a path added to a real workflow is added to its twin's `paths-ignore` in the
+same change, and a renamed job is renamed in the twin and in the ruleset. Two required checks cannot report on a
+**fork's** pull request (`Build container image` and the CodeQL analyses skip there, by design); a fork's change is
+brought in on a branch of this repository.
 
 The repository is **`Sriram-Codes-SW/doorprints`** (renamed from `house-hunt` on 2026-09-22; GitHub redirects the old
 URL) and is **public**, licensed `AGPL-3.0-only` since 2026-09-29 (`LICENSE`, with the section 7 permissions and the trademark notice in `NOTICE`; MIT before), with a `SECURITY.md` that points to GitHub's **private vulnerability
