@@ -115,6 +115,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The iPhone map** (CMP-8c, [sprint log](docs/10-sprint-log.md) §13.13): the iPhone app gets the map (MapLibre iOS
+  6.31.0, pinned by commit) with India's boundary as the Government of India shows it, applied to the style's JSON by
+  the same common steps as Android and checked in the app; the iOS launch smoke fails unless that check and the loaded
+  map both pass (the owner's CI gate). Houses can now be added on iPhone, on the map. Hunt mode stays Android-only: the
+  iPhone's Map shows only the location note, in wording that does not name it.
 - **User guide website** ([sprint log](docs/10-sprint-log.md) §17): an illustrated guide for first-time users of the
   website, the Android app and the iPhone app (27 screenshots), built with MkDocs Material from `guide/` and published
   to GitHub Pages from `main` (https://sriram-codes-sw.github.io/doorprints/, once Pages is turned on).

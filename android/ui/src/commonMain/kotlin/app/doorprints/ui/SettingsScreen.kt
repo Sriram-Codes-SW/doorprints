@@ -534,11 +534,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))
-        // Without the map (iOS) there are no map tiles, no street-name lookup and no photos taken: the note says only
-        // where the houses are kept, and names the iPhone.
+        // iOS has the map (CMP-8c) but no street-name lookup and no photos taken yet (they come in one later step), so
+        // its note names the iPhone and the map tiles only.
         Text(
             stringResource(
-                if (platformFeatures.map) Res.string.settings_privacy_note else Res.string.settings_privacy_note_ios,
+                if (platformFeatures.addPhotos) Res.string.settings_privacy_note else Res.string.settings_privacy_note_ios,
             ),
             style = MaterialTheme.typography.bodySmall,
         )

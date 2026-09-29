@@ -402,7 +402,7 @@ AI features are **optional** and **off unless configured**. The AI team owns the
 
 ### 11.3 Out of scope
 
-Multi-tenant accounts, sharing links, a native iOS app (the PWA serves iPhones; the shared KMP module keeps a later iOS app possible, ADR-14), push notifications from the server, scraping property portals, payments, bring-your-own AI key (rejected 2026-09-22: consumer UX, payment-linked secret risk, support burden), importing from other apps or arbitrary spreadsheets (owner decision of 2026-09-23: later, as its own separately named feature, never called "import"; 6.9), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
+Multi-tenant accounts, sharing links, a native iOS app (the PWA serves iPhones; the shared KMP module keeps a later iOS app possible, ADR-14), push notifications from the server, scraping property portals, payments, bring-your-own AI key for anyone not signed in (rejected 2026-09-22; for signed-in users allowed by the owner on 2026-09-29, [11](11-feature-parity-and-export-spec.md) D-23, with Google sign-in), importing from other apps or arbitrary spreadsheets (owner decision of 2026-09-23: later, as its own separately named feature, never called "import"; 6.9), legal/title verification, turn-by-turn navigation, offline tile packs (Could, later).
 
 ## 12. Requirements traceability matrix
 

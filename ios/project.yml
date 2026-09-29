@@ -1,5 +1,5 @@
-# The Doorprints iOS app (CMP-8b; ADR-23): a thin SwiftUI shell around the Compose Multiplatform UI of the Gradle
-# module :ui (android/ui), which Gradle builds as the static framework DoorprintsKit. XcodeGen 2.46.0 turns this file
+# The Doorprints iOS app (CMP-8b, the map CMP-8c; ADR-23): a thin SwiftUI shell around the Compose Multiplatform UI
+# of the Gradle module :ui (android/ui), which Gradle builds as the static framework DoorprintsKit. XcodeGen 2.46.0 turns this file
 # into Doorprints.xcodeproj (not committed; ios/.gitignore): `cd ios && xcodegen generate`. CI: the ios-app job of
 # .github/workflows/shared-ios.yml. Ad-hoc signed for the simulator: no certificate, no Apple account, no App Store
 # (owner rules; ios/README.md).
@@ -23,6 +23,14 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
+# MapLibre iOS (CMP-8c), the map engine: MapLibre's own Swift package, pinned to the commit of its tag 6.31.0 (the
+# package's binary target pins the xcframework by SHA-256 in turn). A new version is a reviewed change here: read its
+# changelog, update the revision and the check in shared-ios.yml's ios-app job, and run the iOS app job.
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    revision: 13e41ab3d77ff5113e7e5d4ee87803b1f81f5683
+
 settings:
   base:
     MARKETING_VERSION: "0.1.0"  # the Android app's versionName (android/app/build.gradle.kts)
@@ -37,6 +45,14 @@ targets:
     # (en, hi, ta, te: the location purpose string).
     sources:
       - path: Doorprints
+      # India's outline and the held areas' polygon (ADR-22), bundled as the folder geo/ (a folder reference, so the
+      # files keep their path; the map reads them as geo/<file>): Android's copy itself, which IndiaBoundaryDataTest
+      # holds byte-identical to the web's, so there is no third copy to keep in step.
+      - path: ../android/app/src/main/assets/geo
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: MapLibre
     settings:
       base:
         PRODUCT_NAME: Doorprints

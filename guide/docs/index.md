@@ -23,9 +23,9 @@ it is not in the Play Store yet. The iPhone app is new and still being tested; i
 
 | What you can do | Website | Android app | iPhone app (early) |
 |---|---|---|---|
-| Map of your houses | Yes | Yes | Not yet |
-| Add a house | Yes, pick the spot on the map | Yes, where you stand or anywhere on the map | Not yet |
-| Edit a house, rating, checklist, visits | Yes | Yes | Yes, for houses from your server |
+| Map of your houses | Yes | Yes | Yes |
+| Add a house | Yes, pick the spot on the map | Yes, where you stand or anywhere on the map | Yes, where you stand or anywhere on the map |
+| Edit a house, rating, checklist, visits | Yes | Yes | Yes |
 | Add photos | Yes | Yes (camera or gallery) | Not yet |
 | Search, filter, sort, **Compare** | Yes | Yes | Yes |
 | **Save a copy** (HTML, PDF, CSV, Excel, Markdown, full backup) | Yes | Yes, plus a weekly automatic backup | Not yet |

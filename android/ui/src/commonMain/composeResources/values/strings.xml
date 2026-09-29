@@ -539,6 +539,9 @@
     <string name="map_not_on_this_phone">The map isn’t on iPhone yet. All your houses are in the ‘Houses’ tab.</string>
     <string name="settings_language_phone">Doorprints uses your iPhone’s language. To use another language just for Doorprints, add it under General › Language &amp; Region in the Settings app, then choose it on the Doorprints page there.</string>
     <string name="settings_language_open_settings">Open iPhone Settings</string>
-    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one.</string>
+    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap.</string>
     <string name="houses_empty_ios">No houses yet. You can’t add houses on iPhone yet. If you have a Doorprints server, connect it in Settings and your houses will show up here.</string>
+    <!-- The Map's location note where Hunt mode is not on the platform (iOS, CMP-8c): it names only what is on the screen. -->
+    <string name="map_location_off_no_hunt">Location is off for Doorprints. ‘Save house here’ needs it.</string>
+    <string name="map_needs_precise_no_hunt">‘Save house here’ needs precise location.</string>
 </resources>

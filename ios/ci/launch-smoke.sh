@@ -5,9 +5,11 @@
 # Installs the Debug build on an available iPhone of the iOS runtime that matches the selected Xcode's simulator SDK
 # (the same choice as ios-sim-tests' "Pick an iPhone simulator" step), launches it with -DoorprintsSelfCheck and reads
 # the simulator's unified log. The self-check (Kotlin, Debug builds only) writes one line per check with NSLog,
-#   DOORPRINTS-SELFCHECK <name> START, then PASS|FAIL|SKIP ...   for resources, database, settings and keychain,
-# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS"; no done line within
-# the time limit (a crash, a hang) fails too. It writes <out>/launch.log (the streamed DOORPRINTS- lines),
+#   DOORPRINTS-SELFCHECK <name> START, then PASS|FAIL|SKIP ...   for resources, database, settings, keychain,
+#   indiaView and map (CMP-8c: the in-app boundary check, the owner's CI gate for the iOS map),
+# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS" with indiaView and map
+# both PASS (they download the map's style, so they need the network); no done line within the time limit (a crash, a
+# hang) fails too. It writes <out>/launch.log (the streamed DOORPRINTS- lines),
 # <out>/unified.log (the same from `log show`), <out>/app-unified.log and <out>/system-unified.log (everything the app
 # logged, and what the system logged about it), <out>/launch.png and any crash reports, and always shuts the
 # simulator down.
@@ -20,7 +22,8 @@ fi
 app=$1
 out=$2
 bundle_id=app.doorprints
-wait_seconds=120
+# The checks run one after another: four of up to 30 s, indiaView up to 60 s and map up to 90 s (SelfCheck.kt).
+wait_seconds=300
 [ -d "$app" ] || { echo "::error::no app bundle at $app"; exit 2; }
 mkdir -p "$out"
 log="$out/launch.log"
@@ -146,11 +149,11 @@ xcrun simctl spawn "$udid" log show --last 5m --style compact --predicate 'proce
 xcrun simctl spawn "$udid" log show --last 5m --style compact \
   --predicate 'process != "Doorprints" AND eventMessage CONTAINS[c] "doorprints"' > "$out/system-unified.log" 2>&1 || true
 
-# The self-check's lines from the stream, or from `log show` when the stream has none.
-lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
-if [ -z "$lines" ] && [ -f "$unified" ]; then
-  lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$unified" 2>/dev/null | tr -d '\r' || true)
-fi
+# The self-check's lines from both sources: the stream and a fresh `log show`. Either can miss a line (on
+# 2026-09-29 the stream dropped "indiaView PASS" while it kept the lines around it), so neither is read alone; each
+# check's lines are kept in the order the app wrote them, once.
+read_unified_log
+lines=$(cat "$log" "$unified" 2>/dev/null | grep -o 'DOORPRINTS-SELFCHECK .*' | tr -d '\r' | awk '!seen[$0]++' || true)
 echo "--- self-check lines ---"
 echo "${lines:-(none)}"
 echo "--- start-up steps ---"
@@ -169,6 +172,13 @@ for report in "$out"/*.ips; do
 done
 
 if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
+  # The boundary gate: both map checks must have passed, not merely not failed.
+  for gate in indiaView map; do
+    if ! echo "$lines" | grep -q "DOORPRINTS-SELFCHECK $gate PASS"; then
+      echo "::error::the self-check passed without '$gate PASS' (the iOS map's boundary gate)"
+      exit 1
+    fi
+  done
   skipped=$(echo "$lines" | grep 'DOORPRINTS-SELFCHECK [a-z]* SKIP' || true)
   if [ -n "$skipped" ]; then
     echo "::warning::self-check skipped a check: $(echo "$skipped" | tr '\n' ' ')"

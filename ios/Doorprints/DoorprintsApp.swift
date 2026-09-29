@@ -1,10 +1,17 @@
 // The iOS app shell (CMP-8b): all of Doorprints' UI is Compose Multiplatform code in the Gradle module :ui, built as
-// the static framework DoorprintsKit (ios/project.yml). This file only hosts it; there is no Swift UI of our own.
+// the static framework DoorprintsKit (ios/project.yml). This file only hosts it; there is no Swift UI of our own. The
+// one other Swift file is the map view (MapLibreMapView.swift, CMP-8c), which Kotlin cannot build itself.
 import SwiftUI
 import DoorprintsKit
 
 @main
 struct DoorprintsApp: App {
+    init() {
+        // The map view (CMP-8c): Kotlin's common map asks this factory for MapLibre map views
+        // (MapLibreMapView.swift). Registered before the first view controller, which may start on the Map.
+        IosMap.shared.factory = MapLibreMapViewFactory()
+    }
+
     var body: some Scene {
         WindowGroup {
             ComposeView()

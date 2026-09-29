@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -162,18 +163,20 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun import() = shoot("import") { ImportScreen(onBack = {}) }
 
     /**
-     * The screens that hide what the iPhone app does not have yet (CMP-8b, [PlatformFeatures.Ios]), as the iOS shell
-     * provides it: the Map tab's title and note in place of the map (so no MapLibre here), Settings without the language
-     * choice, the copies, the weekly backup and Hunt mode (and with the iPhone's privacy note), the empty list that points
-     * to Settings instead of the map or *Import a backup*, a house with no photos without its Photos section, Compare's
-     * empty state and the Assistant's "off" state without their way to the map. Android provides nothing, so the
-     * screens above are unchanged.
+     * The screens that hide what the iPhone app does not have yet ([PlatformFeatures.Ios]), as the iOS shell provides
+     * it: since CMP-8c the Map's chrome without the Hunt card (the map view itself is an empty box here, as in a
+     * preview: MapLibre cannot run under Robolectric, which is also why Android has no Map shot), Settings without the
+     * language choice, the copies, the weekly backup and Hunt mode (and with the iPhone's privacy note), a house with no
+     * photos without its Photos section; the empty list, Compare's empty state and the Assistant's "off" state as on
+     * Android, pointing to the map. Android provides nothing, so the screens above are unchanged.
      */
     private fun shootIos(screen: String, content: @Composable () -> Unit) = shoot("ios_$screen") {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios, content = content)
     }
 
-    @Test fun iosMap() = shootIos("map") { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+    @Test fun iosMap() = shootIos("map") {
+        CompositionLocalProvider(LocalInspectionMode provides true) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+    }
     @Test fun iosSettings() = shootIos("settings") { SettingsScreen() }
     @Test fun iosHousesEmpty() {
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
