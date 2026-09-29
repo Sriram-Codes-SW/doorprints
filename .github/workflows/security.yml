@@ -1,3 +1,19 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Security scans (docs/07 section 4, threat model F-22 / SEC-013 / SEC-014). All free and open source.
 #
 # CodeQL is not here: it has its own workflow, .github/workflows/codeql.yml (added 2026-09-22, Sprint 4a). It is
@@ -106,6 +122,9 @@ jobs:
         with:
           fetch-depth: 0 # the range below needs main's history
           persist-credentials: false
+      # The FSF's "How to Use GNU Licenses": every source file carries the copyright and licence notice (docs/10 §12.6).
+      - name: Every source file has the copyright and licence notice
+        run: python3 .github/scripts/licence-headers.py --check
       - name: Only allowlisted author and committer emails in the new commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

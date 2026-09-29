@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.54 |
+| Version | 0.55 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -66,6 +66,7 @@
 | 0.52 | 2026-09-29 | Claude (Code), lead | Release security gate, backend part (S4b-SEC-1, [10](10-sprint-log.md) §12.5): **TC-S-04** (the ZAP API scan of the CI-started API) and **TC-S-05** (Trivy on the image) automated and blocking in `backend.yml`; **TC-S-08** gains the identical-answer test. The licence scan of the backend's runtime dependencies runs in `security.yml` (warnings until `LICENSE` is the AGPL). |
 | 0.53 | 2026-09-29 | Claude (Code), lead | Release security gate, Android part (S4b-SEC-1): **TC-S-06** MobSF automated and blocking in `android.yml` (job `mobsf`). |
 | 0.54 | 2026-09-29 | Claude (Code), lead | Release security gate, the check list and the manual part (S4b-SEC-1, S4b-SEC-3): new **§11.1**, every gate check with its tool, owner and threshold; the manual list and the deep pentest are the new [13](13-release-security-checklist.md). **TC-AI-04**: the prompt-injection set is 25 cases (golden set v0.6), with new guard keys `draftMustNotContain` and `summaryMustNotContain` (`EvalScorerTest.draftAndSummaryGuardsLookEverywhere`). |
+| 0.55 | 2026-09-29 | Claude (Code), lead | New **TC-S-27**: every source file carries the copyright and licence notice ([10](10-sprint-log.md) §12.6). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -363,6 +364,7 @@ The gate the *Play Store release, or any public server* row above waits for (sto
 | Container and IaC config | Trivy `config`, `security.yml` | DevSecOps | **Blocking:** no HIGH or CRITICAL misconfiguration | TC-S-14 |
 | Licences | `.github/scripts/licence-check.py` on the backend SBOM, `security.yml` `trivy` | DevSecOps | Every runtime licence compatible with `AGPL-3.0-only` or in `.github/licence-exceptions.json` with a reason: warnings while `LICENSE` is MIT, **blocking** once it is the AGPL | - |
 | Commit identity | `security.yml` `commit-identity` | DevSecOps | **Blocking:** only allowlisted author and committer emails | TC-S-26 |
+| TC-S-27 | Licence (CI) | **Every tracked source file carries the copyright and licence notice** (`security.yml` job `commit-identity`, step *Every source file has the copyright and licence notice*: `.github/scripts/licence-headers.py --check`, the FSF's "How to Use GNU Licenses"; [10](10-sprint-log.md) §12.6). Types: Kotlin, Java, TypeScript, JavaScript, Swift, CSS, `.strings`, shell, Python, YAML, TOML, properties, Dockerfiles, XML, HTML; data, images, docs, generated files, `Info.plist` and applied migrations are covered by `NOTICE` | Licence | A file without the notice fails the job, naming it; `--fix` adds it | Blocking |
 | API scan | OWASP ZAP 2.17.0 API scan of the built image, `backend.yml` `image` | Backend | **Blocking:** no High alert; Medium and Low triaged at release | TC-S-04 |
 | Image scan | Trivy image, `backend.yml` `image` | Backend | **Blocking:** no HIGH or CRITICAL with a fix available | TC-S-05 |
 | Authorisation | `ApiKeyFilterTest`, `ApiIntegrationTest`, `backend.yml` `mvn verify` | Backend | **Blocking:** every test passes (wrong keys of any shape get one identical 401; path tricks never reach data) | TC-S-08, TC-S-10 |

@@ -33,6 +33,9 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
   Examples: `feat/cmp-9-maplibre-compose`, `fix/india-boundary-lines`, `docs/branch-naming-rule`. One branch per
   pull request, made from the latest `main`; never reuse a merged branch. This applies to Claude sessions too: do
   not work on a session's generated name (such as `claude/sleepy-brown-479259`); make a descriptive branch instead.
+- **Licence notices** (FSF, 2026-09-29): every new source file starts with the copyright and AGPL notice; run
+  `python3 .github/scripts/licence-headers.py --fix` before committing (CI's `--check` fails without it). Licence:
+  `AGPL-3.0-only` with the section 7 permissions and trademark notice in `NOTICE`.
 - Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`.
 - **Commit identity:** Claude sessions commit as `Claude <noreply@anthropic.com>`; the owner as
   `329133251+Sriram-Codes-SW@users.noreply.github.com`. Never a bare `*@users.noreply.github.com` address: GitHub credits
