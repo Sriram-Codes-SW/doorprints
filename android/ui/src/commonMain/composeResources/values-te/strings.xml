@@ -507,6 +507,13 @@
     <string name="settings_language_changed">భాష %1$s కి మార్చబడింది</string>
     <string name="settings_show_key">API కీని చూపించు</string>
     <string name="settings_version">వెర్షన్ %1$s</string>
+    <string name="settings_licence">Doorprints స్వేచ్ఛా సాఫ్ట్‌వేర్: GNU Affero General Public License, వెర్షన్ 3 నిబంధనల ప్రకారం మీరు దీన్ని పంచుకోవచ్చు, మార్చవచ్చు.</string>
+    <string name="settings_warranty">దీనికి ఎలాంటి వారంటీ లేదు.</string>
+    <string name="settings_source">సోర్స్ కోడ్</string>
+    <string name="settings_source_desc">GitHubలో సోర్స్ కోడ్, బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
+    <string name="settings_licence_link">లైసెన్స్</string>
+    <string name="settings_licence_link_desc">GNU Affero General Public License, వెర్షన్ 3, బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
+    <string name="settings_link_failed">ఇక్కడ ఏ యాప్ కూడా ఈ లింక్‌ను తెరవలేదు. చిరునామా %1$s</string>
     <string name="sync_warning">%1$s నుండి సింక్ పని చేయలేదు. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">ప్రణాళిక సిద్ధం: %1$d స్టాప్</item>

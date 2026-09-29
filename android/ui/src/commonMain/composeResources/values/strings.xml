@@ -508,6 +508,13 @@
     <string name="settings_language_changed">Language changed to %1$s</string>
     <string name="settings_show_key">Show the API key</string>
     <string name="settings_version">Version %1$s</string>
+    <string name="settings_licence">Doorprints is free software: you can share and change it under the GNU Affero General Public License, version 3.</string>
+    <string name="settings_warranty">It comes with ABSOLUTELY NO WARRANTY.</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_source_desc">Source code on GitHub, opens in the browser</string>
+    <string name="settings_licence_link">Licence</string>
+    <string name="settings_licence_link_desc">The GNU Affero General Public License, version 3, opens in the browser</string>
+    <string name="settings_link_failed">No app here can open this link. The address is %1$s</string>
     <string name="sync_warning">Sync has not worked since %1$s. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">Plan ready: %1$d stop</item>

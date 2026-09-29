@@ -507,6 +507,13 @@
     <string name="settings_language_changed">மொழி %1$s ஆக மாற்றப்பட்டது</string>
     <string name="settings_show_key">API விசையைக் காட்டு</string>
     <string name="settings_version">பதிப்பு %1$s</string>
+    <string name="settings_licence">Doorprints ஒரு கட்டற்ற மென்பொருள்: GNU Affero General Public License, பதிப்பு 3-இன் விதிகளின்படி இதைப் பகிரலாம், மாற்றலாம்.</string>
+    <string name="settings_warranty">இதற்கு எந்த உத்தரவாதமும் இல்லை.</string>
+    <string name="settings_source">மூலக் குறியீடு</string>
+    <string name="settings_source_desc">GitHub-இல் மூலக் குறியீடு, உலாவியில் திறக்கும்</string>
+    <string name="settings_licence_link">உரிமம்</string>
+    <string name="settings_licence_link_desc">GNU Affero General Public License, பதிப்பு 3, உலாவியில் திறக்கும்</string>
+    <string name="settings_link_failed">இங்குள்ள எந்தச் செயலியாலும் இந்த இணைப்பைத் திறக்க முடியாது. முகவரி %1$s</string>
     <string name="sync_warning">%1$s முதல் ஒத்திசைவு வேலை செய்யவில்லை. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">திட்டம் தயார்: %1$d நிறுத்தம்</item>

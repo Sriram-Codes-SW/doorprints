@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **About Doorprints** (S4b-BL-65): the website's *Your data* page and the apps' Settings → About show the copyright,
+  that Doorprints is free software under the GNU AGPL version 3 with no warranty, and links to the source code and the
+  licence, in all four languages.
 - **Release security gate, backend part** (S4b-SEC-1, [sprint log](docs/10-sprint-log.md) §12.7): every backend push
   now builds the image and runs Trivy on it and an OWASP ZAP API scan against it (with a fresh database, through the
   OpenAPI description a test generates), both blocking on High; the backend's runtime dependencies get a licence
