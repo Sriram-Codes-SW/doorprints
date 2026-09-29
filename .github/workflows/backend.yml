@@ -95,7 +95,7 @@ jobs:
             -e POSTGRES_DB=doorprints -e POSTGRES_USER=doorprints -e POSTGRES_PASSWORD=doorprints \
             -p 127.0.0.1:5432:5432 doorprints-db:ci
           # Wait for the final server on TCP (the image's init phase only listens on the unix socket).
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if docker exec db pg_isready -h 127.0.0.1 -U doorprints -d doorprints >/dev/null 2>&1; then
               echo "database ready"; exit 0
             fi
