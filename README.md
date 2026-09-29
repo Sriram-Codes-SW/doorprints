@@ -306,6 +306,8 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 4. `android/shared/src/commonMain` and `android/ui/src/commonMain` stay free of `java.*` and `android.*` (the iOS compile job enforces it).
 5. Security-relevant changes update the threat model (02), the DFDs (04) and, for network behaviour, the OSI review (09).
 6. Secrets never go into git: environment variables and GitHub Secrets only. Workflow logs and artifacts are public.
+7. One branch per pull request, from the latest `main`, named for the work: `<type>/<topic>` (`feat`, `fix`, `docs`,
+   `ci`, `chore`, `refactor`, `test`), e.g. `fix/india-boundary-lines`; never a generated session name (`CLAUDE.md`).
 
 ## Change log
 

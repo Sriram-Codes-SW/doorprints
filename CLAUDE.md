@@ -28,6 +28,11 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 - **Every change goes through a pull request to `main`; the owner merges.** Do not merge your own pull request.
 - Work on a branch; CI runs on every branch push (Web, Backend, Android, Shared-iOS, Security, CodeQL). Deploy,
   signing and the dependency graph run on `main` only.
+- **Branch names say what the work is** (owner, 2026-09-29): `<type>/<topic>`, the topic a few lowercase words joined
+  by hyphens, with the ticket id when there is one. Types: `feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`.
+  Examples: `feat/cmp-9-maplibre-compose`, `fix/india-boundary-lines`, `docs/branch-naming-rule`. One branch per
+  pull request, made from the latest `main`; never reuse a merged branch. This applies to Claude sessions too: do
+  not work on a session's generated name (such as `claude/sleepy-brown-479259`); make a descriptive branch instead.
 - Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`.
 - **Commit identity:** Claude sessions commit as `Claude <noreply@anthropic.com>`; the owner as
   `329133251+Sriram-Codes-SW@users.noreply.github.com`. Never a bare `*@users.noreply.github.com` address: GitHub credits
