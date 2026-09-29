@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.41 |
+| Version | 0.42 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -52,6 +52,7 @@
 | 0.39 | 2026-09-29 | Claude (Code), lead | N13 (3b): **the app lock (S4b-FR-5) built first**, on `feat/s4b-fr-5-app-lock`, because Google sign-in waits on the owner's OAuth client (§6). New owner rule in §5 and §7: **keep the repository optimised** on every branch, pull request and `main`. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | **Delivery-speed review** (owner: "go with your recommendation while ensuring quality is not compromised"): the SessionStart hook (`.claude/hooks/session-start.sh`), Robolectric offline, the local iOS klib compile in §7, check-ins at 20 minutes for a fresh PR; the workflow-trigger change (push on `main` only) is the owner's step (§6). |
 | 0.41 | 2026-09-29 | Claude (Code), lead | The owner permitted the workflow change in the session: **one CI run per push** done (`push` on `main` only, `pull_request` the pre-merge signal; CodeQL and the backend image job on same-repository pull requests); the §6 to-do is closed. |
+| 0.42 | 2026-09-29 | Claude (Code), lead | `tools/check.sh` runs the local checks side by side (§7 step 4); the session hook installs Node 24 (Angular 22.2 refuses the container's Node 22.22.2); auto-merge as the owner's next setting (§6). |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -148,6 +149,12 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 ## 6. Owner to-dos
 
+- **Auto-merge** (delivery-speed review, 2026-09-29; the steps were given in the session): *Settings → General → Pull
+  Requests → Allow auto-merge*, and a ruleset on `main` (*Settings → Rules*) requiring the always-running checks
+  (Semgrep, gitleaks, Trivy, the commit-email allowlist, the two CodeQL analyses; the path-filtered ones would show
+  as *Expected* for ever on a pull request that does not touch their paths). Then a session enables auto-merge on
+  each pull request once every started check is green, and the merge happens the moment the last one finishes.
+
 - ~~**One CI run per push, not two**~~ **Done 2026-09-29** in the delivery-speed pull request, with the owner's
   permission given in the session ([07](07-secure-build-and-deploy.md) §1 *Branch runs*). A branch without a pull
   request now gets no CI: open the PR first (a draft is fine).
@@ -204,7 +211,7 @@ A new session reads CLAUDE.md, then this file, and continues from §2 without as
 suite runs in a cloud session; CI is the second check, never the first:
 
 - **A cloud session starts with `.claude/hooks/session-start.sh`** (SessionStart hook, 2026-09-29): the Android SDK
-  under `~/android-sdk` (`ANDROID_HOME` exported), a Gradle init script with Google's Maven Central mirror (Maven
+  under `~/android-sdk` (`ANDROID_HOME` exported), Node 24 through the image's nvm (first on `PATH`), a Gradle init script with Google's Maven Central mirror (Maven
   Central answers 429 through the session proxy), `web/node_modules` and MkDocs. Idempotent; about 2 minutes on a
   fresh container, seconds on a cached one. Change its SDK versions when `compileSdk` moves.
 - Docker: the daemon is installed but not started. `rm -f /var/run/docker.pid /var/run/docker.sock; nohup dockerd
@@ -226,7 +233,10 @@ suite runs in a cloud session; CI is the second check, never the first:
 3. Self-check (CLAUDE.md "How changes are reviewed"): accessibility, four languages, both themes, loading/empty/error.
    For UI: screenshots checked by eye (Android `recordRoborazziDebug`; web: Playwright against the built site, in all
    four languages and both themes).
-4. Local checks before every push: web `npx ng test --watch=false && npx ng build`; Android
+4. Local checks before every push: **`tools/check.sh`** runs them side by side for the areas the branch touches
+   (or `tools/check.sh all`; logs under `android/build/check/`), which takes the time of the slowest area (the
+   Gradle sequence, about 8 minutes) instead of their sum. What it runs, for a run by hand: web `npx ng test
+   --watch=false && CI=true npm run test:ci && npm run build`; Android
    `./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest
    :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true` (add
    `-Pkotlin.incremental=false` after switching branches), **and the iOS klib compile on Linux**

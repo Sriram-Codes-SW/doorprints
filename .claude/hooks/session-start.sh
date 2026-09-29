@@ -69,6 +69,21 @@ beforeSettings {
 }
 GRADLE
 
+# Node 24 (web.yml's version; Angular 22.2 refuses the container's Node 22.22.2) through the image's nvm, once;
+# put first on the session's PATH.
+NODE_MAJOR=24
+if [ -s /opt/nvm/nvm.sh ]; then
+  export NVM_DIR=/opt/nvm
+  # shellcheck disable=SC1091
+  . /opt/nvm/nvm.sh
+  if ! nvm ls "$NODE_MAJOR" >/dev/null 2>&1; then
+    echo "Node: installing $NODE_MAJOR"
+    nvm install "$NODE_MAJOR" >/dev/null 2>&1
+  fi
+  nvm use "$NODE_MAJOR" >/dev/null 2>&1
+  echo "export PATH=\"$(dirname "$(nvm which "$NODE_MAJOR")"):\$PATH\"" >> "$CLAUDE_ENV_FILE"
+fi
+
 if [ -f "$ROOT/web/package-lock.json" ] && [ ! -d "$ROOT/web/node_modules" ]; then
   echo "Web: npm ci"
   (cd "$ROOT/web" && npm ci --no-audit --no-fund >/dev/null)
@@ -79,4 +94,4 @@ if [ -f "$ROOT/guide/requirements.txt" ] && ! command -v mkdocs >/dev/null 2>&1;
   pip install -q -r "$ROOT/guide/requirements.txt" >/dev/null
 fi
 
-echo "Session start: Android SDK at $SDK, Gradle mirror, web and guide dependencies ready"
+echo "Session start: Android SDK at $SDK, Node $(node --version), Gradle mirror, web and guide dependencies ready"
