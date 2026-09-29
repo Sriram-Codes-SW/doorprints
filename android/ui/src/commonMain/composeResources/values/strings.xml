@@ -583,11 +583,11 @@
     <string name="settings_key_way">Use an API key instead</string>
     <string name="settings_key_way_intro">For a server that is not updated yet, or with the key from the server's settings file.</string>
     <string name="settings_ai_switch">Use AI features on this phone</string>
-    <string name="settings_ai_hint">When this is on, what you ask or paste into an AI feature, with the matching house notes, goes to your server, which sends it to Google Gemini. Contact names and phone numbers saved with a house are left out. The server's owner also has to turn on AI for this phone.</string>
+    <string name="settings_ai_hint">When this is on, what you ask or paste into an AI feature, with the matching house notes, goes to Google Gemini: through your server, or straight from this phone with your own key. Contact names and phone numbers saved with a house are left out.</string>
     <string name="settings_ai_on">AI features are on.</string>
     <string name="settings_ai_server_off">AI features are turned off on your server.</string>
     <string name="ai_off_for_device">The server's owner has not turned on AI for this device yet. They can do it on the owner page.</string>
-    <string name="ai_opt_in_needed">AI features are off on this phone. Turn them on in Settings, under Server.</string>
+    <string name="ai_opt_in_needed">AI features are off on this phone. Turn them on in Settings, under AI features.</string>
     <string name="connect_link_title">Connect to a server?</string>
     <string name="connect_link_body">This link connects this phone to the server below. Your houses will sync with it.</string>
     <string name="connect_link_warning">Connect only if you trust the person who made this QR code or link and know this address. Nothing is sent until you choose ‘Connect’.</string>
@@ -597,4 +597,22 @@
     <string name="connect_link_used">This link was already used or has run out. Ask the server's owner for a new one.</string>
     <string name="connect_link_done_title">Connected</string>
     <string name="connect_link_saved">Connected. This phone has its own key now.</string>
+    <string name="settings_ai_heading">AI features</string>
+    <string name="settings_ai_use_server">Use my server</string>
+    <string name="settings_ai_use_server_hint">Your server sends the requests to Google Gemini with its owner's key.</string>
+    <string name="settings_ai_use_server_none">Connect a server above to use this.</string>
+    <string name="settings_ai_use_own_key">Use my own Gemini key on this phone</string>
+    <string name="settings_ai_use_own_key_hint">No server needed. Requests go straight from this phone to Google Gemini. The key stays on this phone.</string>
+    <string name="settings_gemini_key">Gemini API key</string>
+    <string name="settings_gemini_key_hint">Make a free key in Google AI Studio, just for Doorprints, so you can delete it there at any time.</string>
+    <string name="settings_gemini_key_saved">A key ending in %1$s is saved (encrypted). Paste a new one to replace it.</string>
+    <string name="settings_gemini_get_key">Open Google AI Studio</string>
+    <string name="settings_gemini_save">Save key</string>
+    <string name="settings_gemini_test">Test key</string>
+    <string name="settings_gemini_ok">Google accepted this key.</string>
+    <string name="settings_gemini_rejected">Google did not accept this key. Check it and try again.</string>
+    <string name="settings_gemini_remove">Remove key</string>
+    <string name="settings_gemini_free_tier">On Google's free tier, Google may use what you send to improve its products, and people may read it. Keep personal details out of your notes, or use a key with billing turned on.</string>
+    <string name="settings_ai_needs_key">Save your Gemini key to turn AI on.</string>
+    <string name="ai_key_rejected">Google did not accept your Gemini key. Check it in Settings, under AI features.</string>
 </resources>
