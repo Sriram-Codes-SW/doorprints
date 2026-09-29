@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The Gemini key on the owner page** ([design](docs/03-design.md) §12.1): a self-hosted server's owner can now paste
+  their Gemini key on the owner page instead of the settings file. It is stored encrypted, shown only by its last four
+  characters, and used at once with no restart. *Remove key* stops AI, and *AI on this server* pauses it for everyone.
 - **The owner page and device pairing, server side** ([design](docs/03-design.md) §12.1, ADR-25): a self-hosted server
   now has an owner page at `/owner`, opened the first time with a one-time link from the server's log. It lists every
   connected device with its last use and a *Revoke* button, lets the owner approve a new device by typing the code the

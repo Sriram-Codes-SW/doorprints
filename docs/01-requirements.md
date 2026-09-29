@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.35 |
+| Version | 0.36 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -47,6 +47,7 @@
 | 0.33 | 2026-09-28 | Claude (Code), lead | **FR-098**: the Survey of India's boundary is the reference the depiction is checked against (DST geospatial guidelines of 2021, clause 8 xiii; owner request of 2026-09-28; [03](03-design.md) §11.1). No status changed. |
 | 0.34 | 2026-09-29 | Claude (Code), lead | CON-03: MapLibre GL 6.11 (web; the web dependency update, [10](10-sprint-log.md) §16). |
 | 0.35 | 2026-09-29 | Claude (Code), lead | Device keys, pairing and the owner page ([03](03-design.md) §12.1, ADR-25): new FR-099..FR-101, SEC-050, SEC-051; SEC-025 reworded and server side done. |
+| 0.36 | 2026-09-29 | Claude (Code), lead | New SEC-052: the Gemini key on the owner page, stored encrypted. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -333,6 +334,7 @@ AI-assisted column mapping, is a possible later feature with its own name (11.3)
 | SEC-049 | Notification-action and alarm `PendingIntent`s are immutable and explicit to non-exported components; the geofencing `PendingIntent` is mutable (the Geofencing API requires `FLAG_MUTABLE` on Android 12+) but explicit to a non-exported receiver; **Start Hunt mode** starts the foreground service only from the user's tap on the notification (Android's exemption for starting a location foreground service from a notification interaction), never from the geofence or alarm broadcast itself. The boot and package-replaced receivers only re-register geofences and alarms (no location request, no network). | M | Plan (4b) | [11](11-feature-parity-and-export-spec.md) T-E8 |
 | SEC-050 | Pairing secrets ([03](03-design.md) §12.1): device keys, poll tokens, invites, setup links and owner sessions are 32 random bytes kept only as SHA-256 hashes; a device key is handed over once; codes and invites expire after 10 minutes, setup links after 1 hour, all single use; the public pairing calls have their own rate limit per address, and wrong codes on the owner page 5 a minute per session. | M | **Done** (2026-09-29) | T-S8, T-I27 |
 | SEC-051 | The owner page ([03](03-design.md) §12.1): session cookie `HttpOnly`, `SameSite=Strict`, `Path=/owner`, `Secure` over HTTPS; every call carries `X-Doorprints-Owner` and comes from the same origin (`Sec-Fetch-Site` or `Origin`); CSP `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'`; names shown as text only. | M | **Done** (2026-09-29) | T-E9 |
+| SEC-052 | The Gemini key set on the owner page ([03](03-design.md) §12.1) is stored only encrypted (AES-256-GCM, key derived from `APP_API_KEY` with HKDF-SHA256, name bound as associated data), is write-only (last four characters shown), and is re-encrypted under `APP_API_KEY_NEXT` during a rotation. | M | **Done** (2026-09-29) | T-I22 |
 
 ## 9. Privacy requirements
 

@@ -79,6 +79,25 @@
       </div>
     </section>
 
+    <section class="card" aria-labelledby="ai-heading">
+      <h2 id="ai-heading" data-t="aiHeading">AI (Google Gemini)</h2>
+      <p id="ai-not-set-up" data-t="aiNotSetUp" hidden>AI is not set up on this server. To use it, set APP_AI_ENABLED=true in the server's settings file and restart the server.</p>
+      <p id="ai-vertex" data-t="aiVertex" hidden>This server uses Google Cloud Vertex AI, which needs no Gemini key.</p>
+      <div id="ai-panel" hidden>
+        <p id="ai-key-status"></p>
+        <form id="key-form" class="row">
+          <label for="gemini-key" data-t="keyLabel">Gemini key</label>
+          <input id="gemini-key" type="password" autocomplete="off" spellcheck="false" maxlength="200" required>
+          <button type="submit" class="primary" data-t="saveKey">Save key</button>
+        </form>
+        <p class="muted"><span data-t="keyHelp">Make a separate key just for Doorprints in Google AI Studio, so you can delete it there at any time. The key is stored encrypted and cannot be shown again.</span> <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" data-t="keyLink">Open Google AI Studio</a></p>
+        <button id="remove-key" class="danger" data-t="removeKey" hidden>Remove key</button>
+      </div>
+      <label id="ai-switch-row" class="switch-row" hidden>
+        <input id="ai-on" type="checkbox" role="switch"> <span data-t="aiOnServer">AI on this server</span>
+      </label>
+    </section>
+
     <section class="card" aria-labelledby="devices-heading">
       <h2 id="devices-heading" data-t="devicesHeading">Devices</h2>
       <p class="muted" data-t="devicesBody">Each device has its own key. AI requests use your Gemini key, so AI is off for a new device until you turn it on here.</p>

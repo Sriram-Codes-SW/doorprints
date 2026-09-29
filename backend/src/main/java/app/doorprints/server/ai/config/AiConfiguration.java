@@ -18,7 +18,9 @@
 
 package app.doorprints.server.ai.config;
 
+import app.doorprints.server.secrets.GeminiKey;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,11 +58,8 @@ public class AiConfiguration {
                     + "' (Gemini Developer API key from AI Studio, default) or '" + AiProperties.VERTEX
                     + "' (Google Cloud Vertex AI with Application Default Credentials)");
         }
-        var key = env.getProperty("spring.ai.openai.api-key", "");
-        if (key.isBlank()) {
-            throw new IllegalStateException("APP_AI_ENABLED=true needs AI_API_KEY (a free Gemini API key from "
-                    + "https://aistudio.google.com/apikey, or any non-empty value such as 'ollama' for Ollama)");
-        }
+        // No AI_API_KEY is fine since ADR-25: the owner can set the Gemini key on the owner page (docs/03 §12.1);
+        // until a key exists, AI reads as off.
         var provider = props.embedding().provider();
         if (!AiProperties.Embedding.GOOGLE_GENAI.equals(provider) && !AiProperties.Embedding.OPENAI.equals(provider)) {
             throw new IllegalStateException("app.ai.embedding.provider (AI_EMBEDDING_PROVIDER) must be '"
@@ -90,5 +89,14 @@ public class AiConfiguration {
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder) {
         return builder.build();
+    }
+
+    /**
+     * The OpenAI-compatible chat client sends the Gemini key in use now (the owner page's, or AI_API_KEY) on every
+     * request, so a key set or changed on the owner page works at once (docs/03 §12.1).
+     */
+    @Bean
+    public OpenAiHttpClientBuilderCustomizer geminiKeyCustomizer(GeminiKey geminiKey) {
+        return builder -> builder.interceptor(new GeminiKeyInterceptor(geminiKey::current));
     }
 }
