@@ -534,4 +534,11 @@
     <string name="import_stopped_copy">Import stopped. Nothing was added.</string>
     <!-- S4b-BL-20 (2026-09-24): the sync found the server behind this phone (web: data.serverReset). -->
     <string name="sync_server_reset">Your server seems to have been reset or set back to an older copy. Doorprints is sending everything on this phone to it again and downloading everything from it. Nothing here is lost.</string>
+    <!-- CMP-8b (2026-09-29): what the iPhone app says where it has no map or in-app language yet (the Map note, the
+         language sentence, the privacy note and the empty house list). -->
+    <string name="map_not_on_this_phone">The map isn’t on iPhone yet. All your houses are in the ‘Houses’ tab.</string>
+    <string name="settings_language_phone">Doorprints uses your iPhone’s language. To use another language just for Doorprints, add it under General › Language &amp; Region in the Settings app, then choose it on the Doorprints page there.</string>
+    <string name="settings_language_open_settings">Open iPhone Settings</string>
+    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one.</string>
+    <string name="houses_empty_ios">No houses yet. You can’t add houses on iPhone yet. If you have a Doorprints server, connect it in Settings and your houses will show up here.</string>
 </resources>

@@ -170,6 +170,7 @@ fun HouseListScreen(
     val repo = services.repository
     val undoes = services.copyImports
     val platform = LocalPlatformServices.current
+    val platformFeatures = LocalPlatformFeatures.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     // A house deleted from its form: "Deleted Green Villa" with Undo (whole-app audit).
@@ -439,34 +440,57 @@ fun HouseListScreen(
             firstRun -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
                 HousesHeading()
                 syncWarning?.invoke()
-                HeroEmptyState(
-                    icon = Icons.Default.Home,
-                    title = stringResource(Res.string.app_tagline),
-                    body = stringResource(Res.string.houses_empty),
-                    horizontalPadding = 0.dp,
-                    action = {
-                        // IntrinsicSize.Max + fillMaxWidth: both buttons take the wider label's width (capped by the
-                        // screen), so the stack is one clean column in every language rather than two ragged widths.
-                        Column(
-                            Modifier.width(IntrinsicSize.Max),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                ButtonLabel(stringResource(Res.string.common_add_on_map))
+                // Without the map (iOS for now; PlatformFeatures.map) no house can be added on this phone: the body
+                // says so and that a connected server brings the houses here, and the one button opens Settings.
+                if (!platformFeatures.map) {
+                    HeroEmptyState(
+                        icon = Icons.Default.Home,
+                        title = stringResource(Res.string.app_tagline),
+                        body = stringResource(Res.string.houses_empty_ios),
+                        horizontalPadding = 0.dp,
+                        action = {
+                            Button(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {
+                                ButtonLabel(stringResource(Res.string.houses_open_settings))
                             }
-                            OutlinedButton(
-                                onClick = onOpenImport,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        },
+                    )
+                } else {
+                    HeroEmptyState(
+                        icon = Icons.Default.Home,
+                        title = stringResource(Res.string.app_tagline),
+                        body = stringResource(Res.string.houses_empty),
+                        horizontalPadding = 0.dp,
+                        action = {
+                            // IntrinsicSize.Max + fillMaxWidth: both buttons take the wider label's width (capped by the
+                            // screen), so the stack is one clean column in every language rather than two ragged widths.
+                            Column(
+                                Modifier.width(IntrinsicSize.Max),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(RestoreIcon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                ButtonLabel(stringResource(Res.string.import_title))
+                                Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                                    ButtonLabel(stringResource(Res.string.common_add_on_map))
+                                }
+                                // Only where the platform imports backups (hidden on iOS for now; PlatformFeatures).
+                                if (platformFeatures.copiesAndImports) {
+                                    OutlinedButton(
+                                        onClick = onOpenImport,
+                                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    ) {
+                                        Icon(
+                                            RestoreIcon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                                        )
+                                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                        ButtonLabel(stringResource(Res.string.import_title))
+                                    }
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
             else -> HouseList(
                 houses, shown, visitsByHouse, filter, sort, query,

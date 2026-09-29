@@ -1,8 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // :shared - Kotlin Multiplatform module with Doorprints' platform-neutral code (see README.md in this folder).
-// Targets: Android (AGP's KMP library plugin) and, compile-only, iosArm64 + iosSimulatorArm64. The iOS targets exist
-// so commonMain cannot use JVM/Android APIs; there is no iOS app and no iOS framework binary in this sprint.
+// Targets: Android (AGP's KMP library plugin) and iosArm64 + iosSimulatorArm64. The iOS targets keep commonMain free
+// of JVM/Android APIs, and since CMP-8b the iOS app's framework (built by :ui, DoorprintsKit) links this module's
+// iOS klibs; :shared itself has no framework binary.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -24,7 +25,8 @@ kotlin {
         withHostTest {}
     }
 
-    // Compile-only guard rails for Phase 2. Built by the macOS CI job (shared-ios.yml: compileKotlinIosArm64,
+    // Guard rails since Phase 2, and the iOS app's data and HTTP code since CMP-8 (linked into :ui's DoorprintsKit
+    // framework). Built by the macOS CI job (shared-ios.yml: compileKotlinIosArm64,
     // compileKotlinIosSimulatorArm64, compileTestKotlinIosSimulatorArm64). On ubuntu these tasks are skipped, also
     // under :shared:allTests, because gradle.properties sets kotlin.native.enableKlibsCrossCompilation=false.
     iosArm64()
@@ -47,6 +49,8 @@ kotlin {
             // iOS has no framework SQLite for Room: the bundled driver, used by iosAppDatabase and run by the iosTest
             // simulator suite.
             implementation(libs.androidx.sqlite.bundled)
+            // The iOS HTTP stack (CMP-8b, IosApiHttp): Ktor's Darwin engine on NSURLSession.
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

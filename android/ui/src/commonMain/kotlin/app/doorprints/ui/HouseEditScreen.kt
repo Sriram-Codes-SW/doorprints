@@ -449,6 +449,9 @@ fun HouseEditScreen(
     val shownPhotos = photos.filter { it.id !in pendingDelete }
     val photoFocus = remember { HashMap<String, FocusRequester>() }
     val thumbFocus = remember { HashMap<String, FocusRequester>() }
+    // Taking and picking photos (PlatformFeatures.addPhotos, off on iOS for now). Without them the two buttons are not
+    // composed, so their focus requesters are never used: requestFocus on an unattached requester throws.
+    val canAddPhotos = LocalPlatformFeatures.current.addPhotos
     val galleryFocus = remember { FocusRequester() }
     val cameraFocus = remember { FocusRequester() }
     var focusTarget by remember { mutableStateOf<String?>(null) }
@@ -458,8 +461,8 @@ fun HouseEditScreen(
         withFrameNanos { }
         runCatching {
             when {
-                target == FOCUS_GALLERY -> galleryFocus.requestFocus()
-                target == FOCUS_CAMERA -> cameraFocus.requestFocus()
+                target == FOCUS_GALLERY -> if (canAddPhotos) galleryFocus.requestFocus()
+                target == FOCUS_CAMERA -> if (canAddPhotos) cameraFocus.requestFocus()
                 target.startsWith(FOCUS_THUMB) -> thumbFocus[target.removePrefix(FOCUS_THUMB)]?.requestFocus()
                 else -> photoFocus[target]?.requestFocus()
             }
@@ -492,7 +495,7 @@ fun HouseEditScreen(
         val rest = shownPhotos.filter { it.id != p.id }
         val next = rest.getOrNull(index) ?: rest.lastOrNull()
         photoDeletes.add(p, number)
-        if (touchExploration()) focusTarget = next?.id ?: FOCUS_GALLERY
+        if (touchExploration()) focusTarget = next?.id ?: FOCUS_GALLERY.takeIf { canAddPhotos }
         showUndo(PhotoDeleteViewModel.Pending(p, number))
     }
 
@@ -959,115 +962,122 @@ fun HouseEditScreen(
                     }
                 }
 
-                HorizontalDivider()
-                SectionHeading(stringResource(Res.string.house_photos))
-                if (saved == null) {
-                    // A new house: its photos belong to a saved row. One tap saves and continues on it (whole-app audit).
-                    if (isNew) {
-                        Text(stringResource(Res.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(
-                            onClick = { save() },
-                            enabled = canSave,
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) { ButtonLabel(stringResource(Res.string.house_save_add_photos)) }
-                    }
-                } else {
-                    Column {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Without adding photos (iOS for now; PlatformFeatures.addPhotos) there is no take or pick button
+                // and no "save first" prompt, and a house with no photos has no Photos section at all; photos it
+                // already has (from a server) are still shown, and can be opened and deleted.
+                if (canAddPhotos || photos.isNotEmpty()) {
+                    HorizontalDivider()
+                    SectionHeading(stringResource(Res.string.house_photos))
+                    if (saved == null) {
+                        // A new house: its photos belong to a saved row. One tap saves and continues on it (whole-app audit).
+                        if (isNew && canAddPhotos) {
+                            Text(stringResource(Res.string.house_save_first_photos), style = MaterialTheme.typography.bodySmall)
                             OutlinedButton(
-                                onClick = {
-                                    commitPendingDelete()
-                                    photoSources.takePhoto()
-                                },
-                                enabled = !addingPhoto,
-                                modifier = Modifier.heightIn(min = 48.dp).focusRequester(cameraFocus).then(
-                                    if (focusTarget == FOCUS_CAMERA) Modifier.focusProperties { canFocus = true } else Modifier,
-                                ),
-                            ) { Text(stringResource(Res.string.house_take_photo)) }
-                            OutlinedButton(
-                                onClick = {
-                                    commitPendingDelete()
-                                    photoSources.pickFromGallery()
-                                },
-                                enabled = !addingPhoto,
-                                modifier = Modifier.heightIn(min = 48.dp).focusRequester(galleryFocus).then(
-                                    if (focusTarget == FOCUS_GALLERY) Modifier.focusProperties { canFocus = true } else Modifier,
-                                ),
-                            ) { Text(stringResource(Res.string.house_from_gallery)) }
+                                onClick = { save() },
+                                enabled = canSave,
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) { ButtonLabel(stringResource(Res.string.house_save_add_photos)) }
                         }
-                        // Where the user is looking after taking or picking a photo (round 21), not at the top of the form.
-                        LiveMessage {
-                            val problem = photoProblem
-                            when {
-                                addingPhoto -> Text(
-                                    stringResource(Res.string.house_adding_photo),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(top = 8.dp),
-                                )
-                                problem != null -> {
-                                    val text = when (problem) {
-                                        Repository.AddPhotoResult.LIMIT_REACHED ->
-                                            stringResource(Res.string.house_photo_limit, MAX_PHOTOS_PER_HOUSE)
-                                        else -> stringResource(Res.string.house_photo_unreadable)
-                                    }
-                                    ResultCard(
-                                        tone = ResultTone.ERROR,
-                                        text = text,
-                                        onDismiss = {
-                                            photoProblem = null
-                                            if (touchExploration()) focusTarget = FOCUS_CAMERA
+                    } else {
+                        if (canAddPhotos) {
+                            Column {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            commitPendingDelete()
+                                            photoSources.takePhoto()
                                         },
-                                        modifier = Modifier.padding(top = 8.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    val name = d.label.ifBlank { unnamed }
-                    val openLabel = stringResource(Res.string.house_photo_open)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        shownPhotos.forEachIndexed { index, p ->
-                            val deleteFocus = photoFocus.getOrPut(p.id) { FocusRequester() }
-                            val openFocus = thumbFocus.getOrPut(p.id) { FocusRequester() }
-                            Box {
-                                // A button: opens the photo larger (the web's photo tile, docs/05 §5).
-                                AsyncImage(
-                                    model = form.photoModel(p.id),
-                                    contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
-                                        .focusRequester(openFocus)
-                                        .then(
-                                            if (focusTarget == FOCUS_THUMB + p.id) {
-                                                Modifier.focusProperties { canFocus = true }
-                                            } else {
-                                                Modifier
-                                            },
-                                        )
-                                        .clickable(role = Role.Button, onClickLabel = openLabel) { viewerPhotoId = p.id },
-                                )
-                                // IconButton is 48 dp, on a surface so it stays visible on light photos.
-                                Surface(shape = MaterialTheme.shapes.small, tonalElevation = 2.dp,
-                                    modifier = Modifier.align(Alignment.TopEnd)) {
-                                    IconButton(
-                                        onClick = { deletePhoto(p, index + 1) },
-                                        modifier = Modifier.focusRequester(deleteFocus).then(
-                                            if (focusTarget == p.id) Modifier.focusProperties { canFocus = true } else Modifier,
+                                        enabled = !addingPhoto,
+                                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(cameraFocus).then(
+                                            if (focusTarget == FOCUS_CAMERA) Modifier.focusProperties { canFocus = true } else Modifier,
                                         ),
-                                    ) {
-                                        Icon(Icons.Default.Delete,
-                                            contentDescription = stringResource(Res.string.house_delete_photo, index + 1))
+                                    ) { Text(stringResource(Res.string.house_take_photo)) }
+                                    OutlinedButton(
+                                        onClick = {
+                                            commitPendingDelete()
+                                            photoSources.pickFromGallery()
+                                        },
+                                        enabled = !addingPhoto,
+                                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(galleryFocus).then(
+                                            if (focusTarget == FOCUS_GALLERY) Modifier.focusProperties { canFocus = true } else Modifier,
+                                        ),
+                                    ) { Text(stringResource(Res.string.house_from_gallery)) }
+                                }
+                                // Where the user is looking after taking or picking a photo (round 21), not at the top of the form.
+                                LiveMessage {
+                                    val problem = photoProblem
+                                    when {
+                                        addingPhoto -> Text(
+                                            stringResource(Res.string.house_adding_photo),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(top = 8.dp),
+                                        )
+                                        problem != null -> {
+                                            val text = when (problem) {
+                                                Repository.AddPhotoResult.LIMIT_REACHED ->
+                                                    stringResource(Res.string.house_photo_limit, MAX_PHOTOS_PER_HOUSE)
+                                                else -> stringResource(Res.string.house_photo_unreadable)
+                                            }
+                                            ResultCard(
+                                                tone = ResultTone.ERROR,
+                                                text = text,
+                                                onDismiss = {
+                                                    photoProblem = null
+                                                    if (touchExploration()) focusTarget = FOCUS_CAMERA
+                                                },
+                                                modifier = Modifier.padding(top = 8.dp),
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                        // The photo being added, so the row shows that something is happening (decoding a 12 MP photo
-                        // takes seconds on a budget phone). Decorative: the live message above says it.
-                        if (addingPhoto) {
-                            Box(
-                                Modifier.size(120.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
-                                contentAlignment = Alignment.Center,
-                            ) { CircularProgressIndicator() }
+                        val name = d.label.ifBlank { unnamed }
+                        val openLabel = stringResource(Res.string.house_photo_open)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            shownPhotos.forEachIndexed { index, p ->
+                                val deleteFocus = photoFocus.getOrPut(p.id) { FocusRequester() }
+                                val openFocus = thumbFocus.getOrPut(p.id) { FocusRequester() }
+                                Box {
+                                    // A button: opens the photo larger (the web's photo tile, docs/05 §5).
+                                    AsyncImage(
+                                        model = form.photoModel(p.id),
+                                        contentDescription = stringResource(Res.string.house_photo_desc, index + 1, name),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(120.dp).clip(MaterialTheme.shapes.small)
+                                            .focusRequester(openFocus)
+                                            .then(
+                                                if (focusTarget == FOCUS_THUMB + p.id) {
+                                                    Modifier.focusProperties { canFocus = true }
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
+                                            .clickable(role = Role.Button, onClickLabel = openLabel) { viewerPhotoId = p.id },
+                                    )
+                                    // IconButton is 48 dp, on a surface so it stays visible on light photos.
+                                    Surface(shape = MaterialTheme.shapes.small, tonalElevation = 2.dp,
+                                        modifier = Modifier.align(Alignment.TopEnd)) {
+                                        IconButton(
+                                            onClick = { deletePhoto(p, index + 1) },
+                                            modifier = Modifier.focusRequester(deleteFocus).then(
+                                                if (focusTarget == p.id) Modifier.focusProperties { canFocus = true } else Modifier,
+                                            ),
+                                        ) {
+                                            Icon(Icons.Default.Delete,
+                                                contentDescription = stringResource(Res.string.house_delete_photo, index + 1))
+                                        }
+                                    }
+                                }
+                            }
+                            // The photo being added, so the row shows that something is happening (decoding a 12 MP photo
+                            // takes seconds on a budget phone). Decorative: the live message above says it.
+                            if (addingPhoto) {
+                                Box(
+                                    Modifier.size(120.dp).background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
+                                    contentAlignment = Alignment.Center,
+                                ) { CircularProgressIndicator() }
+                            }
                         }
                     }
                 }

@@ -79,14 +79,21 @@ private const val JUST_SAVED_KEY = "justSaved"
 /**
  * A tab, the bottom bar's way (and every other route to a tab, such as a notification's Settings or the map's
  * *Open Houses*): the tab's own saved stack comes back and the current one is saved, never pushed on top of it.
+ * [home] is the graph's start destination ([homeRoute]), the entry every tab switch pops back to.
  */
-private fun NavController.openTab(route: String) {
+private fun NavController.openTab(route: String, home: String) {
     navigate(route) {
-        popUpTo("map") { saveState = true }
+        popUpTo(home) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
 }
+
+/**
+ * The start destination: the Map, or the Houses tab where the platform has no map yet (iOS, CMP-8b;
+ * [PlatformFeatures.map]). The Map tab stays in the bar either way, with its note.
+ */
+private fun homeRoute(features: PlatformFeatures) = if (features.map) "map" else "houses"
 
 /** Whether [entry] is the resumed destination: a tap or a finished write during a transition is dropped. */
 private fun resumed(entry: NavBackStackEntry) = entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
@@ -103,6 +110,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         val services = LocalAppServices.current
         val repo = services.repository
         val nav = rememberNavController()
+        val features = LocalPlatformFeatures.current
+        val home = homeRoute(features)
+        fun NavController.openTab(route: String) = openTab(route, home)
         val deepLink by deepLinks.collectAsStateWithLifecycle()
         // AI features appear only when the server says they are on (and it is reachable). Asked once per process, in
         // DoorprintsApp (whole-app audit): asking on every recreation hid the tab on a rotation while offline.
@@ -178,10 +188,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // One-shot: set by the empty house list's "Add a house on the map", cleared by the map once it has shown how
         // to add a house (UX review, round 15). Saveable, so a rotation during the switch does not lose it.
         var mapAddTip by rememberSaveable { mutableStateOf(false) }
+        // Without a map (iOS) nothing offers "Add a house on the map", and the tip is never set: the Map tab's note
+        // has no snackbar to show it.
         val openMapWithTip = {
-            mapAddTip = true
+            if (features.map) mapAddTip = true
             nav.navigate("map") {
-                popUpTo("map")
+                popUpTo(home)
                 launchSingleTop = true
             }
         }
@@ -212,7 +224,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         ) { padding ->
             // consumeWindowInsets: the padding already covers the system bars, so a screen's own Scaffold, TopAppBar or
             // bottom bar (Export's action area) must not add them a second time.
-            NavHost(nav, startDestination = "map", modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
+            NavHost(nav, startDestination = home, modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
                 composable("map") { entry ->
                     val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                         .collectAsStateWithLifecycle()
@@ -296,7 +308,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                             importedRun = run
                             importedOpen++
                             nav.navigate("houses") {
-                                popUpTo("map")
+                                popUpTo(home)
                                 launchSingleTop = true
                             }
                         },
@@ -332,7 +344,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         // stale link was opened from, as Import's "See your houses" does.
                         onOpenHouses = dropUnlessResumed {
                             nav.navigate("houses") {
-                                popUpTo("map")
+                                popUpTo(home)
                                 launchSingleTop = true
                             }
                         },

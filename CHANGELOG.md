@@ -309,6 +309,14 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   the boundary-source ticket S4b-BL-10 re-read (SoI's Administrative Boundary Database is free; shipping it still
   needs SoI's word), a check at each release (S4b-BL-51) and a draft letter to SoI
   ([docs/ops/soi-boundary-data-request.md](docs/ops/soi-boundary-data-request.md)). The map itself is unchanged.
+- **iPhone app shell (CMP-8b; [sprint log](docs/10-sprint-log.md) §13.12).** The common screens run in an iPhone app
+  (`ios/`, built with XcodeGen) through the static `DoorprintsKit` framework: the house list, the house form, Compare,
+  the Assistant and Settings, with iPhone location, VoiceOver and the swipe-back. What the iPhone does not have yet is
+  hidden, not disabled: the map (the app opens on Houses; the Map tab says the map is not on iPhone yet), Hunt mode,
+  adding photos, *Save a copy*, *Import a backup*, the weekly backup and the in-app language (Settings says how to
+  choose one in the Settings app and opens it). As houses are added on the map, an empty list on iPhone says so and
+  that a connected server brings them, with *Open Settings*. CI's new `ios-app` job builds the app ad-hoc signed and
+  launches it on a simulator with a self-check. Not on the App Store; no certificate or Apple account.
 - **iOS groundwork (CMP-8a; [sprint log](docs/10-sprint-log.md) §13.11).** CI's new `ios-sim-tests` job runs the
   shared code's tests on an iPhone simulator (Xcode 26.4.1 pinned). On iOS: the database opens and migrates, the
   settings and the Keychain key stay in step (update first, locked told apart from missing, the old key put back
@@ -865,6 +873,9 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
 
 ### Security
 
+- **Backend: jackson-databind raised from 3.1.5 to 3.1.7 (Jackson 3) and from 2.21.5 to 2.21.7 (Jackson 2)** with
+  `jackson-bom.version` and `jackson-2-bom.version` overrides in `backend/pom.xml` for CVE-2026-68497 (HIGH, fixed in
+  3.1.6 and 2.21.6), found by the CI `trivy sbom` gate. Remove the overrides when Spring Boot manages those versions.
 - **iOS: the database and the settings are kept out of backups** (S4b-BL-56; threat model F-03, SEC-011): both live in
   `Application Support/Doorprints`, which is created with the exclude-from-backup flag and read back.
 - **CI: new commits must carry an allowlisted author and committer email** (`security.yml` job `commit-identity`,

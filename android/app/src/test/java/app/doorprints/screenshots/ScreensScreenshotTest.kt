@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -25,6 +26,9 @@ import app.doorprints.ui.DoorprintsTheme
 import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.ImportScreen
 import app.doorprints.ui.LocalAppServices
+import app.doorprints.ui.LocalPlatformFeatures
+import app.doorprints.ui.MapScreen
+import app.doorprints.ui.PlatformFeatures
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.HouseStatus
@@ -156,6 +160,44 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
     @Test fun import() = shoot("import") { ImportScreen(onBack = {}) }
+
+    /**
+     * The screens that hide what the iPhone app does not have yet (CMP-8b, [PlatformFeatures.Ios]), as the iOS shell
+     * provides it: the Map tab's title and note in place of the map (so no MapLibre here), Settings without the language
+     * choice, the copies, the weekly backup and Hunt mode (and with the iPhone's privacy note), the empty list that points
+     * to Settings instead of the map or *Import a backup*, a house with no photos without its Photos section, Compare's
+     * empty state and the Assistant's "off" state without their way to the map. Android provides nothing, so the
+     * screens above are unchanged.
+     */
+    private fun shootIos(screen: String, content: @Composable () -> Unit) = shoot("ios_$screen") {
+        CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios, content = content)
+    }
+
+    @Test fun iosMap() = shootIos("map") { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+    @Test fun iosSettings() = shootIos("settings") { SettingsScreen() }
+    @Test fun iosHousesEmpty() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { listOf("a", "b").forEach { repo.deleteHouse(it) } }
+        shootIos("houses_empty") { HouseListScreen(onOpenHouse = {}) }
+    }
+    // One house: fewer than Compare needs, so its empty state, without "Add a house on the map".
+    @Test fun iosCompareEmpty() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.deleteHouse("b") }
+        shootIos("compare_empty") {
+            val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
+            val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
+            CompareScreen(houses, counts, onOpenHouse = {})
+        }
+    }
+    // The Assistant with AI off (as in the Android shot): Try again, without "Go to the map".
+    @Test fun iosAssistant() = shootIos("assistant") { AssistantScreen(onOpenHouse = {}) }
+    // On a screen tall enough for the whole form, so the shot shows the listing and Visits with no Photos section
+    // between them (the house has no photos); the top of the form is the same as Android's.
+    @Test fun iosHouseEdit() {
+        RuntimeEnvironment.setQualifiers("+h2400dp")
+        shootIos("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
+    }
 
     companion object {
         @JvmStatic
