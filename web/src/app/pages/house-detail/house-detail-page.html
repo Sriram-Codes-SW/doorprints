@@ -121,7 +121,7 @@
             [placeholder]="'listingFill.placeholder' | t"
             aria-describedby="listing-fill-hint"
           ></textarea>
-          <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ 'ai.disclosure' | t }}</span>
+          <span id="listing-fill-hint" class="field-hint">{{ 'listingFill.hint' | t }} {{ (ai.usesOwnKey() ? 'ai.disclosureOwnKey' : 'ai.disclosure') | t }}</span>
         </div>
         <button
           type="button"

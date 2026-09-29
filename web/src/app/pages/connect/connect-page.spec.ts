@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
@@ -69,7 +70,7 @@ describe('ConnectPage', () => {
       providers: [
         provideRouter([]),
         { provide: HouseApiService, useValue: api },
-        { provide: AiService, useValue: { refresh: vi.fn() } },
+        { provide: AiService, useValue: aiStub() },
         { provide: AiSessionState, useValue: { clear: vi.fn() } },
       ],
     });
@@ -198,3 +199,15 @@ describe('ConnectPage', () => {
     expect(document.activeElement?.id).toBe('connect-save');
   });
 });
+
+/** The AI card's reads, with AI off (its own tests are in connect-ai.spec.ts). */
+function aiStub() {
+  return {
+    refresh: vi.fn(),
+    optedIn: signal(false),
+    provider: signal('server'),
+    offReason: signal('optIn'),
+    geminiKeyHint: signal(''),
+    hasGeminiKey: signal(false),
+  };
+}

@@ -19,10 +19,12 @@
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService, aiErrorMsg, aiOffMsg } from './ai.service';
 import { ConfigService } from './config.service';
-import { AI_OPT_IN_KEY } from './storage-keys';
+import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
+import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
+import { firstValueFrom } from 'rxjs';
 
 const ON = { enabled: true, mcpEnabled: false, chatModel: 'gemini', embeddingModel: 'embed', offForDevice: false };
 
@@ -94,5 +96,63 @@ describe('AiService', () => {
     const forbidden = (code: string) => new HttpErrorResponse({ status: 403, error: { status: 403, code } });
     expect(aiErrorMsg(forbidden('AI_OFF_FOR_DEVICE')).key).toBe('ai.offForDevice');
     expect(aiErrorMsg(forbidden('AI_PAUSED')).key).toBe('ai.disabled');
+  });
+
+  // ADR-26: the same calls, answered by the server or by Gemini from this browser with the person's own key.
+  it('with no server, an own Gemini key turns AI on once the switch is on; the key is kept as asked', () => {
+    const ai = create(false);
+    ai.setOptIn(true);
+    expect(ai.offReason()).toBe('noKey');
+    ai.saveGeminiKey('  AIzaTestKey1234 ', false);
+    expect(ai.enabled()).toBe(true);
+    expect(ai.usesOwnKey()).toBe(true);
+    expect(ai.offReason()).toBeNull();
+    expect(ai.geminiKeyHint()).toBe('1234');
+    expect(sessionStorage.getItem(GEMINI_KEY_KEY)).toBe('AIzaTestKey1234');
+    expect(localStorage.getItem(GEMINI_KEY_KEY)).toBeNull();
+    ai.saveGeminiKey('AIzaOtherKey5678', true);
+    expect(localStorage.getItem(GEMINI_KEY_KEY)).toBe('AIzaOtherKey5678');
+    expect(sessionStorage.getItem(GEMINI_KEY_KEY)).toBeNull();
+    ai.removeGeminiKey();
+    expect(localStorage.getItem(GEMINI_KEY_KEY)).toBeNull();
+    expect(ai.hasGeminiKey()).toBe(false);
+    expect(ai.enabled()).toBe(false);
+    expect(ai.offReason()).toBe('noKey');
+  });
+
+  it('routes each call to the chosen provider: the server, or this browser with the key', async () => {
+    const onDevice = { ask: vi.fn(async () => ({ answer: 'local', citations: [], grounded: false, retrieved: 0 })) };
+    TestBed.configureTestingModule({ providers: [{ provide: OnDeviceAiService, useValue: onDevice }] });
+    const ai = create(true);
+    http.expectOne('/api/ai/status').flush(ON);
+    ai.setOptIn(true);
+    ai.ask('Quiet?').subscribe();
+    http.expectOne('/api/ai/ask').flush({ answer: 'server', citations: [], grounded: false, retrieved: 0 });
+    ai.saveGeminiKey('AIzaTestKey1234', false);
+    expect(localStorage.getItem(AI_PROVIDER_KEY)).toBe('device');
+    expect((await firstValueFrom(ai.ask('Quiet?'))).answer).toBe('local');
+    expect(onDevice.ask).toHaveBeenCalledWith('AIzaTestKey1234', 'Quiet?', undefined);
+    http.expectNone('/api/ai/ask');
+    ai.setProvider('server');
+    expect(ai.usesOwnKey()).toBe(false);
+    expect(ai.hasGeminiKey()).toBe(true);
+    ai.ask('Quiet?').subscribe();
+    http.expectOne('/api/ai/ask').flush({ answer: 'server', citations: [], grounded: false, retrieved: 0 });
+  });
+
+  it('own key chosen but none saved says so, whatever the server offers', () => {
+    localStorage.setItem(AI_OPT_IN_KEY, '1');
+    localStorage.setItem(AI_PROVIDER_KEY, 'device');
+    const ai = create(true);
+    http.expectOne('/api/ai/status').flush(ON);
+    expect(ai.enabled()).toBe(false);
+    expect(ai.offReason()).toBe('noKey');
+    expect(aiOffMsg('noKey').key).toBe('ai.noKey');
+  });
+
+  it('has words for the own key\'s failures', () => {
+    expect(aiErrorMsg(new OnDeviceAiError('keyRejected')).key).toBe('ai.keyRejected');
+    expect(aiErrorMsg(new OnDeviceAiError('rateLimited', 12))).toEqual({ key: 'ai.rateLimited', params: { s: 12 } });
+    expect(aiErrorMsg(new OnDeviceAiError('unavailable')).key).toBe('ai.providerDown');
   });
 });
