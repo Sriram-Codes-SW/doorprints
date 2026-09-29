@@ -2201,7 +2201,7 @@ the bundle held `MapLibre.framework`, the pinned revision and both geo files unc
 The launch screenshot shows the Liberty map of India at the start camera with the legend, the attribution button,
 the zoom and location buttons and *Save house here*, and no Hunt card; it replaces the user guide's iPhone pictures
 (`guide/docs/images/iphone-map.png`; the old "no map yet" launch shot removed, the guide's table and iPhone section
-updated). Most of the smoke's 7 minutes were the simulator's first boot ("Waiting on Data Migration").
+updated). Most of the smoke's 7 minutes were the simulator's first boot ("Waiting on Data Migration"). The next run (`9c96efb`, guide and docs only) failed the gate with every check passing: `log stream` dropped the `indiaView PASS` line while keeping the lines around it, and the smoke read the stream alone. It now reads the stream and a fresh `log show` together.
 
 **How it was verified:** on Linux, the full Android command of `CLAUDE.md`; the iOS Kotlin cross-compiled
 (`:ui:compileKotlinIosSimulatorArm64` with `-Pkotlin.native.enableKlibsCrossCompilation=true`, which caught one
