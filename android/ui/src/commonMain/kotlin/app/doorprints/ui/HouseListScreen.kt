@@ -170,6 +170,7 @@ fun HouseListScreen(
     val repo = services.repository
     val undoes = services.copyImports
     val platform = LocalPlatformServices.current
+    val platformFeatures = LocalPlatformFeatures.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     // A house deleted from its form: "Deleted Green Villa" with Undo (whole-app audit).
@@ -455,14 +456,21 @@ fun HouseListScreen(
                             Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                                 ButtonLabel(stringResource(Res.string.common_add_on_map))
                             }
-                            OutlinedButton(
-                                onClick = onOpenImport,
-                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            ) {
-                                Icon(RestoreIcon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                                ButtonLabel(stringResource(Res.string.import_title))
+                            // Only where the platform imports backups (hidden on iOS for now; PlatformFeatures).
+                            if (platformFeatures.copiesAndImports) {
+                                OutlinedButton(
+                                    onClick = onOpenImport,
+                                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                ) {
+                                    Icon(
+                                        RestoreIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                                    )
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                    ButtonLabel(stringResource(Res.string.import_title))
+                                }
                             }
                         }
                     },
