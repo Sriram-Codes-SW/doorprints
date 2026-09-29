@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -36,6 +36,7 @@
 | 0.22 | 2026-09-29 | Claude (Code), lead | New **D-27** (a signed-in person's own Gemini key stays on their device; OAuth to the Gemini API and "using a key by reference" considered and not taken) and **D-28** (no hosted server: Google sign-in syncs through each person's own Google Drive). |
 | 0.23 | 2026-09-29 | Claude (Code), lead | New **D-29**: AI with the person's own Gemini key on the device, next to server AI ([03](03-design.md) ADR-26). |
 | 0.24 | 2026-09-29 | Claude (Code), lead | New **D-30** and 5.19..5.26 (app lock, offline maps, the real cost of a house, my places, area notes, moving in, brokers; voice notes parked); 14.2: S4-11 widened, new S4-20..22. |
+| 0.25 | 2026-09-29 | Claude (Code), lead | 5.19 **app lock built** on Android and iPhone (S4b-FR-5): the choices of time, turning it on or off behind the credential, the fail-closed read. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -480,6 +481,20 @@ nothing new to forget or leak. The website gets no lock (a browser's profile is 
 stays the tool for shared computers). Recent-apps preview hidden while locked (FLAG_SECURE on Android, the iOS
 privacy snapshot). Goes with Google sign-in (14, N13 3b), which puts account tokens on the phone. Threat model: new
 item for the lost or shared phone; tests on the emulator (a device credential can be set in CI) and TC-M on a device.
+
+**Built (2026-09-29, S4b-FR-5).** Settings > Privacy > *Lock Doorprints*, on both phones. The times are *Right away*,
+*1 minute* (the default), *5 minutes* and *15 minutes* in the background, measured on the phone's monotonic clock (a
+changed wall clock does not open it). Turning the lock on or off asks for the phone's credential first (it proves the
+lock works, and someone handed the unlocked phone cannot quietly turn it off). Without a screen lock on the phone the
+switch says to set one; if the screen lock is removed while the app lock is on, the app opens and the lock turns off
+(removing it needed that credential). Android: the platform's BiometricPrompt with the device credential (API 29+),
+the keyguard's confirm-credential screen on API 26-28, no extra library; the recents picture off from API 33
+(`setRecentsScreenshotEnabled`, screenshots stay possible), `FLAG_SECURE` below. iOS: LocalAuthentication's
+device-owner policy (Face ID, Touch ID or the passcode; `NSFaceIDUsageDescription`), the app covered when it resigns
+active. The screens stay composed under the lock, so a half-typed house is kept; Back on the lock screen leaves the
+app. A rotation or a language switch is not leaving the app. A settings file that cannot be read locks (fail closed).
+Tests: `AppLockGateTest`, `SettingsStoreTest`, the `app_lock` screenshots ([06](06-test-plan.md) TC-U-90); on a
+device TC-M-29; the emulator test with a device PIN is S4b-BL-67.
 
 ### 5.20 Offline maps for the hunting area (D-30)
 

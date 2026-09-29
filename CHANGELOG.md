@@ -115,6 +115,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **App lock on Android and iPhone** (S4b-FR-5, [spec](docs/11-feature-parity-and-export-spec.md) 5.19): Settings >
+  Privacy > *Lock Doorprints* asks for the phone's own screen lock (PIN, pattern, password, fingerprint or face) when
+  the app opens and after it has been in the background for the chosen time (right away, 1, 5 or 15 minutes; 1 by
+  default). Off by default; turning it on or off asks for the credential first; while it is on, the recent-apps
+  preview is hidden. No PIN of Doorprints' own and no new library (the platforms' BiometricPrompt, keyguard and
+  LocalAuthentication). Threat model T-I29.
 - **Faster first load on the website:** only the chosen language's text is downloaded (English is built in; Hindi,
   Tamil and Telugu load when chosen, and before the app starts when saved), and MapLibre's stylesheet loads with the
   first map instead of holding up every page: the first download goes from 782 KB to 488 KB (166 KB to 129 KB

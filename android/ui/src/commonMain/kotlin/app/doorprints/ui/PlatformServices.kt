@@ -75,6 +75,24 @@ interface PlatformServices {
      * "Pixel 9 (Android app)", so the owner recognises it before approving.
      */
     fun deviceName(): String = "Doorprints app"
+
+    /** True when the phone has a screen lock (PIN, pattern, password, passcode) the app lock can ask for (docs/11 5.19). */
+    fun hasScreenLock(): Boolean = false
+
+    /**
+     * True while the screen is only being rebuilt, not left (Android: the activity recreated for a rotation or a
+     * language switch), so the app lock does not count it as going to the background.
+     */
+    fun isRecreating(): Boolean = false
+
+    /** Sends the app to the background, as Back does on the phone's own lock screen (Android: the task to the back). */
+    fun leaveApp() {}
+
+    /**
+     * True where the system takes the app switcher's picture as the app stops being active (iOS): the app lock then
+     * covers the app. False on Android, where the window itself is kept out of the recent-apps preview.
+     */
+    val coverWhenInactive: Boolean get() = false
 }
 
 /**

@@ -26,6 +26,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import app.doorprints.shared.api.IsoTime
@@ -70,6 +72,13 @@ data class AppSettings(
     val aiProvider: AiProviderChoice = AiProviderChoice.SERVER,
     /** The person's own Gemini key, decrypted in memory only; kept like [apiKey] by its own [SecretStore]. */
     val geminiKey: String = "",
+    /**
+     * The app lock (docs/11 5.19, S4b-FR-5): the phone's own screen lock (PIN, pattern, fingerprint or face) is asked
+     * when the app opens and when it comes back after [appLockAfterSeconds] in the background. Off by default.
+     */
+    val appLock: Boolean = false,
+    /** How long the app may be in the background before it locks again; 0 locks every time it is left. */
+    val appLockAfterSeconds: Int = AppLockTimes.DEFAULT,
 ) {
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
@@ -108,6 +117,19 @@ enum class ResultScreen { EXPORT, IMPORT }
  * [dataStore] must be the only DataStore open on its file in the process. [secrets] keeps the API key; [now] is the
  * clock for sync times (epoch milliseconds).
  */
+/** The app lock's setting alone ([SettingsStore.appLockSetting]). */
+data class AppLockSetting(val on: Boolean, val afterSeconds: Int)
+
+/** The app lock's choices of time in the background before it locks again (docs/11 5.19). */
+object AppLockTimes {
+    /** Right away, 1 minute, 5 minutes, 15 minutes. */
+    val CHOICES = listOf(0, 60, 300, 900)
+    const val DEFAULT = 60
+
+    /** A stored value, or the default when it is missing or not one of [CHOICES] (an older or edited file). */
+    fun valid(seconds: Int?): Int = seconds?.takeIf { it in CHOICES } ?: DEFAULT
+}
+
 /** Who answers AI requests: the connected server, or Gemini directly with the person's own key (ADR-26). */
 enum class AiProviderChoice { SERVER, DEVICE }
 
@@ -155,6 +177,9 @@ class SettingsStore(
         val aiFeatures = booleanPreferencesKey("aiFeatures")
         /** [AppSettings.aiProvider], by name. */
         val aiProvider = stringPreferencesKey("aiProvider")
+        /** [AppSettings.appLock] and [AppSettings.appLockAfterSeconds]. */
+        val appLock = booleanPreferencesKey("appLock")
+        val appLockAfter = intPreferencesKey("appLockAfterSeconds")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -178,10 +203,22 @@ class SettingsStore(
             aiFeatures = p[Keys.aiFeatures] ?: false,
             aiProvider = AiProviderChoice.entries.firstOrNull { it.name == p[Keys.aiProvider] } ?: AiProviderChoice.SERVER,
             geminiKey = geminiSecrets?.get(p) ?: "",
+            appLock = p[Keys.appLock] ?: false,
+            appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
         )
     }
 
     suspend fun current() = settings.first()
+
+    /**
+     * Only the app lock's two values (docs/11 5.19), for the lock itself: it reads no secret, so it neither decrypts the
+     * keys on every change nor fails while a key cannot be read. A settings file that cannot be read locks (fail
+     * closed): the phone's own credential still opens the app.
+     */
+    val appLockSetting: Flow<AppLockSetting> = dataStore.data
+        .map { p -> AppLockSetting(p[Keys.appLock] ?: false, AppLockTimes.valid(p[Keys.appLockAfter])) }
+        .catch { emit(AppLockSetting(on = true, afterSeconds = AppLockTimes.DEFAULT)) }
+        .distinctUntilChanged()
 
     /** See [ResultMarks]. */
     val resultMarks: Flow<ResultMarks> = dataStore.data.map { p ->
@@ -252,6 +289,12 @@ class SettingsStore(
     suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
 
     suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
+
+    /** Turns the app lock on or off; the caller has checked the phone's credential first (AppLockGate). */
+    suspend fun saveAppLock(on: Boolean) = dataStore.edit { it[Keys.appLock] = on }
+
+    /** How long the app may stay in the background before it locks; one of [AppLockTimes.CHOICES]. */
+    suspend fun saveAppLockAfter(seconds: Int) = dataStore.edit { it[Keys.appLockAfter] = AppLockTimes.valid(seconds) }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 

@@ -74,6 +74,11 @@ class IosPlatformServices : PlatformServices {
         return true
     }
 
+    override fun hasScreenLock(): Boolean = iosHasScreenLock()
+
+    /** iOS takes the app switcher's picture as the app resigns active; the app lock covers the app first. */
+    override val coverWhenInactive: Boolean get() = true
+
     private fun open(url: NSURL) {
         UIApplication.sharedApplication.openURL(url, options = emptyMap<Any?, Any?>(), completionHandler = null)
     }
