@@ -8,7 +8,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.getString
-import platform.Foundation.NSLog
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSUUID
 import kotlin.experimental.ExperimentalNativeApi
@@ -146,9 +145,9 @@ private fun keychainStatus(e: Throwable): Int? =
 private fun reason(e: Throwable): String =
     "${e::class.simpleName}: ${e.message.orEmpty()}".replace('\n', ' ').take(160)
 
-/** One line to stdout and to the unified log (NSLog), where `simctl launch --console` and `log stream` see it. */
+/** One line to stdout and to the unified log ([logLine]), where the launch smoke's `log stream` reads it. */
 private fun report(name: String, outcome: String) {
     val line = "$PREFIX $name $outcome"
     println(line)
-    NSLog("%@", line)
+    logLine(line)
 }

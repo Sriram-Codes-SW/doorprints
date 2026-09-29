@@ -304,5 +304,5 @@ private object NoImportServices : ImportServices {
 
 /** One `DOORPRINTS-STARTUP <step>` line in the unified log as the app's data opens; names a step only. */
 private fun startupStep(step: String) {
-    platform.Foundation.NSLog("%@", "DOORPRINTS-STARTUP $step")
+    logLine("DOORPRINTS-STARTUP $step")
 }

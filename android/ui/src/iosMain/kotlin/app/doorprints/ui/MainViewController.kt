@@ -6,7 +6,6 @@ import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.setUnhandledExceptionHook
 import kotlin.native.terminateWithUnhandledException
 import kotlinx.coroutines.flow.MutableStateFlow
-import platform.Foundation.NSLog
 import platform.UIKit.UIViewController
 
 /**
@@ -55,7 +54,7 @@ private fun logUncaughtExceptions() {
     setUnhandledExceptionHook { e ->
         val text = "DOORPRINTS-CRASH ${e::class.qualifiedName}: ${e.message}\n${e.stackTraceToString()}"
         println(text)
-        NSLog("%@", text)
+        logLine(text)
         terminateWithUnhandledException(e)
     }
 }

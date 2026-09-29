@@ -60,11 +60,10 @@ if ! xcrun simctl install "$udid" "$app"; then
   exit 1
 fi
 
-# The app is launched detached, not with `simctl launch --console-pty`: attached that way with no input (stdin from
-# /dev/null, in the background), the app was ended about half a second after launch every time, with no exception
-# and no crash report (the first CI runs, 2026-09-29). Its lines are read from the unified log instead, where the
-# self-check and the start-up steps write them with NSLog: a `log stream` started before the launch, so nothing is
-# missed, and a `log show` at the end as a second source.
+# The app is launched detached and its lines are read from the unified log, where the self-check and the start-up
+# steps write them with NSLog: a `log stream` started before the launch, so nothing is missed, and a `log show` at
+# the end as a second source. (The first CI launches crashed with SIGSEGV inside NSLog, a Kotlin String passed as a
+# variadic argument, fixed in the app's IosLog.kt; launching detached also lets ReportCrash's report be found.)
 stream_pid=""
 # shellcheck disable=SC2329  # called by the EXIT trap
 stop_stream() {
