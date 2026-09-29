@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.18 |
-| Date | 2026-09-24 |
+| Version | 0.19 |
+| Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -30,6 +30,7 @@
 | 0.16 | 2026-09-24 | Claude (Code), engineer | **Legacy House Hunt names renamed** (owner request of 2026-09-24; [03](03-design.md) ADR-24). New **section 11**: what changes for a self-hosted server (the compose database, user, password default and volume are `doorprints`; the MCP tool `askHouseHunt` is `askDoorprints`), that a server which sets `DB_URL`, `DB_USER` and `DB_PASSWORD` is not affected and no environment variable is renamed, and how to carry a local compose database over (dump with the old names, restore into the new one). Section 3: the dump file, schema and age key examples use `doorprints`. |
 | 0.17 | 2026-09-24 | Claude (Code), Docs team | Reviews of PR #19. **§11**: the dump and restore of a local compose database is **mandatory** for a database that clients have synced with; the claim that phones and the web app sync a full copy back to an empty server was false (clients push only changed rows and pull after a stored cursor, so on a new database they silently miss each other's changes; [10](10-sprint-log.md) S4b-BL-20). The steps now use `docker compose up -d --wait db`, say that `pg_restore` reports "already exists" for the PostGIS objects and exits non-zero, count the rows before and after, and give the throwaway-container fallback a build step, a `pg_isready` wait and `docker rm -f old-db`. §6.2: a pre-rename test build is `com.househunt.app` (was `app.doorprints`, a find-and-replace error). The §11 intro rewrapped. |
 | 0.18 | 2026-09-24 | Claude (Code), lead | Clients detect a reset server (S4b-BL-20, branch `claude/doorprints-dev-continue-fzcge2`, PR #24). New **§11.1**: `GET /api/stats` returns `maxSyncVersion`; what Android and the web do when it is below their cursors; the dump and restore of §11 stays mandatory; what to expect after restoring an older dump. §11's backlog pointer and IR-4 step 4 updated. |
+| 0.19 | 2026-09-29 | Claude (Code), lead | The backup workflow sketch names its runner image (`ubuntu-26.04`), as the real workflows do ([07](07-secure-build-and-deploy.md) §1). |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -101,7 +102,7 @@ on:
 permissions: { contents: read }
 jobs:
   dump:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: production
     container: postgres:17            # match the server major version
     steps:

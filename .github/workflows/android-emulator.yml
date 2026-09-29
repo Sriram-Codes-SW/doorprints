@@ -45,7 +45,7 @@ jobs:
     # Three Android versions (owner request of 2026-09-24): the oldest the app supports (minSdk 26), a current one (34)
     # and the newest it targets (targetSdk 36). They run side by side; one failing does not cancel the others.
     name: Smoke tests on an emulator (API ${{ matrix.api-level }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -111,7 +111,7 @@ jobs:
   ftl-check:
     name: Firebase Test Lab set up?
     if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions: {}
     outputs:
@@ -134,7 +134,7 @@ jobs:
     name: Smoke tests in Firebase Test Lab
     needs: ftl-check
     if: needs.ftl-check.outputs.ready == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     permissions:
       contents: read

@@ -48,7 +48,7 @@ concurrency:
 jobs:
   semgrep:
     name: SAST (Semgrep OSS)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -73,7 +73,7 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
   commit-identity:
     name: Commit author emails (allowlist)
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -141,7 +141,7 @@ jobs:
 
   trivy:
     name: Dependencies and IaC (Trivy)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -255,7 +255,7 @@ jobs:
   gradle-dependency-graph:
     name: Android dependency graph (Gradle, Dependabot alerts)
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: write # Dependency Submission API only; the checkout itself does not keep the token
@@ -312,7 +312,7 @@ jobs:
 
   npm-audit:
     name: npm audit (web)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -336,7 +336,7 @@ jobs:
   zap-baseline:
     name: OWASP ZAP baseline (manual)
     if: github.event_name == 'workflow_dispatch' && inputs.zap_target != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
