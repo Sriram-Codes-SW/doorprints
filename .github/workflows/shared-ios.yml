@@ -39,7 +39,7 @@ name: Shared iOS compile
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths:
       - "ios/**"
       - "android/app/src/main/assets/geo/**"

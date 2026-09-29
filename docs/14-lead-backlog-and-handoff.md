@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.40 |
+| Version | 0.41 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -51,6 +51,7 @@
 | 0.38 | 2026-09-29 | Claude (Code), lead | N13: the order from the owner's decision D-30 (new features from the gap review, folded into the planned work). |
 | 0.39 | 2026-09-29 | Claude (Code), lead | N13 (3b): **the app lock (S4b-FR-5) built first**, on `feat/s4b-fr-5-app-lock`, because Google sign-in waits on the owner's OAuth client (§6). New owner rule in §5 and §7: **keep the repository optimised** on every branch, pull request and `main`. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | **Delivery-speed review** (owner: "go with your recommendation while ensuring quality is not compromised"): the SessionStart hook (`.claude/hooks/session-start.sh`), Robolectric offline, the local iOS klib compile in §7, check-ins at 20 minutes for a fresh PR; the workflow-trigger change (push on `main` only) is the owner's step (§6). |
+| 0.41 | 2026-09-29 | Claude (Code), lead | The owner permitted the workflow change in the session: **one CI run per push** done (`push` on `main` only, `pull_request` the pre-merge signal; CodeQL and the backend image job on same-repository pull requests); the §6 to-do is closed. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -147,14 +148,9 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 ## 6. Owner to-dos
 
-- **One CI run per push, not two** (delivery-speed review of 2026-09-29; the session's safety check refuses to edit
-  workflow triggers, so this is yours): in `.github/workflows/{android,android-emulator,shared-ios,security,web,backend,
-  codeql,pages}.yml` change `push:` / `branches: ["**"]` to `branches: [main]` (the `pull_request` triggers stay, and
-  their path filters compare the whole pull request, so a docs-only last commit still gets every check). Then update
-  [07](07-secure-build-and-deploy.md) §1 (*Branch runs*: one run per push, the branch run on `main` only) in the same
-  change. Saves about 15 minutes of macOS and emulator time per push. A branch without a pull request then gets no CI:
-  open the PR first (a draft is fine).
-
+- ~~**One CI run per push, not two**~~ **Done 2026-09-29** in the delivery-speed pull request, with the owner's
+  permission given in the session ([07](07-secure-build-and-deploy.md) §1 *Branch runs*). A branch without a pull
+  request now gets no CI: open the PR first (a draft is fine).
 - **Google sign-in with Drive sync (N13 3b) needs a free OAuth client** that only you can make: in the Google Cloud
   project `doorprints`, the OAuth consent screen (app name, logo, privacy policy, the `doorprints.web.app` domain;
   scopes `drive.appdata` and `drive.file`, both non-sensitive) and OAuth client ids for the website, Android (package
