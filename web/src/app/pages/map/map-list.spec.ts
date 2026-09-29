@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { HouseDto, PriceType, newHouse } from '../../core/models';
-import { comparePrice, listQueryParams, listReturnParams, parseListQuery } from './map-list';
+import { comparePrice, listQueryParams, listReturnParams, parseListQuery, searchText } from './map-list';
 
 function house(label: string, price: number | null, priceType: PriceType | null): HouseDto {
   return { ...newHouse(12.9, 77.6), label, price, priceType };
@@ -78,4 +78,44 @@ describe('"Lowest price"', () => {
       'no price',
     ]);
   });
+});
+
+/**
+ * The house list's search rule, the same cases as Android's `HouseSearchTest` (`:shared` commonTest), kept in step by
+ * hand: a case added here is added there (docs/06 TC-U-93). The page filters with `searchText(h).includes(q)`, q
+ * lower-cased and trimmed (map-page.ts).
+ */
+describe('searchText', () => {
+  const green: HouseDto = {
+    ...newHouse(12.9, 77.6),
+    label: 'Green View 2BHK',
+    address: '12, 5th Cross',
+    street: '5th Cross',
+    locality: 'Indiranagar',
+    notes: 'Water 24x7, near the metro',
+    contactName: 'Ravi Kumar',
+  };
+  const lake: HouseDto = { ...newHouse(12.9, 77.6), label: 'Lake Road flat', locality: 'हिन्दी नगर' };
+  const matching = (query: string): string[] => {
+    const q = query.trim().toLowerCase();
+    return [
+      ['green', green],
+      ['lake', lake],
+    ]
+      .filter(([, h]) => !q || searchText(h as HouseDto).includes(q))
+      .map(([name]) => name as string);
+  };
+
+  it('a blank query matches every house', () => expect(matching('  ')).toEqual(['green', 'lake']));
+  it('the label matches ignoring case', () => expect(matching('green view')).toEqual(['green']));
+  it('the address, street and locality match', () => {
+    expect(matching('5th cross')).toEqual(['green']);
+    expect(matching('INDIRANAGAR')).toEqual(['green']);
+  });
+  it('the notes match', () => expect(matching('metro')).toEqual(['green']));
+  it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
+  it('Indic text matches', () => expect(matching('हिन्दी')).toEqual(['lake']));
+  it('a query found nowhere matches nothing', () => expect(matching('penthouse')).toEqual([]));
+  it('the query is trimmed', () => expect(matching(' lake ')).toEqual(['lake']));
+  it('empty values are left out', () => expect(searchText(lake)).toBe('lake road flat हिन्दी नगर'));
 });

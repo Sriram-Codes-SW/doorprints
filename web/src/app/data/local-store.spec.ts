@@ -121,15 +121,21 @@ describe('LocalStore', () => {
    * bump re-rendered its list per downloaded row. `settled` catches up once the writes pause.
    */
   it('coalesces a burst of writes into one settled change once the writes pause', async () => {
-    const before = store.settled();
-    await store.putHouseFromServer({ ...house('s1'), updatedAt: '2026-09-01T00:00:00.000Z' });
-    await store.putHouseFromServer({ ...house('s2'), updatedAt: '2026-09-01T00:00:00.000Z' });
-    await store.putHouseFromServer({ ...house('s3'), updatedAt: '2026-09-01T00:00:00.000Z' });
-    // Still inside the quiet period: the views have not been told yet.
-    expect(store.settled()).toBe(before);
-    await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 50));
-    expect(store.settled()).toBe(store.revision());
-    expect(store.settled()).not.toBe(before);
+    // Fake timers: the quiet period is stepped, not waited for (readiness review 2026-09-29, docs/14 §8 finding 12).
+    vi.useFakeTimers();
+    try {
+      const before = store.settled();
+      await store.putHouseFromServer({ ...house('s1'), updatedAt: '2026-09-01T00:00:00.000Z' });
+      await store.putHouseFromServer({ ...house('s2'), updatedAt: '2026-09-01T00:00:00.000Z' });
+      await store.putHouseFromServer({ ...house('s3'), updatedAt: '2026-09-01T00:00:00.000Z' });
+      // Still inside the quiet period: the views have not been told yet.
+      expect(store.settled()).toBe(before);
+      await vi.advanceTimersByTimeAsync(SETTLE_MS + 50);
+      expect(store.settled()).toBe(store.revision());
+      expect(store.settled()).not.toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hides a deleted house but keeps its tombstone for the next sync', async () => {

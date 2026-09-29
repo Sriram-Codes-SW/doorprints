@@ -65,6 +65,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.HouseSearch
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -433,9 +434,11 @@ fun HouseListScreen(
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
+        // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review).
         .filter {
-            query.isBlank() || listOfNotNull(it.label, it.street, it.address, it.locality, it.notes)
-                .any { f -> f.contains(query, ignoreCase = true) }
+            HouseSearch.matches(
+                query, HouseSearch.fields(it.label, it.address, it.street, it.locality, it.notes, it.contactName),
+            )
         }
         .let { list ->
             when (sort) {

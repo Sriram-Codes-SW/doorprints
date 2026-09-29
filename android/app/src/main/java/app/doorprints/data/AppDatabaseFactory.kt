@@ -30,5 +30,5 @@ import androidx.room.Room
  */
 fun AppDatabase.Companion.create(context: Context): AppDatabase =
     Room.databaseBuilder(context, AppDatabase::class.java, DatabaseFile.resolve(context))
-        .addMigrations(AppDatabase.MIGRATION_1_2)
+        .addMigrations(*AppDatabase.MIGRATIONS)
         .build()

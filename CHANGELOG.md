@@ -386,6 +386,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Ready for the data-model sprint** (readiness review, `docs/14` §8): the Android house list searches the contact's
+  name too, with the same rule as the website (`HouseSearch`, one case list on both sides); the DTO mappers use named
+  arguments and an all-fields test; the backup format's completeness is checked against `backup-sample.json` in all
+  three stacks; the Room migrations are one list (`AppDatabase.MIGRATIONS`) with a hash pin per schema version; the
+  settings' `toString()` no longer prints the API or Gemini key (S4b-BL-29).
 - **Hunt mode's rules are common code** (`HuntEngine` in `:shared`; Android's `HuntService` keeps only the foreground
   service, the location client, the battery, the geocoder and the notifications). No behaviour change; the rules are
   now unit-tested with fakes (`HuntEngineTest`), and the iPhone gets Hunt mode from the same engine (S4b-BL-69).
