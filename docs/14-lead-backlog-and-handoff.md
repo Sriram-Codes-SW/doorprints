@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -47,6 +47,7 @@
 | 0.34 | 2026-09-29 | Claude (Code), lead | N13 (3a) done: phones (#51) and website (#52); a real-key smoke test in *AI evals* (TC-U-88); next (3b) Google sign-in. |
 | 0.35 | 2026-09-29 | Claude (Code), lead | Saved the state for a fresh session (owner request): §1 rewritten as today's state (per-PR history in git and [10](10-sprint-log.md)); N13 status; §5 the owner's merge permission; new §7, how a Claude session works here. |
 | 0.36 | 2026-09-29 | Claude (Code), lead | §1, §7: the live UI test reports network faults apart and runs its areas side by side. |
+| 0.37 | 2026-09-29 | Claude (Code), lead | §1: #56 and #57 merged; §7: the session's learnings (tools and traps) and the efficiency list, done and open. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -227,3 +228,39 @@ suite runs in a cloud session; CI is the second check, never the first:
   vectors are refilled (`ParityVectorsTest -Dparity.write=true`, then `.github/scripts/parity-vectors-kotlin.py`).
 - Search grows with the house values (CLAUDE.md).
 - Zero cost; no Play release and no public server until the release security gate passes on a release candidate.
+
+**Learnings of 2026-09-29 (tools and traps)**
+
+- **Web tests both ways:** `npx ng test --watch=false` isolates spec files; `CI=true npm run test:ci` (what CI runs)
+  shares modules between them. A spec that depends on module state (the loaded languages, for one) can pass the first
+  and fail the second; run both before pushing a web change.
+- **`npm run build`, not `npx ng build`,** when the service worker matters: only the `postbuild` step
+  (`scripts/sw-precache.mjs`) writes the precache list into `sw.js`. Check a new lazy chunk or asset is in it.
+- **Guide:** `mkdocs build --strict` output must be read for `WARNING` lines (an anchor warning once passed locally and
+  failed CI); renaming a heading breaks `#anchor` links in other pages.
+- **Live UI test (`tools/live-ui`):** about 15 minutes with the areas in parallel; give it 20-30 before any time limit.
+  Network faults (a 502 from this session's proxy, often with a `text/plain` body: that was the "stylesheet as
+  text/plain" of 2026-09-28/-29) are fetched again, reported under `transient` in `out/results.json` and not counted; a
+  page one left half loaded is loaded again. A fault seen twice is a real failure.
+- **Testing the live UI test itself:** serve the built site locally like Firebase (SPA rewrite; `.mjs` must be
+  `text/javascript`, or MapLibre's worker is refused) and inject faults; a plain local server fails the "house opens
+  offline" checks whatever the code (the live site passes them). Never rebuild `web/dist` while such a run is using
+  it: the chunk names change under it.
+- **Processes:** `pkill -f <pattern>` also matches the shell running it and kills that; use
+  `for p in $(pgrep -f "^node .*name"); do kill $p; done`. `ss` is not installed.
+- **The session's command safety check** sometimes returns no verdict for a while: use the file tools (Read, Edit,
+  Write, Grep) meanwhile and retry the shell later; do not hammer it (ten misses in a row end the turn). If it
+  *denies* something with a reason, do not work around it: ask the owner in one line.
+- **Disk:** the per-session allowance is small; the Docker image, JDK and Gradle caches need about 3 GB, so delete
+  scratch downloads first.
+
+**Efficiency: done and still open (2026-09-29, #54 and #57)**
+
+- Done: the reindex's N+1 visit query and tombstone ids (#54); house checklists batch-fetched (`default_batch_fetch_size`);
+  fewer full IndexedDB reads and sorts; one language downloaded at a time and MapLibre's CSS with the first map (first
+  download 782 -> 488 KB); npm cache in CI; Gradle parallel.
+- Open, each worth its own change: S4b-BL-66 (photo reads through a `houseId` index); long `Cache-Control` for hashed
+  files once the `**` rewrite stops answering missing chunks with the HTML shell (`web/README.md`); self-hosted Noto
+  font subsets (§3 Z2, also a privacy gain); a `COLLATE NOCASE` street index on Android (needs a Room migration); the
+  Gradle configuration cache (check KMP and Roborazzi first); skipping the `pull_request` CI run for same-repository
+  branches (the owner's call, §1).
