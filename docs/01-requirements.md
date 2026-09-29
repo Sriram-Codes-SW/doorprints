@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -48,6 +48,7 @@
 | 0.34 | 2026-09-29 | Claude (Code), lead | CON-03: MapLibre GL 6.11 (web; the web dependency update, [10](10-sprint-log.md) §16). |
 | 0.35 | 2026-09-29 | Claude (Code), lead | Device keys, pairing and the owner page ([03](03-design.md) §12.1, ADR-25): new FR-099..FR-101, SEC-050, SEC-051; SEC-025 reworded and server side done. |
 | 0.36 | 2026-09-29 | Claude (Code), lead | New SEC-052: the Gemini key on the owner page, stored encrypted. |
+| 0.37 | 2026-09-29 | Claude (Code), lead | New PRV-028: the path trace (S4b-FR-2) stays on the phone. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -361,6 +362,7 @@ Location history and third-party contact details are the most sensitive data her
 | PRV-025 | **"Allow all the time" only for area wake-up.** When the user turns area wake-up on, the app first shows its own rationale screen (why, what is collected, battery, how to turn it off), then asks for `ACCESS_BACKGROUND_LOCATION`; on Android 11+ this can only be granted in system settings, so the app opens them with clear step-by-step text. If the permission is denied, or later downgraded or revoked, area wake-up turns itself off with a notice; Hunt mode and everything else keep working. If the app is ever published on Google Play, the background-location declaration and prominent disclosure are needed first ([11](11-feature-parity-and-export-spec.md) 5.18). | M | Plan (4b) |
 | PRV-026 | The location permission state is checked again every time the app comes to the foreground. With approximate location only, the app explains that house-level alerts need precise location and offers to change it; it does not start house alerts on approximate fixes. | M | Plan (4b) |
 | PRV-027 | **Geofence privacy.** Hunting areas (names, centres, radii) stay on the device (and in the user's own exports) until sync with sign-in exists; geofence transitions are not stored as location history; only each area's last-notified time is kept, for the cooldown. Google Play services processes the geofences on the device (disclosed with the other Google location services in PRV-007). | M | Plan (4b) |
+| PRV-028 | **The path trace stays on the phone** ([11](11-feature-parity-and-export-spec.md) 5.27). Off by default; recorded only while Hunt mode runs; kept in its own table, never in a backup, a readable copy, the sync or an AI request; thinned and pruned to 30 days; *Clear the path* removes it at once. | M | Done (Android, S4b-FR-2; iPhone with S4b-BL-69) |
 
 ## 10. AI requirements
 
@@ -512,6 +514,7 @@ Design sections refer to [03-design.md](03-design.md). Tests refer to [06-test-p
 | PRV-004, PRV-005 | 08 §6 | `privacy/DataService`, `HouseService.purge`, V3 migration | TC-I-16, TC-I-18 |
 | PRV-008 | 03 §7.4 | `Repository.addPhoto`, `image-resize.ts`, `ImageSanitizer` | TC-U-11, TC-U-14 |
 | PRV-009, PRV-010, PRV-011 | 04 §6, 07, 08 | config / ops | Review |
+| PRV-028 | 02 T-I30, [11](11-feature-parity-and-export-spec.md) 5.27 | `HuntEngine.onFix` after the accuracy gate, `TrackRecorder`, `TrackDao`, `PathTraceSection` | TC-U-92, TC-U-94, TC-M-30 |
 | PRV-022, PRV-023 | 02 T-I20, [11](11-feature-parity-and-export-spec.md) 5.13, [ai/vertex-setup.md](ai/vertex-setup.md) | AI provider configuration; Android on-device AI (planned) | Review; TC-U-34, TC-S-21 when accepted into 06 |
 | AI-001..AI-012 | 03 §13, [ai/](ai/) | `backend/.../ai/**`, web `core/ai.service.ts`, `pages/ask`, `pages/plan`, android `AssistantScreen.kt`; eval harness `backend/src/test/.../ai/eval/`, `docs/ai/evals/golden-set.json` | TC-AI-01..08 (measured by TC-AI-09/10), TC-AI-11 (native Gemini embeddings), TC-AI-12 (indexing failures, reindex 503; AI-011), TC-AI-13 (scorecard verdict; AI-012), TC-AI-14 (AI-001 embedding provider selection), TC-AI-15 (contact redaction; AI-010), TC-AI-16 (provider wire-format contract tests), TC-AI-17 (Ask prompt citation and contrast rules; AI-002, AI-003), TC-M-09 |
 | AI-013..AI-015 | [11](11-feature-parity-and-export-spec.md) 5.13, 02 T-D4, T-I22, [08](08-operations-runbook.md) §10.2 | planned: AI allowlist, quota and cap in `backend/.../ai/**`, Android on-device AI | Planned TC-U-34, TC-S-21 ([11](11-feature-parity-and-export-spec.md) §13) |

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.46 |
+| Version | 0.47 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -57,6 +57,7 @@
 | 0.44 | 2026-09-29 | Claude (Code), lead | N13 (4a) started with the owner's request to bring Hunt mode to iPhone with the least work: **`HuntEngine`** in common code first (no behaviour change), then the path trace inside it, then the iOS adapter (S4b-BL-69); the readiness review of the code base for the remaining sprints (owner request) is under way. |
 | 0.45 | 2026-09-29 | Claude (Code), lead | New **§8, the readiness review** of the code base for the remaining sprints (owner request of 2026-09-29): 15 findings, the safe small items as the next pull request, the larger ones as S4b-BL-70..78 ([10](10-sprint-log.md) §12.7). |
 | 0.46 | 2026-09-29 | Claude (Code), lead | §8: the safe small items done (`chore/sprint-readiness`): findings 4a, 4b, 5, 6, 7a, 12 (fake timers), 15. |
+| 0.47 | 2026-09-29 | Claude (Code), lead | §1: the path trace built (S4b-FR-2, `feat/s4b-fr-2-path-trace`); §6: TC-M-30 for the owner. N13 (4a): step 2 done, offline maps next. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -93,10 +94,17 @@ section is only today's state. Earlier versions of this file (git history) carry
   can register (§6).
 - **Hunt mode's rules are common code** (`HuntEngine`, branch `refactor/hunt-engine-common`; [03](03-design.md) 0.43,
   [06](06-test-plan.md) TC-U-92): Android's `HuntService` is the adapter; the iOS adapter is S4b-BL-69. The path trace
-  (S4b-FR-2) goes into the engine next, once for both phones. Google sign-in (3b) waits on the owner's OAuth client.
+  (S4b-FR-2) is inside the engine since the same day (below). Google sign-in (3b) waits on the owner's OAuth client.
+- **The path trace built** (S4b-FR-2, branch `feat/s4b-fr-2-path-trace`; [11](11-feature-parity-and-export-spec.md)
+  5.27, [02](02-threat-model.md) T-I30, [06](06-test-plan.md) TC-U-94): Settings > Hunt mode > *Trace my path on the
+  map*, off by default; the engine keeps thinned fixes in `track_points` (Room version 3), the Map draws one purple
+  line per walk under the houses from shared style code, 30 days on the phone only, never in a backup, a copy or the
+  sync; *Clear the path*. Android records it now, the iPhone with S4b-BL-69; on a phone TC-M-30 (owner). Next in (4a):
+  offline maps (S4b-FR-6).
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
-  a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone).
+  a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
+  (the path trace on a phone).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
   and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the

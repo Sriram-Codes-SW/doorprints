@@ -85,10 +85,23 @@ class JsonStyleOpsTest {
                 "boundary_3", IndiaViewRules.STATE_OVERLAY_LAYER,
                 "boundary_2", IndiaViewRules.WORLD_LAYER, IndiaViewRules.CLAIM_LAYER,
                 "boundary_disputed", "label_other", "label_state", "label_city",
-                HOUSE_DOTS_LAYER, HOUSE_LABELS_LAYER,
+                TRACK_LAYER, HOUSE_DOTS_LAYER, HOUSE_LABELS_LAYER,
             ),
             ids(prepare().style),
         )
+    }
+
+    /** The path trace's layer (docs/11 5.27) is under the houses, from an empty source the view fills later. */
+    @Test
+    fun theTraceIsALineUnderTheHousesFromAnEmptySource() {
+        val style = prepare().style
+        val source = style["sources"]!!.jsonObject[TRACK_SOURCE]!!.jsonObject
+        assertEquals("geojson", source["type"]!!.jsonPrimitive.content)
+        assertTrue(source["data"]!!.jsonObject["features"]!!.jsonArray.isEmpty())
+        val line = layer(style, TRACK_LAYER)
+        assertEquals("line", line["type"]!!.jsonPrimitive.content)
+        assertEquals(TRACK_SOURCE, line["source"]!!.jsonPrimitive.content)
+        assertEquals(TRACK_COLOR, line["paint"]!!.jsonObject["line-color"]!!.jsonPrimitive.content)
     }
 
     @Test

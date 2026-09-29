@@ -20,6 +20,7 @@ package app.doorprints.location
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
+import app.doorprints.data.TrackPointEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
@@ -52,6 +53,10 @@ class HuntEngineTest {
             streets[street] ?: Repository.StreetInfo(street, 0, 0, null)
         override suspend fun saveVisit(visit: VisitEntity) { visits[visit.id] = visit }
         override suspend fun getVisit(id: String) = visits[id]
+        val track = mutableListOf<TrackPointEntity>()
+        var prunedBefore: Long? = null
+        override suspend fun saveTrackPoint(point: TrackPointEntity) { track += point }
+        override suspend fun pruneTrack(before: Long) { prunedBefore = before }
     }
 
     private class Effects : HuntEffects {
@@ -227,6 +232,31 @@ class HuntEngineTest {
         clock += 1_000
         e.onFix(12.97, 77.59, 10f, clock)
         assertTrue(effects.stops.isEmpty())
+        e.stopped(null)
+    }
+
+    @Test
+    fun withTheTraceOffNoPointIsKeptButOldPointsStillGoAtStart() = runTest(StandardTestDispatcher()) {
+        val e = engine(); e.start(); advanceUntilIdle()
+        e.onFix(12.97, 77.59, 10f, clock); advanceUntilIdle()
+        assertTrue(data.track.isEmpty())
+        assertEquals(clock - Repository.TRACK_KEPT_MS, data.prunedBefore, "the 30-day limit runs at every start")
+        e.stopped(null)
+    }
+
+    @Test
+    fun withTheTraceOnGoodFixesAreKeptThinnedAndWeakOnesAreNot() = runTest(StandardTestDispatcher()) {
+        data.tracking.value = HuntTracking(alertRadiusM = 30, minStayMinutes = 4, pathTrace = true)
+        val e = engine(); e.start(); advanceUntilIdle()
+        var t = clock
+        e.onFix(12.9700, 77.5900, 10f, t)                       // kept: the first
+        e.onFix(12.97005, 77.5900, 10f, t + 15_000)             // about 5 m on: thinned away
+        e.onFix(12.9703, 77.5900, 10f, t + 30_000)              // about 33 m from the last kept: kept
+        e.onFix(12.9703, 77.5900, 60f, t + 45_000)              // weak: never kept
+        e.onFix(12.9703, 77.5900, 10f, t + 30_000 + 5 * 60_000) // same place, five minutes later: kept
+        advanceUntilIdle()
+        assertEquals(listOf(t, t + 30_000, t + 30_000 + 5 * 60_000), data.track.map { it.at })
+        assertEquals(10f, data.track.first().accuracyM)
         e.stopped(null)
     }
 

@@ -115,6 +115,16 @@ open class CommonRepository(
     override val houses = db.houses().observeAll()
     override val visitCounts = db.visits().observeCounts()
 
+    // The trace's window moves with the clock, so the flow is rebuilt each time it is collected (a screen's lifetime).
+    override val trackPoints: Flow<List<TrackPointEntity>>
+        get() = db.track().observeSince(now() - Repository.TRACK_KEPT_MS)
+
+    override suspend fun saveTrackPoint(point: TrackPointEntity) = db.track().insert(point)
+
+    override suspend fun pruneTrack(before: Long) = db.track().deleteBefore(before)
+
+    override suspend fun clearTrack() = db.track().deleteAll()
+
     override fun house(id: String) = db.houses().observe(id)
     override fun visitsFor(houseId: String) = db.visits().observeForHouse(houseId)
     override fun photosFor(houseId: String) = db.photos().observeForHouse(houseId)

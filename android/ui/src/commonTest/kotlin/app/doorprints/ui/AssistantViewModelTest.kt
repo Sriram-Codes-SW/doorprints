@@ -180,6 +180,10 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun pollPairing(serverUrl: String, pollToken: String): PairPolledDto = TODO()
     override suspend fun redeemInvite(link: ConnectLink, deviceName: String): String = TODO()
 
+    override val trackPoints: Flow<List<app.doorprints.data.TrackPointEntity>> get() = TODO()
+    override suspend fun saveTrackPoint(point: app.doorprints.data.TrackPointEntity) = TODO()
+    override suspend fun pruneTrack(before: Long) = TODO()
+    override suspend fun clearTrack() = TODO()
     override val settings: SettingsStore get() = TODO()
     override val houses: Flow<List<HouseEntity>> get() = TODO()
     override val visitCounts: Flow<List<HouseVisitCount>> get() = TODO()

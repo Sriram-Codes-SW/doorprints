@@ -20,6 +20,7 @@ package app.doorprints.location
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
+import app.doorprints.data.TrackPointEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.location.Geo
@@ -47,7 +48,9 @@ import kotlin.uuid.Uuid
  *    place as a house when none is within 40 m ([HuntEffects.alertStay]),
  *  - asks for fewer fixes while you stay ([HuntEffects.requestUpdates]), and
  *  - stops itself when the battery is low ([HuntEffects.lowBattery], [HuntEffects.stop]; [LOW_BATTERY_PERCENT], read
- *    at most every two minutes from [BatteryReader]).
+ *    at most every two minutes from [BatteryReader]),
+ *  - with *Trace my path* on (docs/11 5.27), keeps where the phone was ([TrackRecorder] thins the fixes; the points
+ *    older than [Repository.TRACK_KEPT_DAYS] go when Hunt mode starts).
  * Fixes worse than [HuntState.MAX_ACCURACY_M] are shown but never trigger alerts or visits. The wording of alerts and
  * the notifications themselves stay with the platform: the engine hands over the facts.
  *
@@ -66,8 +69,10 @@ class HuntEngine(
     private val newId: () -> String = { randomId() },
 ) {
     private val stays = StayDetector()
+    private val track = TrackRecorder()
     private var houses: List<HouseEntity> = emptyList()
     private var alertRadiusM = 30
+    private var pathTrace = false
     private val houseAlertedAt = mutableMapOf<String, Long>()
     private val streetAlertedAt = mutableMapOf<String, Long>()
     private var lastGeocodeAt = 0L
@@ -88,9 +93,13 @@ class HuntEngine(
                 data.tracking.collect {
                     alertRadiusM = it.alertRadiusM
                     stays.minStayMs = it.minStayMinutes * 60_000L
+                    pathTrace = it.pathTrace
                 }
             },
+            // The retention limit, once per start: the trace never outlives 30 days, on or off.
+            scope.launch { data.pruneTrack(before = now() - Repository.TRACK_KEPT_MS) },
         )
+        track.reset()
         stationaryMode = null
         requestUpdates(stationary = false)
         HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null) }
@@ -112,6 +121,9 @@ class HuntEngine(
         if (stopIfBatteryLow()) return
         // Readings this rough can't tell one house from the next.
         if (accuracyM > HuntState.MAX_ACCURACY_M) return
+        if (pathTrace && track.accept(lat, lon, time)) {
+            scope.launch { data.saveTrackPoint(TrackPointEntity(at = time, lat = lat, lon = lon, accuracyM = accuracyM)) }
+        }
         checkNearbyHouses(lat, lon)
         checkStreet(lat, lon)
         checkStay(lat, lon, time)
@@ -230,6 +242,31 @@ class HuntEngine(
     }
 }
 
+/**
+ * Thins the path trace (docs/11 5.27): a fix is kept when it is at least [minDistanceM] from the last kept one or
+ * [minGapMs] after it, so a walk keeps its shape and a stay keeps one point every few minutes, not one every 15 s.
+ */
+class TrackRecorder(private val minDistanceM: Double = 20.0, private val minGapMs: Long = 5 * 60_000L) {
+    private var lastLat = 0.0
+    private var lastLon = 0.0
+    private var lastAt = Long.MIN_VALUE
+
+    fun reset() {
+        lastAt = Long.MIN_VALUE
+    }
+
+    /** True when the fix at [time] is kept (and becomes the last kept one). */
+    fun accept(lat: Double, lon: Double, time: Long): Boolean {
+        val keep = lastAt == Long.MIN_VALUE ||
+            time - lastAt >= minGapMs ||
+            Geo.distanceM(lastLat, lastLon, lat, lon) >= minDistanceM
+        if (keep) {
+            lastLat = lat; lastLon = lon; lastAt = time
+        }
+        return keep
+    }
+}
+
 /** What the engine reads and writes: the part of [Repository] Hunt mode uses ([HuntData.of] adapts it). */
 interface HuntData {
     val houses: Flow<List<HouseEntity>>
@@ -237,21 +274,25 @@ interface HuntData {
     suspend fun streetInfo(street: String): Repository.StreetInfo
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?
+    suspend fun saveTrackPoint(point: TrackPointEntity)
+    suspend fun pruneTrack(before: Long)
 
     companion object {
         fun of(repo: Repository): HuntData = object : HuntData {
             override val houses: Flow<List<HouseEntity>> get() = repo.houses
             override val tracking: Flow<HuntTracking> =
-                repo.settings.settings.map { HuntTracking(it.alertRadiusM, it.minStayMinutes) }
+                repo.settings.settings.map { HuntTracking(it.alertRadiusM, it.minStayMinutes, it.pathTrace) }
             override suspend fun streetInfo(street: String) = repo.streetInfo(street)
             override suspend fun saveVisit(visit: VisitEntity) = repo.saveVisit(visit)
             override suspend fun getVisit(id: String) = repo.getVisit(id)
+            override suspend fun saveTrackPoint(point: TrackPointEntity) = repo.saveTrackPoint(point)
+            override suspend fun pruneTrack(before: Long) = repo.pruneTrack(before)
         }
     }
 }
 
-/** The two Hunt mode settings (Settings > Hunt mode). */
-data class HuntTracking(val alertRadiusM: Int, val minStayMinutes: Int)
+/** The Hunt mode settings (Settings > Hunt mode): the alert radius, the minimum stay, and *Trace my path*. */
+data class HuntTracking(val alertRadiusM: Int, val minStayMinutes: Int, val pathTrace: Boolean = false)
 
 /** The platform's reverse geocoder: the street at a point, or null when unknown or offline. */
 fun interface StreetLookup {
