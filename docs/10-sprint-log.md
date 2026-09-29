@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.64 |
+| Version | 0.65 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
-| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
+| Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
 
 ## Change log
 
@@ -76,6 +76,7 @@
 | 0.62 | 2026-09-29 | Claude (Code), lead | **S4b-SEC-1, Android part done in code**: MobSF's static scan of the release build in `android.yml`. New **S4b-BL-64** (cleartext for the development hosts in the release APK). |
 | 0.63 | 2026-09-29 | Claude (Code), lead | **S4b-SEC-1's automated part complete in code, S4b-SEC-3 written**: the gate table in [06](06-test-plan.md) §11.1, the prompt-injection set grown to 25 cases (golden set v0.6), and the new [13](13-release-security-checklist.md), the manual list and the pentest scope. The gate now *exists*; it has not yet *passed* on a release candidate, so the guard rule still holds. |
 | 0.64 | 2026-09-29 | Claude (Code), lead | **§12.6: the dependency check for `AGPL-3.0-only` is done** (owner question of 2026-09-29): `aspectjweaver` (EPL-2.0 and Apache-1.1) removed by excluding `spring-aspects`, `ST4` and `antlr-runtime` confirmed 3-clause BSD and recorded as reviewed exceptions; the licence scan has 0 to review. The proposed section 7 permission for EPL libraries, for the owner to approve with the `LICENSE` change. S4b-SEC-1 row follows. |
+| 0.65 | 2026-09-29 | Claude (Code), lead | **§12.6 done: the licence is `AGPL-3.0-only`** (`LICENSE` from gnu.org, new `NOTICE` with the section 7 permission for EPL and Google Play services libraries, the owner's choice of 2026-09-29, and the trademark notice); README, `web/package.json`, [07](07-secure-build-and-deploy.md) and the blocking licence check follow. New S4b-BL-65 (in-app source link). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -976,7 +977,7 @@ workflow runs on the branch ref; the five `main`-only jobs `firebase-setup`, `de
 `release-signing-check`, `release` and `gradle-dependency-graph` are skipped there).
 Threat model: T-E4 and T-I21 ([02](02-threat-model.md)); the risk scores do not change.
 
-### 12.6 Next item: the licence change (approved, separate follow-up)
+### 12.6 The licence change (approved 2026-09-23, done 2026-09-29)
 
 **Decision (owner, 2026-09-23): the licence moves from MIT to `AGPL-3.0-only`, with a trademark notice for the name
 Doorprints.** The decision is approved. Its implementation is a **separate follow-up and the next item** after this
@@ -1006,21 +1007,27 @@ found three components; none is left:
 
 The scan now reports 213 components, 0 to review.
 
-**Proposed additional permission (owner to approve; added with the `LICENSE` change, not before).** The owner, as the
-copyright holder, can add this to the AGPL notice under its section 7, so that a future library under the Eclipse
-Public License does not block a release the way AspectJ would have. The wording follows the FSF's own template (GPL
-FAQ, *GPLIncompatibleLibs*), narrowed to the EPL:
+**Done (2026-09-29, branch `chore/licence-agpl`; owner: "Carry on with the licence switch").** `LICENSE` is the
+GNU AGPL version 3 text as published at gnu.org (661 lines, sha256 `0d96a4ff…abcb0`, fetched, not retyped); the new
+`NOTICE` holds the copyright line, the "version 3 only" notice (SPDX `AGPL-3.0-only`), a note that versions before
+2026-09-29 stay MIT, the section 7 **additional permission** and the **trademark notice**. The README (the line under
+the title, the documents table, *Contributing*), `web/package.json` and its lock file (`license`), [07](07-secure-build-and-deploy.md)
+§3 and `security.yml`'s licence check (now blocking; EPL-1.0 and EPL-2.0 allowed under the permission) follow.
 
-> Additional permission under GNU AGPL version 3 section 7
->
-> If you modify this Program, or any covered work, by linking or combining it with a library licensed under the
-> Eclipse Public License version 1.0 or 2.0 (or a modified version of that library), containing parts covered by the
-> terms of that licence, the licensors of this Program grant you additional permission to convey the resulting work.
-> Corresponding Source for a non-source form of such a combination shall include the source code for the parts of
-> that library used as well as that of the covered work.
+The permission is the FSF's template (GPL FAQ, *GPLIncompatibleLibs*) for two kinds of library: (a) the Eclipse Public
+License 1.0 or 2.0, proposed above; and (b) **Google Play services client libraries** (`com.google.android.gms`) and
+other Google client libraries for Android under the Android Software Development Kit License, which the Android app
+uses for Hunt mode's location and geofences (`HuntService.kt`, `CurrentLocation.kt`) and which Sprint 5's Google
+sign-in will likely add to. The owner chose (b) on 2026-09-29 over rewriting Hunt mode on Android's own
+`LocationManager` or holding the switch. Corresponding Source includes the (a) libraries' source; (b) is not open
+source, so it cannot. Anyone may remove the permission from their copy (section 7).
 
-The permission covers only Doorprints' own code (anyone may remove it from their copy, as section 7 allows). With it,
-`licence-check.py` would also need EPL-1.0 and EPL-2.0 on its allowed list. It is not legal advice.
+The trademark notice (section 7(e)): "Doorprints" and the app icon are **unregistered** trademarks of the copyright
+holder (the IP India search of [12](12-brand-and-naming.md) section C is still open, so ™ at most, never ®); a
+modified version that is distributed or offered to others must use another name and icon. Not legal advice.
+
+Not in this change: an in-app "Source code" link (AGPL section 13 asks it of modified versions run for others over a
+network; S4b-BL-65) and per-file licence headers (optional; `NOTICE` covers the repository).
 
 ### 12.7 Pre-deploy close-out (2026-09-23): what is left, backlog tickets and rule candidates
 
@@ -1062,7 +1069,7 @@ from the owner's request to follow the DST geospatial guidelines of 2021; S4b-BL
 S4b-BL-32 (§13.10); S4b-BL-53 in v0.54, from the owner's question about the `noreply`
 contributor; S4b-BL-54 and S4b-BL-55 in v0.54, from the maplibre-gl 6.11.2
 check (§16); S4b-BL-56 and S4b-BL-57 in v0.55, from CMP-8a (§13.11); S4b-BL-58 and S4b-BL-59 in v0.56, from CMP-8b (§13.12);
-S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58, from the Ubuntu 26.04 runner trial; S4b-BL-63 in v0.59, the end-to-end test of the guide's server setup; S4b-BL-64 in v0.62, from the MobSF scan.
+S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58, from the Ubuntu 26.04 runner trial; S4b-BL-63 in v0.59, the end-to-end test of the guide's server setup; S4b-BL-64 in v0.62, from the MobSF scan; S4b-BL-65 in v0.65, from the licence change.
 
 | # | Client | Ticket | Fix | Owner |
 |---|---|---|---|---|
@@ -1130,6 +1137,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-62 | All | **`ubuntu-latest` becomes Ubuntu 26.04 between 19 October and 19 November 2026** (actions/runner-images#14748; owner request of 2026-09-29 to try it first; new id). 25 Linux jobs used `ubuntu-latest`, so the move would have landed unannounced; most exposed: the emulator jobs (KVM on kernel 7.0), `pages.yml` (Python 3.11 on the new image), the Docker-based scans and the PostGIS test database | A trial pull request names `ubuntu-26.04` in every Linux job and lets CI show what breaks; fix what does, keep the explicit label ([07](07-secure-build-and-deploy.md) §1); a job that cannot move yet pins `ubuntu-24.04` with a note here. `ai-evals.yml` is manual only and is run once by hand on the branch | DevSecOps |
 | S4b-BL-63 | All | **Test the guide's *Set up your own server* page end to end** (owner request of 2026-09-29: "test the server setup once all the sprints are complete"; new id). The page ([`set-up-a-server.md`](../guide/docs/set-up-a-server.md), §17) was checked against the code and the vendors' pages but never followed on a real machine: Docker Desktop, Tailscale's apps and a phone cannot run in the Claude container. | After the last sprint: Claude runs what it can in its container (the `.env` file and `docker compose up --build -d` on Linux, `/actuator/health`, a sync and, with a test Gemini key, **Ask**, using made-up houses); the owner follows the page on a Windows or Mac computer and a phone, step by step with Claude, for Docker Desktop, Tailscale Serve and the apps. Every place a step was unclear or wrong is fixed in the page. | Docs, Backend, Owner |
 | S4b-BL-64 | Android | **Cleartext for the development hosts ships in the release APK** (found by the release security gate's MobSF scan, 2026-09-29; new id). `network_security_config.xml` permits cleartext to `localhost`, `127.0.0.1` and `10.0.2.2` in every build, so a release user could point the app at a plain-HTTP server on the phone itself. MobSF rates it High; it is accepted for now in `android/ci/mobsf-accepted.json` because it matches `ServerUrl.LOCAL_HOSTS` and nothing else is allowed | A debug-only network config (`src/debug/res/xml/`) with the domain config, the release config HTTPS-only, and `ServerUrl` refusing `http://` in release builds, with a test; then drop the accepted entry | Android |
+| S4b-BL-65 | Web, Android, iOS | **No app links to its source code** (the licence change, §12.6). AGPL section 13 asks a modified version that people use over a network to offer them its source; Doorprints' own copies are not bound by it (the owner holds the copyright), but a link makes the offer for everyone and shows forks where to put theirs | A "Source code" link with the licence name (`AGPL-3.0-only`) in *Your data* / *About* on each app, to `https://github.com/Sriram-Codes-SW/doorprints`; new strings in four languages (hi/ta/te *under review*) | Web, Android |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
 **`NEW RULE:` candidates for the playbooks.** Items (b) to (e), (i) and (j) are now in the design and UX self-check.
