@@ -32,6 +32,9 @@ spring:
     properties:
       # Timestamps are Instants end to end (timestamptz in the DB, ISO-8601 with Z in JSON).
       hibernate.jdbc.time_zone: UTC
+      # A house's checklist is an eager element collection: without batching, loading N houses (sync pull, backup
+      # export, the AI reindex) runs one extra select per house. With it, one per 100 houses.
+      hibernate.default_batch_fetch_size: 100
   jackson:
     deserialization:
       # Jackson 3 (Boot 4) fails on a missing primitive record component by default. Sync clients omit
