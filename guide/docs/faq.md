@@ -18,6 +18,9 @@ website you can still add one offline with **Add at my location** or **Type lati
 Gemini key for AI comes from Google. [Two different keys](set-up-a-server.md#two-different-keys) explains which goes
 where.
 
+**Do I need both keys at once?** No. The Doorprints API key is needed from the start: the server won't run without it.
+The Gemini key is only for AI, and you can add it any time later ([step 5](set-up-a-server.md#step-5-write-the-servers-settings-file)).
+
 **Can I move my houses from the website to the Android app?** Yes: on the website, **Save a copy** as a **Full backup (ZIP)**,
 then on Android use **Import a backup**. Or connect both to the same server.
 

@@ -18,6 +18,7 @@ People mix these two up most often. They are not the same thing.
 |---|---|---|
 | What it is | A long password that you make up for your server | A key from Google that lets your server use Google's AI |
 | Needed for | Syncing, and the AI features | Only the AI features |
+| Needed at the start? | **Yes.** The server won't start without it. | **No.** Add it later, whenever you want AI. |
 | Where you get it | You create it yourself in [step 3](#step-3-make-your-doorprints-api-key) | From Google AI Studio, in [step 4](#step-4-optional-get-a-free-gemini-key-for-ai) |
 | Where you type it | In the server's settings file **and** in each app (**Connect** or **Settings**) | **Only** in the server's settings file. The apps never ask for it. |
 
@@ -118,8 +119,35 @@ working.
     names you wrote in your notes, your questions, and the other details of your houses are still sent, and so is text
     you paste into **Fill in from listing text**. For its free tier, Google says that people may read what is sent,
     that it may be used to improve Google's products, and that you should not send personal information
-    ([Gemini API terms](https://ai.google.dev/gemini-api/terms)). If that worries you, leave AI off, or keep personal
-    details out of your notes.
+    ([Gemini API terms](https://ai.google.dev/gemini-api/terms)). If that worries you, use the paid tier (below), leave
+    AI off, or keep personal details out of your notes.
+
+### The paid tier: a small cost, more privacy
+
+You can move the same key to Google's paid tier. It helps in two ways:
+
+- **Privacy:** on the paid tier, Google says it does **not** use what you send to improve its products. This is the
+  main reason to pay.
+- **No daily limit to run out of** in normal use.
+
+**What it costs.** You pay for what you use; there is no monthly fee. On Google's price list of September 2026, the
+model Doorprints uses (Gemini 3.5 Flash) costs US$1.50 for every million word-pieces ("tokens") sent and US$9 for
+every million received. One **Ask** question sends a few thousand tokens and gets a few hundred back, so it costs about
+**one US cent** (around a rupee). **Plan** makes several AI calls, so a plan costs a few cents. Keeping your houses
+searchable costs far less. A month of house-hunting with a hundred questions comes to roughly US$1 to US$2. Prices
+change; check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
+
+**How to switch:**
+
+1. Open [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Next to your project, in the
+   **Billing Tier** column, choose **Set up billing**.
+2. Create or pick a Google Cloud billing account and add a payment card.
+3. Choose **Prepay** and add the minimum, US$5. With Prepay, and automatic top-up left off, you are never charged more than you put in.
+4. Optional but wise: on the **Spend** page, under **Monthly spend cap**, choose **Edit spend cap** and set a small
+   limit, for example US$2. (Google says the cap can take about ten minutes to take effect.)
+
+Your Gemini key stays the same, so there is nothing to change on your server. Doorprints also limits AI use on its own:
+at most 10 AI requests a minute, and each answer is kept short.
 
 ## Step 5: Write the server's settings file
 
