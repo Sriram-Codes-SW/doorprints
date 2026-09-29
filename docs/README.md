@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.55 |
+| Version | 0.56 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -67,6 +67,7 @@
 | 0.53 | 2026-09-28 | Claude (Code), lead | **The DST geospatial guidelines of 2021** (owner request of 2026-09-28): 01 v0.33 (FR-098), 02 v0.36 (RR-16), 03 v0.33 (new §11.1, the self-certification; ADR-22), 06 v0.47 (TC-M-25 against the Survey of India's boundary), 10 v0.53 (S4b-BL-10 re-read, new S4b-BL-51), 14 v0.20 (N11), new [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) (a draft letter to SoI), CLAUDE.md's boundary rule. |
 | 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
+| 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
 
 ---
 
@@ -95,6 +96,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 11 | [Feature parity and export spec](11-feature-parity-and-export-spec.md) | Proposal (draft): SeenHouse parity, local-first with optional Google Sign-In, exports, AI access policy (D-21, D-22), Sprint 4b Hunt mode reminders, hunting areas and the location permission model (D-23..D-25, accepted) | Product / Architecture, Docs team |
 | 12 | [Brand and naming](12-brand-and-naming.md) | The web address `doorprints.web.app` and why, the one app icon on both platforms, site-ID fallbacks, brand screening, custom-domain policy (later, only after web import ships), standing naming guidelines, and the import / backup / copy vocabulary in four languages (drafts pending native review) | Docs team, from the brand advisor |
 | – | [User guide](../guide/docs/index.md) (site: https://sriram-codes-sw.github.io/doorprints/) | For people using Doorprints, not engineers: what it is, the screen at a glance on the website, Android and iPhone, and task by task how to add, find, compare and plan visits to houses, save a copy, import a backup, connect a server, add a shared listing, Hunt mode, language and theme, privacy and FAQ; screenshots in [guide/docs/images](../guide/docs/images/) | Docs team |
+| 13 | [Release security checklist](13-release-security-checklist.md) | The manual part of the release security gate: the one-hour list per release (web WSTG-lite, Android MASTG-lite, MobSF dynamic, the server, the OWASP Top 10 for LLM applications, the DPDP Act and Play data safety, India's boundaries), the deep self-run pentest's scope, and a release record to copy; the automated checks are in [06](06-test-plan.md) §11.1 | Lead, with DevSecOps |
 | 14 | [Lead backlog and handoff](14-lead-backlog-and-handoff.md) | Where things stand, open pull requests, the ordered next steps, parked items and owner rules still in force, for a new session to continue from | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |

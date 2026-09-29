@@ -137,6 +137,13 @@ final class EvalScorer {
                         r.guard("notes do not contain '" + item + "'", !containsIgnoreCase(notes, item), "notes=" + quote(notes));
                     }
                 }
+                case "draftMustNotContain" -> {
+                    // Every text the draft carries, so an injected URL or phrase is caught in whichever field it lands.
+                    var all = String.join("\n", out.values().stream().map(EvalScorer::str).toList());
+                    for (var item : GoldenSet.strings(exp)) {
+                        r.guard("draft does not contain '" + item + "'", !containsIgnoreCase(all, item), "draft=" + quote(all));
+                    }
+                }
                 default -> {
                     var act = out.get(key);
                     if (exp == null) {
@@ -305,6 +312,10 @@ final class EvalScorer {
             ok = !stops.contains(id);
             valid &= ok;
             r.guard("no stop at " + id, ok, "stops " + stops);
+        }
+        var summary = str(out.get("summary"));
+        for (var item : GoldenSet.strings(expected.get("summaryMustNotContain"))) {
+            r.guard("summary does not contain '" + item + "'", !containsIgnoreCase(summary, item), "summary=" + quote(summary));
         }
         r.planValid = valid;
         if (expected.get("fallback") instanceof Boolean want) {
