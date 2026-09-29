@@ -93,6 +93,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
     val repo = services.repository
     // The app features that are still Android code (language, the weekly backup, the version; CMP-5).
     val features = services.settingsScreen
+    // What this platform has (CMP-8b): iOS hides the in-app language, the copies, the weekly backup and Hunt mode.
+    val platformFeatures = LocalPlatformFeatures.current
+    val platform = LocalPlatformServices.current
     val scope = rememberCoroutineScope()
     val settings by repo.settings.settings.collectAsStateWithLifecycle(AppSettings())
     // What the user typed, kept across a rotation; null shows the saved URL. The key is plain remember on purpose:
@@ -115,8 +118,6 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
     // result stays withdrawn until the next run finishes (serverResultWithdrawn): typing clears the field's error but
     // does not bring an older result back, and *Sync now* after a rejected address shows its own result.
     var withdrawnRun by remember { mutableIntStateOf(-1) }
-    val language = remember { features.currentLanguage() }
-    val switchLanguage = features.rememberLanguageSwitch()
 
     Column(
         // imePadding: with edge-to-edge the window no longer resizes for the keyboard, so the server fields would sit
@@ -131,230 +132,261 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             modifier = Modifier.semantics { heading() })
 
         SectionHeading(stringResource(Res.string.settings_language))
-        Column(Modifier.selectableGroup()) {
-            val options = listOf<String?>(null) + features.supportedLanguages
-            options.forEach { code ->
-                val selected = language == code
-                Row(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .selectable(selected = selected, role = Role.RadioButton, onClick = {
-                            if (!selected) switchLanguage(code)
-                        }),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(selected = selected, onClick = null)
-                    if (code == null) {
-                        Text(stringResource(Res.string.settings_language_system), modifier = Modifier.padding(start = 12.dp))
-                    } else {
-                        // Tagged with its own locale, so TalkBack reads each name with the right voice.
-                        Text(
-                            buildAnnotatedString {
-                                withStyle(SpanStyle(localeList = LocaleList(code))) {
-                                    append(ExportLanguages.nativeName(code))
-                                }
-                            },
-                            modifier = Modifier.padding(start = 12.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        HorizontalDivider()
-        SectionHeading(stringResource(Res.string.settings_data))
-        // The offline copy (Sprint 4a). Both screens work with no server and no account. Navigation rows, not
-        // two buttons side by side: each title keeps its own hint (TalkBack reads them as one item), long Tamil
-        // and Telugu labels wrap instead of squeezing each other, and they do not compete with "Save and test".
-        NavRow(stringResource(Res.string.settings_export), stringResource(Res.string.settings_export_hint), onOpenExport)
-        NavRow(stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport)
-
-        // Weekly automatic backup (S4-07). The folder is picked once with OpenDocumentTree and the grant is made
-        // persistable, so the worker can still write to it weeks later and after a reboot.
-        LifecycleStartEffect(Unit) {
-            features.settingsVisible(true)
-            onStopOrDispose { features.settingsVisible(false) }
-        }
-        // True when the folder is being picked because the switch was turned on: then picking it also turns the
-        // backup on. Picking a folder with the switch off only saves the folder — except straight after the backup
-        // switched itself off because its folder had gone: choosing a folder again is then exactly the fix
-        // "Choose it again" asked for, and it should put things back as they were.
-        var enableAfterPick by rememberSaveable { mutableStateOf(false) }
-        // The folder work runs in the app's scope, not this screen's: releasing an old grant waits on WorkManager
-        // reads, and leaving Settings straight after picking must not skip it.
-        val appScope = services.appScope
-        // The system's folder picker; the persisted grant is taken before this runs, while the activity still holds
-        // the picker's grant (SettingsServices.rememberBackupFolderPicker).
-        val pickFolder = features.rememberBackupFolderPicker { folder ->
-            val switchedOn = enableAfterPick
-            enableAfterPick = false
-            if (folder == null) return@rememberBackupFolderPicker
-            appScope.launch {
-                // The stored settings, never `settings` above: after process death while the picker was open, this
-                // callback runs as soon as the launcher registers — before DataStore's first value, while `settings`
-                // is still AppSettings() — and "keep 8" would be reset to 4, the old folder's grant never
-                // released, and the "folder gone" recovery below skipped.
-                val current = repo.settings.current()
-                // Picking also turns the backup on when the switch asked for the folder, when it is already on
-                // (changing folder), and straight after it switched itself off because its folder had gone.
-                val enable = switchedOn || current.autoBackup ||
-                    current.lastAutoBackupError == features.backupNoFolderError
-                repo.settings.saveAutoBackup(enable, folder, current.autoBackupKeep)
-                features.scheduleBackup(enable)
-                // Persisted grants are capped per app; do not hold on to a folder it no longer uses. After the save,
-                // so a run still writing there sees the change and gives the grant back itself when it ends.
-                val old = current.autoBackupFolder
-                if (old != folder) features.releaseBackupFolder(old)
-            }
-        }
-        SwitchRow(
-            text = stringResource(Res.string.settings_auto_backup),
-            hint = stringResource(Res.string.settings_auto_backup_hint),
-            checked = settings.autoBackup,
-            horizontalPadding = 0.dp,
-            onChange = { wanted ->
-                if (wanted && settings.autoBackupFolder.isBlank()) {
-                    enableAfterPick = true
-                    pickFolder()
-                } else {
-                    appScope.launch {
-                        val current = repo.settings.current()
-                        if (wanted) {
-                            repo.settings.saveAutoBackup(true, current.autoBackupFolder, current.autoBackupKeep)
-                            features.scheduleBackup(true)
-                        } else {
-                            // Off means off: the folder is forgotten and its grant given back (least privilege,
-                            // and grants are capped per app), so turning it on again asks for a folder. The last
-                            // error goes too — it described a setup that no longer exists. The grant is released
-                            // before the runs are cancelled, see :app's AutoBackupWorker.releaseFolder.
-                            repo.settings.saveAutoBackup(false, "", current.autoBackupKeep)
-                            if (current.lastAutoBackupError.isNotEmpty()) {
-                                repo.settings.saveAutoBackupResult(current.lastAutoBackupAt, "")
-                            }
-                            features.releaseBackupFolder(current.autoBackupFolder)
-                            features.scheduleBackup(false)
-                        }
-                    }
-                }
-            },
-        )
-        // Where the backups go, so the user can find one when they need to restore. "Download/Doorprints" on the
-        // phone's own storage; the folder's name elsewhere.
-        val folderLabel by produceState<String?>(null, settings.autoBackupFolder) {
-            val folder = settings.autoBackupFolder
-            value = if (folder.isBlank()) null else features.backupFolderLabel(folder)
-        }
-        // A *Back up now* run that is queued or running.
-        val backingUp by features.backingUpNow.collectAsStateWithLifecycle(false)
-        val folderGone = settings.lastAutoBackupError == features.backupNoFolderError
-
-        // Everything that only applies while the backup is on, grouped in one card under its switch (Design review,
-        // 2026-09-22) instead of up to seven loose items in the screen's rhythm, and easing in and out with the
-        // switch (150 ms, scaled by the system animator duration scale). Only while it is on: "Saved to: …" or
-        // "Keep the last 4 backups" under a switch that is off would read as if weekly backups were still being
-        // made — a false sense of safety on a data-safety feature.
-        AnimatedVisibility(
-            visible = settings.autoBackup,
-            enter = expandVertically(tween(ANIMATION_MS)) + fadeIn(tween(ANIMATION_MS)),
-            exit = shrinkVertically(tween(ANIMATION_MS)) + fadeOut(tween(ANIMATION_MS)),
-        ) {
-            OutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    folderLabel?.let {
-                        Text(
-                            stringResource(Res.string.settings_auto_backup_folder_is, it),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    var keep by remember(settings.autoBackupKeep) {
-                        mutableFloatStateOf(settings.autoBackupKeep.toFloat())
-                    }
-                    val keepText = pluralStringResource(Res.plurals.settings_auto_backup_keep, keep.toInt(), keep.toInt())
-                    // The visible label, for sighted users; TalkBack gets the same sentence on the slider itself.
-                    Text(keepText, modifier = Modifier.clearAndSetSemantics { })
-                    Slider(
-                        value = keep,
-                        onValueChange = { keep = it },
-                        // A name and a spoken value, instead of a bare percentage read apart from the text above it.
-                        modifier = Modifier.semantics {
-                            contentDescription = keepText
-                            stateDescription = keep.toInt().toString()
-                        },
-                        valueRange = 1f..8f,
-                        steps = 6,
-                        colors = brandSliderColors(),
-                        onValueChangeFinished = {
-                            scope.launch {
-                                repo.settings.saveAutoBackup(true, settings.autoBackupFolder, keep.toInt())
-                            }
-                        },
-                    )
-                    // Side by side, wrapping for Tamil and Telugu at 200% font. "Back up now" proves the setup today
-                    // instead of a week from now; it is the one tonal button, on the brand primaryContainer.
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+        // Where a platform has no in-app choice (iOS: PlatformFeatures.inAppLanguage), the language follows the one
+        // chosen for Doorprints in the phone's settings, and the button opens them. The flag is fixed per process, so
+        // the calls below never change order between compositions.
+        if (platformFeatures.inAppLanguage) {
+            val language = remember { features.currentLanguage() }
+            val switchLanguage = features.rememberLanguageSwitch()
+            Column(Modifier.selectableGroup()) {
+                val options = listOf<String?>(null) + features.supportedLanguages
+                options.forEach { code ->
+                    val selected = language == code
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .selectable(selected = selected, role = Role.RadioButton, onClick = {
+                                if (!selected) switchLanguage(code)
+                            }),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        RadioButton(selected = selected, onClick = null)
+                        if (code == null) {
                             Text(
-                                stringResource(
-                                    if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
-                                    else Res.string.settings_auto_backup_folder_change
-                                )
+                                stringResource(Res.string.settings_language_system),
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
+                        } else {
+                            // Tagged with its own locale, so TalkBack reads each name with the right voice.
+                            Text(
+                                buildAnnotatedString {
+                                    withStyle(SpanStyle(localeList = LocaleList(code))) {
+                                        append(ExportLanguages.nativeName(code))
+                                    }
+                                },
+                                modifier = Modifier.padding(start = 12.dp),
                             )
                         }
-                        FilledTonalButton(
-                            onClick = { features.backUpNow() },
-                            enabled = !backingUp,
-                            colors = tonalPrimaryColors(),
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) { Text(stringResource(Res.string.settings_auto_backup_now)) }
                     }
-                    // The card's last row: running now, the last problem, the last backup, or not yet. Only while
-                    // the backup is on, so it is not drawn twice while the card eases out.
-                    if (settings.autoBackup) AutoBackupStatus(settings, backingUp, features)
                 }
             }
+        } else {
+            Text(stringResource(Res.string.settings_language_phone))
+            OutlinedButton(onClick = { platform.openAppSettings() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(Res.string.settings_language_open_settings))
+            }
         }
-        // With the backup off, only the recovery is left: "The folder is no longer available. Choose it again."
-        // and the button that does it. Turning the switch on already opens the folder picker, and a folder picked
-        // with the switch off would be saved under a switch that stays off — except here, where picking a folder
-        // turns the backup back on (see pickFolder).
-        if (!settings.autoBackup && settings.lastAutoBackupError.isNotEmpty()) {
-            AutoBackupStatus(settings, backingUp, features)
-            if (folderGone) {
-                OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(
-                        stringResource(
-                            if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
-                            else Res.string.settings_auto_backup_folder_change
+
+        // Your data: only what this platform has (PlatformFeatures; hidden, not disabled, on iOS), and no heading at
+        // all when it has none of it.
+        if (platformFeatures.copiesAndImports || platformFeatures.weeklyBackup) {
+            HorizontalDivider()
+            SectionHeading(stringResource(Res.string.settings_data))
+        }
+        if (platformFeatures.copiesAndImports) {
+            // The offline copy (Sprint 4a). Both screens work with no server and no account. Navigation rows, not
+            // two buttons side by side: each title keeps its own hint (TalkBack reads them as one item), long Tamil
+            // and Telugu labels wrap instead of squeezing each other, and they do not compete with "Save and test".
+            NavRow(
+                stringResource(Res.string.settings_export), stringResource(Res.string.settings_export_hint), onOpenExport,
+            )
+            NavRow(
+                stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport,
+            )
+        }
+
+        if (platformFeatures.weeklyBackup) {
+            // Weekly automatic backup (S4-07). The folder is picked once with OpenDocumentTree and the grant is made
+            // persistable, so the worker can still write to it weeks later and after a reboot.
+            LifecycleStartEffect(Unit) {
+                features.settingsVisible(true)
+                onStopOrDispose { features.settingsVisible(false) }
+            }
+            // True when the folder is being picked because the switch was turned on: then picking it also turns the
+            // backup on. Picking a folder with the switch off only saves the folder — except straight after the backup
+            // switched itself off because its folder had gone: choosing a folder again is then exactly the fix
+            // "Choose it again" asked for, and it should put things back as they were.
+            var enableAfterPick by rememberSaveable { mutableStateOf(false) }
+            // The folder work runs in the app's scope, not this screen's: releasing an old grant waits on WorkManager
+            // reads, and leaving Settings straight after picking must not skip it.
+            val appScope = services.appScope
+            // The system's folder picker; the persisted grant is taken before this runs, while the activity still holds
+            // the picker's grant (SettingsServices.rememberBackupFolderPicker).
+            val pickFolder = features.rememberBackupFolderPicker { folder ->
+                val switchedOn = enableAfterPick
+                enableAfterPick = false
+                if (folder == null) return@rememberBackupFolderPicker
+                appScope.launch {
+                    // The stored settings, never `settings` above: after process death while the picker was open, this
+                    // callback runs as soon as the launcher registers — before DataStore's first value, while
+                    // `settings` is still AppSettings() — and "keep 8" would be reset to 4, the old folder's grant
+                    // never released, and the "folder gone" recovery below skipped.
+                    val current = repo.settings.current()
+                    // Picking also turns the backup on when the switch asked for the folder, when it is already on
+                    // (changing folder), and straight after it switched itself off because its folder had gone.
+                    val enable = switchedOn || current.autoBackup ||
+                        current.lastAutoBackupError == features.backupNoFolderError
+                    repo.settings.saveAutoBackup(enable, folder, current.autoBackupKeep)
+                    features.scheduleBackup(enable)
+                    // Persisted grants are capped per app; do not hold on to a folder it no longer uses. After the
+                    // save, so a run still writing there sees the change and gives the grant back itself when it ends.
+                    val old = current.autoBackupFolder
+                    if (old != folder) features.releaseBackupFolder(old)
+                }
+            }
+            SwitchRow(
+                text = stringResource(Res.string.settings_auto_backup),
+                hint = stringResource(Res.string.settings_auto_backup_hint),
+                checked = settings.autoBackup,
+                horizontalPadding = 0.dp,
+                onChange = { wanted ->
+                    if (wanted && settings.autoBackupFolder.isBlank()) {
+                        enableAfterPick = true
+                        pickFolder()
+                    } else {
+                        appScope.launch {
+                            val current = repo.settings.current()
+                            if (wanted) {
+                                repo.settings.saveAutoBackup(true, current.autoBackupFolder, current.autoBackupKeep)
+                                features.scheduleBackup(true)
+                            } else {
+                                // Off means off: the folder is forgotten and its grant given back (least privilege,
+                                // and grants are capped per app), so turning it on again asks for a folder. The last
+                                // error goes too — it described a setup that no longer exists. The grant is released
+                                // before the runs are cancelled, see :app's AutoBackupWorker.releaseFolder.
+                                repo.settings.saveAutoBackup(false, "", current.autoBackupKeep)
+                                if (current.lastAutoBackupError.isNotEmpty()) {
+                                    repo.settings.saveAutoBackupResult(current.lastAutoBackupAt, "")
+                                }
+                                features.releaseBackupFolder(current.autoBackupFolder)
+                                features.scheduleBackup(false)
+                            }
+                        }
+                    }
+                },
+            )
+            // Where the backups go, so the user can find one when they need to restore. "Download/Doorprints" on the
+            // phone's own storage; the folder's name elsewhere.
+            val folderLabel by produceState<String?>(null, settings.autoBackupFolder) {
+                val folder = settings.autoBackupFolder
+                value = if (folder.isBlank()) null else features.backupFolderLabel(folder)
+            }
+            // A *Back up now* run that is queued or running.
+            val backingUp by features.backingUpNow.collectAsStateWithLifecycle(false)
+            val folderGone = settings.lastAutoBackupError == features.backupNoFolderError
+
+            // Everything that only applies while the backup is on, grouped in one card under its switch (Design review,
+            // 2026-09-22) instead of up to seven loose items in the screen's rhythm, and easing in and out with the
+            // switch (150 ms, scaled by the system animator duration scale). Only while it is on: "Saved to: …" or
+            // "Keep the last 4 backups" under a switch that is off would read as if weekly backups were still being
+            // made — a false sense of safety on a data-safety feature.
+            AnimatedVisibility(
+                visible = settings.autoBackup,
+                enter = expandVertically(tween(ANIMATION_MS)) + fadeIn(tween(ANIMATION_MS)),
+                exit = shrinkVertically(tween(ANIMATION_MS)) + fadeOut(tween(ANIMATION_MS)),
+            ) {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        folderLabel?.let {
+                            Text(
+                                stringResource(Res.string.settings_auto_backup_folder_is, it),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        var keep by remember(settings.autoBackupKeep) {
+                            mutableFloatStateOf(settings.autoBackupKeep.toFloat())
+                        }
+                        val keepText =
+                            pluralStringResource(Res.plurals.settings_auto_backup_keep, keep.toInt(), keep.toInt())
+                        // The visible label, for sighted users; TalkBack gets the same sentence on the slider itself.
+                        Text(keepText, modifier = Modifier.clearAndSetSemantics { })
+                        Slider(
+                            value = keep,
+                            onValueChange = { keep = it },
+                            // A name and a spoken value, instead of a bare percentage read apart from the text
+                            // above it.
+                            modifier = Modifier.semantics {
+                                contentDescription = keepText
+                                stateDescription = keep.toInt().toString()
+                            },
+                            valueRange = 1f..8f,
+                            steps = 6,
+                            colors = brandSliderColors(),
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    repo.settings.saveAutoBackup(true, settings.autoBackupFolder, keep.toInt())
+                                }
+                            },
                         )
-                    )
+                        // Side by side, wrapping for Tamil and Telugu at 200% font. "Back up now" proves the setup
+                        // today instead of a week from now; it is the one tonal button, on the brand primaryContainer.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(
+                                    stringResource(
+                                        if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
+                                        else Res.string.settings_auto_backup_folder_change
+                                    )
+                                )
+                            }
+                            FilledTonalButton(
+                                onClick = { features.backUpNow() },
+                                enabled = !backingUp,
+                                colors = tonalPrimaryColors(),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) { Text(stringResource(Res.string.settings_auto_backup_now)) }
+                        }
+                        // The card's last row: running now, the last problem, the last backup, or not yet. Only while
+                        // the backup is on, so it is not drawn twice while the card eases out.
+                        if (settings.autoBackup) AutoBackupStatus(settings, backingUp, features)
+                    }
+                }
+            }
+            // With the backup off, only the recovery is left: "The folder is no longer available. Choose it again."
+            // and the button that does it. Turning the switch on already opens the folder picker, and a folder picked
+            // with the switch off would be saved under a switch that stays off — except here, where picking a folder
+            // turns the backup back on (see pickFolder).
+            if (!settings.autoBackup && settings.lastAutoBackupError.isNotEmpty()) {
+                AutoBackupStatus(settings, backingUp, features)
+                if (folderGone) {
+                    OutlinedButton(onClick = { pickFolder() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(
+                            stringResource(
+                                if (settings.autoBackupFolder.isBlank()) Res.string.settings_auto_backup_folder
+                                else Res.string.settings_auto_backup_folder_change
+                            )
+                        )
+                    }
                 }
             }
         }
 
-        HorizontalDivider()
-        SectionHeading(stringResource(Res.string.settings_hunt))
-        // Each slider is named by its sentence and says its value in metres or minutes (WCAG 4.1.2), as the keep-backups
-        // slider does; the visible sentence is hidden from TalkBack so it is not read twice.
-        val radiusText = stringResource(Res.string.settings_alert_radius, radius.toInt())
-        Text(radiusText, modifier = Modifier.clearAndSetSemantics { })
-        Slider(radius, { radius = it }, valueRange = 15f..100f, steps = 16, colors = brandSliderColors(),
-            modifier = Modifier.semantics {
-                contentDescription = radiusText
-                stateDescription = radius.toInt().toString()
-            },
-            onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-        val stayText = stringResource(Res.string.settings_min_stay, stay.toInt())
-        Text(stayText, modifier = Modifier.clearAndSetSemantics { })
-        Slider(stay, { stay = it }, valueRange = 2f..15f, steps = 12, colors = brandSliderColors(),
-            modifier = Modifier.semantics {
-                contentDescription = stayText
-                stateDescription = stay.toInt().toString()
-            },
-            onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-        Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+        if (platformFeatures.huntMode) {
+            HorizontalDivider()
+            SectionHeading(stringResource(Res.string.settings_hunt))
+            // Each slider is named by its sentence and says its value in metres or minutes (WCAG 4.1.2), as the
+            // keep-backups slider does; the visible sentence is hidden from TalkBack so it is not read twice.
+            val radiusText = stringResource(Res.string.settings_alert_radius, radius.toInt())
+            Text(radiusText, modifier = Modifier.clearAndSetSemantics { })
+            Slider(radius, { radius = it }, valueRange = 15f..100f, steps = 16, colors = brandSliderColors(),
+                modifier = Modifier.semantics {
+                    contentDescription = radiusText
+                    stateDescription = radius.toInt().toString()
+                },
+                onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
+            val stayText = stringResource(Res.string.settings_min_stay, stay.toInt())
+            Text(stayText, modifier = Modifier.clearAndSetSemantics { })
+            Slider(stay, { stay = it }, valueRange = 2f..15f, steps = 12, colors = brandSliderColors(),
+                modifier = Modifier.semantics {
+                    contentDescription = stayText
+                    stateDescription = stay.toInt().toString()
+                },
+                onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
+            Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+        }
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_server))
