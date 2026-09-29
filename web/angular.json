@@ -36,7 +36,11 @@
               }
             ],
             "styles": [
-              "node_modules/maplibre-gl/dist/maplibre-gl.css",
+              {
+                "input": "node_modules/maplibre-gl/dist/maplibre-gl.css",
+                "bundleName": "maplibre",
+                "inject": false
+              },
               "src/styles.css"
             ]
           },

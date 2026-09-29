@@ -115,6 +115,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Faster first load on the website:** only the chosen language's text is downloaded (English is built in; Hindi,
+  Tamil and Telugu load when chosen, and before the app starts when saved), and MapLibre's stylesheet loads with the
+  first map instead of holding up every page: the first download goes from 782 KB to 488 KB (166 KB to 129 KB
+  compressed). Everything stays available offline.
+- **Server:** loading many houses (sync, backup export, the AI reindex) reads their checklists in batches instead of one
+  query per house.
+- **Build:** npm's download cache in CI; Gradle builds the Android modules in parallel.
 - **The live UI test tells network faults from site faults** ([test plan](docs/06-test-plan.md) TC-M-26): a 502 or a
   stylesheet delivered with the wrong type that a second fetch gets right is reported apart, not as a failure; the
   test's four areas run side by side (about 12-15 minutes instead of 25-30).

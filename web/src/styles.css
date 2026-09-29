@@ -962,3 +962,8 @@ textarea[aria-invalid='true'] {
   -webkit-user-select: all;
   user-select: all;
 }
+
+/* MapLibre's own stylesheet loads with the first map (map-style.ts ensureMapStyles); its controls wait for it. */
+.maplibre-css-loading .maplibregl-control-container {
+  visibility: hidden;
+}

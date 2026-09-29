@@ -100,30 +100,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          # npm caching needs a lock file; enable `cache: npm` once web/package-lock.json is committed.
-
-      - name: Is there a lock file?
-        id: lock
-        run: |
-          if [ -f package-lock.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+          # npm's download cache, keyed on the committed lock file (T-T5: `npm ci` still installs exactly what it
+          # pins and checks every package's integrity hash; the cache only saves the downloads).
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            echo "::warning::web/package-lock.json is missing; running npm install. Commit the uploaded lock file."
-            npm install --no-audit --no-fund
-          fi
-
-      # Supply chain (threat model T-T5): until the lock file is in git, hand it over so it can be committed.
-      - name: Upload generated package-lock.json
-        if: steps.lock.outputs.present == 'false'
-        uses: actions/upload-artifact@v7
-        with:
-          name: web-package-lock
-          path: web/package-lock.json
-          retention-days: 30
+        run: npm ci --no-audit --no-fund
 
       # Unit tests: Vitest through Angular's @angular/build:unit-test builder. No `browsers` option is configured, so
       # tests run in Node with jsdom (a devDependency): no Chrome or display needed on the runner. --watch=false is in
