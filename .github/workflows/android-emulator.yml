@@ -34,7 +34,7 @@ name: Android emulator
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths:
       - "android/**"
       - ".github/workflows/android-emulator.yml"

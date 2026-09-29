@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **One CI run per push** (`.github/workflows`): the branch workflows run on pushes to `main` and on pull requests,
+  no longer on every branch push (two runs per push before); CodeQL and the backend image checks now run on
+  same-repository pull requests. About 15 minutes of macOS and emulator time saved per push.
 - **Faster delivery for Claude Code sessions:** a SessionStart hook (`.claude/hooks/session-start.sh`) installs the
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
