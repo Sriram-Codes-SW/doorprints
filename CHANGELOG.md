@@ -321,6 +321,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Ready for the AGPL licence** ([sprint log](docs/10-sprint-log.md) §12.6): the backend no longer ships AspectJ's
+  weaver (EPL-2.0 and Apache-1.1, which cannot be combined with the AGPL; it was unused), and the two ANTLR libraries
+  Spring AI brings are confirmed 3-clause BSD. The licence scan now finds nothing to review. A section 7 permission for
+  Eclipse Public License libraries is proposed for the owner to approve with the licence change.
 - **Branch names say what the work is** (owner, 2026-09-29; `CLAUDE.md`, README *Contributing*): `<type>/<topic>`, one
   branch per pull request from the latest `main`, never a generated session name.
 - **CI: every Linux job runs on a named image, `ubuntu-26.04`,** instead of `ubuntu-latest`, ahead of GitHub moving

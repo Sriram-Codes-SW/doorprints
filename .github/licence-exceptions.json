@@ -1,1 +1,4 @@
-{}
+{
+  "org.antlr:ST4": "3-clause BSD, not 4-clause: the SBOM's 'The BSD License' was read as BSD-4-Clause. Upstream LICENSE.txt (antlr/stringtemplate4) has the three clauses and no advertising clause. Checked by the lead, 2026-09-29 (docs/10 \u00a712.6).",
+  "org.antlr:antlr-runtime": "3-clause BSD: the SBOM lists 'BSD licence' with no SPDX id. The 3.5.3 sources jar (Maven Central) carries the three-clause BSD header in every file. Checked by the lead, 2026-09-29 (docs/10 \u00a712.6)."
+}
