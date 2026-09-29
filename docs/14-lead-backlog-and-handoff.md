@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..63); this file lists the lead-level items and points to the rest. |
@@ -35,6 +35,7 @@
 | 0.22 | 2026-09-29 | Claude (Code), lead | Review of the web dependency pull request: the header and N6 name S4b-BL-1..55; N5 names §16 and S4b-BL-54 and -55; §6: the Survey of India letter was sent (2026-09-28 22:11 UTC) with the three web map screenshots ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, after v0.3: the portal read and the Gmail draft). Also in this branch since v0.21: §1 `main` = `8ad682c` (#26 merged), N10's search decision, §6's contributor-list to-do. |
 | 0.23 | 2026-09-29 | Claude (Code), lead | §1: PR #28 merged (`22b43fd`), deployed, and its live UI test passed 1 977 of 1 977 (N8); the branch now carries **CMP-8a** ([10](10-sprint-log.md) §13.11). N7: CMP-8 is three pull requests (owner, 2026-09-29), 8a done in code, next 8b then 8c. N6: backlog S4b-BL-1..57. |
 | 0.24 | 2026-09-29 | Claude (Code), Docs team | Owner request of 2026-09-29, the **user guide**: a new user guide ([`guide/`](../guide/docs/index.md)) v0.1 with screenshots ([10](10-sprint-log.md) §17). §1: a line for it. New **N12**. The header and N6: backlog S4b-BL-1..62 (S4b-BL-60, the guide in hi/ta/te and an in-app Help link; S4b-BL-61, the web Plan page's form shown without a server). |
+| 0.25 | 2026-09-29 | Claude (Code), lead | §1: the branch now carries **CMP-8c**, the iPhone map ([10](10-sprint-log.md) §13.13). New **N13**: the owner's order after CMP-8c (TC-M-28, the release security gate, Google sign-in with a hosted server, then features S4b-FR-2..4, then S4b-BL-63). |
 
 ## 1. Where things stand (2026-09-29)
 
@@ -85,11 +86,11 @@
   the deploy (N8), 2026-09-28:** 1 972 of 1 977 checks passed; the 5 failures were two page loads this session's proxy
   broke (a stylesheet as `text/plain`, a `502`), and a re-check of those pages passed ([06](06-test-plan.md) TC-M-26).
 - **S4b-BL-32** (the `Repository` implementation in `:shared`, [10](10-sprint-log.md) §13.10) was merged with PR #27.
-- **Branch `claude/sleepy-brown-479259`** (on `22b43fd`; a pull request to `main`): **CMP-8a**, the iOS simulator
-  tests and data fixes ([10](10-sprint-log.md) §13.11). CI job `ios-sim-tests` runs every commonTest and the new
-  iosTests of `:shared` and `:ui` on an iPhone simulator; Room, the settings and the Keychain, the iOS stand-ins and
-  the photo files by id fixed (S4b-BL-24, -26, -30, -33, -52), the iOS data in one backup-excluded folder (S4b-BL-56).
-  The full Android command passes locally (502 tests, the 64 screenshots unchanged); the iOS klibs cross-compiled.
+- **Branch `claude/sleepy-brown-479259`** (on `64ceabd`; a pull request to `main`): **CMP-8c**, the iPhone map
+  ([10](10-sprint-log.md) §13.13). India's boundary rules are applied to the style JSON in common code
+  (`JsonStyleOps`, the same `applyIndiaView` steps as Android) and checked in the app (`IndiaViewCheck`); the iOS launch
+  smoke passes only with that check and the loaded map both PASS (TC-I-38, the owner's CI gate). CMP-8a (PR #29) and
+  CMP-8b (PR #30), the user guide (PR #31, #33) and the Ubuntu 26.04 runners (PR #32) are merged.
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1). Deploy, signing and the dependency graph are main-only.
 - **Merging is the owner's click.** An automated session must not merge its own pull request.
 
@@ -109,6 +110,7 @@
 | N10 | **The owner's feature requests of 2026-09-28** ([10](10-sprint-log.md) §15), after CMP-8, in this order: **S4b-FR-1** search the saved houses (**both apps already search the list** as you type: the web over label, address, street, locality, notes and contact name, Android the same without the contact name; **owner decision of 2026-09-28: search grows with the house values**, so each change that adds or changes a house field updates both apps' search with it, and the next one closes the Android contact-name gap; rule in CLAUDE.md); **S4b-FR-2** the path travelled as a coloured line on the map while visiting houses (privacy review first: a stored track is location history); **S4b-FR-3** sharing list updates between two people who know each other (zero cost, no public server); **S4b-FR-4** a house from a MagicBricks, 99acres, Housing.com, NoBroker, Square Yards or NestAway listing link (the portals' terms and the photos' copyright checked first; the web cannot read those pages from the browser). | Design Director and UX lead first, then Web and Android | Each a Sprint 4b story with the design-first step; one pull request each. |
 | N11 | **The Government of India's geospatial guidelines** (owner request of 2026-09-28, with `https://onlinemaps.surveyofindia.gov.in/GeospatialGuidelines.aspx`: the DST guidelines of 15 February 2021, read in full). **Done in docs:** Doorprints' self-certification clause by clause ([03](03-design.md) §11.1, clause 8 ii(1)); the Survey of India's boundary is now the primary reference for TC-M-25 step (3) and FR-098 (clause 8 xiii: SoI maps and boundary data are the standard; Google Maps from India is the second check); [02](02-threat-model.md) RR-16 and S4b-BL-10 re-read (the earlier "display and printing only" reading missed "Others may publish such maps that adhere to these standards"); new S4b-BL-51 (re-read the self-certification and look for DST's negative list at each release); a draft letter to SoI ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md)). **Next:** the owner downloads SoI's free Administrative Boundary Database (§6); the lead measures the outline against it (S4b-BL-10 step (2)) and, with SoI's permission or a clear licence, rebuilds the outline from it and re-runs TC-M-25. | Owner, then lead | Docs only so far; no map change. Not legal advice. |
 | N12 | **User guide** (owner request of 2026-09-29, [10](10-sprint-log.md) §17). **Done in docs:** the user guide ([`guide/`](../guide/docs/index.md)) v0.1 in English. **Next:** S4b-BL-60 (the guide in Hindi, Tamil and Telugu, *under review*, and an in-app **Help** link on the web and in Android's Settings); keep the guide (`guide/docs/`) in step whenever a label, screen or feature it names changes; when the iPhone gets the map (CMP-8c) and adding houses, update the guide's platform table (`index.md`) and its iPhone section (`screen-at-a-glance.md`). **Owner to-do:** Settings > Pages > Source: *GitHub Actions*; the site is then https://sriram-codes-sw.github.io/doorprints/ (`.github/workflows/pages.yml`). S4b-BL-61 (found while taking the screenshots): the web Plan page shows its form under the no-server note. | Docs; Web and Android for the Help link | Docs only; no code change. |
+| N13 | **Order after CMP-8c** (owner decisions of 2026-09-29): (1) the owner's look at the iPhone map, TC-M-28 ([06](06-test-plan.md)); (2) the **release security gate**, S4b-SEC-1..3 ([10](10-sprint-log.md) §12.5), which a public server needs first; (3) **Google sign-in with a hosted server** ([11](11-feature-parity-and-export-spec.md) D-01, §5.1; owner: "a flow for Google Single Sign On for easy setup for non tech users"): sign in with Google on the website, Android and iPhone, each Google account seeing only its own houses on a free-tier server the owner runs, cloud AI only for invited accounts on the owner's capped key (D-21), the self-hosted API-key mode kept, and a shorter path in the user guide; (4) then the features S4b-FR-2..4 of N10; (5) S4b-BL-63, the end-to-end test of the guide's server setup with the owner, after the last sprint. | Lead, all | The guard rule stays: no public server until the gate passes. The deep self-run pentest comes before sign-in ships ([10](10-sprint-log.md) §12.5). |
 
 ## 3. From the first deploy's ZAP baseline (2026-09-23; 0 fail, 7 warn)
 
