@@ -38,6 +38,12 @@ export const API_CONFIG_KEY = `${STORAGE_PREFIX}api-config`;
 /** This browser's *AI features* switch (localStorage, '1' when on; off until the person turns it on). See AiService. */
 export const AI_OPT_IN_KEY = `${STORAGE_PREFIX}ai-features`;
 
+/** Who answers AI requests, 'server' or 'device' (localStorage; docs/03 §13.1). See AiService. */
+export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
+
+/** The person's own Gemini key (localStorage when remembered, else sessionStorage, as the server key). See AiService. */
+export const GEMINI_KEY_KEY = `${STORAGE_PREFIX}gemini-key`;
+
 /**
  * Stored names from before the rename, kept only so {@link migrateLegacyStorage} can find them: a key in this
  * list moves to the name beside it, and a key starting with {@link LEGACY_PREFIX} moves to the same suffix after

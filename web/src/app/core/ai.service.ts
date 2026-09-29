@@ -18,10 +18,11 @@
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, defer } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
-import { AI_OPT_IN_KEY } from './storage-keys';
+import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
+import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
 import { errorMsg } from './format';
 import type { HouseStatus, PriceType } from './models';
 
@@ -41,7 +42,10 @@ export interface AiStatus {
  * Why AI is not offered here, or null when it is: no server; off on the server (or paused, or no Gemini key); off for
  * this device on the owner page; or this browser's own *AI features* switch is off.
  */
-export type AiOffReason = 'noServer' | 'server' | 'device' | 'optIn';
+export type AiOffReason = 'noServer' | 'server' | 'device' | 'optIn' | 'noKey';
+
+/** Who answers AI requests (docs/03 §13.1, ADR-26): the connected server, or Gemini from this browser with the person's own key. */
+export type AiProvider = 'server' | 'device';
 
 /** A suggestion only; nothing is saved until the user saves the form. */
 export interface HouseDraft {
@@ -127,9 +131,23 @@ export class AiService {
   readonly optedIn = this.optInState.asReadonly();
   /** The server offers AI to this device (whatever this browser's switch says). */
   readonly serverEnabled = computed(() => this.status()?.enabled === true);
-  readonly enabled = computed(() => this.serverEnabled() && this.optInState());
+  private readonly onDevice = inject(OnDeviceAiService);
+  private readonly providerState = signal<AiProvider>(readProvider());
+  private readonly geminiKeyState = signal<string>(readGeminiKey());
+  /** Who answers: the server, or Gemini from this browser with the person's own key. */
+  readonly provider = this.providerState.asReadonly();
+  /** The saved Gemini key's last four characters, or '' (the key itself is never shown again). */
+  readonly geminiKeyHint = computed(() => (this.geminiKeyState().length >= 8 ? this.geminiKeyState().slice(-4) : ''));
+  readonly hasGeminiKey = computed(() => this.geminiKeyState() !== '');
+  /** On-device AI with the person's own key: chosen, or no server to choose, and a key saved. */
+  readonly usesOwnKey = computed(() => (this.providerState() === 'device' || !this.config.configured()) && this.hasGeminiKey());
+  readonly enabled = computed(() => this.optInState() && (this.usesOwnKey() || this.serverEnabled()));
   readonly offReason = computed<AiOffReason | null>(() => {
-    if (!this.config.configured()) return 'noServer';
+    if (this.usesOwnKey()) return this.optInState() ? null : 'optIn';
+    if (this.providerState() === 'device' || !this.config.configured()) {
+      // Own key chosen (or no server): the key is what is missing.
+      return this.optInState() ? 'noKey' : this.config.configured() ? 'optIn' : 'noServer';
+    }
     const s = this.status();
     if (s?.offForDevice) return 'device';
     if (!s?.enabled) return 'server';
@@ -151,6 +169,55 @@ export class AiService {
     }
   }
 
+  /** Chooses who answers; the Gemini key, if any, is kept. */
+  setProvider(p: AiProvider): void {
+    this.providerState.set(p);
+    try {
+      localStorage.setItem(AI_PROVIDER_KEY, p);
+    } catch {
+      // Storage unavailable: the choice holds for this page only.
+    }
+  }
+
+  /**
+   * Saves the person's own Gemini key and chooses it. Kept like the server key ([ConfigService]): in localStorage
+   * with [remember], else in sessionStorage, gone when the tab closes. Only ever sent to Google.
+   */
+  saveGeminiKey(key: string, remember: boolean): void {
+    const clean = key.trim();
+    this.geminiKeyState.set(clean);
+    try {
+      (remember ? sessionStorage : localStorage).removeItem(GEMINI_KEY_KEY);
+      (remember ? localStorage : sessionStorage).setItem(GEMINI_KEY_KEY, clean);
+    } catch {
+      // Storage unavailable: the key holds for this page only.
+    }
+    this.setProvider('device');
+  }
+
+  /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
+  removeGeminiKey(): void {
+    this.geminiKeyState.set('');
+    for (const s of [() => localStorage, () => sessionStorage]) {
+      try {
+        s().removeItem(GEMINI_KEY_KEY);
+      } catch {
+        // ignore
+      }
+    }
+    this.setProvider('server');
+  }
+
+  /** The saved key, only for *Test key* (the page never shows it). */
+  geminiKeyForTest(): string {
+    return this.geminiKeyState();
+  }
+
+  /** Whether Google accepts [key]: one tiny request, nothing saved. Rejects with an [OnDeviceAiError]. */
+  testGeminiKey(key: string): Promise<void> {
+    return this.onDevice.test(key.trim());
+  }
+
   /** Re-reads the status (after connecting or disconnecting). */
   refresh(): void {
     if (!this.config.configured()) {
@@ -163,21 +230,30 @@ export class AiService {
     });
   }
 
+  // The same three calls, answered by the server or in this browser (ADR-26): the pages do not know which.
   extractListing(text: string): Observable<HouseDraft> {
+    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.geminiKeyState(), text));
     return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });
   }
 
   ask(question: string, filters?: AskFilters): Observable<AskResponse> {
+    if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.geminiKeyState(), question, filters));
     return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
   }
 
   planVisits(request: PlanRequest): Observable<PlanResponse> {
+    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.geminiKeyState(), request));
     return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
   }
 }
 
 /** Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. */
 export function aiErrorMsg(err: unknown): Msg {
+  if (err instanceof OnDeviceAiError) {
+    if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
+    if (err.kind === 'keyRejected') return { key: 'ai.keyRejected' };
+    return { key: 'ai.providerDown' };
+  }
   if (err instanceof HttpErrorResponse) {
     if (err.status === 429) {
       const seconds = Number.parseInt(err.headers.get('Retry-After') ?? '', 10);
@@ -203,9 +279,32 @@ export function aiOffMsg(reason: AiOffReason): Msg {
       return { key: 'ai.offForDevice' };
     case 'optIn':
       return { key: 'ai.optInNeeded' };
+    case 'noKey':
+      return { key: 'ai.noKey' };
     default:
       return { key: 'ai.disabled' };
   }
+}
+
+function readProvider(): AiProvider {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(AI_PROVIDER_KEY) === 'device' ? 'device' : 'server';
+  } catch {
+    return 'server';
+  }
+}
+
+/** The Gemini key: this tab's (sessionStorage) first, as the server key, then the remembered one. */
+function readGeminiKey(): string {
+  for (const s of [() => sessionStorage, () => localStorage]) {
+    try {
+      const v = s().getItem(GEMINI_KEY_KEY);
+      if (v) return v;
+    } catch {
+      // ignore
+    }
+  }
+  return '';
 }
 
 function readOptIn(): boolean {
