@@ -1,0 +1,15 @@
+/* Doorprints green (web/src/styles.css: --primary #1f6f5c, 6.02:1 on white). */
+:root, [data-md-color-scheme="default"] {
+  --md-primary-fg-color: #1f6f5c;
+  --md-primary-fg-color--light: #2b8a73;
+  --md-primary-fg-color--dark: #17574a;
+  --md-accent-fg-color: #17574a;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #173f35;
+  --md-accent-fg-color: #6fd0b4;
+  /* Links and the current page in the side menu: a light green that reads on the dark background. */
+  --md-typeset-a-color: #6fd0b4;
+}
+/* Screenshots: a thin border so white screens stand out from the page; never wider than the text column. */
+.md-typeset img { border: 1px solid var(--md-default-fg-color--lightest); border-radius: 6px; max-width: 100%; }

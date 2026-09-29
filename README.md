@@ -2,6 +2,9 @@
 
 **Remember every house you've seen.**
 
+**User guide:** new to Doorprints? The [illustrated user guide](https://sriram-codes-sw.github.io/doorprints/) (source in [`guide/`](guide/docs/index.md); live once GitHub Pages is turned on) shows the website, the Android
+app and the iPhone app screen by screen.
+
 [![Backend](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml) [![Web](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml) [![Android](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml) [![Security](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml) [![Shared iOS compile](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml)
 
 MIT licensed ([LICENSE](LICENSE)) · Report vulnerabilities privately ([SECURITY.md](SECURITY.md)) ·
@@ -265,6 +268,7 @@ Details: [docs/07 §1](docs/07-secure-build-and-deploy.md#1-pipeline-overview).
 | [09 OSI resilience](docs/09-osi-layer-analysis.md) | Bad GPS, captive portals, flaky networks, cold starts |
 | [10 Sprint log](docs/10-sprint-log.md) | Sprint goals, stories, sign-offs, CI results, product-owner decisions |
 | [11 Feature parity and export](docs/11-feature-parity-and-export-spec.md) | Local-first plan, exports, AI access policy, Sprint 4b reminders, hunting areas and location permissions |
+| [User guide](https://sriram-codes-sw.github.io/doorprints/) ([`guide/`](guide/docs/index.md)) | For people using Doorprints: the screens, adding and comparing houses, copies and backups, Hunt mode, privacy |
 | [AI design](docs/ai/ai-design.md) | Providers, RAG, extractor, planner, MCP, evals, API contract |
 | [Vertex AI setup](docs/ai/vertex-setup.md) | Owner's step-by-step Google Cloud setup and this project's results |
 | [CHANGELOG](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [LICENSE](LICENSE) | Changes per version · private vulnerability reporting · MIT |
@@ -330,3 +334,4 @@ House rules for the maintainers (full list in [docs/README.md](docs/README.md#ho
 | 2026-09-24 | *Map data and credits*: one line from zoom 5 (the outline alone draws India's border with China; where the base map draws India's border with Nepal, Bhutan, Myanmar or in the Wakhan, its line takes over, so the second, close line is gone) and the Assam-Arunachal Pradesh state line is drawn from zoom 5 (branch `fix/india-boundary-lines`, PR #16, [docs/10](docs/10-sprint-log.md) §12.10); the known limits restated (1.5-3 km, up to about 5 km in a few mountain stretches; the hand-over step and the Sikkim tri-junction loops; no line on those stretches from zoom 5 while tiles load or offline). |
 | 2026-09-24 | *Map data and credits*: the known limits sized after the round 2 reviews of PR #16 (Sikkim tri-junction loops about 13 x 3 km and 2 km; the tiles' line running on past the hand-over at Jomotsangkha and Longwa from about zoom 10 (a small hook at Jomotsangkha from zoom 9); [docs/10](docs/10-sprint-log.md) §12.10, S4b-BL-17). |
 | 2026-09-24 | Legacy House Hunt names renamed to Doorprints (owner request; [ADR-24](docs/03-design.md#14-architecture-decision-records)): the note under the title says code, storage keys and database names use the new name since 2026-09-24, and what was saved under the old names moves over by itself. |
+| 2026-09-29 | **User guide**: a line under the tagline and a row in *Documentation* link the new illustrated [user guide](https://sriram-codes-sw.github.io/doorprints/) (owner request of 2026-09-29). |

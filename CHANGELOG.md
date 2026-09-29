@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **User guide website** ([sprint log](docs/10-sprint-log.md) §17): an illustrated guide for first-time users of the
+  website, the Android app and the iPhone app (27 screenshots), built with MkDocs Material from `guide/` and published
+  to GitHub Pages from `main` (https://sriram-codes-sw.github.io/doorprints/, once Pages is turned on).
 - **Clients detect a reset server** (S4b-BL-20; PR #24; [docs/03](docs/03-design.md) §10.1,
   [docs/08](docs/08-operations-runbook.md) §11.1). `GET /api/stats` returns `maxSyncVersion`, the position of the
   server's `sync_seq`. Android and the web read it before a sync once they have synced; a value below a stored cursor

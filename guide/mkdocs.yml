@@ -1,0 +1,71 @@
+# The Doorprints user guide site (owner request of 2026-09-29). Built by .github/workflows/pages.yml with
+# `mkdocs build --strict` and published to GitHub Pages from main. Pages live in docs/, images in docs/images/.
+site_name: Doorprints user guide
+site_description: How to use Doorprints, the app that remembers the houses you visit while house-hunting in India.
+site_url: https://sriram-codes-sw.github.io/doorprints/
+repo_url: https://github.com/Sriram-Codes-SW/doorprints
+repo_name: Sriram-Codes-SW/doorprints
+edit_uri: edit/main/guide/docs/
+# page.html rather than page/: the pages' side-by-side phone screenshots are raw <img> tags, whose relative src MkDocs
+# does not rewrite, so every page must sit next to images/.
+use_directory_urls: false
+copyright: Doorprints. Free and open source; no advertising.
+
+nav:
+  - Home: index.md
+  - The screen at a glance: screen-at-a-glance.md
+  - Your houses: houses.md
+  - Compare and plan: compare-and-plan.md
+  - Your data: your-data.md
+  - Server and sharing: server-and-sharing.md
+  - Hunt mode (Android): hunt-mode.md
+  - Language, theme, privacy and the map: settings-and-privacy.md
+  - Troubleshooting and FAQ: faq.md
+
+theme:
+  name: material
+  language: en
+  logo: images/favicon.svg
+  favicon: images/favicon.svg
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - content.action.edit
+  palette:
+    # Doorprints green (#1F6F5C, web/src/styles.css); light and dark follow the device.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark theme
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light theme
+
+extra_css:
+  - stylesheets/doorprints.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
