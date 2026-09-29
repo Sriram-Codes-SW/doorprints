@@ -386,6 +386,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Hunt mode's rules are common code** (`HuntEngine` in `:shared`; Android's `HuntService` keeps only the foreground
+  service, the location client, the battery, the geocoder and the notifications). No behaviour change; the rules are
+  now unit-tested with fakes (`HuntEngineTest`), and the iPhone gets Hunt mode from the same engine (S4b-BL-69).
 - **The user guide in plain language** (owner request of 2026-09-29): every page now uses short sentences and
   numbered steps with one action each, and explains words such as server, sync, API key, Docker, Tailscale, HTTPS and
   GPS the first time they appear. Button names, facts, links and images are unchanged.
