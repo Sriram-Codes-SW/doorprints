@@ -32,7 +32,7 @@ fun iosAppDatabase(): AppDatabase = iosAppDatabase(iosDataDirectory() + "/" + IO
 
 /**
  * [AppDatabase] on the file at [path], opened with Room's bundled SQLite driver (iOS has no framework SQLite for
- * Room) and [AppDatabase.MIGRATION_1_2]. The folder must exist. The app calls the overload without arguments; the
+ * Room) and [AppDatabase.MIGRATIONS]. The folder must exist. The app calls the overload without arguments; the
  * tests pass a file in a temporary folder (`AppDatabaseIosTest`, S4b-BL-24).
  */
 fun iosAppDatabase(path: String): AppDatabase =
