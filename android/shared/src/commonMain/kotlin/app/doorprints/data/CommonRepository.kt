@@ -24,6 +24,10 @@ import app.doorprints.data.Repository.LocalVersions
 import app.doorprints.data.Repository.StreetInfo
 import app.doorprints.data.Repository.UndoResult
 import app.doorprints.export.CopyUndo
+import app.doorprints.shared.ai.AiHouse
+import app.doorprints.shared.ai.AiVisit
+import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.OnDeviceAi
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
@@ -80,6 +84,8 @@ open class CommonRepository(
     private val photoDir: String,
     private val syncSoon: () -> Unit,
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
+    /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
+    private val geminiFor: ((apiKey: String) -> GeminiClient)? = null,
 ) : Repository {
     protected val fs: FileSystem = SystemFileSystem
 
@@ -210,20 +216,88 @@ open class CommonRepository(
                 },
             )
         }
-        publishAi(s.aiFeatures)
+        publishAi(s)
     }
 
     override suspend fun setAiFeatures(on: Boolean) {
         settings.saveAiFeatures(on)
-        publishAi(on)
+        publishAi(settings.current())
     }
 
-    private fun publishAi(optedIn: Boolean): Boolean {
-        val off = serverAi ?: if (optedIn) null else AiOff.OPT_IN
+    /** On-device AI with the person's own key (docs/03 §13.1): chosen, and a key saved. */
+    private fun usesOwnKey(s: AppSettings) =
+        s.aiProvider == AiProviderChoice.DEVICE && s.geminiKey.isNotBlank() && geminiFor != null
+
+    private fun publishAi(s: AppSettings): Boolean {
+        // With the person's own key nothing depends on a server: only this phone's switch counts.
+        val off = if (usesOwnKey(s)) (if (s.aiFeatures) null else AiOff.OPT_IN) else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN
         _aiOff.value = off
         _aiEnabled.value = off == null
         return off == null
     }
+
+    override suspend fun saveGeminiKey(key: String) {
+        settings.saveGeminiKey(key)
+        publishAi(settings.current())
+    }
+
+    override suspend fun setAiProvider(choice: AiProviderChoice) {
+        settings.saveAiProvider(choice)
+        publishAi(settings.current())
+    }
+
+    override suspend fun removeGeminiKey() {
+        settings.removeGeminiKey()
+        publishAi(settings.current())
+    }
+
+    override suspend fun testGeminiKey(key: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val client = geminiFor?.invoke(key.trim()) ?: return@withContext Result.failure(IllegalStateException("no Gemini"))
+        runCatching {
+            client.generateJson("Reply with {\"ok\": true}.", "ping", OnDeviceAi.PING_SCHEMA, 0.0)
+            Unit
+        }
+    }
+
+    /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
+    private suspend fun aiHouses(): List<AiHouse> {
+        val visits = db.visits().all().groupBy { it.houseId }
+        return db.houses().all().sortedByDescending { it.updatedAt }.map { h ->
+            AiHouse(
+                id = h.id, label = h.label, address = h.address, street = h.street, locality = h.locality,
+                lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
+                bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
+                listingUrl = h.listingUrl, notes = h.notes, checklist = h.checklist,
+                visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
+            )
+        }
+    }
+
+    /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
+    private var onDevice: Pair<String, OnDeviceAi>? = null
+
+    private suspend fun ownKeyAi(): OnDeviceAi? {
+        val s = settings.current()
+        if (!usesOwnKey(s)) return null
+        onDevice?.let { (key, ai) -> if (key == s.geminiKey) return ai }
+        return OnDeviceAi(geminiFor!!.invoke(s.geminiKey), ::aiHouses).also { onDevice = s.geminiKey to it }
+    }
+
+    private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
+        val s = settings.current()
+        check(s.serverConfigured) { "Server not configured" }
+        block(apiFor(s.serverUrl, s.apiKey))
+    }
+
+    // The same three calls, answered by the server or on this device (ADR-26): the screens do not know which.
+    override suspend fun extractListing(text: String): HouseDraftDto =
+        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
+
+    override suspend fun ask(question: String): AskResponseDto =
+        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question) } } ?: withApi { it.ask(question) }
+
+    override suspend fun planVisits(request: PlanRequest): PlanResponseDto =
+        ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request) } } ?: withApi { it.planVisits(request) }
 
     // ---- Pairing (docs/03 §12.1): no key yet, so the client is made without one ----
 
@@ -236,15 +310,6 @@ open class CommonRepository(
     override suspend fun redeemInvite(link: ConnectLink, deviceName: String): String =
         withContext(Dispatchers.IO) { apiFor(link.server, "").pairRedeem(link.invite, deviceName).deviceKey }
 
-    private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
-        val s = settings.current()
-        check(s.serverConfigured) { "Server not configured" }
-        block(apiFor(s.serverUrl, s.apiKey))
-    }
-
-    override suspend fun extractListing(text: String): HouseDraftDto = withApi { it.extractListing(text) }
-    override suspend fun ask(question: String): AskResponseDto = withApi { it.ask(question) }
-    override suspend fun planVisits(request: PlanRequest): PlanResponseDto = withApi { it.planVisits(request) }
 
     /**
      * Two-way sync: push local changes, then pull everything the server has changed since last time.

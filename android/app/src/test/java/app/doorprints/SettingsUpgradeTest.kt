@@ -92,7 +92,7 @@ class SettingsUpgradeTest {
         val job = SupervisorJob()
         val dataStore = openSettingsDataStore(context, CoroutineScope(Dispatchers.IO + job))
         try {
-            block(SettingsStore(dataStore, KeystoreSecretStore(seal, open)))
+            block(SettingsStore(dataStore, KeystoreSecretStore(seal, open = open)))
         } finally {
             job.cancelAndJoin()
         }

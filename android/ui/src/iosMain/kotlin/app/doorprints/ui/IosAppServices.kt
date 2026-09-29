@@ -91,6 +91,7 @@ object IosAppContainer {
             photoDir = iosDataDirectory() + "/photos",
             syncSoon = { syncRequests.trySend(Unit) },
             apiFor = { url, key -> ApiClient(url, key, http) },
+            geminiFor = { key -> app.doorprints.shared.ai.GeminiClient(http, key) },
         ).also { startupStep("ready") }
     }
 

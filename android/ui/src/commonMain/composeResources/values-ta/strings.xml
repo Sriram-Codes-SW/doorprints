@@ -581,11 +581,11 @@
     <string name="settings_key_way">அதற்குப் பதிலாக API சாவியைப் பயன்படுத்தவும்</string>
     <string name="settings_key_way_intro">இன்னும் புதுப்பிக்கப்படாத சர்வருக்கு, அல்லது சர்வரின் அமைப்புக் கோப்பில் உள்ள சாவியுடன்.</string>
     <string name="settings_ai_switch">இந்தத் தொலைபேசியில் AI வசதிகளைப் பயன்படுத்தவும்</string>
-    <string name="settings_ai_hint">இது இயக்கத்தில் இருக்கும்போது, AI வசதியில் நீங்கள் கேட்பது அல்லது ஒட்டுவது, பொருந்தும் வீட்டுக் குறிப்புகளுடன் உங்கள் சர்வருக்குச் செல்லும்; சர்வர் அதை Google Gemini-க்கு அனுப்பும். வீட்டுடன் சேமித்த தொடர்புப் பெயர்களும் தொலைபேசி எண்களும் அனுப்பப்படாது. சர்வரின் உரிமையாளரும் இந்தத் தொலைபேசிக்கு AI-ஐ இயக்க வேண்டும்.</string>
+    <string name="settings_ai_hint">இது இயக்கத்தில் இருக்கும்போது, AI வசதியில் நீங்கள் கேட்பது அல்லது ஒட்டுவது, பொருந்தும் வீட்டுக் குறிப்புகளுடன் Google Gemini-க்குச் செல்லும்: உங்கள் சர்வர் வழியாக, அல்லது உங்கள் சொந்த சாவியுடன் இந்தத் தொலைபேசியிலிருந்து நேரடியாக. வீட்டுடன் சேமித்த தொடர்புப் பெயர்களும் தொலைபேசி எண்களும் அனுப்பப்படாது.</string>
     <string name="settings_ai_on">AI வசதிகள் இயக்கத்தில் உள்ளன.</string>
     <string name="settings_ai_server_off">உங்கள் சர்வரில் AI வசதிகள் நிறுத்தப்பட்டுள்ளன.</string>
     <string name="ai_off_for_device">சர்வரின் உரிமையாளர் இன்னும் இந்தச் சாதனத்துக்கு AI-ஐ இயக்கவில்லை. அவர் உரிமையாளர் பக்கத்தில் அதைச் செய்யலாம்.</string>
-    <string name="ai_opt_in_needed">இந்தத் தொலைபேசியில் AI வசதிகள் நிறுத்தப்பட்டுள்ளன. அமைப்புகளில் சர்வர் என்பதன் கீழ் அவற்றை இயக்கவும்.</string>
+    <string name="ai_opt_in_needed">இந்தத் தொலைபேசியில் AI வசதிகள் நிறுத்தப்பட்டுள்ளன. அமைப்புகளில் AI வசதிகள் என்பதன் கீழ் அவற்றை இயக்கவும்.</string>
     <string name="connect_link_title">சர்வருடன் இணைக்கவா?</string>
     <string name="connect_link_body">இந்த இணைப்பு இந்தத் தொலைபேசியைக் கீழே உள்ள சர்வருடன் இணைக்கிறது. உங்கள் வீடுகள் அதனுடன் ஒத்திசைக்கப்படும்.</string>
     <string name="connect_link_warning">இந்த QR குறியீட்டை அல்லது இணைப்பை உருவாக்கியவரை நம்பி, இந்த முகவரியை அறிந்திருந்தால் மட்டும் இணைக்கவும். ‘இணைக்கவும்’ என்பதைத் தேர்ந்தெடுக்கும் வரை எதுவும் அனுப்பப்படாது.</string>
@@ -595,4 +595,22 @@
     <string name="connect_link_used">இந்த இணைப்பு ஏற்கனவே பயன்படுத்தப்பட்டது அல்லது காலாவதியானது. சர்வரின் உரிமையாளரிடம் புதியதைக் கேட்கவும்.</string>
     <string name="connect_link_done_title">இணைக்கப்பட்டது</string>
     <string name="connect_link_saved">இணைக்கப்பட்டது. இப்போது இந்தத் தொலைபேசிக்குத் தனிச் சாவி உள்ளது.</string>
+    <string name="settings_ai_heading">AI வசதிகள்</string>
+    <string name="settings_ai_use_server">என் சர்வரைப் பயன்படுத்து</string>
+    <string name="settings_ai_use_server_hint">உங்கள் சர்வர் அதன் உரிமையாளரின் சாவியுடன் கோரிக்கைகளை Google Gemini-க்கு அனுப்பும்.</string>
+    <string name="settings_ai_use_server_none">இதைப் பயன்படுத்த மேலே ஒரு சர்வரை இணைக்கவும்.</string>
+    <string name="settings_ai_use_own_key">இந்தத் தொலைபேசியில் என் சொந்த Gemini சாவியைப் பயன்படுத்து</string>
+    <string name="settings_ai_use_own_key_hint">சர்வர் தேவையில்லை. கோரிக்கைகள் இந்தத் தொலைபேசியிலிருந்து நேரடியாக Google Gemini-க்குச் செல்லும். சாவி இந்தத் தொலைபேசியிலேயே இருக்கும்.</string>
+    <string name="settings_gemini_key">Gemini API சாவி</string>
+    <string name="settings_gemini_key_hint">Google AI Studio-வில் Doorprints-க்கு மட்டும் ஒரு இலவச சாவியை உருவாக்கவும்; அதை அங்கே எப்போது வேண்டுமானாலும் நீக்கலாம்.</string>
+    <string name="settings_gemini_key_saved">%1$s என முடியும் சாவி சேமிக்கப்பட்டுள்ளது (மறையாக்கப்பட்டது). மாற்ற புதிய சாவியை ஒட்டவும்.</string>
+    <string name="settings_gemini_get_key">Google AI Studio-வைத் திறக்கவும்</string>
+    <string name="settings_gemini_save">சாவியைச் சேமி</string>
+    <string name="settings_gemini_test">சாவியைச் சோதி</string>
+    <string name="settings_gemini_ok">Google இந்தச் சாவியை ஏற்றுக்கொண்டது.</string>
+    <string name="settings_gemini_rejected">Google இந்தச் சாவியை ஏற்கவில்லை. அதைச் சரிபார்த்து மீண்டும் முயலவும்.</string>
+    <string name="settings_gemini_remove">சாவியை நீக்கு</string>
+    <string name="settings_gemini_free_tier">Google-இன் இலவச நிலையில், நீங்கள் அனுப்புவதை Google தன் தயாரிப்புகளை மேம்படுத்தப் பயன்படுத்தலாம்; மனிதர்களும் படிக்கலாம். உங்கள் குறிப்புகளில் தனிப்பட்ட விவரங்களை வைக்க வேண்டாம், அல்லது பில்லிங் இயக்கிய சாவியைப் பயன்படுத்தவும்.</string>
+    <string name="settings_ai_needs_key">AI-ஐ இயக்க உங்கள் Gemini சாவியைச் சேமிக்கவும்.</string>
+    <string name="ai_key_rejected">Google உங்கள் Gemini சாவியை ஏற்கவில்லை. அமைப்புகளில் AI வசதிகள் என்பதன் கீழ் அதைச் சரிபார்க்கவும்.</string>
 </resources>
