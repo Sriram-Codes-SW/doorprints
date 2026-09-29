@@ -300,6 +300,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **CI: every Linux job runs on a named image, `ubuntu-26.04`,** instead of `ubuntu-latest`, ahead of GitHub moving
+  `ubuntu-latest` to 26.04 in October and November 2026 (actions/runner-images#14748; S4b-BL-62).
 - **Web: Angular 22.2 and maplibre-gl 6.11.2** (supersedes Dependabot #25, whose `npm ci` failed because it moved
   Angular's runtime packages to 22.2.0 but left `@angular/compiler-cli`, `@angular/build` and `@angular/cli` at
   22.1.x). Done with `ng update`; the maplibre-gl bump was checked against the India boundary rules and the renderer
