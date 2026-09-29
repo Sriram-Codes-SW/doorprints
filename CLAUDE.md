@@ -61,7 +61,10 @@ backlog item instead of expanding the change.
 - Android: `cd android && ./gradlew assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest
   :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true` (JDK 21;
   the metadata tasks catch JVM-only calls in common code on Linux; the flag fails on a changed screenshot, re-record
-  with `./gradlew :app:recordRoborazziDebug`).
+  with `./gradlew :app:recordRoborazziDebug`). Also, on Linux, `./gradlew -Pkotlin.native.enableKlibsCrossCompilation=true
+  :ui:compileKotlinIosSimulatorArm64` after a change under `iosMain` (Kotlin/Native-only errors, a minute locally).
+- Cloud sessions: `.claude/hooks/session-start.sh` installs the Android SDK, a Gradle mirror, `web/node_modules` and
+  MkDocs at start (`docs/14` §7).
 - Backend: `cd backend && mvn -B -ntp verify` (JDK 25; needs the PostGIS container from `backend/db`, see
   `.github/workflows/backend.yml`).
 - Not CI: after a merge to `main` that runs the `Web` deploy (a change under `web.yml`'s path filter: `web/**`,
