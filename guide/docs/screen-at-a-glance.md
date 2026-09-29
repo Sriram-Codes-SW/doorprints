@@ -2,7 +2,7 @@
 
 ## Website
 
-![The Doorprints website on a computer: the house list on the left, the map on the right with four coloured pins, numbered 1 to 11](images/web-map.png)
+![The Doorprints website on a computer: the house list on the left, the map on the right with four coloured pins, with numbered badges 1 to 11](images/web-map.png)
 
 1. **Menu:** **Map**, **Compare**, **Your data** and **Connect**. **Ask** and **Plan** appear here only when your own server has AI turned on.
 2. **Language:** English, हिन्दी, தமிழ், తెలుగు.
@@ -10,7 +10,7 @@
 4. **Search houses:** type part of a name, street, locality or note.
 5. **Status filter:** **All**, **New**, **Shortlisted**, **Rejected**, with how many are in each.
 6. **Sort by:** **Recently updated**, **Best score** or **Lowest price**.
-7. The house list. Choose a house to open it.
+7. The house list, with how many houses are shown. Choose a house to open it.
 8. **Add house** starts adding a house; **Show all** zooms the map to fit every house.
 9. **Zoom in**, **Zoom out** and **Show my location**.
 10. The legend: blue is **New**, green is **Shortlisted**, red is **Rejected**.
@@ -19,7 +19,7 @@
 On a phone the same page stacks the map above the list, and the menu moves to a bar at the bottom (**Map**,
 **Compare**, **Your data**; **Connect** is inside **Your data**).
 
-<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: a storage warning at the top, the map with pins, Add house and Show all buttons, the counts, and the bottom bar with Map, Compare and Your data">
+<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: the map with pins, zoom buttons, Add house and Show all, the legend, the counts, and the bottom bar with Map, Compare and Your data">
 
 ## Android
 

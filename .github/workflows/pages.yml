@@ -25,7 +25,7 @@ on:
 # Least privilege: nothing by default; each job asks for what it needs.
 permissions: {}
 
-# One build per ref; a deploy is never cancelled half-way (the Pages concurrency group).
+# One run per ref; runs on main are never cancelled, so a deploy never stops half-way.
 concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -48,7 +48,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install MkDocs Material (pinned, hash-checked)
-        run: python -m pip install --no-deps --require-hashes -r guide/requirements.txt
+        run: |
+          python -m pip install --no-deps --require-hashes -r guide/requirements.txt
+          # --no-deps installs exactly the pinned closure; this fails if a pin ever misses a dependency.
+          python -m pip check
 
       # --strict checks Markdown links and images, not raw <img> tags (the side-by-side phone shots): check those too.
       - name: Check every <img> in the pages points at a file

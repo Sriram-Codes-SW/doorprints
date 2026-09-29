@@ -10,7 +10,7 @@ Doorprints speaks English, हिन्दी, தமிழ் and తెలు�
 
 Light and dark themes follow your device's setting on all three.
 
-## Your privacy
+## Your privacy and the map
 
 - Your houses, visits and photos stay in your browser or on your phone, and on your own server if you connect one.
   There is no Doorprints account and no advertising.

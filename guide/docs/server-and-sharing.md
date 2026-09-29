@@ -16,14 +16,14 @@ The address must start with `https://`. **Disconnect** on the website forgets th
 
 ![Connect to your server on the website: API address, API key, Remember on this device, Test connection and Save and continue](images/web-connect.png)
 
-## Share a listing / Add a shared listing
+## Add a shared listing
 
 Saw a good ad on WhatsApp or a website? Keep its text with a new house.
 
 - **Website installed as an app on an Android phone:** in the other app choose Share, then Doorprints. The
   **Add a shared listing** page shows the text. Choose **Add a house from this**, then pick the spot on the map. The
   text goes into the new house's **Notes**. (To install the website, see **Install the app** on **Your data**.)
-- **Any device:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing text** on the
+- **Website and Android:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing text** on the
   form for a new house suggests the details for you to check.
 
 ![Add a shared listing on the website: the shared ad text, with Add a house from this, Copy and Back to the map](images/web-share.png)

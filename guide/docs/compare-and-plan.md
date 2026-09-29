@@ -2,8 +2,8 @@
 
 ## Compare houses
 
-Open **Compare**. Pick two to four houses (on Android, up to four; shortlisted ones come first). Rejected houses are
-left out. Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item.
+Open **Compare** and pick two to four houses; shortlisted ones are offered first, and rejected houses are left
+out. Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item.
 On the website the best value in each row is highlighted and marked ✓. Choose a house's name to open it.
 
 ![Compare on the website: Green Villa and Sunrise Apartments side by side, with the best values highlighted](images/web-compare.png)
@@ -22,5 +22,7 @@ When they are on: on the website, open **Plan**, describe what you want to see (
 **Plan visits**, and tap **Plan from my location**. Walking times are estimates.
 
 ![Plan my visits on the website without a server: a note says this needs your own server with AI turned on, with a Connect link](images/web-plan.png)
+
+(Without AI you only reach this page by typing its address; the menu hides **Plan** until AI is on.)
 
 <img src="images/android-assistant.png" width="300" alt="The Android Assistant screen when AI is off: The assistant is not available right now, with Try again and Go to the map">

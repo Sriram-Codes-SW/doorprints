@@ -14,7 +14,8 @@ and the **Language of the file**. Choose **Download** (for PDF, **Open print vie
 
 - **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*: good for reading,
   printing and sharing with family.
-- **Full backup (ZIP)** holds everything, photos included. It is the only file Doorprints can read back in.
+- **Full backup (ZIP)** holds your houses, visits and photos (everything, unless you left some out under *What to
+  include*). It is the file Doorprints can read back in; Android can also read a backup file from your server.
 
 A copy with contact details holds owners' and brokers' phone numbers. Share it carefully.
 
