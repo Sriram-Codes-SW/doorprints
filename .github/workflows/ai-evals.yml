@@ -340,6 +340,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Website (TypeScript OnDeviceAiService, real Gemini)
         working-directory: web

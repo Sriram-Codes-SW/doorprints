@@ -135,7 +135,7 @@ present. Note that the `scores` table now has a row only for an item the house a
    (`12.9`) where `XlsxWriter.kt` writes fixed-decimal *text* through `ExportRows.fixed` (`12.900000`). A
    spreadsheet shows the same value; the file bytes and the cell type differ. See the comment at the top of
    `xlsx-sheets.ts`.
-3. **HTML and Markdown** are still driven by the app's own i18n catalogue (`DICTIONARIES[lang]`) rather than by
+3. **HTML and Markdown** are still driven by the app's own i18n catalogue (`loadDictionary(lang)`, which loads a language's chunk if it is not loaded yet) rather than by
    `ExportStrings`. They honour the export-language option, so nothing is wrong for the user, but they are not yet
    on the shared contract and their headings can drift from the Kotlin writers'. Moving them across is the
    remaining half of this convergence.

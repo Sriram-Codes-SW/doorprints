@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-09-24 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -37,6 +37,7 @@
 | 0.22 | 2026-09-24 | Claude (Code), engineer | §8.2 *Formatting*: `Format.kt` is common code in `:ui` since [03](03-design.md) ADR-23 CMP-3: amounts and scores written in common code (the same in en, hi, ta and te), dates by the platform for `<language>-IN`, and the language is the one the strings resolved to, not the phone's first language ([10](10-sprint-log.md) S4b-BL-18; [06](06-test-plan.md) TC-U-61, TC-U-62). Also §5 *Indic typography* (follows the resolved language), §8.2 *Strings* (as built after CMP-3) and the R9 check paths (`android/ui/src/commonMain`). |
 | 0.23 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): §8.2 *Strings*: 413 Compose strings (the ten `check_*` added for Compare in `:ui`); **27 keys in both places** (24 strings and 3 plurals, the ten `check_*` added; TC-U-59); the Android `check_*` copies go with [10](10-sprint-log.md) S4b-BL-31. |
 | 0.24 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change with the web backlog and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24). **§4.1, §4.2**: the invalid-field edge (S4b-BL-6) with its contrast. **§5**: the text field's visible invalid state; **§5.1** *Retry*: the scope now includes the sync card, the first-run banner (S4b-BL-1) and the house page's four cards (S4b-BL-2). New **§5.2**: the web on phones (visible-height sizing, 44 px targets, the credits fold, the legend and buttons, capped banners, the keyboard, long words, the skip link). **§8.2**: 444 Compose strings and 17 plurals, 71 service strings and 4 plurals, 46 keys in both places (S4b-BL-31, S4b-BL-35). New **§8.3**: the server-reset message in four languages (S4b-BL-20). |
+| 0.25 | 2026-09-29 | Claude (Code), lead | §9: the web loads one language at a time (English built in; hi, ta, te as chunks, the saved one before the app starts); the add-a-language steps follow. |
 
 ---
 
@@ -479,9 +480,9 @@ flowchart LR
     EN["en.ts (source of truth, type Dict)"] --> HI["hi.ts : Dict"]
     EN --> TA["ta.ts : Dict"]
     EN --> TE["te.ts : Dict"]
-    HI --> LANGS["languages.ts: LANGUAGES, DICTIONARIES"]
-    TA --> LANGS
-    TE --> LANGS
+    HI -. "import() when chosen" .-> LANGS["languages.ts: LANGUAGES, dictionary(), loadDictionary()"]
+    TA -.-> LANGS
+    TE -.-> LANGS
     EN --> LANGS
     LANGS --> SVC["TranslationService: lang signal, t(), msg(), price(), score(), dateTime()"]
     SVC --> PIPE["t pipe (templates)"]
@@ -566,7 +567,7 @@ Changing the English meaning of an existing key: rename the key instead of editi
 ### 9.2 Add a language (web)
 
 1. Create `web/src/app/i18n/<code>.ts` with `export const <code>: Dict = { ... }` (the compiler lists missing keys).
-2. Add the code to the `Lang` type, `LANGUAGES` (native name + locale such as `mr-IN`), `DICTIONARIES` and `isLang()` in `languages.ts`.
+2. Add the code to the `Lang` type, `LANGUAGES` (native name + locale such as `mr-IN`), the `loaders` map (`<code>: () => import('./<code>').then((m) => m.<code>)`) and `isLang()` in `languages.ts`, and to `DICTIONARIES` in `all-dictionaries.ts` (tests only). **Only English is in the first download** (2026-09-29): every other language is its own chunk, loaded before the app starts when it is the saved language, else when chosen (`TranslationService.setLang` switches once it has arrived); the service worker precaches the chunks, so switching works offline. Never import `all-dictionaries.ts` from app code.
 3. Add a Noto font family for the script to the Google Fonts link in `index.html` and to `--font-sans`, and add the language to the `:lang()` line-height rule if the script needs it.
 4. For RTL languages (for example Urdu) also set `document.documentElement.dir` in `TranslationService.setLang()` and audit physical CSS properties (`left`, `margin-left`) for logical equivalents.
 5. Android: add `values-<code>/strings.xml` in both homes (`android/ui/src/commonMain/composeResources` and

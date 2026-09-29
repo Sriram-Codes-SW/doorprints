@@ -18,7 +18,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { en } from '../i18n/en';
-import { DICTIONARIES, Lang } from '../i18n/languages';
+import { Lang } from '../i18n/languages';
+import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { LEGAL_NOTICE } from './legal-notice';
 
 describe('LEGAL_NOTICE (AGPL notices, S4b-BL-65)', () => {

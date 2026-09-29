@@ -19,7 +19,7 @@
 import { Injectable, inject } from '@angular/core';
 import { LocalStore } from '../data/local-store.service';
 import { LocalDataError } from '../core/local-error';
-import { DICTIONARIES } from '../i18n/languages';
+import { loadDictionary } from '../i18n/languages';
 import { resizeImage } from '../core/image-resize';
 import { buildBackupZip } from './backup-export';
 import { buildCsvTables } from './csv-export';
@@ -111,7 +111,7 @@ export class ExportService {
     control.signal?.throwIfAborted();
     if (PHOTO_BEARING.has(format)) checkPhotoBudget(bundle);
     const stamp = fileStamp(bundle.exportedAt);
-    const dict = DICTIONARIES[options.lang];
+    const dict = await loadDictionary(options.lang);
     const counts = bundle.counts;
 
     switch (format) {

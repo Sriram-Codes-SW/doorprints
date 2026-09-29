@@ -98,6 +98,28 @@ function setText(root: HTMLElement, selector: string, text: string): void {
  * same-origin (CSP `worker-src 'self'`, no `blob:` needed).
  */
 let workerConfigured = false;
+
+/**
+ * MapLibre's stylesheet (controls, popups, attribution) is its own file, `maplibre.css` (angular.json, `inject: false`),
+ * not part of the render-blocking global stylesheet: pages without a map (Connect, Your data, Compare) no longer wait
+ * for its 83 KB. It is added once, before the first map is made; index.html prefetches it at low priority, and the
+ * service worker precaches it, so it is normally there already.
+ */
+export function ensureMapStyles(doc: Document = document): void {
+  if (doc.querySelector('link[data-maplibre-css]')) return;
+  const link = doc.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = new URL('maplibre.css', doc.baseURI).href;
+  link.dataset['maplibreCss'] = '';
+  // Until it has loaded, the map's controls are hidden (styles.css), so they never flash unstyled.
+  const root = doc.documentElement;
+  root.classList.add('maplibre-css-loading');
+  const done = () => root.classList.remove('maplibre-css-loading');
+  link.addEventListener('load', done, { once: true });
+  link.addEventListener('error', done, { once: true });
+  doc.head.appendChild(link);
+}
+
 function configureWorker(): void {
   if (workerConfigured) return;
   setWorkerUrl(new URL('maplibre/maplibre-gl-worker.mjs', document.baseURI).href);
@@ -141,6 +163,7 @@ export function createMlMap(
   i18n: TranslationService,
   options: Omit<MapOptions, 'style' | 'locale' | 'attributionControl'>,
 ): MlMap | null {
+  ensureMapStyles();
   configureWorker();
   try {
     const map = new MlMap({
