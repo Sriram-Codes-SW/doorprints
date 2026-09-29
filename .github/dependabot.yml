@@ -85,6 +85,16 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
 
+  # The user guide site's MkDocs Material (guide/requirements.txt, pinned with hashes; .github/workflows/pages.yml).
+  # Only the static site generator: nothing here ships in an app. Weekly, all updates in one PR.
+  - package-ecosystem: pip
+    directory: /guide
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
+    open-pull-requests-limit: 2
+    groups:
+      guide-pip:
+        patterns: ["*"]
+
   - package-ecosystem: gradle
     directory: /android
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }
