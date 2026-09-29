@@ -17,15 +17,17 @@ Light and dark themes follow your device's setting on all three.
 - The map pictures come from OpenFreeMap. On the website, **Fill address from map** asks OpenStreetMap's address
   service. On Android, street names come from the phone's built-in address finder (Google's geocoder).
 - The AI features send your question and the matching house notes to Google Gemini: through your server, or, with
-  your own Gemini key on a phone, straight from the phone. The contact names and phone numbers saved with a house are
+  your own Gemini key, straight from your phone or browser. The contact names and phone numbers saved with a house are
   left out.
 - Hunt mode's location stays on your phone.
 - India's boundaries on the map are shown as the Government of India depicts them.
 
-## AI without a server (Android and iPhone)
+## AI without a server
 
-You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone then asks Google
-Gemini itself, with a key of your own. It is free on Google's free tier.
+You can use **Ask**, **Plan** and **Fill in from listing text** without running a server. Your phone or browser then
+asks Google Gemini itself, with a key of your own. It is free on Google's free tier.
+
+### On Android and iPhone
 
 1. Make a key: open [Google AI Studio](https://aistudio.google.com/apikey), sign in with a Google account and choose
    **Create API key**. Make one just for Doorprints, so you can delete it there at any time.
@@ -36,6 +38,17 @@ Gemini itself, with a key of your own. It is free on Google's free tier.
 
 The key stays on your phone, locked (encrypted), and goes only to Google. **Test key** checks it again; **Remove key**
 forgets it. If you also connect a server, you choose which one answers: **Use my server** or your own key.
+
+### On the website
+
+1. Make a key in [Google AI Studio](https://aistudio.google.com/apikey), as in step 1 above.
+2. Open **Your data**, then **Connect** (on a computer, **Connect** is in the menu at the top).
+3. Under **AI features**, turn on **Use AI features in this browser**.
+4. Choose **Use my own Gemini key in this browser** (with no server, it is already chosen), paste the key and select
+   **Save key**. Doorprints checks the key with Google first.
+
+The key stays in this browser and goes only to Google. It is forgotten when you close the tab, unless you tick
+**Remember on this device**; leave that off on a shared computer. **Clear everything** on **Your data** also removes it.
 
 !!! warning "Google's free tier"
     On the free tier, Google may use what you send to improve its products, and people may read it. Keep personal

@@ -115,6 +115,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **AI without a server, with your own Gemini key, on the website** ([design](docs/03-design.md) §13.1, ADR-26):
+  *Connect* → *AI features* → *Use my own Gemini key in this browser*, shown with or without a server. The browser
+  asks Google Gemini itself, with a TypeScript port of the same core (held to the server's answers by the same test
+  vectors). The key is kept like the server key (for this tab, or remembered with *Remember on this device*) and sent
+  only to Google; *Save key* checks it first. Ask, Plan and *Fill in from listing text* say where the text goes.
 - **AI without a server, with your own Gemini key (Android and iPhone)** ([design](docs/03-design.md) §13.1, ADR-26):
   Settings → *AI features* → *Use my own Gemini key on this phone*. The phone asks Google Gemini itself, with the same
   prompts, contact removal and checks as the server (held to the server's answers by shared test vectors). The key is
