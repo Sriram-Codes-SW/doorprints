@@ -23,7 +23,7 @@ People mix up these two keys more than anything else. They are not the same thin
 | Needed for | Sync, and the AI features | Only the AI features |
 | Needed at the start? | **Yes.** The server won't start without it. | **No.** Add it later, whenever you want AI. |
 | Where you get it | You make it yourself in [step 3](#step-3-make-your-doorprints-api-key) | From Google AI Studio, in [step 4](#step-4-optional-get-a-free-gemini-key-for-ai) |
-| Where you type it | In the server's settings file. The website doesn't need it: it connects with a short code ([step 9](#step-9-connect-the-apps)). The phone apps still ask for it until their next update. | On your owner page ([step 8](#step-8-open-your-owner-page)), or in the server's settings file. The apps never ask for it. |
+| Where you type it | In the server's settings file. The apps don't need it: they connect with a short code or a QR code ([step 9](#step-9-connect-the-apps)). | On your owner page ([step 8](#step-8-open-your-owner-page)), or in the server's settings file. The apps never ask for it. |
 
 !!! tip "Keep both keys secret"
     Anyone with your Doorprints API key and your server's address can read and change your houses. Anyone with your
@@ -271,20 +271,29 @@ Keep the owner page's address in your password manager: `https://` your address 
 
 ## Step 9: Connect the apps
 
-**The website** connects with a short code, so you never type the API key there:
+Each app connects with a short code or a QR code, so you never type the API key into an app. Each one gets a key of
+its own. You can take one back at any time on the owner page with **Revoke**, without changing anything on your other
+devices.
 
-1. In the Doorprints website, open **Connect**. Type your address from step 7 in **API address (URL)**.
-2. Choose **Get a code**. The website shows a code like `K7MQ-4XRD`.
+**With a QR code (phones):**
+
+1. On your owner page, under **Add a device with a QR code**, choose **Make a QR code**.
+2. Point the phone's camera at it and tap the link that appears. The Doorprints app opens and asks
+   **Connect to a server?**, showing your server's address.
+3. Check the address, then tap **Connect**. The code works once, within 10 minutes.
+
+**With a code (the website, or a phone):**
+
+1. Type your address from step 7 in the app: on the website, open **Connect** and use **API address (URL)**; on a
+   phone, open **Settings** and use **Server URL**.
+2. Choose **Get a code**. The app shows a code like `K7MQ-4XRD`.
 3. On your owner page, type that code under **Connect a device** and choose **Find**. Check that the name shown is
    the device in front of you, then choose **Approve**.
-4. Within a few seconds the website says it is connected. It now has its own key. You can take it back at any time on
-   the owner page with **Revoke**, without changing anything on your other devices.
+4. Within a few seconds the app says it is connected.
 
-On the server computer itself, there is a shortcut: on the owner page, choose **Make a QR code**, then
+On the server computer itself, there is a shortcut for the website: on the owner page, choose **Make a QR code**, then
 **Open the website connected to this server**. The website asks once whether to connect, and connects.
 
-**The phone apps**, until their next update: open **Settings**, find **Server (optional)**, and type your address
-from step 7 and your Doorprints API key (not the Gemini key). Then tap **Save and test**.
 [Connect your own server](server-and-sharing.md#connect-your-own-server-optional) shows the screens. Keep Tailscale
 switched on on your phone whenever you want to sync.
 
@@ -292,11 +301,11 @@ switched on on your phone whenever you want to sync.
 you knowing:
 
 - on your owner page, under **Devices**, tick **AI** for that device;
-- in the website, on the **Connect** page, under **AI features**, tick **Use AI features in this browser**. It says
-  there what is sent to Google.
+- in the app itself: on the website, on the **Connect** page, under **AI features**, tick **Use AI features in this
+  browser**; on a phone, in **Settings** under **Server**, turn on **Use AI features on this phone**. It says there
+  what is sent to Google.
 
-Then you will see **Ask** and **Plan** in the website's menu. (The Android **Assistant** tab appears as soon as AI is
-on for its key.)
+Then you will see **Ask** and **Plan** in the website's menu, and the **Assistant** tab on a phone.
 
 ## Everyday use
 
@@ -322,15 +331,18 @@ on for its key.)
 
 ## Sharing your list with someone you trust
 
-The other person needs three things:
+The other person needs two things:
 
 1. access to your server in Tailscale. In the Tailscale admin console (its settings website), open **Machines**.
    Choose the server computer, then **Share**, and send them the invite;
-2. your server's address;
-3. your Doorprints API key.
+2. your server's address.
 
-Anyone with these can read and change every house on the server. Share them only with someone you'd give your house
-keys to.
+Then they connect their own phone or browser with a code, and you approve it on your owner page (step 9). You don't
+give them your Doorprints API key. Their device appears under **Devices** on your owner page: you choose whether it may
+use AI (and so your Gemini allowance), and **Revoke** takes it back at any time.
+
+A connected device can read and change every house on the server. Approve only someone you'd give your house keys
+to.
 
 !!! warning "Sharing a computer in Tailscale shares all of it"
     The other person can reach anything else that computer shares on the network, not only Doorprints. For example,
@@ -351,7 +363,7 @@ First, see what the server says about the problem. These messages are called log
 | `docker: command not found`, `The term 'docker' is not recognized`, or the command doesn't work at all | Docker Desktop is not running. Open it, wait for **Engine running**, and try again. |
 | **Save and test** (Android) or **Test connection** (website) fails | One of these: Tailscale is off on the phone; the server computer is asleep or off; or the address doesn't start with `https://`. To check, open the `/actuator/health` address on the phone (step 7). |
 | The phone connects but the website doesn't | Check that the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`. Then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
-| **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` (after a change, run `docker compose up -d`). Then check three things: a Gemini key is saved on the owner page (or in `AI_API_KEY`); **AI on this server** is on; and **AI** is ticked for that device under **Devices**. On the website, also tick **Use AI features in this browser** on the **Connect** page. |
+| **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` (after a change, run `docker compose up -d`). Then check three things: a Gemini key is saved on the owner page (or in `AI_API_KEY`); **AI on this server** is on; and **AI** is ticked for that device under **Devices**. In the app, also turn on **Use AI features in this browser** (website, **Connect** page) or **Use AI features on this phone** (phone, **Settings**). |
 | **Get a code** says the server cannot connect by code yet | The server is older than this guide. Update it (see *Everyday use*), or open **Use an API key instead** and type your Doorprints API key. |
 | The owner page link no longer works | It works only once, within an hour. Restart the server with `docker compose up -d` and use the new link in the logs. |
 | `tailscale` is not recognized, or `command not found` | Windows: open a new terminal after installing Tailscale. Mac: use the longer form in step 7. |
