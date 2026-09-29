@@ -45,3 +45,59 @@
 .error p {
   margin: var(--space-1) 0 0;
 }
+
+/* Connect with a code (ADR-25), the usual way; "Use an API key instead" folds out below it. */
+.pair,
+.key-way {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+.pair h2 {
+  margin-top: 0;
+}
+
+.pair-actions,
+.invite-actions,
+.disconnect-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+/* The code, large enough to read across a room and type on another screen; the bar shows it is waiting. */
+.pair-code {
+  position: relative;
+  padding-bottom: var(--space-3);
+}
+
+.pair-code p {
+  margin: var(--space-1) 0;
+}
+
+.code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  overflow-wrap: anywhere;
+}
+
+.pair-error {
+  margin-top: var(--space-3);
+}
+
+/* The summary keeps its disclosure triangle (list-item) and is a full-size target. */
+.key-way summary {
+  cursor: pointer;
+  padding: var(--space-2) 0;
+  min-height: var(--target);
+  font-weight: 600;
+}
+
+.invite .server-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
