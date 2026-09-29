@@ -33,18 +33,25 @@ import java.io.File
  * install would crash with "Room cannot verify the data integrity".
  *
  * Room's identity hash is a digest of the tables, columns (name, affinity, NOT NULL, default), primary keys and
- * indices. [IDENTITY_HASH_V2] is the hash of the v2 layout the app shipped with before Sprint 3.5 (commit 16cb3ef);
- * the same value is in the committed schemas/app.doorprints.data.AppDatabase/2.json.
+ * indices. [IDENTITY_HASHES] pins one per shipped version (v2 is the layout the app shipped with before Sprint 3.5,
+ * commit 16cb3ef); the same values are in the committed schemas/app.doorprints.data.AppDatabase/<version>.json.
  *
  * If this test fails after an intentional schema change: bump the database version, add a Migration (and a
  * migration test), commit the new <version>.json that the build writes, and add a pin for the new version.
- * Never edit 2.json or [IDENTITY_HASH_V2] to make the test pass.
+ * Never edit a committed json or [IDENTITY_HASHES] to make the test pass.
  */
 class RoomSchemaTest {
 
     private companion object {
-        const val IDENTITY_HASH_V2 = "539964c2013f14439605fab0d18a142a"
-        const val SCHEMA_PATH = "schemas/app.doorprints.data.AppDatabase/2.json"
+        /**
+         * One pin per shipped schema version, the hash of the committed `schemas/…/<version>.json` (readiness review
+         * 2026-09-29, docs/14 §8 finding 6: a new version adds its line here and its migration to
+         * `AppDatabase.MIGRATIONS`). Never edit a committed json or a pin to make the test pass.
+         */
+        val IDENTITY_HASHES = mapOf(
+            2 to "539964c2013f14439605fab0d18a142a",
+        )
+        const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }
 
     /** Gradle runs host tests with the module directory (android/shared) as working directory; allow android/ too. */
@@ -52,17 +59,29 @@ class RoomSchemaTest {
         listOf(File(path), File("shared", path)).firstOrNull { it.exists() } ?: File(path)
 
     @Test
-    fun exportedSchemaV2KeepsTheShippedIdentityHash() {
-        // Room rewrites this file during the build whenever the generated schema differs from it.
-        val schema = moduleFile(SCHEMA_PATH)
-        assertTrue("Room schema not exported to ${schema.absolutePath} (exportSchema / room { schemaDirectory })", schema.exists())
-        val database = Json.parseToJsonElement(schema.readText()).jsonObject.getValue("database").jsonObject
-        assertEquals(2, database.getValue("version").jsonPrimitive.content.toInt())
-        assertEquals(IDENTITY_HASH_V2, database.getValue("identityHash").jsonPrimitive.content)
+    fun everyExportedSchemaKeepsItsShippedIdentityHash() {
+        // Room rewrites these files during the build whenever the generated schema differs from them.
+        val dir = moduleFile(SCHEMA_DIR)
+        assertTrue("Room schemas not exported to ${dir.absolutePath} (exportSchema / room { schemaDirectory })", dir.isDirectory)
+        val exported = dir.listFiles { f -> f.name.endsWith(".json") }!!.associate { f ->
+            val database = Json.parseToJsonElement(f.readText()).jsonObject.getValue("database").jsonObject
+            database.getValue("version").jsonPrimitive.content.toInt() to database.getValue("identityHash").jsonPrimitive.content
+        }
+        assertEquals("every committed schema version has a pin, and every pin a committed schema", IDENTITY_HASHES.keys, exported.keys)
+        IDENTITY_HASHES.forEach { (version, hash) -> assertEquals("identity hash of version $version", hash, exported[version]) }
+    }
+
+    @Test
+    fun theCurrentVersionHasAMigrationFromEveryEarlierOne() {
+        val current = IDENTITY_HASHES.keys.max()
+        // MIGRATIONS is the one list the three builders read; it must reach the current version from version 1.
+        val steps = AppDatabase.MIGRATIONS.map { it.startVersion to it.endVersion }
+        assertEquals("one migration per version step", (1 until current).map { it to it + 1 }, steps)
     }
 
     @Test
     fun generatedDatabaseOpensWithTheShippedIdentityHash() {
+        val current = IDENTITY_HASHES.keys.max()
         // The hash Room checks at runtime is compiled into AppDatabase_Impl: RoomOpenDelegate(2, "<hash>", "<legacy>").
         // KSP writes the Android one under build/generated/ksp/android (the iOS ones, on macOS, under ksp/ios*).
         val generated = moduleFile("build/generated/ksp/android").walkTopDown()
@@ -70,7 +89,7 @@ class RoomSchemaTest {
         assertTrue("AppDatabase_Impl not found under build/generated (Room KSP output)", generated != null)
         val match = Regex("RoomOpenDelegate\\(\\s*(\\d+)\\s*,\\s*\"([0-9a-f]{32})\"").find(generated!!.readText())
         assertTrue("RoomOpenDelegate(version, identityHash, ...) not found in ${generated.path}", match != null)
-        assertEquals("database version", "2", match!!.groupValues[1])
-        assertEquals("identity hash compiled into ${generated.name}", IDENTITY_HASH_V2, match.groupValues[2])
+        assertEquals("database version", current.toString(), match!!.groupValues[1])
+        assertEquals("identity hash compiled into ${generated.name}", IDENTITY_HASHES.getValue(current), match.groupValues[2])
     }
 }

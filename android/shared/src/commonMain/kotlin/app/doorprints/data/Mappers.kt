@@ -29,10 +29,14 @@ import app.doorprints.shared.model.VisitSource
 // NEW/MANUAL, a missing server timestamp becomes "now" (IsoTime.nowMillis, the same wall clock as
 // System.currentTimeMillis), pulled rows are clean.
 
+// Named arguments on purpose (readiness review 2026-09-29, docs/14 §8 finding 4): Sprint 4c adds eight same-typed
+// numbers to the house, and a positional call would let a swapped pair compile and mis-map in silence.
 fun HouseEntity.toDto() = HouseDto(
-    id, label, address, street, locality, lat, lon, status.name, price, priceType, bedrooms, rating,
-    contactName, contactPhone, listingUrl, notes, checklist, IsoTime.format(createdAt), IsoTime.format(updatedAt),
-    deleted,
+    id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
+    status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
+    contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
+    checklist = checklist, createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
+    deleted = deleted,
 )
 
 fun HouseDto.toEntity() = HouseEntity(
@@ -46,8 +50,9 @@ fun HouseDto.toEntity() = HouseEntity(
 )
 
 fun VisitEntity.toDto() = VisitDto(
-    id, houseId, lat, lon, street, IsoTime.format(arrivedAt), leftAt?.let(IsoTime::format), source.name,
-    IsoTime.format(updatedAt), deleted,
+    id = id, houseId = houseId, lat = lat, lon = lon, street = street, arrivedAt = IsoTime.format(arrivedAt),
+    leftAt = leftAt?.let(IsoTime::format), source = source.name, updatedAt = IsoTime.format(updatedAt),
+    deleted = deleted,
 )
 
 fun VisitDto.toEntity() = VisitEntity(
