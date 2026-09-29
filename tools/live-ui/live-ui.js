@@ -28,7 +28,9 @@
 // the phone map, and a field still visible above the on-screen keyboard.
 // Usage: npm ci && npx playwright install chromium && node live-ui.js [baseUrl] [outDir] (or CHROMIUM=<path> for a
 // local Chromium build; ONLY=mobile, or another comma-separated list of pages, flows, boundaries, mobile, runs only
-// those). Exits 1 when any check fails. A slow check: the full matrix takes about 20-30 minutes.
+// those; SERIAL=1 runs the areas one after another instead of side by side). Exits 1 when any check fails. The full
+// matrix takes about 12-15 minutes. A network fault that a second fetch clears (a 502, a stylesheet with the wrong
+// type through a proxy) is reported under "transient" in results.json, not counted as a failure.
 // It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser (the mobile
 // pass adds one house per phone profile, which goes with the profile).
 const { chromium, devices } = require('playwright');
@@ -63,14 +65,87 @@ async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', m
   }, [lang, mapView]);
   return ctx;
 }
-/** Collects errors for a page; call reset() before each route so late errors are not counted against the next. */
+/**
+ * Faults of the network between this test and the site, not of the site: a 502/503/504, or a script or stylesheet
+ * delivered with the wrong type (seen through a Claude Code session's proxy, about 1 in 2 000 responses, 2026-09-28
+ * and -29), that a second fetch of the same URL gets right. Each is written to results.json with its evidence (status,
+ * type, whether the service worker served it, the via/server/cache headers) and printed, but is not a failure; the
+ * same fault on the second fetch is. Seen often, it is worth a ticket (docs/06 TC-M-26).
+ */
+const transient = [];
+/** The type a hashed asset must have, or null for other URLs. */
+const expectedType = (url) => (/\.css(\?|$)/.test(url) ? 'text/css' : /\.m?js(\?|$)/.test(url) ? 'javascript' : null);
+/** Fetches [url] again, outside the page and its service worker; true when that answer is right. */
+async function refetchOk(page, url, type) {
+  try {
+    const again = await page.context().request.get(url, { timeout: 30000 });
+    return again.status() < 400 && (!type || (again.headers()['content-type'] || '').includes(type));
+  } catch {
+    return false;
+  }
+}
+/**
+ * Collects errors for a page; call reset() before each route so late errors are not counted against the next, and
+ * `await settle()` before reading them (a suspect response is fetched again first, see {@link transient}).
+ */
 function watch(page) {
   const errors = [];
-  errors.reset = () => { errors.length = 0; };
+  const pending = [];
+  const cleared = new Set(); // URLs whose fault was transient: their console echoes are dropped too
+  let cleared5xx = 0;
+  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); cleared5xx = 0; };
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => { if (m.type() === 'error' && !IGNORE_CONSOLE.some((r) => r.test(m.text()))) errors.push(`console: ${m.text().slice(0, 200)}`); });
-  page.on('response', (r) => { if (r.url().startsWith(BASE) && r.status() >= 400 && !r.url().includes('does-not-exist')) errors.push(`HTTP ${r.status()} ${r.url()}`); });
+  page.on('response', (r) => {
+    const url = r.url();
+    if (!url.startsWith(BASE) || url.includes('does-not-exist')) return;
+    const status = r.status();
+    const type = expectedType(url);
+    const got = r.headers()['content-type'] || '';
+    const wrongType = status < 400 && type && !got.includes(type);
+    const gateway = status >= 502 && status <= 504;
+    if (!wrongType && status < 400) return;
+    if (!wrongType && !gateway) { errors.push(`HTTP ${status} ${url}`); return; }
+    const h = r.headers();
+    const evidence = { url, status, type: got, fromServiceWorker: r.fromServiceWorker(), via: h.via, server: h.server, cache: h['x-cache'] };
+    pending.push(refetchOk(page, url, type).then((ok) => {
+      if (ok) {
+        transient.push({ ...evidence, page: page.url(), at: new Date().toISOString() });
+        console.log(`NETWORK (not counted) ${status} '${got}' ${url} — right on a second fetch`);
+        cleared.add(url);
+        if (gateway) cleared5xx++;
+      } else {
+        errors.push(wrongType ? `wrong type '${got}' for ${url} (twice)` : `HTTP ${status} ${url} (twice)`);
+      }
+    }));
+  });
+  errors.settle = async () => {
+    await Promise.all(pending);
+    // Chromium's own console lines about those responses: the MIME refusal names the URL; "Failed to load resource:
+    // ... status of 50x" does not, so as many of those as there were transient gateway errors are dropped.
+    let drop5xx = cleared5xx;
+    for (let i = errors.length - 1; i >= 0; i--) {
+      const e = errors[i];
+      if ([...cleared].some((u) => e.includes(u))) errors.splice(i, 1);
+      else if (drop5xx > 0 && /status of 50[234]/.test(e)) { errors.splice(i, 1); drop5xx--; }
+    }
+    return errors;
+  };
   return errors;
+}
+/** page.goto, once more after a transient gateway error or a timeout (recorded in {@link transient}). */
+async function gotoRetry(page, url, opts = {}) {
+  const o = { waitUntil: 'domcontentloaded', timeout: 60000, ...opts };
+  let first;
+  try {
+    first = await page.goto(url, o);
+    if (!first || first.status() < 502 || first.status() > 504) return first;
+  } catch (e) {
+    if (!/Timeout/.test(e.message)) throw e;
+  }
+  transient.push({ url, status: first ? first.status() : 'timeout', page: 'navigation', at: new Date().toISOString() });
+  console.log(`NETWORK (not counted) ${first ? first.status() : 'timeout'} on ${url} — loading it again`);
+  return page.goto(url, o);
 }
 async function settle(page) {
   try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
@@ -86,7 +161,7 @@ async function pageMatrix(browser) {
       const tag = `${route} ${lang} ${theme} ${vp}`;
       await page.waitForTimeout(300);
       errors.reset();
-      const resp = await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      const resp = await gotoRetry(page, BASE + route);
       await settle(page);
       check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
       const info = await page.evaluate(() => ({
@@ -114,6 +189,7 @@ async function pageMatrix(browser) {
         return r.violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id} (${v.nodes.length}): ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`);
       });
       check('a11y', `${tag}: axe serious/critical`, axe.length === 0, axe.join(' ; '));
+      await errors.settle();
       check('console', `${tag}: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
       if (lang === 'en' || route === '/') {
         const name = `${vp}_${theme}_${lang}_${route.replace(/[^a-z]+/gi, '_') || 'root'}`.slice(0, 80);
@@ -131,7 +207,7 @@ async function flows(browser) {
     const errors = watch(page);
     const name = `UI test ${vp} ${Date.now()}`;
     const addHouse = async (label, lat, lon) => {
-      await page.goto(`${BASE}/houses/new?lat=${lat}&lon=${lon}`); await settle(page);
+      await gotoRetry(page, `${BASE}/houses/new?lat=${lat}&lon=${lon}`); await settle(page);
       await page.locator('#house-name').fill(label);
       await page.locator('#house-price').fill('25000');
       await page.locator('#house-bhk').fill('2');
@@ -150,14 +226,14 @@ async function flows(browser) {
     await page.reload(); await settle(page);
     check('flow', `${vp}: edit persists after reload`, (await page.locator('#house-notes').inputValue()) === 'Edited by the live UI test.');
     // In the list and on Compare
-    await page.goto(`${BASE}/`); await settle(page);
+    await gotoRetry(page, `${BASE}/`); await settle(page);
     check('flow', `${vp}: both houses in the list`, (await page.getByText(name, { exact: true }).count()) > 0 && (await page.getByText(`${name} B`).count()) > 0);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_list.png`) });
-    await page.goto(`${BASE}/compare`); await settle(page);
+    await gotoRetry(page, `${BASE}/compare`); await settle(page);
     check('flow', `${vp}: houses on Compare`, (await page.getByText(name).count()) > 0);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_compare.png`) });
     // Save a copy (download)
-    await page.goto(`${BASE}/data`); await settle(page);
+    await gotoRetry(page, `${BASE}/data`); await settle(page);
     const saveBtn = page.getByRole('button', { name: /^Download$/ }).first();
     if (await saveBtn.isVisible().catch(() => false)) {
       const dl = page.waitForEvent('download', { timeout: 20000 }).catch(() => null);
@@ -169,7 +245,7 @@ async function flows(browser) {
     } else check('flow', `${vp}: Download button present`, false);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_data.png`) });
     // Offline: the service worker serves the app shell
-    await page.goto(`${BASE}/`); await settle(page);
+    await gotoRetry(page, `${BASE}/`); await settle(page);
     const sw = await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()));
     check('pwa', `${vp}: service worker registered`, sw);
     await page.waitForTimeout(2000);
@@ -181,16 +257,17 @@ async function flows(browser) {
     await ctx.setOffline(false);
     // Delete the house
     for (const hid of [id, id2]) {
-      await page.goto(`${BASE}/houses/${hid}`); await settle(page);
+      await gotoRetry(page, `${BASE}/houses/${hid}`); await settle(page);
       await page.getByRole('button', { name: /^Delete( house)?$/ }).first().click().catch(() => {});
       await page.getByRole('dialog').getByRole('button', { name: /^Delete( house)?$/ }).click({ timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(1500);
     }
-    await page.goto(`${BASE}/compare`); await settle(page);
+    await gotoRetry(page, `${BASE}/compare`); await settle(page);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_after_delete.png`) });
     const leftOnCompare = await page.getByText(name).count();
-    await page.goto(`${BASE}/`); await settle(page);
+    await gotoRetry(page, `${BASE}/`); await settle(page);
     check('flow', `${vp}: houses deleted`, leftOnCompare === 0 && (await page.getByText(name).count()) === 0);
+    await errors.settle();
     check('console', `${vp} flows: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
     await ctx.close();
   }
@@ -339,7 +416,7 @@ async function mobile(browser) {
     // One house is added after the routes, so its page is checked too (it goes with this profile). Not before: the Map
     // page's first visit would fit to it at street level, and the labels check looks at the country view.
     const addHouse = async () => {
-      await page.goto(`${BASE}/houses/new?lat=12.9716&lon=77.5946`); await settle(page);
+      await gotoRetry(page, `${BASE}/houses/new?lat=12.9716&lon=77.5946`); await settle(page);
       await page.locator('#house-name').fill('Mobile check: a house with a fairly long name, Indiranagar 2nd Stage');
       await page.locator('.toolbar .btn-primary').first().click();
       await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
@@ -352,7 +429,7 @@ async function mobile(browser) {
       if (!route) continue;
       const tag = `${tag0} ${route.startsWith('/houses/') && route !== ROUTES[7] ? '/houses/:id' : route}`;
       errors.reset();
-      await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await gotoRetry(page, BASE + route);
       await settle(page);
       if (route === '/') await page.waitForTimeout(CREDITS_FOLD_MS + 1500);
       const found = await page.evaluate(mobileAudit);
@@ -396,6 +473,7 @@ async function mobile(browser) {
         }
         await page.setViewportSize(viewport);
       }
+      await errors.settle();
       check('console', `${tag} (mobile): no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
       if (lang === 'en' || route === '/') {
         const file = `mobile_${phone.name}_${theme}_${lang}_${route.replace(/[^a-z]+/gi, '_') || 'root'}`.slice(0, 80);
@@ -419,7 +497,7 @@ async function boundaries(browser) {
     await ctx.clearCookies();
     const page = await ctx.newPage();
     await page.addInitScript((v) => localStorage.setItem('doorprints.mapView', JSON.stringify(v)), { lat, lon, zoom });
-    await page.goto(`${BASE}/`); await settle(page); await page.waitForTimeout(3000);
+    await gotoRetry(page, `${BASE}/`); await settle(page); await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'shots', `map_${name}.png`) });
     await page.close();
   }
@@ -430,14 +508,19 @@ async function boundaries(browser) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
   const only = (process.env.ONLY || '').split(',').filter(Boolean);
-  for (const [name, fn] of [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile]]) {
-    if (only.length && !only.includes(name)) continue;
+  // The four areas run side by side, each in its own browser contexts (about 12 minutes instead of 25-30 one after
+  // another); SERIAL=1 runs them in turn, as before.
+  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile]]
+    .filter(([name]) => !only.length || only.includes(name));
+  const run = async ([name, fn]) => {
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }
-  }
+  };
+  if (process.env.SERIAL) for (const area of areas) await run(area);
+  else await Promise.all(areas.map(run));
   await browser.close();
   const byArea = {};
   for (const r of results) { byArea[r.area] ??= { pass: 0, fail: 0 }; byArea[r.area][r.ok ? 'pass' : 'fail']++; }
-  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ base: BASE, at: new Date().toISOString(), seconds: Math.round((Date.now() - t0) / 1000), byArea, results }, null, 1));
-  console.log(JSON.stringify(byArea), `${Math.round((Date.now() - t0) / 1000)} s`);
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ base: BASE, at: new Date().toISOString(), seconds: Math.round((Date.now() - t0) / 1000), byArea, transient, results }, null, 1));
+  console.log(JSON.stringify(byArea), `${Math.round((Date.now() - t0) / 1000)} s`, transient.length ? `; ${transient.length} network fault(s) not counted, see results.json "transient"` : '');
   process.exitCode = results.some((r) => !r.ok) ? 1 : 0;
 })();
