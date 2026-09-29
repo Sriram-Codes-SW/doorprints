@@ -808,16 +808,22 @@ private val MinusIcon: ImageVector by lazy {
 }
 
 /**
- * The Map tab where the platform has no map yet (iOS, CMP-8b; [PlatformFeatures.map]): one sentence, that the map is not
- * on this phone yet and every house is in the Houses tab, and *Open Houses*, the same button the map's error card
- * offers. Centred, at most [ContentMaxWidth] wide with the 16 dp gutter, and scrolling at large text sizes.
+ * The Map tab where the platform has no map yet (iOS, CMP-8b; [PlatformFeatures.map]): the tab's title, as the other
+ * tabs have theirs (Houses, Compare), then a card with one sentence, that the map is not on this phone yet and every
+ * house is in the Houses tab, and *Open Houses*, the same button the map's error card offers. From the top, at most
+ * [ContentMaxWidth] wide with the 16 dp gutter, and scrolling at large text sizes.
  */
 @Composable
 private fun MapNotOnThisPhone(onOpenHouses: () -> Unit) {
-    Box(
+    Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        contentAlignment = Alignment.Center,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Text(
+            stringResource(Res.string.nav_map),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
         Surface(
             shape = MaterialTheme.shapes.medium,
             tonalElevation = 2.dp,
