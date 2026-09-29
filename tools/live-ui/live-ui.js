@@ -93,7 +93,8 @@ function watch(page) {
   const pending = [];
   const cleared = new Set(); // URLs whose fault was transient: their console echoes are dropped too
   let cleared5xx = 0;
-  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; };
+  let droppedNet = 0; // requests the network dropped (requestfailed), whose console echoes name no URL
+  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; droppedNet = 0; };
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   const suspects = new Set(); // one second fetch per URL and route
   /** Fetches [url] again; clears it as transient with [evidence], or records it as a real error. */
@@ -123,6 +124,18 @@ function watch(page) {
       classify(url, expectedType(url), { url, status: 'refused', type: got }, false, `wrong type '${got}' for ${url} (twice)`);
     }
   });
+  // A request the network dropped before any answer (a connection reset through this session's proxy, 2026-09-29):
+  // no response event, and Chromium's console line "Failed to load resource: net::ERR_…" does not name the URL.
+  page.on('requestfailed', (req) => {
+    const url = req.url();
+    const why = req.failure()?.errorText ?? '';
+    if (!url.startsWith(BASE) || !/ERR_(CONNECTION_(RESET|CLOSED|ABORTED)|EMPTY_RESPONSE|TIMED_OUT|HTTP2_PROTOCOL_ERROR|NETWORK_CHANGED)/.test(why)) return;
+    noteFault(page);
+    const evidence = { url, status: why, type: null };
+    suspects.delete(url);
+    classify(url, expectedType(url), evidence, false, `${why} for ${url} (twice)`);
+    droppedNet++;
+  });
   page.on('response', (r) => {
     const url = r.url();
     if (!url.startsWith(BASE) || url.includes('does-not-exist')) return;
@@ -148,10 +161,13 @@ function watch(page) {
     // Chromium's own console lines about those responses: the MIME refusal names the URL; "Failed to load resource:
     // ... status of 50x" does not, so as many of those as there were transient gateway errors are dropped.
     let drop5xx = cleared5xx;
+    // Dropped requests that a second fetch got: only then is their unnamed console echo dropped (a real error stays).
+    let dropNet = droppedNet - errors.filter((e) => / \(twice\)$/.test(e) && /ERR_/.test(e)).length;
     for (let i = errors.length - 1; i >= 0; i--) {
       const e = errors[i];
       if ([...cleared].some((u) => e.includes(u))) errors.splice(i, 1);
       else if (drop5xx > 0 && /status of 50[234]/.test(e)) { errors.splice(i, 1); drop5xx--; }
+      else if (dropNet > 0 && /Failed to load resource: net::ERR_/.test(e)) { errors.splice(i, 1); dropNet--; }
     }
     return errors;
   };
@@ -185,7 +201,8 @@ async function gotoRetry(page, url, opts = {}) {
   } else {
     transient.push({ url, status: why, page: 'navigation', at: new Date().toISOString() });
   }
-  console.log(`NETWORK (not counted) ${why} on ${url} — loading it again`);
+  // Only a retry; whether the fault counts is decided by the second fetch (see watch()).
+  console.log(`NETWORK ${why} on ${url} — loading the page again`);
   return page.goto(url, o);
 }
 async function settle(page) {
