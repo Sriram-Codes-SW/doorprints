@@ -24,7 +24,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.location.Location
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Looper
@@ -38,46 +37,37 @@ import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
 import app.doorprints.R
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.VisitEntity
 import app.doorprints.data.labelRes
-import app.doorprints.shared.location.Geo
-import app.doorprints.shared.location.StayDetector
 import app.doorprints.shared.location.StreetAlerts
 import app.doorprints.shared.model.HouseStatus
-import app.doorprints.shared.model.VisitSource
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
-import kotlinx.coroutines.launch
-import java.util.*
 
 /**
- * "Hunt mode": a foreground service that follows your location while you're out house hunting and
- *  - alerts you when you pass a house you've already visited,
- *  - tells you when you enter a street you've been on before,
- *  - notices when you stop somewhere for a few minutes and offers to save it as a house.
- *
- * Battery (docs/09 L1): GPS fixes every 15 s while walking, every 60 s while standing still (inside a house you are
- * viewing), and the service stops itself when the battery falls to [LOW_BATTERY_PERCENT] and is not charging.
- * Fixes worse than [MAX_ACCURACY_M] (indoors, urban canyons) are shown but never trigger alerts or visits.
+ * "Hunt mode" on Android: a foreground service around the common [HuntEngine] (Sprint 4b, 2026-09-29; the rules were
+ * in this class before). This class keeps what only Android can do: the foreground service and its notification, the
+ * fused location client (GPS fixes every 15 s while walking, every 60 s while standing still, docs/09 L1), the battery
+ * reading, the reverse geocoder, and the wording and posting of the alerts the engine asks for ([HuntEffects]).
+ * Everything else, what a fix means, is the engine's, and the same on iPhone.
  */
-class HuntService : LifecycleService() {
+class HuntService : LifecycleService(), HuntEffects {
 
     private val repo by lazy { (application as DoorprintsApp).container.repository }
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val geocoder by lazy { ReverseGeocoder(this) }
-    private val stays = StayDetector()
-
-    private var houses: List<HouseEntity> = emptyList()
-    private var alertRadiusM = 30
-    private val houseAlertedAt = mutableMapOf<String, Long>()
-    private val streetAlertedAt = mutableMapOf<String, Long>()
-    private var lastGeocodeAt = 0L
-    private var lastGeocodeLat = 0.0
-    private var lastGeocodeLon = 0.0
-    private var currentStreet: String? = null
-    private var stayPromptVisitId: String? = null
-    private var stationaryMode: Boolean? = null
-    private var lastBatteryCheckAt = 0L
+    private val engine by lazy {
+        HuntEngine(
+            data = HuntData.of(repo),
+            streets = { lat, lon -> geocoder.lookup(lat, lon)?.street },
+            battery = {
+                getSystemService(BatteryManager::class.java)?.let {
+                    BatteryLevel(it.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY), it.isCharging)
+                }
+            },
+            effects = this,
+            scope = lifecycleScope,
+        )
+    }
 
     /** Set just before a stopSelf() the user did not ask for; the Map says why (see [HuntState.State.stopReason]). */
     private var stopReason: HuntState.StopReason? = null
@@ -89,23 +79,12 @@ class HuntService : LifecycleService() {
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            result.lastLocation?.let(::onLocation)
+            result.lastLocation?.let { engine.onFix(it.latitude, it.longitude, it.accuracy, it.time) }
         }
     }
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-        lifecycleScope.launch { repo.houses.collect { houses = it } }
-        lifecycleScope.launch {
-            repo.settings.settings.collect {
-                alertRadiusM = it.alertRadiusM
-                stays.minStayMs = it.minStayMinutes * 60_000L
-            }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -149,17 +128,13 @@ class HuntService : LifecycleService() {
         }
 
         stopReason = null
-        stationaryMode = null
-        requestUpdates(stationary = false)
-        HuntState.update { it.copy(active = true, startedAt = System.currentTimeMillis(), stopReason = null) }
+        engine.start()
         return START_STICKY
     }
 
     /** Same callback, so a new request replaces the previous one. */
     @SuppressLint("MissingPermission")
-    private fun requestUpdates(stationary: Boolean) {
-        if (stationaryMode == stationary) return
-        stationaryMode = stationary
+    override fun requestUpdates(stationary: Boolean) {
         val request = if (stationary) {
             LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 60_000L)
                 .setMinUpdateIntervalMillis(30_000L)
@@ -177,138 +152,52 @@ class HuntService : LifecycleService() {
 
     override fun onDestroy() {
         fused.removeLocationUpdates(callback)
-        // Everything resets except why it stopped, which the Map shows until it is closed.
-        HuntState.update { HuntState.State(stopReason = stopReason) }
+        engine.stopped(stopReason)
         super.onDestroy()
     }
 
-    private fun onLocation(loc: Location) {
-        HuntState.update {
-            it.copy(lat = loc.latitude, lon = loc.longitude, accuracyM = loc.accuracy, lastFixAt = System.currentTimeMillis())
-        }
-        if (stopIfBatteryLow()) return
-        // Readings this rough can't tell one house from the next.
-        if (loc.accuracy > MAX_ACCURACY_M) return
-        checkNearbyHouses(loc)
-        checkStreet(loc)
-        checkStay(loc)
-        requestUpdates(stationary = stays.isStaying)
+    override fun lowBattery(percent: Int) {
+        Notifications.alert(this, Notifications.LOW_BATTERY_ID, getString(R.string.notif_battery_title),
+            getString(R.string.notif_battery_text, percent), Notifications.openAppIntent(this, 0))
     }
 
-    private fun stopIfBatteryLow(): Boolean {
-        val now = System.currentTimeMillis()
-        if (now - lastBatteryCheckAt < 120_000L) return false
-        lastBatteryCheckAt = now
-        val battery = getSystemService(BatteryManager::class.java) ?: return false
-        val percent = battery.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        if (percent in 1..LOW_BATTERY_PERCENT && !battery.isCharging) {
-            Notifications.alert(this, Notifications.LOW_BATTERY_ID, getString(R.string.notif_battery_title),
-                getString(R.string.notif_battery_text, percent), Notifications.openAppIntent(this, 0))
-            stopFor(HuntState.StopReason.LOW_BATTERY)
-            return true
-        }
-        return false
-    }
+    override fun stop(reason: HuntState.StopReason) = stopFor(reason)
 
-    private fun checkNearbyHouses(loc: Location) {
-        val now = System.currentTimeMillis()
-        val nearest = houses
-            .map { it to Geo.distanceM(loc.latitude, loc.longitude, it.lat, it.lon) }
-            .minByOrNull { it.second }
-        val close = nearest?.takeIf { it.second <= 150 }
-        HuntState.update { it.copy(nearestHouse = close?.first, nearestDistanceM = close?.second) }
-        val (house, distance) = nearest ?: return
-        if (distance > alertRadiusM) return
-        val last = houseAlertedAt[house.id] ?: 0
-        if (now - last < 30 * 60_000L) return
-        houseAlertedAt[house.id] = now
+    override fun alertHouse(house: HouseEntity, distanceM: Int) {
         Notifications.alert(
             this, house.id.hashCode(),
             getString(R.string.notif_seen_house, house.label),
-            getString(R.string.notif_distance, describe(house), distance.toInt()),
+            getString(R.string.notif_distance, describe(house), distanceM),
             Notifications.openAppIntent(this, house.id.hashCode()) {
                 putExtra(Notifications.EXTRA_OPEN_HOUSE, house.id)
             },
         )
     }
 
-    private fun checkStreet(loc: Location) {
-        val now = System.currentTimeMillis()
-        val moved = Geo.distanceM(lastGeocodeLat, lastGeocodeLon, loc.latitude, loc.longitude)
-        if (now - lastGeocodeAt < 45_000 && moved < 80) return
-        lastGeocodeAt = now
-        lastGeocodeLat = loc.latitude
-        lastGeocodeLon = loc.longitude
-        lifecycleScope.launch {
-            // Offline or DNS failure: the geocoder returns null and street alerts simply pause (docs/09 L3).
-            val street = geocoder.lookup(loc.latitude, loc.longitude)?.street ?: return@launch
-            if (StreetAlerts.sameStreet(street, currentStreet)) return@launch
-            currentStreet = street
-            val info = repo.streetInfo(street)
-            HuntState.update { it.copy(street = street, streetHouses = info.houses, streetVisits = info.visits) }
-            val key = StreetAlerts.key(street)
-            if (!StreetAlerts.shouldAlert(info.houses, info.visits, streetAlertedAt[key], now)) return@launch
-            streetAlertedAt[key] = now
-            val text = info.firstVisit?.let {
-                getString(R.string.notif_street_text_since, info.houses, info.visits, Formats.date(it))
-            } ?: getString(R.string.notif_street_text, info.houses, info.visits)
-            Notifications.alert(
-                this@HuntService, key.hashCode(),
-                getString(R.string.notif_street_title, street),
-                text,
-                Notifications.openAppIntent(this@HuntService, key.hashCode()),
-            )
-        }
+    override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
+        val key = StreetAlerts.key(street)
+        val text = firstVisit?.let {
+            getString(R.string.notif_street_text_since, houses, visits, Formats.date(it))
+        } ?: getString(R.string.notif_street_text, houses, visits)
+        Notifications.alert(
+            this, key.hashCode(),
+            getString(R.string.notif_street_title, street),
+            text,
+            Notifications.openAppIntent(this, key.hashCode()),
+        )
     }
 
-    private fun checkStay(loc: Location) {
-        when (val event = stays.onLocation(loc.latitude, loc.longitude, loc.time)) {
-            is StayDetector.Event.Started -> onStayStarted(event)
-            is StayDetector.Event.Ended -> onStayEnded(event)
-            null -> Unit
-        }
-        HuntState.update { it.copy(staying = stays.isStaying) }
-    }
-
-    private fun houseAt(lat: Double, lon: Double) = houses
-        .map { it to Geo.distanceM(lat, lon, it.lat, it.lon) }
-        .filter { it.second <= 40 }
-        .minByOrNull { it.second }?.first
-
-    private fun onStayStarted(e: StayDetector.Event.Started) {
-        val visitId = UUID.randomUUID().toString()
-        stayPromptVisitId = visitId
-        val house = houseAt(e.lat, e.lon)
-        lifecycleScope.launch {
-            val street = geocoder.lookup(e.lat, e.lon)?.street
-            repo.saveVisit(
-                VisitEntity(
-                    id = visitId, houseId = house?.id, lat = e.lat, lon = e.lon, street = street,
-                    arrivedAt = e.since, source = VisitSource.AUTO, updatedAt = System.currentTimeMillis(),
-                )
-            )
-        }
-        if (house == null) {
-            Notifications.alert(
-                this, visitId.hashCode(),
-                getString(R.string.notif_stay_title),
-                getString(R.string.notif_stay_text),
-                Notifications.openAppIntent(this, visitId.hashCode()) {
-                    putExtra(Notifications.EXTRA_NEW_LAT, e.lat)
-                    putExtra(Notifications.EXTRA_NEW_LON, e.lon)
-                    putExtra(Notifications.EXTRA_VISIT_ID, visitId)
-                },
-            )
-        }
-    }
-
-    private fun onStayEnded(e: StayDetector.Event.Ended) {
-        val visitId = stayPromptVisitId ?: return
-        stayPromptVisitId = null
-        lifecycleScope.launch {
-            val visit = repo.getVisit(visitId) ?: return@launch
-            repo.saveVisit(visit.copy(leftAt = e.leftAt, lat = e.lat, lon = e.lon))
-        }
+    override fun alertStay(visitId: String, lat: Double, lon: Double) {
+        Notifications.alert(
+            this, visitId.hashCode(),
+            getString(R.string.notif_stay_title),
+            getString(R.string.notif_stay_text),
+            Notifications.openAppIntent(this, visitId.hashCode()) {
+                putExtra(Notifications.EXTRA_NEW_LAT, lat)
+                putExtra(Notifications.EXTRA_NEW_LON, lon)
+                putExtra(Notifications.EXTRA_VISIT_ID, visitId)
+            },
+        )
     }
 
     private fun describe(h: HouseEntity): String {
@@ -322,8 +211,6 @@ class HuntService : LifecycleService() {
 
     companion object {
         private const val ACTION_STOP = "stop"
-        const val MAX_ACCURACY_M = HuntState.MAX_ACCURACY_M
-        const val LOW_BATTERY_PERCENT = 15
 
         fun hasLocationPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==

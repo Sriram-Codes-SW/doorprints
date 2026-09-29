@@ -21,7 +21,7 @@ package app.doorprints.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.SystemClock
-import app.doorprints.location.HuntService
+import app.doorprints.location.HuntState
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * A current location fix, or null. The phone's last known location stands in only when it is under two minutes old
- * and accurate to [HuntService.MAX_ACCURACY_M] ([lastFixUsable]; UX review, whole-app audit): a fix of any age put a
+ * and accurate to [HuntState.MAX_ACCURACY_M] ([lastFixUsable]; UX review, whole-app audit): a fix of any age put a
  * house in the wrong place for good. Null makes the caller say it is waiting for GPS. The Map, the house form and the
  * Assistant read it through `AppServices.location` (was in `:app`'s `MapScreen.kt` until the Map moved to `:ui`,
  * CMP-7).
@@ -52,5 +52,5 @@ private suspend fun lookUpLocation(context: Context): Pair<Double, Double>? {
     val last = runCatching { client.lastLocation.await() }.getOrNull() ?: return null
     val ageMs = (SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000L
     val accuracy = if (last.hasAccuracy()) last.accuracy else null
-    return if (lastFixUsable(ageMs, accuracy, HuntService.MAX_ACCURACY_M)) last.latitude to last.longitude else null
+    return if (lastFixUsable(ageMs, accuracy, HuntState.MAX_ACCURACY_M)) last.latitude to last.longitude else null
 }
