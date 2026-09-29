@@ -32,5 +32,5 @@ it is not in the Play Store yet. The iPhone app is new and still being tested; i
 | **Import a backup** | Not yet | Yes | Not yet |
 | **Add a shared listing** (share text from another app) | Yes, when installed as an app on an Android phone | No | No |
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | No |
-| Ask and Plan visits (AI) | Only with your own server with AI turned on | Same | Same |
+| Ask and Plan visits (AI) | Only with [your own server](set-up-a-server.md) with AI turned on | Same | Same |
 | Works offline | Yes, after the first visit | Yes | Yes |
