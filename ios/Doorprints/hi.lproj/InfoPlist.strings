@@ -1,0 +1,2 @@
+/* Hindi, under review (owner rule for hi, ta and te). The English text (en.lproj) in the words of values-hi/strings.xml. */
+"NSLocationWhenInUseUsageDescription" = "Doorprints आपकी जगह का इस्तेमाल सहेजे गए मकानों की जगह दर्ज करने और आपकी जगह से दौरों की योजना बनाने के लिए करता है।";

@@ -1,0 +1,2 @@
+/* Telugu, under review (owner rule for hi, ta and te). The English text (en.lproj) in the words of values-te/strings.xml. */
+"NSLocationWhenInUseUsageDescription" = "మీరు సేవ్ చేసే ఇళ్ల స్థానాన్ని గుర్తించడానికి, మీరు ఉన్న చోటు నుండి సందర్శనల ప్రణాళిక వేయడానికి Doorprints మీ స్థానాన్ని ఉపయోగిస్తుంది.";
