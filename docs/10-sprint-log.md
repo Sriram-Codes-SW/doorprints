@@ -2194,6 +2194,15 @@ when it leaves the screen (`shutDown()`: no location updates, no callbacks; firs
 negative direction to keep the bearing, the density read when it is used. No problem found in the Swift names Kotlin
 exports, the MapLibre 6.31.0 calls, the XcodeGen spec or `JsonStyleOps`' equivalence with `MapLibreStyleOps`.
 
+**First green run (`61e1b40`, 2026-09-29, Shared iOS compile run 36539902921):** the Swift map compiled against
+MapLibre iOS 6.31.0 from its package (the one earlier failure: a `release()` that clashed with `NSObject`'s, renamed);
+the bundle held `MapLibre.framework`, the pinned revision and both geo files unchanged; on an iPhone Air simulator
+(iOS 26.4) the self-check printed resources, database, settings, keychain, **indiaView and map PASS** and `done PASS`.
+The launch screenshot shows the Liberty map of India at the start camera with the legend, the attribution button,
+the zoom and location buttons and *Save house here*, and no Hunt card; it replaces the user guide's iPhone pictures
+(`guide/docs/images/iphone-map.png`; the old "no map yet" launch shot removed, the guide's table and iPhone section
+updated). Most of the smoke's 7 minutes were the simulator's first boot ("Waiting on Data Migration").
+
 **How it was verified:** on Linux, the full Android command of `CLAUDE.md`; the iOS Kotlin cross-compiled
 (`:ui:compileKotlinIosSimulatorArm64` with `-Pkotlin.native.enableKlibsCrossCompilation=true`, which caught one
 cinterop mistake before CI); every MapLibre iOS name the Swift file uses read in the 6.31.0 headers. The Swift file,
