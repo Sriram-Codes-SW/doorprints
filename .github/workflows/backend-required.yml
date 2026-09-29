@@ -1,0 +1,49 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The "always report" twin of backend.yml (docs/07 section 3): the same workflow and job names, triggered by the
+# complement of its paths (paths-ignore mirrors them exactly), succeeding at once, so the required checks report on
+# a pull request that touches no backend input. See android-required.yml.
+name: Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "backend/**"
+      - "docs/ai/evals/**"
+      - "docs/schemas/**"
+      - "docker-compose.yml"
+      - "web/src/app/export/backup-export.ts"
+      - "web/src/app/export/golden/**"
+      - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
+      - ".github/workflows/backend.yml"
+
+permissions: {}
+
+jobs:
+  verify:
+    name: mvn verify (JDK 25, PostGIS 18 + pgvector)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No backend input changed in this pull request; backend.yml did not run."
+  image:
+    name: Build container image
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No backend input changed in this pull request; backend.yml did not run."
