@@ -93,12 +93,39 @@ function watch(page) {
   const pending = [];
   const cleared = new Set(); // URLs whose fault was transient: their console echoes are dropped too
   let cleared5xx = 0;
-  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); cleared5xx = 0; };
+  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; };
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-  page.on('console', (m) => { if (m.type() === 'error' && !IGNORE_CONSOLE.some((r) => r.test(m.text()))) errors.push(`console: ${m.text().slice(0, 200)}`); });
+  const suspects = new Set(); // one second fetch per URL and route
+  /** Fetches [url] again; clears it as transient with [evidence], or records it as a real error. */
+  const classify = (url, type, evidence, gateway, realError) => {
+    if (suspects.has(url)) return;
+    suspects.add(url);
+    pending.push(refetchOk(page, url, type).then((ok) => {
+      if (ok) {
+        transient.push({ ...evidence, page: page.url(), at: new Date().toISOString() });
+        console.log(`NETWORK (not counted) ${evidence.status} '${evidence.type ?? ''}' ${url} — right on a second fetch`);
+        cleared.add(url);
+        if (gateway) cleared5xx++;
+      } else {
+        errors.push(realError);
+      }
+    }));
+  };
+  page.on('console', (m) => {
+    if (m.type() !== 'error' || IGNORE_CONSOLE.some((r) => r.test(m.text()))) return;
+    errors.push(`console: ${m.text().slice(0, 200)}`);
+    // Chromium refuses a stylesheet or script with the wrong type before the test sees a response for it; its message
+    // names the URL and the type it got.
+    const refused = /Refused to (?:apply style|execute script) from '([^']+)' because its MIME type \('([^']*)'\)/.exec(m.text());
+    if (refused && refused[1].startsWith(BASE)) {
+      const [, url, got] = refused;
+      classify(url, expectedType(url), { url, status: 'refused', type: got }, false, `wrong type '${got}' for ${url} (twice)`);
+    }
+  });
   page.on('response', (r) => {
     const url = r.url();
     if (!url.startsWith(BASE) || url.includes('does-not-exist')) return;
+    if (r.request().isNavigationRequest() && r.request().frame() === page.mainFrame()) return; // gotoRetry's
     const status = r.status();
     const type = expectedType(url);
     const got = r.headers()['content-type'] || '';
@@ -108,16 +135,7 @@ function watch(page) {
     if (!wrongType && !gateway) { errors.push(`HTTP ${status} ${url}`); return; }
     const h = r.headers();
     const evidence = { url, status, type: got, fromServiceWorker: r.fromServiceWorker(), via: h.via, server: h.server, cache: h['x-cache'] };
-    pending.push(refetchOk(page, url, type).then((ok) => {
-      if (ok) {
-        transient.push({ ...evidence, page: page.url(), at: new Date().toISOString() });
-        console.log(`NETWORK (not counted) ${status} '${got}' ${url} — right on a second fetch`);
-        cleared.add(url);
-        if (gateway) cleared5xx++;
-      } else {
-        errors.push(wrongType ? `wrong type '${got}' for ${url} (twice)` : `HTTP ${status} ${url} (twice)`);
-      }
-    }));
+    classify(url, type, evidence, gateway, wrongType ? `wrong type '${got}' for ${url} (twice)` : `HTTP ${status} ${url} (twice)`);
   });
   errors.settle = async () => {
     await Promise.all(pending);

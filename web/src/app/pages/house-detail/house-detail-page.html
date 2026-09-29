@@ -271,7 +271,7 @@
             <div class="inline">
               <input id="house-phone" type="tel" [(ngModel)]="d.contactPhone" maxlength="50" autocomplete="off" />
               @if (d.contactPhone) {
-                <a class="btn" [href]="telHref(d.contactPhone)" [attr.aria-label]="'house.callAria' | t: { phone: d.contactPhone ?? '' }">
+                <a class="btn" [href]="telHref(d.contactPhone)" [attr.aria-label]="'house.callAria' | t: { phone: d.contactPhone }">
                   <span aria-hidden="true">📞</span> {{ 'house.call' | t }}
                 </a>
               }

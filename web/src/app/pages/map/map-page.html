@@ -224,7 +224,7 @@
                 <span class="item-meta">
                   <span>{{ i18n.price(item.house.price, item.house.priceType) }}</span>
                   @if (item.house.bedrooms != null) {
-                    <span>{{ 'common.bhk' | t: { n: item.house.bedrooms ?? 0 } }}</span>
+                    <span>{{ 'common.bhk' | t: { n: item.house.bedrooms } }}</span>
                   }
                   <span>
                     <span class="star" aria-hidden="true">★</span>
