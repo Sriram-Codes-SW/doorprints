@@ -117,7 +117,7 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
         }
     }
 
-    func release() {
+    func shutDown() {
         mapView.showsUserLocation = false
         mapView.delegate = nil
     }

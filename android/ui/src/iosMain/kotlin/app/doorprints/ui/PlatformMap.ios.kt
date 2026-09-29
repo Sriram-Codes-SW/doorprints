@@ -120,7 +120,7 @@ actual fun PlatformMap(
         loadStyle()
     }
     DisposableEffect(map) {
-        onDispose { map.release() }
+        onDispose { map.shutDown() }
     }
 
     LaunchedEffect(styleLoaded, houses) {
