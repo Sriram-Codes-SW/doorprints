@@ -121,6 +121,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   check for the planned move to `AGPL-3.0-only` (warnings until the licence changes).
 - **Release security gate, Android part** (S4b-SEC-1): every Android push also builds the release APK and scans it with
   MobSF, in parallel with the main build; a High finding that has not been reviewed, or any tracker, fails it.
+- **Release security gate, the check list and the manual part** (S4b-SEC-1, S4b-SEC-3): the
+  [test plan](docs/06-test-plan.md) §11.1 names every gate check with its tool, owner and threshold; the new
+  [release security checklist](docs/13-release-security-checklist.md) is the one-hour manual list per release and the
+  scope of the deep pentest; the AI golden set's prompt-injection set grows from 3 to 25 cases (English, Hindi, Tamil
+  and Telugu payloads in listings, questions and saved notes), and the build fails if it drops below 25.
 - **The iPhone map** (CMP-8c, [sprint log](docs/10-sprint-log.md) §13.13): the iPhone app gets the map (MapLibre iOS
   6.31.0, pinned by commit) with India's boundary as the Government of India shows it, applied to the style's JSON by
   the same common steps as Android and checked in the app; the iOS launch smoke fails unless that check and the loaded
