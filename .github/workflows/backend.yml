@@ -25,14 +25,15 @@ name: Backend
 # Whoever adds such a test adds its path here.
 # The two lists below are identical and must stay that way (GitHub Actions does not support YAML anchors).
 #
-# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
-# branch that touches one of the paths below, a pull request to main (tests the merge result; also covers fork PRs,
-# which never get secrets) and manual runs. `branches: ['**']` matches branch names with "/" (feature/x,
-# dependabot/...); tag pushes do not trigger. With a pull request open, one push gives two runs (branch push +
-# pull_request); that is accepted (docs/07 section 3). Nothing in this workflow deploys, signs or pushes an image.
+# Triggers: a push to main that touches one of the paths below, a pull request to main (tests the merge result; also
+# covers fork PRs, which never get secrets) and manual runs; tag pushes do not trigger. From 2026-09-23 to
+# 2026-09-29 every branch push ran it too (owner decision "be sure that the code is right before merging into
+# main"), which gave two runs per push with a pull request open; since the delivery-speed review of 2026-09-29
+# (docs/14 §7) the pull request run alone is the pre-merge signal, so a branch gets CI once its pull request is open
+# (a draft is fine). Nothing in this workflow deploys, signs or pushes an image.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths:
       - "backend/**"
       # EvalScorerTest (a plain unit test in `mvn verify`) loads docs/ai/evals/golden-set.json through
@@ -159,15 +160,19 @@ jobs:
         if: failure()
         run: docker logs db | tail -200
 
-  # Build-only check of backend/Dockerfile (no registry login, no push, contents: read): runs on every push, branch
-  # pushes included since 2026-09-23, so a broken Dockerfile or a root USER is caught before the merge. Still not run
-  # for pull_request events: for a same-repository pull request the branch push of the same commit already builds it.
-  # Since 2026-09-29 also the release security gate's checks on the built image (S4b-SEC-1, docs/06 section 11):
-  # Trivy on the image (TC-S-05) and the OWASP ZAP API scan of the running API (TC-S-04), both blocking.
+  # Build-only check of backend/Dockerfile (no registry login, no push, contents: read): runs on a push to main, on a
+  # manual run and, since 2026-09-29, on a pull request from a branch of this repository (before that the branch push
+  # of the same commit built it; branch pushes no longer run CI), so a broken Dockerfile or a root USER is caught
+  # before the merge. Not for a fork's pull request (its code must not run the ZAP scan with this repository's
+  # settings; Semgrep and the tests still cover it). Since 2026-09-29 also the release security gate's checks on the
+  # built image (S4b-SEC-1, docs/06 section 11): Trivy on the image (TC-S-05) and the OWASP ZAP API scan of the
+  # running API (TC-S-04), both blocking.
   image:
     name: Build container image
     needs: verify
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions:

@@ -34,18 +34,21 @@
 #   - Java results are slightly less precise than a build-mode: manual analysis of a compiled backend. Accepted: a
 #     buildless run cannot be broken by a Maven/PostGIS problem, which keeps this workflow independent of backend.yml.
 #
-# Triggers: a push to ANY branch (since 2026-09-23, owner decision "be sure that the code is right before merging
-# into main"; buildless, so cheap; tag pushes do not trigger), the weekly schedule and manual runs. No path filter
-# on the trigger (the paths-ignore below only limits what is extracted). Deliberately NOT on pull_request: a
-# same-repository branch is analysed by its own push run (results appear under that branch in the Security tab);
-# fork pull requests get SAST from Semgrep in security.yml. Dependabot branch pushes get a read-only token by
-# default; GitHub documents that the workflow `permissions` key can raise it, so the job's explicit
-# security-events: write should allow the SARIF upload there too (not yet observed on a dependabot/** run).
+# Triggers: a push to main, a pull request to main from a branch of this repository, the weekly schedule and manual
+# runs (tag pushes do not trigger). Until 2026-09-29 every branch push ran it (owner decision of 2026-09-23, "be sure
+# that the code is right before merging into main"); since the delivery-speed review of 2026-09-29 (docs/14 §7)
+# the pull request run is that pre-merge signal, once per push instead of twice. No path filter on the trigger (the
+# paths-ignore below only limits what is extracted). Fork pull requests are skipped by the job's `if` (their token
+# is read-only, so the SARIF upload would fail); they get SAST from Semgrep in security.yml. Dependabot pull
+# requests get a read-only token by default; GitHub documents that the workflow `permissions` key can raise it, so
+# the job's explicit security-events: write should allow the SARIF upload there too (not yet observed).
 name: CodeQL
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
+  pull_request:
+    branches: [main]
   # Weekly, so new queries in the CodeQL bundle reach unchanged code. Monday 05:23 UTC, away from the other
   # scheduled workflows (security.yml runs at 04:17).
   schedule:
@@ -64,6 +67,8 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # Not for a fork's pull request: its token cannot upload SARIF (header).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     permissions:

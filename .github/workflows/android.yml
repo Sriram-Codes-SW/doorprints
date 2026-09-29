@@ -20,13 +20,14 @@ name: Android
 # Path filters cover every file the build and tests read, not only android/** (same rule as backend.yml).
 # The two lists below are identical and must stay that way (GitHub Actions does not support YAML anchors).
 #
-# Triggers (owner decision 2026-09-23, "be sure that the code is right before merging into main"): a push to ANY
-# branch that touches one of the paths below, a pull request to main (tests the merge result; also covers fork PRs)
-# and manual runs. Tag pushes do not trigger. With a pull request open, one push gives two runs (branch push +
-# pull_request); accepted (docs/07 section 3). The signing key is used on main only (release-signing-check below).
+# Triggers: a push to main that touches one of the paths below, a pull request to main (tests the merge result; also
+# covers fork PRs) and manual runs; tag pushes do not trigger. From 2026-09-23 to 2026-09-29 every branch push ran
+# it too (two runs per push with a pull request open); since the delivery-speed review of 2026-09-29 (docs/14 §7)
+# the pull request run alone is the pre-merge signal. The signing key is used on main only (release-signing-check
+# below).
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     paths:
       - "android/**"
       # The export/backup contract sample. Load-bearing: CanonicalSampleTest (app JVM unit tests) walks up to
@@ -178,7 +179,7 @@ jobs:
 
   # Only for a push to main or a manual run on main: never for pull requests and never for a push to (or a manual
   # run on) any other branch, because code that has not been merged into main must not run with the signing key.
-  # Since 2026-09-23 this workflow runs on every branch push, so the ref check is what keeps the key on main.
+  # The ref check is what keeps the key on main (this workflow also runs on pull requests and manual runs).
   # `secrets` cannot be used in a job-level `if`, so this job checks for them and the release job keys off its output
   # (skipped here => output empty => release skipped).
   release-signing-check:

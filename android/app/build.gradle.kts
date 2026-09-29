@@ -122,6 +122,9 @@ android {
     }
 }
 
+// See the robolectricRuntime dependency below and the unit-test system properties after it.
+val robolectricRuntime = configurations.create("robolectricRuntime") { isTransitive = false }
+
 dependencies {
     // Platform-neutral logic, DTOs and the Ktor API client (Sprint 3.5, see ../shared/README.md).
     implementation(project(":shared"))
@@ -164,6 +167,11 @@ dependencies {
     testImplementation(libs.junit)
     // Screenshot tests on the JVM (docs/06 TC-U-56): Robolectric renders the screens, Roborazzi compares them.
     testImplementation(libs.robolectric)
+    // Robolectric's Android image (android-all-instrumented for the SDK the screenshot tests run on, @Config(sdk)),
+    // as a Gradle dependency rather than Robolectric's own HTTP fetch at test time: the fetch has no cache the CI
+    // and session caches know, and failed once on 2026-09-29 (MavenArtifactFetcher, IOException). Copied into
+    // build/robolectric-deps and handed over with robolectric.offline (below).
+    robolectricRuntime(libs.robolectric.android.all)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
@@ -194,4 +202,16 @@ dependencies {
 // are pulled in the same way.
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
     dependsOn(":shared:testAndroidHostTest", ":ui:testAndroidHostTest")
+}
+
+// Robolectric offline (docs/06 TC-U-56): the android-all jar comes from the Gradle cache (robolectricRuntime), not
+// from an HTTP download while the tests run.
+val robolectricDeps = tasks.register<Copy>("copyRobolectricDeps") {
+    from(robolectricRuntime)
+    into(layout.buildDirectory.dir("robolectric-deps"))
+}
+tasks.withType<Test>().configureEach {
+    dependsOn(robolectricDeps)
+    systemProperty("robolectric.offline", "true")
+    systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric-deps").get().asFile.absolutePath)
 }
