@@ -23,8 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Live state shared between the background `HuntService` (`:app`) and the UI (the Map's Hunt card). Common since
- * CMP-7 (was in `:app`'s `location/HuntState.kt`), with its package kept, so the common Map reads it.
+ * Live state shared between [HuntEngine] (written by it, run by the platform's adapter: Android's `HuntService`) and
+ * the UI (the Map's Hunt card). Common since CMP-7 (was in `:app`'s `location/HuntState.kt`), with its package kept,
+ * so the common Map reads it.
  */
 object HuntState {
     /** Fixes worse than this (metres) are shown but never trigger alerts or visits; the Map calls such a fix weak. */
@@ -51,9 +52,9 @@ object HuntState {
         val stopReason: StopReason? = null,
     )
 
-    /** Why `HuntService` stopped without being asked to. */
+    /** Why Hunt mode stopped without being asked to ([HuntEngine], the adapter). */
     enum class StopReason {
-        /** The battery fell to `HuntService.LOW_BATTERY_PERCENT` and the phone was not charging. */
+        /** The battery fell to `HuntEngine.LOW_BATTERY_PERCENT` and the phone was not charging. */
         LOW_BATTERY,
 
         /** The location permission was missing or revoked. */
