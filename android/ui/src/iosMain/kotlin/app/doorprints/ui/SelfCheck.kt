@@ -5,6 +5,8 @@ import app.doorprints.data.KeychainSecretStore
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.app_name
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.getString
@@ -19,6 +21,9 @@ import kotlin.native.Platform
  * settings or reach the Keychain fails the build instead of the first tester. Only in a debug binary, and only with
  * the argument: a release build, or a normal launch, never runs it.
  *
+ * Since CMP-8c also the map: `indiaView` (the style the map is given keeps India's boundary rules) and `map` (the map on
+ * screen loaded all of it), the in-app boundary check that makes the iOS map's India view a CI gate.
+ *
  * Each check prints exactly one line, `DOORPRINTS-SELFCHECK <name> PASS`, `… FAIL <short reason>` or
  * `… SKIP <reason>`, then `DOORPRINTS-SELFCHECK done PASS` (every check passed or was skipped) or `done FAIL`. The
  * lines name the check and the error's type and message, never a key, a setting's value or a house.
@@ -32,6 +37,12 @@ private const val PREFIX = "DOORPRINTS-SELFCHECK"
 
 /** How long one check may take before it counts as failed (a first launch creates the database). */
 private const val CHECK_TIMEOUT_MS = 30_000L
+
+/**
+ * How long the map may take to show its style: the app starts on the Map, which downloads the base style, prepares it
+ * and hands it to MapLibre, while the other checks run.
+ */
+private const val MAP_TIMEOUT_MS = 90_000L
 
 /** A separate Keychain service, so the check never touches the app's API key item (`app.doorprints`). */
 private const val SELF_CHECK_SERVICE = "app.doorprints.selfcheck"
@@ -86,16 +97,20 @@ private suspend fun runSelfCheck() {
             Result.Pass
         },
         check("keychain") { keychainRoundTrip() },
+        // The in-app boundary check (CMP-8c; the owner's CI gate for the iOS map): the style the map gets has India's
+        // boundary as the Government of India shows it (IndiaViewCheck), and the map on screen loaded all of it.
+        check("indiaView") { indiaViewCheck() },
+        check("map", MAP_TIMEOUT_MS) { mapCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
 }
 
 /** Runs [block] under [CHECK_TIMEOUT_MS] and prints its line; a throw is a FAIL with the error's type and message. */
-private suspend fun check(name: String, block: suspend () -> Result): Result {
+private suspend fun check(name: String, timeoutMs: Long = CHECK_TIMEOUT_MS, block: suspend () -> Result): Result {
     // Shows where a check that ends the app (a native crash) stopped; the CI job looks only for done and SKIP lines.
     report(name, "START")
     val result = try {
-        withTimeout(CHECK_TIMEOUT_MS) { block() }
+        withTimeout(timeoutMs) { block() }
     } catch (e: CancellationException) {
         // withTimeout's own exception is a CancellationException: a timeout is a failure here, not a stop.
         Result.Fail("timed out or cancelled (${e::class.simpleName})")
@@ -135,6 +150,24 @@ private fun keychainRoundTrip(): Result {
         store.clear(settings)
     }
     return if (store.get(settings) == null) Result.Pass else Result.Fail("the value is still there after clear")
+}
+
+/**
+ * Downloads and prepares the map's style as the map does ([IosMapStyle.prepare]) and passes when [IndiaViewCheck] finds
+ * nothing wrong; the first problems are the FAIL reason (layer names only).
+ */
+private suspend fun indiaViewCheck(): Result {
+    val problems = IosMapStyle.prepare(MARKER_LABEL_SIZE_SP).problems
+    return if (problems.isEmpty()) Result.Pass else Result.Fail(problems.take(3).joinToString("; "))
+}
+
+/**
+ * Waits until the map on screen has loaded its style ([IosMapStyle.loadedProblems]) and passes when MapLibre kept every
+ * layer, in order, with the disputed lines hidden ([IndiaViewCheck.loadedProblems]).
+ */
+private suspend fun mapCheck(): Result {
+    val problems = IosMapStyle.loadedProblems.filterNotNull().first()
+    return if (problems.isEmpty()) Result.Pass else Result.Fail(problems.take(3).joinToString("; "))
 }
 
 /** The Keychain status in a [KeychainSecretStore] error ("… (status -34018)"), or null. */

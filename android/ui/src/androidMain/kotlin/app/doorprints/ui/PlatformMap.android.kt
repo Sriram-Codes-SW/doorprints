@@ -24,8 +24,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.doorprints.data.HouseEntity
 import kotlin.math.hypot
-import org.json.JSONArray
-import org.json.JSONObject
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdate
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -42,35 +40,6 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Point
-
-/**
- * Free vector map tiles from OpenFreeMap (OpenStreetMap data) — no API key or billing needed. Every load of it goes
- * through [applyIndiaView] (India's boundary as the Government of India shows it; IndiaViewRules), so any new place
- * that loads a style must call it too.
- */
-const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
-
-private const val SOURCE = "houses"
-private const val DOTS = "houses-dots"
-private const val LABELS = "houses-labels"
-
-fun housesGeoJson(houses: List<HouseEntity>): String {
-    val features = JSONArray()
-    houses.forEach { h ->
-        features.put(
-            JSONObject()
-                .put("type", "Feature")
-                .put("geometry", JSONObject().put("type", "Point").put("coordinates", JSONArray().put(h.lon).put(h.lat)))
-                .put(
-                    "properties",
-                    JSONObject().put("id", h.id).put("label", h.label).put("status", h.status.name)
-                        // For the label layer's Indic filter (MAP_LABELS_SHOW_INDIC, device check 21 (d)).
-                        .put("indic", hasIndicScript(h.label)),
-                )
-        )
-    }
-    return JSONObject().put("type", "FeatureCollection").put("features", features).toString()
-}
 
 /**
  * The Map's view on Android (ADR-23 CMP-7): MapLibre Native's [MapView] (the OpenGL ES build) in an [AndroidView],
@@ -117,13 +86,13 @@ actual fun PlatformMap(
     }
 
     LaunchedEffect(style, labelSizeSp) {
-        val labels = style?.getLayer(LABELS) as? SymbolLayer ?: return@LaunchedEffect
+        val labels = style?.getLayer(HOUSE_LABELS_LAYER) as? SymbolLayer ?: return@LaunchedEffect
         labels.setProperties(PropertyFactory.textSize(labelSizeSp))
     }
 
     // Keep the markers in sync with the database.
     LaunchedEffect(style, houses) {
-        (style?.getSource(SOURCE) as? GeoJsonSource)?.setGeoJson(housesGeoJson(houses))
+        (style?.getSource(HOUSES_SOURCE) as? GeoJsonSource)?.setGeoJson(housesGeoJson(houses))
     }
 
     // Show the blue "you are here" dot once we have permission.
@@ -171,7 +140,7 @@ actual fun PlatformMap(
                             screen.x + hitRadiusPx, screen.y + hitRadiusPx,
                         )
                         // The marker nearest the finger, when several are inside the 48 dp square.
-                        val hit = m.queryRenderedFeatures(area, DOTS, LABELS).minByOrNull { f ->
+                        val hit = m.queryRenderedFeatures(area, HOUSE_DOTS_LAYER, HOUSE_LABELS_LAYER).minByOrNull { f ->
                             (f.geometry() as? Point)?.let { pt ->
                                 val at = m.projection.toScreenLocation(LatLng(pt.latitude(), pt.longitude()))
                                 hypot((at.x - screen.x).toDouble(), (at.y - screen.y).toDouble())
@@ -228,7 +197,7 @@ private class MapLibreControl(private val m: MapLibreMap, private val reload: ()
 }
 
 private fun addHouseLayers(style: Style, labelSizeSp: Float) {
-    style.addSource(GeoJsonSource(SOURCE, housesGeoJson(emptyList())))
+    style.addSource(GeoJsonSource(HOUSES_SOURCE, housesGeoJson(emptyList())))
     val statusColor = Expression.match(
         Expression.get("status"),
         Expression.literal("SHORTLISTED"), Expression.color(MarkerColors.SHORTLISTED),
@@ -251,7 +220,7 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
         *MARKER_RADII.map { r -> Expression.stop(r.zoom, byStatus(r.shortlisted, r.rejected, r.new)) }.toTypedArray(),
     )
     style.addLayer(
-        CircleLayer(DOTS, SOURCE).withProperties(
+        CircleLayer(HOUSE_DOTS_LAYER, HOUSES_SOURCE).withProperties(
             PropertyFactory.circleRadius(radius),
             PropertyFactory.circleColor(statusColor),
             PropertyFactory.circleStrokeWidth(
@@ -277,7 +246,7 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
     // follows the font scale up to 1.5× (markerLabelSizeSp, set again on resume by MapScreen; round 6, WCAG 1.4.4),
     // and a long name wraps after 8 ems.
     style.addLayer(
-        SymbolLayer(LABELS, SOURCE).withProperties(
+        SymbolLayer(HOUSE_LABELS_LAYER, HOUSES_SOURCE).withProperties(
             PropertyFactory.textField(Expression.get("label")),
             PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
             PropertyFactory.textSize(labelSizeSp),
