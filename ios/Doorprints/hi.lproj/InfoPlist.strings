@@ -19,3 +19,4 @@
 /* Hindi, under review (owner rule for hi, ta and te). The English texts (en.lproj) in the words of values-hi/strings.xml. */
 "NSLocationWhenInUseUsageDescription" = "Doorprints आपकी जगह का इस्तेमाल सहेजे गए मकानों की जगह दर्ज करने और आपकी जगह से दौरों की योजना बनाने के लिए करता है।";
 "NSLocalNetworkUsageDescription" = "जब आपका अपना Doorprints सर्वर आपके लोकल नेटवर्क पर हो, तो Doorprints उससे जुड़ता है।";
+"NSFaceIDUsageDescription" = "ऐप लॉक चालू होने पर Doorprints ऐप खोलने के लिए Face ID का इस्तेमाल करता है।";

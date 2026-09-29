@@ -50,10 +50,13 @@ fun MainViewController(): UIViewController {
             LocalAppServices provides services,
             LocalPlatformFeatures provides PlatformFeatures.Ios,
         ) {
-            DoorprintsRoot(
-                deepLinks = deepLinks,
-                onDeepLinkHandled = { deepLinks.value = null },
-            )
+            // The app lock (docs/11 5.19) around everything, as on Android.
+            AppLockHost {
+                DoorprintsRoot(
+                    deepLinks = deepLinks,
+                    onDeepLinkHandled = { deepLinks.value = null },
+                )
+            }
         }
     }
 }

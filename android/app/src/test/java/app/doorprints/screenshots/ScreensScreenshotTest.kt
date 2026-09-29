@@ -18,6 +18,7 @@
 
 package app.doorprints.screenshots
 
+import android.app.KeyguardManager
 import android.os.LocaleList
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,10 @@ import androidx.compose.ui.unit.dp
 import app.doorprints.data.AiProviderChoice
 import app.doorprints.data.AppSettings
 import app.doorprints.ui.AiSettingsSection
+import app.doorprints.ui.AppLockSection
+import app.doorprints.ui.LockScreenContent
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -196,6 +201,24 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             val settings by repo.settings.settings.collectAsState(AppSettings())
             val off by repo.aiOff.collectAsState()
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+        }
+    }
+    /**
+     * The app lock (docs/11 5.19): Settings' *Lock Doorprints* turned on, with its times, and under it the lock screen's
+     * text and *Unlock* after a cancelled try. One shot for both, to keep the image set small.
+     */
+    @Test fun appLock() {
+        val context = ApplicationProvider.getApplicationContext<DoorprintsApp>()
+        shadowOf(context.getSystemService(KeyguardManager::class.java)).setIsDeviceSecure(true)
+        val repo = context.container.repository
+        runBlocking { repo.settings.saveAppLock(true) }
+        shoot("app_lock") {
+            val settings by repo.settings.settings.collectAsState(AppSettings())
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AppLockSection(settings)
+                HorizontalDivider()
+                LockScreenContent(failed = true, onUnlock = {}, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
+            }
         }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }

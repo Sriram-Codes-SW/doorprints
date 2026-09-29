@@ -254,6 +254,25 @@ class SettingsStoreTest {
         )
         assertEquals("settings", SettingsStore.FILE_NAME)
     }
+
+    @Test
+    fun theAppLockIsOffUntilTurnedOnAndKeepsOnlyKnownTimes() = runTest {
+        assertFalse(store.current().appLock)
+        assertEquals(60, store.current().appLockAfterSeconds)
+        store.saveAppLock(true)
+        store.saveAppLockAfter(300)
+        assertTrue(store.current().appLock)
+        assertEquals(300, store.current().appLockAfterSeconds)
+        // Stored names: an upgraded install reads them unchanged.
+        assertEquals(true, raw()["appLock"])
+        assertEquals(300, raw()["appLockAfterSeconds"])
+        // A time that is not one of the choices (an edited or future file) reads as the default.
+        store.saveAppLockAfter(42)
+        assertEquals(60, store.current().appLockAfterSeconds)
+        store.saveAppLockAfter(0)
+        assertEquals(0, store.current().appLockAfterSeconds)
+        assertEquals(AppLockSetting(on = true, afterSeconds = 0), store.appLockSetting.first())
+    }
 }
 
 /** A made-up key, built at run time so no key-like literal is committed (docs/07, secret scan). */
