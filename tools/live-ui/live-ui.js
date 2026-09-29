@@ -125,7 +125,11 @@ function watch(page) {
   page.on('response', (r) => {
     const url = r.url();
     if (!url.startsWith(BASE) || url.includes('does-not-exist')) return;
-    if (r.request().isNavigationRequest() && r.request().frame() === page.mainFrame()) return; // gotoRetry's
+    if (r.request().isNavigationRequest() && r.request().frame() === page.mainFrame()) {
+      // gotoRetry loads it again and records it; only Chromium's console echo of the 50x is dropped here.
+      if (r.status() >= 502 && r.status() <= 504) cleared5xx++;
+      return;
+    }
     const status = r.status();
     const type = expectedType(url);
     const got = r.headers()['content-type'] || '';
