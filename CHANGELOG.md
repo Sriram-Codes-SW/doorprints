@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **A real-key check of the own-key AI** ([test plan](docs/06-test-plan.md) TC-U-88): the manual *AI evals* workflow
+  now also runs one real Extract, Ask and Plan through the phones' and the website's own-key AI with the `AI_API_KEY`
+  secret, and checks that no saved contact details are sent.
 - **AI without a server, with your own Gemini key, on the website** ([design](docs/03-design.md) §13.1, ADR-26):
   *Connect* → *AI features* → *Use my own Gemini key in this browser*, shown with or without a server. The browser
   asks Google Gemini itself, with a TypeScript port of the same core (held to the server's answers by the same test
