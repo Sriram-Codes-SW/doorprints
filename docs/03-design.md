@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.43 |
+| Version | 0.44 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -55,6 +55,7 @@
 | 0.41 | 2026-09-29 | Claude (Code), lead | §13.1: on-device AI as built on Android and iPhone (own key slot, provider choice, *AI features* in Settings). |
 | 0.42 | 2026-09-29 | Claude (Code), lead | §13.1: on-device AI as built on the website (TypeScript core, `OnDeviceAiService`, the *AI features* card on *Connect*). |
 | 0.43 | 2026-09-29 | Claude (Code), lead | **`HuntEngine`** in `:shared` commonMain (Sprint 4b, owner request "add Hunt mode to iOS as well"): Hunt mode's rules moved out of Android's `HuntService`, which keeps only the foreground service, the fused location client, the battery, the geocoder and the alerts' wording (`HuntEffects`); no behaviour change. The component table and §7 follow. |
+| 0.44 | 2026-09-29 | Claude (Code), lead | **The path trace** (S4b-FR-2, [11](11-feature-parity-and-export-spec.md) 5.27) inside `HuntEngine`: `TrackRecorder` (20 m or 5 min thinning), `track_points` (Room version 3, `MIGRATION_2_3`), the map's line layer built once in `MapStyleJson` (`trackLayerJson`, under the houses) for both phones; never in a backup, a copy or the sync. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -231,6 +232,7 @@ flowchart TB
 | `SettingsScreen` | `:ui` commonMain (since CMP-5) | Server URL (HTTPS check, `ServerUrl`), API key (masked hint, blank keeps the saved key), Save and test, Sync now, last sync result (translated `SyncOutcome`), photos only on Wi-Fi, language picker (`i18n/AppLocale`), Hunt settings, privacy note |
 | `AssistantScreen` | `:ui` commonMain (since CMP-5; a common `AssistantViewModel`) | Ask (answer without `[house:id]` markers, cited houses as cards) and Plan visits (stops in order with leg distance and time) |
 | `HuntEngine` | `:shared` `app.doorprints.location.HuntEngine` (since 2026-09-29) | Hunt mode's rules in common code, so the iPhone gets them from the same engine: a fix's meaning (the accuracy gate, the nearest house and the alert radius with its 30-minute repeat, the street alert through `StreetAlerts` with the platform's `StreetLookup` asked at most every 45 s or 80 m, the stay through `StayDetector` and its visit, the walking or staying fix rate, the low-battery stop). Reads `HuntData` (the part of `Repository` it needs) and a `BatteryReader`; asks the platform for the alerts and the fix rate through `HuntEffects`; keeps `HuntState`. Unit-tested with fakes in `commonTest` (`HuntEngineTest`, [06](06-test-plan.md) TC-U-92). |
+| `TrackRecorder`, `TrackDao` | `:shared` `location/HuntEngine.kt`, `data/AppDatabase.kt` (since 2026-09-29) | The path trace ([11](11-feature-parity-and-export-spec.md) 5.27): while `Settings.pathTrace` is on, the engine keeps a fix that passed the accuracy gate when it is the first, 20 m from the last kept or 5 minutes after it; `track_points` (id, at, lat, lon, accuracyM; index on `at`) is local only, pruned to 30 days at each Hunt start, cleared from Settings; the Map draws `Repository.trackPoints` through `trackGeoJson` (one line per walk, split at 30-minute gaps) into the `track` source and `track-line` layer that `prepareMapStyle` puts under the houses (Android builds the same layer in `PlatformMap.android.kt`) |
 | `HuntService` | `location/HuntService.kt` (Android; the iOS adapter is S4b-BL-69) | The platform around `HuntEngine`: the foreground service (location type) and its notification, the fused location client (15 s walking, 60 s staying), the battery reading, `ReverseGeocoder`, and the alerts as notifications with their wording. Section 7.2, 7.3, 8.2 |
 | `StayDetector`, `StreetAlerts`, `Geo` | `:shared` `app.doorprints.shared.location` | Pure stay logic, street-alert rule and haversine distance (`Geo.distanceM`), unit-tested in `commonTest` (section 4.2.1) |
 | `ReverseGeocoder` | `location/ReverseGeocoder.kt` | Android Geocoder wrapper (API 33+ async), 10 s limit |

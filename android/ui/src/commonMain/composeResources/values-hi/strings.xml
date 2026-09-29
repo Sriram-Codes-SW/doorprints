@@ -629,4 +629,9 @@
     <string name="settings_app_lock_1m">1 मिनट</string>
     <string name="settings_app_lock_5m">5 मिनट</string>
     <string name="settings_app_lock_15m">15 मिनट</string>
+    <!-- S4b-FR-2, the path trace (2026-09-29): under review. -->
+    <string name="settings_path_trace">नक़्शे पर मेरा रास्ता दिखाएँ</string>
+    <string name="settings_path_trace_hint">हंट मोड चालू रहते आप जहाँ चले, उसे रखें और नक़्शे पर बनाएँ, ताकि दिखे कि कौन-सी गलियाँ हो चुकीं। सिर्फ़ इसी फ़ोन पर रहता है: न बैकअप में, न कॉपी में, न सर्वर पर; 30 दिन बाद मिट जाता है।</string>
+    <string name="settings_path_trace_clear">रास्ता मिटाएँ</string>
+    <string name="settings_path_trace_cleared">रास्ता मिटा दिया गया।</string>
 </resources>

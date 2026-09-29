@@ -35,6 +35,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.TrackPointEntity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -55,6 +56,7 @@ import kotlinx.coroutines.launch
 @Composable
 actual fun PlatformMap(
     houses: List<HouseEntity>,
+    track: List<TrackPointEntity>,
     labelSizeSp: Float,
     showLocation: Boolean,
     attribution: MapAttribution,
@@ -143,6 +145,10 @@ actual fun PlatformMap(
 
     LaunchedEffect(styleLoaded, houses) {
         if (styleLoaded) map.setHouses(housesGeoJson(houses))
+    }
+
+    LaunchedEffect(styleLoaded, track) {
+        if (styleLoaded) map.setTrack(trackGeoJson(track))
     }
 
     LaunchedEffect(styleLoaded, labelSizeSp) {

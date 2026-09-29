@@ -187,6 +187,23 @@ interface PhotoDao {
     suspend fun liveForHouse(houseId: String): List<PhotoEntity>
 }
 
+@Dao
+interface TrackDao {
+    /** The trace of the last days, oldest first, for the map's line (docs/11 5.27). */
+    @Query("SELECT * FROM track_points WHERE at >= :since ORDER BY at")
+    fun observeSince(since: Long): Flow<List<TrackPointEntity>>
+
+    @Insert
+    suspend fun insert(point: TrackPointEntity)
+
+    /** The retention limit: points older than [before] go. */
+    @Query("DELETE FROM track_points WHERE at < :before")
+    suspend fun deleteBefore(before: Long)
+
+    @Query("DELETE FROM track_points")
+    suspend fun deleteAll()
+}
+
 // Room KMP since CMP-4 P4a (ADR-23): this file moved from :app to :shared commonMain with its package, tables,
 // columns, version and migration unchanged. Every DAO function is suspend or returns a Flow, as common code requires.
 // exportSchema (Sprint 3.5): Room writes shared/schemas/app.doorprints.data.AppDatabase/<version>.json on every build
@@ -194,13 +211,18 @@ interface PhotoDao {
 // so a change to the table layout fails the unit tests instead of crashing upgraded installs with "Room cannot verify
 // the data integrity". The builders are per platform: :app's data/AppDatabaseFactory.kt (the Context, the file name
 // through DatabaseFile, the framework SQLite) and iosMain's AppDatabaseIos.kt (the bundled driver).
-@Database(entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class], version = 2, exportSchema = true)
+@Database(
+    entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class],
+    version = 3,
+    exportSchema = true,
+)
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun houses(): HouseDao
     abstract fun visits(): VisitDao
     abstract fun photos(): PhotoDao
+    abstract fun track(): TrackDao
 
     companion object {
         /**
@@ -219,7 +241,18 @@ abstract class AppDatabase : RoomDatabase() {
          * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
          * and pins its `<version>.json` in `RoomSchemaTest`.
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        /** v3 (S4b-FR-2, 2026-09-29): the path trace's `track_points`, a local-only table (never synced). */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `track_points` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`at` INTEGER NOT NULL, `lat` REAL NOT NULL, `lon` REAL NOT NULL, `accuracyM` REAL NOT NULL)",
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_track_points_at` ON `track_points` (`at`)")
+            }
+        }
+
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
     }
 }
 

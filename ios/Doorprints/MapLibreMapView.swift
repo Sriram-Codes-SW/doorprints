@@ -37,6 +37,7 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
     /// Half of a 48 pt touch target: a tap anywhere within it hits the nearest marker (as MARKER_HIT_RADIUS_DP).
     private static let hitRadius: CGFloat = 24
     private static let housesSource = "houses"
+    private static let trackSource = "track"
     private static let houseLayers: Set<String> = ["houses-dots", "houses-labels"]
     /// What the view shows until Kotlin hands over the prepared style: nothing. `MLNMapView(frame:)` alone would load
     /// MapLibre's demo style, whose borders ignore India's boundary rules (ADR-22) until Liberty replaces it.
@@ -83,6 +84,11 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
 
     func setHouses(geoJson: String) {
         guard let source = mapView.style?.source(withIdentifier: Self.housesSource) as? MLNShapeSource else { return }
+        source.shape = try? MLNShape(data: Data(geoJson.utf8), encoding: String.Encoding.utf8.rawValue)
+    }
+
+    func setTrack(geoJson: String) {
+        guard let source = mapView.style?.source(withIdentifier: Self.trackSource) as? MLNShapeSource else { return }
         source.shape = try? MLNShape(data: Data(geoJson.utf8), encoding: String.Encoding.utf8.rawValue)
     }
 

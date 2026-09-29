@@ -35,8 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.doorprints.data.AiProviderChoice
 import app.doorprints.data.AppSettings
+import app.doorprints.data.TrackPointEntity
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppLockSection
+import app.doorprints.ui.PathTraceSection
 import app.doorprints.ui.LockScreenContent
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.HorizontalDivider
@@ -219,6 +221,18 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 HorizontalDivider()
                 LockScreenContent(failed = true, onUnlock = {}, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
             }
+        }
+    }
+    /** The path trace (docs/11 5.27): its switch on, with a kept point so *Clear the path* shows. */
+    @Test fun huntTrace() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            repo.settings.savePathTrace(true)
+            repo.saveTrackPoint(TrackPointEntity(at = System.currentTimeMillis(), lat = 12.97, lon = 77.64, accuracyM = 8f))
+        }
+        shoot("hunt_trace") {
+            val settings by repo.settings.settings.collectAsState(AppSettings())
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { PathTraceSection(settings) }
         }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
