@@ -19,6 +19,7 @@
 package app.doorprints.data
 
 import android.util.Log
+import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.api.AndroidApiHttp
 import app.doorprints.shared.api.ApiClient
 import io.ktor.client.HttpClient
@@ -41,4 +42,7 @@ object Api {
         // Status, method and path only (never bodies or the key); visible with `adb shell setprop log.tag.DoorprintsApi DEBUG`.
         debugLog = { message -> if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, message) },
     )
+
+    /** Gemini with the person's own key, for on-device AI (docs/03 §13.1), on the same pool. Nothing is logged. */
+    fun gemini(apiKey: String): GeminiClient = GeminiClient(http, apiKey)
 }

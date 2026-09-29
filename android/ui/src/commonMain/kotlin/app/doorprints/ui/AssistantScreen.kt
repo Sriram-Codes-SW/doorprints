@@ -653,8 +653,10 @@ fun aiErrorText(): (Throwable) -> String {
     val down = stringResource(Res.string.ai_provider_down)
     val offline = stringResource(Res.string.ai_offline)
     val generic = stringResource(Res.string.ai_error)
+    val keyRejected = stringResource(Res.string.ai_key_rejected)
     return { e ->
         when {
+            e is ApiException && e.kind == ApiException.Kind.AI_KEY_REJECTED -> keyRejected
             e is ApiException && e.kind == ApiException.Kind.RATE_LIMITED ->
                 formatPositional(rate, e.retryAfterSeconds ?: 60L)
             e is ApiException && e.kind == ApiException.Kind.AI_UNAVAILABLE -> down

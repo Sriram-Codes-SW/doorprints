@@ -677,29 +677,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             horizontalPadding = 0.dp,
             onChange = { scope.launch { repo.settings.savePhotosOnWifiOnly(it) } },
         )
-        if (settings.serverConfigured) {
-            // This phone's own AI switch (docs/03 §12.1): off until the person turns it on, after reading what is
-            // sent. AI shows only when it, the server and the owner's switch for this device are all on.
-            SwitchRow(
-                text = stringResource(Res.string.settings_ai_switch),
-                hint = stringResource(Res.string.settings_ai_hint),
-                checked = settings.aiFeatures,
-                horizontalPadding = 0.dp,
-                onChange = { on -> scope.launch { repo.setAiFeatures(on) } },
-            )
-            if (settings.aiFeatures) {
-                Text(
-                    stringResource(
-                        when (aiOff) {
-                            AiOff.DEVICE -> Res.string.ai_off_for_device
-                            AiOff.SERVER, AiOff.NO_SERVER -> Res.string.settings_ai_server_off
-                            AiOff.OPT_IN, null -> Res.string.settings_ai_on
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
+
+        HorizontalDivider()
+        // AI features (docs/03 §12.1, §13.1): this phone's switch, and who answers: the server or the person's own key.
+        AiSettingsSection(settings, aiOff)
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))
@@ -829,7 +810,7 @@ private fun NavRow(title: String, hint: String, onClick: () -> Unit) {
 }
 
 /** Material's "visibility" glyph (an eye), built from its path: the core icon set has none. */
-private val VisibilityIcon: ImageVector by lazy {
+internal val VisibilityIcon: ImageVector by lazy {
     ImageVector.Builder(name = "Visibility", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
         .addPath(
             pathData = addPathNodes(
@@ -842,7 +823,7 @@ private val VisibilityIcon: ImageVector by lazy {
 }
 
 /** Material's "visibility off" glyph (an eye struck through). */
-private val VisibilityOffIcon: ImageVector by lazy {
+internal val VisibilityOffIcon: ImageVector by lazy {
     ImageVector.Builder(name = "VisibilityOff", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
         .addPath(
             pathData = addPathNodes(
