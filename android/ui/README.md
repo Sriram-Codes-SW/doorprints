@@ -159,7 +159,7 @@ in steps that each build and pass ([docs/10](../../docs/10-sprint-log.md) §13).
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | **Done in code** (PR #24, `84fa735`, `13091ac`; one combined change with P6 and P7, [docs/10](../../docs/10-sprint-log.md) §13.9) |
 | P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | **Done in code** (PR #24, `f7e9ecd`, `7e73411`, `cff4a63`) |
 | P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | **Done in code** (PR #24, `e2b163c`; the iOS map view is CMP-8; the TC-M-25 device run by the owner after CMP-8) |
-| P8 | CMP-8 | iOS shell (`iosApp`, `ComposeUIViewController`, MapLibre iOS via SPM), simulator build on macOS CI, unsigned | **8a merged** (PR #29, the simulator tests); **8b done in code** (the app shell: `DoorprintsKit`, `MainViewController`, the iOS services, `ios/`, [docs/10](../../docs/10-sprint-log.md) §13.12); 8c (the map) planned |
+| P8 | CMP-8 | iOS shell (`iosApp`, `ComposeUIViewController`, MapLibre iOS via SPM), simulator build on macOS CI, ad-hoc signed (no identity or Apple account) | **8a merged** (PR #29, the simulator tests); **8b done in code** (the app shell: `DoorprintsKit`, `MainViewController`, the iOS services, `ios/`, [docs/10](../../docs/10-sprint-log.md) §13.12); 8c (the map) planned |
 | Spike | CMP-9 | maplibre-compose (0.17, pre-1.0); re-assess at 1.0 | Planned |
 
 Out of scope until there is a Mac and a paid Apple Developer account (about US$99 a year, against the zero-cost

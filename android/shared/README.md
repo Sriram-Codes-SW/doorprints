@@ -260,7 +260,9 @@ OkHttp or MapLibre version, see section 4):
 4. **iOS app**: SwiftUI over the shared module (SKIE or plain Kotlin/Native framework), or Compose Multiplatform
    if the Compose UI is to be shared. Decide when a Mac and the Apple Developer Program are available; until then
    only the compile-only check runs. **Done in CMP-8b** with Compose Multiplatform: `iosMain` has `ktor-client-darwin`
-   (`IosApiHttp`, 90 s per request; App Transport Security at its default, so the server must be `https://`).
+   (`IosApiHttp`, 90 s per request; App Transport Security at its default, so a server with a domain name must be
+   `https://`; one on a LAN IP address or a `.local` name is not covered by ATS and connects without TLS, as on
+   Android).
 5. **iOS platform services**: location via `CLLocationManager` (significant-change + region monitoring feeding the
    shared `StayDetector` and `StreetAlerts`), reverse geocoding via `CLGeocoder`, background sync via
    `BGTaskScheduler`, reachability via `NWPathMonitor` (captive-portal detection stays in the shared client).
