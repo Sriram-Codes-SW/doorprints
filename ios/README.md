@@ -41,17 +41,22 @@ languages) into the app as `compose-resources/`. It takes JDK 21 from `JAVA_HOME
 (Apple silicon Macs); Kotlin has no x86_64 simulator target here.
 
 **Self-check.** A Debug build started with the argument `-DoorprintsSelfCheck` (in Xcode: Edit Scheme, Run,
-Arguments) prints `DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...` for resources, database, settings and keychain,
-and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`, to the console and to the unified log (`NSLog`).
+Arguments) prints `DOORPRINTS-SELFCHECK <name> PASS|FAIL|SKIP ...` for resources, database, settings, keychain, `indiaView`
+and `map` (CMP-8c: the map's style keeps India's boundary rules, and the map on screen loaded all of it), and then `DOORPRINTS-SELFCHECK done PASS` or `done FAIL`, to the console and to the unified log (`NSLog`).
 
 ## What iOS does not have yet
 
-Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the Hunt card, the camera and
-gallery, *Save a copy*, *Import a backup*, the weekly backup and every *Add a house on the map* or *Go to the map*
-button. The app opens on the Houses tab; the Map tab stays, with its title and a note, until CMP-8c (MapLibre iOS
-with the India view). An empty house list says that houses cannot be added on iPhone yet and that a connected server
-brings them, with *Open Settings*. Hindi, Tamil and Telugu strings, the purpose strings included
+Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): Hunt mode (the Map shows no Hunt
+card, only the location note), the camera and gallery, *Save a copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
+
+## The map (CMP-8c)
+
+MapLibre iOS 6.31.0 from MapLibre's Swift package, pinned by commit in `project.yml` (Xcode resolves it on the first
+build). `Doorprints/MapLibreMapView.swift` wraps `MLNMapView` behind the Kotlin interfaces of `IosMap.kt`; Kotlin
+downloads the OpenFreeMap Liberty style, applies India's boundary rules to its JSON with the same common steps as
+Android (`prepareMapStyle`, ADR-22) and hands MapLibre the finished style, so Swift never touches a filter. The
+boundary files are Android's own (`android/app/src/main/assets/geo`), bundled as `geo/`. `docs/10` §13.13.
 
 ## CI
 
