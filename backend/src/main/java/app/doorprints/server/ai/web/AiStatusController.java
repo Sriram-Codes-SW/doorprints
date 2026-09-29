@@ -22,6 +22,9 @@ import app.doorprints.server.ai.config.AiProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import app.doorprints.server.config.ApiKeyFilter;
+import app.doorprints.server.device.DeviceKeyStore;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Always available so the web and Android apps can decide whether to show AI features. Reveals no secrets
@@ -30,7 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AiStatusController {
 
-    public record AiStatus(boolean enabled, boolean mcpEnabled, String chatModel, String embeddingModel) {
+    /** {@code offForDevice}: AI is on, but the owner turned it off for the calling device (docs/03 §12.1). */
+    public record AiStatus(boolean enabled, boolean mcpEnabled, String chatModel, String embeddingModel,
+                           boolean offForDevice) {
     }
 
     private final AiStatus status;
@@ -44,11 +49,15 @@ public class AiStatusController {
         // The provider itself is not exposed (the response shape is shared with the web and Android apps).
         var chatModel = AiProperties.VERTEX.equals(AiProperties.normalizeProvider(provider)) ? vertexChatModel
                 : openAiChatModel;
-        this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null);
+        this.status = new AiStatus(enabled, mcpEnabled, enabled ? chatModel : null, enabled ? embeddingModel : null, false);
     }
 
     @GetMapping("/api/ai/status")
-    public AiStatus status() {
+    public AiStatus status(HttpServletRequest request) {
+        if (status.enabled() && request.getAttribute(ApiKeyFilter.DEVICE_ATTRIBUTE) instanceof DeviceKeyStore.Caller c
+                && !c.aiAllowed()) {
+            return new AiStatus(false, status.mcpEnabled(), null, null, true);
+        }
         return status;
     }
 }

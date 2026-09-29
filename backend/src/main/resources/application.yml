@@ -152,6 +152,12 @@ app:
   # http://localhost:4200,https://doorprints.web.app for the dev server plus the live web app on Firebase Hosting.
   # The default stays the dev server only: a server should allow the public site by choice (see docker-compose.yml).
   cors-origins: ${APP_CORS_ORIGINS:http://localhost:4200}
+  # The web app's address, for the owner page's connect links and QR codes (docs/03 §12.1).
+  web-url: ${APP_WEB_URL:https://doorprints.web.app}
+  # Pairing and signing in to the owner page need no key, so they get their own limit per client address.
+  pairing:
+    requests-per-minute: ${PAIRING_RATE_LIMIT_PER_MINUTE:40}
+    burst: ${PAIRING_RATE_LIMIT_BURST:20}
   rate-limit:
     # Per client address, all paths except /actuator/health (429 + Retry-After when exceeded).
     requests-per-minute: ${RATE_LIMIT_PER_MINUTE:600}
