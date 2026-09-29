@@ -69,11 +69,15 @@ section is only today's state. Earlier versions of this file (git history) carry
 - **Optimisation review merged** (#54: the reindex's N+1 visit query, a tombstone-id query, fewer full IndexedDB reads
   and sorts on the website; backend `mvn verify` 315 tests and web 554 tests passed locally before the push).
 - **This file's pull request (#55)** is the last of the session; if it is still open, merge it when green.
-- **Last live UI test** (after the #54 deploy, 2026-09-29): 1 950 checks passed (pages 720, i18n 240, theme 144, a11y
-  144, console 354, flows 12, pwa 4, map 22, mobile 310); one stylesheet came back as `text/plain` through this
-  session's proxy (as on 2026-09-28), and the mobile area was cut short by the session's 25-minute limit. Both are
-  fixed in the live UI test since (`fix/live-ui-network-faults`): such network faults are fetched again and reported
-  under `transient`, not counted, and the areas run side by side (about 12-15 minutes).
+- **Second efficiency pass merged** (#57): one language downloaded at a time and MapLibre's CSS with the first map
+  (first download 782 -> 488 KB), house checklists batch-fetched, npm cache in CI, Gradle parallel. The live UI test's
+  network-fault handling is in #56 (and this file's pull request adds dropped connections).
+- **Last live UI test** (after the #57 deploy, 2026-09-29, 1 007 s): **1 996 of 1 997** passed (pages 720, i18n 240,
+  theme 144, a11y 144, console 365, flows 12, pwa 4, map 23, mobile 323). The fault handling worked: `maplibre.css`
+  came back as `text/plain` through the proxy, was fetched again and its page reloaded. The one failure was a request
+  the proxy reset (`net::ERR_CONNECTION_RESET`, no response at all), which the test did not know yet; it now treats a
+  dropped connection the same way (fetched again; counted only if it fails twice), checked with a local server that
+  drops the first chunk request (reported, not counted) and one that always drops a chunk (fails).
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md).
