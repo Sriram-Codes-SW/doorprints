@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.77 |
+| Version | 0.78 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -89,6 +89,7 @@
 | 0.75 | 2026-09-29 | Claude (Code), lead | ADR-26 on the website merged (#52). The manual *AI evals* workflow gains *On-device AI, real key* (TC-U-88), asked for by the owner. |
 | 0.76 | 2026-09-29 | Claude (Code), lead | Optimisation review (owner request): PR #54 (the reindex's N+1 visit query, a tombstone-id query, fewer full IndexedDB reads and sorts on the web); new **S4b-BL-66** (photo reads). |
 | 0.77 | 2026-09-29 | Claude (Code), lead | Second efficiency pass (owner request): house checklists batch-fetched (no N+1), the web loads one language at a time and MapLibre's CSS with the first map (initial download 782 -> 488 KB), npm cache in CI (C-01 done), Gradle parallel, the live UI test reloads a page a network fault left half loaded. |
+| 0.78 | 2026-09-29 | Claude (Code), lead | §15: new S4b-FR-5..12 from the owner's decision D-30 (app lock, offline maps, real cost, my places, area notes, moving in, brokers; voice notes parked). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -2313,7 +2314,7 @@ instrumented tests on an emulator (`android-emulator.yml`) and the live web UI t
 
 ## 15. Owner feature requests of 2026-09-28
 
-After S4b-BL-32 and CMP-8, in this order (owner, 2026-09-28). Each follows the design-first step of §12
+After S4b-BL-32 and CMP-8, in this order (owner, 2026-09-28). S4b-FR-5..12 are the owner's decision D-30 of 2026-09-29 ([11](11-feature-parity-and-export-spec.md) 5.19..5.26); the order of all of them is [14](14-lead-backlog-and-handoff.md) N13. Each follows the design-first step of §12
 (Design Director and UX lead first, all four languages, both themes, loading, empty and error states), on web and
 Android alike, and keeps the owner rules (zero cost; no public server until the release security gate passes).
 
@@ -2323,6 +2324,14 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is geospatial data under the DST guidelines of 2021 (phone accuracy, coarser than their 1 m threshold, so no storage rule applies; [03](03-design.md) §11.1) and location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | Planned |
 | S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | Planned |
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
+| S4b-FR-5 | **App lock** on the phones: PIN, fingerprint or face, with the phone's own credential ([11](11-feature-parity-and-export-spec.md) 5.19, D-30). | With Google sign-in (N13 3b); threat-model item for a lost or shared phone; emulator test and a device check. | Planned |
+| S4b-FR-6 | **Offline maps for the hunting area** (11 5.20, D-30). | With the path trace (S4b-FR-2): one map change, one TC-M-25 re-check; India's boundary rules on the offline tiles; free tile sources only, size shown first, Wi-Fi by default. | Planned |
+| S4b-FR-7 | **The real cost of a house, my offer and the agreed price** (11 5.21, D-30). | In S4-11 with rooms and carpet area; one data-model and format change with S4-08; Compare's monthly cost, money to move in, cost per sq ft; the search rule. | Planned |
+| S4b-FR-8 | **My places and distances** (11 5.22, D-30). | S4-20, with hunting areas (S4-18); the Plan route's offline estimate. | Planned |
+| S4b-FR-9 | **Area notes** (11 5.23, D-30). | S4-20; searchable; redaction as house notes. | Planned |
+| S4b-FR-10 | **Moving in**: *Taken*, move-in checklist, condition record, close the hunt (11 5.24, D-30). | S4-21, after viewings (S4-12) and photo tags (S4-15). | Planned |
+| S4b-FR-11 | **Brokers** as contacts of their own (11 5.25, D-30). | S4-22, with *Add a house from a listing link* (S4b-FR-4) and the duplicate check. | Planned |
+| S4b-FR-12 | **Voice notes** (11 5.26, D-30). | Parked: the keyboards' voice typing covers the need; audio would weigh on sync and backups. | Parked |
 
 ## 16. Web dependency update of 2026-09-28: Angular 22.2 and maplibre-gl 6.11.2
 
