@@ -2,7 +2,7 @@
 
 **Remember every house you've seen.**
 
-**User guide:** new to Doorprints? The [illustrated user guide](https://sriram-codes-sw.github.io/doorprints/) (source in [`guide/`](guide/docs/index.md)) (the site is live once GitHub Pages is turned on) shows the website, the Android
+**User guide:** new to Doorprints? The [illustrated user guide](https://sriram-codes-sw.github.io/doorprints/) (source in [`guide/`](guide/docs/index.md); live once GitHub Pages is turned on) shows the website, the Android
 app and the iPhone app screen by screen.
 
 [![Backend](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml) [![Web](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml) [![Android](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml) [![Security](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml) [![Shared iOS compile](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml)
