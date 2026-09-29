@@ -93,6 +93,8 @@ private suspend fun runSelfCheck() {
 
 /** Runs [block] under [CHECK_TIMEOUT_MS] and prints its line; a throw is a FAIL with the error's type and message. */
 private suspend fun check(name: String, block: suspend () -> Result): Result {
+    // Shows where a check that ends the app (a native crash) stopped; the CI job looks only for done and SKIP lines.
+    report(name, "START")
     val result = try {
         withTimeout(CHECK_TIMEOUT_MS) { block() }
     } catch (e: CancellationException) {

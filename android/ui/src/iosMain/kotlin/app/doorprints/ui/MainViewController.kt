@@ -2,7 +2,11 @@ package app.doorprints.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.ComposeUIViewController
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.setUnhandledExceptionHook
+import kotlin.native.terminateWithUnhandledException
 import kotlinx.coroutines.flow.MutableStateFlow
+import platform.Foundation.NSLog
 import platform.UIKit.UIViewController
 
 /**
@@ -15,6 +19,7 @@ import platform.UIKit.UIViewController
  * `-DoorprintsSelfCheck`, the launch self-check ([startSelfCheckIfRequested]). Main thread.
  */
 fun MainViewController(): UIViewController {
+    logUncaughtExceptions()
     IosAppContainer.start()
     startSelfCheckIfRequested()
     val platform = IosPlatformServices()
@@ -32,5 +37,25 @@ fun MainViewController(): UIViewController {
                 onDeepLinkHandled = { deepLinks.value = null },
             )
         }
+    }
+}
+
+/** Whether [logUncaughtExceptions] has installed its hook; main thread only. */
+private var crashHookInstalled = false
+
+/**
+ * An uncaught Kotlin exception ends the app; before it does, its type, message and stack trace go to stdout and the
+ * unified log as `DOORPRINTS-CRASH …` lines, so a crash in the simulator's launch smoke (or a tester's device log)
+ * says what failed. Exceptions carry no keys or house data in this app; the stack trace names only code.
+ */
+@OptIn(ExperimentalNativeApi::class)
+private fun logUncaughtExceptions() {
+    if (crashHookInstalled) return
+    crashHookInstalled = true
+    setUnhandledExceptionHook { e ->
+        val text = "DOORPRINTS-CRASH ${e::class.qualifiedName}: ${e.message}\n${e.stackTraceToString()}"
+        println(text)
+        NSLog("%@", text)
+        terminateWithUnhandledException(e)
     }
 }
