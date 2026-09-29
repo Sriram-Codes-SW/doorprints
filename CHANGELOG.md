@@ -115,6 +115,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The website connects by code** ([design](docs/03-design.md) §12.1, ADR-25): on **Connect**, *Get a code* shows a
+  short code; the server's owner types it on the owner page and approves, and the website gets a key of its own, with
+  no password to type. A connect link from the owner page's QR code or link opens a *Connect to a server?* card that
+  sends nothing until *Connect*, and leaves the address bar at once. The older way, a typed key, stays under
+  *Use an API key instead*. New **AI features** switch on **Connect**, off until turned on, which says what is sent to
+  Google; AI shows only when it, the server and the owner's switch for this device are all on, and Ask and Plan say
+  which of them is off. The guide's server steps now use the owner page (step 8) and the code (step 9).
 - **The Gemini key on the owner page** ([design](docs/03-design.md) §12.1): a self-hosted server's owner can now paste
   their Gemini key on the owner page instead of the settings file. It is stored encrypted, shown only by its last four
   characters, and used at once with no restart. *Remove key* stops AI, and *AI on this server* pauses it for everyone.
