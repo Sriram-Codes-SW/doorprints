@@ -305,6 +305,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Branch names say what the work is** (owner, 2026-09-29; `CLAUDE.md`, README *Contributing*): `<type>/<topic>`, one
+  branch per pull request from the latest `main`, never a generated session name.
 - **CI: every Linux job runs on a named image, `ubuntu-26.04`,** instead of `ubuntu-latest`, ahead of GitHub moving
   `ubuntu-latest` to 26.04 in October and November 2026 (actions/runner-images#14748; S4b-BL-62).
 - **Web: Angular 22.2 and maplibre-gl 6.11.2** (supersedes Dependabot #25, whose `npm ci` failed because it moved
