@@ -149,11 +149,11 @@ xcrun simctl spawn "$udid" log show --last 5m --style compact --predicate 'proce
 xcrun simctl spawn "$udid" log show --last 5m --style compact \
   --predicate 'process != "Doorprints" AND eventMessage CONTAINS[c] "doorprints"' > "$out/system-unified.log" 2>&1 || true
 
-# The self-check's lines from the stream, or from `log show` when the stream has none.
-lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
-if [ -z "$lines" ] && [ -f "$unified" ]; then
-  lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$unified" 2>/dev/null | tr -d '\r' || true)
-fi
+# The self-check's lines from both sources: the stream and a fresh `log show`. Either can miss a line (on
+# 2026-09-29 the stream dropped "indiaView PASS" while it kept the lines around it), so neither is read alone; each
+# check's lines are kept in the order the app wrote them, once.
+read_unified_log
+lines=$(cat "$log" "$unified" 2>/dev/null | grep -o 'DOORPRINTS-SELFCHECK .*' | tr -d '\r' | awk '!seen[$0]++' || true)
 echo "--- self-check lines ---"
 echo "${lines:-(none)}"
 echo "--- start-up steps ---"
