@@ -613,4 +613,20 @@
     <string name="settings_gemini_free_tier">Google-இன் இலவச நிலையில், நீங்கள் அனுப்புவதை Google தன் தயாரிப்புகளை மேம்படுத்தப் பயன்படுத்தலாம்; மனிதர்களும் படிக்கலாம். உங்கள் குறிப்புகளில் தனிப்பட்ட விவரங்களை வைக்க வேண்டாம், அல்லது பில்லிங் இயக்கிய சாவியைப் பயன்படுத்தவும்.</string>
     <string name="settings_ai_needs_key">AI-ஐ இயக்க உங்கள் Gemini சாவியைச் சேமிக்கவும்.</string>
     <string name="ai_key_rejected">Google உங்கள் Gemini சாவியை ஏற்கவில்லை. அமைப்புகளில் AI வசதிகள் என்பதன் கீழ் அதைச் சரிபார்க்கவும்.</string>
+    <!-- S4b-FR-5, the app lock (2026-09-29): under review. -->
+    <string name="app_lock_title">Doorprints பூட்டப்பட்டுள்ளது</string>
+    <string name="app_lock_body">இந்த ஃபோனின் திரைப் பூட்டால் திறக்கவும்: PIN, பேட்டர்ன், கடவுச்சொல், கைரேகை அல்லது முகம்.</string>
+    <string name="app_lock_unlock">திற</string>
+    <string name="app_lock_prompt_title">Doorprints-ஐத் திற</string>
+    <string name="app_lock_not_unlocked">திறக்கவில்லை. மீண்டும் முயல ‘திற’ என்பதைத் தட்டவும்.</string>
+    <string name="settings_app_lock">Doorprints-ஐப் பூட்டு</string>
+    <string name="settings_app_lock_hint">Doorprints திறக்கும்போது இந்த ஃபோனின் திரைப் பூட்டைக் கேட்கவும், சமீபத்திய ஆப்களில் அதை மறைக்கவும். Doorprints தனக்கென எந்த PIN-ஐயும் வைத்திருப்பதில்லை.</string>
+    <string name="settings_app_lock_no_screen_lock">முதலில் ஃபோனின் அமைப்புகளில் இந்த ஃபோனுக்குத் திரைப் பூட்டை அமைக்கவும்.</string>
+    <string name="settings_app_lock_confirm">இது நீங்கள்தான் என உறுதிசெய்யவும்</string>
+    <string name="settings_app_lock_not_changed">மாற்றப்படவில்லை: இந்த ஃபோனின் திரைப் பூட்டு உறுதிசெய்யப்படவில்லை.</string>
+    <string name="settings_app_lock_after">Doorprints பின்னணியில் இவ்வளவு நேரம் இருந்தால் மீண்டும் பூட்டு</string>
+    <string name="settings_app_lock_now">உடனே</string>
+    <string name="settings_app_lock_1m">1 நிமிடம்</string>
+    <string name="settings_app_lock_5m">5 நிமிடங்கள்</string>
+    <string name="settings_app_lock_15m">15 நிமிடங்கள்</string>
 </resources>

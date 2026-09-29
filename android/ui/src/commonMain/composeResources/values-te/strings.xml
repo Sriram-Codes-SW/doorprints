@@ -613,4 +613,20 @@
     <string name="settings_gemini_free_tier">Google ఉచిత స్థాయిలో, మీరు పంపేదాన్ని Google తన ఉత్పత్తులను మెరుగుపరచడానికి వాడవచ్చు, మనుషులు చదవవచ్చు. మీ నోట్స్‌లో వ్యక్తిగత వివరాలు ఉంచకండి, లేదా బిల్లింగ్ ఆన్ చేసిన కీని వాడండి.</string>
     <string name="settings_ai_needs_key">AI ఆన్ చేయడానికి మీ Gemini కీని సేవ్ చేయండి.</string>
     <string name="ai_key_rejected">Google మీ Gemini కీని అంగీకరించలేదు. సెట్టింగ్‌లలో AI ఫీచర్లు కింద దాన్ని సరిచూడండి.</string>
+    <!-- S4b-FR-5, the app lock (2026-09-29): under review. -->
+    <string name="app_lock_title">Doorprints లాక్ అయింది</string>
+    <string name="app_lock_body">ఈ ఫోన్ స్క్రీన్ లాక్‌తో తెరవండి: PIN, ప్యాటర్న్, పాస్‌వర్డ్, వేలిముద్ర లేదా ముఖం.</string>
+    <string name="app_lock_unlock">తెరువు</string>
+    <string name="app_lock_prompt_title">Doorprints తెరవండి</string>
+    <string name="app_lock_not_unlocked">తెరవలేదు. మళ్లీ ప్రయత్నించడానికి ‘తెరువు’ నొక్కండి.</string>
+    <string name="settings_app_lock">Doorprintsను లాక్ చేయి</string>
+    <string name="settings_app_lock_hint">Doorprints తెరిచినప్పుడు ఈ ఫోన్ స్క్రీన్ లాక్ అడగండి, ఇటీవలి యాప్‌లలో దాన్ని దాచండి. Doorprints తనకంటూ ఏ PINనూ ఉంచుకోదు.</string>
+    <string name="settings_app_lock_no_screen_lock">ముందుగా ఫోన్ సెట్టింగ్‌లలో ఈ ఫోన్‌కు స్క్రీన్ లాక్ పెట్టండి.</string>
+    <string name="settings_app_lock_confirm">ఇది మీరేనని నిర్ధారించండి</string>
+    <string name="settings_app_lock_not_changed">మారలేదు: ఈ ఫోన్ స్క్రీన్ లాక్ నిర్ధారించబడలేదు.</string>
+    <string name="settings_app_lock_after">Doorprints బ్యాక్‌గ్రౌండ్‌లో ఇంతసేపు ఉంటే మళ్లీ లాక్ చేయి</string>
+    <string name="settings_app_lock_now">వెంటనే</string>
+    <string name="settings_app_lock_1m">1 నిమిషం</string>
+    <string name="settings_app_lock_5m">5 నిమిషాలు</string>
+    <string name="settings_app_lock_15m">15 నిమిషాలు</string>
 </resources>

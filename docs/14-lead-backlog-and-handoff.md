@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.38 |
+| Version | 0.39 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -49,6 +49,7 @@
 | 0.36 | 2026-09-29 | Claude (Code), lead | §1, §7: the live UI test reports network faults apart and runs its areas side by side. |
 | 0.37 | 2026-09-29 | Claude (Code), lead | §1: #56 and #57 merged; §7: the session's learnings (tools and traps) and the efficiency list, done and open. |
 | 0.38 | 2026-09-29 | Claude (Code), lead | N13: the order from the owner's decision D-30 (new features from the gap review, folded into the planned work). |
+| 0.39 | 2026-09-29 | Claude (Code), lead | N13 (3b): **the app lock (S4b-FR-5) built first**, on `feat/s4b-fr-5-app-lock`, because Google sign-in waits on the owner's OAuth client (§6). New owner rule in §5 and §7: **keep the repository optimised** on every branch, pull request and `main`. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -79,9 +80,13 @@ section is only today's state. Earlier versions of this file (git history) carry
   the proxy reset (`net::ERR_CONNECTION_RESET`, no response at all), which the test did not know yet; it now treats a
   dropped connection the same way (fetched again; counted only if it fails twice), checked with a local server that
   drops the first chunk request (reported, not counted) and one that always drops a chunk (fails).
+- **App lock built** (S4b-FR-5, [11](11-feature-parity-and-export-spec.md) 5.19; branch `feat/s4b-fr-5-app-lock`):
+  Settings > Privacy > *Lock Doorprints* on Android and iPhone, with the phone's own screen lock, no new library;
+  the device check is TC-M-29. It came first in (3b) because Google sign-in needs an OAuth client that only the owner
+  can register (§6).
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
-  a release candidate through [13](13-release-security-checklist.md).
+  a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
   and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the
@@ -103,7 +108,7 @@ section is only today's state. Earlier versions of this file (git history) carry
 | N10 | **The owner's feature requests of 2026-09-28** ([10](10-sprint-log.md) §15), after CMP-8, in this order: **S4b-FR-1** search the saved houses (**both apps already search the list** as you type: the web over label, address, street, locality, notes and contact name, Android the same without the contact name; **owner decision of 2026-09-28: search grows with the house values**, so each change that adds or changes a house field updates both apps' search with it, and the next one closes the Android contact-name gap; rule in CLAUDE.md); **S4b-FR-2** the path travelled as a coloured line on the map while visiting houses (privacy review first: a stored track is location history); **S4b-FR-3** sharing list updates between two people who know each other (zero cost, no public server); **S4b-FR-4** a house from a MagicBricks, 99acres, Housing.com, NoBroker, Square Yards or NestAway listing link (the portals' terms and the photos' copyright checked first; the web cannot read those pages from the browser). | Design Director and UX lead first, then Web and Android | Each a Sprint 4b story with the design-first step; one pull request each. |
 | N11 | **The Government of India's geospatial guidelines** (owner request of 2026-09-28, with `https://onlinemaps.surveyofindia.gov.in/GeospatialGuidelines.aspx`: the DST guidelines of 15 February 2021, read in full). **Done in docs:** Doorprints' self-certification clause by clause ([03](03-design.md) §11.1, clause 8 ii(1)); the Survey of India's boundary is now the primary reference for TC-M-25 step (3) and FR-098 (clause 8 xiii: SoI maps and boundary data are the standard; Google Maps from India is the second check); [02](02-threat-model.md) RR-16 and S4b-BL-10 re-read (the earlier "display and printing only" reading missed "Others may publish such maps that adhere to these standards"); new S4b-BL-51 (re-read the self-certification and look for DST's negative list at each release); a draft letter to SoI ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md)). **Next:** the owner downloads SoI's free Administrative Boundary Database (§6); the lead measures the outline against it (S4b-BL-10 step (2)) and, with SoI's permission or a clear licence, rebuilds the outline from it and re-runs TC-M-25. | Owner, then lead | Docs only so far; no map change. Not legal advice. |
 | N12 | **User guide** (owner request of 2026-09-29, [10](10-sprint-log.md) §17). **Done in docs:** the user guide ([`guide/`](../guide/docs/index.md)) v0.1 in English. **Next:** S4b-BL-60 (the guide in Hindi, Tamil and Telugu, *under review*, and an in-app **Help** link on the web and in Android's Settings); keep the guide (`guide/docs/`) in step whenever a label, screen or feature it names changes; when the iPhone gets the map (CMP-8c) and adding houses, update the guide's platform table (`index.md`) and its iPhone section (`screen-at-a-glance.md`). **Owner to-do:** Settings > Pages > Source: *GitHub Actions*; the site is then https://sriram-codes-sw.github.io/doorprints/ (`.github/workflows/pages.yml`). S4b-BL-61 (found while taking the screenshots): the web Plan page shows its form under the no-server note. | Docs; Web and Android for the Help link | Docs only; no code change. |
-| N13 | **Order after CMP-8c** (owner decisions of 2026-09-29): (1) the owner's look at the iPhone map, TC-M-28 ([06](06-test-plan.md)); (2) the **release security gate**, S4b-SEC-1..3 ([10](10-sprint-log.md) §12.5), which a public server needs first (**exists since 2026-09-29**: the automated checks of [06](06-test-plan.md) §11.1 in CI, PRs #36 and #37 and branch `docs/release-security-checklist`, and the manual list [13](13-release-security-checklist.md); **not yet passed** on a release candidate); (3) **device pairing and the owner page for self-hosted servers** ([03](03-design.md) §12.1, ADR-25; owner, 2026-09-29: no pasting of the API key; per-device keys by code or QR; per-device AI, new devices off; the Gemini key on the owner page), then (3b) **Google sign-in with Drive sync, no hosted server** ([11](11-feature-parity-and-export-spec.md) D-28, replacing "Google sign-in with a hosted server"; owner: "a flow for Google Single Sign On for easy setup for non tech users", then "I don't want to host a server for the Google Sign in"): sign in with Google on the website, Android and iPhone, the houses synced through the person's own Google Drive (non-sensitive scopes), AI on the device with their own Gemini key (D-27), the owner hosting nothing and holding nobody's data; the self-hosted server and its owner page stay the advanced option. Owner's principle (2026-09-29): "Users should take care of how they use the app. I am only creating the means for them to easily utilize the services." **Status 2026-09-29:** (1) waits on the owner; (2) exists, not yet passed on a release candidate; (3) and (3a) done (ADR-25, ADR-26, PRs #43-#53); **next (3b)**. **Order from here (owner decision D-30, 2026-09-29; [11](11-feature-parity-and-export-spec.md) 5.19..5.26, [10](10-sprint-log.md) §15 S4b-FR-5..12):** (3b) Google sign-in with Drive sync **and the app lock** (S4b-FR-5); (4a) the map work: the path trace (S4b-FR-2) **and offline maps** (S4b-FR-6), one TC-M-25 re-check; (4b) sharing list updates (S4b-FR-3), then a house from a listing link (S4b-FR-4) **with brokers** (S4b-FR-11); (4c) the Sprint 4b set of [11](11-feature-parity-and-export-spec.md) 14.2, enlarged: weighted criteria and rooms **with the real cost of a house** (S4b-FR-7), viewing questions and photo tags, viewings **with moving in** (S4b-FR-10), hunting areas **with my places and area notes** (S4b-FR-8, -9), in one data-model and format change; (5) S4b-BL-63. Voice notes (S4b-FR-12) are parked. (4) then the features S4b-FR-2..4 of N10; (5) S4b-BL-63, the end-to-end test of the guide's server setup with the owner, after the last sprint. | Lead, all | The guard rule stays: no public server until the gate passes. The deep self-run pentest comes before sign-in ships ([10](10-sprint-log.md) §12.5). |
+| N13 | **Order after CMP-8c** (owner decisions of 2026-09-29): (1) the owner's look at the iPhone map, TC-M-28 ([06](06-test-plan.md)); (2) the **release security gate**, S4b-SEC-1..3 ([10](10-sprint-log.md) §12.5), which a public server needs first (**exists since 2026-09-29**: the automated checks of [06](06-test-plan.md) §11.1 in CI, PRs #36 and #37 and branch `docs/release-security-checklist`, and the manual list [13](13-release-security-checklist.md); **not yet passed** on a release candidate); (3) **device pairing and the owner page for self-hosted servers** ([03](03-design.md) §12.1, ADR-25; owner, 2026-09-29: no pasting of the API key; per-device keys by code or QR; per-device AI, new devices off; the Gemini key on the owner page), then (3b) **Google sign-in with Drive sync, no hosted server** ([11](11-feature-parity-and-export-spec.md) D-28, replacing "Google sign-in with a hosted server"; owner: "a flow for Google Single Sign On for easy setup for non tech users", then "I don't want to host a server for the Google Sign in"): sign in with Google on the website, Android and iPhone, the houses synced through the person's own Google Drive (non-sensitive scopes), AI on the device with their own Gemini key (D-27), the owner hosting nothing and holding nobody's data; the self-hosted server and its owner page stay the advanced option. Owner's principle (2026-09-29): "Users should take care of how they use the app. I am only creating the means for them to easily utilize the services." **Status 2026-09-29:** (1) waits on the owner; (2) exists, not yet passed on a release candidate; (3) and (3a) done (ADR-25, ADR-26, PRs #43-#53); **(3b) in progress**: the app lock (S4b-FR-5) built first; next Google sign-in with Drive sync, which needs the owner's OAuth client (§6). **Order from here (owner decision D-30, 2026-09-29; [11](11-feature-parity-and-export-spec.md) 5.19..5.26, [10](10-sprint-log.md) §15 S4b-FR-5..12):** (3b) Google sign-in with Drive sync **and the app lock** (S4b-FR-5); (4a) the map work: the path trace (S4b-FR-2) **and offline maps** (S4b-FR-6), one TC-M-25 re-check; (4b) sharing list updates (S4b-FR-3), then a house from a listing link (S4b-FR-4) **with brokers** (S4b-FR-11); (4c) the Sprint 4b set of [11](11-feature-parity-and-export-spec.md) 14.2, enlarged: weighted criteria and rooms **with the real cost of a house** (S4b-FR-7), viewing questions and photo tags, viewings **with moving in** (S4b-FR-10), hunting areas **with my places and area notes** (S4b-FR-8, -9), in one data-model and format change; (5) S4b-BL-63. Voice notes (S4b-FR-12) are parked. (4) then the features S4b-FR-2..4 of N10; (5) S4b-BL-63, the end-to-end test of the guide's server setup with the owner, after the last sprint. | Lead, all | The guard rule stays: no public server until the gate passes. The deep self-run pentest comes before sign-in ships ([10](10-sprint-log.md) §12.5). |
 
 ## 3. From the first deploy's ZAP baseline (2026-09-23; 0 fail, 7 warn)
 
@@ -133,12 +138,19 @@ section is only today's state. Earlier versions of this file (git history) carry
 - Brand vocabulary: *Import a backup* (in), *Save a copy* (out), *readable copies*, *Add a shared listing*; never "Restore" as a button label ([12](12-brand-and-naming.md)).
 - Hindi, Tamil and Telugu ship marked *under review* until a native speaker checks them.
 - "Save the state" requests from the owner are top priority.
+- **Keep the repository optimised** on every branch, pull request and `main` (owner, 2026-09-29; how: §7).
 - Every change is reviewed before it reaches `main`. **Since 2026-09-29 the owner lets a Claude session merge its own pull request once it is good** (all checks green, no conflict, no open review thread; §7).
 - **After a merge to `main` that runs the `Web` deploy, the live web UI is tested in detail** with `tools/live-ui`
   once the deploy has finished; an Android-only or docs-only merge skips it (owner, 2026-09-24, refined the same day;
   N8, [06](06-test-plan.md) TC-M-26).
 
 ## 6. Owner to-dos
+
+- **Google sign-in with Drive sync (N13 3b) needs a free OAuth client** that only you can make: in the Google Cloud
+  project `doorprints`, the OAuth consent screen (app name, logo, privacy policy, the `doorprints.web.app` domain;
+  scopes `drive.appdata` and `drive.file`, both non-sensitive) and OAuth client ids for the website, Android (package
+  `app.doorprints` and the signing certificate's SHA-1) and iOS. The client ids are not secrets; tell the session
+  when they exist. Until then sign-in can be built and tested only against fakes.
 
 - **Survey of India boundary data** (N11, [10](10-sprint-log.md) S4b-BL-10; steps in
   [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4). **No account is needed.** (1) Download the
@@ -222,6 +234,20 @@ suite runs in a cloud session; CI is the second check, never the first:
    not count; many of them are worth a ticket). Give the run 20 minutes before any time limit.
 8. Report to the owner in short, plain language: what changed, what was checked, what is next, and anything only the
    owner can do.
+
+**Keep the repository optimised (owner, 2026-09-29: "Ensure that the repo stays optimized while adding changes either
+to branches or PRs or main")**
+
+- No new library where the platform already has the API (the app lock uses BiometricPrompt, the keyguard and
+  LocalAuthentication, not androidx.biometric); a new dependency needs a reason in its pull request.
+- Few and small binary files: add the fewest screenshot sets that show a change (combine a section and a state in one
+  shot), never commit build output, downloads, logs or local tool settings (`local.properties`, init scripts).
+- Efficient code paths: no N+1 queries, no full reads or sorts where an index or a narrower query does, no decrypting
+  or network work on every recomposition or flow change (the app lock reads its own two settings, not the whole
+  settings with the keys).
+- CI minutes: run the suites locally first, push once per validated change, no speculative pushes or re-runs.
+- Leave `main` and each branch as lean as you found them: remove dead code a change replaces, keep the efficiency list
+  below current, and record anything bigger as a backlog item instead of widening the change.
 
 **Things that are easy to get wrong**
 

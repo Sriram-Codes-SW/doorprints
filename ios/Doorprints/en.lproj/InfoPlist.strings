@@ -25,3 +25,4 @@
 /* Shown when Doorprints first reaches a server on the local network (a LAN IP address or a .local name, CMP-8b).
    Keep Info.plist's English value the same. */
 "NSLocalNetworkUsageDescription" = "Doorprints connects to your own Doorprints server when it is on your local network.";
+"NSFaceIDUsageDescription" = "Doorprints uses Face ID to unlock the app when the app lock is on.";

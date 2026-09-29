@@ -26,6 +26,9 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
   also updates both apps' search (web `searchText` in `pages/map/map-list.ts`, Android `HouseListScreen.kt`), with a test.
 - **Brand words:** *Import a backup*, *Save a copy*, *readable copies*, *Add a shared listing*; never "Restore" as a
   button label (`docs/12`). Hindi, Tamil and Telugu strings ship marked *under review*.
+- **Keep the repository optimised** (owner, 2026-09-29) on every branch, pull request and `main`: no new library where
+  the platform has the API, few and small binary files (screenshots included), efficient code paths, CI used only
+  after local checks; details in `docs/14-lead-backlog-and-handoff.md` §7.
 - **Every change goes through a pull request to `main`.** Since 2026-09-29 the owner lets a Claude session merge its
   own pull request once it is good (all checks green, no conflict, no open review thread); how a session works here,
   step by step, is `docs/14-lead-backlog-and-handoff.md` §7.

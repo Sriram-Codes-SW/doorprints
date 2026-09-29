@@ -26,6 +26,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
 import app.doorprints.i18n.AppLocale
+import app.doorprints.ui.AppLockHost
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
 import app.doorprints.ui.ProvideAppServices
@@ -54,11 +55,14 @@ class MainActivity : ComponentActivity() {
             // The common UI's seams (ADR-23 CMP-3, CMP-5): the platform's (screen reader, permissions) and the app's
             // (data, backup, language). The root and its graph are common code; the intent is read here and handed
             // over as a DeepLink. Every screen is common since CMP-7.
+            // The app lock (docs/11 5.19) covers the root while it is locked; off by default.
             ProvideAppServices {
-                DoorprintsRoot(
-                    deepLinks = deepLinks,
-                    onDeepLinkHandled = { deepLinks.value = null },
-                )
+                AppLockHost {
+                    DoorprintsRoot(
+                        deepLinks = deepLinks,
+                        onDeepLinkHandled = { deepLinks.value = null },
+                    )
+                }
             }
         }
     }
