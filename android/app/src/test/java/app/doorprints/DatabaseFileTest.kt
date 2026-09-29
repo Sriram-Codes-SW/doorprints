@@ -59,7 +59,7 @@ class DatabaseFileTest {
     @Test
     fun anExistingHousehuntDatabaseOpensUnderTheNewNameWithItsHouses() = runBlocking {
         val old = Room.databaseBuilder(context, AppDatabase::class.java, DatabaseFile.LEGACY_NAME)
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .addMigrations(*AppDatabase.MIGRATIONS)
             .build()
         old.houses().upsert(
             HouseEntity(id = "h1", label = "Flat", lat = 12.97, lon = 77.64, createdAt = 1L, updatedAt = 1L),

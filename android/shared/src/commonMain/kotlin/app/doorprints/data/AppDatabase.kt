@@ -213,6 +213,13 @@ abstract class AppDatabase : RoomDatabase() {
                 connection.execSQL("ALTER TABLE photos ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        /**
+         * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
+         * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
+         * and pins its `<version>.json` in `RoomSchemaTest`.
+         */
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
     }
 }
 

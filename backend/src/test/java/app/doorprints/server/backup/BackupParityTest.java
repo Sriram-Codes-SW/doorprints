@@ -104,6 +104,28 @@ class BackupParityTest {
         assertThat(templateLiteral(source.substring(from, to), path)).isEqualTo(CanonicalSample.json());
     }
 
+    /**
+     * Completeness (readiness review 2026-09-29, docs/14 §8 finding 4): the sample's first house, visit and photo carry
+     * exactly the record components of {@link BackupHouse}, {@link BackupVisit} and {@link BackupPhoto}, in order, so a
+     * new field (Sprint 4c) lands in the sample and the three stacks together (Android {@code BackupFieldsTest}, web
+     * {@code backup-fields.spec.ts}).
+     */
+    @Test
+    void theSampleRecordsHaveExactlyTheRecordsComponents() {
+        var root = tools.jackson.databind.json.JsonMapper.builder().build().readTree(CanonicalSample.json());
+        assertThat(keysOf(root, "houses")).isEqualTo(components(BackupHouse.class));
+        assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
+        assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
+    }
+
+    private static java.util.List<String> keysOf(tools.jackson.databind.JsonNode root, String list) {
+        return new java.util.ArrayList<>(root.get(list).get(0).propertyNames());
+    }
+
+    private static java.util.List<String> components(Class<? extends Record> record) {
+        return java.util.Arrays.stream(record.getRecordComponents()).map(java.lang.reflect.RecordComponent::getName).toList();
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     /** The first capture group of {@code regex} in {@code text}, as a number. */

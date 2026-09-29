@@ -39,7 +39,7 @@ fun iosAppDatabase(path: String): AppDatabase =
     Room.databaseBuilder<AppDatabase>(name = path)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(AppDatabase.MIGRATION_1_2)
+        .addMigrations(*AppDatabase.MIGRATIONS)
         .build()
 
 /** Same name as Android's `DatabaseFile.NAME`. */
