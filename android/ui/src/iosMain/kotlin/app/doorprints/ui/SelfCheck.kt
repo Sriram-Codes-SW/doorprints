@@ -40,13 +40,27 @@ private const val SELF_CHECK_SERVICE = "app.doorprints.selfcheck"
 /** errSecMissingEntitlement and errSecNotAvailable: no Keychain for this binary, as KeychainSettingsTest skips. */
 private val NO_KEYCHAIN = setOf(-34018, -25291)
 
-/** Starts the self-check off the main thread when this is a debug binary launched with [SELF_CHECK_ARGUMENT]. */
+/** Whether [startSelfCheckIfRequested] has run; main thread only, like its caller. */
+private var selfCheckStarted = false
+
+/**
+ * Starts the self-check off the main thread when this is a debug binary launched with [SELF_CHECK_ARGUMENT]. Once per
+ * process: a second root view controller (a new scene) does not run it again.
+ */
 @OptIn(ExperimentalNativeApi::class)
 internal fun startSelfCheckIfRequested() {
+    if (selfCheckStarted) return
+    selfCheckStarted = true
     if (!Platform.isDebugBinary) return
     if (NSProcessInfo.processInfo.arguments.none { it == SELF_CHECK_ARGUMENT }) return
     IosAppContainer.appScope.launch {
-        runCatching { runSelfCheck() }.onFailure { report("done", "FAIL ${reason(it)}") }
+        try {
+            runSelfCheck()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            report("done", "FAIL ${reason(e)}")
+        }
     }
 }
 
@@ -100,7 +114,8 @@ private suspend fun check(name: String, block: suspend () -> Result): Result {
 
 /**
  * Saves a random value with [KeychainSecretStore] under [SELF_CHECK_SERVICE], reads it back and deletes it. SKIP when
- * the binary has no Keychain (an unsigned simulator build): the store's error names the Keychain status.
+ * the binary has no Keychain (a build without any code signature; the CI build is ad-hoc signed, so it has one): the
+ * store's error names the Keychain status.
  */
 private fun keychainRoundTrip(): Result {
     val store = KeychainSecretStore(service = SELF_CHECK_SERVICE, account = "probe")

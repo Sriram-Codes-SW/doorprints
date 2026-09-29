@@ -1,2 +1,3 @@
-/* Tamil, under review (owner rule for hi, ta and te). The English text (en.lproj) in the words of values-ta/strings.xml. */
+/* Tamil, under review (owner rule for hi, ta and te). The English texts (en.lproj) in the words of values-ta/strings.xml. */
 "NSLocationWhenInUseUsageDescription" = "நீங்கள் சேமிக்கும் வீடுகளின் இருப்பிடத்தைக் குறிக்கவும், நீங்கள் இருக்கும் இடத்திலிருந்து வருகைகளைத் திட்டமிடவும் Doorprints உங்கள் இருப்பிடத்தைப் பயன்படுத்துகிறது.";
+"NSLocalNetworkUsageDescription" = "உங்கள் சொந்த Doorprints சர்வர் உங்கள் உள்ளூர் நெட்வொர்க்கில் இருக்கும்போது Doorprints அதனுடன் இணைகிறது.";

@@ -3,7 +3,9 @@
 <!--
   The Doorprints iOS app's Info.plist (CMP-8b), written by hand; project.yml points INFOPLIST_FILE here and turns
   Xcode's generated plist off. The $(...) values are build settings from project.yml. No NSAppTransportSecurity
-  exceptions: every connection is HTTPS. The location purpose string is localised in <lang>.lproj/InfoPlist.strings.
+  exceptions: ATS refuses plain http:// to a domain name; a server on a LAN IP address or a .local name is not covered
+  by ATS, so it connects without TLS, as on Android, and iOS first asks for local network access (the purpose string
+  below). The purpose strings are localised in <lang>.lproj/InfoPlist.strings.
 -->
 <plist version="1.0">
 <dict>
@@ -44,6 +46,8 @@
 	<dict/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Doorprints uses your location to place the houses you save and to plan visits from where you are.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Doorprints connects to your own Doorprints server when it is on your local network.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>

@@ -12,7 +12,7 @@
 # compile check, which may be required. `ios/**` and the Android copy of the boundary data are in the path lists for
 # the iOS app of CMP-8b/8c, which bundles that file.
 # CMP-8b (2026-09-29): a third job, ios-app, builds the iOS app (ios/, an XcodeGen project around the Kotlin framework
-# DoorprintsKit of :ui) for the arm64 simulator, unsigned, and launches it with its self-check on an iPhone simulator
+# DoorprintsKit of :ui) for the arm64 simulator, ad-hoc signed (no identity or Apple account), and launches it with its self-check on an iPhone simulator
 # (ios/ci/launch-smoke.sh); the screenshot and the logs are uploaded. Again a job of its own, so the app's build or
 # launch never fails the compile check.
 name: Shared iOS compile
@@ -89,12 +89,15 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       # The Kotlin/Native toolchain and its dependencies (~/.konan) are not covered by setup-gradle; the key follows
-      # the root build script, where the Kotlin version is pinned.
+      # the root build script, where the Kotlin version is pinned. Each job has its own key (github.job), so the three
+      # jobs, which run at the same time, never race to save the same key; a job with no cache of its own yet restores
+      # another job's (or one from before the per-job keys) through the second restore key.
       - uses: actions/cache@v6
         with:
           path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
           restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
             konan-${{ runner.os }}-${{ runner.arch }}-
 
       # Task names follow KGP's scheme compile[Test]Kotlin<Target>: the main klibs of both iOS targets plus the
@@ -140,8 +143,9 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
           restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
             konan-${{ runner.os }}-${{ runner.arch }}-
 
       # An available iPhone on the iOS runtime that matches the pinned Xcode's simulator SDK (26.4 for Xcode 26.4.1);
@@ -219,8 +223,9 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.konan
-          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ hashFiles('android/build.gradle.kts', 'android/gradle/libs.versions.toml') }}
           restore-keys: |
+            konan-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
             konan-${{ runner.os }}-${{ runner.arch }}-
 
       # XcodeGen 2.46.0 from its GitHub release, checked against the SHA-256 of the zip as downloaded on 2026-09-29
@@ -250,9 +255,11 @@ jobs:
           chmod +x gradlew
           ./gradlew --stacktrace :ui:linkDebugFrameworkIosSimulatorArm64
 
-      # Unsigned (CODE_SIGNING_ALLOWED=NO): no Apple account, and the simulator runs unsigned arm64 apps (the linker
-      # signs arm64 code ad hoc). If it ever refuses them, the owner-approved fallback is ad-hoc signing: replace
-      # CODE_SIGNING_ALLOWED=NO with CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO.
+      # Ad-hoc signed (CODE_SIGN_IDENTITY=-, owner-approved): no certificate, team or Apple account, but a real code
+      # signature, which the simulator needs to give the app its own Keychain (an unsigned app gets
+      # errSecMissingEntitlement, and the self-check's keychain line would only SKIP). project.yml signs manually with
+      # the same identity for the simulator, so xcodebuild asks for no team; CODE_SIGNING_REQUIRED=NO lets it build
+      # without a provisioning profile. CODE_SIGNING_ALLOWED stays at its default (YES).
       - name: Build the app (Debug, arm64 simulator)
         run: |
           mkdir -p "$RUNNER_TEMP/ios-app"
@@ -263,10 +270,11 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" \
-            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/ios-app/xcodebuild.log"
+            ARCHS=arm64 CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO 2>&1 | tee "$RUNNER_TEMP/ios-app/xcodebuild.log"
 
       # What the Gradle step and the plist must have put in the bundle: the Compose resources (without them every
-      # string lookup fails at run time), the 120 Hz key and the four localisations of the location purpose string.
+      # string lookup fails at run time), the 120 Hz key, the four localisations of the purpose strings and the
+      # ad-hoc signature.
       - name: Check the app bundle
         run: |
           app="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/Doorprints.app"
@@ -276,9 +284,16 @@ jobs:
           echo "Compose resources: $res ($(find "$res" -type f | wc -l | tr -d ' ') files)"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CADisableMinimumFrameDurationOnPhone' "$app/Info.plist")" = true \
             || { echo "::error::CADisableMinimumFrameDurationOnPhone is not true in the built Info.plist"; exit 1; }
+          for key in NSLocationWhenInUseUsageDescription NSLocalNetworkUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$key" "$app/Info.plist" > /dev/null \
+              || { echo "::error::$key missing from the built Info.plist"; exit 1; }
+          done
           for lang in en hi ta te; do
             test -f "$app/$lang.lproj/InfoPlist.strings" || { echo "::error::$lang.lproj/InfoPlist.strings missing"; exit 1; }
           done
+          # The ad-hoc signature the Keychain needs (see the build step).
+          codesign --verify "$app" || { echo "::error::the app bundle is not signed"; exit 1; }
+          codesign -dv "$app" 2>&1 | grep -E '^(Identifier|Signature)=' || true
 
       # ios/ci/launch-smoke.sh: an iPhone on the SDK's runtime (as in ios-sim-tests), install, launch with
       # -DoorprintsSelfCheck, pass only on "DOORPRINTS-SELFCHECK done PASS"; screenshot, console log and any crash

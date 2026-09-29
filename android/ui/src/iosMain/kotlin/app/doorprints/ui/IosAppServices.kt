@@ -78,15 +78,13 @@ object IosAppContainer {
         if (started) return
         started = true
         // Whether the server has AI features on, once per process, as on Android (Root does not ask again).
-        appScope.launch { runCatching { repository.refreshAiStatus() } }
+        appScope.launch { catchFailures { repository.refreshAiStatus() } }
         appScope.launch {
-            runCatching {
-                for (request in syncRequests) {
-                    // WorkManager's 3-second delay on Android, so a burst of edits is sent together.
-                    delay(SYNC_DELAY_MS)
-                    // Caught here too, so one failed sync does not end the loop.
-                    runCatching { syncOnce() }
-                }
+            for (request in syncRequests) {
+                // WorkManager's 3-second delay on Android, so a burst of edits is sent together.
+                delay(SYNC_DELAY_MS)
+                // Caught per sync, so one failed sync does not end the loop.
+                catchFailures { syncOnce() }
             }
         }
         // No periodic sync on iOS yet: one at each launch instead.
@@ -107,6 +105,21 @@ object IosAppContainer {
     }
 
     private const val SYNC_DELAY_MS = 3_000L
+}
+
+/**
+ * Runs [block] and drops any failure except cancellation, which is rethrown so the job it runs in still stops when its
+ * scope is cancelled (unlike `runCatching`, which would swallow it). For the jobs launched in [IosAppContainer.appScope];
+ * inline, so [block] may suspend.
+ */
+internal inline fun catchFailures(block: () -> Unit) {
+    try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        // Dropped: the job's own state (the sync result, the AI status) already says what went wrong.
+    }
 }
 
 /**

@@ -39,12 +39,16 @@ class IosPlatformServices : PlatformServices {
         NSURL.URLWithString("tel:$digits")?.let(::open)
     }
 
-    /** Web links only (http, https): the house's listing link is typed or pasted by the user. */
+    /**
+     * Web links only (http, https): the house's listing link is typed or pasted by the user. False when the text is not
+     * such a URL; otherwise true once the link is handed to iOS. `openURL` answers later, in its completion handler, so
+     * a refusal then cannot be reported here. No `canOpenURL` check first: the scheme is already checked, and http and
+     * https always have a browser (Safari, or the one the user chose).
+     */
     override fun openUrl(url: String): Boolean {
         val link = NSURL.URLWithString(url.trim()) ?: return false
         val scheme = link.scheme?.lowercase()
         if (scheme != "http" && scheme != "https") return false
-        if (!UIApplication.sharedApplication.canOpenURL(link)) return false
         open(link)
         return true
     }

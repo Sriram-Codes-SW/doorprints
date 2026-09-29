@@ -22,5 +22,5 @@ actual fun rememberLocationPermissionRequest(onResult: () -> Unit): () -> Unit {
 @Composable
 actual fun rememberNotificationPermissionRequest(onResult: () -> Unit): () -> Unit {
     val latest by rememberUpdatedState(onResult)
-    return { latest() }
+    return remember { { latest() } }
 }
