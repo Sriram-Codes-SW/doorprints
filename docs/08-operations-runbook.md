@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.20 |
+| Version | 0.21 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -32,6 +32,7 @@
 | 0.18 | 2026-09-24 | Claude (Code), lead | Clients detect a reset server (S4b-BL-20, branch `claude/doorprints-dev-continue-fzcge2`, PR #24). New **§11.1**: `GET /api/stats` returns `maxSyncVersion`; what Android and the web do when it is below their cursors; the dump and restore of §11 stays mandatory; what to expect after restoring an older dump. §11's backlog pointer and IR-4 step 4 updated. |
 | 0.19 | 2026-09-29 | Claude (Code), lead | The backup workflow sketch names its runner image (`ubuntu-26.04`), as the real workflows do ([07](07-secure-build-and-deploy.md) §1). |
 | 0.20 | 2026-09-29 | Claude (Code), lead | New §5.1a: devices and the owner page (first sign-in, a lost phone, AI per device, signing other browsers out) ([03](03-design.md) §12.1, ADR-25). |
+| 0.21 | 2026-09-29 | Claude (Code), lead | §5.1a: the Gemini key on the owner page (encrypted, no restart, *Remove key*, pausing AI) and what an owner-key rotation does to it. |
 
 Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
 
@@ -194,6 +195,13 @@ the **owner page**, `https://<server>/owner`.
 - **Someone may have used a setup link or a browser that is not yours:** *Sign out everywhere else*, then check the
   device list and revoke anything you do not recognise.
 - The owner key (`APP_API_KEY`) is still needed for MCP clients and is rotated as in §5.1.
+- **The Gemini key:** owner page → *AI (Google Gemini)* → paste it and *Save key*. It is stored encrypted under a key
+  derived from `APP_API_KEY`, used at once with no restart, shown only by its last four characters, and replaces
+  `AI_API_KEY` from the settings file. *Remove key* stops AI until a key is added again; *AI on this server* pauses AI
+  for everyone. A leaked Gemini key: delete it in Google AI Studio, make a new one and save it here.
+- **Rotating the owner key keeps the stored Gemini key** if you follow §5.1: while `APP_API_KEY_NEXT` is set, the
+  server re-encrypts it under the next key at start. If `APP_API_KEY` is replaced without a rotation, the stored key
+  cannot be read (a warning in the log); save it again on the owner page.
 
 ### 5.2 Other secrets
 

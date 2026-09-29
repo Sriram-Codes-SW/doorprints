@@ -54,8 +54,8 @@ public class DeviceConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<DeviceAiGuard> deviceAiGuard() {
-        var bean = new FilterRegistrationBean<>(new DeviceAiGuard());
+    public FilterRegistrationBean<DeviceAiGuard> deviceAiGuard(app.doorprints.server.secrets.ServerSettings settings) {
+        var bean = new FilterRegistrationBean<>(new DeviceAiGuard(settings::aiPaused));
         bean.setOrder(3);
         return bean;
     }

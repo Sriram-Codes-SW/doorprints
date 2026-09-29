@@ -85,6 +85,12 @@ public class AiDefaultsEnvironmentPostProcessor implements EnvironmentPostProces
             forced.put("spring.ai.model.embedding.multimodal", "none");
         } else if (ai) {
             defaults.put("spring.ai.model.chat", "openai");
+            // No key in the settings file: the owner may set one on the owner page (docs/03 §12.1). Spring AI needs a
+            // non-empty value to build its client; GeminiKeyInterceptor replaces it on every request, and without any
+            // key AI reads as off (AiStatusController), so the placeholder is never sent as a real key.
+            if (env.getProperty("spring.ai.openai.api-key", "").isBlank()) {
+                forced.put("spring.ai.openai.api-key", app.doorprints.server.secrets.GeminiKey.PLACEHOLDER);
+            }
             defaults.put("spring.ai.vectorstore.type", "pgvector");
             var provider = embeddingProvider(env);
             // Normalised so the case-sensitive @ConditionalOnProperty on GeminiEmbeddingConfiguration agrees with us.
