@@ -61,6 +61,11 @@ data class AppSettings(
     val lastAutoBackupAt: Long = 0,
     /** Empty when the last automatic backup worked; otherwise a short reason to show in Settings. */
     val lastAutoBackupError: String = "",
+    /**
+     * This phone's own *AI features* switch (docs/03 §12.1): off until the person turns it on, after reading what is
+     * sent to Google. AI shows only when this, the server and the owner's switch for this device are all on.
+     */
+    val aiFeatures: Boolean = false,
 ) {
     val serverConfigured get() = serverUrl.isNotBlank() && apiKey.isNotBlank()
 
@@ -134,6 +139,8 @@ class SettingsStore(
         val importTold = stringPreferencesKey("importToldRun")
         /** True once the app has asked for POST_NOTIFICATIONS from Export or Import; see `rememberNotificationAsk`. */
         val notificationsAsked = booleanPreferencesKey("notificationsAsked")
+        /** [AppSettings.aiFeatures]. */
+        val aiFeatures = booleanPreferencesKey("aiFeatures")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -154,6 +161,7 @@ class SettingsStore(
             autoBackupKeep = p[Keys.autoBackupKeep] ?: 4,
             lastAutoBackupAt = p[Keys.lastAutoBackupAt] ?: 0,
             lastAutoBackupError = p[Keys.lastAutoBackupError] ?: "",
+            aiFeatures = p[Keys.aiFeatures] ?: false,
         )
     }
 
@@ -226,6 +234,8 @@ class SettingsStore(
     }
 
     suspend fun savePhotosOnWifiOnly(value: Boolean) = dataStore.edit { it[Keys.photosOnWifiOnly] = value }
+
+    suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
 
     /** Records a sync's outcome, and counts failures in a row for the house list's warning ([SyncHealth]). */
     suspend fun saveSyncResult(outcome: SyncOutcome) = dataStore.edit {

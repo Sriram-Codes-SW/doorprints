@@ -20,6 +20,8 @@ package app.doorprints.data
 
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.api.PairPolledDto
+import app.doorprints.shared.api.PairStartedDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
@@ -38,6 +40,12 @@ import kotlinx.coroutines.flow.StateFlow
  * Android's `AndroidRepository` (`:app`) extends it with what needs the platform: adding a photo from a `Uri` and the
  * photo files as `java.io.File` (`photoDir`, `photoFile`).
  */
+/**
+ * Why AI is not offered (the web's `AiOffReason`): no server; off on the server (or paused, or no Gemini key); off
+ * for this device on the owner page; or this phone's *AI features* switch is off.
+ */
+enum class AiOff { NO_SERVER, SERVER, DEVICE, OPT_IN }
+
 interface Repository {
     val settings: SettingsStore
 
@@ -74,9 +82,29 @@ interface Repository {
 
     suspend fun testConnection(): Result<StatsDto>
 
-    /** Whether the server has AI features on; see [refreshAiStatus]. */
+    /**
+     * Whether AI is offered here: the server has it on for this device and this phone's *AI features* switch is on
+     * ([AppSettings.aiFeatures]); see [refreshAiStatus].
+     */
     val aiEnabled: StateFlow<Boolean>
+
+    /** Why AI is not offered, or null when it is ([aiEnabled]). */
+    val aiOff: StateFlow<AiOff?>
     suspend fun refreshAiStatus(): Boolean
+
+    /** Turns this phone's *AI features* switch on or off; [aiEnabled] follows at once. */
+    suspend fun setAiFeatures(on: Boolean)
+
+    // Pairing (docs/03 §12.1, ADR-25): the app gets a device key of its own, with no key typed.
+
+    /** Asks [serverUrl] (already checked with [ServerUrl.check]) for a code to type on its owner page. */
+    suspend fun startPairing(serverUrl: String, deviceName: String): PairStartedDto
+
+    /** One poll of a started pairing; `approved` carries the device key, once. */
+    suspend fun pollPairing(serverUrl: String, pollToken: String): PairPolledDto
+
+    /** Redeems a connect link's invite and returns the device key; an [ApiException] with code 410 when it was used. */
+    suspend fun redeemInvite(link: ConnectLink, deviceName: String): String
     suspend fun extractListing(text: String): HouseDraftDto
     suspend fun ask(question: String): AskResponseDto
     suspend fun planVisits(request: PlanRequest): PlanResponseDto

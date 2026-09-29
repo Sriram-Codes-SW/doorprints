@@ -161,7 +161,8 @@ class ApiClient(
         val response = http.request {
             this.method = method
             url(target)
-            header(API_KEY_HEADER, apiKey)
+            // No key yet while pairing (the /api/pair calls are public): no header rather than an empty one.
+            if (apiKey.isNotEmpty()) header(API_KEY_HEADER, apiKey)
             if (body != null) setBody(body.create())
         }
         return Exchange(
@@ -241,6 +242,15 @@ class ApiClient(
     }
 
     suspend fun aiStatus(): AiStatusDto = get("/api/ai/status")
+
+    // Pairing (docs/03 §12.1): made with no key. Not retried (POST): a lost answer to start or redeem is not repeated.
+    suspend fun pairStart(deviceName: String): PairStartedDto =
+        send(HttpMethod.Post, "/api/pair/start", PairStartRequest(deviceName))
+    suspend fun pairPoll(pollToken: String): PairPolledDto =
+        send(HttpMethod.Post, "/api/pair/poll", PairPollRequest(pollToken))
+    /** 410 ([ApiException.code]) when the invite was already used or has expired. */
+    suspend fun pairRedeem(invite: String, deviceName: String): DeviceKeyDto =
+        send(HttpMethod.Post, "/api/pair/redeem", PairRedeemRequest(invite, deviceName))
     suspend fun extractListing(text: String): HouseDraftDto =
         send(HttpMethod.Post, "/api/ai/extract-listing", ExtractListingRequest(text))
     suspend fun ask(question: String): AskResponseDto = send(HttpMethod.Post, "/api/ai/ask", AskRequest(question))

@@ -24,6 +24,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import app.doorprints.data.ConnectLink
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
@@ -83,9 +84,14 @@ class MainActivity : ComponentActivity() {
         }
         // Consumed: a later getIntent() (a recreation of this same activity) carries nothing to act on.
         DEEP_LINK_EXTRAS.forEach(intent::removeExtra)
+        intent.data = null
     }
 
     private fun parse(intent: Intent): DeepLink? {
+        // A connect link (doorprints://connect, the owner page's QR code): only a checked one; the app asks first.
+        if (intent.action == Intent.ACTION_VIEW) {
+            return ConnectLink.parse(intent.dataString)?.let { DeepLink.Connect(it) }
+        }
         intent.getStringExtra(Notifications.EXTRA_OPEN_SCREEN)?.let {
             // A fixed allow-list, never a route taken from the extra as-is.
             return if (it in Notifications.SCREENS) DeepLink.OpenScreen(it) else null

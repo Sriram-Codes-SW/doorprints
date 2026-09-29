@@ -38,6 +38,9 @@ struct DoorprintsApp: App {
                 // the keyboard's included, so SwiftUI does not shrink the view while Compose moves its content above
                 // the keyboard (the IME insets).
                 .ignoresSafeArea()
+                // A connect link from the server's owner page (its QR code, scanned with the camera): the common
+                // code checks it and asks before connecting (docs/03 §12.1).
+                .onOpenURL { url in _ = MainViewControllerKt.handleOpenUrl(url: url.absoluteString) }
         }
     }
 }

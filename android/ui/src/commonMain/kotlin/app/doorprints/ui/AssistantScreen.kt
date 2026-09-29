@@ -46,6 +46,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.doorprints.data.AiOff
 import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.ApiException
@@ -264,6 +265,7 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
         AssistantViewModel(services.repository, services.location, createSavedStateHandle())
     }
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
+    val aiOff by repo.aiOff.collectAsStateWithLifecycle()
     val tab by vm.tab.collectAsStateWithLifecycle()
     var retrying by remember { mutableStateOf(false) }
     // A short window (a landscape phone, split-screen): under 480 dp tall, the Map's threshold for its one-row
@@ -309,7 +311,15 @@ fun AssistantScreen(onOpenHouse: (String) -> Unit, onOpenMap: () -> Unit = {}) {
                     HeroEmptyState(
                         icon = Icons.Default.Search,
                         title = stringResource(Res.string.ai_unavailable_now),
-                        body = stringResource(Res.string.ai_unavailable),
+                        // Why it is off, where the fix is known (docs/03 §12.1): the owner's switch for this device, or
+                        // this phone's own switch in Settings.
+                        body = stringResource(
+                            when (aiOff) {
+                                AiOff.DEVICE -> Res.string.ai_off_for_device
+                                AiOff.OPT_IN -> Res.string.ai_opt_in_needed
+                                else -> Res.string.ai_unavailable
+                            },
+                        ),
                         horizontalPadding = 0.dp,
                         action = {
                             Column(

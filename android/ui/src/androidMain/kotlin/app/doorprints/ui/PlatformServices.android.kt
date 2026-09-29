@@ -64,6 +64,21 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
     } catch (_: ActivityNotFoundException) {
         false
     }
+
+    /** The model, as the phone's own settings name it ("Pixel 9"), with the maker only when the model lacks it. */
+    override fun deviceName(): String = androidDeviceName(android.os.Build.MANUFACTURER, android.os.Build.MODEL)
+}
+
+/** "Pixel 9 (Android app)", "Samsung SM-S921B (Android app)": the maker is added unless the model starts with it. */
+internal fun androidDeviceName(manufacturer: String?, model: String?): String {
+    val maker = manufacturer.orEmpty().trim().replaceFirstChar { it.uppercase() }
+    val name = model.orEmpty().trim()
+    val phone = when {
+        name.isEmpty() -> maker.ifEmpty { "Android phone" }
+        maker.isEmpty() || name.startsWith(maker, ignoreCase = true) || name.startsWith("Pixel") -> name
+        else -> "$maker $name"
+    }
+    return "$phone (Android app)"
 }
 
 /** Provides [LocalPlatformServices] for [content]: MainActivity's content, and each screenshot test's. */

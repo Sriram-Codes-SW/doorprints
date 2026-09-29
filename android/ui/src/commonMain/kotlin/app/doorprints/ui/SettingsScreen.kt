@@ -33,6 +33,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -63,12 +66,15 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.data.AiOff
 import app.doorprints.data.AppSettings
 import app.doorprints.data.ServerUrl
 import app.doorprints.export.ExportProblem
 import app.doorprints.ui.res.*
+import app.doorprints.shared.api.PairStartedDto
 import app.doorprints.shared.export.ExportLanguages
 import app.doorprints.shared.sync.SyncOutcome
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -136,6 +142,15 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
     // result stays withdrawn until the next run finishes (serverResultWithdrawn): typing clears the field's error but
     // does not bring an older result back, and *Sync now* after a rejected address shows its own result.
     var withdrawnRun by remember { mutableIntStateOf(-1) }
+    // Connecting by code (docs/03 §12.1, ADR-25): the run in progress, the code on screen, and how the last one ended.
+    var pairJob by remember { mutableStateOf<Job?>(null) }
+    var shownCode by remember { mutableStateOf<PairStartedDto?>(null) }
+    var pairEnd by remember { mutableStateOf<PairingEnd?>(null) }
+    // "Use an API key instead": open when the user opened it, else when this phone already uses a typed key.
+    var keyWayChoice by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val keyWayOpen = keyWayChoice ?: isTypedKey(settings.apiKey)
+    val deviceName = remember { platform.deviceName() }
+    val aiOff by repo.aiOff.collectAsStateWithLifecycle()
 
     Column(
         // imePadding: with edge-to-edge the window no longer resizes for the keyboard, so the server fields would sit
@@ -411,7 +426,15 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
         SectionHeading(stringResource(Res.string.settings_server))
         Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
-            url, { typedUrl = it; urlError = null },
+            url, {
+                typedUrl = it
+                urlError = null
+                // A code belongs to the address it was asked for.
+                pairJob?.cancel()
+                pairJob = null
+                shownCode = null
+                pairEnd = null
+            },
             label = { Text(stringResource(Res.string.settings_url)) },
             isError = urlError != null,
             // The supporting text is always there, so its node exists before an error arrives; while it holds the
@@ -429,62 +452,103 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(urlFocus),
         )
-        OutlinedTextField(
-            key, { key = it },
-            label = { Text(stringResource(Res.string.settings_key)) },
-            supportingText = {
-                Text(
-                    if (settings.apiKeyHint.isNotEmpty()) stringResource(Res.string.settings_key_saved, settings.apiKeyHint)
-                    else stringResource(Res.string.settings_key_hint)
-                )
-            },
-            // Show / Hide, as on the web (docs/05 3.3.8: the key can be pasted and checked).
-            trailingIcon = {
-                IconButton(onClick = { showKey = !showKey }, modifier = Modifier.size(48.dp)) {
-                    Icon(
-                        if (showKey) VisibilityOffIcon else VisibilityIcon,
-                        contentDescription = stringResource(if (showKey) Res.string.settings_hide_key else Res.string.settings_show_key),
+        // The address the buttons below use, or null after showing why it cannot be used (the field's error).
+        fun checkedUrl(): String? = when (val checked = ServerUrl.check(url)) {
+            is ServerUrl.Result.Ok -> checked.url
+            // An address that is not checked has no result (round 9): the last one ("Connected: 12 houses") would
+            // sit under a field that shows an error. Withdrawn until the next run ends (round 10).
+            ServerUrl.Result.NotHttps -> {
+                urlError = Res.string.settings_url_https
+                testResult = null
+                withdrawnRun = statusRun
+                runCatching { urlFocus.requestFocus() }
+                null
+            }
+            ServerUrl.Result.Invalid, ServerUrl.Result.Empty -> {
+                urlError = Res.string.settings_url_invalid
+                testResult = null
+                withdrawnRun = statusRun
+                runCatching { urlFocus.requestFocus() }
+                null
+            }
+        }
+
+        // Connect with a code, the usual way: the owner types it on the server's owner page and this phone gets a key
+        // of its own. Nothing to type or paste here but the address.
+        Text(
+            stringResource(Res.string.settings_code_heading),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(stringResource(Res.string.settings_code_intro, deviceName), style = MaterialTheme.typography.bodySmall)
+        val code = shownCode
+        // Always composed, so the code is announced when it appears (a live region that appears with its text is not
+        // always read), letter by letter: it is not a word.
+        LiveMessage {
+            if (code != null) {
+                val spelled = spellCode(code.userCode)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(Res.string.settings_code_show), style = MaterialTheme.typography.bodyMedium)
+                    // Large for typing on another screen.
+                    Text(
+                        code.userCode,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        modifier = Modifier.clearAndSetSemantics { contentDescription = spelled },
                     )
                 }
-            },
-            singleLine = true,
-            visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            }
+        }
+        if (code != null) {
+            Text(
+                stringResource(Res.string.settings_code_waiting, ((code.expiresIn + 30) / 60).coerceAtLeast(1).toInt()),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            val ownerPage = url.trim().trimEnd('/') + "/owner/"
+            TextButton(onClick = { platform.openUrl(ownerPage) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(Res.string.settings_open_owner_page))
+            }
+        }
         // FlowRow: in Telugu at 200% font "సేవ్ చేసి పరీక్షించండి" and "ఇప్పుడు సింక్ చేయండి" do not fit side by side,
         // and a plain Row squeezed the second button into a sliver. Here it wraps to its own line.
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(enabled = !busy, modifier = Modifier.heightIn(min = 48.dp), onClick = {
-                when (val checked = ServerUrl.check(url)) {
-                    is ServerUrl.Result.Ok -> scope.launch {
-                        busy = true
-                        repo.settings.saveServer(checked.url, key)
-                        key = ""
-                        testResult = repo.testConnection().map { it.houses }
-                        repo.refreshAiStatus()
-                        statusRun++
-                        busy = false
+            if (code != null) {
+                OutlinedButton(onClick = {
+                    pairJob?.cancel()
+                    pairJob = null
+                    shownCode = null
+                }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(Res.string.settings_cancel_code)) }
+            } else {
+                Button(enabled = !busy && pairJob == null, modifier = Modifier.heightIn(min = 48.dp), onClick = {
+                    val server = checkedUrl() ?: return@Button
+                    pairEnd = null
+                    pairJob = scope.launch {
+                        val end = pairByCode(repo, server, deviceName, onCode = { shownCode = it })
+                        shownCode = null
+                        if (end is PairingEnd.Approved) {
+                            busy = true
+                            repo.settings.saveServer(end.serverUrl, end.deviceKey)
+                            typedUrl = null
+                            keyWayChoice = false
+                            testResult = repo.testConnection().map { it.houses }
+                            repo.refreshAiStatus()
+                            statusRun++
+                            busy = false
+                        } else {
+                            pairEnd = end
+                        }
+                        pairJob = null
                     }
-                    // An address that is not checked has no result (round 9): the last one ("Connected: 12 houses")
-                    // would sit under a field that shows an error. Withdrawn until the next run ends (round 10).
-                    ServerUrl.Result.NotHttps -> {
-                        urlError = Res.string.settings_url_https
-                        testResult = null
-                        withdrawnRun = statusRun
-                        runCatching { urlFocus.requestFocus() }
-                    }
-                    ServerUrl.Result.Invalid, ServerUrl.Result.Empty -> {
-                        urlError = Res.string.settings_url_invalid
-                        testResult = null
-                        withdrawnRun = statusRun
-                        runCatching { urlFocus.requestFocus() }
-                    }
+                }) {
+                    Text(stringResource(if (pairJob != null) Res.string.settings_getting_code else Res.string.settings_get_code))
                 }
-            }) { Text(stringResource(Res.string.settings_save_test)) }
+            }
             OutlinedButton(enabled = !busy && settings.serverConfigured, modifier = Modifier.heightIn(min = 48.dp), onClick = {
                 scope.launch {
                     busy = true
@@ -495,6 +559,70 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
                     busy = false
                 }
             }) { Text(stringResource(Res.string.settings_sync_now)) }
+        }
+        val pairEndText = when (val end = pairEnd) {
+            PairingEnd.Denied -> stringResource(Res.string.settings_code_denied)
+            PairingEnd.Expired -> stringResource(Res.string.settings_code_expired)
+            PairingEnd.NoPairing -> stringResource(Res.string.settings_no_pairing)
+            is PairingEnd.Failed -> stringResource(Res.string.settings_connect_failed, SyncOutcome.fromError(end.error).text())
+            is PairingEnd.Approved, null -> null
+        }
+        LiveMessage(assertive = true) {
+            if (pairEndText != null) ResultCard(tone = ResultTone.ERROR, text = pairEndText)
+        }
+
+        // The older way, a key typed in (the owner key from the server's settings file, or a server without pairing).
+        val keyWayState = stringResource(if (keyWayOpen) Res.string.common_expanded else Res.string.common_collapsed)
+        TextButton(
+            onClick = { keyWayChoice = !keyWayOpen },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { stateDescription = keyWayState },
+        ) {
+            Icon(
+                if (keyWayOpen) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(stringResource(Res.string.settings_key_way))
+        }
+        AnimatedVisibility(visible = keyWayOpen) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(Res.string.settings_key_way_intro), style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                key, { key = it },
+                label = { Text(stringResource(Res.string.settings_key)) },
+                supportingText = {
+                    Text(
+                        if (settings.apiKeyHint.isNotEmpty()) stringResource(Res.string.settings_key_saved, settings.apiKeyHint)
+                        else stringResource(Res.string.settings_key_hint)
+                    )
+                },
+                // Show / Hide, as on the web (docs/05 3.3.8: the key can be pasted and checked).
+                trailingIcon = {
+                    IconButton(onClick = { showKey = !showKey }, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            if (showKey) VisibilityOffIcon else VisibilityIcon,
+                            contentDescription = stringResource(if (showKey) Res.string.settings_hide_key else Res.string.settings_show_key),
+                        )
+                    }
+                },
+                singleLine = true,
+                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(),
+            )
+                Button(enabled = !busy, modifier = Modifier.heightIn(min = 48.dp), onClick = {
+                    val server = checkedUrl() ?: return@Button
+                    scope.launch {
+                        busy = true
+                        repo.settings.saveServer(server, key)
+                        key = ""
+                        testResult = repo.testConnection().map { it.houses }
+                        repo.refreshAiStatus()
+                        statusRun++
+                        busy = false
+                    }
+                }) { Text(stringResource(Res.string.settings_save_test)) }
+            }
         }
         val lastTest = testResult
         val statusText = lastTest?.fold(
@@ -549,6 +677,29 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             horizontalPadding = 0.dp,
             onChange = { scope.launch { repo.settings.savePhotosOnWifiOnly(it) } },
         )
+        if (settings.serverConfigured) {
+            // This phone's own AI switch (docs/03 §12.1): off until the person turns it on, after reading what is
+            // sent. AI shows only when it, the server and the owner's switch for this device are all on.
+            SwitchRow(
+                text = stringResource(Res.string.settings_ai_switch),
+                hint = stringResource(Res.string.settings_ai_hint),
+                checked = settings.aiFeatures,
+                horizontalPadding = 0.dp,
+                onChange = { on -> scope.launch { repo.setAiFeatures(on) } },
+            )
+            if (settings.aiFeatures) {
+                Text(
+                    stringResource(
+                        when (aiOff) {
+                            AiOff.DEVICE -> Res.string.ai_off_for_device
+                            AiOff.SERVER, AiOff.NO_SERVER -> Res.string.settings_ai_server_off
+                            AiOff.OPT_IN, null -> Res.string.settings_ai_on
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))

@@ -69,6 +69,12 @@ interface PlatformServices {
 
     /** Opens the web link [url] in the browser; false when no app can open it. */
     fun openUrl(url: String): Boolean
+
+    /**
+     * This phone's name on the server's owner page when it connects by code or QR code (docs/03 §12.1), such as
+     * "Pixel 9 (Android app)", so the owner recognises it before approving.
+     */
+    fun deviceName(): String = "Doorprints app"
 }
 
 /**
