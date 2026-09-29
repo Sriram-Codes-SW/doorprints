@@ -221,10 +221,8 @@ Tailscale account can open it.
 2. Install Tailscale **on the server computer** and sign in.
 3. Install the Tailscale app **on your phone** (Play Store or App Store). Also install it on any other computer where
    you'll use the Doorprints website. Sign in to the **same** account on each, and switch Tailscale on.
-4. On the server computer, get the terminal ready:
-    - **Windows:** close the terminal. Open a new one in **doorprints-main** (step 2). A terminal opened before you
-      installed Tailscale can't find the `tailscale` command.
-    - **Mac:** nothing to do here, but use the longer command shown below.
+4. **Windows only:** close the terminal and open a new one in **doorprints-main** (step 2). A terminal opened
+   before you installed Tailscale can't find the `tailscale` command. On a Mac, go straight to the next step.
 5. Run this command. It shares your server with your own Tailscale devices, at a private `https://` address:
 
     ```bash
