@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.76 |
+| Version | 0.77 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -88,6 +88,7 @@
 | 0.74 | 2026-09-29 | Claude (Code), lead | **ADR-26 on the website** (branch `feat/ai-own-key-web`): *Connect* → *AI features* chooses the server or the person's own Gemini key in this browser; the phones' part merged (#51). Next: (3b) Google sign-in with Drive sync. |
 | 0.75 | 2026-09-29 | Claude (Code), lead | ADR-26 on the website merged (#52). The manual *AI evals* workflow gains *On-device AI, real key* (TC-U-88), asked for by the owner. |
 | 0.76 | 2026-09-29 | Claude (Code), lead | Optimisation review (owner request): PR #54 (the reindex's N+1 visit query, a tombstone-id query, fewer full IndexedDB reads and sorts on the web); new **S4b-BL-66** (photo reads). |
+| 0.77 | 2026-09-29 | Claude (Code), lead | Second efficiency pass (owner request): house checklists batch-fetched (no N+1), the web loads one language at a time and MapLibre's CSS with the first map (initial download 782 -> 488 KB), npm cache in CI (C-01 done), Gradle parallel, the live UI test reloads a page a network fault left half loaded. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -326,7 +327,7 @@ The last Web and Android runs are green on `0e4e22a` (section 4.2).
 
 | ID | Candidate | Why | Link | Status |
 |---|---|---|---|---|
-| C-01 | Commit `web/package-lock.json` (from the `web-package-lock` artifact) and switch `web.yml` to `npm ci` only | Reproducible web builds, A03 | 07 §2 | Part: lock file committed (`0e4e22a`); `web.yml` still has the `npm install` fallback |
+| C-01 | Commit `web/package-lock.json` (from the `web-package-lock` artifact) and switch `web.yml` to `npm ci` only | Reproducible web builds, A03 | 07 §2 | **Done**: lock file committed (`0e4e22a`); `web.yml` runs `npm ci` only, with npm's download cache (2026-09-29, efficiency pass) |
 | C-02 | `release.yml`: tag → signed APK + `.sha256` on a GitHub Release, signer fingerprint in the README | Finish F-11 / SEC-018 | 07 §5 | Open |
 | C-03 | R8 keep rules (`proguard-rules.pro`) and a release smoke test, then turn on `isMinifyEnabled`/`isShrinkResources` | F-11, M7 | 07 §5 | Open |
 | C-04 | Per-device API keys, stored hashed, with names and revocation | Close F-01b (SEC-025) | 02 §5 | Open |
