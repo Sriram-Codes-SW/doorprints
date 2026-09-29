@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.42 |
+| Version | 0.43 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -53,6 +53,7 @@
 | 0.40 | 2026-09-29 | Claude (Code), lead | **Delivery-speed review** (owner: "go with your recommendation while ensuring quality is not compromised"): the SessionStart hook (`.claude/hooks/session-start.sh`), Robolectric offline, the local iOS klib compile in §7, check-ins at 20 minutes for a fresh PR; the workflow-trigger change (push on `main` only) is the owner's step (§6). |
 | 0.41 | 2026-09-29 | Claude (Code), lead | The owner permitted the workflow change in the session: **one CI run per push** done (`push` on `main` only, `pull_request` the pre-merge signal; CodeQL and the backend image job on same-repository pull requests); the §6 to-do is closed. |
 | 0.42 | 2026-09-29 | Claude (Code), lead | `tools/check.sh` runs the local checks side by side (§7 step 4); the session hook installs Node 24 (Angular 22.2 refuses the container's Node 22.22.2); auto-merge as the owner's next setting (§6). |
+| 0.43 | 2026-09-29 | Claude (Code), lead | The owner set the ruleset (every check required) and allowed auto-merge; the six `*-required.yml` twins make the path-filtered checks report on every pull request ([07](07-secure-build-and-deploy.md) §3); §7 step 5: enable auto-merge when the PR is opened. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -149,12 +150,8 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 ## 6. Owner to-dos
 
-- **Auto-merge** (delivery-speed review, 2026-09-29; the steps were given in the session): *Settings → General → Pull
-  Requests → Allow auto-merge*, and a ruleset on `main` (*Settings → Rules*) requiring the always-running checks
-  (Semgrep, gitleaks, Trivy, the commit-email allowlist, the two CodeQL analyses; the path-filtered ones would show
-  as *Expected* for ever on a pull request that does not touch their paths). Then a session enables auto-merge on
-  each pull request once every started check is green, and the merge happens the moment the last one finishes.
-
+- ~~**Auto-merge**~~ **Done by the owner 2026-09-29**: *Allow auto-merge* and a ruleset on `main` requiring every
+  check ([07](07-secure-build-and-deploy.md) §3); the `*-required.yml` twins make the path-filtered checks report.
 - ~~**One CI run per push, not two**~~ **Done 2026-09-29** in the delivery-speed pull request, with the owner's
   permission given in the session ([07](07-secure-build-and-deploy.md) §1 *Branch runs*). A branch without a pull
   request now gets no CI: open the PR first (a draft is fine).
@@ -248,8 +245,9 @@ suite runs in a cloud session; CI is the second check, never the first:
    CI).
 5. Commit as `Claude <noreply@anthropic.com>` with the trailers `Co-Authored-By: Claude <noreply@anthropic.com>` and
    the session link; push; open the PR with What / Tests / Docs sections in plain words; subscribe to its activity and
-   set one check-in about **20 minutes** out for a fresh push (CI takes about 15) and 50-60 minutes for a PR that waits
-   on the owner.
+   **enable auto-merge (squash) on it at once** (the ruleset requires every check, so it merges by itself the moment the
+   last one is green; [07](07-secure-build-and-deploy.md) §3) and set one check-in about 20 minutes out to confirm
+   the merge, act on a red check, and go on to the next item (50-60 minutes for a PR that waits on the owner).
 6. On CI red: find the cause in the job log, reproduce it locally, fix, push. Never skip a test.
 7. When green: merge (above). After a merge that runs the `Web` deploy, wait for the deploy, then run
    `tools/live-ui` (`npm ci && node live-ui.js`; Chromium at `/opt/pw-browsers/chromium` in cloud sessions) and report

@@ -115,6 +115,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Required status checks and auto-merge** (the owner's ruleset on `main`): the six path-filtered workflows get
+  "always report" twins (`.github/workflows/*-required.yml`) so every required check reports on every pull request.
 - **`tools/check.sh`:** the local checks (Android with the screenshot verify, the iOS klib compile, web tests and
   build, the guide, licence headers) run side by side for the areas a branch touches; the session hook also
   installs Node 24, which Angular 22.2 needs.

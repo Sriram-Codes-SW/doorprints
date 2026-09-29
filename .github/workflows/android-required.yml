@@ -1,0 +1,42 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The "always report" twin of android.yml (docs/07 section 3; GitHub, "Handling skipped but required checks"): the
+# ruleset on main requires android.yml's check, but android.yml is path-filtered, so on a pull request that touches
+# none of its paths the check would stay "Expected" for ever and block the merge. This workflow has the same name
+# and the same job name, is triggered by the complement of android.yml's paths (paths-ignore must mirror its paths
+# list exactly), and succeeds at once. On a pull request that touches both kinds of files both run; the real
+# result is the later one and decides.
+name: Android
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "android/**"
+      - "docs/schemas/**"
+      - "web/public/geo/**"
+      - ".github/workflows/android.yml"
+
+permissions: {}
+
+jobs:
+  build:
+    name: assembleDebug + unit tests (JDK 21)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 2
+    steps:
+      - run: echo "No Android input changed in this pull request; android.yml did not run and nothing needs building."
