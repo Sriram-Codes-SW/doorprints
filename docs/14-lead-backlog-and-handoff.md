@@ -171,6 +171,19 @@ A new session reads CLAUDE.md, then this file, and continues from §2 without as
 
 **Order of work** is §2 N13 (then N10, then S4b-BL-63). Pick up open pull requests first.
 
+**Test locally, not in CI (owner, 2026-09-29: "Get Docker here. Don't use CI if there is another way.")** Every
+suite runs in a cloud session; CI is the second check, never the first:
+
+- Docker: the daemon is installed but not started. `rm -f /var/run/docker.pid /var/run/docker.sock; nohup dockerd
+  >/tmp/dockerd.log 2>&1 &`, then wait for `docker info`. Builds need `docker build --network host` (the session
+  proxy; `/root/.ccr/README.md`).
+- JDK 25 for the backend: `curl -sSL "https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jdk/hotspot/normal/eclipse"`
+  into the scratchpad and run Maven with `JAVA_HOME` pointing at it (the container has JDK 21 only).
+- Backend: `docker build --network host -t doorprints-db:ci backend/db`, start it as `backend.yml` does (port 5432,
+  user, password and database `doorprints`), then `DB_URL=jdbc:postgresql://127.0.0.1:5432/doorprints DB_USER=doorprints
+  DB_PASSWORD=doorprints mvn -B -ntp verify` (about 5 minutes, 315 tests on 2026-09-29).
+- The disk allowance is small: delete scratch downloads you no longer need before pulling images.
+
 **Per change**
 
 1. A branch `<type>/<topic>` from the latest `main` (CLAUDE.md); never a session's generated name; one PR each.
