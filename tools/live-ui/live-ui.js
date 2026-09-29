@@ -119,6 +119,7 @@ function watch(page) {
     const refused = /Refused to (?:apply style|execute script) from '([^']+)' because its MIME type \('([^']*)'\)/.exec(m.text());
     if (refused && refused[1].startsWith(BASE)) {
       const [, url, got] = refused;
+      noteFault(page);
       classify(url, expectedType(url), { url, status: 'refused', type: got }, false, `wrong type '${got}' for ${url} (twice)`);
     }
   });
@@ -137,6 +138,7 @@ function watch(page) {
     const gateway = status >= 502 && status <= 504;
     if (!wrongType && status < 400) return;
     if (!wrongType && !gateway) { errors.push(`HTTP ${status} ${url}`); return; }
+    noteFault(page);
     const h = r.headers();
     const evidence = { url, status, type: got, fromServiceWorker: r.fromServiceWorker(), via: h.via, server: h.server, cache: h['x-cache'] };
     classify(url, type, evidence, gateway, wrongType ? `wrong type '${got}' for ${url} (twice)` : `HTTP ${status} ${url} (twice)`);
@@ -155,18 +157,35 @@ function watch(page) {
   };
   return errors;
 }
-/** page.goto, once more after a transient gateway error or a timeout (recorded in {@link transient}). */
+/** Network faults seen on each page's subresources so far (a 50x or a refused type), counted as they arrive. */
+const pageFaults = new WeakMap();
+const noteFault = (page) => pageFaults.set(page, (pageFaults.get(page) || 0) + 1);
+/**
+ * page.goto, once more after a transient gateway error or a timeout (recorded in {@link transient}), or when one of the
+ * page's own scripts or stylesheets hit a network fault while it loaded: a chunk that failed leaves the app half
+ * started (2026-09-29: a 502 on the shared chunk left /houses/new without its form), so the page is loaded again.
+ */
 async function gotoRetry(page, url, opts = {}) {
   const o = { waitUntil: 'domcontentloaded', timeout: 60000, ...opts };
+  const faultsBefore = pageFaults.get(page) || 0;
   let first;
+  let why = null;
   try {
     first = await page.goto(url, o);
-    if (!first || first.status() < 502 || first.status() > 504) return first;
+    if (first && first.status() >= 502 && first.status() <= 504) why = first.status();
   } catch (e) {
     if (!/Timeout/.test(e.message)) throw e;
+    why = 'timeout';
   }
-  transient.push({ url, status: first ? first.status() : 'timeout', page: 'navigation', at: new Date().toISOString() });
-  console.log(`NETWORK (not counted) ${first ? first.status() : 'timeout'} on ${url} — loading it again`);
+  if (why === null) {
+    // Lazy chunks load after DOMContentLoaded: wait for the network to go quiet before judging the load.
+    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+    if ((pageFaults.get(page) || 0) === faultsBefore) return first;
+    why = 'a script or stylesheet failed';
+  } else {
+    transient.push({ url, status: why, page: 'navigation', at: new Date().toISOString() });
+  }
+  console.log(`NETWORK (not counted) ${why} on ${url} — loading it again`);
   return page.goto(url, o);
 }
 async function settle(page) {
