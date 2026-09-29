@@ -69,7 +69,7 @@ concurrency:
 jobs:
   build:
     name: ng test + ng build (Node 24)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -136,7 +136,7 @@ jobs:
   pwa-files:
     name: PWA files in the build (service worker, manifest, icons, screenshots)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -317,7 +317,7 @@ jobs:
   # Sparse checkout: only the two paths the checks read; no application code, no npm project of web/.
   firebase-config:
     name: Firebase Hosting config and CLI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -367,7 +367,7 @@ jobs:
   firebase-setup:
     name: Firebase Hosting setup present?
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions: {}
     outputs:
@@ -445,7 +445,7 @@ jobs:
     name: Deploy to Firebase Hosting
     needs: [build, pwa-files, firebase-config, firebase-setup]
     if: needs.firebase-setup.outputs.ready == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
