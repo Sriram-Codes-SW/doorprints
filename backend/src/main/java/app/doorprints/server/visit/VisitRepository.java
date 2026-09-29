@@ -24,6 +24,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +35,9 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
     List<Visit> findBySyncVersionGreaterThanOrderBySyncVersion(long syncVersion);
 
     List<Visit> findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(UUID houseId);
+
+    /** The live visits of several houses in one query (the reindex's batches), newest first. */
+    List<Visit> findByDeletedFalseAndHouseIdInOrderByArrivedAtDesc(Collection<UUID> houseIds);
 
     long countByDeletedFalse();
 

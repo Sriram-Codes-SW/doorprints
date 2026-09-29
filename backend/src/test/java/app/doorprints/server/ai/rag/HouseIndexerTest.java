@@ -70,7 +70,7 @@ class HouseIndexerTest {
     @Test
     void reindexKeepsGoingAfterAFailedBatchAndReportsIt() {
         when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(liveHouses(HouseIndexer.BATCH + 5));
-        when(houses.findBySyncVersionGreaterThanOrderBySyncVersion(0)).thenReturn(List.of());
+        when(houses.findDeletedIds()).thenReturn(List.of());
         doThrow(new IllegalStateException("provider down")).doNothing().when(vectorStore).add(anyList());
 
         assertThatThrownBy(indexer::reindexAll)
@@ -86,7 +86,7 @@ class HouseIndexerTest {
     @Test
     void reindexStopsAtTheFirstQuotaErrorInsteadOfBurningMoreCalls() {
         when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(liveHouses(2 * HouseIndexer.BATCH + 5));
-        when(houses.findBySyncVersionGreaterThanOrderBySyncVersion(0)).thenReturn(List.of());
+        when(houses.findDeletedIds()).thenReturn(List.of());
         var quota = new GeminiEmbeddingModel.GeminiEmbeddingException(
                 "Vertex AI embedding request failed: HTTP 429 (RESOURCE_EXHAUSTED)", 429, "RESOURCE_EXHAUSTED");
         doNothing().doThrow(new RuntimeException("wrapped", quota)).when(vectorStore).add(anyList());
@@ -127,7 +127,7 @@ class HouseIndexerTest {
         gone.setLabel("gone");
         gone.setDeleted(true);
         when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(liveHouses(3));
-        when(houses.findBySyncVersionGreaterThanOrderBySyncVersion(0)).thenReturn(List.of(gone));
+        when(houses.findDeletedIds()).thenReturn(List.of(gone.getId()));
 
         assertThat(indexer.reindexAll()).isEqualTo(3);
         verify(vectorStore, times(1)).add(anyList());
@@ -135,9 +135,20 @@ class HouseIndexerTest {
     }
 
     @Test
+    void reindexReadsVisitsOncePerBatchNotOncePerHouse() {
+        when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(liveHouses(HouseIndexer.BATCH + 5));
+        when(houses.findDeletedIds()).thenReturn(List.of());
+
+        assertThat(indexer.reindexAll()).isEqualTo(HouseIndexer.BATCH + 5);
+        verify(visits, times(2)).findByDeletedFalseAndHouseIdInOrderByArrivedAtDesc(anyList());
+        verify(visits, never()).findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(any());
+        verify(houses, never()).findBySyncVersionGreaterThanOrderBySyncVersion(0);
+    }
+
+    @Test
     void emptyDatabaseIndexesNothing() {
         when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(List.of());
-        when(houses.findBySyncVersionGreaterThanOrderBySyncVersion(0)).thenReturn(List.of());
+        when(houses.findDeletedIds()).thenReturn(List.of());
 
         assertThat(indexer.reindexAll()).isZero();
         verify(vectorStore, never()).add(anyList());

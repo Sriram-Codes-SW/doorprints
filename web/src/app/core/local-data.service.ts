@@ -97,6 +97,11 @@ export class LocalDataService {
     );
   }
 
+  /** Live visits per house id, from one read of this browser's store. */
+  visitCounts(): Observable<Map<string, number>> {
+    return defer(() => from(this.store.visitCountsByHouse()));
+  }
+
   visits(houseId: string): Observable<VisitDto[]> {
     return defer(() => from(this.store.visitsOf(houseId).then((list) => list.map(visitToDto))));
   }
