@@ -22,9 +22,55 @@
     <h1 id="connect-title" tabindex="-1">{{ 'connect.title' | t }}</h1>
     <p class="muted">{{ 'connect.intro' | t }}</p>
   </header>
+  @if (invite(); as link) {
+    <!-- Opened from the owner page's QR code or link. Nothing is sent until "Connect": anyone can send such a link,
+         and connecting to a stranger's server would copy your houses to it. -->
+    <section class="card invite" aria-labelledby="invite-heading">
+      <h2 id="invite-heading" tabindex="-1">{{ 'connect.inviteHeading' | t }}</h2>
+      <p>{{ 'connect.inviteBody' | t }}</p>
+      <p class="server-name">{{ link.server }}</p>
+      <p class="muted small">{{ 'connect.inviteWarning' | t }}</p>
+      <div class="field checkbox">
+        <input
+          id="invite-remember"
+          type="checkbox"
+          name="inviteRemember"
+          [(ngModel)]="remember"
+          aria-describedby="invite-remember-hint"
+        />
+        <label for="invite-remember">{{ 'connect.remember' | t }}</label>
+        <p id="invite-remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
+      </div>
+      <div role="alert">
+        @if (inviteError(); as card) {
+          @for (c of [card]; track c.run) {
+            <div class="error">{{ c.value.key | t: c.value.params }}</div>
+          }
+        }
+      </div>
+      <div class="invite-actions">
+        <button
+          type="button"
+          class="btn btn-primary"
+          [attr.aria-disabled]="inviteBusy() ? 'true' : null"
+          (click)="connectWithInvite()"
+        >
+          {{ (inviteBusy() ? 'connect.connecting' : 'connect.connectInvite') | t }}
+        </button>
+        <button type="button" class="btn" (click)="dismissInvite()">{{ 'connect.notNow' | t }}</button>
+      </div>
+    </section>
+  } @else if (inviteInvalid()) {
+    <section class="card" aria-labelledby="invite-heading">
+      <h2 id="invite-heading" tabindex="-1">{{ 'connect.inviteHeading' | t }}</h2>
+      <p class="error" role="alert">{{ 'connect.inviteInvalid' | t }}</p>
+      <div class="invite-actions">
+        <button type="button" class="btn" (click)="dismissInvite()">{{ 'connect.notNow' | t }}</button>
+      </div>
+    </section>
+  }
   <div class="card">
-
-    <form (ngSubmit)="save()" novalidate>
+    <form (ngSubmit)="submit()" novalidate>
       <div class="field">
         <label for="baseUrl">
           {{ 'connect.baseUrl' | t }} <span class="req" aria-hidden="true">*</span>
@@ -52,6 +98,57 @@
         }
       </div>
 
+      <div class="field checkbox">
+        <input id="remember" type="checkbox" name="remember" [(ngModel)]="remember" aria-describedby="remember-hint" />
+        <label for="remember">{{ 'connect.remember' | t }}</label>
+        <p id="remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
+      </div>
+      <p class="muted small"><span aria-hidden="true">* </span>{{ 'connect.required' | t }}</p>
+      <!-- The usual way (ADR-25): a code typed on the server's owner page gives this browser a key of its own. -->
+      <section class="pair" aria-labelledby="pair-heading">
+        <h2 id="pair-heading">{{ 'connect.codeHeading' | t }}</h2>
+        <p class="muted small">{{ 'connect.codeIntro' | t: { name: deviceName } }}</p>
+        @if (pairing(); as p) {
+          <div class="pair-code">
+            <p>{{ 'connect.codeShow' | t }}</p>
+            <!-- Read letter by letter from the announcement; here it is shown large for typing. -->
+            <p class="code" translate="no">{{ p.code }}</p>
+            <p class="muted small">{{ 'connect.codeWaiting' | t: { minutes: p.minutes } }}</p>
+            <p class="small">
+              <a [href]="p.baseUrl + '/owner/'" target="_blank" rel="noopener noreferrer">{{
+                'connect.openOwnerPage' | t
+              }}</a>
+            </p>
+            <div class="refresh-bar" role="progressbar" [attr.aria-label]="'connect.waiting' | t"></div>
+          </div>
+          <div class="pair-actions">
+            <button type="button" class="btn" (click)="cancelCode()">{{ 'connect.cancelCode' | t }}</button>
+          </div>
+        } @else {
+          <div class="pair-actions">
+            <button
+              id="connect-get-code"
+              type="button"
+              class="btn btn-primary"
+              [attr.aria-disabled]="pairBusy() ? 'true' : null"
+              (click)="getCode()"
+            >
+              {{ (pairBusy() ? 'connect.gettingCode' : 'connect.getCode') | t }}
+            </button>
+          </div>
+        }
+        <div role="alert">
+          @if (pairError(); as card) {
+            @for (c of [card]; track c.run) {
+              <div class="error pair-error">{{ c.value.key | t: c.value.params }}</div>
+            }
+          }
+        </div>
+      </section>
+      <!-- The older way: a key typed in (the owner key from the server's settings, or a server without pairing). -->
+      <details class="key-way" [open]="keyMode()" (toggle)="onKeyModeToggle($event)">
+        <summary>{{ 'connect.otherWays' | t }}</summary>
+        <p class="muted small">{{ 'connect.otherWaysIntro' | t }}</p>
       <div class="field">
         <label for="apiKey">
           {{ 'connect.apiKey' | t }} <span class="req" aria-hidden="true">*</span>
@@ -83,12 +180,6 @@
           <span id="apiKey-required" class="field-error">{{ 'connect.keyRequired' | t }}</span>
         }
       </div>
-      <div class="field checkbox">
-        <input id="remember" type="checkbox" name="remember" [(ngModel)]="remember" aria-describedby="remember-hint" />
-        <label for="remember">{{ 'connect.remember' | t }}</label>
-        <p id="remember-hint" class="muted small">{{ 'connect.rememberHint' | t }}</p>
-      </div>
-      <p class="muted small"><span aria-hidden="true">* </span>{{ 'connect.required' | t }}</p>
 
       <!-- The regions are present before the result arrives, so both a failure and a success are announced. A new
            check keeps the last card in place, dimmed, with the bar along its foot named "Testing…" (outside both
@@ -150,12 +241,41 @@
             {{ 'connect.saveAnyway' | t }}
           </button>
         }
-        @if (configured()) {
-          <button type="button" class="btn btn-danger" (click)="disconnect()">{{ 'connect.disconnect' | t }}</button>
-        }
       </div>
+      </details>
+      @if (configured()) {
+        <div class="disconnect-row">
+          <button type="button" class="btn btn-danger" (click)="disconnect()">{{ 'connect.disconnect' | t }}</button>
+        </div>
+      }
     </form>
 
     <p class="muted small hint">{{ 'connect.cors' | t: { setting: 'APP_CORS_ORIGINS' } }}</p>
   </div>
+
+  @if (configured()) {
+    <!-- This browser's own switch (docs/03 §12.1): off until the person turns it on, after reading what is sent.
+         AI shows only when this switch and the server (and the owner's switch for this device) are all on. -->
+    <section id="ai" class="card" aria-labelledby="ai-heading">
+      <h2 id="ai-heading">{{ 'connect.aiHeading' | t }}</h2>
+      <div class="field checkbox">
+        <input
+          id="ai-features"
+          type="checkbox"
+          [checked]="ai.optedIn()"
+          (change)="setAiFeatures($event)"
+          aria-describedby="ai-features-hint"
+        />
+        <label for="ai-features">{{ 'connect.aiSwitch' | t }}</label>
+        <p id="ai-features-hint" class="muted small">{{ 'connect.aiHint' | t }}</p>
+      </div>
+      @if (ai.optedIn()) {
+        @if (ai.offReason(); as reason) {
+          <p class="muted small">{{ aiOffMsg(reason).key | t: aiOffMsg(reason).params }}</p>
+        } @else {
+          <p class="muted small">{{ 'connect.aiOn' | t }}</p>
+        }
+      }
+    </section>
+  }
 </div>

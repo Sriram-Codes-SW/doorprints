@@ -21,6 +21,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
+import { AI_OPT_IN_KEY } from './storage-keys';
 import { errorMsg } from './format';
 import type { HouseStatus, PriceType } from './models';
 
@@ -32,7 +33,15 @@ export interface AiStatus {
   mcpEnabled: boolean;
   chatModel: string | null;
   embeddingModel: string | null;
+  /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
+  offForDevice?: boolean;
 }
+
+/**
+ * Why AI is not offered here, or null when it is: no server; off on the server (or paused, or no Gemini key); off for
+ * this device on the owner page; or this browser's own *AI features* switch is off.
+ */
+export type AiOffReason = 'noServer' | 'server' | 'device' | 'optIn';
 
 /** A suggestion only; nothing is saved until the user saves the form. */
 export interface HouseDraft {
@@ -104,18 +113,42 @@ export const AI_MAX_LISTING_CHARS = 8000;
 export const AI_MAX_QUESTION_CHARS = 1000;
 
 /**
- * Optional AI features. Everything AI in the UI is hidden unless GET /api/ai/status says `enabled`
- * (it is off by default on the server, and an unreachable server counts as off).
+ * Optional AI features. Everything AI in the UI is hidden unless GET /api/ai/status says `enabled` (it is off by
+ * default on the server, and an unreachable server counts as off) **and** the person turned on *AI features* in this
+ * browser (off until then, owner decision of 2026-09-29: they read what is sent to Google first; docs/03 §12.1).
  */
 @Injectable({ providedIn: 'root' })
 export class AiService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(ConfigService);
   private readonly status = signal<AiStatus | null>(null);
-  readonly enabled = computed(() => this.status()?.enabled === true);
+  private readonly optInState = signal<boolean>(readOptIn());
+  /** This browser's own *AI features* switch. */
+  readonly optedIn = this.optInState.asReadonly();
+  /** The server offers AI to this device (whatever this browser's switch says). */
+  readonly serverEnabled = computed(() => this.status()?.enabled === true);
+  readonly enabled = computed(() => this.serverEnabled() && this.optInState());
+  readonly offReason = computed<AiOffReason | null>(() => {
+    if (!this.config.configured()) return 'noServer';
+    const s = this.status();
+    if (s?.offForDevice) return 'device';
+    if (!s?.enabled) return 'server';
+    return this.optInState() ? null : 'optIn';
+  });
 
   constructor() {
     this.refresh();
+  }
+
+  /** Turns this browser's *AI features* on or off. Kept in localStorage: a preference, not a secret. */
+  setOptIn(on: boolean): void {
+    this.optInState.set(on);
+    try {
+      if (on) localStorage.setItem(AI_OPT_IN_KEY, '1');
+      else localStorage.removeItem(AI_OPT_IN_KEY);
+    } catch {
+      // Storage unavailable: the choice holds for this page only.
+    }
   }
 
   /** Re-reads the status (after connecting or disconnecting). */
@@ -151,9 +184,36 @@ export function aiErrorMsg(err: unknown): Msg {
       return { key: 'ai.rateLimited', params: { s: Number.isFinite(seconds) ? seconds : 60 } };
     }
     if (err.status === 503) return { key: 'ai.providerDown' };
+    if (err.status === 403) {
+      const code = (err.error as { code?: unknown } | null)?.code;
+      if (code === 'AI_OFF_FOR_DEVICE') return { key: 'ai.offForDevice' };
+      if (code === 'AI_PAUSED') return { key: 'ai.disabled' };
+    }
     if (err.status === 404) return { key: 'ai.disabled' };
   }
   return errorMsg(err);
+}
+
+/** The words for an {@link AiOffReason}. */
+export function aiOffMsg(reason: AiOffReason): Msg {
+  switch (reason) {
+    case 'noServer':
+      return { key: 'ai.noServer' };
+    case 'device':
+      return { key: 'ai.offForDevice' };
+    case 'optIn':
+      return { key: 'ai.optInNeeded' };
+    default:
+      return { key: 'ai.disabled' };
+  }
+}
+
+function readOptIn(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(AI_OPT_IN_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /** Splits an answer into text and [house:<id>] citation markers, so markers can become links. */

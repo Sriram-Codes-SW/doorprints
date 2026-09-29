@@ -17,9 +17,11 @@
  */
 
 import { Component, DestroyRef, Injector, afterNextRender, inject, signal } from '@angular/core';
+import { Location } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription, switchMap, timer } from 'rxjs';
 import { ApiConfig, ConfigService, initialBaseUrl, normalizeBaseUrl } from '../../core/config.service';
 import { HouseApiService } from '../../core/house-api.service';
 import { StatsDto } from '../../core/models';
@@ -27,7 +29,15 @@ import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { Msg } from '../../i18n/translation.service';
 import { ConfirmService } from '../../core/confirm.service';
-import { AiService } from '../../core/ai.service';
+import { AiService, aiOffMsg } from '../../core/ai.service';
+import {
+  ConnectLink,
+  PairingPolled,
+  PairingService,
+  PairingStarted,
+  browserDeviceName,
+  parseConnectLink,
+} from '../../core/pairing.service';
 import { AiSessionState } from '../../core/ai-session.state';
 import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
@@ -45,15 +55,50 @@ export class ConnectPage {
   private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
-  private readonly ai = inject(AiService);
+  protected readonly ai = inject(AiService);
   private readonly aiSession = inject(AiSessionState);
+  private readonly pairingApi = inject(PairingService);
   private readonly injector = inject(Injector);
   /** The check in flight. Editing a field or leaving the page drops it, so its result never lands on other values. */
   private request: Subscription | null = null;
+  /** The code request or poll in flight (docs/03 §12.1). Cancel, an edit of the address or leaving the page drops it. */
+  private pairRequest: Subscription | null = null;
 
   constructor() {
     // Leaving during "Save and continue" must not save and navigate back to Map from another page.
-    inject(DestroyRef).onDestroy(() => this.stopCheck());
+    inject(DestroyRef).onDestroy(() => {
+      this.stopCheck();
+      this.stopPairing();
+    });
+    // A connect link from the owner page's QR code or link: read it, then take it out of the address bar at once
+    // (it is a one-time key to the server), and ask before using it, since anyone can send such a link.
+    const params = inject(ActivatedRoute).snapshot.queryParamMap;
+    if (params.has('invite') || params.has('server')) {
+      this.invite.set(parseConnectLink(params.get('server'), params.get('invite')));
+      this.inviteInvalid.set(this.invite() === null);
+      inject(Location).replaceState('/connect');
+      afterNextRender(() => document.getElementById('invite-heading')?.focus(), { injector: this.injector });
+    }
+  }
+
+  /** This browser's name on the owner page. */
+  protected readonly deviceName = browserDeviceName(typeof navigator === 'undefined' ? '' : navigator.userAgent);
+  /** The connect link this page was opened with, waiting for "Connect". */
+  protected readonly invite = signal<ConnectLink | null>(null);
+  /** The page was opened with a connect link that is broken or not an https:// server. */
+  protected readonly inviteInvalid = signal(false);
+  protected readonly inviteBusy = signal(false);
+  protected readonly inviteError = signal<RunResult<Msg> | null>(null);
+  /** The code on screen while this browser waits for the owner to type it. */
+  protected readonly pairing = signal<{ code: string; baseUrl: string; minutes: number } | null>(null);
+  protected readonly pairBusy = signal(false);
+  protected readonly pairError = signal<RunResult<Msg> | null>(null);
+  /** "Use an API key instead" is open: the older way, a key typed in. Open when this browser already uses such a key. */
+  protected readonly keyMode = signal(ConnectPage.usesTypedKey(this.config.config()?.apiKey));
+  protected readonly aiOffMsg = aiOffMsg;
+
+  private static usesTypedKey(key: string | undefined): boolean {
+    return !!key && !key.startsWith('dpk_');
   }
 
   protected baseUrl =
@@ -110,6 +155,9 @@ export class ConnectPage {
    */
   protected onEdit(): void {
     this.stopCheck();
+    this.stopPairing();
+    this.pairing.set(null);
+    this.pairError.set(null);
     this.testResult.set(null);
     this.error.set(null);
     this.offerSaveAnyway.set(false);
@@ -127,6 +175,143 @@ export class ConnectPage {
       return false;
     }
     return true;
+  }
+
+  /** Enter in the form: the key way when it is open or a key was typed, else "Get a code". */
+  protected submit(): void {
+    if (this.keyMode() || this.apiKey.trim()) this.save();
+    else this.getCode();
+  }
+
+  /** The address alone, for the code: filled, and one the browser will not block. */
+  private validateUrl(): boolean {
+    this.urlTouched.set(true);
+    if (!this.baseUrl.trim() || this.mixedContent) {
+      this.submitted.set(true);
+      afterNextRender(() => document.getElementById('baseUrl')?.focus(), { injector: this.injector });
+      return false;
+    }
+    return true;
+  }
+
+  /** "Get a code": asks the server for a code, shows it, and waits for the owner to type it on the owner page. */
+  protected getCode(): void {
+    if (this.pairBusy() || !this.validateUrl()) return;
+    const baseUrl = normalizeBaseUrl(this.baseUrl);
+    this.stopPairing();
+    this.pairError.set(null);
+    this.pairBusy.set(true);
+    this.pairRequest = this.pairingApi.start(baseUrl, this.deviceName).subscribe({
+      next: (started) => {
+        this.pairRequest = null;
+        this.pairBusy.set(false);
+        this.pairing.set({ code: started.userCode, baseUrl, minutes: Math.max(1, Math.round(started.expiresIn / 60)) });
+        this.announcer.announce({ key: 'connect.codeReady', params: { code: spellCode(started.userCode) } });
+        this.poll(baseUrl, started, Date.now() + started.expiresIn * 1000, 0);
+      },
+      error: (err: unknown) => {
+        this.pairRequest = null;
+        this.pairBusy.set(false);
+        this.pairError.set(runResult(pairingErrorMsg(err)));
+      },
+    });
+  }
+
+  /** One poll after the server's interval; a few network failures in a row are tolerated, the code's expiry is not. */
+  private poll(baseUrl: string, started: PairingStarted, deadline: number, failures: number): void {
+    this.pairRequest = timer(Math.max(1, started.interval) * 1000)
+      .pipe(switchMap(() => this.pairingApi.poll(baseUrl, started.pollToken)))
+      .subscribe({
+        next: (polled) => {
+          this.pairRequest = null;
+          this.onPolled(baseUrl, started, deadline, polled);
+        },
+        error: (err: unknown) => {
+          this.pairRequest = null;
+          if (failures + 1 < 3 && Date.now() < deadline) {
+            this.poll(baseUrl, started, deadline, failures + 1);
+          } else {
+            this.endPairing(pairingErrorMsg(err));
+          }
+        },
+      });
+  }
+
+  private onPolled(baseUrl: string, started: PairingStarted, deadline: number, polled: PairingPolled): void {
+    if (polled.status === 'approved' && polled.deviceKey) {
+      this.pairing.set(null);
+      this.announcer.announce({ key: 'connect.paired' });
+      this.commit({ baseUrl, apiKey: polled.deviceKey });
+    } else if (polled.status === 'denied') {
+      this.endPairing({ key: 'connect.codeDenied' });
+    } else if (polled.status === 'expired' || Date.now() >= deadline) {
+      this.endPairing({ key: 'connect.codeExpired' });
+    } else {
+      this.poll(baseUrl, started, deadline, 0);
+    }
+  }
+
+  private endPairing(reason: Msg): void {
+    this.pairing.set(null);
+    this.pairError.set(runResult(reason));
+    afterNextRender(() => focusIfLost('connect-get-code'), { injector: this.injector });
+  }
+
+  /** "Cancel" under the code: stops waiting. The code expires on the server by itself. */
+  protected cancelCode(): void {
+    this.stopPairing();
+    this.pairing.set(null);
+    this.pairError.set(null);
+    afterNextRender(() => document.getElementById('connect-get-code')?.focus(), { injector: this.injector });
+  }
+
+  private stopPairing(): void {
+    this.pairRequest?.unsubscribe();
+    this.pairRequest = null;
+    this.pairBusy.set(false);
+  }
+
+  /** "Connect" for a connect link: redeems the invite with this browser's name and saves the key it gets. */
+  protected connectWithInvite(): void {
+    const link = this.invite();
+    if (!link || this.inviteBusy()) return;
+    this.inviteBusy.set(true);
+    this.inviteError.set(null);
+    this.pairRequest = this.pairingApi.redeem(link.server, link.invite, this.deviceName).subscribe({
+      next: ({ deviceKey }) => {
+        this.pairRequest = null;
+        this.inviteBusy.set(false);
+        this.invite.set(null);
+        this.announcer.announce({ key: 'connect.paired' });
+        this.commit({ baseUrl: link.server, apiKey: deviceKey });
+      },
+      error: (err: unknown) => {
+        this.pairRequest = null;
+        this.inviteBusy.set(false);
+        const used = err instanceof HttpErrorResponse && err.status === 410;
+        this.inviteError.set(runResult(used ? { key: 'connect.inviteUsed' } : pairingErrorMsg(err)));
+      },
+    });
+  }
+
+  /** "Not now" for a connect link: nothing is sent; the invite expires on the server by itself. */
+  protected dismissInvite(): void {
+    this.stopPairing();
+    this.invite.set(null);
+    this.inviteInvalid.set(false);
+    this.inviteError.set(null);
+    this.inviteBusy.set(false);
+    afterNextRender(() => document.getElementById('connect-title')?.focus(), { injector: this.injector });
+  }
+
+  protected setAiFeatures(event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    this.ai.setOptIn(on);
+    this.announcer.announce({ key: on ? 'connect.aiTurnedOn' : 'connect.aiTurnedOff' });
+  }
+
+  protected onKeyModeToggle(event: Event): void {
+    this.keyMode.set((event.target as HTMLDetailsElement).open);
   }
 
   protected test(): void {
@@ -201,6 +386,7 @@ export class ConnectPage {
     this.config.clear();
     this.ai.refresh();
     this.aiSession.clear();
+    this.keyMode.set(false);
     this.baseUrl = initialBaseUrl(typeof location === 'undefined' ? '' : location.hostname);
     this.apiKey = '';
     this.submitted.set(false);
@@ -216,4 +402,24 @@ export class ConnectPage {
       { injector: this.injector },
     );
   }
+}
+
+/** The code letter by letter for a screen reader ("K 7 M Q, 4 X R D"), so it is not read as a word. */
+export function spellCode(code: string): string {
+  return code
+    .split('-')
+    .map((part) => part.split('').join(' '))
+    .join(', ');
+}
+
+/** Pairing failures: an older server without pairing (404), too many tries (429), else the usual reasons. */
+export function pairingErrorMsg(err: unknown): Msg {
+  if (err instanceof HttpErrorResponse) {
+    if (err.status === 404 || err.status === 405) return { key: 'connect.noPairing' };
+    if (err.status === 429) {
+      const seconds = Number.parseInt(err.headers.get('Retry-After') ?? '', 10);
+      return { key: 'ai.rateLimited', params: { s: Number.isFinite(seconds) ? seconds : 60 } };
+    }
+  }
+  return { key: 'connect.failed', params: { reason: errorMsg(err) } };
 }
