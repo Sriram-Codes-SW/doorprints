@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.58 |
+| Version | 0.59 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved as the next item, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -70,6 +70,7 @@
 | 0.56 | 2026-09-29 | Claude (Code), lead | **CMP-8a merged** (PR #29, `a14e57c`; §13.11 records its first simulator runs) and **CMP-8b done in code** (branch `claude/sleepy-brown-479259` on `a14e57c`). New **§13.12**: the iOS app shell (`DoorprintsKit`, `MainViewController`, the iOS services, `PlatformFeatures`, `ios/`, the `ios-app` CI job). §12.7: **S4b-BL-36 and -40 done in code**, S4b-BL-39 in part (the rest is hidden on iOS), S4b-BL-57 (1) done; new **S4b-BL-58** (adding a house on iPhone before the map) and **S4b-BL-59** (iOS gaps left for later). The code and design reviews' fixes are recorded in §13.12 (*Review*). |
 | 0.57 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (owner request of 2026-09-29): new **§17**; the user guide v0.1 ([`guide/`](../guide/docs/index.md), an MkDocs site published by `.github/workflows/pages.yml` at https://sriram-codes-sw.github.io/doorprints/), with its screenshots in `guide/docs/images/`. §12.7: new **S4b-BL-60** (the guide in Hindi, Tamil and Telugu, and an in-app **Help** link to it) and **S4b-BL-61** (the web's Plan page shows its form under the no-server note). |
 | 0.58 | 2026-09-29 | Claude (Code), lead | New **S4b-BL-62**: the Ubuntu 26.04 runner trial (owner request of 2026-09-29, after actions/runner-images#14748). |
+| 0.59 | 2026-09-29 | Claude (Code), Docs team | §17: the guide's new page **Set up your own server**, a step-by-step setup for people who are not programmers (owner request of 2026-09-29). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -2281,3 +2282,22 @@ alone holds `pages: write` and `id-token: write`). MkDocs Material and its depen
 the plugin and theme system Material relies on. **Owner to-do:** Settings > Pages > Source: *GitHub Actions*; the site
 is then https://sriram-codes-sw.github.io/doorprints/. The guide is not a numbered SSDLC doc, so 13 stays reserved for
 the release security checklist (S4b-SEC-3).
+
+**Set up your own server** (owner request of 2026-09-29: "someone who is not well versed with tech but still wants AI
+will not be able to easily set up the server and get the API key"). A new guide page,
+[`set-up-a-server.md`](../guide/docs/set-up-a-server.md), after *Server and sharing*. It is a walkthrough for a
+Windows or Mac home computer: Docker Desktop and the dev `docker-compose.yml` (its ports stay loopback-only), a `.env`
+file next to it, and **Tailscale Serve** for the private `https://…ts.net` address the apps need. Tailscale Serve is
+reachable only from the owner's own tailnet; Funnel, which would make it public, is not used, in keeping with *no
+public server* until the release security gate. It also shows a diagram (`images/server-setup-diagram.svg`). The page
+starts with a table of the **two keys** people confuse: the Doorprints API key (made by the user, 32+ characters,
+`ApiKeyFilter.MIN_KEY_LENGTH`, typed into the server and each app) and the Gemini key (from AI Studio, only in the
+server's `.env`; the apps never ask for one, AI access policy). It shows how to make a key without `openssl` on
+Windows, how to get a free Gemini key, and what the AI receives: contact names and phones are redacted
+(`ContactRedactor`), the rest is sent, and Google's free-tier terms let people read it and ask for no personal
+information. It ends with everyday use, updating without losing data (the volume is named after the folder), sharing
+through Tailscale, and a troubleshooting table.
+The facts were checked in the code and the vendors' pages on 2026-09-29: `tailscale serve --bg`, the Gemini API
+terms, and `/actuator/health` open without a key. None of it was run end to end on a real Windows or Mac machine. The
+guide gains `pymdownx.highlight` and `pymdownx.superfences` (both already in the pinned requirements) so code blocks
+can sit inside list steps. *Server and sharing*, the FAQ and the home page's table link to the new page.

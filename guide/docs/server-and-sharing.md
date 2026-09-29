@@ -4,8 +4,9 @@
 
 Doorprints works fully without a server. A server lets you keep the same houses on your phone and in your browser,
 and turns on the AI features if its owner set them up. Doorprints does not run a public server; you (or someone you
-trust) run one yourself (see the [README](https://github.com/Sriram-Codes-SW/doorprints/blob/main/README.md#run-the-api-locally-docker)). The server's owner gives you its
-address and an API key.
+trust) run one yourself on a home computer. **[Set up your own server](set-up-a-server.md)** walks you through it
+step by step, with no programming needed. The server gives you two things to type into the apps: its address and
+your **Doorprints API key**. The AI's own key (the Gemini key) stays on the server; the apps never ask for it.
 
 - **Website:** open **Connect**, fill in **API address (URL)** and **API key**, choose **Test connection**, then
   **Save and continue**. Leave **Remember on this device** off on a shared computer.
