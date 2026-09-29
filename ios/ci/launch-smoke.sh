@@ -117,9 +117,12 @@ if [ -n "$result" ]; then
 fi
 xcrun simctl io "$udid" screenshot "$out/launch.png" || echo "::warning::no screenshot could be taken"
 
-# Crash reports of this run, if any (the simulator's processes report to the host's DiagnosticReports).
-find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'Doorprints*' -newer "$started" \
-  -exec cp {} "$out/" \; 2>/dev/null || true
+# Crash reports of this run, if any (the simulator's processes report to the host's DiagnosticReports, named after
+# the process: Doorprints-<date>.ips), and everything the app wrote to the unified log in the last minutes, for a
+# crash that left no report (an uncaught Kotlin exception logs DOORPRINTS-CRASH lines there).
+find "$HOME/Library/Logs/DiagnosticReports" -name '*.ips' -newer "$started" -exec cp {} "$out/" \; 2>/dev/null || true
+xcrun simctl spawn "$udid" log show --last 5m --style compact --predicate 'process == "Doorprints"' \
+  > "$out/app-unified.log" 2>&1 || true
 
 # The self-check's lines from the console, or from the unified log when the console has none.
 lines=$(grep -o 'DOORPRINTS-SELFCHECK .*' "$log" 2>/dev/null | tr -d '\r' || true)
@@ -128,6 +131,16 @@ if [ -z "$lines" ] && [ -f "$unified" ]; then
 fi
 echo "--- self-check lines ---"
 echo "${lines:-(none)}"
+crash=$(grep -h -A 25 'DOORPRINTS-CRASH' "$log" "$out/app-unified.log" 2>/dev/null | head -40 || true)
+if [ -n "$crash" ]; then
+  echo "--- uncaught exception ---"
+  echo "$crash"
+fi
+for report in "$out"/*.ips; do
+  [ -f "$report" ] || continue
+  echo "--- crash report $(basename "$report") (first lines) ---"
+  head -c 3000 "$report"; echo
+done
 
 if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
   skipped=$(echo "$lines" | grep 'DOORPRINTS-SELFCHECK [a-z]* SKIP' || true)
