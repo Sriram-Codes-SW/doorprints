@@ -8,6 +8,8 @@
 [data-md-color-scheme="slate"] {
   --md-primary-fg-color: #173f35;
   --md-accent-fg-color: #6fd0b4;
+  /* Links and the current page in the side menu: a light green that reads on the dark background. */
+  --md-typeset-a-color: #6fd0b4;
 }
 /* Screenshots: a thin border so white screens stand out from the page; never wider than the text column. */
 .md-typeset img { border: 1px solid var(--md-default-fg-color--lightest); border-radius: 6px; max-width: 100%; }

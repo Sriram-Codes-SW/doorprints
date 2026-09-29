@@ -1,4 +1,4 @@
-# The user guide site (owner request of 2026-09-29: the user guide as a GitHub-hosted website; docs/13-user-guide.md,
+# The user guide site (owner request of 2026-09-29: the user guide as a GitHub-hosted website; guide/docs/,
 # docs/10 §17). MkDocs Material builds guide/ into a static site; GitHub Pages serves it at
 # https://sriram-codes-sw.github.io/doorprints/ (free for a public repository: zero-cost rule).
 # - build: on a push to any branch or a pull request to main that touches the guide, so a broken page, link or image
@@ -49,6 +49,16 @@ jobs:
 
       - name: Install MkDocs Material (pinned, hash-checked)
         run: python -m pip install --no-deps --require-hashes -r guide/requirements.txt
+
+      # --strict checks Markdown links and images, not raw <img> tags (the side-by-side phone shots): check those too.
+      - name: Check every <img> in the pages points at a file
+        working-directory: guide/docs
+        run: |
+          missing=0
+          for src in $(grep -oh '<img src="[^"]*"' ./*.md | sed 's/<img src="//; s/"$//' | sort -u); do
+            [ -f "$src" ] || { echo "::error::missing image: $src"; missing=1; }
+          done
+          exit $missing
 
       - name: Build the site
         working-directory: guide
