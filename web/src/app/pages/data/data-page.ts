@@ -56,6 +56,7 @@ import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import type { TKey } from '../../i18n/en';
 import { RunResult, runResult } from '../../shared/run-result';
+import { LEGAL_NOTICE } from '../../shared/legal-notice';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -117,6 +118,8 @@ export class DataPage implements OnInit, OnDestroy {
   protected readonly sync = inject(SyncService);
   protected readonly pwa = inject(PwaService);
   protected readonly i18n = inject(TranslationService);
+  /** The AGPL notices and source offer of *About Doorprints* (S4b-BL-65). */
+  protected readonly legal = LEGAL_NOTICE;
 
   protected readonly formats = FORMATS;
   protected readonly icons = ICONS;
