@@ -115,6 +115,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **The live UI test tells network faults from site faults** ([test plan](docs/06-test-plan.md) TC-M-26): a 502 or a
+  stylesheet delivered with the wrong type that a second fetch gets right is reported apart, not as a failure; the
+  test's four areas run side by side (about 12-15 minutes instead of 25-30).
 - **A real-key check of the own-key AI** ([test plan](docs/06-test-plan.md) TC-U-88): the manual *AI evals* workflow
   now also runs one real Extract, Ask and Plan through the phones' and the website's own-key AI with the `AI_API_KEY`
   secret, and checks that no saved contact details are sent.
