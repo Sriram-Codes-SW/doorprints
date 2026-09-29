@@ -108,6 +108,15 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Test scope only (release security gate, S4b-SEC-1): OpenApiSpecTest writes the API's OpenAPI description to
+         target/openapi.json for the ZAP API scan in backend.yml. Not in the built jar or image, so the running server
+         exposes no /v3/api-docs; not in the SBOM either (test scope). springdoc 3.1.x is built on Spring Boot 4.1. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+      <version>3.1.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
