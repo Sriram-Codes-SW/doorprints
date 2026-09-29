@@ -19,6 +19,8 @@
 package app.doorprints.ui
 
 import androidx.lifecycle.SavedStateHandle
+import app.doorprints.data.AiOff
+import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.data.PhotoEntity
@@ -28,6 +30,8 @@ import app.doorprints.data.VisitEntity
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.CitationDto
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.api.PairPolledDto
+import app.doorprints.shared.api.PairStartedDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
@@ -165,7 +169,12 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     }
 
     override val aiEnabled: StateFlow<Boolean> = MutableStateFlow(true)
+    override val aiOff: StateFlow<AiOff?> = MutableStateFlow(null)
     override suspend fun refreshAiStatus() = true
+    override suspend fun setAiFeatures(on: Boolean) = TODO()
+    override suspend fun startPairing(serverUrl: String, deviceName: String): PairStartedDto = TODO()
+    override suspend fun pollPairing(serverUrl: String, pollToken: String): PairPolledDto = TODO()
+    override suspend fun redeemInvite(link: ConnectLink, deviceName: String): String = TODO()
 
     override val settings: SettingsStore get() = TODO()
     override val houses: Flow<List<HouseEntity>> get() = TODO()

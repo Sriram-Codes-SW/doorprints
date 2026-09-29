@@ -569,4 +569,32 @@
     <!-- The Map's location note where Hunt mode is not on the platform (iOS, CMP-8c): it names only what is on the screen. -->
     <string name="map_location_off_no_hunt">Location is off for Doorprints. ‘Save house here’ needs it.</string>
     <string name="map_needs_precise_no_hunt">‘Save house here’ needs precise location.</string>
+    <string name="settings_code_heading">Connect with a code</string>
+    <string name="settings_code_intro">Get a code, then type it on your server's owner page under ‘Connect a device’. This phone gets a key of its own and shows there as “%1$s”. You never type a key.</string>
+    <string name="settings_get_code">Get a code</string>
+    <string name="settings_getting_code">Getting a code…</string>
+    <string name="settings_code_show">Type this code on your server's owner page:</string>
+    <string name="settings_code_waiting">Waiting for the owner to type it. The code works for %1$d minutes.</string>
+    <string name="settings_open_owner_page">Open the owner page (for the server's owner)</string>
+    <string name="settings_cancel_code">Cancel</string>
+    <string name="settings_code_denied">The owner said no to this code. Ask them, then get a new code.</string>
+    <string name="settings_code_expired">The code ran out before it was typed. Get a new code.</string>
+    <string name="settings_no_pairing">This server cannot connect by code yet. Update it, or use an API key instead.</string>
+    <string name="settings_key_way">Use an API key instead</string>
+    <string name="settings_key_way_intro">For a server that is not updated yet, or with the key from the server's settings file.</string>
+    <string name="settings_ai_switch">Use AI features on this phone</string>
+    <string name="settings_ai_hint">When this is on, what you ask or paste into an AI feature, with the matching house notes, goes to your server, which sends it to Google Gemini. Contact names and phone numbers saved with a house are left out. The server's owner also has to turn on AI for this phone.</string>
+    <string name="settings_ai_on">AI features are on.</string>
+    <string name="settings_ai_server_off">AI features are turned off on your server.</string>
+    <string name="ai_off_for_device">The server's owner has not turned on AI for this device yet. They can do it on the owner page.</string>
+    <string name="ai_opt_in_needed">AI features are off on this phone. Turn them on in Settings, under Server.</string>
+    <string name="connect_link_title">Connect to a server?</string>
+    <string name="connect_link_body">This link connects this phone to the server below. Your houses will sync with it.</string>
+    <string name="connect_link_warning">Connect only if you trust the person who made this QR code or link and know this address. Nothing is sent until you choose ‘Connect’.</string>
+    <string name="connect_link_connect">Connect</string>
+    <string name="connect_link_connecting">Connecting…</string>
+    <string name="connect_link_not_now">Not now</string>
+    <string name="connect_link_used">This link was already used or has run out. Ask the server's owner for a new one.</string>
+    <string name="connect_link_done_title">Connected</string>
+    <string name="connect_link_saved">Connected. This phone has its own key now.</string>
 </resources>
