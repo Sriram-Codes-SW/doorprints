@@ -33,6 +33,10 @@ public interface HouseRepository extends JpaRepository<House, UUID> {
 
     List<House> findBySyncVersionGreaterThanOrderBySyncVersion(long syncVersion);
 
+    /** Ids of deleted houses (tombstones), without loading the rows: the reindex removes their documents. */
+    @Query("select h.id from House h where h.deleted = true and h.syncVersion > 0")
+    List<UUID> findDeletedIds();
+
     /** Case-insensitive street match written as {@code lower(street) = lower(?)} so it uses house_street_idx. */
     @Query(value = "select * from house where not deleted and lower(street) = lower(:street)", nativeQuery = true)
     List<House> findLiveOnStreet(@Param("street") String street);

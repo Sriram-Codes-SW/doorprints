@@ -546,9 +546,15 @@ export class MapPage implements AfterViewInit, OnDestroy {
     return f === 'ALL' ? 'status.ALL' : STATUS_KEY[f];
   }
 
+  /** Houses per status, tallied once when the houses change, not once per chip on every change detection. */
+  private readonly statusCounts = computed(() => {
+    const counts = new Map<string, number>();
+    for (const h of this.houses()) counts.set(h.status, (counts.get(h.status) ?? 0) + 1);
+    return counts;
+  });
+
   protected countFor(f: StatusFilter): number {
-    const all = this.houses();
-    return f === 'ALL' ? all.length : all.filter((h) => h.status === f).length;
+    return f === 'ALL' ? this.houses().length : (this.statusCounts().get(f) ?? 0);
   }
 
   /** Hovering or focusing a list row highlights that house on the map with a popup. */
