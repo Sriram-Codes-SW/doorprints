@@ -1,3 +1,19 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # LOCAL DEVELOPMENT ONLY. `APP_API_KEY=$(openssl rand -hex 32) docker compose up --build` starts PostGIS + pgvector
 # and the API on http://127.0.0.1:8080. Both ports are bound to the loopback interface only, so nothing is reachable
 # from the network even on a VM with a public IP (threat model F-17). For a public server use a managed Postgres or
