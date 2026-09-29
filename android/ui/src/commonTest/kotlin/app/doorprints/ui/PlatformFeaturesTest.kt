@@ -28,7 +28,8 @@ class PlatformFeaturesTest {
     fun iosHidesTheFeaturesItDoesNotHaveYet() {
         assertEquals(
             PlatformFeatures(
-                map = false,
+                // The map came in CMP-8c.
+                map = true,
                 huntMode = false,
                 addPhotos = false,
                 copiesAndImports = false,

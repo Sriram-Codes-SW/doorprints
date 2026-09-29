@@ -40,7 +40,9 @@ has names and your houses as coloured pins, like the website's map. The **Houses
 
 ## iPhone
 
-The iPhone app is an early version. It opens on **Houses**. It cannot add houses yet: connect your own server in
-**Settings**, and the houses you added elsewhere show up. The **Map** tab says the map is not on iPhone yet.
+The iPhone app is an early version. It opens on the **Map**, which works as on Android: tap **Save house here** where
+you stand, or touch and hold the map to add a house anywhere. The tabs are **Map**, **Houses**, **Compare** and
+**Settings**. It has no Hunt mode, no photos and no **Save a copy** yet; connect your own server in **Settings** to see
+the houses you added elsewhere.
 
-<img src="images/iphone-launch.png" width="260" alt="The iPhone app on first launch: Houses tab with the message that houses cannot be added on iPhone yet and an Open Settings button"> <img src="images/iphone-map.png" width="260" alt="The iPhone Map tab: The map isn't on iPhone yet. All your houses are in the Houses tab, with an Open Houses button">
+<img src="images/iphone-map.png" width="260" alt="The iPhone app's Map: India with city names, the zoom and My location buttons, Save house here, the legend (New, Shortlisted, Rejected) and the four tabs">
