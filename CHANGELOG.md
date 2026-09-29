@@ -115,6 +115,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Release security gate, backend part** (S4b-SEC-1, [sprint log](docs/10-sprint-log.md) §12.7): every backend push
+  now builds the image and runs Trivy on it and an OWASP ZAP API scan against it (with a fresh database, through the
+  OpenAPI description a test generates), both blocking on High; the backend's runtime dependencies get a licence
+  check for the planned move to `AGPL-3.0-only` (warnings until the licence changes).
 - **The iPhone map** (CMP-8c, [sprint log](docs/10-sprint-log.md) §13.13): the iPhone app gets the map (MapLibre iOS
   6.31.0, pinned by commit) with India's boundary as the Government of India shows it, applied to the style's JSON by
   the same common steps as Android and checked in the app; the iOS launch smoke fails unless that check and the loaded
@@ -735,6 +739,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Fixed
 
+- **A malformed photo upload** (a multipart body without a boundary) got a 500 with a stack trace in the server log;
+  it is now a 400 (found by the new ZAP API scan).
 - **Android: the map crashed on phones without a Vulkan GPU** ("No Vulkan compatible GPU found", found by the new API
   26 emulator job). The app uses MapLibre's OpenGL ES build (`b47a67a`); a Vulkan build would need a second APK
   (S4b-BL-47). iOS will render with Metal.
