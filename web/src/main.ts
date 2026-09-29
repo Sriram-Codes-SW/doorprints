@@ -22,12 +22,19 @@ import { appConfig } from './app/app.config';
 import { startUnlessFramed } from './app/core/frame-guard';
 import { migrateLegacyStorage } from './app/core/storage-keys';
 import { initialLang } from './app/i18n/translation.service';
+import { loadDictionary } from './app/i18n/languages';
 
 // Before anything reads storage: move keys saved under the pre-rename names (house-hunt.*, hh.*) to doorprints.*.
 migrateLegacyStorage();
 
 // Inside another site's frame the app does not start; it shows a translated "open in its own tab" message instead
 // (defence in depth behind web/firebase.json's frame-ancestors / X-Frame-Options, see core/frame-guard.ts).
-startUnlessFramed({ win: window, doc: document, href: location.href, lang: initialLang }, () => {
-  bootstrapApplication(App, appConfig).catch((err: unknown) => console.error(err));
-});
+// The saved language's strings first (its own chunk; English is built in), so the first paint is already in it.
+// If it cannot be fetched, the app starts in English.
+loadDictionary(initialLang())
+  .catch(() => undefined)
+  .finally(() =>
+    startUnlessFramed({ win: window, doc: document, href: location.href, lang: initialLang }, () => {
+      bootstrapApplication(App, appConfig).catch((err: unknown) => console.error(err));
+    }),
+  );

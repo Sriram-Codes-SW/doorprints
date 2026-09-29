@@ -18,9 +18,6 @@
 
 import { en } from './en';
 import type { Dict } from './en';
-import { hi } from './hi';
-import { ta } from './ta';
-import { te } from './te';
 
 export type Lang = 'en' | 'hi' | 'ta' | 'te';
 
@@ -39,7 +36,37 @@ export const LANGUAGES: readonly LanguageInfo[] = [
   { code: 'te', nativeName: 'తెలుగు', locale: 'te-IN' },
 ];
 
-export const DICTIONARIES: Readonly<Record<Lang, Dict>> = { en, hi, ta, te };
+/**
+ * Dictionaries loaded so far. English is built in (it is also every key's fallback); Hindi, Tamil and Telugu are each
+ * their own chunk, loaded when chosen (main.ts loads the saved one before the app starts), so a visit carries one
+ * language's strings instead of all four (about 220 KB less for English). The service worker precaches the chunks,
+ * so switching language works offline too. Tests that need every language import `all-dictionaries.ts`.
+ */
+const loaded: Partial<Record<Lang, Dict>> = { en };
+const loaders: Record<Exclude<Lang, 'en'>, () => Promise<Dict>> = {
+  hi: () => import('./hi').then((m) => m.hi),
+  ta: () => import('./ta').then((m) => m.ta),
+  te: () => import('./te').then((m) => m.te),
+};
+
+/** [lang]'s dictionary if it is already loaded (English always is). */
+export function dictionary(lang: Lang): Dict | undefined {
+  return loaded[lang];
+}
+
+/** Loads [lang]'s dictionary once; rejects when its chunk cannot be fetched (offline before the first visit). */
+export async function loadDictionary(lang: Lang): Promise<Dict> {
+  const have = loaded[lang];
+  if (have) return have;
+  const dict = await loaders[lang as Exclude<Lang, 'en'>]();
+  loaded[lang] = dict;
+  return dict;
+}
+
+/** Makes [dicts] available at once, without loading (all-dictionaries.ts, for tests). */
+export function registerDictionaries(dicts: Partial<Record<Lang, Dict>>): void {
+  Object.assign(loaded, dicts);
+}
 
 export function isLang(value: unknown): value is Lang {
   return value === 'en' || value === 'hi' || value === 'ta' || value === 'te';

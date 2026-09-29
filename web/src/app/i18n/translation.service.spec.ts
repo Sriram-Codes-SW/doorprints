@@ -17,7 +17,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DICTIONARIES, LANGUAGES, Lang } from './languages';
+import { LANGUAGES, Lang } from './languages';
+import { DICTIONARIES } from './all-dictionaries';
 import { TranslationService } from './translation.service';
 
 const LANG_STORAGE_KEY = 'doorprints.lang';

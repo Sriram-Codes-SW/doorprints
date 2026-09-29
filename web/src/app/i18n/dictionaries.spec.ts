@@ -18,7 +18,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { en } from './en';
-import { DICTIONARIES, LANGUAGES, Lang, isLang } from './languages';
+import { LANGUAGES, Lang, isLang } from './languages';
+import { DICTIONARIES } from './all-dictionaries';
 
 /** Sorted list of `{name}` placeholders in a string (duplicates kept, so counts must match too). */
 function placeholders(text: string): string[] {

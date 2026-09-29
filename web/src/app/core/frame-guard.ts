@@ -16,7 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { DICTIONARIES, Lang } from '../i18n/languages';
+import { en } from '../i18n/en';
+import { Lang, dictionary } from '../i18n/languages';
 
 /**
  * Doorprints refuses to run inside a frame (clickjacking defence, threat model F-10 / SEC-012, docs/02 RR-11).
@@ -59,7 +60,8 @@ export function isFramed(win: FrameCheckWindow): boolean {
  * case where the framing page's `sandbox` blocks new tabs and the link does nothing. Returns the new element.
  */
 export function renderFrameRefusal(doc: Document, lang: Lang, href: string): HTMLElement {
-  const dict = DICTIONARIES[lang];
+  // main.ts loads the saved language before this runs; English if it could not.
+  const dict = dictionary(lang) ?? en;
   doc.documentElement.lang = lang;
   doc.title = dict['app.name'];
 

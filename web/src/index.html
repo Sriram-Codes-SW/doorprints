@@ -44,6 +44,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <!-- Installable web app (S4-05). iOS ignores the manifest's icons, hence the apple-touch-icon. -->
   <link rel="manifest" href="manifest.webmanifest">
+  <!-- MapLibre's stylesheet, fetched at low priority without holding up the first paint; map-style.ts applies it. -->
+  <link rel="prefetch" href="maplibre.css" as="style">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">

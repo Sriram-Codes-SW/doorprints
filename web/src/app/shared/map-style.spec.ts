@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { foldAttribution } from './map-style';
+import { ensureMapStyles, foldAttribution } from './map-style';
 
 /** A map container with MapLibre's credits control in the given state, `width` px wide. */
 function mapRoot(width: number, classes: string): HTMLElement {
@@ -55,5 +55,23 @@ describe('foldAttribution (owner report 2026-09-24: credits open over a phone ma
 
   it('does nothing on a map with no credits control (map unavailable)', () => {
     expect(foldAttribution(document.createElement('div'))).toBe(false);
+  });
+});
+
+describe('ensureMapStyles (MapLibre CSS out of the render-blocking stylesheet)', () => {
+  it('adds maplibre.css once, and hides the controls only until it has loaded', () => {
+    const doc = document.implementation.createHTMLDocument('t');
+    const base = doc.createElement('base');
+    base.href = 'https://doorprints.example/';
+    doc.head.append(base);
+    ensureMapStyles(doc);
+    ensureMapStyles(doc);
+    const links = doc.querySelectorAll<HTMLLinkElement>('link[data-maplibre-css]');
+    expect(links).toHaveLength(1);
+    expect(links[0].rel).toBe('stylesheet');
+    expect(links[0].href).toBe('https://doorprints.example/maplibre.css');
+    expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(true);
+    links[0].dispatchEvent(new Event('load'));
+    expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(false);
   });
 });

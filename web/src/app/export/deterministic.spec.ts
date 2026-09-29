@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DICTIONARIES } from '../i18n/languages';
+import { DICTIONARIES } from '../i18n/all-dictionaries';
 import {
   csvCell,
   escapeHtml,

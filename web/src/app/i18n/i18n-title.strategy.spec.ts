@@ -21,6 +21,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { RouterStateSnapshot } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { en } from './en';
+import './all-dictionaries'; // every language registered, so setLang switches at once
 import { hi } from './hi';
 import { ta } from './ta';
 import { I18nTitleStrategy, TitleOverride } from './i18n-title.strategy';
