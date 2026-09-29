@@ -1,0 +1,17 @@
+{
+  "_comment": "High-severity MobSF findings reviewed and accepted for the release APK (release security gate, S4b-SEC-1; docs/06 TC-S-06). Matched on section and title. Each entry says who accepted it, when and why. A new High finding fails android.yml's mobsf job until it is fixed or reviewed here.",
+  "accepted": [
+    {
+      "section": "certificate",
+      "title": "Missing Code Signing certificate",
+      "why": "CI scans the unsigned release build on every push (no signing secrets outside main). The signed release APK is built and its signature verified with apksigner by android.yml's release job (TC-S-15).",
+      "by": "lead (Claude Code), 2026-09-29"
+    },
+    {
+      "section": "network",
+      "title": "Domain config is insecurely configured to permit clear text traffic to these domains in scope",
+      "why": "Cleartext only for localhost, 127.0.0.1 and 10.0.2.2 (the emulator's alias for the development machine), matching ServerUrl.LOCAL_HOSTS: a developer's local server. Every other host is HTTPS only and only system CAs are trusted (threat model F-02, SEC-004; res/xml/network_security_config.xml).",
+      "by": "lead (Claude Code), 2026-09-29"
+    }
+  ]
+}
