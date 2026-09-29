@@ -37,7 +37,7 @@ these screens; `:shared` ([README](../shared/README.md)) stays the home of the d
 | Target | Built where | Purpose |
 |---|---|---|
 | Android (`com.android.kotlin.multiplatform.library`, `kotlin { android { … withHostTest {} } }`) | ubuntu CI (`android.yml`) | consumed by `:app` |
-| `iosArm64`, `iosSimulatorArm64` | macOS CI (`shared-ios.yml`) | **compile-only**, like `:shared`: proves commonMain builds for iOS; no framework binary yet (phase 8) |
+| `iosArm64`, `iosSimulatorArm64` | macOS CI (`shared-ios.yml`) | the static framework **`DoorprintsKit`** (CMP-8b) that the iOS app in `ios/` links; the `ios-app` job builds the app and launches it on a simulator |
 
 Plugins: `kotlin.multiplatform`, `android.kotlin.multiplatform.library`, `kotlin.compose` and, since phase 2,
 `org.jetbrains.compose` for the string resources (`compose.resources`: a public `Res` class in `app.doorprints.ui.res`;
@@ -95,7 +95,7 @@ generated class is `app.doorprints.ui.res.Res`. Declarations `:app` uses are `pu
 | androidMain | `PlatformServices.android.kt` | `AndroidPlatformServices` (TalkBack's touch exploration, the location grants, the app's settings, dial and URLs, from the composition's context) and `ProvidePlatformServices { }`, used by `MainActivity` and the screenshot tests |
 | androidMain | `LocationPermission.android.kt`, `PermissionRequests.android.kt`, `BackHandler.android.kt`, `Clock.android.kt` | the permission prefs file `map_permissions` (unchanged), the system prompts, androidx `BackHandler`, `SystemClock.elapsedRealtime` |
 | androidMain | `PlatformMap.android.kt`, `MapLibreStyleOps.kt` | the MapLibre `MapView` in `AndroidView` (an empty box in inspection mode: MapLibre's native library does not load on the JVM), the house layers, `MAP_STYLE_URL`; `StyleOps` over MapLibre's `Style` and the asset manager (log tag `IndiaView`) |
-| iosMain | `PlatformMap.ios.kt`, `PermissionRequests.ios.kt`, `BackHandler.ios.kt`, `Clock.ios.kt` | stand-ins until CMP-8b and 8c: an empty map box, no-op permission requests and back handler; the clock is `CLOCK_MONOTONIC` (CMP-8a) ([docs/10](../../docs/10-sprint-log.md) S4b-BL-36, -40, -43) |
+| iosMain | `PlatformMap.ios.kt`, `PermissionRequests.ios.kt`, `BackHandler.ios.kt`, `Clock.ios.kt` | an empty map box until CMP-8c (the Map tab shows a note instead, `PlatformFeatures.Ios`); the location prompt through `CLLocationManager`, no notification prompt (no notifications on iOS yet); the swipe-back through `NavigationBackHandler` (CMP-8b); the clock is `CLOCK_MONOTONIC` (CMP-8a) ([docs/10](../../docs/10-sprint-log.md) S4b-BL-36, -40, -43) |
 | androidMain | `Format.android.kt` | `java.time`'s medium date and short time for `<language>-IN`; `appLanguage()` is `Locale.getDefault()`, which `AppLocale.applyDefault` keeps on the resolved language |
 | androidMain | `UiLanguage.android.kt` | `appLanguage()`, read again when `LocalConfiguration` changes (since CMP-3, S4b-BL-18; was the configuration's first locale) |
 | iosMain | `UiLanguage.ios.kt`, `Format.ios.kt` | the device's first preferred language mapped to one of en, hi, ta, te (English otherwise; CMP-8a); `NSDateFormatter` (medium date, short time) for `<language>_IN`; coordinates through the common `sixDecimalsHalfUp` |
@@ -159,7 +159,7 @@ in steps that each build and pass ([docs/10](../../docs/10-sprint-log.md) §13).
 | P5 | CMP-5 | JetBrains navigation-compose and lifecycle; ViewModels; HouseList, Assistant, Settings, NotifyAsk, LocationPermission | **Done in code** (PR #24, `84fa735`, `13091ac`; one combined change with P6 and P7, [docs/10](../../docs/10-sprint-log.md) §13.9) |
 | P6a, P6b | CMP-6 | HouseEditScreen (photo and camera seam); Export and Import screens, `ImportViewModel`, workers behind an interface | **Done in code** (PR #24, `f7e9ecd`, `7e73411`, `cff4a63`) |
 | P7 | CMP-7 | Map: common chrome, `expect PlatformMap`, common `applyIndiaView(ops: StyleOps)`; TC-M-25 re-run | **Done in code** (PR #24, `e2b163c`; the iOS map view is CMP-8; the TC-M-25 device run by the owner after CMP-8) |
-| P8 | CMP-8 | iOS shell (`iosApp`, `ComposeUIViewController`, MapLibre iOS via SPM), simulator build on macOS CI, unsigned | Planned |
+| P8 | CMP-8 | iOS shell (`iosApp`, `ComposeUIViewController`, MapLibre iOS via SPM), simulator build on macOS CI, unsigned | **8a merged** (PR #29, the simulator tests); **8b done in code** (the app shell: `DoorprintsKit`, `MainViewController`, the iOS services, `ios/`, [docs/10](../../docs/10-sprint-log.md) §13.12); 8c (the map) planned |
 | Spike | CMP-9 | maplibre-compose (0.17, pre-1.0); re-assess at 1.0 | Planned |
 
 Out of scope until there is a Mac and a paid Apple Developer account (about US$99 a year, against the zero-cost

@@ -309,6 +309,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   the boundary-source ticket S4b-BL-10 re-read (SoI's Administrative Boundary Database is free; shipping it still
   needs SoI's word), a check at each release (S4b-BL-51) and a draft letter to SoI
   ([docs/ops/soi-boundary-data-request.md](docs/ops/soi-boundary-data-request.md)). The map itself is unchanged.
+- **iPhone app shell (CMP-8b; [sprint log](docs/10-sprint-log.md) §13.12).** The common screens run in an iPhone app
+  (`ios/`, built with XcodeGen) through the static `DoorprintsKit` framework: the house list, the house form, Compare,
+  the Assistant and Settings, with iPhone location, VoiceOver and the swipe-back. What the iPhone does not have yet is
+  hidden, not disabled: the map (the Map tab says so), Hunt mode, adding photos, *Save a copy*, *Import a backup*, the
+  weekly backup and the in-app language (Settings opens the Settings app). CI's new `ios-app` job builds the app
+  unsigned and launches it on a simulator with a self-check. Not on the App Store; no signing or Apple account.
 - **iOS groundwork (CMP-8a; [sprint log](docs/10-sprint-log.md) §13.11).** CI's new `ios-sim-tests` job runs the
   shared code's tests on an iPhone simulator (Xcode 26.4.1 pinned). On iOS: the database opens and migrates, the
   settings and the Keychain key stay in step (update first, locked told apart from missing, the old key put back
