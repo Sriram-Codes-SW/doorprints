@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.35 |
+| Version | 0.36 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -46,6 +46,7 @@
 | 0.33 | 2026-09-29 | Claude (Code), lead | N13 (3a): the phones merged (#51); the website on `feat/ai-own-key-web`; then (3b) Google sign-in. |
 | 0.34 | 2026-09-29 | Claude (Code), lead | N13 (3a) done: phones (#51) and website (#52); a real-key smoke test in *AI evals* (TC-U-88); next (3b) Google sign-in. |
 | 0.35 | 2026-09-29 | Claude (Code), lead | Saved the state for a fresh session (owner request): §1 rewritten as today's state (per-PR history in git and [10](10-sprint-log.md)); N13 status; §5 the owner's merge permission; new §7, how a Claude session works here. |
+| 0.36 | 2026-09-29 | Claude (Code), lead | §1, §7: the live UI test reports network faults apart and runs its areas side by side. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -69,9 +70,9 @@ section is only today's state. Earlier versions of this file (git history) carry
 - **This file's pull request (#55)** is the last of the session; if it is still open, merge it when green.
 - **Last live UI test** (after the #54 deploy, 2026-09-29): 1 950 checks passed (pages 720, i18n 240, theme 144, a11y
   144, console 354, flows 12, pwa 4, map 22, mobile 310); one stylesheet came back as `text/plain` through this
-  session's proxy (as on 2026-09-28), and the mobile area was cut short by the session's 25-minute limit, not by a
-  failure. After #52: 1 433 of 1 434, the one failure the same proxy fault. Next run: after the next web change; give
-  it about 30 minutes, or run `ONLY=mobile` separately.
+  session's proxy (as on 2026-09-28), and the mobile area was cut short by the session's 25-minute limit. Both are
+  fixed in the live UI test since (`fix/live-ui-network-faults`): such network faults are fetched again and reported
+  under `transient`, not counted, and the areas run side by side (about 12-15 minutes).
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md).
@@ -211,8 +212,8 @@ suite runs in a cloud session; CI is the second check, never the first:
 6. On CI red: find the cause in the job log, reproduce it locally, fix, push. Never skip a test.
 7. When green: merge (above). After a merge that runs the `Web` deploy, wait for the deploy, then run
    `tools/live-ui` (`npm ci && node live-ui.js`; Chromium at `/opt/pw-browsers/chromium` in cloud sessions) and report
-   the counts per area. This session's proxy sometimes breaks a page load (a 502, a stylesheet as `text/plain`): re-run
-   the failing area (`ONLY=mobile node live-ui.js`) before calling it a bug.
+   the counts per area, and any `transient` entries in `out/results.json` (network faults the test fetched again and did
+   not count; many of them are worth a ticket). Give the run 20 minutes before any time limit.
 8. Report to the owner in short, plain language: what changed, what was checked, what is next, and anything only the
    owner can do.
 
