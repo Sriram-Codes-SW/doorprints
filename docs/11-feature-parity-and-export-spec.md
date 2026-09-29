@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.23 |
+| Version | 0.24 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -35,6 +35,7 @@
 | 0.21 | 2026-09-29 | Claude (Code), lead | New owner decision **D-23**: signed-in users may bring their own Gemini key (stored encrypted and write-only on the hosted server, used only for them); it supersedes **D-22**. To be built with Google sign-in, after the release security gate. |
 | 0.22 | 2026-09-29 | Claude (Code), lead | New **D-27** (a signed-in person's own Gemini key stays on their device; OAuth to the Gemini API and "using a key by reference" considered and not taken) and **D-28** (no hosted server: Google sign-in syncs through each person's own Google Drive). |
 | 0.23 | 2026-09-29 | Claude (Code), lead | New **D-29**: AI with the person's own Gemini key on the device, next to server AI ([03](03-design.md) ADR-26). |
+| 0.24 | 2026-09-29 | Claude (Code), lead | New **D-30** and 5.19..5.26 (app lock, offline maps, the real cost of a house, my places, area notes, moving in, brokers; voice notes parked); 14.2: S4-11 widened, new S4-20..22. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -82,6 +83,7 @@ Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-mo
 | D-27 | **A signed-in user's own Gemini key stays on their device; it never goes to the hosted server** (owner, 2026-09-29, on hosted-server trust: "I don't think the user will be comfortable with pasting their key there"; amends D-23, whose "stored only on the hosted server, encrypted at rest" no longer holds). (1) The key is kept only on the user's phone or browser, in the same secure storage as the device key (Android Keystore, iOS Keychain, the browser's storage), and sent straight from there to Google; the hosted server never receives it. Listing extraction calls Gemini from the device; for Ask and the visit planner the server finds the user's houses and returns them, and the device makes the Gemini call, so the prompts and the grounding checks run on the device too (a Sprint 5 cost, built with Google sign-in). (2) The user guide has users make a **separate key just for Doorprints** in AI Studio, which they can delete there at any time, with a budget alert (and on the paid tier a quota cap) in Google Cloud. **Considered and not taken now:** using the key "by reference" is not possible (an API key is sent by whoever calls; Google has no delegation for it); OAuth to the Gemini API (the user approves Doorprints on Google's consent screen) is, in Google's own words, a setup "appropriate for a testing environment", needs the broad `cloud-platform` scope and Google's verification for outside users, and does not cover billing a third-party app's calls to each user's own project; Google's advice for third-party tools is an API key. Revisit if Google adds delegated Gemini access. Self-hosters are unchanged: their key is on their own server (the owner page, [03](03-design.md) §12.1). | 5.11, 5.12; [03](03-design.md) §12.1, ADR-25 |
 | D-28 | **No hosted server: Google sign-in syncs through each person's own Google Drive** (owner, 2026-09-29: "I don't want to host a server for the Google Sign in"). Replaces the hosted-server part of D-01 and the owner's capped key for invited users in D-21; D-23 and D-27 apply as "every signed-in person uses their own Gemini key, kept on their device". (1) *Sign in with Google* on the website, Android and iPhone; the houses, visits and photos sync through a private app folder in the person's own Drive (`drive.appdata`), and shared lists (S4b-FR-3) through a Drive folder they share (`drive.file`). Both scopes are **non-sensitive**: only Google's basic app verification (name, logo, privacy policy, the `doorprints.web.app` domain), free, no security assessment (Google's *Choose Google Drive API scopes*). (2) AI runs on the device with the person's own key (D-27): the app finds the relevant houses itself (a personal list is small) and calls Gemini directly. (3) The owner hosts nothing and holds nobody's data; the owner's only part is the free Google Cloud project that registers Doorprints for sign-in. The self-hosted server stays as the advanced option, with device pairing and the owner page ([03](03-design.md) §12.1, ADR-25). | 5.1, 5.11, 5.12; [03](03-design.md) §12.1 |
 | D-29 | **AI with your own Gemini key on the device, next to server AI, behind one interface** (owner, 2026-09-29: "both are separate modules and the calling AI is common … he can simply enter an API key and get responses as well as choose the server"). Built before Google sign-in, which reuses it (D-27). | All three apps: Settings or *Connect* → *AI features* offers *Use my own Gemini key on this device* and *Use my server*; design [03](03-design.md) §13.1, ADR-26 |
+| D-30 | **Features for an offline house hunt, from the gap review of 2026-09-29** (owner: "I would like to go ahead with your suggestion"). Take: an app lock (5.19), offline maps for the hunting area (5.20), the real cost of a house with my offer and the agreed price (5.21), my places and distances (5.22), area notes (5.23), moving in (5.24), brokers (5.25). Park: voice notes (5.26). Each goes with work already planned, so the data model and the sync, backup and export formats change once (14.2). | Order: [14](14-lead-backlog-and-handoff.md) N13; designs 5.19..5.26; tickets [10](10-sprint-log.md) §15 S4b-FR-5..12 |
 
 v0.1 decisions now closed (v0.3 adds D-21 and D-22): D-01, D-02, D-03, D-07 (Web Push: not planned; local notifications only), D-08, D-10
 (web session storage: see 5.11), D-11 (rely on device encryption). Still open: section 16.
@@ -467,6 +469,78 @@ moment.
 | Every app resume | Re-check fine/coarse/background state (and notification permission on Android 13+) and update the switches; no prompt without a user action. |
 | Play policy (if ever published) | Google Play requires a background-location declaration in the Play Console with a video, an in-app prominent disclosure before the request, and a core-feature justification. The rationale screen is written to serve as that disclosure; the declaration is a pre-publication task (CON-02: sideloaded today). |
 | Design review | Rationale screen and permission copy go through the Design Director review in [05](05-ux-accessibility-i18n.md) (4 languages, non-manipulative wording, equal Allow/Not now buttons). |
+
+### 5.19 App lock (D-30)
+
+An optional lock for the phone apps: PIN, fingerprint or face (Android BiometricPrompt with device-credential fallback;
+iOS LocalAuthentication), asked when the app opens and after it has been in the background for a chosen time (default
+1 minute). Why: the app holds other people's names, phone numbers and home locations, and phones are often shared in a
+family. Off by default; turned on in Settings. No own PIN store: the phone's own lock screen credential is used, so
+nothing new to forget or leak. The website gets no lock (a browser's profile is the boundary there; *Clear everything*
+stays the tool for shared computers). Recent-apps preview hidden while locked (FLAG_SECURE on Android, the iOS
+privacy snapshot). Goes with Google sign-in (14, N13 3b), which puts account tokens on the phone. Threat model: new
+item for the lost or shared phone; tests on the emulator (a device credential can be set in CI) and TC-M on a device.
+
+### 5.20 Offline maps for the hunting area (D-30)
+
+Today the houses are on the device but the map tiles come from OpenFreeMap over the network (NFR-004 promises only
+cached tiles). *Save this area for offline*: the user draws or picks an area (a city or a hunting area, 5.17) and the
+app downloads that area's vector tiles up to a street zoom (about 14) into a single file, then draws from it with no
+network; free sources only (an OpenStreetMap extract in PMTiles, or OpenFreeMap's own tiles fetched once within its
+terms; the size shown before download, a cap per area, Wi-Fi only by default). **India's boundary rules must hold on
+the offline tiles too** (ADR-22: the same style changes apply, and the offline file is checked with TC-M-25 before it
+ships); the boundary file itself is already bundled. Web: the PWA stores the file in the Origin Private File System or
+Cache Storage, with the storage estimate shown. Goes with the path trace (S4b-FR-2), so the map changes and the
+boundary re-check happen once.
+
+### 5.21 The real cost of a house, my offer and the agreed price (D-30)
+
+New house fields, all optional: **deposit** (rupees, or months of rent, shown as both), **maintenance** per month and
+whether the rent includes it, **brokerage** (rupees or months), **lock-in** and **notice** (months), **available from**
+(date), and for negotiation **my offer** and **agreed price**. With **carpet area** (already planned with rooms, S4-11)
+the apps show, and Compare lines up: **monthly cost** (rent + maintenance, or for a sale, none), **money needed to move
+in** (deposit + brokerage + first month), and **cost per sq ft**. The asked price stays the listing's price; the agreed
+price, when set, is what ranking and exports use. Search grows with these values (CLAUDE.md rule: the new text fields
+are not searchable; the numbers join the filters). One data-model change with rooms and criteria (S4-08): HouseDto v2,
+the backup format and every exporter, on web and Android together, with the viewing questions for deposit and
+maintenance (5.5) pre-filled from these fields.
+
+### 5.22 My places and distances (D-30)
+
+The user saves the places that matter (work, school, parents' home; a name and a point, at most 10). Every house then
+shows its straight-line distance and an estimated travel time to each (the same offline estimate as Plan: haversine x
+1.3 road factor, walking or a chosen speed), in its detail and as optional columns in the list and Compare, sortable.
+The checklist's *commute* score stays the user's own judgement; the numbers only inform it. Stored and synced like
+hunting areas (5.17), and in the backup; not sent to AI unless the user asks about commute (then only names and
+distances, never the coordinates).
+
+### 5.23 Area notes (D-30)
+
+A note attached to a hunting area (5.17) or a street ("this road floods in the monsoon", "water tanker every morning"),
+shown on every house inside that area or on that street, and in exports. Plain text, the same length limits and
+redaction as house notes (contacts removed before any AI use); searchable (the search rule).
+
+### 5.24 Moving in (D-30)
+
+When a house is chosen: status **Taken** (new; only one at a time, the others can be marked *Not chosen* in one step),
+then a **move-in checklist** (India defaults in four languages, editable: rental agreement signed and registered, police
+verification, ID copies exchanged, deposit receipt, meter readings, keys) and a **move-in condition record**: dated
+photos per room with tags (5.7) and notes, which the user keeps for when the deposit is returned. Finally *Close this
+hunt*: the hunt's houses are archived, not deleted, and a readable copy is offered. Goes with viewings (5.8, S4-12).
+
+### 5.25 Brokers (D-30)
+
+A broker (or owner) becomes a contact of its own: name, phone, agency, fee terms, the user's notes and rating; a house
+links to one. The apps list *all houses from this broker*, keep one copy of the number, and warn when two brokers show
+the same flat (the duplicate check of S4-13, within about 30 m with the same bedrooms and floor). The existing contact
+name and phone on a house are migrated into brokers on first run (one broker per distinct phone number). Contacts stay
+on the device and in the user's own sync; never sent to AI (the existing redaction applies). Goes with *Add a house
+from a listing link* (S4b-FR-4), since listings bring the broker's details with them.
+
+### 5.26 Voice notes (parked, D-30)
+
+Parked: the phones' keyboards already turn speech into text in Hindi, Tamil and Telugu, and audio files would add to
+every sync, backup and Drive copy. Revisit if users ask for recordings rather than text.
 
 ## 6. User stories
 
@@ -880,17 +954,25 @@ Goal: anyone can install Doorprints (APK or PWA), use it without an account, and
 | S4-08 | Backend V4–V7 and sync endpoints (criteria, questions, viewings, preferences, HouseDto v2, photo metadata, visit notes); Room 3 and IndexedDB 2 | Backend, Android, Web | 8 | S4-00 |
 | S4-09 | Weighted criteria, must-haves, ranking, compare additions (+ exports) | Android, Web, Design | 8 | S4-08 |
 | S4-10 | Viewing question bank and answers, India defaults in 4 languages (+ exports) | Android, Web, Design | 5 | S4-08 |
-| S4-11 | Rooms, carpet area, units (+ exports) | Android, Web | 5 | S4-08 |
+| S4-11 | Rooms, carpet area, units, **and the real cost of a house (5.21, D-30): deposit, maintenance, brokerage, lock-in, notice, available from, my offer, agreed price; monthly cost, money to move in, cost per sq ft** (+ exports) | Android, Web | 8 | S4-08 |
 | S4-12 | Viewings, local reminders (Android alarms, PWA notifications, `.ics`, calendar), second viewing, timeline and search | Android, Web | 8 | S4-08 |
+| S4-21 | Moving in (5.24, D-30): *Taken* status, move-in checklist, condition record with tagged photos, close the hunt | Android, Web, Design | 3 | S4-12, S4-15 |
 | S4-13 | Share to Doorprints, no-AI parser (Kotlin + TS), "Where is it?", APPROX houses, duplicates, PWA share target and paste box | Android, Web | 5 | S4-05 |
 | S4-14 | Docs and translations for 4b | Docs, Design | 3 | all |
 | S4-17 | Hunt mode reminders (5.16, D-23): scheduler, notification actions, settings, 4 languages | Android, Design | 3 | S4-12 |
 | S4-18 | Hunting areas and area wake-up (5.17, D-24): Room table, map editor, geofence registrar, boot/package receivers, cooldown in `:shared`, exports | Android, Design | 8 | S4-08, S4-19 |
+| S4-20 | My places and distances (5.22) and area notes (5.23), D-30 | Android, Web, Design | 5 | S4-18 |
+| S4-22 | Brokers (5.25, D-30): broker contacts, links, migration of existing contacts, duplicate warning | Android, Web | 3 | S4-13 |
 | S4-19 | Location permission model (5.18, D-25): foreground-only flow, rationale screen, settings hand-off, re-check on resume, approximate handling; Design Director review; permission matrix TC-M-18 | Android, Design, Security | 3 | – |
 | | **Cut line** (56 pts; was 42 before D-23..D-25) | | | |
 | S4-15 | Photo tags, room link, caption, gallery filters (+ exports) | Android, Web | 3 | S4-08, S4-11 |
 | S4-16 | Carry-ins: C-19 local labels for `[contact]` (2), C-20 AI-enabled CI smoke test (2) | Android, Web, DevOps | 4 | – |
-| | **Sprint 4b total** | | **63** | |
+| | **Sprint 4b total** | | **77** (63 + 14 for D-30) | |
+
+**D-30 (2026-09-29)** adds S4-20, S4-21 and S4-22 and widens S4-11 (+14 points); the S4-08 migration takes their fields
+too, so the data model and the sync, backup and export formats change once. Two D-30 items come **before** Sprint 4b:
+the app lock (5.19) with Google sign-in, and offline maps (5.20) with the path trace (S4b-FR-2); order in
+[14](14-lead-backlog-and-handoff.md) N13. Voice notes (5.26) are parked.
 
 The three new stories (product owner, 2026-09-22) push Sprint 4b well past the ~35-point history (RK-01). If the
 product owner wants to keep it near 49 points, the candidates to move to Sprint 5 are S4-13 (Share to Doorprints) and
