@@ -91,6 +91,42 @@ class ApiKeyFilterTest {
         assertThat(chain.getRequest()).isNotNull();
     }
 
+    /**
+     * TC-S-08 (release security gate, S4b-SEC-1): a wrong key says nothing about the right one. Empty, short, long, a
+     * key that differs only in its last character, one that is the right key's prefix and one that extends it all get
+     * the same 401 with byte-identical headers and body, so neither the answer nor its size tells them apart. (The
+     * comparison itself is {@link java.security.MessageDigest#isEqual}, whose time depends on the presented key's length
+     * only, and every configured key is always compared: {@code ApiKeyFilter.matches}.)
+     */
+    @Test
+    void wrongKeysOfAnyShapeGetTheSameAnswer() throws Exception {
+        var unthrottled = new ApiKeyFilter(KEY, new TokenBucketRateLimiter(1000, 1000));
+        var wrong = java.util.List.of(
+                "", "x", KEY.substring(0, KEY.length() - 1), KEY + "x",
+                KEY.substring(0, KEY.length() - 1) + (KEY.endsWith("0") ? "1" : "0"), "k".repeat(4096));
+        String firstBody = null;
+        java.util.Map<String, String> firstHeaders = null;
+        for (var key : wrong) {
+            var request = new MockHttpServletRequest("GET", "/api/houses");
+            request.setRemoteAddr("203.0.113.9");
+            request.addHeader("X-API-Key", key);
+            var response = new MockHttpServletResponse();
+            var chain = new MockFilterChain();
+            unthrottled.doFilter(request, response, chain);
+            assertThat(response.getStatus()).as("status for a key of length %d", key.length()).isEqualTo(401);
+            assertThat(chain.getRequest()).isNull();
+            var headers = new java.util.TreeMap<String, String>();
+            for (var name : response.getHeaderNames()) headers.put(name, String.join(",", response.getHeaders(name)));
+            if (firstBody == null) {
+                firstBody = response.getContentAsString();
+                firstHeaders = headers;
+            } else {
+                assertThat(response.getContentAsString()).isEqualTo(firstBody);
+                assertThat(headers).isEqualTo(firstHeaders);
+            }
+        }
+    }
+
     @Test
     void throttlesRepeatedWrongKeysButNeverTheRightOne() throws Exception {
         for (int i = 0; i < 3; i++) assertThat(run("GET", "/api/houses", "wrong-key").status()).isEqualTo(401);

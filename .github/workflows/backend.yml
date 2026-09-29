@@ -121,6 +121,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # The API's OpenAPI description, written by OpenApiSpecTest (springdoc in test scope only), for the ZAP API scan in
+      # the image job below.
+      - name: Upload the OpenAPI description
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-openapi
+          path: backend/target/openapi.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -136,14 +146,18 @@ jobs:
   # Build-only check of backend/Dockerfile (no registry login, no push, contents: read): runs on every push, branch
   # pushes included since 2026-09-23, so a broken Dockerfile or a root USER is caught before the merge. Still not run
   # for pull_request events: for a same-repository pull request the branch push of the same commit already builds it.
+  # Since 2026-09-29 also the release security gate's checks on the built image (S4b-SEC-1, docs/06 section 11):
+  # Trivy on the image (TC-S-05) and the OWASP ZAP API scan of the running API (TC-S-04), both blocking.
   image:
     name: Build container image
     needs: verify
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     permissions:
       contents: read
+    env:
+      TRIVY_IMAGE: aquasec/trivy:0.74.0
     steps:
       - uses: actions/checkout@v7
         with:
@@ -155,3 +169,44 @@ jobs:
           user=$(docker image inspect --format '{{.Config.User}}' doorprints-api:${{ github.sha }})
           echo "image user: $user"
           test -n "$user" && test "$user" != "root" && test "$user" != "0"
+
+      # TC-S-05: the image as it would ship (OS packages, the JRE, the jar), HIGH/CRITICAL with a fix available.
+      # The Trivy DB cache is shared with security.yml's key scheme (one download per day).
+      - name: Cache key for the Trivy DB
+        id: trivy-date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ steps.trivy-date.outputs.date }}
+          restore-keys: trivy-db-${{ runner.os }}-
+      - name: trivy image (HIGH/CRITICAL, blocking)
+        run: |
+          mkdir -p "$HOME/.cache/trivy"
+          docker save doorprints-api:${{ github.sha }} -o "$RUNNER_TEMP/api-image.tar"
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$RUNNER_TEMP:/in:ro" -v "$HOME/.cache/trivy:/cache" "$TRIVY_IMAGE" \
+            image --cache-dir /cache --skip-version-check --no-progress --input /in/api-image.tar \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format table
+
+      # TC-S-04: the running API, attacked through every path of its OpenAPI description with the key (backend/ci/
+      # api-scan.sh: the image and a fresh database on a private network; fails on any High-risk alert).
+      - uses: actions/download-artifact@v8
+        with:
+          name: backend-openapi
+          path: ${{ runner.temp }}/openapi
+      - name: Build database image (PostGIS + pgvector)
+        run: docker build -t doorprints-db:ci backend/db
+      - name: OWASP ZAP API scan (blocking on High)
+        run: |
+          chmod +x backend/ci/api-scan.sh
+          backend/ci/api-scan.sh doorprints-api:${{ github.sha }} doorprints-db:ci \
+            "$RUNNER_TEMP/openapi/openapi.json" "$RUNNER_TEMP/zap"
+      - name: Upload the ZAP report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-zap-api-scan
+          path: ${{ runner.temp }}/zap
+          if-no-files-found: ignore
+          retention-days: 30
