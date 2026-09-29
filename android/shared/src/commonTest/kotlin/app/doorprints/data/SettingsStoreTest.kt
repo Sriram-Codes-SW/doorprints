@@ -82,6 +82,17 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun aiFeaturesStartOffAndAreKept() = runTest {
+        // docs/03 §12.1: off until the person turns them on.
+        assertFalse(store.current().aiFeatures)
+        store.saveAiFeatures(true)
+        assertTrue(store.current().aiFeatures)
+        assertEquals(true, raw()["aiFeatures"])
+        store.saveAiFeatures(false)
+        assertFalse(store.current().aiFeatures)
+    }
+
+    @Test
     fun theKeyIsKeptOnlyThroughTheSecretStore() = runTest {
         store.saveServer(" https://api.example.com/ ", "  $TEST_KEY  ")
         val saved = store.current()

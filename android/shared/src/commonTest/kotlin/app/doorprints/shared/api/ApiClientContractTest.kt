@@ -83,8 +83,8 @@ class ApiClientContractTest {
             }
         }
 
-        fun api(baseUrl: String = BASE, callTimeoutMs: Long? = null) = ApiClient(
-            baseUrl, KEY, ApiHttp.client(engine),
+        fun api(baseUrl: String = BASE, callTimeoutMs: Long? = null, key: String = KEY) = ApiClient(
+            baseUrl, key, ApiHttp.client(engine),
             retry = RetryPolicy(random = Random(42), sleep = { sleeps += it }),
             callTimeoutMs = callTimeoutMs,
             debugLog = { logs += it },
@@ -214,6 +214,36 @@ class ApiClientContractTest {
         val server = FakeServer(json(200, R.STATS))
         server.api(baseUrl = "https://example.org/hunt/").stats()
         assertEquals("https://example.org/hunt/api/stats", server.seen.single().url)
+    }
+
+    @Test
+    fun pairingIsMadeWithNoKeyHeaderAndReadsTheServersAnswers() = runTest {
+        // docs/03 §12.1: the app has no key yet, so it sends none (not an empty one); POSTs are not retried.
+        val server = FakeServer(
+            json(200, """{"userCode":"K7MQ-4XRD","pollToken":"tok","expiresIn":600,"interval":3}"""),
+            json(200, """{"status":"approved","deviceKey":"dpk_abc","extra":1}"""),
+            problem(410, """{"status":410,"detail":"This invite was already used or has expired."}"""),
+        )
+        val api = server.api(key = "")
+        val started = api.pairStart("Pixel 9 (Android app)")
+        assertEquals("K7MQ-4XRD", started.userCode)
+        assertEquals(3, started.interval)
+        assertEquals("dpk_abc", api.pairPoll("tok").deviceKey)
+        val used = assertFailsWith<ApiException> { api.pairRedeem("invite-token-that-is-long-enough", "iPhone") }
+        assertEquals(410, used.code)
+        assertEquals(listOf("/api/pair/start", "/api/pair/poll", "/api/pair/redeem"), server.seen.map { it.url.removePrefix(BASE) })
+        assertTrue(server.seen.all { it.headers[ApiClient.API_KEY_HEADER] == null })
+        assertEquals("""{"deviceName":"Pixel 9 (Android app)"}""", server.seen[0].text)
+        assertEquals("""{"invite":"invite-token-that-is-long-enough","deviceName":"iPhone"}""", server.seen[2].text)
+        assertEquals(3, server.seen.size)
+    }
+
+    @Test
+    fun aiStatusSaysWhenAiIsOffForThisDevice() = runTest {
+        val status = FakeServer(json(200, """{"enabled":false,"mcpEnabled":false,"offForDevice":true}""")).api().aiStatus()
+        assertFalse(status.enabled)
+        assertTrue(status.offForDevice)
+        assertFalse(FakeServer(json(200, R.AI_STATUS_OFF)).api().aiStatus().offForDevice)
     }
 
     @Test

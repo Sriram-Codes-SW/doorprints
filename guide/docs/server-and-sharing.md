@@ -13,9 +13,8 @@ Doorprints does not run a public server. You, or someone you trust, run one on a
 
 To connect, you need the server's **address**, like a website address. Then:
 
-- **the website** shows a short code, and the server's owner approves it. No password to type;
-- **the phone apps**, until their next update, also need the **Doorprints API key**. This is a long password the apps
-  show to your server, so it knows they are yours.
+- the app shows a short code, and the server's owner approves it on their owner page; or, on a phone, you scan a QR
+  code from the owner page. No password to type.
 
 The AI has its own key (the Gemini key). It stays on the server; the apps never ask for it.
 
@@ -36,9 +35,15 @@ for your browser.
 
 **On Android and iPhone:**
 
-1. Open **Settings** and find **Server (optional)**.
-2. Fill in **Server URL** and **API key**.
-3. Tap **Save and test**.
+- **With a QR code:** point the camera at the QR code on the server's owner page and tap the link. The app asks
+  **Connect to a server?** and shows the address. Check it, then tap **Connect**.
+- **With a code:** open **Settings**, find **Server (optional)**, fill in **Server URL** and tap **Get a code**. The
+  server's owner types the code on their owner page and approves it.
+- For an older server that has no codes yet, tap **Use an API key instead**, fill in **API key** and tap
+  **Save and test**.
+
+**AI on a phone** stays off until you turn on **Use AI features on this phone** in **Settings**, under the server.
+The server's owner also has to turn on AI for your phone.
 
 **Sync now** syncs straight away. On Android, **Photos only on Wi-Fi** saves mobile data.
 

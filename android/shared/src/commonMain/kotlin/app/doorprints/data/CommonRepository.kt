@@ -29,6 +29,8 @@ import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.api.PairPolledDto
+import app.doorprints.shared.api.PairStartedDto
 import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
@@ -177,25 +179,62 @@ open class CommonRepository(
 
     private val _aiEnabled = MutableStateFlow(false)
     override val aiEnabled: StateFlow<Boolean> = _aiEnabled.asStateFlow()
+    private val _aiOff = MutableStateFlow<AiOff?>(AiOff.NO_SERVER)
+    override val aiOff: StateFlow<AiOff?> = _aiOff.asStateFlow()
+
+    /** What the server said last: AI on for this device, or why not (NO_SERVER, SERVER, DEVICE). */
+    private var serverAi: AiOff? = AiOff.NO_SERVER
 
     /**
-     * Asks the server whether AI features are on. No server set up means off, and so does a real `enabled: false`
-     * answer. A failed request (offline, a timeout, a server error) keeps what was known (UX review, whole-app
-     * audit): turning the Assistant tab off on every network error removed it while the user was on it.
+     * Asks the server whether AI features are on for this device. No server set up means off, and so does a real
+     * `enabled: false` answer. A failed request (offline, a timeout, a server error) keeps what was known (UX review,
+     * whole-app audit): turning the Assistant tab off on every network error removed it while the user was on it.
+     * AI is then offered only when this phone's *AI features* switch is on too ([AppSettings.aiFeatures]).
      */
     override suspend fun refreshAiStatus(): Boolean = withContext(Dispatchers.IO) {
         val s = settings.current()
-        val enabled = if (!s.serverConfigured) {
-            false
+        serverAi = if (!s.serverConfigured) {
+            AiOff.NO_SERVER
         } else {
-            runCatching { apiFor(s.serverUrl, s.apiKey).aiStatus().enabled }.getOrElse { e ->
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                _aiEnabled.value
-            }
+            runCatching { apiFor(s.serverUrl, s.apiKey).aiStatus() }.fold(
+                { status ->
+                    when {
+                        status.offForDevice -> AiOff.DEVICE
+                        !status.enabled -> AiOff.SERVER
+                        else -> null
+                    }
+                },
+                { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    serverAi
+                },
+            )
         }
-        _aiEnabled.value = enabled
-        enabled
+        publishAi(s.aiFeatures)
     }
+
+    override suspend fun setAiFeatures(on: Boolean) {
+        settings.saveAiFeatures(on)
+        publishAi(on)
+    }
+
+    private fun publishAi(optedIn: Boolean): Boolean {
+        val off = serverAi ?: if (optedIn) null else AiOff.OPT_IN
+        _aiOff.value = off
+        _aiEnabled.value = off == null
+        return off == null
+    }
+
+    // ---- Pairing (docs/03 §12.1): no key yet, so the client is made without one ----
+
+    override suspend fun startPairing(serverUrl: String, deviceName: String): PairStartedDto =
+        withContext(Dispatchers.IO) { apiFor(serverUrl, "").pairStart(deviceName) }
+
+    override suspend fun pollPairing(serverUrl: String, pollToken: String): PairPolledDto =
+        withContext(Dispatchers.IO) { apiFor(serverUrl, "").pairPoll(pollToken) }
+
+    override suspend fun redeemInvite(link: ConnectLink, deviceName: String): String =
+        withContext(Dispatchers.IO) { apiFor(link.server, "").pairRedeem(link.invite, deviceName).deviceKey }
 
     private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
         val s = settings.current()
