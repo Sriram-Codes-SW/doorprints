@@ -1,8 +1,8 @@
 # Doorprints user guide
 
-Doorprints remembers the houses you visit while house-hunting in India. This guide shows how to use it on the website, on Android and on iPhone. Open the app at <https://doorprints.web.app>.
+This guide shows how to use Doorprints on the website, on Android and on iPhone.
 
-The houses in the website pictures are made up for this guide ("Green Villa, 2BHK" and friends). The names, rents and phone numbers are not real.
+The houses in the pictures are made up for this guide ("Green Villa, 2BHK" and friends). The names, rents and phone numbers are not real.
 
 ## What Doorprints is
 
@@ -30,7 +30,7 @@ it is not in the Play Store yet. The iPhone app is new and still being tested; i
 | Search, filter, sort, **Compare** | Yes | Yes | Yes |
 | **Save a copy** (HTML, PDF, CSV, Excel, Markdown, full backup) | Yes | Yes, plus a weekly automatic backup | Not yet |
 | **Import a backup** | Not yet | Yes | Not yet |
-| **Add a shared listing** (share text from another app) | Yes, when installed as an app | No | No |
+| **Add a shared listing** (share text from another app) | Yes, when installed as an app on an Android phone | No | No |
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | No |
 | Ask and Plan visits (AI) | Only with your own server with AI turned on | Same | Same |
 | Works offline | Yes, after the first visit | Yes | Yes |
