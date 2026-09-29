@@ -141,7 +141,6 @@ export class AiService {
   readonly hasGeminiKey = computed(() => this.geminiKeyState() !== '');
   /** On-device AI with the person's own key: chosen, or no server to choose, and a key saved. */
   readonly usesOwnKey = computed(() => (this.providerState() === 'device' || !this.config.configured()) && this.hasGeminiKey());
-  readonly enabled = computed(() => this.optInState() && (this.usesOwnKey() || this.serverEnabled()));
   readonly offReason = computed<AiOffReason | null>(() => {
     if (this.usesOwnKey()) return this.optInState() ? null : 'optIn';
     if (this.providerState() === 'device' || !this.config.configured()) {
@@ -153,6 +152,9 @@ export class AiService {
     if (!s?.enabled) return 'server';
     return this.optInState() ? null : 'optIn';
   });
+
+  /** AI shows: on in this browser and nothing missing for the chosen provider (with the own key chosen, not the server). */
+  readonly enabled = computed(() => this.offReason() === null);
 
   constructor() {
     this.refresh();

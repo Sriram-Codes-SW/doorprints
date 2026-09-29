@@ -271,7 +271,7 @@
     @if (ai.optedIn()) {
       <fieldset class="ai-provider">
         <legend class="sr-only">{{ 'connect.aiProviderLegend' | t }}</legend>
-        <div class="field radio">
+        <div class="field checkbox">
           <input
             id="ai-provider-server"
             type="radio"
@@ -287,7 +287,7 @@
             {{ (configured() ? 'connect.aiUseServerHint' : 'connect.aiUseServerNone') | t }}
           </p>
         </div>
-        <div class="field radio">
+        <div class="field checkbox">
           <input
             id="ai-provider-device"
             type="radio"

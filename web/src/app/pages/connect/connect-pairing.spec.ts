@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { signal } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -81,7 +82,7 @@ describe('ConnectPage pairing', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
         { provide: PairingService, useValue: pairing },
         { provide: HouseApiService, useValue: { testConnection: () => new Subject() } },
-        { provide: AiService, useValue: { refresh: vi.fn() } },
+        { provide: AiService, useValue: aiStub() },
         { provide: AiSessionState, useValue: { clear: vi.fn() } },
       ],
     });
@@ -255,3 +256,15 @@ describe('ConnectPage pairing', () => {
     expect(spellCode('K7MQ-4XRD')).toBe('K 7 M Q, 4 X R D');
   });
 });
+
+/** The AI card's reads, with AI off (its own tests are in connect-ai.spec.ts). */
+function aiStub() {
+  return {
+    refresh: vi.fn(),
+    optedIn: signal(false),
+    provider: signal('server'),
+    offReason: signal('optIn'),
+    geminiKeyHint: signal(''),
+    hasGeminiKey: signal(false),
+  };
+}

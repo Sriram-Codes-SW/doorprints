@@ -60,7 +60,8 @@
 
 .pair-actions,
 .invite-actions,
-.disconnect-row {
+.disconnect-row,
+.gemini-actions {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
@@ -95,6 +96,12 @@
   padding: var(--space-2) 0;
   min-height: var(--target);
   font-weight: 600;
+}
+
+/* AI (ADR-26): "Use my server" with no server connected reads as unavailable, as its hint says. */
+.ai-provider input:disabled + label {
+  color: var(--muted);
+  cursor: default;
 }
 
 .invite .server-name {

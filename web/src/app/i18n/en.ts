@@ -278,6 +278,7 @@ export const en = {
   'ai.rateLimited': 'Too many requests. Try again in {s} seconds.',
   'ai.providerDown': 'The AI provider is unavailable or out of free quota. Try again later.',
   'ai.disclosure': 'The text is sent to the AI provider set up on your server, together with the matching house notes.',
+  'ai.disclosureOwnKey': 'The text is sent from this browser straight to Google Gemini with your own key, together with the matching house notes.',
   'ask.title': 'Ask about your houses',
   'ask.intro': 'Answers use only the houses, notes and visits you saved, and link to the houses they come from.',
   'ask.question': 'Your question',
