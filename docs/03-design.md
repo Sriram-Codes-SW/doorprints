@@ -942,10 +942,17 @@ data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 
 - **Owner session:** cookie `dp_owner` (32 random bytes, hash stored), `HttpOnly`, `SameSite=Strict`, `Path=/owner`,
   `Secure` over HTTPS, 30 days from last use. Every owner call is a `fetch` with the header `X-Doorprints-Owner: 1`
   and must come from the page's own origin (checked on `Origin`), so a cross-site form cannot act.
-- **What it shows:** devices (name, added, last used, *Revoke*); *Connect a device* (type the code); *Add a device with
+- **What it shows:** devices (name, added, last used, *AI* on or off, *Revoke*); *Connect a device* (type the code); *Add a device with
   a QR code* (the invite as QR and link, with a countdown); owner browsers (*Sign out*, *Sign out everywhere else*,
   *Add another browser*, which makes a one-time link); from ADR-25's second step, the **Gemini key** (write-only,
   stored encrypted with AES-256-GCM under `APP_ENCRYPTION_KEY`, shown as its last four characters, *Remove*).
+
+**AI per device** (owner, 2026-09-29): every AI request runs on the server with the owner's Gemini key, so a device
+someone else holds (a partner's phone on a shared server) would spend the owner's quota. Each device therefore has an
+*AI* switch on the owner page, **off for a new device**; while it is off the server answers that device's `/api/ai/*`
+calls with 403 (`AI_OFF_FOR_DEVICE`) and its AI status as off, and nothing else changes for it. The owner key (MCP) is
+not affected. Separately, each app has its own *AI features* switch in Settings, **off until the person turns it on**
+(after reading what is sent to Google); AI shows only when both are on.
 
 **Where the apps keep a device key:** as they keep the key today: Android Keystore-encrypted (`ApiKeyCipher`), iOS
 Keychain, and the website's `sessionStorage` or, with *Remember on this device*, `localStorage`.
@@ -954,11 +961,12 @@ Keychain, and the website's `sessionStorage` or, with *Remember on this device*,
 minute), besides the general limit; at most 50 open requests at once, the oldest dropped.
 
 **Owner page, not a user page.** The owner page belongs to whoever runs the server. A self-hoster is the owner of their
-own server, so their Gemini key stays on their own machine. On a hosted server (Sprint 5) other people are users, not
-owners: they never see the owner page; each gets an account page with their own devices only.
+own server, so their Gemini key stays on their own machine. People the owner shares the server with connect their own
+devices, which the owner sees and controls (including AI, below); they never see the owner page.
 
-**Later:** with Google sign-in (D-01, Sprint 5), a device key belongs to a Google account, and a signed-in user's own
-Gemini key stays on their device and never reaches the hosted server ([11](11-feature-parity-and-export-spec.md) D-27).
+**Later:** there is no hosted server ([11](11-feature-parity-and-export-spec.md) D-28): Google sign-in syncs through each
+person's own Google Drive, and a signed-in person's own Gemini key stays on their device (D-27). The owner page stays
+the self-hoster's page.
 
 ## 13. AI integration design (overview)
 
