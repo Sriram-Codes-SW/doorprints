@@ -873,6 +873,9 @@ Confirmed by green Backend CI on `6a348cc` and the first successful real Gemini 
 
 ### Security
 
+- **Backend: jackson-databind raised from 2.21.5 to 2.21.7** with a `jackson-2-bom.version` override in
+  `backend/pom.xml` for CVE-2026-68497 (HIGH, fixed in 2.21.6), found by the CI `trivy sbom` gate. Remove the override
+  when Spring Boot manages 2.21.6 or later.
 - **iOS: the database and the settings are kept out of backups** (S4b-BL-56; threat model F-03, SEC-011): both live in
   `Application Support/Doorprints`, which is created with the exclude-from-backup flag and read back.
 - **CI: new commits must carry an allowlisted author and committer email** (`security.yml` job `commit-identity`,

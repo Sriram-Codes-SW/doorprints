@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.42 |
+| Version | 0.43 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -54,6 +54,7 @@
 | 0.40 | 2026-09-29 | Claude (Code), lead | Section 1: `security.yml` job **`commit-identity`** (author and committer emails of new commits against an allowlist; S4b-BL-53, TC-S-26); the Dependabot table's new npm group **`npm-angular`** (Angular apart from the catch-all group, after #25's `npm ci` failure). |
 | 0.41 | 2026-09-29 | Claude (Code), lead | gitleaks: a third reviewed `.gitleaksignore` fingerprint (a made-up key in the CMP-8a iOS test, commit `353d05c`); test keys are written as low-entropy values. |
 | 0.42 | 2026-09-29 | Claude (Code), lead | §1: `shared-ios.yml` has three jobs since CMP-8a and 8b ([10](10-sprint-log.md) §13.11, §13.12): the compile check, `ios-sim-tests` (the `:shared` and `:ui` tests on an iPhone simulator) and `ios-app` (the iPhone app built with XcodeGen 2.46.0, pinned by SHA-256, and `xcodebuild`, ad-hoc signed, then launched on a simulator with its self-check; [06](06-test-plan.md) TC-I-37). All on macos-26 with Xcode 26.4.1 pinned, free runners, no signing identity or Apple account; each job keeps its own `~/.konan` cache key. The diagram is updated. |
+| 0.43 | 2026-09-29 | Claude (Code), lead | *Version overrides*: `jackson-2-bom.version` 2.21.7 for jackson-databind CVE-2026-68497 (HIGH), found by the `trivy sbom` gate on PR #30. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -181,7 +182,7 @@ Conventions used in every workflow:
 
 The containers run as the runner's user (`--user $(id -u):$(id -g)`) with `--cache-dir /cache`, so `actions/cache` can save the DB. The SBOM is also uploaded (`backend-sbom-cyclonedx`). Known gap: Trivy only covers Gradle with a `gradle.lockfile`, which `android/` does not have. Since Sprint 3.5 the `gradle-dependency-graph` job submits the resolved Android graph to GitHub, so Dependabot alerts cover the Android dependencies (including the Ktor/OkHttp 5 tree of `:shared`); once lock files are committed, `trivy fs` scans them without a workflow change.
 
-**Version overrides for security fixes.** When Trivy reports a Critical/High in a library whose version the Spring Boot BOM manages, and Boot has not shipped a patch yet, override only that version property in `backend/pom.xml` with a comment naming the CVEs and when to remove it. Sprint 2: `<tomcat.version>11.0.25</tomcat.version>` for tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 (F-28). Remove the property when the Spring Boot parent manages 11.0.25 or later (Dependabot's grouped Boot patch PR is the trigger to check). Never override across a major or minor line without the framework's support.
+**Version overrides for security fixes.** When Trivy reports a Critical/High in a library whose version the Spring Boot BOM manages, and Boot has not shipped a patch yet, override only that version property in `backend/pom.xml` with a comment naming the CVEs and when to remove it. Sprint 2: `<tomcat.version>11.0.25</tomcat.version>` for tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 (F-28). Remove the property when the Spring Boot parent manages 11.0.25 or later (Dependabot's grouped Boot patch PR is the trigger to check). 2026-09-29: `<jackson-2-bom.version>2.21.7</jackson-2-bom.version>` for jackson-databind 2.21.5 CVE-2026-68497 (HIGH, fixed in 2.21.6; found by the `trivy sbom` gate on PR #30); remove it when the parent manages 2.21.6 or later. Never override across a major or minor line without the framework's support.
 
 **gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). A third entry (reviewed 2026-09-29) is a made-up key in the CMP-8a iOS test `KeychainSettingsTest` (commit `353d05c`); the test now uses low-entropy values (`"test-key-one"`), which is how test keys are written from now on. No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
 
