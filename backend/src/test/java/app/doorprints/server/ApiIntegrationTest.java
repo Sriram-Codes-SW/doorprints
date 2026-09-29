@@ -174,6 +174,17 @@ class ApiIntegrationTest {
         }
     }
 
+    /** Found by the ZAP API scan (TC-S-04): a multipart body without a boundary was a 500; it is the client's 400. */
+    @Test
+    void aMalformedMultipartUploadIsABadRequestNotAServerError() {
+        var id = UUID.randomUUID();
+        put(id, house("Upload test", 12.97, 77.59, "MG Road"));
+        assertThatThrownBy(() -> api.post().uri("/api/houses/{id}/photos", id)
+                .contentType(MediaType.MULTIPART_FORM_DATA).body("x").retrieve().toBodilessEntity())
+                .isInstanceOfSatisfying(HttpClientErrorException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(400));
+    }
+
     @Test
     void securityHeadersAndNoStoreOnJson() {
         var response = api.get().uri("/api/stats").retrieve().toEntity(String.class);
