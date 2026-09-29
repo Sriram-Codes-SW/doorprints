@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, DestroyRef, Injector, afterNextRender, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -29,7 +29,7 @@ import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { Msg } from '../../i18n/translation.service';
 import { ConfirmService } from '../../core/confirm.service';
-import { AiService, aiOffMsg } from '../../core/ai.service';
+import { AiService, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import {
   ConnectLink,
   PairingPolled,
@@ -302,6 +302,56 @@ export class ConnectPage {
     this.inviteError.set(null);
     this.inviteBusy.set(false);
     afterNextRender(() => document.getElementById('connect-title')?.focus(), { injector: this.injector });
+  }
+
+  /** Own key chosen, or no server to choose (then the own key is the only way). */
+  protected readonly ownKey = computed(() => this.ai.provider() === 'device' || !this.config.configured());
+  protected geminiKey = '';
+  protected rememberGemini = this.config.configured() ? this.config.remembered() : false;
+  protected readonly showGeminiKey = signal(false);
+  protected readonly geminiBusy = signal(false);
+  protected readonly geminiResult = signal<RunResult<{ ok: boolean; msg?: Msg }> | null>(null);
+
+  /** *Save key*: asks Google first, so a mistyped key is not saved; then this browser answers AI with it. */
+  protected async saveGeminiKey(): Promise<void> {
+    const key = this.geminiKey.trim();
+    if (this.geminiBusy()) return;
+    if (!key) {
+      this.geminiResult.set(runResult({ ok: false, msg: { key: 'connect.geminiKeyRequired' } }));
+      afterNextRender(() => document.getElementById('gemini-key')?.focus(), { injector: this.injector });
+      return;
+    }
+    this.geminiBusy.set(true);
+    try {
+      await this.ai.testGeminiKey(key);
+      this.ai.saveGeminiKey(key, this.rememberGemini);
+      this.geminiKey = '';
+      this.geminiResult.set(runResult({ ok: true }));
+    } catch (e) {
+      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e) }));
+    } finally {
+      this.geminiBusy.set(false);
+    }
+  }
+
+  protected async testSavedGeminiKey(): Promise<void> {
+    if (this.geminiBusy()) return;
+    this.geminiBusy.set(true);
+    try {
+      await this.ai.testGeminiKey(this.ai.geminiKeyForTest());
+      this.geminiResult.set(runResult({ ok: true }));
+    } catch (e) {
+      this.geminiResult.set(runResult({ ok: false, msg: aiErrorMsg(e) }));
+    } finally {
+      this.geminiBusy.set(false);
+    }
+  }
+
+  protected removeGeminiKey(): void {
+    this.ai.removeGeminiKey();
+    this.geminiResult.set(null);
+    this.announcer.announce({ key: 'connect.geminiRemoved' });
+    afterNextRender(() => document.getElementById('gemini-key')?.focus(), { injector: this.injector });
   }
 
   protected setAiFeatures(event: Event): void {

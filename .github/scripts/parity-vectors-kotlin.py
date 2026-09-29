@@ -15,8 +15,9 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 """Copies docs/ai/evals/parity-vectors.json into :shared's common tests (ParityVectorsJson.kt), so the parity checks
-also run on iOS, where a test cannot read a file from the repository. Run after changing the vectors; the JVM test
-ParityVectorsFileTest fails while the copy differs from the file."""
+also run on iOS, where a test cannot read a file from the repository, and into the website's tests
+(web/src/app/core/ai/parity-vectors.json), whose build reads files under web/ only. Run after changing the vectors; the
+JVM test ParityVectorsFileTest fails while either copy differs from the file."""
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -35,4 +36,6 @@ OUT.write_text(
     + 'internal const val PARITY_VECTORS_JSON: String = """' + escaped + '"""\n',
     encoding="utf-8",
 )
-print("wrote", OUT.relative_to(ROOT))
+WEB = ROOT / "web/src/app/core/ai/parity-vectors.json"
+WEB.write_text(text, encoding="utf-8")
+print("wrote", OUT.relative_to(ROOT), "and", WEB.relative_to(ROOT))

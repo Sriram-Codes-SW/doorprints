@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.41 |
+| Version | 0.42 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -53,6 +53,7 @@
 | 0.39 | 2026-09-29 | Claude (Code), lead | §12.1: *Connect* on Android and iPhone (branch `feat/app-connect-by-code`): code, connect link (`doorprints://connect`) with confirmation, *Use AI features on this phone*. |
 | 0.40 | 2026-09-29 | Claude (Code), lead | New §13.1 and **ADR-26**: server AI or the person's own Gemini key on the device, behind one interface (owner, 2026-09-29). |
 | 0.41 | 2026-09-29 | Claude (Code), lead | §13.1: on-device AI as built on Android and iPhone (own key slot, provider choice, *AI features* in Settings). |
+| 0.42 | 2026-09-29 | Claude (Code), lead | §13.1: on-device AI as built on the website (TypeScript core, `OnDeviceAiService`, the *AI features* card on *Connect*). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1037,7 +1038,7 @@ Owner, 2026-09-29: "both are separate modules and the calling AI is common … h
 responses as well as choose the server for the API key and still get the responses as they need." Everything AI in
 the apps (Ask, Plan, the Assistant, *Fill in from listing text*) goes through one interface with three calls,
 `extractListing`, `ask`, `planVisits`, and the same request and answer types the server's `/api/ai/*` use today
-(`:shared` `AiProvider`; web `AiProvider` in `core/ai`). Two providers implement it:
+(`:shared` `CommonRepository`; web `AiService`). Two providers implement it:
 
 | | **Server AI** (exists) | **On-device AI** (new) |
 |---|---|---|
@@ -1075,6 +1076,18 @@ With both set up, the person picks one; with one, that one is used. Houses, sync
 (`KeystoreSecretStore(entry = "geminiKeyEnc")`, `KeychainSecretStore(account = "gemini_key")`); Settings → *AI
 features* (`AiSettingsSection`). *Save key* first makes one tiny request (`testGeminiKey`), so a mistyped key is not
 saved. A refused key is `ApiException.Kind.AI_KEY_REJECTED`, worded "Google did not accept your Gemini key".
+
+**As built on the website** (branch `feat/ai-own-key-web`): `web/src/app/core/ai/ai-core.ts` is the TypeScript port of
+the core, tested against a copy of the parity vectors (`core/ai/parity-vectors.json`, written by
+`.github/scripts/parity-vectors-kotlin.py` and checked by `ParityVectorsFileTest`); `OnDeviceAiService` calls Gemini
+with `HttpClient` (an absolute URL, so the API interceptor adds no server key) over the houses in IndexedDB.
+`AiService` answers `extractListing`, `ask` and `planVisits` with it when *own key* is chosen (or no server is
+connected) and a key is saved, else through the server; `enabled` is on only when nothing is missing for the chosen
+provider, so an own key chosen but not saved never falls back to the server. The key is kept like the device key
+(sessionStorage, or localStorage with *Remember on this device*; `GEMINI_KEY_KEY`); *Clear everything* on *Your data*
+removes it. The *AI features* card on *Connect* is shown with or without a server; *Use my server* is disabled with no
+server. Ask, Plan and *Fill in from listing text* show `ai.disclosureOwnKey` when the own key answers. The site's CSP
+already allows `https:` in `connect-src`.
 
 **Order of work:** this record; the common core in `:shared` with the test vectors; the on-device provider and the
 Settings choice on Android and iPhone; the same on the website (TypeScript, same vectors). Google sign-in with Drive
