@@ -67,9 +67,11 @@ section is only today's state. Earlier versions of this file (git history) carry
 - **Optimisation review merged** (#54: the reindex's N+1 visit query, a tombstone-id query, fewer full IndexedDB reads
   and sorts on the website; backend `mvn verify` 315 tests and web 554 tests passed locally before the push).
 - **This file's pull request (#55)** is the last of the session; if it is still open, merge it when green.
-- **Last live UI test** (after the #52 deploy, 2026-09-29): 1 433 of 1 434 checks passed; the one failure was a page
-  load this session's proxy broke (502 and a stylesheet served as `text/plain`, as on 2026-09-28); a re-run passed the
-  step that had failed.
+- **Last live UI test** (after the #54 deploy, 2026-09-29): 1 950 checks passed (pages 720, i18n 240, theme 144, a11y
+  144, console 354, flows 12, pwa 4, map 22, mobile 310); one stylesheet came back as `text/plain` through this
+  session's proxy (as on 2026-09-28), and the mobile area was cut short by the session's 25-minute limit, not by a
+  failure. After #52: 1 433 of 1 434, the one failure the same proxy fault. Next run: after the next web change; give
+  it about 30 minutes, or run `ONLY=mobile` separately.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md).
