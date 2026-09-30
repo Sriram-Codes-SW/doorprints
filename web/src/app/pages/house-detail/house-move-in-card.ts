@@ -71,14 +71,16 @@ export interface OpenedPhoto {
         <ul class="items" aria-labelledby="movein-checklist-heading">
           @for (it of items(); track it.id; let i = $index) {
             <li class="item">
-              <input
-                type="checkbox"
-                class="tick"
-                [id]="'movein-tick-' + it.id"
-                [checked]="it.done === true"
-                [attr.aria-label]="it.text"
-                (change)="setDone(it.id, $any($event.target).checked)"
-              />
+              <label class="tickbox">
+                <input
+                  type="checkbox"
+                  class="tick"
+                  [id]="'movein-tick-' + it.id"
+                  [checked]="it.done === true"
+                  [attr.aria-label]="it.text"
+                  (change)="setDone(it.id, $any($event.target).checked)"
+                />
+              </label>
               <input
                 type="text"
                 class="text"
@@ -105,6 +107,7 @@ export interface OpenedPhoto {
         <label for="movein-new">{{ 'movein.itemNew' | t }}</label>
         <div class="inline">
           <input
+            #newField
             id="movein-new"
             type="text"
             [maxLength]="maxText"
@@ -113,9 +116,9 @@ export interface OpenedPhoto {
             [disabled]="items().length >= maxItems"
             [attr.aria-describedby]="items().length >= maxItems ? 'movein-full' : null"
             (input)="newText.set($any($event.target).value)"
-            (keydown.enter)="addOwn(); $event.preventDefault()"
+            (keydown.enter)="addOwn(newField); $event.preventDefault()"
           />
-          <button type="button" class="btn" [disabled]="items().length >= maxItems || newText().trim() === ''" (click)="addOwn()">
+          <button type="button" class="btn" [disabled]="items().length >= maxItems || newText().trim() === ''" (click)="addOwn(newField)">
             {{ 'movein.itemAdd' | t }}
           </button>
         </div>
@@ -209,10 +212,18 @@ export interface OpenedPhoto {
       gap: var(--space-2);
       margin-bottom: var(--space-1);
     }
+    /* The whole square is the target (44 px), the box inside it is 24 px. */
+    .tickbox {
+      display: grid;
+      place-items: center;
+      min-width: var(--target);
+      min-height: var(--target);
+      cursor: pointer;
+    }
     .tick {
       width: 1.5rem;
       height: 1.5rem;
-      margin: 0 var(--space-1);
+      margin: 0;
       accent-color: var(--primary);
     }
     .remove {
@@ -400,12 +411,13 @@ export class HouseMoveInCard {
     setTimeout(() => document.getElementById(focus ? 'movein-text-' + focus.id : 'movein-new')?.focus());
   }
 
-  protected addOwn(): void {
-    const text = this.newText().trim();
+  protected addOwn(field: HTMLInputElement): void {
+    const text = field.value.trim();
     const list = this.items();
     if (text === '' || list.length >= MAX_MOVE_IN_ITEMS) return;
     const sort = list.reduce((max, i) => Math.max(max, i.sort), -1) + 1;
     const item: MoveInItem = { id: uuid(), text: text.slice(0, MAX_MOVE_IN_TEXT), sort };
+    field.value = '';
     this.newText.set('');
     this.emit(this.withItems([...list, item]));
     setTimeout(() => document.getElementById('movein-new')?.focus());

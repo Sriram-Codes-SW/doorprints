@@ -488,9 +488,27 @@ export const FIXTURE_PHOTO_DATA_URIS: ReadonlyMap<string, string> = new Map(
 
 export const FIXTURE_OPTIONS: ExportOptions = { ...DEFAULT_EXPORT_OPTIONS, lang: 'en' };
 
-export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundle {
+/**
+ * The fixture's houses with house 1 back to SHORTLISTED (the sample has it TAKEN, slice 5): for the tests of the
+ * "shortlisted only" scope and photo option, which need a shortlisted house.
+ */
+export const FIXTURE_SHORTLISTED_HOUSES: HouseRecord[] = FIXTURE_HOUSES.map((h) => (h.status === 'TAKEN' ? { ...h, status: 'SHORTLISTED' } : h));
+
+/**
+ * The fixture's houses as the `/1` tests need them: no rooms, answers or moving in, and house 1 SHORTLISTED instead of
+ * TAKEN, so only what a test adds decides what the copy holds (a TAKEN house, `moveIn` or a photo's meta would make
+ * it `/2`). Their photos are {@link FIXTURE_PLAIN_PHOTOS}.
+ */
+export const FIXTURE_PLAIN_HOUSES: HouseRecord[] = FIXTURE_SHORTLISTED_HOUSES.map((h) => ({ ...h, rooms: null, answers: null, moveIn: null }));
+
+/** The fixture's photos without the meta of slice 5. */
+export const FIXTURE_PLAIN_PHOTOS: PhotoRecord[] = FIXTURE_PHOTOS.map(
+  ({ roomId: _r, tags: _t, caption: _c, metaUpdatedAt: _m, metaDirty: _d, ...photo }) => photo,
+);
+
+export function fixtureBundle(options: Partial<ExportOptions> = {}, houses: readonly HouseRecord[] = FIXTURE_HOUSES): ExportBundle {
   return collect({
-    houses: FIXTURE_HOUSES,
+    houses,
     visits: FIXTURE_VISITS,
     photos: FIXTURE_PHOTOS,
     brokers: FIXTURE_BROKERS,

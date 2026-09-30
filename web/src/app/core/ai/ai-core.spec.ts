@@ -251,6 +251,28 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(text).not.toMatch(/lat|lon/i);
   });
 
+  it('writes the Moving in progress and notes after the distance lines, and nothing for the item texts or the date (slice 5)', () => {
+    const text = houseText({
+      ...house,
+      distances: [{ name: 'Office', meters: 1000 }],
+      moveIn: {
+        notes: 'Call Ramesh on 98450 12345\nmeter 4521',
+        items: [{ done: true }, { done: false }, {}, { done: true }],
+      },
+    } as never);
+    expect(text).toContain(['Distance to Office: 1.0 km', 'Moving in: 2 of 4 done', 'Moving in notes: Call [contact] on [phone] meter 4521', 'Status: SHORTLISTED'].join('\n'));
+    expect(text.split('\n').filter((l) => l.startsWith('Moving in notes: '))).toHaveLength(1);
+    expect(text).not.toContain('98450');
+  });
+
+  it('writes no Moving in line when there are no items and no notes, and no progress line without items', () => {
+    expect(houseText({ ...house, moveIn: null } as never)).toBe(houseText(house));
+    expect(houseText({ ...house, moveIn: { items: [], notes: '  ' } } as never)).toBe(houseText(house));
+    const onlyNotes = houseText({ ...house, moveIn: { notes: 'Keys with the owner' } } as never);
+    expect(onlyNotes).toContain('Moving in notes: Keys with the owner');
+    expect(onlyNotes).not.toContain('Moving in: ');
+  });
+
   it('writes at most 5 area notes (newest first, ties by id) and 10 distances (nearest first)', () => {
     const notes = Array.from({ length: 9 }, (_, i) => ({ id: `n_${String(i).padStart(8, '0')}`, text: `Note ${i}`, updatedAt: i >= 7 ? 100 : i }));
     const distances = Array.from({ length: 14 }, (_, i) => ({ name: `Place ${String(13 - i).padStart(2, '0')}`, meters: 1000 * (14 - i) }));

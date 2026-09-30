@@ -438,7 +438,10 @@ export class LocalStore {
   async markPhotoMetaClean(id: string, pushedAt: number): Promise<void> {
     const db = await this.db();
     const existing = await db.get<PhotoRecord>('photos', id);
-    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) await db.put('photos', { ...existing, metaDirty: false });
+    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) {
+      const { metaDirty: _dirty, ...clean } = existing;
+      await db.put('photos', clean);
+    }
   }
 
   /** The photos of one house tagged MOVE_IN, oldest first: the condition record (docs/11 5.24). */

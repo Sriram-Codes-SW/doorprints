@@ -81,6 +81,7 @@ import { FIXED_TAGS, MAX_CAPTION, MAX_TAGS, MAX_TAG_LENGTH, isFixedTag, photoTag
           <label [for]="'photo-tag-' + photo().id">{{ 'photoMeta.customTag' | t }}</label>
           <div class="inline">
             <input
+              #tagField
               [id]="'photo-tag-' + photo().id"
               type="text"
               autocomplete="off"
@@ -88,9 +89,9 @@ import { FIXED_TAGS, MAX_CAPTION, MAX_TAGS, MAX_TAG_LENGTH, isFixedTag, photoTag
               [value]="draftTag()"
               [disabled]="tags().length >= maxTags"
               (input)="draftTag.set($any($event.target).value)"
-              (keydown.enter)="addCustom(); $event.preventDefault()"
+              (keydown.enter)="addCustom(tagField); $event.preventDefault()"
             />
-            <button type="button" class="btn" [disabled]="tags().length >= maxTags || draftTag().trim() === ''" (click)="addCustom()">
+            <button type="button" class="btn" [disabled]="tags().length >= maxTags || draftTag().trim() === ''" (click)="addCustom(tagField)">
               {{ 'photoMeta.addTag' | t }}
             </button>
           </div>
@@ -232,15 +233,17 @@ export class PhotoMetaEditor implements OnInit {
     setTimeout(() => document.getElementById('photo-tag-' + this.photo().id)?.focus());
   }
 
-  protected addCustom(): void {
+  protected addCustom(field: HTMLInputElement): void {
     const before = this.tags();
-    const next = withTag(before, this.draftTag());
+    const next = withTag(before, field.value);
     if (next.length === before.length) {
       this.tagNote.set(true);
       return;
     }
     this.tagNote.set(false);
     this.tags.set(next);
+    // Cleared in the field itself too: the typed text may not have been rendered back through `draftTag` yet.
+    field.value = '';
     this.draftTag.set('');
   }
 

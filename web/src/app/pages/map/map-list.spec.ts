@@ -147,6 +147,20 @@ describe('searchText', () => {
     expect(searchText(green, greenBroker).includes('bus depot')).toBe(false);
     expect(searchText(lake, '', [])).toBe(searchText(lake));
   });
+  it('a query matches the move-in notes and the checklist item texts (slice 5), and not a house without them', () => {
+    const moving = { ...green, status: 'TAKEN' as const, moveIn: { notes: 'Meter reads 4521', items: [{ id: 'mi_keys', text: 'Keys received from Ravi Kumar', sort: 0 }] } };
+    const finds = (query: string) => searchText(moving, greenBroker).includes(query);
+    expect(finds('meter reads')).toBe(true);
+    expect(finds('keys received')).toBe(true);
+    expect(searchText(green, greenBroker).includes('keys received')).toBe(false);
+    expect(searchText({ ...green, moveIn: null }, greenBroker)).toBe(searchText(green, greenBroker));
+  });
+  it('the status filter accepts Taken and Not chosen and ignores a status it does not know (slice 5)', () => {
+    expect(parseListQuery((name) => (name === 'status' ? 'TAKEN' : null)).status).toBe('TAKEN');
+    expect(parseListQuery((name) => (name === 'status' ? 'NOT_CHOSEN' : null)).status).toBe('NOT_CHOSEN');
+    expect(parseListQuery((name) => (name === 'status' ? 'ARCHIVED' : null)).status).toBe('ALL');
+    expect(listQueryParams({ q: '', status: 'NOT_CHOSEN', sort: 'recent' })).toEqual({ q: null, status: 'NOT_CHOSEN', sort: null });
+  });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
   it("the broker's fee terms match", () => expect(matching('15 days')).toEqual(['green']));

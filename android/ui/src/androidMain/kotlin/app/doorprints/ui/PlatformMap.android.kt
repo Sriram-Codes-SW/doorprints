@@ -251,6 +251,8 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
         Expression.get("status"),
         Expression.literal("SHORTLISTED"), Expression.color(MarkerColors.SHORTLISTED),
         Expression.literal("REJECTED"), Expression.color(MarkerColors.REJECTED),
+        Expression.literal("TAKEN"), Expression.color(MarkerColors.TAKEN),
+        Expression.literal("NOT_CHOSEN"), Expression.color(MarkerColors.NOT_CHOSEN),
         Expression.color(MarkerColors.NEW),
     )
     // Status is told by size, ring and opacity as well as colour (round 5; docs/05 UX-002, A11Y-003, WCAG 1.4.1): the
@@ -262,6 +264,9 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
         Expression.literal(new),
         Expression.stop("SHORTLISTED", shortlisted),
         Expression.stop("REJECTED", rejected),
+        // Slice 5: TAKEN the size of SHORTLISTED, NOT_CHOSEN of REJECTED (houseLayersJson draws them the same way).
+        Expression.stop("TAKEN", shortlisted),
+        Expression.stop("NOT_CHOSEN", rejected),
     )
     val radius = Expression.interpolate(
         Expression.linear(),
@@ -280,6 +285,7 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
                     Expression.get("status"),
                     Expression.literal(MARKER_STROKE_DP),
                     Expression.stop("SHORTLISTED", MARKER_STROKE_SHORTLISTED_DP),
+                    Expression.stop("TAKEN", MARKER_STROKE_SHORTLISTED_DP),
                 ),
             ),
             PropertyFactory.circleOpacity(
@@ -289,6 +295,7 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
                         Expression.get("status"),
                         Expression.literal(1f),
                         Expression.stop("REJECTED", MARKER_OPACITY_REJECTED),
+                        Expression.stop("NOT_CHOSEN", MARKER_OPACITY_REJECTED),
                     ),
                 ),
             ),
