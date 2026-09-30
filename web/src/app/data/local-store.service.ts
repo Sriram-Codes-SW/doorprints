@@ -76,6 +76,35 @@ import {
   viewingToPayload,
 } from '../shared/viewing';
 import type { Viewing, ViewingRow } from '../shared/viewing';
+import {
+  AREA_NOTE_TYPE,
+  AREA_TYPE,
+  MAX_AREAS,
+  MAX_AREA_ID,
+  MAX_AREA_NAME,
+  MAX_AREA_NOTES,
+  MAX_NOTE_TEXT,
+  MAX_PLACES,
+  MAX_PLACE_NAME,
+  MAX_STREET,
+  PLACE_TYPE,
+  areaFromPayload,
+  areaNoteFromPayload,
+  areaNoteToPayload,
+  areaToPayload,
+  isRecordKey,
+  newAreaIdRandom,
+  newAreaNoteIdRandom,
+  newPlaceIdRandom,
+  newestFirst,
+  placeFromPayload,
+  placeToPayload,
+  sortByName,
+  validLat,
+  validLon,
+  validRadius,
+} from '../shared/area';
+import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 import type { LengthUnit } from '../shared/room-sizes';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
@@ -936,6 +965,164 @@ export class LocalStore {
     const viewing = row ? viewingFromPayload(id, row.payload) : null;
     if (!viewing) throw new LocalDataError('error.notFoundLocal');
     return this.saveViewing({ ...viewing, status: 'DONE', ...(visitId ? { visitId } : {}) }, now);
+  }
+
+  // ---- Hunting areas, my places and area notes (docs/11 "Design of slice 4a": records of type `area`, `place`, `areanote`) ----
+
+  /** The live area records, oldest edit first; a row that is not an area (bad name or point) is skipped as untrusted. */
+  async areaRows(): Promise<AreaRow[]> {
+    const out: AreaRow[] = [];
+    for (const row of await this.recordsOf(AREA_TYPE)) {
+      const area = areaFromPayload(row.id, row.payload);
+      if (area) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, area });
+    }
+    return out;
+  }
+
+  /** Every live area, by name then id. */
+  async areas(): Promise<Area[]> {
+    return sortByName((await this.areaRows()).map((r) => r.area), (a) => a.name);
+  }
+
+  /** A fresh `a_` id that no area record, a deleted one included, has (`newId` is a seam for tests). */
+  async newAreaId(newId: () => string = newAreaIdRandom): Promise<string> {
+    return this.freshId(AREA_TYPE, newId);
+  }
+
+  /**
+   * Saves an area: only that record is written, and only when it differs from what is stored. The name is trimmed.
+   *
+   * @throws LocalDataError `error.badRecord` for a bad id, a blank or over-long name, a point or radius out of range;
+   *   `areas.max` when a new area would be the 21st.
+   */
+  async saveArea(area: Area, now: number = Date.now()): Promise<Area> {
+    const clean: Area = { ...area, name: area.name.trim() };
+    if (
+      !isRecordKey(clean.id) ||
+      clean.name === '' ||
+      clean.name.length > MAX_AREA_NAME ||
+      !validLat(clean.lat) ||
+      !validLon(clean.lon) ||
+      !validRadius(clean.radiusM)
+    ) {
+      throw new LocalDataError('error.badRecord');
+    }
+    const payload = areaToPayload(clean);
+    await this.writeIfChanged(AREA_TYPE, clean.id, payload, MAX_AREAS, 'areas.max', now);
+    return areaFromPayload(clean.id, payload) as Area;
+  }
+
+  /** Deletes an area (a tombstone). Its notes stay but reach no house until the area is back. */
+  async deleteArea(id: string, now: number = Date.now()): Promise<void> {
+    await this.deleteRecord(AREA_TYPE, id, now);
+  }
+
+  async placeRows(): Promise<PlaceRow[]> {
+    const out: PlaceRow[] = [];
+    for (const row of await this.recordsOf(PLACE_TYPE)) {
+      const place = placeFromPayload(row.id, row.payload);
+      if (place) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, place });
+    }
+    return out;
+  }
+
+  /** Every live place, by name then id. */
+  async places(): Promise<Place[]> {
+    return sortByName((await this.placeRows()).map((r) => r.place), (p) => p.name);
+  }
+
+  async newPlaceId(newId: () => string = newPlaceIdRandom): Promise<string> {
+    return this.freshId(PLACE_TYPE, newId);
+  }
+
+  /** @throws LocalDataError `error.badRecord` for a bad id, name (1..60) or point; `places.max` when a new place would be the 11th. */
+  async savePlace(place: Place, now: number = Date.now()): Promise<Place> {
+    const clean: Place = { ...place, name: place.name.trim() };
+    if (!isRecordKey(clean.id) || clean.name === '' || clean.name.length > MAX_PLACE_NAME || !validLat(clean.lat) || !validLon(clean.lon)) {
+      throw new LocalDataError('error.badRecord');
+    }
+    const payload = placeToPayload(clean);
+    await this.writeIfChanged(PLACE_TYPE, clean.id, payload, MAX_PLACES, 'places.max', now);
+    return placeFromPayload(clean.id, payload) as Place;
+  }
+
+  async deletePlace(id: string, now: number = Date.now()): Promise<void> {
+    await this.deleteRecord(PLACE_TYPE, id, now);
+  }
+
+  /** The live area-note records (every one, whether or not its area still exists), oldest edit first. */
+  async areaNoteRows(): Promise<AreaNoteRow[]> {
+    const out: AreaNoteRow[] = [];
+    for (const row of await this.recordsOf(AREA_NOTE_TYPE)) {
+      const note = areaNoteFromPayload(row.id, row.payload);
+      if (note) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, note });
+    }
+    return out;
+  }
+
+  /** Every live note, newest edit first. */
+  async areaNotes(): Promise<AreaNoteRow[]> {
+    return newestFirst(await this.areaNoteRows());
+  }
+
+  async newAreaNoteId(newId: () => string = newAreaNoteIdRandom): Promise<string> {
+    return this.freshId(AREA_NOTE_TYPE, newId);
+  }
+
+  /**
+   * @throws LocalDataError `error.badRecord` for a bad id, neither or both of `areaId` (<= 64) and `street` (1..100),
+   *   or a blank or over-long text (1..1000); `areaNotes.max` when a new note would be the 201st.
+   */
+  async saveAreaNote(note: AreaNote, now: number = Date.now()): Promise<AreaNote> {
+    const clean: AreaNote = { id: note.id, text: note.text.trim() };
+    const areaId = note.areaId?.trim();
+    const street = note.street?.trim();
+    if (areaId) clean.areaId = areaId;
+    if (street) clean.street = street;
+    if (
+      !isRecordKey(clean.id) ||
+      (clean.areaId === undefined) === (clean.street === undefined) ||
+      (clean.areaId?.length ?? 0) > MAX_AREA_ID ||
+      (clean.street?.length ?? 0) > MAX_STREET ||
+      clean.text === '' ||
+      clean.text.length > MAX_NOTE_TEXT
+    ) {
+      throw new LocalDataError('error.badRecord');
+    }
+    const payload = areaNoteToPayload(clean);
+    await this.writeIfChanged(AREA_NOTE_TYPE, clean.id, payload, MAX_AREA_NOTES, 'areaNotes.max', now);
+    return areaNoteFromPayload(clean.id, payload) as AreaNote;
+  }
+
+  async deleteAreaNote(id: string, now: number = Date.now()): Promise<void> {
+    await this.deleteRecord(AREA_NOTE_TYPE, id, now);
+  }
+
+  private async freshId(type: string, newId: () => string): Promise<string> {
+    const db = await this.db();
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const id = newId();
+      if (!(await db.get<RecordRecord>('records', [type, id]))) return id;
+    }
+    throw new LocalDataError('error.badRecord');
+  }
+
+  /** Writes a record only when its payload differs from the stored one; a new record past `cap` live ones is refused. */
+  private async writeIfChanged(
+    type: string,
+    id: string,
+    payload: Record<string, unknown>,
+    cap: number,
+    capKey: 'areas.max' | 'places.max' | 'areaNotes.max',
+    now: number,
+  ): Promise<void> {
+    const existing = await this.getRecord(type, id);
+    if (existing) {
+      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return;
+    } else if ((await this.recordsOf(type)).length >= cap) {
+      throw new LocalDataError(capKey);
+    }
+    await this.saveRecord(type, id, payload, now);
   }
 
   // ---- Settings ----

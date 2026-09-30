@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.ai.agent.RouteOptimizer;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
@@ -52,6 +53,8 @@ public final class HouseDocuments {
     static final int NOTES_MAX = 3000;
     static final int ANSWER_LINES_MAX = 20;
     static final int VIEWING_LINES_MAX = 10;
+    static final int AREA_NOTE_LINES_MAX = 5;
+    static final int DISTANCE_LINES_MAX = 10;
     private static final DateTimeFormatter WHEN =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
@@ -67,6 +70,11 @@ public final class HouseDocuments {
         return new Document(h.id().toString(), text(h, visits, viewings), metadata(h));
     }
 
+    /** As above, with the areas, places and area notes of slice 4a. */
+    static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas) {
+        return new Document(h.id().toString(), text(h, visits, viewings, areas), metadata(h));
+    }
+
     /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
     public static String text(HouseDto h, List<VisitDto> visits) {
         return text(h, visits, List.of());
@@ -74,6 +82,11 @@ public final class HouseDocuments {
 
     /** As above, with the viewings of this house (slice 3b-1), a line each after the questions. */
     static String text(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings) {
+        return text(h, visits, viewings, AreaLines.All.NONE);
+    }
+
+    /** As above, with the area notes that reach this house and its distances to the person's places (slice 4a). */
+    static String text(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas) {
         var r = ContactRedactor.forHouse(h);
         var sb = new StringBuilder();
         line(sb, "House", r.freeText(h.label()));
@@ -90,6 +103,8 @@ public final class HouseDocuments {
         line(sb, "Rooms", rooms(h.rooms(), r));
         answerLines(sb, h.answers(), r);
         viewingLines(sb, viewings, r);
+        areaNoteLines(sb, h, areas, r);
+        distanceLines(sb, h, areas, r);
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -207,6 +222,63 @@ public final class HouseDocuments {
                     if (!notes.isEmpty()) value.append(" | Notes: ").append(notes);
                     line(sb, "Viewing", value.toString());
                 });
+    }
+
+    /** A house with the point (0, 0) has none yet (the sync API's default), and an APPROX point is a ring, not a place. */
+    private static boolean hasPoint(HouseDto h) {
+        return !(h.lat() == 0 && h.lon() == 0);
+    }
+
+    /**
+     * The notes of {@link #areaNotesReaching} as {@code Area note: <text>}, at most {@value #AREA_NOTE_LINES_MAX},
+     * newest first, the same words as the on-device {@code AiHouse} and the web {@code houseText}. The text goes through
+     * the contact redactor and loses its line breaks.
+     */
+    static void areaNoteLines(StringBuilder sb, HouseDto h, AreaLines.All all, ContactRedactor.Redactor r) {
+        areaNotesReaching(h, all).stream().limit(AREA_NOTE_LINES_MAX)
+                .forEach(n -> line(sb, "Area note", r.freeText(n.text().strip()).replaceAll("\\s+", " ").strip()));
+    }
+
+    /**
+     * The notes that reach a house: an area note when the area is live, the house has a real point (not APPROX, not
+     * unset) and lies within the area's radius (haversine); a street note when the house's street, trimmed, equals the
+     * note's street ignoring case. Newest first, the id breaks a tie (vectors N1 to N5 of docs/11 slice 4a).
+     */
+    static List<AreaLines.Note> areaNotesReaching(HouseDto h, AreaLines.All all) {
+        if (all == null || all.notes().isEmpty()) return List.of();
+        var placed = hasPoint(h) && !"APPROX".equals(h.locationSource());
+        var street = h.street() == null ? "" : h.street().strip();
+        var byArea = new HashMap<String, AreaLines.Area>();
+        all.areas().forEach(a -> byArea.put(a.id(), a));
+        return all.notes().stream().filter(n -> {
+            if (n.areaId() != null) {
+                var a = byArea.get(n.areaId());
+                return placed && a != null
+                        && RouteOptimizer.haversineMeters(h.lat(), h.lon(), a.lat(), a.lon()) <= a.radiusM();
+            }
+            return !street.isEmpty() && street.equalsIgnoreCase(n.street().strip());
+        }).sorted(Comparator.comparingLong(AreaLines.Note::updatedAt).reversed().thenComparing(AreaLines.Note::id))
+                .toList();
+    }
+
+    /**
+     * {@code Distance to <place>: <km> km}, at most {@value #DISTANCE_LINES_MAX}, nearest first (the name breaks a
+     * tie). The place name goes through the redactor; never the coordinates. A house without a point gets none.
+     */
+    static void distanceLines(StringBuilder sb, HouseDto h, AreaLines.All all, ContactRedactor.Redactor r) {
+        if (all == null || all.places().isEmpty() || !hasPoint(h)) return;
+        all.places().stream()
+                .map(p -> Map.entry(p, RouteOptimizer.haversineMeters(h.lat(), h.lon(), p.lat(), p.lon())))
+                .sorted(Map.Entry.<AreaLines.Place, Double>comparingByValue()
+                        .thenComparing(e -> e.getKey().name()))
+                .limit(DISTANCE_LINES_MAX)
+                .forEach(e -> line(sb, "Distance to " + r.freeText(e.getKey().name().strip()).replaceAll("\\s+", " ").strip(),
+                        km(e.getValue()) + " km"));
+    }
+
+    /** Metres as kilometres with one decimal, half up (D1 8572.7 m is 8.6, D2 0 is 0.0, D3 3211.7 m is 3.2). */
+    static String km(double meters) {
+        return String.format(Locale.ROOT, "%.1f", Math.floor(meters / 100 + 0.5) / 10);
     }
 
     /** {@code BEDROOM} as {@code Bedroom}. */

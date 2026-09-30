@@ -18,6 +18,8 @@
 
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { distancesToPlaces } from '../../shared/area';
+import type { Place } from '../../shared/area';
 import { LocalDataService } from '../../core/local-data.service';
 import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
@@ -82,6 +84,8 @@ export class ComparePage {
   private readonly houses = signal<HouseDto[]>([]);
   /** Broker name and agency by broker id (slice 1b): the Contact row shows them for a linked house. */
   private readonly brokerLines = signal<ReadonlyMap<string, string>>(new Map());
+  /** My places (slice 4a): one row per place, the straight-line kilometres from each house. */
+  private readonly places = signal<readonly Place[]>([]);
   protected readonly selectedIds = signal<string[]>([]);
   /** Visit count per house id; missing = not loaded yet. */
   private readonly visitCounts = signal<Record<string, number>>({});
@@ -258,6 +262,18 @@ export class ComparePage {
       cells: houses.map((h) => plain([h.street, h.locality].filter((x) => !!x).join(', ') || null)),
       best: new Set<number>(),
     });
+    // One row per place of mine (slice 4a): kilometres with one decimal; a house with no point shows none.
+    for (const place of this.places()) {
+      rows.push({
+        id: 'place-' + place.id,
+        label: i18n.t('compare.distanceTo', { name: place.name }),
+        cells: houses.map((h) => {
+          const d = distancesToPlaces(h, [place])[0];
+          return d ? { text: i18n.t('distance.km', { km: d.km }) } : none;
+        }),
+        best: new Set<number>(),
+      });
+    }
     // The criteria that are not archived, in the person's order (custom ones by their label).
     for (const item of scoring.criteria.filter((c) => c.archived !== true)) {
       const values = houses.map((h) => {
@@ -290,6 +306,13 @@ export class ComparePage {
     effect(() => {
       this.api.settled();
       this.store.lengthUnit().then((u) => this.lengthUnit.set(u), () => undefined);
+    });
+    effect(() => {
+      this.api.settled();
+      this.api.places().subscribe({
+        next: (list) => this.places.set(list),
+        error: () => this.places.set([]),
+      });
     });
     effect(() => {
       this.api.settled();

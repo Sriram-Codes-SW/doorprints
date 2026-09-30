@@ -59,7 +59,17 @@ data class AiHouse(
     val visits: List<AiVisit> = emptyList(),
     /** The house's viewings (slice 3b-1), in any order; never `withWhom` (contact data). */
     val viewings: List<AiViewing> = emptyList(),
+    /** The area notes that reach this house (slice 4a), in any order: the text and its last edit. */
+    val areaNotes: List<AiAreaNote> = emptyList(),
+    /** The straight-line distance to each of my places (slice 4a), in any order; never a place's coordinates. */
+    val distances: List<AiDistance> = emptyList(),
 )
+
+/** An area note as the AI sees it (slice 4a): its id, text and last edit (epoch ms), for the newest-first order. */
+data class AiAreaNote(val id: String, val text: String, val updatedAt: Long)
+
+/** A distance as the AI sees it (slice 4a): the place's name and the straight-line metres. */
+data class AiDistance(val name: String, val meters: Double)
 
 /** One viewing as the AI sees it: its id, start (epoch ms), kind and status (wire names) and notes; no `withWhom`. */
 data class AiViewing(val id: String, val startsAt: Long, val kind: String, val status: String, val notes: String? = null)

@@ -30,7 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
-import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -183,6 +183,19 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(row(columns));
     out.push(separator(columns.length));
     for (const r of viewings) out.push(row(r.map(escapeMarkdown)));
+    out.push('');
+  }
+
+  // Area notes and distances (slice 4a), after the viewings and before the checklist.
+  for (const [heading, columns, list] of [
+    [stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), areaNoteCells(entry)],
+    [stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), distanceCells(entry)],
+  ] as const) {
+    if (!list.length) continue;
+    out.push(`### ${escapeMarkdown(heading)}`, '');
+    out.push(row([...columns]));
+    out.push(separator(columns.length));
+    for (const r of list) out.push(row(r.map(escapeMarkdown)));
     out.push('');
   }
 

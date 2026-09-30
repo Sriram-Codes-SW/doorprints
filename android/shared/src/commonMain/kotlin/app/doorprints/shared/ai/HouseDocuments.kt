@@ -24,6 +24,7 @@ import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.RoomSizes
+import app.doorprints.shared.model.Distances
 
 /**
  * One house as labelled plain text for Ask: the server's `HouseDocuments.text` (docs/03 §13.1), with the same lines in
@@ -70,6 +71,8 @@ object HouseDocuments {
         line(sb, "Rooms", rooms(h.rooms, r))
         answerLines(sb, h.answers, r)
         viewingLines(sb, h.viewings, r)
+        areaNoteLines(sb, h.areaNotes, r)
+        distanceLines(sb, h.distances, r)
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -147,6 +150,34 @@ object HouseDocuments {
     }
 
     private val WHITE_SPACE = Regex("\\s+")
+
+    /** At most this many `Area note:` and `Distance to` lines per house (slice 4a), as the server writes. */
+    const val AREA_NOTE_LINES_MAX = 5
+    const val DISTANCE_LINES_MAX = 10
+
+    /**
+     * The area notes that reach the house (slice 4a), the same words as the server's `HouseDocuments.areaNoteLines` and
+     * the web's `houseText`: `Area note: <text>`, newest first (ties by id), at most [AREA_NOTE_LINES_MAX], the text
+     * through the redactor with its white space collapsed, so a note cannot fake a line of its own.
+     */
+    internal fun areaNoteLines(sb: StringBuilder, notes: List<AiAreaNote>, r: ContactRedactor.Redactor) {
+        notes.sortedWith(compareByDescending<AiAreaNote> { it.updatedAt }.thenBy { it.id }).take(AREA_NOTE_LINES_MAX)
+            .forEach { n -> line(sb, "Area note", oneLine(r.freeText(n.text.trim()))) }
+    }
+
+    /**
+     * The distances to my places (slice 4a): `Distance to <place>: <km> km`, nearest first (ties by name), at most
+     * [DISTANCE_LINES_MAX], the km with one decimal, half up ([Distances.km]); the name through the redactor, never the
+     * coordinates.
+     */
+    internal fun distanceLines(sb: StringBuilder, distances: List<AiDistance>, r: ContactRedactor.Redactor) {
+        distances.sortedWith(compareBy<AiDistance> { it.meters }.thenBy { it.name }).take(DISTANCE_LINES_MAX).forEach { d ->
+            val name = oneLine(r.freeText(d.name.trim()))
+            if (!name.isNullOrEmpty()) sb.append("Distance to ").append(name).append(": ").append(Distances.km(d.meters)).append(" km\n")
+        }
+    }
+
+    private fun oneLine(text: String?): String? = text?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(" ")
 
     /** `yyyy-MM-dd HH:mm` in UTC, as the server's formatter writes a viewing's start. */
     internal fun utcDateTime(epochMs: Long): String {

@@ -136,6 +136,12 @@ class ExportStrings internal constructor(
                 "viewingStatus.PLANNED" to "Planned",
                 "viewingStatus.DONE" to "Done",
                 "viewingStatus.CANCELLED" to "Cancelled",
+                // Slice 4a (2026-09-30): the area notes and distances of a house page.
+                "section.areaNotes" to "Area notes",
+                "section.distances" to "Distances",
+                "col.place" to "Place",
+                "col.km" to "Distance (km)",
+                "col.noteSource" to "From",
                 // Slice 3a (2026-09-30): the viewing questions.
                 "section.questions" to "Questions",
                 "table.answers" to "Answers",
@@ -318,6 +324,12 @@ class ExportStrings internal constructor(
                 "viewingStatus.PLANNED" to "तय",
                 "viewingStatus.DONE" to "हो गया",
                 "viewingStatus.CANCELLED" to "रद्द",
+                // Slice 4a (2026-09-30): the area notes and distances of a house page; under review.
+                "section.areaNotes" to "इलाके के नोट",
+                "section.distances" to "दूरियाँ",
+                "col.place" to "जगह",
+                "col.km" to "दूरी (किमी)",
+                "col.noteSource" to "स्रोत",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "सवाल",
                 "table.answers" to "जवाब",
@@ -502,6 +514,12 @@ class ExportStrings internal constructor(
                 "viewingStatus.PLANNED" to "திட்டமிட்டது",
                 "viewingStatus.DONE" to "முடிந்தது",
                 "viewingStatus.CANCELLED" to "ரத்து",
+                // Slice 4a (2026-09-30): the area notes and distances of a house page; under review.
+                "section.areaNotes" to "பகுதிக் குறிப்புகள்",
+                "section.distances" to "தூரங்கள்",
+                "col.place" to "இடம்",
+                "col.km" to "தூரம் (கி.மீ.)",
+                "col.noteSource" to "மூலம்",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "கேள்விகள்",
                 "table.answers" to "பதில்கள்",
@@ -686,6 +704,12 @@ class ExportStrings internal constructor(
                 "viewingStatus.PLANNED" to "ప్రణాళిక",
                 "viewingStatus.DONE" to "పూర్తయింది",
                 "viewingStatus.CANCELLED" to "రద్దు",
+                // Slice 4a (2026-09-30): the area notes and distances of a house page; under review.
+                "section.areaNotes" to "ప్రాంత గమనికలు",
+                "section.distances" to "దూరాలు",
+                "col.place" to "స్థలం",
+                "col.km" to "దూరం (కి.మీ.)",
+                "col.noteSource" to "మూలం",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "ప్రశ్నలు",
                 "table.answers" to "సమాధానాలు",

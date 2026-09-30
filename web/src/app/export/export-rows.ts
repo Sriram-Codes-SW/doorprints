@@ -671,6 +671,28 @@ export function viewingsTable(bundle: ExportBundle): ExportTable {
   return { name: 'viewings', title: s.get('table.viewings'), columns, rows };
 }
 
+/** Columns of the Area notes section in HTML/Markdown: the text, then where it comes from (slice 4a). */
+export function areaNoteDisplayColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  return [s.get('col.notes'), s.get('col.noteSource')];
+}
+
+/** The rows of a house's Area notes section (newest first, as `ExportHouse.areaNotes` holds them); empty when none reach it. */
+export function areaNoteCells(house: ExportHouse): string[][] {
+  return house.areaNotes.map((n) => [n.text, n.source]);
+}
+
+/** Columns of the Distances section: the place, then the straight-line kilometres with one decimal (slice 4a). */
+export function distanceDisplayColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  return [s.get('col.place'), s.get('col.km')];
+}
+
+/** The rows of a house's Distances section, nearest first; empty for a house with no point or without places. */
+export function distanceCells(house: ExportHouse): string[][] {
+  return house.distances.map((d) => [d.place.name, d.km]);
+}
+
 function compare(a: string, b: string): number {
   // Code-unit comparison, not localeCompare: collation differs between browsers and would break determinism.
   return a < b ? -1 : a > b ? 1 : 0;

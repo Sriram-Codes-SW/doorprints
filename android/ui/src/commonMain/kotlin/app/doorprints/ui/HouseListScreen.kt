@@ -66,6 +66,9 @@ import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HouseSearch
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaNote
+import app.doorprints.shared.model.AreaNotes
 import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
@@ -233,6 +236,9 @@ fun HouseListScreen(
     val brokerText: Map<String, String> by remember(repo) {
         repo.observeBrokers().map { list -> list.associate { (id, b) -> id to b.searchText } }
     }.collectAsStateWithLifecycle(emptyMap())
+    // The area notes that reach each house are searched too (docs/11 slice 4a).
+    val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
+    val areaNotes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
     // The effective scoring (docs/11 5.4, slice 2): the card's score, the "Must-have missed" chip and "best first".
     val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
     val loaded = loadedHouses != null
@@ -455,6 +461,7 @@ fun HouseListScreen(
                     brokerText = it.brokerId?.let(brokerText::get),
                     rooms = it.rooms,
                     answers = it.answers,
+                    noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
                 ),
             )
         }

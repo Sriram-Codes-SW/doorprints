@@ -28,6 +28,7 @@ import type { BrokerRow } from '../../shared/broker';
 import { DEFAULT_SCORING, scoringOf } from '../../shared/scoring';
 import type { Scoring } from '../../shared/scoring';
 import { LocalStore } from '../../data/local-store.service';
+import type { Place } from '../../shared/area';
 import { ComparePage } from './compare-page';
 
 const RENT: HouseDto = {
@@ -50,13 +51,13 @@ interface Row {
 
 /** The rows slice 1a adds to Compare: the carpet area and what a house really costs, from `costSummary`. */
 describe('ComparePage', () => {
-  async function render(brokers: BrokerRow[] = [], unit: 'FT' | 'M' = 'FT', list: HouseDto[] = [RENT, SALE], scoring: Scoring = DEFAULT_SCORING) {
+  async function render(brokers: BrokerRow[] = [], unit: 'FT' | 'M' = 'FT', list: HouseDto[] = [RENT, SALE], scoring: Scoring = DEFAULT_SCORING, places: Place[] = []) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(scoring), houses: () => of(list), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(scoring), houses: () => of(list), visitCounts: () => of(new Map()), places: () => of(places), brokers: () => of(brokers) } },
         { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve(unit) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: list.map((h) => h.id).join(',') }) } } },
       ],
@@ -83,6 +84,21 @@ describe('ComparePage', () => {
     expect(byId.get('agreedPrice')).toEqual(['₹31,000', '–']);
   });
 
+  /** Slice 4a: one row per place of mine, the kilometres with one decimal; a house with no point shows a dash. */
+  it('has one Distance to row per place, with the kilometres, and a dash for a house with no point', async () => {
+    const office: Place = { id: 'p_0a1b2c3d', name: 'Office', lat: 13.0827, lon: 80.2707 };
+    const home: Place = { id: 'p_4e5f6a7b', name: "Amma's home", lat: 12.9716, lon: 77.5946 };
+    const nowhere: HouseDto = { ...newHouse(0, 0), id: 'c', label: 'No point yet' };
+    const fixture = await render([], 'FT', [RENT, nowhere], DEFAULT_SCORING, [office, home]);
+    const list = (fixture.componentInstance as unknown as { rows: () => Row[] }).rows();
+    const office_row = list.find((r) => r.id === 'place-p_0a1b2c3d')!;
+    expect(office_row.label).toBe('Distance to Office');
+    expect(office_row.cells.map((c) => c.text)).toEqual(['30.7 km', '–']);
+    expect(list.find((r) => r.id === 'place-p_4e5f6a7b')!.cells[0].text).toMatch(/^\d+\.\d km$/);
+    expect(list.filter((r) => r.id.startsWith('place-'))).toHaveLength(2);
+    expect((await rows()).filter((r) => r.id.startsWith('place-'))).toEqual([]);
+  });
+
   /** Slice 1b: a linked house shows its broker's name and agency in the Contact row, the phone as before. */
   it('shows the broker and agency in the Contact row of a linked house', async () => {
     const linked = { ...RENT, brokerId: 'b-1', contactName: 'Ravi Kumar', contactPhone: '+91 98400 11111' };
@@ -91,7 +107,7 @@ describe('ComparePage', () => {
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), places: () => of([]), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
       ],
     });

@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBackupData } from './backup-export';
 import { collect } from './export-model';
 import { GOLDEN_BACKUP_DATA_JSON } from './golden/backup.golden';
-import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_QUESTIONS, FIXTURE_VIEWINGS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_QUESTIONS, FIXTURE_VIEWINGS, FIXTURE_AREAS, FIXTURE_PLACES, FIXTURE_AREA_NOTES, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
 
 /**
  * Completeness of the backup writer against the format (readiness review 2026-09-29, docs/14 §8 finding 4): the keys
@@ -38,6 +38,9 @@ describe('backup fields', () => {
     preferences: object[];
     questions: object[];
     viewings: object[];
+    areas: object[];
+    places: object[];
+    areaNotes: object[];
   };
   const written = buildBackupData(
     collect({
@@ -49,6 +52,9 @@ describe('backup fields', () => {
       preferences: FIXTURE_PREFERENCES,
       questions: FIXTURE_QUESTIONS,
       viewings: FIXTURE_VIEWINGS,
+      areas: FIXTURE_AREAS,
+      places: FIXTURE_PLACES,
+      areaNotes: FIXTURE_AREA_NOTES,
       exportedAt: FIXTURE_EXPORTED_AT,
       options: FIXTURE_OPTIONS,
     }),
@@ -87,6 +93,29 @@ describe('backup fields', () => {
     expect([...union].sort()).toEqual([...new Set(sample.viewings.flatMap((v) => Object.keys(v)))].sort());
     for (const key of ['huntReminder', 'withWhom', 'notes', 'visitId']) expect(union.has(key), key).toBe(true);
     expect(written.viewings?.map((v) => v.updatedAt)).toEqual((sample.viewings as { updatedAt: number }[]).map((v) => v.updatedAt));
+  });
+  it('writes exactly the format\'s area keys: the union over the rows, since enabled is written only when false', () => {
+    const rows = written.areas ?? [];
+    expect(rows.map((a) => a.id)).toEqual(['a_1f2e3d4c', 'a_5b6c7d8e']);
+    rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.areas[i])));
+    const union = new Set(rows.flatMap((a) => Object.keys(a)));
+    expect([...union].sort()).toEqual([...new Set(sample.areas.flatMap((a) => Object.keys(a)))].sort());
+    expect(union.has('enabled')).toBe(true);
+    expect(Object.keys(rows[0]).includes('enabled')).toBe(false);
+  });
+  it('writes exactly the format\'s place keys', () => {
+    const rows = written.places ?? [];
+    expect(rows.map((p) => p.id)).toEqual(['p_0a1b2c3d', 'p_4e5f6a7b']);
+    rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.places[i])));
+  });
+  it('writes exactly the format\'s area-note keys: the union over the rows, since areaId and street are alternatives', () => {
+    const rows = written.areaNotes ?? [];
+    expect(rows.map((n) => n.id)).toEqual(['n_11223344', 'n_55667788']);
+    rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.areaNotes[i])));
+    const union = new Set(rows.flatMap((n) => Object.keys(n)));
+    expect([...union].sort()).toEqual([...new Set(sample.areaNotes.flatMap((n) => Object.keys(n)))].sort());
+    for (const key of ['areaId', 'street']) expect(union.has(key), key).toBe(true);
+    expect(Object.keys(sample).slice(-4)).toEqual(['viewings', 'areas', 'places', 'areaNotes']);
   });
   it('writes exactly the format\'s answer keys, for the full answer and the ad hoc one, right after rooms', () => {
     const answers = written.houses[0].answers ?? [];

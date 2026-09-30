@@ -40,7 +40,7 @@ import java.util.List;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers", "criteria", "preferences",
-        "questions", "viewings"})
+        "questions", "viewings", "areas", "places", "areaNotes"})
 public record BackupData(
         String format,
         /* When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. */
@@ -58,7 +58,12 @@ public record BackupData(
         /* Slice 3a, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupQuestion> questions,
         /* Slice 3b-1, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupViewing> viewings
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupViewing> viewings,
+        /* Slice 4a, {@code doorprints-backup/2}: hunting areas, the person's places and area notes; each left out while
+           empty, absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupArea> areas,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupPlace> places,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupAreaNote> areaNotes
 ) {
     public BackupData {
         houses = copy(houses);
@@ -69,6 +74,18 @@ public record BackupData(
         preferences = copy(preferences);
         questions = copy(questions);
         viewings = copy(viewings);
+        areas = copy(areas);
+        places = copy(places);
+        areaNotes = copy(areaNotes);
+    }
+
+    /** A copy without the lists of slice 4a (areas, places, area notes). */
+    public BackupData(String format, Long exportedAt, List<BackupHouse> houses, List<BackupVisit> visits,
+                      List<BackupPhoto> photos, List<BackupBroker> brokers, List<BackupCriterion> criteria,
+                      List<BackupPreference> preferences, List<BackupQuestion> questions,
+                      List<BackupViewing> viewings) {
+        this(format, exportedAt, houses, visits, photos, brokers, criteria, preferences, questions, viewings,
+                null, null, null);
     }
 
     private static <T> List<T> copy(List<T> rows) {
@@ -78,6 +95,6 @@ public record BackupData(
     /** Total rows, the number the import size limit is measured in. */
     public int rowCount() {
         return houses.size() + visits.size() + photos.size() + brokers.size() + criteria.size() + preferences.size()
-                + questions.size() + viewings.size();
+                + questions.size() + viewings.size() + areas.size() + places.size() + areaNotes.size();
     }
 }

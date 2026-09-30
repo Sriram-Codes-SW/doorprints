@@ -28,6 +28,8 @@ import { questionToPayload } from '../shared/question';
 import type { QuestionRow } from '../shared/question';
 import { viewingToPayload } from '../shared/viewing';
 import type { ViewingRow } from '../shared/viewing';
+import { areaNoteToPayload, areaToPayload, placeToPayload } from '../shared/area';
+import type { AreaNoteRow, AreaRow, PlaceRow } from '../shared/area';
 import { htmlCopyName, isoUtc } from './deterministic';
 import { photoEntry, photoFileName } from './photo-names';
 import { sha256Hex } from './sha256';
@@ -59,7 +61,7 @@ export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
  * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
- * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1), area, place or area note (`areas`, `places`, `areaNotes`, slice 4a) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
@@ -225,6 +227,35 @@ export interface BackupViewing {
   updatedAt: number;
 }
 
+/** An area in a `/2` copy (slice 4a): id, name, point, radius, `enabled` only when false, and the last edit. */
+export interface BackupArea {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  radiusM: number;
+  enabled?: boolean;
+  updatedAt: number;
+}
+
+/** A place in a `/2` copy (slice 4a). */
+export interface BackupPlace {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  updatedAt: number;
+}
+
+/** An area note in a `/2` copy (slice 4a): exactly one of `areaId` and `street`, then the text. */
+export interface BackupAreaNote {
+  id: string;
+  areaId?: string;
+  street?: string;
+  text: string;
+  updatedAt: number;
+}
+
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -241,6 +272,10 @@ export interface BackupData {
   questions?: BackupQuestion[];
   /** Only in a `/2` copy, after `questions`, and then never empty (slice 3b-1). */
   viewings?: BackupViewing[];
+  /** Only in a `/2` copy, after `viewings`, and then never empty (slice 4a). */
+  areas?: BackupArea[];
+  places?: BackupPlace[];
+  areaNotes?: BackupAreaNote[];
 }
 
 export interface BackupCounts {
@@ -253,6 +288,9 @@ export interface BackupCounts {
   preferences?: number;
   questions?: number;
   viewings?: number;
+  areas?: number;
+  places?: number;
+  areaNotes?: number;
 }
 
 export interface BackupFile {
@@ -289,8 +327,15 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
   const questions = bundle.questions.length > 0 ? bundle.questions.map(backupQuestion) : undefined;
   // Viewings (slice 3b-1): `withWhom` was already removed by `collect` for a copy without contact details.
   const viewings = bundle.viewings.length > 0 ? bundle.viewings.map(backupViewing) : undefined;
+  // Areas, places and area notes (slice 4a) are the person's own data, not contacts: a copy without contact details keeps them.
+  const areas = bundle.areas.length > 0 ? bundle.areas.map(backupArea) : undefined;
+  const places = bundle.places.length > 0 ? bundle.places.map(backupPlace) : undefined;
+  const areaNotes = bundle.areaNotes.length > 0 ? bundle.areaNotes.map(backupAreaNote) : undefined;
   return {
-    format: brokers || hasRooms || hasAnswers || criteria || preferences || questions || viewings ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
+    format:
+      brokers || hasRooms || hasAnswers || criteria || preferences || questions || viewings || areas || places || areaNotes
+        ? BACKUP_FORMAT_V2
+        : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -319,7 +364,23 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
     ...(preferences ? { preferences } : {}),
     ...(questions ? { questions } : {}),
     ...(viewings ? { viewings } : {}),
+    ...(areas ? { areas } : {}),
+    ...(places ? { places } : {}),
+    ...(areaNotes ? { areaNotes } : {}),
   };
+}
+
+/** `id`, then the payload keys in the contract's order (`areaToPayload`), then `updatedAt`. */
+function backupArea(row: AreaRow): BackupArea {
+  return { id: row.id, ...(areaToPayload(row.area) as Omit<BackupArea, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
+}
+
+function backupPlace(row: PlaceRow): BackupPlace {
+  return { id: row.id, ...(placeToPayload(row.place) as Omit<BackupPlace, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
+}
+
+function backupAreaNote(row: AreaNoteRow): BackupAreaNote {
+  return { id: row.id, ...(areaNoteToPayload(row.note) as Omit<BackupAreaNote, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. */
@@ -472,6 +533,9 @@ export function buildBackupZip(
       preferences: data.preferences?.length,
       questions: data.questions?.length,
       viewings: data.viewings?.length,
+      areas: data.areas?.length,
+      places: data.places?.length,
+      areaNotes: data.areaNotes?.length,
     },
     files: contents.map((entry) => ({
       path: entry.path,

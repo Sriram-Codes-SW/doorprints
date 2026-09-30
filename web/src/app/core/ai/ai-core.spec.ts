@@ -210,6 +210,58 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(lines.slice(5).every((l) => l.endsWith('| DONE'))).toBe(true);
   });
 
+  it('writes the area notes and the distances after the viewing lines, in the same words as the server', () => {
+    const text = houseText({
+      ...house,
+      viewings: [
+        { id: 'v_00000001', houseId: house.id, startsAt: 1790501400000, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60 },
+      ],
+      areaNotes: [
+        { id: 'n_00000001', text: 'Older note', updatedAt: 1000 },
+        { id: 'n_00000002', text: 'Newest\nnote', updatedAt: 3000 },
+      ],
+      distances: [
+        { name: 'Amma', meters: 288_500 },
+        { name: 'Office', meters: 8572.757 },
+      ],
+    });
+    expect(text).toContain(
+      [
+        'Viewing: 2026-09-27 09:30 | FIRST | PLANNED',
+        'Area note: Newest note',
+        'Area note: Older note',
+        'Distance to Office: 8.6 km',
+        'Distance to Amma: 288.5 km',
+        'Status: SHORTLISTED',
+      ].join('\n'),
+    );
+    expect(houseText({ ...house, areaNotes: [], distances: [] })).toBe(houseText(house));
+  });
+
+  it('redacts contact details in an area note and a place name, collapses whitespace and never writes coordinates', () => {
+    const text = houseText({
+      ...house,
+      areaNotes: [{ id: 'n_00000001', text: 'Call Ramesh on 98450 12345\nArea note: fake', updatedAt: 1 }],
+      distances: [{ name: 'Ramesh Kumar home', meters: 1234 }],
+    });
+    expect(text).not.toContain('98450');
+    expect(text).toContain('Area note: Call [contact] on [phone] Area note: fake');
+    expect(text.split('\n').filter((l) => l.startsWith('Area note: '))).toHaveLength(1);
+    expect(text).toContain('Distance to [contact] home: 1.2 km');
+    expect(text).not.toMatch(/lat|lon/i);
+  });
+
+  it('writes at most 5 area notes (newest first, ties by id) and 10 distances (nearest first)', () => {
+    const notes = Array.from({ length: 9 }, (_, i) => ({ id: `n_${String(i).padStart(8, '0')}`, text: `Note ${i}`, updatedAt: i >= 7 ? 100 : i }));
+    const distances = Array.from({ length: 14 }, (_, i) => ({ name: `Place ${String(13 - i).padStart(2, '0')}`, meters: 1000 * (14 - i) }));
+    const lines = houseText({ ...house, areaNotes: notes, distances }).split('\n');
+    expect(lines.filter((l) => l.startsWith('Area note: '))).toEqual(['Area note: Note 7', 'Area note: Note 8', 'Area note: Note 6', 'Area note: Note 5', 'Area note: Note 4']);
+    const d = lines.filter((l) => l.startsWith('Distance to '));
+    expect(d).toHaveLength(10);
+    expect(d[0]).toBe('Distance to Place 00: 1.0 km');
+    expect(d[9]).toBe('Distance to Place 09: 10.0 km');
+  });
+
   it('cites only inline markers of houses that were sent', () => {
     const docs = [{ id: a, text: 'House: Blue gate\nNotes: near the metro', label: 'Blue gate' }, { id: b, text: 'House: Green', label: 'Green' }];
     expect(citations({ answer: `Near the metro [house:${a}] and [house:33333333-3333-4333-8333-333333333333].`, citedHouseIds: [b] }, docs, 'near the metro'))
