@@ -174,9 +174,7 @@ section is only today's state. Earlier versions of this file (git history) carry
   stack over eight shared vectors, the *Criteria* screen, the `criteria` and `preferences` backup lists.
 - **Viewing questions built** (slice 3a, branch `feat/s4b-4c-slice-3a-questions`; [10](10-sprint-log.md) §13.23, [06](06-test-plan.md) TC-U-103): a question
   bank of `question` records seeded in four languages with fixed ids, `answers` nested in the house (Room 8, Flyway V10), *Add the usual questions* with
-  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Slice 3 is split: next 3b, viewings with local reminders (a
-  `viewing` record, Android alarms, the iPhone's notifications, the website's `.ics`), then 3c, the Hunt reminder before a viewing; each needs a design
-  step first ([11](11-feature-parity-and-export-spec.md) 5.8, 5.16).
+  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Merged as #78 (2026-09-30). Slice 3 is split: **3b is designed** ([11](11-feature-parity-and-export-spec.md) 5.8, [10](10-sprint-log.md) §13.24) and is built in two parts, **3b-1** (the `viewing` record, screens, history, calendar file, backup, copies, server) then **3b-2** (Android alarms, the iPhone's notifications, the website's list); then 3c, the Hunt reminder before a viewing (5.16). Lessons of #78 for the next slices: a ZAP alert that varies with the payload is a real answer that changes with the request (a timestamp, an echo), found by downloading the `backend-zap-api-scan` report, not a flake; the iOS launch check needs a macOS runner and can wait a long time for one.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
