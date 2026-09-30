@@ -1,0 +1,126 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <p><a routerLink="/viewings">{{ 'viewings.title' | t }}</a></p>
+    <h1>{{ (isNew() ? 'viewings.formNew' : 'viewings.formEdit') | t }}</h1>
+  </header>
+
+  @if (failure(); as f) {
+    <div class="error"><span role="alert">{{ f.key | t: f.params }}</span></div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else if (notFound()) {
+    <div class="card empty-state">
+      <p>{{ 'viewings.notFound' | t }}</p>
+      <a class="btn" routerLink="/viewings">{{ 'viewings.title' | t }}</a>
+    </div>
+  } @else {
+    <form class="card" (ngSubmit)="save()" novalidate>
+      <div class="field">
+        <label for="viewing-house">{{ 'viewings.house' | t }}</label>
+        <select
+          id="viewing-house"
+          name="houseId"
+          [(ngModel)]="form.houseId"
+          [attr.aria-invalid]="houseError() ? 'true' : null"
+          [attr.aria-describedby]="houseError() ? 'viewing-house-error' : null"
+        >
+          <option value="">{{ 'viewings.housePick' | t }}</option>
+          @if (houseIsGone()) {
+            <option [value]="form.houseId">{{ 'viewings.houseGone' | t }}</option>
+          }
+          @for (h of houses(); track h.id) {
+            <option [value]="h.id">{{ h.label || ('common.untitled' | t) }}</option>
+          }
+        </select>
+        @if (houseError()) {
+          <p id="viewing-house-error" class="field-error" role="alert">{{ 'viewings.houseRequired' | t }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="viewing-when">{{ 'viewings.when' | t }}</label>
+        <input
+          id="viewing-when"
+          name="when"
+          type="datetime-local"
+          [(ngModel)]="form.when"
+          [attr.aria-invalid]="whenError() ? 'true' : null"
+          [attr.aria-describedby]="whenError() ? 'viewing-when-error' : null"
+        />
+        @if (whenError()) {
+          <p id="viewing-when-error" class="field-error" role="alert">{{ 'viewings.whenRequired' | t }}</p>
+        }
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="viewing-duration">{{ 'viewings.duration' | t }}</label>
+          <select id="viewing-duration" name="duration" [(ngModel)]="form.duration">
+            @for (m of durations; track m) {
+              <option [ngValue]="m">{{ durationText(m) }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="viewing-kind">{{ 'viewings.kindLabel' | t }}</label>
+          <select id="viewing-kind" name="kind" [(ngModel)]="form.kind">
+            @for (k of kinds; track k) {
+              <option [value]="k">{{ kindKey(k) | t }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="viewing-remind">{{ 'viewings.remind' | t }}</label>
+          <select id="viewing-remind" name="remind" [(ngModel)]="form.remind">
+            @for (m of reminders; track m) {
+              <option [ngValue]="m">{{ remindKey(m) | t }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="viewing-whom">{{ 'viewings.withWhomLabel' | t }}</label>
+        <input id="viewing-whom" name="withWhom" type="text" [(ngModel)]="form.withWhom" [attr.maxlength]="maxWithWhom" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="viewing-notes">{{ 'viewings.notes' | t }}</label>
+        <textarea id="viewing-notes" name="notes" rows="4" [(ngModel)]="form.notes" [attr.maxlength]="maxNotes"></textarea>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'viewings.save' | t }}</button>
+        <button type="button" class="btn" (click)="addToCalendar()">{{ 'viewings.addToCalendar' | t }}</button>
+        @if (!isNew()) {
+          <button type="button" class="btn" [disabled]="saving()" (click)="cancelViewing()">{{ 'viewings.cancelViewing' | t }}</button>
+          <button type="button" class="btn btn-danger" (click)="remove()">{{ 'viewings.delete' | t }}</button>
+        }
+      </div>
+    </form>
+  }
+</div>

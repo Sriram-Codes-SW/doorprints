@@ -26,6 +26,9 @@ import app.doorprints.shared.model.RoomType
 import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
+import app.doorprints.shared.model.ViewingGroup
+import app.doorprints.shared.model.ViewingKind
+import app.doorprints.shared.model.ViewingStatus
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -129,3 +132,38 @@ val CriterionWeights: List<StringResource> = listOf(
 /** A criterion's name on screen: a built-in's translated name, a custom one's own label (else its key). */
 @Composable
 fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { stringResource(it) } ?: label ?: key
+
+/** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
+val ViewingKind.labelResource: StringResource
+    get() = when (this) {
+        ViewingKind.FIRST -> Res.string.viewings_kind_FIRST
+        ViewingKind.SECOND -> Res.string.viewings_kind_SECOND
+        ViewingKind.FOLLOW_UP -> Res.string.viewings_kind_FOLLOW_UP
+    }
+
+/** Planned, Done, Cancelled (`viewings_status_*`, slice 3b-1). */
+val ViewingStatus.labelResource: StringResource
+    get() = when (this) {
+        ViewingStatus.PLANNED -> Res.string.viewings_status_PLANNED
+        ViewingStatus.DONE -> Res.string.viewings_status_DONE
+        ViewingStatus.CANCELLED -> Res.string.viewings_status_CANCELLED
+    }
+
+/** The Viewings screen's groups (`viewings_group_*`): Upcoming, Missed?, Done, Cancelled. */
+val ViewingGroup.labelResource: StringResource
+    get() = when (this) {
+        ViewingGroup.UPCOMING -> Res.string.viewings_group_upcoming
+        ViewingGroup.MISSED -> Res.string.viewings_group_missed
+        ViewingGroup.DONE -> Res.string.viewings_group_done
+        ViewingGroup.CANCELLED -> Res.string.viewings_group_cancelled
+    }
+
+/** A reminder choice (`viewings_remind_*`): Off, 15 min, 30 min, 1 hour, 2 hours, 1 day before. */
+fun remindResource(minutes: Int): StringResource = when (minutes) {
+    0 -> Res.string.viewings_remind_0
+    15 -> Res.string.viewings_remind_15
+    30 -> Res.string.viewings_remind_30
+    120 -> Res.string.viewings_remind_120
+    1440 -> Res.string.viewings_remind_1440
+    else -> Res.string.viewings_remind_60
+}

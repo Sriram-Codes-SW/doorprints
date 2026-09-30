@@ -98,6 +98,12 @@ class CanonicalSampleTest {
         assertEquals(listOf(null, null, true), data.questionRows.map { it.archived })
         assertEquals(listOf(listOf("ANSWERED", "OPEN"), null, null), data.houses.map { h -> h.answers?.map { it.status } })
         assertEquals(listOf("qd_maintenance", null), data.houses.first().answers!!.map { it.questionId })
+        // Slice 3b-1: two viewings of house 1, a DONE one with whom and its visit, a PLANNED second viewing with notes
+        // and the Hunt reminder, in the file's order (updatedAt, then id).
+        assertEquals(listOf("v_3c4d5e6f", "v_a1b2c3d4"), data.viewingRows.map { it.id })
+        assertEquals(listOf("DONE", "PLANNED"), data.viewingRows.map { it.status })
+        assertEquals(listOf(null, true), data.viewingRows.map { it.huntReminder })
+        assertEquals(listOf("Ravi Kumar", null), data.viewingRows.map { it.withWhom })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
@@ -116,6 +122,7 @@ class CanonicalSampleTest {
             criteria = sample.criterionRows.reversed(),
             preferences = sample.preferenceRows.reversed(),
             questions = sample.questionRows.reversed(),
+            viewings = sample.viewingRows.reversed(),
         )
         // The fixture has to tell the two ordering rules apart, or this test pins nothing.
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
@@ -151,6 +158,7 @@ class CanonicalSampleTest {
             assertEquals(3, preview.newCriteria)
             assertEquals(1, preview.newPreferences)
             assertEquals(3, preview.newQuestions)
+            assertEquals(2, preview.newViewings)
             assertEquals(0, preview.newPhotos)
             assertEquals(2, preview.photosMissingFromFile)
         }

@@ -56,6 +56,10 @@ class ExportStrings internal constructor(
     /** Translated name of an answer's status ([app.doorprints.shared.model.AnswerStatus]); the name itself if new. */
     fun answerStatus(name: String): String = values["answerStatus.$name"] ?: name
 
+    /** A viewing's kind and status (slice 3b-1), by their wire names; an unknown one is its name. */
+    fun viewingKind(name: String): String = values["viewingKind.$name"] ?: name
+    fun viewingStatus(name: String): String = values["viewingStatus.$name"] ?: name
+
     /** "{n} months" in the export language, for the Cost block of a readable copy. */
     fun months(n: Int): String = values.getValue("months").replace("{n}", n.toString())
 
@@ -117,6 +121,21 @@ class ExportStrings internal constructor(
                 "table.photos" to "Photos",
                 "table.brokers" to "Brokers",
                 "table.rooms" to "Rooms",
+                // Slice 3b-1 (2026-09-30): viewings.
+                "table.viewings" to "Viewings",
+                "section.viewings" to "Viewings",
+                "col.when" to "When",
+                "col.kind" to "Kind",
+                "col.withWhom" to "With whom",
+                "col.durationMin" to "Duration (minutes)",
+                "col.remindMin" to "Reminder (minutes before)",
+                "col.visitId" to "Visit id",
+                "viewingKind.FIRST" to "First viewing",
+                "viewingKind.SECOND" to "Second viewing",
+                "viewingKind.FOLLOW_UP" to "Follow-up",
+                "viewingStatus.PLANNED" to "Planned",
+                "viewingStatus.DONE" to "Done",
+                "viewingStatus.CANCELLED" to "Cancelled",
                 // Slice 3a (2026-09-30): the viewing questions.
                 "section.questions" to "Questions",
                 "table.answers" to "Answers",
@@ -284,6 +303,21 @@ class ExportStrings internal constructor(
                 "table.photos" to "तस्वीरें",
                 "table.brokers" to "दलाल",
                 "table.rooms" to "कमरे",
+                // Slice 3b-1 (2026-09-30): viewings; under review.
+                "table.viewings" to "मकान देखना",
+                "section.viewings" to "मकान देखना",
+                "col.when" to "कब",
+                "col.kind" to "प्रकार",
+                "col.withWhom" to "किसके साथ",
+                "col.durationMin" to "अवधि (मिनट)",
+                "col.remindMin" to "याद दिलाना (मिनट पहले)",
+                "col.visitId" to "दौरा आईडी",
+                "viewingKind.FIRST" to "पहली बार देखना",
+                "viewingKind.SECOND" to "दूसरी बार देखना",
+                "viewingKind.FOLLOW_UP" to "फ़ॉलो-अप",
+                "viewingStatus.PLANNED" to "तय",
+                "viewingStatus.DONE" to "हो गया",
+                "viewingStatus.CANCELLED" to "रद्द",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "सवाल",
                 "table.answers" to "जवाब",
@@ -453,6 +487,21 @@ class ExportStrings internal constructor(
                 "table.photos" to "படங்கள்",
                 "table.brokers" to "தரகர்கள்",
                 "table.rooms" to "அறைகள்",
+                // Slice 3b-1 (2026-09-30): viewings; under review.
+                "table.viewings" to "வீடு பார்வையிடல்",
+                "section.viewings" to "வீடு பார்வையிடல்",
+                "col.when" to "எப்போது",
+                "col.kind" to "வகை",
+                "col.withWhom" to "யாருடன்",
+                "col.durationMin" to "கால அளவு (நிமிடங்கள்)",
+                "col.remindMin" to "நினைவூட்டல் (நிமிடங்கள் முன்)",
+                "col.visitId" to "வருகை அடையாளம்",
+                "viewingKind.FIRST" to "முதல் பார்வை",
+                "viewingKind.SECOND" to "இரண்டாம் பார்வை",
+                "viewingKind.FOLLOW_UP" to "தொடர் பார்வை",
+                "viewingStatus.PLANNED" to "திட்டமிட்டது",
+                "viewingStatus.DONE" to "முடிந்தது",
+                "viewingStatus.CANCELLED" to "ரத்து",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "கேள்விகள்",
                 "table.answers" to "பதில்கள்",
@@ -622,6 +671,21 @@ class ExportStrings internal constructor(
                 "table.photos" to "ఫోటోలు",
                 "table.brokers" to "బ్రోకర్లు",
                 "table.rooms" to "గదులు",
+                // Slice 3b-1 (2026-09-30): viewings; under review.
+                "table.viewings" to "ఇంటి పరిశీలన",
+                "section.viewings" to "ఇంటి పరిశీలన",
+                "col.when" to "ఎప్పుడు",
+                "col.kind" to "రకం",
+                "col.withWhom" to "ఎవరితో",
+                "col.durationMin" to "వ్యవధి (నిమిషాలు)",
+                "col.remindMin" to "రిమైండర్ (నిమిషాల ముందు)",
+                "col.visitId" to "సందర్శన ఐడీ",
+                "viewingKind.FIRST" to "మొదటి పరిశీలన",
+                "viewingKind.SECOND" to "రెండో పరిశీలన",
+                "viewingKind.FOLLOW_UP" to "తదుపరి పరిశీలన",
+                "viewingStatus.PLANNED" to "ప్రణాళిక",
+                "viewingStatus.DONE" to "పూర్తయింది",
+                "viewingStatus.CANCELLED" to "రద్దు",
                 // Slice 3a (2026-09-30): the viewing questions; under review.
                 "section.questions" to "ప్రశ్నలు",
                 "table.answers" to "సమాధానాలు",

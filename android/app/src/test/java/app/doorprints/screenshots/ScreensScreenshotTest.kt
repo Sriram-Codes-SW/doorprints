@@ -71,6 +71,10 @@ import app.doorprints.ui.AssistantScreen
 import app.doorprints.ui.CompareScreen
 import app.doorprints.ui.CriteriaEditor
 import app.doorprints.ui.QuestionsEditor
+import app.doorprints.ui.ViewingsHistory
+import app.doorprints.shared.model.Viewing
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import app.doorprints.ui.ExportScreen
 import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.DoorprintsTheme
@@ -354,6 +358,23 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { repo.seedQuestions(lang) }
         shoot("questions") { QuestionsEditor() }
+    }
+    /**
+     * Settings > Viewings (docs/11 5.8, slice 3b-1): an upcoming, a missed and a done viewing at a fixed clock, English
+     * and Hindi light only, to keep the image set small.
+     */
+    @Test fun viewings() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val now = 1_760_100_000_000
+        runBlocking {
+            repo.saveViewing(Viewing("v_00000001", "a", now + 26 * 3_600_000L, kind = "SECOND", withWhom = "Ravi", notes = "Ask for the water bill."))
+            repo.saveViewing(Viewing("v_00000002", "b", now - 20 * 3_600_000L))
+            repo.saveViewing(Viewing("v_00000003", "a", now - 72 * 3_600_000L, status = "DONE", visitId = "x"))
+        }
+        shoot("viewings") {
+            Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
+        }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }

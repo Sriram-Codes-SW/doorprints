@@ -69,6 +69,8 @@ async function open(answers: HouseAnswer[] | null, over: Partial<HouseDto> = {},
           questions: () => of(bank),
           house: () => of(house),
           visits: () => of([]),
+          viewingsOf: () => of([]),
+          settled: signal(0),
           photoIds: () => of([]),
           saveHouse: (body: HouseDto) => {
             saved.push(body);

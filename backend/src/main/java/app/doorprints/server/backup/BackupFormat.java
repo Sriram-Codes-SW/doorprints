@@ -41,7 +41,7 @@ public final class BackupFormat {
      * Written into {@code manifest.json} and {@code data.json}. Readers accept {@code doorprints-backup/1} up to
      * {@link #MAX_VERSION} (docs/11 section 5.30 item 3, ADR-28): a new entity list means a new format number, and
      * a file newer than {@code MAX_VERSION} is refused with "update the app" rather than read with its lists
-     * dropped in silence. A writer uses the lowest number that holds the copy: {@code /2} once it has a broker (slice 1b), a room (slice 1c), a criterion, a preference, a question or an answer (slice 3a), else {@code /1}.
+     * dropped in silence. A writer uses the lowest number that holds the copy: {@code /2} once it has a broker (slice 1b), a room (slice 1c), a criterion, a preference, a question or an answer (slice 3a), a viewing (slice 3b-1), else {@code /1}.
      */
     public static final String ID = "doorprints-backup/1";
     /** Written instead of {@link #ID} only when the copy holds at least one broker or one room: the lowest number that holds it. */

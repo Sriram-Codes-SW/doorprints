@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBackupData } from './backup-export';
 import { collect } from './export-model';
 import { GOLDEN_BACKUP_DATA_JSON } from './golden/backup.golden';
-import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_QUESTIONS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_QUESTIONS, FIXTURE_VIEWINGS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
 
 /**
  * Completeness of the backup writer against the format (readiness review 2026-09-29, docs/14 §8 finding 4): the keys
@@ -37,6 +37,7 @@ describe('backup fields', () => {
     criteria: object[];
     preferences: object[];
     questions: object[];
+    viewings: object[];
   };
   const written = buildBackupData(
     collect({
@@ -47,6 +48,7 @@ describe('backup fields', () => {
       criteria: FIXTURE_CRITERIA,
       preferences: FIXTURE_PREFERENCES,
       questions: FIXTURE_QUESTIONS,
+      viewings: FIXTURE_VIEWINGS,
       exportedAt: FIXTURE_EXPORTED_AT,
       options: FIXTURE_OPTIONS,
     }),
@@ -76,6 +78,15 @@ describe('backup fields', () => {
     rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.questions[i])));
     const union = new Set(rows.flatMap((q) => Object.keys(q)));
     expect([...union].sort()).toEqual([...new Set(sample.questions.flatMap((q) => Object.keys(q)))].sort());
+  });
+  it('writes exactly the format\'s viewing keys: the union over the rows, since huntReminder, withWhom, notes and visitId are optional', () => {
+    const rows = written.viewings ?? [];
+    expect(rows.map((v) => v.id)).toEqual(['v_3c4d5e6f', 'v_a1b2c3d4']);
+    rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.viewings[i])));
+    const union = new Set(rows.flatMap((v) => Object.keys(v)));
+    expect([...union].sort()).toEqual([...new Set(sample.viewings.flatMap((v) => Object.keys(v)))].sort());
+    for (const key of ['huntReminder', 'withWhom', 'notes', 'visitId']) expect(union.has(key), key).toBe(true);
+    expect(written.viewings?.map((v) => v.updatedAt)).toEqual((sample.viewings as { updatedAt: number }[]).map((v) => v.updatedAt));
   });
   it('writes exactly the format\'s answer keys, for the full answer and the ad hoc one, right after rooms', () => {
     const answers = written.houses[0].answers ?? [];

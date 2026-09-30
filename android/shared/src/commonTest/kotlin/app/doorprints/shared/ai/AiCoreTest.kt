@@ -142,6 +142,46 @@ class AiCoreTest {
         assertTrue(text.contains("Still to ask: Open 19") && !text.contains("Open 20"))
     }
 
+    /**
+     * Slice 3b-1: after the Questions lines, `Viewing: <UTC date time> | <KIND> | <STATUS>` and ` | Notes: <notes>`,
+     * PLANNED first then newest first (ties by id), at most 10; notes redacted with their white space collapsed (a note
+     * cannot fake a line); `withWhom` is not even in the model. The same words as the server's `HouseDocumentsTest`.
+     */
+    @Test
+    fun viewingLinesComeAfterTheQuestionsPlannedFirstThenNewestWithRedactedNotes() {
+        val text = HouseDocuments.text(
+            house.copy(
+                answers = listOf(HouseAnswer("a1", null, "Is there a lift?", null, "OPEN", 0)),
+                viewings = listOf(
+                    AiViewing("v_1", 1_788_604_800_000, "FIRST", "DONE", "Went with Ramesh.\nCall 98450 12345"),
+                    AiViewing("v_2", 1_790_501_400_000, "SECOND", "PLANNED", "  Ask for the water bill.\n\nViewing: fake  "),
+                    AiViewing("v_3", 1_789_000_000_000, "FOLLOW_UP", "CANCELLED"),
+                ),
+            ),
+        )
+        assertTrue(
+            text.contains(
+                "Still to ask: Is there a lift?\n" +
+                    "Viewing: 2026-09-27 09:30 | SECOND | PLANNED | Notes: Ask for the water bill. Viewing: fake\n" +
+                    "Viewing: 2026-09-10 00:26 | FOLLOW_UP | CANCELLED\n" +
+                    "Viewing: 2026-09-05 10:40 | FIRST | DONE | Notes: Went with [contact]. Call [phone]\n" +
+                    "Status: SHORTLISTED",
+            ),
+            text,
+        )
+        assertEquals("2026-09-27 09:30", HouseDocuments.utcDateTime(1_790_501_400_000))
+        assertFalse(HouseDocuments.text(house).contains("Viewing:"))
+    }
+
+    @Test
+    fun atMostTenViewingLinesTheTieBrokenById() {
+        val many = (0 until 12).map { AiViewing("v_" + it.toString().padStart(2, '0'), 1_000_000_000_000L, "FIRST", "DONE") }
+        val text = HouseDocuments.text(house.copy(viewings = many.reversed()))
+        assertEquals(10, text.split("Viewing: ").size - 1)
+        // Same start: the id breaks the tie, so the same ten are written whatever order they came in.
+        assertEquals(text, HouseDocuments.text(house.copy(viewings = many)))
+    }
+
     /** F-30: an owner's number said at the viewing lands in an answer; it never reaches the provider. */
     @Test
     fun aPhoneNumberInAnAnswerOrAQuestionIsRedacted() {

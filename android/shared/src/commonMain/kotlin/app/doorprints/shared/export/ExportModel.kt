@@ -30,6 +30,7 @@ import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseScore
+import app.doorprints.shared.model.Viewing
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -191,6 +192,42 @@ data class ExportQuestion(
     }
 }
 
+/**
+ * A viewing in a `/2` backup (slice 3b-1): the record's id and its payload keys in the format's order (`houseId`,
+ * `startsAt`, `durationMin`, `kind`, `status`, `remindMin`, then `huntReminder` only when true and `withWhom`, `notes`,
+ * `visitId` only when set) and `updatedAt` in epoch milliseconds, so a backup merges viewings by id with the last write
+ * winning. Kinds and statuses stay text here, so a file with an unknown one can be refused ([Viewing.isValid]).
+ */
+@Serializable
+data class ExportViewing(
+    val id: String,
+    val houseId: String = "",
+    val startsAt: Long = 0L,
+    // These four read an absent or `null` value as the default (the server's reader agrees); a present bad one is refused.
+    val durationMin: Int? = Viewing.DEFAULT_DURATION,
+    val kind: String? = "FIRST",
+    val status: String? = "PLANNED",
+    val remindMin: Int? = Viewing.DEFAULT_REMIND,
+    /** Written only when true (`null` otherwise, which the format leaves out). */
+    val huntReminder: Boolean? = null,
+    val withWhom: String? = null,
+    val notes: String? = null,
+    val visitId: String? = null,
+    val updatedAt: Long,
+) {
+    fun toViewing() = Viewing(
+        id, houseId, startsAt, durationMin ?: Viewing.DEFAULT_DURATION, kind ?: "FIRST", status ?: "PLANNED",
+        remindMin ?: Viewing.DEFAULT_REMIND, huntReminder == true, withWhom, notes, visitId,
+    )
+
+    companion object {
+        fun of(v: Viewing, updatedAt: Long) = ExportViewing(
+            v.id, v.houseId, v.startsAt, v.durationMin, v.kind, v.status, v.remindMin, v.huntReminder.takeIf { it },
+            v.withWhom?.ifEmpty { null }, v.notes?.ifEmpty { null }, v.visitId, updatedAt,
+        )
+    }
+}
+
 /** A preference in a `/2` backup (slice 2): its key, its value (≤ 500) and `updatedAt`; merged by key. */
 @Serializable
 data class ExportPreference(val key: String, val value: String, val updatedAt: Long)
@@ -326,8 +363,27 @@ data class ExportBundle(
      * Kept in a copy without contact details. No readable table: the bank is settings and travels in the backup.
      */
     val questions: List<ExportQuestion> = emptyList(),
+    /**
+     * The viewing records in the copy (slice 3b-1), ordered by `updatedAt` then id: a `/2` backup's `viewings` list, a
+     * Viewings table on each house page, `viewings.csv` and a Viewings sheet. Without contact details `withWhom` is blanked.
+     */
+    val viewings: List<ExportViewing> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
+
+    private val viewingsByHouse: Map<String, List<ExportViewing>> = viewings.groupBy { it.houseId }
+
+    /**
+     * A house's viewings as its page lists them, as the web's `viewingsForCopy`: the upcoming PLANNED ones (from the
+     * copy's own [ExportOptions.exportedAtMillis], so a copy never reads a clock) soonest first, then the rest newest
+     * first (the reverse of `startsAt`, then id).
+     */
+    fun viewingsOf(house: ExportHouse): List<ExportViewing> {
+        val asc = viewingsByHouse[house.id].orEmpty().sortedWith(compareBy({ it.startsAt }, { it.id }))
+        val now = options.exportedAtMillis
+        val upcoming = asc.filter { (it.status ?: "PLANNED") == "PLANNED" && it.startsAt >= now }
+        return upcoming + (asc - upcoming.toSet()).reversed()
+    }
 
     private val scores: Map<String, ScoreResult> = houses.associate { it.id to it.scoreResult(scoring) }
 
@@ -396,6 +452,7 @@ data class ExportBundle(
             criteria: List<ExportCriterion> = emptyList(),
             preferences: List<ExportPreference> = emptyList(),
             questions: List<ExportQuestion> = emptyList(),
+            viewings: List<ExportViewing> = emptyList(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -457,9 +514,16 @@ data class ExportBundle(
             // the ones changed since.
             val keptQuestions = questions.filter { since == null || it.updatedAt > since }
                 .sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            // Viewings (slice 3b-1): all of them for the whole set of houses (one of a house that is gone too), else
+            // those of the kept houses; an update carries the ones changed since. `withWhom` is contact data.
+            val keptViewings = viewings
+                .filter { options.scope == ExportScope.ALL || it.houseId in keptIds }
+                .filter { since == null || it.updatedAt > since }
+                .map { if (options.includeContacts) it else it.copy(withWhom = null) }
+                .sortedWith(compareBy({ it.updatedAt }, { it.id }))
             return ExportBundle(
                 options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
-                keptQuestions,
+                keptQuestions, keptViewings,
             )
         }
     }

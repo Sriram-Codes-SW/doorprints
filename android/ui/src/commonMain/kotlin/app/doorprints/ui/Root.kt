@@ -45,6 +45,7 @@ import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.ui.res.*
@@ -113,6 +114,15 @@ object Routes {
 
     /** Settings > Questions (docs/11 5.5, slice 3a). */
     const val QUESTIONS = "questions"
+
+    /** Settings > Viewings (docs/11 5.8, slice 3b-1), optionally one house's; and the viewing form ([NEW_VIEWING] plans one). */
+    const val VIEWINGS = "viewings?houseId={houseId}"
+    const val VIEWING = "viewing/{id}?houseId={houseId}&kind={kind}"
+    const val NEW_VIEWING = "new"
+
+    fun viewings(houseId: String? = null) = "viewings" + (houseId?.let { "?houseId=$it" } ?: "")
+    fun viewing(id: String?, houseId: String? = null, kind: String? = null) =
+        "viewing/${id ?: NEW_VIEWING}?" + listOfNotNull(houseId?.let { "houseId=$it" }, kind?.let { "kind=$it" }).joinToString("&")
 
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
     val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
@@ -416,6 +426,35 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenBrokers = { nav.navigate(Routes.BROKERS) },
                         onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
                         onOpenQuestions = { nav.navigate(Routes.QUESTIONS) },
+                        onOpenViewings = { nav.navigate(Routes.viewings()) },
+                    )
+                }
+                // Viewings (docs/11 5.8, slice 3b-1): the history (all, or one house's) and the form, sub-screens with a back arrow.
+                composable(
+                    Routes.VIEWINGS,
+                    arguments = listOf(navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null }),
+                ) { entry ->
+                    ViewingsScreen(
+                        houseId = entry.arguments?.read { getStringOrNull("houseId") },
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenViewing = { if (resumed(entry)) nav.navigate(Routes.viewing(it)) },
+                        onPlan = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
+                    )
+                }
+                composable(
+                    Routes.VIEWING,
+                    arguments = listOf(
+                        navArgument("id") { type = NavType.StringType },
+                        navArgument("houseId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("kind") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    ),
+                ) { entry ->
+                    val args = entry.arguments
+                    ViewingFormScreen(
+                        viewingId = args?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_VIEWING },
+                        houseId = args?.read { getStringOrNull("houseId") },
+                        kind = ViewingKind.fromWire(args?.read { getStringOrNull("kind") }),
+                        onDone = dropUnlessResumed { nav.popBackStack() },
                     )
                 }
                 // Criteria (docs/11 5.4, slice 2): a sub-screen of Settings with its own back arrow, like Brokers.
@@ -488,6 +527,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         houseId = entry.arguments?.read { getStringOrNull("id") },
                         newLat = null, newLon = null, visitId = null,
                         onDone = dropUnlessResumed { nav.popBackStack() },
+                        // The house's Viewings card (slice 3b-1): plan one here, or see this house's history.
+                        onPlanViewing = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
+                        onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
                         // "Save as a new house" after this one was removed elsewhere: continue on the copy.
                         onCreated = { id ->
                             if (resumed(entry)) {
