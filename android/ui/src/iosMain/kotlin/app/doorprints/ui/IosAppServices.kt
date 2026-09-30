@@ -46,8 +46,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -100,6 +105,7 @@ object IosAppContainer {
     private var started = false
 
     /** Start-up work, once per process (DoorprintsApp.startServices on Android). Main thread. */
+    @OptIn(FlowPreview::class)
     fun start() {
         if (started) return
         started = true
@@ -115,7 +121,23 @@ object IosAppContainer {
         }
         // No periodic sync on iOS yet: one at each launch instead.
         syncRequests.trySend(Unit)
+        // The viewing reminders (slice 3b-2): set at start (the first emission) and after every change of the viewings,
+        // the houses (their names are in the pending bodies) or the setting, a second after a burst of edits.
+        appScope.launch {
+            combine(
+                repository.observeViewings().distinctUntilChanged(),
+                repository.houses.map { list -> list.map { it.id to it.label } }.distinctUntilChanged(),
+                repository.settings.viewingsRemind(),
+            ) { _, _, _ -> }
+                .debounce(REMINDER_DEBOUNCE_MS)
+                .collect { rescheduleReminders() }
+        }
     }
+
+    /** Sets every viewing reminder again from the stored data (start, resume, each change). */
+    suspend fun rescheduleReminders() = catchFailures { IosViewingReminders.rescheduleFrom(repository, nowMillis()) }
+
+    private const val REMINDER_DEBOUNCE_MS = 1_000L
 
     /** One sync, recorded in the settings the way Android's `SyncWorker` records it. */
     private suspend fun syncOnce() {
@@ -173,6 +195,11 @@ internal class IosAppServices(
     override val mapScreen: MapServices = IosMapServices
 
     override val offlineMaps: OfflineMapsServices = IosOfflineMapsServices
+
+    /** On every resume (the common root): a clock change or an authorization granted in the Settings app. */
+    override fun rescheduleReminders() {
+        appScope.launch { IosAppContainer.rescheduleReminders() }
+    }
 
     /** The language is iOS's per-app setting, changed outside the app: there is never a change to confirm. */
     override fun consumeLanguageChange(): LanguageChange? = null

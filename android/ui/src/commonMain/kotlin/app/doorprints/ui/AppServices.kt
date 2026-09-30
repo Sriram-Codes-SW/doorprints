@@ -74,6 +74,13 @@ interface AppServices {
     val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
 
     /**
+     * Sets every viewing reminder again from the stored viewings (docs/11 5.8, slice 3b-2): called on every resume, so
+     * a permission granted in the system settings or a clock change is picked up. Android: the alarm scheduler; iOS:
+     * the pending notification requests. Returns at once; the work runs in [appScope].
+     */
+    fun rescheduleReminders() {}
+
+    /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".
      */

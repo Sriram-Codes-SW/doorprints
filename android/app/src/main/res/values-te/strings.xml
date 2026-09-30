@@ -112,4 +112,15 @@
         <item quantity="other">%1$d ఇళ్లు తిరిగి తీసుకురాబడ్డాయి.</item>
     </plurals>
     <string name="price_per_month">%1$s/నెల</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="notif_channel_viewings">పరిశీలన రిమైండర్‌లు</string>
+    <string name="notif_channel_viewings_desc">మీరు ప్లాన్ చేసిన పరిశీలనకు ముందు</string>
+    <string name="notif_viewing_soon">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో</string>
+    <string name="notif_viewing_title">%1$s వద్ద పరిశీలన</string>
+    <string name="notif_viewing_text">ప్రారంభం: %1$s</string>
+    <string name="notif_viewing_public">Doorprints రిమైండర్</string>
+    <string name="notif_viewing_open">ఇంటిని తెరవండి</string>
+    <string name="notif_viewing_directions">దారి</string>
+    <string name="notif_viewing_questions">ప్రశ్నలు</string>
+    <string name="notif_viewing_house_gone">తొలగించిన ఇల్లు</string>
 </resources>

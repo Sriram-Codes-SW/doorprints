@@ -982,4 +982,12 @@
     <string name="viewings_recheckScores">2 அல்லது குறைவான மதிப்பெண்: %1$s</string>
     <string name="viewings_recheckNothing">எதுவும் திறந்தில்லை. சரிபார்க்க மறந்ததை யோசியுங்கள்.</string>
     <string name="viewings_forHouse">%1$s இன் பார்வையிடல்கள்</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="settings_viewings_remind">வீடு பார்வையிடலை நினைவூட்டு</string>
+    <string name="settings_viewings_remind_hint">திட்டமிட்ட ஒவ்வொரு பார்வையிடலுக்கும் முன், அதில் தேர்ந்த நேரத்தில் ஒரு அறிவிப்பு.</string>
+    <string name="settings_viewings_exact_note">நினைவூட்டல்கள் சுமார் 10 நிமிடம் முன்பே வரலாம் (அல்லது போன் பேட்டரி சேமிப்பில் இருந்தால் தாமதமாக).</string>
+    <string name="settings_viewings_exact_allow">சரியான நேர நினைவூட்டல்களை அனுமதி</string>
+    <string name="viewings_notify_rationale">பார்வையிடலுக்கு முன் Doorprints அறிவிப்பால் நினைவூட்டும்.</string>
+    <string name="viewing_reminder_body">%1$s இல் பார்வையிடல், %2$s மணிக்கு</string>
+    <string name="viewing_reminder_public">Doorprints நினைவூட்டல்</string>
 </resources>

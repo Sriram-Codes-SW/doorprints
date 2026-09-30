@@ -127,6 +127,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Viewing reminders** ([spec](docs/11-feature-parity-and-export-spec.md) 5.8, slice 3b-2 of 5.30): a viewing with a reminder now tells you before it starts. On Android it is an alarm that works with the phone asleep
+  (allow **Alarms & reminders** for on-time alerts, otherwise it may come up to about ten minutes early), on the iPhone a notification, on the website a notification or banner while the site is open (use **Add to calendar** for one that always arrives).
+  **Settings > Viewings > Remind me about viewings** turns them off. The lock screen shows only "Doorprints reminder" on Android.
 - **Viewings** ([spec](docs/11-feature-parity-and-export-spec.md) 5.8, slice 3b-1 of 5.30): plan a viewing from a house (date and time, how long, first or second, whom you meet, notes), see them all under
   **Viewings** (Settings on the phone, Your data on the website) with filters and search, and mark one done or cancelled. A viewing that has passed without being marked is offered as
   *Missed?*. **Add to calendar** puts it in your phone's calendar (the website gives you a `.ics` file). After a viewing you can book a second one, with a short list of what to re-check.

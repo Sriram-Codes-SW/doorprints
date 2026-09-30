@@ -82,6 +82,17 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun viewingRemindersStartOnAndAreKeptUnderTheWebKey() = runTest {
+        // docs/11 5.8, slice 3b-2: on until the person turns them off; `viewings.remind`, the web's SETTING_KEYS key.
+        assertTrue(store.viewingsRemind().first())
+        store.setViewingsRemind(false)
+        assertFalse(store.viewingsRemind().first())
+        assertEquals(false, raw()["viewings.remind"])
+        store.setViewingsRemind(true)
+        assertTrue(store.viewingsRemind().first())
+    }
+
+    @Test
     fun aiFeaturesStartOffAndAreKept() = runTest {
         // docs/03 §12.1: off until the person turns them on.
         assertFalse(store.current().aiFeatures)

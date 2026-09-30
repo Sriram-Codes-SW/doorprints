@@ -61,7 +61,7 @@ Open a house from the list or the map. There you can:
 - keep a list of **Questions to ask** at the viewing: **Add the usual questions** brings the standard ones that fit the house (for a rent: maintenance,
   deposit, brokerage, lock-in, water, power, parking, floor) and fills in what you already noted under **Cost**; write the answer as you hear it, or
   **Skip** one. Change the standard list, or add your own, in **Settings > Questions**;
-- **Plan a viewing** from the house's **Viewings** card: pick the day and time, how long, whether it is the first or a second visit, and whom you meet. **Add to calendar** puts it in your calendar; all of them are listed under **Viewings**, where a viewing that passed without being marked shows as **Missed?**. After a viewing, **Mark viewing done** and, if you like, book a second one;
+- **Plan a viewing** from the house's **Viewings** card: pick the day and time, how long, whether it is the first or a second visit, and whom you meet. **Add to calendar** puts it in your calendar; all of them are listed under **Viewings**, where a viewing that passed without being marked shows as **Missed?**. Choose **Reminder** in the form to be told before it starts (on the phone; on the website only while the site is open, so use **Add to calendar** there). After a viewing, **Mark viewing done** and, if you like, book a second one;
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;

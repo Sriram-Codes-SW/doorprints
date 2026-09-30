@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.98 |
+| Version | 0.99 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -110,6 +110,7 @@
 | 0.96 | 2026-09-30 | Claude (Code), lead | **Viewing questions built** (slice 3a of [11](11-feature-parity-and-export-spec.md) 5.5 and 5.30, branch `feat/s4b-4c-slice-3a-questions`): new **§13.23**; new **S4b-BL-89** (the ZAP SQL-injection false positive). |
 | 0.97 | 2026-09-30 | Claude (Code), lead | Slice 3b **designed**: new **§13.24**; the iOS launch race is S4b-BL-91 (done in #78). |
 | 0.98 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 **built**: §13.24 now says what was done; new S4b-BL-92 (follow-ups of 3b-1). |
+| 0.99 | 2026-09-30 | Claude (Code), lead | Slice 3b-2 **built**: new **§13.25**; new S4b-BL-93 (follow-ups of 3b-2). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1215,6 +1216,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-90 | Web, Android | **Slice 3a follow-ups** (found in review, 2026-09-30): (a) seeding the question bank on a fresh device before its first pull writes 14 dirty records with `updatedAt = now`, which can overwrite another device's edits or revive its deletions under last-write-wins: seed only after the first successful pull, or seed with `updatedAt = 0`; (b) a merged import can take the bank past 100 questions (local plus file), as criteria can; (c) a copy import's undo does not remove imported questions or criteria; (d) no test for the 5,000-per-type cap on question or criterion import (backend), nor for the Your data card (web); (e) the hi/ta/te question texts need a native reader. | Open |
 | S4b-BL-91 | Android, iOS | **Hunt mode named no house when the first fix beat the houses list** (found on PR #78, the `iOS app builds and launches` check, `hunt` timed out after 60 s; 2026-09-30): `HuntEngine` looked for the nearest house only when a fix arrived, and the simulator sends one fix; if the database had not yet handed over its list, nothing was named until a second fix. Fixed in the engine (it remembers the last usable fix and looks again when the list changes; `HuntEngineTest.aHouseThatArrivesAfterTheFixIsNamedWithoutAnotherFix`), which also names a house you save while standing at it. | Done |
 | S4b-BL-92 | Android, iOS, web, backend | **Follow-ups of slice 3b-1** (2026-09-30): (a) the iPhone has no *Add to calendar* (the `.ics` share is not wired there; the button is hidden); (b) the website has no backup importer, so a viewing in a backup cannot be brought in there (S4b-BL-75); (c) the copy dates differ: Kotlin writes the copy's own time offset, the web writes UTC; choose one; (d) a saved viewing does not refresh the AI index of its house until the house changes; (e) undoing a copy import does not remove the imported viewings, questions or brokers; (f) no test for Settings > Viewings navigation, the Your data card or the routes, nor for focus in the website's dialog; (g) hi/ta/te viewing words need a native reader. | Open |
+| S4b-BL-93 | Android, iOS, web | **Follow-ups of slice 3b-2** (2026-09-30): (a) the iPhone reminders are compiled but never run: add them to the launch self-check or test on a device (TC-M); (b) the *Questions* action of a reminder opens the house without scrolling to its questions; (c) nothing asserts the start-up and on-resume reschedule (covered by review only); (d) no screenshot of Settings > Viewings; (e) the service worker's notification click is only syntax-checked; (f) the question about notifications shares one 'asked' flag with Export and Import; (g) hi/ta/te reminder words need a native reader. | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2670,6 +2672,17 @@ ordinary sync and the backup.
 - **A flake fixed on the way**: specs that set the Tamil language left it in `localStorage`, so `compare-page.spec.ts` failed in about one run in three; the four specs now clear the store after each test.
 
 **Not built here:** any reminder or notification (3b-2), the Hunt reminder (3c), the iPhone's `.ics` share, a backup importer on the website.
+
+### 13.25 Viewing reminders, slice 3b-2 of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-3b2-reminders`; [11](11-feature-parity-and-export-spec.md) 5.8 design table, [06](06-test-plan.md) TC-U-105; no backend change):
+
+- **The rule**: `ViewingReminders` in `:shared` and TypeScript (PLANNED, `remindMin` above 0, `fireAt` after now, earliest 60), vectors R1..R6; the local setting `viewings.remind` (default on).
+- **Android**: `ViewingReminderScheduler` (exact alarm when allowed, the early ten-minute window otherwise, WorkManager when no alarm can be set), rescheduled from the stored viewings (tombstones included) on start, on every change, on resume, on boot, time and time-zone change, app update and the exact-alarm permission change; channel `viewings`, private on the lock screen; actions *Open house*, *Directions*, *Questions*; the notification permission asked when the first reminder is saved; Settings > Viewings has the switch and the *Allow on-time reminders* note and button.
+- **iPhone**: `IosViewingReminders` with calendar triggers (up to 60, identifiers `viewing-<id>`), rescheduled at start, on change and on resume. Compiled, not run.
+- **Website**: a 60-second timer while the app is open, a browser notification or an in-page banner, the page switch *Notify me while Doorprints is open*, and a click handler in the service worker.
+
+**Not built here:** the Hunt action (3c), scrolling to the questions from the *Questions* action, a screenshot of the new Settings section.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

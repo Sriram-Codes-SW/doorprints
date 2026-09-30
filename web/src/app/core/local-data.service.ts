@@ -223,6 +223,15 @@ export class LocalDataService {
     return defer(() => from(this.store.viewings()));
   }
 
+  /** *Notify me while Doorprints is open* (slice 3b-2): on unless turned off; this browser only. */
+  viewingsRemind(): Observable<boolean> {
+    return defer(() => from(this.store.viewingsRemind()));
+  }
+
+  setViewingsRemind(on: boolean): Observable<void> {
+    return defer(() => from(this.store.setViewingsRemind(on)));
+  }
+
   /** The viewing records that exist, for the copies. */
   viewingRows(): Observable<ViewingRow[]> {
     return defer(() => from(this.store.viewingRows()));

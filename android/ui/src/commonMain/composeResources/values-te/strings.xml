@@ -982,4 +982,12 @@
     <string name="viewings_recheckScores">2 లేదా అంతకంటే తక్కువ స్కోరు: %1$s</string>
     <string name="viewings_recheckNothing">ఏదీ తెరిచి లేదు. చూడటం మర్చిపోయినది ఏదైనా ఉందేమో ఆలోచించండి.</string>
     <string name="viewings_forHouse">%1$s పరిశీలనలు</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="settings_viewings_remind">ఇంటి పరిశీలనల గురించి గుర్తు చేయండి</string>
+    <string name="settings_viewings_remind_hint">ప్లాన్ చేసిన ప్రతి పరిశీలనకు ముందు, దానిపై ఎంచుకున్న సమయానికి ఒక నోటిఫికేషన్.</string>
+    <string name="settings_viewings_exact_note">రిమైండర్‌లు సుమారు 10 నిమిషాలు ముందుగా రావచ్చు (లేదా ఫోన్ బ్యాటరీ సేవర్‌లో ఉంటే ఆలస్యంగా).</string>
+    <string name="settings_viewings_exact_allow">సమయానికి రిమైండర్‌లను అనుమతించండి</string>
+    <string name="viewings_notify_rationale">పరిశీలనకు ముందు Doorprints నోటిఫికేషన్‌తో గుర్తు చేస్తుంది.</string>
+    <string name="viewing_reminder_body">%1$s వద్ద పరిశీలన, %2$s కి</string>
+    <string name="viewing_reminder_public">Doorprints రిమైండర్</string>
 </resources>

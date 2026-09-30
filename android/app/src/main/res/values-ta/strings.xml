@@ -112,4 +112,15 @@
         <item quantity="other">%1$d வீடுகள் திரும்பக் கொண்டுவரப்பட்டன.</item>
     </plurals>
     <string name="price_per_month">%1$s/மாதம்</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="notif_channel_viewings">பார்வையிடல் நினைவூட்டல்கள்</string>
+    <string name="notif_channel_viewings_desc">நீங்கள் திட்டமிட்ட பார்வையிடலுக்கு முன்</string>
+    <string name="notif_viewing_soon">%1$s இல் பார்வையிடல் %2$d நிமிடத்தில்</string>
+    <string name="notif_viewing_title">%1$s இல் பார்வையிடல்</string>
+    <string name="notif_viewing_text">தொடக்கம்: %1$s</string>
+    <string name="notif_viewing_public">Doorprints நினைவூட்டல்</string>
+    <string name="notif_viewing_open">வீட்டைத் திற</string>
+    <string name="notif_viewing_directions">வழி</string>
+    <string name="notif_viewing_questions">கேள்விகள்</string>
+    <string name="notif_viewing_house_gone">நீக்கப்பட்ட வீடு</string>
 </resources>

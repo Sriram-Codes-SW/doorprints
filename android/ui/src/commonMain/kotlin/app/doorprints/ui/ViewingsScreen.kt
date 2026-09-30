@@ -79,6 +79,7 @@ import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.ViewingKind
+import app.doorprints.shared.model.ViewingReminders
 import app.doorprints.shared.model.ViewingStatus
 import app.doorprints.shared.model.Viewings
 import app.doorprints.shared.records.RecordLimitException
@@ -92,7 +93,8 @@ import org.jetbrains.compose.resources.stringResource
 /*
  * Viewings (docs/11 5.8, slice 3b-1): the history screen (Settings > Viewings, and "All viewings of this house" from a
  * house), the viewing form, the house screen's Viewings card and the *Book a second viewing?* prompt. Nothing here
- * schedules a notification: the reminder is saved for slice 3b-2.
+ * schedules a notification: the platform reschedules from the stored viewings after every change (slice 3b-2); the
+ * form only asks for the notification permission when a reminder is first saved.
  */
 
 /** A key for "no filter" in the kind and status menus. */
@@ -516,6 +518,10 @@ fun ViewingFormScreen(
     val calendarNone = stringResource(Res.string.viewings_calendar_none)
     val gone = stringResource(Res.string.viewings_houseGone)
     val word = stringResource(Res.string.viewings_icsWord)
+    // Slice 3b-2: the first save of a viewing with a reminder ahead asks for notifications (Android 13+, iOS), once
+    // and never at start-up; whatever the answer, the viewing is already saved.
+    val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale)
+    val remindOn by remember(repo) { repo.settings.viewingsRemind() }.collectAsStateWithLifecycle(initialValue = true)
 
     fun write(status: ViewingStatus = draft.status, then: () -> Unit = onDone) {
         tried = true
@@ -524,17 +530,15 @@ fun ViewingFormScreen(
         busy = true
         scope.launch {
             error = try {
-                withContext(NonCancellable) {
+                val saved = withContext(NonCancellable) {
                     val id = stored?.id ?: repo.newViewingId()
-                    repo.saveViewing(
-                        (stored ?: Viewing(id = id)).copy(
-                            id = id, houseId = house, startsAt = draft.startsAt, durationMin = draft.durationMin,
-                            kind = draft.kind.name, status = status.name, remindMin = draft.remindMin,
-                            withWhom = draft.withWhom, notes = draft.notes,
-                        ),
-                    )
+                    (stored ?: Viewing(id = id)).copy(
+                        id = id, houseId = house, startsAt = draft.startsAt, durationMin = draft.durationMin,
+                        kind = draft.kind.name, status = status.name, remindMin = draft.remindMin,
+                        withWhom = draft.withWhom, notes = draft.notes,
+                    ).also { repo.saveViewing(it) }
                 }
-                then()
+                if (remindOn && ViewingReminders.upcoming(listOf(saved), nowMillis()).isNotEmpty()) askNotifications(then) else then()
                 null
             } catch (e: CancellationException) {
                 throw e
