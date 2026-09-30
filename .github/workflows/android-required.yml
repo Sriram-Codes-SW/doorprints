@@ -24,7 +24,6 @@ name: Android
 
 on:
   pull_request:
-    branches: [main]
     paths-ignore:
       - "android/**"
       - "docs/schemas/**"

@@ -21,7 +21,6 @@ name: Android emulator
 
 on:
   pull_request:
-    branches: [main]
     paths-ignore:
       - "android/**"
       - ".github/workflows/android-emulator.yml"

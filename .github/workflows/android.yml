@@ -40,7 +40,6 @@ on:
       - "web/public/geo/**"
       - ".github/workflows/android.yml"
   pull_request:
-    branches: [main]
     paths:
       - "android/**"
       - "docs/schemas/**"

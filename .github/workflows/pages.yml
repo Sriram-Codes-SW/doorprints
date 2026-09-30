@@ -32,7 +32,6 @@ on:
       - "guide/**"
       - ".github/workflows/pages.yml"
   pull_request:
-    branches: [main]
     paths:
       - "guide/**"
       - ".github/workflows/pages.yml"
