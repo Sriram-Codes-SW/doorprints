@@ -207,6 +207,10 @@ object HtmlWriter {
             out.append("</tbody>\n</table>\n")
         }
 
+        // The area notes that reach the house and its distances to my places (slice 4a), after the viewings.
+        table(out, s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle))
+        table(out, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle))
+
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")
@@ -272,6 +276,20 @@ object HtmlWriter {
             out.append("</div>\n")
         }
         out.append("</section>\n")
+    }
+
+    /** A house page's small table under [title], the first cell of each row its header; nothing when [rows] is empty. */
+    private fun table(out: Appendable, title: String, columns: List<String>, rows: List<List<String>>) {
+        if (rows.isEmpty()) return
+        out.append("<h3>").append(esc(title)).append("</h3>\n<table>\n<thead><tr>")
+        for (c in columns) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+        out.append("</tr></thead>\n<tbody>\n")
+        for (r in rows) {
+            out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+            for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+            out.append("</tr>\n")
+        }
+        out.append("</tbody>\n</table>\n")
     }
 
     private fun row(out: Appendable, term: String, value: String) {

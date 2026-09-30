@@ -1068,14 +1068,14 @@ open class CommonRepository(
             viewings = db.records().listByType(ViewingType.name)
                 .mapNotNull { row -> row.toViewing()?.let { ExportViewing.of(it, row.updatedAt) } }
                 .take(Viewing.MAX_VIEWINGS),
-            // Areas, places and area notes (slice 4a): untrusted rows are skipped and the caps kept (more can only come
-            // from a newer app's sync), so the copy's own check accepts what it writes; a stored radius out of range is 500.
+            // Areas, places and area notes (slice 4a): untrusted rows are skipped, a stored radius out of range is 500, and
+            // nothing is cut to the caps (as the website and the server read them; the caps hold at each save).
             areas = db.records().listByType(AreaType.name)
-                .mapNotNull { row -> row.toArea()?.let { ExportArea.of(it, row.updatedAt) } }.take(Area.MAX_AREAS),
+                .mapNotNull { row -> row.toArea()?.let { ExportArea.of(it, row.updatedAt) } },
             places = db.records().listByType(PlaceType.name)
-                .mapNotNull { row -> row.toPlace()?.let { ExportPlace.of(it, row.updatedAt) } }.take(Place.MAX_PLACES),
+                .mapNotNull { row -> row.toPlace()?.let { ExportPlace.of(it, row.updatedAt) } },
             areaNotes = db.records().listByType(AreaNoteType.name)
-                .mapNotNull { row -> row.toAreaNote()?.let { ExportAreaNote.of(it, row.updatedAt) } }.take(AreaNote.MAX_NOTES),
+                .mapNotNull { row -> row.toAreaNote()?.let { ExportAreaNote.of(it, row.updatedAt) } },
         )
     }
 

@@ -121,6 +121,16 @@ object MarkdownWriter {
                 table(out, ExportRows.viewingColumns(bundle), viewings)
             }
 
+            // The area notes that reach the house and its distances to my places (slice 4a), after the viewings.
+            for ((title, columns, rows) in listOf(
+                Triple(s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle)),
+                Triple(s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle)),
+            )) {
+                if (rows.isEmpty()) continue
+                out.append("\n### ").append(text(title)).append("\n\n")
+                table(out, columns, rows)
+            }
+
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")
