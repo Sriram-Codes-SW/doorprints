@@ -22,6 +22,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.KeychainSecretStore
 import app.doorprints.location.HuntState
+import app.doorprints.shared.model.Viewing
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.app_name
 import kotlinx.coroutines.CancellationException
@@ -74,6 +75,9 @@ private const val INDIA_VIEW_TIMEOUT_MS = 60_000L
 
 /** How long Hunt mode may take to get its first fix from the simulator and name the check's house. */
 private const val HUNT_TIMEOUT_MS = 60_000L
+
+/** How many times the `reminders` check runs the reschedule. */
+private const val REMINDER_RUNS = 30
 
 /**
  * Where the check's house is; the launch smoke sets the simulator's location about 15 m away (12.9701, 77.6401),
@@ -141,6 +145,9 @@ private suspend fun runSelfCheck() {
         check("map", MAP_TIMEOUT_MS) { mapCheck() },
         // Hunt mode on iPhone (S4b-BL-69): the adapter around the common engine gets a fix and finds the house.
         check("hunt", HUNT_TIMEOUT_MS) { huntCheck() },
+        // Viewing reminders (slice 3b-2): an earlier version crashed now and then inside UserNotifications, so the
+        // reschedule runs many times, for two viewings, where one run could pass by luck.
+        check("reminders") { remindersCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
 }
@@ -237,6 +244,20 @@ private suspend fun huntCheck(): Result {
     } finally {
         repo.deleteHouse(house.id)
     }
+    return Result.Pass
+}
+
+/** Runs [IosViewingReminders.reschedule] [REMINDER_RUNS] times for a viewing and a Hunt reminder, then clears them. */
+private suspend fun remindersCheck(): Result {
+    val now = Clock.System.now().toEpochMilliseconds()
+    val viewings = listOf(
+        Viewing(id = "v_00000001", houseId = "self-check", startsAt = now + 3 * 3_600_000L, remindMin = 60),
+        Viewing(id = "v_00000002", houseId = "self-check", startsAt = now + 5 * 3_600_000L, remindMin = 30, huntReminder = true),
+    )
+    repeat(REMINDER_RUNS) {
+        IosViewingReminders.reschedule(viewings, emptyList(), now, viewingsOn = true, huntOn = true)
+    }
+    IosViewingReminders.reschedule(emptyList(), emptyList(), now)
     return Result.Pass
 }
 
