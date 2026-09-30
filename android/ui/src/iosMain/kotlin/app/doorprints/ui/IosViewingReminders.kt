@@ -26,7 +26,6 @@ import app.doorprints.shared.model.ViewingReminders
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.viewing_hunt_reminder_body
 import app.doorprints.ui.res.viewing_reminder_body
-import app.doorprints.ui.res.viewing_reminder_public
 import app.doorprints.ui.res.viewings_houseGone
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.getString
@@ -41,8 +40,6 @@ import platform.Foundation.NSDate
 import platform.Foundation.dateWithTimeIntervalSince1970
 import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNMutableNotificationContent
-import platform.UserNotifications.UNNotificationCategory
-import platform.UserNotifications.UNNotificationCategoryOptionNone
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNNotificationSound
 import platform.UserNotifications.UNUserNotificationCenter
@@ -54,9 +51,12 @@ import platform.UserNotifications.UNUserNotificationCenter
  * keeps) as non-repeating calendar triggers at their fireAt: "Viewing at Green View at 10:00" in the app language,
  * `userInfo` with Hunt mode's `openHouse` key, so the existing tap handler ([IosNotifications.install]) opens the
  * house. The body is fixed when it is scheduled (iOS shows a pending request as it is), so a rename of the house also
- * reschedules ([IosAppContainer]). A locked screen with *Show Previews* off shows "Doorprints reminder" (the category's
- * `hiddenPreviewsBodyPlaceholder`). Never `withWhom`. The authorization is asked by the viewing form when a reminder is
- * first saved, never here.
+ * reschedules ([IosAppContainer]). Never `withWhom`. The authorization is asked by the viewing form when a reminder is
+ * first saved, never here. There is no notification category with a hidden-previews placeholder: building one
+ * (`UNNotificationCategory.categoryWithIdentifier(..., hiddenPreviewsBodyPlaceholder, ...)`) crashed the app at launch
+ * with a bad pointer inside UserNotifications, on a coroutine thread and only some of the time (PR 84, 2026-09-30);
+ * iOS already hides a notification's text on the lock screen unless the person chose otherwise under *Show Previews*.
+ * The launch self-check's `reminders` step runs [reschedule] many times so a repeat shows on every CI run.
  *
  * The Hunt mode reminders (docs/11 5.16, slice 3c) are queued here too, as `viewing-hunt-<id>` ([HUNT_PREFIX], so the
  * removal above takes them as well): "Viewing at Green View at 10:00. Start Hunt mode?", with the same merge rule and
@@ -67,7 +67,6 @@ import platform.UserNotifications.UNUserNotificationCenter
 internal object IosViewingReminders {
     const val ID_PREFIX = "viewing-"
     const val HUNT_PREFIX = "viewing-hunt-"
-    private const val CATEGORY = "viewing"
 
     private val center: UNUserNotificationCenter get() = UNUserNotificationCenter.currentNotificationCenter()
 
@@ -108,15 +107,6 @@ internal object IosViewingReminders {
                 request(HUNT_PREFIX + v.id, r.at, getString(Res.string.viewing_hunt_reminder_body, name, time), mapOf(IosHunt.KEY_OPEN_VIEWING to v.id))
             }
         }
-        center.setNotificationCategories(
-            setOf(
-                UNNotificationCategory.categoryWithIdentifier(
-                    CATEGORY, actions = emptyList<Any>(), intentIdentifiers = emptyList<Any>(),
-                    hiddenPreviewsBodyPlaceholder = getString(Res.string.viewing_reminder_public),
-                    options = UNNotificationCategoryOptionNone,
-                ),
-            ),
-        )
         center.getPendingNotificationRequestsWithCompletionHandler { pending ->
             val old = pending.orEmpty().mapNotNull { (it as? UNNotificationRequest)?.identifier?.takeIf { id -> id.startsWith(ID_PREFIX) } }
             if (old.isNotEmpty()) center.removePendingNotificationRequestsWithIdentifiers(old)
@@ -129,7 +119,6 @@ internal object IosViewingReminders {
         val content = UNMutableNotificationContent().apply {
             setBody(body)
             setSound(UNNotificationSound.defaultSound)
-            setCategoryIdentifier(CATEGORY)
             setUserInfo(userInfo.orEmpty().entries.associate<Map.Entry<String, String>, Any?, Any?> { it.key to it.value })
         }
         val units = NSCalendarUnitYear or NSCalendarUnitMonth or NSCalendarUnitDay or NSCalendarUnitHour or
