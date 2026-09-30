@@ -22,6 +22,7 @@ import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.Question
+import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.Preference
 import app.doorprints.shared.records.RecordRules
@@ -56,11 +57,14 @@ object BackupFormat {
 
     /**
      * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
-     * (slice 2), a question or a house with answers (slice 3a); else `/1`, byte for byte as before.
+     * (slice 2), a question or a house with answers (slice 3a), or a viewing (slice 3b-1); else `/1`, byte for byte as
+     * before.
      */
     fun idFor(
         brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0, questions: Int = 0, answers: Int = 0,
-    ): String = if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0) ID_2 else ID
+        viewings: Int = 0,
+    ): String =
+        if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0) ID_2 else ID
 
     /**
      * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
@@ -122,6 +126,8 @@ data class BackupCounts(
     val preferences: Int? = null,
     /** Slice 3a, after `preferences`: present only when the file has a `questions` list. */
     val questions: Int? = null,
+    /** Slice 3b-1, after `questions`: present only when the file has a `viewings` list. */
+    val viewings: Int? = null,
 ) {
     companion object {
         fun of(data: BackupData): BackupCounts = BackupCounts(
@@ -130,6 +136,7 @@ data class BackupCounts(
             criteria = data.criteria?.size,
             preferences = data.preferences?.size,
             questions = data.questions?.size,
+            viewings = data.viewings?.size,
         )
     }
 }
@@ -188,6 +195,8 @@ data class BackupData(
     val preferences: List<ExportPreference>? = null,
     /** `/2` only (slice 3a), after `preferences`, null when the copy has none, like [brokers]. */
     val questions: List<ExportQuestion>? = null,
+    /** `/2` only (slice 3b-1), after `questions`, null when the copy has none, like [brokers]. */
+    val viewings: List<ExportViewing>? = null,
 ) {
     /** The brokers of the file, none when it has no list. */
     val brokerRows: List<ExportBroker> get() = brokers.orEmpty()
@@ -198,6 +207,9 @@ data class BackupData(
 
     /** The questions of the file, none when it has no list. */
     val questionRows: List<ExportQuestion> get() = questions.orEmpty()
+
+    /** The viewings of the file, none when it has no list. */
+    val viewingRows: List<ExportViewing> get() = viewings.orEmpty()
 
     companion object {
         /**
@@ -226,6 +238,7 @@ data class BackupData(
                 format = BackupFormat.idFor(
                     bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
                     bundle.preferences.size, bundle.questions.size, bundle.houses.sumOf { it.answers?.size ?: 0 },
+                    bundle.viewings.size,
                 ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
@@ -236,6 +249,7 @@ data class BackupData(
                 criteria = bundle.criteria.takeIf { it.isNotEmpty() },
                 preferences = bundle.preferences.takeIf { it.isNotEmpty() },
                 questions = bundle.questions.takeIf { it.isNotEmpty() },
+                viewings = bundle.viewings.takeIf { it.isNotEmpty() },
             )
         }
 
@@ -280,7 +294,8 @@ object BackupValidation {
         !BackupFormat.accepts(manifest.format) -> BackupProblem.UNSUPPORTED_VERSION
         manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ||
             (manifest.counts.brokers ?: 0) < 0 || (manifest.counts.criteria ?: 0) < 0 ||
-            (manifest.counts.preferences ?: 0) < 0 || (manifest.counts.questions ?: 0) < 0 -> BackupProblem.BROKEN_DATA
+            (manifest.counts.preferences ?: 0) < 0 || (manifest.counts.questions ?: 0) < 0 ||
+            (manifest.counts.viewings ?: 0) < 0 -> BackupProblem.BROKEN_DATA
         else -> null
     }
 
@@ -323,8 +338,16 @@ object BackupValidation {
         // an over-long answer, an unknown status or a negative sort, or a 61st answer on a house (the server's rules).
         !questionsAreValid(data.questionRows) -> BackupProblem.BROKEN_DATA
         data.houses.any { h -> !answersAreValid(h.answers) } -> BackupProblem.BROKEN_DATA
+        // Slice 3b-1: a viewing with a bad id, a blank or over-long house id, no positive start, a duration outside
+        // 5..480, an unknown kind or status, a reminder not in the list, an over-long text or visit id, an id used twice
+        // or more than 5,000 viewings refuse the whole file (an absent or null duration, kind, status or reminder is the
+        // default).
+        !viewingsAreValid(data.viewingRows) -> BackupProblem.BROKEN_DATA
         else -> null
     }
+
+    private fun viewingsAreValid(rows: List<ExportViewing>): Boolean =
+        rows.size <= Viewing.MAX_VIEWINGS && rows.all { it.updatedAt >= 0 && it.toViewing().isValid } && rows.map { it.id }.toSet().size == rows.size
 
     private fun questionsAreValid(rows: List<ExportQuestion>): Boolean =
         rows.size <= Question.MAX_QUESTIONS && rows.all { it.toQuestion().isValid } && rows.map { it.id }.toSet().size == rows.size

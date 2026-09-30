@@ -359,6 +359,83 @@ class BackupMapperTest {
         });
     }
 
+    private static Record viewing(String id, String payload, Instant updatedAt, boolean deleted) {
+        var record = new Record(new RecordKey("viewing", id));
+        record.setPayload(payload);
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(deleted);
+        return record;
+    }
+
+    private static BackupData withViewings(Record... records) {
+        return BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(records), JSON, EXPORTED_AT);
+    }
+
+    /** Slice 3b-1: no viewing (or only a tombstone) is a /1 document without the key. */
+    @Test
+    void withoutViewingsTheCopyIsVersionOneAndHasNoViewingsKey() {
+        var data = withViewings(viewing("v_gone", "{\"houseId\":\"h\",\"startsAt\":5}", EXPORTED_AT, true));
+        assertThat(data.format()).isEqualTo(BackupFormat.ID);
+        assertThat(data.viewings()).isEmpty();
+        assertThat(JSON.writeValueAsString(data)).doesNotContain("viewings");
+    }
+
+    /** A live viewing alone makes the copy /2; ordered by updatedAt then id, payload in the format's order. */
+    @Test
+    void viewingsAreOrderedByUpdatedAtThenIdAndOptionalKeysOnlyWhenSet() {
+        var early = EXPORTED_AT.minusSeconds(60);
+        var data = withViewings(
+                viewing("v_b", "{\"houseId\":\"h1\",\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\","
+                        + "\"status\":\"DONE\",\"remindMin\":30,\"huntReminder\":true,\"withWhom\":\"Ravi\","
+                        + "\"notes\":\"Tape\",\"visitId\":\"vis\"}", EXPORTED_AT, false),
+                viewing("v_a", "{\"houseId\":\"h1\",\"startsAt\":1000,\"durationMin\":30,\"kind\":\"FIRST\","
+                        + "\"status\":\"PLANNED\",\"remindMin\":60,\"huntReminder\":false,\"withWhom\":\"\","
+                        + "\"notes\":\"\"}", EXPORTED_AT, false),
+                viewing("v_0", "{\"houseId\":\"h2\",\"startsAt\":500}", early, false));
+
+        assertThat(data.format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(data.viewings()).extracting(BackupViewing::id).containsExactly("v_0", "v_a", "v_b");
+        assertThat(JSON.writeValueAsString(data.viewings().get(2))).isEqualTo("{\"id\":\"v_b\",\"houseId\":\"h1\","
+                + "\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\",\"status\":\"DONE\",\"remindMin\":30,"
+                + "\"huntReminder\":true,\"withWhom\":\"Ravi\",\"notes\":\"Tape\",\"visitId\":\"vis\","
+                + "\"updatedAt\":" + EXPORTED_AT.toEpochMilli() + "}");
+        assertThat(JSON.writeValueAsString(data.viewings().get(1))).isEqualTo("{\"id\":\"v_a\",\"houseId\":\"h1\","
+                + "\"startsAt\":1000,\"durationMin\":30,\"kind\":\"FIRST\",\"status\":\"PLANNED\",\"remindMin\":60,"
+                + "\"updatedAt\":" + EXPORTED_AT.toEpochMilli() + "}");
+        // A bare payload reads with the defaults of the clients.
+        assertThat(data.viewings().getFirst()).extracting(BackupViewing::durationMin, BackupViewing::kind,
+                BackupViewing::status, BackupViewing::remindMin).containsExactly(30, "FIRST", "PLANNED", 60);
+    }
+
+    /** The server never reads inside a record, so an export drops what would not import again instead of failing. */
+    @Test
+    void aViewingPayloadThatWouldNotImportIsCoercedOrLeftOut() {
+        var data = withViewings(
+                viewing("no-house", "{\"startsAt\":5}", EXPORTED_AT, false),
+                viewing("blank-house", "{\"houseId\":\" \",\"startsAt\":5}", EXPORTED_AT, false),
+                viewing("no-start", "{\"houseId\":\"h\"}", EXPORTED_AT, false),
+                viewing("zero-start", "{\"houseId\":\"h\",\"startsAt\":0}", EXPORTED_AT, false),
+                viewing("text-start", "{\"houseId\":\"h\",\"startsAt\":\"5\"}", EXPORTED_AT, false),
+                viewing("not-json", "not json", EXPORTED_AT, false),
+                viewing("odd", "{\"houseId\":\"h\",\"startsAt\":9,\"durationMin\":9000,\"kind\":\"THIRD\","
+                        + "\"status\":\"MISSED\",\"remindMin\":45,\"huntReminder\":\"yes\",\"withWhom\":\""
+                        + "w".repeat(201) + "\",\"notes\":\"" + "n".repeat(2001) + "\",\"visitId\":7}",
+                        EXPORTED_AT, false));
+
+        assertThat(data.viewings()).singleElement().satisfies(v -> {
+            assertThat(v.id()).isEqualTo("odd");
+            assertThat(v.durationMin()).isEqualTo(30);
+            assertThat(v.kind()).isEqualTo("FIRST");
+            assertThat(v.status()).isEqualTo("PLANNED");
+            assertThat(v.remindMin()).isEqualTo(60);
+            assertThat(v.huntReminder()).isNull();
+            assertThat(v.withWhom()).isNull();
+            assertThat(v.notes()).isNull();
+            assertThat(v.visitId()).isNull();
+        });
+    }
+
     /** The merge rule: newer in the file wins, newer here is kept, equal writes nothing (S4-00, docs/11 5.2). */
     @Test
     void mergeDecisionIsLastWriteWins() {

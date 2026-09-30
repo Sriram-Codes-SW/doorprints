@@ -81,6 +81,21 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/questions/questions-page').then((m) => m.QuestionsPage),
   },
   {
+    path: 'viewings',
+    title: 'title.viewings',
+    loadComponent: () => import('./pages/viewings/viewings-page').then((m) => m.ViewingsPage),
+  },
+  {
+    path: 'viewings/new',
+    title: 'title.viewing',
+    loadComponent: () => import('./pages/viewings/viewing-page').then((m) => m.ViewingPage),
+  },
+  {
+    path: 'viewings/:id',
+    title: 'title.viewing',
+    loadComponent: () => import('./pages/viewings/viewing-page').then((m) => m.ViewingPage),
+  },
+  {
     path: 'data',
     title: 'title.data',
     loadComponent: () => import('./pages/data/data-page').then((m) => m.DataPage),

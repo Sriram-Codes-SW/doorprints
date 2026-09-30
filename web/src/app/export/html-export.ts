@@ -33,7 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
-import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -234,6 +234,20 @@ function houseSection(
       ].join('')
     : '';
 
+  // The viewings (slice 3b-1), after the questions and before the checklist; upcoming first, then newest first.
+  const viewingList = viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts);
+  const viewingsHtml = viewingList.length
+    ? [
+        `<h3>${escapeHtml(stringsOf(bundle).get('section.viewings'))}</h3>`,
+        '<table>',
+        `<thead><tr>${viewingDisplayColumns(bundle).map((c) => `<th scope="col">${escapeHtml(c)}</th>`).join('')}</tr></thead>`,
+        `<tbody>${viewingList
+          .map((row) => `<tr>${row.map((c, i) => (i === 0 ? `<th scope="row">${escapeHtml(c)}</th>` : `<td>${escapeHtml(c)}</td>`)).join('')}</tr>`)
+          .join('')}</tbody>`,
+        '</table>',
+      ].join('')
+    : '';
+
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
@@ -268,6 +282,7 @@ function houseSection(
       : '',
     roomsHtml,
     questionsHtml,
+    viewingsHtml,
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',

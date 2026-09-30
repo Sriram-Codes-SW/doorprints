@@ -50,7 +50,12 @@ function fakes(bank: Question[] = seeded()): Fakes {
   };
 }
 
-afterEach(() => TestBed.resetTestingModule());
+// A Tamil test saves its language in localStorage; a later spec file in the same worker (the compare page) would start
+// in Tamil and fail order-dependently, so every test ends with a clean store.
+afterEach(() => {
+  TestBed.resetTestingModule();
+  localStorage.clear();
+});
 
 async function render(f: Fakes, confirm = true, lang: 'en' | 'ta' = 'en') {
   const ask = vi.fn(() => Promise.resolve(confirm));

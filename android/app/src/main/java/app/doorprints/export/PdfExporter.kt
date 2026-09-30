@@ -188,6 +188,13 @@ object PdfExporter {
             for ((question, answer, status) in answers) sheet.labelled(question, "$answer · $status", body, 2f)
         }
 
+        // The viewings (slice 3b-1), after the questions: "when: kind · status · notes (· with whom)".
+        val viewings = ExportRows.viewingRows(house, bundle)
+        if (viewings.isNotEmpty()) {
+            sheet.section(s["section.viewings"], heading)
+            for (row in viewings) sheet.labelled(row[0], row.drop(1).joinToString(" · "), body, 2f)
+        }
+
         val keys = ExportRows.orderedChecklistKeys(house)
         if (keys.isNotEmpty()) {
             sheet.section(s["section.checklist"], heading)

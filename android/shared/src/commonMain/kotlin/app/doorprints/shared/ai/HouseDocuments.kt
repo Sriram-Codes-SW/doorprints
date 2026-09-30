@@ -69,6 +69,7 @@ object HouseDocuments {
         }
         line(sb, "Rooms", rooms(h.rooms, r))
         answerLines(sb, h.answers, r)
+        viewingLines(sb, h.viewings, r)
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -122,6 +123,35 @@ object HouseDocuments {
         ordered.filter { it.answerStatus == AnswerStatus.OPEN }.take(ANSWER_LINES_MAX).forEach { a ->
             line(sb, "Still to ask", r.freeText(a.text.trim()))
         }
+    }
+
+    /** At most this many `Viewing:` lines per house (slice 3b-1), as the server writes. */
+    const val VIEWING_LINES_MAX = 10
+
+    /**
+     * The viewings (slice 3b-1), the same words as the server's `HouseDocuments` and the web's `houseText`:
+     * `Viewing: 2026-09-27 09:30 | SECOND | PLANNED`, plus ` | Notes: <notes>` when there are notes, the time in UTC,
+     * PLANNED ones first then newest first (ties by id), at most [VIEWING_LINES_MAX]. The
+     * notes go through the redactor and their white space collapses to single spaces, so a note cannot fake a line of
+     * its own; `withWhom` is never here.
+     */
+    internal fun viewingLines(sb: StringBuilder, viewings: List<AiViewing>, r: ContactRedactor.Redactor) {
+        viewings.sortedWith(compareBy<AiViewing> { it.status != "PLANNED" }.thenByDescending { it.startsAt }.thenBy { it.id })
+            .take(VIEWING_LINES_MAX)
+            .forEach { v ->
+                val notes = v.notes?.let { r.freeText(it.trim()) }?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(" ")
+                val value = utcDateTime(v.startsAt) + " | " + v.kind + " | " + v.status +
+                    if (notes.isNullOrEmpty()) "" else " | Notes: $notes"
+                line(sb, "Viewing", value)
+            }
+    }
+
+    private val WHITE_SPACE = Regex("\\s+")
+
+    /** `yyyy-MM-dd HH:mm` in UTC, as the server's formatter writes a viewing's start. */
+    internal fun utcDateTime(epochMs: Long): String {
+        val minutes = epochMs.floorDiv(60_000L).mod(24 * 60L)
+        return utcDate(epochMs) + " " + (minutes / 60).toString().padStart(2, '0') + ":" + (minutes % 60).toString().padStart(2, '0')
     }
 
     /** The label as Ask's citations show it: free text, redacted. */

@@ -171,6 +171,34 @@ private fun incrementDigits(digits: String): String {
 internal expect fun formatDate(epochMillis: Long, language: String, withTime: Boolean): String
 
 /**
+ * The device time zone's offset from UTC at [epochMillis], in ms (Android: `TimeZone.getDefault`; iOS:
+ * `NSTimeZone.localTimeZone`): the viewing form turns the date picker's UTC day and the time picker's hour into the
+ * instant the person means on their own clock ([LocalClock]).
+ */
+internal expect fun utcOffsetMillis(epochMillis: Long): Int
+
+/** Wall-clock arithmetic in the device's time zone, for the viewing form's date and time pickers (no kotlinx-datetime). */
+internal object LocalClock {
+    private const val DAY_MS = 86_400_000L
+
+    /** The picker's day (UTC midnight of the local date, as Material's DatePicker gives it) of [epochMillis]. */
+    fun dayOf(epochMillis: Long): Long = (epochMillis + utcOffsetMillis(epochMillis)).floorDiv(DAY_MS) * DAY_MS
+
+    /** The local hour and minute of [epochMillis]. */
+    fun hourMinuteOf(epochMillis: Long): Pair<Int, Int> {
+        val minutes = (epochMillis + utcOffsetMillis(epochMillis)).mod(DAY_MS) / 60_000L
+        return (minutes / 60).toInt() to (minutes % 60).toInt()
+    }
+
+    /** The instant of local [hour]:[minute] on the picker's [day]; the offset is read at that instant (DST safe). */
+    fun at(day: Long, hour: Int, minute: Int): Long {
+        val wall = day + hour * 3_600_000L + minute * 60_000L
+        val guess = wall - utcOffsetMillis(wall)
+        return wall - utcOffsetMillis(guess)
+    }
+}
+
+/**
  * The language the app's strings are shown in, outside composition (a service's notification text): Android's default
  * locale, which `AppLocale.applyDefault` in `:app` keeps on the language Android resolved for the strings (docs/05
  * §8.2); iOS: the first preferred language when the app ships it, else "en", as Compose resources pick the strings.

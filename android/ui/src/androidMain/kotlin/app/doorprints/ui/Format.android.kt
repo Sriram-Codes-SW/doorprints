@@ -37,5 +37,7 @@ internal actual fun formatDate(epochMillis: Long, language: String, withTime: Bo
 
 internal actual fun formatSixDecimals(value: Double): String = String.format(Locale.ROOT, "%.6f", value)
 
+internal actual fun utcOffsetMillis(epochMillis: Long): Int = java.util.TimeZone.getDefault().getOffset(epochMillis)
+
 // The default locale: AppLocale.applyDefault (in :app) keeps it on the language Android resolved for the strings.
 actual fun appLanguage(): String = Locale.getDefault().language

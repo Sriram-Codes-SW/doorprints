@@ -93,6 +93,7 @@ import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.Question
+import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
@@ -319,6 +320,9 @@ fun HouseEditScreen(
     onDeleted: (String) -> Unit = { onDone() },
     showSaved: Boolean = false,
     onSavedShown: () -> Unit = {},
+    /** The Viewings card (slice 3b-1): plan a viewing of this house of a kind, and this house's viewings. */
+    onPlanViewing: (houseId: String, kind: ViewingKind) -> Unit = { _, _ -> },
+    onOpenViewings: (houseId: String) -> Unit = {},
 ) {
     val platform = LocalPlatformServices.current
     val services = LocalAppServices.current
@@ -1294,6 +1298,15 @@ fun HouseEditScreen(
                             }
                         }
                     }
+                }
+
+                // The Viewings card (docs/11 5.8, slice 3b-1), once the house is saved: a viewing names a stored house.
+                if (saved != null) {
+                    ViewingsCard(
+                        houseId = id, visits = visits,
+                        onPlan = { kind -> onPlanViewing(id, kind) },
+                        onOpenAll = { onOpenViewings(id) },
+                    )
                 }
 
                 Button(onClick = { save() }, enabled = canSave, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

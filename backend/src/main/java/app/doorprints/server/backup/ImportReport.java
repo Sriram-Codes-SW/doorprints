@@ -29,17 +29,17 @@ import java.util.List;
  *
  * @param dryRun      true when nothing was written
  * @param houses      per-entity outcome counts (also visits, photos and, from {@code doorprints-backup/2}, brokers,
- *                    criteria, and preferences)
+ *                    criteria, preferences, questions and viewings)
  * @param problems    human-readable notes for the operator; never a reason to fail the request. The whole-file notes
  *                    (photo bytes, AI index) come first; the per-row lines after them are capped at
  *                    {@code BackupService.MAX_REPORTED_PROBLEMS} plus one "and N more" tail, so the list is not
  *                    exhaustive and is not meant to be parsed
  */
-@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "brokers", "criteria", "preferences", "questions",
+@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "brokers", "criteria", "preferences", "questions", "viewings",
         "problems"})
 public record ImportReport(String format, boolean dryRun, Entity houses, Entity visits, Entity photos,
                            Entity brokers, Entity criteria, Entity preferences, Entity questions,
-                           List<String> problems) {
+                           Entity viewings, List<String> problems) {
 
     /**
      * Outcome counts for one kind of row. {@code total} is what the file held;

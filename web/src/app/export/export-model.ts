@@ -21,6 +21,8 @@ import type { Lang } from '../i18n/languages';
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../data/records';
 import type { Broker, BrokerRow } from '../shared/broker';
 import type { QuestionRow } from '../shared/question';
+import { viewingsForCopy } from '../shared/viewing';
+import type { Viewing, ViewingRow } from '../shared/viewing';
 import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
@@ -65,6 +67,11 @@ export interface ExportHouse {
   rooms: readonly HouseRoom[];
   /** The questions asked about the house, as stored (slice 3a); readable copies list them with `ordered`. */
   answers: readonly HouseAnswer[];
+  /**
+   * The viewings of the house (slice 3b-1) in the order a house page lists them: the upcoming PLANNED ones (from the
+   * copy's own `exportedAt`, so the copy never reads a clock) soonest first, then the rest newest first.
+   */
+  viewings: readonly Viewing[];
 }
 
 /** A broker in the copy, with the houses of the copy that use it (slice 1b). */
@@ -100,6 +107,12 @@ export interface ExportBundle {
    */
   questions: readonly QuestionRow[];
   /**
+   * The viewing records of the copy, oldest edit first then id (the backup's order): every live viewing for a copy of
+   * every house (`scope: 'all'`, a viewing of a house that is gone included), else those of the houses in the copy.
+   * `withWhom` is contact data, so it is removed from every row when the copy has no contact details (slice 3b-1).
+   */
+  viewings: readonly ViewingRow[];
+  /**
    * The brokers in the copy, oldest edit first then id (the backup's order). Empty with no contact details. A copy of
    * every house (`scope: 'all'`) carries every live broker; a partial copy only the brokers its houses use.
    */
@@ -127,6 +140,8 @@ export interface CollectInput {
   preferences?: readonly PreferenceRow[];
   /** The question records of the store (slice 3a). */
   questions?: readonly QuestionRow[];
+  /** The viewing records of the store (slice 3b-1). */
+  viewings?: readonly ViewingRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
   exportedAt: string;
@@ -172,6 +187,16 @@ export function collect(input: CollectInput): ExportBundle {
     .slice()
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const scoring = scoringOf(criteria, preferences);
+  const chosenIds = new Set(chosen.map((h) => h.id));
+  const viewings = (input.viewings ?? [])
+    .filter((row) => options.scope === 'all' || chosenIds.has(row.viewing.houseId))
+    .map((row) => (options.includeContacts ? row : withoutWhom(row)))
+    .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
+  const viewingsByHouse = new Map<string, Viewing[]>();
+  for (const row of viewings) {
+    viewingsByHouse.set(row.viewing.houseId, [...(viewingsByHouse.get(row.viewing.houseId) ?? []), row.viewing]);
+  }
+  const copyNow = Date.parse(input.exportedAt) || 0;
 
   const houses: ExportHouse[] = chosen.map((house) => {
     const wantPhotos =
@@ -187,6 +212,7 @@ export function collect(input: CollectInput): ExportBundle {
       photos: wantPhotos ? (photosByHouse.get(house.id) ?? []).slice().sort(byCreatedThenId) : [],
       rooms: house.rooms ?? [],
       answers: house.answers ?? [],
+      viewings: viewingsForCopy(viewingsByHouse.get(house.id) ?? [], copyNow),
     };
   });
 
@@ -199,6 +225,7 @@ export function collect(input: CollectInput): ExportBundle {
     criteria,
     preferences,
     questions,
+    viewings,
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     counts: {
@@ -207,6 +234,14 @@ export function collect(input: CollectInput): ExportBundle {
       photos: houses.reduce((n, h) => n + h.photos.length, 0),
     },
   };
+}
+
+/** A viewing record without the person named in `withWhom`. */
+function withoutWhom(row: ViewingRow): ViewingRow {
+  if (row.viewing.withWhom === undefined) return row;
+  const viewing = { ...row.viewing };
+  delete viewing.withWhom;
+  return { ...row, viewing };
 }
 
 /** The brokers of a copy: all of them for a copy of every house, else those a house of the copy is linked to. */

@@ -192,6 +192,21 @@ object HtmlWriter {
             out.append("</tbody>\n</table>\n")
         }
 
+        // The viewings (slice 3b-1), after the questions and before the checklist: upcoming ones first.
+        val viewings = ExportRows.viewingRows(h, bundle)
+        if (viewings.isNotEmpty()) {
+            out.append("<h3>").append(esc(s["section.viewings"])).append("</h3>\n")
+            out.append("<table>\n<thead><tr>")
+            for (c in ExportRows.viewingColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+            out.append("</tr></thead>\n<tbody>\n")
+            for (r in viewings) {
+                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                out.append("</tr>\n")
+            }
+            out.append("</tbody>\n</table>\n")
+        }
+
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")

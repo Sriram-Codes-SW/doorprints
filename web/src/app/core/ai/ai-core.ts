@@ -21,6 +21,7 @@
 // docs/ai/evals/parity-vectors.json hold all three to the server's own answers (ai-core.spec.ts).
 
 import type { HouseAnswer, HouseRoom } from '../models';
+import type { Viewing } from '../../shared/viewing';
 import { cmToFeetInches } from '../../shared/room-sizes';
 import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } from '../ai.service';
 
@@ -204,6 +205,8 @@ export interface AiHouse {
   cost?: AiCost | null;
   rooms?: HouseRoom[] | null;
   answers?: HouseAnswer[] | null;
+  /** The viewings of this house (slice 3b-1). */
+  viewings?: Viewing[] | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -270,6 +273,7 @@ export function houseText(h: AiHouse): string {
   if (c.agreedPrice != null) line('Agreed price', `Rs ${c.agreedPrice}`);
   line('Rooms', roomsText(h.rooms, r));
   answerLines(h.answers, r).forEach((l) => lines.push(l));
+  viewingLines(h.viewings, r).forEach((l) => lines.push(l));
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -331,6 +335,29 @@ function answerLines(answers: HouseAnswer[] | null | undefined, r: Redactor): st
     }
   }
   return [...asked, ...open];
+}
+
+/** At most this many viewings of a house go into its document (slice 3b-1). */
+const VIEWING_LINES_MAX = 10;
+
+/**
+ * The viewings of a house (slice 3b-1), the same words as the server's HouseDocuments and the phones' AiHouse: at most
+ * 10 lines, the PLANNED ones first and then the rest, each group newest first (then id):
+ * `Viewing: <yyyy-MM-dd HH:mm, UTC> | <kind> | <status>` and, when there are notes, ` | Notes: <notes>`. NEVER `withWhom`
+ * (contact data); the notes go through the contact redactor like the other notes and are written on one line.
+ */
+function viewingLines(viewings: Viewing[] | null | undefined, r: Redactor): string[] {
+  if (!viewings?.length) return [];
+  const sorted = [...viewings].sort(
+    (a, b) =>
+      Number(a.status !== 'PLANNED') - Number(b.status !== 'PLANNED') || b.startsAt - a.startsAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+  return sorted.slice(0, VIEWING_LINES_MAX).map((v) => {
+    const when = new Date(v.startsAt).toISOString().slice(0, 16).replace('T', ' ');
+    // Whitespace and line breaks collapse to single spaces, so a note can never start a line of its own ("Viewing: ...").
+    const notes = ((r.freeText(v.notes) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim();
+    return `Viewing: ${when} | ${v.kind} | ${v.status}${notes ? ` | Notes: ${notes}` : ''}`;
+  });
 }
 
 function months(n: number): string {

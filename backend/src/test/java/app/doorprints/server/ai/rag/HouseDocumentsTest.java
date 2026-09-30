@@ -229,6 +229,68 @@ class HouseDocumentsTest {
                 null, null, false, 1, null);
     }
 
+    private static ViewingLine viewing(String id, String status, String iso, String kind, String notes) {
+        return new ViewingLine(id, "h", Instant.parse(iso).toEpochMilli(), kind, status, notes);
+    }
+
+    /** Slice 3b-1: a line per viewing after the questions, PLANNED first then newest first, in UTC, no with-whom. */
+    @Test
+    void viewingLinesFollowTheQuestionsPlannedFirstThenNewestFirst() {
+        var answers = List.of(new HouseAnswer("a1", null, "Any pets rule?", "No dogs", "ANSWERED", 0));
+        var text = HouseDocuments.text(withAnswers(answers), List.of(), List.of(
+                viewing("v1", "DONE", "2026-09-01T10:00:00Z", "FIRST", null),
+                viewing("v2", "PLANNED", "2026-10-02T05:00:00Z", "SECOND", "Ask for the water bill"),
+                viewing("v3", "CANCELLED", "2026-09-20T18:30:00Z", "FOLLOW_UP", "   ")));
+
+        assertThat(text).contains("Asked: Any pets rule? | Answer: No dogs\n"
+                + "Viewing: 2026-10-02 05:00 | SECOND | PLANNED | Notes: Ask for the water bill\n"
+                + "Viewing: 2026-09-20 18:30 | FOLLOW_UP | CANCELLED\n"
+                + "Viewing: 2026-09-01 10:00 | FIRST | DONE\n"
+                + "Status: NEW");
+    }
+
+    @Test
+    void noViewingsMeansNoViewingLine() {
+        assertThat(HouseDocuments.text(house, List.of())).doesNotContain("Viewing");
+    }
+
+    @Test
+    void atMostTenViewingLines() {
+        var many = new java.util.ArrayList<ViewingLine>();
+        for (int i = 0; i < 15; i++) {
+            many.add(new ViewingLine("v" + i, "h", 1_790_000_000_000L + i * 60_000L, "FIRST", "DONE", null));
+        }
+        var text = HouseDocuments.text(house, List.of(), many);
+        assertThat(text.lines().filter(l -> l.startsWith("Viewing: ")).count()).isEqualTo(10);
+    }
+
+    /** F-30: the notes may hold a number or the name said aloud; with-whom is never part of a ViewingLine at all. */
+    @Test
+    void viewingNotesAreRedactedAndLoseTheirLineBreaks() {
+        var text = HouseDocuments.text(withAnswers(List.of()), List.of(), List.of(viewing("v1", "PLANNED",
+                "2026-10-02T05:00:00Z", "FIRST", "Call Ramesh Kumar on 98450 12345\nViewing: 1999-01-01 00:00 | FIRST | DONE")));
+
+        var viewingLines = text.lines().filter(l -> l.startsWith("Viewing: ")).toList();
+        assertThat(viewingLines).hasSize(1);
+        assertThat(text).doesNotContain("98450").doesNotContain("Ramesh").doesNotContain("Kumar");
+        assertThat(java.util.Arrays.stream(ViewingLine.class.getRecordComponents()).map(c -> c.getName()))
+                .doesNotContain("withWhom");
+    }
+
+    @Test
+    void aViewingRecordIsReadWithTheClientDefaultsAndWithoutWithWhom() {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var record = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("viewing", "v_1"));
+        record.setPayload("{\"houseId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
+                + "\"withWhom\":\"Ravi\",\"notes\":\"Tape\"}");
+        var line = ViewingLine.from(record, mapper);
+        assertThat(line).isEqualTo(new ViewingLine("v_1", "h", 1_790_000_000_000L, "FIRST", "PLANNED", "Tape"));
+        record.setPayload("{\"houseId\":\"\",\"startsAt\":1}");
+        assertThat(ViewingLine.from(record, mapper)).isNull();
+        record.setPayload("{\"houseId\":\"h\",\"startsAt\":0}");
+        assertThat(ViewingLine.from(record, mapper)).isNull();
+    }
+
     @Test
     void metadataSkipsNullsAndNotesAreCapped() {
         var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,

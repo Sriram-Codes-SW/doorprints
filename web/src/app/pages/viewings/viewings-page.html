@@ -1,0 +1,151 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <p><a routerLink="/data">{{ 'viewings.back' | t }}</a></p>
+    <h1>{{ 'viewings.title' | t }}</h1>
+    <p class="muted">{{ 'viewings.intro' | t }}</p>
+    <p>
+      <a class="btn btn-primary" routerLink="/viewings/new" [queryParams]="houseId ? { houseId: houseId } : {}">{{ 'viewings.plan' | t }}</a>
+    </p>
+  </header>
+
+  @if (error(); as card) {
+    <div class="error">
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+      <div class="err-actions">
+        <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (actionError(); as failure) {
+    <div class="error"><span role="alert">{{ failure.key | t: failure.params }}</span></div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else {
+    <section class="card filters" aria-label="{{ 'viewings.search' | t }}">
+      <div class="field grow">
+        <label for="viewings-search">{{ 'viewings.search' | t }}</label>
+        <input id="viewings-search" name="query" type="search" [(ngModel)]="query" (ngModelChange)="touchFilters()" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="viewings-from">{{ 'viewings.filterFrom' | t }}</label>
+        <input id="viewings-from" name="from" type="date" [(ngModel)]="from" (ngModelChange)="touchFilters()" />
+      </div>
+      <div class="field">
+        <label for="viewings-to">{{ 'viewings.filterTo' | t }}</label>
+        <input id="viewings-to" name="to" type="date" [(ngModel)]="to" (ngModelChange)="touchFilters()" />
+      </div>
+      <div class="field">
+        <label for="viewings-kind">{{ 'viewings.filterKind' | t }}</label>
+        <select id="viewings-kind" name="kind" [(ngModel)]="kind" (ngModelChange)="touchFilters()">
+          <option value="">{{ 'viewings.filterAny' | t }}</option>
+          @for (k of kinds; track k) {
+            <option [value]="k">{{ kindKey(k) | t }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="viewings-status">{{ 'viewings.filterStatus' | t }}</label>
+        <select id="viewings-status" name="status" [(ngModel)]="status" (ngModelChange)="touchFilters()">
+          <option value="">{{ 'viewings.filterAny' | t }}</option>
+          @for (s of statuses; track s) {
+            <option [value]="s">{{ statusKey(s) | t }}</option>
+          }
+        </select>
+      </div>
+      @if (houseId) {
+        <p id="viewings-house-filter" class="muted grow">{{ 'viewings.forHouse' | t: { name: filterHouseName() } }}</p>
+      }
+      @if (filtering()) {
+        <button type="button" class="btn btn-sm" (click)="clearFilters()">{{ 'viewings.clearFilters' | t }}</button>
+      }
+    </section>
+
+    @for (section of sections(); track section.key) {
+      <section [attr.aria-labelledby]="'viewings-group-' + section.key">
+        <h2 [id]="'viewings-group-' + section.key">{{ section.heading | t }}</h2>
+        <ul class="list">
+          @for (v of section.rows; track v.id) {
+            <li class="card viewing" [attr.data-status]="v.status">
+              <a
+                class="row-link"
+                [routerLink]="['/viewings', v.id]"
+                [attr.aria-label]="'viewings.rowAria' | t: { name: houseName(v), when: when(v) }"
+              >
+                <b class="when">{{ when(v) }}</b>
+                <span class="house" [class.gone]="!houses().has(v.houseId)">{{ houseName(v) }}</span>
+                <span class="meta">
+                  <span class="tag">{{ kindKey(v.kind) | t }}</span>
+                  <span class="tag">{{ statusKey(v.status) | t }}</span>
+                  @if (v.withWhom) {
+                    <span class="muted">{{ 'viewings.with' | t: { who: v.withWhom } }}</span>
+                  }
+                </span>
+                @if (v.notes) {
+                  <span class="muted notes">{{ preview(v.notes) }}</span>
+                }
+              </a>
+              @if (section.key === 'missed') {
+                <div class="actions">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary"
+                    [attr.aria-label]="'viewings.happenedAria' | t: { name: houseName(v), when: when(v) }"
+                    (click)="happened(v)"
+                  >
+                    {{ 'viewings.happened' | t }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    [attr.aria-label]="'viewings.cancelAria' | t: { name: houseName(v), when: when(v) }"
+                    (click)="cancel(v)"
+                  >
+                    {{ 'viewings.cancelRow' | t }}
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    } @empty {
+      <p id="viewings-empty" class="muted">{{ (filtering() ? 'viewings.noMatch' : 'viewings.empty') | t }}</p>
+    }
+  }
+
+  <app-second-viewing-prompt
+    [houseId]="promptFor()?.id ?? ''"
+    [houseName]="promptFor()?.name ?? ''"
+    [open]="promptFor() !== null"
+    (closed)="promptFor.set(null)"
+  />
+</div>

@@ -43,6 +43,7 @@ import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportCriterion
 import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ExportQuestion
+import app.doorprints.shared.export.ExportViewing
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
@@ -61,6 +62,11 @@ import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.QuestionType
+import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.ViewingStatus
+import app.doorprints.shared.model.ViewingType
+import app.doorprints.shared.model.Viewings
+import app.doorprints.shared.ai.AiViewing
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordLimitException
@@ -456,6 +462,48 @@ open class CommonRepository(
         saveHouse(house.copy(answers = answers))
     }
 
+    // ---- Viewings (docs/11 5.8, slice 3b-1) ----
+
+    /** A viewing row with its id, coerced; null when the payload does not decode or cannot be trusted (skipped). */
+    private fun RecordEntity.toViewing(): Viewing? = decode(ViewingType)?.copy(id = id)?.coerced()
+
+    private fun viewingsOf(rows: List<RecordEntity>): List<Viewing> =
+        rows.mapNotNull { it.toViewing() }.sortedWith(Viewing.ORDER)
+
+    override fun observeViewings(): Flow<List<Viewing>> = db.records().byType(ViewingType.name).map(::viewingsOf)
+
+    override suspend fun viewings(): List<Viewing> = viewingsOf(db.records().listByType(ViewingType.name))
+
+    override suspend fun viewingsOf(houseId: String): List<Viewing> = viewings().filter { it.houseId == houseId }
+
+    override suspend fun nextViewing(houseId: String, nowMs: Long): Viewing? = Viewings.nextOf(viewings(), houseId, nowMs)
+
+    override suspend fun getViewing(id: String): Viewing? =
+        db.records().get(ViewingType.name, id)?.takeUnless { it.deleted }?.toViewing()
+
+    override suspend fun saveViewing(viewing: Viewing) {
+        val clean = requireNotNull(viewing.coerced()) { "a viewing needs a record id, a house and a start time" }
+        db.withImmediateTransaction {
+            val stored = db.records().get(ViewingType.name, clean.id)?.takeUnless { it.deleted }?.toViewing()
+            // Nothing new: no write, so the record keeps its stamp and is not pushed again.
+            if (stored == clean) return@withImmediateTransaction
+            saveRecord(ViewingType, clean.id, clean)
+        }
+    }
+
+    override suspend fun newViewingId(): String {
+        // A tombstone's id is taken too: reusing it would bring the old viewing back on another device.
+        val used = db.records().versions(ViewingType.name).mapTo(HashSet()) { it.id }
+        return Viewing.newId({ it in used })
+    }
+
+    override suspend fun deleteViewing(id: String) = deleteRecord(ViewingType, id)
+
+    override suspend fun markViewingDone(id: String, visitId: String?) {
+        val viewing = getViewing(id) ?: return
+        saveViewing(viewing.copy(status = ViewingStatus.DONE.name, visitId = visitId ?: viewing.visitId))
+    }
+
     /**
      * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house
      * with a phone number and no broker joins the broker of that number (`PhoneKey`; a number too short to compare
@@ -665,6 +713,7 @@ open class CommonRepository(
     /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
     private suspend fun aiHouses(): List<AiHouse> {
         val visits = db.visits().all().groupBy { it.houseId }
+        val viewings = viewings().groupBy { it.houseId }
         return db.houses().all().sortedByDescending { it.updatedAt }.map { h ->
             AiHouse(
                 id = h.id, label = h.label, address = h.address, street = h.street, locality = h.locality,
@@ -673,6 +722,7 @@ open class CommonRepository(
                 listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, rooms = h.rooms,
                 answers = h.answers, checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
+                viewings = viewings[h.id].orEmpty().map { AiViewing(it.id, it.startsAt, it.kind, it.status, it.notes) },
             )
         }
     }
@@ -929,6 +979,10 @@ open class CommonRepository(
             questions = db.records().listByType(QuestionType.name)
                 .mapNotNull { row -> row.toQuestion()?.let { ExportQuestion.of(it, row.updatedAt) } }
                 .take(Question.MAX_QUESTIONS),
+            // The viewings (slice 3b-1): untrusted rows are skipped, so the copy's own check accepts what it writes.
+            viewings = db.records().listByType(ViewingType.name)
+                .mapNotNull { row -> row.toViewing()?.let { ExportViewing.of(it, row.updatedAt) } }
+                .take(Viewing.MAX_VIEWINGS),
         )
     }
 
@@ -958,6 +1012,7 @@ open class CommonRepository(
             db.records().versions(CriterionType.name).associate { it.id to it.updatedAt },
             db.records().versions(PreferenceType.name).associate { it.id to it.updatedAt },
             db.records().versions(QuestionType.name).associate { it.id to it.updatedAt },
+            db.records().versions(ViewingType.name).associate { it.id to it.updatedAt },
         )
     }
 
@@ -1036,7 +1091,7 @@ open class CommonRepository(
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
         val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
-            actions.criteria.size + actions.preferences.size + actions.questions.size
+            actions.criteria.size + actions.preferences.size + actions.questions.size + actions.viewings.size
         var done = 0
         var houses = 0
         var visits = 0
@@ -1063,6 +1118,11 @@ open class CommonRepository(
         // The question bank (slice 3a), by id with the file's `updatedAt`, like the criteria.
         for (q in actions.questions) {
             db.records().upsert(importedQuestion(q, q.updatedAt))
+            onProgress(++done, total)
+        }
+        // The viewings (slice 3b-1), by id with the file's `updatedAt`: a newer row brings back one deleted here.
+        for (v in actions.viewings) {
+            db.records().upsert(importedViewing(v, v.updatedAt))
             onProgress(++done, total)
         }
         for (house in actions.houses) {
@@ -1128,6 +1188,7 @@ open class CommonRepository(
             criteria = actions.criteria.size,
             preferences = actions.preferences.size,
             questions = actions.questions.size,
+            viewings = actions.viewings.size,
         )
         if (result.rows > 0) syncSoon()
         result
@@ -1150,6 +1211,13 @@ open class CommonRepository(
     private fun importedQuestion(q: ExportQuestion, updatedAt: Long): RecordEntity = RecordEntity(
         type = QuestionType.name, id = q.id,
         payload = QuestionType.encode(checkNotNull(q.toQuestion().coerced()) { "question ${q.id} was not checked" }),
+        updatedAt = updatedAt, deleted = false, dirty = true,
+    )
+
+    /** A backup's viewing as its record row: coerced (the plan checked it), dirty so it is pushed. */
+    private fun importedViewing(v: ExportViewing, updatedAt: Long): RecordEntity = RecordEntity(
+        type = ViewingType.name, id = v.id,
+        payload = ViewingType.encode(checkNotNull(v.toViewing().coerced()) { "viewing ${v.id} was not checked" }),
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
@@ -1183,7 +1251,7 @@ open class CommonRepository(
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult {
         val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
-            actions.criteria.size + actions.preferences.size + actions.questions.size
+            actions.criteria.size + actions.preferences.size + actions.questions.size + actions.viewings.size
         var done = 0
         var skipped = 0
         // In copy mode every photo belongs to a house of this import (ImportPlan maps it to the house's new id);
@@ -1244,6 +1312,10 @@ open class CommonRepository(
                     copiedVisits[row.id] = row.updatedAt
                     onProgress(++done, total)
                 }
+                for (v in actions.viewings) {
+                    db.records().upsert(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
+                    onProgress(++done, total)
+                }
                 for (row in photoRows) db.photos().upsert(row)
             }
         } catch (e: Throwable) {
@@ -1259,6 +1331,7 @@ open class CommonRepository(
             criteria = actions.criteria.size,
             preferences = actions.preferences.size,
             questions = actions.questions.size,
+            viewings = actions.viewings.size,
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },

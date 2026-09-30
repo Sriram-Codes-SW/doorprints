@@ -57,7 +57,7 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>checklist keys alphabetically ({@link TreeMap});</li>
  *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when the copy has a broker, a
  *       room, a criterion, a preference, a question or a house with answers.</li>
- *   <li>questions by {@code updatedAt}, then {@code id}.</li>
+ *   <li>questions by {@code updatedAt}, then {@code id}; viewings the same, and a live viewing makes the copy {@code /2}.</li>
  * </ul>
  *
  * <p>Tombstones are never exported; callers pass live rows only.
@@ -86,6 +86,9 @@ final class BackupMapper {
     private static final Comparator<BackupQuestion> QUESTION_ORDER =
             Comparator.comparing(BackupQuestion::updatedAt).thenComparing(BackupQuestion::id);
 
+    private static final Comparator<BackupViewing> VIEWING_ORDER =
+            Comparator.comparing(BackupViewing::updatedAt).thenComparing(BackupViewing::id);
+
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos, Instant exportedAt) {
         return toBackup(houses, visits, photos, List.of(), List.of(), List.of(), null, exportedAt);
     }
@@ -102,6 +105,15 @@ final class BackupMapper {
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
                                List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
                                List<Record> questionRecords, ObjectMapper json, Instant exportedAt) {
+        return toBackup(houses, visits, photos, brokerRecords, criterionRecords, preferenceRecords, questionRecords,
+                List.of(), json, exportedAt);
+    }
+
+    /** As above, with the live {@code viewing} records (slice 3b-1). */
+    static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
+                               List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
+                               List<Record> questionRecords, List<Record> viewingRecords, ObjectMapper json,
+                               Instant exportedAt) {
         var liveHouses = houses.stream().filter(h -> !h.isDeleted()).sorted(HOUSE_ORDER).toList();
         var houseOrder = new LinkedHashSet<UUID>();
         for (var house : liveHouses) houseOrder.add(house.getId());
@@ -121,10 +133,13 @@ final class BackupMapper {
         var questions = questionRecords.stream().filter(r -> !r.isDeleted()).map(r -> question(r, json))
                 .filter(java.util.Objects::nonNull).sorted(QUESTION_ORDER).toList();
 
+        var viewings = viewingRecords.stream().filter(r -> !r.isDeleted()).map(r -> viewing(r, json))
+                .filter(java.util.Objects::nonNull).sorted(VIEWING_ORDER).toList();
+
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, or a house with answers; else /1.
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
-                || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty()
+                || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
                 || backupHouses.stream().anyMatch(h -> h.answers() != null);
 
         return new BackupData(
@@ -138,7 +153,8 @@ final class BackupMapper {
                 brokers,
                 criteria,
                 preferences,
-                questions);
+                questions,
+                viewings);
     }
 
     /**
@@ -250,6 +266,38 @@ final class BackupMapper {
                 sort.isInt() && sort.asInt() >= 0 ? sort.asInt() : 0,
                 archived.isBoolean() && archived.asBoolean() ? true : null,
                 r.getUpdatedAt().toEpochMilli());
+    }
+
+    /**
+     * A viewing record as a backup row. The server never reads inside a record, so a client may have stored anything:
+     * a payload without a usable house or start time is left out, and a field of the wrong type or outside its range
+     * is read as the clients read it (duration 30, kind FIRST, status PLANNED, reminder 60; a text past its limit is
+     * dropped), so that the export always imports again.
+     */
+    private static BackupViewing viewing(Record r, ObjectMapper json) {
+        JsonNode p;
+        try {
+            p = json.readTree(r.getPayload());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        var houseId = text(p, "houseId", BackupViewing.MAX_REF);
+        var startsAt = p.path("startsAt");
+        if (houseId == null || houseId.isBlank() || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
+        var duration = p.path("durationMin");
+        var kind = p.path("kind");
+        var status = p.path("status");
+        var remind = p.path("remindMin");
+        var hunt = p.path("huntReminder");
+        return new BackupViewing(r.getKey().id(), houseId, startsAt.asLong(),
+                duration.isInt() && duration.asInt() >= BackupViewing.MIN_DURATION
+                        && duration.asInt() <= BackupViewing.MAX_DURATION ? duration.asInt() : BackupViewing.DEFAULT_DURATION,
+                kind.isString() && BackupViewing.KINDS.contains(kind.asString()) ? kind.asString() : "FIRST",
+                status.isString() && BackupViewing.STATUSES.contains(status.asString()) ? status.asString() : "PLANNED",
+                remind.isInt() && BackupViewing.REMINDERS.contains(remind.asInt()) ? remind.asInt() : 60,
+                hunt.isBoolean() && hunt.asBoolean() ? true : null,
+                text(p, "withWhom", BackupViewing.MAX_WITH_WHOM), text(p, "notes", BackupViewing.MAX_NOTES),
+                text(p, "visitId", BackupViewing.MAX_REF), r.getUpdatedAt().toEpochMilli());
     }
 
     private static String text(JsonNode payload, String key, int max) {
