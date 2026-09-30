@@ -321,13 +321,14 @@ export const STATUS_ICON: Readonly<Record<HouseStatus, string>> = {
 
 /**
  * Marker colours on the (light) map tiles. All reach at least 5:1 against white; SHORTLISTED was
- * darkened from #1F8A4C (4.38:1) to #1A7A43 (5.37:1). Keep in sync with --status-* in styles.css.
+ * darkened from #1F8A4C (4.38:1) to #1A7A43 (5.37:1). TAKEN (amber, 5.93:1) and NOT_CHOSEN (grey, 5.55:1) came with
+ * slice 5; neither is the path trace's purple. Keep in sync with --status-* in styles.css.
  */
 export const STATUS_COLOR: Readonly<Record<HouseStatus, string>> = {
   NEW: '#3C5A99',
   SHORTLISTED: '#1A7A43',
   REJECTED: '#B3261E',
-  TAKEN: '#6A1B9A',
+  TAKEN: '#8A5A00',
   NOT_CHOSEN: '#5F6B66',
 };
 
