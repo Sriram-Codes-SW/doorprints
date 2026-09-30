@@ -23,3 +23,6 @@
 
 /* S4b-BL-96, under review. */
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Doorprints आपकी जगह का इस्तेमाल सहेजे गए मकानों की जगह दर्ज करने, आपकी जगह से दौरों की योजना बनाने और, हंट मोड चालू होने पर, सहेजे मकान के पास से गुज़रने पर आपको बताने के लिए करता है। मेरे खोज वाले इलाक़ों में मुझे जगाएँ चालू होने पर, iOS Doorprints को यह भी बताता है कि आप अपने किसी इलाक़े में पहुँचे हैं, ताकि वह हंट मोड का सुझाव दे सके। Doorprints जगह का कोई इतिहास नहीं रखता।";
+
+/* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes), under review. */
+"Doorprints backup" = "Doorprints बैकअप";

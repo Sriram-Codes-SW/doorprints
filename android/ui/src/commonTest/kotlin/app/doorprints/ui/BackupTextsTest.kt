@@ -58,5 +58,8 @@ class BackupTextsTest {
     fun aCacheCopyIsReadyToShareAndAPickedDocumentIsSaved() {
         assertTrue(isShareCopy("/data/user/0/app.doorprints/cache/exports/Doorprints-2026-09-22.html"))
         assertFalse(isShareCopy("content://com.android.providers.downloads.documents/document/msf%3A1000001234"))
+        // The iPhone (S4b-BL-81): a share copy in tmp/, and the Files app's destination of a saved one.
+        assertTrue(isShareCopy("/private/var/mobile/Containers/Data/Application/X/tmp/exports/share/Doorprints-2026-09-22.html"))
+        assertFalse(isShareCopy("file:///private/var/mobile/Library/Mobile%20Documents/Doorprints-2026-09-22.html"))
     }
 }

@@ -107,11 +107,17 @@ private val UUID_PATTERN = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
 private fun isUuid(value: String): Boolean = UUID_PATTERN.matches(value)
 
 /**
- * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code): the
- * Swift app's `onOpenURL` hands it over as `MainViewControllerKt.handleOpenUrl(url:)`. Only a checked connect link is
- * acted on ([ConnectLink.parse]); the app then asks before connecting. Returns whether it was one. Main thread.
+ * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code), or a
+ * backup or update file another app opened in Doorprints (S4b-BL-81: the document types in Info.plist; iOS hands over
+ * a copy in `Documents/Inbox`): the Swift app's `onOpenURL` hands it over as `MainViewControllerKt.handleOpenUrl(url:)`.
+ * Only a checked connect link is acted on ([ConnectLink.parse]); the app then asks before connecting. A file opens the
+ * Import screen with it picked, which checks it as any picked file. Returns whether it was either. Main thread.
  */
 fun handleOpenUrl(url: String): Boolean {
+    if (url.startsWith("file://")) {
+        iosDeepLinks.value = DeepLink.ImportFile(url)
+        return true
+    }
     val link = ConnectLink.parse(url) ?: return false
     iosDeepLinks.value = DeepLink.Connect(link)
     return true
