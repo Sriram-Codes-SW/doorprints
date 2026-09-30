@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.39 |
+| Version | 0.40 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -51,6 +51,7 @@
 | 0.37 | 2026-09-30 | Claude (Code), lead | 5.6 and 5.30 **slice 1c built** (rooms, [10](10-sprint-log.md) §13.21): rooms nested in the house, the length units, the `/2` rule now "a broker or a room". |
 | 0.38 | 2026-09-30 | Claude (Code), lead | 5.4 and 5.30 **slice 2 built** (criteria and ranking, [10](10-sprint-log.md) §13.22): criteria and preferences as records, one scoring implementation per stack, the *Criteria* screen, the ranking. |
 | 0.39 | 2026-09-30 | Claude (Code), lead | 5.5 and 5.30 **slice 3a built** (viewing questions, [10](10-sprint-log.md) §13.23); slice 3 is split into 3a questions, 3b viewings with reminders, 3c Hunt reminders. |
+| 0.40 | 2026-09-30 | Claude (Code), lead | **Slice 3b designed** (5.8 viewings, [10](10-sprint-log.md) §13.24): the `viewing` record, the split into 3b-1 (data, screens, history, calendar file, backup, copies, server) and 3b-2 (the reminders on Android, iPhone and the website), the pure reminder rules, the vectors V1..V6. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -328,6 +329,22 @@ A `roomId` that no longer exists is shown as "untagged" (no foreign key, so phot
 | Calendar | Android `ACTION_INSERT` into `CalendarContract` (no permission); PWA `.ics`. |
 | Second viewing | After DONE: "Book a second viewing?" with a re-check list (open questions, criteria scored ≤ 2, photos tagged PROBLEM). |
 | History | "Viewings" screen: timeline of visits and viewings; search (house label, street, locality, visit notes, answers); filters (date, kind, status). |
+
+**Design of 2026-09-30 (slice 3b of 5.30; [10](10-sprint-log.md) §13.24).** Decisions taken before building:
+
+| Item | Decision |
+|---|---|
+| Storage | A `viewing` is a record (ADR-28: type `viewing`, `id` `v_` plus eight hex, the app's own key). Payload keys in this order: `houseId` (required; may dangle, shown as "a house that is gone"), `startsAt` (epoch ms), `durationMin` (5..480, default 30), `kind` (`FIRST`, `SECOND`, `FOLLOW_UP`), `status` (`PLANNED`, `DONE`, `CANCELLED`), `remindMin` (0, 15, 30, 60, 120, 1440; default 60; 0 is none), `huntReminder` (boolean, default false; used by 3c), `withWhom` (0..200, contact data), `notes` (0..2000), `visitId` (optional, the visit that made it DONE). At most 5,000 live viewings (the record cap); a house may have any number. |
+| MISSED | Not stored. A PLANNED viewing that ended more than 2 hours ago shows as "Missed?" with the buttons *It happened* (DONE) and *Cancel*; nothing writes it by itself, so two devices never fight over it. The enum in the file is `PLANNED`, `DONE`, `CANCELLED`; an unknown status reads as PLANNED. |
+| Link to visits | A visit at the house within 2 hours of a PLANNED viewing offers *Mark viewing done* (sets `status` DONE and `visitId`). `Visit.viewingId` is **not** added: the link is one way, from the viewing, so visits stay as they are and no visit migration is needed. |
+| Second viewing | After DONE: *Book a second viewing?* opens the form with `kind` SECOND and the house; the re-check list is the house's open questions, its criteria scored 2 or less, and (when 5.7 exists) its PROBLEM photos. |
+| Screens | *Viewings* (Settings on Android, a page on the website; also a card on the house screen: next viewing, *Plan a viewing*): the timeline of planned, done and cancelled viewings with filters (date range, kind, status) and search over house label, street, locality, `withWhom`, `notes`. The form: house, date and time (the phone's locale, 24 h or 12 h), duration, kind, reminder, Hunt reminder switch (hidden until 3c), with whom, notes. |
+| Calendar | Android `ACTION_INSERT` on `CalendarContract.Events` (no permission); the website and the iPhone share a `.ics` file per viewing (one `VEVENT`, `UID` = `<id>@doorprints`, `DTSTAMP`, `DTSTART`, `DTEND`, `SUMMARY` "Viewing: <house>", `LOCATION` the address when known, `DESCRIPTION` the notes without `withWhom`, one `VALARM` `-PT<remindMin>M` when `remindMin` > 0; UTC times, CRLF lines, lines folded at 75 octets, text escaped). |
+| Reminders | **3b-2.** Pure rules in `:shared` and the website: `ViewingReminders.nextAt(startsAt, remindMin) = startsAt - remindMin minutes`; a viewing that is not PLANNED, or whose time has passed, has none; the reminders to schedule are the next 60 by time (iOS keeps 64 pending notifications). Android: `AlarmManager` as in 5.16 (exact when allowed, otherwise the early window), rescheduled on boot, time and time-zone change, app update and every edit; actions *Open house*, *Directions*, *Questions*; private lock-screen version. iPhone: `UNUserNotificationCenter` calendar triggers, rescheduled on every start and edit (needs the notification permission, asked at the first reminder, never at start-up). Website: the *Upcoming* list, the `.ics` and a notification while the app is open. The words of the reminder never carry `withWhom`. |
+| Backup and copies | A `viewings` list after `questions` in `doorprints-backup/2` (a copy with a viewing is `/2`); `withWhom` is blanked in a copy made without contact details, the rest is kept. Copies: a Viewings table on each house page, `viewings.csv`, a Viewings sheet; the AI documents carry "Viewing: date, kind, status, notes" (no `withWhom`, contact details redacted). |
+| Server | Nothing new: `viewing` is a record type of `/api/records`, plus validation in the backup import (same style as `question`). |
+| Slices | **3b-1** the record, screens, history, calendar file and insert, backup, copies, AI, search, server. **3b-2** the reminders on the three platforms and the Settings words. **3c** the Hunt reminder (5.16). |
+| Vectors | V1 `nextAt` for 60 min before 10:00 is 09:00; V2 `remindMin` 0 gives none; V3 a CANCELLED or DONE viewing gives none; V4 a past viewing gives none; V5 the pending list keeps the earliest 60 of 70; V6 the `.ics` of a fixed viewing equals `docs/schemas/viewing-sample.ics` byte for byte. |
 
 ### 5.9 Share to Doorprints: *Add a shared listing* (Indian portals)
 
