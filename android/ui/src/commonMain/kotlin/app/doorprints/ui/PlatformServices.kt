@@ -70,6 +70,15 @@ interface PlatformServices {
     /** Opens the web link [url] in the browser; false when no app can open it. */
     fun openUrl(url: String): Boolean
 
+    /** True where [addToCalendar] can hand an event to the phone's calendar app (Android; the iPhone shares a `.ics` in 3b-2). */
+    val canAddToCalendar: Boolean get() = false
+
+    /**
+     * Opens the phone's calendar app on a new event filled from [event] (Android: `ACTION_INSERT` on
+     * `CalendarContract.Events`, no permission: the person saves it there); false when no app can take it.
+     */
+    fun addToCalendar(event: CalendarEvent): Boolean = false
+
     /**
      * This phone's name on the server's owner page when it connects by code or QR code (docs/03 §12.1), such as
      * "Pixel 9 (Android app)", so the owner recognises it before approving.
@@ -102,3 +111,12 @@ interface PlatformServices {
 val LocalPlatformServices = staticCompositionLocalOf<PlatformServices> {
     error("No PlatformServices: wrap the content in ProvidePlatformServices")
 }
+
+/** A viewing as the phone's calendar gets it ([PlatformServices.addToCalendar]): never `withWhom` (contact data). */
+data class CalendarEvent(
+    val title: String,
+    val beginMillis: Long,
+    val endMillis: Long,
+    val location: String? = null,
+    val description: String? = null,
+)

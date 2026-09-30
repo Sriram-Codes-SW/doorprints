@@ -114,13 +114,13 @@ function maybeMoney(value: number | null | undefined): Cell {
  * `name` is language-neutral (the CSV file name and the sheet name); `title` is the translated heading.
  */
 export interface ExportTable {
-  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms' | 'criteria' | 'answers';
+  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms' | 'criteria' | 'answers' | 'viewings';
   readonly title: string;
   readonly columns: readonly string[];
   readonly rows: readonly (readonly Cell[])[];
 }
 
-/** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c), criteria (slice 2) and answers (3a) when it has them. */
+/** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c), criteria (slice 2) answers (3a) and viewings (3b-1) when it has them. */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
   const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
   if (bundle.brokers.length > 0) tables.push(brokersTable(bundle));
@@ -129,6 +129,8 @@ export function exportTables(bundle: ExportBundle): ExportTable[] {
   if (bundle.criteria.length > 0) tables.push(criteriaTable(bundle));
   // Slice 3a: the answers of the houses of the copy; the question bank is settings and travels in the backup only.
   if (bundle.houses.some((h) => h.answers.length > 0)) tables.push(answersTable(bundle));
+  // Slice 3b-1: the viewings of the copy (a viewing of a house that is gone included in a copy of every house).
+  if (bundle.viewings.length > 0) tables.push(viewingsTable(bundle));
   return tables;
 }
 
@@ -606,6 +608,67 @@ export function answersTable(bundle: ExportBundle): ExportTable {
     }
   }
   return { name: 'answers', title: s.get('table.answers'), columns, rows };
+}
+
+/** Display columns of the Viewings section in HTML/Markdown: when, kind, status, notes, and with whom (only with contact details). */
+export function viewingDisplayColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  return [s.get('col.when'), s.get('col.kind'), s.get('col.status'), s.get('col.notes'), ...(bundle.options.includeContacts ? [s.get('col.withWhom')] : [])];
+}
+
+/**
+ * The rows of a house's Viewings section (HTML, Markdown, PDF): date and time (UTC like the other dates), kind and status
+ * translated, the notes ("–" when empty) and, only with contact details, with whom. In the order `ExportHouse.viewings`
+ * holds them: upcoming PLANNED first, then the rest newest first. Empty when the house has no viewing.
+ */
+export function viewingCells(house: ExportHouse, strings: ExportStrings, includeContacts: boolean): string[][] {
+  return house.viewings.map((v) => [
+    utcDateTime(v.startsAt),
+    strings.viewingKind(v.kind),
+    strings.viewingStatus(v.status),
+    v.notes ? v.notes : '–',
+    ...(includeContacts ? [v.withWhom ? v.withWhom : '–'] : []),
+  ]);
+}
+
+/**
+ * The Viewings table for CSV/XLSX (slice 3b-1): house (label, blank when the house is gone), when, duration, kind,
+ * status, reminder minutes, with whom (blank without contact details), notes, then the house, viewing and visit ids.
+ * By `startsAt`, then id.
+ */
+export function viewingsTable(bundle: ExportBundle): ExportTable {
+  const s = stringsOf(bundle);
+  const columns = [
+    s.get('col.house'),
+    s.get('col.when'),
+    s.get('col.durationMin'),
+    s.get('col.kind'),
+    s.get('col.status'),
+    s.get('col.remindMin'),
+    s.get('col.withWhom'),
+    s.get('col.notes'),
+    s.get('col.houseId'),
+    s.get('col.id'),
+    s.get('col.visitId'),
+  ];
+  const labels = new Map(bundle.houses.map((h) => [h.house.id, h.house.label]));
+  const rows = bundle.viewings
+    .map((r) => r.viewing)
+    .sort((a, b) => a.startsAt - b.startsAt || compare(a.id, b.id))
+    .map((v) => [
+      maybeText(labels.get(v.houseId)),
+      cellStamp(v.startsAt),
+      cellCount(v.durationMin),
+      cellText(s.viewingKind(v.kind)),
+      cellText(s.viewingStatus(v.status)),
+      cellCount(v.remindMin),
+      bundle.options.includeContacts ? maybeText(v.withWhom) : BLANK,
+      maybeText(v.notes),
+      cellText(v.houseId),
+      cellText(v.id),
+      maybeText(v.visitId),
+    ]);
+  return { name: 'viewings', title: s.get('table.viewings'), columns, rows };
 }
 
 function compare(a: string, b: string): number {

@@ -75,7 +75,7 @@ import java.util.UUID;
  *   <li><b>Brokers are records.</b> The {@code brokers} list of a {@code /2} file is merged into the {@code record}
  *       table as type {@code broker} (payload: name, phone, agency, feeTerms, notes, rating), by id, last write wins
  *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
- *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker, question, criterion or preference exists or a live house has rooms or answers.</li>
+ *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker, question, viewing, criterion or preference exists or a live house has rooms or answers.</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
  *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
@@ -150,6 +150,7 @@ public class BackupService {
                 records.findByKeyTypeAndDeletedFalse(BackupCriterion.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupPreference.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupQuestion.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupViewing.TYPE),
                 json, clock.now());
     }
 
@@ -214,13 +215,18 @@ public class BackupService {
         var questionTally = new Tally();
         for (var row : data.questions()) questionTally.count(mergeQuestion(row, dryRun, liveQuestions, rowProblems));
 
+        // Viewings (slice 3b-1) merge after the questions; a viewing's house is not checked (it may be gone).
+        var liveViewings = new long[]{records.countByKeyTypeAndDeletedFalse(BackupViewing.TYPE)};
+        var viewingTally = new Tally();
+        for (var row : data.viewings()) viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems));
+
         publishChanges(changedHouses, fileNotes, dryRun);
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
         var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
                 photoTally.toEntity(), brokerTally.toEntity(), criterionTally.toEntity(), preferenceTally.toEntity(),
-                questionTally.toEntity(), List.copyOf(reported));
+                questionTally.toEntity(), viewingTally.toEntity(), List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
                     report.houses(), report.visits());
@@ -464,6 +470,47 @@ public class BackupService {
         return outcome;
     }
 
+    /**
+     * A viewing as a {@code viewing} record: payload keys in the format's order, {@code huntReminder} only when true,
+     * {@code withWhom}, {@code notes} and {@code visitId} only when set. A problem line never carries the row's text.
+     */
+    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems) {
+        var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "viewings.updatedAt");
+        var key = new RecordKey(BackupViewing.TYPE, row.id());
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        var becomesLive = existing == null || existing.isDeleted();
+        if (becomesLive) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("a viewing was skipped, this server holds the most viewings it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+
+        var payload = json.createObjectNode();
+        payload.put("houseId", row.houseId());
+        payload.put("startsAt", row.startsAt());
+        payload.put("durationMin", row.durationMin() == null ? BackupViewing.DEFAULT_DURATION : row.durationMin());
+        payload.put("kind", row.kind() == null ? "FIRST" : row.kind());
+        payload.put("status", row.status() == null ? "PLANNED" : row.status());
+        payload.put("remindMin", row.remindMin() == null ? 60 : row.remindMin());
+        if (Boolean.TRUE.equals(row.huntReminder())) payload.put("huntReminder", true);
+        if (row.withWhom() != null && !row.withWhom().isEmpty()) payload.put("withWhom", row.withWhom());
+        if (row.notes() != null && !row.notes().isEmpty()) payload.put("notes", row.notes());
+        if (row.visitId() != null && !row.visitId().isEmpty()) payload.put("visitId", row.visitId());
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payload.toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
+        return outcome;
+    }
+
     private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
         var existing = visits.findById(row.id()).orElse(null);
@@ -518,6 +565,7 @@ public class BackupService {
         validateCriteria(data.criteria(), problems);
         validatePreferences(data.preferences(), problems);
         validateQuestions(data.questions(), problems);
+        validateViewings(data.viewings(), problems);
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
@@ -750,6 +798,43 @@ public class BackupService {
         }
         require(rows.size() <= BackupQuestion.MAX,
                 "questions: at most " + BackupQuestion.MAX + " questions allowed, found " + rows.size(), problems);
+    }
+
+    /** A viewing's notes and "with whom" are the person's own, so a message names the row by its index, never by its content. */
+    private void validateViewings(List<BackupViewing> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "viewings[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            if (row.id() == null) {
+                problems.add(at + ".id is required");
+            } else if (!row.id().matches(RecordDto.ID_PATTERN)) {
+                problems.add(at + ".id is not a valid record id");
+            } else if (!seen.add(row.id())) {
+                problems.add(at + ".id appears twice");
+            }
+            require(row.houseId() != null && !row.houseId().isBlank(), at + ".houseId is required", problems);
+            maxLength(at + ".houseId", row.houseId(), BackupViewing.MAX_REF, problems);
+            require(row.startsAt() != null && row.startsAt() > 0, at + ".startsAt must be a positive time", problems);
+            require(row.durationMin() == null || (row.durationMin() >= BackupViewing.MIN_DURATION
+                    && row.durationMin() <= BackupViewing.MAX_DURATION),
+                    at + ".durationMin must be " + BackupViewing.MIN_DURATION + ".." + BackupViewing.MAX_DURATION, problems);
+            require(row.kind() == null || BackupViewing.KINDS.contains(row.kind()), at + ".kind is out of range", problems);
+            require(row.status() == null || BackupViewing.STATUSES.contains(row.status()),
+                    at + ".status is out of range", problems);
+            require(row.remindMin() == null || BackupViewing.REMINDERS.contains(row.remindMin()),
+                    at + ".remindMin is out of range", problems);
+            maxLength(at + ".withWhom", row.withWhom(), BackupViewing.MAX_WITH_WHOM, problems);
+            maxLength(at + ".notes", row.notes(), BackupViewing.MAX_NOTES, problems);
+            maxLength(at + ".visitId", row.visitId(), BackupViewing.MAX_REF, problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        require(rows.size() <= BackupViewing.MAX,
+                "viewings: at most " + BackupViewing.MAX + " viewings allowed, found " + rows.size(), problems);
     }
 
     private void requireId(String at, UUID id, Set<UUID> seen, List<String> problems) {

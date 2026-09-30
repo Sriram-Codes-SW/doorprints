@@ -346,7 +346,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(4569);
+    expect(new TextEncoder().encode(json).length).toBe(5120);
   });
 
   /**
@@ -407,10 +407,10 @@ describe('JSON backup', () => {
   it('counts the brokers in the manifest of a /2 copy only', () => {
     const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     expect(withBrokers).toContain('"format":"doorprints-backup/2"');
-    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3}');
+    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3,"viewings":2}');
     const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     // Criteria and preferences are not contacts: a copy without contact details keeps them, and their counts.
-    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3}');
+    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3,"viewings":2}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {
@@ -441,7 +441,7 @@ describe('shared ExportRows contract', () => {
   it('uses one column list for the CSV and the workbook', () => {
     const tables = exportTables(fixtureBundle());
     const sheets = buildWorkbook(fixtureBundle());
-    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms', 'criteria', 'answers']);
+    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms', 'criteria', 'answers', 'viewings']);
     sheets.forEach((sheet, i) => {
       expect(sheet.header).toEqual(tables[i].columns);
       expect(sheet.rows).toHaveLength(tables[i].rows.length);

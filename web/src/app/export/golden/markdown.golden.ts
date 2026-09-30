@@ -106,6 +106,13 @@ Rating counts for 40%
 | Is the terrace open to tenants? | – | Open |
 | How much is the maintenance per month, and what does it cover? | ₹2,500 a month; it covers the lift, water and security | Answered |
 
+### Viewings
+
+| When | Kind | Status | Notes | With whom |
+| --- | --- | --- | --- | --- |
+| 2026-09-27 09:30 | Second viewing | Planned | Ask for the water bill. Bring a tape; check the terrace, please. | – |
+| 2026-09-05 10:40 | First viewing | Done | – | Ravi Kumar |
+
 ### Checklist
 
 | Criterion | Score |

@@ -114,11 +114,24 @@ class BackupFieldsTest {
         assertEquals(model, model.filter { key -> rows.any { key in it } })
     }
 
+    /**
+     * The viewings (slice 3b-1): the optional keys (`huntReminder`, `withWhom`, `notes`, `visitId`) are spread over the
+     * two rows, so every row's keys are in the model's order and together (their union) they are all of the model's fields.
+     */
+    @Test
+    fun theSampleViewingsTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        val model = ExportViewing.serializer().descriptor.elementNames.toList()
+        val rows = sample.getValue("viewings").jsonArray.map { it.jsonObject.keys.toList() }
+        assertEquals(2, rows.size)
+        for (row in rows) assertEquals(model.filter { it in row }, row)
+        assertEquals(model, model.filter { key -> rows.any { key in it } })
+    }
+
     @Test
     fun theSamplePreferenceHasExactlyTheModelsFields() =
         assertEquals(ExportPreference.serializer().descriptor.elementNames.toList(), keysOf("preferences"))
 
-    /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers`, `questions` last. */
+    /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers`, `questions`, then `viewings` last. */
     @Test
     fun theSamplesTopLevelKeysAreTheModelsInItsOrder() =
         assertEquals(BackupData.serializer().descriptor.elementNames.toList(), sample.keys.toList())
@@ -137,6 +150,8 @@ class BackupFieldsTest {
         assertEquals(listOf(3, 2), listOf(questions, answers))
         assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, questions = questions))
         assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, answers = answers))
+        // Slice 3b-1: a viewing alone makes a `/2` file too.
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, viewings = sample.getValue("viewings").jsonArray.size))
         assertEquals("doorprints-backup/2", format)
     }
 }

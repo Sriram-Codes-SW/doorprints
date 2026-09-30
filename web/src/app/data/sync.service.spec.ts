@@ -531,6 +531,30 @@ describe('SyncService', () => {
       expect(sync.lastOutcome()?.pushed).toBe(2);
     });
 
+    /** Slice 3b-1: a viewing is a record of type `viewing`, so it rides the record sync unchanged. */
+    it('pushes a viewing as a record of type viewing, and pulls one back through the viewing reader', async () => {
+      const saved = await store.saveViewing(
+        { id: 'v_0a1b2c3d', houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape' },
+        Date.parse('2026-09-01T00:00:00.000Z'),
+      );
+      expect(saved.durationMin).toBe(45);
+      expect(await store.dirtyRecords()).toHaveLength(1);
+      await sync.syncNow(true);
+      expect(api.pushedRecords.map((r) => [r.type, r.id, r.deleted])).toEqual([['viewing', 'v_0a1b2c3d', false]]);
+      expect(api.pushedRecords[0].payload).toEqual({
+        houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
+      });
+      expect(await store.dirtyRecords()).toEqual([]);
+      await store.putRecordFromServer({
+        type: 'viewing', id: 'v_ffffffff', payload: { houseId: 'h-2', startsAt: 1790000000000, status: 'DONE' },
+        updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
+      });
+      expect((await store.viewings()).map((v) => [v.id, v.status, v.durationMin, v.kind])).toEqual([
+        ['v_ffffffff', 'DONE', 30, 'FIRST'],
+        ['v_0a1b2c3d', 'PLANNED', 45, 'SECOND'],
+      ]);
+    });
+
     it('stores the records the server sent, tombstones included, and keeps an edit made while the push was in flight', async () => {
       await store.putRecordFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
       await store.saveRecord('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));

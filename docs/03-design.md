@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.54 |
+| Version | 0.55 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -66,6 +66,7 @@
 | 0.52 | 2026-09-30 | Claude (Code), lead | Slice 1c of ADR-28 ([10](10-sprint-log.md) §13.21): `house.rooms jsonb` (Flyway V9) in §6.1 and `rooms` on `HouseDto` in §9; `GET /api/export` writes `/2` when the server holds a broker or a house with rooms. |
 | 0.53 | 2026-09-30 | Claude (Code), lead | Slice 2 of ADR-28 ([10](10-sprint-log.md) §13.22): criteria and preferences are `record` rows (types `criterion`, `preference`); no migration; `GET /api/export` writes them in the `/2` backup and `POST /api/import` stores them. |
 | 0.54 | 2026-09-30 | Claude (Code), lead | Slice 3a of ADR-28 ([10](10-sprint-log.md) §13.23): `house.answers jsonb` (Flyway V10) in §6.1 and `answers` on `HouseDto` in §9; questions are `record` rows of type `question`; `GET /api/export` writes `/2` when the server holds a question or a house with answers. |
+| 0.55 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 of ADR-28 ([10](10-sprint-log.md) §13.24): `viewing` is a record type; `/api/import` and `/api/export` carry a `viewings` list and write `/2` when the server holds a live viewing. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -814,7 +815,7 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 | GET | `/api/records` | `since` (long, required, ≥ 0), `type` (optional) | `RecordDto[]` | **New 2026-09-30** (ADR-28, [11](11-feature-parity-and-export-spec.md) 5.30): the change feed of every record type (or one), tombstones included, ordered by `syncVersion`. The server never reads a payload. |
 | PUT | `/api/records/{type}/{id}` | `RecordDto` JSON: `type` (`[a-z][a-zA-Z0-9]{0,39}`), `id` (`[A-Za-z0-9._-]{1,64}`), `payload` (a JSON object, at most 65,536 bytes compact; `{}` when `deleted`), `updatedAt`, `deleted` | `RecordDto` | LWW by `updatedAt`; path and body must agree (400); a record that becomes live beyond 5,000 live rows of its type is 409. |
 | DELETE | `/api/records/{type}/{id}` | - | 204 | Tombstone (payload `{}`) + new sync version; 404 if unknown. |
-| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos, records and AI index rows. `GET /api/export` writes `doorprints-backup/2` with a `brokers` list (from the `record` rows of type `broker`) when the server holds any, any house has rooms, or it holds a criterion, a preference or a question (`record` types `criterion`, `preference` and `question`), or a house has answers, and `POST /api/import` stores it. 428 without the exact header. Devices keep their local copies. |
+| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos, records and AI index rows. `GET /api/export` writes `doorprints-backup/2` with a `brokers` list (from the `record` rows of type `broker`) when the server holds any, any house has rooms, or it holds a criterion, a preference, a question or a viewing (`record` types `criterion`, `preference`, `question` and `viewing`), or a house has answers, and `POST /api/import` stores it. 428 without the exact header. Devices keep their local copies. |
 | GET | `/actuator/health` | - | `{"status":"UP"}` | **Public**, no details |
 | GET, POST | `/api/ai/status`, `/api/ai/extract-listing`, `/api/ai/ask`, `/api/ai/plan-visits`, `/api/ai/reindex` | see [ai/ai-design.md](ai/ai-design.md) §13 | | Same key; AI rate limit (except status); 404 when AI is off |
 | POST, GET | `/mcp` | MCP Streamable HTTP | | Off by default; same key (or Bearer) |

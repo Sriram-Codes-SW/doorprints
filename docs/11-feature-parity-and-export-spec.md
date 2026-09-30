@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.40 |
+| Version | 0.41 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -52,6 +52,7 @@
 | 0.38 | 2026-09-30 | Claude (Code), lead | 5.4 and 5.30 **slice 2 built** (criteria and ranking, [10](10-sprint-log.md) §13.22): criteria and preferences as records, one scoring implementation per stack, the *Criteria* screen, the ranking. |
 | 0.39 | 2026-09-30 | Claude (Code), lead | 5.5 and 5.30 **slice 3a built** (viewing questions, [10](10-sprint-log.md) §13.23); slice 3 is split into 3a questions, 3b viewings with reminders, 3c Hunt reminders. |
 | 0.40 | 2026-09-30 | Claude (Code), lead | **Slice 3b designed** (5.8 viewings, [10](10-sprint-log.md) §13.24): the `viewing` record, the split into 3b-1 (data, screens, history, calendar file, backup, copies, server) and 3b-2 (the reminders on Android, iPhone and the website), the pure reminder rules, the vectors V1..V6. |
+| 0.41 | 2026-09-30 | Claude (Code), lead | 5.8 and 5.30 **slice 3b-1 built** (viewings: the record, screens, history, calendar file, backup, copies, AI, server; [10](10-sprint-log.md) §13.24). The reminders (3b-2) and the Hunt reminder (3c) are not built. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -345,6 +346,11 @@ A `roomId` that no longer exists is shown as "untagged" (no foreign key, so phot
 | Server | Nothing new: `viewing` is a record type of `/api/records`, plus validation in the backup import (same style as `question`). |
 | Slices | **3b-1** the record, screens, history, calendar file and insert, backup, copies, AI, search, server. **3b-2** the reminders on the three platforms and the Settings words. **3c** the Hunt reminder (5.16). |
 | Vectors | V1 `nextAt` for 60 min before 10:00 is 09:00; V2 `remindMin` 0 gives none; V3 a CANCELLED or DONE viewing gives none; V4 a past viewing gives none; V5 the pending list keeps the earliest 60 of 70; V6 the `.ics` of a fixed viewing equals `docs/schemas/viewing-sample.ics` byte for byte. |
+
+**Built (2026-09-30, slice 3b-1 of 5.30; [10](10-sprint-log.md) §13.24).** The `viewing` record (`docs/schemas/README.md` §3.10), the *Viewings* history (Settings on Android, `/viewings` on the website) with
+the filters, search and the *Missed?* buttons, the form (plan, edit, cancel, delete, *Add to calendar*: Android's calendar insert, the website's `.ics` download), the house card (next viewing, *Plan a viewing*, *Mark
+viewing done* when a visit is within two hours, the second-viewing dialog with its re-check list), the `viewings` list in `doorprints-backup/2` (`withWhom` blanked without contact details), a Viewings section in the readable
+copies plus `viewings.csv` and a sheet, the AI lines and the server (a `viewing` record type with its import validation). **Not built:** any reminder (3b-2), the iPhone's `.ics` share, a backup importer on the website.
 
 ### 5.9 Share to Doorprints: *Add a shared listing* (Indian portals)
 

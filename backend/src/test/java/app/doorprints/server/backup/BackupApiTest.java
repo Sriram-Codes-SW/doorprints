@@ -293,6 +293,8 @@ class BackupApiTest {
         for (int i = 0; i < preferences.length(); i++) putPreference(preferences.getJSONObject(i));
         var questions = sample.getJSONArray("questions");
         for (int i = 0; i < questions.length(); i++) putQuestion(questions.getJSONObject(i));
+        var viewings = sample.getJSONArray("viewings");
+        for (int i = 0; i < viewings.length(); i++) putViewing(viewings.getJSONObject(i));
         var photos = sample.getJSONArray("photos");
         for (int i = 0; i < photos.length(); i++) {
             var photo = photos.getJSONObject(i);
@@ -334,6 +336,8 @@ class BackupApiTest {
         assertThat(count(preview, "houses", "created")).isEqualTo(3);
         assertThat(count(preview, "brokers", "created")).isEqualTo(2);
         assertThat(count(preview, "questions", "created")).isEqualTo(3);
+        assertThat(count(preview, "viewings", "created")).isEqualTo(2);
+        assertThat(viewingRecords()).as("dry run writes no viewing").isEmpty();
         assertThat(questionRecords()).as("dry run writes no question").isEmpty();
         assertThat(brokerRecords()).as("dry run writes no broker").isEmpty();
         assertThat(count(preview, "visits", "created")).isEqualTo(3);
@@ -346,6 +350,7 @@ class BackupApiTest {
         assertThat(count(applied, "visits", "created")).isEqualTo(3);
         assertThat(count(applied, "brokers", "created")).isEqualTo(2);
         assertThat(count(applied, "questions", "created")).isEqualTo(3);
+        assertThat(count(applied, "viewings", "created")).isEqualTo(2);
         var problems = problems(applied);
         assertThat(problems).anyMatch(p -> p.contains("photo"));
         assertThat(problems).as("a three-house import still updates the AI index row by row")
@@ -1096,6 +1101,7 @@ class BackupApiTest {
         if (userText != null) assertThat(error).doesNotContain(userText);
         assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).as("no house written").isEmpty();
         assertThat(questionRecords()).as("no question written").isEmpty();
+        assertThat(viewingRecords()).as("no viewing written").isEmpty();
     }
 
     /** Questions are records of type question: merged by id, last write wins, exported back as /2 in payload order. */
@@ -1267,11 +1273,11 @@ class BackupApiTest {
             rows.add(new BackupQuestion("q_" + i, "Question " + i, "OTHER", "BOTH", false, i, null, at));
         }
         var data = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), rows);
+                List.of(), List.of(), rows, List.of());
         assertThatThrownBy(() -> backupService.importBackup(data, true)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at most 100 questions");
         var hundred = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), rows.subList(0, 100));
+                List.of(), List.of(), rows.subList(0, 100), List.of());
         assertThat(backupService.importBackup(hundred, true).questions().created()).isEqualTo(100);
     }
 
@@ -1358,5 +1364,233 @@ class BackupApiTest {
 
     private long syncVersion(UUID id) {
         return ((Number) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("syncVersion")).longValue();
+    }
+
+    // ---- slice 3b-1: viewings ---------------------------------------------------------------------------------------
+
+    @Autowired
+    app.doorprints.server.record.RecordRepository recordRepository;
+
+    private void putViewing(JSONObject row) throws JSONException {
+        var payload = new JSONObject(row.toString());
+        var id = payload.remove("id");
+        var updatedAt = payload.remove("updatedAt");
+        var body = new JSONObject().put("type", "viewing").put("id", id).put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
+        api.put().uri("/api/records/viewing/{id}", id.toString()).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    private List<Map<String, Object>> viewingRecords() {
+        return api.get().uri("/api/records?since=0&type=viewing").retrieve().body(LIST);
+    }
+
+    private static String viewingRow(String id, String houseId, long startsAt, Instant updatedAt) {
+        return "{\"id\":\"" + id + "\",\"houseId\":\"" + houseId + "\",\"startsAt\":" + startsAt
+                + ",\"durationMin\":30,\"kind\":\"FIRST\",\"status\":\"PLANNED\",\"remindMin\":60,\"updatedAt\":"
+                + updatedAt.toEpochMilli() + "}";
+    }
+
+    private static String backupWithViewings(String houses, String viewings) {
+        return backup(houses, "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"viewings\":[" + viewings + "]");
+    }
+
+    /** The key names of the export's viewings list in the order written (JSONObject does not keep the order). */
+    private static List<String> viewingKeysInOrder(String exported) {
+        var keys = CanonicalSample.keysInOrder(exported.substring(exported.indexOf("\"viewings\":")));
+        return keys.subList(1, keys.size()); // the first key is "viewings" itself
+    }
+
+    private static final String SOME_HOUSE = "11111111-1111-4111-8111-111111111111";
+
+    /** A copy with no viewing is a /1 document without the key; a viewing alone makes it /2 (a dangling house is fine). */
+    @Test
+    void aCopyWithoutViewingsIsVersionOneAndAViewingAloneMakesItVersionTwo() throws JSONException {
+        var none = new JSONObject(export());
+        assertThat(none.getString("format")).isEqualTo(BackupFormat.ID);
+        assertThat(none.has("viewings")).isFalse();
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        postImport(backupWithViewings("", viewingRow("v_0000aaaa", SOME_HOUSE, 1_790_000_000_000L, now)), false);
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(exported.getJSONArray("viewings").length()).isEqualTo(1);
+    }
+
+    /** Viewings are records of type viewing: merged by id, last write wins, exported back in payload order. */
+    @Test
+    void viewingsImportMergeByIdLastWriteWinsAndExportBack() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var file = backupWithViewings("",
+                viewingRow("v_0000bbbb", SOME_HOUSE, 1_790_000_100_000L, now) + ","
+                        + viewingRow("v_0000aaaa", SOME_HOUSE, 1_790_000_000_000L, now.minusSeconds(60)));
+        assertThat(count(postImport(file, true), "viewings", "created")).isEqualTo(2);
+        assertThat(viewingRecords()).as("dry run writes nothing").isEmpty();
+        var applied = postImport(file, false);
+        assertThat(count(applied, "viewings", "created")).isEqualTo(2);
+        assertThat(count(applied, "viewings", "total")).isEqualTo(2);
+        var rows = new JSONObject(export()).getJSONArray("viewings");
+        assertThat(rows.getJSONObject(0).getString("id")).as("ordered by updatedAt then id").isEqualTo("v_0000aaaa");
+        assertThat(viewingKeysInOrder(export())).containsExactly("id", "houseId", "startsAt", "durationMin", "kind",
+                "status", "remindMin", "updatedAt", "id", "houseId", "startsAt", "durationMin", "kind", "status",
+                "remindMin", "updatedAt");
+
+        assertThat(count(postImport(file, false), "viewings", "unchanged")).isEqualTo(2);
+        var older = backupWithViewings("", viewingRow("v_0000bbbb", SOME_HOUSE, 1L, now.minusSeconds(30)));
+        assertThat(count(postImport(older, false), "viewings", "keptNewer")).isEqualTo(1);
+        var newer = backupWithViewings("", viewingRow("v_0000bbbb", SOME_HOUSE, 1_790_000_200_000L, now.plusSeconds(30))
+                .replace("\"PLANNED\"", "\"DONE\"").replace("\"remindMin\":60", "\"remindMin\":60,\"huntReminder\":true,"
+                        + "\"withWhom\":\"Ravi\",\"notes\":\"Bring a tape\",\"visitId\":\"vis-1\""));
+        assertThat(count(postImport(newer, false), "viewings", "updated")).isEqualTo(1);
+        var after = new JSONObject(export()).getJSONArray("viewings");
+        var changed = after.getJSONObject(1);
+        assertThat(viewingKeysInOrder(export()).subList(8, 20)).containsExactly("id", "houseId", "startsAt",
+                "durationMin", "kind", "status", "remindMin", "huntReminder", "withWhom", "notes", "visitId", "updatedAt");
+        assertThat(changed.getString("status")).isEqualTo("DONE");
+        assertThat(changed.getLong("startsAt")).isEqualTo(1_790_000_200_000L);
+    }
+
+    /** A deleted viewing (a tombstone) is made live again by a newer file, not by an older one. */
+    @Test
+    void aNewerFileRevivesADeletedViewing() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        postImport(backupWithViewings("", viewingRow("v_0000cccc", SOME_HOUSE, 1_790_000_000_000L, now)), false);
+        api.delete().uri("/api/records/viewing/{id}", "v_0000cccc").retrieve().toBodilessEntity();
+        assertThat(new JSONObject(export()).has("viewings")).as("a tombstone is not exported").isFalse();
+
+        var older = backupWithViewings("", viewingRow("v_0000cccc", SOME_HOUSE, 1_790_000_000_000L, now.plusSeconds(1)));
+        assertThat(count(postImport(older, false), "viewings", "keptNewer")).isEqualTo(1);
+        assertThat(new JSONObject(export()).has("viewings")).isFalse();
+
+        var newer = backupWithViewings("", viewingRow("v_0000cccc", SOME_HOUSE, 1_790_000_900_000L,
+                Instant.now().plusSeconds(20)));
+        assertThat(count(postImport(newer, false), "viewings", "updated")).isEqualTo(1);
+        assertThat(new JSONObject(export()).getJSONArray("viewings").getJSONObject(0).getLong("startsAt"))
+                .isEqualTo(1_790_000_900_000L);
+    }
+
+    @Test
+    void aViewingWithABadIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        for (var id : List.of("bad id!", "..")) {
+            assertRefused(backupWithViewings(houseRow(UUID.randomUUID(), "Fine", now),
+                    viewingRow(id, SOME_HOUSE, 1_790_000_000_000L, now)), "viewings[0].id is not a valid record id", null);
+        }
+    }
+
+    @Test
+    void aRepeatedViewingIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var row = viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_000_000L, now);
+        assertRefused(backupWithViewings(houseRow(UUID.randomUUID(), "Fine", now), row + "," + row),
+                "viewings[1].id appears twice", null);
+    }
+
+    @Test
+    void aViewingWithABlankOrMissingHouseRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        assertRefused(backupWithViewings(fine, viewingRow("v_0000dddd", "  ", 1_790_000_000_000L, now)),
+                "viewings[0].houseId is required", null);
+        assertRefused(backupWithViewings(fine, viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_000_000L, now)
+                .replace("\"houseId\":\"" + SOME_HOUSE + "\",", "")), "viewings[0].houseId is required", null);
+    }
+
+    @Test
+    void aViewingWithAMissingOrNonPositiveStartRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        for (var start : List.of(0L, -5L)) {
+            assertRefused(backupWithViewings(fine, viewingRow("v_0000dddd", SOME_HOUSE, start, now)),
+                    "viewings[0].startsAt must be a positive time", null);
+        }
+        assertRefused(backupWithViewings(fine, viewingRow("v_0000dddd", SOME_HOUSE, 1L, now)
+                .replace("\"startsAt\":1,", "")), "viewings[0].startsAt must be a positive time", null);
+    }
+
+    @Test
+    void aViewingWithADurationOutOfRangeRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        for (var minutes : List.of("4", "481", "-30")) {
+            assertRefused(backupWithViewings(fine, viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_000_000L, now)
+                    .replace("\"durationMin\":30", "\"durationMin\":" + minutes)),
+                    "viewings[0].durationMin must be 5..480", null);
+        }
+    }
+
+    @Test
+    void aViewingWithAnUnknownKindStatusOrReminderRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        var row = viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_000_000L, now);
+        assertRefused(backupWithViewings(fine, row.replace("\"FIRST\"", "\"THIRD\"")),
+                "viewings[0].kind is out of range", "THIRD");
+        assertRefused(backupWithViewings(fine, row.replace("\"PLANNED\"", "\"MISSED\"")),
+                "viewings[0].status is out of range", "MISSED");
+        for (var minutes : List.of("45", "-15", "1441")) {
+            assertRefused(backupWithViewings(fine, row.replace("\"remindMin\":60", "\"remindMin\":" + minutes)),
+                    "viewings[0].remindMin is out of range", null);
+        }
+    }
+
+    @Test
+    void aViewingWithTooLongWithWhomOrNotesRefusesTheWholeFileWithoutEchoingIt() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        var row = viewingRow("v_0000dddd", SOME_HOUSE, 1_790_000_000_000L, now);
+        assertRefused(backupWithViewings(fine, row.replace("\"remindMin\":60", "\"remindMin\":60,\"withWhom\":\""
+                + "w".repeat(201) + "\"")), "viewings[0].withWhom is longer than 200 characters", "wwwwwwwwwwwwwwww");
+        assertRefused(backupWithViewings(fine, row.replace("\"remindMin\":60", "\"remindMin\":60,\"notes\":\""
+                + "n".repeat(2001) + "\"")), "viewings[0].notes is longer than 2000 characters", "nnnnnnnnnnnnnnnn");
+    }
+
+    /** The row cap of this suite (60) would answer 413 first over HTTP, so the service is called directly. */
+    @Test
+    void moreThanFiveThousandViewingsRefuseTheWholeFile() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        var rows = new ArrayList<BackupViewing>();
+        for (int i = 0; i <= BackupViewing.MAX; i++) {
+            rows.add(new BackupViewing("v_" + i, SOME_HOUSE, 1_790_000_000_000L + i, 30, "FIRST", "PLANNED", 60, null,
+                    null, null, null, at));
+        }
+        var data = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), rows);
+        assertThatThrownBy(() -> backupService.importBackup(data, true)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 5000 viewings");
+        var exactly = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), rows.subList(0, BackupViewing.MAX));
+        assertThat(backupService.importBackup(exactly, true).viewings().created()).isEqualTo(BackupViewing.MAX);
+    }
+
+    /** A server already holding 5 000 live viewings skips a new one (and says so) but still updates an existing one. */
+    @Test
+    void aServerHoldingFiveThousandViewingsSkipsAnAdditionalOne() {
+        var stamp = Instant.now().minus(Duration.ofHours(2));
+        var stored = new ArrayList<app.doorprints.server.record.Record>();
+        for (int i = 0; i < 5_000; i++) {
+            var record = new app.doorprints.server.record.Record(
+                    new app.doorprints.server.record.RecordKey("viewing", "v_full" + i));
+            record.setPayload("{\"houseId\":\"" + SOME_HOUSE + "\",\"startsAt\":1790000000000}");
+            record.setUpdatedAt(stamp);
+            record.setSyncVersion(1);
+            stored.add(record);
+        }
+        recordRepository.saveAll(stored);
+        try {
+            var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+            var extra = new BackupViewing("v_extra", SOME_HOUSE, 1_790_000_000_000L, 30, "FIRST", "PLANNED", 60, null,
+                    null, null, null, at);
+            var existing = new BackupViewing("v_full0", SOME_HOUSE, 1_790_000_000_000L, 30, "FIRST", "DONE", 60, null,
+                    null, null, null, at);
+            var report = backupService.importBackup(new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(),
+                    List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(extra, existing)), true);
+            assertThat(report.viewings().skipped()).isEqualTo(1);
+            assertThat(report.viewings().updated()).isEqualTo(1);
+            assertThat(report.problems()).anyMatch(p -> p.contains("the most viewings it keeps (5000)"))
+                    .noneMatch(p -> p.contains("v_extra"));
+        } finally {
+            recordRepository.deleteAll(stored);
+        }
     }
 }

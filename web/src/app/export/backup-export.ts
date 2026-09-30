@@ -26,6 +26,8 @@ import { criterionToPayload } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow } from '../shared/scoring';
 import { questionToPayload } from '../shared/question';
 import type { QuestionRow } from '../shared/question';
+import { viewingToPayload } from '../shared/viewing';
+import type { ViewingRow } from '../shared/viewing';
 import { htmlCopyName, isoUtc } from './deterministic';
 import { photoEntry, photoFileName } from './photo-names';
 import { sha256Hex } from './sha256';
@@ -57,7 +59,7 @@ export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
  * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
- * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
@@ -204,6 +206,25 @@ export interface BackupQuestion {
   updatedAt: number;
 }
 
+/**
+ * A viewing in a `/2` copy (slice 3b-1): the record id, the payload keys that are set (houseId, startsAt, durationMin,
+ * kind, status, remindMin, `huntReminder` only when true, `withWhom`, `notes`, `visitId` only when set) and the last edit.
+ */
+export interface BackupViewing {
+  id: string;
+  houseId: string;
+  startsAt: number;
+  durationMin: number;
+  kind: string;
+  status: string;
+  remindMin: number;
+  huntReminder?: boolean;
+  withWhom?: string;
+  notes?: string;
+  visitId?: string;
+  updatedAt: number;
+}
+
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -218,6 +239,8 @@ export interface BackupData {
   preferences?: BackupPreference[];
   /** Only in a `/2` copy, after `preferences`, and then never empty (slice 3a). */
   questions?: BackupQuestion[];
+  /** Only in a `/2` copy, after `questions`, and then never empty (slice 3b-1). */
+  viewings?: BackupViewing[];
 }
 
 export interface BackupCounts {
@@ -229,6 +252,7 @@ export interface BackupCounts {
   criteria?: number;
   preferences?: number;
   questions?: number;
+  viewings?: number;
 }
 
 export interface BackupFile {
@@ -263,8 +287,10 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
   const preferences = bundle.preferences.length > 0 ? bundle.preferences.map(backupPreference) : undefined;
   // Questions are not contacts either. The answers stay whole too: a copy is the person's own data (slice 3a).
   const questions = bundle.questions.length > 0 ? bundle.questions.map(backupQuestion) : undefined;
+  // Viewings (slice 3b-1): `withWhom` was already removed by `collect` for a copy without contact details.
+  const viewings = bundle.viewings.length > 0 ? bundle.viewings.map(backupViewing) : undefined;
   return {
-    format: brokers || hasRooms || hasAnswers || criteria || preferences || questions ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
+    format: brokers || hasRooms || hasAnswers || criteria || preferences || questions || viewings ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -292,7 +318,13 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
     ...(criteria ? { criteria } : {}),
     ...(preferences ? { preferences } : {}),
     ...(questions ? { questions } : {}),
+    ...(viewings ? { viewings } : {}),
   };
+}
+
+/** `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. */
+function backupViewing(row: ViewingRow): BackupViewing {
+  return { id: row.id, ...(viewingToPayload(row.viewing) as Omit<BackupViewing, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `id`, then the payload keys in the contract's order (`questionToPayload`), then `updatedAt`. */
@@ -439,6 +471,7 @@ export function buildBackupZip(
       criteria: data.criteria?.length,
       preferences: data.preferences?.length,
       questions: data.questions?.length,
+      viewings: data.viewings?.length,
     },
     files: contents.map((entry) => ({
       path: entry.path,

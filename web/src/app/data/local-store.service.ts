@@ -57,6 +57,25 @@ import {
   sortQuestions,
 } from '../shared/question';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
+import {
+  MAX_DURATION_MIN,
+  MAX_ID_LENGTH,
+  MAX_VIEWINGS,
+  MAX_VIEWING_NOTES,
+  MAX_WITH_WHOM,
+  MIN_DURATION_MIN,
+  REMIND_OPTIONS,
+  VIEWING_KINDS,
+  VIEWING_STATUSES,
+  VIEWING_TYPE,
+  isViewingId,
+  newViewingId as newViewingIdRandom,
+  nextViewingOf,
+  sortViewings,
+  viewingFromPayload,
+  viewingToPayload,
+} from '../shared/viewing';
+import type { Viewing, ViewingRow } from '../shared/viewing';
 import type { LengthUnit } from '../shared/room-sizes';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
@@ -823,6 +842,100 @@ export class LocalStore {
   /** Deletes a question, a seeded one too (a tombstone): a deleted default stays deleted until *Reset to defaults*. */
   async deleteQuestion(id: string, now: number = Date.now()): Promise<void> {
     await this.deleteRecord(QUESTION_TYPE, id, now);
+  }
+
+  // ---- Viewings (docs/11 5.8, slice 3b-1: records of type `viewing`) ----
+
+  /** The live viewing records, oldest edit first; a row that is not a viewing (no house, no time) is skipped as untrusted. */
+  async viewingRows(): Promise<ViewingRow[]> {
+    const out: ViewingRow[] = [];
+    for (const row of await this.recordsOf(VIEWING_TYPE)) {
+      const viewing = viewingFromPayload(row.id, row.payload);
+      if (viewing) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, viewing });
+    }
+    return out;
+  }
+
+  /** Every live viewing, by `startsAt` then id. */
+  async viewings(): Promise<Viewing[]> {
+    return sortViewings((await this.viewingRows()).map((r) => r.viewing));
+  }
+
+  /** The viewings of one house (a house that is gone keeps its viewings; this still finds them by id). */
+  async viewingsOf(houseId: string): Promise<Viewing[]> {
+    return (await this.viewings()).filter((v) => v.houseId === houseId);
+  }
+
+  /** The earliest PLANNED viewing of the house at or after `nowMs`, or null. */
+  async nextViewing(houseId: string, nowMs: number = Date.now()): Promise<Viewing | null> {
+    return nextViewingOf(await this.viewings(), houseId, nowMs);
+  }
+
+  /**
+   * `v_` and 8 lowercase hex characters, an id no record of type `viewing` has, a tombstone included (an id that
+   * clashes is drawn again). `newId` is a seam for tests.
+   */
+  async newViewingId(newId: () => string = newViewingIdRandom): Promise<string> {
+    const db = await this.db();
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const id = newId();
+      if (!(await db.get<RecordRecord>('records', [VIEWING_TYPE, id]))) return id;
+    }
+    throw new LocalDataError('error.badRecord');
+  }
+
+  /**
+   * Saves a viewing: only that record is written, and only when it differs from what is stored (so an unchanged form
+   * does not touch `updatedAt` or the sync queue). A new one is the 5 001st refused.
+   *
+   * @throws LocalDataError `error.badRecord` for a bad id, a blank house, a start that is not positive, a duration
+   *   outside 5..480, a kind, status or reminder outside the lists, or a `withWhom` or `notes` over its cap;
+   *   `viewings.max` at 5 000 live viewings.
+   */
+  async saveViewing(viewing: Viewing, now: number = Date.now()): Promise<Viewing> {
+    const clean: Viewing = { ...viewing, houseId: viewing.houseId.trim() };
+    if (clean.withWhom !== undefined) clean.withWhom = clean.withWhom.trim();
+    if (clean.notes !== undefined) clean.notes = clean.notes.trim();
+    if (
+      !isViewingId(clean.id) ||
+      clean.houseId === '' ||
+      clean.houseId.length > MAX_ID_LENGTH ||
+      (clean.visitId?.length ?? 0) > MAX_ID_LENGTH ||
+      !Number.isSafeInteger(clean.startsAt) ||
+      clean.startsAt <= 0 ||
+      !Number.isInteger(clean.durationMin) ||
+      clean.durationMin < MIN_DURATION_MIN ||
+      clean.durationMin > MAX_DURATION_MIN ||
+      !VIEWING_KINDS.includes(clean.kind) ||
+      !VIEWING_STATUSES.includes(clean.status) ||
+      !REMIND_OPTIONS.includes(clean.remindMin) ||
+      (clean.withWhom?.length ?? 0) > MAX_WITH_WHOM ||
+      (clean.notes?.length ?? 0) > MAX_VIEWING_NOTES
+    ) {
+      throw new LocalDataError('error.badRecord');
+    }
+    const payload = viewingToPayload(clean);
+    const existing = await this.getRecord(VIEWING_TYPE, clean.id);
+    if (existing) {
+      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return viewingFromPayload(clean.id, payload) as Viewing;
+    } else if ((await this.recordsOf(VIEWING_TYPE)).length >= MAX_VIEWINGS) {
+      throw new LocalDataError('viewings.max');
+    }
+    await this.saveRecord(VIEWING_TYPE, clean.id, payload, now);
+    return viewingFromPayload(clean.id, payload) as Viewing;
+  }
+
+  /** Deletes a viewing (a tombstone the next sync sends). The house, if it still exists, is not touched. */
+  async deleteViewing(id: string, now: number = Date.now()): Promise<void> {
+    await this.deleteRecord(VIEWING_TYPE, id, now);
+  }
+
+  /** *It happened* / *Mark viewing done*: status DONE, and `visitId` when a visit is given (else the old one is kept). */
+  async markViewingDone(id: string, visitId?: string | null, now: number = Date.now()): Promise<Viewing> {
+    const row = await this.getRecord(VIEWING_TYPE, id);
+    const viewing = row ? viewingFromPayload(id, row.payload) : null;
+    if (!viewing) throw new LocalDataError('error.notFoundLocal');
+    return this.saveViewing({ ...viewing, status: 'DONE', ...(visitId ? { visitId } : {}) }, now);
   }
 
   // ---- Settings ----

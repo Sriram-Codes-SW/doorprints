@@ -20,6 +20,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { LocalStore } from '../../data/local-store.service';
+import type { Viewing } from '../../shared/viewing';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from '../ai.service';
 import {
   AgentPlan, AiHouse, AskFilterValues, I_DONT_KNOW, ModelAnswer, PlanCandidate, RawListing, askPrompt, assemblePlan,
@@ -157,12 +158,16 @@ export class OnDeviceAiService {
       list.push({ arrivedAt: Date.parse(v.arrivedAt), leftAt: v.leftAt ? Date.parse(v.leftAt) : null });
       byHouse.set(v.houseId, list);
     }
+    const viewingsByHouse = new Map<string, Viewing[]>();
+    for (const viewing of await this.store.viewings()) {
+      viewingsByHouse.set(viewing.houseId, [...(viewingsByHouse.get(viewing.houseId) ?? []), viewing]);
+    }
     const live = (await this.store.allHouses()).filter((h) => !h.deleted);
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
       status: h.status, price: h.price, priceType: h.priceType, bedrooms: h.bedrooms, rating: h.rating,
-      areaSqft: h.areaSqft, cost: h.cost, rooms: h.rooms, answers: h.answers,
+      areaSqft: h.areaSqft, cost: h.cost, rooms: h.rooms, answers: h.answers, viewings: viewingsByHouse.get(h.id) ?? [],
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,
       checklist: h.checklist, visits: byHouse.get(h.id) ?? [],
     }));

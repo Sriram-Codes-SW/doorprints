@@ -28,6 +28,7 @@ import { LocalDataError } from './local-error';
 import type { Broker, BrokerRow } from '../shared/broker';
 import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
+import type { Viewing, ViewingRow } from '../shared/viewing';
 
 /**
  * What the screens talk to (S4-01). The method names and shapes are the ones `HouseApiService` had, so the pages
@@ -215,6 +216,57 @@ export class LocalDataService {
   /** *Reset to defaults*: the standard questions come back in [language]; the person's own stay. */
   resetQuestions(language: string): Observable<void> {
     return this.writing(() => this.store.resetQuestions(language).then(() => undefined));
+  }
+
+  /** Every live viewing, by start then id (slice 3b-1). */
+  viewings(): Observable<Viewing[]> {
+    return defer(() => from(this.store.viewings()));
+  }
+
+  /** The viewing records that exist, for the copies. */
+  viewingRows(): Observable<ViewingRow[]> {
+    return defer(() => from(this.store.viewingRows()));
+  }
+
+  viewingsOf(houseId: string): Observable<Viewing[]> {
+    return defer(() => from(this.store.viewingsOf(houseId)));
+  }
+
+  /** The earliest PLANNED viewing of the house at or after now, or null. */
+  nextViewing(houseId: string, nowMs: number = Date.now()): Observable<Viewing | null> {
+    return defer(() => from(this.store.nextViewing(houseId, nowMs)));
+  }
+
+  /** A fresh `v_` id that no viewing record, a deleted one included, has. */
+  newViewingId(): Observable<string> {
+    return defer(() => from(this.store.newViewingId()));
+  }
+
+  saveViewing(viewing: Viewing): Observable<Viewing> {
+    return defer(() =>
+      from(
+        this.store.saveViewing(viewing).then((saved) => {
+          this.sync.syncSoon();
+          return saved;
+        }),
+      ),
+    );
+  }
+
+  deleteViewing(id: string): Observable<void> {
+    return this.writing(() => this.store.deleteViewing(id));
+  }
+
+  /** *It happened* / *Mark viewing done*: DONE, with the visit that shows it happened when there is one. */
+  markViewingDone(id: string, visitId?: string | null): Observable<Viewing> {
+    return defer(() =>
+      from(
+        this.store.markViewingDone(id, visitId).then((saved) => {
+          this.sync.syncSoon();
+          return saved;
+        }),
+      ),
+    );
   }
 
   private writing(run: () => Promise<void>): Observable<void> {

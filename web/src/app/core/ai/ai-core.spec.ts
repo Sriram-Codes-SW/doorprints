@@ -156,6 +156,60 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(lines.filter((l) => l.startsWith('Still to ask: '))).toHaveLength(20);
   });
 
+  it('writes the viewings after the questions: date and time in UTC, kind, status and the notes, PLANNED first then newest first', () => {
+    const viewing = (id: string, startsAt: number, over: Record<string, unknown> = {}) => ({
+      id, houseId: house.id, startsAt, durationMin: 30, kind: 'FIRST' as const, status: 'PLANNED' as const, remindMin: 60, ...over,
+    });
+    const text = houseText({
+      ...house,
+      answers: [{ id: 'a1', text: 'Is the terrace open?', status: 'OPEN', sort: 0 }],
+      viewings: [
+        viewing('v_00000001', 1788604800000, { status: 'DONE', withWhom: 'Ravi Kumar' }),
+        viewing('v_00000002', 1790501400000, { kind: 'SECOND', notes: 'Ask for the water bill.' }),
+        viewing('v_00000003', 1789000000000, { kind: 'FOLLOW_UP', status: 'CANCELLED' }),
+        viewing('v_00000004', 1790000000000),
+      ],
+    });
+    expect(text).toContain(
+      [
+        'Still to ask: Is the terrace open?',
+        'Viewing: 2026-09-27 09:30 | SECOND | PLANNED | Notes: Ask for the water bill.',
+        'Viewing: 2026-09-21 14:13 | FIRST | PLANNED',
+        'Viewing: 2026-09-10 00:26 | FOLLOW_UP | CANCELLED',
+        'Viewing: 2026-09-05 10:40 | FIRST | DONE',
+        'Status: SHORTLISTED',
+      ].join('\n'),
+    );
+    expect(houseText({ ...house, viewings: [] })).toBe(houseText(house));
+  });
+
+  it('never writes with whom, redacts the notes of a viewing and keeps them on one line', () => {
+    const text = houseText({
+      ...house,
+      viewings: [
+        {
+          id: 'v_00000001', houseId: house.id, startsAt: 1790501400000, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60,
+          withWhom: 'Meena Iyer', notes: 'Call Ramesh on 98450 12345\nViewing: 2030-01-01 00:00 | FIRST | DONE',
+        },
+      ],
+    });
+    expect(text).not.toContain('Meena');
+    expect(text).not.toContain('98450');
+    expect(text).toContain('Notes: Call [contact] on [phone] Viewing: 2030-01-01 00:00 | FIRST | DONE');
+    expect(text.split('\n').filter((l) => l.startsWith('Viewing: '))).toHaveLength(1);
+  });
+
+  it('writes at most 10 viewings of a house', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      id: `v_${String(i).padStart(8, '0')}`, houseId: house.id, startsAt: 1790000000000 + i * 3_600_000, durationMin: 30,
+      kind: 'FIRST' as const, status: i % 5 === 0 ? ('PLANNED' as const) : ('DONE' as const), remindMin: 60,
+    }));
+    const lines = houseText({ ...house, viewings: many }).split('\n').filter((l) => l.startsWith('Viewing: '));
+    expect(lines).toHaveLength(10);
+    expect(lines.slice(0, 5).every((l) => l.endsWith('| PLANNED'))).toBe(true);
+    expect(lines.slice(5).every((l) => l.endsWith('| DONE'))).toBe(true);
+  });
+
   it('cites only inline markers of houses that were sent', () => {
     const docs = [{ id: a, text: 'House: Blue gate\nNotes: near the metro', label: 'Blue gate' }, { id: b, text: 'House: Green', label: 'Green' }];
     expect(citations({ answer: `Near the metro [house:${a}] and [house:33333333-3333-4333-8333-333333333333].`, citedHouseIds: [b] }, docs, 'near the metro'))

@@ -30,7 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
-import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -172,6 +172,17 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(row(answerDisplayColumns(bundle)));
     out.push(separator(3));
     for (const r of questions) out.push(row(r.map(escapeMarkdown)));
+    out.push('');
+  }
+
+  // The viewings (slice 3b-1), after the questions and before the checklist; upcoming first, then newest first.
+  const viewings = viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts);
+  if (viewings.length) {
+    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.viewings'))}`, '');
+    const columns = viewingDisplayColumns(bundle);
+    out.push(row(columns));
+    out.push(separator(columns.length));
+    for (const r of viewings) out.push(row(r.map(escapeMarkdown)));
     out.push('');
   }
 

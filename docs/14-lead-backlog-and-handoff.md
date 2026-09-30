@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.60 |
+| Version | 0.61 |
 | Date | 2026-09-30 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -71,6 +71,7 @@
 | 0.58 | 2026-09-30 | Claude (Code), lead | §1: rooms built (slice 1c of [11](11-feature-parity-and-export-spec.md) 5.30, [10](10-sprint-log.md) §13.21). §7: **the model is chosen per builder** (owner, 2026-09-30). N13 (4c): slice 2, criteria and ranking, next. |
 | 0.59 | 2026-09-30 | Claude (Code), lead | §1: criteria and ranking built (slice 2 of [11](11-feature-parity-and-export-spec.md) 5.30, [10](10-sprint-log.md) §13.22). N13 (4c): slice 3, questions and viewings, next. |
 | 0.60 | 2026-09-30 | Claude (Code), lead | §1: viewing questions built (slice 3a of [11](11-feature-parity-and-export-spec.md) 5.30, [10](10-sprint-log.md) §13.23); slice 3 split into 3a, 3b viewings with reminders, 3c Hunt reminders. §7: the local Docker note (keep the daemon alive). |
+| 0.61 | 2026-09-30 | Claude (Code), lead | §1: viewings built (slice 3b-1, [10](10-sprint-log.md) §13.24). |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -174,7 +175,7 @@ section is only today's state. Earlier versions of this file (git history) carry
   stack over eight shared vectors, the *Criteria* screen, the `criteria` and `preferences` backup lists.
 - **Viewing questions built** (slice 3a, branch `feat/s4b-4c-slice-3a-questions`; [10](10-sprint-log.md) §13.23, [06](06-test-plan.md) TC-U-103): a question
   bank of `question` records seeded in four languages with fixed ids, `answers` nested in the house (Room 8, Flyway V10), *Add the usual questions* with
-  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Merged as #78 (2026-09-30). Slice 3 is split: **3b is designed** ([11](11-feature-parity-and-export-spec.md) 5.8, [10](10-sprint-log.md) §13.24) and is built in two parts, **3b-1** (the `viewing` record, screens, history, calendar file, backup, copies, server) then **3b-2** (Android alarms, the iPhone's notifications, the website's list); then 3c, the Hunt reminder before a viewing (5.16). Lessons of #78 for the next slices: a ZAP alert that varies with the payload is a real answer that changes with the request (a timestamp, an echo), found by downloading the `backend-zap-api-scan` report, not a flake; the iOS launch check needs a macOS runner and can wait a long time for one.
+  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Merged as #78 (2026-09-30). Slice 3 is split: **3b-1 is built** (the `viewing` record, screens, history, calendar file, backup, copies, server; [10](10-sprint-log.md) §13.24, [06](06-test-plan.md) TC-U-104); next **3b-2** (Android alarms, the iPhone's notifications, the website's list); then 3c, the Hunt reminder before a viewing (5.16). Lessons of #78 for the next slices: a ZAP alert that varies with the payload is a real answer that changes with the request (a timestamp, an echo), found by downloading the `backend-zap-api-scan` report, not a flake; the iOS launch check needs a macOS runner and can wait a long time for one.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30

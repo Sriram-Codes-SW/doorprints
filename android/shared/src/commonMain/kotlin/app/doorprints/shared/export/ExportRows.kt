@@ -76,7 +76,7 @@ object ExportRows {
     /**
      * The tables of a copy, in file order: the four, then `brokers` when the copy has brokers (slice 1b), `rooms`
      * when a house of it has a room (slice 1c), `criteria` when it has a criterion record (slice 2) and `answers` when a
-     * house of it has a question asked (slice 3a).
+     * house of it has a question asked (slice 3a), then `viewings` when it has a viewing (slice 3b-1).
      */
     fun tables(bundle: ExportBundle): List<ExportTable> =
         listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
@@ -85,6 +85,7 @@ object ExportRows {
                 if (bundle.hasRooms) rooms(bundle) else null,
                 if (bundle.criteria.isEmpty()) null else criteria(bundle),
                 if (bundle.hasAnswers) answers(bundle) else null,
+                if (bundle.viewings.isEmpty()) null else viewings(bundle),
             )
 
     fun houses(bundle: ExportBundle): ExportTable {
@@ -381,6 +382,56 @@ object ExportRows {
 
     /** What a house page shows for a question not answered yet. */
     const val NO_ANSWER = "–"
+
+    /**
+     * The viewings (slice 3b-1), in a copy that has one: house (its label, blank for a house that is gone), when,
+     * duration, kind, status, reminder minutes, with whom (blank without contact details), notes, then the house,
+     * viewing and visit ids; by `startsAt`, then id, as the web's `viewingsTable`.
+     */
+    fun viewings(bundle: ExportBundle): ExportTable {
+        val s = bundle.strings
+        val columns = listOf(
+            s["col.house"], s["col.when"], s["col.durationMin"], s["col.kind"], s["col.status"], s["col.remindMin"],
+            s["col.withWhom"], s["col.notes"], s["col.houseId"], s["col.id"], s["col.visitId"],
+        )
+        val labels = bundle.houses.associate { it.id to it.label }
+        val rows = bundle.viewings.sortedWith(compareBy({ it.startsAt }, { it.id })).map { e ->
+            val v = e.toViewing()
+            listOf(
+                text(labels[v.houseId]), Cell.Stamp(v.startsAt), Cell.Count(v.durationMin.toLong()),
+                Cell.Text(s.viewingKind(v.kind)), Cell.Text(s.viewingStatus(v.status)), Cell.Count(v.remindMin.toLong()),
+                if (bundle.options.includeContacts) text(v.withWhom) else Cell.Blank, text(v.notes),
+                Cell.Text(v.houseId), Cell.Text(v.id), text(v.visitId),
+            )
+        }
+        return ExportTable("viewings", s["table.viewings"], columns, rows)
+    }
+
+    /** The headings of a house page's **Viewings** table: when, kind, status, notes and (with contact details) with whom. */
+    fun viewingColumns(bundle: ExportBundle): List<String> {
+        val s = bundle.strings
+        return listOfNotNull(
+            s["col.when"], s["col.kind"], s["col.status"], s["col.notes"],
+            if (bundle.options.includeContacts) s["col.withWhom"] else null,
+        )
+    }
+
+    /**
+     * The rows of a house page's **Viewings** table in [ExportBundle.viewingsOf]'s order (upcoming PLANNED first, then
+     * the rest newest first), the time in the copy's offset like the visits; an empty text is [NO_ANSWER]. Empty for a
+     * house without viewings.
+     */
+    fun viewingRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        val s = bundle.strings
+        return bundle.viewingsOf(h).map { e ->
+            val v = e.toViewing()
+            listOfNotNull(
+                ExportTime.dateTime(v.startsAt, bundle.options.utcOffsetMinutes), s.viewingKind(v.kind),
+                s.viewingStatus(v.status), v.notes ?: NO_ANSWER,
+                if (bundle.options.includeContacts) v.withWhom ?: NO_ANSWER else null,
+            )
+        }
+    }
 
     fun photos(bundle: ExportBundle): ExportTable {
         val s = bundle.strings

@@ -34,6 +34,9 @@ internal actual fun formatDate(epochMillis: Long, language: String, withTime: Bo
 // decimal half up ("12.345679"), and the form writes what Android writes (S4b-BL-40).
 internal actual fun formatSixDecimals(value: Double): String = sixDecimalsHalfUp(value)
 
+internal actual fun utcOffsetMillis(epochMillis: Long): Int =
+    NSTimeZone.localTimeZone.secondsFromGMTForDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0)).toInt() * 1000
+
 // The shipped language the strings are shown in (S4b-BL-40): Compose resources pick the strings by the first of
 // NSLocale's preferred languages, English when the app does not ship it. The app's own language setting is ADR-23
 // phase 8.
