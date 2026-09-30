@@ -434,7 +434,7 @@ object ExportRows {
     }
 
     /** The headings of a house page's **Area notes** table (slice 4a): the note, and where it comes from. */
-    fun areaNoteColumns(bundle: ExportBundle): List<String> = listOf(bundle.strings["col.notes"], bundle.strings["col.source"])
+    fun areaNoteColumns(bundle: ExportBundle): List<String> = listOf(bundle.strings["col.notes"], bundle.strings["col.noteSource"])
 
     /**
      * The rows of a house page's **Area notes** table (slice 4a): each note that reaches the house, newest first

@@ -59,11 +59,25 @@ class HouseSearchTest {
         ),
     )
 
+    // The texts of the area notes that reach the house (slice 4a): `AreaNotes.reaching` picks them.
+    private val noted = HouseSearch.fields(
+        label = "Sea Breeze", address = null, street = "MG Road", locality = null, notes = null, contactName = null,
+        noteTexts = AreaNotes.reaching(
+            HousePoint(13.0067, 80.2574, "mg road"),
+            listOf(Area("a_1", "Adyar", 13.0067, 80.2574)),
+            listOf(AreaNote("n_1", areaId = "a_1", text = "Water tanker every morning"), AreaNote("n_2", street = "MG Road", text = "Floods in the monsoon")),
+        ).map { it.text },
+    )
+
     private fun matching(query: String) =
-        listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked)
+        listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked, "sea" to noted)
         .filter { HouseSearch.matches(query, it.second) }.map { it.first }
 
-    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill", "palm"), matching("  "))
+    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill", "palm", "sea"), matching("  "))
+    @Test fun aQueryMatchesTheAreaNotesThatReachTheHouse() {
+        assertEquals(listOf("sea"), matching("tanker"))
+        assertEquals(listOf("sea"), matching("monsoon"))
+    }
     @Test fun theLabelMatchesIgnoringCase() = assertEquals(listOf("green"), matching("green view"))
     @Test fun theAddressStreetAndLocalityMatch() {
         assertEquals(listOf("green"), matching("5th cross"))
