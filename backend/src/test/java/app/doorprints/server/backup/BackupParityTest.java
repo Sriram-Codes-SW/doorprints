@@ -123,13 +123,24 @@ class BackupParityTest {
             });
         }
         assertThat(rooms).isEqualTo(components(app.doorprints.server.house.HouseRoom.class));
+        // Slice 3a: the fullest answer nested in the houses carries exactly the components of HouseAnswer, in order.
+        var answers = new java.util.ArrayList<String>();
+        for (var house : root.get("houses")) {
+            if (house.has("answers")) house.get("answers").forEach(answer -> {
+                var keys = new java.util.ArrayList<String>(answer.propertyNames());
+                if (keys.size() > answers.size()) { answers.clear(); answers.addAll(keys); }
+            });
+        }
+        assertThat(answers).isEqualTo(components(app.doorprints.server.house.HouseAnswer.class));
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
         assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));
         // Criteria and preferences spread optional fields across multiple rows, so compare union with component order preserved
         assertThat(unionOf(root, "criteria")).isEqualTo(components(BackupCriterion.class));
         assertThat(unionOf(root, "preferences")).isEqualTo(components(BackupPreference.class));
-        // The list order of data.json is part of the format too (README section 3): criteria and preferences come after brokers.
+        // Slice 3a: no single question has every key (only an archived one has archived), so the union again.
+        assertThat(unionOf(root, "questions")).isEqualTo(components(BackupQuestion.class));
+        // The list order of data.json is part of the format too (README section 3): criteria, preferences and questions come after brokers.
         assertThat(new java.util.ArrayList<>(root.propertyNames()))
                 .isEqualTo(components(BackupData.class));
     }
@@ -149,6 +160,7 @@ class BackupParityTest {
         var recordClass = switch (list) {
             case "criteria" -> BackupCriterion.class;
             case "preferences" -> BackupPreference.class;
+            case "questions" -> BackupQuestion.class;
             default -> throw new IllegalArgumentException("Unknown list: " + list);
         };
         var componentOrder = components(recordClass);

@@ -75,6 +75,7 @@ function create(
     houses: fakes.houses ?? (() => of([])),
     brokers: fakes.brokers ?? (() => of([])),
     scoring: fakes.scoring ?? (() => of(DEFAULT_SCORING)),
+    questions: () => of([]),
     house: () => of(HOUSE),
     visits: () => of([]),
     photoIds: () => of([]),

@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Questions to ask at a viewing** ([spec](docs/11-feature-parity-and-export-spec.md) 5.5, slice 3a of 5.30): each house has a **Questions to ask** list.
+  **Add the usual questions** brings the standard ones that fit the house (maintenance, deposit, brokerage, lock-in, water, power, parking, the
+  floor and the lift; for a purchase the occupancy certificates, RERA and khata), in your language, and fills in what you already noted under
+  Cost. Answer, skip or remove each one, or ask something of your own. **Settings > Questions** (Your data on the website) is the bank: edit,
+  reorder, archive, add your own, or bring the standard ones back. Search finds a house by an answer; backups and readable copies carry the
+  questions and answers (a backup with them is written as `doorprints-backup/2`); the AI is told the questions and answers with contact details removed.
 - **Your own criteria** ([spec](docs/11-feature-parity-and-export-spec.md) 5.4, slice 2 of 5.30): choose what matters when you score a
   house. **Criteria** (Settings; Your data on the website) lets you set each checklist item to Ignore, Low, Medium or High, mark
   must-haves with a minimum score, reorder or archive items, add your own ("Pets allowed"), and choose how much your star

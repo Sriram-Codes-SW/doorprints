@@ -19,6 +19,7 @@
 package app.doorprints.shared.ai
 
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseRoom
 
 import app.doorprints.shared.api.CitationDto
@@ -98,6 +99,62 @@ class AiCoreTest {
         assertEquals("1970-01-01", HouseDocuments.utcDate(0))
         assertEquals("2024-02-29", HouseDocuments.utcDate(1_709_164_800_000))
         assertEquals("1969-12-31", HouseDocuments.utcDate(-1))
+    }
+
+    /**
+     * Slice 3a: after the Rooms line, `Asked: <question> | Answer: <answer>` for each answered question, then `Still to
+     * ask: <question>` for each open one, at most 20 of each, in the order shown; a skipped one is neither. The same
+     * words as the server's `HouseDocumentsTest` and the web's `houseText`.
+     */
+    @Test
+    fun answersAreAskedAndAnsweredLinesThenStillToAskLines() {
+        val text = HouseDocuments.text(
+            house.copy(
+                rooms = listOf(HouseRoom(id = "k", type = "KITCHEN", name = "Kitchen")),
+                answers = listOf(
+                    HouseAnswer("a3", null, "Is there a lift?", null, "OPEN", 2),
+                    HouseAnswer("a2", "qd_water", "How is the water supply?", "Borewell, 24 hours", "ANSWERED", 1),
+                    HouseAnswer("a1", null, "Any pets rule?", "No dogs", "ANSWERED", 0),
+                    HouseAnswer("a4", null, "Is the terrace open?", null, "SKIPPED", 3),
+                    HouseAnswer("a5", null, "Who pays for power?", null, "OPEN", 1),
+                ),
+            ),
+        )
+        assertTrue(
+            text.contains(
+                "Rooms: Kitchen\nAsked: Any pets rule? | Answer: No dogs\nAsked: How is the water supply? | Answer: Borewell, 24 hours\n" +
+                    "Still to ask: Who pays for power?\nStill to ask: Is there a lift?\nStatus: SHORTLISTED",
+            ),
+            text,
+        )
+        assertFalse(text.contains("terrace"), "a skipped question is not sent")
+        assertFalse(HouseDocuments.text(house).contains("Asked") || HouseDocuments.text(house).contains("Still to ask"))
+    }
+
+    @Test
+    fun atMostTwentyAskedAndTwentyStillToAskLinesAreWritten() {
+        val answers = (0 until 25).map { HouseAnswer("o$it", text = "Open $it", sort = it) } +
+            (0 until 25).map { HouseAnswer("d$it", text = "Done $it", answer = "yes $it", status = "ANSWERED", sort = it) }
+        val text = HouseDocuments.text(house.copy(answers = answers))
+        assertEquals(20, text.split("Asked: ").size - 1)
+        assertEquals(20, text.split("Still to ask: ").size - 1)
+        assertTrue(text.contains("Asked: Done 19 | Answer: yes 19") && !text.contains("Done 20"))
+        assertTrue(text.contains("Still to ask: Open 19") && !text.contains("Open 20"))
+    }
+
+    /** F-30: an owner's number said at the viewing lands in an answer; it never reaches the provider. */
+    @Test
+    fun aPhoneNumberInAnAnswerOrAQuestionIsRedacted() {
+        val text = HouseDocuments.text(
+            house.copy(
+                answers = listOf(
+                    HouseAnswer("a1", null, "Who do we call? 98450 12345", "Call the caretaker on 99001-23456 or +91 98765 43210", "ANSWERED", 0),
+                    HouseAnswer("a2", null, "Ask Ramesh about the deposit", null, "OPEN", 1),
+                ),
+            ),
+        )
+        assertTrue(text.contains("Asked: ") && text.contains("| Answer: Call the caretaker on "), text)
+        for (secret in listOf("99001", "98450", "98765", "Ramesh")) assertFalse(text.contains(secret), secret)
     }
 
     @Test

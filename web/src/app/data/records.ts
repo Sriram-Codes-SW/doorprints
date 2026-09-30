@@ -17,8 +17,8 @@
  */
 
 import { LocalDataError } from '../core/local-error';
-import { COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES } from '../core/models';
-import type { HouseCost, HouseDto, HouseRoom, HouseStatus, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
+import { ANSWER_STATUSES, COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES } from '../core/models';
+import type { AnswerStatus, HouseAnswer, HouseCost, HouseDto, HouseRoom, HouseStatus, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
 
 /**
  * What the browser stores locally (IndexedDB). Doorprints is local-first (docs/11 §5.1, D-01): every record below
@@ -103,6 +103,8 @@ export const SETTING_KEYS = {
   brokersMigrated: 'brokers.migrated',
   /** Length unit preference for rooms: 'FT' (default) or 'M' (local only, not synced). */
   lengthUnit: 'units.length',
+  /** Set once the question bank has been seeded on this install, so a question the person deleted stays deleted (slice 3a; not synced). */
+  questionsSeeded: 'questions.seeded',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */
@@ -170,6 +172,7 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     locationSource: dto.locationSource && LOCATION_SOURCES.includes(dto.locationSource) ? dto.locationSource : null,
     cost: cleanCost(dto.cost),
     rooms: cleanRooms(dto.rooms),
+    answers: cleanAnswers(dto.answers),
     brokerId: cleanBrokerId(dto.brokerId),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
@@ -366,6 +369,49 @@ export function cleanRooms(raw: HouseRoom[] | null | undefined): HouseRoom[] | n
   // Sort by sort then id, and only then keep the first 30 (Android and the server do the same).
   out.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return out.slice(0, MAX_ROOMS);
+}
+
+/** A house's viewing answers (slice 3a): at most 60, one text of at most 300 characters and one answer of 2000. */
+export const MAX_ANSWERS = 60;
+export const MAX_ANSWER_TEXT = 300;
+export const MAX_ANSWER = 2000;
+
+/**
+ * Answers as the store keeps them: a bad id is skipped, a duplicate id keeps the first, a blank or over-long text
+ * skips the row, an over-long answer is dropped, an unknown status is OPEN, a non-blank answer with status OPEN reads
+ * as ANSWERED and ANSWERED without an answer as OPEN. Sorted by sort then id and only then capped at 60. Null when
+ * empty. Kotlin: `HouseAnswers.coerced`.
+ */
+export function cleanAnswers(raw: HouseAnswer[] | null | undefined): HouseAnswer[] | null {
+  if (!raw || !Array.isArray(raw) || raw.length === 0) return null;
+  const seen = new Set<string>();
+  const out: HouseAnswer[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const id = roomId(row.id);
+    if (!id || seen.has(id)) continue;
+    const asked = text(row.text, MAX_ANSWER_TEXT);
+    if (asked === null) continue;
+    seen.add(id);
+    const answer = text(row.answer, MAX_ANSWER);
+    let status: AnswerStatus = ANSWER_STATUSES.includes(row.status) ? row.status : 'OPEN';
+    if (answer !== null && status === 'OPEN') status = 'ANSWERED';
+    else if (answer === null && status === 'ANSWERED') status = 'OPEN';
+    // Keys in the contract's order: id, questionId, text, answer, status, sort.
+    const questionId = cleanBrokerId(row.questionId);
+    const cleaned: HouseAnswer = {
+      id,
+      ...(questionId !== null ? { questionId } : {}),
+      text: asked,
+      ...(answer !== null ? { answer } : {}),
+      status,
+      sort: whole(row.sort, 0, 1_000_000) ?? 0,
+    };
+    out.push(cleaned);
+  }
+  if (out.length === 0) return null;
+  out.sort((a, b) => a.sort - b.sort || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return out.slice(0, MAX_ANSWERS);
 }
 
 /** A room id: matches the pattern and is not `.`/`..`, or null. */

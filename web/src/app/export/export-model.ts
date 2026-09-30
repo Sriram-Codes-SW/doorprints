@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { HouseRoom } from '../core/models';
+import type { HouseAnswer, HouseRoom } from '../core/models';
 import type { Lang } from '../i18n/languages';
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../data/records';
 import type { Broker, BrokerRow } from '../shared/broker';
+import type { QuestionRow } from '../shared/question';
 import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
@@ -62,6 +63,8 @@ export interface ExportHouse {
   visits: readonly VisitRecord[];
   photos: readonly PhotoRecord[];
   rooms: readonly HouseRoom[];
+  /** The questions asked about the house, as stored (slice 3a); readable copies list them with `ordered`. */
+  answers: readonly HouseAnswer[];
 }
 
 /** A broker in the copy, with the houses of the copy that use it (slice 1b). */
@@ -92,6 +95,11 @@ export interface ExportBundle {
   /** The preference records that exist (the rating share), in the same order. */
   preferences: readonly PreferenceRow[];
   /**
+   * The question bank records that exist, oldest edit first then id (the backup's order). Questions are not contacts,
+   * so a copy without contact details keeps them (slice 3a).
+   */
+  questions: readonly QuestionRow[];
+  /**
    * The brokers in the copy, oldest edit first then id (the backup's order). Empty with no contact details. A copy of
    * every house (`scope: 'all'`) carries every live broker; a partial copy only the brokers its houses use.
    */
@@ -117,6 +125,8 @@ export interface CollectInput {
   criteria?: readonly CriterionRow[];
   /** The preference records of the store (slice 2). */
   preferences?: readonly PreferenceRow[];
+  /** The question records of the store (slice 3a). */
+  questions?: readonly QuestionRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
   exportedAt: string;
@@ -158,6 +168,9 @@ export function collect(input: CollectInput): ExportBundle {
 
   const criteria = sortRows(input.criteria ?? []);
   const preferences = sortRows(input.preferences ?? []);
+  const questions = (input.questions ?? [])
+    .slice()
+    .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const scoring = scoringOf(criteria, preferences);
 
   const houses: ExportHouse[] = chosen.map((house) => {
@@ -173,6 +186,7 @@ export function collect(input: CollectInput): ExportBundle {
         .sort((a, b) => compare(a.arrivedAt, b.arrivedAt) || compare(a.id, b.id)),
       photos: wantPhotos ? (photosByHouse.get(house.id) ?? []).slice().sort(byCreatedThenId) : [],
       rooms: house.rooms ?? [],
+      answers: house.answers ?? [],
     };
   });
 
@@ -184,6 +198,7 @@ export function collect(input: CollectInput): ExportBundle {
     scoring,
     criteria,
     preferences,
+    questions,
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     counts: {

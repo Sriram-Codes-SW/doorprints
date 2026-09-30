@@ -18,6 +18,9 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.model.AnswerStatus
+import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.RoomSizes
@@ -65,6 +68,7 @@ object HouseDocuments {
             line(sb, "Agreed price", c.agreedPrice?.let { "Rs $it" })
         }
         line(sb, "Rooms", rooms(h.rooms, r))
+        answerLines(sb, h.answers, r)
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -97,6 +101,26 @@ object HouseDocuments {
                 }
                 if (room.condition != null) append(" (condition ").append(room.condition).append("/5)")
             }
+        }
+    }
+
+    /** At most this many `Asked:` lines and this many `Still to ask:` lines (slice 3a), as the server writes. */
+    const val ANSWER_LINES_MAX = 20
+
+    /**
+     * The viewing answers (slice 3a), the same words as the server's `HouseDocuments.answerLines` and the web's
+     * `houseText`: `Asked: <question> | Answer: <answer>` for each answered one, then `Still to ask: <question>` for each
+     * open one (a skipped question is neither), at most [ANSWER_LINES_MAX] of each, in the order shown
+     * ([HouseAnswers.ordered]). Question and answer are the person's own words and go through the redactor like notes:
+     * an answer may well hold the owner's number.
+     */
+    internal fun answerLines(sb: StringBuilder, answers: List<HouseAnswer>?, r: ContactRedactor.Redactor) {
+        val ordered = HouseAnswers.ordered(answers)
+        ordered.filter { it.answerStatus == AnswerStatus.ANSWERED }.take(ANSWER_LINES_MAX).forEach { a ->
+            line(sb, "Asked", r.freeText(a.text.trim()).orEmpty() + " | Answer: " + r.freeText(a.answer.orEmpty().trim()).orEmpty())
+        }
+        ordered.filter { it.answerStatus == AnswerStatus.OPEN }.take(ANSWER_LINES_MAX).forEach { a ->
+            line(sb, "Still to ask", r.freeText(a.text.trim()))
         }
     }
 

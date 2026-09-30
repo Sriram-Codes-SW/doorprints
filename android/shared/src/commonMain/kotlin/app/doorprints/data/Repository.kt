@@ -28,10 +28,15 @@ import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportCriterion
+import app.doorprints.shared.export.ExportQuestion
 import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.Question
+import app.doorprints.shared.model.QuestionCategory
+import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.records.RecordType
@@ -168,6 +173,59 @@ interface Repository {
     /** *Reset to defaults*: every criterion and preference record becomes a tombstone (houses' scores stay). */
     suspend fun resetScoring()
 
+    // The question bank (docs/11 5.5, slice 3a): records of type `question` (id = the question's id). The fourteen
+    // defaults have fixed ids (`DefaultQuestions`), a custom one `q_` + 8 hex; at most 100 in all, archived included.
+
+    /** The live questions (coerced, untrusted rows left out) in the bank's order, now and after each change. */
+    fun observeQuestions(): Flow<List<Question>>
+
+    /** The live questions now, read once. */
+    suspend fun questions(): List<Question>
+
+    /**
+     * Seeds the bank: each default whose id has no record here (a tombstone counts: a deleted default is not brought
+     * back) is written in [language] (en, hi, ta, te; anything else English), dirty. Returns how many were written.
+     */
+    suspend fun seedQuestions(language: String): Int
+
+    /** [seedQuestions] once per install (the `questions.seeded` setting), at the app's start. */
+    suspend fun seedQuestionsOnce(language: String)
+
+    /**
+     * *Reset to defaults*: every default is written again in [language] whatever its record says (a deleted or edited
+     * default comes back); the person's own questions stay.
+     */
+    suspend fun resetQuestions(language: String)
+
+    /**
+     * Saves one question (coerced; `IllegalArgumentException` for a bad id or a text outside 1..300). Nothing is written
+     * when the record already says the same. `RecordLimitException` when it would be the 101st.
+     */
+    suspend fun saveQuestion(question: Question)
+
+    /** [saveQuestion] for each of [questions] in one transaction: the Questions screen's move up/down renumbering. */
+    suspend fun saveQuestions(questions: List<Question>)
+
+    /**
+     * Adds a question of the person's own (text trimmed, 1..300, else `IllegalArgumentException`) with a fresh id `q_` +
+     * 8 hex that no question record has used, at the end of the bank; returns the id. `RecordLimitException` at 100.
+     */
+    suspend fun addQuestion(
+        text: String,
+        category: QuestionCategory = QuestionCategory.OTHER,
+        appliesTo: QuestionScope = QuestionScope.BOTH,
+        defaultOn: Boolean = false,
+    ): String
+
+    /** Deletes a question, seeded or custom (a tombstone; a deleted default stays deleted until Reset). */
+    suspend fun deleteQuestion(id: String)
+
+    /**
+     * Replaces the questions asked at house [houseId] (coerced as every reader does; null or empty for none) and saves
+     * the house, dirty. Nothing happens for a house that is not here or is deleted.
+     */
+    suspend fun saveAnswers(houseId: String, answers: List<HouseAnswer>?)
+
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -265,6 +323,8 @@ interface Repository {
         /** The live criterion and preference records (slice 2); a copy keeps them, with or without contact details. */
         val criteria: List<ExportCriterion> = emptyList(),
         val preferences: List<ExportPreference> = emptyList(),
+        /** The live question records (slice 3a); a copy keeps them, with or without contact details. */
+        val questions: List<ExportQuestion> = emptyList(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -300,6 +360,8 @@ interface Repository {
         /** Every criterion and preference record here, deleted ones too, by key (slice 2): merged by key. */
         val criteria: Map<String, Long> = emptyMap(),
         val preferences: Map<String, Long> = emptyMap(),
+        /** Every question record here, deleted ones too, by id (slice 3a): merged by id. */
+        val questions: Map<String, Long> = emptyMap(),
     )
 
     /** What an import actually managed to write. */
@@ -334,9 +396,11 @@ interface Repository {
         /** Criteria and preferences written (slice 2), new and updated together. */
         val criteria: Int = 0,
         val preferences: Int = 0,
+        /** Questions written (slice 3a), new and updated together. */
+        val questions: Int = 0,
     ) {
         /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences
+        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences + questions
     }
 
     /**

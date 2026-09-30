@@ -111,6 +111,9 @@ object Routes {
     /** Settings > Criteria (docs/11 5.4, slice 2). */
     const val CRITERIA = "criteria"
 
+    /** Settings > Questions (docs/11 5.5, slice 3a). */
+    const val QUESTIONS = "questions"
+
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
     val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
 
@@ -182,6 +185,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     ?: getString(Res.string.settings_language_system)
                 rootSnackbar.showSnackbar(getString(Res.string.settings_language_changed, name))
             }
+        }
+
+        // The question bank is seeded once per install, in the app's language (docs/11 5.5, slice 3a); the screens that
+        // read it follow the records as they arrive. A failure leaves it for the next start.
+        LaunchedEffect(repo) {
+            runCatching { repo.seedQuestionsOnce(appLanguage()) }
         }
 
         // The copy import whose houses the list shows behind a "Just imported" chip, set by a finished copy
@@ -406,9 +415,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenShare = { nav.navigate(Routes.SHARE) },
                         onOpenBrokers = { nav.navigate(Routes.BROKERS) },
                         onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
+                        onOpenQuestions = { nav.navigate(Routes.QUESTIONS) },
                     )
                 }
                 // Criteria (docs/11 5.4, slice 2): a sub-screen of Settings with its own back arrow, like Brokers.
+                // Questions (docs/11 5.5, slice 3a): the bank of viewing questions, a sub-screen of Settings like Criteria.
+                composable(Routes.QUESTIONS) {
+                    QuestionsScreen(onBack = dropUnlessResumed { nav.popBackStack() })
+                }
                 composable(Routes.CRITERIA) {
                     CriteriaScreen(onBack = dropUnlessResumed { nav.popBackStack() })
                 }

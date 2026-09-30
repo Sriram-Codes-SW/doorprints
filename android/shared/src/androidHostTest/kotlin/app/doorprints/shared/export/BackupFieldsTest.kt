@@ -91,11 +91,34 @@ class BackupFieldsTest {
         assertEquals(model, model.filter { key -> rows.any { key in it } })
     }
 
+    /**
+     * The questions (slice 3a): `archived` is only on one row, so every row's keys are in the model's order and together
+     * they are all of the model's fields.
+     */
+    @Test
+    fun theSampleQuestionsTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        val model = ExportQuestion.serializer().descriptor.elementNames.toList()
+        val rows = sample.getValue("questions").jsonArray.map { it.jsonObject.keys.toList() }
+        for (row in rows) assertEquals(model.filter { it in row }, row)
+        assertEquals(model, model.filter { key -> rows.any { key in it } })
+    }
+
+    /** The answers (slice 3a): house 1's two answers together carry every key of `HouseAnswer`, each row in its order. */
+    @Test
+    fun theSampleAnswersTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        val model = app.doorprints.shared.model.HouseAnswer.serializer().descriptor.elementNames.toList()
+        val rows = sample.getValue("houses").jsonArray.flatMap { h -> h.jsonObject["answers"]?.jsonArray.orEmpty() }
+            .map { it.jsonObject.keys.toList() }
+        assertEquals(2, rows.size)
+        for (row in rows) assertEquals(model.filter { it in row }, row)
+        assertEquals(model, model.filter { key -> rows.any { key in it } })
+    }
+
     @Test
     fun theSamplePreferenceHasExactlyTheModelsFields() =
         assertEquals(ExportPreference.serializer().descriptor.elementNames.toList(), keysOf("preferences"))
 
-    /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers` (README 3.6). */
+    /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers`, `questions` last. */
     @Test
     fun theSamplesTopLevelKeysAreTheModelsInItsOrder() =
         assertEquals(BackupData.serializer().descriptor.elementNames.toList(), sample.keys.toList())
@@ -108,6 +131,12 @@ class BackupFieldsTest {
         val rooms = sample.getValue("houses").jsonArray.sumOf { h -> h.jsonObject["rooms"]?.jsonArray?.size ?: 0 }
         assertEquals(BackupFormat.idFor(sample.getValue("brokers").jsonArray.size, rooms), format)
         assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, rooms))
+        // Slice 3a: questions alone, or a house with answers alone, make a `/2` file too.
+        val questions = sample.getValue("questions").jsonArray.size
+        val answers = sample.getValue("houses").jsonArray.sumOf { h -> h.jsonObject["answers"]?.jsonArray?.size ?: 0 }
+        assertEquals(listOf(3, 2), listOf(questions, answers))
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, questions = questions))
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, answers = answers))
         assertEquals("doorprints-backup/2", format)
     }
 }

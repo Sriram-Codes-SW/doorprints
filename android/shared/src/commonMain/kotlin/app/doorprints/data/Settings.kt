@@ -216,6 +216,8 @@ class SettingsStore(
         /** [AppSettings.shareContacts], as JSON. */
         val shareContacts = stringPreferencesKey("shareContacts")
         val brokersMigrated = booleanPreferencesKey("brokers.migrated")
+        /** The question bank was seeded on this install (slice 3a): the web's `SETTING_KEYS.questionsSeeded`, not synced. */
+        val questionsSeeded = booleanPreferencesKey("questions.seeded")
         /** [AppSettings.lengthUnit], by name: the web's `SETTING_KEYS.lengthUnit`. */
         val lengthUnit = stringPreferencesKey("units.length")
     }
@@ -383,6 +385,11 @@ class SettingsStore(
     suspend fun brokersMigrated(): Boolean = dataStore.data.first()[Keys.brokersMigrated] ?: false
 
     suspend fun markBrokersMigrated() = dataStore.edit { it[Keys.brokersMigrated] = true }
+
+    /** Whether this install has seeded the question bank (docs/11 5.5, slice 3a): it seeds once, at the first start. */
+    suspend fun questionsSeeded(): Boolean = dataStore.data.first()[Keys.questionsSeeded] ?: false
+
+    suspend fun markQuestionsSeeded() = dataStore.edit { it[Keys.questionsSeeded] = true }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 

@@ -115,6 +115,7 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
     onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {}, onOpenCriteria: () -> Unit = {},
+    onOpenQuestions: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -700,6 +701,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria)
+        // The questions you ask at a viewing (docs/11 5.5, slice 3a): the bank the house form's *Questions to ask* draws on.
+        HorizontalDivider()
+        NavRow(stringResource(Res.string.settings_questions), stringResource(Res.string.settings_questions_hint), onOpenQuestions)
 
         // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
         HorizontalDivider()

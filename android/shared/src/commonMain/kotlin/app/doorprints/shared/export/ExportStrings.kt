@@ -53,6 +53,9 @@ class ExportStrings internal constructor(
     /** Translated name of a room type ([app.doorprints.shared.model.RoomType]); the name itself if new. */
     fun roomType(name: String): String = values["roomType.$name"] ?: name
 
+    /** Translated name of an answer's status ([app.doorprints.shared.model.AnswerStatus]); the name itself if new. */
+    fun answerStatus(name: String): String = values["answerStatus.$name"] ?: name
+
     /** "{n} months" in the export language, for the Cost block of a readable copy. */
     fun months(n: Int): String = values.getValue("months").replace("{n}", n.toString())
 
@@ -114,6 +117,15 @@ class ExportStrings internal constructor(
                 "table.photos" to "Photos",
                 "table.brokers" to "Brokers",
                 "table.rooms" to "Rooms",
+                // Slice 3a (2026-09-30): the viewing questions.
+                "section.questions" to "Questions",
+                "table.answers" to "Answers",
+                "col.question" to "Question",
+                "col.answer" to "Answer",
+                "col.questionId" to "Question id",
+                "answerStatus.OPEN" to "Open",
+                "answerStatus.ANSWERED" to "Answered",
+                "answerStatus.SKIPPED" to "Skipped",
                 // Slice 2 (2026-09-30): the criteria and ranking.
                 "table.criteria" to "Criteria",
                 "col.weight" to "Weight",
@@ -272,6 +284,15 @@ class ExportStrings internal constructor(
                 "table.photos" to "तस्वीरें",
                 "table.brokers" to "दलाल",
                 "table.rooms" to "कमरे",
+                // Slice 3a (2026-09-30): the viewing questions; under review.
+                "section.questions" to "सवाल",
+                "table.answers" to "जवाब",
+                "col.question" to "सवाल",
+                "col.answer" to "जवाब",
+                "col.questionId" to "सवाल आईडी",
+                "answerStatus.OPEN" to "बाकी",
+                "answerStatus.ANSWERED" to "उत्तर मिला",
+                "answerStatus.SKIPPED" to "छोड़ा गया",
                 // Slice 2 (2026-09-30): the criteria and ranking; under review.
                 "table.criteria" to "मापदंड",
                 "col.weight" to "महत्व",
@@ -432,6 +453,15 @@ class ExportStrings internal constructor(
                 "table.photos" to "படங்கள்",
                 "table.brokers" to "தரகர்கள்",
                 "table.rooms" to "அறைகள்",
+                // Slice 3a (2026-09-30): the viewing questions; under review.
+                "section.questions" to "கேள்விகள்",
+                "table.answers" to "பதில்கள்",
+                "col.question" to "கேள்வி",
+                "col.answer" to "பதில்",
+                "col.questionId" to "கேள்வி அடையாளம்",
+                "answerStatus.OPEN" to "நிலுவை",
+                "answerStatus.ANSWERED" to "பதில் கிடைத்தது",
+                "answerStatus.SKIPPED" to "தவிர்க்கப்பட்டது",
                 // Slice 2 (2026-09-30): the criteria and ranking; under review.
                 "table.criteria" to "அளவுகோல்கள்",
                 "col.weight" to "முக்கியத்துவம்",
@@ -592,6 +622,15 @@ class ExportStrings internal constructor(
                 "table.photos" to "ఫోటోలు",
                 "table.brokers" to "బ్రోకర్లు",
                 "table.rooms" to "గదులు",
+                // Slice 3a (2026-09-30): the viewing questions; under review.
+                "section.questions" to "ప్రశ్నలు",
+                "table.answers" to "సమాధానాలు",
+                "col.question" to "ప్రశ్న",
+                "col.answer" to "సమాధానం",
+                "col.questionId" to "ప్రశ్న ఐడీ",
+                "answerStatus.OPEN" to "పెండింగ్",
+                "answerStatus.ANSWERED" to "సమాధానం వచ్చింది",
+                "answerStatus.SKIPPED" to "వదిలివేశారు",
                 // Slice 2 (2026-09-30): the criteria and ranking; under review.
                 "table.criteria" to "ప్రమాణాలు",
                 "col.weight" to "ప్రాధాన్యం",

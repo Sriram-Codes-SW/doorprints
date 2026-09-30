@@ -32,6 +32,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.create
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
@@ -223,6 +224,55 @@ class AppDatabaseMigrationTest {
         val db = helper.runMigrationsAndValidate(7, listOf(AppDatabase.MIGRATION_6_7))
         try {
             assertEquals(listOf("h1|1150|b1|64000|"), db.rows("SELECT id, areaSqft, brokerId, cost_deposit, IFNULL(rooms, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+    }
+
+    /**
+     * v8 (docs/11 5.5 slice 3a): the whole chain from version 1 ends in the committed `8.json`; a house from before has
+     * no answers, and a house written through the DAO keeps its answers as JSON text in `houses.answers`.
+     */
+    @Test
+    fun migrations1To8MatchTheExportedSchemaAndAHouseFromBeforeHasNoAnswers() = runBlocking {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(8, AppDatabase.MIGRATIONS.toList())
+        try {
+            assertEquals(listOf("h1||"), db.rows("SELECT id, IFNULL(rooms, ''), IFNULL(answers, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.answers)
+            val answers = listOf(
+                HouseAnswer("a1", "qd_water", "Where does the water come from?", "Borewell", "ANSWERED", 0),
+                HouseAnswer("a2", text = "Is the terrace open?", sort = 1),
+            )
+            opened.houses().upsert(house.copy(answers = answers))
+            assertEquals(answers, opened.houses().get("h1")!!.answers)
+        } finally {
+            opened.close()
+        }
+    }
+
+    /** `MIGRATION_7_8` alone: a version-7 house keeps its values, broker and rooms, and has no answers. */
+    @Test
+    fun migration7To8AddsTheAnswersColumnToAVersion7House() {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(7, AppDatabase.MIGRATIONS.toList().take(6)).use { v7 ->
+            v7.execSQL("UPDATE houses SET areaSqft = 1150, brokerId = 'b1', rooms = '[{\"id\":\"r1\",\"type\":\"HALL\",\"sort\":0}]'")
+        }
+        val db = helper.runMigrationsAndValidate(8, listOf(AppDatabase.MIGRATION_7_8))
+        try {
+            assertEquals(
+                listOf("h1|1150|b1|[{\"id\":\"r1\",\"type\":\"HALL\",\"sort\":0}]|"),
+                db.rows("SELECT id, areaSqft, brokerId, rooms, IFNULL(answers, '') FROM houses"),
+            )
         } finally {
             db.close()
         }

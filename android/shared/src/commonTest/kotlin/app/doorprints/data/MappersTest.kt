@@ -22,6 +22,7 @@ import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.VisitDto
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
@@ -80,6 +81,37 @@ class MappersTest {
         assertEquals(mapOf("water" to 5, "noise" to 2), dto.checklist); assertFalse(dto.deleted)
         assertEquals(1150, dto.areaSqft); assertEquals("GPS", dto.locationSource); assertEquals(house.cost, dto.cost)
         assertEquals(house.rooms, dto.rooms); assertEquals(house.rooms, house.toExport().rooms)
+    }
+
+    @Test
+    fun answersSurviveEveryMappingAndAreCoercedOnTheWayIn() {
+        // Slice 3a: the answers after the rooms, the same list on the wire, in a copy and back.
+        val answers = listOf(
+            HouseAnswer("a1", "qd_water", "Where does the water come from?", "Borewell", "ANSWERED", 0),
+            HouseAnswer("a2", text = "Is the terrace open?", sort = 1),
+        )
+        val h = house.copy(answers = answers)
+        assertEquals(answers, h.toDto().answers)
+        assertEquals(answers, h.toExport().answers)
+        assertEquals(answers, h.toDto().toEntity().answers)
+        assertEquals(answers, h.toExport().toEntity().answers)
+        // A typed answer with OPEN reads ANSWERED, a repeated id is dropped; [] reads as none and none is never [].
+        val odd = listOf(HouseAnswer("a1", text = "Q", answer = "Yes"), HouseAnswer("a1", text = "Again", sort = 1))
+        assertEquals(listOf(HouseAnswer("a1", text = "Q", answer = "Yes", status = "ANSWERED")), h.toDto().copy(answers = odd).toEntity().answers)
+        assertNull(h.toDto().copy(answers = emptyList()).toEntity().answers)
+        assertNull(h.copy(answers = emptyList()).toDto().answers)
+        assertNull(h.copy(answers = emptyList()).toExport().answers)
+        // Room's column: JSON text in the format's key order, and back.
+        val converters = Converters()
+        val text = converters.answersToJson(answers)
+        assertEquals(
+            "[{\"id\":\"a1\",\"questionId\":\"qd_water\",\"text\":\"Where does the water come from?\",\"answer\":\"Borewell\"," +
+                "\"status\":\"ANSWERED\",\"sort\":0},{\"id\":\"a2\",\"text\":\"Is the terrace open?\",\"status\":\"OPEN\",\"sort\":1}]",
+            text,
+        )
+        assertEquals(answers, converters.jsonToAnswers(text))
+        assertNull(converters.answersToJson(emptyList()))
+        assertNull(converters.jsonToAnswers("not json"))
     }
 
     @Test

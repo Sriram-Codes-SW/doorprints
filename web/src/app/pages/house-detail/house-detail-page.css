@@ -605,3 +605,50 @@ app-location-map {
   margin: var(--space-2) 0;
   font-weight: 600;
 }
+
+/* Questions to ask (slice 3a): a card per question inside the card, the picker under the buttons. */
+.question {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+}
+
+.question.skipped .question-text {
+  color: var(--muted, inherit);
+}
+
+.question-text {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.picker {
+  margin-top: var(--space-3);
+}
+
+.picker-title {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.picker-group {
+  margin: var(--space-3) 0 var(--space-1);
+  font-weight: 600;
+}
+
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.picker-item {
+  width: 100%;
+  min-height: var(--target);
+  text-align: start;
+  white-space: normal;
+}

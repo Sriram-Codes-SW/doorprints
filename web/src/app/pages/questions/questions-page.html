@@ -1,0 +1,205 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <p><a routerLink="/data">{{ 'questions.back' | t }}</a></p>
+    <h1>{{ 'questions.title' | t }}</h1>
+    <p class="muted">{{ 'questions.intro' | t }}</p>
+  </header>
+
+  @if (error(); as card) {
+    <div class="error">
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+      <div class="err-actions">
+        <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (actionError(); as failure) {
+    <div class="error"><span role="alert">{{ failure.key | t: failure.params }}</span></div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else {
+    @for (g of groups(); track g.category) {
+      <section [attr.aria-labelledby]="'questions-group-' + g.category">
+        <h2 [id]="'questions-group-' + g.category">{{ categoryKey(g.category) | t }}</h2>
+        <ul class="list">
+          @for (q of g.questions; track q.id; let first = $first; let last = $last) {
+            <li class="card question">
+              <div class="field">
+                <label [for]="'question-text-' + q.id">{{ 'questions.text' | t }}</label>
+                <input
+                  class="text-field"
+                  [id]="'question-text-' + q.id"
+                  type="text"
+                  [attr.maxlength]="maxText"
+                  [attr.aria-label]="'questions.textAria' | t"
+                  [value]="q.text"
+                  (change)="editText(q, $event)"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="controls">
+                <div class="field">
+                  <label [for]="'question-category-' + q.id">{{ 'questions.categoryLabel' | t }}</label>
+                  <select
+                    [id]="'question-category-' + q.id"
+                    [attr.aria-label]="'questions.categoryAria' | t: { name: nameOf(q) }"
+                    [value]="q.category"
+                    (change)="setCategory(q, $event)"
+                  >
+                    @for (c of categories; track c) {
+                      <option [value]="c" [selected]="q.category === c">{{ categoryKey(c) | t }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label [for]="'question-scope-' + q.id">{{ 'questions.appliesTo' | t }}</label>
+                  <select
+                    [id]="'question-scope-' + q.id"
+                    [attr.aria-label]="'questions.appliesToAria' | t: { name: nameOf(q) }"
+                    [value]="q.appliesTo"
+                    (change)="setScope(q, $event)"
+                  >
+                    @for (s of scopes; track s) {
+                      <option [value]="s" [selected]="q.appliesTo === s">{{ scopeKey(s) | t }}</option>
+                    }
+                  </select>
+                </div>
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    [checked]="q.defaultOn"
+                    [attr.aria-label]="'questions.askByDefaultAria' | t: { name: nameOf(q) }"
+                    (change)="setDefaultOn(q, $event)"
+                  />
+                  <span>{{ 'questions.askByDefault' | t }}</span>
+                </label>
+              </div>
+              <div class="actions">
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [disabled]="first"
+                  [attr.aria-label]="'questions.moveUp' | t: { name: nameOf(q) }"
+                  (click)="move(q, -1)"
+                >
+                  <span aria-hidden="true">↑</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [disabled]="last"
+                  [attr.aria-label]="'questions.moveDown' | t: { name: nameOf(q) }"
+                  (click)="move(q, 1)"
+                >
+                  <span aria-hidden="true">↓</span>
+                </button>
+                <button type="button" class="btn btn-sm" [attr.aria-label]="'questions.archiveAria' | t: { name: nameOf(q) }" (click)="archive(q)">
+                  {{ 'questions.archive' | t }}
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" [attr.aria-label]="'questions.deleteAria' | t: { name: nameOf(q) }" (click)="remove(q)">
+                  {{ 'questions.delete' | t }}
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    } @empty {
+      @if (archived().length === 0) {
+        <p id="questions-empty" class="muted">{{ 'questions.empty' | t }}</p>
+      }
+    }
+
+    <section class="card" aria-labelledby="questions-add-heading">
+      <h2 id="questions-add-heading">{{ 'questions.add' | t }}</h2>
+      <form class="add" (ngSubmit)="add()" novalidate>
+        <div class="field">
+          <label for="questions-new">{{ 'questions.newText' | t }}</label>
+          <input
+            id="questions-new"
+            name="newText"
+            type="text"
+            [(ngModel)]="newText"
+            [attr.maxlength]="maxText"
+            [disabled]="atCap()"
+            [attr.aria-invalid]="textError() ? 'true' : null"
+            [attr.aria-describedby]="textError() ? 'questions-new-error' : atCap() ? 'questions-cap' : null"
+            autocomplete="off"
+          />
+          @if (textError()) {
+            <p id="questions-new-error" class="field-error" role="alert">{{ 'questions.textRequired' | t }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="questions-new-category">{{ 'questions.categoryLabel' | t }}</label>
+          <select id="questions-new-category" name="newCategory" [(ngModel)]="newCategory" [disabled]="atCap()">
+            @for (c of categories; track c) {
+              <option [value]="c">{{ categoryKey(c) | t }}</option>
+            }
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="atCap()">{{ 'questions.add' | t }}</button>
+      </form>
+      @if (atCap()) {
+        <p id="questions-cap" class="muted">{{ 'questions.max' | t }}</p>
+      }
+    </section>
+
+    @if (archived().length > 0) {
+      <section class="card" aria-labelledby="questions-archived-heading">
+        <h2 id="questions-archived-heading">{{ 'questions.archived' | t }}</h2>
+        <ul class="list">
+          @for (q of archived(); track q.id) {
+            <li class="archived-row">
+              <span class="name">{{ q.text }}</span>
+              <span class="actions">
+                <button type="button" class="btn btn-sm" [attr.aria-label]="'questions.bringBackAria' | t: { name: nameOf(q) }" (click)="bringBack(q)">
+                  {{ 'questions.bringBack' | t }}
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" [attr.aria-label]="'questions.deleteAria' | t: { name: nameOf(q) }" (click)="remove(q)">
+                  {{ 'questions.delete' | t }}
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <section class="card danger" aria-labelledby="questions-reset-heading">
+      <h2 id="questions-reset-heading">{{ 'questions.reset' | t }}</h2>
+      <p class="muted">{{ 'questions.confirmReset' | t }}</p>
+      <button type="button" class="btn btn-danger" (click)="reset()">{{ 'questions.reset' | t }}</button>
+    </section>
+  }
+</div>

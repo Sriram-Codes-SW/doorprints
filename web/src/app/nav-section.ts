@@ -40,7 +40,7 @@ export function hidesBottomBar(path: string): boolean {
  * bar and lives in Your data.
  */
 export function inDataSection(path: string, phone: boolean): boolean {
-  return path.startsWith('/data') || path.startsWith('/brokers') || path.startsWith('/criteria') || (phone && path.startsWith('/connect'));
+  return path.startsWith('/data') || path.startsWith('/brokers') || path.startsWith('/criteria') || path.startsWith('/questions') || (phone && path.startsWith('/connect'));
 }
 
 /**

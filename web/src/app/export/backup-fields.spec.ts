@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBackupData } from './backup-export';
 import { collect } from './export-model';
 import { GOLDEN_BACKUP_DATA_JSON } from './golden/backup.golden';
-import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_QUESTIONS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
 
 /**
  * Completeness of the backup writer against the format (readiness review 2026-09-29, docs/14 §8 finding 4): the keys
@@ -36,6 +36,7 @@ describe('backup fields', () => {
     brokers: object[];
     criteria: object[];
     preferences: object[];
+    questions: object[];
   };
   const written = buildBackupData(
     collect({
@@ -45,6 +46,7 @@ describe('backup fields', () => {
       brokers: FIXTURE_BROKERS,
       criteria: FIXTURE_CRITERIA,
       preferences: FIXTURE_PREFERENCES,
+      questions: FIXTURE_QUESTIONS,
       exportedAt: FIXTURE_EXPORTED_AT,
       options: FIXTURE_OPTIONS,
     }),
@@ -67,6 +69,22 @@ describe('backup fields', () => {
   });
   it('writes exactly the format\'s preference keys', () => {
     expect(Object.keys(written.preferences?.[0] ?? {})).toEqual(Object.keys(sample.preferences[0]));
+  });
+  it('writes exactly the format\'s question keys: the union over the rows, since only the archived one has `archived`', () => {
+    const rows = written.questions ?? [];
+    expect(rows.map((q) => q.id)).toEqual(['qd_deposit', 'qd_maintenance', 'q_9f8e7d6c']);
+    rows.forEach((row, i) => expect(Object.keys(row)).toEqual(Object.keys(sample.questions[i])));
+    const union = new Set(rows.flatMap((q) => Object.keys(q)));
+    expect([...union].sort()).toEqual([...new Set(sample.questions.flatMap((q) => Object.keys(q)))].sort());
+  });
+  it('writes exactly the format\'s answer keys, for the full answer and the ad hoc one, right after rooms', () => {
+    const answers = written.houses[0].answers ?? [];
+    const sampleAnswers = (sample.houses[0] as unknown as { answers: object[] }).answers;
+    expect(Object.keys(answers[0])).toEqual(Object.keys(sampleAnswers[0]));
+    expect(Object.keys(answers[1])).toEqual(Object.keys(sampleAnswers[1]));
+    const keys = Object.keys(written.houses[0]);
+    expect(keys.indexOf('answers')).toBe(keys.indexOf('rooms') + 1);
+    expect(keys.indexOf('brokerId')).toBe(keys.indexOf('answers') + 1);
   });
   it('writes the sample\'s format id and top-level keys', () => {
     expect(written.format).toBe((sample as unknown as { format: string }).format);

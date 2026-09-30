@@ -104,6 +104,58 @@ describe('AI core (what the vectors do not cover)', () => {
       .toContain('Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)');
   });
 
+  it('writes the questions after the Rooms line: answered as Asked/Answer, open as Still to ask, skipped not at all', () => {
+    const text = houseText({
+      ...house,
+      rooms: [{ id: 'r1', type: 'HALL', name: 'Hall', sort: 0 }],
+      answers: [
+        { id: 'a3', text: 'Is the terrace open?', status: 'OPEN', sort: 2 },
+        { id: 'a1', questionId: 'qd_water', text: 'Water supply hours?', answer: 'Twice a day', status: 'ANSWERED', sort: 0 },
+        { id: 'a2', text: 'Pets allowed?', answer: 'Ask later', status: 'SKIPPED', sort: 1 },
+        { id: 'a4', text: 'Who pays the brokerage?', status: 'OPEN', sort: 3 },
+        { id: 'a5', text: 'Power backup?', answer: 'Inverter', status: 'ANSWERED', sort: 4 },
+      ],
+    });
+    expect(text).toContain(
+      [
+        'Rooms: Hall',
+        'Asked: Water supply hours? | Answer: Twice a day',
+        'Asked: Power backup? | Answer: Inverter',
+        'Still to ask: Is the terrace open?',
+        'Still to ask: Who pays the brokerage?',
+        'Status: SHORTLISTED',
+      ].join('\n'),
+    );
+    expect(text).not.toContain('Pets allowed');
+    expect(houseText({ ...house, answers: [] })).toBe(houseText(house));
+  });
+
+  it('puts the text and the answer of a question through the contact redactor, a phone number in an answer included', () => {
+    const text = houseText({
+      ...house,
+      answers: [
+        { id: 'a1', text: 'Can I call Ramesh?', answer: 'Yes, ring 98450 12345 or Ramesh Kumar', status: 'ANSWERED', sort: 0 },
+        { id: 'a2', text: 'Ask Kumar about the lift', status: 'OPEN', sort: 1 },
+      ],
+    });
+    expect(text).toContain('Asked: Can I call [contact]? | Answer: Yes, ring [phone] or [contact]');
+    expect(text).toContain('Still to ask: Ask [contact] about the lift');
+    expect(text).not.toContain('98450 12345\nSt');
+    expect(text).not.toMatch(/Ramesh|Kumar(?!'s)/);
+  });
+
+  it('writes at most 20 answered and 20 open questions', () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({
+      id: `a${String(i).padStart(2, '0')}`,
+      text: `Question ${i}`,
+      ...(i % 2 === 0 ? { answer: `Answer ${i}`, status: 'ANSWERED' as const } : { status: 'OPEN' as const }),
+      sort: i,
+    }));
+    const lines = houseText({ ...house, answers: many }).split('\n');
+    expect(lines.filter((l) => l.startsWith('Asked: '))).toHaveLength(20);
+    expect(lines.filter((l) => l.startsWith('Still to ask: '))).toHaveLength(20);
+  });
+
   it('cites only inline markers of houses that were sent', () => {
     const docs = [{ id: a, text: 'House: Blue gate\nNotes: near the metro', label: 'Blue gate' }, { id: b, text: 'House: Green', label: 'Green' }];
     expect(citations({ answer: `Near the metro [house:${a}] and [house:33333333-3333-4333-8333-333333333333].`, citedHouseIds: [b] }, docs, 'near the metro'))

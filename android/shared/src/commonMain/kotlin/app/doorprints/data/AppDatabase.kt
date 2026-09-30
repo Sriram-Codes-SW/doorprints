@@ -23,6 +23,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
+import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
 import kotlinx.serialization.builtins.MapSerializer
@@ -46,6 +48,14 @@ class Converters {
     /** Coerced on the way out as well: text that does not decode (never written here) reads as no rooms, not a crash. */
     @TypeConverter
     fun jsonToRooms(json: String?): List<HouseRoom>? = HouseRooms.coerced(HouseRooms.decode(json))
+
+    /** The questions asked (slice 3a) as compact JSON in the format's key order; null for none, never `[]`. */
+    @TypeConverter
+    fun answersToJson(answers: List<HouseAnswer>?): String? = HouseAnswers.encode(answers)
+
+    /** Coerced on the way out, like the rooms: text that does not decode reads as no answers, not a crash. */
+    @TypeConverter
+    fun jsonToAnswers(json: String?): List<HouseAnswer>? = HouseAnswers.coerced(HouseAnswers.decode(json))
 }
 
 @Dao
@@ -281,7 +291,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -377,8 +387,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        /**
+         * v8 (docs/11 5.5, slice 3a, 2026-09-30): `houses.answers`, the questions asked at the house as JSON text
+         * ([Converters]), nullable with no default as Room lists it in `8.json`. A house from before has none.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `answers` TEXT")
+            }
+        }
+
+        val MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+        )
     }
 }
 

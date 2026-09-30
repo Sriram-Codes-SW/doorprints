@@ -19,6 +19,7 @@
 package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
+import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.photo.PhotoDto;
@@ -54,7 +55,9 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>rows whose house is not in the export (a visit unlinked by a house delete) come last, in the same order.
  *       The device writers walk visits through their house and so have nothing to put here.</li>
  *   <li>checklist keys alphabetically ({@link TreeMap});</li>
- *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when there is one or a house has rooms.</li>
+ *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when the copy has a broker, a
+ *       room, a criterion, a preference, a question or a house with answers.</li>
+ *   <li>questions by {@code updatedAt}, then {@code id}.</li>
  * </ul>
  *
  * <p>Tombstones are never exported; callers pass live rows only.
@@ -80,6 +83,9 @@ final class BackupMapper {
     private static final Comparator<BackupPreference> PREFERENCE_ORDER =
             Comparator.comparing(BackupPreference::updatedAt).thenComparing(BackupPreference::key);
 
+    private static final Comparator<BackupQuestion> QUESTION_ORDER =
+            Comparator.comparing(BackupQuestion::updatedAt).thenComparing(BackupQuestion::id);
+
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos, Instant exportedAt) {
         return toBackup(houses, visits, photos, List.of(), List.of(), List.of(), null, exportedAt);
     }
@@ -88,6 +94,14 @@ final class BackupMapper {
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
                                List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
                                ObjectMapper json, Instant exportedAt) {
+        return toBackup(houses, visits, photos, brokerRecords, criterionRecords, preferenceRecords, List.of(), json,
+                exportedAt);
+    }
+
+    /** As above, with the live {@code question} records (slice 3a). */
+    static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
+                               List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
+                               List<Record> questionRecords, ObjectMapper json, Instant exportedAt) {
         var liveHouses = houses.stream().filter(h -> !h.isDeleted()).sorted(HOUSE_ORDER).toList();
         var houseOrder = new LinkedHashSet<UUID>();
         for (var house : liveHouses) houseOrder.add(house.getId());
@@ -104,10 +118,14 @@ final class BackupMapper {
         var preferences = preferenceRecords.stream().filter(r -> !r.isDeleted()).map(r -> preference(r, json))
                 .filter(java.util.Objects::nonNull).sorted(PREFERENCE_ORDER).toList();
 
+        var questions = questionRecords.stream().filter(r -> !r.isDeleted()).map(r -> question(r, json))
+                .filter(java.util.Objects::nonNull).sorted(QUESTION_ORDER).toList();
+
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, or a preference; else /1.
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, or a house with answers; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
-                || !criteria.isEmpty() || !preferences.isEmpty();
+                || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty()
+                || backupHouses.stream().anyMatch(h -> h.answers() != null);
 
         return new BackupData(
                 needsV2 ? BackupFormat.ID_WITH_BROKERS : BackupFormat.ID,
@@ -119,7 +137,8 @@ final class BackupMapper {
                         .map(BackupMapper::photo).toList(),
                 brokers,
                 criteria,
-                preferences);
+                preferences,
+                questions);
     }
 
     /**
@@ -204,6 +223,35 @@ final class BackupMapper {
         return new BackupPreference(r.getKey().id(), value, r.getUpdatedAt().toEpochMilli());
     }
 
+    /**
+     * A question record as a backup row. The server never reads inside a record, so a client may have stored anything:
+     * a payload without a usable text (1..300 characters, not blank) is left out, and a field of the wrong type or
+     * outside its range is read as the clients read it (unknown category as OTHER, unknown scope as BOTH, a bad
+     * sort as 0, a non-boolean switch as off), so that the export always imports again.
+     */
+    private static BackupQuestion question(Record r, ObjectMapper json) {
+        JsonNode p;
+        try {
+            p = json.readTree(r.getPayload());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        var text = text(p, "text", BackupQuestion.MAX_TEXT);
+        if (text == null || text.isBlank()) return null;
+        var category = p.path("category");
+        var appliesTo = p.path("appliesTo");
+        var defaultOn = p.path("defaultOn");
+        var sort = p.path("sort");
+        var archived = p.path("archived");
+        return new BackupQuestion(r.getKey().id(), text,
+                category.isString() && BackupQuestion.CATEGORIES.contains(category.asString()) ? category.asString() : "OTHER",
+                appliesTo.isString() && BackupQuestion.SCOPES.contains(appliesTo.asString()) ? appliesTo.asString() : "BOTH",
+                defaultOn.isBoolean() && defaultOn.asBoolean(),
+                sort.isInt() && sort.asInt() >= 0 ? sort.asInt() : 0,
+                archived.isBoolean() && archived.asBoolean() ? true : null,
+                r.getUpdatedAt().toEpochMilli());
+    }
+
     private static String text(JsonNode payload, String key, int max) {
         var node = payload.path(key);
         return node.isString() && node.asString().length() <= max && !node.asString().isEmpty() ? node.asString() : null;
@@ -240,7 +288,8 @@ final class BackupMapper {
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()), h.getBrokerId(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
+                HouseAnswer.parse(h.getAnswers()), h.getBrokerId(),
                 sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 

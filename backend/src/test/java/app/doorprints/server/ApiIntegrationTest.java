@@ -369,6 +369,84 @@ class ApiIntegrationTest {
         assertThat(put(id, thirtyOne).get("rooms")).asList().hasSize(30);
     }
 
+    private static Map<String, Object> answer(String id, String status, Integer sort) {
+        var answer = new java.util.LinkedHashMap<String, Object>();
+        answer.put("id", id);
+        answer.put("questionId", "qd_water");
+        answer.put("text", "How is the water supply?");
+        answer.put("answer", "Borewell and corporation, call 98450 12345");
+        answer.put("status", status);
+        answer.put("sort", sort);
+        return answer;
+    }
+
+    /** Slice 3a (V10): answers go in through PUT, keep their order and come back from GET and the sync list. */
+    @Test
+    void answersRoundTripAndAPutWithoutThemClearsThem() {
+        var id = UUID.randomUUID();
+        var body = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        var open = new HashMap<String, Object>(Map.of("id", "a2", "text", "Is the terrace open?", "status", "OPEN",
+                "sort", 1));
+        var answers = List.of(answer("a1", "ANSWERED", 0), open);
+        body.put("answers", answers);
+
+        var saved = put(id, body);
+        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+                .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
+        for (var h : List.of(saved, read, listed)) {
+            // Absent answer fields are left out of the object, like the cost's.
+            assertThat(h.get("answers")).isEqualTo(answers);
+        }
+
+        // A PUT is a full replacement; an empty list is the same as none.
+        var empty = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        empty.put("answers", List.of());
+        assertThat(put(id, empty).get("answers")).isNull();
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+        put(id, body);
+        assertThat(put(id, house("Green View 2BHK", 13.006, 80.2574, "MG Road")).get("answers")).isNull();
+    }
+
+    /** Slice 3a: each bad answer, a 61st answer or a repeated answer id is a 400 and nothing is stored. */
+    @Test
+    void badAnswersAreABadRequest() {
+        var id = UUID.randomUUID();
+        var bad = new ArrayList<Map<String, Object>>();
+        var blank = answer("a", "OPEN", 0);
+        blank.put("text", "  ");
+        var tooLongText = answer("a", "OPEN", 0);
+        tooLongText.put("text", "t".repeat(301));
+        var tooLongAnswer = answer("a", "ANSWERED", 0);
+        tooLongAnswer.put("answer", "a".repeat(2001));
+        var badQuestionId = answer("a", "OPEN", 0);
+        badQuestionId.put("questionId", "has space");
+        for (var answer : List.of(answer("a", "DONE", 0), answer("..", "OPEN", 0), answer("a", "OPEN", -1), blank,
+                tooLongText, tooLongAnswer, badQuestionId)) {
+            var body = house("Bad", 12.9, 77.6, null);
+            body.put("answers", List.of(answer));
+            bad.add(body);
+        }
+        var sixtyOne = house("Bad", 12.9, 77.6, null);
+        var many = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i <= 60; i++) many.add(answer("a" + i, "OPEN", i));
+        sixtyOne.put("answers", many);
+        bad.add(sixtyOne);
+        var twins = house("Bad", 12.9, 77.6, null);
+        twins.put("answers", List.of(answer("same", "OPEN", 0), answer("same", "SKIPPED", 1)));
+        bad.add(twins);
+
+        for (var body : bad) assertThat(status(() -> put(id, body))).as("%s", body).isEqualTo(400);
+        assertThatThrownBy(() -> put(id, twins)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("answers must not repeat an id"));
+        assertThatThrownBy(() -> put(id, sixtyOne)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("answers"));
+        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+        // Sixty is fine.
+        sixtyOne.put("answers", many.subList(0, 60));
+        assertThat(put(id, sixtyOne).get("answers")).asList().hasSize(60);
+    }
+
     /** Slice 1b (V8): a house's brokerId goes in through PUT and comes back from GET and the sync list. */
     @Test
     void brokerIdRoundTripsAndABadOneIsRefused() {
@@ -490,6 +568,7 @@ class ApiIntegrationTest {
         body.put("cost", Map.of("deposit", 64000, "myOffer", 30000));
         body.put("brokerId", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         body.put("rooms", List.of(room("c1", "BEDROOM", 0)));
+        body.put("answers", List.of(answer("a1", "ANSWERED", 0)));
         put(id, body);
         var photoId = uploadPhoto(id, ImageSanitizerTest.jpegWithExif());
         var visitId = UUID.randomUUID();
@@ -513,6 +592,7 @@ class ApiIntegrationTest {
         assertThat(changed.get("cost")).isNull();
         assertThat(changed.get("brokerId")).as("the tombstone names no broker").isNull();
         assertThat(changed.get("rooms")).as("the tombstone keeps no room notes").isNull();
+        assertThat(changed.get("answers")).as("the tombstone keeps no answer text").isNull();
         assertThat(changed.get("contactPhone")).isNull();
         assertThat(changed.get("street")).isNull();
         assertThat(changed.get("label")).isEqualTo("");

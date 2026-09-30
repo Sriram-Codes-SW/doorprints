@@ -23,6 +23,7 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseScore
@@ -65,6 +66,9 @@ data class HouseEntity(
     // The rooms (slice 1c, Room version 7) as JSON text in `rooms` ([Converters]), like the checklist; null for none,
     // never an empty list. The repository's save coerces them (`HouseRooms.coerced`).
     val rooms: List<HouseRoom>? = null,
+    // The questions asked (slice 3a, Room version 8) as JSON text in `answers` ([Converters]), like the rooms; null for
+    // none. The repository's save coerces them (`HouseAnswers.coerced`).
+    val answers: List<HouseAnswer>? = null,
     // The broker's record id (slice 1b, Room version 6): no foreign key, a dangling id reads as no broker. The
     // contact fields stay as copies of the broker's name and phone (`CommonRepository.saveHouse`).
     val brokerId: String? = null,
