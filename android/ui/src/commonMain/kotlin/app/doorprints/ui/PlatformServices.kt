@@ -64,6 +64,15 @@ interface PlatformServices {
     /** True when the app may post notifications (Android: below API 33 always, from 33 with `POST_NOTIFICATIONS`). */
     fun canPostNotifications(): Boolean
 
+    /**
+     * True when a reminder can be set to the minute (Android 12+: *Alarms & reminders* allowed for the app; always on
+     * older Android and on iOS). Read on resume: the person may have changed it in the system settings.
+     */
+    fun canScheduleExactAlarms(): Boolean = true
+
+    /** Opens the system page where the app is allowed to set on-time reminders (Android 12+'s *Alarms & reminders*). */
+    fun openExactAlarmSettings() {}
+
     /** Opens the phone's dialler with [number] filled in (Android: `ACTION_DIAL` with a `tel:` URI). Nothing is dialled. */
     fun dial(number: String)
 

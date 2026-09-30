@@ -707,6 +707,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         // The viewings planned and done (docs/11 5.8, slice 3b-1): the history, its filters and search, the form.
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings)
+        // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.
+        ViewingRemindersSection()
 
         // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
         HorizontalDivider()

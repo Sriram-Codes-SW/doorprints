@@ -474,6 +474,9 @@ open class CommonRepository(
 
     override suspend fun viewings(): List<Viewing> = viewingsOf(db.records().listByType(ViewingType.name))
 
+    // The versions query lists the tombstones too, without decoding a payload.
+    override suspend fun viewingIdsForReminders(): List<String> = db.records().versions(ViewingType.name).map { it.id }
+
     override suspend fun viewingsOf(houseId: String): List<Viewing> = viewings().filter { it.houseId == houseId }
 
     override suspend fun nextViewing(houseId: String, nowMs: Long): Viewing? = Viewings.nextOf(viewings(), houseId, nowMs)

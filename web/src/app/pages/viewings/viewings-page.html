@@ -24,6 +24,16 @@
     <p>
       <a class="btn btn-primary" routerLink="/viewings/new" [queryParams]="houseId ? { houseId: houseId } : {}">{{ 'viewings.plan' | t }}</a>
     </p>
+    <div class="remind">
+      <label for="viewings-remind" class="remind-label">
+        <input id="viewings-remind" name="remind" type="checkbox" role="switch" [checked]="remind()" [disabled]="remindBusy()" (change)="toggleRemind($event)" aria-describedby="viewings-remind-note" />
+        {{ 'viewings.remind.label' | t }}
+      </label>
+      <p id="viewings-remind-note" class="muted">{{ 'viewings.remind.note' | t }}</p>
+      @if (remind() && permission() === 'denied') {
+        <p id="viewings-remind-denied" class="muted">{{ 'viewings.remind.denied' | t }}</p>
+      }
+    </div>
   </header>
 
   @if (error(); as card) {

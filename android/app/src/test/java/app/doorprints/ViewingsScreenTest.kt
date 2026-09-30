@@ -81,6 +81,9 @@ class ViewingsScreenTest {
     private val now = System.currentTimeMillis()
 
     @Before fun setUp() {
+        // Slice 3b-2 asks for notifications when a reminder is first saved (ViewingRemindersUiTest); granted here, so
+        // these tests' saves go straight on.
+        shadowOf(ApplicationProvider.getApplicationContext<DoorprintsApp>()).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
         // The house form's camera file goes through androidx FileProvider, whose path cache outlives a test's data dir.
         runCatching {
             FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }

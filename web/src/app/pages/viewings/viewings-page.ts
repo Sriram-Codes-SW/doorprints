@@ -23,6 +23,8 @@ import { firstValueFrom, forkJoin } from 'rxjs';
 import { Announcer } from '../../core/announcer.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { ViewingReminderService } from '../../core/viewing-reminder.service';
+import type { NotificationState } from '../../core/viewing-reminder.service';
 import type { HouseDto } from '../../core/models';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
@@ -62,7 +64,14 @@ export class ViewingsPage {
   private readonly api = inject(LocalDataService);
   private readonly announcer = inject(Announcer);
   private readonly route = inject(ActivatedRoute);
+  private readonly reminders = inject(ViewingReminderService);
   protected readonly i18n = inject(TranslationService);
+
+  /** *Notify me while Doorprints is open* (local setting \`viewings.remind\`, on unless turned off). */
+  protected readonly remind = signal(true);
+  protected readonly remindBusy = signal(false);
+  /** The browser's permission, read at load (reading never asks) and again after the tap that asks. */
+  protected readonly permission = signal<NotificationState>(this.reminders.permission());
 
   protected readonly loading = signal(true);
   protected readonly error = signal<RunResult<Msg> | null>(null);
@@ -121,6 +130,27 @@ export class ViewingsPage {
       this.api.settled();
       this.reload();
     });
+    this.api.viewingsRemind().subscribe({ next: (on) => this.remind.set(on), error: () => undefined });
+  }
+
+  /**
+   * The switch. Turning it on is the only place the browser is asked for permission (a tap, never at load); it works
+   * without it, as an in-page banner.
+   */
+  protected async toggleRemind(event: Event): Promise<void> {
+    const on = (event.target as HTMLInputElement).checked;
+    this.remindBusy.set(true);
+    try {
+      if (on) this.permission.set(await this.reminders.requestPermission());
+      await firstValueFrom(this.api.setViewingsRemind(on));
+      this.remind.set(on);
+      this.actionError.set(null);
+    } catch (err: unknown) {
+      (event.target as HTMLInputElement).checked = !on;
+      this.actionError.set(errorMsg(err));
+    } finally {
+      this.remindBusy.set(false);
+    }
   }
 
   protected reload(userAsked = false): void {

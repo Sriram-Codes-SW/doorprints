@@ -32,6 +32,12 @@
          type-specific permission as well as the generic FOREGROUND_SERVICE one. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Viewing reminders (docs/11 5.8, 5.16): exact alarms when the person allows "Alarms & reminders" (never asked
+         at start-up; Settings > Viewings has the optional link), otherwise a 10-minute window alarm. Not
+         USE_EXACT_ALARM, which Play limits to alarm-clock and calendar apps. The alarms are set again after a boot. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
@@ -102,6 +108,26 @@
             android:name=".location.HuntService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- A viewing reminder's alarm (slice 3b-2): reached only through this app's own immutable PendingIntent. -->
+        <receiver
+            android:name=".ViewingReminderReceiver"
+            android:exported="false" />
+
+        <!-- Sets every viewing reminder again after a boot, a clock or time-zone change, an app update and the grant of
+             "Alarms & reminders". Not exported on purpose: these broadcasts come from the system, which reaches a
+             non-exported receiver; no other app has any reason to trigger a reschedule. -->
+        <receiver
+            android:name=".ViewingReminderRescheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager's own foreground service needs a declared type from Android 14 (API 34): it is merged
              into the library's <service> entry rather than declared again. -->

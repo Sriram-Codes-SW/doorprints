@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -25,6 +26,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
+import app.doorprints.data.HouseEntity
+import app.doorprints.shared.model.LocationSource
+import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.ViewingReminders
+import app.doorprints.ui.Formats
 import app.doorprints.ui.Routes
 import app.doorprints.ui.canPostNotifications
 
@@ -33,6 +40,8 @@ object Notifications {
     const val CHANNEL_ALERTS = "alerts"
     /** Quiet channel for the progress notification of a long export, import or automatic backup (Sprint 4a). */
     const val CHANNEL_EXPORT = "exports"
+    /** Viewing reminders (docs/11 5.8, slice 3b-2): default importance, private on the lock screen. */
+    const val CHANNEL_VIEWINGS = "viewings"
     // Every fixed notification id the app uses lives here, so two features cannot pick the same number. (The
     // per-house, per-street and per-visit alerts use hash codes and cannot be reserved; they are rare and
     // short-lived.)
@@ -74,6 +83,16 @@ object Notifications {
     const val AUTO_BACKUP_PROBLEM_ID = 8
 
     /**
+     * Every viewing reminder (slice 3b-2) is posted under this id with the tag [viewingTag] of its viewing: the pair is
+     * what Android keys a notification on, so one id serves every viewing without a hash that could hit 1..8 or
+     * another alert, and a second reminder for the same viewing replaces the first.
+     */
+    const val VIEWING_ID = 9
+
+    /** The tag of viewing [viewingId]'s reminder, posted under [VIEWING_ID]. */
+    fun viewingTag(viewingId: String) = "viewing:$viewingId"
+
+    /**
      * The status-bar icon for every notification: a single-colour silhouette. The launcher icon is a full-bleed
      * square, and small icons are drawn as an alpha mask, so it showed as a solid white block.
      */
@@ -106,6 +125,13 @@ object Notifications {
             NotificationChannel(CHANNEL_EXPORT, context.getString(R.string.notif_channel_export), NotificationManager.IMPORTANCE_LOW).apply {
                 description = context.getString(R.string.notif_channel_export_desc)
                 setShowBadge(false)
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_VIEWINGS, context.getString(R.string.notif_channel_viewings), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_channel_viewings_desc)
+                // The house's name is private: a locked screen shows the public version, "Doorprints reminder".
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             }
         )
         nm.createNotificationChannel(
@@ -209,6 +235,71 @@ object Notifications {
         } catch (_: SecurityException) {
             false
         }
+    }
+
+    /**
+     * The reminder of [viewing] at [nowMs] (docs/11 5.8, slice 3b-2), worked out when it is shown from the stored
+     * viewing and [house] (null: a house that is gone): "Viewing at Green View in 25 min" (or, more than two hours
+     * ahead, "Viewing at Green View" with the start below). Never `withWhom`, which is contact data. Actions: *Open
+     * house*, *Directions* (a `geo:` link, only for a house whose position is not approximate) and *Questions* (the
+     * house too: the house screen does not scroll to its questions yet). Private on a locked screen. Every
+     * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
+     */
+    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
+        val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)
+        val minutes = ViewingReminders.minutesUntil(viewing.startsAt, nowMs)
+        val title = if (minutes <= SOON_MINUTES) {
+            context.getString(R.string.notif_viewing_soon, name, minutes)
+        } else {
+            context.getString(R.string.notif_viewing_title, name)
+        }
+        val text = context.getString(R.string.notif_viewing_text, Formats.dateTime(viewing.startsAt))
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_viewing_public))
+            .build()
+        val openHouse = house?.let { h ->
+            openAppIntent(context, ("open:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, h.id) }
+        }
+        return NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setContentIntent(openHouse ?: openAppIntent(context, ("open:" + viewing.id).hashCode()))
+            .apply {
+                if (house != null && openHouse != null) {
+                    addAction(0, context.getString(R.string.notif_viewing_open), openHouse)
+                    if (house.locationSource != LocationSource.APPROX) {
+                        addAction(0, context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
+                    }
+                    addAction(
+                        0, context.getString(R.string.notif_viewing_questions),
+                        openAppIntent(context, ("questions:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, house.id) },
+                    )
+                }
+            }
+            .build()
+    }
+
+    /** Up to this many minutes ahead the reminder says "in 25 min"; further ahead (2 hours, 1 day) it gives the start. */
+    private const val SOON_MINUTES = 90
+
+    /**
+     * The phone's maps app at [house]: `geo:lat,lon?q=lat,lon`, the position only (no name goes to the other app).
+     * Dot decimals whatever the locale, as a `geo:` URI needs.
+     */
+    fun directionsIntent(context: Context, viewingId: String, house: HouseEntity): PendingIntent {
+        val at = String.format(java.util.Locale.ROOT, "%.6f,%.6f", house.lat, house.lon)
+        val intent = Intent(Intent.ACTION_VIEW, "geo:$at?q=$at".toUri())
+        return PendingIntent.getActivity(
+            context, ("directions:$viewingId").hashCode(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     /** True when this app may post notifications at all: below API 33 always, from 33 with `POST_NOTIFICATIONS`. */

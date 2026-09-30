@@ -982,4 +982,12 @@
     <string name="viewings_recheckScores">2 या उससे कम अंक: %1$s</string>
     <string name="viewings_recheckNothing">कुछ खुला नहीं। सोचें, कुछ जाँचना रह गया हो तो।</string>
     <string name="viewings_forHouse">%1$s के मकान देखना</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="settings_viewings_remind">मकान देखने की याद दिलाएँ</string>
+    <string name="settings_viewings_remind_hint">हर तय मकान देखने से पहले एक सूचना, उस पर चुने गए समय पर।</string>
+    <string name="settings_viewings_exact_note">याद दिलाने वाली सूचना लगभग 10 मिनट पहले तक आ सकती है (या फ़ोन बैटरी सेवर में हो तो बाद में)।</string>
+    <string name="settings_viewings_exact_allow">समय पर याद दिलाने की अनुमति दें</string>
+    <string name="viewings_notify_rationale">Doorprints मकान देखने से पहले सूचना से याद दिलाता है।</string>
+    <string name="viewing_reminder_body">%1$s में मकान देखना, %2$s बजे</string>
+    <string name="viewing_reminder_public">Doorprints रिमाइंडर</string>
 </resources>

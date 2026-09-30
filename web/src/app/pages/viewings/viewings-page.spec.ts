@@ -48,6 +48,8 @@ interface Fakes {
   houses: HouseDto[];
   markViewingDone: ReturnType<typeof vi.fn>;
   saveViewing: ReturnType<typeof vi.fn>;
+  remind: boolean;
+  setViewingsRemind: ReturnType<typeof vi.fn>;
   load?: () => unknown;
 }
 
@@ -57,12 +59,15 @@ function fakes(viewings: Viewing[] = [UPCOMING, MISSED, DONE, CANCELLED], houses
     houses,
     markViewingDone: vi.fn((id: string) => of({ ...viewings.find((x) => x.id === id)!, status: 'DONE' as const })),
     saveViewing: vi.fn((x: Viewing) => of(x)),
+    remind: true,
+    setViewingsRemind: vi.fn(() => of(undefined)),
   };
 }
 
 // A Tamil test saves its language in localStorage; a later spec file in the same worker (the compare page) would start
 // in Tamil and fail order-dependently, so every test ends with a clean store.
 afterEach(() => {
+  vi.unstubAllGlobals();
   TestBed.resetTestingModule();
   localStorage.clear();
 });
@@ -84,6 +89,8 @@ async function render(f: Fakes, lang: 'en' | 'ta' = 'en', query: Record<string, 
           scoring: () => of(DEFAULT_SCORING),
           markViewingDone: f.markViewingDone,
           saveViewing: f.saveViewing,
+          viewingsRemind: () => of(f.remind),
+          setViewingsRemind: f.setViewingsRemind,
         },
       },
     ],
@@ -279,5 +286,88 @@ describe('ViewingsPage', () => {
     expect(host.querySelector('h1')?.textContent).toContain('வீடு பார்வையிடல்');
     expect(host.querySelector('#viewings-group-upcoming')?.textContent).toContain('வரவிருப்பவை');
     expect(rows(host)).toHaveLength(4);
+  });
+
+  describe('the reminder switch', () => {
+    function stubNotification(permission: string, after = permission) {
+      const requestPermission = vi.fn(async () => {
+        fake.permission = after;
+        return after;
+      });
+      const fake = { permission, requestPermission };
+      vi.stubGlobal('Notification', fake);
+      return requestPermission;
+    }
+    const sw = (host: HTMLElement) => host.querySelector<HTMLInputElement>('#viewings-remind')!;
+    const tap = async (fixture: { detectChanges: () => void; whenStable: () => Promise<unknown> }, el: HTMLInputElement) => {
+      el.click();
+      await flush();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+
+    it('is on by default, says the website only reminds while it is open, and never asks the browser at load', async () => {
+      const ask = stubNotification('default');
+      const { host } = await render(fakes());
+      expect(sw(host).checked).toBe(true);
+      expect(host.querySelector('#viewings-remind-note')?.textContent).toContain('only work while it is open. Add to calendar');
+      expect(ask).not.toHaveBeenCalled();
+    });
+
+    it('reflects the stored setting', async () => {
+      stubNotification('default');
+      const f = fakes();
+      f.remind = false;
+      const { host } = await render(f);
+      expect(sw(host).checked).toBe(false);
+    });
+
+    it('asks the browser only on the tap that turns it on, and saves the setting', async () => {
+      const ask = stubNotification('default', 'granted');
+      const f = fakes();
+      f.remind = false;
+      const { host, fixture } = await render(f);
+      await tap(fixture, sw(host));
+      expect(ask).toHaveBeenCalledTimes(1);
+      expect(f.setViewingsRemind).toHaveBeenCalledWith(true);
+      expect(host.querySelector('#viewings-remind-denied')).toBeNull();
+    });
+
+    it('turning it off does not ask the browser', async () => {
+      const ask = stubNotification('default');
+      const f = fakes();
+      const { host, fixture } = await render(f);
+      await tap(fixture, sw(host));
+      expect(ask).not.toHaveBeenCalled();
+      expect(f.setViewingsRemind).toHaveBeenCalledWith(false);
+    });
+
+    it('says once that the browser blocks notifications when it is denied, and still turns on', async () => {
+      const ask = stubNotification('default', 'denied');
+      const f = fakes();
+      f.remind = false;
+      const { host, fixture } = await render(f);
+      await tap(fixture, sw(host));
+      expect(f.setViewingsRemind).toHaveBeenCalledWith(true);
+      expect(host.querySelectorAll('#viewings-remind-denied')).toHaveLength(1);
+      expect(host.querySelector('#viewings-remind-denied')?.textContent).toContain('you will see a banner instead');
+      expect(ask).toHaveBeenCalledTimes(1);
+    });
+
+    it('works in a browser without notifications', async () => {
+      vi.stubGlobal('Notification', undefined);
+      const f = fakes();
+      f.remind = false;
+      const { host, fixture } = await render(f);
+      await tap(fixture, sw(host));
+      expect(f.setViewingsRemind).toHaveBeenCalledWith(true);
+    });
+
+    it('has its words in Tamil', async () => {
+      stubNotification('default');
+      const { host } = await render(fakes(), 'ta');
+      expect(host.querySelector('.remind-label')?.textContent).toContain('Doorprints திறந்திருக்கும்போது');
+    });
   });
 });
