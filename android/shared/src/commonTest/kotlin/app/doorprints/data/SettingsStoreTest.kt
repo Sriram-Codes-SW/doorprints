@@ -283,6 +283,23 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun shareContactsAreAddedOnceMarkedAndRemoved() = runTest {
+        assertTrue(store.current().shareContacts.isEmpty())
+        val priya = store.addShareContact("  Priya ")!!
+        assertEquals("Priya", priya.name)
+        assertEquals(0L, priya.lastSharedAt)
+        assertEquals(priya.id, store.addShareContact("priya")!!.id, "the same name, whatever the case, is one person")
+        assertNull(store.addShareContact("   "))
+        store.markShared(priya.id, 1_790_000_000_000)
+        assertEquals(1_790_000_000_000, store.current().shareContacts.single().lastSharedAt)
+        store.addShareContact("Amma")
+        assertEquals(listOf("Priya", "Amma"), store.current().shareContacts.map { it.name })
+        store.removeShareContact(priya.id)
+        assertEquals(listOf("Amma"), store.current().shareContacts.map { it.name })
+        assertTrue(store.current().toString().contains("shareContacts=1"))
+    }
+
+    @Test
     fun theSettingsPrintNeitherKey() = runTest {
         val gemini = FakeSecrets("gemini")
         val withGemini = SettingsStore(dataStore, secrets, gemini) { clock }

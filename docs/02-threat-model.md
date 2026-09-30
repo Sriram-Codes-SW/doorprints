@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.45 |
+| Version | 0.46 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -57,6 +57,7 @@
 | 0.43 | 2026-09-29 | Claude (Code), lead | New T-I29 (a shared or handed-over unlocked phone) with the app lock ([11](11-feature-parity-and-export-spec.md) 5.19, S4b-FR-5); OWASP Mobile M3 now Part. |
 | 0.44 | 2026-09-29 | Claude (Code), lead | New T-I30 (the path trace is location history) with S4b-FR-2 ([11](11-feature-parity-and-export-spec.md) 5.27). |
 | 0.45 | 2026-09-29 | Claude (Code), lead | F-14 on iPhone (S4b-BL-69): the lock screen's preview is iOS's *Show Previews* setting; Hunt mode's alerts are the iPhone app's only notifications. |
+| 0.46 | 2026-09-30 | Claude (Code), lead | New T-I31: a file another app opens in Doorprints (sharing updates, S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -220,6 +221,7 @@ flowchart LR
 | T-I28 | The person's own Gemini key on a phone or in a browser ([03](03-design.md) §13.1, ADR-26) | The key is read from a lost, rooted or shared device and used to spend the person's Gemini allowance; or what the device sends reaches Google's free tier, where Google may use it | 1 | 2 | 2 Low | Stored like the server key: Android Keystore (AES-GCM, key never leaves the Keystore), iOS Keychain; on the website like the device key (sessionStorage, localStorage only with *Remember on this device*; the same XSS exposure as T-I3, with the same CSP and no third-party scripts); the field starts empty and a saved key shows only its last four characters; sent only to `generativelanguage.googleapis.com` in the `x-goog-api-key` header, never in a URL or a log; *Remove key* forgets it, and the guide says to make a separate key for Doorprints so it can be deleted in Google AI Studio; contact names and phones are removed before anything is sent (the same `ContactRedactor` rules as the server, held to its answers by the parity vectors, TC-U-85); the free-tier terms are shown next to the key. Tests TC-U-86 | - |
 | T-I29 | D1/D2 on a phone that is shared or handed over while unlocked (family, a broker looking at a listing; [11](11-feature-parity-and-export-spec.md) 5.19) | Someone else opens Doorprints and reads the owners' and brokers' names and phone numbers and where the saved houses are; or reads them in the recent-apps preview | 2 | 2 | 4 Medium | **App lock** (S4b-FR-5, off by default): the phone's own screen lock (PIN, pattern, password, fingerprint or face; Android BiometricPrompt or the keyguard, iOS LocalAuthentication) when the app opens and after the chosen time in the background (right away, 1, 5 or 15 minutes, on a monotonic clock); no PIN of Doorprints' own; turning it on or off asks for the credential first; while on, the recent-apps preview is hidden (Android: `setRecentsScreenshotEnabled(false)` from API 33, `FLAG_SECURE` below; iOS: the app is covered as it resigns active); a settings file that cannot be read locks (fail closed). Residual: the lock covers the screens, it does not encrypt the data at rest (T-I1); Hunt mode's notifications can name a house on the phone's lock screen; anyone who knows the phone's PIN opens it | — |
 | T-I30 | The path trace ([11](11-feature-parity-and-export-spec.md) 5.27, S4b-FR-2): where the person walked, kept on the phone | Location history leaves the phone in a backup, a readable copy, the sync or an AI request, or is read from a lost or shared phone and shows where the person goes and when; or it grows without limit | 2 | 2 | 4 Medium | Opt-in, off by default (`Settings.pathTrace`); recorded only while Hunt mode runs (its permission and foreground notice apply); its own table `track_points`, which `ExportBundle`, the backup, the sync layer and the assistant never read (the backup format tests of TC-U-93 list every exported field, and the trace is in none); thinned (one point per 20 m or 5 minutes) and pruned to 30 days at each Hunt start; *Clear the path* removes it at once; on a lost phone the app lock (T-I29) covers it; phone accuracy only (DST threshold, [03](03-design.md) §11.1) | Mitigated (S4b-FR-2) |
+| T-I31 | A backup or update file another app hands to Doorprints (*open with*, *share to*; [11](11-feature-parity-and-export-spec.md) 5.28, S4b-FR-3) | A crafted ZIP or JSON reaches the importer from any app: a ZIP bomb, a path escape, rows that overwrite the person's houses, or a link disguised as a file | 2 | 2 | 4 Medium | The intent carries only a `content` or `file` document (a link is never taken, MainActivity), and the Import screen treats it exactly as a picked file: staged to the cache, validated (format id, entry count, size, ratio, paths, SHA-256, DTOs; F-08 clock guard), previewed with counts, written only on the person's *Import* with merge (last write wins) or as a copy; nothing runs on receipt. The update's own data (names, times) never leaves the phone (PRV-029) | Mitigated (S4b-FR-3) |
 
 ### 3.5 Denial of service
 
@@ -369,6 +371,7 @@ Totals (32 findings, F-01 counted as F-01a and F-01b since v0.6): 27 Fixed, 3 Pa
 | Repository process (gitleaks, `SECURITY.md`, ruleset on `main`, no secrets or dumps in artifacts) | T-I11, T-I21 |
 | PRV-024..PRV-027 (location permission model, hunting areas; Sprint 4b) | T-I23, T-I24 |
 | PRV-028 (the path trace stays on the phone) | T-I30 |
+| PRV-029 (sharing updates stays in the person's hands) | T-I31 |
 | SEC-049 (PendingIntent and receiver rules; Sprint 4b) | T-E8 |
 | SEC-041 (backup import validation), SEC-042 (export output encoding), SEC-044 (app-shell-only service worker), PRV-012, PRV-018 (Sprint 4a) | T-T8, T-T9, T-I13, T-I17, T-D8 |
 | SEC-012 on the static host: a host that sends the headers (Firebase Hosting with `web/firebase.json`, owner decision 2026-09-23), a post-deploy header check, and the `<meta>` CSP and frame refusal as defence in depth (Sprint 4a) | T-T13, F-31 |

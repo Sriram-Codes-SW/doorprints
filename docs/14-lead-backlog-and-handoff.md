@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.50 |
+| Version | 0.51 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -61,6 +61,7 @@
 | 0.48 | 2026-09-29 | Claude (Code), lead | §1: Hunt mode on iPhone built (S4b-BL-69, `feat/s4b-bl-69-ios-hunt-mode`, [10](10-sprint-log.md) §13.14); §6: TC-M-31 for the owner. N13 (4a): offline maps (S4b-FR-6) next. |
 | 0.49 | 2026-09-30 | Claude (Code), lead | §1: offline maps built (S4b-FR-6, `feat/s4b-fr-6-offline-maps`, [10](10-sprint-log.md) §13.15); §6: TC-M-32 and the owner's word on OpenFreeMap's terms for offline packs. N13 (4a) done in code; next (4b) sharing list updates (S4b-FR-3). |
 | 0.50 | 2026-09-30 | Claude (Code), lead | §1: sharing updates designed (S4b-FR-3, `docs/s4b-fr-3-sharing-design`; [11](11-feature-parity-and-export-spec.md) 5.28, ADR-27); N13 (4b) in progress; §6: the owner's word on the design. |
+| 0.51 | 2026-09-30 | Claude (Code), lead | §1: sharing updates built on Android (S4b-FR-3, `feat/s4b-fr-3-share-updates-android`, [10](10-sprint-log.md) §13.16); §6: TC-M-33. N13 (4b): next S4b-FR-4, a house from a listing link, with brokers (S4b-FR-11); design step first. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -117,11 +118,17 @@ section is only today's state. Earlier versions of this file (git history) carry
   5.28, [03](03-design.md) ADR-27): an update file in the backup format (`sharedSince`, `sharedTo` in the manifest;
   per-name bookkeeping on the phone), sent through any app, merged with the import that exists; Android first, the
   web after its backup reader (S4b-BL-75), the iPhone after its imports (S4b-BL-81); deletions later (S4b-BL-82);
-  the Drive folder of D-28 as the automatic channel once sign-in exists. The Android build is next.
+  the Drive folder of D-28 as the automatic channel once sign-in exists.
+- **Sharing updates built on Android** (branch `feat/s4b-fr-3-share-updates-android`; [10](10-sprint-log.md)
+  §13.16, [06](06-test-plan.md) TC-U-96): *Share updates with…* in Settings > Your data, the update file, a received
+  file opening in the Import screen. On two phones TC-M-33 (owner). The web (after S4b-BL-75) and the iPhone (after
+  S4b-BL-81) follow as their own changes. Next in (4b): a house from a listing link (S4b-FR-4) with brokers
+  (S4b-FR-11), design step first (the portals' terms and the photos' copyright).
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
-  (the path trace on a phone); TC-M-31 (Hunt mode on an iPhone); TC-M-32 (a saved area, offline, on both phones).
+  (the path trace on a phone); TC-M-31 (Hunt mode on an iPhone); TC-M-32 (a saved area, offline, on both phones);
+  TC-M-33 (an exchange of updates between two phones).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
   and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the

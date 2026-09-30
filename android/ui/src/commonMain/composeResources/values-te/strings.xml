@@ -663,4 +663,22 @@
     <string name="offline_state_failed">సేవ్ కాలేదు</string>
     <string name="offline_delete">%1$s తొలగించు</string>
     <string name="offline_delete_confirm">సేవ్ చేసిన ప్రాంతం ‘%1$s’ తొలగించాలా? అక్కడ మ్యాప్‌కు మళ్లీ నెట్‌వర్క్ కావాలి.</string>
+    <!-- S4b-FR-3, sharing updates (2026-09-30): under review. -->
+    <string name="settings_share">అప్‌డేట్‌లు పంచుకోండి…</string>
+    <string name="settings_share_hint">మారినవి మీతో వెతుకుతున్న వారికి పంపండి; వారు దాన్ని దిగుమతి చేసి కలుపుకుంటారు</string>
+    <string name="share_title">అప్‌డేట్‌లు పంచుకోండి…</string>
+    <string name="share_intro">ఈ వ్యక్తికి మీరు చివరిసారి పంచుకున్న తర్వాత మారినవాటి ఫైల్‌ను Doorprints తయారు చేస్తుంది; దాన్ని ఏ యాప్‌లోనైనా పంపవచ్చు. వారి ఫోన్‌లో అది Doorprints‌లో తెరుచుకుని వారి జాబితాలో కలుస్తుంది. మొదటి పంపకం మీ మొత్తం జాబితా.</string>
+    <string name="share_who">ఎవరి కోసం?</string>
+    <string name="share_add_name">పేరు జోడించండి</string>
+    <string name="share_add">జోడించు</string>
+    <string name="share_remove">%1$s తొలగించు</string>
+    <string name="share_last">%1$s మీ అప్‌డేట్‌లను చివరిసారి %2$s న పొందారు.</string>
+    <string name="share_first">%1$s ఇంకా ఏమీ పొందలేదు, కాబట్టి ఈ పంపకం మీ మొత్తం జాబితా.</string>
+    <string name="share_photos">ఫోటోలు చేర్చు</string>
+    <string name="share_count">ఫైల్‌లో %1$d ఇళ్లు, %2$d సందర్శనలు, %3$d ఫోటోలు ఉంటాయి.</string>
+    <string name="share_nothing">అప్పటి నుండి ఏమీ మారలేదు.</string>
+    <string name="share_go">%1$s తో అప్‌డేట్‌లు పంచుకోండి</string>
+    <string name="share_preparing">ఫైల్ తయారవుతోంది…</string>
+    <string name="share_failed">ఫైల్ తయారు కాలేదు. మళ్లీ ప్రయత్నించండి.</string>
+    <string name="import_updates_for">%1$s కోసం అప్‌డేట్‌లు, %2$s న తయారైనవి</string>
 </resources>

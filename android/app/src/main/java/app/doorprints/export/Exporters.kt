@@ -210,6 +210,8 @@ object Exporters {
                 includeContacts = bundle.options.includeContacts,
                 counts = BackupCounts.of(rows),
                 files = files.toList(),
+                sharedSince = bundle.options.since?.let(IsoTime::format),
+                sharedTo = bundle.options.sharedTo,
             )
             zip.text(
                 BackupFormat.MANIFEST_ENTRY,

@@ -187,7 +187,13 @@ private class BarAction(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> Unit = { onBack() }) {
+fun ImportScreen(
+    onBack: () -> Unit,
+    onOpenHouses: (importedRunId: String?) -> Unit = { onBack() },
+    /** A file another app opened in Doorprints (docs/11 5.28): picked as soon as the screen is up, once. */
+    initialFile: String? = null,
+    onInitialFileConsumed: () -> Unit = {},
+) {
     val services = LocalAppServices.current
     val imports = services.importScreen
     val vm: ImportViewModel = viewModel {
@@ -227,6 +233,12 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
             closeResultOnPick[0]?.invoke()
             vm.pick(file)
         }
+    }
+    LaunchedEffect(initialFile) {
+        val file = initialFile ?: return@LaunchedEffect
+        onInitialFileConsumed()
+        closeResultOnPick[0]?.invoke()
+        vm.pick(file)
     }
 
     // remember()ed: WorkManager hands back a new Flow instance on every call, and re-subscribing on
@@ -573,9 +585,15 @@ fun ImportScreen(onBack: () -> Unit, onOpenHouses: (importedRunId: String?) -> U
                     )
                 }
                 ready != null && preview != null -> {
-                    val madeOn = ready.manifest?.createdAt
+                    val madeAt = ready.manifest?.createdAt
                         ?.let { iso -> runCatching { IsoTime.parseMillis(iso) }.getOrNull() }
-                        ?.let { millis -> stringResource(Res.string.import_backup_of, millis.dateText()) }
+                    // An update someone shared (docs/11 5.28) says who it is for; a backup says when it was made.
+                    val sharedTo = ready.manifest?.sharedTo
+                    val madeOn = when {
+                        madeAt == null -> null
+                        sharedTo != null -> stringResource(Res.string.import_updates_for, sharedTo, madeAt.dateText())
+                        else -> stringResource(Res.string.import_backup_of, madeAt.dateText())
+                    }
                     FileHeader(ready.displayName ?: fileName, madeOn, inset)
 
                     HorizontalDivider(divider)
