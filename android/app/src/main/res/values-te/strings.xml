@@ -62,7 +62,8 @@
     <string name="import_write_failed">దిగుమతి మధ్యలో ఆగిపోయింది — కొన్ని అంశాలు ఇప్పటికే జోడించబడి ఉండవచ్చు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
     <string name="import_failed">ఈ ఫైల్‌ను దిగుమతి చేయలేం: %1$s</string>
     <string name="problem_not_a_backup">ఇది Doorprints బ్యాకప్ కాదు</string>
-    <string name="problem_unsupported">ఇది Doorprints కొత్త వెర్షన్‌తో తయారైంది</string>
+    <!-- S4b-BL-72 (2026-09-30): under review (problem_unsupported now says to update the app). -->
+    <string name="problem_unsupported">ఇది Doorprints కొత్త వెర్షన్‌తో తయారైంది; దీన్ని దిగుమతి చేయడానికి Doorprints‌ను అప్‌డేట్ చేయండి</string>
     <string name="problem_too_many">ఇందులో చాలా ఎక్కువ ఫైళ్లు ఉన్నాయి</string>
     <string name="problem_too_large">ఇది చాలా పెద్దది</string>
     <string name="problem_suspicious">ఇందులో సురక్షితం కాని ఫైల్ పేరు ఉంది</string>

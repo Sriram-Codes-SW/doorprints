@@ -60,8 +60,9 @@ class OpenApiSpecTest {
                 .header("X-API-Key", KEY).retrieve().body(String.class);
         JsonNode spec = JsonMapper.builder().build().readTree(json);
         JsonNode paths = spec.path("paths");
-        // The scan must see the whole API: the houses, sync, visits, photos, backup and data paths.
-        assertThat(paths.propertyNames()).contains("/api/houses", "/api/stats", "/api/data");
+        // The scan must see the whole API: the houses, sync, visits, photos, records, backup and data paths.
+        assertThat(paths.propertyNames()).contains("/api/houses", "/api/stats", "/api/data", "/api/records",
+                "/api/records/{type}/{id}");
         assertThat(paths.size()).isGreaterThan(10);
         Files.createDirectories(Path.of("target"));
         Files.writeString(Path.of("target", "openapi.json"), json);

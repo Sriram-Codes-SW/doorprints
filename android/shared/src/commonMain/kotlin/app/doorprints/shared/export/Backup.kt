@@ -36,8 +36,26 @@ import kotlinx.serialization.json.Json
  * whole ZIP's directory first anyway.
  */
 object BackupFormat {
-    /** Written into `manifest.json` and `data.json`; a reader refuses anything else. */
+    /**
+     * Written into `manifest.json` and `data.json`. Stays at `/1` until slice 1 of docs/11 5.30 writes the first new
+     * list; a reader accepts every format up to [MAX_VERSION] (S4b-BL-72, docs/schemas/README.md).
+     */
     const val ID = "doorprints-backup/1"
+
+    /**
+     * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
+     * app refuses a newer file with "update the app" instead of dropping its lists in silence, while a `/2` file
+     * without the lists this app knows reads fine (unknown keys are ignored). One constant per stack.
+     */
+    const val MAX_VERSION = 2
+
+    private const val FAMILY = "doorprints-backup/"
+
+    /** Every format id a reader takes: `/1` up to `/MAX_VERSION`. */
+    val READ_IDS: List<String> = (1..MAX_VERSION).map { FAMILY + it }
+
+    /** Whether a file that says it is [format] can be read here. */
+    fun accepts(format: String?): Boolean = format in READ_IDS
 
     const val MANIFEST_ENTRY = "manifest.json"
     const val DATA_ENTRY = "data.json"
@@ -194,7 +212,7 @@ enum class BackupProblem {
 object BackupValidation {
 
     fun checkManifest(manifest: BackupManifest): BackupProblem? = when {
-        manifest.format != BackupFormat.ID -> BackupProblem.UNSUPPORTED_VERSION
+        !BackupFormat.accepts(manifest.format) -> BackupProblem.UNSUPPORTED_VERSION
         manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ->
             BackupProblem.BROKEN_DATA
         else -> null
@@ -214,7 +232,7 @@ object BackupValidation {
     fun isValidId(id: String): Boolean = ID_PATTERN.matches(id)
 
     fun checkData(data: BackupData): BackupProblem? = when {
-        data.format != BackupFormat.ID -> BackupProblem.UNSUPPORTED_VERSION
+        !BackupFormat.accepts(data.format) -> BackupProblem.UNSUPPORTED_VERSION
         data.houses.any { !isValidId(it.id) } || data.visits.any { !isValidId(it.id) } -> BackupProblem.BROKEN_DATA
         data.visits.any { v -> v.houseId?.let { !isValidId(it) } ?: false } -> BackupProblem.BROKEN_DATA
         data.photos.any { !isValidId(it.id) || !isValidId(it.houseId) } -> BackupProblem.BROKEN_DATA

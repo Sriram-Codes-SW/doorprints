@@ -18,11 +18,11 @@
 
 import { Injectable, signal } from '@angular/core';
 import { uuid } from '../core/models';
-import type { HouseDto, StatsDto, VisitDto } from '../core/models';
+import type { HouseDto, RecordDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
-import { SETTING_KEYS, houseFromDto, isoNow, millis, visitFromDto } from './records';
-import type { HouseRecord, PhotoRecord, SettingRecord, VisitRecord } from './records';
+import { SETTING_KEYS, houseFromDto, isoNow, millis, recordFromDto, visitFromDto } from './records';
+import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
 /** Quiet period after the last write before {@link LocalStore.settled} follows `revision`. */
 export const SETTLE_MS = 300;
@@ -33,6 +33,21 @@ export const SETTLE_MAX_MS = 2000;
 export const MAX_PHOTOS_PER_HOUSE = 20;
 
 export type AddPhotoResult = { ok: true; id: string } | { ok: false; reason: 'limit' };
+
+/** This browser's position in the server's change log, per list (`GET /api/<list>?since=`). */
+export interface Cursors {
+  house: number;
+  visit: number;
+  photo: number;
+  record: number;
+}
+
+const CURSOR_KEYS = [
+  SETTING_KEYS.houseCursor,
+  SETTING_KEYS.visitCursor,
+  SETTING_KEYS.photoCursor,
+  SETTING_KEYS.recordCursor,
+] as const;
 
 /**
  * The primary store of the web app (S4-01, docs/11 §5.10).
@@ -46,6 +61,11 @@ export type AddPhotoResult = { ok: true; id: string } | { ok: false; reason: 'li
 export class LocalStore {
   /** Non-null when the browser refused IndexedDB; the app then runs from memory for this page only. */
   readonly storageProblem = signal<StorageProblem | null>(null);
+  /**
+   * True once another tab opened a newer version of the app and this tab closed its database for it (S4b-BL-71):
+   * nothing can be read or written here any more, and the banner asks the user to reload.
+   */
+  readonly closedByNewerTab = signal(false);
   /** Bumped after every write, so views and the sync engine can react. */
   readonly revision = signal(0);
   /**
@@ -64,7 +84,7 @@ export class LocalStore {
   private settleSince = 0;
 
   private db(): Promise<LocalDb> {
-    this.opened ??= openLocalDb().then((result: OpenedDb) => {
+    this.opened ??= openLocalDb(() => this.closedByNewerTab.set(true)).then((result: OpenedDb) => {
       this.storageProblem.set(result.problem);
       return result.db;
     });
@@ -175,8 +195,11 @@ export class LocalStore {
     return db.getAll<VisitRecord>('visits');
   }
 
+  /** A house's live visits, through the `houseId` index (not a read of every visit). */
   async visitsOf(houseId: string): Promise<VisitRecord[]> {
-    return sortVisits((await this.rawVisits()).filter((v) => v.houseId === houseId && !v.deleted));
+    const db = await this.db();
+    const rows = await db.getAllByIndex<VisitRecord>('visits', 'houseId', houseId);
+    return sortVisits(rows.filter((v) => !v.deleted));
   }
 
   /** Live visits per house id, from one read of the store (Compare's columns, instead of one read per house). */
@@ -234,8 +257,11 @@ export class LocalStore {
     return sortByCreated(await db.getAll<PhotoRecord>('photos'));
   }
 
+  /** A house's live photos, through the `houseId` index: the store holds Blobs, so every photo is not read (S4b-BL-66). */
   async photosOf(houseId: string): Promise<PhotoRecord[]> {
-    return (await this.allPhotos()).filter((p) => p.houseId === houseId && !p.deleted);
+    const db = await this.db();
+    const rows = await db.getAllByIndex<PhotoRecord>('photos', 'houseId', houseId);
+    return sortByCreated(rows.filter((p) => !p.deleted));
   }
 
   async getPhoto(id: string): Promise<PhotoRecord | undefined> {
@@ -293,9 +319,75 @@ export class LocalStore {
     this.touch();
   }
 
+  // ---- Records (docs/11 5.30 item 2: every other Sprint 4b entity, in one store) ----
+
+  /** The live records of one `type`, through the `type` index, oldest edit first. */
+  async recordsOf(type: string): Promise<RecordRecord[]> {
+    const db = await this.db();
+    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', type);
+    return sortRecords(rows.filter((r) => !r.deleted));
+  }
+
+  async getRecord(type: string, id: string): Promise<RecordRecord | undefined> {
+    const db = await this.db();
+    const record = await db.get<RecordRecord>('records', [type, id]);
+    return record && !record.deleted ? record : undefined;
+  }
+
   /**
-   * After the sync found its server reset (S4b-BL-20, `SyncService`): every house and visit, tombstones included, is
-   * marked dirty and every stored photo not uploaded, so the next push sends everything this browser holds. The
+   * Saves a local edit of one record: stamps `updatedAt` and marks it dirty. The sync version of the stored row is
+   * kept, as for a house.
+   *
+   * @throws LocalDataError when the type or id is not usable, or the payload is over the server's cap.
+   */
+  async saveRecord(
+    type: string,
+    id: string,
+    payload: Record<string, unknown>,
+    now: number = Date.now(),
+  ): Promise<RecordRecord> {
+    const db = await this.db();
+    const existing = await db.get<RecordRecord>('records', [type, id]);
+    const record = recordFromDto(
+      { type, id, payload, updatedAt: isoNow(now), deleted: false, syncVersion: existing?.syncVersion ?? 0 },
+      true,
+    );
+    await db.put('records', record);
+    this.touch();
+    return record;
+  }
+
+  /** Marks a record deleted: a tombstone with an empty payload, so other devices learn about it. */
+  async deleteRecord(type: string, id: string, now: number = Date.now()): Promise<void> {
+    const db = await this.db();
+    const existing = await db.get<RecordRecord>('records', [type, id]);
+    if (!existing) return;
+    await db.put<RecordRecord>('records', { ...existing, payload: {}, deleted: true, dirty: true, updatedAt: isoNow(now) });
+    this.touch();
+  }
+
+  async putRecordFromServer(dto: RecordDto): Promise<void> {
+    const db = await this.db();
+    await db.put('records', recordFromDto(dto, false));
+    this.touch();
+  }
+
+  async markRecordClean(type: string, id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
+    const db = await this.db();
+    const existing = await db.get<RecordRecord>('records', [type, id]);
+    if (existing && millis(existing.updatedAt) === millis(pushedUpdatedAt)) {
+      await db.put('records', { ...existing, dirty: false });
+    }
+  }
+
+  async dirtyRecords(): Promise<RecordRecord[]> {
+    const db = await this.db();
+    return sortRecords((await db.getAll<RecordRecord>('records')).filter((r) => r.dirty));
+  }
+
+  /**
+   * After the sync found its server reset (S4b-BL-20, `SyncService`): every house, visit and record, tombstones
+   * included, is marked dirty and every stored photo not uploaded, so the next push sends everything this browser holds. The
    * edit times are kept: the server's last-write-wins rule still decides against rows another device sent since.
    * Photo deletes waiting to be sent stay as they are (a delete of a photo the server does not have is a no-op).
    */
@@ -306,6 +398,9 @@ export class LocalStore {
     }
     for (const visit of await db.getAll<VisitRecord>('visits')) {
       if (!visit.dirty) await db.put('visits', { ...visit, dirty: true });
+    }
+    for (const record of await db.getAll<RecordRecord>('records')) {
+      if (!record.dirty) await db.put('records', { ...record, dirty: true });
     }
     for (const photo of await db.getAll<PhotoRecord>('photos')) {
       if (!photo.deleted && photo.blob && photo.uploaded) await db.put('photos', { ...photo, uploaded: false });
@@ -336,12 +431,18 @@ export class LocalStore {
     return Number.isFinite(n) ? n : 0;
   }
 
-  async cursors(): Promise<{ house: number; visit: number; photo: number }> {
+  async cursors(): Promise<Cursors> {
     return {
       house: await this.numberSetting(SETTING_KEYS.houseCursor),
       visit: await this.numberSetting(SETTING_KEYS.visitCursor),
       photo: await this.numberSetting(SETTING_KEYS.photoCursor),
+      record: await this.numberSetting(SETTING_KEYS.recordCursor),
     };
+  }
+
+  /** Every cursor back to 0: a different server, or one found reset (the sync engine's two callers). */
+  async resetCursors(): Promise<void> {
+    for (const key of CURSOR_KEYS) await this.setSetting(key, '0');
   }
 
   // ---- Derived ----
@@ -423,12 +524,17 @@ async function clearCacheStorage(): Promise<void> {
   }
 }
 
-/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
+/** Records in backup order (docs/11 5.30 item 3): by last edit, then id. */
+function sortRecords(rows: readonly RecordRecord[]): RecordRecord[] {
+  return [...rows].sort((a, b) => cmp(a.updatedAt ?? '', b.updatedAt ?? '') || cmp(a.id, b.id));
+}
+
 /** Visits in export order: by arrival, then id. */
 function sortVisits(rows: readonly VisitRecord[]): VisitRecord[] {
   return [...rows].sort((a, b) => cmp(a.arrivedAt, b.arrivedAt) || cmp(a.id, b.id));
 }
 
+/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
 function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => cmp(a.createdAt ?? '', b.createdAt ?? '') || cmp(a.id, b.id));
 }

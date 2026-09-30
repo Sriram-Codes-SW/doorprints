@@ -426,6 +426,9 @@ export const te: Dict = {
   'storage.noIdbTitle': 'ఈ బ్రౌజర్ మీ డేటాను నిల్వ చేయడం లేదు',
   'storage.noIdbBody': 'ప్రైవేట్ బ్రౌజింగ్ లేదా బ్రౌజర్ సెట్టింగ్ నిల్వను అడ్డుకుంటోంది, కాబట్టి ఈ ట్యాబ్ మూసిన వెంటనే మీరు జోడించినవన్నీ పోతాయి. సాధారణ విండో వాడండి, లేదా వెళ్లే ముందు ఒక కాపీ సేవ్ చేయండి.',
   'storage.blockedBody': 'బ్రౌజర్ తన డేటాబేస్‌కు ప్రవేశాన్ని నిరాకరించింది. ఇది ప్రైవేట్ బ్రౌజింగ్‌లో, లేదా మరో ట్యాబ్ పాత వెర్షన్‌ను తెరిచి ఉంచినప్పుడు జరగవచ్చు. మీ పని ఈ ట్యాబ్‌కు మాత్రమే ఉంటుంది.',
+  // S4b-BL-71 (2026-09-30): the database closed for a newer tab. Under review (owner rule: hi/ta/te ship marked under review).
+  'storage.closedTitle': 'Doorprints మరో ట్యాబ్‌లో అప్‌డేట్ అయింది',
+  'storage.closedBody': 'కొత్త ట్యాబ్ మీ డేటాను అప్‌డేట్ చేయగలిగేలా ఈ ట్యాబ్ తన కాపీని మూసివేసింది. కొనసాగించడానికి పేజీని రీలోడ్ చేయండి.',
   'pwa.installTitle': 'Doorprints ఇన్‌స్టాల్ చేయండి',
   'pwa.installBody': 'ఇన్‌స్టాల్ చేస్తే Doorprintsను హోమ్ స్క్రీన్ నుండి తెరవవచ్చు, ఆఫ్‌లైన్‌లోనూ వాడవచ్చు.',
   'pwa.install': 'యాప్ ఇన్‌స్టాల్ చేయండి',
@@ -474,6 +477,7 @@ export const te: Dict = {
   'data.progressHouses': 'ఇళ్లు డౌన్‌లోడ్ అవుతున్నాయి: {total}లో {done}',
   'data.progressVisits': 'సందర్శనలు డౌన్‌లోడ్ అవుతున్నాయి: {total}లో {done}',
   'data.progressPhotos': 'ఫోటోలు డౌన్‌లోడ్ అవుతున్నాయి: {total}లో {done}',
+  'data.progressRecords': 'ఇతర డేటా డౌన్‌లోడ్ అవుతోంది: {total}లో {done}',
   'data.backupFirst': 'ముందుగా బ్యాకప్ సేవ్ చేయండి',
   'data.syncFirst': 'ముందుగా సింక్ చేయండి',
   'confirm.clearUnsynced': 'ఇంకా మీ సర్వర్‌కు చేరని మార్పులు: {n}. అవి పోతాయి. అయినా ఈ బ్రౌజర్ నుండి మొత్తం డేటా తొలగించాలా?',

@@ -21,6 +21,7 @@ package app.doorprints.server.privacy;
 import app.doorprints.server.config.AppProperties;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.photo.PhotoRepository;
+import app.doorprints.server.record.RecordRepository;
 import app.doorprints.server.sync.SyncVersions;
 import app.doorprints.server.visit.VisitRepository;
 import jakarta.persistence.EntityManager;
@@ -47,23 +48,25 @@ public class DataService {
     private final HouseRepository houses;
     private final VisitRepository visits;
     private final PhotoRepository photos;
+    private final RecordRepository records;
     private final SyncVersions versions;
     private final Duration retention;
 
     @PersistenceContext
     private EntityManager em;
 
-    public DataService(HouseRepository houses, VisitRepository visits, PhotoRepository photos, SyncVersions versions,
-                       AppProperties props) {
+    public DataService(HouseRepository houses, VisitRepository visits, PhotoRepository photos, RecordRepository records,
+                       SyncVersions versions, AppProperties props) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
+        this.records = records;
         this.versions = versions;
         this.retention = Duration.ofDays(props.privacy().tombstoneRetentionDays());
     }
 
     /**
-     * Hard-deletes every house, visit, photo and AI index row. Devices keep their local copies (they only receive
+     * Hard-deletes every house, visit, photo, record and AI index row. Devices keep their local copies (they only receive
      * changes, and hard deletes leave no tombstones), so the user clears app data on each device separately.
      */
     @Transactional
@@ -73,11 +76,12 @@ public class DataService {
         em.createNativeQuery("delete from visit").executeUpdate();
         em.createNativeQuery("delete from house_checklist").executeUpdate();
         em.createNativeQuery("delete from house").executeUpdate();
+        em.createNativeQuery("delete from record").executeUpdate();
         // The optional pgvector table (V2) only exists when the extension is installed.
         var hasVectorStore = em.createNativeQuery("select to_regclass('public.vector_store') is not null")
                 .getSingleResult();
         if (Boolean.TRUE.equals(hasVectorStore)) em.createNativeQuery("delete from vector_store").executeUpdate();
-        log.warn("privacy.delete-all: all houses, visits, photos and AI index rows were deleted");
+        log.warn("privacy.delete-all: all houses, visits, photos, records and AI index rows were deleted");
     }
 
     /** Daily purge of tombstones older than the retention period (default 90 days). */
@@ -89,6 +93,9 @@ public class DataService {
         int p = photos.purgeTombstonesBefore(before);
         int v = visits.purgeTombstonesBefore(before);
         int h = houses.purgeTombstonesBefore(before);
-        if (p + v + h > 0) log.info("privacy.purge tombstones: houses={} visits={} photos={}", h, v, p);
+        int r = records.purgeTombstonesBefore(before);
+        if (p + v + h + r > 0) {
+            log.info("privacy.purge tombstones: houses={} visits={} photos={} records={}", h, v, p, r);
+        }
     }
 }

@@ -19,7 +19,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { HouseDto, PhotoChangeDto, StatsDto, VisitDto, uuid } from './models';
+import { HouseDto, PhotoChangeDto, RecordDto, StatsDto, VisitDto, uuid } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class HouseApiService {
@@ -52,6 +52,12 @@ export class HouseApiService {
     return this.http.get<VisitDto[]>('/api/visits', { params });
   }
 
+  /** Every record envelope changed after `since`, tombstones included, of every type (docs/11 5.30 item 2). */
+  recordsSince(since: number): Observable<RecordDto[]> {
+    const params = new HttpParams().set('since', since);
+    return this.http.get<RecordDto[]>('/api/records', { params });
+  }
+
   /** Photo metadata changes (new photos and delete tombstones) after a sync version. */
   photoChangesSince(since: number): Observable<PhotoChangeDto[]> {
     const params = new HttpParams().set('since', since);
@@ -76,6 +82,12 @@ export class HouseApiService {
 
   pushVisit(visit: VisitDto): Observable<VisitDto> {
     return this.http.put<VisitDto>(`/api/visits/${encodeURIComponent(visit.id)}`, visit);
+  }
+
+  /** Pushes a record envelope as stored, `updatedAt` kept, like {@link pushHouse}; the server never reads `payload`. */
+  pushRecord(record: RecordDto): Observable<RecordDto> {
+    const path = `/api/records/${encodeURIComponent(record.type)}/${encodeURIComponent(record.id)}`;
+    return this.http.put<RecordDto>(path, record);
   }
 
   saveHouse(house: HouseDto): Observable<HouseDto> {

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.9 |
+| Version | 1.10 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -16,6 +16,7 @@
 | 1.7 | 2026-09-30 | Claude (Code), lead | **Two optional manifest fields for an update file** (sharing updates, [11](../11-feature-parity-and-export-spec.md) 5.28): `sharedSince` and `sharedTo`; the file name `Doorprints-updates-<date>.zip`. A reader ignores both (nothing gates on them); the web writer does not write them yet. |
 | 1.8 | 2026-09-30 | Claude (Code), lead | **`listing-fixtures.json`** (format `doorprints-listing-fixtures/1`): the share texts the no-AI listing parser reads the same way on Android and the web ([11](../11-feature-parity-and-export-spec.md) 5.29); not part of the backup format. |
 | 1.9 | 2026-09-30 | Claude (Code), lead | **Notice of `doorprints-backup/2`** ([11](../11-feature-parity-and-export-spec.md) 5.30, ADR-28; not yet written): the Sprint 4b data model adds nested house values and named lists (`criteria`, `questions`, `viewings`, `huntingAreas`, `places`, `areaNotes`, `brokers`, `photoMeta`, `moveIn`, `preferences`), and with them the versioning rule of S4b-BL-72: a new list means a new format number, readers accept `1..MAX`, a newer file is refused with "update the app". This file changes to `/2` in slice 0 of the batch, with `backup-sample.json` and the three writers in one commit. Nothing in `/1` changes. |
+| 1.10 | 2026-09-30 | Claude (Code), lead | **The versioning rule, in force** (S4b-BL-72, slice 0 of [11](../11-feature-parity-and-export-spec.md) 5.30): new section 1.1. Every reader accepts `doorprints-backup/1` and `/2` (`BackupFormat.READ_IDS` in Kotlin and Java, `BACKUP_FORMATS_READ` on the web) and refuses a higher number with "update the app"; every writer still writes `/1` until slice 1 adds the first `/2` list. Section 3's `format` row says so. |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -97,12 +98,25 @@ One format, three implementations, no converters:
 | Server | `backend/src/main/java/app/doorprints/server/backup/` (`BackupFormat`, `BackupData`, `BackupHouse`, `BackupVisit`, `BackupPhoto`) |
 | Android | `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt` and `ExportModel.kt` |
 | Web / PWA | `web/src/app/export/backup-export.ts` |
+| The numbers a reader accepts | Kotlin `BackupFormat.READ_IDS`, Java `BackupFormat.READ_IDS`, web `BACKUP_FORMATS_READ` (one constant per stack, section 1.1) |
 | Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder |
 
 A backup written on a phone must import in a browser and on a server, and the other way round. **Nothing below may
 be renamed, reordered or given a new meaning on one side only.** A new field is added to all three at once, always
 optional, and old readers ignore what they do not know (`ignoreUnknownKeys` in Kotlin, extra properties ignored in
 TypeScript and by Jackson).
+
+### 1.1 Versions
+
+The format id is `doorprints-backup/<n>`. **An optional field on a row that exists may be added within a number**
+(old readers ignore it, which loses nothing a person would miss). **A new list at the top level of `data.json`, a
+renamed or re-typed field, or a field whose loss would change what a house means, is a new number.** Every reader
+accepts `1..MAX` (one constant per stack, listed in section 1) and refuses a higher number as `UNSUPPORTED_VERSION`
+with the sentence "made by a newer version of Doorprints; update Doorprints to import it", never importing part of
+the file. A writer writes the lowest number that holds everything it writes, so an app whose data fits `/1` keeps
+writing `/1` and an older reader can still take its files. `MAX` is 2 since 2026-09-30 (the lists of
+[11](../11-feature-parity-and-export-spec.md) 5.30, written from slice 1 of that design on); a `/2` document with none of
+the new lists is the same document as `/1`. The path trace is never in a backup.
 
 ## 2. The container
 
@@ -138,7 +152,7 @@ and the import are exactly a backup's, and a reader uses the two fields for its 
 
 | Field | Type | Meaning |
 |---|---|---|
-| `format` | string | Always `doorprints-backup/1`. A reader that sees anything else refuses the file (`UNSUPPORTED_VERSION`). |
+| `format` | string | `doorprints-backup/1` today; a reader accepts `/1` and `/2` (section 1.1) and refuses a higher number (`UNSUPPORTED_VERSION`, "update the app") or anything that is not `doorprints-backup/<n>` (`NOT_A_BACKUP`). |
 | `exportedAt` | number | When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. |
 | `houses`, `visits`, `photos` | arrays | The rows, in the order of section 5. Always present, possibly empty. |
 

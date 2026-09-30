@@ -122,6 +122,30 @@ class BackupApiTest {
         assertThat(((Number) stats.get("maxSyncVersion")).longValue()).isGreaterThanOrEqualTo(cursor);
     }
 
+    /**
+     * ADR-28 (docs/11 section 5.30 item 3): the reader accepts {@code doorprints-backup/1} and {@code /2}, tolerates
+     * the {@code /2} lists it does not write yet, and refuses a newer format with "update the app" instead of
+     * dropping its lists in silence. The export still writes {@code /1} (nothing new is in the file yet).
+     */
+    @Test
+    void aVersionTwoBackupImportsAndANewerOneIsRefused() {
+        var id = UUID.randomUUID();
+        var v2 = backup(houseRow(id, "From a /2 file", Instant.now()), "")
+                .replace(BackupFormat.ID, "doorprints-backup/2")
+                .replace("\"photos\":[]", "\"photos\":[],\"brokers\":[],\"criteria\":[]");
+        var report = postImport(v2, false);
+        assertThat(report).containsEntry("format", "doorprints-backup/2");
+        assertThat(count(report, "houses", "created")).isEqualTo(1);
+        assertThat(export()).startsWith("{\"format\":\"" + BackupFormat.ID + "\"").contains("From a /2 file");
+
+        var v3 = v2.replace("doorprints-backup/2", "doorprints-backup/3");
+        assertThat(status(() -> postImport(v3, false))).isEqualTo(400);
+        assertThat(status(() -> postImport(v3, true))).isEqualTo(400);
+        assertThat(errorBody(() -> postImport(v3, false))).contains("update the app");
+        assertThat(errorBody(() -> postImport(v2.replace("doorprints-backup/2", "doorprints-backup/x"), false)))
+                .contains("Not a " + BackupFormat.ID);
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     /** The body of the error response {@code call} provoked (a ProblemDetail), or "" if it succeeded. */

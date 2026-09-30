@@ -26,7 +26,7 @@ import { ConfigService } from '../core/config.service';
 import type { ApiConfig } from '../core/config.service';
 import { Announcer } from '../core/announcer.service';
 import { HouseApiService } from '../core/house-api.service';
-import type { HouseDto, PhotoChangeDto, StatsDto, VisitDto } from '../core/models';
+import type { HouseDto, PhotoChangeDto, RecordDto, StatsDto, VisitDto } from '../core/models';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
 import {
@@ -66,6 +66,12 @@ const PHOTOS_SINCE = `[
   {"id":"a1b2c3d4-0000-4000-8000-000000000002","houseId":"5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10","contentType":"image/jpeg","sizeBytes":0,"createdAt":"2026-09-21T11:21:00Z","updatedAt":"2026-09-22T07:00:00Z","deleted":true,"syncVersion":8}
 ]`;
 
+/** `GET /api/records?since=` (docs/11 5.30 item 2): the server writes the payload back exactly as it was sent. */
+const RECORDS_SINCE = `[
+  {"type":"broker","id":"c3d4e5f6-0000-4000-8000-000000000001","payload":{"name":"Anita","agency":"Homes & Co","phone":"+91 98765 43210"},"updatedAt":"2026-09-29T09:00:00.000000Z","deleted":false,"syncVersion":21},
+  {"type":"place","id":"c3d4e5f6-0000-4000-8000-000000000002","payload":{},"updatedAt":"2026-09-29T09:05:00.000000Z","deleted":true,"syncVersion":22}
+]`;
+
 /** ApiRateLimitFilter's body; sent with `Retry-After`. */
 const RATE_LIMITED = `{"status":429,"detail":"Rate limit exceeded, retry in 2s"}`;
 
@@ -73,6 +79,8 @@ const HOUSE_ID = '5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10';
 const VILLA_ID = '9e7c2a44-1b3f-4f0e-8a77-2c5d9e0f1a22';
 const PHOTO_NEW = 'a1b2c3d4-0000-4000-8000-000000000001';
 const PHOTO_GONE = 'a1b2c3d4-0000-4000-8000-000000000002';
+const BROKER_ID = 'c3d4e5f6-0000-4000-8000-000000000001';
+const PLACE_GONE = 'c3d4e5f6-0000-4000-8000-000000000002';
 
 function parse<T>(json: string): T[] {
   return JSON.parse(json) as T[];
@@ -83,15 +91,17 @@ class FakeApi {
   houses: () => Observable<HouseDto[]> = () => of([]);
   visits: () => Observable<VisitDto[]> = () => of([]);
   photoChanges: () => Observable<PhotoChangeDto[]> = () => of([]);
+  records: () => Observable<RecordDto[]> = () => of([]);
   photoBytes: () => Observable<Blob> = () => of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
 
   /** `GET /api/stats`; by default an older server's answer, without `maxSyncVersion`. */
   statsAnswer: () => Observable<StatsDto> = () => of({ houses: 0, shortlisted: 0, rejected: 0, visits: 0, streets: 0 });
   statsCalls = 0;
 
-  readonly since = { house: [] as number[], visit: [] as number[], photo: [] as number[] };
+  readonly since = { house: [] as number[], visit: [] as number[], photo: [] as number[], record: [] as number[] };
   readonly pushedHouses: HouseDto[] = [];
   readonly pushedVisits: VisitDto[] = [];
+  readonly pushedRecords: RecordDto[] = [];
   readonly deletedPhotos: string[] = [];
   readonly uploadedPhotos: string[] = [];
   readonly fetchedPhotos: string[] = [];
@@ -112,6 +122,10 @@ class FakeApi {
     this.since.photo.push(since);
     return this.photoChanges();
   }
+  recordsSince(since: number): Observable<RecordDto[]> {
+    this.since.record.push(since);
+    return this.records();
+  }
   photo(id: string): Observable<Blob> {
     this.fetchedPhotos.push(id);
     return this.photoBytes();
@@ -129,6 +143,10 @@ class FakeApi {
   pushVisit(visit: VisitDto): Observable<VisitDto> {
     this.pushedVisits.push(visit);
     return of({ ...visit, syncVersion: ++this.version });
+  }
+  pushRecord(record: RecordDto): Observable<RecordDto> {
+    this.pushedRecords.push(record);
+    return of({ ...record, syncVersion: ++this.version });
   }
   deletePhoto(id: string): Observable<unknown> {
     this.deletedPhotos.push(id);
@@ -223,9 +241,10 @@ describe('SyncService', () => {
     TestBed.tick();
     await settle();
     migrationAfterTick = sync.migration();
-    for (const list of [api.since.house, api.since.visit, api.since.photo]) list.length = 0;
+    for (const list of [api.since.house, api.since.visit, api.since.photo, api.since.record]) list.length = 0;
     api.pushedHouses.length = 0;
     api.pushedVisits.length = 0;
+    api.pushedRecords.length = 0;
     for (const ids of [api.deletedPhotos, api.uploadedPhotos, api.fetchedPhotos]) ids.length = 0;
   });
 
@@ -238,6 +257,7 @@ describe('SyncService', () => {
     api.houses = () => of(parse<HouseDto>(HOUSES_SINCE));
     api.visits = () => of(parse<VisitDto>(VISITS_SINCE));
     api.photoChanges = () => of(parse<PhotoChangeDto>(PHOTOS_SINCE));
+    api.records = () => of(parse<RecordDto>(RECORDS_SINCE));
   }
 
   // ---- first-run migration ----
@@ -381,10 +401,10 @@ describe('SyncService', () => {
   // ---- cursors ----
 
   describe('cursors', () => {
-    it('advances and persists all three, from the highest sync version seen', async () => {
+    it('advances and persists all four, from the highest sync version seen', async () => {
       recordedServer();
       await sync.syncNow(true);
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
     });
 
     it('asks for changes since the stored cursor on the next run', async () => {
@@ -393,10 +413,12 @@ describe('SyncService', () => {
       api.houses = () => of([]);
       api.visits = () => of([]);
       api.photoChanges = () => of([]);
+      api.records = () => of([]);
       await sync.syncNow(true);
       expect(api.since.house).toEqual([0, 42]);
       expect(api.since.visit).toEqual([0, 17]);
       expect(api.since.photo).toEqual([0, 8]);
+      expect(api.since.record).toEqual([0, 22]);
     });
 
     /**
@@ -485,6 +507,58 @@ describe('SyncService', () => {
       expect((await store.getHouse(HOUSE_ID))?.label).toBe('2BHK near Indiranagar metro');
     });
 
+    /** The record envelope (docs/11 5.30 item 2) takes the visits' path: pushed after them, pulled with its own cursor. */
+    it('pushes a dirty record after the visits, as stored, and clears its dirty flag', async () => {
+      await store.saveVisit({ id: 'local-v', lat: 1, lon: 2, arrivedAt: '2026-09-01T00:00:00.000Z', source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse('2026-09-01T00:00:00.000Z'));
+      const saved = await store.saveRecord('broker', 'local-b', { name: 'Ravi' }, Date.parse('2026-09-01T00:00:00.000Z'));
+      const order: string[] = [];
+      const pushVisit = api.pushVisit.bind(api);
+      const pushRecord = api.pushRecord.bind(api);
+      api.pushVisit = (v) => {
+        order.push('visit');
+        return pushVisit(v);
+      };
+      api.pushRecord = (r) => {
+        order.push('record');
+        return pushRecord(r);
+      };
+      await sync.syncNow(true);
+      expect(order).toEqual(['visit', 'record']);
+      expect(api.pushedRecords).toEqual([
+        { type: 'broker', id: 'local-b', payload: { name: 'Ravi' }, updatedAt: saved.updatedAt, deleted: false, syncVersion: 0 },
+      ]);
+      expect(await store.dirtyRecords()).toEqual([]);
+      expect(sync.lastOutcome()?.pushed).toBe(2);
+    });
+
+    it('stores the records the server sent, tombstones included, and keeps an edit made while the push was in flight', async () => {
+      await store.putRecordFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      await store.saveRecord('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));
+      recordedServer();
+      // The same race `markHouseClean` exists for: edited again while the push is in flight, later than the
+      // server's row (2026-09-29T09:00), so the flag stays and last write wins for the local row.
+      api.pushRecord = (pushed: RecordDto) =>
+        defer(() => from(store.saveRecord(pushed.type, pushed.id, { name: 'Mine, again' }, Date.parse('2026-09-30T00:00:00.000Z')).then(() => pushed)));
+      await sync.syncNow(true);
+      expect(await store.getRecord('place', PLACE_GONE)).toBeUndefined();
+      const brokers = await store.recordsOf('broker');
+      expect(brokers).toHaveLength(1);
+      expect(brokers[0].payload).toEqual({ name: 'Mine, again' });
+      expect(brokers[0].dirty).toBe(true);
+      // Two houses, one visit, the place's tombstone and the photo; the broker was kept.
+      expect(sync.lastOutcome()?.pulled).toBe(5);
+    });
+
+    it('overwrites a clean local record with the server’s and keeps the payload exactly', async () => {
+      await store.putRecordFromServer({ type: 'broker', id: BROKER_ID, payload: { name: 'Old' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      recordedServer();
+      await sync.syncNow(true);
+      const broker = await store.getRecord('broker', BROKER_ID);
+      expect(broker?.payload).toEqual({ name: 'Anita', agency: 'Homes & Co', phone: '+91 98765 43210' });
+      expect(broker?.syncVersion).toBe(21);
+      expect(broker?.dirty).toBe(false);
+    });
+
     it('pushes local edits before it pulls, and clears the dirty flag', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
       recordedServer();
@@ -546,7 +620,7 @@ describe('SyncService', () => {
       expect(sync.lastError()).toBeNull();
       // The download did run and the server had nothing; asking again would be asking twice.
       expect(sync.migration()).toBe('done');
-      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
     });
   });
 
@@ -611,6 +685,21 @@ describe('SyncService', () => {
      * Angular turns a non-JSON 200 (a captive portal's sign-in page) into an HttpErrorResponse on its own; the
      * case left to guard is well-formed JSON of the wrong shape, which used to throw a bare TypeError.
      */
+    it('skips a record with a bad type, a bad id or an oversized payload, and still moves the record cursor', async () => {
+      const rows = parse<RecordDto>(RECORDS_SINCE);
+      rows[0].type = 'Not a type';
+      rows[1].payload = { n: 'x'.repeat(70_000) };
+      rows.push({ type: 'place', id: 'a/b', payload: {}, deleted: false, syncVersion: 23 });
+      rows.push({ type: 'place', id: 'no-version', payload: {}, deleted: false } as RecordDto);
+      api.records = () => of(rows);
+      await sync.syncNow(true);
+      expect(await store.dirtyRecords()).toEqual([]);
+      expect(await store.recordsOf('place')).toEqual([]);
+      expect(sync.lastOutcome()?.skipped).toBe(4);
+      // Three rows carried a usable version and have been considered; the fourth holds nothing back.
+      expect((await store.cursors()).record).toBe(23);
+    });
+
     it('fails with a translated reason when a list endpoint answers with something that is not a list', async () => {
       api.houses = () => of({ error: 'nope' } as unknown as HouseDto[]);
       await sync.syncNow(true);
@@ -802,10 +891,11 @@ describe('SyncService', () => {
     async function syncedWithRecordedServer(): Promise<void> {
       recordedServer();
       await sync.syncNow(true);
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
-      for (const list of [api.since.house, api.since.visit, api.since.photo]) list.length = 0;
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
+      for (const list of [api.since.house, api.since.visit, api.since.photo, api.since.record]) list.length = 0;
       api.pushedHouses.length = 0;
       api.pushedVisits.length = 0;
+      api.pushedRecords.length = 0;
       api.uploadedPhotos.length = 0;
     }
 
@@ -818,6 +908,7 @@ describe('SyncService', () => {
       api.houses = () => of([]);
       api.visits = () => of([]);
       api.photoChanges = () => of([]);
+      api.records = () => of([]);
 
       await sync.syncNow(true);
 
@@ -827,8 +918,8 @@ describe('SyncService', () => {
       // The stored photo goes up again (its bytes are here; the new server has none).
       expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
       // One pull, from 0: whatever the server holds now, below the old cursors too.
-      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0] });
-      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0], record: [0] });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
       expect(await store.dirtyHouses()).toEqual([]);
       expect(await store.dirtyVisits()).toEqual([]);
       expect(await sync.pendingCount()).toBe(0);
@@ -836,7 +927,9 @@ describe('SyncService', () => {
       expect(sync.serverResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
-      expect(sync.lastOutcome()?.pushed).toBe(5);
+      // The two records the recorded server had sent go up again too (the broker and the place's tombstone).
+      expect(api.pushedRecords.map((r) => r.id)).toEqual([BROKER_ID, PLACE_GONE]);
+      expect(sync.lastOutcome()?.pushed).toBe(7);
     });
 
     it('sees a server set back to an older copy the same way, and pulls what that copy holds', async () => {
@@ -852,7 +945,7 @@ describe('SyncService', () => {
       expect(sync.serverResetAt()).not.toBeNull();
       expect(api.since.house).toEqual([0]);
       // The pull from 0 brings the recorded rows (versions up to 42) back, so the cursors are where they were.
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
     });
 
     it('does not take an ordinary empty pull for a reset: nothing sent, the cursors kept', async () => {
@@ -860,11 +953,12 @@ describe('SyncService', () => {
       api.houses = () => of([]);
       api.visits = () => of([]);
       api.photoChanges = () => of([]);
+      api.records = () => of([]);
       await sync.syncNow(true);
       await sync.syncNow(true);
-      expect(api.since).toEqual({ house: [42, 42], visit: [17, 17], photo: [8, 8] });
+      expect(api.since).toEqual({ house: [42, 42], visit: [17, 17], photo: [8, 8], record: [22, 22] });
       expect(api.pushedHouses).toEqual([]);
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
       expect(sync.serverResetAt()).toBeNull();
     });
 
@@ -906,14 +1000,15 @@ describe('SyncService', () => {
       api.houses = () => of([]);
       api.visits = () => of([]);
       api.photoChanges = () => of([]);
+      api.records = () => of([]);
 
       await sync.syncNow(true);
 
       expect(api.pushedHouses.map((h) => h.id).sort()).toEqual([HOUSE_ID, VILLA_ID].sort());
       expect(api.pushedVisits.map((v) => v.id)).toEqual(['0c6f5a2b-7d4e-4b8a-9c1d-3e2f1a0b9c88']);
       expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
-      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0] });
-      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(api.since).toEqual({ house: [0], visit: [0], photo: [0], record: [0] });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
       expect(sync.serverResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
@@ -986,7 +1081,7 @@ describe('SyncService', () => {
       recordedServer();
       await sync.start();
       await sync.downloadToThisBrowser();
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
 
       // Disconnect-and-connect elsewhere, or a changed address: the enabled effect calls start() again.
       server.set({ baseUrl: 'https://b.example.com/', apiKey: 'key-b' });
@@ -1007,7 +1102,7 @@ describe('SyncService', () => {
       for (const list of [api.since.house, api.since.visit, api.since.photo]) list.length = 0;
       await sync.start();
       await settle();
-      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
       expect(api.since.house.every((since) => since === 42)).toBe(true);
     });
 
@@ -1038,7 +1133,7 @@ describe('SyncService', () => {
       await settle();
 
       expect(await store.allHouses()).toEqual([]);
-      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+      expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
       expect(sync.running()).toBe(false);
       // Cancelling is not a failure: nothing to report.
       expect(sync.lastError()).toBeNull();
@@ -1071,7 +1166,7 @@ describe('SyncService', () => {
       expect(sync.lastError()).toBeNull();
       expect((await store.liveHouses()).map((h) => h.id)).toEqual([HOUSE_ID]);
       expect(await store.allVisits()).toEqual([]);
-      expect(await store.cursors()).toEqual({ house: 42, visit: 0, photo: 0 });
+      expect(await store.cursors()).toEqual({ house: 42, visit: 0, photo: 0, record: 0 });
 
       // "Download now" on Your data carries on from the stored cursors.
       api.visits = () => of(parse<VisitDto>(VISITS_SINCE));

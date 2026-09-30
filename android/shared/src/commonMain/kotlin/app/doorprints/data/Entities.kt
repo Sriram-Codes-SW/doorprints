@@ -115,3 +115,23 @@ data class TrackPointEntity(
     /** The fix's reported accuracy in metres, for the map to know how rough the line is. */
     val accuracyM: Float,
 )
+
+/**
+ * One row of the Sprint 4b record envelope (docs/11 5.30 item 2, ADR-28): every new kind of data that is not a house,
+ * a visit or a photo (brokers, criteria, viewings, ...) is a JSON object in [payload] under its [type]'s name, keyed
+ * by [id] within the type. The phone never reads a payload here: `RecordType<T>` in `app.doorprints.shared.records`
+ * decodes it, so a new kind of data is one serializable class and no table, DAO or migration. A tombstone keeps
+ * `{}` as its payload. Room version 4 (`AppDatabase.MIGRATION_3_4`); the table name and columns are stored names.
+ */
+@Entity(tableName = "records", primaryKeys = ["type", "id"], indices = [Index("type")])
+data class RecordEntity(
+    /** The record type's name (`RecordRules.isValidType`). */
+    val type: String,
+    /** Unique within the type (`RecordRules.isValidId`). */
+    val id: String,
+    /** The record as JSON object text, at most `RecordRules.MAX_PAYLOAD_BYTES` of UTF-8. */
+    val payload: String,
+    override val updatedAt: Long,
+    val deleted: Boolean = false,
+    override val dirty: Boolean = true,
+) : SyncRecord

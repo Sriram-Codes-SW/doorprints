@@ -17,10 +17,22 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { MemoryDb, STORE_KEY_PATH, STORE_NAMES, openLocalDb } from './local-db';
-import { houseFromDto, isRecordId, isoNow, millis, tryHouseFromDto, tryVisitFromDto, visitFromDto } from './records';
+import { DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openLocalDb, upgradeLocalDb } from './local-db';
+import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
+import {
+  MAX_RECORD_PAYLOAD_BYTES,
+  houseFromDto,
+  isRecordId,
+  isoNow,
+  millis,
+  recordToDto,
+  tryHouseFromDto,
+  tryRecordFromDto,
+  tryVisitFromDto,
+  visitFromDto,
+} from './records';
 import { LocalDataError } from '../core/local-error';
-import type { HouseDto, VisitDto } from '../core/models';
+import type { HouseDto, RecordDto, VisitDto } from '../core/models';
 
 describe('MemoryDb', () => {
   it('stores and reads back by the store’s key path', async () => {
@@ -69,6 +81,116 @@ describe('MemoryDb', () => {
   it('returns undefined for a key it does not have', async () => {
     expect(await new MemoryDb().get('houses', 'missing')).toBeUndefined();
   });
+
+  it('keys the records store by (type, id), so the same id under two types is two rows', async () => {
+    const db = new MemoryDb();
+    await db.put('records', { type: 'broker', id: 'x', payload: { name: 'A' } });
+    await db.put('records', { type: 'place', id: 'x', payload: { name: 'B' } });
+    expect(await db.getAll('records')).toHaveLength(2);
+    expect((await db.get<{ payload: { name: string } }>('records', ['place', 'x']))?.payload.name).toBe('B');
+    await db.delete('records', ['broker', 'x']);
+    expect((await db.getAll<{ type: string }>('records')).map((r) => r.type)).toEqual(['place']);
+  });
+
+  it('reads by an index the way IndexedDB does: only the rows whose property equals the value', async () => {
+    const db = new MemoryDb();
+    await db.putAll('photos', [
+      { id: 'p1', houseId: 'h1' },
+      { id: 'p2', houseId: 'h2' },
+      { id: 'p3', houseId: 'h1' },
+    ]);
+    expect((await db.getAllByIndex<{ id: string }>('photos', 'houseId', 'h1')).map((p) => p.id)).toEqual(['p1', 'p3']);
+    expect(await db.getAllByIndex('photos', 'houseId', 'h9')).toEqual([]);
+  });
+});
+
+/**
+ * The upgrade path (S4b-BL-71), against a fake of the three IndexedDB objects an upgrade touches: jsdom has no
+ * IndexedDB and no new dependency is allowed, and what matters is *which* stores and indexes each step creates.
+ */
+describe('upgradeLocalDb', () => {
+  class FakeStore implements UpgradeStore {
+    readonly indexes: { name: string; keyPath: string }[] = [];
+    createIndex(name: string, keyPath: string): unknown {
+      this.indexes.push({ name, keyPath });
+      return undefined;
+    }
+  }
+  class FakeDb implements UpgradeDb, UpgradeTx {
+    readonly stores = new Map<string, FakeStore>();
+    readonly keyPaths = new Map<string, string | string[]>();
+    createObjectStore(name: string, options: { keyPath: string | string[] }): UpgradeStore {
+      if (this.stores.has(name)) throw new Error(`ConstraintError: ${name} exists`);
+      const store = new FakeStore();
+      this.stores.set(name, store);
+      this.keyPaths.set(name, options.keyPath);
+      return store;
+    }
+    objectStore(name: string): UpgradeStore {
+      const store = this.stores.get(name);
+      if (!store) throw new Error(`NotFoundError: ${name}`);
+      return store;
+    }
+    /** What the database holds, in a shape a test can compare whole. */
+    shape(): Record<string, { keyPath: string | string[]; indexes: string[] }> {
+      const out: Record<string, { keyPath: string | string[]; indexes: string[] }> = {};
+      for (const [name, store] of this.stores) {
+        out[name] = { keyPath: this.keyPaths.get(name)!, indexes: store.indexes.map((i) => i.name) };
+      }
+      return out;
+    }
+  }
+
+  const VERSION_2 = {
+    houses: { keyPath: 'id', indexes: [] },
+    visits: { keyPath: 'id', indexes: ['houseId'] },
+    photos: { keyPath: 'id', indexes: ['houseId'] },
+    settings: { keyPath: 'key', indexes: [] },
+    records: { keyPath: ['type', 'id'], indexes: ['type'] },
+  };
+
+  it('is at version 2 (slice 0 of the Sprint 4b data model)', () => {
+    expect(DB_VERSION).toBe(2);
+  });
+
+  it('creates every store and index on a fresh install', () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    expect(db.shape()).toEqual(VERSION_2);
+    // The wrapper's own tables of the stores agree with what the upgrade made.
+    for (const name of STORE_NAMES) {
+      expect(db.shape()[name].keyPath, name).toEqual(STORE_KEY_PATH[name]);
+      expect(db.shape()[name].indexes, name).toEqual(STORE_INDEXES[name]);
+    }
+  });
+
+  it('brings a version-1 database up by adding only the records store and the two indexes', () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    // Forget the version-2 additions, so this is what a Sprint 4a browser holds.
+    db.stores.delete('records');
+    db.keyPaths.delete('records');
+    db.stores.get('photos')!.indexes.length = 0;
+    db.stores.get('visits')!.indexes.length = 0;
+
+    upgradeLocalDb(db, 1, db);
+    expect(db.shape()).toEqual(VERSION_2);
+  });
+
+  it('does nothing for a database already at the current version', () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    upgradeLocalDb(db, DB_VERSION, db);
+    expect(db.shape()).toEqual(VERSION_2);
+  });
+
+  it('indexes every store the way the wrapper expects: an index named after the property it is on', () => {
+    const db = new FakeDb();
+    upgradeLocalDb(db, 0, db);
+    for (const [name, store] of db.stores) {
+      for (const index of store.indexes) expect(index.keyPath, `${name}.${index.name}`).toBe(index.name);
+    }
+  });
 });
 
 describe('openLocalDb', () => {
@@ -80,7 +202,7 @@ describe('openLocalDb', () => {
   });
 
   it('knows a key path for every store', () => {
-    for (const name of STORE_NAMES) expect(typeof STORE_KEY_PATH[name]).toBe('string');
+    for (const name of STORE_NAMES) expect(STORE_KEY_PATH[name], name).toBeTruthy();
   });
 });
 
@@ -153,6 +275,62 @@ describe('records', () => {
     expect(tryHouseFromDto(null)).toBeNull();
     expect(tryHouseFromDto(wire)?.id).toBe('h1');
     expect(tryVisitFromDto(null)).toBeNull();
+  });
+
+  /**
+   * The record envelope (docs/11 5.30 item 2). The server holds the same patterns and the same 64 KB cap on the
+   * serialised payload; a row outside them is untrusted and skipped by the pull, as a house with no id is.
+   */
+  describe('the record envelope', () => {
+    const envelope: RecordDto = {
+      type: 'broker',
+      id: 'b1',
+      payload: { name: 'Anita', phone: '+91 98765 43210' },
+      updatedAt: '2026-09-30T10:00:00.000Z',
+      deleted: false,
+      syncVersion: 12,
+    };
+
+    it('keeps a good row as it is, plus the dirty flag', () => {
+      expect(tryRecordFromDto(envelope)).toEqual({ ...envelope, dirty: false });
+      expect(tryRecordFromDto(envelope, true)?.dirty).toBe(true);
+      expect(recordToDto(tryRecordFromDto(envelope)!)).toEqual(envelope);
+    });
+
+    it('refuses a type outside the server’s pattern', () => {
+      for (const bad of ['', 'Broker', '1broker', 'a-b', 'a b', 'a'.repeat(41), undefined, 7]) {
+        expect(tryRecordFromDto({ ...envelope, type: bad as unknown as string }), JSON.stringify(bad)).toBeNull();
+      }
+      expect(tryRecordFromDto({ ...envelope, type: 'photoMeta2' })).not.toBeNull();
+    });
+
+    it('refuses an id outside the server’s pattern', () => {
+      for (const bad of ['', ' ', 'a/b', '.', '..', 'a'.repeat(65), 'क', null, 3]) {
+        expect(tryRecordFromDto({ ...envelope, id: bad as unknown as string }), JSON.stringify(bad)).toBeNull();
+      }
+      expect(tryRecordFromDto({ ...envelope, id: '5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10' })?.id).toBeDefined();
+    });
+
+    it('replaces a payload that is not a plain object by an empty one', () => {
+      for (const bad of [null, undefined, 'text', 5, true, [1, 2], new Date(0)]) {
+        expect(tryRecordFromDto({ ...envelope, payload: bad as unknown as Record<string, unknown> })?.payload, String(bad)).toEqual({});
+      }
+    });
+
+    it('refuses a payload over the server’s cap, measured in UTF-8 bytes of its JSON', () => {
+      // {"n":"<x…>"} is 8 bytes of punctuation around the text.
+      const atCap = { n: 'x'.repeat(MAX_RECORD_PAYLOAD_BYTES - 8) };
+      expect(tryRecordFromDto({ ...envelope, payload: atCap })).not.toBeNull();
+      expect(tryRecordFromDto({ ...envelope, payload: { n: `${atCap.n}x` } })).toBeNull();
+      // A multi-byte character counts as its bytes, not as one.
+      expect(tryRecordFromDto({ ...envelope, payload: { n: 'क'.repeat(MAX_RECORD_PAYLOAD_BYTES / 3) } })).toBeNull();
+    });
+
+    it('takes the same defaults as a visit for the bookkeeping fields', () => {
+      const bare = tryRecordFromDto({ type: 'place', id: 'p', payload: {} } as RecordDto);
+      expect(bare).toEqual({ type: 'place', id: 'p', payload: {}, updatedAt: null, deleted: false, syncVersion: 0, dirty: false });
+      expect(tryRecordFromDto(null)).toBeNull();
+    });
   });
 
   it('throws a translated error from the strict mapper, which local writes use', () => {

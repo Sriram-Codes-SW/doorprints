@@ -137,15 +137,15 @@ class SettingsStoreTest {
     @Test
     fun aNewServerResetsTheCursorsAndANewSetupTheFailureCount() = runTest {
         store.saveServer("https://a.example", "key-aaaaaaaaaaaa")
-        store.saveCursors(house = 5, visit = 6)
+        store.saveCursors(house = 5, visit = 6, record = 8)
         store.savePhotoCursor(7)
         store.saveSyncResult(SyncOutcome(SyncOutcome.Kind.AUTH))
         store.saveServer("https://a.example", "")
-        assertEquals(SettingsStore.Cursors(5, 6, 7), store.cursors())
+        assertEquals(SettingsStore.Cursors(5, 6, 7, 8), store.cursors())
         assertEquals(1, store.current().syncFailures)
 
         store.saveServer("https://a.example", "key-bbbbbbbbbbbb")
-        assertEquals(SettingsStore.Cursors(5, 6, 7), store.cursors())
+        assertEquals(SettingsStore.Cursors(5, 6, 7, 8), store.cursors())
         assertEquals(0, store.current().syncFailures)
 
         store.saveSyncResult(SyncOutcome(SyncOutcome.Kind.SERVER))
@@ -234,7 +234,7 @@ class SettingsStoreTest {
         store.saveSyncResult(SyncOutcome(SyncOutcome.Kind.NETWORK))
         store.saveSyncResult(SyncOutcome(SyncOutcome.Kind.OK))
         store.saveSyncResult(SyncOutcome(SyncOutcome.Kind.NETWORK))
-        store.saveCursors(1, 2)
+        store.saveCursors(1, 2, 4)
         store.savePhotoCursor(3)
         store.saveAutoBackup(enabled = true, folder = "content://tree/a", keep = 4)
         store.saveAutoBackupResult(at = 9, error = "e")
@@ -245,7 +245,7 @@ class SettingsStoreTest {
         assertEquals(
             setOf(
                 "serverUrl", "apiKey", "alertRadius", "minStay", "photosOnWifiOnly", "lastSyncAt", "lastSyncOutcome",
-                "syncFailures", "syncFailingSince", "lastSyncOkAt", "houseCursor", "visitCursor", "photoCursor",
+                "syncFailures", "syncFailingSince", "lastSyncOkAt", "houseCursor", "visitCursor", "photoCursor", "cursor.record",
                 "autoBackup", "autoBackupFolder", "autoBackupKeep", "lastAutoBackupAt", "lastAutoBackupError",
                 "exportGrants", "exportDismissedRun", "exportToldRun", "importDismissedRun", "importToldRun",
                 "notificationsAsked",

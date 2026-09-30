@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **The ground for the Sprint 4b data model** (slice 0 of [spec](docs/11-feature-parity-and-export-spec.md) 5.30,
+  [design](docs/03-design.md) ADR-28; nothing visible yet): a self-hosted server stores every new kind of data of the
+  coming slices (criteria, viewings, hunting areas, places, brokers and the rest) as opaque records through
+  `/api/records`, never reading them; the phones and the website keep them in one `records` table or store and sync
+  them the same way as houses. The website's local database now upgrades in steps and closes an older tab's copy
+  with a *Reload* notice instead of falling back to memory; photos of a house are read through an index.
 - **Add a shared listing, filled in without AI** (S4b-FR-4, [spec](docs/11-feature-parity-and-export-spec.md) 5.29):
   share a listing from MagicBricks, 99acres, Housing.com, NoBroker, Square Yards or NestAway (or any message) to
   Doorprints on Android, and the price, BHK, locality, link and phone number the text says fill the new-house form
@@ -414,6 +420,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Backups from a newer Doorprints are refused rather than half-imported** (docs/schemas README §1.1): every app and
+  server reads `doorprints-backup/1` and `/2` and says "update Doorprints to import it" for a higher number. Files are
+  still written as `/1`.
 - **Ready for the data-model sprint** (readiness review, `docs/14` §8): the Android house list searches the contact's
   name too, with the same rule as the website (`HouseSearch`, one case list on both sides); the DTO mappers use named
   arguments and an all-fields test; the backup format's completeness is checked against `backup-sample.json` in all

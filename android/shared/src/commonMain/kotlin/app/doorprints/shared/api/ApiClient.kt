@@ -193,6 +193,10 @@ class ApiClient(
 
     suspend fun photoChangesSince(version: Long): List<PhotoChangeDto> = get("/api/photos?since=$version")
 
+    /** The record envelope (docs/11 5.30): one endpoint pair for every record type, the same cursor rule as houses. */
+    suspend fun recordsSince(version: Long): List<RecordDto> = get("/api/records?since=$version")
+    suspend fun putRecord(r: RecordDto): RecordDto = send(HttpMethod.Put, "/api/records/${r.type}/${r.id}", r)
+
     /**
      * Uploads one JPEG as multipart/form-data: a text part "id" (the client-chosen photo id, which makes the POST
      * safe to retry) and a file part "file" with Content-Type image/jpeg and the given [fileName].

@@ -62,7 +62,8 @@
     <string name="import_write_failed">आयात बीच में रुक गया — कुछ चीज़ें शायद पहले ही जुड़ चुकी हैं। देखें कि फ़ोन में खाली जगह है, फिर पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
     <string name="import_failed">यह फ़ाइल आयात नहीं हो सकती: %1$s</string>
     <string name="problem_not_a_backup">यह Doorprints बैकअप नहीं है</string>
-    <string name="problem_unsupported">यह Doorprints के नए संस्करण से बना है</string>
+    <!-- S4b-BL-72 (2026-09-30): under review (problem_unsupported now says to update the app). -->
+    <string name="problem_unsupported">यह Doorprints के नए संस्करण से बना है; इसे आयात करने के लिए Doorprints अपडेट करें</string>
     <string name="problem_too_many">इसमें बहुत ज़्यादा फ़ाइलें हैं</string>
     <string name="problem_too_large">यह बहुत बड़ी है</string>
     <string name="problem_suspicious">इसमें एक असुरक्षित फ़ाइल नाम है</string>

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.33 |
+| Version | 0.34 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -45,6 +45,7 @@
 | 0.31 | 2026-09-30 | Claude (Code), lead | New **5.29**, the design of a house from a listing link (S4b-FR-4) with brokers (S4b-FR-11): the portal's share text parsed on the device, never the page (5.9 stands); brokers as the data-model change of (4c). New US-41. |
 | 0.32 | 2026-09-30 | Claude (Code), lead | 5.29 **built** (S4b-FR-4, the listing flow): the no-AI parser on Android and the web with one fixture file, the Android share receiver, the map step, the duplicate check. |
 | 0.33 | 2026-09-30 | Claude (Code), lead | New **5.30**, the design of the Sprint 4b data model in one change of format (N13 4c; [03](03-design.md) ADR-28): nested house values, one record envelope for every other new entity, `doorprints-backup/2`, Room 4 and IndexedDB 2, six slices. 8.1 and 8.2 updated. |
+| 0.34 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 0 built** (the records foundations, [10](10-sprint-log.md) §13.18): the format rule, the server's `record` table and endpoints, the `records` table and store with their sync, the web's upgrade path. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -818,6 +819,11 @@ migration (S4b-FR-7, S4b-FR-11), Compare and search;
 (5) photo tags and moving in (5.7, 5.24, S4b-FR-10).
 Slices 1 to 5 change the format once more only if a slice adds a list slice 0 did not name; the list above is
 complete, so `/2` is the format for all of them.
+
+**Built, slice 0 (2026-09-30, [10](10-sprint-log.md) §13.18).** The versioning rule in docs/schemas README §1.1 with every
+reader accepting `/1` and `/2`; the server's `record` table (Flyway V6) and `/api/records`; Room 4 with the `records`
+table, `RecordType<T>` and the records' sync in `:shared`; IndexedDB 2 with the upgrade path, the `records` store,
+the `houseId` indexes and the "updated in another tab" notice on the web. No record type yet: brokers open slice 1.
 
 ## 6. User stories
 
