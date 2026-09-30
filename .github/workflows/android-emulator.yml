@@ -39,7 +39,6 @@ on:
       - "android/**"
       - ".github/workflows/android-emulator.yml"
   pull_request:
-    branches: [main]
     paths:
       - "android/**"
       - ".github/workflows/android-emulator.yml"
