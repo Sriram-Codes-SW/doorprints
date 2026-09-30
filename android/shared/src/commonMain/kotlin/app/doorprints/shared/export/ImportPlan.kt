@@ -99,15 +99,19 @@ data class ImportPreview(
     val updatedCriteria: Int = 0,
     val newPreferences: Int = 0,
     val updatedPreferences: Int = 0,
+    /** Questions of a `/2` file (slice 3a), new here and newer in the file: merged by id like the criteria, never deleted. */
+    val newQuestions: Int = 0,
+    val updatedQuestions: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
         get() = newHouses == 0 && updatedHouses == 0 && newVisits == 0 && updatedVisits == 0 && newPhotos == 0 &&
             restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
-            newPreferences == 0 && updatedPreferences == 0
+            newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
-    val overwrites: Int get() = updatedHouses + updatedVisits + updatedBrokers + updatedCriteria + updatedPreferences
+    val overwrites: Int
+        get() = updatedHouses + updatedVisits + updatedBrokers + updatedCriteria + updatedPreferences + updatedQuestions
 }
 
 /**
@@ -153,6 +157,8 @@ data class ImportActions(
     /** The criteria and preferences to write (slice 2): new here or newer in the file, by key, in both modes. */
     val criteria: List<ExportCriterion> = emptyList(),
     val preferences: List<ExportPreference> = emptyList(),
+    /** The questions to write (slice 3a): new here or newer in the file, by id, in both modes (a copy keeps the ids). */
+    val questions: List<ExportQuestion> = emptyList(),
 )
 
 /**
@@ -218,11 +224,13 @@ object ImportPlan {
         localBrokers: Map<String, Long> = emptyMap(),
         localCriteria: Map<String, Long> = emptyMap(),
         localPreferences: Map<String, Long> = emptyMap(),
+        localQuestions: Map<String, Long> = emptyMap(),
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val (newC, updC) = settingsCounts(data.criterionRows.map { it.key to it.updatedAt }, localCriteria, skipSettings)
         val (newPr, updPr) = settingsCounts(data.preferenceRows.map { it.key to it.updatedAt }, localPreferences, skipSettings)
+        val (newQ, updQ) = settingsCounts(data.questionRows.map { it.id to it.updatedAt }, localQuestions, skipSettings)
         if (mode == ImportMode.COPY) {
             // Nothing local is consulted in COPY mode, not even a tombstone: every row gets a new id. What does
             // matter is that `plan` drops a visit or a photo whose houseId is not one of the *file's* own houses,
@@ -249,6 +257,7 @@ object ImportPlan {
                 photosMissingFromFile = missing,
                 newBrokers = data.brokerRows.size,
                 newCriteria = newC, updatedCriteria = updC, newPreferences = newPr, updatedPreferences = updPr,
+                newQuestions = newQ, updatedQuestions = updQ,
             )
         }
         var newH = 0; var updH = 0; var hereH = 0; var sameH = 0; var clearedH = 0; var deletedH = 0
@@ -323,6 +332,8 @@ object ImportPlan {
             updatedCriteria = updC,
             newPreferences = newPr,
             updatedPreferences = updPr,
+            newQuestions = newQ,
+            updatedQuestions = updQ,
             checklistsCleared = clearedH,
             deletedHereHouses = deletedH,
             deletedHereVisits = deletedV,
@@ -381,10 +392,12 @@ object ImportPlan {
         localBrokers: Map<String, Long> = emptyMap(),
         localCriteria: Map<String, Long> = emptyMap(),
         localPreferences: Map<String, Long> = emptyMap(),
+        localQuestions: Map<String, Long> = emptyMap(),
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
         val preferences = data.preferenceRows.filter { settingWrites(it.key, it.updatedAt, localPreferences, skipSettings) }
+        val questions = data.questionRows.filter { settingWrites(it.id, it.updatedAt, localQuestions, skipSettings) }
         if (mode == ImportMode.COPY) {
             val houseIds = data.houses.associate { it.id to newId() }
             val visits = data.visits
@@ -409,6 +422,7 @@ object ImportPlan {
             val brokers = data.brokerRows.map { it.copy(id = brokerIds.getValue(it.id)) }
             return ImportActions(
                 mode, houses, visits, photos, photoSources, brokers = brokers, criteria = criteria, preferences = preferences,
+                questions = questions,
             )
         }
 
@@ -482,6 +496,7 @@ object ImportPlan {
             updatedBrokerIds = updatedBrokerIds,
             criteria = criteria,
             preferences = preferences,
+            questions = questions,
         )
     }
 

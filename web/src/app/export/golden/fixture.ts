@@ -19,6 +19,7 @@
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../../data/records';
 import type { BrokerRow } from '../../shared/broker';
 import type { CriterionRow, PreferenceRow } from '../../shared/scoring';
+import type { QuestionRow } from '../../shared/question';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
 
@@ -102,6 +103,19 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
         widthCm: 244,
         sort: 1,
       },
+    ],
+    // Slice 3a: the two answers `docs/schemas/backup-sample.json` carries for house 1: one from the bank (answered), one
+    // asked ad hoc (still open).
+    answers: [
+      {
+        id: 'a1111111-1111-4111-8111-111111111111',
+        questionId: 'qd_maintenance',
+        text: 'How much is the maintenance per month, and what does it cover?',
+        answer: '₹2,500 a month; it covers the lift, water and security',
+        status: 'ANSWERED',
+        sort: 0,
+      },
+      { id: 'a2222222-2222-4222-8222-222222222222', text: 'Is the terrace open to tenants?', status: 'OPEN', sort: 1 },
     ],
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
@@ -301,6 +315,50 @@ export const FIXTURE_PREFERENCES: PreferenceRow[] = [
   { key: 'score.ratingShare', value: '0.4', updatedAt: '2026-09-10T08:30:00.000Z' },
 ];
 
+/**
+ * The three question records of `docs/schemas/backup-sample.json` (slice 3a): two seeded defaults edited on the same day
+ * (deposit first, by id) and a custom one that is archived. The bank is settings, so a copy keeps it without contacts.
+ */
+export const FIXTURE_QUESTIONS: QuestionRow[] = [
+  {
+    id: 'qd_deposit',
+    updatedAt: '2026-09-01T06:00:00.000Z',
+    question: {
+      id: 'qd_deposit',
+      text: 'How many months is the deposit, and when and how is it refunded?',
+      category: 'MONEY',
+      appliesTo: 'RENT',
+      defaultOn: true,
+      sort: 1,
+    },
+  },
+  {
+    id: 'qd_maintenance',
+    updatedAt: '2026-09-01T06:00:00.000Z',
+    question: {
+      id: 'qd_maintenance',
+      text: 'How much is the maintenance per month, and what does it cover?',
+      category: 'MONEY',
+      appliesTo: 'BOTH',
+      defaultOn: true,
+      sort: 0,
+    },
+  },
+  {
+    id: 'q_9f8e7d6c',
+    updatedAt: '2026-09-02T06:00:00.000Z',
+    question: {
+      id: 'q_9f8e7d6c',
+      text: 'Is there a water meter?',
+      category: 'WATER_POWER',
+      appliesTo: 'RENT',
+      defaultOn: false,
+      sort: 20,
+      archived: true,
+    },
+  },
+];
+
 /** Three bytes standing in for JPEG data; the exporters never look inside. */
 export const FIXTURE_PHOTO_BYTES = new Uint8Array([0xff, 0xd8, 0xff]);
 
@@ -352,6 +410,7 @@ export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundl
     brokers: FIXTURE_BROKERS,
     criteria: FIXTURE_CRITERIA,
     preferences: FIXTURE_PREFERENCES,
+    questions: FIXTURE_QUESTIONS,
     exportedAt: FIXTURE_EXPORTED_AT,
     options: { ...FIXTURE_OPTIONS, ...options },
   });

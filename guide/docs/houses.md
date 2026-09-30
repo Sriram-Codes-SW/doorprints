@@ -58,6 +58,9 @@ Open a house from the list or the map. There you can:
   houses they showed you;
 - add up to 30 **Rooms**: for each, its type, name, length and width, a condition from one to five stars and a note. Doorprints
   shows each room's area and the total; switch between feet and metres with **Length units** in **Settings**;
+- keep a list of **Questions to ask** at the viewing: **Add the usual questions** brings the standard ones that fit the house (for a rent: maintenance,
+  deposit, brokerage, lock-in, water, power, parking, floor) and fills in what you already noted under **Cost**; write the answer as you hear it, or
+  **Skip** one. Change the standard list, or add your own, in **Settings > Questions**;
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;

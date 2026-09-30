@@ -97,6 +97,8 @@ public record HouseDto(
         @Valid HouseCost cost,
         /* Slice 1c: at most 30 rooms with distinct ids; an empty list is the same as none. */
         @Valid @Size(max = HouseRoom.MAX) List<@NotNull @Valid HouseRoom> rooms,
+        /* Slice 3a: at most 60 viewing answers with distinct ids; an empty list is the same as none. */
+        @Valid @Size(max = HouseAnswer.MAX) List<@NotNull @Valid HouseAnswer> answers,
         /* Slice 1b: a broker's record id. Not checked against the records: a dangling id reads as no broker. */
         @Pattern(regexp = RecordDto.ID_PATTERN) String brokerId,
         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
@@ -117,7 +119,8 @@ public record HouseDto(
         return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()), h.getBrokerId(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
+                HouseAnswer.parse(h.getAnswers()), h.getBrokerId(),
                 Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
                 h.getSyncVersion(), distanceMeters);
     }
@@ -127,6 +130,13 @@ public record HouseDto(
     @AssertTrue(message = "rooms must not repeat an id")
     public boolean isRoomIdsUnique() {
         return HouseRoom.idsAreUnique(rooms);
+    }
+
+    /** Two answers with one id cannot be told apart by the clients; a getter constraint so Bean Validation runs it. */
+    @JsonIgnore
+    @AssertTrue(message = "answers must not repeat an id")
+    public boolean isAnswerIdsUnique() {
+        return HouseAnswer.idsAreUnique(answers);
     }
 
     void applyTo(House h) {
@@ -149,6 +159,7 @@ public record HouseDto(
         h.setLocationSource(locationSource);
         h.setCost(HouseCost.write(cost));
         h.setRooms(HouseRoom.write(rooms));
+        h.setAnswers(HouseAnswer.write(answers));
         h.setBrokerId(brokerId);
         h.setChecklist(checklist);
         h.setDeleted(deleted);

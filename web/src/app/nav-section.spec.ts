@@ -49,6 +49,7 @@ describe('the navigation item for the page on screen', () => {
     expect(inDataSection('/brokers', false)).toBe(true);
     expect(inDataSection('/brokers/abc', false)).toBe(true);
     expect(inDataSection('/criteria', false)).toBe(true);
+    expect(inDataSection('/questions', false)).toBe(true);
     expect(inDataSection('/connect', true)).toBe(true);
     expect(inDataSection('/connect', false)).toBe(false);
   });

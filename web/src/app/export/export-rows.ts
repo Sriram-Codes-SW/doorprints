@@ -29,6 +29,7 @@ import { photoFileName } from './photo-names';
 import { brokerLine } from '../shared/broker';
 import { isBuiltInKey } from '../shared/scoring';
 import { costSummary } from '../shared/house-cost';
+import { ordered } from '../shared/house-answers';
 import type { PhotoRecord, VisitRecord } from '../data/records';
 
 /**
@@ -113,19 +114,21 @@ function maybeMoney(value: number | null | undefined): Cell {
  * `name` is language-neutral (the CSV file name and the sheet name); `title` is the translated heading.
  */
 export interface ExportTable {
-  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms' | 'criteria';
+  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms' | 'criteria' | 'answers';
   readonly title: string;
   readonly columns: readonly string[];
   readonly rows: readonly (readonly Cell[])[];
 }
 
-/** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c) and criteria (slice 2) when it has them. */
+/** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c), criteria (slice 2) and answers (3a) when it has them. */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
   const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
   if (bundle.brokers.length > 0) tables.push(brokersTable(bundle));
   if (bundle.houses.some((h) => h.rooms?.length)) tables.push(roomsTable(bundle));
   // Slice 2: only a copy whose owner changed something has a criteria table (the records that exist).
   if (bundle.criteria.length > 0) tables.push(criteriaTable(bundle));
+  // Slice 3a: the answers of the houses of the copy; the question bank is settings and travels in the backup only.
+  if (bundle.houses.some((h) => h.answers.length > 0)) tables.push(answersTable(bundle));
   return tables;
 }
 
@@ -555,6 +558,54 @@ export function roomsTable(bundle: ExportBundle): ExportTable {
     }
   }
   return { name: 'rooms', title: s.get('table.rooms'), columns, rows };
+}
+
+/** The word for an answer's status in the export language. */
+function answerStatus(status: string, strings: ExportStrings): string {
+  return status === 'ANSWERED' || status === 'SKIPPED' ? strings.get(`answerStatus.${status}`) : strings.get('answerStatus.OPEN');
+}
+
+/** Display columns of the Questions section in HTML/Markdown: question, answer, status. */
+export function answerDisplayColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  return [s.get('col.question'), s.get('col.answer'), s.get('col.status')];
+}
+
+/**
+ * The rows of a house's Questions section (HTML, Markdown, PDF): question, answer ("–" when empty) and the translated
+ * status, open ones first (`ordered`). Empty when the house has no answers.
+ */
+export function answerCells(house: ExportHouse, strings: ExportStrings): string[][] {
+  return ordered(house.answers).map((a) => [a.text, a.answer?.trim() ? a.answer : '–', answerStatus(a.status, strings)]);
+}
+
+/** The Answers table for CSV/XLSX (slice 3a): house, question, answer, status, then the three ids. */
+export function answersTable(bundle: ExportBundle): ExportTable {
+  const s = stringsOf(bundle);
+  const columns = [
+    s.get('col.house'),
+    s.get('col.question'),
+    s.get('col.answer'),
+    s.get('col.status'),
+    s.get('col.houseId'),
+    s.get('col.id'),
+    s.get('col.questionId'),
+  ];
+  const rows: Cell[][] = [];
+  for (const house of bundle.houses) {
+    for (const a of ordered(house.answers)) {
+      rows.push([
+        cellText(house.house.label),
+        cellText(a.text),
+        maybeText(a.answer),
+        cellText(answerStatus(a.status, s)),
+        cellText(house.house.id),
+        cellText(a.id),
+        maybeText(a.questionId),
+      ]);
+    }
+  }
+  return { name: 'answers', title: s.get('table.answers'), columns, rows };
 }
 
 function compare(a: string, b: string): number {

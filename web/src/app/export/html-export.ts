@@ -33,7 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
-import { criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -220,6 +220,20 @@ function houseSection(
       ].join('')
     : '';
 
+  // The questions (slice 3a), after the rooms and before the checklist: question, answer, status; open ones first.
+  const questionList = answerCells(entry, stringsOf(bundle));
+  const questionsHtml = questionList.length
+    ? [
+        `<h3>${escapeHtml(stringsOf(bundle).get('section.questions'))}</h3>`,
+        '<table>',
+        `<thead><tr>${answerDisplayColumns(bundle).map((c) => `<th scope="col">${escapeHtml(c)}</th>`).join('')}</tr></thead>`,
+        `<tbody>${questionList
+          .map((row) => `<tr>${row.map((c, i) => (i === 0 ? `<th scope="row">${escapeHtml(c)}</th>` : `<td>${escapeHtml(c)}</td>`)).join('')}</tr>`)
+          .join('')}</tbody>`,
+        '</table>',
+      ].join('')
+    : '';
+
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
@@ -253,6 +267,7 @@ function houseSection(
       ? `<h3>${escapeHtml(tr(dict, 'house.cost'))}</h3><table class="fields">${costRows.join('')}</table>`
       : '',
     roomsHtml,
+    questionsHtml,
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',

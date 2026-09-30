@@ -92,6 +92,12 @@ class CanonicalSampleTest {
             ExportOptions(), data.houses, data.visits, data.photos, data.brokerRows, data.criterionRows, data.preferenceRows,
         )
         assertEquals(listOf("4.1", null, "1.0"), data.houses.map { h -> bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } })
+        // Slice 3a: three questions (two seeded defaults and an archived one of the person's own) and house 1's two
+        // answers, an answered one from the bank and an open one asked ad hoc, in the order shown.
+        assertEquals(listOf("qd_deposit", "qd_maintenance", "q_9f8e7d6c"), data.questionRows.map { it.id })
+        assertEquals(listOf(null, null, true), data.questionRows.map { it.archived })
+        assertEquals(listOf(listOf("ANSWERED", "OPEN"), null, null), data.houses.map { h -> h.answers?.map { it.status } })
+        assertEquals(listOf("qd_maintenance", null), data.houses.first().answers!!.map { it.questionId })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
@@ -109,6 +115,7 @@ class CanonicalSampleTest {
             brokers = sample.brokerRows.reversed(),
             criteria = sample.criterionRows.reversed(),
             preferences = sample.preferenceRows.reversed(),
+            questions = sample.questionRows.reversed(),
         )
         // The fixture has to tell the two ordering rules apart, or this test pins nothing.
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
@@ -143,6 +150,7 @@ class CanonicalSampleTest {
             assertEquals(2, preview.newBrokers)
             assertEquals(3, preview.newCriteria)
             assertEquals(1, preview.newPreferences)
+            assertEquals(3, preview.newQuestions)
             assertEquals(0, preview.newPhotos)
             assertEquals(2, preview.photosMissingFromFile)
         }

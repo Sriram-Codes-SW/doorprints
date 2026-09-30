@@ -17,13 +17,15 @@
  */
 
 import { COST_FIELDS } from '../core/models';
-import type { HouseCost, HouseRoom } from '../core/models';
-import { cleanCost, cleanRooms } from '../data/records';
+import type { HouseAnswer, HouseCost, HouseRoom } from '../core/models';
+import { cleanAnswers, cleanCost, cleanRooms } from '../data/records';
 import { sortedChecklist } from './export-model';
 import type { ExportBroker, ExportBundle, ExportHouse as BundleHouse } from './export-model';
 import { brokerToPayload } from '../shared/broker';
 import { criterionToPayload } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow } from '../shared/scoring';
+import { questionToPayload } from '../shared/question';
+import type { QuestionRow } from '../shared/question';
 import { htmlCopyName, isoUtc } from './deterministic';
 import { photoEntry, photoFileName } from './photo-names';
 import { sha256Hex } from './sha256';
@@ -55,7 +57,7 @@ export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
  * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
- * criterion (`criteria` list, slice 2) or preference (`preferences` list) stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
@@ -111,6 +113,8 @@ export interface BackupHouse {
   cost?: BackupCost;
   /** Slice 1c (docs/11 5.6): at most 30 rooms, right after `cost` and before `brokerId`. */
   rooms?: BackupRoom[];
+  /** Slice 3a (docs/11 5.5): at most 60 answers, right after `rooms` and before `brokerId`. */
+  answers?: BackupAnswer[];
   /** Slice 1b: the record id of the house's broker, right after `cost`. */
   brokerId?: string;
   checklist: Record<string, number>;
@@ -126,6 +130,9 @@ export type BackupCost = { [K in keyof HouseCost]?: NonNullable<HouseCost[K]> };
  * Fields are in the order: id, type, name, lengthCm, widthCm, condition, notes, sort.
  */
 export type BackupRoom = { [K in keyof HouseRoom]?: Exclude<HouseRoom[K], null> };
+
+/** An answer in the backup, with only the set fields, in the order id, questionId, text, answer, status, sort. */
+export type BackupAnswer = { [K in keyof HouseAnswer]?: Exclude<HouseAnswer[K], null> };
 
 
 export interface BackupVisit {
@@ -182,6 +189,21 @@ export interface BackupPreference {
   updatedAt: number;
 }
 
+/**
+ * A question in a `/2` copy (slice 3a): the record id, the payload keys (text, category, appliesTo, defaultOn, sort,
+ * `archived` only when true) and the last edit.
+ */
+export interface BackupQuestion {
+  id: string;
+  text: string;
+  category: string;
+  appliesTo: string;
+  defaultOn: boolean;
+  sort: number;
+  archived?: boolean;
+  updatedAt: number;
+}
+
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -194,6 +216,8 @@ export interface BackupData {
   criteria?: BackupCriterion[];
   /** Only in a `/2` copy, after `criteria`, and then never empty (slice 2). */
   preferences?: BackupPreference[];
+  /** Only in a `/2` copy, after `preferences`, and then never empty (slice 3a). */
+  questions?: BackupQuestion[];
 }
 
 export interface BackupCounts {
@@ -204,6 +228,7 @@ export interface BackupCounts {
   brokers?: number;
   criteria?: number;
   preferences?: number;
+  questions?: number;
 }
 
 export interface BackupFile {
@@ -232,11 +257,14 @@ export interface BackupManifest {
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);
+  const hasAnswers = bundle.houses.some((h) => cleanAnswers(h.house.answers) !== null);
   // Criteria and preferences are not contacts: a copy made without contact details keeps them (slice 2).
   const criteria = bundle.criteria.length > 0 ? bundle.criteria.map(backupCriterion) : undefined;
   const preferences = bundle.preferences.length > 0 ? bundle.preferences.map(backupPreference) : undefined;
+  // Questions are not contacts either. The answers stay whole too: a copy is the person's own data (slice 3a).
+  const questions = bundle.questions.length > 0 ? bundle.questions.map(backupQuestion) : undefined;
   return {
-    format: brokers || hasRooms || criteria || preferences ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
+    format: brokers || hasRooms || hasAnswers || criteria || preferences || questions ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -263,7 +291,13 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
     ...(brokers ? { brokers } : {}),
     ...(criteria ? { criteria } : {}),
     ...(preferences ? { preferences } : {}),
+    ...(questions ? { questions } : {}),
   };
+}
+
+/** `id`, then the payload keys in the contract's order (`questionToPayload`), then `updatedAt`. */
+function backupQuestion(row: QuestionRow): BackupQuestion {
+  return { id: row.id, ...(questionToPayload(row.question) as Omit<BackupQuestion, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `key`, then the set payload keys in the contract's order (`criterionToPayload`), then `updatedAt`. */
@@ -306,6 +340,7 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     locationSource: house.locationSource ?? undefined,
     cost: backupCost(house.cost),
     rooms: backupRooms(house.rooms),
+    answers: backupAnswers(house.answers),
     brokerId: house.brokerId ?? undefined,
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
@@ -342,6 +377,18 @@ function backupRooms(rooms: HouseRoom[] | null | undefined): BackupRoom[] | unde
     if (room.sort !== undefined && room.sort !== null) out.sort = room.sort;
     return out as BackupRoom;
   });
+}
+
+/** Answers in the backup: at most 60 (`cleanAnswers`), the array left out when there are none. */
+function backupAnswers(answers: HouseAnswer[] | null | undefined): BackupAnswer[] | undefined {
+  return cleanAnswers(answers)?.map((a) => ({
+    id: a.id,
+    ...(a.questionId ? { questionId: a.questionId } : {}),
+    text: a.text,
+    ...(a.answer ? { answer: a.answer } : {}),
+    status: a.status,
+    sort: a.sort,
+  }));
 }
 
 /**
@@ -391,6 +438,7 @@ export function buildBackupZip(
       brokers: data.brokers?.length,
       criteria: data.criteria?.length,
       preferences: data.preferences?.length,
+      questions: data.questions?.length,
     },
     files: contents.map((entry) => ({
       path: entry.path,

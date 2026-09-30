@@ -39,7 +39,8 @@ import java.util.List;
  * {@link BackupService} answers that with a 400 instead of failing here.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers", "criteria", "preferences"})
+@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers", "criteria", "preferences",
+        "questions"})
 public record BackupData(
         String format,
         /* When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. */
@@ -53,7 +54,9 @@ public record BackupData(
         /* Slice 2, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupCriterion> criteria,
         /* Slice 2, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupPreference> preferences
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupPreference> preferences,
+        /* Slice 3a, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupQuestion> questions
 ) {
     public BackupData {
         houses = copy(houses);
@@ -62,6 +65,7 @@ public record BackupData(
         brokers = copy(brokers);
         criteria = copy(criteria);
         preferences = copy(preferences);
+        questions = copy(questions);
     }
 
     private static <T> List<T> copy(List<T> rows) {
@@ -70,6 +74,7 @@ public record BackupData(
 
     /** Total rows, the number the import size limit is measured in. */
     public int rowCount() {
-        return houses.size() + visits.size() + photos.size() + brokers.size() + criteria.size() + preferences.size();
+        return houses.size() + visits.size() + photos.size() + brokers.size() + criteria.size() + preferences.size()
+                + questions.size();
     }
 }

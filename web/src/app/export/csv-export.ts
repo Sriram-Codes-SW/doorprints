@@ -34,14 +34,14 @@ import type { Cell, ExportTable } from './export-rows';
  * **text** cells only — a number's leading minus is part of the number, and prefixing it would stop a spreadsheet
  * reading -12.978321 as a coordinate.
  *
- * `brokers.csv` follows when the copy has brokers and `rooms.csv` when it has rooms and `criteria.csv` when it has criterion records (slice 2); Sprint 4b adds answers.csv and viewings.csv when those
- * tables exist.
+ * `brokers.csv` follows when the copy has brokers and `rooms.csv` when it has rooms and `criteria.csv` when it has criterion records (slice 2) and `answers.csv` when a house has answers (slice 3a); Sprint 4b adds viewings.csv when that
+ * table exists.
  */
 
 export const CSV_FILES = ['houses.csv', 'scores.csv', 'visits.csv', 'photos.csv'] as const;
 export type CsvFileName = (typeof CSV_FILES)[number];
 /** The four files of every copy, `brokers.csv` when it has brokers (slice 1b) and `rooms.csv` when it has rooms (slice 1c). */
-export type CsvTables = Record<CsvFileName, string> & { 'brokers.csv'?: string; 'rooms.csv'?: string; 'criteria.csv'?: string };
+export type CsvTables = Record<CsvFileName, string> & { 'brokers.csv'?: string; 'rooms.csv'?: string; 'criteria.csv'?: string; 'answers.csv'?: string };
 
 const CRLF = '\r\n';
 

@@ -70,6 +70,7 @@ import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.AssistantScreen
 import app.doorprints.ui.CompareScreen
 import app.doorprints.ui.CriteriaEditor
+import app.doorprints.ui.QuestionsEditor
 import app.doorprints.ui.ExportScreen
 import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.DoorprintsTheme
@@ -343,6 +344,16 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveRatingShare(0.25)
         }
         shoot("criteria") { CriteriaEditor() }
+    }
+    /**
+     * Settings > Questions (docs/11 5.5, slice 3a): the bank seeded in the shot's language with the first defaults of
+     * Money on screen: English in both themes and Hindi light only, to keep the image set small.
+     */
+    @Test fun questions() {
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.seedQuestions(lang) }
+        shoot("questions") { QuestionsEditor() }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
