@@ -26,6 +26,7 @@ import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.records.decode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
@@ -43,8 +44,8 @@ fun HouseEntity.toDto() = HouseDto(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), brokerId = brokerId,
-    checklist = checklist, createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
+    brokerId = brokerId, checklist = checklist, createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
 
@@ -57,8 +58,8 @@ fun HouseDto.toEntity() = HouseEntity(
     price = price, priceType = priceType, bedrooms = bedrooms, rating = rating, contactName = contactName,
     contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), brokerId = brokerId?.takeIf(RecordRules::isValidId), checklist = checklist,
-    createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
+    cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    checklist = checklist, createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     deleted = deleted, dirty = false,
 )

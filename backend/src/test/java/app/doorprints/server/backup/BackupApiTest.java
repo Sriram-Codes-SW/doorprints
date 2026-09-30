@@ -408,6 +408,87 @@ class BackupApiTest {
                 .isEqualTo("Meena again");
     }
 
+    /**
+     * Slice 1c: rooms are part of the house row. A file with rooms is /2 even with no broker, imports with the house,
+     * exports back equal (rooms in the format's key order), and a /1 file's house has none. The dry run writes nothing.
+     */
+    @Test
+    void roomsImportWithTheirHouseAndExportBackAsVersionTwo() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var id = UUID.randomUUID();
+        var rooms = "\"rooms\":[{\"id\":\"c1\",\"type\":\"BEDROOM\",\"name\":\"Master bedroom\",\"lengthCm\":396,"
+                + "\"widthCm\":366,\"condition\":4,\"notes\":\"Damp\",\"sort\":0},{\"id\":\"c2\",\"type\":\"KITCHEN\","
+                + "\"lengthCm\":300,\"sort\":1}]";
+        var file = backup(houseRow(id, "With rooms", now).replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\"," + rooms), "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS);
+
+        assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
+        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
+
+        var stored = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        assertThat((List<?>) stored.get("rooms")).hasSize(2);
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(exported.has("brokers")).isFalse();
+        JSONAssert.assertEquals("{" + rooms + "}", exported.getJSONArray("houses").getJSONObject(0).toString(),
+                JSONCompareMode.LENIENT);
+        // The order is read from the text as written: org.json's objects do not keep the order of their keys.
+        var written = export();
+        assertThat(written.indexOf("\"label\"")).isPositive()
+                .isLessThan(written.indexOf("\"rooms\""))
+                .isLessThan(written.indexOf("\"checklist\""));
+        assertThat(written.indexOf("\"rooms\"")).isLessThan(written.indexOf("\"checklist\""));
+        assertThat(exported.toString()).doesNotContain("\"rooms\":[]");
+
+        // A newer file without rooms replaces the house as a whole: the rooms go, and the copy is /1 again.
+        var newer = backup(houseRow(id, "No rooms now", now.plusSeconds(60)), "");
+        assertThat(count(postImport(newer, false), "houses", "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
+
+        // An empty array in a file is no rooms.
+        var emptied = backup(houseRow(id, "Empty list", now.plusSeconds(120)).replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"rooms\":[]"), "");
+        assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+    }
+
+    /** Slice 1c: a bad room refuses the whole file and writes nothing, the good house in the same file included. */
+    @Test
+    void aBadRoomRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        var bad = houseRow(UUID.randomUUID(), "Bad", now);
+        var good = "{\"id\":\"r1\",\"type\":\"HALL\",\"lengthCm\":300,\"widthCm\":200,\"condition\":3,\"sort\":0}";
+        var cases = Map.of(
+                "rooms[0].type", good.replace("HALL", "GARAGE"),
+                "rooms[0].lengthCm", good.replace("\"lengthCm\":300", "\"lengthCm\":5001"),
+                "rooms[0].widthCm", good.replace("\"widthCm\":200", "\"widthCm\":-1"),
+                "rooms[0].condition", good.replace("\"condition\":3", "\"condition\":6"),
+                "rooms[0].sort", good.replace("\"sort\":0", "\"sort\":-1"),
+                "rooms[0].id", good.replace("\"r1\"", "\"..\""),
+                "rooms[0].name", good.replace("\"sort\"", "\"name\":\"" + "n".repeat(61) + "\",\"sort\""),
+                "rooms[0].notes", good.replace("\"sort\"", "\"notes\":\"" + "n".repeat(2001) + "\",\"sort\""));
+        for (var entry : cases.entrySet()) {
+            var body = backup(fine + "," + bad.replace("\"status\":\"NEW\"",
+                    "\"status\":\"NEW\",\"rooms\":[" + entry.getValue() + "]"), "");
+            assertThat(status(() -> postImport(body, false))).as(entry.getKey()).isEqualTo(400);
+            assertThat(status(() -> postImport(body, true))).as("dry run " + entry.getKey()).isEqualTo(400);
+            assertThat(errorBody(() -> postImport(body, false))).contains("houses[1]." + entry.getKey()
+                    + " is out of range");
+        }
+        var thirtyOne = new StringBuilder();
+        for (int i = 0; i <= 30; i++) {
+            thirtyOne.append(i == 0 ? "" : ",").append(good.replace("\"r1\"", "\"r" + i + "\""));
+        }
+        var many = backup(bad.replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"rooms\":[" + thirtyOne + "]"), "");
+        assertThat(errorBody(() -> postImport(many, false))).contains("houses[0].rooms has more than 30 rooms");
+        var twins = backup(bad.replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"rooms\":[" + good + "," + good + "]"), "");
+        assertThat(errorBody(() -> postImport(twins, false))).contains("houses[0].rooms[1].id is repeated");
+        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+    }
+
     /** A bad broker refuses the whole file and writes nothing, house rows in the same file included. */
     @Test
     void aBadBrokerRefusesTheWholeFile() {

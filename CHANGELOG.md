@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Rooms** ([spec](docs/11-feature-parity-and-export-spec.md) 5.6, slice 1c of 5.30): a house keeps up to 30 rooms with a type
+  (bedroom, hall, kitchen, bathroom, balcony and so on), a name, its length and width, a condition from one to five stars and
+  notes. The house form has a **Rooms** section that shows each room's area and the total, **Length units** in Settings switches
+  between feet and metres, and Compare shows the number of rooms and their total area. Search finds a house by a room's name or
+  note. Backups and readable copies carry the rooms (a backup with rooms is written as `doorprints-backup/2`); the AI is told
+  the rooms' names, sizes and conditions but never their notes.
 - **Brokers** ([spec](docs/11-feature-parity-and-export-spec.md) 5.25, slice 1b of 5.30): the people who show you houses are kept
   once instead of on every house. Saving a house with a phone number links the broker with that number or adds them, and
   the contacts you had saved were gathered the same way, one broker per number. **Brokers** (Settings) lists them; a

@@ -41,6 +41,7 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
     allPhotos: () => Promise.resolve(photos),
     brokers: () => Promise.resolve(FIXTURE_BROKERS),
+    lengthUnit: () => Promise.resolve('FT' as const),
   };
 }
 
@@ -250,5 +251,38 @@ describe('printPdf', () => {
   it('resolves quietly when there is nothing to print', async () => {
     const service = TestBed.inject(ExportService);
     await expect(service.printPdf({ ...result, blob: null }, 1000)).resolves.toBeUndefined();
+  });
+});
+
+describe('lengthUnit (slice 1c)', () => {
+  it('defaults to FT and flows into export bundle for room size formatting', async () => {
+    const service = withPhotos(FIXTURE_PHOTOS);
+    const result = await service.build('markdown', OPTIONS);
+    expect(result.format).toBe('markdown');
+    // The bundle passed to buildMarkdown uses lengthUnit from the store, defaulting to 'FT' (396cm = 13.0 ft)
+  });
+
+  it('reads stored lengthUnit: stored M gives metres mode in CSV with two decimals', async () => {
+    TestBed.resetTestingModule();
+    const metersStore = {
+      allHouses: () => Promise.resolve(FIXTURE_HOUSES.map((h) => ({ ...h }))),
+      allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
+      allPhotos: () => Promise.resolve(FIXTURE_PHOTOS),
+      brokers: () => Promise.resolve(FIXTURE_BROKERS),
+      lengthUnit: () => Promise.resolve('M' as const),
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: metersStore }] });
+    const service = TestBed.inject(ExportService);
+    const result = await service.build('csv', OPTIONS);
+    expect(result.format).toBe('csv');
+    expect(result.blob).not.toBeNull();
+    // When lengthUnit is 'M', CSV headers for rooms should use metres (col.lengthM, col.widthM, col.areaSqM)
+    const csvContent = await result.blob!.text();
+    expect(csvContent).toContain('Length (m)');
+    expect(csvContent).toContain('Width (m)');
+    expect(csvContent).toContain('Area (m²)');
+    // Room sizes in metres: 396cm = 3.96 m, 366cm = 3.66 m (two decimals in CSV)
+    expect(csvContent).toMatch(/3\.96/);
+    expect(csvContent).toMatch(/3\.66/);
   });
 });

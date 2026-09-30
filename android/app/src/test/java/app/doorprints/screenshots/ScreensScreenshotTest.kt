@@ -50,6 +50,10 @@ import app.doorprints.ui.OfflineAreaState
 import app.doorprints.ui.OfflineArea
 import app.doorprints.ui.GeoBounds
 import app.doorprints.ui.PathTraceSection
+import app.doorprints.ui.RoomsSection
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.LengthUnit
+import org.junit.Assume.assumeTrue
 import app.doorprints.ui.LockScreenContent
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.HorizontalDivider
@@ -306,6 +310,21 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 HorizontalDivider()
                 BrokerForm(raviId, ravi, houses, onDone = {}, onOpenHouse = {})
             }
+        }
+    }
+    /**
+     * The house form's Rooms section (docs/11 5.6, slice 1c) with two rooms, sized in feet with the areas and the total:
+     * English in both themes and Hindi light only, to keep the image set small; on a screen tall enough for both cards.
+     */
+    @Test fun houseRooms() {
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
+        RuntimeEnvironment.setQualifiers("+h1400dp")
+        val rooms = listOf(
+            HouseRoom("r1", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch near the window", 0),
+            HouseRoom("r2", "KITCHEN", null, 300, 244, null, null, 1),
+        )
+        shoot("house_rooms") {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { RoomsSection(rooms, LengthUnit.FT) {} }
         }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }

@@ -88,6 +88,14 @@ Houses: 3 · Visits: 3 · Photos: 2
 | Money to move in | ₹1,28,000 |
 | Cost per sq ft | ₹27 |
 
+### Rooms
+
+| Room | Type | Length (ft) | Width (ft) | Area (sq ft) | Condition | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Master bedroom | Bedroom | 13.0 | 12.0 | 156 | 4/5 | Damp patch near the window |
+| Kitchen | Kitchen | 9.8 | 8.0 | 79 |  |  |
+| Total |  |  |  | 235 |  |  |
+
 ### Checklist
 
 | Criterion | Score |

@@ -25,6 +25,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import type { BrokerRow } from '../../shared/broker';
+import { LocalStore } from '../../data/local-store.service';
 import { ComparePage } from './compare-page';
 
 const RENT: HouseDto = {
@@ -47,12 +48,13 @@ interface Row {
 
 /** The rows slice 1a adds to Compare: the carpet area and what a house really costs, from `costSummary`. */
 describe('ComparePage', () => {
-  async function render(brokers: BrokerRow[] = []) {
+  async function render(brokers: BrokerRow[] = [], unit: 'FT' | 'M' = 'FT', list: HouseDto[] = [RENT, SALE]) {
     TestBed.configureTestingModule({
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of([RENT, SALE]), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of(list), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
+        { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve(unit) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
       ],
     });
@@ -100,5 +102,35 @@ describe('ComparePage', () => {
     expect(cells[0].textContent).toContain('Ravi Kumar (Adyar Homes)');
     expect(cells[0].querySelector('a')?.getAttribute('href')).toContain('tel:');
     expect(cells[1].textContent).toContain('–');
+  });
+
+  /** Slice 1c: the Rooms row shows the count and the total area in the length unit, a dash without rooms. */
+  describe('Rooms row', () => {
+    const withRooms: HouseDto = {
+      ...RENT,
+      rooms: [
+        { id: 'r1', type: 'HALL', lengthCm: 396, widthCm: 366, sort: 0 },
+        { id: 'r2', type: 'BEDROOM', sort: 1 },
+      ],
+    };
+    const cells = async (unit: 'FT' | 'M') => {
+      const fixture = await render([], unit, [withRooms, SALE]);
+      const row = (fixture.componentInstance as unknown as { rows: () => Row[] }).rows().find((r) => r.id === 'rooms')!;
+      return { label: row.label, texts: row.cells.map((c) => c.text) };
+    };
+
+    it('shows the number of rooms and their total area in sq ft, and a dash for a house without rooms', async () => {
+      expect(await cells('FT')).toEqual({ label: 'Rooms', texts: ['2 · 156 sq ft', '–'] });
+    });
+
+    it('shows the total area in m² when the length unit is Metres', async () => {
+      expect((await cells('M')).texts).toEqual(['2 · 14.5 m²', '–']);
+    });
+
+    it('shows only the count when no room has both sizes', async () => {
+      const fixture = await render([], 'FT', [{ ...RENT, rooms: [{ id: 'r1', type: 'HALL', sort: 0 }] }, SALE]);
+      const row = (fixture.componentInstance as unknown as { rows: () => Row[] }).rows().find((r) => r.id === 'rooms')!;
+      expect(row.cells.map((c) => c.text)).toEqual(['1', '–']);
+    });
   });
 });

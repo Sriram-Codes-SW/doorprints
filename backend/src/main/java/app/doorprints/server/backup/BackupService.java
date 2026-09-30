@@ -23,6 +23,7 @@ import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.HouseCost;
+import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.house.HouseStatus;
@@ -73,7 +74,7 @@ import java.util.UUID;
  *   <li><b>Brokers are records.</b> The {@code brokers} list of a {@code /2} file is merged into the {@code record}
  *       table as type {@code broker} (payload: name, phone, agency, feeTerms, notes, rating), by id, last write wins
  *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
- *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker exists.</li>
+ *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker exists or a live house has rooms.</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
  *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
@@ -298,6 +299,7 @@ public class BackupService {
         house.setAreaSqft(row.areaSqft());
         house.setLocationSource(row.locationSource());
         house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
+        house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
@@ -439,6 +441,7 @@ public class BackupService {
             if (row.cost() != null) {
                 for (var field : row.cost().problems()) problems.add(at + ".cost." + field + " is out of range");
             }
+            for (var problem : HouseRoom.problems(row.rooms())) problems.add(at + "." + problem);
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);

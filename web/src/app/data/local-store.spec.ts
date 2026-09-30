@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from './local-store.service';
 import { SETTING_KEYS } from './records';
 import { LocalDataError } from '../core/local-error';
-import type { HouseDto, VisitDto } from '../core/models';
+import type { HouseDto, HouseRoom, VisitDto } from '../core/models';
 
 /**
  * The repository the whole web app reads and writes (S4-01). jsdom has no IndexedDB, so `openLocalDb()` hands back
@@ -85,6 +85,33 @@ describe('LocalStore', () => {
     expect(second.createdAt).toBe('2026-09-01T00:00:00.000Z');
     expect(second.updatedAt).toBe('2026-09-02T00:00:00.000Z');
     expect(second.label).toBe('Renamed');
+  });
+
+  it('saves and retrieves rooms, sorted and capped at 30 with unknown type converted to OTHER', async () => {
+    const rooms: HouseRoom[] = [
+      { id: 'r1', type: 'BEDROOM', name: 'Master', lengthCm: 300, widthCm: 300, condition: 4, notes: 'Damp', sort: 1 },
+      { id: 'r2', type: 'KITCHEN', name: 'Kitchen', lengthCm: 200, widthCm: 200, condition: 3, notes: '', sort: 0 },
+    ];
+    const saved = await store.saveHouse(house('h1', { rooms }), T1);
+    expect(saved.rooms).toHaveLength(2);
+    expect(saved.rooms?.[0].sort).toBe(0);
+    expect(saved.rooms?.[1].sort).toBe(1);
+
+    const retrieved = await store.getHouse('h1');
+    expect(retrieved?.rooms).toHaveLength(2);
+    expect(retrieved?.rooms?.[0].id).toBe('r2');
+    expect(retrieved?.rooms?.[1].id).toBe('r1');
+    expect(retrieved?.rooms?.[1].notes).toBe('Damp');
+  });
+
+  it('reads lengthUnit setting: defaults to FT, stores and retrieves M', async () => {
+    expect(await store.lengthUnit()).toBe('FT');
+    // After setting to M
+    await store.setSetting(SETTING_KEYS.lengthUnit, 'M');
+    expect(await store.lengthUnit()).toBe('M');
+    // Any other value falls back to FT
+    await store.setSetting(SETTING_KEYS.lengthUnit, 'unknown');
+    expect(await store.lengthUnit()).toBe('FT');
   });
 
   /**

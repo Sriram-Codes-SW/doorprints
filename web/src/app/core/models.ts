@@ -65,6 +65,59 @@ export const COST_FIELDS = [
   'agreedPrice',
 ] as const satisfies readonly (keyof HouseCost)[];
 
+export type RoomType = 'BEDROOM' | 'HALL' | 'KITCHEN' | 'BATHROOM' | 'BALCONY' | 'POOJA' | 'STUDY' | 'UTILITY' | 'STORE' | 'OTHER';
+
+/**
+ * A room in a house (docs/11 5.6, slice 1c). Keys in order: id, type, name, lengthCm, widthCm, condition, notes, sort.
+ * Unknown enum values on read coerce to OTHER; out-of-range dimensions/condition are unknown (absent).
+ */
+export interface HouseRoom {
+  /** 1..64 characters, matching [A-Za-z0-9._-]{1,64} but not `.`/`..`, unique within the house. */
+  id: string;
+  /** One of the room types; unknown on read → OTHER. */
+  type: RoomType;
+  /** ≤60 characters, blank allowed; when blank the UI shows the type's translated name. */
+  name?: string | null;
+  /** Integer 0..5000 cm, absent when unknown. */
+  lengthCm?: number | null;
+  /** Integer 0..5000 cm, absent when unknown. */
+  widthCm?: number | null;
+  /** 1..5, absent when not checked. */
+  condition?: number | null;
+  /** ≤2000 characters, free text. */
+  notes?: string | null;
+  /** Integer ≥0, the sort order; readers re-sort by sort then id. */
+  sort?: number | null;
+}
+
+/** The ten room types, in the order the spec names them. */
+export const ROOM_TYPES: readonly RoomType[] = [
+  'BEDROOM',
+  'HALL',
+  'KITCHEN',
+  'BATHROOM',
+  'BALCONY',
+  'POOJA',
+  'STUDY',
+  'UTILITY',
+  'STORE',
+  'OTHER',
+];
+
+/** Translation key for each room type label. */
+export const ROOM_TYPE_KEY: Readonly<Record<RoomType, TKey>> = {
+  BEDROOM: 'roomType.BEDROOM',
+  HALL: 'roomType.HALL',
+  KITCHEN: 'roomType.KITCHEN',
+  BATHROOM: 'roomType.BATHROOM',
+  BALCONY: 'roomType.BALCONY',
+  POOJA: 'roomType.POOJA',
+  STUDY: 'roomType.STUDY',
+  UTILITY: 'roomType.UTILITY',
+  STORE: 'roomType.STORE',
+  OTHER: 'roomType.OTHER',
+};
+
 export interface HouseDto {
   id: string;
   label: string;
@@ -87,6 +140,8 @@ export interface HouseDto {
   locationSource?: LocationSource | null;
   /** Absent (or null) when no cost field is known; never an empty object in a file. */
   cost?: HouseCost | null;
+  /** At most 30 rooms; absent when empty, never an empty array in a file. */
+  rooms?: HouseRoom[] | null;
   /**
    * The record id of the broker this house is linked to (slice 1b); no foreign key, so an id that names no broker
    * reads as "no broker". The house keeps copies of the broker's name and phone in `contactName`/`contactPhone`.
@@ -237,6 +292,7 @@ export function newHouse(lat: number, lon: number, locationSource: LocationSourc
     areaSqft: null,
     locationSource,
     cost: null,
+    rooms: null,
     brokerId: null,
     checklist: {},
     deleted: false,

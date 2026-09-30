@@ -50,7 +50,7 @@ class ToolResultRedactionTest {
     private final HouseDto house = new HouseDto(id, "Lakshmi Narayanan house", "4th cross, call 99001-23456",
             "4th Cross", "Jayanagar", 12.93, 77.58, HouseStatus.SHORTLISTED, 32000L, "RENT", 2, 5, NAME, PHONE,
             "https://example.com/l/1", "Lakshmi showed us around. Narayanan sir wants 6 months deposit. 9900123456",
-            null, null, null, null, Map.of("water", 4), null, null, false, 3, 120.0);
+            null, null, null, null, null, Map.of("water", 4), null, null, false, 3, 120.0);
 
     private final HouseService houseService = mock(HouseService.class);
     private final HouseQueries queries = new HouseQueries(new HouseSearchService(houseService),
@@ -112,7 +112,7 @@ class ToolResultRedactionTest {
     void labelChecklistAndUrlNamedAfterTheOwnersFirstNameLoseItInEveryToolResult() {
         var ramesh = new HouseDto(id, "Ramesh's 2BHK", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345",
-                "https://example.com/rent/ramesh-2bhk", "Nice", null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null,
+                "https://example.com/rent/ramesh-2bhk", "Nice", null, null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null,
                 false, 7, 80.0);
         when(houseService.list(any())).thenReturn(List.of(ramesh));
         when(houseService.get(id)).thenReturn(ramesh);
@@ -138,7 +138,7 @@ class ToolResultRedactionTest {
     void careOfAddressWithTheOwnersFullNameLosesItInEveryToolResult() {
         var careOf = new HouseDto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
                 "Kumar Ramesh layout", 12.97, 77.64, HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4,
-                "Mr. Ramesh Kumar", "+91 98450 12345", null, "Nice", null, null, null, null, Map.of("water", 4), null, null, false, 7,
+                "Mr. Ramesh Kumar", "+91 98450 12345", null, "Nice", null, null, null, null, null, Map.of("water", 4), null, null, false, 7,
                 80.0);
         when(houseService.list(any())).thenReturn(List.of(careOf));
         when(houseService.get(id)).thenReturn(careOf);

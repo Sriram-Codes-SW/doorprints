@@ -19,6 +19,7 @@
 package app.doorprints.shared.ai
 
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRoom
 
 import app.doorprints.shared.api.CitationDto
 import kotlin.test.Test
@@ -74,6 +75,26 @@ class AiCoreTest {
         assertTrue(HouseDocuments.text(house.copy(cost = HouseCost(depositMonths = 2, maintenance = 1_000, maintenanceIncluded = true)))
             .contains("Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)"))
         assertEquals("studio / 1RK", HouseDocuments.text(house.copy(bedrooms = 0)).lines().first { it.startsWith("Size") }.substringAfter(": "))
+        // Slice 1c: one Rooms line after Size and the cost lines, the same words as the server and the web: names, sizes
+        // (always feet and inches) and condition in the order shown; never a room's notes (they may hold a contact).
+        val roomy = HouseDocuments.text(
+            house.copy(
+                areaSqft = 1150,
+                rooms = listOf(
+                    HouseRoom(id = "k", type = "KITCHEN", name = "Kitchen", lengthCm = 300, widthCm = 244, sort = 1),
+                    HouseRoom(id = "m", type = "BEDROOM", name = "Master bedroom", lengthCm = 396, widthCm = 366, condition = 4,
+                        notes = "Ramesh left his number 98450 12345 on the wall", sort = 0),
+                    HouseRoom(id = "s", type = "STORE", lengthCm = 150, sort = 2),
+                ),
+            ),
+        )
+        assertTrue(
+            roomy.contains("Carpet area: 1150 sq ft\nRooms: Master bedroom 13 ft 0 in x 12 ft 0 in (condition 4/5); " +
+                "Kitchen 9 ft 10 in x 8 ft 0 in; Store\nStatus: SHORTLISTED"),
+            roomy,
+        )
+        assertFalse(roomy.contains("wall"), "room notes never go to the provider")
+        assertFalse(HouseDocuments.text(house).contains("Rooms:"))
         assertEquals("1970-01-01", HouseDocuments.utcDate(0))
         assertEquals("2024-02-29", HouseDocuments.utcDate(1_709_164_800_000))
         assertEquals("1969-12-31", HouseDocuments.utcDate(-1))

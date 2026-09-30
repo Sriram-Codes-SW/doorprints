@@ -23,7 +23,7 @@ import { CHECKLIST } from '../core/models';
 // `ExportRows.kt` byte for byte are exactly the pair that drifts, and a drift would make a phone and a browser
 // disagree about a price. `deterministic.spec.ts` is where both rules are pinned.
 import { fixed, rupees } from './deterministic';
-import type { ExportBundle } from './export-model';
+import type { ExportBundle, ExportHouse } from './export-model';
 import { ExportStrings } from './export-strings';
 import { photoFileName } from './photo-names';
 import { brokerLine } from '../shared/broker';
@@ -112,7 +112,7 @@ function maybeMoney(value: number | null | undefined): Cell {
  * `name` is language-neutral (the CSV file name and the sheet name); `title` is the translated heading.
  */
 export interface ExportTable {
-  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers';
+  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms';
   readonly title: string;
   readonly columns: readonly string[];
   readonly rows: readonly (readonly Cell[])[];
@@ -121,7 +121,9 @@ export interface ExportTable {
 /** The four tables of a copy, in file order, and the brokers table when the copy has brokers (slice 1b). */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
   const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
-  return bundle.brokers.length > 0 ? [...tables, brokersTable(bundle)] : tables;
+  if (bundle.brokers.length > 0) tables.push(brokersTable(bundle));
+  if (bundle.houses.some((h) => h.rooms?.length)) tables.push(roomsTable(bundle));
+  return tables;
 }
 
 /** Translated words for this export's language, independent of the language the app is being used in. */
@@ -405,6 +407,101 @@ function millisOf(iso: string | null | undefined): number {
   if (!iso) return 0;
   const ms = Date.parse(iso);
   return Number.isNaN(ms) ? 0 : ms;
+}
+
+/** Room display cells for HTML/Markdown (one house), following the broker pattern of `brokerEntries`. */
+export function roomCells(house: ExportHouse, unit: 'FT' | 'M', strings: ExportStrings): string[][] {
+  if (!house.rooms?.length) return [];
+  const isFeet = unit === 'FT';
+  const rows: string[][] = [];
+  let totalArea = 0;
+  let sizedRoomCount = 0;
+
+  for (const room of house.rooms) {
+    const name = room.name?.trim() || strings.get(`roomType.${room.type}`);
+    const type = strings.get(`roomType.${room.type}`);
+    const length = room.lengthCm != null ? (isFeet ? (room.lengthCm / 30.48).toFixed(1) : (room.lengthCm / 100).toFixed(2)) : '';
+    const width = room.widthCm != null ? (isFeet ? (room.widthCm / 30.48).toFixed(1) : (room.widthCm / 100).toFixed(2)) : '';
+    let area = '';
+    if (room.lengthCm != null && room.widthCm != null) {
+      const areaValue = isFeet ? Math.round((room.lengthCm * room.widthCm) / 929.0304) : (room.lengthCm * room.widthCm) / 10000;
+      area = isFeet ? String(areaValue) : areaValue.toFixed(1);
+      totalArea += areaValue;
+      sizedRoomCount++;
+    }
+    const condition = room.condition ? `${room.condition}/5` : '';
+    const notes = room.notes?.trim() || '';
+    rows.push([name, type, length, width, area, condition, notes]);
+  }
+
+  // Add total row when 2+ rooms have sizes (slice 1c contract)
+  if (sizedRoomCount >= 2) {
+    const totalAreaStr = isFeet ? String(Math.round(totalArea)) : totalArea.toFixed(1);
+    rows.push([strings.get('rooms.total'), '', '', '', totalAreaStr, '', '']);
+  }
+
+  return rows;
+}
+
+/** Display columns for rooms in readable exports (HTML/Markdown): room name, type, dimensions, condition, notes. */
+export function roomDisplayColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  const isFeet = bundle.lengthUnit === 'FT';
+  return [
+    s.get('col.roomName'),
+    s.get('col.roomType'),
+    s.get(isFeet ? 'col.lengthFt' : 'col.lengthM'),
+    s.get(isFeet ? 'col.widthFt' : 'col.widthM'),
+    s.get(isFeet ? 'col.areaSqFt' : 'col.areaSqM'),
+    s.get('col.condition'),
+    s.get('col.notes'),
+  ];
+}
+
+/** Rooms table columns for CSV/XLSX export (slice 1c): includes house and room identifiers. */
+export function roomColumns(bundle: ExportBundle): string[] {
+  const s = stringsOf(bundle);
+  const isFeet = bundle.lengthUnit === 'FT';
+  return [
+    s.get('col.house'),
+    s.get('col.roomName'),
+    s.get('col.roomType'),
+    s.get(isFeet ? 'col.lengthFt' : 'col.lengthM'),
+    s.get(isFeet ? 'col.widthFt' : 'col.widthM'),
+    s.get(isFeet ? 'col.areaSqFt' : 'col.areaSqM'),
+    s.get('col.condition'),
+    s.get('col.notes'),
+    s.get('col.houseId'),
+    s.get('col.id'),
+  ];
+}
+
+/** Rooms table for CSV/XLSX export, built on `roomCells`. Only included when the copy has rooms. */
+export function roomsTable(bundle: ExportBundle): ExportTable {
+  const s = stringsOf(bundle);
+  const isFeet = bundle.lengthUnit === 'FT';
+  const columns = roomColumns(bundle);
+  const rows: Cell[][] = [];
+  for (const house of bundle.houses) {
+    if (!house.rooms?.length) continue;
+    for (const room of house.rooms) {
+      rows.push([
+        cellText(house.house.label),
+        cellText(room.name?.trim() || s.get(`roomType.${room.type}`)),
+        cellText(s.get(`roomType.${room.type}`)),
+        room.lengthCm != null ? cellNum(isFeet ? room.lengthCm / 30.48 : room.lengthCm / 100, isFeet ? 1 : 2) : BLANK,
+        room.widthCm != null ? cellNum(isFeet ? room.widthCm / 30.48 : room.widthCm / 100, isFeet ? 1 : 2) : BLANK,
+        room.lengthCm != null && room.widthCm != null
+          ? cellNum(isFeet ? (room.lengthCm * room.widthCm) / 929.0304 : (room.lengthCm * room.widthCm) / 10000, isFeet ? 0 : 1)
+          : BLANK,
+        room.condition != null ? cellCount(room.condition) : BLANK,
+        room.notes ? cellText(room.notes) : BLANK,
+        cellText(house.house.id),
+        cellText(room.id),
+      ]);
+    }
+  }
+  return { name: 'rooms', title: s.get('table.rooms'), columns, rows };
 }
 
 function compare(a: string, b: string): number {

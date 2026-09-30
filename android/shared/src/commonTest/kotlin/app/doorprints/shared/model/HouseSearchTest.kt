@@ -41,10 +41,19 @@ class HouseSearchTest {
         brokerText = Broker(name = "Meena Iyer", agency = "Beach Road Realty", feeTerms = "15 days' rent, once").searchText,
     )
 
-    private fun matching(query: String) = listOf("green" to green, "lake" to lake, "beach" to brokered)
+    // The rooms' names and notes (slice 1c).
+    private val roomy = HouseSearch.fields(
+        label = "Hill View", address = null, street = null, locality = null, notes = null, contactName = null,
+        rooms = listOf(
+            HouseRoom(id = "r1", type = "BEDROOM", name = "Master bedroom", notes = "Damp patch near the window"),
+            HouseRoom(id = "r2", type = "KITCHEN", sort = 1),
+        ),
+    )
+
+    private fun matching(query: String) = listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy)
         .filter { HouseSearch.matches(query, it.second) }.map { it.first }
 
-    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach"), matching("  "))
+    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill"), matching("  "))
     @Test fun theLabelMatchesIgnoringCase() = assertEquals(listOf("green"), matching("green view"))
     @Test fun theAddressStreetAndLocalityMatch() {
         assertEquals(listOf("green"), matching("5th cross"))
@@ -54,6 +63,8 @@ class HouseSearchTest {
     @Test fun theContactNameMatches() = assertEquals(listOf("green"), matching("ravi"))
     @Test fun aQueryMatchesTheBrokersAgency() = assertEquals(listOf("beach"), matching("realty"))
     @Test fun aQueryMatchesTheBrokersFeeTerms() = assertEquals(listOf("beach"), matching("days' rent"))
+    @Test fun aQueryMatchesARoomsNote() = assertEquals(listOf("hill"), matching("damp patch"))
+    @Test fun aQueryMatchesARoomsName() = assertEquals(listOf("hill"), matching("master bed"))
     @Test fun indicTextMatches() = assertEquals(listOf("lake"), matching("हिन्दी"))
     @Test fun aQueryFoundNowhereMatchesNothing() = assertEquals(emptyList(), matching("penthouse"))
     @Test fun theQueryIsTrimmed() = assertEquals(listOf("lake"), matching(" lake "))
