@@ -287,6 +287,52 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun theAreaWakeupIsOffUntilTurnedOnUnderItsStoredName() = runTest {
+        assertFalse(store.areaWakeup().first())
+        assertFalse(store.areaWakeupOffNotice().first())
+        store.setAreaWakeup(true)
+        assertTrue(store.areaWakeup().first())
+        assertEquals(true, raw()["areas.wakeup"])
+        store.setAreaWakeup(false)
+        assertFalse(store.areaWakeup().first())
+    }
+
+    @Test
+    fun losingThePermissionSwitchesTheWakeupOffAndSetsTheOneTimeNotice() = runTest {
+        // Off already: nothing to say.
+        assertFalse(store.switchAreaWakeupOffForPermission())
+        assertFalse(store.areaWakeupOffNotice().first())
+        store.setAreaWakeup(true)
+        assertTrue(store.switchAreaWakeupOffForPermission())
+        assertFalse(store.areaWakeup().first())
+        assertTrue(store.areaWakeupOffNotice().first())
+        assertEquals(true, raw()["areas.wakeupOffNotice"])
+        store.clearAreaWakeupOffNotice()
+        assertFalse(store.areaWakeupOffNotice().first())
+        // Turning it on again clears a notice not yet shown.
+        store.setAreaWakeup(true)
+        store.switchAreaWakeupOffForPermission()
+        store.setAreaWakeup(true)
+        assertFalse(store.areaWakeupOffNotice().first())
+    }
+
+    @Test
+    fun eachAreaHasItsOwnLastNotifiedKeyRemovedWithTheArea() = runTest {
+        assertNull(store.areaLastNotified("a_00000001"))
+        store.setAreaLastNotified("a_00000001", 111)
+        store.setAreaLastNotified("a_00000002", 222)
+        assertEquals(111L, store.areaLastNotified("a_00000001"))
+        assertEquals(222L, raw()["areas.lastNotified.a_00000002"])
+        store.removeAreaLastNotified("a_00000001")
+        assertNull(store.areaLastNotified("a_00000001"))
+        store.setAreaLastNotified("a_00000003", 333)
+        store.pruneAreaLastNotified(setOf("a_00000003"))
+        assertNull(store.areaLastNotified("a_00000002"))
+        assertEquals(333L, store.areaLastNotified("a_00000003"))
+        assertEquals(setOf("areas.lastNotified.a_00000003"), raw().keys)
+    }
+
+    @Test
     fun theAppLockIsOffUntilTurnedOnAndKeepsOnlyKnownTimes() = runTest {
         assertFalse(store.current().appLock)
         assertEquals(60, store.current().appLockAfterSeconds)
