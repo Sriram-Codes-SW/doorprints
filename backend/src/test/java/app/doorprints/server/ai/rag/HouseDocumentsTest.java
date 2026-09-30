@@ -229,6 +229,39 @@ class HouseDocumentsTest {
                 null, null, false, 1, null);
     }
 
+    private HouseDto withMoveIn(app.doorprints.server.house.HouseMoveIn moveIn) {
+        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.TAKEN, null, null, 2,
+                null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, null, moveIn, null,
+                Map.of(), null, null, false, 1, null);
+    }
+
+    /** Slice 5: the progress of the move-in and its notes (redacted, one line), after the distance lines and before the status. */
+    @Test
+    void movingInLinesGiveTheProgressAndTheRedactedNotesOnOneLine() {
+        var items = List.of(
+                new app.doorprints.server.house.HouseMoveIn.Item("a", "Agreement signed", true, 0),
+                new app.doorprints.server.house.HouseMoveIn.Item("b", "Police verification", null, 1),
+                new app.doorprints.server.house.HouseMoveIn.Item("c", "Keys", true, 2));
+        var text = HouseDocuments.text(withMoveIn(new app.doorprints.server.house.HouseMoveIn(1790812800000L,
+                "Keys from Ramesh Kumar on 98450 12345\nMeter reads 4521", items)), List.of());
+
+        assertThat(text).contains("Moving in: 2 of 3 done\nMoving in notes: ").contains("Meter reads 4521\nStatus: TAKEN")
+                .doesNotContain("98450").doesNotContain("Ramesh").doesNotContain("Kumar")
+                .doesNotContain("Agreement signed").doesNotContain("Police verification");
+        assertThat(text.lines().filter(l -> l.startsWith("Moving in notes: ")).count()).isEqualTo(1);
+    }
+
+    @Test
+    void movingInLinesAreLeftOutWhenThereIsNothingToSay() {
+        assertThat(HouseDocuments.text(withMoveIn(null), List.of())).doesNotContain("Moving in");
+        var onlyNotes = HouseDocuments.text(withMoveIn(new app.doorprints.server.house.HouseMoveIn(null, "Keys in the drawer",
+                null)), List.of());
+        assertThat(onlyNotes).contains("Moving in notes: Keys in the drawer\n").doesNotContain("Moving in: ");
+        var onlyItems = HouseDocuments.text(withMoveIn(new app.doorprints.server.house.HouseMoveIn(null, null,
+                List.of(new app.doorprints.server.house.HouseMoveIn.Item("a", "Keys", null, 0)))), List.of());
+        assertThat(onlyItems).contains("Moving in: 0 of 1 done\n").doesNotContain("Moving in notes");
+    }
+
     private static ViewingLine viewing(String id, String status, String iso, String kind, String notes) {
         return new ViewingLine(id, "h", Instant.parse(iso).toEpochMilli(), kind, status, notes);
     }

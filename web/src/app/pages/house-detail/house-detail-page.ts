@@ -51,10 +51,16 @@ import {
 } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
 import type { TKey } from '../../i18n/en';
-import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, cleanRooms } from '../../data/records';
+import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, cleanMoveIn, cleanRooms } from '../../data/records';
 import { LocalStore } from '../../data/local-store.service';
 import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
-import type { HouseAnswer, HouseRoom, RoomType } from '../../core/models';
+import type { HouseAnswer, HouseRoom, MoveIn, RoomType } from '../../core/models';
+import type { PhotoSummary } from '../../core/local-data.service';
+import { MOVE_IN_TAG, photoTagKey } from '../../shared/photo-tags';
+import type { PhotoMeta } from '../../shared/photo-tags';
+import { HouseMoveInCard } from './house-move-in-card';
+import type { OpenedPhoto } from './house-move-in-card';
+import { PhotoMetaEditor } from './photo-meta-editor';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
@@ -116,7 +122,18 @@ const DRAFT_SAVE_MS = 500;
 
 @Component({
   selector: 'app-house-detail-page',
-  imports: [FormsModule, RouterLink, LocationMap, AuthImage, TPipe, HouseViewingsCard, HouseAreaNotesCard, HouseDistancesCard],
+  imports: [
+    FormsModule,
+    RouterLink,
+    LocationMap,
+    AuthImage,
+    TPipe,
+    HouseViewingsCard,
+    HouseAreaNotesCard,
+    HouseDistancesCard,
+    HouseMoveInCard,
+    PhotoMetaEditor,
+  ],
   templateUrl: './house-detail-page.html',
   styleUrl: './house-detail-page.css',
   // Tab close, browser reload and the update banner's reload do not go through the router's canDeactivate.
@@ -215,6 +232,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly visitsMsg = signal<RunResult<Msg> | null>(null);
 
   protected readonly photoIds = signal<string[]>([]);
+  /** The photos' room, tags and caption by photo id (slice 5); read again with the photo list. */
+  protected readonly photoInfo = signal<ReadonlyMap<string, PhotoSummary>>(new Map());
+  /** The photo whose details editor is open, if any. */
+  protected readonly editingPhoto = signal<string | null>(null);
   protected readonly uploading = signal(0);
   /** The files of the current batch that could not be added; one run per batch, so a batch failing again is read. */
   protected readonly photoFailures = signal<RunResult<readonly PhotoFailure[]> | null>(null);
@@ -427,9 +448,21 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       next: (v) => this.visits.set(v),
       error: () => this.visits.set([]),
     });
-    this.api.photoIds(id).subscribe({
-      next: (ids) => this.photoIds.set(ids),
-      error: () => this.photoIds.set([]),
+    this.refreshPhotos(id);
+  }
+
+  /** Reads the house's photos with their meta (the list under the thumbnails, the details editor). */
+  private refreshPhotos(id: string | undefined = this.draft()?.id): void {
+    if (!id) return;
+    this.api.photos(id).subscribe({
+      next: (list) => {
+        this.photoIds.set(list.map((p) => p.id));
+        this.photoInfo.set(new Map(list.map((p) => [p.id, p])));
+      },
+      error: () => {
+        this.photoIds.set([]);
+        this.photoInfo.set(new Map());
+      },
     });
   }
 
@@ -975,8 +1008,72 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     document.getElementById('house-contact')?.focus();
   }
 
-  protected setStatus(status: HouseStatus): void {
+  /**
+   * The answer to *Mark the other houses Not chosen?* for a house just given TAKEN, kept until the house is saved (the
+   * other houses change then, in `persist`); null while the house is not being newly taken.
+   */
+  private takenChoice: 'mark' | 'keep' | null = null;
+
+  /**
+   * Choosing a status. Choosing Taken asks *Mark the other houses Not chosen?* first (Mark them Not chosen / Keep them);
+   * Cancel leaves the status as it was. Either way the house that was Taken goes back to Shortlisted when this one is
+   * saved (at most one house is Taken).
+   */
+  protected async setStatus(status: HouseStatus, event?: Event): Promise<void> {
+    const d = this.draft();
+    if (!d || d.status === status) return;
+    if (status === 'TAKEN') {
+      const answer = await this.confirm.choose({ key: 'status.markOthersTitle' }, { confirmKey: 'status.markThem', altKey: 'status.keepThem' });
+      if (answer === 'cancel') {
+        // The radio the person pressed is checked in the DOM already; put the old one back.
+        const pressed = event?.target instanceof HTMLInputElement ? event.target : null;
+        pressed?.closest('fieldset')?.querySelector<HTMLInputElement>(`input[name="status"][value="${d.status}"]`)?.click();
+        return;
+      }
+      this.takenChoice = answer === 'confirm' ? 'mark' : 'keep';
+    } else {
+      this.takenChoice = null;
+    }
     this.patch({ status });
+  }
+
+  /** The Moving in card changed the date, notes or items; saved with the house. */
+  protected setMoveIn(moveIn: MoveIn | null): void {
+    this.patch({ moveIn });
+  }
+
+  /** *Close this hunt* saves the house first, so it is stored as Taken. */
+  protected readonly saveBeforeClose = (): Promise<boolean> => (this.dirty() || this.isNew() ? this.persist(false) : Promise.resolve(true));
+
+  /** A condition photo opened from the Moving in card. */
+  protected openConditionPhoto(photo: OpenedPhoto): void {
+    this.lightbox.set(photo);
+  }
+
+  // ---- Photo details (slice 5, docs/11 5.7) ----
+
+  protected roomNameOf(p: PhotoMeta): string {
+    const room = p.roomId ? (this.draft()?.rooms ?? []).find((r) => r.id === p.roomId) : undefined;
+    return room ? room.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[room.type]) : '';
+  }
+
+  protected tagLabel(tag: string): string {
+    const key = photoTagKey(tag);
+    return key ? this.i18n.t(key) : tag;
+  }
+
+  protected tagsOf(p: PhotoMeta): string {
+    return p.tags.map((t) => this.tagLabel(t)).join(', ');
+  }
+
+  protected editPhoto(id: string): void {
+    this.editingPhoto.set(this.editingPhoto() === id ? null : id);
+  }
+
+  protected photoDetailsSaved(id: string): void {
+    this.editingPhoto.set(null);
+    this.refreshPhotos();
+    setTimeout(() => document.getElementById('photo-details-' + id)?.focus());
   }
 
   protected setRating(n: number | null): void {
@@ -1148,6 +1245,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       rooms: cleanRooms(d.rooms),
       // At most 60, coerced and sorted; absent when empty (slice 3a).
       answers: cleanAnswers(d.answers),
+      // Date, notes and at most 30 items; absent when it has none of them (slice 5).
+      moveIn: cleanMoveIn(d.moveIn),
     };
     this.saving.set(true);
     // Said to screen readers as Android's Save says it through its contentDescription (web UX gate r4): aria-busy on
@@ -1170,6 +1269,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       clearTimeout(this.draftTimer);
       clearDraft(this.storeKey);
       this.announcer.announce({ key: 'house.saved' });
+      await this.applyTaken(saved);
       if (this.isNew()) {
         if (navigateAfterCreate) {
           // The form's history entry is replaced: its Back decision goes with it to the saved house's page.
@@ -1190,6 +1290,19 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.announcer.cancel(SAVING);
       this.error.set(runResult({ key: 'house.saveFailed', params: { reason: errorMsg(err) } }));
       return false;
+    }
+  }
+
+  /** A house newly given Taken is saved: the Taken one before goes back to Shortlisted, and the others are marked if asked. */
+  private async applyTaken(saved: HouseDto): Promise<void> {
+    const choice = this.takenChoice;
+    if (choice === null || saved.status !== 'TAKEN') return;
+    this.takenChoice = null;
+    try {
+      const n = await firstValueFrom(this.api.applyTaken(saved.id, choice === 'mark'));
+      if (n > 0) this.announcer.announce({ key: 'status.othersMarked', params: { n } });
+    } catch (err: unknown) {
+      this.error.set(runResult({ key: 'house.saveFailed', params: { reason: errorMsg(err) } }));
     }
   }
 
@@ -1275,11 +1388,16 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
   }
 
+  /** *Add a photo* of the condition record: the photo is stored with MOVE_IN already chosen. */
+  protected onConditionFiles(event: Event): Promise<void> {
+    return this.onFiles(event, { roomId: null, tags: [MOVE_IN_TAG], caption: null });
+  }
+
   /**
    * Adds the chosen photos one by one. The result is said **once**, when the last file is done ("Photos added: 3.
    * Not added: 1"), not once per photo, and every file that failed is listed in the photos card with its reason.
    */
-  protected async onFiles(event: Event): Promise<void> {
+  protected async onFiles(event: Event, meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files: File[] = input.files ? Array.from(input.files) : [];
     input.value = '';
@@ -1295,8 +1413,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     for (const file of files) {
       try {
         const blob = await resizeImage(file, 1600, 0.8);
-        const res = await firstValueFrom(this.api.uploadPhoto(d.id, blob));
+        const res = await firstValueFrom(this.api.uploadPhoto(d.id, blob, undefined, meta));
         this.photoIds.update((ids) => (ids.includes(res.id) ? ids : [...ids, res.id]));
+        this.refreshPhotos();
         this.batch.added++;
       } catch (err: unknown) {
         this.batch.failed++;
@@ -1323,6 +1442,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.api.deletePhoto(id).subscribe({
       next: () => {
         this.photoIds.update((ids) => ids.filter((x) => x !== id));
+        if (this.editingPhoto() === id) this.editingPhoto.set(null);
         this.lightbox.set(null);
         this.announcer.announce({ key: 'house.photoDeleted' });
         document.getElementById('photos-heading')?.focus();

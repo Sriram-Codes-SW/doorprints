@@ -93,8 +93,10 @@ function priceGroup(h: HouseDto): number {
 /**
  * What a query is matched against: the house's own words plus, for a linked broker, `brokerText` (the broker's name,
  * agency and fee terms, from {@link brokerSearchText}). The contact name stays: it is the broker's name copy. Room
- * names and notes are included (slice 1c), and so are the questions asked and their answers (slice 3a), and the texts of
- * the area notes that reach the house (`noteTexts`, slice 4a: `notesReaching`).
+ * names and notes are included (slice 1c), and so are the questions asked and their answers (slice 3a), the texts of
+ * the area notes that reach the house (`noteTexts`, slice 4a: `notesReaching`), and the move-in notes and checklist
+ * item texts (slice 5). Photo captions and tags are not matched: the list holds no photos (reading them would read
+ * every photo of the store).
  */
 export function searchText(h: HouseDto, brokerText = '', noteTexts: readonly string[] = []): string {
   const parts = [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
@@ -113,6 +115,9 @@ export function searchText(h: HouseDto, brokerText = '', noteTexts: readonly str
       if (a.answer) parts.push(a.answer);
     }
   }
+  // Moving in (slice 5): the notes and the texts of the checklist items
+  if (h.moveIn?.notes) parts.push(h.moveIn.notes);
+  for (const item of h.moveIn?.items ?? []) parts.push(item.text);
   // The area notes that reach the house (slice 4a)
   for (const text of noteTexts) if (text) parts.push(text);
   return parts.join(' ')

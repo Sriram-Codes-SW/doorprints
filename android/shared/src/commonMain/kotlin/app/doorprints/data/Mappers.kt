@@ -31,6 +31,10 @@ import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.api.PhotoChangeDto
+import app.doorprints.shared.api.PhotoMetaDto
 import app.doorprints.shared.model.VisitSource
 import kotlinx.serialization.json.JsonObject
 
@@ -46,7 +50,7 @@ fun HouseEntity.toDto() = HouseDto(
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    answers = answers?.takeIf { it.isNotEmpty() }, brokerId = brokerId, checklist = checklist,
+    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), brokerId = brokerId, checklist = checklist,
     createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
@@ -61,7 +65,7 @@ fun HouseDto.toEntity() = HouseEntity(
     contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
     cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
-    brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    moveIn = MoveIn.coerced(moveIn), brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     deleted = deleted, dirty = false,
@@ -79,6 +83,12 @@ fun VisitDto.toEntity() = VisitEntity(
     source = VisitSource.fromWire(source),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(), deleted = deleted, dirty = false,
 )
+
+/** A pulled photo change's metadata, coerced (slice 5): a value out of range is dropped, never the row. */
+fun PhotoChangeDto.meta(): PhotoMeta = PhotoMeta.coerced(roomId, tags, caption, metaUpdatedAt)
+
+/** The body of `PUT /api/photos/{id}/meta` for this photo's stored metadata. */
+fun PhotoEntity.toMetaDto() = PhotoMetaDto(roomId = roomId, tags = tags.orEmpty(), caption = caption, metaUpdatedAt = metaUpdatedAt)
 
 /** The stored JSON text goes out as the object it is; a payload that is not one (never written here) becomes `{}`. */
 fun RecordEntity.toDto() = RecordDto(

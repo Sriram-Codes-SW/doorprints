@@ -24,6 +24,8 @@
  * may not equal a fixed key in any case (it would be the fixed tag under another spelling).
  */
 
+import type { TKey } from '../i18n/en';
+
 export const FIXED_TAGS = [
   'EXTERIOR',
   'ENTRANCE',
@@ -51,6 +53,11 @@ export const MAX_TAGS = 10;
 export const MAX_TAG_LENGTH = 30;
 export const MAX_CAPTION = 200;
 export const MAX_PHOTO_ROOM_ID = 64;
+
+/** The translation key of a fixed tag (`photoTag.KITCHEN_FITTINGS`), or null for a custom tag, which is shown as typed. */
+export function photoTagKey(tag: string): TKey | null {
+  return isFixedTag(tag) ? (`photoTag.${tag}` as TKey) : null;
+}
 
 export function isFixedTag(tag: string): tag is FixedTag {
   return (FIXED_TAGS as readonly string[]).includes(tag);
