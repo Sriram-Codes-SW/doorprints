@@ -209,5 +209,11 @@ private class IosMapControl(
         return CameraSpot(lat, lon, map.zoomLevel(), map.bearing())
     }
 
+    override fun visibleBounds(): GeoBounds? {
+        val south = map.visibleSouth()
+        if (south.isNaN()) return null
+        return GeoBounds(south = south, west = map.visibleWest(), north = map.visibleNorth(), east = map.visibleEast())
+    }
+
     override fun reloadStyle() = reload()
 }

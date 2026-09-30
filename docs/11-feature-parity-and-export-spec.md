@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -39,6 +39,7 @@
 | 0.25 | 2026-09-29 | Claude (Code), lead | 5.19 **app lock built** on Android and iPhone (S4b-FR-5): the choices of time, turning it on or off behind the credential, the fail-closed read. |
 | 0.26 | 2026-09-29 | Claude (Code), lead | New **5.27**: the path trace built (S4b-FR-2) on Android, inside `HuntEngine` so the iPhone gets it with S4b-BL-69. |
 | 0.27 | 2026-09-29 | Claude (Code), lead | 5.27: the path trace is recorded on iPhone too (S4b-BL-69, Hunt mode on iPhone; [10](10-sprint-log.md) §13.14). |
+| 0.28 | 2026-09-30 | Claude (Code), lead | 5.20 **offline maps built** on Android and iPhone (S4b-FR-6): the map's visible area as one of MapLibre's offline packs, the estimate and the cap in common code; the website is S4b-BL-79. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -509,6 +510,21 @@ the offline tiles too** (ADR-22: the same style changes apply, and the offline f
 ships); the boundary file itself is already bundled. Web: the PWA stores the file in the Origin Private File System or
 Cache Storage, with the storage estimate shown. Goes with the path trace (S4b-FR-2), so the map changes and the
 boundary re-check happen once.
+
+**Built (2026-09-30, Android and iPhone; S4b-FR-6, [10](10-sprint-log.md) §13.15).** On the Map, *Save this area for
+offline* (the download button among the controls) takes the box on screen: the dialog says the size to download
+(about 50 KB a tile, every zoom from 0 to 14, street level; `OfflineTiles` in common code), warns on mobile data
+("Wi-Fi is cheaper for this"; there is no setting: the person decides each time), takes a name (the area's locality
+from the geocoder, or "My area") and refuses a box over 2,000 tiles with the numbers ("zoom in"). The download is
+MapLibre's own offline pack on each phone (Android `OfflineManager`, iPhone `MLNOfflineStorage` through the Swift
+shell), the same store as the map's cache, so no new library, no second file, and the offline tiles serve the map's
+style as it is; the download carries on in the background and is picked up after a restart. Settings > Offline maps
+lists the areas with their size or progress and deletes one after asking. India's boundary rules apply on every style
+load, offline as online (ADR-22); the on-device re-check offline is TC-M-32 (owner). The source stays OpenFreeMap's
+public tiles, one person's area at a time within the cap ([03](03-design.md) §11.2; the owner's word on the terms is
+in [14](14-lead-backlog-and-handoff.md) §6). Not built: drawing an area or picking a hunting area (5.17 comes with
+4c), and the website (S4b-BL-79: the service worker ignores cross-origin tiles, so it needs MapLibre's `addProtocol`
+over Cache Storage). Tests: `OfflineTilesTest`, the `offline_maps` screenshots ([06](06-test-plan.md) TC-U-95).
 
 ### 5.21 The real cost of a house, my offer and the agreed price (D-30)
 

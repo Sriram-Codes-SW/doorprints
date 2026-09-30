@@ -236,6 +236,41 @@ fun MapScreen(
     val track by repo.trackPoints.collectAsStateWithLifecycle(initialValue = emptyList())
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
     var map by remember { mutableStateOf<MapControl?>(null) }
+    // Offline maps (docs/11 5.20): the dialog over the box the map shows, and the area whose outcome the snackbar
+    // reports (saved with its size, or failed).
+    val offline = services.offlineMaps
+    var saveAreaBounds by remember { mutableStateOf<GeoBounds?>(null) }
+    var savingArea by remember { mutableStateOf<String?>(null) }
+    val offlineAreas by offline.areas.collectAsStateWithLifecycle()
+    val savedText = stringResource(Res.string.offline_saved, "%1", "%2")
+    val failedText = stringResource(Res.string.offline_failed, "%1")
+    LaunchedEffect(offlineAreas, savingArea) {
+        val watched = savingArea ?: return@LaunchedEffect
+        val area = offlineAreas.firstOrNull { it.name == watched } ?: return@LaunchedEffect
+        val message = when (area.state) {
+            OfflineAreaState.SAVING -> return@LaunchedEffect
+            OfflineAreaState.READY -> savedText.replace("%1", area.name).replace("%2", megabytesText(area.bytes))
+            OfflineAreaState.FAILED -> failedText.replace("%1", area.name)
+        }
+        savingArea = null
+        snackbar.showSnackbar(message, withDismissAction = true)
+    }
+    saveAreaBounds?.let { bounds ->
+        val savingText = stringResource(Res.string.offline_saving, "%1")
+        SaveAreaDialog(
+            bounds = bounds,
+            metered = offline.networkMetered(),
+            // The area's name from the geocoder, within the same limit as a new house's address.
+            suggestName = { withTimeoutOrNull(LOCATE_TIMEOUT_MS) { services.houseForm.reverseGeocode(bounds.centerLat, bounds.centerLon) }?.locality },
+            onSave = { name ->
+                saveAreaBounds = null
+                offline.save(name, bounds)
+                savingArea = name
+                scope.launch { snackbar.showSnackbar(savingText.replace("%1", name), withDismissAction = true) }
+            },
+            onDismiss = { saveAreaBounds = null },
+        )
+    }
     // How many times the base style has loaded (0: not yet): the effects that follow a style load key on it, as they
     // keyed on MapLibre's Style object before CMP-7.
     var styleLoads by remember { mutableIntStateOf(0) }
@@ -722,6 +757,15 @@ fun MapScreen(
                 }
             }
         }
+        val saveAreaButton: @Composable () -> Unit = {
+            // Offline maps (docs/11 5.20): the box on screen, kept on the phone; only where the phone has the store.
+            if (offline.supported) {
+                SmallFloatingActionButton(
+                    onClick = { map?.visibleBounds()?.let { saveAreaBounds = it } },
+                    modifier = Modifier.size(48.dp),
+                ) { Icon(DownloadIcon, contentDescription = stringResource(Res.string.map_save_area)) }
+            }
+        }
         val saveHereButton: @Composable () -> Unit = {
             // Only the icon changes while locating: the label stays, so the button keeps its width (round 3).
             ExtendedFloatingActionButton(
@@ -776,6 +820,7 @@ fun MapScreen(
             ) {
                 zoomOutButton()
                 zoomInButton()
+                saveAreaButton()
                 myLocationButton()
                 saveHereButton()
             }
@@ -805,6 +850,7 @@ fun MapScreen(
             ) {
                 zoomInButton()
                 zoomOutButton()
+                saveAreaButton()
                 myLocationButton()
                 saveHereButton()
             }

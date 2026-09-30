@@ -61,6 +61,9 @@ interface MapControl {
     /** The camera now, or null when the view has no target yet. */
     fun camera(): CameraSpot?
 
+    /** The box the view shows now (offline maps, docs/11 5.20), or null before the view has a size. */
+    fun visibleBounds(): GeoBounds?
+
     /** Loads the base style again (*Try again* after a failure); [MapEvents.onStyleLoaded] follows on success. */
     fun reloadStyle()
 }

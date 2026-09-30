@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.84 |
+| Version | 0.85 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -95,7 +95,8 @@
 | 0.81 | 2026-09-29 | Claude (Code), lead | §12.7: **S4b-BL-70..78** from the readiness review ([14](14-lead-backlog-and-handoff.md) §8): the `SyncBackend` seam, the IndexedDB upgrade path, the backup format's versioning rule, the CSP/COOP change for sign-in with the Noto fonts, docs/13 re-scoped for D-28, the web backup reader, `:app` code to common, the screenshot matrix, MapLibre shipped twice. |
 | 0.82 | 2026-09-29 | Claude (Code), lead | The readiness review's safe items done (`chore/sprint-readiness`, [14](14-lead-backlog-and-handoff.md) §8 findings 4a, 4b, 5, 6, 7a, 12, 15; [06](06-test-plan.md) TC-U-93): S4b-BL-29 closed (the settings' `toString()` redacted), Android search gains the contact name (S4b-FR-1's open gap). |
 | 0.83 | 2026-09-29 | Claude (Code), lead | **The path trace built** (S4b-FR-2, branch `feat/s4b-fr-2-path-trace`; [11](11-feature-parity-and-export-spec.md) 5.27, [02](02-threat-model.md) T-I30, [06](06-test-plan.md) TC-U-94, TC-M-30): §15 S4b-FR-2 done in code on Android, the iPhone with S4b-BL-69; step 3 of the map work (offline maps, S4b-FR-6) next. |
-| 0.84 | 2026-09-29 | Claude (Code), lead | **Hunt mode on iPhone** (S4b-BL-69, branch `feat/s4b-bl-69-ios-hunt-mode`): new **§13.14**, the adapter around the common `HuntEngine` (Core Location in the background under *When in use*, local notifications, Apple's geocoder, the battery), `PlatformFeatures.Ios.huntMode` on, the launch smoke's `hunt` gate ([06](06-test-plan.md) TC-I-39), the device check TC-M-31 (owner). §12.7 S4b-BL-69 done in code; the path trace (S4b-FR-2) is recorded on iPhone too. |
+| 0.84 | 2026-09-29 | Claude (Code), lead | **Hunt mode on iPhone** (S4b-BL-69, branch `feat/s4b-bl-69-ios-hunt-mode`): new **§13.14**, the adapter around the common `HuntEngine` (Core Location in the background under *When in use*, local notifications, Apple's geocoder, the battery), `PlatformFeatures.Ios.huntMode` on, the launch smoke's `hunt` gate ([06](06-test-plan.md) TC-I-41), the device check TC-M-31 (owner). §12.7 S4b-BL-69 done in code; the path trace (S4b-FR-2) is recorded on iPhone too. |
+| 0.85 | 2026-09-30 | Claude (Code), lead | **Offline maps built** (S4b-FR-6, branch `feat/s4b-fr-6-offline-maps`): new **§13.15**; §15 S4b-FR-6 done in code on Android and iPhone; new **S4b-BL-79** (the website's offline tiles) and **S4b-BL-80** (a self-hosted extract, should OpenFreeMap object); TC-M-32 (owner). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1187,6 +1188,8 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-76 | Android | **`:app` code that belongs in common code** (§8 finding 10, ADR-23): `BackupReader.kt` and `Zip.kt` (plain `java.util.zip`; a common reader behind a small `expect` unzip first, which iOS imports and Drive need), `CopyImportUndo.kt`, `WorkProgress.kt`, `ExportProblemOf.kt`, `ProblemMessages.kt`; the 46 string keys kept in both `res/values` and Compose resources. One piece at a time. | Open |
 | S4b-BL-77 | Android, QA | **The screenshot matrix for the house form** (§8 finding 12): 4c re-records `house_edit`, `house_new` and `ios_house_edit` (24 images) on every form change. Shoot the form per section and keep en light/dark plus one Indic language for those; `awaitStableFrame` sleeps up to 4.5 s per shot. Before 4c. | Open |
 | S4b-BL-78 | Web | **MapLibre's shared code may ship twice** (§8 finding 13): a 1.08 MB chunk bundles `maplibre-gl-shared.mjs` and `angular.json` copies the 516 KB file again for the worker (S4b-BL-55 ties the two versions). Verify with the bundle analyser first; if so, one copy. | Open |
+| S4b-BL-79 | Web | **Offline maps on the website** ([11](11-feature-parity-and-export-spec.md) 5.20; [14](14-lead-backlog-and-handoff.md) §8 finding 13): the service worker ignores cross-origin requests, so the tiles of a saved area go through MapLibre GL JS's `addProtocol` over Cache Storage (or the Origin Private File System), with the same `OfflineTiles` estimate ported, the storage estimate shown, and the phones' UI (the download control, the dialog, a Settings list). | Open |
+| S4b-BL-80 | Ops | **A self-hosted tile extract for offline areas**, only if OpenFreeMap objects to offline packs from its public instance ([03](03-design.md) §11.2; the owner's word is in [14](14-lead-backlog-and-handoff.md) §6): an OpenStreetMap extract of the hunting cities in PMTiles on the owner's own server, which is not free to run, so not before that word. | Open (blocked on the owner) |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2334,7 +2337,7 @@ the same engine as Android (`HuntEngine`, §13 0.80), with the path trace of S4b
   and *Trace my path on the map*) and the location note's Hunt wording are the common screens'; `ios_map` and
   `ios_settings` re-recorded (16 images). The location purpose string names Hunt mode in the four languages
   (`Info.plist`, `<lang>.lproj/InfoPlist.strings`).
-- **CI** (`shared-ios.yml`, `ios/ci/launch-smoke.sh`, TC-I-39): the bundle check requires the background mode; the
+- **CI** (`shared-ios.yml`, `ios/ci/launch-smoke.sh`, TC-I-41): the bundle check requires the background mode; the
   smoke grants the app location (`simctl privacy`), sets a simulated location about 15 m from where the self-check
   saves a house (`simctl location set`, cleared at the end) and requires `DOORPRINTS-SELFCHECK hunt PASS` alongside
   `indiaView` and `map`: the check saves the house, starts `IosHunt`, waits until the engine names it as the nearest
@@ -2357,6 +2360,52 @@ at the start of updates, before the engine's house list had loaded; the smoke no
 code, the stop; debug binaries only) in the smoke's artifact. **Not yet:**
 TC-M-31, the owner's walk with an iPhone (background execution with the screen off, the alerts' timing, the battery
 stop, the trace's line).
+
+### 13.15 S4b-FR-6, offline maps, done in code
+
+**What was done** (branch `feat/s4b-fr-6-offline-maps`, from `main` at `f2a3fc4`): the third step of the map work
+(N13 4a, after the path trace and Hunt mode on iPhone): a saved area of the map that draws with no network, on both
+phones, from MapLibre's own offline packs.
+
+- **Common** (`:ui` commonMain, `OfflineMaps.kt`): `GeoBounds`, `OfflineTiles` (Web Mercator tile counts from zoom 0
+  to 14, 50 KB a tile for the estimate, `MAX_TILES` 2,000), `OfflineArea` with its state (saving with the bytes so
+  far, ready with its size, failed) and `OfflineMapsServices`, one small interface each phone implements; `NoOfflineMaps`
+  for previews and tests (no button, no section). `MapControl.visibleBounds()` gives the box on screen (Android:
+  the projection's visible region; iPhone: `visibleCoordinateBounds` through four new `IosMapView` calls).
+- **UI** (`OfflineMapsUi.kt`): the Map's fifth control, a download glyph built from its path like the minus, *Save
+  this area for offline*; `SaveAreaDialog` (the estimate, the mobile-data note, the name from the geocoder's locality
+  within the location timeout or "My area", the refusal over the cap with the numbers); the snackbar when the save
+  starts and again when the area is ready (with its size) or failed; Settings > Offline maps with the hint (what
+  saved areas do; the OpenStreetMap and OpenFreeMap credit), the list with size or progress and *Delete* after a
+  confirmation, or "No areas saved yet". Strings in four languages (hi, ta, te *under review*).
+- **Android** (`AndroidOfflineMaps` in `:app`): `OfflineManager.createOfflineRegion` with an
+  `OfflineTilePyramidRegionDefinition` (the Liberty style, the box, zoom 0 to 14, the screen density), the id and
+  name as JSON metadata, an observer for the progress, the regions listed once per process and an incomplete one
+  set active again (a download the process died in carries on), delete through the region. The metered state from
+  `NetworkState`.
+- **iPhone** (`IosOfflineMapsServices` over `IosOfflineMaps`, implemented by `MapLibreOfflineMaps.swift`):
+  `MLNOfflineStorage.shared.addPack` with an `MLNTilePyramidOfflineRegion`, the id and name as the pack's context,
+  KVO on `packs` for the load, the progress and error notifications, every change reported to Kotlin as one snapshot;
+  `NWPathMonitor` for the metered state; registered from the Swift app's `init` beside the map factory. The packs
+  fetch the Liberty style's tiles, the same addresses the map's inline style asks for, so the store serves both.
+- **Docs and tests**: [11](11-feature-parity-and-export-spec.md) 5.20 built, [03](03-design.md) §11.2 (OpenFreeMap's
+  terms and the cap) and the component table, [06](06-test-plan.md) TC-U-95 and TC-M-32, [01](01-requirements.md)
+  NFR-004, the guide's map page, `ios/README.md`; `OfflineTilesTest` (4), the `offline_maps` screenshots (8 new
+  images); `settings`, `ios_settings` and `ios_map` unchanged, since the screenshot app initialises no MapLibre and
+  the store then reports itself unsupported (no section, no control), as in a preview.
+
+**Decisions.** The area is the box on screen, not a drawn one or a hunting area (5.17 comes with 4c); the person
+decides about mobile data each time (a warning, no setting); the cap is 2,000 tiles an area with the numbers shown
+when refused; no ongoing notification while a download runs (the Settings list has the progress, and MapLibre keeps
+downloading while the app is open or in the background as the platform allows). OpenFreeMap's public tiles remain the
+source within that cap, and the owner's reading of its terms is asked for ([14](14-lead-backlog-and-handoff.md) §6);
+the website's offline tiles are their own change (S4b-BL-79).
+
+**How it was verified:** on Linux, `tools/check.sh android ios guide licence` (the Android command with the
+screenshot verify and the new shots; `StringParityTest` and `PlatformFeaturesTest`; the iOS main and test klibs
+cross-compiled). The Swift store, `MLNOfflineStorage` and the packs run for the first time in CI on this branch (the
+app build and the launch smoke, which does not save an area). **Not yet:** TC-M-32, the owner's saved area on a
+phone and the boundary re-check offline.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
@@ -2400,7 +2449,7 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | Planned |
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
 | S4b-FR-5 | **App lock** on the phones: PIN, fingerprint or face, with the phone's own credential ([11](11-feature-parity-and-export-spec.md) 5.19, D-30). | With Google sign-in (N13 3b); threat-model item for a lost or shared phone; emulator test and a device check. | **Done in code** (2026-09-29, `feat/s4b-fr-5-app-lock`): Settings > Privacy > *Lock Doorprints*; threat model T-I29; [06](06-test-plan.md) TC-U-90, device check TC-M-29; emulator test S4b-BL-67. |
-| S4b-FR-6 | **Offline maps for the hunting area** (11 5.20, D-30). | With the path trace (S4b-FR-2): one map change, one TC-M-25 re-check; India's boundary rules on the offline tiles; free tile sources only, size shown first, Wi-Fi by default. | Planned |
+| S4b-FR-6 | **Offline maps for the hunting area** (11 5.20, D-30). | With the path trace (S4b-FR-2): one map change, one TC-M-25 re-check; India's boundary rules on the offline tiles; free tile sources only, size shown first, Wi-Fi by default. | **Done in code** (2026-09-30, Android and iPhone, §13.15; [11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as MapLibre's own offline pack, the estimate and the 2,000-tile cap in common code, the mobile-data note, Settings > Offline maps; the website is S4b-BL-79; on a phone TC-M-32 (owner), which is the TC-M-25 re-check offline |
 | S4b-FR-7 | **The real cost of a house, my offer and the agreed price** (11 5.21, D-30). | In S4-11 with rooms and carpet area; one data-model and format change with S4-08; Compare's monthly cost, money to move in, cost per sq ft; the search rule. | Planned |
 | S4b-FR-8 | **My places and distances** (11 5.22, D-30). | S4-20, with hunting areas (S4-18); the Plan route's offline estimate. | Planned |
 | S4b-FR-9 | **Area notes** (11 5.23, D-30). | S4-20; searchable; redaction as house notes. | Planned |

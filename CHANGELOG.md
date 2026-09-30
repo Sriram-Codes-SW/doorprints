@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Offline maps on Android and iPhone** (S4b-FR-6, [spec](docs/11-feature-parity-and-export-spec.md) 5.20): *Save
+  this area for offline* on the Map keeps the map you see, down to street level, on the phone (about 50 KB a tile,
+  at most 2,000 tiles an area; the size shown first, a note on mobile data, the area named after its locality).
+  Settings > Offline maps lists the areas with their size or progress and deletes one. MapLibre's own offline packs,
+  the same store as the map's cache: no new library. India's boundary rules apply offline as online. The website
+  comes later (S4b-BL-79).
 - **Hunt mode on iPhone** (S4b-BL-69, [sprint log](docs/10-sprint-log.md) §13.14): the same engine as Android,
   with Core Location keeping the fixes while the phone is in the pocket (the *When in use* permission, the blue
   indicator shown; *Always* is never asked for), the alerts as notifications (asked for in context when Hunt mode is

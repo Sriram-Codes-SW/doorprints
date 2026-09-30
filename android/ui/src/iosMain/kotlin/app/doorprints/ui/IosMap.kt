@@ -74,6 +74,15 @@ interface IosMapView {
 
     fun centerLongitude(): Double
 
+    /** The box on screen (offline maps, docs/11 5.20): south, west, north, east; NaN before the view has a size. */
+    fun visibleSouth(): Double
+
+    fun visibleWest(): Double
+
+    fun visibleNorth(): Double
+
+    fun visibleEast(): Double
+
     fun zoomLevel(): Double
 
     fun bearing(): Double
@@ -102,4 +111,41 @@ interface IosMapListener {
 object IosMap {
     /** Null in tests and previews: the map is then an empty box, as on Android in inspection mode. */
     var factory: IosMapViewFactory? = null
+
+    /** The offline store (`MLNOfflineStorage`, MapLibreOfflineMaps.swift), registered with the factory; null: none. */
+    var offline: IosOfflineMaps? = null
 }
+
+/**
+ * MapLibre iOS's offline packs behind a Kotlin interface (S4b-FR-6, docs/11 5.20), as [IosMapView] is for the map:
+ * the Swift shell implements it over `MLNOfflineStorage` and reports every change as a whole snapshot ([setListener]).
+ * Main thread.
+ */
+interface IosOfflineMaps {
+    /** Set once by `IosOfflineMapsServices`; the packs as they are now follow at once, then on every change. */
+    fun setListener(listener: IosOfflineMapsListener)
+
+    /** Adds a pack for the box, zoom [minZoom] to [maxZoom], with [id] and [name] in its context. */
+    fun add(id: String, name: String, south: Double, west: Double, north: Double, east: Double, minZoom: Double, maxZoom: Double)
+
+    fun remove(id: String)
+
+    /** True on mobile data or a metered hotspot (`NWPath.isExpensive`). */
+    fun networkMetered(): Boolean
+}
+
+interface IosOfflineMapsListener {
+    fun onPacks(packs: List<IosOfflinePack>)
+}
+
+/** One pack as Swift reports it; [state] is 0 saving, 1 ready, 2 failed. */
+class IosOfflinePack(
+    val id: String,
+    val name: String,
+    val south: Double,
+    val west: Double,
+    val north: Double,
+    val east: Double,
+    val state: Int,
+    val bytes: Long,
+)

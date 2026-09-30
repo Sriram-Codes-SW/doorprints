@@ -53,6 +53,14 @@ Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.
 copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
 
+## Offline maps (S4b-FR-6)
+
+`MapLibreOfflineMaps.swift` implements the Kotlin interface `IosOfflineMaps` (IosMap.kt) over `MLNOfflineStorage`:
+a saved area is one tile-pyramid offline pack of the Liberty style from zoom 0 to 14, its id and name in the pack's
+context, every change reported to Kotlin as one snapshot (KVO on `packs`, the progress and error notifications);
+`NWPathMonitor` says whether the network is expensive. Registered in `DoorprintsApp.init` beside the map factory.
+`docs/10` §13.15.
+
 ## Hunt mode (S4b-BL-69)
 
 `IosHunt.kt` (android/ui's iosMain) is the iPhone's adapter around the common `HuntEngine`: `CLLocationManager` with
