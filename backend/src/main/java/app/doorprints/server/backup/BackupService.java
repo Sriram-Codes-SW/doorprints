@@ -27,6 +27,11 @@ import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.photo.PhotoRepository;
+import app.doorprints.server.record.Record;
+import app.doorprints.server.record.RecordController;
+import app.doorprints.server.record.RecordDto;
+import app.doorprints.server.record.RecordKey;
+import app.doorprints.server.record.RecordRepository;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
 import app.doorprints.server.visit.Visit;
@@ -36,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -64,6 +70,10 @@ import java.util.UUID;
  *       nothing to the other devices.</li>
  *   <li><b>Never deletes.</b> A backup holds live rows only, so an import can create or update rows but never
  *       removes one; a row this server has and the file does not is simply left alone.</li>
+ *   <li><b>Brokers are records.</b> The {@code brokers} list of a {@code /2} file is merged into the {@code record}
+ *       table as type {@code broker} (payload: name, phone, agency, feeTerms, notes, rating), by id, last write wins
+ *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
+ *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker exists.</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
  *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
@@ -113,22 +123,28 @@ public class BackupService {
     private final SyncVersions versions;
     private final ClientClock clock;
     private final ApplicationEventPublisher events;
+    private final RecordRepository records;
+    private final ObjectMapper json;
 
     public BackupService(HouseRepository houses, VisitRepository visits, PhotoRepository photos,
-                         SyncVersions versions, ClientClock clock, ApplicationEventPublisher events) {
+                         SyncVersions versions, ClientClock clock, ApplicationEventPublisher events,
+                         RecordRepository records, ObjectMapper json) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
         this.versions = versions;
         this.clock = clock;
         this.events = events;
+        this.records = records;
+        this.json = json;
     }
 
     /** Everything live on the server, in the format's fixed order. Photo bytes are fetched separately. */
     @Transactional(readOnly = true)
     public BackupData export() {
         return BackupMapper.toBackup(houses.findByDeletedFalseOrderByUpdatedAtDesc(),
-                visits.findByDeletedFalseOrderByArrivedAtDesc(), photos.findAllLiveMetadata(), clock.now());
+                visits.findByDeletedFalseOrderByArrivedAtDesc(), photos.findAllLiveMetadata(),
+                records.findByKeyTypeAndDeletedFalse(BackupBroker.TYPE), json, clock.now());
     }
 
     /**
@@ -148,6 +164,7 @@ public class BackupService {
         var houseTally = new Tally();
         var visitTally = new Tally();
         var photoTally = new Tally();
+        var brokerTally = new Tally();
         // Houses whose AI document this import invalidated, collected instead of announced row by row.
         var changedHouses = new LinkedHashSet<UUID>();
         if (!dryRun) versions.lock(); // one writer at a time, and versions become visible in order (F-09)
@@ -173,12 +190,16 @@ public class BackupService {
                     + "with POST /api/houses/{id}/photos");
         }
 
+        // Brokers are independent of the houses (a house's brokerId is not checked against them), so they merge last.
+        var liveBrokers = new long[]{records.countByKeyTypeAndDeletedFalse(BackupBroker.TYPE)};
+        for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
+
         publishChanges(changedHouses, fileNotes, dryRun);
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
         var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
-                photoTally.toEntity(), List.copyOf(reported));
+                photoTally.toEntity(), brokerTally.toEntity(), List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
                     report.houses(), report.visits());
@@ -277,11 +298,51 @@ public class BackupService {
         house.setAreaSqft(row.areaSqft());
         house.setLocationSource(row.locationSource());
         house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
+        house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
         house.setUpdatedAt(inFile);
         house.setSyncVersion(versions.next());
         houses.save(house);
+        return outcome;
+    }
+
+    /**
+     * Writes a broker as a {@code broker} record, the payload as {@code RecordController} would store it. A tombstone
+     * under the same id is made live again when the file's copy is newer. {@code liveCount} (one element, so it can
+     * be updated here) holds the number of live brokers, so the per-type cap of the records API applies to an import
+     * too, dry run or not.
+     */
+    private Outcome mergeBroker(BackupBroker row, boolean dryRun, long[] liveCount, List<String> problems) {
+        var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "brokers.updatedAt");
+        var key = new RecordKey(BackupBroker.TYPE, row.id());
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        var becomesLive = existing == null || existing.isDeleted();
+        if (becomesLive) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("broker " + row.id() + ": skipped, this server holds the most brokers it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+
+        var payload = json.createObjectNode();
+        payload.put("name", row.name());
+        if (row.phone() != null) payload.put("phone", row.phone());
+        if (row.agency() != null) payload.put("agency", row.agency());
+        if (row.feeTerms() != null) payload.put("feeTerms", row.feeTerms());
+        if (row.notes() != null) payload.put("notes", row.notes());
+        if (row.rating() != null) payload.put("rating", row.rating());
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payload.toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
         return outcome;
     }
 
@@ -336,6 +397,7 @@ public class BackupService {
         validateHouses(data.houses(), problems);
         validateVisits(data.visits(), problems);
         validatePhotos(data.photos(), problems);
+        validateBrokers(data.brokers(), problems);
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
@@ -368,6 +430,8 @@ public class BackupService {
             maxLength(at + ".contactPhone", row.contactPhone(), 50, problems);
             maxLength(at + ".listingUrl", row.listingUrl(), 1000, problems);
             maxLength(at + ".notes", row.notes(), 20_000, problems);
+            require(row.brokerId() == null || row.brokerId().matches(RecordDto.ID_PATTERN),
+                    at + ".brokerId is not a valid record id", problems);
             require(row.areaSqft() == null || (row.areaSqft() >= 1 && row.areaSqft() <= 100_000),
                     at + ".areaSqft must be 1..100000", problems);
             require(row.locationSource() == null || row.locationSource().matches(HouseDto.LOCATION_SOURCES),
@@ -436,6 +500,34 @@ public class BackupService {
             require(name != null && !name.isEmpty() && name.length() <= 200
                             && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && !name.contains(".."),
                     at + ".fileName must be a plain file name", problems);
+        }
+    }
+
+    private void validateBrokers(List<BackupBroker> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "brokers[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            if (row.id() == null) {
+                problems.add(at + ".id is required");
+            } else if (!row.id().matches(RecordDto.ID_PATTERN)) {
+                problems.add(at + ".id is not a valid record id");
+            } else if (!seen.add(row.id())) {
+                problems.add(at + ".id " + row.id() + " appears twice");
+            }
+            require(row.name() != null && !row.name().isBlank(), at + ".name is required", problems);
+            maxLength(at + ".name", row.name(), BackupBroker.MAX_NAME, problems);
+            maxLength(at + ".phone", row.phone(), BackupBroker.MAX_PHONE, problems);
+            maxLength(at + ".agency", row.agency(), BackupBroker.MAX_AGENCY, problems);
+            maxLength(at + ".feeTerms", row.feeTerms(), BackupBroker.MAX_FEE_TERMS, problems);
+            maxLength(at + ".notes", row.notes(), BackupBroker.MAX_NOTES, problems);
+            require(row.rating() == null || (row.rating() >= 1 && row.rating() <= 5), at + ".rating must be 1..5",
+                    problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
         }
     }
 

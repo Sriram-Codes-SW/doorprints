@@ -54,6 +54,8 @@ import {
 import { errorMsg, telHref } from '../../core/format';
 import { cleanCost } from '../../data/records';
 import { costSummary } from '../../shared/house-cost';
+import { brokerLine } from '../../shared/broker';
+import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
 import { resizeImage } from '../../core/image-resize';
@@ -133,6 +135,14 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly fillError = signal<RunResult<Msg> | null>(null);
 
   protected readonly draft = signal<HouseDto | null>(null);
+  /** The brokers the Broker select offers (slice 1b), by name. */
+  protected readonly brokers = signal<BrokerRow[]>([]);
+  /** The broker the draft is linked to, when it exists: the contact fields then show its name and phone. */
+  protected readonly linkedBroker = computed(() => {
+    const id = this.draft()?.brokerId;
+    return id ? (this.brokers().find((b) => b.id === id) ?? null) : null;
+  });
+  protected readonly brokerLine = (row: BrokerRow): string => brokerLine(row.broker);
   protected readonly isNew = signal(false);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
@@ -293,6 +303,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.api.brokers().subscribe({
+      next: (rows) => this.brokers.set(sortBrokers(rows)),
+      error: () => this.brokers.set([]),
+    });
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       const q = this.route.snapshot.queryParamMap;
@@ -689,6 +703,19 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (!d) return;
     this.draft.set({ ...d, ...changes });
     this.markDirty();
+  }
+
+  /** The Broker select: a broker fills the contact name and phone from it; None keeps what is there and unlinks. */
+  protected pickBroker(id: string): void {
+    const row = this.brokers().find((b) => b.id === id);
+    if (row) this.patch({ brokerId: row.id, contactName: row.broker.name, contactPhone: row.broker.phone ?? null });
+    else this.patch({ brokerId: null });
+  }
+
+  /** "New broker": unlinks and clears the contact, so a broker is made from what is typed when the house is saved. */
+  protected newBroker(): void {
+    this.patch({ brokerId: null, contactName: null, contactPhone: null });
+    document.getElementById('house-contact')?.focus();
   }
 
   protected setStatus(status: HouseStatus): void {
@@ -1109,4 +1136,11 @@ export function sharedFromNavigation(router: Router): string | null {
   if (!state || typeof state !== 'object') return null;
   const shared = (state as { shared?: unknown }).shared;
   return typeof shared === 'string' && shared !== '' ? shared : null;
+}
+
+/** Brokers by name for the select, then by id, so equal names keep a fixed order. */
+export function sortBrokers(rows: readonly BrokerRow[]): BrokerRow[] {
+  return [...rows].sort(
+    (a, b) => a.broker.name.localeCompare(b.broker.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
 }

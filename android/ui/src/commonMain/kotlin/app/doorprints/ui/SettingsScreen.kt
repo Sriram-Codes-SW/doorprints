@@ -113,7 +113,7 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
-    onOpenShare: () -> Unit = {},
+    onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -692,6 +692,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         HorizontalDivider()
         // AI features (docs/03 §12.1, §13.1): this phone's switch, and who answers: the server or the person's own key.
         AiSettingsSection(settings, aiOff)
+
+        // The brokers you have met (docs/11 5.25, slice 1b), on every platform: it opens the list and each broker's page.
+        HorizontalDivider()
+        NavRow(stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers)
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))

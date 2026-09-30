@@ -1,0 +1,82 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <h1>{{ 'brokers.title' | t }}</h1>
+    <p class="muted">{{ 'brokers.intro' | t }}</p>
+  </header>
+
+  @if (error(); as card) {
+    <div class="error">
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+      <div class="err-actions">
+        <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else {
+    <div class="add">
+      <a class="btn btn-primary" routerLink="/brokers/new">{{ 'brokers.add' | t }}</a>
+    </div>
+    @if (items().length === 0) {
+      <div class="card empty-state">
+        <span class="empty-glyph" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="glyphs.home" /></svg>
+        </span>
+        <p>{{ 'brokers.empty' | t }}</p>
+      </div>
+    } @else {
+      <ul class="list">
+        @for (item of items(); track item.row.id) {
+          <li>
+            <a class="card broker" [routerLink]="['/brokers', item.row.id]">
+              <strong>{{ item.row.broker.name }}</strong>
+              @if (item.row.broker.agency) {
+                <span>{{ item.row.broker.agency }}</span>
+              }
+              <span class="meta">
+                @if (item.row.broker.phone) {
+                  <span>{{ item.row.broker.phone }}</span>
+                }
+                @if (item.row.broker.rating; as stars) {
+                  <span>
+                    <span aria-hidden="true">{{ '★'.repeat(stars) }}{{ '☆'.repeat(5 - stars) }}</span>
+                    <span class="sr-only">{{ 'common.stars' | t: { n: stars } }}</span>
+                  </span>
+                }
+                <span>{{ 'brokers.houses' | t: { n: item.houses } }}</span>
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  }
+</div>

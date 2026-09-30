@@ -88,14 +88,17 @@ data class ImportPreview(
      * back. Not shown on its own line; it is here so tests and the web importer can check the rule.
      */
     val relinkedVisits: Int = 0,
+    /** Brokers of a `/2` file (slice 1b): new here, and (MERGE) newer in the file; merged by id, last edit wins. */
+    val newBrokers: Int = 0,
+    val updatedBrokers: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
         get() = newHouses == 0 && updatedHouses == 0 && newVisits == 0 && updatedVisits == 0 && newPhotos == 0 &&
-            restoredHouses == 0
+            restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
-    val overwrites: Int get() = updatedHouses + updatedVisits
+    val overwrites: Int get() = updatedHouses + updatedVisits + updatedBrokers
 }
 
 /**
@@ -132,6 +135,12 @@ data class ImportActions(
      * counts as new ([ImportPreview.relinkedVisits]).
      */
     val relinkedVisitIds: Set<String> = emptySet(),
+    /**
+     * The brokers to write (slice 1b): in MERGE those new here or newer in the file, by id; in COPY all of them under
+     * new ids, and [houses] name them by the new ids. [updatedBrokerIds] are the ones that replace a broker here.
+     */
+    val brokers: List<ExportBroker> = emptyList(),
+    val updatedBrokerIds: Set<String> = emptySet(),
 )
 
 /**
@@ -194,6 +203,7 @@ object ImportPlan {
         restoreDeleted: Boolean = false,
         skipUpdates: Boolean = false,
         localUnlinkedVisitIds: Set<String> = emptySet(),
+        localBrokers: Map<String, Long> = emptyMap(),
     ): ImportPreview {
         if (mode == ImportMode.COPY) {
             // Nothing local is consulted in COPY mode, not even a tombstone: every row gets a new id. What does
@@ -219,6 +229,7 @@ object ImportPlan {
                 updatedVisits = 0, newerHereVisits = 0, unchangedVisits = 0,
                 newPhotos = withFiles, skippedPhotos = orphaned,
                 photosMissingFromFile = missing,
+                newBrokers = data.brokerRows.size,
             )
         }
         var newH = 0; var updH = 0; var hereH = 0; var sameH = 0; var clearedH = 0; var deletedH = 0
@@ -277,8 +288,18 @@ object ImportPlan {
                 else -> newP++
             }
         }
+        var newB = 0; var updB = 0
+        for (b in data.brokerRows) {
+            when (brokerOutcome(b, localBrokers, skipUpdates)) {
+                Verdict.NEW -> newB++
+                Verdict.INCOMING_NEWER -> updB++
+                else -> Unit
+            }
+        }
         return ImportPreview(
             mode, newH, updH, hereH, sameH, newV, updV, hereV, sameV, newP, skipP, missingP,
+            newBrokers = newB,
+            updatedBrokers = updB,
             checklistsCleared = clearedH,
             deletedHereHouses = deletedH,
             deletedHereVisits = deletedV,
@@ -334,10 +355,10 @@ object ImportPlan {
         skipUpdates: Boolean = false,
         localUnlinkedVisitIds: Set<String> = emptySet(),
         syncedDeletedHouseIds: Set<String>? = null,
+        localBrokers: Map<String, Long> = emptyMap(),
     ): ImportActions {
         if (mode == ImportMode.COPY) {
             val houseIds = data.houses.associate { it.id to newId() }
-            val houses = data.houses.map { it.copy(id = houseIds.getValue(it.id)) }
             val visits = data.visits
                 .filter { it.houseId == null || it.houseId in houseIds }
                 .map { it.copy(id = newId(), houseId = it.houseId?.let(houseIds::getValue)) }
@@ -350,7 +371,15 @@ object ImportPlan {
                 photoSources[id] = entry
                 p.copy(id = id, houseId = houseId)
             }
-            return ImportActions(mode, houses, visits, photos, photoSources)
+            // The brokers of a copy get new ids too, and the copied houses name them (a broker id the file does not
+            // hold stays as it is: it dangles or finds a broker here, as the format says). Drawn last, so the ids of
+            // a file without brokers come out as they always did.
+            val brokerIds = data.brokerRows.associate { it.id to newId() }
+            val houses = data.houses.map {
+                it.copy(id = houseIds.getValue(it.id), brokerId = it.brokerId?.let { b -> brokerIds[b] ?: b })
+            }
+            val brokers = data.brokerRows.map { it.copy(id = brokerIds.getValue(it.id)) }
+            return ImportActions(mode, houses, visits, photos, photoSources, brokers = brokers)
         }
 
         val updatedHouseIds = HashSet<String>()
@@ -398,6 +427,17 @@ object ImportPlan {
             photoSources[id] = entry
             if (id == p.id) p else p.copy(id = id)
         }
+        val updatedBrokerIds = HashSet<String>()
+        val brokers = data.brokerRows.filter {
+            when (brokerOutcome(it, localBrokers, skipUpdates)) {
+                Verdict.NEW -> true
+                Verdict.INCOMING_NEWER -> {
+                    updatedBrokerIds.add(it.id)
+                    true
+                }
+                else -> false
+            }
+        }
         return ImportActions(
             mode = mode,
             houses = houses,
@@ -408,7 +448,19 @@ object ImportPlan {
             updatedVisitIds = updatedVisitIds,
             restoredHouseIds = restoredHouseIds,
             relinkedVisitIds = relinkedVisitIds,
+            brokers = brokers,
+            updatedBrokerIds = updatedBrokerIds,
         )
+    }
+
+    /**
+     * What a MERGE does with one broker of the file (slice 1b): written when new here or newer, left alone otherwise
+     * ([skipUpdates] leaves a newer one too). A broker deleted here is a tombstone in [localBrokers] with its own
+     * `updatedAt`, so an older file row does not bring it back and a newer one does, as for a house.
+     */
+    private fun brokerOutcome(b: ExportBroker, localBrokers: Map<String, Long>, skipUpdates: Boolean): Verdict {
+        val verdict = compare(localBrokers[b.id], b.updatedAt)
+        return if (verdict == Verdict.INCOMING_NEWER && skipUpdates) Verdict.SAME else verdict
     }
 
     /**

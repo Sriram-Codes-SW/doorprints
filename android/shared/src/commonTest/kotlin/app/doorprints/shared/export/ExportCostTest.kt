@@ -64,7 +64,7 @@ class ExportCostTest {
         )
         // The CSV follows the table: the headers and the typed cells land in it unchanged.
         val csv = CsvWriter.write(table, bundle.options)
-        assertTrue(csv.startsWith("Rank,House,Status,Score,Price,Price type,Bedrooms,Stars,Address,Street,Locality,Latitude,Longitude,Contact name,Phone,Listing link,Notes,Carpet area (sq ft),Location source,Deposit,"))
+        assertTrue(csv.startsWith("Rank,House,Status,Score,Price,Price type,Bedrooms,Stars,Address,Street,Locality,Latitude,Longitude,Contact name,Phone,Broker,Listing link,Notes,Carpet area (sq ft),Location source,Deposit,"))
         assertTrue(csv.contains(",2026-10-15,30000,31000,34500,128000,27.0,"), csv)
     }
 

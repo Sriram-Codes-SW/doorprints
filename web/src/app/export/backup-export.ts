@@ -20,7 +20,8 @@ import { COST_FIELDS } from '../core/models';
 import type { HouseCost } from '../core/models';
 import { cleanCost } from '../data/records';
 import { sortedChecklist } from './export-model';
-import type { ExportBundle, ExportHouse as BundleHouse } from './export-model';
+import type { ExportBroker, ExportBundle, ExportHouse as BundleHouse } from './export-model';
+import { brokerToPayload } from '../shared/broker';
 import { htmlCopyName, isoUtc } from './deterministic';
 import { photoEntry, photoFileName } from './photo-names';
 import { sha256Hex } from './sha256';
@@ -44,11 +45,17 @@ import type { ZipEntry } from './zip';
  */
 
 /**
- * Written into `manifest.json` and `data.json`. Kotlin: `BackupFormat.ID`. Stays at `/1` until slice 1 of the
- * Sprint 4b data model writes the first new list (docs/11 5.30 item 3); `/2` then adds the house's nested values
- * and the record lists.
+ * Written into `manifest.json` and `data.json` of a copy with no list `/1` lacks. Kotlin: `BackupFormat.ID`. Slice 1b
+ * of the Sprint 4b data model wrote the first new list (docs/11 5.30 item 3): a copy with brokers is
+ * {@link BACKUP_FORMAT_V2}, every other copy stays `/1`.
  */
 export const BACKUP_FORMAT = 'doorprints-backup/1';
+/**
+ * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
+ * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker
+ * stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ */
+export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
  * The rule of S4b-BL-72 (docs/schemas/README.md): a new entity list means a new format number, a reader accepts
  * every number up to the one it knows and refuses a newer file with "update the app" rather than dropping its
@@ -100,6 +107,8 @@ export interface BackupHouse {
   areaSqft?: number;
   locationSource?: string;
   cost?: BackupCost;
+  /** Slice 1b: the record id of the house's broker, right after `cost`. */
+  brokerId?: string;
   checklist: Record<string, number>;
   createdAt: number;
   updatedAt: number;
@@ -127,18 +136,34 @@ export interface BackupPhoto {
   createdAt: number;
 }
 
+/** A broker in a `/2` copy: the record id, the payload keys that are set (in this order) and the last edit. */
+export interface BackupBroker {
+  id: string;
+  name: string;
+  phone?: string;
+  agency?: string;
+  feeTerms?: string;
+  notes?: string;
+  rating?: number;
+  updatedAt: number;
+}
+
 export interface BackupData {
   format: string;
   exportedAt: number;
   houses: BackupHouse[];
   visits: BackupVisit[];
   photos: BackupPhoto[];
+  /** Only in a `/2` copy, and then never empty. */
+  brokers?: BackupBroker[];
 }
 
 export interface BackupCounts {
   houses: number;
   visits: number;
   photos: number;
+  /** Only in a `/2` copy. */
+  brokers?: number;
 }
 
 export interface BackupFile {
@@ -165,8 +190,9 @@ export interface BackupManifest {
 }
 
 export function buildBackupData(bundle: ExportBundle): BackupData {
+  const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   return {
-    format: BACKUP_FORMAT,
+    format: brokers ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -190,7 +216,13 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
         createdAt: millisOf(photo.createdAt),
       })),
     ),
+    ...(brokers ? { brokers } : {}),
   };
+}
+
+/** `id`, then the set payload keys in the contract's order (`brokerToPayload`), then `updatedAt`. */
+function backupBroker(entry: ExportBroker): BackupBroker {
+  return { id: entry.id, ...(brokerToPayload(entry.broker) as Omit<BackupBroker, 'id' | 'updatedAt'>), updatedAt: millisOf(entry.updatedAt) };
 }
 
 function backupHouse({ house }: BundleHouse): BackupHouse {
@@ -214,6 +246,7 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     areaSqft: house.areaSqft ?? undefined,
     locationSource: house.locationSource ?? undefined,
     cost: backupCost(house.cost),
+    brokerId: house.brokerId ?? undefined,
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
     updatedAt: millisOf(house.updatedAt),
@@ -263,7 +296,7 @@ export function buildBackupZip(
   }
 
   const manifest: BackupManifest = {
-    format: BACKUP_FORMAT,
+    format: data.format,
     app: BACKUP_APP,
     appVersion: BACKUP_APP_VERSION,
     createdAt: isoUtc(bundle.exportedAt),
@@ -276,6 +309,7 @@ export function buildBackupZip(
       houses: data.houses.length,
       visits: data.visits.length,
       photos: data.photos.length,
+      brokers: data.brokers?.length,
     },
     files: contents.map((entry) => ({
       path: entry.path,

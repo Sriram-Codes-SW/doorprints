@@ -201,6 +201,7 @@ object Exporters {
             }
 
             val manifest = BackupManifest(
+                format = rows.format,
                 appVersion = appVersion,
                 createdAt = IsoTime.format(bundle.options.exportedAtMillis),
                 language = bundle.options.language,

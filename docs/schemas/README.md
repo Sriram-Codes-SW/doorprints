@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.11 |
+| Version | 1.12 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -18,6 +18,7 @@
 | 1.9 | 2026-09-30 | Claude (Code), lead | **Notice of `doorprints-backup/2`** ([11](../11-feature-parity-and-export-spec.md) 5.30, ADR-28; not yet written): the Sprint 4b data model adds nested house values and named lists (`criteria`, `questions`, `viewings`, `huntingAreas`, `places`, `areaNotes`, `brokers`, `photoMeta`, `moveIn`, `preferences`), and with them the versioning rule of S4b-BL-72: a new list means a new format number, readers accept `1..MAX`, a newer file is refused with "update the app". This file changes to `/2` in slice 0 of the batch, with `backup-sample.json` and the three writers in one commit. Nothing in `/1` changes. |
 | 1.10 | 2026-09-30 | Claude (Code), lead | **The versioning rule, in force** (S4b-BL-72, slice 0 of [11](../11-feature-parity-and-export-spec.md) 5.30): new section 1.1. Every reader accepts `doorprints-backup/1` and `/2` (`BackupFormat.READ_IDS` in Kotlin and Java, `BACKUP_FORMATS_READ` on the web) and refuses a higher number with "update the app"; every writer still writes `/1` until slice 1 adds the first `/2` list. Section 3's `format` row says so. |
 | 1.11 | 2026-09-30 | Claude (Code), lead | **Three optional house fields within `/1`** (slice 1a of [11](../11-feature-parity-and-export-spec.md) 5.30, the rule of §1.1): `areaSqft`, `locationSource` and the nested `cost`, after `notes` and before `checklist` in every writer; `backup-sample.json` carries them on houses 1 and 3 (the web byte golden regenerated; the parsed comparisons unchanged in kind). An old reader ignores them. |
+| 1.12 | 2026-09-30 | Claude (Code), lead | **`doorprints-backup/2` is written** (slice 1b of [11](../11-feature-parity-and-export-spec.md) 5.30, brokers): a `brokers` list after `photos` (new §3.4), `brokerId` on a house after `cost`, `counts.brokers`; a writer writes `/2` only when the copy has a broker and `/1` otherwise, and a copy made without contact details has neither. `backup-sample.json` is now a `/2` document with two brokers (the web byte golden regenerated, 2 928 bytes). |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -138,7 +139,7 @@ Doorprints-backup-<UTC date>.zip
 | Photo bytes | `photos/<id>.jpg` in the ZIP | `GET /api/photos/{id}`, uploaded with `POST /api/houses/{id}/photos` |
 
 `manifest.json` (device only) carries `format`, `app`, `appVersion`, `createdAt` (ISO-8601), `language`, `scope`,
-`includeRejected`, `photoScope`, `includeContacts`, `counts {houses, visits, photos}` and
+`includeRejected`, `photoScope`, `includeContacts`, `counts {houses, visits, photos}` (and `brokers` in a `/2` file) and
 `files[] {path, sizeBytes, sha256}`. The server has no options and no ZIP, so it writes no manifest; an importer
 must not require one when it is handed a bare `data.json`. Since 1.7 an **update file** (sharing updates,
 [11](../11-feature-parity-and-export-spec.md) 5.28) may add `sharedSince` (ISO-8601: only rows changed after it are
@@ -193,6 +194,16 @@ and the import are exactly a backup's, and a reader uses the two fields for its 
 `id` (UUID), `houseId` (UUID), `fileName` (`<photo id>.jpg`), `createdAt` (epoch milliseconds) — all always
 present. Photos are re-encoded to JPEG before they are stored, so the extension is fixed. The row carries **no
 bytes**: in a ZIP they are `photos/<fileName>`, on the server `GET /api/photos/{id}`.
+
+### 3.4 Broker (`/2`, slice 1b)
+
+A person who shows houses, kept once instead of on every house. `brokers` follows `photos` in `data.json`, present only in a
+`/2` file, ordered by `updatedAt` then `id`. Fields, in this order: `id` (string, the merge key), `name` (1..200, always),
+`phone` (≤50), `agency` (≤200), `feeTerms` (≤500, free text such as "15 days' rent, once"), `notes` (≤2000), `rating` (1..5),
+`updatedAt` (epoch milliseconds, always). A house names its broker with `brokerId` (after `cost`, before `checklist`); the id
+may dangle and then reads as no broker. Brokers merge by `id`, the newest `updatedAt` wins, and an import never deletes
+one. A copy made without contact details leaves out the list and every `brokerId` and is written as `/1`. On a device a
+broker is a record of type `broker` (slice 0) and on a self-hosted server a row of the `record` table.
 
 ## 4. Null semantics (NFR-025)
 

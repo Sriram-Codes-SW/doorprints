@@ -1,0 +1,133 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <p><a routerLink="/brokers">{{ 'brokers.back' | t }}</a></p>
+    <h1>{{ (isNew() ? 'brokers.new' : 'brokers.title1') | t }}</h1>
+  </header>
+
+  @if (error(); as card) {
+    <div class="error">
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else if (notFound()) {
+    <div class="card empty-state">
+      <p>{{ 'brokers.notFound' | t }}</p>
+      <a class="btn" routerLink="/brokers">{{ 'brokers.back' | t }}</a>
+    </div>
+  } @else {
+    <form class="card" (ngSubmit)="save()" novalidate>
+      <div class="field">
+        <label for="broker-name">{{ 'brokers.name' | t }}</label>
+        <input
+          id="broker-name"
+          name="name"
+          type="text"
+          [(ngModel)]="form.name"
+          [attr.maxlength]="max.name"
+          [attr.aria-invalid]="nameError() ? 'true' : null"
+          [attr.aria-describedby]="nameError() ? 'broker-name-error' : null"
+          autocomplete="off"
+        />
+        @if (nameError()) {
+          <p id="broker-name-error" class="field-error" role="alert">{{ 'brokers.nameRequired' | t }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="broker-phone">{{ 'brokers.phone' | t }}</label>
+        <div class="inline">
+          <input id="broker-phone" name="phone" type="tel" [(ngModel)]="form.phone" [attr.maxlength]="max.phone" autocomplete="off" />
+          @if (form.phone.trim()) {
+            <a class="btn" [href]="telHref(form.phone)" [attr.aria-label]="'house.callAria' | t: { phone: form.phone }">
+              <span aria-hidden="true">📞</span> {{ 'house.call' | t }}
+            </a>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label for="broker-agency">{{ 'brokers.agency' | t }}</label>
+        <input id="broker-agency" name="agency" type="text" [(ngModel)]="form.agency" [attr.maxlength]="max.agency" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="broker-fee">{{ 'brokers.feeTerms' | t }}</label>
+        <input id="broker-fee" name="feeTerms" type="text" [(ngModel)]="form.feeTerms" [attr.maxlength]="max.feeTerms" autocomplete="off" />
+        <p class="field-hint">{{ 'brokers.feeHint' | t }}</p>
+      </div>
+      <fieldset>
+        <legend>{{ 'brokers.rating' | t }}</legend>
+        <div class="options stars">
+          @for (n of starValues; track n) {
+            <label class="option" [class.lit]="(form.rating ?? 0) >= n">
+              <input type="radio" name="rating" [value]="n" [checked]="form.rating === n" (change)="setRating(n)" />
+              <span>
+                <span aria-hidden="true">{{ (form.rating ?? 0) >= n ? '★' : '☆' }}</span>
+                <span class="sr-only">{{ 'common.stars' | t: { n: n } }}</span>
+              </span>
+            </label>
+          }
+        </div>
+        @if (form.rating) {
+          <button type="button" class="btn btn-sm" (click)="setRating(null)">{{ 'house.clearRating' | t }}</button>
+        }
+      </fieldset>
+      <div class="field">
+        <label for="broker-notes">{{ 'brokers.notes' | t }}</label>
+        <textarea id="broker-notes" name="notes" rows="4" [(ngModel)]="form.notes" [attr.maxlength]="max.notes"></textarea>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'brokers.save' | t }}</button>
+      </div>
+    </form>
+
+    @if (!isNew()) {
+      <section class="card" aria-labelledby="broker-houses-heading">
+        <h2 id="broker-houses-heading">{{ 'brokers.housesHeading' | t }}</h2>
+        @if (houses().length === 0) {
+          <p class="muted">{{ 'brokers.noHouses' | t }}</p>
+        } @else {
+          <ul class="list">
+            @for (h of houses(); track h.id) {
+              <li>
+                <a [routerLink]="['/houses', h.id]">{{ h.label || ('common.untitled' | t) }}</a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="card danger" aria-labelledby="broker-delete-heading">
+        <h2 id="broker-delete-heading">{{ 'brokers.delete' | t }}</h2>
+        <p class="muted">{{ 'brokers.deleteHint' | t }}</p>
+        <button type="button" class="btn btn-danger" (click)="remove()">{{ 'brokers.delete' | t }}</button>
+      </section>
+    }
+  }
+</div>

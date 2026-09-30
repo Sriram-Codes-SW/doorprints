@@ -27,6 +27,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
+import app.doorprints.shared.records.RecordRules
 
 // Room entity <-> the platform-neutral export model (Sprint 4a, S4-02/S4-04; common code since CMP-4 P4c). The
 // export model is deliberately *not* the API DTO: a backup is a copy of the local store, so it keeps epoch
@@ -37,7 +38,7 @@ fun HouseEntity.toExport() = ExportHouse(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(),
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), brokerId = brokerId,
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
 )
 
@@ -52,7 +53,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     notes = notes,
     // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    cost = cost?.coerced(), brokerId = brokerId?.takeIf(RecordRules::isValidId), checklist = checklist,
+    createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )
 
@@ -83,4 +85,5 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     houses.map { it.toExport() },
     visits.map { it.toExport() },
     photos.map { it.toExport() },
+    brokers,
 )

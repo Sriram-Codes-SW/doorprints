@@ -46,7 +46,7 @@ import java.io.File
 import java.math.BigDecimal
 
 /**
- * Android's half of the `doorprints-backup/1` contract, checked against the one file all three implementations
+ * Android's half of the `doorprints-backup/1` and `/2` contract (the sample is a `/2` document since slice 1b), checked against the one file all three implementations
  * answer to: `docs/schemas/backup-sample.json` (docs/schemas/README.md section 8.1, ticket S4-00/a).
  *
  * This is a **parsed-JSON** comparison, not a byte golden, and it has to be: the sample is written the way a browser
@@ -73,7 +73,10 @@ class CanonicalSampleTest {
     fun theKotlinReaderAcceptsTheCanonicalSample() {
         val data = BackupFormat.json.decodeFromString(BackupData.serializer(), sampleText)
         assertNull(BackupValidation.checkData(data))
-        assertEquals(listOf(3, 3, 2), listOf(data.houses.size, data.visits.size, data.photos.size))
+        assertEquals(listOf(3, 3, 2, 2), listOf(data.houses.size, data.visits.size, data.photos.size, data.brokerRows.size))
+        // Slice 1b: houses 1 and 3 name a broker of the file, and the sample is a `/2` document.
+        assertEquals("doorprints-backup/2", data.format)
+        assertEquals(listOf("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", null, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), data.houses.map { it.brokerId })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
@@ -88,6 +91,7 @@ class CanonicalSampleTest {
             },
             visits = sample.visits.reversed(),
             photos = sample.photos.reversed(),
+            brokers = sample.brokerRows.reversed(),
         )
         // The fixture has to tell the two ordering rules apart, or this test pins nothing.
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
@@ -119,6 +123,7 @@ class CanonicalSampleTest {
             )
             assertEquals(3, preview.newHouses)
             assertEquals(3, preview.newVisits)
+            assertEquals(2, preview.newBrokers)
             assertEquals(0, preview.newPhotos)
             assertEquals(2, preview.photosMissingFromFile)
         }

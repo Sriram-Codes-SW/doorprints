@@ -58,6 +58,9 @@ data class HouseEntity(
     val areaSqft: Int? = null,
     val locationSource: String? = null,
     @Embedded(prefix = "cost_") val cost: HouseCost? = null,
+    // The broker's record id (slice 1b, Room version 6): no foreign key, a dangling id reads as no broker. The
+    // contact fields stay as copies of the broker's name and phone (`CommonRepository.saveHouse`).
+    val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     override val updatedAt: Long,

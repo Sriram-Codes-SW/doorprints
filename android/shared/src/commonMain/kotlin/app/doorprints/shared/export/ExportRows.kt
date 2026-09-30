@@ -68,9 +68,10 @@ data class ExportTable(
  */
 object ExportRows {
 
-    /** The four tables of a copy, in file order. */
+    /** The tables of a copy, in file order: the four, and `brokers` last when the copy has brokers (slice 1b). */
     fun tables(bundle: ExportBundle): List<ExportTable> =
-        listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle))
+        listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
+            listOfNotNull(if (bundle.brokers.isEmpty()) null else brokers(bundle))
 
     fun houses(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
@@ -79,7 +80,9 @@ object ExportRows {
             add(s["col.price"]); add(s["col.priceType"]); add(s["col.bedrooms"]); add(s["col.rating"])
             add(s["col.address"]); add(s["col.street"]); add(s["col.locality"])
             add(s["col.lat"]); add(s["col.lon"])
-            if (bundle.options.includeContacts) { add(s["col.contactName"]); add(s["col.contactPhone"]) }
+            if (bundle.options.includeContacts) {
+                add(s["col.contactName"]); add(s["col.contactPhone"]); add(s["col.broker"])
+            }
             add(s["col.listingUrl"]); add(s["col.notes"])
             addAll(COST_COLUMN_KEYS.map { s[it] })
             add(s["col.visits"]); add(s["col.photos"])
@@ -97,7 +100,9 @@ object ExportRows {
                 add(h.rating?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
                 add(text(h.address)); add(text(h.street)); add(text(h.locality))
                 add(Cell.Num(h.lat, 6)); add(Cell.Num(h.lon, 6))
-                if (bundle.options.includeContacts) { add(text(h.contactName)); add(text(h.contactPhone)) }
+                if (bundle.options.includeContacts) {
+                    add(text(h.contactName)); add(text(h.contactPhone)); add(text(bundle.brokerOf(h)?.label))
+                }
                 add(text(h.listingUrl)); add(text(h.notes))
                 addAll(costCells(h, s))
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
@@ -152,6 +157,22 @@ object ExportRows {
             )
         }
         return ExportTable("visits", s["table.visits"], columns, rows)
+    }
+
+    /** The brokers (slice 1b): one row each, with the count of the copy's houses that name it. */
+    fun brokers(bundle: ExportBundle): ExportTable {
+        val s = bundle.strings
+        val columns = listOf(
+            s["col.name"], s["col.phone"], s["col.agency"], s["col.feeTerms"], s["col.notes"], s["col.rating"],
+            s["col.houses"], s["col.id"],
+        )
+        val rows = bundle.brokers.map { b ->
+            listOf(
+                Cell.Text(b.name), text(b.phone), text(b.agency), text(b.feeTerms), text(b.notes), count(b.rating),
+                Cell.Count(bundle.housesOf(b).size.toLong()), Cell.Text(b.id),
+            )
+        }
+        return ExportTable("brokers", s["table.brokers"], columns, rows)
     }
 
     fun photos(bundle: ExportBundle): ExportTable {
@@ -222,6 +243,23 @@ object ExportRows {
             summary.moveIn?.takeIf { it != h.price }?.let { add(s["col.moveIn"] to rupees(it)) }
             // Whole rupees here, as the web's page writes it; the table keeps the decimal.
             summary.perSqFt?.let { add(s["col.perSqFt"] to rupees(floor(it + 0.5).toLong())) }
+        }
+    }
+
+    /**
+     * The lines of a broker in the **Brokers** section of the readable copies (HTML, PDF, Markdown): a line per set
+     * field, then the houses of the copy that name it (their labels, in the copy's order).
+     */
+    fun brokerLines(b: ExportBroker, bundle: ExportBundle): List<Pair<String, String>> {
+        val s = bundle.strings
+        val houses = bundle.housesOf(b).joinToString(", ") { it.label }
+        return buildList {
+            if (!b.phone.isNullOrEmpty()) add(s["col.phone"] to b.phone)
+            if (!b.agency.isNullOrEmpty()) add(s["col.agency"] to b.agency)
+            if (!b.feeTerms.isNullOrEmpty()) add(s["col.feeTerms"] to b.feeTerms)
+            b.rating?.let { add(s["col.rating"] to it.toString()) }
+            if (!b.notes.isNullOrEmpty()) add(s["col.notes"] to b.notes)
+            if (houses.isNotEmpty()) add(s["col.houses"] to houses)
         }
     }
 

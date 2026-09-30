@@ -26,7 +26,9 @@ import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.ImportActions
+import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ImportMode
+import app.doorprints.shared.model.Broker
 import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.flow.Flow
@@ -104,6 +106,25 @@ interface Repository {
 
     /** Turns the record into a tombstone with `{}` as its payload; nothing when there is no such live record. */
     suspend fun deleteRecord(type: RecordType<*>, id: String)
+
+    // Brokers (docs/11 5.25, slice 1b): records of type `broker`, and the copies of their name and phone that a linked
+    // house keeps in `contactName` / `contactPhone` so old apps, the AI redaction, the exports and the search work on.
+
+    /** The live brokers as id to value, by name (case ignored); a row that does not decode or is invalid is left out. */
+    fun observeBrokers(): Flow<List<Pair<String, Broker>>>
+
+    /**
+     * Creates the broker (a new UUID when [id] is null) or updates it, and returns its id. Every live house of it gets
+     * `contactName` / `contactPhone` rewritten from it when they differ (dirty, `updatedAt` now). Throws
+     * `IllegalArgumentException` for a blank or oversized name.
+     */
+    suspend fun saveBroker(broker: Broker, id: String? = null): String
+
+    /** Turns the broker into a tombstone; each of its houses gets `brokerId = null` (dirty) and keeps its contact copies. */
+    suspend fun deleteBroker(id: String)
+
+    /** The live houses that name the broker, newest edit first: the broker's page. */
+    fun brokerHouses(id: String): Flow<List<HouseEntity>>
 
     suspend fun testConnection(): Result<StatsDto>
 
@@ -195,6 +216,8 @@ interface Repository {
         val houses: List<HouseEntity>,
         val visits: List<VisitEntity>,
         val photos: List<PhotoEntity>,
+        /** The live brokers (slice 1b); an export writes them only for a copy with contact details. */
+        val brokers: List<ExportBroker> = emptyList(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -225,6 +248,8 @@ interface Repository {
          * of that house are live under their old ids (Android review, round 13).
          */
         val syncedDeletedHouseIds: Set<String> = emptySet(),
+        /** Every broker record here, deleted ones too, with its `updatedAt`: an import merges brokers by id (slice 1b). */
+        val brokers: Map<String, Long> = emptyMap(),
     )
 
     /** What an import actually managed to write. */
@@ -254,9 +279,11 @@ interface Repository {
         val copiedHouses: Map<String, Long> = emptyMap(),
         val copiedVisits: Map<String, Long> = emptyMap(),
         val copiedPhotos: List<String> = emptyList(),
+        /** Brokers written (slice 1b), new and updated together. */
+        val brokers: Int = 0,
     ) {
         /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos
+        val rows: Int get() = houses + visits + photos + brokers
     }
 
     /**

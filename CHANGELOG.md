@@ -127,6 +127,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Brokers** ([spec](docs/11-feature-parity-and-export-spec.md) 5.25, slice 1b of 5.30): the people who show you houses are kept
+  once instead of on every house. Saving a house with a phone number links the broker with that number or adds them, and
+  the contacts you had saved were gathered the same way, one broker per number. **Brokers** (Settings) lists them; a
+  broker's page holds their agency, fee terms, notes and rating, a *Call* button and the houses they showed you, and a house
+  has a *Broker* section. Search finds a house by its broker. Backups and readable copies carry the brokers (a backup with
+  brokers is written as `doorprints-backup/2`; one without them is unchanged), and a copy made without contact details
+  leaves them out. Brokers are never sent to AI.
 - **The real cost of a house** ([spec](docs/11-feature-parity-and-export-spec.md) 5.21, slice 1a of 5.30): a house
   keeps its deposit (in rupees or months), maintenance and whether the rent includes it, brokerage, lock-in and notice
   periods, the date it is available from, your offer and the agreed price, and its carpet area; the form shows the
