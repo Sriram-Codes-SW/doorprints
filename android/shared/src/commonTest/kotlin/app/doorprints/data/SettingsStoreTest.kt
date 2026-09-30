@@ -82,6 +82,16 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun theViewingRemindersQuestionHasItsOwnAskedFlag() = runTest {
+        // S4b-BL-93f: asking from Export or Import does not count as asking for the reminders, nor the reverse.
+        store.setNotificationsAsked()
+        assertFalse(store.viewingsNotificationsAsked.first())
+        store.setViewingsNotificationsAsked()
+        assertTrue(store.viewingsNotificationsAsked.first())
+        assertEquals(true, raw()["viewings.notificationsAsked"])
+    }
+
+    @Test
     fun viewingRemindersStartOnAndAreKeptUnderTheWebKey() = runTest {
         // docs/11 5.8, slice 3b-2: on until the person turns them off; `viewings.remind`, the web's SETTING_KEYS key.
         assertTrue(store.viewingsRemind().first())

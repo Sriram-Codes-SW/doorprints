@@ -124,6 +124,9 @@ object Notifications {
 
     const val EXTRA_OPEN_HOUSE = "openHouse"
 
+    /** With [EXTRA_OPEN_HOUSE], true: the house opens scrolled to its questions (a reminder's *Questions*, S4b-BL-93b). */
+    const val EXTRA_OPEN_QUESTIONS = "openQuestions"
+
     /**
      * Which screen a notification opens; only the values in [SCREENS] are accepted (threat model F-25). They are the
      * common root's routes ([Routes], `:ui`), which MainActivity hands over as they are.
@@ -297,7 +300,7 @@ object Notifications {
      * viewing and [house] (null: a house that is gone): "Viewing at Green View in 25 min" (or, more than two hours
      * ahead, "Viewing at Green View" with the start below). Never `withWhom`, which is contact data. Actions: *Open
      * house*, *Directions* (a `geo:` link, only for a house whose position is not approximate) and *Questions* (the
-     * house too: the house screen does not scroll to its questions yet). Private on a locked screen. Every
+     * house, scrolled to its questions; [EXTRA_OPEN_QUESTIONS]). Private on a locked screen. Every
      * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
      */
     fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
@@ -334,7 +337,10 @@ object Notifications {
                     }
                     addAction(
                         0, context.getString(R.string.notif_viewing_questions),
-                        openAppIntent(context, ("questions:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, house.id) },
+                        openAppIntent(context, ("questions:" + viewing.id).hashCode()) {
+                            putExtra(EXTRA_OPEN_HOUSE, house.id)
+                            putExtra(EXTRA_OPEN_QUESTIONS, true)
+                        },
                     )
                 }
             }

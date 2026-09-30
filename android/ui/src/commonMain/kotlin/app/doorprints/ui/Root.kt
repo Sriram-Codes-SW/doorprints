@@ -64,7 +64,8 @@ import org.jetbrains.compose.resources.stringResource
  * and the screens in [Routes.NOTIFICATION_SCREENS]; threat model F-25) and hands [DoorprintsRoot] one of these.
  */
 sealed interface DeepLink {
-    data class OpenHouse(val id: String) : DeepLink
+    /** A house's form; [questions]: scrolled to its questions (a viewing reminder's *Questions*, S4b-BL-93b). */
+    data class OpenHouse(val id: String, val questions: Boolean = false) : DeepLink
     data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
 
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
@@ -270,6 +271,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         var huntRequested by remember { mutableStateOf(false) }
         // An iPhone reminder or area tap, waiting for the Map to offer Hunt mode (S4b-BL-94c).
         var huntOffered by remember { mutableStateOf(false) }
+        // A reminder's *Questions*: the house whose form scrolls to its questions once it is open (S4b-BL-93b).
+        var questionsFor by remember { mutableStateOf<String?>(null) }
         // A deep link to the Map shows the Map itself (S4b-BL-94a): whatever was open over it is closed, where
         // openTab would bring back the sub-screen the Map's stack had.
         fun NavController.openMapFresh() = navigate("map") {
@@ -290,7 +293,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 if (!onTop(Routes.HOUSE, "id", id)) nav.navigate(Routes.house(id))
             }
             when (val d = deepLink) {
-                is DeepLink.OpenHouse -> openHouse(d.id)
+                is DeepLink.OpenHouse -> {
+                    if (d.questions) questionsFor = d.id
+                    openHouse(d.id)
+                }
                 is DeepLink.NewHouse -> {
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
@@ -621,9 +627,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 ) { entry ->
                     val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
                         .collectAsStateWithLifecycle()
+                    val houseId = entry.arguments?.read { getStringOrNull("id") }
                     HouseEditScreen(
-                        houseId = entry.arguments?.read { getStringOrNull("id") },
+                        houseId = houseId,
                         newLat = null, newLon = null, visitId = null,
+                        showQuestions = houseId != null && questionsFor == houseId,
+                        onQuestionsShown = { questionsFor = null },
                         onDone = dropUnlessResumed { nav.popBackStack() },
                         // The house's Viewings card (slice 3b-1): plan one here, or see this house's history.
                         onPlanViewing = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },

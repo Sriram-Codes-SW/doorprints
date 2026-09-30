@@ -22,6 +22,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -125,6 +127,25 @@ class RootNavigationTest {
         assertEquals(2, handled)
         back()
         shows(MAP)
+    }
+
+    @Test
+    fun aRemindersQuestionsActionOpensTheHouseAtItsQuestions() {
+        // S4b-BL-93b: the house form opens scrolled to "Questions to ask"; a plain house link opens it at the top.
+        val id = "0b8f6a52-3c1e-4d7a-9f4e-2a6c5d1b7e91"
+        runBlocking {
+            val at = 1_760_000_000_000
+            ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+                .saveHouse(HouseEntity(id = id, label = "Green View", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at))
+        }
+        start(DeepLink.OpenHouse(id))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("House details").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Questions to ask").assertIsNotDisplayed()
+        back()
+        links.value = DeepLink.OpenHouse(id, questions = true)
+        compose.waitForIdle()
+        compose.waitUntil(5_000) { runCatching { compose.onNodeWithText("Questions to ask").assertIsDisplayed() }.isSuccess }
+        assertEquals(2, handled)
     }
 
     @Test

@@ -226,6 +226,8 @@ class SettingsStore(
         val lengthUnit = stringPreferencesKey("units.length")
         /** Viewing reminders on this device (slice 3b-2): the web's `SETTING_KEYS.viewingsRemind`, not synced. */
         val viewingsRemind = booleanPreferencesKey("viewings.remind")
+        /** True once the viewing form has asked for notifications for its reminders (S4b-BL-93f), apart from [notificationsAsked]. */
+        val viewingsNotificationsAsked = booleanPreferencesKey("viewings.notificationsAsked")
         /** The Hunt mode reminder on this device (slice 3c): *Offer Hunt mode before viewings* and its lead time, not synced. */
         val huntRemind = booleanPreferencesKey("hunt.remind")
         val huntReminderMin = intPreferencesKey("hunt.reminderMin")
@@ -397,6 +399,14 @@ class SettingsStore(
     val notificationsAsked: Flow<Boolean> = dataStore.data.map { it[Keys.notificationsAsked] ?: false }
 
     suspend fun setNotificationsAsked() = dataStore.edit { it[Keys.notificationsAsked] = true }
+
+    /**
+     * Whether the viewing form has asked for notifications for its reminders (S4b-BL-93f): its own flag, so a "Not now"
+     * to a copy's question does not keep the reminders' question from being asked, nor the reverse.
+     */
+    val viewingsNotificationsAsked: Flow<Boolean> = dataStore.data.map { it[Keys.viewingsNotificationsAsked] ?: false }
+
+    suspend fun setViewingsNotificationsAsked() = dataStore.edit { it[Keys.viewingsNotificationsAsked] = true }
 
     /** Moves a plaintext key from v0.1 into the encrypted slot. Safe to call on every start. */
     suspend fun migrateLegacyKey() {

@@ -22,6 +22,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -47,6 +49,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -135,6 +138,9 @@ private const val FOCUS_THUMB = "thumb:"
 
 /** How long "Use my current location" waits for a fix. */
 private const val LOCATION_TIMEOUT_MS = 15_000L
+
+/** How far below the questions heading a reminder's *Questions* brings into view: more than any screen is tall. */
+private const val QUESTIONS_VIEW_PX = 10_000f
 
 /** How the form leaves once its write is done (see the KDoc's "One exit"). */
 private sealed interface FormExit {
@@ -334,6 +340,9 @@ fun HouseEditScreen(
     onOpenViewings: (houseId: String) -> Unit = {},
     /** *Save a copy* after *Close this hunt* (slice 5): the Export screen. */
     onSaveCopy: () -> Unit = {},
+    /** A reminder's *Questions* action (S4b-BL-93b): the form opens scrolled to its questions, once. */
+    showQuestions: Boolean = false,
+    onQuestionsShown: () -> Unit = {},
 ) {
     val platform = LocalPlatformServices.current
     val services = LocalAppServices.current
@@ -590,6 +599,15 @@ fun HouseEditScreen(
         }
         withFrameNanos { }
         focusTarget = null
+    }
+    // A reminder's *Questions* (S4b-BL-93b): once the form is drawn, its questions heading goes to the top of the
+    // screen (a box taller than the screen from the heading down, so the questions show under it, not the fields above).
+    val questionsView = remember { BringIntoViewRequester() }
+    LaunchedEffect(showQuestions, draft != null) {
+        if (!showQuestions || draft == null) return@LaunchedEffect
+        withFrameNanos { }
+        questionsView.bringIntoView(Rect(0f, 0f, 1f, QUESTIONS_VIEW_PX))
+        onQuestionsShown()
     }
     val undoLabel = stringResource(Res.string.common_undo)
     // A delete still waiting for its snackbar is carried out now (before another photo is added or deleted).
@@ -956,7 +974,9 @@ fun HouseEditScreen(
                 RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
 
                 // The questions to ask at the viewing (docs/11 5.5, slice 3a), after the rooms.
-                QuestionsSection(d.answers, questionBank, d.priceType, d.cost) { answers -> update { it.copy(answers = answers) } }
+                QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView)) { answers ->
+                    update { it.copy(answers = answers) }
+                }
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
                     label = { Text(stringResource(Res.string.house_address)) },
