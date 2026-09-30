@@ -36,6 +36,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.*
 import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
+import app.doorprints.shared.records.RecordRules
 import app.doorprints.R
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.labelRes
@@ -135,6 +136,10 @@ class HuntService : LifecycleService(), HuntEffects {
         // Started from a Hunt mode reminder's *Start Hunt mode* (slice 3c): that reminder has done its job.
         intent?.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
+        }
+        // Or from an area wake-up's (slice 4b).
+        intent?.getStringExtra(Notifications.EXTRA_START_HUNT_AREA)?.takeIf(RecordRules::isValidId)?.let {
+            NotificationManagerCompat.from(this).cancel(Notifications.areaTag(it), Notifications.AREA_WAKEUP_ID)
         }
         return START_STICKY
     }
