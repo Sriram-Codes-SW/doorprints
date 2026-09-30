@@ -76,6 +76,13 @@
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/json" />
             </intent-filter>
+            <!-- A listing shared as text from a portal's app or a browser (docs/11 5.29, 5.9: "Add a shared listing").
+                 The text is parsed on the device; the listing page is never fetched. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- The launcher entry. Its name is the activity's class name from before the package rename of 2026-09-24,

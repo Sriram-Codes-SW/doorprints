@@ -681,4 +681,11 @@
     <string name="share_preparing">கோப்பு தயாராகிறது…</string>
     <string name="share_failed">கோப்பை உருவாக்க முடியவில்லை. மீண்டும் முயலவும்.</string>
     <string name="import_updates_for">%1$s-க்கான புதுப்பிப்புகள், %2$s அன்று உருவாக்கியது</string>
+    <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
+    <string name="map_add_tip_listing">இந்த வீடு எங்கே? அங்கே இருந்தால் ‘இங்கே வீட்டைச் சேமி’ என்பதைத் தட்டவும், அல்லது வரைபடத்தில் அந்த இடத்தை நீண்ட நேரம் அழுத்தவும்; பிறகு பட்டியல் படிவத்தை நிரப்பும்.</string>
+    <string name="map_add_tip_listing_a11y">இந்த வீடு எங்கே? அங்கே இருக்கும்போது ‘இங்கே வீட்டைச் சேமி’ என்பதைத் தட்டவும்; பிறகு பட்டியல் படிவத்தை நிரப்பும்.</string>
+    <string name="house_dup_title">இந்தப் பட்டியலை %1$s அன்று சேமித்தீர்கள்</string>
+    <string name="house_dup_text">‘%1$s’-க்கு இதே இணைப்பு உள்ளது. அதைத் திறக்கவா, அல்லது பட்டியலைப் புதிய வீடாக மீண்டும் சேர்க்கவா?</string>
+    <string name="house_dup_open">திற</string>
+    <string name="house_dup_add">எப்படியும் சேர்</string>
 </resources>

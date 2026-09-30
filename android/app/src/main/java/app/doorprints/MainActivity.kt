@@ -27,6 +27,7 @@ import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.AppLockHost
+import app.doorprints.shared.listing.ListingText
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
 import app.doorprints.ui.ProvideAppServices
@@ -101,8 +102,16 @@ class MainActivity : ComponentActivity() {
         }
         if (intent.action == Intent.ACTION_SEND) {
             @Suppress("DEPRECATION")
-            val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM) ?: return null
-            return stream.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+            val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+            if (stream != null) {
+                return stream.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+            }
+            // A listing shared as text (docs/11 5.29, *Add a shared listing*): untrusted text, capped (SEC-043),
+            // parsed on the device; the subject line, when the sender gives one, goes first as the listing's title.
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() } ?: return null
+            val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)?.trim()?.takeIf { it.isNotEmpty() && it !in text }
+            val whole = (if (subject != null) "$subject\n$text" else text).take(ListingText.MAX_CHARS)
+            return DeepLink.NewHouseFromListing(whole)
         }
         intent.getStringExtra(Notifications.EXTRA_OPEN_SCREEN)?.let {
             // A fixed allow-list, never a route taken from the extra as-is.

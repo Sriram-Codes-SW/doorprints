@@ -79,6 +79,7 @@ import app.doorprints.data.PhotoEntity
 import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.listing.ListingText
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
 import kotlinx.coroutines.CoroutineScope
@@ -268,6 +269,9 @@ fun HouseEditScreen(
     newLon: Double?,
     visitId: String?,
     onDone: () -> Unit,
+    /** A shared listing's text (docs/11 5.29), parsed into a fresh form once; [onListingConsumed] then clears it. */
+    listingText: String? = null,
+    onListingConsumed: () -> Unit = {},
     onOpenHouses: () -> Unit = onDone,
     onCreated: (String) -> Unit = { onDone() },
     onDeleted: (String) -> Unit = { onDone() },
@@ -392,6 +396,18 @@ fun HouseEditScreen(
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
     var showPaste by rememberSaveable { mutableStateOf(false) }
     var pasteMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    // A shared listing (docs/11 5.29): the no-AI parser fills the fresh form once; the summary says what it did. The
+    // text is cleared by the caller as soon as it is taken, so a recreated screen does not fill the form again.
+    LaunchedEffect(listingText) {
+        val text = listingText ?: return@LaunchedEffect
+        if (!isNew) return@LaunchedEffect
+        val current = draft ?: return@LaunchedEffect
+        onListingConsumed()
+        val parsed = ListingText.parse(text)
+        val merged = mergeListing(current, parsed, labelIsPlaceholder = current.label == defaultLabel)
+        draft = merged.house
+        pasteMessage = pasteResultText(merged, parsed.warnings)
+    }
     // The last photo that could not be added (limit or unreadable), shown under the photo buttons until closed.
     var photoProblem by rememberSaveable { mutableStateOf<Repository.AddPhotoResult?>(null) }
     var addingPhoto by remember { mutableStateOf(false) }

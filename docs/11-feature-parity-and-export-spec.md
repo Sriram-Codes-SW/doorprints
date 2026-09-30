@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.31 |
+| Version | 0.32 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -43,6 +43,7 @@
 | 0.29 | 2026-09-30 | Claude (Code), lead | New **5.28**, the design of sharing updates between two people who know each other (S4b-FR-3): an update file in the backup format, sent through any app, imported with the existing merge; the Drive folder of D-28 later as the automatic channel. New US-40. |
 | 0.30 | 2026-09-30 | Claude (Code), lead | 5.28 **built on Android** (S4b-FR-3): *Share updates with…* from Settings > Your data, the update file, a received file opening in the Import screen. |
 | 0.31 | 2026-09-30 | Claude (Code), lead | New **5.29**, the design of a house from a listing link (S4b-FR-4) with brokers (S4b-FR-11): the portal's share text parsed on the device, never the page (5.9 stands); brokers as the data-model change of (4c). New US-41. |
+| 0.32 | 2026-09-30 | Claude (Code), lead | 5.29 **built** (S4b-FR-4, the listing flow): the no-AI parser on Android and the web with one fixture file, the Android share receiver, the map step, the duplicate check. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -710,6 +711,21 @@ key, or the server) stays as the optional second pass over the same text.
 share handler on the web, the AI fill's merge and summary on both apps, the photo picker. What it costs: only what the
 portal's share text says fills in (usually the price, BHK and locality; no photos); brokers wait for the data-model
 change.
+
+**Built (2026-09-30, [10](10-sprint-log.md) §13.17).** `ListingText.parse` (`:shared`) and `parseListingText`
+(`web/src/app/shared/listing-text.ts`), both over `docs/schemas/listing-fixtures.json` (seven share texts in the
+portals' shapes, hand-written; `ListingFixturesTest`, `listing-text.spec.ts`): the label from the first line, the
+price (₹ or Rs with k, lakh or crore, or a bare lakh or crore amount; ten lakh and above without rent words is a
+sale), RENT or SALE from the words, BHK or a studio, the locality before a city name, the area and the furnishing at
+the top of the notes with the whole text under them, the first link with `utm_*`, `fbclid` and `gclid` removed, the
+portal from a host allowlist, a phone number only from the text; on Android through `DraftSanitizer`. Android:
+MainActivity takes `ACTION_SEND` `text/plain` (the subject first, the text capped at 20,000 characters) as
+`DeepLink.NewHouseFromListing`; a house with the same cleaned link asks "You saved this listing on 12 Sep" with
+*Open* or *Add anyway*; else the Map opens with "Where is this house?" and the new-house form takes the parsed draft
+through the same merge and summary as *Fill in from listing text*. Web: the share page's text reaches the new-house
+page as before and the parser fills the fields on arrival, the AI fill staying the second pass. Tests
+[06](06-test-plan.md) TC-U-97; on a phone TC-M-34 (owner). The label-within-100 m duplicate and the locality lookup
+(S4b-BL-83) are not built.
 
 **Order of work.** (1) The parser with its fixtures, the Android share receiver, the web share page's parser, the
 duplicate check, the map step (one change). (2) S4b-BL-83, the locality lookup. (3) Brokers with (4c).
