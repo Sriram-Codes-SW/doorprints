@@ -21,7 +21,6 @@ name: Web
 
 on:
   pull_request:
-    branches: [main]
     paths-ignore: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
 
 permissions: {}
