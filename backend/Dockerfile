@@ -24,6 +24,9 @@ RUN mvn -q -B package -DskipTests
 
 FROM eclipse-temurin:25-jre
 WORKDIR /app
+# Take the distribution's security fixes that are newer than the base image (Trivy's HIGH gate, TC-S-05, failed on an
+# OpenSSL fix published the day before the image was rebuilt); the lists are removed again so the layer stays small.
+RUN apt-get update && apt-get -y --no-install-recommends upgrade && rm -rf /var/lib/apt/lists/*
 # Run as an unprivileged user (threat model F-23). Fixed UID so volume permissions are predictable.
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app
