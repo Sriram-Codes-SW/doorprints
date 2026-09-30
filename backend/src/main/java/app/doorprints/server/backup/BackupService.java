@@ -145,7 +145,10 @@ public class BackupService {
     public BackupData export() {
         return BackupMapper.toBackup(houses.findByDeletedFalseOrderByUpdatedAtDesc(),
                 visits.findByDeletedFalseOrderByArrivedAtDesc(), photos.findAllLiveMetadata(),
-                records.findByKeyTypeAndDeletedFalse(BackupBroker.TYPE), json, clock.now());
+                records.findByKeyTypeAndDeletedFalse(BackupBroker.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupCriterion.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupPreference.TYPE),
+                json, clock.now());
     }
 
     /**
@@ -195,12 +198,22 @@ public class BackupService {
         var liveBrokers = new long[]{records.countByKeyTypeAndDeletedFalse(BackupBroker.TYPE)};
         for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
 
+        // Criteria and preferences (slice 2) merge after brokers.
+        var liveCriteria = new long[]{records.countByKeyTypeAndDeletedFalse(BackupCriterion.TYPE)};
+        var criterionTally = new Tally();
+        for (var row : data.criteria()) criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems));
+
+        var livePreferences = new long[]{records.countByKeyTypeAndDeletedFalse(BackupPreference.TYPE)};
+        var preferenceTally = new Tally();
+        for (var row : data.preferences()) preferenceTally.count(mergePreference(row, dryRun, livePreferences, rowProblems));
+
         publishChanges(changedHouses, fileNotes, dryRun);
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
         var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
-                photoTally.toEntity(), brokerTally.toEntity(), List.copyOf(reported));
+                photoTally.toEntity(), brokerTally.toEntity(), criterionTally.toEntity(), preferenceTally.toEntity(),
+                List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
                     report.houses(), report.visits());
@@ -348,6 +361,67 @@ public class BackupService {
         return outcome;
     }
 
+    private Outcome mergeCriterion(BackupCriterion row, boolean dryRun, long[] liveCount, List<String> problems) {
+        var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "criteria.updatedAt");
+        var key = new RecordKey(BackupCriterion.TYPE, row.key());
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        var becomesLive = existing == null || existing.isDeleted();
+        if (becomesLive) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("criterion " + row.key() + ": skipped, this server holds the most criteria it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+
+        var payload = json.createObjectNode();
+        payload.put("weight", row.weight());
+        payload.put("mustHave", row.mustHave());
+        payload.put("minScore", row.minScore());
+        if (row.sort() != null) payload.put("sort", row.sort());
+        if (row.label() != null) payload.put("label", row.label());
+        if (row.archived() != null && row.archived()) payload.put("archived", true);
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payload.toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
+        return outcome;
+    }
+
+    private Outcome mergePreference(BackupPreference row, boolean dryRun, long[] liveCount, List<String> problems) {
+        var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "preferences.updatedAt");
+        var key = new RecordKey(BackupPreference.TYPE, row.key());
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        var becomesLive = existing == null || existing.isDeleted();
+        if (becomesLive) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("preference " + row.key() + ": skipped, this server holds the most preferences it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+
+        var payload = json.createObjectNode();
+        payload.put("value", row.value());
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payload.toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
+        return outcome;
+    }
+
     private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
         var existing = visits.findById(row.id()).orElse(null);
@@ -400,6 +474,8 @@ public class BackupService {
         validateVisits(data.visits(), problems);
         validatePhotos(data.photos(), problems);
         validateBrokers(data.brokers(), problems);
+        validateCriteria(data.criteria(), problems);
+        validatePreferences(data.preferences(), problems);
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
@@ -530,6 +606,75 @@ public class BackupService {
             maxLength(at + ".notes", row.notes(), BackupBroker.MAX_NOTES, problems);
             require(row.rating() == null || (row.rating() >= 1 && row.rating() <= 5), at + ".rating must be 1..5",
                     problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+    }
+
+    private void validateCriteria(List<BackupCriterion> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
+                "maintenance", "neighbourhood", "commute");
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "criteria[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            // Key validation
+            if (row.key() == null) {
+                problems.add(at + ".key is required");
+            } else if (!row.key().matches("[A-Za-z0-9._-]{1,64}")) {
+                problems.add(at + ".key does not match pattern [A-Za-z0-9._-]{1,64}");
+            } else if (!seen.add(row.key())) {
+                problems.add(at + ".key " + row.key() + " appears twice");
+            }
+            // Weight validation
+            require(row.weight() != null && row.weight() >= BackupCriterion.MIN_WEIGHT
+                    && row.weight() <= BackupCriterion.MAX_WEIGHT,
+                    at + ".weight must be " + BackupCriterion.MIN_WEIGHT + ".." + BackupCriterion.MAX_WEIGHT, problems);
+            // MinScore validation
+            require(row.minScore() != null && row.minScore() >= BackupCriterion.MIN_SCORE
+                    && row.minScore() <= BackupCriterion.MAX_SCORE,
+                    at + ".minScore must be " + BackupCriterion.MIN_SCORE + ".." + BackupCriterion.MAX_SCORE, problems);
+            // Sort validation
+            require(row.sort() == null || row.sort() >= 0, at + ".sort must not be negative", problems);
+            // Label validation
+            var isBuiltIn = row.key() != null && builtInKeys.contains(row.key());
+            if (isBuiltIn && row.label() != null) {
+                problems.add(at + ".label is not allowed for built-in key " + row.key());
+            }
+            maxLength(at + ".label", row.label(), BackupCriterion.MAX_LABEL, problems);
+            // MustHave validation
+            require(row.mustHave() != null, at + ".mustHave is required", problems);
+            // RequireTime for updatedAt
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        // Cap at 40 criteria
+        require(rows.size() <= 40, "criteria: at most 40 criteria allowed, found " + rows.size(), problems);
+    }
+
+    private void validatePreferences(List<BackupPreference> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "preferences[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            // Key validation
+            if (row.key() == null) {
+                problems.add(at + ".key is required");
+            } else if (!row.key().matches("[A-Za-z0-9._-]{1,64}")) {
+                problems.add(at + ".key does not match pattern [A-Za-z0-9._-]{1,64}");
+            } else if (!seen.add(row.key())) {
+                problems.add(at + ".key " + row.key() + " appears twice");
+            }
+            // Value validation
+            require(row.value() != null, at + ".value is required", problems);
+            maxLength(at + ".value", row.value(), BackupPreference.MAX_VALUE, problems);
+            // RequireTime for updatedAt
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
         }
     }

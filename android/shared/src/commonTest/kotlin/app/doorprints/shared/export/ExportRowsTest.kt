@@ -52,7 +52,7 @@ class ExportRowsTest {
         assertEquals(listOf("h1", "h2"), bundle.ranked.map { it.id })
         assertEquals(1, bundle.rankOf(ExportFixture.house1))
         assertEquals(2, bundle.rankOf(ExportFixture.house2))
-        assertNull(ExportFixture.house2.score)
+        assertNull(bundle.overallOf(ExportFixture.house2))
     }
 
     @Test

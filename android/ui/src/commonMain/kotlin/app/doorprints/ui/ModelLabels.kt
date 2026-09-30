@@ -18,11 +18,14 @@
 
 package app.doorprints.ui
 
+import androidx.compose.runtime.Composable
 import app.doorprints.shared.model.Checklist
+import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.RoomType
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /*
  * The UI's names for the shared enums and checklist keys, as Compose resources (CMP-4 P4c, for Compare; every screen's
@@ -87,3 +90,12 @@ object ChecklistResources {
         }
     }
 }
+
+/** The weight names (slice 2), 0 Ignore .. 3 High, as the Criteria screen offers them. */
+val CriterionWeights: List<StringResource> = listOf(
+    Res.string.criteria_weight_0, Res.string.criteria_weight_1, Res.string.criteria_weight_2, Res.string.criteria_weight_3,
+)
+
+/** A criterion's name on screen: a built-in's translated name, a custom one's own label (else its key). */
+@Composable
+fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { stringResource(it) } ?: label ?: key

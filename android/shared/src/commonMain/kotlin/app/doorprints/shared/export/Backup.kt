@@ -18,7 +18,10 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.Preference
+import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.model.HouseRooms
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -48,8 +51,12 @@ object BackupFormat {
     /** The format that adds the `brokers` list (slice 1b). */
     const val ID_2 = "doorprints-backup/2"
 
-    /** The format a copy with [brokers] brokers and [rooms] rooms is written in: `/2` only when it holds one of either. */
-    fun idFor(brokers: Int, rooms: Int = 0): String = if (brokers > 0 || rooms > 0) ID_2 else ID
+    /**
+     * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
+     * (slice 2); else `/1`, byte for byte as before.
+     */
+    fun idFor(brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0): String =
+        if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0) ID_2 else ID
 
     /**
      * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
@@ -106,11 +113,16 @@ data class BackupCounts(
     val photos: Int,
     /** Present only in a `/2` file (slice 1b); absent in a `/1` one, so its manifest is byte for byte what it was. */
     val brokers: Int? = null,
+    /** Slice 2, like [brokers]: present only when the file has the list. */
+    val criteria: Int? = null,
+    val preferences: Int? = null,
 ) {
     companion object {
         fun of(data: BackupData): BackupCounts = BackupCounts(
             data.houses.size, data.visits.size, data.photos.size,
             brokers = data.brokers?.size,
+            criteria = data.criteria?.size,
+            preferences = data.preferences?.size,
         )
     }
 }
@@ -164,9 +176,16 @@ data class BackupData(
      * (`encodeDefaults` would write an empty list). Read an absent one as none ([brokerRows]).
      */
     val brokers: List<ExportBroker>? = null,
+    /** `/2` only (slice 2), after `brokers`, null when the copy has none, like [brokers]. */
+    val criteria: List<ExportCriterion>? = null,
+    val preferences: List<ExportPreference>? = null,
 ) {
     /** The brokers of the file, none when it has no list. */
     val brokerRows: List<ExportBroker> get() = brokers.orEmpty()
+
+    /** The criteria and preferences of the file, none when it has no list. */
+    val criterionRows: List<ExportCriterion> get() = criteria.orEmpty()
+    val preferenceRows: List<ExportPreference> get() = preferences.orEmpty()
 
     companion object {
         /**
@@ -192,13 +211,18 @@ data class BackupData(
                 .distinctBy { it.id }
                 .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             return BackupData(
-                format = BackupFormat.idFor(bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }),
+                format = BackupFormat.idFor(
+                    bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
+                    bundle.preferences.size,
+                ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
                 visits = bundle.houses.flatMap { bundle.visitsOf(it) } + houseless,
                 photos = bundle.houses.flatMap { bundle.photosOf(it) } +
                     bundle.photos.filter { it.houseId !in houseIds },
                 brokers = bundle.brokers.takeIf { it.isNotEmpty() },
+                criteria = bundle.criteria.takeIf { it.isNotEmpty() },
+                preferences = bundle.preferences.takeIf { it.isNotEmpty() },
             )
         }
 
@@ -242,7 +266,8 @@ object BackupValidation {
     fun checkManifest(manifest: BackupManifest): BackupProblem? = when {
         !BackupFormat.accepts(manifest.format) -> BackupProblem.UNSUPPORTED_VERSION
         manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ||
-            (manifest.counts.brokers ?: 0) < 0 -> BackupProblem.BROKEN_DATA
+            (manifest.counts.brokers ?: 0) < 0 || (manifest.counts.criteria ?: 0) < 0 ||
+            (manifest.counts.preferences ?: 0) < 0 -> BackupProblem.BROKEN_DATA
         else -> null
     }
 
@@ -275,8 +300,21 @@ object BackupValidation {
         // Slice 1c: more than 30 rooms in a house, a room id used twice in it, or a room with a bad id or a value out
         // of range refuses the whole file, as the server's import does; an unknown type reads as OTHER.
         data.houses.any { h -> !roomsAreValid(h.rooms) } -> BackupProblem.BROKEN_DATA
+        // Slice 2: a criterion with a bad key or a value out of range (a label on a built-in, over 60, a weight outside
+        // 0..3, a minimum outside 1..5, a negative sort), a key used twice or more than 40 criteria refuse the whole file;
+        // so do a preference with a bad key, a value over 500 characters or a key used twice.
+        !criteriaAreValid(data.criterionRows) -> BackupProblem.BROKEN_DATA
+        !preferencesAreValid(data.preferenceRows) -> BackupProblem.BROKEN_DATA
         else -> null
     }
+
+    private fun criteriaAreValid(rows: List<ExportCriterion>): Boolean =
+        rows.size <= Criterion.MAX_CRITERIA && rows.all { it.toCriterion().isValid } &&
+            rows.map { it.key }.toSet().size == rows.size
+
+    private fun preferencesAreValid(rows: List<ExportPreference>): Boolean =
+        rows.all { RecordRules.isValidId(it.key) && it.value.length <= Preference.MAX_VALUE } &&
+            rows.map { it.key }.toSet().size == rows.size
 
     private fun roomsAreValid(rooms: List<HouseRoom>?): Boolean =
         rooms == null || (rooms.size <= HouseRooms.MAX && rooms.all { it.isValid } && rooms.map { it.id }.toSet().size == rooms.size)

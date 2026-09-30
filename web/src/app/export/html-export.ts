@@ -33,7 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
-import { roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -87,6 +87,7 @@ export function buildHtml(
       ? `<p class="empty">${escapeHtml(tr(dict, 'exp.noHouses'))}</p>`
       : bundle.houses.map((h, index) => houseSection(h, index + 1, bundle, dict, photos, options)).join('\n'),
     brokersSection(bundle, dict),
+    criteriaSection(bundle),
     `<footer><p>${escapeHtml(tr(dict, 'exp.footer'))}</p></footer>`,
     '</body>',
     '</html>',
@@ -105,18 +106,30 @@ function cover(bundle: ExportBundle, dict: Dict): string {
     `<p class="meta">${escapeHtml(
       tr(dict, 'exp.counts', { houses: counts.houses, visits: counts.visits, photos: counts.photos }),
     )}</p>`,
+    ratingShareLine(bundle) ? `<p class="meta">${escapeHtml(ratingShareLine(bundle))}</p>` : '',
     `<h2>${escapeHtml(tr(dict, 'exp.optionsHeading'))}</h2>`,
     `<ul class="options">${items.join('')}</ul>`,
     `<p class="privacy">${escapeHtml(
       tr(dict, options.includeContacts ? 'exp.privacyContacts' : 'exp.privacyNoContacts'),
     )}</p>`,
     '</header>',
-  ].join('\n');
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
 }
 
 function ranking(bundle: ExportBundle, dict: Dict): string {
   if (bundle.ranking.length === 0) return '';
-  const head = ['exp.colRank', 'exp.colHouse', 'common.score', 'compare.price', 'house.status'] as const;
+  // The Must-haves column is there only when some house of the copy misses one: an empty column says nothing.
+  const anyMissed = bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
+  const head = [
+    'exp.colRank',
+    'exp.colHouse',
+    'common.score',
+    'compare.price',
+    'house.status',
+    ...(anyMissed ? (['exp.colMustHave'] as const) : []),
+  ] as const;
   const rows = bundle.ranking.map((entry, index) => {
     const { house, score } = entry;
     return [
@@ -126,6 +139,10 @@ function ranking(bundle: ExportBundle, dict: Dict): string {
       `<td>${escapeHtml(score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1))}</td>`,
       `<td>${escapeHtml(formatPrice(dict, house.price, house.priceType))}</td>`,
       `<td>${escapeHtml(statusText(house.status, dict))}</td>`,
+      // The mark is words, not colour: "Must-have missed" when a must-have is scored below its minimum.
+      ...(anyMissed
+        ? [`<td>${entry.result.failedMustHave.length > 0 ? escapeHtml(`✕ ${tr(dict, 'exp.mustHaveMissed')}`) : ''}</td>`]
+        : []),
       '</tr>',
     ].join('');
   });
@@ -150,12 +167,19 @@ function houseSection(
 ): string {
   const { house, score, visits } = entry;
   const label = labelOf(house.label, dict);
+  const labels = customLabels(bundle);
   const rows: string[] = [];
   const add = (labelKey: TKey, value: string) => {
     if (value && value !== '–') rows.push(`<tr><th scope="row">${escapeHtml(tr(dict, labelKey))}</th><td>${value}</td></tr>`);
   };
   add('house.status', escapeHtml(statusText(house.status, dict)));
   add('compare.overall', escapeHtml(score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1)));
+  if (entry.result.scored > 0) {
+    add('exp.coverageLabel', escapeHtml(tr(dict, 'exp.coverage', { n: entry.result.scored, total: entry.result.active })));
+  }
+  if (entry.result.failedMustHave.length > 0) {
+    add('exp.mustHaveMissed', escapeHtml(entry.result.failedMustHave.map((key) => checklistLabel(key, dict, labels)).join(', ')));
+  }
   add('compare.price', escapeHtml(formatPrice(dict, house.price, house.priceType)));
   const bedrooms = house.bedrooms ?? null;
   const rating = house.rating ?? null;
@@ -198,7 +222,7 @@ function houseSection(
 
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
-      `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict))}</th><td>${escapeHtml(
+      `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
         tr(dict, 'exp.scoreOf5', { n: value }),
       )}</td></tr>`,
   );
@@ -279,6 +303,29 @@ function brokersSection(bundle: ExportBundle, dict: Dict): string {
   ].join('\n');
 }
 
+/**
+ * The **Criteria** section after the brokers (slice 2): each criterion with its weight, must-have, minimum score and
+ * whether it is archived, in the app's order. Only a copy with criterion records has it.
+ */
+function criteriaSection(bundle: ExportBundle): string {
+  if (bundle.criteria.length === 0) return '';
+  const table = criteriaTable(bundle);
+  const strings = stringsOf(bundle);
+  // The key and the order are for the spreadsheet; a reader has the name, the weight, the must-have and the rest.
+  const shown = [1, 2, 3, 4, 5];
+  return [
+    '<section class="criteria">',
+    `<h2>${escapeHtml(table.title)}</h2>`,
+    '<table>',
+    `<thead><tr>${shown.map((i) => `<th scope="col">${escapeHtml(table.columns[i])}</th>`).join('')}</tr></thead>`,
+    `<tbody>${table.rows
+      .map((row) => `<tr>${shown.map((i) => (i === 1 ? `<th scope="row">${escapeHtml(display(row[i], strings))}</th>` : `<td>${escapeHtml(display(row[i], strings))}</td>`)).join('')}</tr>`)
+      .join('')}</tbody>`,
+    '</table>',
+    '</section>',
+  ].join('\n');
+}
+
 /** A broker's rows in a readable copy: the fields that are set, then the houses of the copy that use it. */
 export function brokerEntries(b: ExportBroker, dict: Dict): [string, string][] {
   const out: [string, string][] = [];
@@ -344,9 +391,10 @@ export function checklistEntries(checklist: Record<string, number>): [string, nu
   return [...known, ...extra];
 }
 
-export function checklistLabel(key: string, dict: Dict): string {
+/** A criterion's name: a built-in's translation, a custom criterion's own label (`labels`, slice 2), else the key. */
+export function checklistLabel(key: string, dict: Dict, labels: ReadonlyMap<string, string> = new Map()): string {
   const item = CHECKLIST.find((entry) => entry.key === key);
-  return item ? tr(dict, item.labelKey) : key;
+  return item ? tr(dict, item.labelKey) : (labels.get(key) ?? key);
 }
 
 export function statusText(status: 'NEW' | 'SHORTLISTED' | 'REJECTED', dict: Dict): string {

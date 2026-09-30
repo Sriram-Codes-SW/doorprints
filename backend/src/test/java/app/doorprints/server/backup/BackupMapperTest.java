@@ -156,7 +156,7 @@ class BackupMapperTest {
     @Test
     void withoutBrokersTheCopyIsVersionOneAndHasNoBrokersKey() {
         var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(),
-                List.of(broker("gone", "{}", EXPORTED_AT, true)), JSON, EXPORTED_AT);
+                List.of(broker("gone", "{}", EXPORTED_AT, true)), List.of(), List.of(), JSON, EXPORTED_AT);
         assertThat(data.format()).isEqualTo("doorprints-backup/1");
         assertThat(data.brokers()).isEmpty();
         assertThat(JSON.writeValueAsString(data)).doesNotContain("brokers");
@@ -171,7 +171,7 @@ class BackupMapperTest {
                 broker("b-1", "{\"notes\":\"n\",\"name\":\"First\",\"agency\":\"A\",\"phone\":\"98400\","
                         + "\"feeTerms\":\"15 days\"}", EXPORTED_AT, false),
                 broker("a-0", "{\"name\":\"Oldest\"}", early, false),
-                broker("x-9", "{\"name\":\"Deleted\"}", early, true)), JSON, EXPORTED_AT);
+                broker("x-9", "{\"name\":\"Deleted\"}", early, true)), List.of(), List.of(), JSON, EXPORTED_AT);
 
         assertThat(data.format()).isEqualTo("doorprints-backup/2");
         assertThat(data.brokers()).extracting(BackupBroker::id).containsExactly("a-0", "b-1", "b-2");
@@ -191,7 +191,7 @@ class BackupMapperTest {
                 broker("not-json", "not json", EXPORTED_AT, false),
                 broker("long-name", "{\"name\":\"" + "n".repeat(201) + "\"}", EXPORTED_AT, false),
                 broker("odd", "{\"name\":\"Odd\",\"phone\":7,\"rating\":6,\"agency\":\"" + "a".repeat(201)
-                        + "\",\"notes\":null}", EXPORTED_AT, false)), JSON, EXPORTED_AT);
+                        + "\",\"notes\":null}", EXPORTED_AT, false)), List.of(), List.of(), JSON, EXPORTED_AT);
 
         assertThat(data.brokers()).singleElement().satisfies(b -> {
             assertThat(b.id()).isEqualTo("odd");
@@ -331,5 +331,77 @@ class BackupMapperTest {
         assertThat(sample).startsWith("{\"format\":\"" + BackupFormat.ID_WITH_BROKERS + "\"");
         assertThat(CanonicalSample.keysInOrder(sample)).startsWith("format", "exportedAt", "houses", "id", "label");
         assertThat(sample).doesNotContain("\"deleted\"").doesNotContain("\"syncVersion\"").doesNotContain("null");
+    }
+
+    /** Slice 2: criteria and preferences alone make the copy /2, and are ordered by updatedAt then key. */
+    @Test
+    void criteriaAndPreferencesMakeItVersionTwoAndAreOrderedByUpdatedAtThenKey() throws org.json.JSONException {
+        var early = EXPORTED_AT.minusSeconds(60);
+        var water = criterion("water", 3, true, 4, 0, EXPORTED_AT);
+        var noise = criterion("noise", 0, false, 3, 5, early);
+        var custom = criterion("c_1a2b3c4d", "Pets", 2, false, 3, 10, EXPORTED_AT);
+        var pref = preference("score.ratingShare", "0.4", early);
+
+        var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(),
+                List.of(), List.of(noise, water, custom), List.of(pref), JSON, EXPORTED_AT);
+
+        assertThat(data.format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(data.criteria()).extracting(BackupCriterion::key).containsExactly("noise", "c_1a2b3c4d", "water");
+        assertThat(data.preferences()).extracting(BackupPreference::key).containsExactly("score.ratingShare");
+        // Noise is first (earlier updatedAt), then c_1a2b3c4d and water (same updatedAt, sorted by key)
+        assertThat(data.criteria().get(0).updatedAt()).isEqualTo(early.toEpochMilli());
+        assertThat(data.criteria().get(1).updatedAt()).isEqualTo(EXPORTED_AT.toEpochMilli());
+        assertThat(data.criteria().get(2).updatedAt()).isEqualTo(EXPORTED_AT.toEpochMilli());
+    }
+
+    /** Built-in keys never export a label, even if the record holds one (coercion). */
+    @Test
+    void builtInKeysNeverExportLabel() {
+        var withLabel = new Record(new RecordKey("criterion", "water"));
+        withLabel.setPayload("{\"weight\":3,\"mustHave\":true,\"minScore\":4,\"sort\":0,\"label\":\"Water\"}");
+        withLabel.setUpdatedAt(EXPORTED_AT);
+        withLabel.setDeleted(false);
+
+        var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(),
+                List.of(), List.of(withLabel), List.of(), JSON, EXPORTED_AT);
+
+        var water = data.criteria().getFirst();
+        assertThat(water.key()).isEqualTo("water");
+        assertThat(water.label()).isNull();
+    }
+
+    /** No criteria or preferences: the copy is a /1 document with no criteria or preferences keys at all. */
+    @Test
+    void withoutCriteriaOrPreferencesTheCopyIsVersionOne() {
+        var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(),
+                List.of(), List.of(), List.of(), JSON, EXPORTED_AT);
+        assertThat(data.format()).isEqualTo(BackupFormat.ID);
+        assertThat(data.criteria()).isEmpty();
+        assertThat(data.preferences()).isEmpty();
+        assertThat(JSON.writeValueAsString(data)).doesNotContain("criteria").doesNotContain("preferences");
+    }
+
+    private static Record criterion(String key, int weight, boolean mustHave, int minScore, int sort, Instant updatedAt) {
+        var record = new Record(new RecordKey("criterion", key));
+        record.setPayload("{\"weight\":" + weight + ",\"mustHave\":" + mustHave + ",\"minScore\":" + minScore + ",\"sort\":" + sort + "}");
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(false);
+        return record;
+    }
+
+    private static Record criterion(String key, String label, int weight, boolean mustHave, int minScore, int sort, Instant updatedAt) throws org.json.JSONException {
+        var record = criterion(key, weight, mustHave, minScore, sort, updatedAt);
+        var payload = new JSONObject(record.getPayload());
+        payload.put("label", label);
+        record.setPayload(payload.toString());
+        return record;
+    }
+
+    private static Record preference(String key, String value, Instant updatedAt) {
+        var record = new Record(new RecordKey("preference", key));
+        record.setPayload("{\"value\":\"" + value + "\"}");
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(false);
+        return record;
     }
 }

@@ -84,6 +84,8 @@ import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.listing.ListingText
+import app.doorprints.shared.model.ScoreResult
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.CostSummary
@@ -433,6 +435,8 @@ fun HouseEditScreen(
     val photos by photosFlow.collectAsStateWithLifecycle(emptyList())
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
+    // The effective scoring (docs/11 5.4, slice 2): which criteria the checklist shows, the score and its coverage line.
+    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -1014,8 +1018,13 @@ fun HouseEditScreen(
                 }
 
                 SectionHeading(stringResource(Res.string.house_checklist))
-                ChecklistResources.items.forEach { (key, label) ->
-                    ChecklistRow(stringResource(label), d.checklist[key]) { n ->
+                // The criteria that are not archived, in their order (slice 2); one set to Ignore says it is not counted.
+                // An archived criterion is hidden, and its score on the house stays as it is.
+                scoring.criteria.filter { !it.archived }.forEach { c ->
+                    val key = c.key
+                    val name = c.displayName()
+                    val label = if (c.weight == 0) stringResource(Res.string.house_check_ignored, name) else name
+                    ChecklistRow(label, d.checklist[key]) { n ->
                         update {
                             val current = it.checklist[key]
                             // "–" clears; tapping the chosen score again is kept as a shortcut for the same.
@@ -1023,7 +1032,7 @@ fun HouseEditScreen(
                         }
                     }
                 }
-                Text(stringResource(Res.string.house_overall, d.score.scoreText()), fontWeight = FontWeight.SemiBold)
+                ScoreSummary(d.scoreResult(scoring), scoring)
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },
@@ -1717,6 +1726,33 @@ internal fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(if ((rating ?: 0) >= star) "★" else "☆", style = MaterialTheme.typography.headlineSmall, color = starColor)
+            }
+        }
+    }
+}
+
+/**
+ * The score under the checklist (slice 2): "Overall score: 4.3 out of 5", "Scored 7 of 10 that matter" once something
+ * counted is scored, and the must-haves missed or not checked yet by name. Polite live region, so a new score is heard.
+ */
+@Composable
+private fun ScoreSummary(result: ScoreResult, scoring: Scoring) {
+    val names = scoring.criteria.associate { it.key to it.displayName() }
+    fun list(keys: List<String>) = keys.joinToString(", ") { names[it] ?: it }
+    LiveMessage {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(Res.string.house_overall, result.overall.scoreText()), fontWeight = FontWeight.SemiBold)
+            if (result.scored > 0) {
+                Text(stringResource(Res.string.house_coverage, result.scored, result.active), style = MaterialTheme.typography.bodySmall)
+            }
+            if (result.failedMustHave.isNotEmpty()) {
+                WarnNote(stringResource(Res.string.house_must_have_missed, list(result.failedMustHave)))
+            }
+            if (result.uncheckedMustHave.isNotEmpty()) {
+                Text(
+                    stringResource(Res.string.house_must_have_unchecked, list(result.uncheckedMustHave)),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }

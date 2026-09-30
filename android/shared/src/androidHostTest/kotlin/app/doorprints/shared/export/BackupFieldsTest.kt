@@ -79,6 +79,27 @@ class BackupFieldsTest {
                 .map { it.jsonObject.keys.toList() }.maxBy { it.size },
         )
 
+    /**
+     * The criteria (slice 2): no one row has every key (`label` is custom-only, `archived` only when true), so every
+     * row's keys are in the model's order and together they are all of the model's fields.
+     */
+    @Test
+    fun theSampleCriteriaTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        val model = ExportCriterion.serializer().descriptor.elementNames.toList()
+        val rows = sample.getValue("criteria").jsonArray.map { it.jsonObject.keys.toList() }
+        for (row in rows) assertEquals(model.filter { it in row }, row)
+        assertEquals(model, model.filter { key -> rows.any { key in it } })
+    }
+
+    @Test
+    fun theSamplePreferenceHasExactlyTheModelsFields() =
+        assertEquals(ExportPreference.serializer().descriptor.elementNames.toList(), keysOf("preferences"))
+
+    /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers` (README 3.6). */
+    @Test
+    fun theSamplesTopLevelKeysAreTheModelsInItsOrder() =
+        assertEquals(BackupData.serializer().descriptor.elementNames.toList(), sample.keys.toList())
+
     /** The sample is the golden of a `/2` copy: its `brokers` list is what makes the format `/2` (README 1.1). */
     @Test
     fun theSampleIsTheFormatTheReadersAcceptAndTheOneAWriterPicks() {

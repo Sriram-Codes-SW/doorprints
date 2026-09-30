@@ -255,6 +255,10 @@ class BackupApiTest {
         }
         var brokers = sample.getJSONArray("brokers");
         for (int i = 0; i < brokers.length(); i++) putBroker(brokers.getJSONObject(i));
+        var criteria = sample.getJSONArray("criteria");
+        for (int i = 0; i < criteria.length(); i++) putCriterion(criteria.getJSONObject(i));
+        var preferences = sample.getJSONArray("preferences");
+        for (int i = 0; i < preferences.length(); i++) putPreference(preferences.getJSONObject(i));
         var photos = sample.getJSONArray("photos");
         for (int i = 0; i < photos.length(); i++) {
             var photo = photos.getJSONObject(i);
@@ -837,6 +841,174 @@ class BackupApiTest {
         assertThat(status(() -> anonymous.post().uri("/api/import").contentType(MediaType.APPLICATION_JSON)
                 .body(body).retrieve().body(String.class))).isEqualTo(401);
         assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+    }
+
+    /** Slice 2: criteria and preferences import into the record table like brokers and export back /2. */
+    @Test
+    void criteriaAndPreferencesImportMergeAndExportBack() throws JSONException {
+        var sample = new JSONObject(SAMPLE);
+        var criteria = sample.getJSONArray("criteria");
+        var preferences = sample.getJSONArray("preferences");
+        var houses = sample.getJSONArray("houses");
+
+        // Put sample data on the server
+        for (int i = 0; i < houses.length(); i++) {
+            var row = houses.getJSONObject(i);
+            api.put().uri("/api/houses/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
+                    .body(asApiBody(row, "createdAt", "updatedAt")).retrieve().toBodilessEntity();
+        }
+        for (int i = 0; i < criteria.length(); i++) putCriterion(criteria.getJSONObject(i));
+        for (int i = 0; i < preferences.length(); i++) putPreference(preferences.getJSONObject(i));
+
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(exported.getJSONArray("criteria").length()).isEqualTo(3);
+        assertThat(exported.getJSONArray("preferences").length()).isEqualTo(1);
+        // Ordered by updatedAt then key
+        assertThat(exported.getJSONArray("criteria").getJSONObject(0).getString("key")).isEqualTo("noise");
+        assertThat(exported.getJSONArray("preferences").getJSONObject(0).getString("key"))
+                .isEqualTo("score.ratingShare");
+    }
+
+    /** A bad criterion refuses the whole file and writes nothing. */
+    @Test
+    void aBadCriterionRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        var good = criterionRow("c_12345678", "Custom", 2, false, 3, 0, now);
+
+        var badKey = criterionRow("bad key!", "Custom", 2, false, 3, 0, now);
+        var weight4 = criterionRow("c_12345679", "Custom", 4, false, 3, 0, now);
+        var weight_neg = criterionRow("c_1234567a", "Custom", -1, false, 3, 0, now);
+        var minScore0 = criterionRow("c_1234567b", "Custom", 2, false, 0, 0, now);
+        var minScore6 = criterionRow("c_1234567c", "Custom", 2, false, 6, 0, now);
+        var negSort = criterionRow("c_1234567d", "Custom", 2, false, 3, -1, now);
+        var longLabel = criterionRow("c_1234567e", "x".repeat(61), 2, false, 3, 0, now);
+        var labelOnBuiltin = criterionRow("water", "Has label", 2, false, 3, 0, now);
+        var duplicate = good + "," + criterionRow("c_12345678", "Dup", 2, false, 3, 1, now);
+
+        for (var criterion : List.of(badKey, weight4, weight_neg, minScore0, minScore6, negSort, longLabel,
+                labelOnBuiltin, duplicate)) {
+            var body = backupWithCriteria(backup(house, ""), criterion);
+            assertThat(status(() -> postImport(body, false))).as("import of bad criterion").isEqualTo(400);
+            assertThat(status(() -> postImport(body, true))).as("dry run validates").isEqualTo(400);
+        }
+        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(criterionRecords()).isEmpty();
+    }
+
+    /** Bad preference values refuse the whole file. */
+    @Test
+    void aBadPreferenceRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        var good = preferenceRow("score.ratingShare", "0.5", now);
+
+        var badKey = preferenceRow("bad key!", "0.5", now);
+        var longValue = preferenceRow("score.ratingShare", "x".repeat(501), now);
+        var duplicate = good + "," + preferenceRow("score.ratingShare", "0.3", now);
+
+        for (var pref : List.of(badKey, longValue, duplicate)) {
+            var body = backupWithPreferences(backup(house, ""), pref);
+            assertThat(status(() -> postImport(body, false))).isEqualTo(400);
+        }
+        assertThat(preferenceRecords()).isEmpty();
+    }
+
+    /** Slice 2: At most 40 criteria; adding the 41st is refused. */
+    @Test
+    void moreThan40CriteriaIsRefused() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        var criteria = new StringBuilder();
+        for (int i = 0; i <= 40; i++) {  // 41 total (10 built-ins + 31 custom already, so just 1 more)
+            if (i > 0) criteria.append(",");
+            criteria.append(criterionRow("c_" + String.format("%08x", i), "Criterion " + i, 2, false, 3, i, now));
+        }
+        var body = backupWithCriteria(backup(house, ""), criteria.toString());
+        assertThat(status(() -> postImport(body, false))).isEqualTo(400);
+        assertThat(errorBody(() -> postImport(body, false))).contains("at most 40 criteria");
+    }
+
+    /** Built-in criteria never export a label; only custom ones do. */
+    @Test
+    void builtInKeysNeverExportLabel() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        api.put().uri("/api/houses/{id}", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"label\":\"Test\",\"lat\":12.9,\"lon\":77.6,\"status\":\"NEW\",\"createdAt\":\""
+                    + now + "\",\"updatedAt\":\"" + now + "\"}").retrieve().toBodilessEntity();
+
+        // Put a built-in criterion
+        putCriterion(new JSONObject()
+                .put("key", "water")
+                .put("weight", 3)
+                .put("mustHave", true)
+                .put("minScore", 4)
+                .put("sort", 0)
+                .put("updatedAt", now.toEpochMilli()));
+
+        var exported = new JSONObject(export());
+        var waterCriterion = exported.getJSONArray("criteria").getJSONObject(0);
+        assertThat(waterCriterion.has("label")).isFalse();
+        assertThat(waterCriterion.getString("key")).isEqualTo("water");
+    }
+
+    private void putCriterion(JSONObject row) throws JSONException {
+        var payload = new JSONObject(row.toString());
+        var key = payload.remove("key");
+        var updatedAt = payload.remove("updatedAt");
+        var body = new JSONObject()
+                .put("type", "criterion")
+                .put("id", key)
+                .put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
+        api.put().uri("/api/records/criterion/{id}", key.toString()).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    private void putPreference(JSONObject row) throws JSONException {
+        var payload = new JSONObject();
+        var key = row.remove("key");
+        var value = row.remove("value");
+        var updatedAt = row.remove("updatedAt");
+        payload.put("value", value);
+        var body = new JSONObject()
+                .put("type", "preference")
+                .put("id", key)
+                .put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
+        api.put().uri("/api/records/preference/{id}", key.toString()).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    private List<Map<String, Object>> criterionRecords() {
+        return api.get().uri("/api/records?since=0&type=criterion").retrieve().body(LIST);
+    }
+
+    private List<Map<String, Object>> preferenceRecords() {
+        return api.get().uri("/api/records?since=0&type=preference").retrieve().body(LIST);
+    }
+
+    private static String criterionRow(String key, String label, int weight, boolean mustHave, int minScore, int sort, Instant updatedAt) {
+        var at = updatedAt.toEpochMilli();
+        return "{\"key\":\"" + key + "\",\"label\":\"" + label + "\",\"weight\":" + weight
+                + ",\"mustHave\":" + mustHave + ",\"minScore\":" + minScore
+                + ",\"sort\":" + sort + ",\"updatedAt\":" + at + "}";
+    }
+
+    private static String preferenceRow(String key, String value, Instant updatedAt) {
+        return "{\"key\":\"" + key + "\",\"value\":\"" + value + "\",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    private static String backupWithCriteria(String baseBackup, String criteria) {
+        return baseBackup.replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"criteria\":[" + criteria + "]");
+    }
+
+    private static String backupWithPreferences(String baseBackup, String preferences) {
+        return baseBackup.replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"preferences\":[" + preferences + "]");
     }
 
     // ---- small readers ------------------------------------------------------------------------------------------

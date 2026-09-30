@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBackupData } from './backup-export';
 import { collect } from './export-model';
 import { GOLDEN_BACKUP_DATA_JSON } from './golden/backup.golden';
-import { FIXTURE_BROKERS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_CRITERIA, FIXTURE_PREFERENCES, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
 
 /**
  * Completeness of the backup writer against the format (readiness review 2026-09-29, docs/14 §8 finding 4): the keys
@@ -34,6 +34,8 @@ describe('backup fields', () => {
     visits: object[];
     photos: object[];
     brokers: object[];
+    criteria: object[];
+    preferences: object[];
   };
   const written = buildBackupData(
     collect({
@@ -41,6 +43,8 @@ describe('backup fields', () => {
       visits: FIXTURE_VISITS,
       photos: FIXTURE_PHOTOS,
       brokers: FIXTURE_BROKERS,
+      criteria: FIXTURE_CRITERIA,
+      preferences: FIXTURE_PREFERENCES,
       exportedAt: FIXTURE_EXPORTED_AT,
       options: FIXTURE_OPTIONS,
     }),
@@ -55,6 +59,14 @@ describe('backup fields', () => {
   it('writes exactly the format\'s broker keys, for the full broker and the sparse one', () => {
     expect(Object.keys(written.brokers?.[1] ?? {})).toEqual(Object.keys(sample.brokers[1]));
     expect(Object.keys(written.brokers?.[0] ?? {})).toEqual(Object.keys(sample.brokers[0]));
+  });
+  it('writes exactly the format\'s criterion keys: the archived built-in, the custom one with its label, the must-have', () => {
+    const criteria = written.criteria ?? [];
+    expect(criteria.map((c) => c.key)).toEqual(['noise', 'c_1a2b3c4d', 'water']);
+    for (let i = 0; i < 3; i++) expect(Object.keys(criteria[i])).toEqual(Object.keys(sample.criteria[i]));
+  });
+  it('writes exactly the format\'s preference keys', () => {
+    expect(Object.keys(written.preferences?.[0] ?? {})).toEqual(Object.keys(sample.preferences[0]));
   });
   it('writes the sample\'s format id and top-level keys', () => {
     expect(written.format).toBe((sample as unknown as { format: string }).format);
