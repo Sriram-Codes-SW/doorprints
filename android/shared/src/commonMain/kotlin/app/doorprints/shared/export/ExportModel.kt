@@ -19,6 +19,11 @@
 package app.doorprints.shared.export
 
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.Ranking
+import app.doorprints.shared.model.RankedHouse
+import app.doorprints.shared.model.ScoreResult
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.LengthUnit
@@ -97,8 +102,8 @@ data class ExportHouse(
     val createdAt: Long,
     val updatedAt: Long,
 ) {
-    /** 0–5 overall score, exactly the one the app screens show ([HouseScore.of]); null when nothing is scored. */
-    val score: Double? get() = HouseScore.of(checklist, rating)
+    /** The score under [scoring], exactly the one the app screens show ([HouseScore.evaluate]); see [ExportBundle.scoreOf]. */
+    fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)
 }
 
 /**
@@ -127,6 +132,35 @@ data class ExportBroker(
         )
     }
 }
+
+/**
+ * A criterion in a `/2` backup (slice 2): the record's key and its payload keys in the format's order (docs/schemas
+ * README 3.6), `archived` only when true, and `updatedAt` in epoch milliseconds, so a backup merges criteria by key.
+ */
+@Serializable
+data class ExportCriterion(
+    val key: String,
+    val label: String? = null,
+    val weight: Int,
+    val mustHave: Boolean,
+    val minScore: Int,
+    val sort: Int,
+    /** Written only when true (`null` otherwise, which the format leaves out). */
+    val archived: Boolean? = null,
+    val updatedAt: Long,
+) {
+    fun toCriterion() = Criterion(key, label, weight, mustHave, minScore, sort, archived == true)
+
+    companion object {
+        fun of(c: Criterion, updatedAt: Long) = ExportCriterion(
+            c.key, c.label, c.weight, c.mustHave, c.minScore, c.sort, c.archived.takeIf { it }, updatedAt,
+        )
+    }
+}
+
+/** A preference in a `/2` backup (slice 2): its key, its value (≤ 500) and `updatedAt`; merged by key. */
+@Serializable
+data class ExportPreference(val key: String, val value: String, val updatedAt: Long)
 
 /**
  * `checklist` on the way in: a JSON `null` reads as an empty map, exactly like an absent key does through the
@@ -246,8 +280,36 @@ data class ExportBundle(
      * has some is a `/2` backup, gets a `broker` column, a house page row, a Brokers section and `brokers.csv`.
      */
     val brokers: List<ExportBroker> = emptyList(),
+    /**
+     * The criterion and preference records in the copy (slice 2), each ordered by `updatedAt` then key: written to a
+     * `/2` backup's lists and the `criteria` table. Kept in a copy without contact details (they are not contacts).
+     */
+    val criteria: List<ExportCriterion> = emptyList(),
+    val preferences: List<ExportPreference> = emptyList(),
+    /** The effective scoring every score, coverage and ranking of the copy uses: all the records merged with the defaults. */
+    val scoring: Scoring = Scoring.DEFAULT,
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
+
+    private val scores: Map<String, ScoreResult> = houses.associate { it.id to it.scoreResult(scoring) }
+
+    /** A house's score under the copy's [scoring]. */
+    fun scoreOf(house: ExportHouse): ScoreResult = scores[house.id] ?: house.scoreResult(scoring)
+
+    /** The overall score, null when nothing is scored. */
+    fun overallOf(house: ExportHouse): Double? = scoreOf(house).overall
+
+    /**
+     * A criterion's name in the copy's language: a custom one's own label, a built-in's translated name, and the key
+     * itself for a key the scoring does not know (a newer app's).
+     */
+    fun criterionLabel(key: String): String = scoring[key]?.label ?: strings.check(key)
+
+    /** True when a house of the copy misses a must-have: the ranking table then has a Must-haves column. */
+    val anyMissedMustHave: Boolean get() = scores.values.any { it.missedMustHave }
+
+    /** True when the copy holds a criterion or preference record: the scoring is not the default one. */
+    val hasScoringRecords: Boolean get() = criteria.isNotEmpty() || preferences.isNotEmpty()
 
     private val brokersById: Map<String, ExportBroker> = brokers.associateBy { it.id }
     private val housesByBroker: Map<String, List<ExportHouse>> =
@@ -268,10 +330,8 @@ data class ExportBundle(
     fun visitsOf(house: ExportHouse): List<ExportVisit> = visitsByHouse[house.id].orEmpty()
     fun photosOf(house: ExportHouse): List<ExportPhoto> = photosByHouse[house.id].orEmpty()
 
-    /** Houses best-scored first, the order of the HTML/PDF ranking table and of Compare on both apps. */
-    val ranked: List<ExportHouse> = houses.sortedWith(
-        compareByDescending<ExportHouse> { HouseScore.rankKey(it.score) }.thenBy { it.createdAt }.thenBy { it.id }
-    )
+    /** Houses best first by [Ranking] (docs/11 5.4), the order of the ranking table and the rank column on both apps. */
+    val ranked: List<ExportHouse> = Ranking.sort(houses) { RankedHouse(it.id, scoreOf(it), it.price, it.updatedAt) }
 
     private val rankById: Map<String, Int> = ranked.withIndex().associate { (i, h) -> h.id to i + 1 }
 
@@ -292,6 +352,8 @@ data class ExportBundle(
             visits: List<ExportVisit>,
             photos: List<ExportPhoto>,
             brokers: List<ExportBroker> = emptyList(),
+            criteria: List<ExportCriterion> = emptyList(),
+            preferences: List<ExportPreference> = emptyList(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -342,7 +404,16 @@ data class ExportBundle(
                 options.scope == ExportScope.ALL -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
                 else -> brokers.filter { it.id in brokerIds }
             }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
-            return ExportBundle(options, kept, keptVisits, keptPhotos, unlinked, keptBrokers)
+            // Criteria and preferences (slice 2): settings, not contacts, so a copy without contact details keeps them; an
+            // update carries the ones changed since. The scoring is always built from all of them.
+            val scoring = Scoring.of(criteria.map { it.toCriterion() }, preferences.associate { it.key to it.value })
+            val keptCriteria = criteria.filter { since == null || it.updatedAt > since }
+                .sortedWith(compareBy({ it.updatedAt }, { it.key }))
+            val keptPreferences = preferences.filter { since == null || it.updatedAt > since }
+                .sortedWith(compareBy({ it.updatedAt }, { it.key }))
+            return ExportBundle(
+                options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
+            )
         }
     }
 }

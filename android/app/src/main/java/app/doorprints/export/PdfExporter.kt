@@ -109,6 +109,7 @@ object PdfExporter {
             sheet.labelled(s["cover.photoScope"], s["photoScope.${o.photos.name}"], body)
             sheet.labelled(s["cover.contacts"], s[if (o.includeContacts) "yes" else "no"], body)
             sheet.labelled(s["cover.language"], ExportLanguages.nativeName(o.language), body)
+            ExportRows.ratingShareText(bundle)?.let { sheet.labelled(s["col.ratingShare"], it, body) }
             sheet.space(10f)
             sheet.paragraph(s["cover.privacy"], sub, spaceAfter = 6f)
             if (o.includeContacts) sheet.paragraph(s["cover.contactWarning"], sub, spaceAfter = 6f)
@@ -116,7 +117,7 @@ object PdfExporter {
             sheet.space(10f)
             sheet.paragraph(s["section.ranking"], heading, spaceAfter = 6f)
             for (house in bundle.ranked) {
-                val score = house.score?.let { ExportRows.fixed(it, 1) } ?: s["none"]
+                val score = ExportRows.rankedScore(house, bundle)
                 val price = house.price?.let { ExportRows.rupees(it) } ?: s["none"]
                 sheet.labelled(
                     "${bundle.rankOf(house)}. ${house.label}",
@@ -162,7 +163,8 @@ object PdfExporter {
         sheet.paragraph(house.label, heading, spaceAfter = 2f)
         sheet.paragraph("${s["col.rank"]} ${bundle.rankOf(house)} · ${s.status(house.status)}", sub, 10f)
 
-        sheet.labelled(s["col.score"], house.score?.let { ExportRows.fixed(it, 1) } ?: s["none"], body)
+        sheet.labelled(s["col.score"], bundle.overallOf(house)?.let { ExportRows.fixed(it, 1) } ?: s["none"], body)
+        for ((term, value) in ExportRows.scoringLines(house, bundle)) sheet.labelled(term, value, body)
         sheet.labelled(s["col.price"], house.price?.let { ExportRows.rupees(it) } ?: s["none"], body)
         if (house.price != null) sheet.labelled(s["col.priceType"], s.priceType(house.priceType), body)
         sheet.labelled(s["col.bedrooms"], house.bedrooms?.toString() ?: s["none"], body)
@@ -182,7 +184,7 @@ object PdfExporter {
         val keys = ExportRows.orderedChecklistKeys(house)
         if (keys.isNotEmpty()) {
             sheet.section(s["section.checklist"], heading)
-            for (key in keys) sheet.labelled(s.check(key), "${house.checklist.getValue(key)}/5", body, 2f)
+            for (key in keys) sheet.labelled(bundle.criterionLabel(key), "${house.checklist.getValue(key)}/5", body, 2f)
         }
 
         val visits = bundle.visitsOf(house)

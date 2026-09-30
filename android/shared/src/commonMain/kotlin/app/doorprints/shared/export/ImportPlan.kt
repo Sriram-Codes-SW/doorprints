@@ -91,14 +91,23 @@ data class ImportPreview(
     /** Brokers of a `/2` file (slice 1b): new here, and (MERGE) newer in the file; merged by id, last edit wins. */
     val newBrokers: Int = 0,
     val updatedBrokers: Int = 0,
+    /**
+     * Criteria and preferences of a `/2` file (slice 2), new here and newer in the file: merged by key, last edit wins,
+     * in both modes (a copy keeps the keys, because the houses' checklist scores name them).
+     */
+    val newCriteria: Int = 0,
+    val updatedCriteria: Int = 0,
+    val newPreferences: Int = 0,
+    val updatedPreferences: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
         get() = newHouses == 0 && updatedHouses == 0 && newVisits == 0 && updatedVisits == 0 && newPhotos == 0 &&
-            restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0
+            restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
+            newPreferences == 0 && updatedPreferences == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
-    val overwrites: Int get() = updatedHouses + updatedVisits + updatedBrokers
+    val overwrites: Int get() = updatedHouses + updatedVisits + updatedBrokers + updatedCriteria + updatedPreferences
 }
 
 /**
@@ -141,6 +150,9 @@ data class ImportActions(
      */
     val brokers: List<ExportBroker> = emptyList(),
     val updatedBrokerIds: Set<String> = emptySet(),
+    /** The criteria and preferences to write (slice 2): new here or newer in the file, by key, in both modes. */
+    val criteria: List<ExportCriterion> = emptyList(),
+    val preferences: List<ExportPreference> = emptyList(),
 )
 
 /**
@@ -204,7 +216,13 @@ object ImportPlan {
         skipUpdates: Boolean = false,
         localUnlinkedVisitIds: Set<String> = emptySet(),
         localBrokers: Map<String, Long> = emptyMap(),
+        localCriteria: Map<String, Long> = emptyMap(),
+        localPreferences: Map<String, Long> = emptyMap(),
     ): ImportPreview {
+        // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
+        val skipSettings = skipUpdates && mode == ImportMode.MERGE
+        val (newC, updC) = settingsCounts(data.criterionRows.map { it.key to it.updatedAt }, localCriteria, skipSettings)
+        val (newPr, updPr) = settingsCounts(data.preferenceRows.map { it.key to it.updatedAt }, localPreferences, skipSettings)
         if (mode == ImportMode.COPY) {
             // Nothing local is consulted in COPY mode, not even a tombstone: every row gets a new id. What does
             // matter is that `plan` drops a visit or a photo whose houseId is not one of the *file's* own houses,
@@ -230,6 +248,7 @@ object ImportPlan {
                 newPhotos = withFiles, skippedPhotos = orphaned,
                 photosMissingFromFile = missing,
                 newBrokers = data.brokerRows.size,
+                newCriteria = newC, updatedCriteria = updC, newPreferences = newPr, updatedPreferences = updPr,
             )
         }
         var newH = 0; var updH = 0; var hereH = 0; var sameH = 0; var clearedH = 0; var deletedH = 0
@@ -300,6 +319,10 @@ object ImportPlan {
             mode, newH, updH, hereH, sameH, newV, updV, hereV, sameV, newP, skipP, missingP,
             newBrokers = newB,
             updatedBrokers = updB,
+            newCriteria = newC,
+            updatedCriteria = updC,
+            newPreferences = newPr,
+            updatedPreferences = updPr,
             checklistsCleared = clearedH,
             deletedHereHouses = deletedH,
             deletedHereVisits = deletedV,
@@ -356,7 +379,12 @@ object ImportPlan {
         localUnlinkedVisitIds: Set<String> = emptySet(),
         syncedDeletedHouseIds: Set<String>? = null,
         localBrokers: Map<String, Long> = emptyMap(),
+        localCriteria: Map<String, Long> = emptyMap(),
+        localPreferences: Map<String, Long> = emptyMap(),
     ): ImportActions {
+        val skipSettings = skipUpdates && mode == ImportMode.MERGE
+        val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
+        val preferences = data.preferenceRows.filter { settingWrites(it.key, it.updatedAt, localPreferences, skipSettings) }
         if (mode == ImportMode.COPY) {
             val houseIds = data.houses.associate { it.id to newId() }
             val visits = data.visits
@@ -379,7 +407,9 @@ object ImportPlan {
                 it.copy(id = houseIds.getValue(it.id), brokerId = it.brokerId?.let { b -> brokerIds[b] ?: b })
             }
             val brokers = data.brokerRows.map { it.copy(id = brokerIds.getValue(it.id)) }
-            return ImportActions(mode, houses, visits, photos, photoSources, brokers = brokers)
+            return ImportActions(
+                mode, houses, visits, photos, photoSources, brokers = brokers, criteria = criteria, preferences = preferences,
+            )
         }
 
         val updatedHouseIds = HashSet<String>()
@@ -450,7 +480,28 @@ object ImportPlan {
             relinkedVisitIds = relinkedVisitIds,
             brokers = brokers,
             updatedBrokerIds = updatedBrokerIds,
+            criteria = criteria,
+            preferences = preferences,
         )
+    }
+
+    /** A criterion or preference of the file is written when new here or newer (a tombstone here counts with its time). */
+    private fun settingWrites(key: String, updatedAt: Long, local: Map<String, Long>, skipUpdates: Boolean): Boolean =
+        when (compare(local[key], updatedAt)) {
+            Verdict.NEW -> true
+            Verdict.INCOMING_NEWER -> !skipUpdates
+            else -> false
+        }
+
+    /** How many of [rows] (key, updatedAt) are new here and how many replace a row here: the preview of [settingWrites]. */
+    private fun settingsCounts(rows: List<Pair<String, Long>>, local: Map<String, Long>, skipUpdates: Boolean): Pair<Int, Int> {
+        var new = 0
+        var updated = 0
+        for ((key, at) in rows) {
+            if (!settingWrites(key, at, local, skipUpdates)) continue
+            if (key in local) updated++ else new++
+        }
+        return new to updated
     }
 
     /**

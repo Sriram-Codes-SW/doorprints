@@ -36,11 +36,11 @@ export function hidesBottomBar(path: string): boolean {
 }
 
 /**
- * Your data, the Brokers pages linked from it, and on phones also Connect, which has no item of its own in the bottom
+ * Your data, the Brokers and Criteria pages linked from it, and on phones also Connect, which has no item of its own in the bottom
  * bar and lives in Your data.
  */
 export function inDataSection(path: string, phone: boolean): boolean {
-  return path.startsWith('/data') || path.startsWith('/brokers') || (phone && path.startsWith('/connect'));
+  return path.startsWith('/data') || path.startsWith('/brokers') || path.startsWith('/criteria') || (phone && path.startsWith('/connect'));
 }
 
 /**

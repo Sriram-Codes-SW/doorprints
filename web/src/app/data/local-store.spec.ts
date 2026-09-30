@@ -22,6 +22,8 @@ import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from '
 import { SETTING_KEYS } from './records';
 import { LocalDataError } from '../core/local-error';
 import type { HouseDto, HouseRoom, VisitDto } from '../core/models';
+import { BUILT_IN_KEYS } from '../shared/scoring';
+import type { Criterion } from '../shared/scoring';
 
 /**
  * The repository the whole web app reads and writes (S4-01). jsdom has no IndexedDB, so `openLocalDb()` hands back
@@ -573,5 +575,124 @@ describe('LocalStore brokers', () => {
       expect((await store.getHouse('b'))?.brokerId).toBe('existing');
       expect((await store.brokers()).map((b) => b.broker.name).sort()).toEqual(['Already here', 'Meena']);
     });
+  });
+});
+
+/** Slice 2 (docs/11 5.4): criteria and the rating share are records of type `criterion` and `preference`. */
+describe('LocalStore criteria', () => {
+  let store: LocalStore;
+
+  beforeEach(async () => {
+    store = new LocalStore();
+    await store.ready();
+  });
+
+  const power = (over: Partial<Criterion> = {}): Criterion => ({ key: 'power', weight: 2, mustHave: false, minScore: 3, sort: 1, ...over });
+
+  it('has the defaults, and a rating share of 0.5, when nothing is stored', async () => {
+    const scoring = await store.scoring();
+    expect(scoring.criteria.map((c) => c.key)).toEqual([...BUILT_IN_KEYS]);
+    expect(scoring.ratingShare).toBe(0.5);
+    expect(await store.recordsOf('criterion')).toEqual([]);
+  });
+
+  it('writes only what differs from the defaults: a built-in set back to its default has its record deleted', async () => {
+    await store.saveCriterion(power({ weight: 3, mustHave: true, minScore: 4 }), T1);
+    const stored = await store.getRecord('criterion', 'power');
+    expect(stored?.payload).toEqual({ weight: 3, mustHave: true, minScore: 4, sort: 1 });
+    expect(Object.keys(stored?.payload ?? {})).toEqual(['weight', 'mustHave', 'minScore', 'sort']);
+    expect(stored?.dirty).toBe(true);
+    expect((await store.scoring()).criteria.find((c) => c.key === 'power')).toMatchObject({ weight: 3, mustHave: true, minScore: 4 });
+    await store.saveCriterion(power(), T2);
+    expect(await store.getRecord('criterion', 'power')).toBeUndefined();
+    // Saving the default of a built-in that never had a record writes nothing.
+    await store.saveCriterion(power({ key: 'water', sort: 0 }), T2);
+    expect(await store.recordsOf('criterion')).toEqual([]);
+  });
+
+  it('archives a built-in with a record that keeps the archived flag, and never stores a label for it', async () => {
+    await store.saveCriterion({ ...power(), label: 'Ignored label', archived: true }, T1);
+    expect((await store.getRecord('criterion', 'power'))?.payload).toEqual({ weight: 2, mustHave: false, minScore: 3, sort: 1, archived: true });
+  });
+
+  it('adds a custom criterion with a key of c_ and 8 hex characters, at the end, Medium', async () => {
+    const added = await store.addCriterion('Pets allowed', 2, T1);
+    expect(added.key).toMatch(/^c_[0-9a-f]{8}$/);
+    expect(added).toMatchObject({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
+    expect((await store.getRecord('criterion', added.key))?.payload).toEqual({ label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 });
+    const second = await store.addCriterion('Lift', 3, T1);
+    expect(second.sort).toBe(11);
+    expect((await store.scoring()).criteria.map((c) => c.key).slice(-2)).toEqual([added.key, second.key]);
+  });
+
+  it('draws a custom key again when it clashes with a record, a deleted one included', async () => {
+    const first = await store.addCriterion('One', 2, T1, () => 'c_00000001');
+    await store.deleteCriterion(first.key, T2);
+    const keys = ['c_00000001', 'c_00000001', 'c_00000002'];
+    const second = await store.addCriterion('Two', 2, T2, () => keys.shift() ?? 'c_ffffffff');
+    expect(second.key).toBe('c_00000002');
+  });
+
+  it('refuses a blank or oversized label', async () => {
+    await expect(store.addCriterion('   ')).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.addCriterion('x'.repeat(61))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.addCriterion('x'.repeat(60))).resolves.toBeDefined();
+    await expect(store.saveCriterion({ key: 'not-a-key!', weight: 2, mustHave: false, minScore: 3, sort: 0 })).rejects.toBeInstanceOf(LocalDataError);
+  });
+
+  it('refuses the 41st criterion (the ten built-ins count) with "At most 40 criteria"', async () => {
+    for (let i = 0; i < 30; i++) await store.addCriterion(`Custom ${i}`, 2, T1, () => `c_${i.toString(16).padStart(8, '0')}`);
+    expect((await store.scoring()).criteria).toHaveLength(40);
+    await expect(store.addCriterion('One too many')).rejects.toMatchObject({ key: 'criteria.max' });
+    // An existing one can still be changed.
+    await expect(store.saveCriterion({ key: 'c_00000000', label: 'Renamed', weight: 1, mustHave: false, minScore: 3, sort: 10 })).resolves.toBeUndefined();
+    expect((await store.scoring()).criteria).toHaveLength(40);
+  });
+
+  it('deletes a custom criterion only when no house has a score under its key', async () => {
+    const added = await store.addCriterion('Pets', 2, T1);
+    await store.saveHouse(house('h1', { checklist: { [added.key]: 4 } }), T1);
+    expect(await store.criterionInUse(added.key)).toBe(true);
+    await expect(store.deleteCriterion(added.key)).rejects.toMatchObject({ key: 'criteria.inUse' });
+    expect(await store.getRecord('criterion', added.key)).toBeDefined();
+    await store.deleteHouse('h1', T2);
+    expect(await store.criterionInUse(added.key)).toBe(false);
+    await store.deleteCriterion(added.key, T2);
+    expect(await store.getRecord('criterion', added.key)).toBeUndefined();
+    // A built-in can only be archived.
+    await expect(store.deleteCriterion('water')).rejects.toBeInstanceOf(LocalDataError);
+  });
+
+  it('stores the rating share as the preference score.ratingShare, and deletes it at the default 0.5', async () => {
+    await store.setRatingShare(0.25, T1);
+    expect((await store.getRecord('preference', 'score.ratingShare'))?.payload).toEqual({ value: '0.25' });
+    expect((await store.scoring()).ratingShare).toBe(0.25);
+    await store.setRatingShare(0.5, T2);
+    expect(await store.getRecord('preference', 'score.ratingShare')).toBeUndefined();
+    expect((await store.scoring()).ratingShare).toBe(0.5);
+    await store.setRatingShare(7, T2);
+    expect((await store.scoring()).ratingShare).toBe(1);
+  });
+
+  it('resets to the defaults: every criterion and preference record becomes a tombstone', async () => {
+    await store.saveCriterion(power({ weight: 3 }), T1);
+    await store.addCriterion('Pets', 2, T1);
+    await store.setRatingShare(0.75, T1);
+    await store.resetCriteria(T2);
+    expect(await store.recordsOf('criterion')).toEqual([]);
+    expect(await store.recordsOf('preference')).toEqual([]);
+    const scoring = await store.scoring();
+    expect(scoring.criteria).toHaveLength(10);
+    expect(scoring.ratingShare).toBe(0.5);
+    // The tombstones stay for the next sync.
+    expect((await store.dirtyRecords()).every((r) => r.deleted)).toBe(true);
+  });
+
+  it('reads an out-of-range stored value as the default', async () => {
+    await store.saveRecord('criterion', 'water', { weight: 9, mustHave: 'x', minScore: 0, sort: -4 }, T1);
+    const water = (await store.scoring()).criteria.find((c) => c.key === 'water');
+    expect(water).toMatchObject({ weight: 2, mustHave: false, minScore: 3, sort: 0 });
+    await store.saveRecord('preference', 'score.ratingShare', { value: 'lots' }, T1);
+    expect((await store.scoring()).ratingShare).toBe(0.5);
   });
 });

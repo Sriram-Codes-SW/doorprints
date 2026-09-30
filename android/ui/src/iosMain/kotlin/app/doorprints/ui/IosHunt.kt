@@ -255,7 +255,7 @@ internal object IosHunt : HuntEffects {
         val perMonth = getString(Res.string.price_per_month, AMOUNT_MARK)
         Formats.price(h.price, h.priceType) { perMonth.replace(AMOUNT_MARK, it) }?.let { parts += it }
         h.rating?.let { parts += "★".repeat(it) }
-        h.score?.let { parts += getString(Res.string.common_score_value, Formats.score(it)) }
+        h.score(IosAppContainer.repository.scoring())?.let { parts += getString(Res.string.common_score_value, Formats.score(it)) }
         return parts.joinToString(" · ").ifEmpty { getString(Res.string.notif_visited_before) }
     }
 

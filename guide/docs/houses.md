@@ -63,7 +63,9 @@ Open a house from the list or the map. There you can:
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;
 - add photos: **Add photos** on the website, **Take photo** or **From gallery** on Android. Save the house first.
 
-Doorprints gives each house an overall **score** out of 5. It works this out from your rating and the checklist.
+Doorprints gives each house an overall **score** out of 5. It works this out from your rating and the checklist. Open **Settings > Criteria**
+to choose what matters: set each item to Ignore, Low, Medium or High, mark **must-haves** with a minimum score, add your own items and choose
+how much your star rating counts. A house that misses a must-have is marked and listed after the others.
 Remember to choose **Save**.
 
 ![A saved house on the website: Green Villa, 2BHK, status Shortlisted, four stars, score 4.0, rent 32000, and its location on a small map](images/web-house.png)

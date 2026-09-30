@@ -17,6 +17,8 @@
  */
 
 import type { TKey } from '../i18n/en';
+import { evaluateScore } from '../shared/scoring';
+import type { Scoring } from '../shared/scoring';
 
 export type HouseStatus = 'NEW' | 'SHORTLISTED' | 'REJECTED';
 export type PriceType = 'RENT' | 'SALE';
@@ -260,15 +262,12 @@ export const STATUS_COLOR: Readonly<Record<HouseStatus, string>> = {
 };
 
 /**
- * 0–5 overall score: average of the checklist, blended 50/50 with the star rating when both exist.
- * Null if nothing has been scored yet.
+ * 0–5 overall score of a house under the effective scoring (docs/11 5.4, `evaluateScore`): the weighted checklist
+ * blended with the star rating by the rating share. Null if nothing has been scored yet. With `DEFAULT_SCORING` this
+ * is the old rule (average of the checklist, 50/50 with the rating). Every caller passes the scoring it loaded.
  */
-export function houseScore(h: Pick<HouseDto, 'checklist' | 'rating'>): number | null {
-  const values = Object.values(h.checklist ?? {}).filter((v) => typeof v === 'number' && !Number.isNaN(v));
-  const check = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-  const rating = h.rating ?? null;
-  if (check !== null && rating !== null) return (check + rating) / 2;
-  return check ?? rating;
+export function houseScore(h: Pick<HouseDto, 'checklist' | 'rating'>, scoring: Scoring): number | null {
+  return evaluateScore(h.checklist, h.rating, scoring).overall;
 }
 
 export function newHouse(lat: number, lon: number, locationSource: LocationSource | null = null): HouseDto {

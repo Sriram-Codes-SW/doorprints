@@ -87,4 +87,6 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     visits.map { it.toExport() },
     photos.map { it.toExport() },
     brokers,
+    criteria,
+    preferences,
 )

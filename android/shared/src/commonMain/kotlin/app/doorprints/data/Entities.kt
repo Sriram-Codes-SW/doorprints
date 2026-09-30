@@ -26,6 +26,9 @@ import androidx.room.PrimaryKey
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseScore
+import app.doorprints.shared.model.RankedHouse
+import app.doorprints.shared.model.ScoreResult
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRecord
@@ -72,9 +75,14 @@ data class HouseEntity(
     /** True while this row has local changes the server hasn't seen yet. */
     override val dirty: Boolean = true,
 ) : SyncRecord {
-    /** 0–5 overall score, see [HouseScore.of]. Null if nothing has been scored yet. Not stored. */
-    val score: Double?
-        get() = HouseScore.of(checklist, rating)
+    /** The house's score under [scoring] (the repository's `observeScoring`), see [HouseScore.evaluate]. Not stored. */
+    fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)
+
+    /** 0–5 overall score under [scoring], null if nothing has been scored yet. Not stored. */
+    fun score(scoring: Scoring): Double? = scoreResult(scoring).overall
+
+    /** What [Ranking] orders this house by. */
+    fun ranked(scoring: Scoring): RankedHouse = RankedHouse(id, scoreResult(scoring), price, updatedAt)
 }
 
 @Entity(tableName = "visits", indices = [Index("houseId"), Index("street")])

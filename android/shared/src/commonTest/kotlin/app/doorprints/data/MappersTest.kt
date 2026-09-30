@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.VisitDto
@@ -151,8 +152,8 @@ class MappersTest {
 
     @Test
     fun scoreAndSyncRulesApplyToRoomEntities() {
-        assertEquals(3.5, house.copy(rating = 4, checklist = mapOf("water" to 2, "parking" to 4)).score!!, 1e-9)
-        assertNull(house.copy(rating = null, checklist = emptyMap()).score)
+        assertEquals(3.5, house.copy(rating = 4, checklist = mapOf("water" to 2, "parking" to 4)).score(Scoring.DEFAULT)!!, 1e-9)
+        assertNull(house.copy(rating = null, checklist = emptyMap()).score(Scoring.DEFAULT))
         assertTrue(SyncRules.keepLocal(house.copy(updatedAt = 2_000, dirty = true), house.copy(updatedAt = 1_000)))
         assertFalse(SyncRules.keepLocal(null, house))
         val visit = VisitEntity(id = "v1", lat = 0.0, lon = 0.0, arrivedAt = 0, updatedAt = 1_000, dirty = false)

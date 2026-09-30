@@ -38,7 +38,6 @@ import type { Subscription } from 'rxjs';
 import { LocalDataService } from '../../core/local-data.service';
 import { GeocodeService } from '../../core/geocode.service';
 import {
-  CHECKLIST,
   HouseDto,
   HouseStatus,
   LocationSource,
@@ -47,7 +46,6 @@ import {
   STATUS_ICON,
   STATUS_KEY,
   VisitDto,
-  houseScore,
   newHouse,
   uuid,
 } from '../../core/models';
@@ -68,6 +66,9 @@ import {
 import type { LengthUnit } from '../../shared/room-sizes';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
+import { criterionName } from '../../shared/criterion-name';
+import { DEFAULT_SCORING, evaluateScore } from '../../shared/scoring';
+import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
@@ -222,7 +223,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shortQuery: MediaQueryList | null = null;
   private onShortChange: (() => void) | null = null;
 
-  protected readonly checklist = CHECKLIST;
+  /** The effective scoring (slice 2); the defaults until it is read. */
+  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /**
+   * The criteria the checklist asks about: the active ones in the person's order, custom ones by label, weight-0 ones
+   * marked "ignored". Archived criteria are hidden here but their stored scores stay on the house.
+   */
+  protected readonly checklist = computed<Criterion[]>(() => this.scoring().criteria.filter((c) => c.archived !== true));
   protected readonly statuses = STATUSES;
   protected readonly statusKey = STATUS_KEY;
   protected readonly statusIcon = STATUS_ICON;
@@ -328,6 +335,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.api.scoring().subscribe({
+      next: (scoring) => this.scoring.set(scoring),
+      error: () => this.scoring.set(DEFAULT_SCORING),
+    });
     this.api.brokers().subscribe({
       next: (rows) => this.brokers.set(sortBrokers(rows)),
       error: () => this.brokers.set([]),
@@ -700,7 +711,22 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 
   protected score(h: HouseDto): number | null {
-    return houseScore(h);
+    return this.result(h).overall;
+  }
+
+  /** The score result of the house as edited: overall, coverage and the must-haves it misses or has not checked. */
+  protected result(h: HouseDto): ScoreResult {
+    return evaluateScore(h.checklist, h.rating, this.scoring());
+  }
+
+  /** A criterion's name: a built-in's translation, a custom criterion's own label. */
+  protected nameOf(c: Pick<Criterion, 'key' | 'label'>): string {
+    return criterionName(c, (key) => this.i18n.t(key));
+  }
+
+  /** The names of some criterion keys, for the must-have lines. */
+  protected namesOf(keys: readonly string[]): string {
+    return keys.map((key) => this.nameOf(this.scoring().criteria.find((c) => c.key === key) ?? { key })).join(', ');
   }
 
   protected markDirty(): void {

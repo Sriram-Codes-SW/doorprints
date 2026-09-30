@@ -18,6 +18,7 @@
 
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../../data/records';
 import type { BrokerRow } from '../../shared/broker';
+import type { CriterionRow, PreferenceRow } from '../../shared/scoring';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
 
@@ -273,6 +274,33 @@ export const FIXTURE_BROKERS: BrokerRow[] = [
   { id: B2, updatedAt: '2026-09-03T06:00:00.000Z', broker: { name: 'Meena Iyer', agency: 'Beach Road Realty' } },
 ];
 
+/**
+ * The three criteria and the one preference of `docs/schemas/backup-sample.json` (slice 2), in the backup's order:
+ * an archived built-in (noise, ignored), a custom one nobody has scored yet, and Water made a High must-have (4+).
+ * The rating counts for 40%. Every other built-in uses the defaults, so it has no record.
+ */
+export const FIXTURE_CRITERIA: CriterionRow[] = [
+  {
+    key: 'noise',
+    updatedAt: '2026-09-02T06:00:00.000Z',
+    criterion: { key: 'noise', weight: 0, mustHave: false, minScore: 3, sort: 5, archived: true },
+  },
+  {
+    key: 'c_1a2b3c4d',
+    updatedAt: '2026-09-03T06:00:00.000Z',
+    criterion: { key: 'c_1a2b3c4d', label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 },
+  },
+  {
+    key: 'water',
+    updatedAt: '2026-09-10T08:30:00.000Z',
+    criterion: { key: 'water', weight: 3, mustHave: true, minScore: 4, sort: 0 },
+  },
+];
+
+export const FIXTURE_PREFERENCES: PreferenceRow[] = [
+  { key: 'score.ratingShare', value: '0.4', updatedAt: '2026-09-10T08:30:00.000Z' },
+];
+
 /** Three bytes standing in for JPEG data; the exporters never look inside. */
 export const FIXTURE_PHOTO_BYTES = new Uint8Array([0xff, 0xd8, 0xff]);
 
@@ -322,6 +350,8 @@ export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundl
     visits: FIXTURE_VISITS,
     photos: FIXTURE_PHOTOS,
     brokers: FIXTURE_BROKERS,
+    criteria: FIXTURE_CRITERIA,
+    preferences: FIXTURE_PREFERENCES,
     exportedAt: FIXTURE_EXPORTED_AT,
     options: { ...FIXTURE_OPTIONS, ...options },
   });

@@ -92,6 +92,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                         localUnlinkedVisitIds = local.unlinkedVisitIds,
                         syncedDeletedHouseIds = local.syncedDeletedHouseIds,
                         localBrokers = local.brokers,
+                        localCriteria = local.criteria,
+                        localPreferences = local.preferences,
                     )
                     val heavy = actions.photos.size >= FOREGROUND_PHOTO_THRESHOLD
                     if (heavy) runCatching { setForeground(foregroundInfo(localised, 0, 0)) }

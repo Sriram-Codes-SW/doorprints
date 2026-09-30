@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.37 |
+| Version | 0.38 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -49,6 +49,7 @@
 | 0.35 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1a built** (the house's cost, carpet area and location source, [10](10-sprint-log.md) §13.19): slice 1 goes in three steps, 1a these values, 1b brokers, 1c rooms; 5.21 built. |
 | 0.36 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1b built** (brokers, [10](10-sprint-log.md) §13.20): the first record type and the first `doorprints-backup/2` list; 5.25 built. |
 | 0.37 | 2026-09-30 | Claude (Code), lead | 5.6 and 5.30 **slice 1c built** (rooms, [10](10-sprint-log.md) §13.21): rooms nested in the house, the length units, the `/2` rule now "a broker or a room". |
+| 0.38 | 2026-09-30 | Claude (Code), lead | 5.4 and 5.30 **slice 2 built** (criteria and ranking, [10](10-sprint-log.md) §13.22): criteria and preferences as records, one scoring implementation per stack, the *Criteria* screen, the ranking. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -267,6 +268,15 @@ sequenceDiagram
 | Must-have | A house fails when any must-have criterion has a score below `minScore`. An unscored must-have is "not checked yet", not a failure. |
 | Ranking | Scope: SHORTLISTED (toggle: + NEW). Order: (1) no failed must-have first, (2) `overall` desc (null last), (3) coverage desc, (4) price asc, (5) `updatedAt` desc. Computed on the client (Room/web); no server endpoint needed. |
 | Old clients | Android stores the checklist as a JSON map and web as a `Record`, so custom keys round-trip; to verify in TC-I-23 before release. |
+
+**Built (2026-09-30, slice 2 of 5.30; [10](10-sprint-log.md) §13.22).** Criteria are records of type `criterion` (id = the key) and the rating share a
+record of type `preference`, so there is no new table or migration; a built-in with no record uses the defaults, and only what
+differs is stored. One `HouseScore`/`scoring.ts` implementation per stack over eight shared vectors; every caller of the old
+two-argument score now passes the effective scoring. Archived criteria and weight-0 criteria (*Ignore*) do not count, an unscored
+must-have is "not checked yet", and a score under a key that is not a known criterion is ignored. The house list's *best first*, Compare
+and the readable copies rank by the five-step order above; a house that misses a must-have shows a chip and sorts after the rest. Settings >
+Criteria (a card on Your data on the web) sets weights, must-haves, order, archiving, custom criteria and the rating share, and resets to the
+defaults. Backup: `criteria` and `preferences` lists (docs/schemas §3.6). The objective criteria from data (D-13: budget fit, BHK match) are later.
 
 ### 5.5 Viewing question checklists
 

@@ -126,7 +126,10 @@ class BackupParityTest {
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
         assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));
-        // The list order of data.json is part of the format too (README section 3): brokers come after photos.
+        // Criteria and preferences spread optional fields across multiple rows, so compare union with component order preserved
+        assertThat(unionOf(root, "criteria")).isEqualTo(components(BackupCriterion.class));
+        assertThat(unionOf(root, "preferences")).isEqualTo(components(BackupPreference.class));
+        // The list order of data.json is part of the format too (README section 3): criteria and preferences come after brokers.
         assertThat(new java.util.ArrayList<>(root.propertyNames()))
                 .isEqualTo(components(BackupData.class));
     }
@@ -139,6 +142,24 @@ class BackupParityTest {
             if (keys.size() > fullest.size()) fullest = keys;
         }
         return fullest;
+    }
+
+    private static java.util.List<String> unionOf(tools.jackson.databind.JsonNode root, String list) {
+        // Union of all keys in the list, preserving component order (not row order)
+        var recordClass = switch (list) {
+            case "criteria" -> BackupCriterion.class;
+            case "preferences" -> BackupPreference.class;
+            default -> throw new IllegalArgumentException("Unknown list: " + list);
+        };
+        var componentOrder = components(recordClass);
+        var keys = new java.util.LinkedHashSet<String>();
+        for (var row : root.get(list)) {
+            for (var key : row.propertyNames()) {
+                keys.add(key);
+            }
+        }
+        // Return in the component's declared order
+        return componentOrder.stream().filter(keys::contains).toList();
     }
 
     private static java.util.List<String> components(Class<? extends Record> record) {

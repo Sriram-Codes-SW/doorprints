@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Your own criteria** ([spec](docs/11-feature-parity-and-export-spec.md) 5.4, slice 2 of 5.30): choose what matters when you score a
+  house. **Criteria** (Settings; Your data on the website) lets you set each checklist item to Ignore, Low, Medium or High, mark
+  must-haves with a minimum score, reorder or archive items, add your own ("Pets allowed"), and choose how much your star
+  rating counts against the checklist. A house's score, the list's *best first*, Compare and the readable copies follow it; a house
+  that misses a must-have is marked and ranked after the rest, and the house shows how many of the criteria that matter you have
+  scored. Backups and copies carry your criteria (a backup with them is written as `doorprints-backup/2`).
 - **Rooms** ([spec](docs/11-feature-parity-and-export-spec.md) 5.6, slice 1c of 5.30): a house keeps up to 30 rooms with a type
   (bedroom, hall, kitchen, bathroom, balcony and so on), a name, its length and width, a condition from one to five stars and
   notes. The house form has a **Rooms** section that shows each room's area and the total, **Length units** in Settings switches
