@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -58,6 +59,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -81,6 +84,7 @@ import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.listing.ListingText
+import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseCost
@@ -152,6 +156,8 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 it.cost?.deposit, it.cost?.depositMonths, it.cost?.maintenance, it.cost?.maintenanceIncluded,
                 it.cost?.brokerage, it.cost?.brokerageMonths, it.cost?.lockInMonths, it.cost?.noticeMonths,
                 it.cost?.availableFrom, it.cost?.myOffer, it.cost?.agreedPrice,
+                // Slice 1b: the broker's record id.
+                it.brokerId,
             )
         }
     },
@@ -192,6 +198,8 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
             lockInMonths = v[29] as Int?, noticeMonths = v[30] as Int?, availableFrom = v[31] as String?,
             myOffer = v[32] as Long?, agreedPrice = v[33] as Long?,
         ).orNull(),
+        // Absent in a draft saved by the version before slice 1b: no broker.
+        brokerId = v.getOrNull(34) as String?,
     )
 }.getOrNull()
 
@@ -418,6 +426,7 @@ fun HouseEditScreen(
     val photosFlow = remember(id) { repo.photosFor(id) }
     val photos by photosFlow.collectAsStateWithLifecycle(emptyList())
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
+    val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1012,13 +1021,18 @@ fun HouseEditScreen(
                     minLines = 3, modifier = Modifier.fillMaxWidth())
 
                 SectionHeading(stringResource(Res.string.house_contact))
+                // A house with a broker shows the broker's name and phone, which follow the broker (slice 1b): they are
+                // edited on the broker's page, or the broker is set to None here.
+                val linkedBroker = d.brokerId != null && brokers.any { it.first == d.brokerId }
                 OutlinedTextField(d.contactName ?: "", { v -> update { it.copy(contactName = v) } },
                     label = { Text(stringResource(Res.string.house_contact_name)) },
+                    readOnly = linkedBroker,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                     singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(d.contactPhone ?: "", { v -> update { it.copy(contactPhone = v) } },
                         label = { Text(stringResource(Res.string.house_phone)) },
+                        readOnly = linkedBroker,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                         singleLine = true, modifier = Modifier.weight(1f))
                     // A local: HouseEntity is in :shared since CMP-4 P4a, and Kotlin does not smart-cast another
@@ -1051,6 +1065,29 @@ fun HouseEditScreen(
                         ) { Text(stringResource(Res.string.house_listing_open)) }
                     }
                 }
+
+                // The broker (docs/11 5.25, slice 1b) right after the contact: pick one, or none, or make a new one.
+                BrokerSection(
+                    brokerId = d.brokerId,
+                    brokers = brokers,
+                    onPick = { picked ->
+                        update {
+                            if (picked == null) {
+                                // None: the contact it holds stays and can be edited. A phone number still finds or
+                                // makes its broker when the house is saved; clear the number to stay unlinked.
+                                it.copy(brokerId = null)
+                            } else {
+                                it.copy(brokerId = picked.first, contactName = picked.second.name, contactPhone = picked.second.phone)
+                            }
+                        }
+                    },
+                    onCreate = { broker ->
+                        scope.launch {
+                            val newId = repo.saveBroker(broker)
+                            update { it.copy(brokerId = newId, contactName = broker.name, contactPhone = broker.phone) }
+                        }
+                    },
+                )
 
                 // Without adding photos (iOS for now; PlatformFeatures.addPhotos) there is no take or pick button
                 // and no "save first" prompt, and a house with no photos has no Photos section at all; photos it
@@ -1654,7 +1691,7 @@ private fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, L
 
 /** 1-5 stars as a radio group: TalkBack says "3 out of 5, selected, radio button, 3 of 5". Tap again to clear. */
 @Composable
-private fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
+internal fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
     val starColor = LocalDoorprintsColors.current.star
     val none = stringResource(Res.string.house_no_rating)
     val current = rating?.let { stringResource(Res.string.common_stars, it) } ?: none
@@ -1726,5 +1763,93 @@ private fun ChecklistRow(label: String, value: Int?, onPick: (Int?) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/**
+ * The house form's Broker section (docs/11 5.25, slice 1b): the chosen broker (or *None*) as a menu of the brokers by
+ * name, and *New broker*, a small dialog for a name, phone and agency. Choosing one fills the contact name and phone
+ * from it ([onPick] with the broker; null for *None*); a new one is saved at once ([onCreate]) and chosen.
+ */
+@Composable
+private fun BrokerSection(
+    brokerId: String?,
+    brokers: List<Pair<String, Broker>>,
+    onPick: (Pair<String, Broker>?) -> Unit,
+    onCreate: (Broker) -> Unit,
+) {
+    val none = stringResource(Res.string.house_broker_none)
+    val label = stringResource(Res.string.house_broker)
+    val current = brokerId?.let { id -> brokers.firstOrNull { it.first == id } }
+    val currentText = current?.second?.label ?: none
+    var open by remember { mutableStateOf(false) }
+    var creating by rememberSaveable { mutableStateOf(false) }
+    SectionHeading(label)
+    Box {
+        OutlinedButton(
+            onClick = { open = true },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                contentDescription = label
+                stateDescription = currentText
+                role = Role.DropdownList
+            },
+        ) {
+            Text(currentText, modifier = Modifier.weight(1f, fill = false), maxLines = 2)
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.selectableGroup()) {
+            (listOf<Pair<String, Broker>?>(null) + brokers).forEach { option ->
+                val isCurrent = option?.first == current?.first
+                DropdownMenuItem(
+                    text = { Text(option?.second?.label ?: none) },
+                    onClick = {
+                        open = false
+                        if (!isCurrent) onPick(option)
+                    },
+                    leadingIcon = { RadioButton(selected = isCurrent, onClick = null) },
+                    modifier = Modifier.semantics {
+                        selected = isCurrent
+                        role = Role.RadioButton
+                    },
+                )
+            }
+        }
+    }
+    Text(stringResource(Res.string.house_broker_hint), style = MaterialTheme.typography.bodySmall)
+    TextButton(onClick = { creating = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+        ButtonLabel(stringResource(Res.string.house_broker_new))
+    }
+    if (creating) {
+        var name by rememberSaveable { mutableStateOf("") }
+        var phone by rememberSaveable { mutableStateOf("") }
+        var agency by rememberSaveable { mutableStateOf("") }
+        val close = { creating = false; name = ""; phone = ""; agency = "" }
+        AlertDialog(
+            onDismissRequest = close,
+            title = { Text(stringResource(Res.string.house_broker_new)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(name, { name = it.take(Broker.MAX_NAME) }, label = { Text(stringResource(Res.string.broker_name)) },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+                        singleLine = true)
+                    OutlinedTextField(phone, { phone = it.take(Broker.MAX_PHONE) }, label = { Text(stringResource(Res.string.broker_phone)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                        singleLine = true)
+                    OutlinedTextField(agency, { agency = it.take(Broker.MAX_AGENCY) }, label = { Text(stringResource(Res.string.broker_agency)) },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                        singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCreate(Broker(name = name.trim(), phone = phone.ifBlank { null }, agency = agency.ifBlank { null }))
+                        close()
+                    },
+                    enabled = name.isNotBlank(),
+                ) { Text(stringResource(Res.string.common_save)) }
+            },
+            dismissButton = { TextButton(onClick = close) { Text(stringResource(Res.string.common_cancel)) } },
+        )
     }
 }

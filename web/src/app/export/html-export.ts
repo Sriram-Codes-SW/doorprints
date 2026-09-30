@@ -18,6 +18,7 @@
 
 import type { Dict, TKey } from '../i18n/en';
 import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
+import { brokerLine } from '../shared/broker';
 import type { HouseCost } from '../core/models';
 import { costSummary } from '../shared/house-cost';
 import { rupees } from './deterministic';
@@ -31,7 +32,7 @@ import {
   formatPrice,
   tr,
 } from './deterministic';
-import type { ExportBundle, ExportHouse } from './export-model';
+import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -84,6 +85,7 @@ export function buildHtml(
     bundle.houses.length === 0
       ? `<p class="empty">${escapeHtml(tr(dict, 'exp.noHouses'))}</p>`
       : bundle.houses.map((h, index) => houseSection(h, index + 1, bundle, dict, photos, options)).join('\n'),
+    brokersSection(bundle, dict),
     `<footer><p>${escapeHtml(tr(dict, 'exp.footer'))}</p></footer>`,
     '</body>',
     '</html>',
@@ -170,6 +172,8 @@ function houseSection(
   if (bundle.options.includeContacts) {
     add('house.contactName', escapeHtml(house.contactName ?? ''));
     add('house.contactPhone', escapeHtml(house.contactPhone ?? ''));
+    const broker = bundle.brokers.find((b) => b.id === house.brokerId);
+    add('house.broker', broker ? escapeHtml(brokerLine(broker.broker)) : '');
   }
   add('exp.fieldSaved', escapeHtml(formatDate(house.createdAt)));
 
@@ -237,6 +241,40 @@ function houseSection(
   ]
     .filter((part) => part !== '')
     .join('\n');
+}
+
+/**
+ * The **Brokers** section after the houses (slice 1b): each broker of the copy with its fields and the houses of the
+ * copy that use it. Empty when the copy has no brokers (or no contact details).
+ */
+function brokersSection(bundle: ExportBundle, dict: Dict): string {
+  if (bundle.brokers.length === 0) return '';
+  const items = bundle.brokers.map((b) => {
+    const rows = brokerEntries(b, dict).map(
+      ([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
+    );
+    return `<h3>${escapeHtml(b.broker.name)}</h3><table class="fields">${rows.join('')}</table>`;
+  });
+  return [
+    '<section class="brokers">',
+    `<h2>${escapeHtml(tr(dict, 'brokers.title'))}</h2>`,
+    items.join('\n'),
+    '</section>',
+  ].join('\n');
+}
+
+/** A broker's rows in a readable copy: the fields that are set, then the houses of the copy that use it. */
+export function brokerEntries(b: ExportBroker, dict: Dict): [string, string][] {
+  const out: [string, string][] = [];
+  if (b.broker.phone) out.push([tr(dict, 'brokers.phone'), b.broker.phone]);
+  if (b.broker.agency) out.push([tr(dict, 'brokers.agency'), b.broker.agency]);
+  if (b.broker.feeTerms) out.push([tr(dict, 'brokers.feeTerms'), b.broker.feeTerms]);
+  if (b.broker.rating) out.push([tr(dict, 'compare.rating'), tr(dict, 'common.stars', { n: b.broker.rating })]);
+  if (b.broker.notes) out.push([tr(dict, 'brokers.notes'), b.broker.notes]);
+  if (b.houses.length > 0) {
+    out.push([tr(dict, 'brokers.housesHeading'), b.houses.map((h) => labelOf(h.label, dict)).join(', ')]);
+  }
+  return out;
 }
 
 /** The label key of each cost field, for the Cost block and the form. */

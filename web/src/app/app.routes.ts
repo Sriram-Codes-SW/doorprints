@@ -61,6 +61,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/compare/compare-page').then((m) => m.ComparePage),
   },
   {
+    path: 'brokers',
+    title: 'title.brokers',
+    loadComponent: () => import('./pages/brokers/brokers-page').then((m) => m.BrokersPage),
+  },
+  {
+    path: 'brokers/:id',
+    title: 'title.broker',
+    loadComponent: () => import('./pages/brokers/broker-page').then((m) => m.BrokerPage),
+  },
+  {
     path: 'data',
     title: 'title.data',
     loadComponent: () => import('./pages/data/data-page').then((m) => m.DataPage),

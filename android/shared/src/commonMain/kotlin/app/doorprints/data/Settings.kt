@@ -212,6 +212,7 @@ class SettingsStore(
         val pathTrace = booleanPreferencesKey("pathTrace")
         /** [AppSettings.shareContacts], as JSON. */
         val shareContacts = stringPreferencesKey("shareContacts")
+        val brokersMigrated = booleanPreferencesKey("brokers.migrated")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -357,6 +358,14 @@ class SettingsStore(
     suspend fun removeShareContact(id: String) = dataStore.edit {
         it[Keys.shareContacts] = ShareContact.encode(ShareContact.decode(it[Keys.shareContacts]).filter { c -> c.id != id })
     }
+
+    /**
+     * Whether the once-only move of contacts into brokers has run (docs/11 5.25, slice 1b): a person who unlinks a
+     * house from its broker on purpose is never linked again.
+     */
+    suspend fun brokersMigrated(): Boolean = dataStore.data.first()[Keys.brokersMigrated] ?: false
+
+    suspend fun markBrokersMigrated() = dataStore.edit { it[Keys.brokersMigrated] = true }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 

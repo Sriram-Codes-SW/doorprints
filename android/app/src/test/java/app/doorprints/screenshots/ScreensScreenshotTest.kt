@@ -38,6 +38,9 @@ import app.doorprints.data.AppSettings
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppLockSection
+import app.doorprints.ui.BrokerForm
+import app.doorprints.ui.BrokerList
+import app.doorprints.shared.model.Broker
 import app.doorprints.ui.ShareUpdatesScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import app.doorprints.ui.SaveAreaDialogContent
@@ -278,6 +281,32 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.settings.addShareContact("Amma")
         }
         shoot("share_updates") { ShareUpdatesScreen(onBack = {}) }
+    }
+    /**
+     * Brokers (docs/11 5.25, slice 1b): Settings > Brokers with two brokers (one with a house, stars and an agency), and
+     * under it one broker's page with its fields and its houses. One shot for both, to keep the image set small.
+     */
+    @Test fun brokers() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val ravi = Broker(
+            name = "Ravi Kumar", phone = "+91 98400 11111", agency = "Adyar Homes", feeTerms = "15 days' rent, once",
+            notes = "Replies fast; shows keys on weekends", rating = 4,
+        )
+        val raviId = runBlocking {
+            val id = repo.saveBroker(ravi)
+            repo.saveHouse(repo.getHouse("a")!!.copy(brokerId = id))
+            repo.saveBroker(Broker(name = "Meena Iyer", agency = "Beach Road Realty"))
+            id
+        }
+        shoot("brokers") {
+            val brokers by repo.observeBrokers().collectAsState(initial = null)
+            val houses by repo.brokerHouses(raviId).collectAsState(initial = emptyList())
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                BrokerList(brokers, mapOf(raviId to houses.size), onOpenBroker = {}, onAdd = {})
+                HorizontalDivider()
+                BrokerForm(raviId, ravi, houses, onDone = {}, onOpenHouse = {})
+            }
+        }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }

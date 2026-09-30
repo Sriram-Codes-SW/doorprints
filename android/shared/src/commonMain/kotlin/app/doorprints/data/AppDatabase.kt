@@ -89,6 +89,13 @@ interface HouseDao {
      */
     @Query("SELECT id FROM houses WHERE deleted = 1 AND dirty = 0")
     suspend fun syncedDeletedIds(): List<String>
+
+    /** A broker's live houses, for its page and for the rewrite of the contact copies (slice 1b). */
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND brokerId = :brokerId ORDER BY updatedAt DESC")
+    suspend fun liveForBroker(brokerId: String): List<HouseEntity>
+
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND brokerId = :brokerId ORDER BY updatedAt DESC")
+    fun observeForBroker(brokerId: String): Flow<List<HouseEntity>>
 }
 
 @Dao
@@ -236,6 +243,10 @@ interface RecordDao {
     @Query("UPDATE records SET dirty = 1")
     suspend fun markAllDirty()
 
+    /** The live and deleted rows of one type with their versions, for the import's last-write-wins (slice 1b). */
+    @Query("SELECT id, updatedAt FROM records WHERE type = :type")
+    suspend fun versions(type: String): List<RowVersion>
+
     /** Every row of every type, tombstones included (tests, and the backup's writer from slice 1). */
     @Query("SELECT * FROM records ORDER BY type, id")
     suspend fun all(): List<RecordEntity>
@@ -260,7 +271,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -335,7 +346,19 @@ abstract class AppDatabase : RoomDatabase() {
             "`cost_myOffer` INTEGER", "`cost_agreedPrice` INTEGER",
         )
 
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        /**
+         * v6 (docs/11 5.30 slice 1b, 2026-09-30): `houses.brokerId`, the broker's record id, nullable with no default
+         * as Room lists it in `6.json`. A house from before has none; the once-only migration of contacts into
+         * brokers (`CommonRepository.migrateContactsToBrokers`) links the ones with a phone number.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `brokerId` TEXT")
+            }
+        }
+
+        val MIGRATIONS: Array<Migration> =
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }
 

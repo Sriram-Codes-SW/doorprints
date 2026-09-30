@@ -26,6 +26,7 @@ import { fixed, rupees } from './deterministic';
 import type { ExportBundle } from './export-model';
 import { ExportStrings } from './export-strings';
 import { photoFileName } from './photo-names';
+import { brokerLine } from '../shared/broker';
 import { costSummary } from '../shared/house-cost';
 import type { PhotoRecord, VisitRecord } from '../data/records';
 
@@ -111,15 +112,16 @@ function maybeMoney(value: number | null | undefined): Cell {
  * `name` is language-neutral (the CSV file name and the sheet name); `title` is the translated heading.
  */
 export interface ExportTable {
-  readonly name: 'houses' | 'scores' | 'visits' | 'photos';
+  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers';
   readonly title: string;
   readonly columns: readonly string[];
   readonly rows: readonly (readonly Cell[])[];
 }
 
-/** The four tables of a copy, in file order. */
+/** The four tables of a copy, in file order, and the brokers table when the copy has brokers (slice 1b). */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
-  return [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
+  const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
+  return bundle.brokers.length > 0 ? [...tables, brokersTable(bundle)] : tables;
 }
 
 /** Translated words for this export's language, independent of the language the app is being used in. */
@@ -152,7 +154,7 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     s.get('col.lon'),
     // The columns are left out entirely, not blanked: a file the user asked to have no contacts in should not
     // carry two empty columns headed "Phone". Same rule as the Kotlin writer.
-    ...(contacts ? [s.get('col.contactName'), s.get('col.contactPhone')] : []),
+    ...(contacts ? [s.get('col.contactName'), s.get('col.contactPhone'), s.get('col.broker')] : []),
     s.get('col.listingUrl'),
     s.get('col.notes'),
     // Slice 1a: the house values after the notes and before the counts and ids; the last three are computed
@@ -197,7 +199,7 @@ export function housesTable(bundle: ExportBundle): ExportTable {
       maybeText(h.locality),
       cellNum(h.lat, 6),
       cellNum(h.lon, 6),
-      ...(contacts ? [maybeText(h.contactName), maybeText(h.contactPhone)] : []),
+      ...(contacts ? [maybeText(h.contactName), maybeText(h.contactPhone), maybeText(brokerName(bundle, h.brokerId))] : []),
       maybeText(h.listingUrl),
       maybeText(h.notes),
       maybeCount(h.areaSqft),
@@ -225,6 +227,38 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     ];
   });
   return { name: 'houses', title: s.get('table.houses'), columns, rows };
+}
+
+/** The broker's name plus " (agency)" when it has one, for a house linked to a broker of the copy; else nothing. */
+export function brokerName(bundle: ExportBundle, brokerId: string | null | undefined): string {
+  const found = brokerId ? bundle.brokers.find((b) => b.id === brokerId) : undefined;
+  return found ? brokerLine(found.broker) : '';
+}
+
+/** One row per broker of the copy, with the number of live houses of the copy that use it. */
+export function brokersTable(bundle: ExportBundle): ExportTable {
+  const s = stringsOf(bundle);
+  const columns = [
+    s.get('col.name'),
+    s.get('col.phone'),
+    s.get('col.agency'),
+    s.get('col.feeTerms'),
+    s.get('col.notes'),
+    s.get('col.rating'),
+    s.get('col.houses'),
+    s.get('col.id'),
+  ];
+  const rows = bundle.brokers.map((b) => [
+    cellText(b.broker.name),
+    maybeText(b.broker.phone),
+    maybeText(b.broker.agency),
+    maybeText(b.broker.feeTerms),
+    maybeText(b.broker.notes),
+    maybeCount(b.broker.rating),
+    cellCount(b.houses.length),
+    cellText(b.id),
+  ]);
+  return { name: 'brokers', title: s.get('table.brokers'), columns, rows };
 }
 
 /**

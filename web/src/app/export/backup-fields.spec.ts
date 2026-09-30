@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBackupData } from './backup-export';
 import { collect } from './export-model';
 import { GOLDEN_BACKUP_DATA_JSON } from './golden/backup.golden';
-import { FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_EXPORTED_AT, FIXTURE_HOUSES, FIXTURE_OPTIONS, FIXTURE_PHOTOS, FIXTURE_VISITS } from './golden/fixture';
 
 /**
  * Completeness of the backup writer against the format (readiness review 2026-09-29, docs/14 §8 finding 4): the keys
@@ -33,12 +33,14 @@ describe('backup fields', () => {
     houses: object[];
     visits: object[];
     photos: object[];
+    brokers: object[];
   };
   const written = buildBackupData(
     collect({
       houses: FIXTURE_HOUSES,
       visits: FIXTURE_VISITS,
       photos: FIXTURE_PHOTOS,
+      brokers: FIXTURE_BROKERS,
       exportedAt: FIXTURE_EXPORTED_AT,
       options: FIXTURE_OPTIONS,
     }),
@@ -50,4 +52,12 @@ describe('backup fields', () => {
     expect(Object.keys(written.visits[0])).toEqual(Object.keys(sample.visits[0])));
   it('writes exactly the format\'s photo keys', () =>
     expect(Object.keys(written.photos[0])).toEqual(Object.keys(sample.photos[0])));
+  it('writes exactly the format\'s broker keys, for the full broker and the sparse one', () => {
+    expect(Object.keys(written.brokers?.[1] ?? {})).toEqual(Object.keys(sample.brokers[1]));
+    expect(Object.keys(written.brokers?.[0] ?? {})).toEqual(Object.keys(sample.brokers[0]));
+  });
+  it('writes the sample\'s format id and top-level keys', () => {
+    expect(written.format).toBe((sample as unknown as { format: string }).format);
+    expect(Object.keys(written)).toEqual(Object.keys(sample));
+  });
 });

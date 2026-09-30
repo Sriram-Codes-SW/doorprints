@@ -17,6 +17,7 @@
  */
 
 import { HouseDto, HouseStatus, STATUSES } from '../../core/models';
+import type { Broker } from '../../shared/broker';
 
 /**
  * The house list's search, status filter and sort, kept apart from the map page so they can be unit tested without
@@ -89,11 +90,20 @@ function priceGroup(h: HouseDto): number {
   return 2;
 }
 
-export function searchText(h: HouseDto): string {
-  return [h.label, h.address, h.street, h.locality, h.notes, h.contactName]
+/**
+ * What a query is matched against: the house's own words plus, for a linked broker, `brokerText` (the broker's name,
+ * agency and fee terms, from {@link brokerSearchText}). The contact name stays: it is the broker's name copy.
+ */
+export function searchText(h: HouseDto, brokerText = ''): string {
+  return [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
     .filter((x) => !!x)
     .join(' ')
     .toLowerCase();
+}
+
+/** The broker's words a search matches: name, agency and fee terms. */
+export function brokerSearchText(broker: Pick<Broker, 'name' | 'agency' | 'feeTerms'>): string {
+  return [broker.name, broker.agency, broker.feeTerms].filter((x) => !!x).join(' ');
 }
 
 export function timeOf(h: HouseDto): number {

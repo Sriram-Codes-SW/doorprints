@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.35 |
+| Version | 0.36 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -47,6 +47,7 @@
 | 0.33 | 2026-09-30 | Claude (Code), lead | New **5.30**, the design of the Sprint 4b data model in one change of format (N13 4c; [03](03-design.md) ADR-28): nested house values, one record envelope for every other new entity, `doorprints-backup/2`, Room 4 and IndexedDB 2, six slices. 8.1 and 8.2 updated. |
 | 0.34 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 0 built** (the records foundations, [10](10-sprint-log.md) §13.18): the format rule, the server's `record` table and endpoints, the `records` table and store with their sync, the web's upgrade path. |
 | 0.35 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1a built** (the house's cost, carpet area and location source, [10](10-sprint-log.md) §13.19): slice 1 goes in three steps, 1a these values, 1b brokers, 1c rooms; 5.21 built. |
+| 0.36 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1b built** (brokers, [10](10-sprint-log.md) §13.20): the first record type and the first `doorprints-backup/2` list; 5.25 built. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -580,6 +581,13 @@ name and phone on a house are migrated into brokers on first run (one broker per
 on the device and in the user's own sync; never sent to AI (the existing redaction applies). Goes with *Add a house
 from a listing link* (S4b-FR-4), since listings bring the broker's details with them.
 
+**Built (2026-09-30, slice 1b of 5.30; [10](10-sprint-log.md) §13.20):** a broker is a record of type `broker` (name, phone,
+agency, fee terms, notes, rating) and a house carries `brokerId` with copies of the broker's name and phone in its own
+contact fields, so old apps, the exports and the AI redaction keep working. Saving a house with a phone number links the
+broker with that number or creates it (one broker per distinct number, compared on the last ten digits); the contacts of
+existing houses were migrated once the same way. *Brokers* (Settings) lists them, and a broker's page edits it, calls it
+and lists its houses. Not built: the duplicate-flat warning (S4b-BL-85; it needs the floor, which arrives with rooms).
+
 ### 5.26 Voice notes (parked, D-30)
 
 Parked: the phones' keyboards already turn speech into text in Hindi, Tamil and Telugu, and audio files would add to
@@ -838,6 +846,12 @@ the AI documents without *my offer*); `CostSummary` in common code with its Type
 hollow marker on both maps and its legend entry; Hunt mode never alerts at an approximate house; Compare's new rows;
 the listing parser fills the carpet area. Search is unchanged (numbers are not searched; the filters are a later
 round, S4b-BL-84).
+
+**Built, slice 1b (2026-09-30, [10](10-sprint-log.md) §13.20).** Brokers as the first record type: `Broker` in `:shared` and
+TypeScript, `houses.brokerId` (Room 6, Flyway V8), the repository's `ensureBroker`, `saveBroker`, `deleteBroker` and the
+once-only migration of contacts, the first `doorprints-backup/2` list (`brokers`, written only when the copy has one), the
+server mapping the list to its `record` table, a `broker` column and `brokers.csv` in the copies, search over the broker's
+name, agency and fee terms, and the *Brokers* screen on both apps. Brokers are never sent to AI.
 
 ## 6. User stories
 

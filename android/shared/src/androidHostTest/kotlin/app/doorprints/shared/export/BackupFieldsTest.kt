@@ -62,8 +62,20 @@ class BackupFieldsTest {
     fun theSamplePhotoHasExactlyTheModelsFields() =
         assertEquals(ExportPhoto.serializer().descriptor.elementNames.toList(), keysOf("photos"))
 
+    /** The broker with the most keys (slice 1b): Ravi's row carries every optional one, Meena's only some. */
     @Test
-    fun theSampleIsTheFormatTheReadersAccept() {
-        assertTrue(sample.getValue("format").toString().contains("doorprints-backup/1"))
+    fun theSampleBrokerWithEveryKeyHasExactlyTheModelsFields() =
+        assertEquals(
+            ExportBroker.serializer().descriptor.elementNames.toList(),
+            sample.getValue("brokers").jsonArray.map { it.jsonObject.keys.toList() }.maxBy { it.size },
+        )
+
+    /** The sample is the golden of a `/2` copy: its `brokers` list is what makes the format `/2` (README 1.1). */
+    @Test
+    fun theSampleIsTheFormatTheReadersAcceptAndTheOneAWriterPicks() {
+        val format = sample.getValue("format").toString().trim('"')
+        assertTrue(BackupFormat.accepts(format))
+        assertEquals(BackupFormat.idFor(sample.getValue("brokers").jsonArray.size), format)
+        assertEquals("doorprints-backup/2", format)
     }
 }

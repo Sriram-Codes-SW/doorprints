@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { HouseDto, PriceType, newHouse } from '../../core/models';
-import { comparePrice, listQueryParams, listReturnParams, parseListQuery, searchText } from './map-list';
+import { comparePrice, listQueryParams, listReturnParams, parseListQuery, searchText, brokerSearchText } from './map-list';
 
 function house(label: string, price: number | null, priceType: PriceType | null): HouseDto {
   return { ...newHouse(12.9, 77.6), label, price, priceType };
@@ -96,13 +96,15 @@ describe('searchText', () => {
     contactName: 'Ravi Kumar',
   };
   const lake: HouseDto = { ...newHouse(12.9, 77.6), label: 'Lake Road flat', locality: 'हिन्दी नगर' };
+  // Slice 1b: the words of the broker a house is linked to (its name, agency and fee terms) are matched too.
+  const greenBroker = brokerSearchText({ name: 'Ravi Kumar', agency: 'Adyar Homes', feeTerms: "15 days' rent, once" });
   const matching = (query: string): string[] => {
     const q = query.trim().toLowerCase();
     return [
-      ['green', green],
-      ['lake', lake],
+      ['green', green, greenBroker],
+      ['lake', lake, ''],
     ]
-      .filter(([, h]) => !q || searchText(h as HouseDto).includes(q))
+      .filter(([, h, words]) => !q || searchText(h as HouseDto, words as string).includes(q))
       .map(([name]) => name as string);
   };
 
@@ -114,8 +116,11 @@ describe('searchText', () => {
   });
   it('the notes match', () => expect(matching('metro')).toEqual(['green']));
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
+  it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
+  it("the broker's fee terms match", () => expect(matching('15 days')).toEqual(['green']));
   it('Indic text matches', () => expect(matching('हिन्दी')).toEqual(['lake']));
   it('a query found nowhere matches nothing', () => expect(matching('penthouse')).toEqual([]));
   it('the query is trimmed', () => expect(matching(' lake ')).toEqual(['lake']));
   it('empty values are left out', () => expect(searchText(lake)).toBe('lake road flat हिन्दी नगर'));
+  it('a house with no broker words is searched as before', () => expect(searchText(lake, '')).toBe(searchText(lake)));
 });

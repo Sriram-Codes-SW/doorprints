@@ -720,4 +720,33 @@
     <string name="common_sqft">%1$s वर्ग फ़ुट</string>
     <string name="legend_approx">अनुमानित</string>
     <string name="common_ok">ठीक है</string>
+    <!-- S4b-FR-7 slice 1b, brokers (2026-09-30): under review. -->
+    <string name="settings_brokers">ब्रोकर</string>
+    <string name="settings_brokers_hint">जो लोग आपको मकान दिखाते हैं: उनका फ़ोन, एजेंसी और शुल्क</string>
+    <string name="brokers_title">ब्रोकर</string>
+    <string name="brokers_add">ब्रोकर जोड़ें</string>
+    <string name="brokers_empty_title">अभी कोई ब्रोकर नहीं।</string>
+    <string name="brokers_empty_body">फ़ोन नंबर के साथ मकान सहेजते ही वे यहाँ दिखते हैं।</string>
+    <string name="broker_title">ब्रोकर</string>
+    <string name="broker_name">नाम</string>
+    <string name="broker_name_needed">नाम लिखें</string>
+    <string name="broker_phone">फ़ोन</string>
+    <string name="broker_agency">एजेंसी</string>
+    <string name="broker_fee_terms">शुल्क की शर्तें (जैसे, 15 दिन का किराया, एक बार)</string>
+    <string name="broker_notes">नोट</string>
+    <string name="broker_rating">आपकी रेटिंग</string>
+    <string name="broker_houses">इस ब्रोकर के मकान</string>
+    <string name="broker_houses_none">इस ब्रोकर का अभी कोई मकान नहीं।</string>
+    <string name="broker_delete">ब्रोकर हटाएँ</string>
+    <string name="broker_delete_title">यह ब्रोकर हटाएँ?</string>
+    <string name="broker_delete_body">मकानों में उनका संपर्क विवरण बना रहता है।</string>
+    <string name="broker_gone">यह ब्रोकर अब इस फ़ोन में नहीं है।</string>
+    <string name="house_broker">ब्रोकर</string>
+    <string name="house_broker_none">कोई नहीं</string>
+    <string name="house_broker_new">नया ब्रोकर</string>
+    <string name="house_broker_hint">ब्रोकर चुनने पर संपर्क का नाम और फ़ोन भर जाते हैं; उन्हें ब्रोकर के पेज पर बदलें। सहेजते समय फ़ोन नंबर से मकान उसके ब्रोकर से जुड़ जाता है।</string>
+    <plurals name="brokers_houses_count">
+        <item quantity="one">%1$d मकान</item>
+        <item quantity="other">%1$d मकान</item>
+    </plurals>
 </resources>

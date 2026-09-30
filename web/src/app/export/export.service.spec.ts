@@ -23,7 +23,7 @@ import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
 import { ExportService, MAX_EXPORT_PHOTO_BYTES, approximateSize, checkPhotoBudget, isAbortError } from './export.service';
 import type { ExportResult } from './export.service';
-import { FIXTURE_HOUSES, FIXTURE_PHOTOS, FIXTURE_VISITS, fixtureBundle } from './golden/fixture';
+import { FIXTURE_BROKERS, FIXTURE_HOUSES, FIXTURE_PHOTOS, FIXTURE_VISITS, fixtureBundle } from './golden/fixture';
 import type { PhotoRecord } from '../data/records';
 
 /**
@@ -40,6 +40,7 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     allHouses: () => Promise.resolve(FIXTURE_HOUSES.map((h) => ({ ...h }))),
     allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
     allPhotos: () => Promise.resolve(photos),
+    brokers: () => Promise.resolve(FIXTURE_BROKERS),
   };
 }
 

@@ -583,7 +583,8 @@ textarea[aria-invalid='true'] {
   gap: var(--space-2);
 }
 
-.inline > input {
+.inline > input,
+.inline > select {
   flex: 1;
   min-width: 0;
 }

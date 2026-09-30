@@ -131,6 +131,16 @@ object PdfExporter {
                 housePage(sheet, bundle, house, heading, sub, body, photoFile)
                 onProgress(index + 1, bundle.houses.size)
             }
+            // The brokers (slice 1b), after the houses: each one's fields and the houses of the copy that use it.
+            if (bundle.brokers.isNotEmpty()) {
+                sheet.newPage()
+                sheet.paragraph(s["section.brokers"], heading, spaceAfter = 6f)
+                for (broker in bundle.brokers) {
+                    sheet.paragraph(broker.name, sub, spaceAfter = 2f)
+                    for ((term, value) in ExportRows.brokerLines(broker, bundle)) sheet.labelled(term, value, body, 2f)
+                    sheet.space(8f)
+                }
+            }
             sheet.finishPage()
             doc.writeTo(out)
         } finally {
@@ -190,10 +200,14 @@ object PdfExporter {
             }
         }
 
-        if (o.includeContacts && (!house.contactName.isNullOrEmpty() || !house.contactPhone.isNullOrEmpty())) {
+        val broker = bundle.brokerOf(house)
+        if (o.includeContacts &&
+            (!house.contactName.isNullOrEmpty() || !house.contactPhone.isNullOrEmpty() || broker != null)
+        ) {
             sheet.section(s["section.contact"], heading)
             house.contactName?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactName"], it, body, 2f) }
             house.contactPhone?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactPhone"], it, body, 2f) }
+            broker?.let { sheet.labelled(s["col.broker"], it.label, body, 2f) }
         }
 
         house.notes?.takeIf { it.isNotEmpty() }?.let {

@@ -86,8 +86,9 @@ class XlsxWriterTest {
         val sheet = XlsxWriter.parts(bundle).first { it.path == "xl/worksheets/sheet1.xml" }.xml
         // Price is column E, first data row is 2: a number with the ₹ style (2), not an inline string.
         assertTrue(sheet.contains("<c r=\"E2\" s=\"2\"><v>32000</v></c>"), sheet)
-        // "Added" is column AJ (T before slice 1a's sixteen cost columns): a serial date with the date style (3).
-        assertTrue(sheet.contains("<c r=\"AJ2\" s=\"3\"><v>"), sheet)
+        // "Added" is column AK (T before slice 1a's sixteen cost columns, AJ before slice 1b's Broker): a serial date
+        // with the date style (3).
+        assertTrue(sheet.contains("<c r=\"AK2\" s=\"3\"><v>"), sheet)
         assertFalse(sheet.contains("<v>₹"), "the currency sign belongs in the number format, not the value")
     }
 

@@ -23,6 +23,9 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.RecordDto
 import app.doorprints.shared.api.VisitDto
 import app.doorprints.shared.records.RecordRules
+import app.doorprints.shared.records.decode
+import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.BrokerType
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
@@ -40,7 +43,7 @@ fun HouseEntity.toDto() = HouseDto(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(),
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), brokerId = brokerId,
     checklist = checklist, createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
@@ -54,7 +57,7 @@ fun HouseDto.toEntity() = HouseEntity(
     price = price, priceType = priceType, bedrooms = bedrooms, rating = rating, contactName = contactName,
     contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), checklist = checklist,
+    cost = cost?.coerced(), brokerId = brokerId?.takeIf(RecordRules::isValidId), checklist = checklist,
     createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     deleted = deleted, dirty = false,
@@ -95,3 +98,6 @@ fun RecordDto.toEntity(): RecordEntity? {
         deleted = deleted, dirty = false,
     )
 }
+
+/** The row's broker with its values coerced; null when it does not decode or has no usable name (skipped as untrusted). */
+fun RecordEntity.toBroker(): Broker? = decode(BrokerType)?.coerced()

@@ -99,6 +99,8 @@ export const SETTING_KEYS = {
    * cursors go back to 0 and the migration question is asked again (Android: Settings.saveServer).
    */
   syncServer: 'sync.server',
+  /** Set once the contacts of the houses have been turned into brokers (slice 1b), so an unlink is never undone. */
+  brokersMigrated: 'brokers.migrated',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */
@@ -165,6 +167,7 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     areaSqft: whole(dto.areaSqft, 1, MAX_AREA_SQFT),
     locationSource: dto.locationSource && LOCATION_SOURCES.includes(dto.locationSource) ? dto.locationSource : null,
     cost: cleanCost(dto.cost),
+    brokerId: cleanBrokerId(dto.brokerId),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
     updatedAt: nullable(dto.updatedAt),
@@ -297,6 +300,11 @@ export function cleanCost(raw: HouseCost | null | undefined): HouseCost | null {
     if (value !== null) (out as Record<string, unknown>)[field] = value;
   }
   return Object.keys(out).length === 0 ? null : out;
+}
+
+/** A broker's record id (the pattern of every record id, at most 64 characters), or null: a bad id is no broker. */
+export function cleanBrokerId(value: string | null | undefined): string | null {
+  return typeof value === 'string' && RECORD_ID_PATTERN.test(value) && value !== '.' && value !== '..' ? value : null;
 }
 
 /** `YYYY-MM-DD` naming a real day (no 2026-02-30), or null. */

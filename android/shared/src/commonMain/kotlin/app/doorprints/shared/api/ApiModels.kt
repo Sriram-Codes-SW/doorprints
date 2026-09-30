@@ -49,6 +49,8 @@ data class HouseDto(
     /** `GPS`, `MAP` or `APPROX` (`LocationSource`); absent for a house saved before slice 1a. */
     val locationSource: String? = null,
     val cost: HouseCost? = null,
+    /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
+    val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: String? = null,
     val updatedAt: String? = null,

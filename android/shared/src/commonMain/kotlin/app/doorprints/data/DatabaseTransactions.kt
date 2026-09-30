@@ -51,10 +51,10 @@ suspend fun <R> AppDatabase.withImmediateTransaction(block: suspend () -> R): R 
 }
 
 /** The tables a copy is built from; see [localTablesChanged]. Private, so no caller can change what is observed. */
-private val LOCAL_TABLES = arrayOf("houses", "visits", "photos")
+private val LOCAL_TABLES = arrayOf("houses", "visits", "photos", "records")
 
 /**
- * Emits at once, and again after each committed change to the houses, visits or photos table (Room's common
+ * Emits at once, and again after each committed change to the houses, visits, photos or records table (Room's common
  * `InvalidationTracker.createFlow`; the same function `:app` called before CMP-4 P4c).
  */
 fun AppDatabase.localTablesChanged(): Flow<Set<String>> = invalidationTracker.createFlow(*LOCAL_TABLES)

@@ -17,6 +17,7 @@
  */
 
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../../data/records';
+import type { BrokerRow } from '../../shared/broker';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
 
@@ -43,6 +44,8 @@ export const FIXTURE_EXPORTED_AT = '2026-09-22T10:15:30.000Z';
 const H1 = '11111111-1111-4111-8111-111111111111';
 const H2 = '22222222-2222-4222-8222-222222222222';
 const H3 = '33333333-3333-4333-8333-333333333333';
+const B1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const B2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 export const FIXTURE_HOUSES: HouseRecord[] = [
   {
@@ -76,6 +79,8 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
       myOffer: 30000,
       agreedPrice: 31000,
     },
+    // Slice 1b: the broker `docs/schemas/backup-sample.json` links to house 1.
+    brokerId: B1,
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
     updatedAt: '2026-09-10T08:30:00.000Z',
@@ -129,6 +134,7 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
     areaSqft: 1450,
     locationSource: 'MAP',
     cost: { brokerage: 25000, agreedPrice: 1200000 },
+    brokerId: B2,
     checklist: { noise: 0 },
     createdAt: '2026-09-03T06:00:00.000Z',
     updatedAt: '2026-09-03T06:00:00.000Z',
@@ -226,6 +232,26 @@ export const FIXTURE_VISITS: VisitRecord[] = [
   },
 ];
 
+/**
+ * The two brokers of `docs/schemas/backup-sample.json` (slice 1b): a full one (house 1's) and one with only a name and
+ * an agency (house 3's). Meena's edit is the older, so the backup lists her first.
+ */
+export const FIXTURE_BROKERS: BrokerRow[] = [
+  {
+    id: B1,
+    updatedAt: '2026-09-10T08:30:00.000Z',
+    broker: {
+      name: 'Ravi Kumar',
+      phone: '+91 98400 11111',
+      agency: 'Adyar Homes',
+      feeTerms: "15 days' rent, once",
+      notes: 'Replies fast; shows keys on weekends',
+      rating: 4,
+    },
+  },
+  { id: B2, updatedAt: '2026-09-03T06:00:00.000Z', broker: { name: 'Meena Iyer', agency: 'Beach Road Realty' } },
+];
+
 /** Three bytes standing in for JPEG data; the exporters never look inside. */
 export const FIXTURE_PHOTO_BYTES = new Uint8Array([0xff, 0xd8, 0xff]);
 
@@ -274,6 +300,7 @@ export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundl
     houses: FIXTURE_HOUSES,
     visits: FIXTURE_VISITS,
     photos: FIXTURE_PHOTOS,
+    brokers: FIXTURE_BROKERS,
     exportedAt: FIXTURE_EXPORTED_AT,
     options: { ...FIXTURE_OPTIONS, ...options },
   });

@@ -124,8 +124,8 @@ class BackupApiTest {
 
     /**
      * ADR-28 (docs/11 section 5.30 item 3): the reader accepts {@code doorprints-backup/1} and {@code /2}, tolerates
-     * the {@code /2} lists it does not write yet, and refuses a newer format with "update the app" instead of
-     * dropping its lists in silence. The export still writes {@code /1} (nothing new is in the file yet).
+     * the {@code /2} lists it does not know yet, and refuses a newer format with "update the app" instead of
+     * dropping its lists in silence. The export still writes {@code /1} while the server holds no broker.
      */
     @Test
     void aVersionTwoBackupImportsAndANewerOneIsRefused() {
@@ -253,6 +253,8 @@ class BackupApiTest {
             api.put().uri("/api/visits/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
                     .body(asApiBody(row, "arrivedAt", "leftAt", "updatedAt")).retrieve().toBodilessEntity();
         }
+        var brokers = sample.getJSONArray("brokers");
+        for (int i = 0; i < brokers.length(); i++) putBroker(brokers.getJSONObject(i));
         var photos = sample.getJSONArray("photos");
         for (int i = 0; i < photos.length(); i++) {
             var photo = photos.getJSONObject(i);
@@ -290,8 +292,10 @@ class BackupApiTest {
     @Test
     void importRestoresTheCanonicalSample() throws JSONException {
         var preview = postImport(SAMPLE, true);
-        assertThat(preview).containsEntry("dryRun", true).containsEntry("format", BackupFormat.ID);
+        assertThat(preview).containsEntry("dryRun", true).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
         assertThat(count(preview, "houses", "created")).isEqualTo(3);
+        assertThat(count(preview, "brokers", "created")).isEqualTo(2);
+        assertThat(brokerRecords()).as("dry run writes no broker").isEmpty();
         assertThat(count(preview, "visits", "created")).isEqualTo(3);
         assertThat(count(preview, "photos", "skipped")).isEqualTo(2);
         assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
@@ -300,6 +304,7 @@ class BackupApiTest {
         assertThat(applied).containsEntry("dryRun", false);
         assertThat(count(applied, "houses", "created")).isEqualTo(3);
         assertThat(count(applied, "visits", "created")).isEqualTo(3);
+        assertThat(count(applied, "brokers", "created")).isEqualTo(2);
         var problems = problems(applied);
         assertThat(problems).anyMatch(p -> p.contains("photo"));
         assertThat(problems).as("a three-house import still updates the AI index row by row")
@@ -308,6 +313,141 @@ class BackupApiTest {
         // Photo rows carry no bytes over JSON, so the restored server has none; everything else must match.
         var expected = new JSONObject(SAMPLE).put("photos", new JSONArray()).toString();
         assertExportEquals(expected, export());
+    }
+
+    /** Slice 1b: a broker is a {@code broker} record, put the way the phone and the browser put it. */
+    private void putBroker(JSONObject row) throws JSONException {
+        var payload = new JSONObject(row.toString());
+        payload.remove("id");
+        payload.remove("updatedAt");
+        var body = new JSONObject().put("type", "broker").put("id", row.getString("id")).put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(row.getLong("updatedAt")).toString());
+        api.put().uri("/api/records/broker/{id}", row.getString("id")).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    /** The live and deleted rows of record type broker, as the sync API lists them. */
+    private List<Map<String, Object>> brokerRecords() {
+        return api.get().uri("/api/records?since=0&type=broker").retrieve().body(LIST);
+    }
+
+    private static String brokerRow(String id, String name, Instant updatedAt) {
+        return "{\"id\":\"" + id + "\",\"name\":\"" + name + "\",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    /** A {@code /2} file with the given brokers and houses. */
+    private static String backupWithBrokers(String houses, String brokers) {
+        return backup(houses, "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"brokers\":[" + brokers + "]");
+    }
+
+    /**
+     * Slice 1b: brokers import into the record table, merge by id (last write wins on updatedAt, equal writes
+     * nothing), a house keeps a brokerId no broker answers to, and the export writes {@code /2} with the list back,
+     * equal to what came in, until the last broker is deleted, when it is {@code /1} again.
+     */
+    @Test
+    void brokersImportMergeAndExportBack() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var ravi = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+        var meena = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+        var full = "{\"id\":\"" + ravi + "\",\"name\":\"Ravi Kumar\",\"phone\":\"+91 98400 11111\","
+                + "\"agency\":\"Adyar Homes\",\"feeTerms\":\"15 days' rent, once\",\"notes\":\"Replies fast\","
+                + "\"rating\":4,\"updatedAt\":" + now.toEpochMilli() + "}";
+        var houseId = UUID.randomUUID();
+        var house = houseRow(houseId, "Has a broker", now).replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"brokerId\":\"" + meena + "\"");
+        var file = backupWithBrokers(house, brokerRow(meena, "Meena Iyer", now.plusSeconds(1)) + "," + full);
+
+        var preview = postImport(file, true);
+        assertThat(count(preview, "brokers", "created")).isEqualTo(2);
+        assertThat(brokerRecords()).isEmpty();
+
+        assertThat(count(postImport(file, false), "brokers", "created")).isEqualTo(2);
+        var stored = brokerRecords();
+        assertThat(stored).extracting(r -> r.get("id")).containsExactlyInAnyOrder(ravi, meena);
+        var raviRecord = stored.stream().filter(r -> ravi.equals(r.get("id"))).findFirst().orElseThrow();
+        assertThat(raviRecord).containsEntry("type", "broker").containsEntry("deleted", false);
+        assertThat(raviRecord.get("payload")).isEqualTo(Map.of("name", "Ravi Kumar", "phone", "+91 98400 11111",
+                "agency", "Adyar Homes", "feeTerms", "15 days' rent, once", "notes", "Replies fast", "rating", 4));
+
+        // Written back: /2, the brokers by updatedAt (Ravi is older), the house's brokerId as given.
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        JSONAssert.assertEquals(new JSONObject(file).getJSONArray("brokers").toString(),
+                exported.getJSONArray("brokers").toString(), JSONCompareMode.LENIENT);
+        assertThat(exported.getJSONArray("brokers").getJSONObject(0).getString("id")).isEqualTo(ravi);
+        assertThat(exported.getJSONArray("houses").getJSONObject(0).getString("brokerId")).isEqualTo(meena);
+        assertThat(api.get().uri("/api/houses/{id}", houseId).retrieve().body(MAP)).containsEntry("brokerId", meena);
+
+        // Last write wins; an equal updatedAt writes nothing (no sync version burned).
+        long version = ((Number) brokerRecords().stream().filter(r -> ravi.equals(r.get("id"))).findFirst()
+                .orElseThrow().get("syncVersion")).longValue();
+        var older = postImport(backupWithBrokers("", brokerRow(ravi, "Older", now.minusSeconds(60))), false);
+        assertThat(count(older, "brokers", "keptNewer")).isEqualTo(1);
+        var same = postImport(backupWithBrokers("", full), false);
+        assertThat(count(same, "brokers", "unchanged")).isEqualTo(1);
+        var newer = postImport(backupWithBrokers("", brokerRow(ravi, "Ravi K", now.plusSeconds(90))), false);
+        assertThat(count(newer, "brokers", "updated")).isEqualTo(1);
+        var after = brokerRecords().stream().filter(r -> ravi.equals(r.get("id"))).findFirst().orElseThrow();
+        assertThat(((Number) after.get("syncVersion")).longValue()).isGreaterThan(version);
+        assertThat(after.get("payload")).as("the whole row wins: the other fields are gone")
+                .isEqualTo(Map.of("name", "Ravi K"));
+
+        // Deleted brokers are not exported; with none left the copy is /1 with no brokers key.
+        for (var id : List.of(ravi, meena)) api.delete().uri("/api/records/broker/{id}", id).retrieve().toBodilessEntity();
+        var bare = new JSONObject(export());
+        assertThat(bare.getString("format")).isEqualTo(BackupFormat.ID);
+        assertThat(bare.has("brokers")).isFalse();
+
+        // A newer file brings a deleted broker back, like a house.
+        var back = postImport(backupWithBrokers("", brokerRow(meena, "Meena again", Instant.now().plusSeconds(30))),
+                false);
+        assertThat(count(back, "brokers", "updated")).isEqualTo(1);
+        assertThat(new JSONObject(export()).getJSONArray("brokers").getJSONObject(0).getString("name"))
+                .isEqualTo("Meena again");
+    }
+
+    /** A bad broker refuses the whole file and writes nothing, house rows in the same file included. */
+    @Test
+    void aBadBrokerRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        var good = brokerRow(id, "Fine", now);
+        var at = now.toEpochMilli();
+        var badRating = "{\"id\":\"" + id + "\",\"name\":\"N\",\"rating\":6,\"updatedAt\":" + at + "}";
+        var zeroRating = badRating.replace("\"rating\":6", "\"rating\":0");
+        var blankName = brokerRow(id, "   ", now);
+        var noName = "{\"id\":\"" + id + "\",\"updatedAt\":" + at + "}";
+        var longName = brokerRow(id, "n".repeat(201), now);
+        var longPhone = "{\"id\":\"" + id + "\",\"name\":\"N\",\"phone\":\"" + "1".repeat(51)
+                + "\",\"updatedAt\":" + at + "}";
+        var longNotes = "{\"id\":\"" + id + "\",\"name\":\"N\",\"notes\":\"" + "n".repeat(2001)
+                + "\",\"updatedAt\":" + at + "}";
+        var badId = brokerRow("a/b", "N", now);
+        var noTime = "{\"id\":\"" + id + "\",\"name\":\"N\"}";
+        var duplicate = good + "," + brokerRow(id, "Twin", now);
+
+        var refused = List.of(badRating, zeroRating, blankName, noName, longName, longPhone, longNotes, badId, noTime,
+                duplicate);
+        for (var brokers : refused) {
+            var body = backupWithBrokers(house, brokers);
+            assertThat(status(() -> postImport(body, false))).as("import of %s", brokers).isEqualTo(400);
+            assertThat(status(() -> postImport(body, true))).as("dry run of %s", brokers).isEqualTo(400);
+        }
+        assertThat(errorBody(() -> postImport(backupWithBrokers(house, badRating), false)))
+                .contains("brokers[0].rating must be 1..5");
+        assertThat(errorBody(() -> postImport(backupWithBrokers(house, blankName), false)))
+                .contains("brokers[0].name is required");
+        assertThat(errorBody(() -> postImport(backupWithBrokers(house, duplicate), false)))
+                .contains("brokers[1].id " + id + " appears twice");
+        assertThat(errorBody(() -> postImport(backupWithBrokers(house, "null"), false))).contains("brokers[0]");
+        assertThat(errorBody(() -> postImport(backup(house.replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"brokerId\":\"a b\""), ""), false))).contains("houses[0].brokerId");
+        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+        assertThat(brokerRecords()).isEmpty();
+        assertThat(status(() -> postImport(backupWithBrokers(house, good), false))).isEqualTo(200);
     }
 
     /** Merge by id, last write wins on updatedAt; an equal timestamp writes nothing at all. */

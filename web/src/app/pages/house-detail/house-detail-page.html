@@ -268,12 +268,12 @@
         <div class="row">
           <div class="field">
             <label for="house-contact">{{ 'house.contactName' | t }}</label>
-            <input id="house-contact" type="text" [(ngModel)]="d.contactName" maxlength="200" autocomplete="off" />
+            <input id="house-contact" type="text" [(ngModel)]="d.contactName" maxlength="200" autocomplete="off" [readOnly]="!!linkedBroker()" />
           </div>
           <div class="field">
             <label for="house-phone">{{ 'house.contactPhone' | t }}</label>
             <div class="inline">
-              <input id="house-phone" type="tel" [(ngModel)]="d.contactPhone" maxlength="50" autocomplete="off" />
+              <input id="house-phone" type="tel" [(ngModel)]="d.contactPhone" maxlength="50" autocomplete="off" [readOnly]="!!linkedBroker()" />
               @if (d.contactPhone) {
                 <a class="btn" [href]="telHref(d.contactPhone)" [attr.aria-label]="'house.callAria' | t: { phone: d.contactPhone }">
                   <span aria-hidden="true">📞</span> {{ 'house.call' | t }}
@@ -281,6 +281,27 @@
               }
             </div>
           </div>
+        </div>
+
+        <!-- Broker (slice 1b, docs/11 5.25): choosing one fills the contact above from it. A phone typed with no broker
+             chosen is linked to the broker with that number, or makes one, when the house is saved. -->
+        <div class="field">
+          <label for="house-broker">{{ 'house.broker' | t }}</label>
+          <div class="inline">
+            <select id="house-broker" [ngModel]="d.brokerId ?? ''" (ngModelChange)="pickBroker($event)">
+              <option value="">{{ 'house.brokerNone' | t }}</option>
+              @for (b of brokers(); track b.id) {
+                <option [value]="b.id">{{ brokerLine(b) }}</option>
+              }
+            </select>
+            <button type="button" class="btn" (click)="newBroker()">{{ 'house.brokerNew' | t }}</button>
+          </div>
+          @if (linkedBroker(); as b) {
+            <p class="field-hint">
+              {{ 'house.brokerLinked' | t }}
+              <a [routerLink]="['/brokers', b.id]">{{ 'house.brokerOpen' | t }}</a>
+            </p>
+          }
         </div>
 
         <div class="field">
