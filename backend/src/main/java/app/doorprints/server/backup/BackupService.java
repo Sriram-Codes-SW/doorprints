@@ -501,15 +501,14 @@ public class BackupService {
      */
     private void validate(BackupData data) {
         if (!BackupFormat.accepts(data.format())) {
-            // The format id is echoed (shortened) because it is what the user has to fix; no other part of the
-            // body ever appears in an error message (SEC-015).
-            var seen = data.format() == null ? "missing"
-                    : "\"" + data.format().substring(0, Math.min(40, data.format().length())) + "\"";
+            // Nothing of the body is echoed, the format id included (SEC-015): an answer that changes with the
+            // caller's text reads to a scanner as an injection (the ZAP API scan raised "SQL Injection" on this
+            // very message, S4b-BL-89), and the app knows the format it wrote.
             if (BackupFormat.isNewer(data.format())) {
-                throw new IllegalArgumentException("This backup (format " + seen + ") is newer than this server reads"
+                throw new IllegalArgumentException("This backup is newer than this server reads"
                         + " (up to doorprints-backup/" + BackupFormat.MAX_VERSION + "): update the app");
             }
-            throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup (format was " + seen + ")");
+            throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup");
         }
         var problems = new ArrayList<String>();
         validateHouses(data.houses(), problems);
