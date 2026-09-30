@@ -94,6 +94,13 @@ sealed interface DeepLink {
      * as its own Hunt switch does (the person tapped to start it) and then starts Hunt mode.
      */
     data object StartHunt : DeepLink
+
+    /**
+     * A tapped Hunt mode reminder or area wake-up on iPhone (S4b-BL-94c), where a notification has no *Start Hunt mode*
+     * action (an iPhone app cannot start location tracking from one): the Map, which offers Hunt mode in a snackbar
+     * with *Start Hunt mode*; the action takes the Hunt switch's path, as [StartHunt] does.
+     */
+    data object OfferHunt : DeepLink
 }
 
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
@@ -261,6 +268,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         var pendingConnect by remember { mutableStateOf<ConnectLink?>(null) }
         // *Start Hunt mode* from a reminder, waiting for the Map to ask for location and start it (slice 3c).
         var huntRequested by remember { mutableStateOf(false) }
+        // An iPhone reminder or area tap, waiting for the Map to offer Hunt mode (S4b-BL-94c).
+        var huntOffered by remember { mutableStateOf(false) }
+        // A deep link to the Map shows the Map itself (S4b-BL-94a): whatever was open over it is closed, where
+        // openTab would bring back the sub-screen the Map's stack had.
+        fun NavController.openMapFresh() = navigate("map") {
+            popUpTo(home)
+            launchSingleTop = true
+        }
         LaunchedEffect(deepLink) {
             if (deepLink == null) return@LaunchedEffect
             // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
@@ -305,7 +320,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     } else {
                         pendingListing = d.text
                         if (features.map) mapAddTip = true
-                        nav.openTab("map")
+                        nav.openMapFresh()
                     }
                 }
                 is DeepLink.OpenViewing -> {
@@ -313,7 +328,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 }
                 DeepLink.StartHunt -> {
                     huntRequested = true
-                    nav.openTab("map")
+                    nav.openMapFresh()
+                }
+                DeepLink.OfferHunt -> {
+                    huntOffered = true
+                    nav.openMapFresh()
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
@@ -346,7 +365,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         listingDuplicate = null
                         pendingListing = text
                         if (features.map) mapAddTip = true
-                        nav.openTab("map")
+                        nav.openMapFresh()
                     }) { Text(stringResource(Res.string.house_dup_add)) }
                 },
             )
@@ -410,6 +429,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         addTipForListing = listingPending,
                         huntRequest = huntRequested,
                         onStartHuntHandled = { huntRequested = false },
+                        huntOffer = huntOffered,
+                        onHuntOfferHandled = { huntOffered = false },
                         deletedHouse = deleted,
                         onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
                     )
