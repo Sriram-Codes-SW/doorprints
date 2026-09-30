@@ -34,6 +34,8 @@ Made on 2026-09-22 10:15 UTC
 
 Houses: 3 · Visits: 3 · Photos: 2
 
+Rating counts for 40%
+
 ## What is in this file
 
 - All houses
@@ -47,8 +49,8 @@ Houses: 3 · Visits: 3 · Photos: 2
 
 | No. | House | Score | Price | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Green View 2BHK | 3.8 | ₹32,000/month | ★ Shortlisted |
-| 2 | Untitled | 0.5 | ₹12,50,000 | ✕ Rejected |
+| 1 | Green View 2BHK | 4.1 | ₹32,000/month | ★ Shortlisted |
+| 2 | Untitled | 1.0 | ₹12,50,000 | ✕ Rejected |
 | 3 | =SUM(A1:A9) சென்னை flat | Not scored | – | ● New |
 
 ## 1. Green View 2BHK
@@ -56,7 +58,8 @@ Houses: 3 · Visits: 3 · Photos: 2
 | Detail | Value |
 | --- | --- |
 | Status | ★ Shortlisted |
-| Overall score | 3.8 |
+| Overall score | 4.1 |
+| Coverage | Scored 3 of 10 that matter |
 | Price | ₹32,000/month |
 | BHK | 2 BHK |
 | Carpet area | 1150 sq ft |
@@ -135,7 +138,7 @@ Ask about water in summer.
 | Detail | Value |
 | --- | --- |
 | Status | ✕ Rejected |
-| Overall score | 0.5 |
+| Overall score | 1.0 |
 | Price | ₹12,50,000 |
 | BHK | 3 BHK |
 | Carpet area | 1450 sq ft |
@@ -192,6 +195,22 @@ Too noisy \\| too dark
 | Your rating | 4 out of 5 stars |
 | Notes | Replies fast; shows keys on weekends |
 | Houses from this broker | Green View 2BHK |
+
+## Criteria
+
+| Name | Weight | Must-have | Minimum score | Archived |
+| --- | --- | --- | --- | --- |
+| Water supply | High | Yes | 4 | No |
+| Power backup | Medium | No | 3 | No |
+| Parking | Medium | No | 3 | No |
+| Sunlight | Medium | No | 3 | No |
+| Ventilation | Medium | No | 3 | No |
+| Quiet (low noise) | Ignore | No | 3 | Yes |
+| Safety and security | Medium | No | 3 | No |
+| Building condition | Medium | No | 3 | No |
+| Neighbourhood | Medium | No | 3 | No |
+| Commute | Medium | No | 3 | No |
+| Pets allowed | Medium | No | 3 | No |
 
 ---
 

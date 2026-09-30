@@ -1,0 +1,200 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="page">
+  <header class="page-head">
+    <p><a routerLink="/data">{{ 'criteria.back' | t }}</a></p>
+    <h1>{{ 'criteria.title' | t }}</h1>
+    <p class="muted">{{ 'criteria.intro' | t }}</p>
+  </header>
+
+  @if (error(); as card) {
+    <div class="error">
+      <span role="alert">
+        @for (c of [card]; track c.run) {
+          <span>{{ c.value.key | t: c.value.params }}</span>
+        }
+      </span>
+      <div class="err-actions">
+        <button type="button" class="btn btn-sm" (click)="reload(true)">{{ 'common.retry' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (actionError(); as failure) {
+    <div class="error"><span role="alert">{{ failure.key | t: failure.params }}</span></div>
+  }
+
+  @if (loading()) {
+    <div class="card" role="status">
+      <span class="sr-only">{{ 'common.loading' | t }}</span>
+      <span class="skeleton wide" aria-hidden="true"></span>
+      <span class="skeleton" aria-hidden="true"></span>
+    </div>
+  } @else {
+    <ul class="list">
+      @for (c of active(); track c.key; let first = $first; let last = $last) {
+        <li class="card criterion">
+          <div class="head">
+            <strong class="name">{{ nameOf(c) }}</strong>
+            @if (c.weight === 0) {
+              <span class="muted small">({{ 'criteria.ignored' | t }})</span>
+            }
+          </div>
+          <div class="controls">
+            <div class="field">
+              <label [for]="'weight-' + c.key">{{ 'criteria.weight' | t }}</label>
+              <select
+                [id]="'weight-' + c.key"
+                [attr.aria-label]="'criteria.weightAria' | t: { name: nameOf(c) }"
+                [value]="c.weight"
+                (change)="setWeight(c, $event)"
+              >
+                @for (w of weights; track w) {
+                  <option [value]="w" [selected]="c.weight === w">{{ weightKey[w] | t }}</option>
+                }
+              </select>
+            </div>
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="c.mustHave"
+                [attr.aria-label]="'criteria.mustHaveAria' | t: { name: nameOf(c) }"
+                (change)="setMustHave(c, $event)"
+              />
+              <span>{{ 'criteria.mustHave' | t }}</span>
+            </label>
+            @if (c.mustHave) {
+              <div class="field">
+                <label [for]="'min-' + c.key">{{ 'criteria.minScore' | t }}</label>
+                <select
+                  [id]="'min-' + c.key"
+                  [attr.aria-label]="'criteria.minScoreAria' | t: { name: nameOf(c) }"
+                  [value]="c.minScore"
+                  (change)="setMinScore(c, $event)"
+                >
+                  @for (n of minScores; track n) {
+                    <option [value]="n" [selected]="c.minScore === n">{{ n }}</option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+          <div class="actions">
+            <button
+              type="button"
+              class="btn btn-sm"
+              [disabled]="first"
+              [attr.aria-label]="'criteria.moveUp' | t: { name: nameOf(c) }"
+              (click)="move(c, -1)"
+            >
+              <span aria-hidden="true">↑</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm"
+              [disabled]="last"
+              [attr.aria-label]="'criteria.moveDown' | t: { name: nameOf(c) }"
+              (click)="move(c, 1)"
+            >
+              <span aria-hidden="true">↓</span>
+            </button>
+            <button type="button" class="btn btn-sm" [attr.aria-label]="'criteria.archiveAria' | t: { name: nameOf(c) }" (click)="archive(c)">
+              {{ 'criteria.archive' | t }}
+            </button>
+            @if (canDelete(c)) {
+              <button type="button" class="btn btn-sm btn-danger" [attr.aria-label]="'criteria.deleteAria' | t: { name: nameOf(c) }" (click)="remove(c)">
+                {{ 'criteria.delete' | t }}
+              </button>
+            }
+          </div>
+          @if (isCustom(c) && !canDelete(c)) {
+            <p class="muted small">{{ 'criteria.inUse' | t }}</p>
+          }
+        </li>
+      }
+    </ul>
+
+    <section class="card" aria-labelledby="criteria-add-heading">
+      <h2 id="criteria-add-heading">{{ 'criteria.add' | t }}</h2>
+      <form class="add" (ngSubmit)="add()" novalidate>
+        <div class="field">
+          <label for="criteria-new">{{ 'criteria.newName' | t }}</label>
+          <input
+            id="criteria-new"
+            name="newName"
+            type="text"
+            [(ngModel)]="newName"
+            [attr.maxlength]="maxLabel"
+            [disabled]="atCap()"
+            [attr.aria-invalid]="nameError() ? 'true' : null"
+            [attr.aria-describedby]="nameError() ? 'criteria-new-error' : atCap() ? 'criteria-cap' : null"
+            autocomplete="off"
+          />
+          @if (nameError()) {
+            <p id="criteria-new-error" class="field-error" role="alert">{{ 'criteria.nameRequired' | t }}</p>
+          }
+        </div>
+        <button type="submit" class="btn btn-primary" [disabled]="atCap()">{{ 'criteria.add' | t }}</button>
+      </form>
+      @if (atCap()) {
+        <p id="criteria-cap" class="muted">{{ 'criteria.max' | t }}</p>
+      }
+    </section>
+
+    <section class="card" aria-labelledby="criteria-share-heading">
+      <h2 id="criteria-share-heading">{{ 'criteria.ratingShare' | t }}</h2>
+      <div class="field">
+        <label for="criteria-share">{{ 'criteria.ratingShareHint' | t }}</label>
+        <select id="criteria-share" [value]="sharePercent()" (change)="setShare($event)">
+          @for (p of shareOptions(); track p) {
+            <option [value]="p" [selected]="sharePercent() === p">{{ 'criteria.percent' | t: { n: p } }}</option>
+          }
+        </select>
+      </div>
+    </section>
+
+    @if (archived().length > 0) {
+      <section class="card" aria-labelledby="criteria-archived-heading">
+        <h2 id="criteria-archived-heading">{{ 'criteria.archived' | t }}</h2>
+        <ul class="list">
+          @for (c of archived(); track c.key) {
+            <li class="archived-row">
+              <span class="name">{{ nameOf(c) }}</span>
+              <span class="actions">
+                <button type="button" class="btn btn-sm" [attr.aria-label]="'criteria.restoreAria' | t: { name: nameOf(c) }" (click)="restore(c)">
+                  {{ 'criteria.restore' | t }}
+                </button>
+                @if (canDelete(c)) {
+                  <button type="button" class="btn btn-sm btn-danger" [attr.aria-label]="'criteria.deleteAria' | t: { name: nameOf(c) }" (click)="remove(c)">
+                    {{ 'criteria.delete' | t }}
+                  </button>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <section class="card danger" aria-labelledby="criteria-reset-heading">
+      <h2 id="criteria-reset-heading">{{ 'criteria.reset' | t }}</h2>
+      <button type="button" class="btn btn-danger" (click)="reset()">{{ 'criteria.reset' | t }}</button>
+    </section>
+  }
+</div>

@@ -20,13 +20,14 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from '../../core/ai.service';
 import { GeocodeService } from '../../core/geocode.service';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto, HouseRoom } from '../../core/models';
 import { LocalStore } from '../../data/local-store.service';
 import { TranslationService } from '../../i18n/translation.service';
+import { DEFAULT_SCORING } from '../../shared/scoring';
 import { draftKey, readDraft, writeDraft } from './draft-store';
 import { HouseDetailPage } from './house-detail-page';
 
@@ -63,6 +64,7 @@ async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT') {
         useValue: {
           houses: () => of([]),
           brokers: () => of([]),
+          scoring: () => of(DEFAULT_SCORING),
           house: () => of(house),
           visits: () => of([]),
           photoIds: () => of([]),
@@ -97,8 +99,30 @@ function type(fixture: ComponentFixture<HouseDetailPage>, el: HTMLInputElement |
   return settled(fixture);
 }
 
+// The house page's map watches its container with a ResizeObserver, which jsdom does not have. Another spec (the Plan
+// page's) stubs it globally, so this spec passed or failed with the order the specs ran in; it brings its own.
+beforeEach(() => {
+  if (typeof ResizeObserver === 'undefined') {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe(): void {
+          // jsdom lays nothing out.
+        }
+        unobserve(): void {
+          // Nothing observed.
+        }
+        disconnect(): void {
+          // Nothing observed.
+        }
+      },
+    );
+  }
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   localStorage.clear();
   sessionStorage.clear();
 });

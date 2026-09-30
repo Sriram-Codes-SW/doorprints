@@ -652,10 +652,27 @@
       <!-- Checklist -->
       <section class="card" aria-labelledby="checklist-heading">
         <h2 id="checklist-heading">{{ 'house.checklist' | t }}</h2>
-        <p class="muted small">{{ 'house.checklistHint' | t }}</p>
-        @for (item of checklist; track item.key) {
+        <p class="muted small">{{ 'house.checklistHint' | t }} <a routerLink="/criteria">{{ 'house.criteriaLink' | t }}</a></p>
+        @let scored = result(d);
+        @if (scored.coverage !== null) {
+          <p class="muted small" id="coverage-line">{{ 'house.coverage' | t: { n: scored.scored, total: scored.active } }}</p>
+        }
+        @if (scored.failedMustHave.length > 0) {
+          <p class="field-error" role="status">
+            <span aria-hidden="true">✕</span> {{ 'house.mustHaveMissed' | t: { names: namesOf(scored.failedMustHave) } }}
+          </p>
+        }
+        @if (scored.uncheckedMustHave.length > 0) {
+          <p class="muted small">{{ 'house.mustHaveUnchecked' | t: { names: namesOf(scored.uncheckedMustHave) } }}</p>
+        }
+        @for (item of checklist(); track item.key) {
           <fieldset class="check-row">
-            <legend class="check-label">{{ item.labelKey | t }}</legend>
+            <legend class="check-label">
+              {{ nameOf(item) }}
+              @if (item.weight === 0) {
+                <span class="muted small">({{ 'criteria.ignored' | t }})</span>
+              }
+            </legend>
             <div class="options check-values">
               @for (v of checkValues; track v) {
                 <label class="option">

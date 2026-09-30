@@ -26,6 +26,7 @@ import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.BackupValidation
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportOptions
+import app.doorprints.shared.export.ExportRows
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPlan
 import kotlinx.serialization.json.Json
@@ -80,6 +81,17 @@ class CanonicalSampleTest {
         // Slice 1c: house 1 has two rooms, in the order shown, with every key the format has on the first.
         assertEquals(listOf(listOf("Master bedroom", "Kitchen"), null, null), data.houses.map { h -> h.rooms?.map { it.name } })
         assertEquals(listOf(396, 366, 4, 0), data.houses.first().rooms!!.first().let { listOf(it.lengthCm, it.widthCm, it.condition, it.sort) })
+        // Slice 2: three criteria (an archived built-in, a custom one with its label, a must-have) and the rating share.
+        assertEquals(listOf("noise", "c_1a2b3c4d", "water"), data.criterionRows.map { it.key })
+        assertEquals(listOf(true, null, null), data.criterionRows.map { it.archived })
+        assertEquals("Pets allowed", data.criterionRows[1].label)
+        assertEquals(listOf("score.ratingShare" to "0.4"), data.preferenceRows.map { it.key to it.value })
+        // Under the sample's own scoring, the cross-check both apps share: house 1 scores 4.1 (water High, the archived
+        // noise and the newer app's key left out, 40 % rating), house 2 nothing, house 3 its one star (1.0).
+        val bundle = ExportBundle.build(
+            ExportOptions(), data.houses, data.visits, data.photos, data.brokerRows, data.criterionRows, data.preferenceRows,
+        )
+        assertEquals(listOf("4.1", null, "1.0"), data.houses.map { h -> bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
@@ -95,6 +107,8 @@ class CanonicalSampleTest {
             visits = sample.visits.reversed(),
             photos = sample.photos.reversed(),
             brokers = sample.brokerRows.reversed(),
+            criteria = sample.criterionRows.reversed(),
+            preferences = sample.preferenceRows.reversed(),
         )
         // The fixture has to tell the two ordering rules apart, or this test pins nothing.
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
@@ -127,6 +141,8 @@ class CanonicalSampleTest {
             assertEquals(3, preview.newHouses)
             assertEquals(3, preview.newVisits)
             assertEquals(2, preview.newBrokers)
+            assertEquals(3, preview.newCriteria)
+            assertEquals(1, preview.newPreferences)
             assertEquals(0, preview.newPhotos)
             assertEquals(2, preview.photosMissingFromFile)
         }

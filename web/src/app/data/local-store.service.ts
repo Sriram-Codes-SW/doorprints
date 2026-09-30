@@ -25,6 +25,24 @@ import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
 import { SETTING_KEYS, houseFromDto, isoNow, millis, recordFromDto, visitFromDto } from './records';
+import {
+  BUILT_IN_KEYS,
+  CRITERION_TYPE,
+  MAX_CRITERIA,
+  MAX_CRITERION_LABEL,
+  PREFERENCE_TYPE,
+  RATING_SHARE_KEY,
+  DEFAULT_RATING_SHARE,
+  criterionFromPayload,
+  criterionToPayload,
+  isBuiltInKey,
+  isCustomKey,
+  isDefaultCriterion,
+  newCustomKey,
+  ratingShareValue,
+  scoringOf,
+} from '../shared/scoring';
+import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
@@ -540,6 +558,125 @@ export class LocalStore {
     await db.put<SettingRecord>('settings', { key: SETTING_KEYS.brokersMigrated, value: '1' });
     if (linkedHouses > 0) this.touch();
     return linkedHouses;
+  }
+
+  // ---- Criteria and the rating share (docs/11 5.4, slice 2: records of type `criterion` and `preference`) ----
+
+  /** The live criterion records (only what differs from the defaults), oldest edit first; a bad key is skipped. */
+  async criterionRows(): Promise<CriterionRow[]> {
+    const out: CriterionRow[] = [];
+    for (const row of await this.recordsOf(CRITERION_TYPE)) {
+      const criterion = criterionFromPayload(row.id, row.payload);
+      if (criterion) out.push({ key: row.id, updatedAt: row.updatedAt ?? null, criterion });
+    }
+    return out;
+  }
+
+  /** The live preference records, oldest edit first; a row without a text value is skipped. */
+  async preferenceRows(): Promise<PreferenceRow[]> {
+    const out: PreferenceRow[] = [];
+    for (const row of await this.recordsOf(PREFERENCE_TYPE)) {
+      const value = row.payload['value'];
+      if (typeof value === 'string') out.push({ key: row.id, value, updatedAt: row.updatedAt ?? null });
+    }
+    return out;
+  }
+
+  /** The effective scoring: the defaults merged with the criterion records and the rating-share preference. */
+  async scoring(): Promise<Scoring> {
+    return scoringOf(await this.criterionRows(), await this.preferenceRows());
+  }
+
+  /**
+   * Saves a criterion, writing only what differs from the defaults: a built-in that equals its default has its record
+   * deleted, any other is written. A custom criterion needs a label (at most 60 characters); a new one is refused
+   * when there are already {@link MAX_CRITERIA} criteria (the ten built-ins included).
+   *
+   * @throws LocalDataError `error.badRecord` for a key that is neither built-in nor custom, or a bad label;
+   *   `criteria.max` when the cap is reached.
+   */
+  async saveCriterion(criterion: Criterion, now: number = Date.now()): Promise<void> {
+    const builtIn = isBuiltInKey(criterion.key);
+    if (!builtIn && !isCustomKey(criterion.key)) throw new LocalDataError('error.badRecord');
+    if (builtIn && isDefaultCriterion(criterion)) {
+      await this.deleteRecord(CRITERION_TYPE, criterion.key, now);
+      return;
+    }
+    if (!builtIn) {
+      const label = criterion.label?.trim() ?? '';
+      if (label === '' || label.length > MAX_CRITERION_LABEL) throw new LocalDataError('error.badRecord');
+      if (!(await this.getRecord(CRITERION_TYPE, criterion.key)) && (await this.criterionCount()) >= MAX_CRITERIA) {
+        throw new LocalDataError('criteria.max');
+      }
+    }
+    await this.saveRecord(CRITERION_TYPE, criterion.key, criterionToPayload({ ...criterion, label: criterion.label?.trim() }), now);
+  }
+
+  /** Saves several criteria (a re-ordering, a weight change on each): each as {@link saveCriterion}. */
+  async saveCriteria(list: readonly Criterion[], now: number = Date.now()): Promise<void> {
+    for (const criterion of list) await this.saveCriterion(criterion, now);
+  }
+
+  /**
+   * Adds a custom criterion at the end of the list: a new key `c_` and 8 lowercase hex characters (a key that clashes
+   * with any record, a deleted one included, is drawn again), weight Medium unless given, not a must-have.
+   * `newKey` is a seam for tests.
+   *
+   * @throws LocalDataError `error.badRecord` for a blank or too long label; `criteria.max` at 40 criteria.
+   */
+  async addCriterion(
+    label: string,
+    weight: Weight = 2,
+    now: number = Date.now(),
+    newKey: () => string = newCustomKey,
+  ): Promise<Criterion> {
+    const text = label.trim();
+    if (text === '' || text.length > MAX_CRITERION_LABEL) throw new LocalDataError('error.badRecord');
+    if ((await this.criterionCount()) >= MAX_CRITERIA) throw new LocalDataError('criteria.max');
+    const db = await this.db();
+    let key = newKey();
+    for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [CRITERION_TYPE, key])); attempt++) key = newKey();
+    if (await db.get<RecordRecord>('records', [CRITERION_TYPE, key])) throw new LocalDataError('error.badRecord');
+    const sort = (await this.scoring()).criteria.reduce((max, c) => Math.max(max, c.sort), -1) + 1;
+    const criterion: Criterion = { key, label: text, weight, mustHave: false, minScore: 3, sort };
+    await this.saveCriterion(criterion, now);
+    return criterion;
+  }
+
+  /**
+   * Deletes a custom criterion (a tombstone). Refused while any live house has a score under its key, so no score is
+   * left without a name; archive it instead. Built-ins can only be archived.
+   *
+   * @throws LocalDataError `error.badRecord` for a built-in or unknown key; `criteria.inUse` when a house scored it.
+   */
+  async deleteCriterion(key: string, now: number = Date.now()): Promise<void> {
+    if (!isCustomKey(key)) throw new LocalDataError('error.badRecord');
+    if (await this.criterionInUse(key)) throw new LocalDataError('criteria.inUse');
+    await this.deleteRecord(CRITERION_TYPE, key, now);
+  }
+
+  /** True when a live house has a checklist score under `key`. */
+  async criterionInUse(key: string): Promise<boolean> {
+    return (await this.rawHouses()).some((h) => !h.deleted && typeof h.checklist?.[key] === 'number');
+  }
+
+  /** Stores the rating share (0..1); the default 0.5 needs no record, so it deletes it. */
+  async setRatingShare(share: number, now: number = Date.now()): Promise<void> {
+    const value = ratingShareValue(Math.min(1, Math.max(0, share)));
+    if (Number(value) === DEFAULT_RATING_SHARE) await this.deleteRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, now);
+    else await this.saveRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, { value }, now);
+  }
+
+  /** "Reset to defaults": deletes every criterion and preference record (tombstones, so other devices follow). */
+  async resetCriteria(now: number = Date.now()): Promise<void> {
+    for (const row of await this.recordsOf(CRITERION_TYPE)) await this.deleteRecord(CRITERION_TYPE, row.id, now);
+    for (const row of await this.recordsOf(PREFERENCE_TYPE)) await this.deleteRecord(PREFERENCE_TYPE, row.id, now);
+  }
+
+  /** The ten built-ins plus the live custom records: what the cap of 40 counts (archived ones included). */
+  private async criterionCount(): Promise<number> {
+    const custom = (await this.recordsOf(CRITERION_TYPE)).filter((r) => !isBuiltInKey(r.id)).length;
+    return BUILT_IN_KEYS.length + custom;
   }
 
   // ---- Settings ----

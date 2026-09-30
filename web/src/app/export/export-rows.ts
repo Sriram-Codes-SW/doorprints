@@ -27,6 +27,7 @@ import type { ExportBundle, ExportHouse } from './export-model';
 import { ExportStrings } from './export-strings';
 import { photoFileName } from './photo-names';
 import { brokerLine } from '../shared/broker';
+import { isBuiltInKey } from '../shared/scoring';
 import { costSummary } from '../shared/house-cost';
 import type { PhotoRecord, VisitRecord } from '../data/records';
 
@@ -112,17 +113,19 @@ function maybeMoney(value: number | null | undefined): Cell {
  * `name` is language-neutral (the CSV file name and the sheet name); `title` is the translated heading.
  */
 export interface ExportTable {
-  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms';
+  readonly name: 'houses' | 'scores' | 'visits' | 'photos' | 'brokers' | 'rooms' | 'criteria';
   readonly title: string;
   readonly columns: readonly string[];
   readonly rows: readonly (readonly Cell[])[];
 }
 
-/** The four tables of a copy, in file order, and the brokers table when the copy has brokers (slice 1b). */
+/** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c) and criteria (slice 2) when it has them. */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
   const tables = [housesTable(bundle), scoresTable(bundle), visitsTable(bundle), photosTable(bundle)];
   if (bundle.brokers.length > 0) tables.push(brokersTable(bundle));
   if (bundle.houses.some((h) => h.rooms?.length)) tables.push(roomsTable(bundle));
+  // Slice 2: only a copy whose owner changed something has a criteria table (the records that exist).
+  if (bundle.criteria.length > 0) tables.push(criteriaTable(bundle));
   return tables;
 }
 
@@ -278,10 +281,60 @@ export function scoresTable(bundle: ExportBundle): ExportTable {
   for (const entry of bundle.houses) {
     const h = entry.house;
     for (const key of orderedChecklistKeys(h.checklist)) {
-      rows.push([cellText(h.label), cellText(key), cellText(s.check(key)), cellCount(h.checklist[key]), cellText(h.id)]);
+      rows.push([cellText(h.label), cellText(key), cellText(criterionName(bundle, key)), cellCount(h.checklist[key]), cellText(h.id)]);
     }
   }
   return { name: 'scores', title: s.get('table.scores'), columns, rows };
+}
+
+/**
+ * A criterion's name in the export language: a custom criterion's own label (slice 2; it used to fall back to the raw
+ * key), a built-in's translated name, and the raw key for something a newer app wrote.
+ */
+export function criterionName(bundle: ExportBundle, key: string): string {
+  const label = customLabels(bundle).get(key);
+  return label ?? stringsOf(bundle).check(key);
+}
+
+/** The labels of the custom criteria of a copy, by key (built-ins keep their translated names). */
+export function customLabels(bundle: ExportBundle): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const c of bundle.scoring.criteria) if (!isBuiltInKey(c.key) && c.label) out.set(c.key, c.label);
+  return out;
+}
+
+/**
+ * One row per criterion of the effective scoring (the built-ins with their defaults too, so a reader sees every
+ * weight), in the app's order: key, name, weight, must-have, minimum score, archived, order. Only a copy with criterion
+ * records has it (`exportTables`).
+ */
+export function criteriaTable(bundle: ExportBundle): ExportTable {
+  const s = stringsOf(bundle);
+  const columns = [
+    s.get('col.item'),
+    s.get('col.name'),
+    s.get('col.weight'),
+    s.get('col.mustHave'),
+    s.get('col.minScore'),
+    s.get('col.archived'),
+    s.get('col.sort'),
+  ];
+  const rows = bundle.scoring.criteria.map((c) => [
+    cellText(c.key),
+    cellText(criterionName(bundle, c.key)),
+    cellText(s.get(`weight.${c.weight}`)),
+    cellText(s.get(c.mustHave ? 'yes' : 'no')),
+    cellCount(c.minScore),
+    cellText(s.get(c.archived ? 'yes' : 'no')),
+    cellCount(c.sort),
+  ]);
+  return { name: 'criteria', title: s.get('table.criteria'), columns, rows };
+}
+
+/** "Rating counts for 40%": the rating share, when the copy carries any criterion or preference record; else empty. */
+export function ratingShareLine(bundle: ExportBundle): string {
+  if (bundle.criteria.length === 0 && bundle.preferences.length === 0) return '';
+  return `${stringsOf(bundle).get('col.ratingShare')} ${Math.round(bundle.scoring.ratingShare * 100)}%`;
 }
 
 export function visitsTable(bundle: ExportBundle): ExportTable {

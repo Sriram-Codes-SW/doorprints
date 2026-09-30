@@ -22,6 +22,8 @@ import { cleanCost, cleanRooms } from '../data/records';
 import { sortedChecklist } from './export-model';
 import type { ExportBroker, ExportBundle, ExportHouse as BundleHouse } from './export-model';
 import { brokerToPayload } from '../shared/broker';
+import { criterionToPayload } from '../shared/scoring';
+import type { CriterionRow, PreferenceRow } from '../shared/scoring';
 import { htmlCopyName, isoUtc } from './deterministic';
 import { photoEntry, photoFileName } from './photo-names';
 import { sha256Hex } from './sha256';
@@ -52,8 +54,8 @@ import type { ZipEntry } from './zip';
 export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
- * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker
- * stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
+ * criterion (`criteria` list, slice 2) or preference (`preferences` list) stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
@@ -157,6 +159,29 @@ export interface BackupBroker {
   updatedAt: number;
 }
 
+/**
+ * A criterion in a `/2` copy (slice 2): the record id as `key`, the payload keys that are set (`label` for a custom
+ * one only, then weight, mustHave, minScore, sort, `archived` only when true) and the last edit. Only records that
+ * exist are written: a built-in with no record uses the defaults and is not listed.
+ */
+export interface BackupCriterion {
+  key: string;
+  label?: string;
+  weight: number;
+  mustHave: boolean;
+  minScore: number;
+  sort: number;
+  archived?: boolean;
+  updatedAt: number;
+}
+
+/** A preference in a `/2` copy: its key (`score.ratingShare`), the text value and the last edit. */
+export interface BackupPreference {
+  key: string;
+  value: string;
+  updatedAt: number;
+}
+
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -165,6 +190,10 @@ export interface BackupData {
   photos: BackupPhoto[];
   /** Only in a `/2` copy, and then never empty. */
   brokers?: BackupBroker[];
+  /** Only in a `/2` copy, after `brokers`, and then never empty (slice 2). */
+  criteria?: BackupCriterion[];
+  /** Only in a `/2` copy, after `criteria`, and then never empty (slice 2). */
+  preferences?: BackupPreference[];
 }
 
 export interface BackupCounts {
@@ -173,6 +202,8 @@ export interface BackupCounts {
   photos: number;
   /** Only in a `/2` copy. */
   brokers?: number;
+  criteria?: number;
+  preferences?: number;
 }
 
 export interface BackupFile {
@@ -201,8 +232,11 @@ export interface BackupManifest {
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);
+  // Criteria and preferences are not contacts: a copy made without contact details keeps them (slice 2).
+  const criteria = bundle.criteria.length > 0 ? bundle.criteria.map(backupCriterion) : undefined;
+  const preferences = bundle.preferences.length > 0 ? bundle.preferences.map(backupPreference) : undefined;
   return {
-    format: brokers || hasRooms ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
+    format: brokers || hasRooms || criteria || preferences ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -227,7 +261,22 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
       })),
     ),
     ...(brokers ? { brokers } : {}),
+    ...(criteria ? { criteria } : {}),
+    ...(preferences ? { preferences } : {}),
   };
+}
+
+/** `key`, then the set payload keys in the contract's order (`criterionToPayload`), then `updatedAt`. */
+function backupCriterion(row: CriterionRow): BackupCriterion {
+  return {
+    key: row.key,
+    ...(criterionToPayload(row.criterion) as Omit<BackupCriterion, 'key' | 'updatedAt'>),
+    updatedAt: millisOf(row.updatedAt),
+  };
+}
+
+function backupPreference(row: PreferenceRow): BackupPreference {
+  return { key: row.key, value: row.value, updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `id`, then the set payload keys in the contract's order (`brokerToPayload`), then `updatedAt`. */
@@ -340,6 +389,8 @@ export function buildBackupZip(
       visits: data.visits.length,
       photos: data.photos.length,
       brokers: data.brokers?.length,
+      criteria: data.criteria?.length,
+      preferences: data.preferences?.length,
     },
     files: contents.map((entry) => ({
       path: entry.path,

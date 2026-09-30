@@ -28,19 +28,23 @@ import { buildWorkbook } from './xlsx-sheets';
 import { display, exportTables, plain } from './export-rows';
 import { ExportStrings } from './export-strings';
 import { collect } from './export-model';
+import type { CriterionRow } from '../shared/scoring';
 import {
   FIXTURE_BROKERS,
+  FIXTURE_CRITERIA,
   FIXTURE_EXPORTED_AT,
   FIXTURE_HOUSES,
   FIXTURE_OPTIONS,
   FIXTURE_PHOTOS,
   FIXTURE_PHOTO_DATA_URIS,
   FIXTURE_PHOTO_MAP,
+  FIXTURE_PREFERENCES,
   FIXTURE_VISITS,
   fixtureBundle,
 } from './golden/fixture';
 import {
   GOLDEN_BROKERS_CSV,
+  GOLDEN_CRITERIA_CSV,
   GOLDEN_HOUSES_CSV,
   GOLDEN_PHOTOS_CSV,
   GOLDEN_SCORES_CSV,
@@ -91,7 +95,12 @@ describe('collect', () => {
   });
 
   it('ranks best first and puts unscored houses last', () => {
-    expect(fixtureBundle().ranking.map((entry) => entry.score)).toEqual([3.75, 0.5, null]);
+    // House 1: (3*5 + 2*3 + 2*4) / 7 = 4.14 from the checklist (Water is High in the fixture's criteria, the key from a
+    // newer app is ignored), blended 60/40 with its 4 stars; house 3: only its star rating counts (Quiet is archived).
+    const scores = fixtureBundle().ranking.map((entry) => entry.score);
+    expect(scores[0]).toBeCloseTo(0.6 * (29 / 7) + 0.4 * 4, 10);
+    expect(scores[1]).toBe(1);
+    expect(scores[2]).toBeNull();
   });
 
   it('drops contact fields completely when the user leaves them out', () => {
@@ -168,6 +177,14 @@ describe('CSV export', () => {
     const none = buildCsvTables(collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }));
     expect(Object.keys(none).sort()).toEqual(['houses.csv', 'photos.csv', 'rooms.csv', 'scores.csv', 'visits.csv']);
     expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).not.toContain('brokers.csv');
+  });
+
+  it('matches the golden criteria.csv, which only a copy with criterion records has', () => {
+    expect(tables['criteria.csv']).toBe(GOLDEN_CRITERIA_CSV);
+    const none = buildCsvTables(collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }));
+    expect(Object.keys(none)).not.toContain('criteria.csv');
+    // Criteria are not contacts: a copy without contact details still has them.
+    expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).toContain('criteria.csv');
   });
 
   it('writes the broker column right after the phone: the name, and the agency in brackets', () => {
@@ -327,7 +344,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(3232);
+    expect(new TextEncoder().encode(json).length).toBe(3649);
   });
 
   /**
@@ -388,9 +405,10 @@ describe('JSON backup', () => {
   it('counts the brokers in the manifest of a /2 copy only', () => {
     const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     expect(withBrokers).toContain('"format":"doorprints-backup/2"');
-    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2}');
+    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1}');
     const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
-    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2}');
+    // Criteria and preferences are not contacts: a copy without contact details keeps them, and their counts.
+    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {
@@ -421,7 +439,7 @@ describe('shared ExportRows contract', () => {
   it('uses one column list for the CSV and the workbook', () => {
     const tables = exportTables(fixtureBundle());
     const sheets = buildWorkbook(fixtureBundle());
-    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms']);
+    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms', 'criteria']);
     sheets.forEach((sheet, i) => {
       expect(sheet.header).toEqual(tables[i].columns);
       expect(sheet.rows).toHaveLength(tables[i].rows.length);
@@ -526,5 +544,94 @@ describe('determinism across runs', () => {
     expect(buildMarkdown(b, en)).toBe(buildMarkdown(a, en));
     expect(buildCsvTables(b)).toEqual(buildCsvTables(a));
     expect(buildHtml(b, en, FIXTURE_PHOTO_DATA_URIS)).toBe(buildHtml(a, en, FIXTURE_PHOTO_DATA_URIS));
+  });
+});
+
+/** Slice 2 (docs/11 5.4): criteria and the ranking in the copies. */
+describe('criteria and ranking in the copies', () => {
+  const noRooms = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null }));
+  const base = { houses: noRooms, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
+  /** House 1 scored 3 for Power, and Power is made a must-have from 4: it misses it. */
+  const powerMustHave: CriterionRow = { key: 'power', updatedAt: '2026-09-11T00:00:00.000Z', criterion: { key: 'power', weight: 2, mustHave: true, minScore: 4, sort: 1 } };
+  const custom: CriterionRow = { key: 'c_1a2b3c4d', updatedAt: '2026-09-03T06:00:00.000Z', criterion: FIXTURE_CRITERIA[1].criterion };
+
+  it('writes /1 with no broker, room, criterion or preference, and /2 with only criteria or only a preference', () => {
+    expect(buildBackupData(collect(base)).format).toBe(BACKUP_FORMAT);
+    const onlyCriteria = buildBackupData(collect({ ...base, criteria: FIXTURE_CRITERIA }));
+    expect(onlyCriteria.format).toBe(BACKUP_FORMAT_V2);
+    expect(Object.keys(onlyCriteria)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos', 'criteria']);
+    const onlyPreference = buildBackupData(collect({ ...base, preferences: FIXTURE_PREFERENCES }));
+    expect(onlyPreference.format).toBe(BACKUP_FORMAT_V2);
+    expect(Object.keys(onlyPreference)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos', 'preferences']);
+  });
+
+  it('keeps criteria and preferences in a copy without contact details', () => {
+    const data = buildBackupData(fixtureBundle({ includeContacts: false }));
+    expect(data.brokers).toBeUndefined();
+    expect(data.criteria?.map((c) => c.key)).toEqual(['noise', 'c_1a2b3c4d', 'water']);
+    expect(data.preferences).toEqual([{ key: 'score.ratingShare', value: '0.4', updatedAt: 1789029000000 }]);
+  });
+
+  it('writes the criteria by last edit then key, the label of a custom one only, and archived only when true', () => {
+    const rows = buildBackupData(fixtureBundle()).criteria ?? [];
+    expect(rows.map((c) => c.updatedAt)).toEqual([1788328800000, 1788415200000, 1789029000000]);
+    expect(Object.keys(rows[0])).toEqual(['key', 'weight', 'mustHave', 'minScore', 'sort', 'archived', 'updatedAt']);
+    expect(Object.keys(rows[1])).toEqual(['key', 'label', 'weight', 'mustHave', 'minScore', 'sort', 'updatedAt']);
+    expect(Object.keys(rows[2])).toEqual(['key', 'weight', 'mustHave', 'minScore', 'sort', 'updatedAt']);
+  });
+
+  it('shows the label of a custom criterion in the scores table and on the house page', () => {
+    const scored = [{ ...noRooms[0], checklist: { ...noRooms[0].checklist, c_1a2b3c4d: 5 } }, ...noRooms.slice(1)];
+    const bundle = collect({ ...base, houses: scored, criteria: FIXTURE_CRITERIA, preferences: FIXTURE_PREFERENCES });
+    const scores = buildCsvTables(bundle)['scores.csv'];
+    expect(scores).toContain('Green View 2BHK,c_1a2b3c4d,Pets allowed,5,');
+    expect(buildMarkdown(bundle, en)).toContain('| Pets allowed | 5 out of 5 |');
+    expect(buildHtml(bundle, en, new Map())).toContain('<th scope="row">Pets allowed</th><td>5 out of 5</td>');
+    // Without the criterion record the raw key is all there is, as before.
+    const bare = collect({ ...base, houses: scored });
+    expect(buildCsvTables(bare)['scores.csv']).toContain('Green View 2BHK,c_1a2b3c4d,c_1a2b3c4d,5,');
+  });
+
+  it('puts a house that misses a must-have last, marks it "Must-have missed" and names what it missed', () => {
+    const bundle = collect({ ...base, criteria: [powerMustHave] });
+    expect(bundle.ranking.map((e) => e.house.id.slice(0, 2))).toEqual(['33', '22', '11']);
+    expect(bundle.ranking.map((e) => e.result.failedMustHave)).toEqual([[], [], ['power']]);
+    const md = buildMarkdown(bundle, en);
+    expect(md).toContain('| No. | House | Score | Price | Status | Must-haves |');
+    expect(md).toContain('| 3 | Green View 2BHK | 4.0 | ₹32,000/month | ★ Shortlisted | ✕ Must-have missed |');
+    expect(md).toContain('| Must-have missed | Power backup |');
+    expect(md).toContain('| Coverage | Scored 3 of 10 that matter |');
+    const html = buildHtml(bundle, en, new Map());
+    expect(html).toContain('<td>✕ Must-have missed</td>');
+    expect(html).toContain('<th scope="row">Must-have missed</th><td>Power backup</td>');
+    // No column at all when nobody misses one.
+    expect(buildMarkdown(fixtureBundle(), en)).not.toContain('Must-haves |');
+  });
+
+  it('adds a Criteria sheet to the workbook and a coverage line and the rating share to the readable copies', () => {
+    expect(buildWorkbook(fixtureBundle()).map((sheet) => sheet.name)).toContain('criteria');
+    expect(buildWorkbook(collect(base)).map((sheet) => sheet.name)).not.toContain('criteria');
+    const md = buildMarkdown(fixtureBundle(), en);
+    expect(md).toContain('Rating counts for 40%');
+    expect(md).toContain('## Criteria');
+    expect(buildMarkdown(collect(base), en)).not.toContain('Rating counts for');
+  });
+
+  it('names the weights in the export language, and the four languages carry the criteria words (Under review outside English)', () => {
+    for (const language of LANGUAGES) {
+      const strings = ExportStrings.of(language.code);
+      const names = [0, 1, 2, 3].map((w) => strings.get(`weight.${w as 0 | 1 | 2 | 3}`));
+      expect(new Set(names).size, language.code).toBe(4);
+      for (const key of ['table.criteria', 'col.weight', 'col.mustHave', 'col.minScore', 'col.archived', 'col.ratingShare'] as const) {
+        expect(strings.get(key).trim(), `${language.code}/${key}`).not.toBe('');
+      }
+    }
+    expect(ExportStrings.of('ta').get('weight.3')).not.toBe(ExportStrings.of('en').get('weight.3'));
+  });
+
+  it('orders equal scores as the contract says and keeps the rank column in that order', () => {
+    const bundle = collect({ ...base, criteria: [powerMustHave, custom] });
+    const houses = exportTables(bundle)[0];
+    expect(houses.rows.map((row) => plain(row[0]))).toEqual(['3', '2', '1']);
   });
 });

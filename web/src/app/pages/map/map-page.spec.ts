@@ -1,0 +1,116 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LocalDataService } from '../../core/local-data.service';
+import { newHouse } from '../../core/models';
+import type { HouseDto } from '../../core/models';
+import { SyncService } from '../../data/sync.service';
+import { TranslationService } from '../../i18n/translation.service';
+import { scoringOf } from '../../shared/scoring';
+import type { CriterionRow } from '../../shared/scoring';
+import { MapPage } from './map-page';
+
+/**
+ * The house list of the map page under the person's criteria (slice 2, docs/11 5.4): "Best score" is the ranking
+ * (a house that misses a must-have comes last, whatever its score) and such a house shows a "Must-have missed" chip.
+ * The map itself is not made (jsdom has no WebGL, and another spec of this suite replaces the maplibre-gl package, so
+ * a test of the list cannot rely on either): `ngAfterViewInit` is stubbed and the list is what these tests read.
+ */
+const SECURITY_MUST: CriterionRow = {
+  key: 'security',
+  updatedAt: null,
+  criterion: { key: 'security', weight: 2, mustHave: true, minScore: 4, sort: 6 },
+};
+
+const house = (id: string, label: string, over: Partial<HouseDto>): HouseDto => ({
+  ...newHouse(13, 80),
+  id,
+  label,
+  createdAt: '2026-09-01T00:00:00.000Z',
+  updatedAt: '2026-09-01T00:00:00.000Z',
+  ...over,
+});
+
+// Great score but misses the must-have; a plain one; a cheaper one with the same score as the plain one.
+const MISSED = house('m', 'Missed it', { rating: 5, checklist: { security: 2, water: 5 } });
+const PLAIN = house('p', 'Plain', { rating: 3, checklist: { security: 5 }, price: 30000 });
+const CHEAP = house('c', 'Cheap', { rating: 3, checklist: { security: 5 }, price: 20000 });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  TestBed.resetTestingModule();
+  localStorage.clear();
+});
+
+async function render(query: Record<string, string>) {
+  vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
+  TestBed.configureTestingModule({
+    imports: [MapPage],
+    providers: [
+      provideRouter([]),
+      {
+        provide: LocalDataService,
+        useValue: {
+          settled: signal(0),
+          houses: () => of([MISSED, PLAIN, CHEAP]),
+          brokers: () => of([]),
+          scoring: () => of(scoringOf([SECURITY_MUST], [])),
+          stats: () => of({ houses: 3, shortlisted: 0, rejected: 0, visits: 0, streets: 0 }),
+        },
+      },
+      { provide: SyncService, useValue: { migration: signal('done'), enabled: signal(false), downloadToThisBrowser: vi.fn() } },
+      { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
+    ],
+  });
+  TestBed.inject(TranslationService).setLang('en');
+  const fixture = TestBed.createComponent(MapPage);
+  fixture.detectChanges();
+  await fixture.whenStable();
+  // The page reads its data in effects and promise chains; let them run before the list is read.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+  return fixture.nativeElement as HTMLElement;
+}
+
+const rows = (host: HTMLElement) => [...host.querySelectorAll('ul.list li')].map((li) => li.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+
+describe('MapPage: the house list under the ranking (slice 2)', () => {
+  it('sorts "Best score" by the ranking: a house that misses a must-have last, then score, then the lower price', async () => {
+    const host = await render({ sort: 'score' });
+    const list = rows(host);
+    expect(list).toHaveLength(3);
+    expect(list[0]).toContain('Cheap');
+    expect(list[1]).toContain('Plain');
+    expect(list[2]).toContain('Missed it');
+  });
+
+  it('shows the chip "Must-have missed" on a house that misses a must-have, and on no other', async () => {
+    const host = await render({ sort: 'score' });
+    const list = rows(host);
+    expect(list[2]).toContain('Must-have missed');
+    expect(list[0]).not.toContain('Must-have missed');
+    expect(list[1]).not.toContain('Must-have missed');
+  });
+});

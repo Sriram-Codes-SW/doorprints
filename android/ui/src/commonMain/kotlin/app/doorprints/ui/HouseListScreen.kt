@@ -66,6 +66,9 @@ import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HouseSearch
+import app.doorprints.shared.model.Ranking
+import app.doorprints.shared.model.ScoreResult
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
@@ -230,6 +233,8 @@ fun HouseListScreen(
     val brokerText: Map<String, String> by remember(repo) {
         repo.observeBrokers().map { list -> list.associate { (id, b) -> id to b.searchText } }
     }.collectAsStateWithLifecycle(emptyMap())
+    // The effective scoring (docs/11 5.4, slice 2): the card's score, the "Must-have missed" chip and "best first".
+    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
     val loaded = loadedHouses != null
     val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
@@ -454,7 +459,8 @@ fun HouseListScreen(
         .let { list ->
             when (sort) {
                 Sort.RECENT -> list
-                Sort.SCORE -> list.sortedByDescending { it.score ?: -1.0 }
+                // The one ranking (Ranking): no missed must-have first, then the score, coverage, price, latest change.
+                Sort.SCORE -> Ranking.sort(list) { it.ranked(scoring) }
                 // Rents first, then sale prices, each from low to high (whole-app audit).
                 Sort.PRICE -> sortByPrice(list)
             }
@@ -525,7 +531,7 @@ fun HouseListScreen(
                 }
             }
             else -> HouseList(
-                houses, shown, visitsByHouse, filter, sort, query,
+                houses, shown, visitsByHouse, filter, sort, query, scoring = scoring,
                 importedCount = importedCount, importedOnly = onlyImported, undoRow = undoRow,
                 importedChipFocus = importedChipFocus, allChipFocus = allChipFocus, chipFocusable = focusChips,
                 onFilter = { filter = it }, onSort = { sort = it }, onQuery = { query = it },
@@ -568,6 +574,7 @@ private fun HouseList(
     filter: HouseStatus?,
     sort: Sort,
     query: String,
+    scoring: Scoring,
     importedCount: Int?,
     importedOnly: Boolean,
     undoRow: (@Composable (Modifier) -> Unit)?,
@@ -739,7 +746,7 @@ private fun HouseList(
             }
         } else {
             items(shown, key = { it.id }) { h ->
-                HouseCard(h, visitsByHouse[h.id]?.visits ?: 0, Modifier.animateItem()) { onOpenHouse(h.id) }
+                HouseCard(h, h.scoreResult(scoring), visitsByHouse[h.id]?.visits ?: 0, Modifier.animateItem()) { onOpenHouse(h.id) }
             }
         }
     }
@@ -931,7 +938,7 @@ private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Mo
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
     // clickable merges the card's texts into one TalkBack item: "name, status, place, price, score, visits", and
     // (round 16) says what a double-tap does, "double-tap to open details", with the button role.
     OutlinedCard(
@@ -961,9 +968,11 @@ private fun HouseCard(h: HouseEntity, visits: Int, modifier: Modifier = Modifier
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
                 h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
-                Text(stringResource(Res.string.common_score_value, h.score.scoreText()))
+                Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
                 Text(stringResource(Res.string.common_visits_count, visits))
             }
+            // A must-have scored below its minimum (slice 2): said in words, not by colour alone.
+            if (score.missedMustHave) MustHaveMissedChip(Modifier.padding(top = 6.dp))
         }
     }
 }

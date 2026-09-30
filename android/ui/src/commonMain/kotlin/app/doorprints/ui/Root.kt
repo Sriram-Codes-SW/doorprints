@@ -45,6 +45,7 @@ import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
@@ -106,6 +107,9 @@ object Routes {
     const val BROKERS = "brokers"
     const val BROKER = "broker/{id}"
     const val NEW_BROKER = "new"
+
+    /** Settings > Criteria (docs/11 5.4, slice 2). */
+    const val CRITERIA = "criteria"
 
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
     val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
@@ -375,11 +379,13 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
                         .collectAsStateWithLifecycle(emptyMap())
                     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
+                    val scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
                     CompareScreen(
                         loaded = loaded,
                         counts = counts,
                         brokers = brokers,
                         lengthUnit = lengthUnit,
+                        scoring = scoring,
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                         onOpenMap = openMapWithTip,
                     )
@@ -399,7 +405,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         },
                         onOpenShare = { nav.navigate(Routes.SHARE) },
                         onOpenBrokers = { nav.navigate(Routes.BROKERS) },
+                        onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
                     )
+                }
+                // Criteria (docs/11 5.4, slice 2): a sub-screen of Settings with its own back arrow, like Brokers.
+                composable(Routes.CRITERIA) {
+                    CriteriaScreen(onBack = dropUnlessResumed { nav.popBackStack() })
                 }
                 // Brokers (docs/11 5.25, slice 1b): a sub-screen of Settings with its own back arrow, like Share updates.
                 composable(Routes.BROKERS) { entry ->

@@ -114,7 +114,7 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
-    onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {},
+    onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {}, onOpenCriteria: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -697,6 +697,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         // The brokers you have met (docs/11 5.25, slice 1b), on every platform: it opens the list and each broker's page.
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers)
+        // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
+        HorizontalDivider()
+        NavRow(stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria)
 
         // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
         HorizontalDivider()

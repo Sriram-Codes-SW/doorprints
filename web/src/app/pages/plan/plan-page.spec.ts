@@ -237,8 +237,15 @@ describe('PlanPage', () => {
     expect(state('lat')).toEqual({ invalid: null, describedBy: 'start-hint start-msg' });
     expect(state('lon')).toEqual({ invalid: null, describedBy: 'start-hint start-msg' });
 
-    expect(maps.length).toBe(1);
-    maps[0].fire('click', { lngLat: { lat: 12.9716, lng: 77.5946 } });
+    // Choosing the start on the map is `setStart(lat, lon, false)`, which is all the map's click handler calls. The test
+    // calls it directly: whether the fake map exists depends on which spec loaded `map-style` first in the same chunk
+    // (the `maplibre-gl` mock is not applied then, no map is made, and `maps` stays empty), so a click on it is not a
+    // stable way to reach the handler. S4b-BL-88.
+    (fixture.componentInstance as unknown as { setStart(lat: number, lon: number, move: boolean): void }).setStart(
+      12.9716,
+      77.5946,
+      false,
+    );
     await fixture.whenStable();
     expect(host.querySelector('#start-msg')).toBeNull();
     expect(state('lat')).toEqual({ invalid: null, describedBy: 'start-hint' });

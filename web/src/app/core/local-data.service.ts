@@ -26,6 +26,7 @@ import { StorageService } from '../data/storage.service';
 import { houseToDto, visitToDto } from '../data/records';
 import { LocalDataError } from './local-error';
 import type { Broker, BrokerRow } from '../shared/broker';
+import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
 
 /**
  * What the screens talk to (S4-01). The method names and shapes are the ones `HouseApiService` had, so the pages
@@ -128,6 +129,59 @@ export class LocalDataService {
   /** The live houses linked to a broker. */
   brokerHouses(id: string): Observable<HouseDto[]> {
     return defer(() => from(this.store.brokerHouses(id).then((list) => list.map(houseToDto))));
+  }
+
+  /**
+   * The effective scoring (slice 2): the defaults merged with the criterion records and the rating share. Screens
+   * read it again after `settled` moves, like every stored value.
+   */
+  scoring(): Observable<Scoring> {
+    return defer(() => from(this.store.scoring()));
+  }
+
+  /** The criterion records that exist (what differs from the defaults), for the Criteria screen and the copies. */
+  criterionRows(): Observable<CriterionRow[]> {
+    return defer(() => from(this.store.criterionRows()));
+  }
+
+  /** Saves criteria (each writes a record only when it differs from the default); see `LocalStore.saveCriterion`. */
+  saveCriteria(list: readonly Criterion[]): Observable<void> {
+    return this.writing(() => this.store.saveCriteria(list));
+  }
+
+  addCriterion(label: string, weight: Weight = 2): Observable<Criterion> {
+    return defer(() =>
+      from(
+        this.store.addCriterion(label, weight).then((saved) => {
+          this.sync.syncSoon();
+          return saved;
+        }),
+      ),
+    );
+  }
+
+  /** Deletes a custom criterion that no house has scored. */
+  deleteCriterion(key: string): Observable<void> {
+    return this.writing(() => this.store.deleteCriterion(key));
+  }
+
+  /** Stores the share of the star rating in the overall score, 0..1. */
+  setRatingShare(share: number): Observable<void> {
+    return this.writing(() => this.store.setRatingShare(share));
+  }
+
+  /** Deletes every criterion and preference record: back to the defaults. */
+  resetCriteria(): Observable<void> {
+    return this.writing(() => this.store.resetCriteria());
+  }
+
+  /** True when a live house has a score under this criterion key (a custom one can then only be archived). */
+  criterionInUse(key: string): Observable<boolean> {
+    return defer(() => from(this.store.criterionInUse(key)));
+  }
+
+  private writing(run: () => Promise<void>): Observable<void> {
+    return defer(() => from(run().then(() => this.sync.syncSoon())));
   }
 
   /** Live visits per house id, from one read of this browser's store. */

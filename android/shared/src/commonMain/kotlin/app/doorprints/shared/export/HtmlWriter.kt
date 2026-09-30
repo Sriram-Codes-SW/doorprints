@@ -77,6 +77,8 @@ object HtmlWriter {
         row(out, s["cover.photoScope"], s["photoScope.${o.photos.name}"])
         row(out, s["cover.contacts"], s[if (o.includeContacts) "yes" else "no"])
         row(out, s["cover.language"], ExportLanguages.nativeName(o.language))
+        // Slice 2: how much the star rating counts, when the copy's scoring is not the default one.
+        ExportRows.ratingShareText(bundle)?.let { row(out, s["col.ratingShare"], it) }
         out.append("</dl>\n")
         out.append("<p class=\"note\">").append(esc(s["cover.privacy"])).append("</p>\n")
         if (o.includeContacts) {
@@ -87,17 +89,18 @@ object HtmlWriter {
         // Ranking table
         out.append("<section class=\"page\">\n<h2>").append(esc(s["section.ranking"])).append("</h2>\n")
         out.append("<table>\n<thead><tr>")
-        for (h in listOf(s["col.rank"], s["col.label"], s["col.score"], s["col.price"], s["col.status"])) {
+        for (h in ExportRows.rankingColumns(bundle)) {
             out.append("<th scope=\"col\">").append(esc(h)).append("</th>")
         }
         out.append("</tr></thead>\n<tbody>\n")
         for (h in bundle.ranked) {
+            // The house's name is the row's header cell; the others are data.
+            val cells = ExportRows.rankingRow(h, bundle)
             out.append("<tr>")
-            out.append("<td>").append(bundle.rankOf(h).toString()).append("</td>")
-            out.append("<th scope=\"row\">").append(esc(h.label)).append("</th>")
-            out.append("<td>").append(esc(h.score?.let { ExportRows.fixed(it, 1) } ?: s["none"])).append("</td>")
-            out.append("<td>").append(esc(h.price?.let { ExportRows.rupees(it) } ?: s["none"])).append("</td>")
-            out.append("<td>").append(esc(s.status(h.status))).append("</td>")
+            cells.forEachIndexed { i, cell ->
+                if (i == 1) out.append("<th scope=\"row\">").append(esc(cell)).append("</th>")
+                else out.append("<td>").append(esc(cell)).append("</td>")
+            }
             out.append("</tr>\n")
         }
         out.append("</tbody>\n</table>\n</section>\n")
@@ -132,7 +135,8 @@ object HtmlWriter {
             .append(" · ").append(esc(s.status(h.status))).append("</p>\n")
 
         out.append("<h3>").append(esc(s["section.details"])).append("</h3>\n<dl>\n")
-        row(out, s["col.score"], h.score?.let { ExportRows.fixed(it, 1) } ?: s["none"])
+        row(out, s["col.score"], bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } ?: s["none"])
+        for ((term, value) in ExportRows.scoringLines(h, bundle)) row(out, term, value)
         row(out, s["col.price"], h.price?.let { ExportRows.rupees(it) } ?: s["none"])
         if (h.price != null) row(out, s["col.priceType"], s.priceType(h.priceType))
         row(out, s["col.bedrooms"], h.bedrooms?.toString() ?: s["none"])
@@ -179,7 +183,7 @@ object HtmlWriter {
             out.append("<table>\n<thead><tr><th scope=\"col\">").append(esc(s["col.itemLabel"]))
                 .append("</th><th scope=\"col\">").append(esc(s["col.score"])).append("</th></tr></thead>\n<tbody>\n")
             for (key in keys) {
-                out.append("<tr><th scope=\"row\">").append(esc(s.check(key))).append("</th><td>")
+                out.append("<tr><th scope=\"row\">").append(esc(bundle.criterionLabel(key))).append("</th><td>")
                     .append(h.checklist.getValue(key).toString()).append("/5</td></tr>\n")
             }
             out.append("</tbody>\n</table>\n")
