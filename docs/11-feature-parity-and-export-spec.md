@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.45 |
+| Version | 0.46 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -57,6 +57,7 @@
 | 0.43 | 2026-09-30 | Claude (Code), lead | **Slice 3b-2 built** (5.8 reminders on Android, iPhone and the website; [10](10-sprint-log.md) §13.25). |
 | 0.44 | 2026-09-30 | Claude (Code), lead | **Slice 3c designed** (5.16 Hunt mode reminder before a viewing; [10](10-sprint-log.md) §13.26). |
 | 0.45 | 2026-09-30 | Claude (Code), lead | **Slice 3c built** (5.16 Hunt mode reminder; [10](10-sprint-log.md) §13.26). |
+| 0.46 | 2026-09-30 | Claude (Code), lead | **Slice 4a designed** (hunting areas as records, my places with distances, area notes; [10](10-sprint-log.md) §13.27). The area wake-up (geofences, 5.17/5.18) is slice 4b. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -651,6 +652,21 @@ distances, never the coordinates).
 A note attached to a hunting area (5.17) or a street ("this road floods in the monsoon", "water tanker every morning"),
 shown on every house inside that area or on that street, and in exports. Plain text, the same length limits and
 redaction as house notes (contacts removed before any AI use); searchable (the search rule).
+
+**Design of slice 4a (2026-09-30; [10](10-sprint-log.md) §13.27).** The data, screens, distances and area notes of 5.17, 5.22 and 5.23. The geofence wake-up, the background-location rationale and the cooldown of 5.17/5.18 are **slice 4b**.
+
+| Item | Decision |
+|---|---|
+| Area | Record type `area`, id `a_` plus eight hex. Payload keys in this order: `name` (1..100), `lat`, `lon` (valid coordinates), `radiusM` (200..2000; other reads 500), `enabled` (written only when false; used by 4b). At most 20 live areas. |
+| Place | Record type `place`, id `p_` plus eight hex: `name` (1..60), `lat`, `lon`. At most 10 live places. |
+| Area note | Record type `areanote`, id `n_` plus eight hex: exactly one of `areaId` (an area's id; may dangle) or `street` (1..100, compared case-insensitively after trimming with a house's `street`), then `text` (1..1000). At most 200 live notes. A note row with neither or both targets, or a blank text, is skipped on read and refused in a file. |
+| Which houses a note reaches | A note on an area reaches every house whose point is within the area's `radiusM` (the haversine distance of `RouteOptimizer.haversineMeters`, on the web its twin; a house with `locationSource` APPROX is not placed and gets none); a note on a street reaches the houses with that street. A house may get several. |
+| Distances | To each place: straight-line kilometres `haversine / 1000` shown with one decimal, and (screens only) the Plan estimate, `distance x DETOUR_FACTOR (1.3)` at the speed of the user's travel mode in Plan. The house detail has a *Distances* section (per place: name, km, minutes); Compare gets one row per place; a sortable list column is not built (S4b-BL). Vectors D1 (13.0067, 80.2574) to (13.0827, 80.2707) is 8 572.7 m, 8.6 km; D2 the same point is 0 m, 0.0 km; D3 (12.9716, 77.5946) to (13.0, 77.6) is 3 211.7 m, 3.2 km (one decimal, half up; the metres to one decimal). |
+| Screens | *My areas* and *My places* (Settings on Android, cards on Your data and pages on the website): a list, add (name, then the point: *Use my current location*, *Pick on the map* with the existing picker, or on the website the coordinates and the map), edit, delete, the radius as a slider of 100 m steps for an area; *Area notes* are added from the house page (*Add a note for this street / this area*) and listed on the areas screen; the caps say "At most 20 areas", "At most 10 places", "At most 200 notes". Four languages, both themes. |
+| House page and search | The house detail shows *Area notes* (the notes that reach it, newest first) and *Distances*. The house list search and `searchText` include the text of the notes that reach a house. |
+| Backup and copies | Lists `areas`, `places`, `areaNotes` after `viewings` in `doorprints-backup/2` (any of them makes a copy `/2`); the manifest counts after `counts.viewings`. A copy made without contact details keeps them all (a place is the person's own data, not a contact). The house page of the readable copies gets an *Area notes* section and a *Distances* table (name, km) after the Viewings section; no new file. |
+| AI | After the viewing lines: `Area note: <text>` (at most 5, newest first, through the contact redactor) and `Distance to <place>: <km> km` (names and distances only, at most 10; never the coordinates of a place). The three stacks write the same words. |
+| Server | Three record types with import validation as the questions; `HouseDocuments` computes the same notes and distances. |
 
 ### 5.24 Moving in (D-30)
 
