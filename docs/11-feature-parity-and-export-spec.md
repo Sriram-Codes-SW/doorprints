@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.30 |
+| Version | 0.32 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -42,6 +42,8 @@
 | 0.28 | 2026-09-30 | Claude (Code), lead | 5.20 **offline maps built** on Android and iPhone (S4b-FR-6): the map's visible area as one of MapLibre's offline packs, the estimate and the cap in common code; the website is S4b-BL-79. |
 | 0.29 | 2026-09-30 | Claude (Code), lead | New **5.28**, the design of sharing updates between two people who know each other (S4b-FR-3): an update file in the backup format, sent through any app, imported with the existing merge; the Drive folder of D-28 later as the automatic channel. New US-40. |
 | 0.30 | 2026-09-30 | Claude (Code), lead | 5.28 **built on Android** (S4b-FR-3): *Share updates with…* from Settings > Your data, the update file, a received file opening in the Import screen. |
+| 0.31 | 2026-09-30 | Claude (Code), lead | New **5.29**, the design of a house from a listing link (S4b-FR-4) with brokers (S4b-FR-11): the portal's share text parsed on the device, never the page (5.9 stands); brokers as the data-model change of (4c). New US-41. |
+| 0.32 | 2026-09-30 | Claude (Code), lead | 5.29 **built** (S4b-FR-4, the listing flow): the no-AI parser on Android and the web with one fixture file, the Android share receiver, the map step, the duplicate check. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -661,6 +663,73 @@ person chose to send; contact details as in any copy). Tests: the "since" filter
 backup format tests of all three stacks; the intent filter's checks (F-25: a file, not a link, validated as any
 import); TC-U row; a device exchange between two phones (TC-M).
 
+### 5.29 A house from a listing link, and brokers (S4b-FR-4, S4b-FR-11, design)
+
+**The ask** (owner, 2026-09-28): "a house from a MagicBricks, 99acres, Housing.com, NoBroker, Square Yards or
+NestAway listing link", the photos and details filling in the new-house form; and brokers as contacts of their own
+(5.25, D-30), since listings bring the broker's details.
+
+**Design (lead, 2026-09-30).** 5.9 stands: **Doorprints never fetches the listing page.** The portals' terms and robots
+rules restrict automated reading, the pages need JavaScript, a free-tier address would be blocked, and the website
+cannot read another site from the browser at all. Open Graph preview data is the page too. So "from a link" means
+what the portal itself hands over when the person taps *Share* on a listing: its share text (title, price, BHK,
+locality, sometimes the area and the furnishing) and the link. That text is parsed **on the device, without AI**, into
+the new-house form; the link is kept (`listingUrl`, cleaned of `utm_*`, `fbclid` and `gclid`) and the portal named
+from a host allowlist. Photos are never fetched (the portal's copyright, and no fetch); the person's own screenshots
+go in through the photo picker as any photo. *Fill in from listing text* (FR-038, AI on the device with the person's
+key, or the server) stays as the optional second pass over the same text.
+
+1. **The no-AI parser** (`ListingText.parse` in `:shared`, a TypeScript port on the web, one fixture file of real
+   share texts per portal in `docs/schemas/listing-fixtures.json` that both run): price (`₹ 25,000`, `25k`, `45 Lac`,
+   `1.2 Cr`, `per month`), RENT or SALE from the words, BHK (`2 BHK`, `2BHK`, `2 bedroom`), the locality ("in
+   Indiranagar, Bengaluru"), the first `https://` link, and the carpet area and furnishing into the notes (no fields
+   of their own until 4c). A phone number only when it is in the text. The result is a `HouseDraftDto` through the
+   existing `DraftSanitizer` (caps, the phone and the link must be in the text), so the form's *Fill in from listing
+   text* merge (`mergeListing`) and its summary of what was filled apply unchanged.
+2. **The flow.** Android: `ShareReceiverActivity` (exported, `ACTION_SEND` `text/plain`, the text capped at 20,000
+   characters, untrusted, SEC-043) hands the text over as `DeepLink.NewHouseFromListing`; the Map opens with "Where is
+   it?" (tap the map, or *Save house here* with the location), and the new-house form opens with the parsed draft
+   merged and the summary ("Filled in price, BHK, locality and the link"). Web: the share page (`/share`, FR-072)
+   runs the same parser and the same map step. A listing pasted into *Fill in from listing text* runs the parser
+   first, AI second. The house is saved only when the person taps *Save* (AI-004).
+3. **Duplicates.** Before the form opens: the same cleaned `listingUrl`, or the same label within 100 m of the chosen
+   place, says "You saved this on 12 Sep. Open it?" with *Open* and *Add anyway*.
+4. **Location.** A house needs `lat`/`lon` before it is saved, as today, so "Where is it?" comes first; the locality
+   lookup (forward geocoding: Android's `Geocoder.getFromLocationName`, the iPhone's `CLGeocoder`, the website's
+   Nominatim search under its one-request-a-second policy, on the person's tap) is S4b-BL-83. The hollow
+   "approximate" marker and the Hunt-alert exclusion of FR-068 need a house field and come with the data-model change
+   of (4c).
+5. **Brokers** (5.25, S4b-FR-11) are a data-model change on all three stacks: a `brokers` table (id, name, phone,
+   agency, fee terms, notes, rating, `updatedAt`, `deleted`, `dirty`) and `houses.brokerId`, Room version 4 with the
+   contact name and phone migrated into one broker per distinct phone number, the server's Flyway migration and sync
+   endpoints, the website's IndexedDB store, and the backup format's additive `brokers` list and `brokerId` (the
+   format id stays `doorprints-backup/1`: a reader ignores unknown keys; docs/schemas says which fields are new);
+   never sent to AI (the redaction applies). Built as its own change after the listing flow, in the (4c) batch of
+   data-model changes, so the format, the schemas and the three stacks' tests change once.
+
+**Why this shape.** It keeps the zero-cost and terms rules of 5.9, needs no new library, and reuses what exists: the
+share handler on the web, the AI fill's merge and summary on both apps, the photo picker. What it costs: only what the
+portal's share text says fills in (usually the price, BHK and locality; no photos); brokers wait for the data-model
+change.
+
+**Built (2026-09-30, [10](10-sprint-log.md) §13.17).** `ListingText.parse` (`:shared`) and `parseListingText`
+(`web/src/app/shared/listing-text.ts`), both over `docs/schemas/listing-fixtures.json` (seven share texts in the
+portals' shapes, hand-written; `ListingFixturesTest`, `listing-text.spec.ts`): the label from the first line, the
+price (₹ or Rs with k, lakh or crore, or a bare lakh or crore amount; ten lakh and above without rent words is a
+sale), RENT or SALE from the words, BHK or a studio, the locality before a city name, the area and the furnishing at
+the top of the notes with the whole text under them, the first link with `utm_*`, `fbclid` and `gclid` removed, the
+portal from a host allowlist, a phone number only from the text; on Android through `DraftSanitizer`. Android:
+MainActivity takes `ACTION_SEND` `text/plain` (the subject first, the text capped at 20,000 characters) as
+`DeepLink.NewHouseFromListing`; a house with the same cleaned link asks "You saved this listing on 12 Sep" with
+*Open* or *Add anyway*; else the Map opens with "Where is this house?" and the new-house form takes the parsed draft
+through the same merge and summary as *Fill in from listing text*. Web: the share page's text reaches the new-house
+page as before and the parser fills the fields on arrival, the AI fill staying the second pass. Tests
+[06](06-test-plan.md) TC-U-97; on a phone TC-M-34 (owner). The label-within-100 m duplicate and the locality lookup
+(S4b-BL-83) are not built.
+
+**Order of work.** (1) The parser with its fixtures, the Android share receiver, the web share page's parser, the
+duplicate check, the map step (one change). (2) S4b-BL-83, the locality lookup. (3) Brokers with (4c).
+
 ## 6. User stories
 
 Continues [01 §5](01-requirements.md#5-user-stories) (US-01..US-15).
@@ -690,6 +759,7 @@ Continues [01 §5](01-requirements.md#5-user-stories) (US-01..US-15).
 | US-36 | hunter | delete my account and change my mind within a week | a mistake is not permanent | Offline copy offered; 7-day grace with "Keep my account"; told that Drive files and device data stay | FR-080, PRV-015 | 5 |
 | US-37 | operator | move my existing API-key install to my Google account | I keep my houses and photos | Claim once with the old key; all rows mine; "Move photos to Drive"; old builds sync until Sprint 6 | FR-081 | 5 |
 | US-38 | hunter | be reminded shortly before a viewing and start Hunt mode from the reminder | I don't forget to turn on alerts as I walk to the house | Reminder 5 to 60 min before (default 15); Start Hunt mode works from the notification with the app closed; Dismiss; offline; Do Not Disturb respected; no address on the lock screen | FR-083, FR-084 | 4b |
+| US-41 | hunter | share a listing from a portal app or a browser into Doorprints and get a house drafted from it | I do not type what the ad already says | The share sheet shows Doorprints; the price, BHK, locality and link fill the form; I place it on the map; a duplicate is offered to open instead; nothing is fetched from the portal and nothing is saved until I save (5.29) | S4b-FR-4 | 4b |
 | US-40 | hunter hunting with someone | share my latest houses, visits and notes with the other person, and get theirs, without an account or a server | we hunt as one from two phones | *Share updates with…* makes a file of what changed since the last share to that person; sent through any app; opens in Doorprints on the other phone; merged with last edit wins; the same file twice changes nothing (5.28) | S4b-FR-3 | 4b |
 | US-39 | hunter | mark the neighbourhoods I'm searching in and be asked to start Hunt mode when I get there | I never walk through my target area with Hunt mode off | Up to 20 areas, 200 m to 2 km; off by default; asks for "Allow all the time" only when I turn it on, with an explanation first; never starts tracking by itself; once per area per 6 h; still works after a reboot; turns itself off if I remove the permission | FR-085..FR-088, PRV-024..PRV-027 | 4b |
 

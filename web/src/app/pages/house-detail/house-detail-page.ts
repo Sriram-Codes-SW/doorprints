@@ -69,6 +69,7 @@ import { clearDraft, draftKey, readDraft, writeDraft } from './draft-store';
 import { type BackKey, HOUSE_BACK_STATE, backTarget, exitAfterRemoval } from './back-target';
 import { ListReturn } from '../map/list-return';
 import { GLYPHS } from '../../shared/glyphs';
+import { parseListingText } from '../../shared/listing-text';
 import { RunResult, runResult } from '../../shared/run-result';
 
 interface OpenPhoto {
@@ -402,11 +403,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   private openDraft(lat: number, lon: number, shared: string): void {
     const draft = newHouse(lat, lon);
+    this.draft.set(draft);
     if (shared) {
-      draft.notes = shared;
+      // The no-AI parser first (docs/11 5.29): the price, BHK, locality, link and phone the share text says, and the
+      // whole text in the notes so nothing shared is lost; *Fill in from listing text* (AI) stays the second pass.
+      this.applyDraft(parseListingText(shared));
       this.dirty.set(true);
     }
-    this.draft.set(draft);
     this.loading.set(false);
     this.afterLoad();
   }

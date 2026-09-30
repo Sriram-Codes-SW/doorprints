@@ -1,0 +1,111 @@
+{
+  "format": "doorprints-listing-fixtures/1",
+  "note": "Share-sheet texts as the portals' apps and browsers hand them to Doorprints (docs/11 5.29). Hand-written samples in the portals' shapes, not copies of real listings; the phone numbers and links are made up. Both parsers (android/shared ListingText.kt, web listing-text.ts) must read every case the same way: ListingFixturesTest and listing-text.spec.ts.",
+  "cases": [
+    {
+      "name": "MagicBricks rent, WhatsApp share",
+      "text": "2 BHK Flat for Rent in Indiranagar, Bengaluru\n₹ 32,000 per month · 1150 sq ft · Semi-furnished\nContact: Ravi 98450 12345\nhttps://www.magicbricks.com/propertyDetails/2-BHK-1150-Sq-ft-Multistorey-Apartment-FOR-Rent-Indiranagar-in-Bangalore&id=4d4235?utm_source=share&utm_medium=whatsapp",
+      "expect": {
+        "label": "2 BHK Flat for Rent in Indiranagar, Bengaluru",
+        "price": 32000,
+        "priceType": "RENT",
+        "bedrooms": 2,
+        "locality": "Indiranagar",
+        "contactPhone": "98450 12345",
+        "listingUrl": "https://www.magicbricks.com/propertyDetails/2-BHK-1150-Sq-ft-Multistorey-Apartment-FOR-Rent-Indiranagar-in-Bangalore&id=4d4235",
+        "portal": "MagicBricks",
+        "notesStart": "1150 sq ft, Semi-furnished"
+      }
+    },
+    {
+      "name": "99acres sale in crores",
+      "text": "3 BHK Apartment for Sale in Kondapur, Hyderabad\n1.2 Cr | 1650 sqft | Ready to move\nhttps://www.99acres.com/3-bhk-bedroom-apartment-flat-for-sale-in-kondapur-hyderabad-1650-sq-ft-spid-A12345678",
+      "expect": {
+        "label": "3 BHK Apartment for Sale in Kondapur, Hyderabad",
+        "price": 12000000,
+        "priceType": "SALE",
+        "bedrooms": 3,
+        "locality": "Kondapur",
+        "contactPhone": null,
+        "listingUrl": "https://www.99acres.com/3-bhk-bedroom-apartment-flat-for-sale-in-kondapur-hyderabad-1650-sq-ft-spid-A12345678",
+        "portal": "99acres",
+        "notesStart": "1650 sq ft"
+      }
+    },
+    {
+      "name": "Housing.com bare lakh price",
+      "text": "Check out this 2 BHK Independent House in Velachery, Chennai\n65 Lakh\nhttps://housing.com/in/buy/resale/page/12345-2-bhk-independent-house-for-sale-in-velachery?source=share",
+      "expect": {
+        "label": "Check out this 2 BHK Independent House in Velachery, Chennai",
+        "price": 6500000,
+        "priceType": "SALE",
+        "bedrooms": 2,
+        "locality": "Velachery",
+        "contactPhone": null,
+        "listingUrl": "https://housing.com/in/buy/resale/page/12345-2-bhk-independent-house-for-sale-in-velachery?source=share",
+        "portal": "Housing.com",
+        "notesStart": null
+      }
+    },
+    {
+      "name": "NoBroker rent, studio, owner number with +91",
+      "text": "Studio / 1 RK for rent at Andheri West, Mumbai\nRs. 18,500/month, fully furnished, 400 sq ft\nOwner: +91 98200 00000\nhttps://www.nobroker.in/property/12345?utm_campaign=app&fbclid=abc",
+      "expect": {
+        "label": "Studio / 1 RK for rent at Andheri West, Mumbai",
+        "price": 18500,
+        "priceType": "RENT",
+        "bedrooms": 0,
+        "locality": "Andheri West",
+        "contactPhone": "+91 98200 00000",
+        "listingUrl": "https://www.nobroker.in/property/12345",
+        "portal": "NoBroker",
+        "notesStart": "400 sq ft, Fully furnished"
+      }
+    },
+    {
+      "name": "Square Yards, no price words",
+      "text": "1 BHK Apartment in Wakad, Pune\nhttps://www.squareyards.com/rent/1-bhk-apartment-wakad-pune-123",
+      "expect": {
+        "label": "1 BHK Apartment in Wakad, Pune",
+        "price": null,
+        "priceType": null,
+        "bedrooms": 1,
+        "locality": "Wakad",
+        "contactPhone": null,
+        "listingUrl": "https://www.squareyards.com/rent/1-bhk-apartment-wakad-pune-123",
+        "portal": "Square Yards",
+        "notesStart": null
+      }
+    },
+    {
+      "name": "NestAway link only",
+      "text": "https://www.nestaway.com/houses/12345?utm_source=app",
+      "expect": {
+        "label": "House",
+        "price": null,
+        "priceType": null,
+        "bedrooms": null,
+        "locality": null,
+        "contactPhone": null,
+        "listingUrl": "https://www.nestaway.com/houses/12345",
+        "portal": "NestAway",
+        "notesStart": null
+      }
+    },
+    {
+      "name": "A WhatsApp forward with no link",
+      "text": "Flat available for rent near Jubilee Hills, Hyderabad. 3BHK, 1800 sqft, semi-furnished, 45k per month. Call 90000 12345 after 6 pm.",
+      "expect": {
+        "label": "Flat available for rent near Jubilee Hills, Hyderabad. 3BHK, 1800 sqft, semi-furnished, 45k per month. Call 90000 12345",
+        "price": 45000,
+        "priceType": "RENT",
+        "bedrooms": 3,
+        "locality": "Jubilee Hills",
+        "contactPhone": "90000 12345",
+        "listingUrl": null,
+        "portal": null,
+        "notesStart": "1800 sq ft, Semi-furnished"
+      }
+    }
+  ]
+}
