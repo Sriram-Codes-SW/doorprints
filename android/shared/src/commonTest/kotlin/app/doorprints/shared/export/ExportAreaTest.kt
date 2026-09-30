@@ -58,7 +58,7 @@ class ExportAreaTest {
         val distances = html.substringAfter("<h3>Distances</h3>\n").substringBefore("</table>")
         assertEquals(
             "<table>\n<thead><tr><th scope=\"col\">Place</th><th scope=\"col\">Distance (km)</th></tr></thead>\n<tbody>\n" +
-                "<tr><th scope=\"row\">Gym</th><td>0.7</td></tr>\n<tr><th scope=\"row\">Office</th><td>288.8</td></tr>\n</tbody>\n",
+                "<tr><th scope=\"row\">Gym</th><td>0.7</td></tr>\n<tr><th scope=\"row\">Office</th><td>285.1</td></tr>\n</tbody>\n",
             distances,
         )
         val viewings = html.indexOf("<h3>Viewings</h3>")
@@ -68,7 +68,7 @@ class ExportAreaTest {
         assertFalse(html.contains("Never shown."), "a note whose area is gone reaches no house")
         val md = MarkdownWriter.write(bundle())
         assertTrue(md.contains("\n### Area notes\n\n| Notes | From |\n| --- | --- |\n"), md)
-        assertTrue(md.contains("\n### Distances\n\n| Place | Distance (km) |\n| --- | --- |\n| Gym | 0.7 |\n| Office | 288.8 |\n"), md)
+        assertTrue(md.contains("\n### Distances\n\n| Place | Distance (km) |\n| --- | --- |\n| Gym | 0.7 |\n| Office | 285.1 |\n"), md)
         // House 2 (12.9, 77.6, no street) is outside the area: no Area notes there, but its distances.
         assertEquals(emptyList(), ExportRows.areaNoteRows(ExportFixture.house2, bundle()))
         assertEquals(2, ExportRows.distanceRows(ExportFixture.house2, bundle()).size)

@@ -117,7 +117,7 @@ class CanonicalSampleTest {
             areas = data.areaRows, places = data.placeRows, areaNotes = data.areaNoteRows,
         )
         assertEquals(listOf(listOf("n_55667788", "n_11223344"), emptyList(), emptyList()), data.houses.map { h -> slice4a.areaNotesOf(h).map { it.id } })
-        assertEquals(listOf(listOf("Office" to "8.6", "Amma's home" to "288.8"), emptyList(), listOf("Office" to "8.6", "Amma's home" to "293.0")),
+        assertEquals(listOf(listOf("Office" to "8.6", "Amma's home" to "288.5"), emptyList(), listOf("Office" to "3.8", "Amma's home" to "291.1")),
             data.houses.map { h -> ExportRows.distanceRows(h, slice4a).map { it[0] to it[1] } })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])

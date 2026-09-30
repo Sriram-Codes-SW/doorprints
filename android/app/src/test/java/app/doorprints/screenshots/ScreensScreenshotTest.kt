@@ -37,6 +37,7 @@ import app.doorprints.data.AiProviderChoice
 import app.doorprints.data.AppSettings
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.ui.AiSettingsSection
+import app.doorprints.ui.AreasEditor
 import app.doorprints.ui.AppLockSection
 import app.doorprints.ui.BrokerForm
 import app.doorprints.ui.BrokerList
@@ -73,6 +74,8 @@ import app.doorprints.ui.CriteriaEditor
 import app.doorprints.ui.QuestionsEditor
 import app.doorprints.ui.ViewingsHistory
 import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaNote
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import app.doorprints.ui.ExportScreen
@@ -375,6 +378,21 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shoot("viewings") {
             Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
         }
+    }
+    /**
+     * Settings > My areas (docs/11 slice 4a): two areas (one with the wake-up off) and their notes, one on an area and
+     * one on a street, English and Hindi light only, to keep the image set small.
+     */
+    @Test fun areas() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            repo.saveArea(Area("a_1f2e3d4c", "Adyar", 13.0067, 80.2574, 500))
+            repo.saveArea(Area("a_5b6c7d8e", "Indiranagar 2nd stage", 12.9784, 77.6408, 1200, enabled = false))
+            repo.saveAreaNote(AreaNote("n_11223344", areaId = "a_1f2e3d4c", text = "Water tanker every morning; the low streets flood in the monsoon."))
+            repo.saveAreaNote(AreaNote("n_55667788", street = "MG Road", text = "Noisy after 9 pm: the bus depot is on the corner."))
+        }
+        shoot("areas") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
