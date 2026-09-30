@@ -40,6 +40,7 @@ import platform.UIKit.UIViewController
 fun MainViewController(): UIViewController {
     logUncaughtExceptions()
     IosAppContainer.start()
+    installAreaWakeup()
     startSelfCheckIfRequested()
     val platform = IosPlatformServices()
     val services = IosAppContainer.services
@@ -75,12 +76,25 @@ fun installNotifications() {
 }
 
 /**
+ * The area wake-up's region monitoring (S4b-BL-96): its location manager and delegate, made before the app finishes
+ * launching, so iOS finds them when it relaunches the app in the background for an arrival in an area, and the
+ * registration at start. The Swift app calls it from its `init` after [installNotifications];
+ * `MainViewControllerKt.installAreaWakeup()`. Main thread.
+ */
+fun installAreaWakeup() {
+    if (IosAreaWakeupServices.available) IosAreaWakeup.install()
+}
+
+/**
  * The deep link a tapped alert carries, checked as `:app`'s MainActivity checks its intent (threat model F-25): a
  * well-formed UUID for a house or visit, coordinates in range; anything else is ignored.
  */
 internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
     (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
     (userInfo[IosHunt.KEY_OPEN_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null }
+    // An area wake-up (S4b-BL-96): the Map, which asks for location if needed and starts Hunt mode, as Android's
+    // *Start Hunt mode* without location does.
+    (userInfo[IosAreaWakeup.KEY_START_HUNT_AREA] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.StartHunt else null }
     val lat = (userInfo[IosHunt.KEY_NEW_LAT] as? String)?.toDoubleOrNull() ?: return null
     val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null

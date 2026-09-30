@@ -22,6 +22,8 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.KeychainSecretStore
 import app.doorprints.location.HuntState
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaRegions
 import app.doorprints.shared.model.Viewing
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.app_name
@@ -34,6 +36,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.getString
+import platform.CoreLocation.CLLocationManager
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSUUID
 import kotlin.experimental.ExperimentalNativeApi
@@ -48,7 +51,8 @@ import kotlin.native.Platform
  * Since CMP-8c also the map: `indiaView` (the style the map is given keeps India's boundary rules) and `map` (the map on
  * screen loaded all of it), the in-app boundary check that makes the iOS map's India view a CI gate. Since S4b-BL-69
  * also `hunt`: with the simulator's location set next to a house saved for the check (ios/ci/launch-smoke.sh), Hunt
- * mode starts and the engine reports that house as the nearest; SKIP without the location permission.
+ * mode starts and the engine reports that house as the nearest; SKIP without the location permission. Since S4b-BL-96
+ * also `areaWakeup`: the region registration on a fake location manager, then the real one with the stored settings.
  *
  * Each check prints exactly one line, `DOORPRINTS-SELFCHECK <name> PASS`, `… FAIL <short reason>` or
  * `… SKIP <reason>`, then `DOORPRINTS-SELFCHECK done PASS` (every check passed or was skipped) or `done FAIL`. The
@@ -148,6 +152,8 @@ private suspend fun runSelfCheck() {
         // Viewing reminders (slice 3b-2): an earlier version crashed now and then inside UserNotifications, so the
         // reschedule runs many times, for two viewings, where one run could pass by luck.
         check("reminders") { remindersCheck() },
+        // The area wake-up on iPhone (S4b-BL-96): the registration against a fake location manager, then once for real.
+        check("areaWakeup") { areaWakeupCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
 }
@@ -259,6 +265,71 @@ private suspend fun remindersCheck(): Result {
     }
     IosViewingReminders.reschedule(emptyList(), emptyList(), now)
     return Result.Pass
+}
+
+/**
+ * The area wake-up's registration ([AreaRegionSync]) on a [RecordingRegionMonitor] holding another app region and a
+ * stale one of ours: 25 areas give the 19 nearest (the other region keeps its place), the stale one stops, a second
+ * run changes nothing and switching off stops only ours. Then the real registration runs once ([IosAreaWakeup], the
+ * stored areas and setting; the simulator has no "Always", so it registers nothing) and the real manager is read.
+ */
+private suspend fun areaWakeupCheck(): Result = withContext(Dispatchers.Main) {
+    val other = AreaRegions.Region("somebody.else", 12.0, 77.0, 300.0)
+    val stale = AreaRegions.Region(AreaRegions.identifier("a_0000ffff"), 12.0, 77.0, 500.0)
+    val fake = RecordingRegionMonitor(listOf(other, stale), near = HUNT_HOUSE_LAT to HUNT_HOUSE_LON)
+    // Area i lies i * 100 m north of the fake's position.
+    val areas = (0 until 25).map { i ->
+        Area("a_" + i.toString(16).padStart(8, '0'), "Area $i", HUNT_HOUSE_LAT + i * 0.0009, HUNT_HOUSE_LON, 500)
+    }
+    val sync = AreaRegionSync(fake)
+    sync.apply(areas.reversed(), wakeupOn = true, alwaysGranted = true)
+    val ours = fake.monitored().filter { AreaRegions.areaId(it.identifier) != null }
+    if (ours.map { AreaRegions.areaId(it.identifier) } != areas.take(19).map { it.id }) {
+        return@withContext Result.Fail("not the 19 nearest areas (${ours.size})")
+    }
+    if (fake.monitored().none { it == other }) return@withContext Result.Fail("another region was stopped")
+    val calls = fake.calls
+    sync.apply(areas, wakeupOn = true, alwaysGranted = true)
+    if (fake.calls != calls) return@withContext Result.Fail("a second run changed the regions")
+    sync.apply(areas, wakeupOn = false, alwaysGranted = true)
+    if (fake.monitored() != listOf(other)) return@withContext Result.Fail("switching off left ${fake.monitored().size - 1} regions")
+    // The real path: the stored areas and setting, Core Location's own manager.
+    if (IosAreaWakeupServices.available) {
+        IosAreaWakeup.install()
+        withContext(Dispatchers.Default) { IosAreaWakeup.reregisterAll() }
+        CoreLocationRegions(CLLocationManager()).monitored()
+    }
+    Result.Pass
+}
+
+/**
+ * A [RegionMonitor] that keeps its regions in a list (the self-check's fake Core Location): what it was given, the
+ * position [near] and no radius limit; [calls] counts the starts and stops.
+ */
+internal class RecordingRegionMonitor(
+    initial: List<AreaRegions.Region> = emptyList(),
+    private val near: Pair<Double, Double>? = null,
+    override val maxRadiusM: Double = 0.0,
+    override val available: Boolean = true,
+) : RegionMonitor {
+    private val regions = initial.toMutableList()
+    var calls = 0
+        private set
+
+    override fun monitored(): List<AreaRegions.Region> = regions.toList()
+
+    override fun start(region: AreaRegions.Region) {
+        calls++
+        regions.removeAll { it.identifier == region.identifier }
+        regions += region
+    }
+
+    override fun stop(identifier: String) {
+        calls++
+        regions.removeAll { it.identifier == identifier }
+    }
+
+    override fun lastPosition(): Pair<Double, Double>? = near
 }
 
 /** The Keychain status in a [KeychainSecretStore] error ("… (status -34018)"), or null. */

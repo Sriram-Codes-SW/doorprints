@@ -1136,4 +1136,8 @@
     <string name="tag_GOOD_POINT">మంచి విషయం</string>
     <string name="tag_PROBLEM">సమస్య</string>
     <string name="tag_MOVE_IN">మారేటప్పుడు</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): under review. -->
+    <string name="area_wakeup_what_ios">ఎలా: iOS iPhone లోనే iPhone స్థానాన్ని మీ ప్రాంతాలతో పోలుస్తుంది. Doorprints లొకేషన్ చరిత్ర ఏదీ ఉంచదు, మీ స్థానాన్ని ఎక్కడికీ పంపదు.</string>
+    <string name="area_wakeup_pick_ios">తర్వాత iOS లొకేషన్ గురించి అడుగుతుంది. ముందుగా యాప్ వాడుతున్నప్పుడు అనుమతించు ఎంచుకోండి, తర్వాత ఎల్లప్పుడూ అనుమతించుకు మార్చండి. iOS అడగకపోతే, యాప్ లొకేషన్ సెట్టింగ్‌లలో ఎల్లప్పుడూ ఎంచుకుని, తిరిగి రండి.</string>
+    <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
 </resources>

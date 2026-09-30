@@ -199,6 +199,9 @@ internal class IosAppServices(
 
     override val offlineMaps: OfflineMapsServices = IosOfflineMapsServices
 
+    /** Region monitoring and the "Always" permission (S4b-BL-96). */
+    override val areaWakeup: AreaWakeupServices = IosAreaWakeupServices
+
     /** On every resume (the common root): a clock change or an authorization granted in the Settings app. */
     override fun rescheduleReminders() {
         appScope.launch { IosAppContainer.rescheduleReminders() }

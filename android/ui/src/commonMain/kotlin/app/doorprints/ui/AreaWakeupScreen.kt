@@ -48,7 +48,8 @@ import org.jetbrains.compose.resources.stringResource
 
 // The area wake-up's screens (docs/11 "Design of slice 4b", 5.17, 5.18): *Wake me in my hunting areas* in Settings >
 // My areas with its once-only "switched off because…" card, and the rationale screen that comes before it is turned
-// on, with the permission steps. The geofences are `:app`'s (AreaGeofenceManager), behind [AreaWakeupServices].
+// on, with the permission steps. The geofences are `:app`'s (AreaGeofenceManager), the iPhone's regions iosMain's
+// (IosAreaWakeup), behind [AreaWakeupServices].
 
 /** Where the rationale's permission steps are: nothing asked, precise location asked, background location asked. */
 enum class AreaWakeupStep { IDLE, FOREGROUND, BACKGROUND }
@@ -191,10 +192,16 @@ fun AreaWakeupRationale(onDone: () -> Unit) {
 
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(Res.string.area_wakeup_why), style = MaterialTheme.typography.bodyLarge)
-        Text(stringResource(Res.string.area_wakeup_what), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(if (wakeup.iphoneWording) Res.string.area_wakeup_what_ios else Res.string.area_wakeup_what),
+            style = MaterialTheme.typography.bodyLarge,
+        )
         Text(stringResource(Res.string.area_wakeup_battery), style = MaterialTheme.typography.bodyLarge)
         Text(stringResource(Res.string.area_wakeup_how_off), style = MaterialTheme.typography.bodyLarge)
-        Text(stringResource(Res.string.area_wakeup_pick), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(if (wakeup.iphoneWording) Res.string.area_wakeup_pick_ios else Res.string.area_wakeup_pick),
+            style = MaterialTheme.typography.bodyLarge,
+        )
         LiveMessage {
             if (stillOff) {
                 WarnNote(
