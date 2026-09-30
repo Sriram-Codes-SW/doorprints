@@ -1064,6 +1064,6 @@
     <string name="house_area_notes_none">No area notes reach this house yet.</string>
     <string name="house_distances">Distances</string>
     <string name="house_distance_value">%1$s km · about %2$d min on foot</string>
-    <string name="house_distances_hint">In a straight line; the time is Plan\'s walking estimate.</string>
+    <string name="house_distances_hint">In a straight line; the time is Plan's walking estimate.</string>
     <string name="compare_km">%1$s km</string>
 </resources>
