@@ -63,7 +63,11 @@ import org.jetbrains.compose.resources.stringResource
  * Common code since CMP-5; the prompt itself is [rememberNotificationPermissionRequest].
  */
 @Composable
-fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_rationale): (action: () -> Unit) -> Unit {
+fun rememberNotificationAsk(
+    rationale: StringResource = Res.string.notify_rationale,
+    /** False where nothing would be posted (the iPhone's copies and imports, S4b-BL-81): the action simply runs. */
+    enabled: Boolean = true,
+): (action: () -> Unit) -> Unit {
     val platform = LocalPlatformServices.current
     val settings = LocalAppServices.current.repository.settings
     val asked by settings.notificationsAsked.collectAsStateWithLifecycle(initialValue = true)
@@ -117,7 +121,7 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
     }
 
     return { action ->
-        if (!asked && !platform.canPostNotifications()) {
+        if (enabled && !asked && !platform.canPostNotifications()) {
             pending = action
             showing = true
         } else {

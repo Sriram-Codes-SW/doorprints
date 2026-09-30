@@ -1143,4 +1143,6 @@
     <string name="area_wakeup_what_ios">How: iOS compares where the iPhone is with your areas, on the iPhone. Doorprints keeps no location history and sends your position nowhere.</string>
     <string name="area_wakeup_pick_ios">Next, iOS asks about location. Choose Allow While Using App first, then Change to Always Allow. If iOS does not ask, choose Always in the app's location settings, then come back.</string>
     <string name="notif_area_wakeup">You're in %1$s. Start Hunt mode?</string>
+    <!-- S4b-BL-81, copies on iPhone (2026-09-30): the Save a copy hint without the PDF, which the iPhone does not make. -->
+    <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown or a full backup</string>
 </resources>
