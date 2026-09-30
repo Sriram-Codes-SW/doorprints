@@ -471,3 +471,44 @@ describe('HouseDetailPage: the checklist under the effective scoring (slice 2)',
     expect(host.querySelector('.score b')?.textContent?.trim()).toBe('3.4');
   });
 });
+
+/** Slice 4a (docs/11 5.22, 5.23): the house page shows the notes that reach the house and its distances to my places. */
+describe('HouseDetailPage: area notes and distances (slice 4a)', () => {
+  async function open(house: HouseDto, over: Record<string, unknown>) {
+    TestBed.resetTestingModule();
+    const { fixture } = create({ id: house.id }, {}, {});
+    const api = (fixture.componentInstance as unknown as { api: Record<string, unknown> }).api;
+    api['house'] = () => of(house);
+    Object.assign(api, over);
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const AREA = { id: 'a_1f2e3d4c', name: 'Adyar', lat: 12.9716, lon: 77.5946, radiusM: 500, enabled: true };
+  const NOTE = { id: 'n_11223344', updatedAt: '2026-09-04T00:00:00.000Z', note: { id: 'n_11223344', areaId: 'a_1f2e3d4c', text: 'Water tanker every morning' } };
+  const OFFICE = { id: 'p_0a1b2c3d', name: 'Office', lat: 13.0, lon: 77.6 };
+
+  it('shows the Area notes card with the note and its source, and the Distances card with the km and the walk', async () => {
+    const host = await open(HOUSE, { areas: () => of([AREA]), areaNotes: () => of([NOTE]), places: () => of([OFFICE]) });
+    const notes = host.querySelector('app-house-area-notes-card');
+    expect(notes?.querySelector('h2')?.textContent?.trim()).toBe('Area notes');
+    expect(notes?.textContent).toContain('Water tanker every morning');
+    expect(notes?.textContent).toContain('Area: Adyar');
+    expect(host.querySelector('app-house-distances-card h2')?.textContent?.trim()).toBe('Distances');
+    expect(host.querySelector('app-house-distances-card li')?.textContent?.trim()).toBe('Office: 3.2 km, about 53 min on foot');
+  });
+
+  it('hides Distances without places and offers no street note for a house with no street', async () => {
+    const host = await open(HOUSE, {});
+    expect(host.querySelector('app-house-distances-card section')).toBeNull();
+    const labels = [...host.querySelectorAll('app-house-area-notes-card button')].map((b) => b.textContent?.trim());
+    expect(labels).toEqual(['Add a note for an area']);
+    const withStreet = await open({ ...HOUSE, street: 'MG Road' }, {});
+    expect([...withStreet.querySelectorAll('app-house-area-notes-card button')].map((b) => b.textContent?.trim())).toEqual([
+      'Add a note for this street',
+      'Add a note for an area',
+    ]);
+  });
+});

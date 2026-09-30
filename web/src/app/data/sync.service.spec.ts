@@ -555,6 +555,24 @@ describe('SyncService', () => {
       ]);
     });
 
+    /** Slice 4a: areas, places and area notes are records of types `area`, `place` and `areanote`, so they ride the record sync unchanged. */
+    it('pushes an area, a place and an area note as records, and pulls an area back through the area reader', async () => {
+      const at = Date.parse('2026-09-01T00:00:00.000Z');
+      await store.saveArea({ id: 'a_0a1b2c3d', name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false }, at);
+      await store.savePlace({ id: 'p_0a1b2c3d', name: 'Office', lat: 13.0827, lon: 80.2707 }, at);
+      await store.saveAreaNote({ id: 'n_0a1b2c3d', street: 'MG Road', text: 'Noisy' }, at);
+      await sync.syncNow(true);
+      const pushed = api.pushedRecords.map((r) => [r.type, r.id]).sort();
+      expect(pushed).toEqual([['area', 'a_0a1b2c3d'], ['areanote', 'n_0a1b2c3d'], ['place', 'p_0a1b2c3d']]);
+      expect(api.pushedRecords.find((r) => r.type === 'area')?.payload).toEqual({ name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false });
+      expect(await store.dirtyRecords()).toEqual([]);
+      await store.putRecordFromServer({
+        type: 'area', id: 'a_ffffffff', payload: { name: 'Anna Nagar', lat: 13.085, lon: 80.21, radiusM: 99999 },
+        updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
+      });
+      expect((await store.areas()).map((a) => [a.id, a.radiusM, a.enabled])).toEqual([['a_0a1b2c3d', 500, false], ['a_ffffffff', 500, true]].sort());
+    });
+
     it('stores the records the server sent, tombstones included, and keeps an edit made while the push was in flight', async () => {
       await store.putRecordFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
       await store.saveRecord('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));

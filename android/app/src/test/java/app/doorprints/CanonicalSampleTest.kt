@@ -104,6 +104,21 @@ class CanonicalSampleTest {
         assertEquals(listOf("DONE", "PLANNED"), data.viewingRows.map { it.status })
         assertEquals(listOf(null, true), data.viewingRows.map { it.huntReminder })
         assertEquals(listOf("Ravi Kumar", null), data.viewingRows.map { it.withWhom })
+        // Slice 4a: two areas (one with the wake-up off), two places and two area notes (one on an area, one on a street).
+        assertEquals(listOf("a_1f2e3d4c", "a_5b6c7d8e"), data.areaRows.map { it.id })
+        assertEquals(listOf(null, false), data.areaRows.map { it.enabled })
+        assertEquals(listOf(500, 1200), data.areaRows.map { it.radiusM })
+        assertEquals(listOf("Office", "Amma's home"), data.placeRows.map { it.name })
+        assertEquals(listOf("a_1f2e3d4c" to null, null to "MG Road"), data.areaNoteRows.map { it.areaId to it.street })
+        // House 1 (13.006, 80.2574, GPS, MG Road) is 74 m from the Adyar area's centre, so both notes reach it, newest
+        // first; house 3 (Beach Road) gets none; house 2 has no point, no street and so none either.
+        val slice4a = ExportBundle.build(
+            ExportOptions(), data.houses, data.visits, data.photos,
+            areas = data.areaRows, places = data.placeRows, areaNotes = data.areaNoteRows,
+        )
+        assertEquals(listOf(listOf("n_55667788", "n_11223344"), emptyList(), emptyList()), data.houses.map { h -> slice4a.areaNotesOf(h).map { it.id } })
+        assertEquals(listOf(listOf("Office" to "8.6", "Amma's home" to "288.8"), emptyList(), listOf("Office" to "8.6", "Amma's home" to "293.0")),
+            data.houses.map { h -> ExportRows.distanceRows(h, slice4a).map { it[0] to it[1] } })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
@@ -123,6 +138,9 @@ class CanonicalSampleTest {
             preferences = sample.preferenceRows.reversed(),
             questions = sample.questionRows.reversed(),
             viewings = sample.viewingRows.reversed(),
+            areas = sample.areaRows.reversed(),
+            places = sample.placeRows.reversed(),
+            areaNotes = sample.areaNoteRows.reversed(),
         )
         // The fixture has to tell the two ordering rules apart, or this test pins nothing.
         assertNotEquals(sample.visits.map { it.id }, bundle.visits.map { it.id })
@@ -159,6 +177,7 @@ class CanonicalSampleTest {
             assertEquals(1, preview.newPreferences)
             assertEquals(3, preview.newQuestions)
             assertEquals(2, preview.newViewings)
+            assertEquals(listOf(2, 2, 2), listOf(preview.newAreas, preview.newPlaces, preview.newAreaNotes))
             assertEquals(0, preview.newPhotos)
             assertEquals(2, preview.photosMissingFromFile)
         }

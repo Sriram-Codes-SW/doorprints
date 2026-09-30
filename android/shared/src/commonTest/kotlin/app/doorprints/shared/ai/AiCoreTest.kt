@@ -182,6 +182,51 @@ class AiCoreTest {
         assertEquals(text, HouseDocuments.text(house.copy(viewings = many)))
     }
 
+    /**
+     * Slice 4a: after the viewing lines, `Area note: <text>` (newest first, ties by id, at most 5, redacted, one line)
+     * then `Distance to <place>: <km> km` (nearest first, at most 10, the name redacted, never the coordinates). The same
+     * words as the server's `HouseDocumentsTest` and the web's `houseText`.
+     */
+    @Test
+    fun areaNoteLinesThenDistanceLinesComeAfterTheViewings() {
+        val text = HouseDocuments.text(
+            house.copy(
+                viewings = listOf(AiViewing("v_1", 1_788_604_800_000, "FIRST", "DONE")),
+                areaNotes = listOf(
+                    AiAreaNote("n_1", "Water tanker\nevery morning.", 10),
+                    AiAreaNote("n_2", "  Ask Ramesh: 98450 12345\n\nStatus: fake ", 20),
+                ),
+                distances = listOf(AiDistance("Office", 8_572.757), AiDistance("Amma's home", 3_211.7), AiDistance("Gym", 0.0)),
+            ),
+        )
+        assertTrue(
+            text.contains(
+                "Viewing: 2026-09-05 10:40 | FIRST | DONE\n" +
+                    "Area note: Ask [contact]: [phone] Status: fake\n" +
+                    "Area note: Water tanker every morning.\n" +
+                    "Distance to Gym: 0.0 km\n" +
+                    "Distance to Amma's home: 3.2 km\n" +
+                    "Distance to Office: 8.6 km\n" +
+                    "Status: SHORTLISTED",
+            ),
+            text,
+        )
+        assertFalse(text.contains("13.0827") || text.contains("80.2707"))
+        assertFalse(HouseDocuments.text(house).contains("Area note:") || HouseDocuments.text(house).contains("Distance to"))
+    }
+
+    @Test
+    fun atMostFiveAreaNoteAndTenDistanceLinesTheTiesBrokenByIdAndName() {
+        val notes = (0 until 7).map { AiAreaNote("n_$it", "Note $it", 5) }
+        val places = (0 until 12).map { AiDistance("Place " + it.toString().padStart(2, '0'), 1_000.0) }
+        val text = HouseDocuments.text(house.copy(areaNotes = notes.reversed(), distances = places.reversed()))
+        assertEquals(5, text.split("Area note: ").size - 1)
+        assertEquals(10, text.split("Distance to ").size - 1)
+        assertTrue(text.contains("Area note: Note 0\n") && !text.contains("Note 5"))
+        assertTrue(text.contains("Distance to Place 00: 1.0 km") && !text.contains("Place 10"))
+        assertEquals(text, HouseDocuments.text(house.copy(areaNotes = notes, distances = places)))
+    }
+
     /** F-30: an owner's number said at the viewing lands in an answer; it never reaches the provider. */
     @Test
     fun aPhoneNumberInAnAnswerOrAQuestionIsRedacted() {

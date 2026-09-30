@@ -127,6 +127,24 @@ class BackupFieldsTest {
         assertEquals(model, model.filter { key -> rows.any { key in it } })
     }
 
+    /**
+     * The areas, places and area notes (slice 4a): `enabled` is only on the second area and a note has `areaId` or
+     * `street`, so for each list every row's keys are in the model's order and their union is all of the model's fields.
+     */
+    @Test
+    fun theSampleAreasPlacesAndAreaNotesTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        for ((list, model) in listOf(
+            "areas" to ExportArea.serializer().descriptor.elementNames.toList(),
+            "places" to ExportPlace.serializer().descriptor.elementNames.toList(),
+            "areaNotes" to ExportAreaNote.serializer().descriptor.elementNames.toList(),
+        )) {
+            val rows = sample.getValue(list).jsonArray.map { it.jsonObject.keys.toList() }
+            assertEquals(list, 2, rows.size)
+            for (row in rows) assertEquals(list, model.filter { it in row }, row)
+            assertEquals(list, model, model.filter { key -> rows.any { key in it } })
+        }
+    }
+
     @Test
     fun theSamplePreferenceHasExactlyTheModelsFields() =
         assertEquals(ExportPreference.serializer().descriptor.elementNames.toList(), keysOf("preferences"))
@@ -152,6 +170,10 @@ class BackupFieldsTest {
         assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, answers = answers))
         // Slice 3b-1: a viewing alone makes a `/2` file too.
         assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, viewings = sample.getValue("viewings").jsonArray.size))
+        // Slice 4a: an area, a place or an area note alone makes a `/2` file too.
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, areas = sample.getValue("areas").jsonArray.size))
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, places = sample.getValue("places").jsonArray.size))
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, areaNotes = sample.getValue("areaNotes").jsonArray.size))
         assertEquals("doorprints-backup/2", format)
     }
 }
