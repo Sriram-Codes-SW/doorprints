@@ -113,6 +113,20 @@ Rating counts for 40%
 | 2026-09-27 09:30 | Second viewing | Planned | Ask for the water bill. Bring a tape; check the terrace, please. | – |
 | 2026-09-05 10:40 | First viewing | Done | – | Ravi Kumar |
 
+### Area notes
+
+| Notes | From |
+| --- | --- |
+| Noisy after 9 pm: the bus depot is on the corner. | MG Road |
+| Water tanker every morning; the low streets flood in the monsoon. | Adyar |
+
+### Distances
+
+| Place | Distance (km) |
+| --- | --- |
+| Office | 8.6 |
+| Amma's home | 288.5 |
+
 ### Checklist
 
 | Criterion | Score |
@@ -169,6 +183,13 @@ Ask about water in summer.
 | Brokerage | ₹25,000 |
 | Agreed price | ₹12,00,000 |
 | Cost per sq ft | ₹828 |
+
+### Distances
+
+| Place | Distance (km) |
+| --- | --- |
+| Office | 3.8 |
+| Amma's home | 291.1 |
 
 ### Checklist
 

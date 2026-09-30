@@ -29,15 +29,17 @@ object HouseSearch {
     /**
      * The values a house is searched by: label, address, street, locality, notes, the contact's name and, with a
      * linked broker (slice 1b), [brokerText] (`Broker.searchText`: its name, agency and fee terms), and every room's
-     * name and notes (slice 1c), in the order shown, and every question asked and its answer (slice 3a).
+     * name and notes (slice 1c), in the order shown, and every question asked and its answer (slice 3a), and the texts
+     * of the area notes that reach the house ([noteTexts], slice 4a: `AreaNotes.reaching`).
      */
     fun fields(
         label: String?, address: String?, street: String?, locality: String?, notes: String?, contactName: String?,
         brokerText: String? = null, rooms: List<HouseRoom>? = null, answers: List<HouseAnswer>? = null,
+        noteTexts: List<String> = emptyList(),
     ): List<String> =
         (listOfNotNull(label, address, street, locality, notes, contactName, brokerText) +
             rooms.orEmpty().flatMap { listOfNotNull(it.name, it.notes) } +
-            answers.orEmpty().flatMap { listOfNotNull(it.text, it.answer) }).filter { it.isNotEmpty() }
+            answers.orEmpty().flatMap { listOfNotNull(it.text, it.answer) } + noteTexts).filter { it.isNotEmpty() }
 
     /** True when [query] is blank or one of [fields] contains it, ignoring case. */
     fun matches(query: String, fields: List<String>): Boolean {

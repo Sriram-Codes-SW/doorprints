@@ -1307,6 +1307,10 @@ fun HouseEditScreen(
                         onPlan = { kind -> onPlanViewing(id, kind) },
                         onOpenAll = { onOpenViewings(id) },
                     )
+                    // The area notes that reach the house and its distances to my places (docs/11 slice 4a), from the
+                    // saved point and street.
+                    HouseAreaNotesSection(saved)
+                    HouseDistancesSection(saved)
                 }
 
                 Button(onClick = { save() }, enabled = canSave, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

@@ -151,6 +151,9 @@ public class BackupService {
                 records.findByKeyTypeAndDeletedFalse(BackupPreference.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupQuestion.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupViewing.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupArea.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupPlace.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupAreaNote.TYPE),
                 json, clock.now());
     }
 
@@ -220,13 +223,25 @@ public class BackupService {
         var viewingTally = new Tally();
         for (var row : data.viewings()) viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems));
 
+        // Areas, places and area notes (slice 4a) merge after the viewings; the apps hold the small caps, the server the record cap.
+        var areaTally = new Tally();
+        var areaLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupArea.TYPE)};
+        for (var row : data.areas()) areaTally.count(mergeArea(row, dryRun, areaLive, rowProblems));
+        var placeTally = new Tally();
+        var placeLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupPlace.TYPE)};
+        for (var row : data.places()) placeTally.count(mergePlace(row, dryRun, placeLive, rowProblems));
+        var noteTally = new Tally();
+        var noteLive = new long[]{records.countByKeyTypeAndDeletedFalse(BackupAreaNote.TYPE)};
+        for (var row : data.areaNotes()) noteTally.count(mergeAreaNote(row, dryRun, noteLive, rowProblems));
+
         publishChanges(changedHouses, fileNotes, dryRun);
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
         var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
                 photoTally.toEntity(), brokerTally.toEntity(), criterionTally.toEntity(), preferenceTally.toEntity(),
-                questionTally.toEntity(), viewingTally.toEntity(), List.copyOf(reported));
+                questionTally.toEntity(), viewingTally.toEntity(), areaTally.toEntity(), placeTally.toEntity(),
+                noteTally.toEntity(), List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
                     report.houses(), report.visits());
@@ -511,6 +526,69 @@ public class BackupService {
         return outcome;
     }
 
+    private Outcome mergeArea(BackupArea row, boolean dryRun, long[] liveCount, List<String> problems) {
+        return mergeRecord(BackupArea.TYPE, "area", "areas", row.id(), row.updatedAt(), dryRun, liveCount, problems, () -> {
+            var payload = json.createObjectNode();
+            payload.put("name", row.name());
+            payload.put("lat", row.lat());
+            payload.put("lon", row.lon());
+            payload.put("radiusM", row.radiusM() == null ? BackupArea.DEFAULT_RADIUS : row.radiusM());
+            if (Boolean.FALSE.equals(row.enabled())) payload.put("enabled", false);
+            return payload;
+        });
+    }
+
+    private Outcome mergePlace(BackupPlace row, boolean dryRun, long[] liveCount, List<String> problems) {
+        return mergeRecord(BackupPlace.TYPE, "place", "places", row.id(), row.updatedAt(), dryRun, liveCount, problems, () -> {
+            var payload = json.createObjectNode();
+            payload.put("name", row.name());
+            payload.put("lat", row.lat());
+            payload.put("lon", row.lon());
+            return payload;
+        });
+    }
+
+    private Outcome mergeAreaNote(BackupAreaNote row, boolean dryRun, long[] liveCount, List<String> problems) {
+        return mergeRecord(BackupAreaNote.TYPE, "area note", "area notes", row.id(), row.updatedAt(), dryRun, liveCount,
+                problems, () -> {
+            var payload = json.createObjectNode();
+            if (row.areaId() != null) payload.put("areaId", row.areaId());
+            else payload.put("street", row.street());
+            payload.put("text", row.text());
+            return payload;
+        });
+    }
+
+    /**
+     * One record of a small type (slice 4a) by id, last write wins, never deleting; a newer row revives a tombstone.
+     * A problem line never carries the row's text, nor its id.
+     */
+    private Outcome mergeRecord(String type, String one, String many, String id, Long updatedAt, boolean dryRun,
+                                long[] liveCount, List<String> problems,
+                                java.util.function.Supplier<tools.jackson.databind.node.ObjectNode> payloadOf) {
+        var inFile = clock.accept(Instant.ofEpochMilli(updatedAt), many + ".updatedAt");
+        var key = new RecordKey(type, id);
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        if (existing == null || existing.isDeleted()) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("an " + one + " was skipped, this server holds the most " + many + " it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payloadOf.get().toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
+        return outcome;
+    }
+
     private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
         var existing = visits.findById(row.id()).orElse(null);
@@ -566,6 +644,9 @@ public class BackupService {
         validatePreferences(data.preferences(), problems);
         validateQuestions(data.questions(), problems);
         validateViewings(data.viewings(), problems);
+        validateAreas(data.areas(), problems);
+        validatePlaces(data.places(), problems);
+        validateAreaNotes(data.areaNotes(), problems);
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
@@ -835,6 +916,86 @@ public class BackupService {
         }
         require(rows.size() <= BackupViewing.MAX,
                 "viewings: at most " + BackupViewing.MAX + " viewings allowed, found " + rows.size(), problems);
+    }
+
+    /** A record id like the viewings': a bad or repeated one refuses the file. Messages name the row by its index only. */
+    private void requireRecordId(String at, String id, Set<String> seen, List<String> problems) {
+        if (id == null) {
+            problems.add(at + ".id is required");
+        } else if (!id.matches(RecordDto.ID_PATTERN)) {
+            problems.add(at + ".id is not a valid record id");
+        } else if (!seen.add(id)) {
+            problems.add(at + ".id appears twice");
+        }
+    }
+
+    private void requireName(String at, String name, int max, List<String> problems) {
+        require(name != null && !name.isBlank(), at + ".name is required", problems);
+        maxLength(at + ".name", name, max, problems);
+    }
+
+    private void validateAreas(List<BackupArea> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "areas[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            requireRecordId(at, row.id(), seen, problems);
+            requireName(at, row.name(), BackupArea.MAX_NAME, problems);
+            requireCoordinates(at, row.lat(), row.lon(), problems);
+            require(row.radiusM() == null || (row.radiusM() >= BackupArea.MIN_RADIUS
+                    && row.radiusM() <= BackupArea.MAX_RADIUS),
+                    at + ".radiusM must be " + BackupArea.MIN_RADIUS + ".." + BackupArea.MAX_RADIUS, problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        require(rows.size() <= BackupArea.MAX,
+                "areas: at most " + BackupArea.MAX + " areas allowed, found " + rows.size(), problems);
+    }
+
+    private void validatePlaces(List<BackupPlace> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "places[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            requireRecordId(at, row.id(), seen, problems);
+            requireName(at, row.name(), BackupPlace.MAX_NAME, problems);
+            requireCoordinates(at, row.lat(), row.lon(), problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        require(rows.size() <= BackupPlace.MAX,
+                "places: at most " + BackupPlace.MAX + " places allowed, found " + rows.size(), problems);
+    }
+
+    /** A note's text and street are the person's own, so a message names the row by its index, never by its content. */
+    private void validateAreaNotes(List<BackupAreaNote> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "areaNotes[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            requireRecordId(at, row.id(), seen, problems);
+            require((row.areaId() == null) != (row.street() == null),
+                    at + " needs exactly one of areaId and street", problems);
+            require(row.areaId() == null || !row.areaId().isBlank(), at + ".areaId must not be blank", problems);
+            maxLength(at + ".areaId", row.areaId(), BackupAreaNote.MAX_REF, problems);
+            require(row.street() == null || !row.street().isBlank(), at + ".street must not be blank", problems);
+            maxLength(at + ".street", row.street(), BackupAreaNote.MAX_STREET, problems);
+            require(row.text() != null && !row.text().isBlank(), at + ".text is required", problems);
+            maxLength(at + ".text", row.text(), BackupAreaNote.MAX_TEXT, problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        require(rows.size() <= BackupAreaNote.MAX,
+                "areaNotes: at most " + BackupAreaNote.MAX + " notes allowed, found " + rows.size(), problems);
     }
 
     private void requireId(String at, UUID id, Set<UUID> seen, List<String> problems) {

@@ -26,6 +26,7 @@ import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/q
 import { BUILT_IN_KEYS } from '../shared/scoring';
 import type { Criterion } from '../shared/scoring';
 import type { Viewing } from '../shared/viewing';
+import type { Area, AreaNote, Place } from '../shared/area';
 
 /**
  * The repository the whole web app reads and writes (S4-01). jsdom has no IndexedDB, so `openLocalDb()` hands back
@@ -994,4 +995,127 @@ describe('LocalStore viewings', () => {
     await store.saveViewing(viewing('v_00000000', { startsAt: NOW, notes: 'edited at the cap' }), T2);
     expect((await store.getRecord('viewing', 'v_00000000'))?.payload).toMatchObject({ notes: 'edited at the cap' });
   }, 60_000);
+});
+
+/** Slice 4a (docs/11 "Design of slice 4a"): areas, places and area notes, records of type `area`, `place`, `areanote`. */
+describe('LocalStore areas, places and area notes', () => {
+  let store: LocalStore;
+  const area = (id: string, over: Partial<Area> = {}): Area => ({ id, name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: true, ...over });
+  const place = (id: string, over: Partial<Place> = {}): Place => ({ id, name: 'Office', lat: 13.0827, lon: 80.2707, ...over });
+  const note = (id: string, over: Partial<AreaNote> = {}): AreaNote => ({ id, street: 'MG Road', text: 'Noisy', ...over });
+
+  beforeEach(async () => {
+    store = new LocalStore();
+    await store.ready();
+  });
+
+  it('saves an area as a dirty record of type area with the keys in the contract order, enabled only when false', async () => {
+    await store.saveArea(area('a_00000001'), T1);
+    const record = await store.getRecord('area', 'a_00000001');
+    expect(Object.keys(record!.payload)).toEqual(['name', 'lat', 'lon', 'radiusM']);
+    expect(record).toMatchObject({ dirty: true, deleted: false });
+    await store.saveArea(area('a_00000001', { enabled: false, name: '  Adyar  ' }), T2);
+    expect(Object.keys((await store.getRecord('area', 'a_00000001'))!.payload)).toEqual(['name', 'lat', 'lon', 'radiusM', 'enabled']);
+    expect(await store.areas()).toEqual([area('a_00000001', { enabled: false })]);
+  });
+
+  it('writes only when something changed: an unchanged area keeps updatedAt and the sync queue as they were', async () => {
+    await store.saveArea(area('a_00000001'), T1);
+    const first = await store.getRecord('area', 'a_00000001');
+    for (const r of await store.dirtyRecords()) await store.markRecordClean('area', r.id, r.updatedAt);
+    await store.saveArea(area('a_00000001'), T2);
+    expect((await store.getRecord('area', 'a_00000001'))?.updatedAt).toBe(first?.updatedAt);
+    expect(await store.dirtyRecords()).toEqual([]);
+    await store.saveArea(area('a_00000001', { radiusM: 900 }), T2);
+    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['a_00000001']);
+  });
+
+  it('lists areas and places by name then id, and notes newest first', async () => {
+    await store.saveArea(area('a_0000000b', { name: 'Zed' }), T1);
+    await store.saveArea(area('a_0000000a', { name: 'adyar' }), T1);
+    expect((await store.areas()).map((a) => a.id)).toEqual(['a_0000000a', 'a_0000000b']);
+    await store.savePlace(place('p_00000002', { name: 'Office' }), T1);
+    await store.savePlace(place('p_00000001', { name: 'Amma' }), T1);
+    expect((await store.places()).map((p) => p.id)).toEqual(['p_00000001', 'p_00000002']);
+    await store.saveAreaNote(note('n_00000001'), T1);
+    await store.saveAreaNote(note('n_00000002', { text: 'Newer' }), T2);
+    expect((await store.areaNotes()).map((n) => n.id)).toEqual(['n_00000002', 'n_00000001']);
+  });
+
+  it('draws new a_, p_ and n_ ids that clash with no record, a deleted one included', async () => {
+    await store.saveArea(area('a_aaaaaaaa'), T1);
+    await store.deleteArea('a_aaaaaaaa', T1);
+    const drawn = ['a_aaaaaaaa', 'a_aaaaaaaa', 'a_bbbbbbbb'];
+    expect(await store.newAreaId(() => drawn.shift() ?? 'a_cccccccc')).toBe('a_bbbbbbbb');
+    await store.savePlace(place('p_aaaaaaaa'), T1);
+    await store.deletePlace('p_aaaaaaaa', T1);
+    const p = ['p_aaaaaaaa', 'p_bbbbbbbb'];
+    expect(await store.newPlaceId(() => p.shift() ?? 'p_cccccccc')).toBe('p_bbbbbbbb');
+    await store.saveAreaNote(note('n_aaaaaaaa'), T1);
+    await store.deleteAreaNote('n_aaaaaaaa', T1);
+    const n = ['n_aaaaaaaa', 'n_bbbbbbbb'];
+    expect(await store.newAreaNoteId(() => n.shift() ?? 'n_cccccccc')).toBe('n_bbbbbbbb');
+    expect(await store.newAreaId()).toMatch(/^a_[0-9a-f]{8}$/);
+  });
+
+  it('deletes as a tombstone the next sync sends, and keeps the notes of a deleted area (they reach no house)', async () => {
+    await store.saveArea(area('a_00000001'), T1);
+    await store.saveAreaNote(note('n_00000001', { street: undefined, areaId: 'a_00000001' }), T1);
+    await store.deleteArea('a_00000001', T2);
+    expect(await store.areas()).toEqual([]);
+    expect((await store.dirtyRecords()).find((r) => r.id === 'a_00000001')).toMatchObject({ deleted: true, payload: {} });
+    expect((await store.areaNotes()).map((n) => n.id)).toEqual(['n_00000001']);
+  });
+
+  it('refuses a bad area: id, blank or over-long name, point and radius out of range', async () => {
+    const refused = (over: Partial<Area>) => expect(store.saveArea(area('a_00000001', over))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.saveArea(area('bad id'))).rejects.toBeInstanceOf(LocalDataError);
+    await refused({ name: '  ' });
+    await refused({ name: 'n'.repeat(101) });
+    await refused({ lat: 90.5 });
+    await refused({ lon: -181 });
+    await refused({ radiusM: 199 });
+    await refused({ radiusM: 2001 });
+    await refused({ radiusM: 650.5 });
+    expect(await store.areas()).toEqual([]);
+  });
+
+  it('refuses a bad place and a bad note: neither or both targets, blank or over-long text', async () => {
+    await expect(store.savePlace(place('p_00000001', { name: 'n'.repeat(61) }))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.savePlace(place('p_00000001', { lat: 100 }))).rejects.toBeInstanceOf(LocalDataError);
+    const refused = (n: AreaNote) => expect(store.saveAreaNote(n)).rejects.toBeInstanceOf(LocalDataError);
+    await refused({ id: 'n_00000001', text: 'no target' });
+    await refused({ id: 'n_00000001', areaId: 'a_1', street: 'MG Road', text: 'both' });
+    await refused(note('n_00000001', { text: '  ' }));
+    await refused(note('n_00000001', { text: 'x'.repeat(1001) }));
+    await refused(note('n_00000001', { street: 's'.repeat(101) }));
+    await refused({ id: 'n_00000001', areaId: 'a'.repeat(65), text: 'x' });
+    expect(await store.areaNotes()).toEqual([]);
+  });
+
+  it('caps the live records at 20 areas, 10 places and 200 notes; an edit of an existing one and a deleted slot still work', async () => {
+    const hex = (i: number) => i.toString(16).padStart(8, '0');
+    for (let i = 0; i < 20; i++) await store.saveArea(area('a_' + hex(i), { name: 'Area ' + i }), T1);
+    await expect(store.saveArea(area('a_' + hex(99)))).rejects.toMatchObject({ key: 'areas.max' });
+    await store.saveArea(area('a_' + hex(3), { name: 'Renamed' }), T2);
+    await store.deleteArea('a_' + hex(4), T2);
+    await store.saveArea(area('a_' + hex(99)), T2);
+    for (let i = 0; i < 10; i++) await store.savePlace(place('p_' + hex(i), { name: 'Place ' + i }), T1);
+    await expect(store.savePlace(place('p_' + hex(99)))).rejects.toMatchObject({ key: 'places.max' });
+    for (let i = 0; i < 200; i++) await store.saveAreaNote(note('n_' + hex(i), { text: 'Note ' + i }), T1);
+    await expect(store.saveAreaNote(note('n_' + hex(999)))).rejects.toMatchObject({ key: 'areaNotes.max' });
+    expect(await store.areaNoteRows()).toHaveLength(200);
+  });
+
+  it('skips a stored row that is not readable, without truncating the rest', async () => {
+    await store.saveRecord('area', 'a_00000001', { name: '', lat: 1, lon: 1, radiusM: 500 }, T1);
+    await store.saveRecord('area', 'a_00000002', { name: 'Good', lat: 1, lon: 1, radiusM: 50 }, T1);
+    await store.saveRecord('place', 'p_00000001', { name: 'Bad', lat: 999, lon: 1 }, T1);
+    await store.saveRecord('areanote', 'n_00000001', { text: 'no target' }, T1);
+    await store.saveRecord('areanote', 'n_00000002', { areaId: 'a', street: 's', text: 'both' }, T1);
+    await store.saveRecord('areanote', 'n_00000003', { street: 'MG Road', text: 'Ok' }, T1);
+    expect((await store.areas()).map((a) => [a.id, a.radiusM])).toEqual([['a_00000002', 500]]);
+    expect(await store.places()).toEqual([]);
+    expect((await store.areaNotes()).map((n) => n.id)).toEqual(['n_00000003']);
+  });
 });

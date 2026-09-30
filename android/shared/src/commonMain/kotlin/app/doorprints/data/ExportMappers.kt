@@ -94,4 +94,7 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     preferences,
     questions,
     viewings,
+    areas,
+    places,
+    areaNotes,
 )

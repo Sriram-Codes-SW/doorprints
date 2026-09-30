@@ -142,6 +142,10 @@ class BackupParityTest {
         assertThat(unionOf(root, "questions")).isEqualTo(components(BackupQuestion.class));
         // Slice 3b-1: huntReminder, withWhom, notes and visitId are optional, so the union over the rows again.
         assertThat(unionOf(root, "viewings")).isEqualTo(components(BackupViewing.class));
+        // Slice 4a: enabled (only false), areaId and street (one per note) are optional, so the union again.
+        assertThat(unionOf(root, "areas")).isEqualTo(components(BackupArea.class));
+        assertThat(unionOf(root, "places")).isEqualTo(components(BackupPlace.class));
+        assertThat(unionOf(root, "areaNotes")).isEqualTo(components(BackupAreaNote.class));
         // The list order of data.json is part of the format too (README section 3): criteria, preferences and questions come after brokers.
         assertThat(new java.util.ArrayList<>(root.propertyNames()))
                 .isEqualTo(components(BackupData.class));
@@ -164,6 +168,9 @@ class BackupParityTest {
             case "preferences" -> BackupPreference.class;
             case "questions" -> BackupQuestion.class;
             case "viewings" -> BackupViewing.class;
+            case "areas" -> BackupArea.class;
+            case "places" -> BackupPlace.class;
+            case "areaNotes" -> BackupAreaNote.class;
             default -> throw new IllegalArgumentException("Unknown list: " + list);
         };
         var componentOrder = components(recordClass);

@@ -29,6 +29,7 @@ import type { Broker, BrokerRow } from '../shared/broker';
 import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
 import type { Viewing, ViewingRow } from '../shared/viewing';
+import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 
 /**
  * What the screens talk to (S4-01). The method names and shapes are the ones `HouseApiService` had, so the pages
@@ -271,6 +272,76 @@ export class LocalDataService {
     return defer(() =>
       from(
         this.store.markViewingDone(id, visitId).then((saved) => {
+          this.sync.syncSoon();
+          return saved;
+        }),
+      ),
+    );
+  }
+
+  /** Every live area, by name (slice 4a). */
+  areas(): Observable<Area[]> {
+    return defer(() => from(this.store.areas()));
+  }
+
+  areaRows(): Observable<AreaRow[]> {
+    return defer(() => from(this.store.areaRows()));
+  }
+
+  newAreaId(): Observable<string> {
+    return defer(() => from(this.store.newAreaId()));
+  }
+
+  saveArea(area: Area): Observable<Area> {
+    return this.saving(() => this.store.saveArea(area));
+  }
+
+  deleteArea(id: string): Observable<void> {
+    return this.writing(() => this.store.deleteArea(id));
+  }
+
+  /** Every live place, by name (slice 4a). */
+  places(): Observable<Place[]> {
+    return defer(() => from(this.store.places()));
+  }
+
+  placeRows(): Observable<PlaceRow[]> {
+    return defer(() => from(this.store.placeRows()));
+  }
+
+  newPlaceId(): Observable<string> {
+    return defer(() => from(this.store.newPlaceId()));
+  }
+
+  savePlace(place: Place): Observable<Place> {
+    return this.saving(() => this.store.savePlace(place));
+  }
+
+  deletePlace(id: string): Observable<void> {
+    return this.writing(() => this.store.deletePlace(id));
+  }
+
+  /** Every live area note, newest first (slice 4a). */
+  areaNotes(): Observable<AreaNoteRow[]> {
+    return defer(() => from(this.store.areaNotes()));
+  }
+
+  newAreaNoteId(): Observable<string> {
+    return defer(() => from(this.store.newAreaNoteId()));
+  }
+
+  saveAreaNote(note: AreaNote): Observable<AreaNote> {
+    return this.saving(() => this.store.saveAreaNote(note));
+  }
+
+  deleteAreaNote(id: string): Observable<void> {
+    return this.writing(() => this.store.deleteAreaNote(id));
+  }
+
+  private saving<T>(run: () => Promise<T>): Observable<T> {
+    return defer(() =>
+      from(
+        run().then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),

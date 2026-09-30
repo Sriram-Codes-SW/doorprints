@@ -69,6 +69,9 @@ async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT') {
           house: () => of(house),
           visits: () => of([]),
           viewingsOf: () => of([]),
+          areas: () => of([]),
+          areaNotes: () => of([]),
+          places: () => of([]),
           settled: signal(0),
           photoIds: () => of([]),
           saveHouse: (body: HouseDto) => {

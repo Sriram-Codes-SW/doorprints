@@ -96,6 +96,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/viewings/viewing-page').then((m) => m.ViewingPage),
   },
   {
+    path: 'areas',
+    title: 'title.areas',
+    loadComponent: () => import('./pages/areas/areas-page').then((m) => m.AreasPage),
+  },
+  {
+    path: 'places',
+    title: 'title.places',
+    loadComponent: () => import('./pages/places/places-page').then((m) => m.PlacesPage),
+  },
+  {
     path: 'data',
     title: 'title.data',
     loadComponent: () => import('./pages/data/data-page').then((m) => m.DataPage),

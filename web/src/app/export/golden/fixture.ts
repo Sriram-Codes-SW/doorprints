@@ -21,6 +21,7 @@ import type { BrokerRow } from '../../shared/broker';
 import type { CriterionRow, PreferenceRow } from '../../shared/scoring';
 import type { QuestionRow } from '../../shared/question';
 import type { ViewingRow } from '../../shared/viewing';
+import type { AreaNoteRow, AreaRow, PlaceRow } from '../../shared/area';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
 
@@ -434,6 +435,38 @@ export const FIXTURE_VIEWINGS: ViewingRow[] = [
   },
 ];
 
+/**
+ * Hunting areas, my places and area notes (slice 4a), as `docs/schemas/backup-sample.json` lists them: Adyar (500 m,
+ * on, reaches house 1 at 78 m), a switched-off area in Bengaluru, two places (Office is 8.6 km from Adyar's centre)
+ * and two notes (one on the Adyar area, one on "MG Road", which reaches house 1 as well).
+ */
+export const FIXTURE_AREAS: AreaRow[] = [
+  { id: 'a_1f2e3d4c', updatedAt: '2026-09-02T06:00:00.000Z', area: { id: 'a_1f2e3d4c', name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: true } },
+  {
+    id: 'a_5b6c7d8e',
+    updatedAt: '2026-09-03T06:00:00.000Z',
+    area: { id: 'a_5b6c7d8e', name: 'Indiranagar 2nd stage', lat: 12.9784, lon: 77.6408, radiusM: 1200, enabled: false },
+  },
+];
+
+export const FIXTURE_PLACES: PlaceRow[] = [
+  { id: 'p_0a1b2c3d', updatedAt: '2026-09-01T06:00:00.000Z', place: { id: 'p_0a1b2c3d', name: 'Office', lat: 13.0827, lon: 80.2707 } },
+  { id: 'p_4e5f6a7b', updatedAt: '2026-09-02T06:00:00.000Z', place: { id: 'p_4e5f6a7b', name: "Amma's home", lat: 12.9716, lon: 77.5946 } },
+];
+
+export const FIXTURE_AREA_NOTES: AreaNoteRow[] = [
+  {
+    id: 'n_11223344',
+    updatedAt: '2026-09-04T06:00:00.000Z',
+    note: { id: 'n_11223344', areaId: 'a_1f2e3d4c', text: 'Water tanker every morning; the low streets flood in the monsoon.' },
+  },
+  {
+    id: 'n_55667788',
+    updatedAt: '2026-09-05T06:00:00.000Z',
+    note: { id: 'n_55667788', street: 'MG Road', text: 'Noisy after 9 pm: the bus depot is on the corner.' },
+  },
+];
+
 /** Fixed `data:` URIs, so the HTML golden does not depend on a canvas being available. */
 export const FIXTURE_PHOTO_DATA_URIS: ReadonlyMap<string, string> = new Map(
   FIXTURE_PHOTOS.map((photo): [string, string] => [photo.id, 'data:image/jpeg;base64,/9j/']),
@@ -451,6 +484,9 @@ export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundl
     preferences: FIXTURE_PREFERENCES,
     questions: FIXTURE_QUESTIONS,
     viewings: FIXTURE_VIEWINGS,
+    areas: FIXTURE_AREAS,
+    places: FIXTURE_PLACES,
+    areaNotes: FIXTURE_AREA_NOTES,
     exportedAt: FIXTURE_EXPORTED_AT,
     options: { ...FIXTURE_OPTIONS, ...options },
   });

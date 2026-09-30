@@ -62,7 +62,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-async function render(query: Record<string, string>) {
+async function render(query: Record<string, string>, extra: Record<string, unknown> = {}) {
   vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
   TestBed.configureTestingModule({
     imports: [MapPage],
@@ -74,6 +74,9 @@ async function render(query: Record<string, string>) {
           settled: signal(0),
           houses: () => of([MISSED, PLAIN, CHEAP]),
           brokers: () => of([]),
+          areas: () => of([]),
+          areaNotes: () => of([]),
+          ...extra,
           scoring: () => of(scoringOf([SECURITY_MUST], [])),
           stats: () => of({ houses: 3, shortlisted: 0, rejected: 0, visits: 0, streets: 0 }),
         },
@@ -112,5 +115,33 @@ describe('MapPage: the house list under the ranking (slice 2)', () => {
     expect(list[2]).toContain('Must-have missed');
     expect(list[0]).not.toContain('Must-have missed');
     expect(list[1]).not.toContain('Must-have missed');
+  });
+});
+
+/** Slice 4a: the list search also reads the text of the area notes that reach a house (the shared test case of docs/06). */
+describe('MapPage: searching the text of area notes (slice 4a)', () => {
+  const inArea = house('a', 'By the park', { street: '5th Cross' });
+  const onStreet = house('s', 'On the road', { street: 'MG Road', lat: 14, lon: 81 });
+  const elsewhere = house('e', 'Far away', { street: 'Other Road', lat: 15, lon: 82 });
+  const area = { id: 'a_00000001', name: 'Park', lat: 13, lon: 80, radiusM: 500, enabled: true };
+  const notes = [
+    { id: 'n_00000001', updatedAt: '2026-09-02T00:00:00.000Z', note: { id: 'n_00000001', areaId: 'a_00000001', text: 'Water tanker every morning' } },
+    { id: 'n_00000002', updatedAt: '2026-09-03T00:00:00.000Z', note: { id: 'n_00000002', street: 'mg road ', text: 'Bus depot on the corner' } },
+  ];
+  const stub = { houses: () => of([inArea, onStreet, elsewhere]), areas: () => of([area]), areaNotes: () => of(notes) };
+
+  it('finds the house an area note reaches, and the house a street note reaches, and no other', async () => {
+    expect(rows(await render({ q: 'tanker' }, stub))).toHaveLength(1);
+    TestBed.resetTestingModule();
+    const byArea = rows(await render({ q: 'tanker' }, stub));
+    expect(byArea[0]).toContain('By the park');
+    TestBed.resetTestingModule();
+    const byStreet = rows(await render({ q: 'bus depot' }, stub));
+    expect(byStreet).toHaveLength(1);
+    expect(byStreet[0]).toContain('On the road');
+  });
+
+  it('finds nothing by those words when there are no notes', async () => {
+    expect(rows(await render({ q: 'tanker' }, { houses: stub.houses }))).toHaveLength(0);
   });
 });

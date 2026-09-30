@@ -140,6 +140,13 @@ describe('searchText', () => {
     expect(finds('helipad')).toBe(false);
     expect(searchText(green, greenBroker).includes('terrace')).toBe(false);
   });
+  it("a query matches the text of an area note that reaches the house (slice 4a), and not one that does not", () => {
+    const notes = ['Noisy after 9 pm: the bus depot is on the corner.'];
+    expect(searchText(green, greenBroker, notes).includes('bus depot')).toBe(true);
+    expect(searchText(green, greenBroker, notes).includes('noisy after')).toBe(true);
+    expect(searchText(green, greenBroker).includes('bus depot')).toBe(false);
+    expect(searchText(lake, '', [])).toBe(searchText(lake));
+  });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
   it("the broker's fee terms match", () => expect(matching('15 days')).toEqual(['green']));

@@ -56,6 +56,8 @@ import { SyncService } from '../../data/sync.service';
 import { createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
 import type { MapStyleWatch } from '../../shared/map-style';
 import { round6 } from '../../shared/location-map';
+import { notesReaching } from '../../shared/area';
+import type { Area, AreaNoteRow } from '../../shared/area';
 import { COUNTRY_VIEW, loadMapView, locationErrorKey, saveMapView } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { GLYPHS } from '../../shared/glyphs';
@@ -129,6 +131,19 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly houses = signal<HouseDto[]>([]);
   /** The words of each broker (id to name, agency and fee terms), so a search also finds a house by its broker. */
   private readonly brokerWords = signal<ReadonlyMap<string, string>>(new Map());
+  /** The areas and area notes (slice 4a): the texts of the notes that reach a house are searched with it. */
+  private readonly areas = signal<readonly Area[]>([]);
+  private readonly areaNotes = signal<readonly AreaNoteRow[]>([]);
+  private readonly noteWords = computed(() => {
+    const notes = this.areaNotes();
+    const out = new Map<string, string[]>();
+    if (notes.length === 0) return out;
+    for (const h of this.houses()) {
+      const reaching = notesReaching(h, this.areas(), notes);
+      if (reaching.length) out.set(h.id, reaching.map((n) => n.note.text));
+    }
+    return out;
+  });
   protected readonly stats = signal<StatsDto | null>(null);
   protected readonly loading = signal(true);
   /** Why the houses could not be read; keyed on its run so that Retry failing the same way is read again. */
@@ -191,7 +206,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const status = this.statusFilter();
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
-      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? '')).includes(q))
+      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id)).includes(q))
       .map((house) => {
         const result = evaluateScore(house.checklist, house.rating, this.scoring());
         return { house, score: result.overall, result };
@@ -436,6 +451,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.api.brokers().subscribe({
       next: (rows) => this.brokerWords.set(new Map(rows.map((r) => [r.id, brokerSearchText(r.broker)]))),
       error: () => this.brokerWords.set(new Map()),
+    });
+    this.api.areas().subscribe({
+      next: (list) => this.areas.set(list),
+      error: () => this.areas.set([]),
+    });
+    this.api.areaNotes().subscribe({
+      next: (rows) => this.areaNotes.set(rows),
+      error: () => this.areaNotes.set([]),
     });
     this.api.scoring().subscribe({
       next: (scoring) => this.scoring.set(scoring),
