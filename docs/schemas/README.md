@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.14 |
+| Version | 1.15 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -21,6 +21,7 @@
 | 1.12 | 2026-09-30 | Claude (Code), lead | **`doorprints-backup/2` is written** (slice 1b of [11](../11-feature-parity-and-export-spec.md) 5.30, brokers): a `brokers` list after `photos` (new §3.4), `brokerId` on a house after `cost`, `counts.brokers`; a writer writes `/2` only when the copy has a broker and `/1` otherwise, and a copy made without contact details has neither. `backup-sample.json` is now a `/2` document with two brokers (the web byte golden regenerated, 2 928 bytes). |
 | 1.13 | 2026-09-30 | Claude (Code), lead | **Rooms** (slice 1c of [11](../11-feature-parity-and-export-spec.md) 5.6 and 5.30): an optional `rooms` array on the house, after `cost` and before `brokerId` (§3.1, §3.5); a writer now writes `/2` when the copy has a broker **or a room**, and a copy made without contact details keeps its rooms. `backup-sample.json` carries two rooms on house 1 (3 232 bytes; the web byte golden regenerated). |
 | 1.14 | 2026-09-30 | Claude (Code), lead | **Criteria and preferences** (slice 2 of [11](../11-feature-parity-and-export-spec.md) 5.4 and 5.30): two top-level lists after `brokers` (§3.6); a writer writes `/2` when a copy holds a broker, a room, a criterion or a preference, and keeps criteria and preferences in a copy made without contact details. `backup-sample.json` carries three criteria and one preference (3 649 bytes; the web byte golden regenerated). |
+| 1.15 | 2026-09-30 | Claude (Code), lead | **Viewing questions** (slice 3a of [11](../11-feature-parity-and-export-spec.md) 5.5 and 5.30): a `questions` list after `preferences` (§3.7) and an optional `answers` array on the house after `rooms` (§3.8); a writer writes `/2` when a copy holds a question or a house with answers (with the earlier reasons). New `default-questions.json` (format `doorprints-default-questions/1`), the seed of the question bank in four languages, not part of the backup format. `backup-sample.json` grew to 4 569 bytes (3 questions, two answers on house 1). |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -230,6 +231,27 @@ its place in the list above. **Preference**: `key`, `value` (string ≤500), `up
 a decimal from 0 to 1 (default 0.5) for how much the star rating counts against the checklist. Scores stay in each house's
 `checklist` under the criterion's key; a key that is not a known criterion is ignored by the scoring but kept. A file with a bad
 value or a repeated key is refused whole. Merge by `key`, the newest `updatedAt` wins, an import never deletes.
+
+### 3.7 Questions (`/2`, slice 3a)
+
+The question bank, one record each; `questions` follows `preferences`, ordered by `updatedAt` then `id`. Keys in this order: `id` (the merge
+key: a seeded default has a fixed id `qd_` plus a name, a custom question `q_` plus eight hex characters; `[A-Za-z0-9._-]{1,64}`), `text` (1..300),
+`category` (`MONEY`, `WATER_POWER`, `RULES`, `BUILDING`, `LEGAL`, `OTHER`; unknown reads as `OTHER`), `appliesTo` (`RENT`, `SALE`, `BOTH`; unknown
+reads as `BOTH`), `defaultOn` (boolean: asked by the *usual questions* button), `sort` (≥0), `archived` (only when true), `updatedAt`. At most 100
+questions. A file with a bad value, a repeated id or more than 100 is refused whole; merge by `id`, newest `updatedAt` wins, an import never deletes.
+
+### 3.8 Answer (`/2`, slice 3a)
+
+`answers` sits inside a house, after `rooms` and before `brokerId`; at most 60, present only when the house has one. Keys in this order: `id`
+(unique within the house), `questionId` (the bank question it came from; may dangle), `text` (1..300, the question as asked, a snapshot), `answer`
+(1..2000, absent when empty), `status` (`OPEN`, `ANSWERED`, `SKIPPED`), `sort` (≥0). A non-empty answer with status `OPEN` reads as `ANSWERED`, and
+`ANSWERED` without an answer reads as `OPEN`. A bad value, a repeated id or a 61st answer is refused whole. Answers belong to the house row and
+merge with it; they are not contact details, so a copy made without contact details keeps them.
+
+### 3.9 `default-questions.json`
+
+Not part of the backup: the seed of the question bank, `doorprints-default-questions/1`, fourteen questions with their fixed ids, category, scope,
+`defaultOn`, `sort` and the text in `en`, `hi`, `ta` and `te` (the last three under review). Both stacks embed the texts and a test reads this file.
 
 ## 4. Null semantics (NFR-025)
 

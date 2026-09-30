@@ -42,6 +42,7 @@ import app.doorprints.shared.export.BackupValidation
 import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportCriterion
 import app.doorprints.shared.export.ExportPreference
+import app.doorprints.shared.export.ExportQuestion
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
@@ -52,7 +53,14 @@ import app.doorprints.shared.model.CriterionType
 import app.doorprints.shared.model.Preference
 import app.doorprints.shared.model.PreferenceType
 import app.doorprints.shared.model.Scoring
+import app.doorprints.shared.model.DefaultQuestions
+import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.Question
+import app.doorprints.shared.model.QuestionCategory
+import app.doorprints.shared.model.QuestionScope
+import app.doorprints.shared.model.QuestionType
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordLimitException
@@ -172,8 +180,14 @@ open class CommonRepository(
     }
 
     override suspend fun saveHouse(house: HouseEntity) {
-        // The rooms as every reader keeps them (slice 1c): the form's blank names and notes go, the order is the one shown.
-        db.houses().upsert(withBroker(house).copy(rooms = HouseRooms.coerced(house.rooms), updatedAt = now(), dirty = true))
+        // The rooms and answers as every reader keeps them (slices 1c, 3a): the form's blank names and notes go, a typed
+        // answer reads ANSWERED, the order is the one shown.
+        db.houses().upsert(
+            withBroker(house).copy(
+                rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers), updatedAt = now(),
+                dirty = true,
+            ),
+        )
         syncSoon()
     }
 
@@ -342,6 +356,104 @@ open class CommonRepository(
             for (row in db.records().listByType(CriterionType.name)) deleteRecord(CriterionType, row.id)
             for (row in db.records().listByType(PreferenceType.name)) deleteRecord(PreferenceType, row.id)
         }
+    }
+
+    // ---- The question bank and a house's answers (docs/11 5.5, slice 3a) ----
+
+    /** A question row with its id, coerced; null when the payload does not decode or cannot be trusted (skipped). */
+    private fun RecordEntity.toQuestion(): Question? = decode(QuestionType)?.copy(id = id)?.coerced()
+
+    private fun questionsOf(rows: List<RecordEntity>): List<Question> =
+        rows.mapNotNull { it.toQuestion() }.sortedWith(Question.ORDER)
+
+    override fun observeQuestions(): Flow<List<Question>> = db.records().byType(QuestionType.name).map(::questionsOf)
+
+    override suspend fun questions(): List<Question> = questionsOf(db.records().listByType(QuestionType.name))
+
+    override suspend fun seedQuestions(language: String): Int {
+        var written = 0
+        db.withImmediateTransaction {
+            for (d in DefaultQuestions.ALL) {
+                // A tombstone is a record too: a default the person deleted stays deleted (Reset brings it back).
+                if (db.records().get(QuestionType.name, d.id) != null) continue
+                saveRecord(QuestionType, d.id, d.question(language))
+                written++
+            }
+        }
+        return written
+    }
+
+    private val seedGate = Mutex()
+
+    override suspend fun seedQuestionsOnce(language: String) {
+        seedGate.withLock {
+            if (settings.questionsSeeded()) return
+            seedQuestions(language)
+            settings.markQuestionsSeeded()
+        }
+    }
+
+    override suspend fun resetQuestions(language: String) {
+        db.withImmediateTransaction {
+            for (d in DefaultQuestions.ALL) {
+                // A deleted default that would be the 101st question stays deleted (the web skips it too).
+                val live = db.records().get(QuestionType.name, d.id)?.deleted == false
+                if (!live && db.records().countLive(QuestionType.name) >= Question.MAX_QUESTIONS) continue
+                saveRecord(QuestionType, d.id, d.question(language))
+            }
+        }
+    }
+
+    override suspend fun saveQuestion(question: Question) {
+        db.withImmediateTransaction { writeQuestion(question) }
+    }
+
+    override suspend fun saveQuestions(questions: List<Question>) {
+        db.withImmediateTransaction { for (q in questions) writeQuestion(q) }
+    }
+
+    /** One question as a record; nothing is written when the record already says the same (a renumbering stamps only the moved). */
+    private suspend fun writeQuestion(question: Question) {
+        val clean = requireNotNull(question.copy(text = question.text.trim()).coerced()) {
+            "a question needs a record id and a text of 1..${Question.MAX_TEXT} characters"
+        }
+        val stored = db.records().get(QuestionType.name, clean.id)?.takeUnless { it.deleted }
+        if (stored?.toQuestion() == clean) return
+        if (stored == null && db.records().countLive(QuestionType.name) >= Question.MAX_QUESTIONS) {
+            throw RecordLimitException(QuestionType.name, Question.MAX_QUESTIONS)
+        }
+        saveRecord(QuestionType, clean.id, clean)
+    }
+
+    override suspend fun addQuestion(
+        text: String,
+        category: QuestionCategory,
+        appliesTo: QuestionScope,
+        defaultOn: Boolean,
+    ): String {
+        val words = text.trim()
+        require(words.isNotEmpty() && words.length <= Question.MAX_TEXT) { "a question needs 1..${Question.MAX_TEXT} characters" }
+        var id = ""
+        db.withImmediateTransaction {
+            val live = db.records().listByType(QuestionType.name)
+            if (live.size >= Question.MAX_QUESTIONS) throw RecordLimitException(QuestionType.name, Question.MAX_QUESTIONS)
+            // An id a tombstone holds is taken too: reusing it would bring the old question back on another device.
+            val used = db.records().versions(QuestionType.name).mapTo(HashSet()) { it.id }
+            id = Question.newCustomId({ it in used })
+            val sort = (live.mapNotNull { it.toQuestion() }.maxOfOrNull { it.sort } ?: -1) + 1
+            saveRecord(
+                QuestionType, id,
+                Question(id, words, category.name, appliesTo.name, defaultOn, sort),
+            )
+        }
+        return id
+    }
+
+    override suspend fun deleteQuestion(id: String) = deleteRecord(QuestionType, id)
+
+    override suspend fun saveAnswers(houseId: String, answers: List<HouseAnswer>?) {
+        val house = db.houses().get(houseId)?.takeUnless { it.deleted } ?: return
+        saveHouse(house.copy(answers = answers))
     }
 
     /**
@@ -559,7 +671,7 @@ open class CommonRepository(
                 lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
                 bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
                 listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, rooms = h.rooms,
-                checklist = h.checklist,
+                answers = h.answers, checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
             )
         }
@@ -813,6 +925,10 @@ open class CommonRepository(
             preferences = db.records().listByType(PreferenceType.name).mapNotNull { row ->
                 row.decode(PreferenceType)?.let { ExportPreference(row.id, it.value.take(Preference.MAX_VALUE), row.updatedAt) }
             },
+            // At most 100 questions, for the same reason as the criteria.
+            questions = db.records().listByType(QuestionType.name)
+                .mapNotNull { row -> row.toQuestion()?.let { ExportQuestion.of(it, row.updatedAt) } }
+                .take(Question.MAX_QUESTIONS),
         )
     }
 
@@ -841,6 +957,7 @@ open class CommonRepository(
             db.records().versions(BrokerType.name).associate { it.id to it.updatedAt },
             db.records().versions(CriterionType.name).associate { it.id to it.updatedAt },
             db.records().versions(PreferenceType.name).associate { it.id to it.updatedAt },
+            db.records().versions(QuestionType.name).associate { it.id to it.updatedAt },
         )
     }
 
@@ -919,7 +1036,7 @@ open class CommonRepository(
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
         val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
-            actions.criteria.size + actions.preferences.size
+            actions.criteria.size + actions.preferences.size + actions.questions.size
         var done = 0
         var houses = 0
         var visits = 0
@@ -941,6 +1058,11 @@ open class CommonRepository(
         }
         for (p in actions.preferences) {
             db.records().upsert(importedPreference(p, p.updatedAt))
+            onProgress(++done, total)
+        }
+        // The question bank (slice 3a), by id with the file's `updatedAt`, like the criteria.
+        for (q in actions.questions) {
+            db.records().upsert(importedQuestion(q, q.updatedAt))
             onProgress(++done, total)
         }
         for (house in actions.houses) {
@@ -1005,6 +1127,7 @@ open class CommonRepository(
             brokers = actions.brokers.size,
             criteria = actions.criteria.size,
             preferences = actions.preferences.size,
+            questions = actions.questions.size,
         )
         if (result.rows > 0) syncSoon()
         result
@@ -1020,6 +1143,13 @@ open class CommonRepository(
     private fun importedCriterion(c: ExportCriterion, updatedAt: Long): RecordEntity = RecordEntity(
         type = CriterionType.name, id = c.key,
         payload = CriterionType.encode(checkNotNull(c.toCriterion().coerced()) { "criterion ${c.key} was not checked" }),
+        updatedAt = updatedAt, deleted = false, dirty = true,
+    )
+
+    /** A backup's question as its record row: coerced (the plan checked it), dirty so it is pushed. */
+    private fun importedQuestion(q: ExportQuestion, updatedAt: Long): RecordEntity = RecordEntity(
+        type = QuestionType.name, id = q.id,
+        payload = QuestionType.encode(checkNotNull(q.toQuestion().coerced()) { "question ${q.id} was not checked" }),
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
@@ -1053,7 +1183,7 @@ open class CommonRepository(
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult {
         val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
-            actions.criteria.size + actions.preferences.size
+            actions.criteria.size + actions.preferences.size + actions.questions.size
         var done = 0
         var skipped = 0
         // In copy mode every photo belongs to a house of this import (ImportPlan maps it to the house's new id);
@@ -1098,6 +1228,10 @@ open class CommonRepository(
                     db.records().upsert(importedPreference(p, CopyUndo.copyStamp(p.updatedAt, now)))
                     onProgress(++done, total)
                 }
+                for (q in actions.questions) {
+                    db.records().upsert(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
+                    onProgress(++done, total)
+                }
                 for (house in actions.houses) {
                     val row = house.toEntity(dirty = true).copy(updatedAt = CopyUndo.copyStamp(house.updatedAt, now))
                     db.houses().upsert(row)
@@ -1124,6 +1258,7 @@ open class CommonRepository(
             brokers = actions.brokers.size,
             criteria = actions.criteria.size,
             preferences = actions.preferences.size,
+            questions = actions.questions.size,
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },

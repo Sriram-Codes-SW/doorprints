@@ -24,7 +24,9 @@ import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.model.RankedHouse
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseScore
@@ -94,6 +96,11 @@ data class ExportHouse(
      * Kept in a copy made without contact details: a room is not a contact.
      */
     val rooms: List<HouseRoom>? = null,
+    /**
+     * The questions asked (slice 3a, format `/2`), after `rooms`; absent for none, never `[]`. Kept in a copy made
+     * without contact details: a question is not a contact, and a copy is the person's own data, kept whole.
+     */
+    val answers: List<HouseAnswer>? = null,
     /** The broker's record id (slice 1b, format `/2`); absent for a house without one and in a copy made without contacts. */
     val brokerId: String? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */
@@ -154,6 +161,32 @@ data class ExportCriterion(
     companion object {
         fun of(c: Criterion, updatedAt: Long) = ExportCriterion(
             c.key, c.label, c.weight, c.mustHave, c.minScore, c.sort, c.archived.takeIf { it }, updatedAt,
+        )
+    }
+}
+
+/**
+ * A question of the bank in a `/2` backup (slice 3a): the record's id and its payload keys in the format's order
+ * (`text`, `category`, `appliesTo`, `defaultOn`, `sort`, `archived` only when true) and `updatedAt` in epoch
+ * milliseconds, so a backup merges questions by id with the last write winning.
+ */
+@Serializable
+data class ExportQuestion(
+    val id: String,
+    val text: String,
+    val category: String,
+    val appliesTo: String,
+    val defaultOn: Boolean,
+    val sort: Int,
+    /** Written only when true (`null` otherwise, which the format leaves out). */
+    val archived: Boolean? = null,
+    val updatedAt: Long,
+) {
+    fun toQuestion() = Question(id, text, category, appliesTo, defaultOn, sort, archived == true)
+
+    companion object {
+        fun of(q: Question, updatedAt: Long) = ExportQuestion(
+            q.id, q.text, q.category, q.appliesTo, q.defaultOn, q.sort, q.archived.takeIf { it }, updatedAt,
         )
     }
 }
@@ -288,6 +321,11 @@ data class ExportBundle(
     val preferences: List<ExportPreference> = emptyList(),
     /** The effective scoring every score, coverage and ranking of the copy uses: all the records merged with the defaults. */
     val scoring: Scoring = Scoring.DEFAULT,
+    /**
+     * The question records in the copy (slice 3a), ordered by `updatedAt` then id: a `/2` backup's `questions` list.
+     * Kept in a copy without contact details. No readable table: the bank is settings and travels in the backup.
+     */
+    val questions: List<ExportQuestion> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
 
@@ -320,6 +358,9 @@ data class ExportBundle(
 
     /** True when a house of the copy has a room (slice 1c): the copy then has `rooms.csv`, a Rooms sheet and is `/2`. */
     val hasRooms: Boolean get() = houses.any { !it.rooms.isNullOrEmpty() }
+
+    /** True when a house of the copy has an answer (slice 3a): the copy then has `answers.csv`, an Answers sheet and is `/2`. */
+    val hasAnswers: Boolean get() = houses.any { !it.answers.isNullOrEmpty() }
 
     /** The houses of the copy that name [broker], in the copy's order. */
     fun housesOf(broker: ExportBroker): List<ExportHouse> = housesByBroker[broker.id].orEmpty()
@@ -354,6 +395,7 @@ data class ExportBundle(
             brokers: List<ExportBroker> = emptyList(),
             criteria: List<ExportCriterion> = emptyList(),
             preferences: List<ExportPreference> = emptyList(),
+            questions: List<ExportQuestion> = emptyList(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -411,8 +453,13 @@ data class ExportBundle(
                 .sortedWith(compareBy({ it.updatedAt }, { it.key }))
             val keptPreferences = preferences.filter { since == null || it.updatedAt > since }
                 .sortedWith(compareBy({ it.updatedAt }, { it.key }))
+            // The question bank (slice 3a): settings like the criteria, kept without contact details; an update carries
+            // the ones changed since.
+            val keptQuestions = questions.filter { since == null || it.updatedAt > since }
+                .sortedWith(compareBy({ it.updatedAt }, { it.id }))
             return ExportBundle(
                 options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
+                keptQuestions,
             )
         }
     }

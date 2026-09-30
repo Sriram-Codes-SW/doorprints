@@ -23,6 +23,9 @@ import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.RoomType
+import app.doorprints.shared.model.AnswerStatus
+import app.doorprints.shared.model.QuestionCategory
+import app.doorprints.shared.model.QuestionScope
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -54,6 +57,33 @@ val RoomType.labelResource: StringResource
         RoomType.UTILITY -> Res.string.room_type_UTILITY
         RoomType.STORE -> Res.string.room_type_STORE
         RoomType.OTHER -> Res.string.room_type_OTHER
+    }
+
+/** Translated name of a question's category (`question_category_*`, slice 3a): the Questions screen's groups. */
+val QuestionCategory.labelResource: StringResource
+    get() = when (this) {
+        QuestionCategory.MONEY -> Res.string.question_category_MONEY
+        QuestionCategory.WATER_POWER -> Res.string.question_category_WATER_POWER
+        QuestionCategory.RULES -> Res.string.question_category_RULES
+        QuestionCategory.BUILDING -> Res.string.question_category_BUILDING
+        QuestionCategory.LEGAL -> Res.string.question_category_LEGAL
+        QuestionCategory.OTHER -> Res.string.question_category_OTHER
+    }
+
+/** Rent, Buy or Both (`question_scope_*`, slice 3a): which houses a question is for. */
+val QuestionScope.labelResource: StringResource
+    get() = when (this) {
+        QuestionScope.RENT -> Res.string.question_scope_RENT
+        QuestionScope.SALE -> Res.string.question_scope_SALE
+        QuestionScope.BOTH -> Res.string.question_scope_BOTH
+    }
+
+/** Open, Answered or Skipped (`answer_status_*`, slice 3a). */
+val AnswerStatus.labelResource: StringResource
+    get() = when (this) {
+        AnswerStatus.OPEN -> Res.string.answer_status_OPEN
+        AnswerStatus.ANSWERED -> Res.string.answer_status_ANSWERED
+        AnswerStatus.SKIPPED -> Res.string.answer_status_SKIPPED
     }
 
 /**

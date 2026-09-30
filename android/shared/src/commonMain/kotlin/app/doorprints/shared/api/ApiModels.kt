@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.api
 
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import kotlinx.serialization.Serializable
@@ -52,6 +53,8 @@ data class HouseDto(
     val cost: HouseCost? = null,
     /** The rooms (slice 1c), at most 30, after `cost`; absent for none (never `[]`), and `[]` read is none too. */
     val rooms: List<HouseRoom>? = null,
+    /** The questions asked (slice 3a), at most 60, after `rooms`; absent for none (never `[]`), and `[]` read is none too. */
+    val answers: List<HouseAnswer>? = null,
     /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),

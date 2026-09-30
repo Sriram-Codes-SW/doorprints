@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 
@@ -51,6 +52,8 @@ data class AiHouse(
     val cost: HouseCost? = null,
     /** The rooms (slice 1c); [HouseDocuments] writes their names, sizes and condition, never their notes. */
     val rooms: List<HouseRoom>? = null,
+    /** The questions asked (slice 3a); [HouseDocuments] writes the answered and the open ones, redacted like notes. */
+    val answers: List<HouseAnswer>? = null,
     val checklist: Map<String, Int> = emptyMap(),
     /** Newest last or in any order; only arrivals and departures are read. */
     val visits: List<AiVisit> = emptyList(),

@@ -20,6 +20,7 @@ package app.doorprints.server.backup;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseStatus;
@@ -64,7 +65,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
         "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
-        "cost", "rooms", "brokerId", "checklist", "createdAt", "updatedAt"})
+        "cost", "rooms", "answers", "brokerId", "checklist", "createdAt", "updatedAt"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -90,6 +91,8 @@ public record BackupHouse(
         HouseCost cost,
         /* Slice 1c (docs/11 section 5.6): at most 30 rooms; absent when there are none, never []. */
         List<HouseRoom> rooms,
+        /* Slice 3a (docs/11 section 5.5): at most 60 viewing answers; absent when there are none, never []. */
+        List<HouseAnswer> answers,
         /* Slice 1b: the id of a broker record; kept as given even when the file or the store has no such broker. */
         String brokerId,
         /* Always written, possibly empty; keys are sorted so two copies of the same data are the same document.

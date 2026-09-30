@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.rag;
 
+import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRoom;
@@ -38,7 +39,7 @@ class HouseDocumentsTest {
     private final UUID id = UUID.randomUUID();
     private final HouseDto house = new HouseDto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
             HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4, "Ramesh", "+91 98450 12345", null,
-            "Great water pressure", null, null, null, null, null, Map.of("water", 5, "parking", 2), null, null, false, 7, null);
+            "Great water pressure", null, null, null, null, null, null, Map.of("water", 5, "parking", 2), null, null, false, 7, null);
 
     @Test
     void oneLabelledDocumentPerHouseWithIdAsDocumentId() {
@@ -68,7 +69,7 @@ class HouseDocumentsTest {
                 "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345",
                 "https://example.com/l/9845012345",
                 "Ramesh said water is fine. Call ramesh on 98450-12345 or his wife on +91 99001 23456 after 6.",
-                null, null, null, null, null, Map.of("Ramesh Kumar approved", 5), null, null, false, 7, null);
+                null, null, null, null, null, null, Map.of("Ramesh Kumar approved", 5), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(leaky, List.of());
 
@@ -88,7 +89,7 @@ class HouseDocumentsTest {
     void labelNamedAfterTheOwnersFirstNameLosesItInTextAndMetadata() {
         var h = new HouseDto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345", null, "Kumar is fine",
-                null, null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
+                null, null, null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(h, List.of());
 
@@ -104,7 +105,7 @@ class HouseDocumentsTest {
     void careOfAddressWithTheOwnersFullNameLosesItInTextAndMetadata() {
         var h = new HouseDto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
                 "Kumar Ramesh layout", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Mr. Ramesh Kumar",
-                "+91 98450 12345", null, "Fine", null, null, null, null, null, Map.of(), null, null, false, 7, null);
+                "+91 98450 12345", null, "Fine", null, null, null, null, null, null, Map.of(), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(h, List.of());
 
@@ -125,7 +126,7 @@ class HouseDocumentsTest {
     void carpetAreaAndCostLinesAreIndexedButNeverMyOffer() {
         var cost = new HouseCost(64000L, 3, 2500L, false, null, 1, 11, 2, "2026-10-15", 30000L, 31000L);
         var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
-                null, null, null, null, null, 1150, "GPS", cost, null, null, Map.of(), null, null, false, 1, null);
+                null, null, null, null, null, 1150, "GPS", cost, null, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
 
@@ -143,7 +144,7 @@ class HouseDocumentsTest {
         // field that is not set.
         var sale = new HouseCost(null, 2, 2500L, true, 25000L, null, null, null, null, null, null);
         var saleText = HouseDocuments.text(new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null,
-                null, null, null, null, null, null, null, null, sale, null, null, Map.of(), null, null, false, 1, null), List.of());
+                null, null, null, null, null, null, null, null, sale, null, null, null, Map.of(), null, null, false, 1, null), List.of());
         assertThat(saleText).contains("Deposit: 2 months\n").contains("Maintenance: Rs 2500 per month (included)\n")
                 .contains("Brokerage: Rs 25000\n").doesNotContain("Lock-in").doesNotContain("Notice")
                 .doesNotContain("Available").doesNotContain("Agreed").doesNotContain("Carpet");
@@ -162,7 +163,7 @@ class HouseDocumentsTest {
                 new HouseRoom("s", "STORE", "", null, 200, 2, null, 2),
                 new HouseRoom("p", "POOJA", null, null, null, null, null, 2));
         var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
-                null, null, null, null, null, 1150, "GPS", null, rooms, null, Map.of(), null, null, false, 1, null);
+                null, null, null, null, null, 1150, "GPS", null, rooms, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
 
@@ -176,10 +177,62 @@ class HouseDocumentsTest {
         assertThat(HouseDocuments.feetInches(0)).isEqualTo("0 ft 0 in");
     }
 
+    /** Slice 3a: answered questions, then open ones, each kind at most 20; skipped ones are not sent. */
+    @Test
+    void answersAreAskedAndAnsweredLinesThenStillToAskLines() {
+        var answers = List.of(
+                new HouseAnswer("a3", null, "Is there a lift?", null, "OPEN", 2),
+                new HouseAnswer("a2", "qd_water", "How is the water supply?", "Borewell, 24 hours", "ANSWERED", 1),
+                new HouseAnswer("a1", null, "Any pets rule?", "No dogs", "ANSWERED", 0),
+                new HouseAnswer("a4", null, "Is the terrace open?", null, "SKIPPED", 3),
+                new HouseAnswer("a5", null, "Who pays for power?", null, "OPEN", 1));
+        var text = HouseDocuments.text(withAnswers(answers), List.of());
+
+        assertThat(text).contains("\nAsked: Any pets rule? | Answer: No dogs\n"
+                + "Asked: How is the water supply? | Answer: Borewell, 24 hours\n"
+                + "Still to ask: Who pays for power?\nStill to ask: Is there a lift?\n");
+        assertThat(text).doesNotContain("terrace");
+        assertThat(text.indexOf("Asked:")).isLessThan(text.indexOf("Status:"));
+        assertThat(HouseDocuments.text(house, List.of())).doesNotContain("Asked").doesNotContain("Still to ask");
+    }
+
+    @Test
+    void atMostTwentyAskedAndTwentyStillToAskLinesAreWritten() {
+        var answers = new java.util.ArrayList<HouseAnswer>();
+        for (int i = 0; i < 25; i++) answers.add(new HouseAnswer("o" + i, null, "Open " + i, null, "OPEN", i));
+        for (int i = 0; i < 25; i++) answers.add(new HouseAnswer("d" + i, null, "Done " + i, "yes " + i, "ANSWERED", i));
+        var text = HouseDocuments.text(withAnswers(answers), List.of());
+
+        assertThat(text.split("Asked: ", -1).length - 1).isEqualTo(20);
+        assertThat(text.split("Still to ask: ", -1).length - 1).isEqualTo(20);
+        assertThat(text).contains("Asked: Done 19 | Answer: yes 19").doesNotContain("Done 20")
+                .contains("Still to ask: Open 19").doesNotContain("Open 20");
+    }
+
+    /** F-30: an owner's number said aloud at the viewing is in the answer; it never reaches the provider. */
+    @Test
+    void aPhoneNumberInAnAnswerOrAQuestionIsRedacted() {
+        var answers = List.of(
+                new HouseAnswer("a1", null, "Who do we call? 98450 12345", "Call the caretaker on 99001-23456 or "
+                        + "+91 98765 43210", "ANSWERED", 0),
+                new HouseAnswer("a2", null, "Ask Ramesh about the deposit", null, "OPEN", 1));
+        var text = HouseDocuments.text(withAnswers(answers), List.of());
+
+        assertThat(text).contains("Asked: ").contains("| Answer: Call the caretaker on ")
+                .doesNotContain("99001").doesNotContain("98450").doesNotContain("98765")
+                .doesNotContain("Ramesh");
+    }
+
+    private HouseDto withAnswers(List<HouseAnswer> answers) {
+        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
+                null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, answers, null, Map.of(),
+                null, null, false, 1, null);
+    }
+
     @Test
     void metadataSkipsNullsAndNotesAreCapped() {
         var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
-                "n".repeat(10_000), null, null, null, null, null, Map.of(), null, null, false, 1, null);
+                "n".repeat(10_000), null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
         var doc = HouseDocuments.toDocument(bare, List.of());
         assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label");
         assertThat(doc.getText()).contains("Visits: not visited yet");

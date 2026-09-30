@@ -120,6 +120,29 @@ export const ROOM_TYPE_KEY: Readonly<Record<RoomType, TKey>> = {
   OTHER: 'roomType.OTHER',
 };
 
+export type AnswerStatus = 'OPEN' | 'ANSWERED' | 'SKIPPED';
+
+/**
+ * A question asked about one house (docs/11 5.5, slice 3a). Keys in order: id, questionId, text, answer, status, sort.
+ * `text` is the question as asked (a snapshot), so the copy reads even when the bank question is edited or deleted.
+ * A non-blank `answer` with status OPEN reads as ANSWERED, and ANSWERED with no answer reads as OPEN.
+ */
+export interface HouseAnswer {
+  /** 1..64 characters, matching [A-Za-z0-9._-]{1,64} but not `.`/`..`, unique within the house. */
+  id: string;
+  /** The bank question it came from; may name a question that no longer exists. */
+  questionId?: string | null;
+  /** 1..300 characters. */
+  text: string;
+  /** 1..2000 characters, absent when empty. */
+  answer?: string | null;
+  status: AnswerStatus;
+  /** Integer >= 0, the order on the house; readers use `HouseAnswers.ordered`. */
+  sort: number;
+}
+
+export const ANSWER_STATUSES: readonly AnswerStatus[] = ['OPEN', 'ANSWERED', 'SKIPPED'];
+
 export interface HouseDto {
   id: string;
   label: string;
@@ -144,6 +167,8 @@ export interface HouseDto {
   cost?: HouseCost | null;
   /** At most 30 rooms; absent when empty, never an empty array in a file. */
   rooms?: HouseRoom[] | null;
+  /** At most 60 questions asked about this house (slice 3a); absent when empty, never an empty array in a file. */
+  answers?: HouseAnswer[] | null;
   /**
    * The record id of the broker this house is linked to (slice 1b); no foreign key, so an id that names no broker
    * reads as "no broker". The house keeps copies of the broker's name and phone in `contactName`/`contactPhone`.
@@ -292,6 +317,7 @@ export function newHouse(lat: number, lon: number, locationSource: LocationSourc
     locationSource,
     cost: null,
     rooms: null,
+    answers: null,
     brokerId: null,
     checklist: {},
     deleted: false,

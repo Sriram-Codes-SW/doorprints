@@ -20,7 +20,7 @@
 // for rule (backend app.doorprints.server.ai; the phones' copy is android/shared .../shared/ai). The shared vectors in
 // docs/ai/evals/parity-vectors.json hold all three to the server's own answers (ai-core.spec.ts).
 
-import type { HouseRoom } from '../models';
+import type { HouseAnswer, HouseRoom } from '../models';
 import { cmToFeetInches } from '../../shared/room-sizes';
 import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } from '../ai.service';
 
@@ -203,6 +203,7 @@ export interface AiHouse {
   areaSqft?: number | null;
   cost?: AiCost | null;
   rooms?: HouseRoom[] | null;
+  answers?: HouseAnswer[] | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -268,6 +269,7 @@ export function houseText(h: AiHouse): string {
   line('Available from', c.availableFrom);
   if (c.agreedPrice != null) line('Agreed price', `Rs ${c.agreedPrice}`);
   line('Rooms', roomsText(h.rooms, r));
+  answerLines(h.answers, r).forEach((l) => lines.push(l));
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -301,6 +303,34 @@ function roomsText(rooms: HouseRoom[] | null | undefined, r: Redactor): string |
       return out;
     })
     .join('; ');
+}
+
+/** Answered or asked questions at most this many of each kind go into a house document (slice 3a). */
+const ANSWER_LINES_MAX = 20;
+
+/**
+ * The questions of a house (slice 3a), the same words as the server's HouseDocuments and the phones' AiHouse: for each
+ * answered question, in the order `HouseAnswers.ordered` gives (open first, then sort, then id), at most 20 lines
+ * `Asked: <text> | Answer: <answer>`, then for each open one, at most 20, `Still to ask: <text>`. Skipped questions are
+ * left out. Text and answer go through the contact redactor like the notes.
+ */
+function answerLines(answers: HouseAnswer[] | null | undefined, r: Redactor): string[] {
+  if (!answers?.length) return [];
+  const sorted = [...answers].sort(
+    (a, b) => Number(a.status !== 'OPEN') - Number(b.status !== 'OPEN') || a.sort - b.sort || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+  const clean = (s: string | null | undefined) => ((r.freeText(s) as string | null | undefined) ?? '').trim();
+  const asked: string[] = [];
+  const open: string[] = [];
+  for (const a of sorted) {
+    const text = clean(a.text);
+    if (a.status === 'ANSWERED' && a.answer?.trim()) {
+      if (asked.length < ANSWER_LINES_MAX && text) asked.push(`Asked: ${text} | Answer: ${clean(a.answer)}`);
+    } else if (a.status === 'OPEN' && open.length < ANSWER_LINES_MAX && text) {
+      open.push(`Still to ask: ${text}`);
+    }
+  }
+  return [...asked, ...open];
 }
 
 function months(n: number): string {

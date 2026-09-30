@@ -177,6 +177,21 @@ object HtmlWriter {
             out.append("</tbody>\n</table>\n")
         }
 
+        // The questions asked (slice 3a), after the rooms and before the checklist: open ones first.
+        val answers = ExportRows.answerRows(h, bundle)
+        if (answers.isNotEmpty()) {
+            out.append("<h3>").append(esc(s["section.questions"])).append("</h3>\n")
+            out.append("<table>\n<thead><tr>")
+            for (c in ExportRows.answerColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+            out.append("</tr></thead>\n<tbody>\n")
+            for (r in answers) {
+                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                out.append("</tr>\n")
+            }
+            out.append("</tbody>\n</table>\n")
+        }
+
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")

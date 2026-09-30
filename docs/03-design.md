@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.53 |
+| Version | 0.54 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -65,6 +65,7 @@
 | 0.51 | 2026-09-30 | Claude (Code), lead | Slice 1b of ADR-28 ([10](10-sprint-log.md) §13.20): `house.broker_id` (Flyway V8) in §6.1 and §9; brokers are `record` rows of type `broker`, and the server maps them to and from the backup's `brokers` list (`doorprints-backup/2`). |
 | 0.52 | 2026-09-30 | Claude (Code), lead | Slice 1c of ADR-28 ([10](10-sprint-log.md) §13.21): `house.rooms jsonb` (Flyway V9) in §6.1 and `rooms` on `HouseDto` in §9; `GET /api/export` writes `/2` when the server holds a broker or a house with rooms. |
 | 0.53 | 2026-09-30 | Claude (Code), lead | Slice 2 of ADR-28 ([10](10-sprint-log.md) §13.22): criteria and preferences are `record` rows (types `criterion`, `preference`); no migration; `GET /api/export` writes them in the `/2` backup and `POST /api/import` stores them. |
+| 0.54 | 2026-09-30 | Claude (Code), lead | Slice 3a of ADR-28 ([10](10-sprint-log.md) §13.23): `house.answers jsonb` (Flyway V10) in §6.1 and `answers` on `HouseDto` in §9; questions are `record` rows of type `question`; `GET /api/export` writes `/2` when the server holds a question or a house with answers. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -458,6 +459,7 @@ erDiagram
         jsonb cost "deposit, maintenance, brokerage, lock-in, notice, availableFrom, myOffer, agreedPrice (V7)"
         varchar broker_id "64, a record id of type broker, no FK (V8)"
         jsonb rooms "at most 30: id, type, name, lengthCm, widthCm, condition, notes, sort (V9)"
+        jsonb answers "at most 60: id, questionId, text, answer, status, sort (V10)"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL, LWW clock"
         boolean deleted "tombstone"
@@ -812,14 +814,14 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 | GET | `/api/records` | `since` (long, required, ≥ 0), `type` (optional) | `RecordDto[]` | **New 2026-09-30** (ADR-28, [11](11-feature-parity-and-export-spec.md) 5.30): the change feed of every record type (or one), tombstones included, ordered by `syncVersion`. The server never reads a payload. |
 | PUT | `/api/records/{type}/{id}` | `RecordDto` JSON: `type` (`[a-z][a-zA-Z0-9]{0,39}`), `id` (`[A-Za-z0-9._-]{1,64}`), `payload` (a JSON object, at most 65,536 bytes compact; `{}` when `deleted`), `updatedAt`, `deleted` | `RecordDto` | LWW by `updatedAt`; path and body must agree (400); a record that becomes live beyond 5,000 live rows of its type is 409. |
 | DELETE | `/api/records/{type}/{id}` | - | 204 | Tombstone (payload `{}`) + new sync version; 404 if unknown. |
-| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos, records and AI index rows. `GET /api/export` writes `doorprints-backup/2` with a `brokers` list (from the `record` rows of type `broker`) when the server holds any, any house has rooms, or it holds a criterion or a preference (`record` types `criterion` and `preference`), and `POST /api/import` stores it. 428 without the exact header. Devices keep their local copies. |
+| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos, records and AI index rows. `GET /api/export` writes `doorprints-backup/2` with a `brokers` list (from the `record` rows of type `broker`) when the server holds any, any house has rooms, or it holds a criterion, a preference or a question (`record` types `criterion`, `preference` and `question`), or a house has answers, and `POST /api/import` stores it. 428 without the exact header. Devices keep their local copies. |
 | GET | `/actuator/health` | - | `{"status":"UP"}` | **Public**, no details |
 | GET, POST | `/api/ai/status`, `/api/ai/extract-listing`, `/api/ai/ask`, `/api/ai/plan-visits`, `/api/ai/reindex` | see [ai/ai-design.md](ai/ai-design.md) §13 | | Same key; AI rate limit (except status); 404 when AI is off |
 | POST, GET | `/mcp` | MCP Streamable HTTP | | Off by default; same key (or Bearer) |
 
 Common statuses: 400 invalid input or non-canonical path, 401 missing/wrong key, 404, 409 conflict (photo cap, photo id of another house), 413 body too large, 428 missing confirmation header, 429 rate limited (`Retry-After`), 503 AI provider unavailable (`"retryable": true`; when the provider answered HTTP 429 / `RESOURCE_EXHAUSTED`, AI Studio or Vertex AI, the problem also has `"code": "AI_QUOTA_EXHAUSTED"` and the response a `Retry-After: 60` header, so clients and the eval harness can tell a quota stop from an outage without parsing text; the status stays 503 so existing clients keep working; on Vertex AI 401/403/404 the problem also has `setupHint`, an owner-facing string with env-var names (`GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`) and the configured location only, never the project id or the provider message). A spend cap trip has no distinct code yet ([01](01-requirements.md) AI-017).
 
-**HouseDto** fields (since slice 1a of ADR-28 also `areaSqft` 1..100000, `locationSource` GPS|MAP|APPROX and `cost{deposit, depositMonths, maintenance, maintenanceIncluded, brokerage, brokerageMonths, lockInMonths, noticeMonths, availableFrom YYYY-MM-DD, myOffer, agreedPrice}`, all optional, after `notes`; `rooms` (at most 30) after `cost`, and `brokerId` ≤64 characters after `rooms`, slices 1b and 1c): `id, label*, address, street, locality, lat*, lon*, status, price, priceType, bedrooms, rating, contactName, contactPhone, listingUrl, notes, checklist{item→0..5}, createdAt, updatedAt, deleted, syncVersion, distanceMeters`. Validation is in [01 FR-002](01-requirements.md#61-houses).
+**HouseDto** fields (since slice 1a of ADR-28 also `areaSqft` 1..100000, `locationSource` GPS|MAP|APPROX and `cost{deposit, depositMonths, maintenance, maintenanceIncluded, brokerage, brokerageMonths, lockInMonths, noticeMonths, availableFrom YYYY-MM-DD, myOffer, agreedPrice}`, all optional, after `notes`; `rooms` (at most 30) after `cost`, `answers` (at most 60) after `rooms`, and `brokerId` ≤64 characters after `rooms`, slices 1b and 1c): `id, label*, address, street, locality, lat*, lon*, status, price, priceType, bedrooms, rating, contactName, contactPhone, listingUrl, notes, checklist{item→0..5}, createdAt, updatedAt, deleted, syncVersion, distanceMeters`. Validation is in [01 FR-002](01-requirements.md#61-houses).
 **VisitDto** fields: `id, houseId, lat*, lon*, street, arrivedAt*, leftAt, source, updatedAt, deleted, syncVersion`.
 
 ## 10. Sync algorithm

@@ -22,6 +22,7 @@ import app.doorprints.server.backup.ImportReport.Outcome;
 import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
+import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseDto;
@@ -74,7 +75,7 @@ import java.util.UUID;
  *   <li><b>Brokers are records.</b> The {@code brokers} list of a {@code /2} file is merged into the {@code record}
  *       table as type {@code broker} (payload: name, phone, agency, feeTerms, notes, rating), by id, last write wins
  *       on {@code updatedAt}, like a house; a house's {@code brokerId} is kept as given, even when no such broker
- *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker exists or a live house has rooms.</li>
+ *       exists yet. The export writes the list, and the format id {@code /2}, only while a live broker, question, criterion or preference exists or a live house has rooms or answers.</li>
  *   <li><b>Photos are metadata only.</b> The JSON carries no image bytes, so photo rows are reported and skipped;
  *       the bytes are uploaded with {@code POST /api/houses/{id}/photos}.</li>
  *   <li><b>A missing checklist is read as no scores</b>, not refused — the one lenient always-present field
@@ -148,6 +149,7 @@ public class BackupService {
                 records.findByKeyTypeAndDeletedFalse(BackupBroker.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupCriterion.TYPE),
                 records.findByKeyTypeAndDeletedFalse(BackupPreference.TYPE),
+                records.findByKeyTypeAndDeletedFalse(BackupQuestion.TYPE),
                 json, clock.now());
     }
 
@@ -207,13 +209,18 @@ public class BackupService {
         var preferenceTally = new Tally();
         for (var row : data.preferences()) preferenceTally.count(mergePreference(row, dryRun, livePreferences, rowProblems));
 
+        // Viewing questions (slice 3a) merge last.
+        var liveQuestions = new long[]{records.countByKeyTypeAndDeletedFalse(BackupQuestion.TYPE)};
+        var questionTally = new Tally();
+        for (var row : data.questions()) questionTally.count(mergeQuestion(row, dryRun, liveQuestions, rowProblems));
+
         publishChanges(changedHouses, fileNotes, dryRun);
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
         var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
                 photoTally.toEntity(), brokerTally.toEntity(), criterionTally.toEntity(), preferenceTally.toEntity(),
-                List.copyOf(reported));
+                questionTally.toEntity(), List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
                     report.houses(), report.visits());
@@ -313,6 +320,7 @@ public class BackupService {
         house.setLocationSource(row.locationSource());
         house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
         house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
+        house.setAnswers(HouseAnswer.write(row.answers())); // an empty list reads as no answers
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
@@ -422,6 +430,40 @@ public class BackupService {
         return outcome;
     }
 
+    /** A question as a {@code question} record: payload keys in the format's order, {@code archived} only when true. */
+    private Outcome mergeQuestion(BackupQuestion row, boolean dryRun, long[] liveCount, List<String> problems) {
+        var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "questions.updatedAt");
+        var key = new RecordKey(BackupQuestion.TYPE, row.id());
+        var existing = records.findById(key).orElse(null);
+        var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
+        if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
+        var becomesLive = existing == null || existing.isDeleted();
+        if (becomesLive) {
+            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
+                problems.add("question " + row.id() + ": skipped, this server holds the most questions it keeps ("
+                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+                return Outcome.SKIPPED;
+            }
+            liveCount[0]++;
+        }
+        if (dryRun) return outcome;
+
+        var payload = json.createObjectNode();
+        payload.put("text", row.text());
+        payload.put("category", row.category() == null ? "OTHER" : row.category());
+        payload.put("appliesTo", row.appliesTo() == null ? "BOTH" : row.appliesTo());
+        payload.put("defaultOn", Boolean.TRUE.equals(row.defaultOn()));
+        payload.put("sort", row.sort() == null ? 0 : row.sort());
+        if (Boolean.TRUE.equals(row.archived())) payload.put("archived", true);
+        var record = existing == null ? new Record(key) : existing;
+        record.setPayload(payload.toString());
+        record.setDeleted(false);
+        record.setUpdatedAt(inFile.truncatedTo(java.time.temporal.ChronoUnit.MICROS));
+        record.setSyncVersion(versions.next());
+        records.save(record);
+        return outcome;
+    }
+
     private Outcome mergeVisit(BackupVisit row, boolean dryRun, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "visits.updatedAt");
         var existing = visits.findById(row.id()).orElse(null);
@@ -459,15 +501,14 @@ public class BackupService {
      */
     private void validate(BackupData data) {
         if (!BackupFormat.accepts(data.format())) {
-            // The format id is echoed (shortened) because it is what the user has to fix; no other part of the
-            // body ever appears in an error message (SEC-015).
-            var seen = data.format() == null ? "missing"
-                    : "\"" + data.format().substring(0, Math.min(40, data.format().length())) + "\"";
+            // Nothing of the body is echoed, the format id included (SEC-015): an answer that changes with the
+            // caller's text reads to a scanner as an injection (the ZAP API scan raised "SQL Injection" on this
+            // very message, S4b-BL-89), and the app knows the format it wrote.
             if (BackupFormat.isNewer(data.format())) {
-                throw new IllegalArgumentException("This backup (format " + seen + ") is newer than this server reads"
+                throw new IllegalArgumentException("This backup is newer than this server reads"
                         + " (up to doorprints-backup/" + BackupFormat.MAX_VERSION + "): update the app");
             }
-            throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup (format was " + seen + ")");
+            throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup");
         }
         var problems = new ArrayList<String>();
         validateHouses(data.houses(), problems);
@@ -476,6 +517,7 @@ public class BackupService {
         validateBrokers(data.brokers(), problems);
         validateCriteria(data.criteria(), problems);
         validatePreferences(data.preferences(), problems);
+        validateQuestions(data.questions(), problems);
         if (!problems.isEmpty()) {
             throw new IllegalArgumentException("Invalid backup: " + String.join("; ", capped(problems, "and %d more")));
         }
@@ -518,6 +560,7 @@ public class BackupService {
                 for (var field : row.cost().problems()) problems.add(at + ".cost." + field + " is out of range");
             }
             for (var problem : HouseRoom.problems(row.rooms())) problems.add(at + "." + problem);
+            for (var problem : HouseAnswer.problems(row.answers())) problems.add(at + "." + problem);
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
@@ -677,6 +720,36 @@ public class BackupService {
             // RequireTime for updatedAt
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
         }
+    }
+
+    /** Question text is the person's own, so a message names the row by its index, never by its content. */
+    private void validateQuestions(List<BackupQuestion> rows, List<String> problems) {
+        var seen = new HashSet<String>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            var at = "questions[" + i + "]";
+            if (row == null) {
+                problems.add(at + ": missing");
+                continue;
+            }
+            if (row.id() == null) {
+                problems.add(at + ".id is required");
+            } else if (!row.id().matches(RecordDto.ID_PATTERN)) {
+                problems.add(at + ".id is not a valid record id");
+            } else if (!seen.add(row.id())) {
+                problems.add(at + ".id appears twice");
+            }
+            require(row.text() != null && !row.text().isBlank(), at + ".text is required", problems);
+            maxLength(at + ".text", row.text(), BackupQuestion.MAX_TEXT, problems);
+            require(row.category() == null || BackupQuestion.CATEGORIES.contains(row.category()),
+                    at + ".category is out of range", problems);
+            require(row.appliesTo() == null || BackupQuestion.SCOPES.contains(row.appliesTo()),
+                    at + ".appliesTo is out of range", problems);
+            require(row.sort() == null || row.sort() >= 0, at + ".sort must not be negative", problems);
+            requireTime(at + ".updatedAt", row.updatedAt(), problems);
+        }
+        require(rows.size() <= BackupQuestion.MAX,
+                "questions: at most " + BackupQuestion.MAX + " questions allowed, found " + rows.size(), problems);
     }
 
     private void requireId(String at, UUID id, Set<UUID> seen, List<String> problems) {

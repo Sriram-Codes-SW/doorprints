@@ -65,6 +65,7 @@ async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT') {
           houses: () => of([]),
           brokers: () => of([]),
           scoring: () => of(DEFAULT_SCORING),
+          questions: () => of([]),
           house: () => of(house),
           visits: () => of([]),
           photoIds: () => of([]),

@@ -19,6 +19,7 @@
 package app.doorprints.shared.export
 
 import app.doorprints.shared.model.CostSummary
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.LengthUnit
@@ -74,7 +75,8 @@ object ExportRows {
 
     /**
      * The tables of a copy, in file order: the four, then `brokers` when the copy has brokers (slice 1b), `rooms`
-     * when a house of it has a room (slice 1c) and `criteria` when it has a criterion record (slice 2).
+     * when a house of it has a room (slice 1c), `criteria` when it has a criterion record (slice 2) and `answers` when a
+     * house of it has a question asked (slice 3a).
      */
     fun tables(bundle: ExportBundle): List<ExportTable> =
         listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
@@ -82,6 +84,7 @@ object ExportRows {
                 if (bundle.brokers.isEmpty()) null else brokers(bundle),
                 if (bundle.hasRooms) rooms(bundle) else null,
                 if (bundle.criteria.isEmpty()) null else criteria(bundle),
+                if (bundle.hasAnswers) answers(bundle) else null,
             )
 
     fun houses(bundle: ExportBundle): ExportTable {
@@ -337,6 +340,47 @@ object ExportRows {
         val (total, sized) = HouseRooms.totalAreaSqCm(rooms)
         return if (sized >= 2) rows + listOf(listOf(s["rooms.total"], "", RoomSizes.areaNumber(total, unit), "", "")) else rows
     }
+
+    /**
+     * The answers (slice 3a): one row per question asked, the houses in the copy's order and each house's answers in
+     * the order shown ([HouseAnswers.ordered]: open first). Only in a copy where a house has answers.
+     */
+    fun answers(bundle: ExportBundle): ExportTable {
+        val s = bundle.strings
+        val columns = listOf(
+            s["col.house"], s["col.question"], s["col.answer"], s["col.status"], s["col.houseId"], s["col.id"],
+            s["col.questionId"],
+        )
+        val rows = bundle.houses.flatMap { h ->
+            HouseAnswers.ordered(h.answers).map { a ->
+                listOf(
+                    Cell.Text(h.label), Cell.Text(a.text), text(a.answer), Cell.Text(s.answerStatus(a.answerStatus.name)),
+                    Cell.Text(h.id), Cell.Text(a.id), text(a.questionId),
+                )
+            }
+        }
+        return ExportTable("answers", s["table.answers"], columns, rows)
+    }
+
+    /** The headings of a house page's **Questions** table (HTML, PDF, Markdown): question, answer, status. */
+    fun answerColumns(bundle: ExportBundle): List<String> {
+        val s = bundle.strings
+        return listOf(s["col.question"], s["col.answer"], s["col.status"])
+    }
+
+    /**
+     * The rows of a house page's **Questions** table, open ones first; an empty answer is [NO_ANSWER] (the three stacks
+     * write the same en dash). Empty for a house without answers.
+     */
+    fun answerRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        val s = bundle.strings
+        return HouseAnswers.ordered(h.answers).map { a ->
+            listOf(a.text, a.answer ?: NO_ANSWER, s.answerStatus(a.answerStatus.name))
+        }
+    }
+
+    /** What a house page shows for a question not answered yet. */
+    const val NO_ANSWER = "–"
 
     fun photos(bundle: ExportBundle): ExportTable {
         val s = bundle.strings

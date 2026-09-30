@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.38 |
+| Version | 0.39 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -50,6 +50,7 @@
 | 0.36 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1b built** (brokers, [10](10-sprint-log.md) §13.20): the first record type and the first `doorprints-backup/2` list; 5.25 built. |
 | 0.37 | 2026-09-30 | Claude (Code), lead | 5.6 and 5.30 **slice 1c built** (rooms, [10](10-sprint-log.md) §13.21): rooms nested in the house, the length units, the `/2` rule now "a broker or a room". |
 | 0.38 | 2026-09-30 | Claude (Code), lead | 5.4 and 5.30 **slice 2 built** (criteria and ranking, [10](10-sprint-log.md) §13.22): criteria and preferences as records, one scoring implementation per stack, the *Criteria* screen, the ranking. |
+| 0.39 | 2026-09-30 | Claude (Code), lead | 5.5 and 5.30 **slice 3a built** (viewing questions, [10](10-sprint-log.md) §13.23); slice 3 is split into 3a questions, 3b viewings with reminders, 3c Hunt reminders. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -286,6 +287,15 @@ defaults. Backup: `criteria` and `preferences` lists (docs/schemas §3.6). The o
 | India defaults (examples) | Maintenance per month and what it covers · Deposit (months) and refund terms · Lock-in and notice period · Water source (corporation, borewell, tanker) and hours · Power backup (full/lift only) · Pets / bachelors / non-veg rules · Brokerage · Parking slot allotted? · Which floor, lift? · Buy: OC and CC received? RERA registration number? Khata / property tax paid? |
 | Per house | `answers[]` embedded in `HouseDto`: `{id, questionId?, text (snapshot), answer (≤ 2 000), status OPEN/ANSWERED/SKIPPED, sort}`. The snapshot keeps the copy readable if the bank question is deleted. Ad-hoc questions for one house are allowed (`questionId` null). |
 | At a viewing | "Questions to ask" card on the house screen and in the viewing reminder; open questions first; large touch targets for one-handed use. |
+
+**Built (2026-09-30, slice 3a of 5.30; [10](10-sprint-log.md) §13.23).** The bank is a `question` record per question (fixed ids `qd_…` for the fourteen
+seeded defaults in `docs/schemas/default-questions.json`, so two devices seed the same records; `q_` plus eight hex for your own) and the answers are
+nested in the house (`answers`, at most 60, Room 8 and Flyway V10). Seeding writes the texts once in the app's language and never brings back a
+deleted default; *Reset to defaults* does. *Add the usual questions* asks the `defaultOn`, non-archived questions that fit the house (rent, buy or both)
+that it does not have yet, and pre-fills the deposit, maintenance, brokerage and lock-in answers from the house's cost (5.21). The form's *Questions
+to ask*, *Settings > Questions* (a card on Your data on the web), the readable copies (a Questions table on each house page, `answers.csv`, an Answers
+sheet), the AI documents (answered and still-open questions, contact details redacted) and search over answers are built. The reminder card in a
+viewing reminder waits for 3b.
 
 ### 5.6 Rooms with sizes and condition
 
@@ -836,6 +846,10 @@ owner does not host (D-28), with the same envelope serving Drive and sharing; ne
 copies, the forms and the mappers grow by one object, not by eleven columns; a numbered format means an old app
 refuses rather than loses. What it costs: a format bump the web importer (S4b-BL-75) must read before anyone shares
 a `/2` file with a browser, and the server cannot query inside a record (nothing needs it before Sprint 6).
+
+**Slice 3 is split** (2026-09-30): **3a** the viewing questions (5.5, built), **3b** viewings with their local reminders, the second-viewing prompt and
+the history (5.8; a `viewing` record, Android alarms, the iPhone's notifications, the website's `.ics`), **3c** the Hunt mode reminder before a
+viewing (5.16). 3b and 3c are platform work and get their own design step.
 
 **Order of work**, each slice its own pull request with the model, both apps, the server, the backup and the
 readable copies, the search, the tests and the docs, in this order so that every slice ships something usable:
