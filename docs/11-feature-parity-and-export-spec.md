@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -40,6 +40,7 @@
 | 0.26 | 2026-09-29 | Claude (Code), lead | New **5.27**: the path trace built (S4b-FR-2) on Android, inside `HuntEngine` so the iPhone gets it with S4b-BL-69. |
 | 0.27 | 2026-09-29 | Claude (Code), lead | 5.27: the path trace is recorded on iPhone too (S4b-BL-69, Hunt mode on iPhone; [10](10-sprint-log.md) §13.14). |
 | 0.28 | 2026-09-30 | Claude (Code), lead | 5.20 **offline maps built** on Android and iPhone (S4b-FR-6): the map's visible area as one of MapLibre's offline packs, the estimate and the cap in common code; the website is S4b-BL-79. |
+| 0.29 | 2026-09-30 | Claude (Code), lead | New **5.28**, the design of sharing updates between two people who know each other (S4b-FR-3): an update file in the backup format, sent through any app, imported with the existing merge; the Drive folder of D-28 later as the automatic channel. New US-40. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -593,6 +594,58 @@ website has no Hunt mode and so no trace. Tests: `HuntEngineTest` (the trace and
 `JsonStyleOpsTest` (the layer under the houses on iOS), `AppDatabaseMigrationTest` (2 to 3), the `hunt_trace`
 screenshots ([06](06-test-plan.md) TC-U-94).
 
+### 5.28 Sharing updates with someone you know (S4b-FR-3, design)
+
+**The ask** (owner, 2026-09-28): two people who know each other, say a couple or a parent and a child, hunt together,
+each on their own phone, and want each other's updates: a house one of them saved, a visit, a note, a status change.
+Zero cost and no public server (owner rules), and it must work before Google sign-in exists (its OAuth client is the
+owner's to make, [14](14-lead-backlog-and-handoff.md) §6).
+
+**Design (lead, 2026-09-30; ADR-27).** Sharing is a file, in the backup format the apps already write and read,
+sent through whatever app the two people already talk on (WhatsApp, email, AirDrop, a USB cable), and imported with
+the merge that exists. Nothing new is stored anywhere but the two phones, so it costs nothing and needs no account.
+
+1. **Share updates with…** (Settings > Your data, next to *Save a copy*; the Map's and the list's share is a later
+   round): the person picks who it is for from a short list of names they typed once ("Priya", "Amma"), or adds one.
+   Doorprints keeps, per name, when the last update went to them (`share_contacts`: id, name, `lastSharedAt`; on
+   the phone only, never synced or exported). The first share to a name is the whole list (with the usual scope:
+   all, or shortlisted); every later one carries only what changed since `lastSharedAt`: the houses, visits and
+   photos with `updatedAt` after it, plus the photos of a changed house. The file is a normal backup ZIP
+   (`doorprints-backup/1`, docs/schemas), with two manifest fields added, `sharedSince` (ISO-8601, absent on a full
+   share) and `sharedTo` (the name, so the recipient's import can say "updates from Ravi for Priya"); its name is
+   `Doorprints-updates-<date>.zip`. The contact-details choice and its warning apply as to any copy; the size is
+   shown before the share sheet opens. `lastSharedAt` moves forward only once the share sheet reports the file
+   handed over.
+2. **Receiving**: the file opens in Doorprints from the other app (Android: an intent filter for the backup's
+   MIME type and name pattern that starts the Import screen with the file; iPhone: the document type and
+   `onOpenURL`, once the iPhone has imports, S4b-BL-81; web: a PWA `file_handlers` entry, once the web has a backup
+   reader, S4b-BL-75). The Import screen's preview and merge are unchanged: "*a* new, *b* newer in file, *c* newer
+   here", last write wins on `updatedAt`, *Keep mine, add only what's new* for a cautious import, *import as a
+   copy* for a separate list. Importing the same file twice changes nothing.
+3. **Conflicts and deletions**: the existing rule, last edit wins per row, both phones converging once each has
+   imported the other's latest file. A deletion does not travel in the first version (the backup format carries no
+   tombstones, docs/schemas §6 rule 5): the other person's copy keeps the house until they delete it too. Carrying
+   deletions is S4b-BL-82 (a `deleted` marker in the update file, applied only by an update import, never by a
+   backup restore).
+4. **Later, automatically**: with Google sign-in (D-28) the same update file goes into a Drive folder the two share
+   (`drive.file`), and each phone imports what the other put there; the file format, the per-name bookkeeping and
+   the merge stay as built here. A shared self-hosted server (ADR-25 pairing) stays the option for people who run
+   one: it needs no files at all.
+
+**Why a file, not a server or a link.** No server exists that the owner will host (D-28), a self-hosted one is for
+few, and a peer-to-peer link needs both phones online at once and a relay. A file works offline, on every platform,
+through the apps people already trust each other on, and it is the format the apps already test in three stacks
+(TC-U-93). What it costs: the two people must remember to share; the update carries no deletions at first; the
+iPhone and the website need their import first.
+
+**Order of work.** (1) Android: the per-name bookkeeping, the "since" filter in `ExportBundle`, the manifest
+fields, the share sheet, the intent filter, the Import screen's "updates from" line; the readable copies unchanged.
+(2) The web's backup reader (S4b-BL-75) and then its share and file handler. (3) iPhone copies and imports
+(S4b-BL-81), then its share. Privacy review: PRV-029 (the names and times stay on the phone; the file is what the
+person chose to send; contact details as in any copy). Tests: the "since" filter and the manifest fields in the
+backup format tests of all three stacks; the intent filter's checks (F-25: a file, not a link, validated as any
+import); TC-U row; a device exchange between two phones (TC-M).
+
 ## 6. User stories
 
 Continues [01 §5](01-requirements.md#5-user-stories) (US-01..US-15).
@@ -622,6 +675,7 @@ Continues [01 §5](01-requirements.md#5-user-stories) (US-01..US-15).
 | US-36 | hunter | delete my account and change my mind within a week | a mistake is not permanent | Offline copy offered; 7-day grace with "Keep my account"; told that Drive files and device data stay | FR-080, PRV-015 | 5 |
 | US-37 | operator | move my existing API-key install to my Google account | I keep my houses and photos | Claim once with the old key; all rows mine; "Move photos to Drive"; old builds sync until Sprint 6 | FR-081 | 5 |
 | US-38 | hunter | be reminded shortly before a viewing and start Hunt mode from the reminder | I don't forget to turn on alerts as I walk to the house | Reminder 5 to 60 min before (default 15); Start Hunt mode works from the notification with the app closed; Dismiss; offline; Do Not Disturb respected; no address on the lock screen | FR-083, FR-084 | 4b |
+| US-40 | hunter hunting with someone | share my latest houses, visits and notes with the other person, and get theirs, without an account or a server | we hunt as one from two phones | *Share updates with…* makes a file of what changed since the last share to that person; sent through any app; opens in Doorprints on the other phone; merged with last edit wins; the same file twice changes nothing (5.28) | S4b-FR-3 | 4b |
 | US-39 | hunter | mark the neighbourhoods I'm searching in and be asked to start Hunt mode when I get there | I never walk through my target area with Hunt mode off | Up to 20 areas, 200 m to 2 km; off by default; asks for "Allow all the time" only when I turn it on, with an explanation first; never starts tracking by itself; once per area per 6 h; still works after a reboot; turns itself off if I remove the permission | FR-085..FR-088, PRV-024..PRV-027 | 4b |
 
 ## 7. New requirements (proposed for 01)
