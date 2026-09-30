@@ -220,6 +220,12 @@ private class MapLibreControl(private val m: MapLibreMap, private val reload: ()
 
     override fun camera(): CameraSpot? = m.spot()
 
+    override fun visibleBounds(): GeoBounds? {
+        if (m.width <= 0f || m.height <= 0f) return null
+        val b = m.projection.visibleRegion.latLngBounds
+        return GeoBounds(south = b.latitudeSouth, west = b.longitudeWest, north = b.latitudeNorth, east = b.longitudeEast)
+    }
+
     override fun reloadStyle() = reload()
 }
 

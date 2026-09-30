@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.38 |
+| Version | 0.39 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -50,6 +50,7 @@
 | 0.36 | 2026-09-29 | Claude (Code), lead | New SEC-052: the Gemini key on the owner page, stored encrypted. |
 | 0.37 | 2026-09-29 | Claude (Code), lead | New PRV-028: the path trace (S4b-FR-2) stays on the phone. |
 | 0.38 | 2026-09-29 | Claude (Code), lead | PRV-001: Hunt mode on iPhone (S4b-BL-69) collects in the background through Core Location under *When in use*, with the indicator shown; never *Always*. |
+| 0.39 | 2026-09-30 | Claude (Code), lead | NFR-004: saved areas draw the map offline on both phones (S4b-FR-6, [11](11-feature-parity-and-export-spec.md) 5.20). |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -270,7 +271,7 @@ AI-assisted column mapping, is a possible later feature with its own name (11.3)
 | NFR-001 | Performance | API responses when the server is warm | p95 < 500 ms for list/nearby with at most 1 000 houses | S |
 | NFR-002 | Performance | Tolerate free-tier cold starts | Clients wait up to 90 s (Android read timeout is already 90 s). The web shows a "waking server" hint. | M |
 | NFR-003 | Performance | Hunt-mode check per fix | Nearby-house check at most 50 ms for 1 000 houses on a mid-range phone (in-memory haversine) | S |
-| NFR-004 | Offline | Core Android features need no network | 100% of FR-001..FR-019 work offline. Maps show cached tiles only. | M |
+| NFR-004 | Offline | Core Android features need no network | 100% of FR-001..FR-019 work offline. Maps show cached tiles, and since S4b-FR-6 the areas the person saved for offline down to street level (both phones; [11](11-feature-parity-and-export-spec.md) 5.20). | M |
 | NFR-005 | Battery | Hunt-mode energy use | At most about 8% battery per hour on a mid-range phone (high-accuracy fixes, 15 s interval, 5 s minimum, 5 m displacement). Must be verified in the field test (TC-F-06). | S |
 | NFR-006 | Accessibility | WCAG 2.2 AA (web), TalkBack support (Android) | As in [05](05-ux-accessibility-i18n.md) | M |
 | NFR-007 | i18n | English, Hindi, Tamil, Telugu UI. Indian number format (₹, lakh/crore grouping via `en-IN`). | As in [05](05-ux-accessibility-i18n.md) | S |

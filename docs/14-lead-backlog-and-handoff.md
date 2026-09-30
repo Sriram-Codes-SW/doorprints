@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.48 |
+| Version | 0.49 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -59,6 +59,7 @@
 | 0.46 | 2026-09-29 | Claude (Code), lead | §8: the safe small items done (`chore/sprint-readiness`): findings 4a, 4b, 5, 6, 7a, 12 (fake timers), 15. |
 | 0.47 | 2026-09-29 | Claude (Code), lead | §1: the path trace built (S4b-FR-2, `feat/s4b-fr-2-path-trace`); §6: TC-M-30 for the owner. N13 (4a): step 2 done, offline maps next. |
 | 0.48 | 2026-09-29 | Claude (Code), lead | §1: Hunt mode on iPhone built (S4b-BL-69, `feat/s4b-bl-69-ios-hunt-mode`, [10](10-sprint-log.md) §13.14); §6: TC-M-31 for the owner. N13 (4a): offline maps (S4b-FR-6) next. |
+| 0.49 | 2026-09-30 | Claude (Code), lead | §1: offline maps built (S4b-FR-6, `feat/s4b-fr-6-offline-maps`, [10](10-sprint-log.md) §13.15); §6: TC-M-32 and the owner's word on OpenFreeMap's terms for offline packs. N13 (4a) done in code; next (4b) sharing list updates (S4b-FR-3). |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -102,14 +103,19 @@ section is only today's state. Earlier versions of this file (git history) carry
   line per walk under the houses from shared style code, 30 days on the phone only, never in a backup, a copy or the
   sync; *Clear the path*. Android records it now, the iPhone since S4b-BL-69 (below); on a phone TC-M-30 (owner).
 - **Hunt mode on iPhone built** (S4b-BL-69, branch `feat/s4b-bl-69-ios-hunt-mode`; [10](10-sprint-log.md) §13.14,
-  [03](03-design.md) 0.45, [06](06-test-plan.md) TC-I-39): `IosHunt` around the common `HuntEngine` (Core Location in
+  [03](03-design.md) 0.45, [06](06-test-plan.md) TC-I-41): `IosHunt` around the common `HuntEngine` (Core Location in
   the background under *When in use*, local notifications, Apple's geocoder, which now also fills the new-house form's
   address), `PlatformFeatures.Ios.huntMode` on, the launch smoke's `hunt` gate. The path trace records on iPhone too.
-  On a phone TC-M-31 (owner). Next in (4a): offline maps (S4b-FR-6).
+  On a phone TC-M-31 (owner).
+- **Offline maps built** (S4b-FR-6, branch `feat/s4b-fr-6-offline-maps`; [11](11-feature-parity-and-export-spec.md)
+  5.20, [10](10-sprint-log.md) §13.15, [03](03-design.md) §11.2): *Save this area for offline* on the Map, the
+  estimate and the 2,000-tile cap in common code, MapLibre's own offline packs on Android and iPhone, Settings >
+  Offline maps. The website is S4b-BL-79. On a phone TC-M-32 (owner), which is the India-boundary re-check offline.
+  With this, (4a) is done in code; next is (4b), sharing list updates (S4b-FR-3), whose design step comes first.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
-  (the path trace on a phone); TC-M-31 (Hunt mode on an iPhone).
+  (the path trace on a phone); TC-M-31 (Hunt mode on an iPhone); TC-M-32 (a saved area, offline, on both phones).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
   and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the
@@ -174,6 +180,12 @@ section is only today's state. Earlier versions of this file (git history) carry
 - ~~**One CI run per push, not two**~~ **Done 2026-09-29** in the delivery-speed pull request, with the owner's
   permission given in the session ([07](07-secure-build-and-deploy.md) §1 *Branch runs*). A branch without a pull
   request now gets no CI: open the PR first (a draft is fine).
+- **OpenFreeMap's terms and offline areas** (S4b-FR-6, [03](03-design.md) §11.2): the map's offline areas fetch a
+  person's box on screen (at most 2,000 tiles, about 100 MB) through MapLibre's offline pack from OpenFreeMap's public
+  instance, whose terms forbid "collecting data from the service in automated ways without permission" while stating
+  no limit on requests. The session reads one person's capped area as ordinary map use, not a bulk copy; please
+  confirm that reading, or ask OpenFreeMap (their site has a contact), or choose a self-hosted extract (S4b-BL-80,
+  not free to run). Until then the feature ships as built.
 - **Google sign-in with Drive sync (N13 3b) needs a free OAuth client** that only you can make: in the Google Cloud
   project `doorprints`, the OAuth consent screen (app name, logo, privacy policy, the `doorprints.web.app` domain;
   scopes `drive.appdata` and `drive.file`, both non-sensitive) and OAuth client ids for the website, Android (package

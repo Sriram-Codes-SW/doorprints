@@ -22,6 +22,15 @@ Light and dark themes follow your device's setting on all three.
 - Hunt mode's location stays on your phone.
 - India's boundaries on the map are shown as the Government of India depicts them.
 
+## Save an area of the map for offline
+
+On the **Map**, zoom to the neighbourhood you are hunting in and tap the **download** button (the arrow into a tray,
+next to the zoom buttons). Doorprints tells you how much it will download (a neighbourhood is a few MB, a whole
+city a few tens of MB), warns you if you are on mobile data, and suggests a name. Tap **Save**. From then on that
+area draws down to street level with no network, your houses on it. The saved areas are in **Settings** under
+**Offline maps**, with their size, where you can delete one. An area that is too large is refused: zoom in and try
+again. Map data © OpenStreetMap contributors, tiles from OpenFreeMap.
+
 ## Lock Doorprints on your phone
 
 If you share your phone, or hand it to someone to show a house, you can make Doorprints ask for your phone's own

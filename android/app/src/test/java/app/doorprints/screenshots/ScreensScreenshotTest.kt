@@ -38,6 +38,13 @@ import app.doorprints.data.AppSettings
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppLockSection
+import kotlinx.coroutines.flow.MutableStateFlow
+import app.doorprints.ui.SaveAreaDialogContent
+import app.doorprints.ui.OfflineMapsServices
+import app.doorprints.ui.OfflineMapsSection
+import app.doorprints.ui.OfflineAreaState
+import app.doorprints.ui.OfflineArea
+import app.doorprints.ui.GeoBounds
 import app.doorprints.ui.PathTraceSection
 import app.doorprints.ui.LockScreenContent
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -233,6 +240,32 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shoot("hunt_trace") {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { PathTraceSection(settings) }
+        }
+    }
+    /**
+     * Offline maps (docs/11 5.20): Settings' section with one saved area and one still saving, and the *Save this area
+     * for offline* dialog's body with its estimate and the mobile-data note, over a fake store (the real one is
+     * MapLibre's; a dialog window is not captured, so the body is shown as content).
+     */
+    @Test fun offlineMaps() = shoot("offline_maps") {
+        val fake = object : OfflineMapsServices {
+            override val supported = true
+            override val areas = MutableStateFlow(
+                listOf(
+                    OfflineArea("a", "Indiranagar", GeoBounds(12.96, 77.63, 12.985, 77.655), OfflineAreaState.SAVING, 2_450_000),
+                    OfflineArea("b", "Koramangala", GeoBounds(12.92, 77.6, 12.95, 77.64), OfflineAreaState.READY, 18_200_000),
+                ),
+            )
+            override fun save(name: String, bounds: GeoBounds) = Unit
+            override fun delete(id: String) = Unit
+            override fun networkMetered(): Boolean = true
+        }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OfflineMapsSection(fake)
+            HorizontalDivider()
+            SaveAreaDialogContent(
+                bounds = GeoBounds(12.96, 77.63, 12.985, 77.655), metered = true, name = "Indiranagar", onName = {},
+            )
         }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
