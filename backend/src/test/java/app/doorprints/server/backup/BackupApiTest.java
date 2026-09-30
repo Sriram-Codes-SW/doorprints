@@ -152,6 +152,19 @@ class BackupApiTest {
                 .contains("Not a " + BackupFormat.ID);
     }
 
+    /**
+     * S4b-BL-89: a refusal never echoes the caller's text, not even the format id. The ZAP API scan read the answer
+     * that changed with its payload as a "SQL Injection" (rule 40018) on {@code POST /api/import} and failed the gate.
+     */
+    @Test
+    void theRefusalOfAFormatDoesNotEchoIt() {
+        var v2 = backup(houseRow(UUID.randomUUID(), "Any", Instant.now()), "");
+        var one = errorBody(() -> postImport(v2.replace(BackupFormat.ID, "x' AND 1=1 -- "), false));
+        var other = errorBody(() -> postImport(v2.replace(BackupFormat.ID, "x' AND 1=2 -- "), false));
+        assertThat(one).contains("Not a " + BackupFormat.ID).doesNotContain("AND 1=");
+        assertThat(one).isEqualTo(other);
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     /** The body of the error response {@code call} provoked (a ProblemDetail), or "" if it succeeded. */
