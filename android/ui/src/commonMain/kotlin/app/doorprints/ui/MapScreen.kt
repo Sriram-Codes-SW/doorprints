@@ -1164,6 +1164,8 @@ private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.
 private fun statusLabel(status: String): StringResource = when (status) {
     "SHORTLISTED" -> Res.string.status_SHORTLISTED
     "REJECTED" -> Res.string.status_REJECTED
+    "TAKEN" -> Res.string.status_TAKEN
+    "NOT_CHOSEN" -> Res.string.status_NOT_CHOSEN
     "APPROX" -> Res.string.legend_approx
     else -> Res.string.status_NEW
 }
@@ -1171,13 +1173,7 @@ private fun statusLabel(status: String): StringResource = when (status) {
 /** One legend dot: the web's `.dot` (map-page.css), a fill inside a white ring, a dark hairline outside it. */
 @Composable
 private fun LegendDotMark(dot: LegendDot) {
-    val fill = Color(
-        when (dot.status) {
-            "SHORTLISTED" -> MarkerColors.SHORTLISTED
-            "REJECTED" -> MarkerColors.REJECTED
-            else -> MarkerColors.NEW
-        },
-    )
+    val fill = Color(MarkerColors.of(dot.status))
     // No semantics: the status name beside it says what it is.
     Canvas(Modifier.size((dot.diameterDp + 2 * LEGEND_OUTLINE_DP).dp)) {
         val outline = LEGEND_OUTLINE_DP.dp.toPx()

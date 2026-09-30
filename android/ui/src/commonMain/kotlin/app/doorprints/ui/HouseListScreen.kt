@@ -461,6 +461,7 @@ fun HouseListScreen(
                     brokerText = it.brokerId?.let(brokerText::get),
                     rooms = it.rooms,
                     answers = it.answers,
+                    moveIn = it.moveIn,
                     noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
                 ),
             )

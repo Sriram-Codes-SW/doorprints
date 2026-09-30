@@ -186,13 +186,22 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
         add("get")
         add("status")
     }
-    fun byStatus(shortlisted: JsonElement, rejected: JsonElement, new: JsonElement) = buildJsonArray {
+    // Slice 5: TAKEN is drawn like SHORTLISTED and NOT_CHOSEN like REJECTED in size, ring and opacity, each in its own
+    // colour, so the two new statuses are told apart by colour and, from the others, by size.
+    fun byStatus(
+        shortlisted: JsonElement, rejected: JsonElement, new: JsonElement,
+        taken: JsonElement = shortlisted, notChosen: JsonElement = rejected,
+    ) = buildJsonArray {
         add("match")
         add(status)
         add("SHORTLISTED")
         add(shortlisted)
         add("REJECTED")
         add(rejected)
+        add("TAKEN")
+        add(taken)
+        add("NOT_CHOSEN")
+        add(notChosen)
         add(new)
     }
     val radius = buildJsonArray {
@@ -218,6 +227,8 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
         JsonPrimitive(cssColor(MarkerColors.SHORTLISTED)),
         JsonPrimitive(cssColor(MarkerColors.REJECTED)),
         JsonPrimitive(cssColor(MarkerColors.NEW)),
+        JsonPrimitive(cssColor(MarkerColors.TAKEN)),
+        JsonPrimitive(cssColor(MarkerColors.NOT_CHOSEN)),
     )
     val dots = buildJsonObject {
         put("id", HOUSE_DOTS_LAYER)
@@ -232,6 +243,7 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
                     JsonPrimitive(MARKER_STROKE_SHORTLISTED_DP),
                     JsonPrimitive(MARKER_STROKE_DP),
                     JsonPrimitive(MARKER_STROKE_DP),
+                    notChosen = JsonPrimitive(MARKER_STROKE_DP),
                 ),
             )
             // The approximate marker (FR-068): the same radius, no fill, the ring in the status colour.

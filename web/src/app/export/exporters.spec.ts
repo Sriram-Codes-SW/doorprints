@@ -39,7 +39,10 @@ import {
   FIXTURE_PHOTO_DATA_URIS,
   FIXTURE_PHOTO_MAP,
   FIXTURE_PREFERENCES,
+  FIXTURE_PLAIN_HOUSES,
+  FIXTURE_PLAIN_PHOTOS,
   FIXTURE_QUESTIONS,
+  FIXTURE_SHORTLISTED_HOUSES,
   FIXTURE_VISITS,
   fixtureBundle,
 } from './golden/fixture';
@@ -128,7 +131,7 @@ describe('collect', () => {
   it('keeps every broker in a copy of all houses but only the used ones in a partial copy', () => {
     const extra = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', updatedAt: '2026-09-11T00:00:00.000Z', broker: { name: 'Unused' } };
     const input = {
-      houses: FIXTURE_HOUSES,
+      houses: FIXTURE_SHORTLISTED_HOUSES,
       visits: FIXTURE_VISITS,
       photos: FIXTURE_PHOTOS,
       brokers: [...FIXTURE_BROKERS, extra],
@@ -139,15 +142,17 @@ describe('collect', () => {
   });
 
   it('honours the scope and rejected options', () => {
-    expect(fixtureBundle({ scope: 'shortlisted' }).houses).toHaveLength(1);
-    expect(fixtureBundle({ includeRejected: false }).houses.map((h) => h.house.status)).toEqual(['SHORTLISTED', 'NEW']);
+    expect(fixtureBundle({ scope: 'shortlisted' }, FIXTURE_SHORTLISTED_HOUSES).houses).toHaveLength(1);
+    // Taken is not Shortlisted: the scope keeps to the status it names.
+    expect(fixtureBundle({ scope: 'shortlisted' }).houses).toHaveLength(0);
+    expect(fixtureBundle({ includeRejected: false }).houses.map((h) => h.house.status)).toEqual(['TAKEN', 'NEW']);
     expect(fixtureBundle({ scope: 'selected', selectedIds: [FIXTURE_HOUSES[2].id] }).houses).toHaveLength(1);
   });
 
   it('honours the photo option', () => {
     expect(fixtureBundle({ photos: 'none' }).counts.photos).toBe(0);
     // House 1 is the only shortlisted house, so "shortlisted only" keeps its photo and drops house 3's.
-    const shortlistedOnly = fixtureBundle({ photos: 'shortlisted' });
+    const shortlistedOnly = fixtureBundle({ photos: 'shortlisted' }, FIXTURE_SHORTLISTED_HOUSES);
     expect(shortlistedOnly.counts.photos).toBe(1);
     expect(shortlistedOnly.houses.flatMap((h) => h.photos.map((p) => p.id.slice(-4)))).toEqual(['bbb1']);
   });
@@ -346,7 +351,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(5846);
+    expect(new TextEncoder().encode(json).length).toBe(6283);
   });
 
   /**
@@ -468,7 +473,7 @@ describe('shared ExportRows contract', () => {
   it('sorts the visits and photos tables globally, unlike the grouped JSON backup', () => {
     const [, , visits, photos] = exportTables(fixtureBundle());
     expect(visits.rows.map((row) => plain(row[row.length - 1]).slice(-4))).toEqual(['aaa1', 'aaa3', 'aaa2']);
-    expect(photos.rows.map((row) => plain(row[row.length - 1]).slice(-4))).toEqual(['bbb2', 'bbb1']);
+    expect(photos.rows.map((row) => plain(row[4]).slice(-4))).toEqual(['bbb2', 'bbb1']);
   });
 
   it('lists only scored checklist items, built-in order first then unknown keys', () => {
@@ -551,8 +556,8 @@ describe('determinism across runs', () => {
 
 /** Slice 2 (docs/11 5.4): criteria and the ranking in the copies. */
 describe('criteria and ranking in the copies', () => {
-  const noRooms = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null, answers: null }));
-  const base = { houses: noRooms, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
+  const noRooms = FIXTURE_PLAIN_HOUSES;
+  const base = { houses: noRooms, visits: FIXTURE_VISITS, photos: FIXTURE_PLAIN_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
   /** House 1 scored 3 for Power, and Power is made a must-have from 4: it misses it. */
   const powerMustHave: CriterionRow = { key: 'power', updatedAt: '2026-09-11T00:00:00.000Z', criterion: { key: 'power', weight: 2, mustHave: true, minScore: 4, sort: 1 } };
   const custom: CriterionRow = { key: 'c_1a2b3c4d', updatedAt: '2026-09-03T06:00:00.000Z', criterion: FIXTURE_CRITERIA[1].criterion };
@@ -640,8 +645,8 @@ describe('criteria and ranking in the copies', () => {
 
 /** Slice 3a (docs/11 5.5): the viewing questions in the copies. */
 describe('viewing questions in the copies', () => {
-  const plainHouses = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null, answers: null }));
-  const base = { houses: plainHouses, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
+  const plainHouses = FIXTURE_PLAIN_HOUSES;
+  const base = { houses: plainHouses, visits: FIXTURE_VISITS, photos: FIXTURE_PLAIN_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
 
   it('matches the golden answers.csv, which only a copy with an answer has', () => {
     expect(buildCsvTables(fixtureBundle())['answers.csv']).toBe(GOLDEN_ANSWERS_CSV);

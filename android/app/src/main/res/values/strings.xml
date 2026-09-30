@@ -28,6 +28,8 @@
     <string name="status_NEW">New</string>
     <string name="status_SHORTLISTED">Shortlisted</string>
     <string name="status_REJECTED">Rejected</string>
+    <string name="status_TAKEN">Taken</string>
+    <string name="status_NOT_CHOSEN">Not chosen</string>
     <string name="notif_channel_hunt">Hunt mode</string>
     <string name="notif_channel_hunt_desc">Shown while Doorprints is tracking your walk</string>
     <string name="notif_channel_alerts">House and street alerts</string>

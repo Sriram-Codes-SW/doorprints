@@ -137,3 +137,127 @@ object LenientEpochMillisSerializer : KSerializer<Long> {
         return (if (p.isString) runCatching { IsoTime.parseMillis(p.content) }.getOrNull() else p.longOrNull) ?: 0L
     }
 }
+
+/**
+ * One row of the record envelope (docs/11 5.30 item 2, ADR-28; `GET /api/records?since=`, `PUT /api/records/{type}/{id}`):
+ * the server stores [payload] opaquely and never reads it. A tombstone carries `{}`.
+ */
+@Serializable
+data class RecordDto(
+    val type: String,
+    val id: String,
+    val payload: JsonObject = JsonObject(emptyMap()),
+    val updatedAt: String? = null,
+    val deleted: Boolean = false,
+    val syncVersion: Long = 0,
+)
+
+/**
+ * `GET /api/stats`. [maxSyncVersion] is the highest sync version the server has handed out (added 2026-09-24,
+ * S4b-BL-20): null from an older server that does not send it, which counts as unknown (no reset detected from it).
+ */
+@Serializable
+data class StatsDto(
+    val houses: Long,
+    val shortlisted: Long,
+    val rejected: Long,
+    val visits: Long,
+    val streets: Long,
+    val maxSyncVersion: Long? = null,
+)
+
+// ---- AI endpoints (docs/ai/ai-design.md section 13; backend app.doorprints.server.ai.*) ----
+
+@Serializable
+data class AiStatusDto(
+    val enabled: Boolean = false,
+    val mcpEnabled: Boolean = false,
+    val chatModel: String? = null,
+    val embeddingModel: String? = null,
+    /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
+    val offForDevice: Boolean = false,
+)
+
+// ---- Pairing (docs/03 §12.1, ADR-25; backend app.doorprints.server.device.PairingController) ----
+
+@Serializable
+data class PairStartRequest(val deviceName: String)
+
+/** A code to type on the owner page (shown as `K7MQ-4XRD`), the token to poll with, and its timing in seconds. */
+@Serializable
+data class PairStartedDto(val userCode: String, val pollToken: String, val expiresIn: Long, val interval: Int)
+
+@Serializable
+data class PairPollRequest(val pollToken: String)
+
+/** [status] is pending, approved, denied or expired; [deviceKey] only with approved, and only once. */
+@Serializable
+data class PairPolledDto(val status: String, val deviceKey: String? = null)
+
+@Serializable
+data class PairRedeemRequest(val invite: String, val deviceName: String)
+
+@Serializable
+data class DeviceKeyDto(val deviceKey: String)
+
+@Serializable
+data class ExtractListingRequest(val text: String)
+
+/** A suggestion only: nothing is saved until the user saves the form. */
+@Serializable
+data class HouseDraftDto(
+    val label: String? = null,
+    val address: String? = null,
+    val street: String? = null,
+    val locality: String? = null,
+    val price: Long? = null,
+    val priceType: String? = null,
+    val bedrooms: Int? = null,
+    val contactName: String? = null,
+    val contactPhone: String? = null,
+    val listingUrl: String? = null,
+    val notes: String? = null,
+    val amenities: List<String> = emptyList(),
+    val warnings: List<String> = emptyList(),
+    /** The carpet area in sq ft when the text says it (slice 1a; the no-AI parser fills it, `ListingText`). */
+    val areaSqft: Int? = null,
+)
+
+@Serializable
+data class AskRequest(val question: String)
+
+@Serializable
+data class CitationDto(val houseId: String, val label: String? = null, val snippet: String? = null)
+
+@Serializable
+data class AskResponseDto(
+    val answer: String = "",
+    val citations: List<CitationDto> = emptyList(),
+    val grounded: Boolean = false,
+    val retrieved: Int = 0,
+)
+
+@Serializable
+data class PlanRequest(val question: String, val startLat: Double, val startLon: Double, val maxStops: Int? = null)
+
+@Serializable
+data class PlannedStopDto(
+    val order: Int,
+    val houseId: String,
+    val label: String? = null,
+    val lat: Double,
+    val lon: Double,
+    val reason: String? = null,
+    val legMeters: Long = 0,
+    val walkMinutes: Int = 0,
+)
+
+@Serializable
+data class PlanResponseDto(
+    val summary: String? = null,
+    val stops: List<PlannedStopDto> = emptyList(),
+    val totalMeters: Long = 0,
+    val totalWalkMinutes: Int = 0,
+    val toolCalls: List<String> = emptyList(),
+    val fallback: Boolean = false,
+)

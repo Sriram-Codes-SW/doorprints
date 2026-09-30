@@ -18,7 +18,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SCORING } from '../shared/scoring';
-import { houseScore } from './models';
+import { STATUSES, STATUS_COLOR, STATUS_ICON, STATUS_KEY, houseScore, newHouse } from './models';
+import { en } from '../i18n/en';
+import { tryHouseFromDto } from '../data/records';
+import type { HouseDto, HouseStatus } from './models';
 
 describe('houseScore', () => {
   it('is null when neither checklist nor rating is set', () => {
@@ -63,5 +66,27 @@ describe('houseScore', () => {
   it('stays within 0..5 for in-range inputs', () => {
     expect(houseScore({ checklist: { a: 0, b: 0 }, rating: 0 }, DEFAULT_SCORING)).toBe(0);
     expect(houseScore({ checklist: { a: 5, b: 5 }, rating: 5 }, DEFAULT_SCORING)).toBe(5);
+  });
+});
+
+describe('the statuses of slice 5', () => {
+  it('has Taken and Not chosen after the old three, each with a key, an icon and a colour', () => {
+    expect(STATUSES).toEqual(['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN']);
+    for (const status of STATUSES) {
+      expect(en[STATUS_KEY[status]], status).toBeTruthy();
+      expect(STATUS_ICON[status], status).toBeTruthy();
+      expect(STATUS_COLOR[status], status).toMatch(/^#[0-9A-F]{6}$/);
+    }
+    expect(new Set(STATUSES.map((s) => STATUS_ICON[s])).size).toBe(5);
+  });
+
+  it('keeps Taken and Not chosen when a house is read, and falls back to New for a status it does not know', () => {
+    const base = newHouse(1, 2);
+    for (const status of ['TAKEN', 'NOT_CHOSEN'] as HouseStatus[]) expect(tryHouseFromDto({ ...base, status })?.status).toBe(status);
+    expect(tryHouseFromDto({ ...base, status: 'ARCHIVED' as HouseStatus } as HouseDto)?.status).toBe('NEW');
+  });
+
+  it('starts a new house without moving in', () => {
+    expect(newHouse(1, 2).moveIn).toBeNull();
   });
 });

@@ -28,6 +28,8 @@
     <string name="status_NEW">కొత్తది</string>
     <string name="status_SHORTLISTED">ఎంపికైంది</string>
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
+    <string name="status_TAKEN">తీసుకున్నాం</string>
+    <string name="status_NOT_CHOSEN">ఎంచుకోలేదు</string>
     <string name="notif_channel_hunt">హంట్ మోడ్</string>
     <string name="notif_channel_hunt_desc">Doorprints మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
     <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>

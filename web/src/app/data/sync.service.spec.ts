@@ -29,6 +29,7 @@ import { HouseApiService } from '../core/house-api.service';
 import type { HouseDto, PhotoChangeDto, RecordDto, StatsDto, VisitDto } from '../core/models';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
+import type { PhotoMeta } from '../shared/photo-tags';
 import {
   MAX_RATE_LIMIT_WAIT_MS,
   RATE_LIMIT_ATTEMPTS,
@@ -105,6 +106,9 @@ class FakeApi {
   readonly deletedPhotos: string[] = [];
   readonly uploadedPhotos: string[] = [];
   readonly fetchedPhotos: string[] = [];
+  /** Photo meta PUTs (slice 5) in order; the answer is what the server would keep, `metaAnswer` or the body itself. */
+  readonly pushedMeta: { id: string; meta: PhotoMeta }[] = [];
+  metaAnswer: ((id: string, meta: PhotoMeta) => PhotoChangeDto) | null = null;
 
   stats(): Observable<StatsDto> {
     this.statsCalls++;
@@ -155,6 +159,10 @@ class FakeApi {
   uploadPhoto(houseId: string, file: Blob, id: string): Observable<{ id: string }> {
     this.uploadedPhotos.push(id);
     return of({ id });
+  }
+  putPhotoMeta(id: string, meta: PhotoMeta): Observable<PhotoChangeDto> {
+    this.pushedMeta.push({ id, meta });
+    return of(this.metaAnswer ? this.metaAnswer(id, meta) : { id, houseId: HOUSE_ID, deleted: false, syncVersion: ++this.version, ...meta });
   }
 }
 
@@ -246,6 +254,7 @@ describe('SyncService', () => {
     api.pushedVisits.length = 0;
     api.pushedRecords.length = 0;
     for (const ids of [api.deletedPhotos, api.uploadedPhotos, api.fetchedPhotos]) ids.length = 0;
+    api.pushedMeta.length = 0;
   });
 
   afterEach(() => {
@@ -699,6 +708,112 @@ describe('SyncService', () => {
       // The download did run and the server had nothing; asking again would be asking twice.
       expect(sync.migration()).toBe('done');
       expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
+    });
+  });
+
+  // ---- photo meta and moving in (slice 5) ----
+
+  describe('photo meta and moving in (slice 5)', () => {
+    const jpeg = () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' });
+    const meta = (over: Partial<PhotoMeta> = {}): PhotoMeta => ({ roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner', metaUpdatedAt: 5000, ...over });
+
+    it('uploads the bytes first and then sends the meta, once', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
+      await store.setPhotoMeta('p-1', { roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner' }, 5000);
+      expect(await sync.pendingCount()).toBe(2);
+      await sync.syncNow(true);
+      expect(api.uploadedPhotos).toEqual(['p-1']);
+      expect(api.pushedMeta).toEqual([{ id: 'p-1', meta: meta() }]);
+      expect((await store.getPhoto('p-1'))?.metaDirty).toBeUndefined();
+      await sync.syncNow(true);
+      expect(api.pushedMeta).toHaveLength(1);
+    });
+
+    it('sends the meta of a photo that is already on the server, and of nobody else', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await store.addPhoto('local-1', jpeg(), 'p-old', 1000);
+      await store.addPhoto('local-1', jpeg(), 'p-plain', 1000);
+      for (const id of ['p-old', 'p-plain']) await store.putPhotoRecord({ ...(await store.getPhoto(id))!, uploaded: true });
+      await store.setPhotoMeta('p-old', { roomId: null, tags: ['MOVE_IN'], caption: null }, 7000);
+      await sync.syncNow(true);
+      expect(api.uploadedPhotos).toEqual([]);
+      expect(api.pushedMeta.map((m) => m.id)).toEqual(['p-old']);
+      expect(api.pushedMeta[0].meta).toEqual({ roomId: null, tags: ['MOVE_IN'], caption: null, metaUpdatedAt: 7000 });
+    });
+
+    it('takes the meta the server answers when it is newer than ours (last write wins on metaUpdatedAt)', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
+      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
+      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: ['LEAK'], caption: 'theirs', metaUpdatedAt: 9000 });
+      await sync.syncNow(true);
+      const after = await store.getPhoto('p-1');
+      expect(after?.caption).toBe('theirs');
+      expect(after?.tags).toEqual(['LEAK']);
+      expect(after?.metaUpdatedAt).toBe(9000);
+      expect(after?.metaDirty).toBeUndefined();
+    });
+
+    it('keeps ours when the server answers an older meta, and clears the flag', async () => {
+      await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
+      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
+      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
+      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: [], caption: 'older', metaUpdatedAt: 4000 });
+      await sync.syncNow(true);
+      const after = await store.getPhoto('p-1');
+      expect(after?.caption).toBe('mine');
+      expect(after?.metaDirty).toBeUndefined();
+    });
+
+    it('pulls a newer meta onto a photo already here, and ignores an older or equal one', async () => {
+      await store.saveHouse(house(HOUSE_ID), Date.parse('2026-09-01T00:00:00.000Z'));
+      await store.addPhoto(HOUSE_ID, jpeg(), PHOTO_NEW, 1000);
+      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, uploaded: true });
+      await store.setPhotoMeta(PHOTO_NEW, { roomId: null, tags: [], caption: 'local' }, 5000);
+      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, metaDirty: false });
+      const change = (at: number, caption: string): PhotoChangeDto => ({
+        id: PHOTO_NEW, houseId: HOUSE_ID, deleted: false, syncVersion: 50 + at, roomId: 'r9', tags: ['view', 'VIEW', 'Extra'], caption, metaUpdatedAt: at,
+      });
+      api.photoChanges = () => of([change(5000, 'same time')]);
+      await sync.syncNow(true);
+      expect((await store.getPhoto(PHOTO_NEW))?.caption).toBe('local');
+      api.photoChanges = () => of([change(6000, 'newer')]);
+      await sync.syncNow(true);
+      const after = await store.getPhoto(PHOTO_NEW);
+      expect(after?.caption).toBe('newer');
+      expect(after?.roomId).toBe('r9');
+      // Coerced on read: the fixed tag in any case is the fixed key and the repeat goes.
+      expect(after?.tags).toEqual(['VIEW', 'Extra']);
+      expect(api.fetchedPhotos).toEqual([]);
+    });
+
+    it('stores the meta of a photo it downloads', async () => {
+      await store.saveHouse(house(HOUSE_ID), Date.parse('2026-09-01T00:00:00.000Z'));
+      api.photoChanges = () =>
+        of([{ id: PHOTO_NEW, houseId: HOUSE_ID, contentType: 'image/jpeg', deleted: false, syncVersion: 12, roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000 }]);
+      await sync.syncNow(true);
+      const got = await store.getPhoto(PHOTO_NEW);
+      expect(got).toMatchObject({ roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000, uploaded: true });
+      expect(got?.metaDirty).toBeUndefined();
+    });
+
+    it('sends and receives a house with its moveIn', async () => {
+      const moveIn = { date: 1790812800000, notes: 'Keys', items: [{ id: 'mi_keys', text: 'Keys received', done: true, sort: 0 }] };
+      await store.saveHouse(house('local-mi', { status: 'TAKEN', moveIn }), Date.parse('2026-09-01T00:00:00.000Z'));
+      recordedServer();
+      await sync.syncNow(true);
+      const pushed = api.pushedHouses.find((h) => h.id === 'local-mi');
+      expect(pushed?.status).toBe('TAKEN');
+      expect(pushed?.moveIn).toEqual(moveIn);
+      api.houses = () => of([house('from-server', { status: 'NOT_CHOSEN', moveIn: { notes: 'x'.repeat(2500), items: [{ id: 'bad id', text: 'no', sort: 0 }] }, syncVersion: 2000 })]);
+      await sync.syncNow(true);
+      const got = await store.getHouse('from-server');
+      expect(got?.status).toBe('NOT_CHOSEN');
+      expect(got?.moveIn?.notes).toHaveLength(2000);
+      expect(got?.moveIn?.items).toBeUndefined();
     });
   });
 

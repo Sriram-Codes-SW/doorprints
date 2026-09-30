@@ -21,6 +21,8 @@ package app.doorprints.shared.ai
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.MoveInItem
 
 import app.doorprints.shared.api.CitationDto
 import kotlin.test.Test
@@ -213,6 +215,38 @@ class AiCoreTest {
         )
         assertFalse(text.contains("13.0827") || text.contains("80.2707"))
         assertFalse(HouseDocuments.text(house).contains("Area note:") || HouseDocuments.text(house).contains("Distance to"))
+    }
+
+    /**
+     * Slice 5: after the distance lines, `Moving in: <done> of <total> done` (only with items) and `Moving in notes:
+     * <text>` (redacted, on one line); the items' own texts are not sent. The same words as the server's and the web's.
+     */
+    @Test
+    fun movingInLinesComeAfterTheDistances() {
+        val text = HouseDocuments.text(
+            house.copy(
+                status = "TAKEN",
+                distances = listOf(AiDistance("Office", 8_572.757)),
+                moveIn = MoveIn(
+                    1_790_812_800_000L, "  Keys from Ramesh: 98450 12345\n\nMeter 4521 ",
+                    listOf(MoveInItem("mi_keys", "Keys received", true, 0), MoveInItem("mi_police", "Police verification done", sort = 1)),
+                ),
+            ),
+        )
+        assertTrue(
+            text.contains(
+                "Distance to Office: 8.6 km\n" +
+                    "Moving in: 1 of 2 done\n" +
+                    "Moving in notes: Keys from [contact]: [phone] Meter 4521\n" +
+                    "Status: TAKEN",
+            ),
+            text,
+        )
+        assertFalse(text.contains("Keys received") || text.contains("Police verification"))
+        // No items: only the notes line; no move-in: neither.
+        val notesOnly = HouseDocuments.text(house.copy(moveIn = MoveIn(notes = "Paint the hall")))
+        assertTrue(notesOnly.contains("Moving in notes: Paint the hall\n") && !notesOnly.contains("Moving in: "), notesOnly)
+        assertFalse(HouseDocuments.text(house).contains("Moving in"))
     }
 
     @Test
