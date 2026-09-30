@@ -484,8 +484,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onTurnOnWakeup = { if (resumed(entry)) nav.navigate(Routes.AREA_WAKEUP) },
                     )
                 }
-                composable(Routes.AREA_WAKEUP) {
-                    AreaWakeupRationaleScreen(onDone = dropUnlessResumed { nav.popBackStack() })
+                composable(Routes.AREA_WAKEUP) { entry ->
+                    // Not dropUnlessResumed: the permission answer can arrive while the entry is only started.
+                    AreaWakeupRationaleScreen(onDone = { if (nav.currentBackStackEntry == entry) nav.popBackStack() })
                 }
                 composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     AreaFormScreen(

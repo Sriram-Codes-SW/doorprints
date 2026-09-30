@@ -45,6 +45,10 @@ import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -137,10 +141,25 @@ fun hasAreaWakeupPermissions(context: Context): Boolean {
  */
 class AreaGeofenceManager(
     private val repository: Repository,
-    private val registrar: GeofenceRegistrar,
-    private val permissionsGranted: () -> Boolean,
+    registrar: GeofenceRegistrar,
+    permissionsGranted: () -> Boolean,
 ) {
     private val lock = Mutex()
+
+    /** Where the geofences go and how the permission is read; replaceable in tests (a fake, a switch). */
+    internal var registrar: GeofenceRegistrar = registrar
+    internal var permissionsGranted: () -> Boolean = permissionsGranted
+
+    /**
+     * Registers the geofences at once and again a second after every burst of changes to the areas (the records
+     * table tells Room about every write, so equal lists are skipped) or to the setting. Runs until cancelled.
+     */
+    @OptIn(FlowPreview::class)
+    suspend fun watch(debounceMs: Long = WATCH_DEBOUNCE_MS) {
+        combine(repository.observeAreas().distinctUntilChanged(), repository.settings.areaWakeup()) { a, on -> a to on }
+            .debounce(debounceMs)
+            .collect { runCatching { reregisterAll() } }
+    }
 
     /** Sets the geofences again; returns the areas now registered. Also forgets the stamps of areas that are gone. */
     suspend fun reregisterAll(): List<Area> = lock.withLock {
@@ -148,10 +167,16 @@ class AreaGeofenceManager(
         val areas = repository.areas()
         runCatching { settings.pruneAreaLastNotified(areas.mapTo(HashSet()) { it.id }) }
         val set = AreaWakeup.geofencesFor(areas, settings.areaWakeup().first(), permissionsGranted())
+        // Off and already removed in this process: no call to Play services on every resume.
+        if (set.isEmpty() && knownEmpty) return@withLock set
         registrar.removeAll()
         if (set.isNotEmpty()) registrar.add(set)
+        knownEmpty = set.isEmpty()
         set
     }
+
+    /** True once this process has removed every geofence and added none since (a fresh process does not know). */
+    private var knownEmpty = false
 
     /**
      * The app came to the front (5.18 *Every app resume*): with the setting on and the permission gone (denied,
@@ -162,11 +187,18 @@ class AreaGeofenceManager(
         val settings = repository.settings
         if (settings.areaWakeup().first() && !permissionsGranted()) {
             val switched = settings.switchAreaWakeupOffForPermission()
-            lock.withLock { registrar.removeAll() }
+            lock.withLock {
+                registrar.removeAll()
+                knownEmpty = true
+            }
             return switched
         }
         reregisterAll()
         return false
+    }
+
+    companion object {
+        const val WATCH_DEBOUNCE_MS = 1_000L
     }
 }
 
