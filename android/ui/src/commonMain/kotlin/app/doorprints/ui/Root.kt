@@ -136,6 +136,8 @@ object Routes {
     const val PLACES = "places"
     const val PLACE = "place/{id}"
     const val NEW_RECORD = "new"
+    /** The rationale before *Wake me in my hunting areas* is turned on (docs/11 slice 4b, 5.18). */
+    const val AREA_WAKEUP = "area-wakeup"
 
     fun area(id: String) = "area/$id"
     fun place(id: String) = "place/$id"
@@ -211,6 +213,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // change or an edit made while the app was away is picked up.
         LifecycleResumeEffect(services) {
             services.rescheduleReminders()
+            // The area wake-up (slice 4b): a location permission lost in the system settings switches it off (My
+            // areas says once why); otherwise its geofences are registered again.
+            services.areaWakeup.resumed()
             onPauseOrDispose {}
         }
 
@@ -476,7 +481,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     AreasScreen(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         onOpenArea = { if (resumed(entry)) nav.navigate(Routes.area(it)) },
+                        onTurnOnWakeup = { if (resumed(entry)) nav.navigate(Routes.AREA_WAKEUP) },
                     )
+                }
+                composable(Routes.AREA_WAKEUP) {
+                    AreaWakeupRationaleScreen(onDone = dropUnlessResumed { nav.popBackStack() })
                 }
                 composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     AreaFormScreen(

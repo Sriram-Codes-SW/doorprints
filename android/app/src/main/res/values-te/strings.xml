@@ -129,4 +129,8 @@
     <string name="notif_hunt_reminder">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో. హంట్ మోడ్ ప్రారంభించాలా?</string>
     <string name="notif_hunt_reminder_start">హంట్ మోడ్ ప్రారంభించండి</string>
     <string name="notif_hunt_reminder_dismiss">తీసివేయండి</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="notif_channel_area_wakeup">ప్రాంత మేల్కొలుపు</string>
+    <string name="notif_channel_area_wakeup_desc">మీ వెతుకులాట ప్రాంతాల్లో ఒకదానికి చేరినప్పుడు హంట్ మోడ్ సూచన</string>
+    <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
 </resources>
