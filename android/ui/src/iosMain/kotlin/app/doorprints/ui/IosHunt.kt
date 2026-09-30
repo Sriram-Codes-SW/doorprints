@@ -66,7 +66,9 @@ import platform.UIKit.UIDevice
 import platform.UIKit.UIDeviceBatteryState
 import platform.darwin.NSObject
 import kotlin.coroutines.resume
+import kotlin.experimental.ExperimentalNativeApi
 import kotlin.math.roundToInt
+import kotlin.native.Platform
 
 /**
  * Hunt mode on iPhone (S4b-BL-69): the adapter around the common [HuntEngine], what Android's `HuntService` is there.
@@ -138,6 +140,7 @@ internal object IosHunt : HuntEffects {
         engine = newEngine
         // start() asks for walking-rate fixes (requestUpdates), which starts Core Location.
         newEngine.start()
+        breadcrumb("start access=${iosLocationAccess()}")
         return true
     }
 
@@ -166,6 +169,7 @@ internal object IosHunt : HuntEffects {
         current.stopped(stopReason)
         scope?.cancel()
         scope = null
+        breadcrumb("stop reason=$stopReason")
     }
 
     /** Core Location has no interval: the manager runs, and [throttle] applies the walking or staying rate. */
@@ -183,6 +187,7 @@ internal object IosHunt : HuntEffects {
             val (lat, lon) = location.coordinate.useContents { latitude to longitude }
             val at = (location.timestamp.timeIntervalSince1970 * 1000).toLong()
             if (!throttle.accept(lat, lon, at)) continue
+            breadcrumb("fix accuracy=${accuracy.toInt()}")
             current.onFix(lat, lon, accuracy.toFloat(), at)
         }
     }
@@ -193,7 +198,19 @@ internal object IosHunt : HuntEffects {
     }
 
     /** Errors other than a denial (no fix yet, a lost signal) are transient: Core Location keeps trying. */
-    private fun onError(@Suppress("UNUSED_PARAMETER") error: NSError) = onAuthorizationChanged()
+    private fun onError(error: NSError) {
+        breadcrumb("error code=${error.code}")
+        onAuthorizationChanged()
+    }
+
+    /**
+     * One `DOORPRINTS-HUNT …` line in the unified log, in debug binaries only (the launch smoke's artifact reads them):
+     * the start, each fix that reaches the engine (its accuracy, never where), an error's code and the stop.
+     */
+    @OptIn(ExperimentalNativeApi::class)
+    private fun breadcrumb(text: String) {
+        if (Platform.isDebugBinary) logLine("DOORPRINTS-HUNT $text")
+    }
 
     override fun stop(reason: HuntState.StopReason) = stopFor(reason)
 
