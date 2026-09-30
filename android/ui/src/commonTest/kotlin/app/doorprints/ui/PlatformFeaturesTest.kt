@@ -35,6 +35,7 @@ class PlatformFeaturesTest {
                 huntMode = true,
                 addPhotos = true,
                 copiesAndImports = true,
+                pdfCopies = true,
                 weeklyBackup = true,
                 inAppLanguage = true,
                 areaWakeup = true,
@@ -51,7 +52,9 @@ class PlatformFeaturesTest {
                 map = true,
                 huntMode = true,
                 addPhotos = false,
-                copiesAndImports = false,
+                // Save a copy and Import a backup since S4b-BL-81, every copy but the PDF (Android draws it).
+                copiesAndImports = true,
+                pdfCopies = false,
                 weeklyBackup = false,
                 inAppLanguage = false,
                 // The area wake-up (slice 4b): region monitoring and "Always" on iPhone since S4b-BL-96.

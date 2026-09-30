@@ -595,8 +595,10 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 SectionHeading(stringResource(Res.string.export_format), heading)
                 // One column on a phone, two from 600 dp (see RadioCardGroup).
                 // 4 dp on top: the cards have no row padding of their own, and heading to content is 8 dp.
+                // Without the PDF where the platform draws none (the iPhone, S4b-BL-81; PlatformFeatures.pdfCopies).
+                val pdf = LocalPlatformFeatures.current.pdfCopies
                 RadioCardGroup(
-                    formatChoices,
+                    formatChoices.filter { pdf || it.format != ExportFormat.PDF },
                     Modifier.selectableGroup().padding(start = 16.dp, end = 16.dp, top = 4.dp),
                 ) { choice, card ->
                     RadioCard(
