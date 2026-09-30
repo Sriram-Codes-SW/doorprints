@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.api
 
+import app.doorprints.shared.model.HouseCost
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -43,6 +44,11 @@ data class HouseDto(
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
+    /** HouseDto v2 (docs/11 5.30 item 1, slice 1a): the three optional values, in the format's order, before `checklist`. */
+    val areaSqft: Int? = null,
+    /** `GPS`, `MAP` or `APPROX` (`LocationSource`); absent for a house saved before slice 1a. */
+    val locationSource: String? = null,
+    val cost: HouseCost? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: String? = null,
     val updatedAt: String? = null,
@@ -159,6 +165,8 @@ data class HouseDraftDto(
     val notes: String? = null,
     val amenities: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
+    /** The carpet area in sq ft when the text says it (slice 1a; the no-AI parser fills it, `ListingText`). */
+    val areaSqft: Int? = null,
 )
 
 @Serializable

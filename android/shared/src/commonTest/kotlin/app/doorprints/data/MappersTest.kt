@@ -21,6 +21,7 @@ package app.doorprints.data
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.VisitDto
+import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRules
@@ -42,6 +43,9 @@ class MappersTest {
         lat = 12.978321, lon = 77.640812, status = HouseStatus.SHORTLISTED, price = 32_000, priceType = "RENT",
         bedrooms = 2, rating = 4, contactName = "Owner", contactPhone = "+91 98450 00000",
         listingUrl = "https://example.com/l/1", notes = "Water 24x7", checklist = mapOf("water" to 5, "noise" to 2),
+        areaSqft = 1150, locationSource = "GPS",
+        cost = HouseCost(deposit = 64_000, depositMonths = 2, maintenance = 2_500, maintenanceIncluded = false, brokerage = 16_000,
+            brokerageMonths = 1, lockInMonths = 11, noticeMonths = 3, availableFrom = "2026-10-15", myOffer = 30_000, agreedPrice = 31_000),
         createdAt = 1_790_072_130_000, updatedAt = 1_790_072_130_120, deleted = false, dirty = true,
     )
 
@@ -68,6 +72,24 @@ class MappersTest {
         assertEquals(4, dto.rating); assertEquals("Owner", dto.contactName); assertEquals("+91 98450 00000", dto.contactPhone)
         assertEquals("https://example.com/l/1", dto.listingUrl); assertEquals("Water 24x7", dto.notes)
         assertEquals(mapOf("water" to 5, "noise" to 2), dto.checklist); assertFalse(dto.deleted)
+        assertEquals(1150, dto.areaSqft); assertEquals("GPS", dto.locationSource); assertEquals(house.cost, dto.cost)
+    }
+
+    @Test
+    fun aPulledRowsValuesAreCoercedNotRefused() {
+        // Slice 1a: a field outside its range reads as unknown, an empty cost as none, the rest of the house stays.
+        val odd = house.toDto().copy(areaSqft = 0, locationSource = "somewhere", cost = HouseCost(deposit = -5, noticeMonths = 2))
+        val entity = odd.toEntity()
+        assertNull(entity.areaSqft); assertNull(entity.locationSource)
+        assertEquals(HouseCost(noticeMonths = 2), entity.cost)
+        assertEquals("Flat", entity.label)
+        assertNull(house.toDto().copy(cost = HouseCost()).toEntity().cost)
+        // An empty cost on this phone is written absent, never as {}.
+        assertNull(house.copy(cost = HouseCost()).toDto().cost)
+        assertNull(house.copy(cost = HouseCost()).toExport().cost)
+        assertEquals(house.copy(dirty = false), house.toExport().toEntity(dirty = false))
+        assertNull(house.toExport().copy(areaSqft = 100_001, cost = HouseCost(availableFrom = "soon")).toEntity().areaSqft)
+        assertNull(house.toExport().copy(cost = HouseCost(availableFrom = "soon")).toEntity().cost)
     }
 
     @Test

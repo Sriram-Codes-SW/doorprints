@@ -54,6 +54,8 @@ class RoomSchemaTest {
             3 to "49e636464035d2b630ae32d44d609d99",
             // v4 (docs/11 5.30 slice 0, 2026-09-30): records, the envelope for every new kind of data of Sprint 4b.
             4 to "e13c40884a09c87c71df21c9864d2d1d",
+            // v5 (docs/11 5.30 slice 1a, 2026-09-30): houses.areaSqft, houses.locationSource and the cost_* columns.
+            5 to "647cd06d0f59c4c9cafc50b70adadc5f",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

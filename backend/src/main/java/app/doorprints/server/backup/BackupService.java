@@ -22,6 +22,8 @@ import app.doorprints.server.backup.ImportReport.Outcome;
 import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
+import app.doorprints.server.house.HouseCost;
+import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.photo.PhotoRepository;
@@ -272,6 +274,9 @@ public class BackupService {
         house.setContactPhone(row.contactPhone());
         house.setListingUrl(row.listingUrl());
         house.setNotes(row.notes());
+        house.setAreaSqft(row.areaSqft());
+        house.setLocationSource(row.locationSource());
+        house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
         house.setUpdatedAt(inFile);
@@ -363,6 +368,13 @@ public class BackupService {
             maxLength(at + ".contactPhone", row.contactPhone(), 50, problems);
             maxLength(at + ".listingUrl", row.listingUrl(), 1000, problems);
             maxLength(at + ".notes", row.notes(), 20_000, problems);
+            require(row.areaSqft() == null || (row.areaSqft() >= 1 && row.areaSqft() <= 100_000),
+                    at + ".areaSqft must be 1..100000", problems);
+            require(row.locationSource() == null || row.locationSource().matches(HouseDto.LOCATION_SOURCES),
+                    at + ".locationSource must be GPS, MAP or APPROX", problems);
+            if (row.cost() != null) {
+                for (var field : row.cost().problems()) problems.add(at + ".cost." + field + " is out of range");
+            }
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);

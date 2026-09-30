@@ -244,6 +244,10 @@
             <label for="house-bhk">{{ 'house.bhk' | t }}</label>
             <input id="house-bhk" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="d.bedrooms" />
           </div>
+          <div class="field narrow">
+            <label for="house-area">{{ 'house.areaSqft' | t }}</label>
+            <input id="house-area" type="number" min="1" max="100000" step="1" inputmode="numeric" [(ngModel)]="d.areaSqft" />
+          </div>
         </div>
 
         <div class="field">
@@ -302,6 +306,76 @@
           <textarea id="house-notes" rows="5" [(ngModel)]="d.notes" maxlength="20000"></textarea>
         </div>
       </section>
+
+      <!-- Cost (slice 1a, docs/11 5.21): what the house really costs. The rent-only fields (deposit, maintenance,
+           lock-in, notice) hide for a sale; the line under the fields is computed by costSummary, as on Android. -->
+      @if (d.cost; as c) {
+        <section class="card" aria-labelledby="cost-heading">
+          <h2 id="cost-heading">{{ 'house.cost' | t }}</h2>
+          @if (d.priceType !== 'SALE') {
+            <div class="row">
+              <div class="field">
+                <label for="cost-deposit">{{ 'cost.deposit' | t }} (₹)</label>
+                <input id="cost-deposit" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.deposit" />
+              </div>
+              <div class="field">
+                <label for="cost-deposit-months">{{ 'cost.depositMonths' | t }}</label>
+                <input id="cost-deposit-months" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.depositMonths" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="cost-maintenance">{{ 'cost.maintenance' | t }} (₹)</label>
+                <input id="cost-maintenance" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.maintenance" />
+              </div>
+              <div class="field checkbox">
+                <input id="cost-maintenance-included" type="checkbox" role="switch" [checked]="c.maintenanceIncluded === true" (change)="setIncluded($event)" />
+                <label for="cost-maintenance-included">{{ 'cost.maintenanceIncluded' | t }}</label>
+              </div>
+            </div>
+          }
+          <div class="row">
+            <div class="field">
+              <label for="cost-brokerage">{{ 'cost.brokerage' | t }} (₹)</label>
+              <input id="cost-brokerage" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.brokerage" />
+            </div>
+            <div class="field">
+              <label for="cost-brokerage-months">{{ 'cost.brokerageMonths' | t }}</label>
+              <input id="cost-brokerage-months" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.brokerageMonths" />
+            </div>
+          </div>
+          @if (d.priceType !== 'SALE') {
+            <div class="row">
+              <div class="field">
+                <label for="cost-lock-in">{{ 'cost.lockInMonths' | t }}</label>
+                <input id="cost-lock-in" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.lockInMonths" />
+              </div>
+              <div class="field">
+                <label for="cost-notice">{{ 'cost.noticeMonths' | t }}</label>
+                <input id="cost-notice" type="number" min="0" max="120" step="1" inputmode="numeric" [(ngModel)]="c.noticeMonths" />
+              </div>
+            </div>
+          }
+          <div class="field">
+            <label for="cost-available">{{ 'cost.availableFrom' | t }}</label>
+            <!-- A calendar date with the platform's picker, shown in the person's locale; the value is YYYY-MM-DD. -->
+            <input id="cost-available" type="date" [(ngModel)]="c.availableFrom" />
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="cost-offer">{{ 'cost.myOffer' | t }} (₹)</label>
+              <input id="cost-offer" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.myOffer" />
+            </div>
+            <div class="field">
+              <label for="cost-agreed">{{ 'cost.agreedPrice' | t }} (₹)</label>
+              <input id="cost-agreed" type="number" min="0" step="1" inputmode="numeric" [(ngModel)]="c.agreedPrice" />
+            </div>
+          </div>
+          @if (costLine(d); as line) {
+            <p class="cost-line" role="status">{{ line }}</p>
+          }
+        </section>
+      }
 
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
@@ -377,6 +451,19 @@
           >
             {{ (geocoding() ? 'house.lookingUp' : 'house.fillAddress') | t }}
           </button>
+        </div>
+        <!-- FR-068: the spot is only the locality. The marker becomes a hollow ring and Hunt mode never alerts here. -->
+        <div class="field checkbox approx">
+          <input
+            id="house-approx"
+            type="checkbox"
+            role="switch"
+            [checked]="d.locationSource === 'APPROX'"
+            (change)="setApprox($event)"
+            aria-describedby="approx-hint"
+          />
+          <label for="house-approx">{{ 'house.approx' | t }}</label>
+          <p id="approx-hint" class="muted small">{{ 'house.approxHint' | t }}</p>
         </div>
         <!-- Why "Use my location" or "Fill address from map" did not work, right under them. Kept, dimmed, while
              either runs again (S4b-BL-2). -->

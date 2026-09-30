@@ -21,6 +21,7 @@ import { DB_VERSION, MemoryDb, STORE_INDEXES, STORE_KEY_PATH, STORE_NAMES, openL
 import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
 import {
   MAX_RECORD_PAYLOAD_BYTES,
+  cleanCost,
   houseFromDto,
   isRecordId,
   isoNow,
@@ -229,6 +230,47 @@ describe('records', () => {
   it('falls back to NEW for an unknown status', () => {
     const record = houseFromDto({ ...wire, status: 'WHATEVER' as HouseDto['status'] });
     expect(record.status).toBe('NEW');
+  });
+
+  /** Slice 1a: the house values are coerced like every other field (out of range = unknown for that field). */
+  it('keeps the carpet area, the location source and the cost only within their ranges', () => {
+    const full = houseFromDto({
+      ...wire,
+      areaSqft: 1150,
+      locationSource: 'APPROX',
+      cost: { deposit: 64000, depositMonths: 2, maintenanceIncluded: false, availableFrom: '2026-10-15', agreedPrice: 31000 },
+    });
+    expect(full.areaSqft).toBe(1150);
+    expect(full.locationSource).toBe('APPROX');
+    expect(Object.keys(full.cost ?? {})).toEqual(['deposit', 'depositMonths', 'maintenanceIncluded', 'availableFrom', 'agreedPrice']);
+    expect(full.cost).toEqual({ deposit: 64000, depositMonths: 2, maintenanceIncluded: false, availableFrom: '2026-10-15', agreedPrice: 31000 });
+
+    const bad = houseFromDto({
+      ...wire,
+      areaSqft: 100_001,
+      locationSource: 'SATELLITE' as HouseDto['locationSource'],
+      cost: {
+        deposit: -1,
+        depositMonths: 121,
+        maintenanceIncluded: 'yes' as unknown as boolean,
+        availableFrom: '2026-02-30',
+        lockInMonths: 11.4,
+        myOffer: Number.NaN,
+      },
+    });
+    expect(bad.areaSqft).toBeNull();
+    expect(bad.locationSource).toBeNull();
+    expect(bad.cost).toEqual({ lockInMonths: 11 });
+    expect(houseFromDto({ ...wire, areaSqft: 0 }).areaSqft).toBeNull();
+  });
+
+  it('reads an empty or missing cost as no cost, never as an empty object', () => {
+    expect(houseFromDto({ ...wire, cost: {} }).cost).toBeNull();
+    expect(houseFromDto({ ...wire, cost: { deposit: null } }).cost).toBeNull();
+    expect(houseFromDto(wire).cost).toBeNull();
+    expect(houseFromDto({ ...wire, cost: 'lots' as unknown as HouseDto['cost'] }).cost).toBeNull();
+    expect(cleanCost({ availableFrom: '2026-10-15' })).toEqual({ availableFrom: '2026-10-15' });
+    expect(cleanCost({ availableFrom: '15/10/2026' })).toBeNull();
   });
 
   it('sorts checklist keys, so the same scores always serialise the same way', () => {

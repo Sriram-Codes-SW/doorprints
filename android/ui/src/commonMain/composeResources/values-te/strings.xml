@@ -689,4 +689,35 @@
     <string name="house_dup_text">‘%1$s’కి ఇదే లింక్ ఉంది. దాన్ని తెరవాలా, లేదా లిస్టింగ్‌ను కొత్త ఇల్లుగా మళ్లీ జోడించాలా?</string>
     <string name="house_dup_open">తెరువు</string>
     <string name="house_dup_add">అయినా జోడించు</string>
+    <!-- Slice 1a of docs/11 5.30 (2026-09-30): under review. -->
+    <string name="house_area">కార్పెట్ వైశాల్యం (చ. అడుగులు)</string>
+    <string name="house_cost">ఖర్చు</string>
+    <string name="house_deposit">డిపాజిట్ (₹)</string>
+    <string name="house_deposit_months">డిపాజిట్ (నెలలు)</string>
+    <string name="house_maintenance">నిర్వహణ (₹ నెలకు)</string>
+    <string name="house_maintenance_included">అద్దెలో కలిపి</string>
+    <string name="house_brokerage">బ్రోకరేజ్ (₹)</string>
+    <string name="house_brokerage_months">బ్రోకరేజ్ (నెలలు)</string>
+    <string name="house_lock_in">లాక్-ఇన్ (నెలలు)</string>
+    <string name="house_notice">నోటీసు (నెలలు)</string>
+    <string name="house_available_from">ఎప్పటి నుంచి అందుబాటులో</string>
+    <string name="house_available_pick">తేదీని ఎంచుకోండి</string>
+    <string name="house_available_format">YYYY-MM-DD</string>
+    <string name="house_my_offer">నా ఆఫర్ (₹)</string>
+    <string name="house_agreed_price">అంగీకరించిన ధర (₹)</string>
+    <string name="house_cost_monthly">నెలవారీ ఖర్చు %1$s</string>
+    <string name="house_cost_move_in">చేరడానికి %1$s</string>
+    <string name="house_cost_per_sqft">చ. అడుగుకు %1$s</string>
+    <string name="house_approx">సుమారు స్థానం</string>
+    <string name="house_approx_hint">మార్కర్ ఒక వలయంగా కనిపిస్తుంది; హంట్ మోడ్ ఇక్కడ హెచ్చరించదు.</string>
+    <string name="paste_field_area">కార్పెట్ వైశాల్యం</string>
+    <string name="compare_area">కార్పెట్ వైశాల్యం</string>
+    <string name="compare_monthly_cost">నెలవారీ ఖర్చు</string>
+    <string name="compare_move_in">చేరడానికి</string>
+    <string name="compare_per_sqft">చ. అడుగుకు</string>
+    <string name="compare_available_from">ఎప్పటి నుంచి అందుబాటులో</string>
+    <string name="compare_agreed_price">అంగీకరించిన ధర</string>
+    <string name="common_sqft">%1$s చ. అడుగులు</string>
+    <string name="legend_approx">సుమారు</string>
+    <string name="common_ok">సరే</string>
 </resources>

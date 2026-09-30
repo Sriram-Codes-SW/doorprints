@@ -260,7 +260,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -315,7 +315,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        /**
+         * v5 (docs/11 5.30 slice 1a, 2026-09-30): the house's own values, `areaSqft`, `locationSource` and the cost as
+         * eleven `cost_*` columns ([HouseEntity.cost], `@Embedded(prefix = "cost_")`), all nullable with no default,
+         * as Room lists them in `5.json`. A house from before keeps every column null: unknown, shown as today.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(connection: SQLiteConnection) {
+                for (column in HOUSE_VALUE_COLUMNS) connection.execSQL("ALTER TABLE houses ADD COLUMN $column")
+            }
+        }
+
+        /** The columns v5 adds, name and affinity, in `5.json`'s order. */
+        val HOUSE_VALUE_COLUMNS: List<String> = listOf(
+            "`areaSqft` INTEGER", "`locationSource` TEXT",
+            "`cost_deposit` INTEGER", "`cost_depositMonths` INTEGER", "`cost_maintenance` INTEGER",
+            "`cost_maintenanceIncluded` INTEGER", "`cost_brokerage` INTEGER", "`cost_brokerageMonths` INTEGER",
+            "`cost_lockInMonths` INTEGER", "`cost_noticeMonths` INTEGER", "`cost_availableFrom` TEXT",
+            "`cost_myOffer` INTEGER", "`cost_agreedPrice` INTEGER",
+        )
+
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
     }
 }
 

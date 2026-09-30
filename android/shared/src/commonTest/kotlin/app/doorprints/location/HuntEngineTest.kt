@@ -23,6 +23,7 @@ import app.doorprints.data.Repository
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,6 +106,25 @@ class HuntEngineTest {
         e.stopped(null)
         assertFalse(HuntState.state.value.active)
         assertNull(HuntState.state.value.stopReason)
+        e.stopped(null)
+    }
+
+    @Test
+    fun anApproximateHouseIsNeverTheNearestAndNeverAlerts() = runTest(StandardTestDispatcher()) {
+        // FR-068 (slice 1a): the house at the fix is only approximately there, so the one 100 m away is the nearest.
+        data.houses.value = listOf(
+            house("approx", 12.9716, 77.5946).copy(locationSource = LocationSource.APPROX),
+            house("real", 12.9725, 77.5946),
+        )
+        val e = engine(); e.start(); advanceUntilIdle()
+        e.onFix(12.9716, 77.5946, accuracyM = 10f, time = clock)
+        assertEquals("real", HuntState.state.value.nearestHouse?.id)
+        assertTrue(effects.houseAlerts.isEmpty())
+        data.houses.value = listOf(house("approx", 12.9716, 77.5946).copy(locationSource = LocationSource.APPROX))
+        advanceUntilIdle()
+        e.onFix(12.9716, 77.5946, accuracyM = 10f, time = clock)
+        assertNull(HuntState.state.value.nearestHouse)
+        assertTrue(effects.houseAlerts.isEmpty())
         e.stopped(null)
     }
 

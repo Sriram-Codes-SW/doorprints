@@ -692,4 +692,35 @@
     <string name="house_dup_text">‘%1$s’ has the same link. Open it, or add the listing again as a new house?</string>
     <string name="house_dup_open">Open</string>
     <string name="house_dup_add">Add anyway</string>
+    <!-- Slice 1a of docs/11 5.30 (2026-09-30): the house's own values (5.21) and the approximate location (FR-068). -->
+    <string name="house_area">Carpet area (sq ft)</string>
+    <string name="house_cost">Cost</string>
+    <string name="house_deposit">Deposit (₹)</string>
+    <string name="house_deposit_months">Deposit (months)</string>
+    <string name="house_maintenance">Maintenance (₹ per month)</string>
+    <string name="house_maintenance_included">Included in the rent</string>
+    <string name="house_brokerage">Brokerage (₹)</string>
+    <string name="house_brokerage_months">Brokerage (months)</string>
+    <string name="house_lock_in">Lock-in (months)</string>
+    <string name="house_notice">Notice (months)</string>
+    <string name="house_available_from">Available from</string>
+    <string name="house_available_pick">Pick a date</string>
+    <string name="house_available_format">YYYY-MM-DD</string>
+    <string name="house_my_offer">My offer (₹)</string>
+    <string name="house_agreed_price">Agreed price (₹)</string>
+    <string name="house_cost_monthly">Monthly cost %1$s</string>
+    <string name="house_cost_move_in">To move in %1$s</string>
+    <string name="house_cost_per_sqft">%1$s per sq ft</string>
+    <string name="house_approx">Approximate location</string>
+    <string name="house_approx_hint">The marker shows a ring; Hunt mode will not alert here.</string>
+    <string name="paste_field_area">carpet area</string>
+    <string name="compare_area">Carpet area</string>
+    <string name="compare_monthly_cost">Monthly cost</string>
+    <string name="compare_move_in">To move in</string>
+    <string name="compare_per_sqft">Per sq ft</string>
+    <string name="compare_available_from">Available from</string>
+    <string name="compare_agreed_price">Agreed price</string>
+    <string name="common_sqft">%1$s sq ft</string>
+    <string name="legend_approx">Approximate</string>
+    <string name="common_ok">OK</string>
 </resources>

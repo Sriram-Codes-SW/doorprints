@@ -36,6 +36,8 @@ data class RawListing(
     val listingUrl: String? = null,
     val notes: String? = null,
     val amenities: List<String>? = null,
+    /** "1150 sq ft", "1,150" (slice 1a); read as a whole number of sq ft. */
+    val areaSqft: String? = null,
 )
 
 /**
@@ -57,6 +59,7 @@ object DraftSanitizer {
     const val AMENITY_MAX = 50
     const val BEDROOMS_MAX = 20
     const val PRICE_MAX = 1_000_000_000_000L
+    const val AREA_MAX = 100_000
 
     private val WS = Regex("\\s+")
     private val PRICE = Regex(
@@ -77,6 +80,7 @@ object DraftSanitizer {
         val priceType = priceType(raw.priceType, warnings)
         val price = price(raw.price, warnings)
         val bedrooms = bedrooms(raw.bedrooms, warnings)
+        val areaSqft = areaSqft(raw.areaSqft, warnings)
         val contactName = clean(raw.contactName, CONTACT_NAME_MAX, "contactName", warnings)
         val phone = phone(raw.contactPhone, source, warnings)
         val url = url(raw.listingUrl, source, warnings)
@@ -87,8 +91,11 @@ object DraftSanitizer {
             label = defaultLabel(bedrooms, locality, street)
             warnings += "label: generated because the model returned none"
         }
-        return HouseDraftDto(label, address, street, locality, price, priceType, bedrooms, contactName, phone, url, notes,
-            amenities, warnings.toList())
+        return HouseDraftDto(
+            label = label, address = address, street = street, locality = locality, price = price, priceType = priceType,
+            bedrooms = bedrooms, contactName = contactName, contactPhone = phone, listingUrl = url, notes = notes,
+            amenities = amenities, warnings = warnings.toList(), areaSqft = areaSqft,
+        )
     }
 
     private fun dropControls(s: String) = s.filterNot { c -> (c.code < 0x20 && c != '\n' && c != '\t') || c.code in 0x7f..0x9f }
@@ -171,6 +178,17 @@ object DraftSanitizer {
         }
         if (n > BEDROOMS_MAX) {
             warnings += "bedrooms: $n is out of range, dropped"
+            return null
+        }
+        return n
+    }
+
+    /** The first whole number, 1..[AREA_MAX] sq ft ("1,150 sq ft" -> 1150); anything else is dropped with a warning. */
+    fun areaSqft(value: String?, warnings: MutableList<String>): Int? {
+        if (value.isNullOrBlank()) return null
+        val n = FIRST_INT.find(value.replace(",", ""))?.value?.toIntOrNull()
+        if (n == null || n !in 1..AREA_MAX) {
+            warnings += "areaSqft: could not read '${abbreviate(value)}', dropped"
             return null
         }
         return n

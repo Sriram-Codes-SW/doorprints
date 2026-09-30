@@ -304,7 +304,7 @@ open class CommonRepository(
                 id = h.id, label = h.label, address = h.address, street = h.street, locality = h.locality,
                 lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
                 bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
-                listingUrl = h.listingUrl, notes = h.notes, checklist = h.checklist,
+                listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
             )
         }

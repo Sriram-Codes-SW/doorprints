@@ -19,9 +19,11 @@
 package app.doorprints.data
 
 import androidx.room.ColumnInfo
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseScore
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
@@ -50,6 +52,12 @@ data class HouseEntity(
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
+    // The house's own values of docs/11 5.30 item 1 (slice 1a, Room version 5): carpet area, how the point was set
+    // (`LocationSource`; null for a house saved before) and the cost as `cost_*` columns, all optional. Room reads an
+    // embedded object whose columns are all null as null, so an empty cost never comes back as an empty object.
+    val areaSqft: Int? = null,
+    val locationSource: String? = null,
+    @Embedded(prefix = "cost_") val cost: HouseCost? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     override val updatedAt: Long,

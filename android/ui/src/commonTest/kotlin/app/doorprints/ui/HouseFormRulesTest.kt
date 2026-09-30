@@ -135,6 +135,16 @@ class HouseFormRulesTest {
     }
 
     @Test
+    fun aListingsAreaFillsTheEmptyFieldAndIsKeptOtherwise() {
+        val filled = mergeListing(house(), HouseDraftDto(areaSqft = 1150), labelIsPlaceholder = true)
+        assertEquals(1150, filled.house.areaSqft)
+        assertEquals(listOf(ListingField.AREA), filled.filled)
+        val kept = mergeListing(house().copy(areaSqft = 900), HouseDraftDto(areaSqft = 1150), labelIsPlaceholder = true)
+        assertEquals(900, kept.house.areaSqft)
+        assertEquals(listOf(ListingField.AREA), kept.kept)
+    }
+
+    @Test
     fun aListingThatAgreesWithTheFormReportsNothing() {
         val merged = mergeListing(house(contactName = "Ravi"), HouseDraftDto(contactName = "Ravi"), labelIsPlaceholder = true)
         assertTrue(merged.filled.isEmpty())

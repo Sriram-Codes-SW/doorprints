@@ -82,17 +82,25 @@ object MarkdownWriter {
                 add(s["col.price"] to (h.price?.let { ExportRows.rupees(it) } ?: s["none"]))
                 if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
                 add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
+                if (h.areaSqft != null) add(s["col.areaSqft"] to h.areaSqft.toString())
                 add(s["col.rating"] to (h.rating?.toString() ?: s["none"]))
                 add(s["col.address"] to (h.address ?: s["none"]))
                 add(s["col.street"] to (h.street ?: s["none"]))
                 add(s["col.locality"] to (h.locality ?: s["none"]))
                 add(s["col.lat"] to ExportRows.fixed(h.lat, 6))
                 add(s["col.lon"] to ExportRows.fixed(h.lon, 6))
+                if (h.locationSource == "APPROX") add(s["house.approx"] to s["yes"])
                 if (!h.listingUrl.isNullOrEmpty()) add(s["col.listingUrl"] to h.listingUrl)
                 add(s["col.createdAt"] to ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
                 add(s["col.updatedAt"] to ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
             }
             table(out, listOf("", ""), details.map { listOf(it.first, it.second) })
+
+            val cost = ExportRows.costLines(h, s)
+            if (cost.isNotEmpty()) {
+                out.append("\n### ").append(text(s["section.cost"])).append("\n\n")
+                table(out, listOf("", ""), cost.map { listOf(it.first, it.second) })
+            }
 
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {

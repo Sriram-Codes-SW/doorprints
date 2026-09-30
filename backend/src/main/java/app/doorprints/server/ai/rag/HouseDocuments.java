@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.visit.VisitDto;
 import org.springframework.ai.document.Document;
@@ -67,6 +68,8 @@ public final class HouseDocuments {
                     ? " per month (rent)" : " (sale)"));
         }
         if (h.bedrooms() != null) line(sb, "Size", h.bedrooms() == 0 ? "studio / 1RK" : h.bedrooms() + " BHK");
+        if (h.areaSqft() != null) line(sb, "Carpet area", h.areaSqft() + " sq ft");
+        costLines(sb, h.cost());
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -102,6 +105,33 @@ public final class HouseDocuments {
         if (h.rating() != null) m.put("rating", h.rating());
         if (h.locality() != null) m.put("locality", r.place(h.locality()));
         return m;
+    }
+
+    /**
+     * The cost fields of slice 1a, the same words as the on-device {@code AiHouse}: rupees win over months when both
+     * are set (as in the clients' arithmetic). Never {@code myOffer}: a negotiation is the person's own and does not
+     * go to the provider (docs/11 section 5.30 item 5).
+     */
+    static void costLines(StringBuilder sb, HouseCost c) {
+        if (c == null) return;
+        line(sb, "Deposit", rupeesOrMonths(c.deposit(), c.depositMonths()));
+        if (c.maintenance() != null) {
+            line(sb, "Maintenance", "Rs " + c.maintenance() + " per month"
+                    + (Boolean.TRUE.equals(c.maintenanceIncluded()) ? " (included)" : " (not included)"));
+        }
+        line(sb, "Brokerage", rupeesOrMonths(c.brokerage(), c.brokerageMonths()));
+        if (c.lockInMonths() != null) line(sb, "Lock-in", months(c.lockInMonths()));
+        if (c.noticeMonths() != null) line(sb, "Notice", months(c.noticeMonths()));
+        line(sb, "Available from", c.availableFrom());
+        if (c.agreedPrice() != null) line(sb, "Agreed price", "Rs " + c.agreedPrice());
+    }
+
+    private static String rupeesOrMonths(Long rupees, Integer months) {
+        return rupees != null ? "Rs " + rupees : months != null ? months(months) : null;
+    }
+
+    private static String months(int n) {
+        return n + (n == 1 ? " month" : " months");
     }
 
     static String visitSummary(List<VisitDto> visits) {

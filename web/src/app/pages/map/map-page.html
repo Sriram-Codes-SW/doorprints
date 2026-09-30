@@ -95,6 +95,10 @@
               <i [class]="'dot ' + s" aria-hidden="true"></i>{{ statusKey[s] | t }}
             </span>
           }
+          <!-- FR-068: a house whose spot is only approximate is a hollow ring in its status colour. -->
+          <span class="legend-item">
+            <i class="dot APPROX" aria-hidden="true"></i>{{ 'map.legendApprox' | t }}
+          </span>
         </div>
       }
       <div class="map-actions">

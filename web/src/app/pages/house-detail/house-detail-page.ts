@@ -41,6 +41,7 @@ import {
   CHECKLIST,
   HouseDto,
   HouseStatus,
+  LocationSource,
   STATUSES,
   STATUS_COLOR,
   STATUS_ICON,
@@ -51,6 +52,8 @@ import {
   uuid,
 } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
+import { cleanCost } from '../../data/records';
+import { costSummary } from '../../shared/house-cost';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
 import { resizeImage } from '../../core/image-resize';
@@ -312,7 +315,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
         this.listingOpen = true;
       }
       if (hasPosition) {
-        this.openDraft(lat, lon, shared);
+        // Placed by a tap or the crosshair on the map (MapPage.createAt): the source is MAP until the person says
+        // otherwise (FR-068); *Use my location* makes it GPS.
+        this.openDraft(lat, lon, shared, 'MAP');
       } else {
         // No position (share target, bookmark): never 0°, 0°. Start from the last map view, or the newest house,
         // or the country, and require the pin to be put before saving.
@@ -324,7 +329,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.storeKey = draftKey(id, null, null);
     this.api.house(id).subscribe({
       next: (h) => {
-        this.draft.set(h);
+        this.draft.set(withCost(h));
         this.loading.set(false);
         this.afterLoad();
       },
@@ -401,8 +406,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
   }
 
-  private openDraft(lat: number, lon: number, shared: string): void {
-    const draft = newHouse(lat, lon);
+  private openDraft(lat: number, lon: number, shared: string, source: LocationSource | null = null): void {
+    const draft = withCost(newHouse(lat, lon, source));
     this.draft.set(draft);
     if (shared) {
       // The no-AI parser first (docs/11 5.29): the price, BHK, locality, link and phone the share text says, and the
@@ -459,7 +464,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.pristine = { draft: clone(d), dirty: this.dirty(), locationSet: this.locationSet() };
     const stored = readDraft(this.storeKey);
     if (stored && (this.isNew() || stored.draft.id === d.id)) {
-      this.draft.set(stored.draft);
+      this.draft.set(withCost(stored.draft));
       this.locationSet.set(stored.locationSet);
       this.dirty.set(true);
       this.restored.set(true);
@@ -504,7 +509,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
         this.locating.set(false);
         this.locationMsg.set(null);
         this.coordsInvalid.set({ lat: false, lon: false });
-        this.placePin(round6(pos.coords.latitude), round6(pos.coords.longitude));
+        this.placePin(round6(pos.coords.latitude), round6(pos.coords.longitude), 'GPS');
         this.announcer.announce({ key: 'house.locationFound' });
       },
       failed: (err) => {
@@ -514,14 +519,59 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
   }
 
-  /** The user put the pin somewhere: the position now counts as set. */
-  private placePin(lat: number, lon: number): void {
+  /**
+   * The user put the pin somewhere: the position now counts as set, and the source says how (a drag, a tap or typed
+   * coordinates are MAP; *Use my location* is GPS). Moving the pin of a house marked approximate keeps it approximate:
+   * the person said the spot is rough, and a nudge does not make it the building. GPS always wins.
+   */
+  private placePin(lat: number, lon: number, source: LocationSource = 'MAP'): void {
     this.locationSet.set(true);
     if (this.locationError()) {
       this.locationError.set(false);
       if (this.error()?.value.key === 'house.locationRequired') this.error.set(null);
     }
-    this.patch({ lat, lon });
+    const current = this.draft()?.locationSource ?? null;
+    this.patch({ lat, lon, locationSource: current === 'APPROX' && source === 'MAP' ? 'APPROX' : source });
+  }
+
+  /** The source before *Approximate location* was switched on, put back when it is switched off (MAP by default). */
+  private sourceBeforeApprox: LocationSource | null = null;
+
+  /** The *Approximate location* switch (FR-068): on sets `APPROX`; off goes back to what it was. */
+  protected setApprox(event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    const current = this.draft()?.locationSource ?? null;
+    if (on) {
+      if (current !== 'APPROX') this.sourceBeforeApprox = current;
+      this.patch({ locationSource: 'APPROX' });
+    } else {
+      this.patch({ locationSource: this.sourceBeforeApprox ?? 'MAP' });
+    }
+  }
+
+  /** The *Included in the rent* switch of the Cost section. */
+  protected setIncluded(event: Event): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ cost: { ...d.cost, maintenanceIncluded: (event.target as HTMLInputElement).checked } });
+  }
+
+  /**
+   * "Monthly cost ₹34,500 · To move in ₹1,28,000 · ₹27 per sq ft" under the Cost fields, from what is typed so far
+   * (the same `costSummary` as Compare and the readable copies); null while nothing computes.
+   */
+  protected costLine(d: HouseDto): string | null {
+    const s = costSummary({
+      price: toWholeNumber(d.price),
+      priceType: d.priceType,
+      areaSqft: toWholeNumber(d.areaSqft),
+      cost: cleanCost(d.cost),
+    });
+    const parts: string[] = [];
+    if (s.monthlyCost !== null) parts.push(this.i18n.t('cost.lineMonthly', { v: this.i18n.price(s.monthlyCost, null) }));
+    if (s.moveIn !== null) parts.push(this.i18n.t('cost.lineMoveIn', { v: this.i18n.price(s.moveIn, null) }));
+    if (s.perSqFt !== null) parts.push(this.i18n.t('cost.linePerSqFt', { v: this.i18n.price(Math.round(s.perSqFt), null) }));
+    return parts.length ? parts.join(' · ') : null;
   }
 
   /**
@@ -606,6 +656,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shownValue(field: FillField, value: string | number): Msg | string {
     if (field === 'price' && typeof value === 'number') return this.i18n.price(value, null);
     if (field === 'priceType') return { key: value === 'SALE' ? 'price.sale' : 'price.rent' };
+    if (field === 'areaSqft') return { key: 'common.sqft', params: { n: value } };
     return String(value);
   }
 
@@ -806,6 +857,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       notes: blankToNull(d.notes),
       price: toWholeNumber(d.price),
       bedrooms: toWholeNumber(d.bedrooms),
+      areaSqft: toWholeNumber(d.areaSqft),
+      // Only the set fields, in range, or null: the store and the wire never see an empty `{}` (slice 1a).
+      cost: cleanCost(d.cost),
     };
     this.saving.set(true);
     // Said to screen readers as Android's Save says it through its contentDescription (web UX gate r4): aria-busy on
@@ -837,8 +891,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
           });
         }
       } else {
-        this.draft.set(saved);
-        this.pristine = { draft: clone(saved), dirty: false, locationSet: true };
+        this.draft.set(withCost(saved));
+        this.pristine = { draft: clone(withCost(saved)), dirty: false, locationSet: true };
         this.justSaved.set(true);
         this.applyTitle();
       }
@@ -1024,6 +1078,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
 function clone(h: HouseDto): HouseDto {
   return JSON.parse(JSON.stringify(h)) as HouseDto;
+}
+
+/** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
+function withCost(h: HouseDto): HouseDto {
+  return h.cost ? h : { ...h, cost: {} };
 }
 
 function blankToNull(s: string | null | undefined): string | null {

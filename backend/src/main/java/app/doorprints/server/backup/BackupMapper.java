@@ -19,6 +19,7 @@
 package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
+import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.photo.PhotoDto;
 import app.doorprints.server.visit.Visit;
 
@@ -115,6 +116,7 @@ final class BackupMapper {
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()),
                 sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 

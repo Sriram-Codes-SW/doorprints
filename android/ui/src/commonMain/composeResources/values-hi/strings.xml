@@ -689,4 +689,35 @@
     <string name="house_dup_text">‘%1$s’ का लिंक यही है। उसे खोलें, या लिस्टिंग को नए मकान के रूप में फिर जोड़ें?</string>
     <string name="house_dup_open">खोलें</string>
     <string name="house_dup_add">फिर भी जोड़ें</string>
+    <!-- Slice 1a of docs/11 5.30 (2026-09-30): under review. -->
+    <string name="house_area">कारपेट क्षेत्र (वर्ग फ़ुट)</string>
+    <string name="house_cost">लागत</string>
+    <string name="house_deposit">जमा राशि (₹)</string>
+    <string name="house_deposit_months">जमा (महीने)</string>
+    <string name="house_maintenance">रखरखाव (₹ प्रति माह)</string>
+    <string name="house_maintenance_included">किराये में शामिल</string>
+    <string name="house_brokerage">दलाली (₹)</string>
+    <string name="house_brokerage_months">दलाली (महीने)</string>
+    <string name="house_lock_in">लॉक-इन (महीने)</string>
+    <string name="house_notice">नोटिस (महीने)</string>
+    <string name="house_available_from">कब से उपलब्ध</string>
+    <string name="house_available_pick">तारीख़ चुनें</string>
+    <string name="house_available_format">YYYY-MM-DD</string>
+    <string name="house_my_offer">मेरा प्रस्ताव (₹)</string>
+    <string name="house_agreed_price">तय कीमत (₹)</string>
+    <string name="house_cost_monthly">मासिक लागत %1$s</string>
+    <string name="house_cost_move_in">शिफ़्ट होने के लिए %1$s</string>
+    <string name="house_cost_per_sqft">%1$s प्रति वर्ग फ़ुट</string>
+    <string name="house_approx">अनुमानित जगह</string>
+    <string name="house_approx_hint">मार्कर एक घेरा दिखाएगा; हंट मोड यहाँ सूचना नहीं देगा।</string>
+    <string name="paste_field_area">कारपेट क्षेत्र</string>
+    <string name="compare_area">कारपेट क्षेत्र</string>
+    <string name="compare_monthly_cost">मासिक लागत</string>
+    <string name="compare_move_in">शिफ़्ट होने के लिए</string>
+    <string name="compare_per_sqft">प्रति वर्ग फ़ुट</string>
+    <string name="compare_available_from">कब से उपलब्ध</string>
+    <string name="compare_agreed_price">तय कीमत</string>
+    <string name="common_sqft">%1$s वर्ग फ़ुट</string>
+    <string name="legend_approx">अनुमानित</string>
+    <string name="common_ok">ठीक है</string>
 </resources>

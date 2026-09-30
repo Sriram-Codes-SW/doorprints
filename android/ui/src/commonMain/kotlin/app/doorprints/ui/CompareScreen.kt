@@ -52,7 +52,9 @@ import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.ui.res.*
+import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseStatus
+import kotlin.math.roundToLong
 import org.jetbrains.compose.resources.stringResource
 
 /** The most houses the table compares. */
@@ -265,10 +267,19 @@ private fun CompareTable(
     val starsFormat = stringResource(Res.string.common_stars)
     val checkFormat = stringResource(Res.string.house_check_value)
     val checklistLabels = ChecklistResources.items.map { (key, res) -> key to stringResource(res) }
+    val sqftFormat = stringResource(Res.string.common_sqft)
+    // The house's own values (docs/11 5.21, slice 1a) line up under the price: what it costs, then the size.
+    val summaries = chosen.associate { h -> h.id to CostSummary.of(h.price, h.priceType, h.areaSqft, h.cost) }
     val rows = buildList {
         add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(it) } }))
         add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
+        add(CompareRow(stringResource(Res.string.compare_agreed_price), notSet, { h -> h.cost?.agreedPrice?.let { Formats.rupees(it) } }))
+        add(CompareRow(stringResource(Res.string.compare_monthly_cost), notSet, { h -> summaries[h.id]?.monthlyCost?.let { Formats.rupees(it) } }))
+        add(CompareRow(stringResource(Res.string.compare_move_in), notSet, { h -> summaries[h.id]?.moveIn?.let { Formats.rupees(it) } }))
+        add(CompareRow(stringResource(Res.string.compare_per_sqft), notSet, { h -> summaries[h.id]?.perSqFt?.let { Formats.rupees(it.roundToLong()) } }))
         add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { formatPositional(bhkFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_area), notSet, { h -> h.areaSqft?.let { formatPositional(sqftFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_available_from), notSet, { h -> h.cost?.availableFrom }))
         add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
         add(CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))

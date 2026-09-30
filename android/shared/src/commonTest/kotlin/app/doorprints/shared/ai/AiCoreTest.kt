@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.model.HouseCost
+
 import app.doorprints.shared.api.CitationDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,6 +57,22 @@ class AiCoreTest {
             HouseDocuments.text(house),
         )
         assertEquals("not visited yet", HouseDocuments.visitSummary(emptyList()))
+        // Slice 1a: the area and the cost lines, in the contract's words; "My offer" is the person's own (5.30 item 5).
+        val costly = HouseDocuments.text(
+            house.copy(
+                areaSqft = 1150,
+                cost = HouseCost(deposit = 64_000, maintenance = 2_500, maintenanceIncluded = false, brokerageMonths = 1,
+                    lockInMonths = 11, noticeMonths = 2, availableFrom = "2026-10-15", myOffer = 30_000, agreedPrice = 31_000),
+            ),
+        )
+        assertEquals(
+            "Size: 2 BHK\nCarpet area: 1150 sq ft\nDeposit: Rs 64000\nMaintenance: Rs 2500 per month (not included)\n" +
+                "Brokerage: 1 month\nLock-in: 11 months\nNotice: 2 months\nAvailable from: 2026-10-15\nAgreed price: Rs 31000\nStatus: SHORTLISTED",
+            costly.substringAfter("Size: ").let { "Size: " + it.substringBefore("\nMy rating") },
+        )
+        assertTrue(!costly.contains("30000"), "my offer never goes to the provider")
+        assertTrue(HouseDocuments.text(house.copy(cost = HouseCost(depositMonths = 2, maintenance = 1_000, maintenanceIncluded = true)))
+            .contains("Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)"))
         assertEquals("studio / 1RK", HouseDocuments.text(house.copy(bedrooms = 0)).lines().first { it.startsWith("Size") }.substringAfter(": "))
         assertEquals("1970-01-01", HouseDocuments.utcDate(0))
         assertEquals("2024-02-29", HouseDocuments.utcDate(1_709_164_800_000))
