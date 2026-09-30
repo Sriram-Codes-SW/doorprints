@@ -35,6 +35,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -80,7 +81,12 @@ import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.listing.ListingText
+import app.doorprints.shared.model.CalendarDate
+import app.doorprints.shared.model.CostSummary
+import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseValues
+import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -94,6 +100,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToLong
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -140,6 +147,11 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 it.price, it.priceType, it.bedrooms, it.rating, it.contactName, it.contactPhone, it.listingUrl,
                 it.notes, ArrayList(it.checklist.map { (k, v) -> "$k=$v" }), it.createdAt, it.updatedAt,
                 it.deleted, it.dirty,
+                // Slice 1a: the area, the location source and the cost's eleven values (null each when unknown).
+                it.areaSqft, it.locationSource,
+                it.cost?.deposit, it.cost?.depositMonths, it.cost?.maintenance, it.cost?.maintenanceIncluded,
+                it.cost?.brokerage, it.cost?.brokerageMonths, it.cost?.lockInMonths, it.cost?.noticeMonths,
+                it.cost?.availableFrom, it.cost?.myOffer, it.cost?.agreedPrice,
             )
         }
     },
@@ -172,6 +184,14 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         updatedAt = v[18] as Long,
         deleted = v[19] as Boolean,
         dirty = v[20] as Boolean,
+        areaSqft = v[21] as Int?,
+        locationSource = v[22] as String?,
+        cost = HouseCost(
+            deposit = v[23] as Long?, depositMonths = v[24] as Int?, maintenance = v[25] as Long?,
+            maintenanceIncluded = v[26] as Boolean?, brokerage = v[27] as Long?, brokerageMonths = v[28] as Int?,
+            lockInMonths = v[29] as Int?, noticeMonths = v[30] as Int?, availableFrom = v[31] as String?,
+            myOffer = v[32] as Long?, agreedPrice = v[33] as Long?,
+        ).orNull(),
     )
 }.getOrNull()
 
@@ -338,6 +358,13 @@ fun HouseEditScreen(
             val now = nowMillis()
             val fresh = HouseEntity(
                 id = id, label = defaultLabel, lat = newLat ?: 0.0, lon = newLon ?: 0.0,
+                // Where the point came from (FR-068): a stay alert brings the phone's own fix, the map a tap or the
+                // crosshair; a form opened with no point has no source until *Use my current location*.
+                locationSource = when {
+                    newLat == null || newLon == null -> null
+                    visitId != null -> LocationSource.GPS
+                    else -> LocationSource.MAP
+                },
                 createdAt = now, updatedAt = now,
             )
             draft = fresh
@@ -417,6 +444,8 @@ fun HouseEditScreen(
     var locationFailed by rememberSaveable { mutableStateOf(false) }
     // Location was refused, or only approximate location was allowed: the shared note under *Use my current location*.
     var locationDenied by rememberSaveable { mutableStateOf(false) }
+    // What the location source was before *Approximate location* was turned on, for turning it off (FR-068).
+    var sourceBeforeApprox by rememberSaveable { mutableStateOf<String?>(null) }
     val canSave = !busy && !removed && draft != null && !conflict && !latInvalid && !lonInvalid
 
     LaunchedEffect(dirty) { if (!dirty) confirmLeave = false }
@@ -592,7 +621,7 @@ fun HouseEditScreen(
             if (here == null) {
                 locationFailed = true
             } else {
-                update { it.copy(lat = here.first, lon = here.second) }
+                update { it.copy(lat = here.first, lon = here.second, locationSource = LocationSource.GPS) }
                 latText = null
                 lonText = null
             }
@@ -821,18 +850,17 @@ fun HouseEditScreen(
                 // The amount as the app shows it, live, in the app language: ₹1,00,00,000 or ₹25,000 / month, so a
                 // missing or extra zero is visible while typing. Always there (empty at first), so the row does not grow.
                 val preview = priceText(d.price, d.priceType).orEmpty()
+                OutlinedTextField(
+                    d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
+                    label = { Text(stringResource(if (d.priceType == "SALE") Res.string.house_price_sale else Res.string.house_price_rent)) },
+                    supportingText = { Text(preview) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // BHK beside the carpet area (slice 1a): the price has the row above to itself, with its preview.
                 PairOrStack(
                     first = { m ->
-                        OutlinedTextField(
-                            d.price?.toString() ?: "", { v -> update { it.copy(price = v.filter(Char::isDigit).take(12).toLongOrNull()) } },
-                            label = { Text(stringResource(if (d.priceType == "SALE") Res.string.house_price_sale else Res.string.house_price_rent)) },
-                            supportingText = { Text(preview) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            singleLine = true,
-                            modifier = m,
-                        )
-                    },
-                    second = { m ->
                         OutlinedTextField(
                             d.bedrooms?.toString() ?: "", { v -> update { it.copy(bedrooms = v.filter(Char::isDigit).take(2).toIntOrNull()) } },
                             label = { Text(stringResource(Res.string.house_bhk)) },
@@ -840,8 +868,20 @@ fun HouseEditScreen(
                             singleLine = true, modifier = m,
                         )
                     },
-                    secondFixedWidth = true,
+                    second = { m ->
+                        OutlinedTextField(
+                            d.areaSqft?.toString() ?: "",
+                            { v -> update { it.copy(areaSqft = HouseValues.areaSqft(v.filter(Char::isDigit).take(6).toIntOrNull())) } },
+                            label = { Text(stringResource(Res.string.house_area)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            singleLine = true, modifier = m,
+                        )
+                    },
                 )
+
+                // The real cost of the house (docs/11 5.21, slice 1a): the fields, then what they add up to.
+                SectionHeading(stringResource(Res.string.house_cost))
+                CostSection(d, ::update)
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
                     label = { Text(stringResource(Res.string.house_address)) },
@@ -936,6 +976,22 @@ fun HouseEditScreen(
                         )
                     },
                 )
+                // The spot is approximate (FR-068): a hollow marker, and no Hunt-mode alert here. Off goes back to the
+                // source the point had before (the map's when it had none).
+                val approx = d.locationSource == LocationSource.APPROX
+                SwitchRow(
+                    text = stringResource(Res.string.house_approx),
+                    hint = stringResource(Res.string.house_approx_hint),
+                    checked = approx,
+                    horizontalPadding = 0.dp,
+                ) { on ->
+                    if (on) {
+                        sourceBeforeApprox = d.locationSource
+                        update { it.copy(locationSource = LocationSource.APPROX) }
+                    } else {
+                        update { it.copy(locationSource = sourceBeforeApprox ?: LocationSource.MAP) }
+                    }
+                }
 
                 SectionHeading(stringResource(Res.string.house_checklist))
                 ChecklistResources.items.forEach { (key, label) ->
@@ -1336,6 +1392,126 @@ private fun PairOrStack(
     }
 }
 
+/**
+ * The **Cost** section of the form (docs/11 5.21, slice 1a): two fields per row where they pair, the rent-only ones
+ * (deposit, maintenance, lock-in, notice) hidden for a sale, *Available from* as a `YYYY-MM-DD` field with the
+ * platform's date picker, and under them one line of what it adds up to ([CostSummary]) when something computes.
+ */
+@Composable
+private fun CostSection(d: HouseEntity, update: ((HouseEntity) -> HouseEntity) -> Unit) {
+    val rent = d.priceType != "SALE"
+    fun cost(transform: (HouseCost) -> HouseCost) = update { it.copy(cost = transform(it.cost ?: HouseCost()).orNull()) }
+    val c = d.cost ?: HouseCost()
+    if (rent) {
+        PairOrStack(
+            first = { m -> RupeeField(c.deposit, Res.string.house_deposit, m) { v -> cost { it.copy(deposit = v) } } },
+            second = { m -> MonthsField(c.depositMonths, Res.string.house_deposit_months, m) { v -> cost { it.copy(depositMonths = v) } } },
+        )
+        RupeeField(c.maintenance, Res.string.house_maintenance, Modifier.fillMaxWidth()) { v -> cost { it.copy(maintenance = v) } }
+        SwitchRow(
+            text = stringResource(Res.string.house_maintenance_included),
+            hint = null,
+            checked = c.maintenanceIncluded == true,
+            horizontalPadding = 0.dp,
+        ) { on -> cost { it.copy(maintenanceIncluded = on) } }
+    }
+    PairOrStack(
+        first = { m -> RupeeField(c.brokerage, Res.string.house_brokerage, m) { v -> cost { it.copy(brokerage = v) } } },
+        second = { m -> MonthsField(c.brokerageMonths, Res.string.house_brokerage_months, m) { v -> cost { it.copy(brokerageMonths = v) } } },
+    )
+    if (rent) {
+        PairOrStack(
+            first = { m -> MonthsField(c.lockInMonths, Res.string.house_lock_in, m) { v -> cost { it.copy(lockInMonths = v) } } },
+            second = { m -> MonthsField(c.noticeMonths, Res.string.house_notice, m) { v -> cost { it.copy(noticeMonths = v) } } },
+        )
+    }
+    AvailableFromField(c.availableFrom) { v -> cost { it.copy(availableFrom = v) } }
+    PairOrStack(
+        first = { m -> RupeeField(c.myOffer, Res.string.house_my_offer, m) { v -> cost { it.copy(myOffer = v) } } },
+        second = { m -> RupeeField(c.agreedPrice, Res.string.house_agreed_price, m) { v -> cost { it.copy(agreedPrice = v) } } },
+    )
+    // "Monthly cost ₹34,500 · To move in ₹1,28,000 · ₹27 per sq ft": only the parts that compute, none when none does.
+    val summary = CostSummary.of(d.price, d.priceType, d.areaSqft, d.cost)
+    val parts = listOfNotNull(
+        summary.monthlyCost?.let { stringResource(Res.string.house_cost_monthly, Formats.rupees(it)) },
+        summary.moveIn?.let { stringResource(Res.string.house_cost_move_in, Formats.rupees(it)) },
+        summary.perSqFt?.let { stringResource(Res.string.house_cost_per_sqft, Formats.rupees(it.roundToLong())) },
+    )
+    LiveMessage {
+        if (parts.isNotEmpty()) {
+            Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** A whole-rupee field: digits only, at most 13 (the format's 10^12 cap), empty for unknown. */
+@Composable
+private fun RupeeField(value: Long?, label: StringResource, modifier: Modifier, onChange: (Long?) -> Unit) {
+    OutlinedTextField(
+        value?.toString() ?: "",
+        { v -> onChange(v.filter(Char::isDigit).take(13).toLongOrNull()?.takeIf { it <= HouseCost.MAX_RUPEES }) },
+        label = { Text(stringResource(label)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        singleLine = true, modifier = modifier,
+    )
+}
+
+/** A months field: 0..120, empty for unknown. */
+@Composable
+private fun MonthsField(value: Int?, label: StringResource, modifier: Modifier, onChange: (Int?) -> Unit) {
+    OutlinedTextField(
+        value?.toString() ?: "",
+        { v -> onChange(v.filter(Char::isDigit).take(3).toIntOrNull()?.takeIf { it <= HouseCost.MAX_MONTHS }) },
+        label = { Text(stringResource(label)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        singleLine = true, modifier = modifier,
+    )
+}
+
+/**
+ * *Available from*: a `YYYY-MM-DD` text field (the format's calendar date, no time zone) whose trailing button opens
+ * Material's date picker in the person's locale. What is typed stays on screen while it is not a date yet; the
+ * draft takes only a valid date, or nothing when the field is cleared.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AvailableFromField(value: String?, onChange: (String?) -> Unit) {
+    var text by rememberSaveable(value) { mutableStateOf(value ?: "") }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    val invalid = text.isNotBlank() && !CalendarDate.isValid(text.trim())
+    OutlinedTextField(
+        text,
+        { v ->
+            text = v
+            val trimmed = v.trim()
+            if (trimmed.isEmpty()) onChange(null) else if (CalendarDate.isValid(trimmed)) onChange(trimmed)
+        },
+        label = { Text(stringResource(Res.string.house_available_from)) },
+        isError = invalid,
+        supportingText = { Text(stringResource(Res.string.house_available_format)) },
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Default.DateRange, contentDescription = stringResource(Res.string.house_available_pick))
+            }
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        singleLine = true, modifier = Modifier.fillMaxWidth(),
+    )
+    if (showPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = value?.let(CalendarDate::toEpochMillis))
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { onChange(CalendarDate.fromEpochMillis(it)) }
+                    showPicker = false
+                }) { Text(stringResource(Res.string.common_ok)) }
+            },
+            dismissButton = { TextButton(onClick = { showPicker = false }) { Text(stringResource(Res.string.common_cancel)) } },
+        ) { DatePicker(state = state) }
+    }
+}
+
 /** The field names a listing fill reports ("Filled in: price and contact name."). */
 private val ListingField.nameRes: StringResource
     get() = when (this) {
@@ -1349,6 +1525,7 @@ private val ListingField.nameRes: StringResource
         ListingField.PHONE -> Res.string.paste_field_phone
         ListingField.LISTING -> Res.string.paste_field_listing
         ListingField.NOTES -> Res.string.paste_field_notes
+        ListingField.AREA -> Res.string.paste_field_area
     }
 
 /** "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. */

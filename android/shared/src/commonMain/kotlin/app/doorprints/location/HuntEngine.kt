@@ -26,6 +26,7 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.location.Geo
 import app.doorprints.shared.location.StayDetector
 import app.doorprints.shared.location.StreetAlerts
+import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -152,7 +153,9 @@ class HuntEngine(
 
     private fun checkNearbyHouses(lat: Double, lon: Double) {
         val at = now()
+        // A house whose spot is only approximate (FR-068) is never the nearest: its marker is a ring, not a place.
         val nearest = houses
+            .filter { it.locationSource != LocationSource.APPROX }
             .map { it to Geo.distanceM(lat, lon, it.lat, it.lon) }
             .minByOrNull { it.second }
         val close = nearest?.takeIf { it.second <= NEAREST_SHOWN_M }

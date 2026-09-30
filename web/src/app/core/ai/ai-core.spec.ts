@@ -44,7 +44,12 @@ describe('AI core parity with the server', () => {
 
   it('checks listings as the server does', () => {
     for (const c of vectors.sanitize) {
-      expect(sanitizeDraft(c.raw as RawListing | null, c.source), JSON.stringify(c.raw)).toEqual((c as { expected: unknown }).expected);
+      // Slice 1a: the draft carries `areaSqft` (the no-AI parser fills it); the sanitiser leaves it null, and the
+      // vectors predate the field, so it is compared only once a vector says what the server writes there.
+      const { areaSqft, ...draft } = sanitizeDraft(c.raw as RawListing | null, c.source);
+      const expected = (c as { expected: Record<string, unknown> }).expected;
+      expect(areaSqft).toBeNull();
+      expect('areaSqft' in expected ? { ...draft, areaSqft } : draft, JSON.stringify(c.raw)).toEqual(expected);
     }
   });
 
@@ -82,6 +87,21 @@ describe('AI core (what the vectors do not cover)', () => {
       'Notes: [contact] says water 24x7. Call [phone].',
     ].join('\n'));
     expect(CONTACT).toBe('[contact]');
+  });
+
+  it('writes the carpet area and the cost lines in the shared words, never the own offer', () => {
+    const text = houseText({
+      ...house,
+      areaSqft: 1150,
+      cost: { deposit: 64000, maintenance: 2500, maintenanceIncluded: false, brokerageMonths: 1, lockInMonths: 11, noticeMonths: 2, availableFrom: '2026-10-15', agreedPrice: 31000 },
+    });
+    expect(text).toContain([
+      'Size: 2 BHK', 'Carpet area: 1150 sq ft', 'Deposit: Rs 64000', 'Maintenance: Rs 2500 per month (not included)',
+      'Brokerage: 1 month', 'Lock-in: 11 months', 'Notice: 2 months', 'Available from: 2026-10-15', 'Agreed price: Rs 31000', 'Status: SHORTLISTED',
+    ].join('\n'));
+    expect(text).not.toContain('offer');
+    expect(houseText({ ...house, cost: { depositMonths: 2, maintenance: 1000, maintenanceIncluded: true } }))
+      .toContain('Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)');
   });
 
   it('cites only inline markers of houses that were sent', () => {

@@ -45,7 +45,14 @@ Open a house from the list or the map. There you can:
 
 - set the **Status**: **New**, **Shortlisted** or **Rejected**;
 - give **Your rating**, from one to five stars;
-- fill in the price, **BHK**, address, contact and **Listing link** (the web address of an advert for the house);
+- fill in the price, **BHK**, **Carpet area**, address, contact and **Listing link** (the web address of an advert for
+  the house);
+- under **Cost**, what the advert does not say at first: the deposit (in rupees or months of rent), the maintenance
+  and whether the rent includes it, the brokerage, the lock-in and notice periods, the date the house is free from,
+  your offer and the price you agreed. Doorprints then shows the **monthly cost**, the **money to move in** and the
+  **cost per sq ft**, and **Compare** lines them up across houses;
+- turn on **Approximate location** when you only know the area, not the building: the house shows as a hollow ring
+  on the map and Hunt mode will not alert you there until you fix the spot;
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;

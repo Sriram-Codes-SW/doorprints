@@ -21,6 +21,49 @@ import type { TKey } from '../i18n/en';
 export type HouseStatus = 'NEW' | 'SHORTLISTED' | 'REJECTED';
 export type PriceType = 'RENT' | 'SALE';
 export type VisitSource = 'AUTO' | 'MANUAL';
+/**
+ * How the house got its position (docs/03 ADR-28, FR-068): `GPS` = *Use my location*, `MAP` = a tap, a drag or the
+ * crosshair on the map, `APPROX` = the person says the spot is approximate (a listing whose locality is known but
+ * not the building). Absent on a house saved before this: unknown, shown as before. An `APPROX` house is a hollow
+ * marker on the map and never a Hunt-mode alert.
+ */
+export type LocationSource = 'GPS' | 'MAP' | 'APPROX';
+
+/**
+ * The real cost of a house (docs/11 5.21, 5.30 item 1). Whole rupees and whole months; a field that is not known
+ * is absent (never `null` in a file). The deposit and the brokerage may be given in rupees or in months of rent;
+ * when both are set the rupees win in the arithmetic (`costSummary`). Same eleven fields, same names, as Kotlin
+ * `HouseCost` in android/shared and the server's `HouseDto.cost`.
+ */
+export interface HouseCost {
+  deposit?: number | null;
+  depositMonths?: number | null;
+  maintenance?: number | null;
+  maintenanceIncluded?: boolean | null;
+  brokerage?: number | null;
+  brokerageMonths?: number | null;
+  lockInMonths?: number | null;
+  noticeMonths?: number | null;
+  /** A calendar date, `YYYY-MM-DD`, no time zone. */
+  availableFrom?: string | null;
+  myOffer?: number | null;
+  agreedPrice?: number | null;
+}
+
+/** The eleven cost fields in the order every writer (backup, wire, readable copies) keeps them. */
+export const COST_FIELDS = [
+  'deposit',
+  'depositMonths',
+  'maintenance',
+  'maintenanceIncluded',
+  'brokerage',
+  'brokerageMonths',
+  'lockInMonths',
+  'noticeMonths',
+  'availableFrom',
+  'myOffer',
+  'agreedPrice',
+] as const satisfies readonly (keyof HouseCost)[];
 
 export interface HouseDto {
   id: string;
@@ -39,6 +82,11 @@ export interface HouseDto {
   contactPhone?: string | null;
   listingUrl?: string | null;
   notes?: string | null;
+  /** Carpet area in square feet as the person writes it, 1..100000; absent when unknown. */
+  areaSqft?: number | null;
+  locationSource?: LocationSource | null;
+  /** Absent (or null) when no cost field is known; never an empty object in a file. */
+  cost?: HouseCost | null;
   checklist: Record<string, number>;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -125,6 +173,7 @@ export const CHECKLIST: readonly ChecklistItem[] = [
 ];
 
 export const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED'];
+export const LOCATION_SOURCES: readonly LocationSource[] = ['GPS', 'MAP', 'APPROX'];
 
 /** Translation key for each status label. */
 export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = {
@@ -162,7 +211,7 @@ export function houseScore(h: Pick<HouseDto, 'checklist' | 'rating'>): number | 
   return check ?? rating;
 }
 
-export function newHouse(lat: number, lon: number): HouseDto {
+export function newHouse(lat: number, lon: number, locationSource: LocationSource | null = null): HouseDto {
   return {
     id: uuid(),
     label: '',
@@ -180,6 +229,9 @@ export function newHouse(lat: number, lon: number): HouseDto {
     contactPhone: null,
     listingUrl: null,
     notes: null,
+    areaSqft: null,
+    locationSource,
+    cost: null,
     checklist: {},
     deleted: false,
     syncVersion: 0,

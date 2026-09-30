@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.model.HouseCost
+
 /**
  * A saved house as on-device AI sees it (docs/03 §13.1): the fields the server's `HouseDto` gives its AI code, from
  * the phone's database (`HouseEntity`) or the website's store. The contact fields are here only so [ContactRedactor]
@@ -42,6 +44,10 @@ data class AiHouse(
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
+    /** Carpet area in sq ft (slice 1a). */
+    val areaSqft: Int? = null,
+    /** The cost (slice 1a); [HouseDocuments] writes every line of it except `myOffer` (docs/11 5.30 item 5). */
+    val cost: HouseCost? = null,
     val checklist: Map<String, Int> = emptyMap(),
     /** Newest last or in any order; only arrivals and departures are read. */
     val visits: List<AiVisit> = emptyList(),

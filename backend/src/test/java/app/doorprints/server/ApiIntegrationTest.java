@@ -247,6 +247,75 @@ class ApiIntegrationTest {
         assertThat(onStreet).singleElement().satisfies(h -> assertThat(h.get("street")).isEqualTo(street));
     }
 
+    /** Slice 1a (V7): the house's own values go in through PUT and come back out of GET and the sync list. */
+    @Test
+    void carpetAreaLocationSourceAndCostRoundTrip() {
+        var id = UUID.randomUUID();
+        var body = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        body.put("price", 32000);
+        body.put("priceType", "RENT");
+        body.put("areaSqft", 1150);
+        body.put("locationSource", "APPROX");
+        var cost = new HashMap<String, Object>();
+        cost.put("deposit", 64000);
+        cost.put("maintenance", 2500);
+        cost.put("maintenanceIncluded", false);
+        cost.put("brokerageMonths", 1);
+        cost.put("lockInMonths", 11);
+        cost.put("noticeMonths", 2);
+        cost.put("availableFrom", "2026-10-15");
+        cost.put("myOffer", 30000);
+        cost.put("agreedPrice", 31000);
+        body.put("cost", cost);
+
+        var saved = put(id, body);
+        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        for (var h : List.of(saved, read)) {
+            assertThat(h).containsEntry("areaSqft", 1150).containsEntry("locationSource", "APPROX");
+            // Absent cost fields are left out of the object (a client reads absent and null alike).
+            assertThat(h.get("cost")).isEqualTo(cost);
+        }
+        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+                .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
+        assertThat(listed.get("cost")).isEqualTo(cost);
+
+        // A PUT is a full replacement: leaving the values out clears them, and {} is the same as no cost.
+        var cleared = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        cleared.put("cost", Map.of());
+        var replaced = put(id, cleared);
+        assertThat(replaced.get("areaSqft")).isNull();
+        assertThat(replaced.get("locationSource")).isNull();
+        assertThat(replaced.get("cost")).isNull();
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
+    }
+
+    /** Out-of-range slice 1a values are refused with 400 like the other fields, naming the field. */
+    @Test
+    void badCarpetAreaLocationSourceOrCostIsABadRequest() {
+        var id = UUID.randomUUID();
+        var badSource = house("Bad", 12.9, 77.6, null);
+        badSource.put("locationSource", "GUESS");
+        var badArea = house("Bad", 12.9, 77.6, null);
+        badArea.put("areaSqft", 0);
+        var negativeDeposit = house("Bad", 12.9, 77.6, null);
+        negativeDeposit.put("cost", Map.of("deposit", -1));
+        var tooManyMonths = house("Bad", 12.9, 77.6, null);
+        tooManyMonths.put("cost", Map.of("lockInMonths", 121));
+        var badDateShape = house("Bad", 12.9, 77.6, null);
+        badDateShape.put("cost", Map.of("availableFrom", "15/10/2026"));
+        var noSuchDay = house("Bad", 12.9, 77.6, null);
+        noSuchDay.put("cost", Map.of("availableFrom", "2026-02-30"));
+
+        for (var body : List.of(badSource, badArea, negativeDeposit, tooManyMonths, badDateShape, noSuchDay)) {
+            assertThat(status(() -> put(id, body))).as("%s", body).isEqualTo(400);
+        }
+        assertThatThrownBy(() -> put(id, negativeDeposit)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("cost.deposit"));
+        assertThatThrownBy(() -> put(id, noSuchDay)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("availableFrom must be a calendar date"));
+        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+    }
+
     @Test
     void nearbyRejectsOutOfRangeParameters() {
         assertThat(status(() -> api.get().uri("/api/houses/nearby?lat=95&lon=77.6").retrieve().body(String.class)))
@@ -311,6 +380,9 @@ class ApiIntegrationTest {
         var body = house("Private notes house", 12.9, 77.6, "Secret Street");
         body.put("notes", "landlord is rude");
         body.put("contactPhone", "+91 98450 12345");
+        body.put("areaSqft", 1150);
+        body.put("locationSource", "GPS");
+        body.put("cost", Map.of("deposit", 64000, "myOffer", 30000));
         put(id, body);
         var photoId = uploadPhoto(id, ImageSanitizerTest.jpegWithExif());
         var visitId = UUID.randomUUID();
@@ -329,6 +401,9 @@ class ApiIntegrationTest {
                 .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
         assertThat(changed.get("deleted")).isEqualTo(true);
         assertThat(changed.get("notes")).isNull();
+        assertThat(changed.get("areaSqft")).isNull();
+        assertThat(changed.get("locationSource")).isNull();
+        assertThat(changed.get("cost")).isNull();
         assertThat(changed.get("contactPhone")).isNull();
         assertThat(changed.get("street")).isNull();
         assertThat(changed.get("label")).isEqualTo("");

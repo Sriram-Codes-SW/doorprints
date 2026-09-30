@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.91 |
+| Version | 0.92 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -103,6 +103,7 @@
 | 0.89 | 2026-09-30 | Claude (Code), lead | **A shared listing built** (S4b-FR-4, branch `feat/s4b-fr-4-listing-share`): new **§13.17**; §15 S4b-FR-4 done in code (the listing flow; brokers with 4c); TC-M-34 (owner). |
 | 0.90 | 2026-09-30 | Claude (Code), lead | **The Sprint 4b data model designed** (N13 4c, [11](11-feature-parity-and-export-spec.md) 5.30, [03](03-design.md) ADR-28): §15 S4b-FR-7..11 designed with their slice; S4b-BL-71, S4b-BL-72 and S4b-BL-66 are slice 0 of the batch; S4b-BL-77 applies to slice 1. |
 | 0.91 | 2026-09-30 | Claude (Code), lead | **The records foundations built** (slice 0 of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-0-records`): new **§13.18**; S4b-BL-66, S4b-BL-71 and S4b-BL-72 done in code. |
+| 0.92 | 2026-09-30 | Claude (Code), lead | **The house's cost, carpet area and location source built** (slice 1a of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1-house-values-brokers`): new **§13.19**; §15 S4b-FR-7 done in code; new **S4b-BL-84** (filters over the cost numbers). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1199,6 +1200,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-81 | iOS | **Copies and imports on iPhone** (`PlatformFeatures.Ios.copiesAndImports`; new id): *Save a copy* through the share sheet and the Files app (`UIDocumentPickerViewController`, `UIActivityViewController`), *Import a backup* from the Files app and from a file another app opens in Doorprints (the backup's document type in `Info.plist`, `onOpenURL`); the common Export and Import screens exist, the iOS `ExportServices` and `ImportServices` are the inert ones of CMP-8b. Needed before the iPhone can share updates (S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). | Open |
 | S4b-BL-82 | Shared | **Deletions in an update file** ([11](11-feature-parity-and-export-spec.md) 5.28 item 3; new id): the backup format carries no tombstones (docs/schemas §6 rule 5), so a house one person deleted stays on the other's phone. A `deleted` list in an update file (ids and `updatedAt`), applied by an update import only (a backup restore ignores it), with the preview saying "*d* deleted by Ravi"; the three stacks' format tests. | Open |
 | S4b-BL-83 | Android, iOS, Web | **Look up a locality by name** ([11](11-feature-parity-and-export-spec.md) 5.29 item 4; new id): "Where is it?" for a shared listing offers the locality the parser found, looked up on the person's tap (Android `Geocoder.getFromLocationName`, iPhone `CLGeocoder.geocodeAddressString`, the website Nominatim `/search` under its one-request-a-second policy), then placed on the map for the person to move; the privacy note names the lookup as it names the reverse one. | Open |
+| S4b-BL-84 | Android, Web | **Filters over the cost numbers** ([11](11-feature-parity-and-export-spec.md) 5.21: "the numbers join the filters"; new id): the list's filter sheet gains monthly cost, money to move in and per sq ft ranges once the list has a filter sheet at all (today it has a search box and the status chips). After slice 1a, with the list's own design round. | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2512,6 +2514,37 @@ and [03](03-design.md) ADR-28, slice 0: no visible change, the ground for slices
 **Not built here:** no record type exists yet (brokers come with slice 1); the web's backup reader (S4b-BL-75) and a
 Playwright check of the IndexedDB upgrade against the built site (S4b-BL-71's last item, `tools/live-ui`).
 
+### 13.19 The house's cost, carpet area and location source, slice 1a of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-1-house-values-brokers`; [11](11-feature-parity-and-export-spec.md) 5.30
+item 1 and 5.21, ADR-28; slice 1 in three steps, this the first):
+
+- **The fields**, optional and additive on the house in all three stacks, so the backup stays `doorprints-backup/1`
+  (docs/schemas README §1.1 and §3.1): `areaSqft` (1..100000), `locationSource` (`GPS`, `MAP`, `APPROX`) and the nested
+  `cost` (`deposit`, `depositMonths`, `maintenance`, `maintenanceIncluded`, `brokerage`, `brokerageMonths`,
+  `lockInMonths`, `noticeMonths`, `availableFrom`, `myOffer`, `agreedPrice`), written after `notes` and before
+  `checklist` by every writer. Room **5** (`MIGRATION_4_5`, `5.json`; the cost embedded as `cost_*` columns), Flyway
+  **`V7__house_values.sql`** (`area_sqft`, `location_source`, `cost jsonb`), IndexedDB unchanged (no store changed).
+  `docs/schemas/backup-sample.json` carries them on houses 1 and 3; the web byte golden regenerated.
+- **The arithmetic once**: `CostSummary` (`:shared`, `shared/model/HouseCost.kt`) and `costSummary`
+  (`web/src/app/shared/house-cost.ts`) over one list of seven vectors: monthly cost (rent plus maintenance unless
+  included), money to move in (deposit and brokerage, in rupees or months of rent, plus the first month), cost per sq
+  ft from the agreed price when set, else the asked price.
+- **Screens**: the form's *Carpet area* next to BHK, a **Cost** section (rent-only fields hidden for a sale, a date
+  picker for *Available from*, the computed line under the fields) and the *Approximate location* switch; the maps
+  draw an approximate house as a hollow ring in its status colour with a legend entry; Hunt mode never alerts at one
+  (`HuntEngine`); Compare gains carpet area, monthly cost, money to move in, per sq ft, available from and the agreed
+  price. The same on the website. Four languages (hi, ta, te *under review*), both themes; the form's screenshots
+  re-recorded.
+- **Copies and AI**: the houses table of the CSV ZIP and the XLSX gains the columns (the three computed ones too);
+  HTML, PDF and Markdown get a *Cost* block and an *Approximate location* line; `AiHouse` and the server's
+  `HouseDocuments` carry the area and the cost without *my offer*; the no-AI listing parser fills `areaSqft`.
+- **Tests and docs**: [06](06-test-plan.md) TC-U-99; docs/schemas README 1.11; [03](03-design.md) §6.1, §9; the guide's
+  houses page; CHANGELOG.
+
+**Not built here:** brokers (1b) and rooms (1c); the price filters over the new numbers (**S4b-BL-84**); the viewing
+questions' pre-fill (slice 3).
+
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
 **The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
@@ -2555,7 +2588,7 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. **Done in code** (2026-09-30, §13.17; designed the same day, [11](11-feature-parity-and-export-spec.md) 5.29): the portal's share text and link, parsed on the device without AI on Android and the web (one fixture file), the Android share receiver, the map step, the duplicate check by link; the page is never fetched (5.9), photos never taken; the locality lookup is S4b-BL-83 and brokers come with (4c); on a phone TC-M-34 (owner) | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
 | S4b-FR-5 | **App lock** on the phones: PIN, fingerprint or face, with the phone's own credential ([11](11-feature-parity-and-export-spec.md) 5.19, D-30). | With Google sign-in (N13 3b); threat-model item for a lost or shared phone; emulator test and a device check. | **Done in code** (2026-09-29, `feat/s4b-fr-5-app-lock`): Settings > Privacy > *Lock Doorprints*; threat model T-I29; [06](06-test-plan.md) TC-U-90, device check TC-M-29; emulator test S4b-BL-67. |
 | S4b-FR-6 | **Offline maps for the hunting area** (11 5.20, D-30). | With the path trace (S4b-FR-2): one map change, one TC-M-25 re-check; India's boundary rules on the offline tiles; free tile sources only, size shown first, Wi-Fi by default. | **Done in code** (2026-09-30, Android and iPhone, §13.15; [11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as MapLibre's own offline pack, the estimate and the 2,000-tile cap in common code, the mobile-data note, Settings > Offline maps; the website is S4b-BL-79; on a phone TC-M-32 (owner), which is the TC-M-25 re-check offline |
-| S4b-FR-7 | **The real cost of a house, my offer and the agreed price** (11 5.21, D-30). | In S4-11 with rooms and carpet area; one data-model and format change with S4-08; Compare's monthly cost, money to move in, cost per sq ft; the search rule. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): the nested `cost` object on the house, slice 1 of the (4c) batch with brokers |
+| S4b-FR-7 | **The real cost of a house, my offer and the agreed price** (11 5.21, D-30). | In S4-11 with rooms and carpet area; one data-model and format change with S4-08; Compare's monthly cost, money to move in, cost per sq ft; the search rule. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): the nested `cost` object on the house, slice 1 of the (4c) batch with brokers. **Done in code** (2026-09-30, §13.19, slice 1a): the fields, `CostSummary`, the form's Cost section, Compare, the copies |
 | S4b-FR-8 | **My places and distances** (11 5.22, D-30). | S4-20, with hunting areas (S4-18); the Plan route's offline estimate. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): a `places` record, slice 4 |
 | S4b-FR-9 | **Area notes** (11 5.23, D-30). | S4-20; searchable; redaction as house notes. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): an `areaNotes` record, searchable, slice 4 |
 | S4b-FR-10 | **Moving in**: *Taken*, move-in checklist, condition record, close the hunt (11 5.24, D-30). | S4-21, after viewings (S4-12) and photo tags (S4-15). | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): the statuses `TAKEN` and `NOT_CHOSEN` on the house and a `moveIn` record, slice 5 |

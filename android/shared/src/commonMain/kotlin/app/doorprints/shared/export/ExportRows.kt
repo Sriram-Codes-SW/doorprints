@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.CostSummary
 import kotlin.math.floor
 
 /**
@@ -80,6 +81,7 @@ object ExportRows {
             add(s["col.lat"]); add(s["col.lon"])
             if (bundle.options.includeContacts) { add(s["col.contactName"]); add(s["col.contactPhone"]) }
             add(s["col.listingUrl"]); add(s["col.notes"])
+            addAll(COST_COLUMN_KEYS.map { s[it] })
             add(s["col.visits"]); add(s["col.photos"])
             add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
         }
@@ -97,6 +99,7 @@ object ExportRows {
                 add(Cell.Num(h.lat, 6)); add(Cell.Num(h.lon, 6))
                 if (bundle.options.includeContacts) { add(text(h.contactName)); add(text(h.contactPhone)) }
                 add(text(h.listingUrl)); add(text(h.notes))
+                addAll(costCells(h, s))
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
                 add(Cell.Count(bundle.photosOf(h).size.toLong()))
                 add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))
@@ -166,6 +169,64 @@ object ExportRows {
         }
         return ExportTable("photos", s["table.photos"], columns, rows)
     }
+
+    /**
+     * The house's own values (docs/11 5.30 item 1, slice 1a) as columns of the houses table, in this order: the
+     * thirteen stored ones, then the three [CostSummary] computes. The same list on the web (`export-rows.ts`).
+     */
+    val COST_COLUMN_KEYS: List<String> = listOf(
+        "col.areaSqft", "col.locationSource", "col.deposit", "col.depositMonths", "col.maintenance",
+        "col.maintenanceIncluded", "col.brokerage", "col.brokerageMonths", "col.lockInMonths", "col.noticeMonths",
+        "col.availableFrom", "col.myOffer", "col.agreedPrice", "col.monthlyCost", "col.moveIn", "col.perSqFt",
+    )
+
+    /** The cells of [COST_COLUMN_KEYS] for [h]: blank where unknown or not computable. */
+    fun costCells(h: ExportHouse, s: ExportStrings): List<Cell> {
+        val c = h.cost
+        val summary = CostSummary.of(h.price, h.priceType, h.areaSqft, c)
+        return listOf(
+            count(h.areaSqft),
+            // The source as its enum word (GPS, MAP, APPROX), like a checklist key: a machine value, as the web writes it.
+            text(h.locationSource),
+            money(c?.deposit), count(c?.depositMonths), money(c?.maintenance),
+            c?.maintenanceIncluded?.let { Cell.Text(s[if (it) "yes" else "no"]) } ?: Cell.Blank,
+            money(c?.brokerage), count(c?.brokerageMonths), count(c?.lockInMonths), count(c?.noticeMonths),
+            text(c?.availableFrom), money(c?.myOffer), money(c?.agreedPrice),
+            money(summary.monthlyCost), money(summary.moveIn),
+            summary.perSqFt?.let { Cell.Num(it, 1) } ?: Cell.Blank,
+        )
+    }
+
+    /**
+     * The **Cost** block of a house page in the readable copies (HTML, PDF, Markdown): a line per set field, in the
+     * format's order (months as "{n} months"), then "Monthly cost", "Money to move in" and "Cost per sq ft" when
+     * computable; empty when the house has no cost and nothing computes beyond its price. Rupees in the reader's form.
+     */
+    fun costLines(h: ExportHouse, s: ExportStrings): List<Pair<String, String>> {
+        val c = h.cost
+        val summary = CostSummary.of(h.price, h.priceType, h.areaSqft, c)
+        return buildList {
+            c?.deposit?.let { add(s["col.deposit"] to rupees(it)) }
+            c?.depositMonths?.let { add(s["col.depositMonths"] to s.months(it)) }
+            c?.maintenance?.let { add(s["col.maintenance"] to rupees(it)) }
+            c?.maintenanceIncluded?.let { add(s["col.maintenanceIncluded"] to s[if (it) "yes" else "no"]) }
+            c?.brokerage?.let { add(s["col.brokerage"] to rupees(it)) }
+            c?.brokerageMonths?.let { add(s["col.brokerageMonths"] to s.months(it)) }
+            c?.lockInMonths?.let { add(s["col.lockInMonths"] to s.months(it)) }
+            c?.noticeMonths?.let { add(s["col.noticeMonths"] to s.months(it)) }
+            c?.availableFrom?.let { add(s["col.availableFrom"] to it) }
+            c?.myOffer?.let { add(s["col.myOffer"] to rupees(it)) }
+            c?.agreedPrice?.let { add(s["col.agreedPrice"] to rupees(it)) }
+            // The monthly cost is only worth a line when it says more than the price itself.
+            summary.monthlyCost?.takeIf { it != h.price }?.let { add(s["col.monthlyCost"] to rupees(it)) }
+            summary.moveIn?.takeIf { it != h.price }?.let { add(s["col.moveIn"] to rupees(it)) }
+            // Whole rupees here, as the web's page writes it; the table keeps the decimal.
+            summary.perSqFt?.let { add(s["col.perSqFt"] to rupees(floor(it + 0.5).toLong())) }
+        }
+    }
+
+    private fun money(value: Long?): Cell = value?.let { Cell.Money(it) } ?: Cell.Blank
+    private fun count(value: Int?): Cell = value?.let { Cell.Count(it.toLong()) } ?: Cell.Blank
 
     /** Built-in checklist keys in display order first, then anything else the house has, alphabetically. */
     fun orderedChecklistKeys(house: ExportHouse): List<String> {

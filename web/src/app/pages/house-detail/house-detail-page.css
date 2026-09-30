@@ -236,6 +236,20 @@
   flex: 1 1 8rem;
 }
 
+/* The computed cost line ("Monthly cost ₹34,500 · To move in ₹1,28,000 · ₹27 per sq ft"). */
+.cost-line {
+  margin: var(--space-2) 0 0;
+  font-weight: 600;
+}
+
+.row > .field.checkbox {
+  align-self: end;
+}
+
+.approx {
+  margin-top: var(--space-3);
+}
+
 .attribution {
   display: block;
   margin-top: var(--space-2);

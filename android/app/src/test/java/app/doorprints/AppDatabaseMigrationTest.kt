@@ -130,6 +130,35 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    /**
+     * v5 (docs/11 5.30 slice 1a): the whole chain ends in the committed `5.json`; a house from before has its area,
+     * location source and every `cost_*` column null, and the DAO reads that as no cost at all.
+     */
+    @Test
+    fun migrations1To5MatchTheExportedSchemaAndAHouseFromBeforeHasNoValues() = runBlocking {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(5, AppDatabase.MIGRATIONS.toList())
+        try {
+            // IFNULL: the helper reads text, and a NULL column has none.
+            assertEquals(listOf("h1|||||"), db.rows("SELECT id, IFNULL(areaSqft, ''), IFNULL(locationSource, ''), IFNULL(cost_deposit, ''), IFNULL(cost_availableFrom, ''), IFNULL(cost_agreedPrice, '') FROM houses"))
+            assertEquals(13, AppDatabase.HOUSE_VALUE_COLUMNS.size)
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.areaSqft)
+            assertEquals(null, house.locationSource)
+            assertEquals(null, house.cost)
+        } finally {
+            opened.close()
+        }
+    }
+
     @Test
     fun aVersion1HousehuntDatabaseMovesMigratesAndOpensWithItsRows() = runBlocking {
         val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)

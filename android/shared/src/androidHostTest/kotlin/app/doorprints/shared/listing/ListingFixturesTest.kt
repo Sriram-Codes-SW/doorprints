@@ -66,6 +66,9 @@ class ListingFixturesTest {
             assertEquals("$name: listingUrl", str("listingUrl"), d.listingUrl)
             assertEquals("$name: portal", str("portal"), ListingText.portal(d.listingUrl))
             str("notesStart")?.let { assertTrue("$name: notes start with $it", d.notes!!.startsWith(it)) }
+            // Slice 1a: a case whose notes begin with "<n> sq ft" fills the carpet area with that n; the others none.
+            val area = str("notesStart")?.let { Regex("^(\\d+) sq ft").find(it)?.groupValues?.get(1)?.toInt() }
+            assertEquals("$name: areaSqft", area, d.areaSqft)
             assertTrue("$name: the whole text is in the notes", d.notes!!.contains(text.trim().take(40)))
         }
     }

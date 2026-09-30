@@ -168,13 +168,24 @@ const val MARKER_HIT_RADIUS_DP = 24f
  * of black at [LEGEND_OUTLINE_ALPHA] outside it, the whole dot at [alpha]. [status] is the `HouseStatus` name, which
  * picks the colour (`MarkerColors`) and the label (`status_NEW`, `status_SHORTLISTED`, `status_REJECTED`).
  */
-data class LegendDot(val status: String, val diameterDp: Float, val ringDp: Float, val alpha: Float)
+data class LegendDot(
+    val status: String,
+    val diameterDp: Float,
+    val ringDp: Float,
+    val alpha: Float,
+    /** A ring in the status colour with nothing inside: the approximate location's marker (FR-068, slice 1a). */
+    val hollow: Boolean = false,
+)
 
-/** The legend's three dots, in the web's order, with the web's sizes (12, 16 and 9 px): shortlisted largest. */
+/**
+ * The legend's dots, in the web's order, with the web's sizes (12, 16 and 9 px): shortlisted largest; then
+ * "Approximate", a hollow ring the size of a new house's dot (FR-068), its colour the status's on the map.
+ */
 val LEGEND_DOTS = listOf(
     LegendDot("NEW", diameterDp = 12f, ringDp = MARKER_STROKE_DP, alpha = 1f),
     LegendDot("SHORTLISTED", diameterDp = 16f, ringDp = MARKER_STROKE_SHORTLISTED_DP, alpha = 1f),
     LegendDot("REJECTED", diameterDp = 9f, ringDp = MARKER_STROKE_DP, alpha = MARKER_OPACITY_REJECTED),
+    LegendDot("APPROX", diameterDp = 12f, ringDp = MARKER_STROKE_DP, alpha = 1f, hollow = true),
 )
 
 /** The dark hairline round each legend dot (the web's `box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35)`), in dp. */

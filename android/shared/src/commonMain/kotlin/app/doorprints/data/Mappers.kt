@@ -24,6 +24,8 @@ import app.doorprints.shared.api.RecordDto
 import app.doorprints.shared.api.VisitDto
 import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseValues
+import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 import kotlinx.serialization.json.JsonObject
 
@@ -38,15 +40,21 @@ fun HouseEntity.toDto() = HouseDto(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(),
     checklist = checklist, createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
+
+// A pulled row's values are coerced, not refused (slice 1a): a field outside its range becomes unknown and the rest
+// of the house is kept, as the web's reader does; the server refuses such a row on its own PUT.
 
 fun HouseDto.toEntity() = HouseEntity(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = HouseStatus.fromWire(status),
     price = price, priceType = priceType, bedrooms = bedrooms, rating = rating, contactName = contactName,
-    contactPhone = contactPhone, listingUrl = listingUrl, notes = notes, checklist = checklist,
+    contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
+    areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
+    cost = cost?.coerced(), checklist = checklist,
     createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     deleted = deleted, dirty = false,
