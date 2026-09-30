@@ -24,6 +24,7 @@ import { describe, expect, it } from 'vitest';
 import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
+import type { BrokerRow } from '../../shared/broker';
 import { ComparePage } from './compare-page';
 
 const RENT: HouseDto = {
@@ -46,12 +47,12 @@ interface Row {
 
 /** The rows slice 1a adds to Compare: the carpet area and what a house really costs, from `costSummary`. */
 describe('ComparePage', () => {
-  async function rows(): Promise<Row[]> {
+  async function render(brokers: BrokerRow[] = []) {
     TestBed.configureTestingModule({
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of([RENT, SALE]), visitCounts: () => of(new Map()) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of([RENT, SALE]), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
       ],
     });
@@ -59,7 +60,11 @@ describe('ComparePage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return (fixture.componentInstance as unknown as { rows: () => Row[] }).rows();
+    return fixture;
+  }
+
+  async function rows(): Promise<Row[]> {
+    return ((await render()).componentInstance as unknown as { rows: () => Row[] }).rows();
   }
 
   it('shows the carpet area, the monthly cost, the money to move in, the price per sq ft and the agreed price', async () => {
@@ -71,5 +76,29 @@ describe('ComparePage', () => {
     expect(byId.get('perSqFt')).toEqual(['₹27', '₹862']);
     expect(byId.get('availableFrom')).toEqual(['2026-10-15', '–']);
     expect(byId.get('agreedPrice')).toEqual(['₹31,000', '–']);
+  });
+
+  /** Slice 1b: a linked house shows its broker's name and agency in the Contact row, the phone as before. */
+  it('shows the broker and agency in the Contact row of a linked house', async () => {
+    const linked = { ...RENT, brokerId: 'b-1', contactName: 'Ravi Kumar', contactPhone: '+91 98400 11111' };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [ComparePage],
+      providers: [
+        provideRouter([]),
+        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ComparePage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const cells = [...(fixture.nativeElement as HTMLElement).querySelectorAll('tr')]
+      .find((tr) => tr.querySelector('th')?.textContent?.includes('Contact'))!
+      .querySelectorAll('td');
+    expect(cells[0].textContent).toContain('Ravi Kumar (Adyar Homes)');
+    expect(cells[0].querySelector('a')?.getAttribute('href')).toContain('tel:');
+    expect(cells[1].textContent).toContain('–');
   });
 });

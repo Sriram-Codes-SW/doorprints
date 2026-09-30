@@ -720,4 +720,33 @@
     <string name="common_sqft">%1$s சதுர அடி</string>
     <string name="legend_approx">தோராயம்</string>
     <string name="common_ok">சரி</string>
+    <!-- S4b-FR-7 slice 1b, brokers (2026-09-30): under review. -->
+    <string name="settings_brokers">தரகர்கள்</string>
+    <string name="settings_brokers_hint">உங்களுக்கு வீடுகளைக் காட்டுபவர்கள்: அவர்களின் தொலைபேசி, நிறுவனம், கட்டணம்</string>
+    <string name="brokers_title">தரகர்கள்</string>
+    <string name="brokers_add">தரகரைச் சேர்</string>
+    <string name="brokers_empty_title">இன்னும் தரகர்கள் இல்லை.</string>
+    <string name="brokers_empty_body">தொலைபேசி எண்ணுடன் வீட்டைச் சேமித்ததும் அவர்கள் இங்கே தோன்றுவார்கள்.</string>
+    <string name="broker_title">தரகர்</string>
+    <string name="broker_name">பெயர்</string>
+    <string name="broker_name_needed">பெயரை உள்ளிடுங்கள்</string>
+    <string name="broker_phone">தொலைபேசி</string>
+    <string name="broker_agency">நிறுவனம்</string>
+    <string name="broker_fee_terms">கட்டண விதிமுறைகள் (எ.கா., 15 நாள் வாடகை, ஒருமுறை)</string>
+    <string name="broker_notes">குறிப்புகள்</string>
+    <string name="broker_rating">உங்கள் மதிப்பீடு</string>
+    <string name="broker_houses">இந்தத் தரகரின் வீடுகள்</string>
+    <string name="broker_houses_none">இந்தத் தரகரின் வீடுகள் இன்னும் இல்லை.</string>
+    <string name="broker_delete">தரகரை நீக்கு</string>
+    <string name="broker_delete_title">இந்தத் தரகரை நீக்கவா?</string>
+    <string name="broker_delete_body">வீடுகளில் அவர்களின் தொடர்பு விவரங்கள் இருக்கும்.</string>
+    <string name="broker_gone">இந்தத் தரகர் இனி இந்தத் தொலைபேசியில் இல்லை.</string>
+    <string name="house_broker">தரகர்</string>
+    <string name="house_broker_none">யாருமில்லை</string>
+    <string name="house_broker_new">புதிய தரகர்</string>
+    <string name="house_broker_hint">தரகரைத் தேர்ந்தால் தொடர்பு பெயரும் தொலைபேசியும் நிரம்பும்; அவற்றைத் தரகர் பக்கத்தில் மாற்றுங்கள். சேமிக்கும்போது தொலைபேசி எண் வீட்டை அதன் தரகருடன் இணைக்கும்.</string>
+    <plurals name="brokers_houses_count">
+        <item quantity="one">%1$d வீடு</item>
+        <item quantity="other">%1$d வீடுகள்</item>
+    </plurals>
 </resources>

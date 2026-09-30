@@ -723,4 +723,33 @@
     <string name="common_sqft">%1$s sq ft</string>
     <string name="legend_approx">Approximate</string>
     <string name="common_ok">OK</string>
+    <!-- S4b-FR-7 slice 1b, brokers (2026-09-30). -->
+    <string name="settings_brokers">Brokers</string>
+    <string name="settings_brokers_hint">The people who show you houses: their phone, agency and fees</string>
+    <string name="brokers_title">Brokers</string>
+    <string name="brokers_add">Add broker</string>
+    <string name="brokers_empty_title">No brokers yet.</string>
+    <string name="brokers_empty_body">They appear when you save a house with a phone number.</string>
+    <string name="broker_title">Broker</string>
+    <string name="broker_name">Name</string>
+    <string name="broker_name_needed">Enter a name</string>
+    <string name="broker_phone">Phone</string>
+    <string name="broker_agency">Agency</string>
+    <string name="broker_fee_terms">Fee terms (for example, 15 days’ rent, once)</string>
+    <string name="broker_notes">Notes</string>
+    <string name="broker_rating">Your rating</string>
+    <string name="broker_houses">Houses from this broker</string>
+    <string name="broker_houses_none">No houses from this broker yet.</string>
+    <string name="broker_delete">Delete broker</string>
+    <string name="broker_delete_title">Delete this broker?</string>
+    <string name="broker_delete_body">The houses keep their contact details.</string>
+    <string name="broker_gone">This broker is no longer on this phone.</string>
+    <string name="house_broker">Broker</string>
+    <string name="house_broker_none">None</string>
+    <string name="house_broker_new">New broker</string>
+    <string name="house_broker_hint">Choosing a broker fills in the contact name and phone; change them on the broker’s page. A phone number links the house to its broker when you save.</string>
+    <plurals name="brokers_houses_count">
+        <item quantity="one">%1$d house</item>
+        <item quantity="other">%1$d houses</item>
+    </plurals>
 </resources>

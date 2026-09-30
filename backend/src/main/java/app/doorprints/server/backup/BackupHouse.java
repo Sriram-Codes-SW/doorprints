@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * One house in the shared backup format ({@code doorprints-backup/1}).
+ * One house in the shared backup format ({@code doorprints-backup/1}, and {@code /2} when the copy holds brokers).
  *
  * <p><b>Null semantics (NFR-025).</b> A field that has no value is <em>left out</em> of the JSON; a reader must
  * treat "absent" and "null" as the same thing, which is what the Kotlin writer's {@code explicitNulls = false} and
@@ -62,7 +62,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
         "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
-        "cost", "checklist", "createdAt", "updatedAt"})
+        "cost", "brokerId", "checklist", "createdAt", "updatedAt"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -86,6 +86,8 @@ public record BackupHouse(
         Integer areaSqft,
         String locationSource,
         HouseCost cost,
+        /* Slice 1b: the id of a broker record; kept as given even when the file or the store has no such broker. */
+        String brokerId,
         /* Always written, possibly empty; keys are sorted so two copies of the same data are the same document.
            Null only on the way in (absent or null in the file), which BackupService reads as {}: see the class
            comment. */

@@ -22,13 +22,14 @@ import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { buildCsvTables } from './csv-export';
 import { buildMarkdown } from './markdown-export';
 import { buildHtml } from './html-export';
-import { BACKUP_APP, BACKUP_FORMAT, BACKUP_FORMATS_READ, BACKUP_LIMITS, backupJson, buildBackupData, buildBackupZip } from './backup-export';
+import { BACKUP_APP, BACKUP_FORMAT, BACKUP_FORMAT_V2, BACKUP_FORMATS_READ, BACKUP_LIMITS, backupJson, buildBackupData, buildBackupZip } from './backup-export';
 import { buildXlsx } from './xlsx-export';
 import { buildWorkbook } from './xlsx-sheets';
 import { display, exportTables, plain } from './export-rows';
 import { ExportStrings } from './export-strings';
 import { collect } from './export-model';
 import {
+  FIXTURE_BROKERS,
   FIXTURE_EXPORTED_AT,
   FIXTURE_HOUSES,
   FIXTURE_OPTIONS,
@@ -39,6 +40,7 @@ import {
   fixtureBundle,
 } from './golden/fixture';
 import {
+  GOLDEN_BROKERS_CSV,
   GOLDEN_HOUSES_CSV,
   GOLDEN_PHOTOS_CSV,
   GOLDEN_SCORES_CSV,
@@ -100,6 +102,31 @@ describe('collect', () => {
     expect(FIXTURE_HOUSES[0].contactPhone).toBe('+91 98400 11111');
   });
 
+  it('carries the brokers, oldest edit first, with the houses of the copy that use them', () => {
+    const bundle = fixtureBundle();
+    expect(bundle.brokers.map((b) => b.broker.name)).toEqual(['Meena Iyer', 'Ravi Kumar']);
+    expect(bundle.brokers.map((b) => b.houses.map((h) => h.id.slice(0, 2)))).toEqual([['33'], ['11']]);
+  });
+
+  it('leaves the brokers and every brokerId out when contacts are left out', () => {
+    const bundle = fixtureBundle({ includeContacts: false });
+    expect(bundle.brokers).toEqual([]);
+    expect(bundle.houses.map((h) => h.house.brokerId)).toEqual([null, null, null]);
+  });
+
+  it('keeps every broker in a copy of all houses but only the used ones in a partial copy', () => {
+    const extra = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', updatedAt: '2026-09-11T00:00:00.000Z', broker: { name: 'Unused' } };
+    const input = {
+      houses: FIXTURE_HOUSES,
+      visits: FIXTURE_VISITS,
+      photos: FIXTURE_PHOTOS,
+      brokers: [...FIXTURE_BROKERS, extra],
+      exportedAt: FIXTURE_EXPORTED_AT,
+    };
+    expect(collect({ ...input, options: FIXTURE_OPTIONS }).brokers.map((b) => b.broker.name)).toEqual(['Meena Iyer', 'Ravi Kumar', 'Unused']);
+    expect(collect({ ...input, options: { ...FIXTURE_OPTIONS, scope: 'shortlisted' } }).brokers.map((b) => b.broker.name)).toEqual(['Ravi Kumar']);
+  });
+
   it('honours the scope and rejected options', () => {
     expect(fixtureBundle({ scope: 'shortlisted' }).houses).toHaveLength(1);
     expect(fixtureBundle({ includeRejected: false }).houses.map((h) => h.house.status)).toEqual(['SHORTLISTED', 'NEW']);
@@ -136,6 +163,22 @@ describe('CSV export', () => {
     expect(tables['photos.csv']).toBe(GOLDEN_PHOTOS_CSV);
   });
 
+  it('matches the golden brokers.csv, which only a copy with brokers has', () => {
+    expect(tables['brokers.csv']).toBe(GOLDEN_BROKERS_CSV);
+    const none = buildCsvTables(collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }));
+    expect(Object.keys(none).sort()).toEqual(['houses.csv', 'photos.csv', 'scores.csv', 'visits.csv']);
+    expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).not.toContain('brokers.csv');
+  });
+
+  it('writes the broker column right after the phone: the name, and the agency in brackets', () => {
+    const [header, first, second, third] = tables['houses.csv'].replace('\uFEFF', '').split('\r\n');
+    const columns = header.split(',');
+    expect(columns.slice(13, 16)).toEqual(['Contact name', 'Phone', 'Broker']);
+    expect(first).toContain('Ravi Kumar (Adyar Homes)');
+    expect(second).not.toContain('Adyar');
+    expect(third).toContain('Meena Iyer (Beach Road Realty)');
+  });
+
   it('guards against spreadsheet formula injection', () => {
     // A label starting with "=" and a phone number starting with "+" are both prefixed with an apostrophe.
     expect(tables['houses.csv']).toContain(",'=SUM(A1:A9)");
@@ -170,7 +213,7 @@ describe('CSV export', () => {
     const header = buildCsvTables(fixtureBundle({ includeContacts: false }))['houses.csv'].split('\r\n')[0];
     expect(header).not.toContain(ExportStrings.of('en').get('col.contactPhone'));
     expect(header.split(',')).toHaveLength(36);
-    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(38);
+    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(39);
   });
 
   /**
@@ -198,6 +241,12 @@ describe('Markdown export', () => {
     expect(md).toContain('\\<no smoking\\>');
   });
 
+  it('lists the brokers after the houses, and leaves them out with the contacts', () => {
+    const md = buildMarkdown(fixtureBundle(), en);
+    expect(md.indexOf('## Brokers')).toBeGreaterThan(md.indexOf('## 3. '));
+    expect(buildMarkdown(fixtureBundle({ includeContacts: false }), en)).not.toContain('Brokers');
+  });
+
   it('leaves contact rows out when contacts are excluded', () => {
     const md = buildMarkdown(fixtureBundle({ includeContacts: false }), en);
     expect(md).not.toContain('Ravi Kumar');
@@ -210,6 +259,14 @@ describe('HTML export', () => {
 
   it('matches the golden file', () => {
     expect(html).toBe(GOLDEN_HTML);
+  });
+
+  it('has a Brokers section after the houses, with the broker of a house in its own row', () => {
+    expect(html.indexOf('<section class="brokers">')).toBeGreaterThan(html.lastIndexOf('<section class="house">'));
+    expect(html).toContain('<th scope="row">Broker</th><td>Ravi Kumar (Adyar Homes)</td>');
+    const without = buildHtml(fixtureBundle({ includeContacts: false }), en, FIXTURE_PHOTO_DATA_URIS);
+    expect(without).not.toContain('class="brokers"');
+    expect(without).not.toContain('Ravi Kumar');
   });
 
   it('is self-contained and runs no script', () => {
@@ -260,15 +317,17 @@ describe('JSON backup', () => {
    */
   it('pins the backup format it writes and the formats a reader accepts', () => {
     expect(BACKUP_FORMAT).toBe('doorprints-backup/1');
+    expect(BACKUP_FORMAT_V2).toBe('doorprints-backup/2');
     expect(BACKUP_FORMATS_READ).toEqual(['doorprints-backup/1', 'doorprints-backup/2']);
     expect(BACKUP_FORMATS_READ).toContain(BACKUP_FORMAT);
+    expect(BACKUP_FORMATS_READ).toContain(BACKUP_FORMAT_V2);
   });
 
   it('matches the golden data.json', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(2463);
+    expect(new TextEncoder().encode(json).length).toBe(2928);
   });
 
   /**
@@ -287,7 +346,7 @@ describe('JSON backup', () => {
 
   it('uses the format id and the epoch-millisecond timestamps the Android writer uses', () => {
     const data = buildBackupData(fixtureBundle());
-    expect(data.format).toBe(BACKUP_FORMAT);
+    expect(data.format).toBe(BACKUP_FORMAT_V2);
     expect(data.exportedAt).toBe(Date.parse(FIXTURE_EXPORTED_AT));
     expect(data.houses[0].updatedAt).toBe(Date.parse('2026-09-10T08:30:00.000Z'));
     expect(data.visits[1].leftAt).toBeUndefined();
@@ -300,6 +359,36 @@ describe('JSON backup', () => {
     expect(json).not.toContain('"dirty"');
     expect(json).not.toContain('"syncVersion"');
     expect(json).not.toContain('"deleted"');
+  });
+
+  /** The rule of docs/schemas README 1.1: `/2` only when the copy holds a list `/1` has no room for. */
+  it('writes /1 with no brokers key when the copy has no broker, and /2 with the list when it has', () => {
+    const plain1 = buildBackupData(
+      collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }),
+    );
+    expect(plain1.format).toBe(BACKUP_FORMAT);
+    expect(Object.keys(plain1)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos']);
+    const withBrokers = buildBackupData(fixtureBundle());
+    expect(withBrokers.format).toBe(BACKUP_FORMAT_V2);
+    expect(withBrokers.brokers?.map((b) => b.id.slice(0, 2))).toEqual(['bb', 'aa']);
+    expect(Object.keys(withBrokers.brokers?.[1] ?? {})).toEqual(['id', 'name', 'phone', 'agency', 'feeTerms', 'notes', 'rating', 'updatedAt']);
+  });
+
+  it('leaves the brokers and every brokerId out of a copy without contact details, and writes /1', () => {
+    const data = buildBackupData(fixtureBundle({ includeContacts: false }));
+    expect(data.format).toBe(BACKUP_FORMAT);
+    expect(data.brokers).toBeUndefined();
+    const json = backupJson(data);
+    expect(json).not.toContain('brokerId');
+    expect(json).not.toContain('"brokers"');
+  });
+
+  it('counts the brokers in the manifest of a /2 copy only', () => {
+    const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
+    expect(withBrokers).toContain('"format":"doorprints-backup/2"');
+    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2}');
+    const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
+    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {
@@ -330,7 +419,7 @@ describe('shared ExportRows contract', () => {
   it('uses one column list for the CSV and the workbook', () => {
     const tables = exportTables(fixtureBundle());
     const sheets = buildWorkbook(fixtureBundle());
-    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos']);
+    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers']);
     sheets.forEach((sheet, i) => {
       expect(sheet.header).toEqual(tables[i].columns);
       expect(sheet.rows).toHaveLength(tables[i].rows.length);

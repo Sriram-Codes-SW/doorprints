@@ -46,6 +46,8 @@ describe('the navigation item for the page on screen', () => {
 
   it('marks Your data on Connect only on phones, where Connect has no item of its own', () => {
     expect(inDataSection('/data', false)).toBe(true);
+    expect(inDataSection('/brokers', false)).toBe(true);
+    expect(inDataSection('/brokers/abc', false)).toBe(true);
     expect(inDataSection('/connect', true)).toBe(true);
     expect(inDataSection('/connect', false)).toBe(false);
   });

@@ -129,10 +129,16 @@ object MarkdownWriter {
                 )
             }
 
-            if (o.includeContacts && (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty())) {
+            val broker = bundle.brokerOf(h)
+            if (o.includeContacts &&
+                (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
+            ) {
                 out.append("\n### ").append(text(s["section.contact"])).append("\n\n")
                 if (!h.contactName.isNullOrEmpty()) out.append("- ").append(text(h.contactName)).append('\n')
                 if (!h.contactPhone.isNullOrEmpty()) out.append("- ").append(text(h.contactPhone)).append('\n')
+                if (broker != null) {
+                    out.append("- ").append(text(s["col.broker"])).append(": ").append(text(broker.label)).append('\n')
+                }
             }
 
             if (!h.notes.isNullOrEmpty()) {
@@ -145,6 +151,15 @@ object MarkdownWriter {
                 out.append("\n### ").append(text(s["section.photos"])).append("\n\n")
                 for (p in photos) out.append("- `").append(p.fileName.replace('`', '\'')).append("`\n")
                 out.append('\n').append(text(s["photos.inBackup"])).append('\n')
+            }
+        }
+
+        // The brokers (slice 1b), after the houses.
+        if (bundle.brokers.isNotEmpty()) {
+            out.append("\n## ").append(text(s["section.brokers"])).append("\n")
+            for (b in bundle.brokers) {
+                out.append("\n### ").append(text(b.name)).append("\n\n")
+                table(out, listOf("", ""), ExportRows.brokerLines(b, bundle).map { listOf(it.first, it.second) })
             }
         }
         return out.toString()

@@ -68,6 +68,7 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HouseSearch
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -225,6 +226,10 @@ fun HouseListScreen(
     // null until Room's first emission: until then neither the first-run hero nor the list chrome is drawn, so
     // neither flashes for a frame on launch.
     val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    // The linked broker's name, agency and fee terms are searched too (docs/11 5.25, slice 1b).
+    val brokerText: Map<String, String> by remember(repo) {
+        repo.observeBrokers().map { list -> list.associate { (id, b) -> id to b.searchText } }
+    }.collectAsStateWithLifecycle(emptyMap())
     val loaded = loadedHouses != null
     val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
@@ -434,10 +439,15 @@ fun HouseListScreen(
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
-        // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review).
+        // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
+        // linked broker since slice 1b).
         .filter {
             HouseSearch.matches(
-                query, HouseSearch.fields(it.label, it.address, it.street, it.locality, it.notes, it.contactName),
+                query,
+                HouseSearch.fields(
+                    it.label, it.address, it.street, it.locality, it.notes, it.contactName,
+                    brokerText = it.brokerId?.let(brokerText::get),
+                ),
             )
         }
         .let { list ->

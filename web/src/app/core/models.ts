@@ -87,6 +87,11 @@ export interface HouseDto {
   locationSource?: LocationSource | null;
   /** Absent (or null) when no cost field is known; never an empty object in a file. */
   cost?: HouseCost | null;
+  /**
+   * The record id of the broker this house is linked to (slice 1b); no foreign key, so an id that names no broker
+   * reads as "no broker". The house keeps copies of the broker's name and phone in `contactName`/`contactPhone`.
+   */
+  brokerId?: string | null;
   checklist: Record<string, number>;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -232,6 +237,7 @@ export function newHouse(lat: number, lon: number, locationSource: LocationSourc
     areaSqft: null,
     locationSource,
     cost: null,
+    brokerId: null,
     checklist: {},
     deleted: false,
     syncVersion: 0,

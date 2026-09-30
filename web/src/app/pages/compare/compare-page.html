@@ -138,13 +138,13 @@
               <th scope="row">{{ 'compare.contact' | t }}</th>
               @for (h of selected(); track h.id) {
                 <td>
-                  @if (h.contactName) {
-                    <div>{{ h.contactName }}</div>
+                  @if (contactOf(h); as who) {
+                    <div>{{ who }}</div>
                   }
                   @if (h.contactPhone) {
                     <a [href]="telHref(h.contactPhone)">{{ h.contactPhone }}</a>
                   }
-                  @if (!h.contactName && !h.contactPhone) {
+                  @if (!contactOf(h) && !h.contactPhone) {
                     <span aria-hidden="true">–</span><span class="sr-only">{{ 'compare.noValue' | t }}</span>
                   }
                 </td>

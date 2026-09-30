@@ -104,6 +104,17 @@ object HtmlWriter {
 
         for (h in bundle.houses) house(out, bundle, h, photoSrc)
 
+        // The brokers (slice 1b), after the houses: each one's fields and the houses of the copy that use it.
+        if (bundle.brokers.isNotEmpty()) {
+            out.append("<section class=\"page\">\n<h2>").append(esc(s["section.brokers"])).append("</h2>\n")
+            for (b in bundle.brokers) {
+                out.append("<h3>").append(esc(b.name)).append("</h3>\n<dl>\n")
+                for ((term, value) in ExportRows.brokerLines(b, bundle)) row(out, term, value)
+                out.append("</dl>\n")
+            }
+            out.append("</section>\n")
+        }
+
         out.append("</body>\n</html>\n")
     }
 
@@ -177,10 +188,14 @@ object HtmlWriter {
             out.append("</tbody>\n</table>\n")
         }
 
-        if (o.includeContacts && (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty())) {
+        val broker = bundle.brokerOf(h)
+        if (o.includeContacts &&
+            (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
+        ) {
             out.append("<h3>").append(esc(s["section.contact"])).append("</h3>\n<dl>\n")
             if (!h.contactName.isNullOrEmpty()) row(out, s["col.contactName"], h.contactName)
             if (!h.contactPhone.isNullOrEmpty()) row(out, s["col.contactPhone"], h.contactPhone)
+            if (broker != null) row(out, s["col.broker"], broker.label)
             out.append("</dl>\n")
         }
 

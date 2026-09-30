@@ -28,7 +28,8 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBundle, ExportHouse } from './export-model';
-import { checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
+import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
+import { brokerLine } from '../shared/broker';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -55,6 +56,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
 
   if (bundle.houses.length === 0) {
     out.push(escapeMarkdown(tr(dict, 'exp.noHouses')), '');
+    out.push(...brokersSection(bundle, dict));
     out.push('---', '', escapeMarkdown(tr(dict, 'exp.footer')), '');
     return out.join('\n');
   }
@@ -84,6 +86,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
   out.push('');
 
   bundle.houses.forEach((entry, index) => out.push(...houseSection(entry, index + 1, bundle, dict)));
+  out.push(...brokersSection(bundle, dict));
 
   out.push('---', '', escapeMarkdown(tr(dict, 'exp.footer')), '');
   return out.join('\n');
@@ -116,6 +119,8 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   if (bundle.options.includeContacts) {
     push('house.contactName', house.contactName ?? '');
     push('house.contactPhone', house.contactPhone ?? '');
+    const broker = bundle.brokers.find((b) => b.id === house.brokerId);
+    push('house.broker', broker ? brokerLine(broker.broker) : '');
   }
   push('exp.fieldSaved', formatDate(house.createdAt));
 
@@ -168,6 +173,22 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push('');
   }
 
+  return out;
+}
+
+/** The **Brokers** section after the houses (slice 1b): a table per broker of the copy. */
+function brokersSection(bundle: ExportBundle, dict: Dict): string[] {
+  if (bundle.brokers.length === 0) return [];
+  const out: string[] = [`## ${escapeMarkdown(tr(dict, 'brokers.title'))}`, ''];
+  for (const b of bundle.brokers) {
+    out.push(`### ${escapeMarkdown(b.broker.name)}`, '');
+    const rows = brokerEntries(b, dict);
+    if (rows.length === 0) continue;
+    out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
+    out.push(separator(2));
+    for (const [name, value] of rows) out.push(row([name, value]));
+    out.push('');
+  }
   return out;
 }
 

@@ -44,10 +44,12 @@ import androidx.savedstate.read
 import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.model.Broker
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -99,6 +101,11 @@ object Routes {
     /** *Share updates with…* (docs/11 5.28). */
     const val SHARE = "share-updates"
 
+    /** The brokers list and one broker's page (docs/11 5.25); a broker's page with the id [NEW_BROKER] adds one. */
+    const val BROKERS = "brokers"
+    const val BROKER = "broker/{id}"
+    const val NEW_BROKER = "new"
+
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
     val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
 
@@ -107,6 +114,7 @@ object Routes {
     const val NEW_HOUSE = "new?lat={lat}&lon={lon}&visitId={visitId}"
 
     fun house(id: String) = "house/$id"
+    fun broker(id: String) = "broker/$id"
     fun newHouse(lat: Double, lon: Double, visitId: String? = null) =
         "new?lat=$lat&lon=$lon" + (visitId?.let { "&visitId=$it" } ?: "")
 }
@@ -363,9 +371,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // CompareScreen in :app's CompareTab.kt, collected here since CMP-5).
                     val loaded: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
                     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
+                    val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
+                        .collectAsStateWithLifecycle(emptyMap())
                     CompareScreen(
                         loaded = loaded,
                         counts = counts,
+                        brokers = brokers,
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                         onOpenMap = openMapWithTip,
                     )
@@ -384,6 +395,25 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                             nav.navigate("import")
                         },
                         onOpenShare = { nav.navigate(Routes.SHARE) },
+                        onOpenBrokers = { nav.navigate(Routes.BROKERS) },
+                    )
+                }
+                // Brokers (docs/11 5.25, slice 1b): a sub-screen of Settings with its own back arrow, like Share updates.
+                composable(Routes.BROKERS) { entry ->
+                    BrokersScreen(
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenBroker = { if (resumed(entry)) nav.navigate(Routes.broker(it)) },
+                    )
+                }
+                composable(
+                    Routes.BROKER,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                ) { entry ->
+                    val id = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_BROKER }
+                    BrokerScreen(
+                        brokerId = id,
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                     )
                 }
                 composable(Routes.SHARE) {

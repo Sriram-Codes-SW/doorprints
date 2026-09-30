@@ -19,6 +19,7 @@
 import { houseScore } from '../core/models';
 import type { Lang } from '../i18n/languages';
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../data/records';
+import type { Broker, BrokerRow } from '../shared/broker';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
@@ -55,6 +56,16 @@ export interface ExportHouse {
   photos: readonly PhotoRecord[];
 }
 
+/** A broker in the copy, with the houses of the copy that use it (slice 1b). */
+export interface ExportBroker {
+  id: string;
+  /** The last edit, ISO-8601. */
+  updatedAt: string | null;
+  broker: Broker;
+  /** The live houses in this copy linked to the broker, in the copy's house order. */
+  houses: readonly { id: string; label: string }[];
+}
+
 /** Everything an exporter needs. Built once, then handed to each format writer. */
 export interface ExportBundle {
   /** The one timestamp that appears inside a file (cover and manifest); everything else is data. */
@@ -63,16 +74,23 @@ export interface ExportBundle {
   houses: readonly ExportHouse[];
   /** Houses ordered best first, for the ranking table: score desc, then label, then id. */
   ranking: readonly ExportHouse[];
+  /**
+   * The brokers in the copy, oldest edit first then id (the backup's order). Empty with no contact details. A copy of
+   * every house (`scope: 'all'`) carries every live broker; a partial copy only the brokers its houses use.
+   */
+  brokers: readonly ExportBroker[];
   counts: { houses: number; visits: number; photos: number };
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
-const CONTACT_FIELDS = ['contactName', 'contactPhone'] as const;
+const CONTACT_FIELDS = ['contactName', 'contactPhone', 'brokerId'] as const;
 
 export interface CollectInput {
   houses: readonly HouseRecord[];
   visits: readonly VisitRecord[];
   photos: readonly PhotoRecord[];
+  /** The live brokers of the store (slice 1b); leave out for none. */
+  brokers?: readonly BrokerRow[];
   exportedAt: string;
   options: ExportOptions;
 }
@@ -128,12 +146,26 @@ export function collect(input: CollectInput): ExportBundle {
     options,
     houses,
     ranking: rank(houses),
+    brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),
       photos: houses.reduce((n, h) => n + h.photos.length, 0),
     },
   };
+}
+
+/** The brokers of a copy: all of them for a copy of every house, else those a house of the copy is linked to. */
+function collectBrokers(rows: readonly BrokerRow[], houses: readonly ExportHouse[], all: boolean): ExportBroker[] {
+  const used = new Map<string, { id: string; label: string }[]>();
+  for (const { house } of houses) {
+    if (!house.brokerId) continue;
+    used.set(house.brokerId, [...(used.get(house.brokerId) ?? []), { id: house.id, label: house.label }]);
+  }
+  return rows
+    .filter((row) => all || used.has(row.id))
+    .map((row) => ({ id: row.id, updatedAt: row.updatedAt, broker: row.broker, houses: used.get(row.id) ?? [] }))
+    .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
 }
 
 /**

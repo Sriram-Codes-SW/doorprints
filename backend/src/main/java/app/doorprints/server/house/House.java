@@ -64,6 +64,8 @@ public class House {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String cost;
+    /** Slice 1b (V8): the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
+    private String brokerId;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "house_checklist", joinColumns = @JoinColumn(name = "house_id"))
@@ -89,7 +91,7 @@ public class House {
 
     /**
      * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
-     * details, prices, the slice 1a values (area, location source, cost) and the checklist (threat model F-16,
+     * details, prices, the slice 1a values (area, location source, cost, broker) and the checklist (threat model F-16,
      * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
      */
     public void purgeContent() {
@@ -110,6 +112,7 @@ public class House {
         areaSqft = null;
         locationSource = null;
         cost = null;
+        brokerId = null;
         checklist.clear();
     }
 
@@ -150,6 +153,8 @@ public class House {
     public void setLocationSource(String locationSource) { this.locationSource = locationSource; }
     public String getCost() { return cost; }
     public void setCost(String cost) { this.cost = cost; }
+    public String getBrokerId() { return brokerId; }
+    public void setBrokerId(String brokerId) { this.brokerId = brokerId; }
     public Map<String, Integer> getChecklist() { return checklist; }
     public void setChecklist(Map<String, Integer> checklist) {
         this.checklist.clear();

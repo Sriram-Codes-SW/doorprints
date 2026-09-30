@@ -31,26 +31,31 @@ import java.util.List;
  * <p>{@code GET /api/export} returns exactly this object and {@code POST /api/import} accepts exactly this object.
  * Ordering is part of the format so that two exports of the same data are identical: houses by {@code createdAt}
  * then {@code id}; visits and photos grouped by their house in that same house order, each group by
- * {@code arrivedAt} / {@code createdAt} then {@code id}; rows whose house is not in the file come last. Importers
+ * {@code arrivedAt} / {@code createdAt} then {@code id}; rows whose house is not in the file come last; brokers by
+ * {@code updatedAt} then {@code id}. Importers
  * must not depend on the order — it exists to make exports comparable, not to carry meaning.
  *
  * <p>The lists are unmodifiable copies that may contain nulls: a hand-written file can hold {@code [null]}, and
  * {@link BackupService} answers that with a 400 instead of failing here.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos"})
+@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers"})
 public record BackupData(
         String format,
         /* When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. */
         Long exportedAt,
         List<BackupHouse> houses,
         List<BackupVisit> visits,
-        List<BackupPhoto> photos
+        List<BackupPhoto> photos,
+        /* Slice 1b, {@code doorprints-backup/2}: left out of the JSON while empty, so a copy without brokers is a
+           /1 document exactly as before. Absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupBroker> brokers
 ) {
     public BackupData {
         houses = copy(houses);
         visits = copy(visits);
         photos = copy(photos);
+        brokers = copy(brokers);
     }
 
     private static <T> List<T> copy(List<T> rows) {
@@ -59,6 +64,6 @@ public record BackupData(
 
     /** Total rows, the number the import size limit is measured in. */
     public int rowCount() {
-        return houses.size() + visits.size() + photos.size();
+        return houses.size() + visits.size() + photos.size() + brokers.size();
     }
 }
