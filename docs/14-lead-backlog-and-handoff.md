@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.64 |
+| Version | 0.65 |
 | Date | 2026-09-30 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -75,6 +75,7 @@
 | 0.62 | 2026-09-30 | Claude (Code), lead | §1: viewing reminders built (slice 3b-2, [10](10-sprint-log.md) §13.25). |
 | 0.63 | 2026-09-30 | Claude (Code), lead | §1: the Hunt mode reminder built (slice 3c, [10](10-sprint-log.md) §13.26); slice 3 complete. |
 | 0.64 | 2026-09-30 | Claude (Code), lead | **Stacked pull requests** (owner decision, 2026-09-30): §2 N14 (finish the app, test by hand last) and the stacking rules in `CLAUDE.md`; every workflow now runs for pull requests of any base branch. |
+| 0.65 | 2026-09-30 | Claude (Code), lead | §1: areas, places and area notes built (slice 4a, [10](10-sprint-log.md) §13.27). |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -178,7 +179,7 @@ section is only today's state. Earlier versions of this file (git history) carry
   stack over eight shared vectors, the *Criteria* screen, the `criteria` and `preferences` backup lists.
 - **Viewing questions built** (slice 3a, branch `feat/s4b-4c-slice-3a-questions`; [10](10-sprint-log.md) §13.23, [06](06-test-plan.md) TC-U-103): a question
   bank of `question` records seeded in four languages with fixed ids, `answers` nested in the house (Room 8, Flyway V10), *Add the usual questions* with
-  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Merged as #78 (2026-09-30). Slice 3 is split: **3b-1 is built** (the `viewing` record, screens, history, calendar file, backup, copies, server; [10](10-sprint-log.md) §13.24, [06](06-test-plan.md) TC-U-104); **3b-2 is built** (Android alarms, the iPhone's notifications, the website's while-open reminders; [10](10-sprint-log.md) §13.25, [06](06-test-plan.md) TC-U-105). **3c is built** (the Hunt mode reminder before a viewing; [10](10-sprint-log.md) §13.26, [06](06-test-plan.md) TC-U-106), so slice 3 is complete. Next: slice 4; then 3c, the Hunt reminder before a viewing (5.16). Lessons of #78 for the next slices: a ZAP alert that varies with the payload is a real answer that changes with the request (a timestamp, an echo), found by downloading the `backend-zap-api-scan` report, not a flake; the iOS launch check needs a macOS runner and can wait a long time for one.
+  the cost pre-fill, *Questions to ask* and *Questions*, the `questions` backup list. Merged as #78 (2026-09-30). Slice 3 is split: **3b-1 is built** (the `viewing` record, screens, history, calendar file, backup, copies, server; [10](10-sprint-log.md) §13.24, [06](06-test-plan.md) TC-U-104); **3b-2 is built** (Android alarms, the iPhone's notifications, the website's while-open reminders; [10](10-sprint-log.md) §13.25, [06](06-test-plan.md) TC-U-105). **3c is built** (the Hunt mode reminder before a viewing; [10](10-sprint-log.md) §13.26, [06](06-test-plan.md) TC-U-106), so slice 3 is complete. **Slice 4a is built** (hunting areas, my places with distances, area notes; [10](10-sprint-log.md) §13.27, [06](06-test-plan.md) TC-U-107). Next: slice 4b (the area wake-up), then slice 5; then 3c, the Hunt reminder before a viewing (5.16). Lessons of #78 for the next slices: a ZAP alert that varies with the payload is a real answer that changes with the request (a timestamp, an echo), found by downloading the `backend-zap-api-scan` report, not a flake; the iOS launch check needs a macOS runner and can wait a long time for one.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
