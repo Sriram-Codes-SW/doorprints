@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.32 |
-| Date | 2026-09-29 |
+| Version | 0.33 |
+| Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
 
@@ -44,6 +44,7 @@
 | 0.30 | 2026-09-30 | Claude (Code), lead | 5.28 **built on Android** (S4b-FR-3): *Share updates with…* from Settings > Your data, the update file, a received file opening in the Import screen. |
 | 0.31 | 2026-09-30 | Claude (Code), lead | New **5.29**, the design of a house from a listing link (S4b-FR-4) with brokers (S4b-FR-11): the portal's share text parsed on the device, never the page (5.9 stands); brokers as the data-model change of (4c). New US-41. |
 | 0.32 | 2026-09-30 | Claude (Code), lead | 5.29 **built** (S4b-FR-4, the listing flow): the no-AI parser on Android and the web with one fixture file, the Android share receiver, the map step, the duplicate check. |
+| 0.33 | 2026-09-30 | Claude (Code), lead | New **5.30**, the design of the Sprint 4b data model in one change of format (N13 4c; [03](03-design.md) ADR-28): nested house values, one record envelope for every other new entity, `doorprints-backup/2`, Room 4 and IndexedDB 2, six slices. 8.1 and 8.2 updated. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -730,6 +731,94 @@ page as before and the parser fills the fields on arrival, the AI fill staying t
 **Order of work.** (1) The parser with its fixtures, the Android share receiver, the web share page's parser, the
 duplicate check, the map step (one change). (2) S4b-BL-83, the locality lookup. (3) Brokers with (4c).
 
+### 5.30 The Sprint 4b data model, in one change of format (N13 4c, design)
+
+**The ask** (owner, D-30 and N13 of 2026-09-29): the Sprint 4b set of 14.2, enlarged by the gap review, "in one
+data-model and format change": weighted criteria (5.4), the viewing questions (5.5), rooms (5.6), photo tags (5.7),
+viewings (5.8), hunting areas (5.17), the real cost of a house (5.21, S4b-FR-7), my places (5.22, S4b-FR-8), area notes
+(5.23, S4b-FR-9), moving in (5.24, S4b-FR-10) and brokers (5.25, S4b-FR-11). Zero cost; the repository kept optimised
+(no new library, few files per field); the search rule; the docs of [14](14-lead-backlog-and-handoff.md) §8 findings
+3, 4, 12 and 14, which this design settles.
+
+**Design (lead, 2026-09-30; [03](03-design.md) ADR-28).** Two shapes carry everything, so that the format, the
+schemas and the three stacks change once and each later entity costs one class per stack instead of nine:
+
+1. **The house keeps its own new values, nested.** `HouseDto` version 2 is additive: `cost` (one object:
+   `deposit`, `depositMonths`, `maintenance`, `maintenanceIncluded`, `brokerage`, `brokerageMonths`, `lockInMonths`,
+   `noticeMonths`, `availableFrom` (a date, `YYYY-MM-DD`), `myOffer`, `agreedPrice`; rupees are whole `Long`s,
+   months `Int`s), `areaSqft`, `locationSource` (`GPS`, `MAP` or `APPROX`; FR-068's hollow marker and Hunt-alert
+   exclusion read `APPROX`), `brokerId`, `rooms[]` (5.6) and `answers[]` (5.5), plus the status `TAKEN` and
+   `NOT_CHOSEN` (5.24). On Android `cost` is `@Embedded(prefix = "cost_")` and `rooms`/`answers` JSON text columns
+   through the converters the checklist already uses; on the web the same nested object in the `houses` store; on
+   the server three `jsonb` columns (`cost`, `rooms`, `answers`) and the scalar columns, Flyway `V7` (slice 1; `V6` is the `record`
+   table of slice 0), no `house_room` or `house_answer` table (the earlier 8.1 rows V5 and V7 fold into it; nothing queries a room by
+   itself). Named arguments in every mapper (finding 4a, done) and a round-trip completeness test per stack keep the
+   eleven same-typed numbers from mis-mapping.
+2. **Every other new thing is a record.** `criteria`, `questions`, `viewings`, `huntingAreas`, `places`,
+   `areaNotes`, `brokers`, `photoMeta` (5.7: `roomId`, `tags`, `caption`, keyed by the photo's id, so the photo
+   endpoints and bytes are untouched), `moveIn` (5.24: the checklist and the condition record, keyed by the house's
+   id) and `preferences` are each a small `@Serializable` class in `:shared` (with its caps and validation, the
+   TypeScript twin on the web), kept in **one `records` table** on the phone and **one `records` store** in the browser
+   (`type`, `id`, `payload` as JSON text, `updatedAt`, `deleted`, `dirty`; an index on `type`), read through typed
+   accessors in common code (`RecordType<T>`: the name, the serializer, the caps), so a new kind of data is one class
+   and no table, no DAO and no migration; and **one sync path**: the envelope `{type, id, updatedAt, deleted, syncVersion, payload}` (finding 14). The server stores
+   it opaquely in one `record` table (`type`, `id`, `owner` later, `payload jsonb`, `updated_at`, `deleted`,
+   `sync_version`, `PRIMARY KEY (type, id)`; `GET /api/records?type=&since=` and `PUT /api/records/{type}/{id}`,
+   the same cursor rule as houses, payload at most 64 KB, at most 5 000 rows per type) and never reads a payload:
+   no server entity, DTO or controller per record type, and the server's AI never sees them. Houses, visits and
+   photos keep their tables and endpoints (they have the geo queries and the bytes). Google Drive sync (D-28) and
+   sharing (5.28) carry the same envelope list, so the three transports share one code path (`RecordSync` in
+   common code).
+3. **The backup format becomes `doorprints-backup/2`** (finding 3, S4b-BL-72; the rule written into
+   docs/schemas/README.md): a new entity list means a new format number; readers accept `1..MAX` (one constant per
+   stack), write the newest, and refuse a newer file with "update the app" instead of dropping its lists in silence.
+   `data.json` gains the house fields of item 1 and the lists of item 2 by their names (`criteria`, `questions`,
+   `viewings`, `huntingAreas`, `places`, `areaNotes`, `brokers`, `photoMeta`, `moveIn`, `preferences`), each ordered
+   by `updatedAt` then `id`, `counts` gaining one integer per list; the server's `GET /api/export` and
+   `POST /api/import` follow. The path trace stays out (5.27). The six readable copies gain the new values: the
+   cost lines and the rooms on the house's page in HTML, PDF and Markdown; `rooms.csv`, `viewings.csv`,
+   `brokers.csv` and `areas.csv` in the CSV ZIP and as sheets in XLSX. `backup-sample.json` gains one row of every
+   list, and the web byte golden is regenerated once.
+4. **Local stores.** Room **4** (`AppDatabase.MIGRATION_3_4` in slice 0: the `records` table; Room **5** in slice 1:
+   the house columns, and the contact name and phone of every house copied into one broker per distinct phone
+   number, `brokerId` set, the old columns kept until Sprint 5); IndexedDB **2** (the `records` store and the photo index) in
+   slice 0 and **3** (the house values) in slice 1, after S4b-BL-71 gives the web an
+   upgrade path (the pilot is the photo index, S4b-BL-66, in the same change), the browser's `versionchange` closing
+   the older tab with the update banner.
+5. **Who sees what.** AI documents (`AiHouse`, the server's index) gain the cost, the rooms and the answers, with
+   the redaction of 5.13; brokers, places (the coordinates), area notes' authorship and the move-in record are never
+   sent to AI, and `my offer` is never sent either (a negotiation is the person's own). Exports include everything;
+   *without contact details* now also leaves the brokers out. **Search** (the owner's rule): the broker's name and
+   agency (in place of the contact name), the room names, the answers' text, the viewing notes and the area notes
+   join it, on both apps with the shared case list (`HouseSearch`, `map-list.spec.ts`).
+6. **Screens** (design step of §12 before each slice: four languages, both themes, loading, empty and error
+   states): the house form gains four sections (Cost, Rooms, Questions, Broker) behind section headers, shot per
+   section in the screenshot tests (S4b-BL-77); Compare gains monthly cost, money to move in and cost per sq ft;
+   the list gains sort by distance to a place; *Criteria*, *Viewings*, *Hunting areas* (with my places and area
+   notes) and *Brokers* are screens of their own under Settings and the house; *Taken* with the move-in checklist on
+   the house. Reminders as 5.8 and 5.16 (Android alarms, the iPhone's `UNUserNotificationCenter` that Hunt mode
+   already uses, the web's `.ics`).
+
+**Why this shape.** One envelope means one server migration and one sync path for ten kinds of data, on a server the
+owner does not host (D-28), with the same envelope serving Drive and sharing; nested house values mean the readable
+copies, the forms and the mappers grow by one object, not by eleven columns; a numbered format means an old app
+refuses rather than loses. What it costs: a format bump the web importer (S4b-BL-75) must read before anyone shares
+a `/2` file with a browser, and the server cannot query inside a record (nothing needs it before Sprint 6).
+
+**Order of work**, each slice its own pull request with the model, both apps, the server, the backup and the
+readable copies, the search, the tests and the docs, in this order so that every slice ships something usable:
+(0) the foundations: the format rule and `/2` readers (S4b-BL-72; the writers stay at `/1` until slice 1 writes the
+first list), the IndexedDB upgrade path with the photo index (S4b-BL-71, S4b-BL-66), the server's `record` table and
+endpoints, the `records` table and store with their sync, no visible change;
+(1) the house's own values and brokers: cost, area, rooms, `locationSource` with the hollow marker, brokers with the
+migration (S4b-FR-7, S4b-FR-11), Compare and search;
+(2) criteria and ranking with the preferences (5.4);
+(3) viewing questions and viewings with reminders and the history screen (5.5, 5.8, 5.16);
+(4) hunting areas, area wake-up, my places and area notes (5.17, 5.18, S4b-FR-8, S4b-FR-9);
+(5) photo tags and moving in (5.7, 5.24, S4b-FR-10).
+Slices 1 to 5 change the format once more only if a slice adds a list slice 0 did not name; the list above is
+complete, so `/2` is the format for all of them.
+
 ## 6. User stories
 
 Continues [01 §5](01-requirements.md#5-user-stories) (US-01..US-15).
@@ -886,6 +975,11 @@ Priorities: M = must, S = should, C = could.
 
 No password, TOTP, recovery-code, email-token or invite tables (v0.1 V8 replaced).
 
+**Revised by 5.30 (2026-09-30):** the server's shipped migrations went on to `V4__device_keys_and_pairing.sql` and
+`V5__server_secrets.sql` (ADR-25), so the 4b change is **`V6__records.sql`** (the one `record` table of 5.30 item 2, slice 0)
+and **`V7__house_values.sql`** (the house's scalar and `jsonb` columns of item 1, slice 1), in place of the V4..V7 rows
+above; V8 onwards renumber when Sprint 5 starts.
+
 ```mermaid
 erDiagram
     APP_USER ||--o{ HOUSE : "owns (V9)"
@@ -951,9 +1045,11 @@ erDiagram
 | Store | Version | Change | Sprint |
 |---|---|---|---|
 | Room | 2 (unchanged) | 4a exporters read today's schema. `exportSchema` is on since Sprint 3.5 (`2.json` committed, `RoomSchemaTest`); the `MigrationTestHelper` test (R-06) is done in CMP-4 P4a ([06](06-test-plan.md) TC-U-63) | 4a |
-| Room | 3 | `criteria`, `questions`, `viewings` (+ `huntReminder`, 5.16), `preferences` (+ `huntReminderMin`, `huntRemindersOn`, `areaWakeUpOn`), `hunting_areas` (`id`, `name`, `lat`, `lon`, `radiusM`, `enabled`, `lastNotifiedAt`, `updatedAt`, `dirty`; 5.17); `houses.rooms`/`answers` (JSON), `areaSqft`, `locationSource`; `photos.roomId`, `tags`, `caption`, `metaUpdatedAt`, `metaDirty`; `visits.notes`, `viewingId`. New `3.json` schema file, migration 2→3 tested | 4b |
-| Room | 4 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
-| IndexedDB | 1 → 3 | Mirrors Room 2 (4a), 3 (4b), 4 (5); Dexie version upgrades with tests | 4a–5 |
+| Room | 3 | `track_points`, the path trace (5.27, S4b-FR-2; on the phone only, never in a backup). `3.json`, `MIGRATION_2_3` tested | 4a (built 2026-09-29) |
+| Room | 4 | The 4b model of **5.30**, slice 0: one `records` table (`type`, `id`, `payload` JSON, `updatedAt`, `deleted`, `dirty`) for criteria, questions, viewings, hunting areas, places, area notes, brokers, photo metadata, the move-in record and preferences. `4.json`, `MIGRATION_3_4` tested | 4b |
+| Room | 5 | Slice 1: `houses.cost_*` (embedded), `rooms`/`answers` (JSON), `areaSqft`, `locationSource`, `brokerId`; the contacts migrated into brokers. `5.json`, `MIGRATION_4_5` tested | 4b |
+| Room | 6 | `photos.storage`, `driveFileId`, `driveMissing`, `thumbOnly`; bound account ID in encrypted settings | 5 |
+| IndexedDB | 1 → 4 | Mirrors Room 2 (version 1, 4a), Room 4 and 5 (versions 2 and 3, 4b, with the upgrade path S4b-BL-71), Room 6 (version 4, 5); the hand-written wrapper of `local-db.ts`, no Dexie (4a decision) | 4a–5 |
 
 Definition of done for every 4b/5 story that adds data: the new fields appear in **all six export formats** and round-trip through the JSON backup.
 
