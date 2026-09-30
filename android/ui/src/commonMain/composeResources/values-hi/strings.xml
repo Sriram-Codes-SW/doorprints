@@ -681,4 +681,11 @@
     <string name="share_preparing">फ़ाइल बन रही है…</string>
     <string name="share_failed">फ़ाइल नहीं बन सकी। फिर कोशिश करें।</string>
     <string name="import_updates_for">%1$s के लिए अपडेट, %2$s को बने</string>
+    <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
+    <string name="map_add_tip_listing">यह मकान कहाँ है? वहाँ हों तो ‘यहाँ मकान सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="map_add_tip_listing_a11y">यह मकान कहाँ है? वहाँ पहुँचकर ‘यहाँ मकान सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="house_dup_title">यह लिस्टिंग आपने %1$s को सहेजी थी</string>
+    <string name="house_dup_text">‘%1$s’ का लिंक यही है। उसे खोलें, या लिस्टिंग को नए मकान के रूप में फिर जोड़ें?</string>
+    <string name="house_dup_open">खोलें</string>
+    <string name="house_dup_add">फिर भी जोड़ें</string>
 </resources>

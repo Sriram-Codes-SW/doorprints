@@ -189,6 +189,8 @@ fun MapScreen(
     onOpenHouses: () -> Unit = {},
     showAddTip: Boolean = false,
     onAddTipShown: () -> Unit = {},
+    /** The tip is for a shared listing (docs/11 5.29): where is this house? */
+    addTipForListing: Boolean = false,
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
 ) {
@@ -206,8 +208,8 @@ fun MapScreen(
     val repo = services.repository
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val addTip = stringResource(Res.string.map_add_tip)
-    val addTipA11y = stringResource(Res.string.map_add_tip_a11y)
+    val addTip = stringResource(if (addTipForListing) Res.string.map_add_tip_listing else Res.string.map_add_tip)
+    val addTipA11y = stringResource(if (addTipForListing) Res.string.map_add_tip_listing_a11y else Res.string.map_add_tip_a11y)
     val findingText = stringResource(Res.string.common_finding_location)
     val waitingGps = stringResource(Res.string.map_waiting_gps)
     val longPressTip = stringResource(Res.string.map_long_press_tip)

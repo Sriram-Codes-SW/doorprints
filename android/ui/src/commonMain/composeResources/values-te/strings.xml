@@ -681,4 +681,11 @@
     <string name="share_preparing">ఫైల్ తయారవుతోంది…</string>
     <string name="share_failed">ఫైల్ తయారు కాలేదు. మళ్లీ ప్రయత్నించండి.</string>
     <string name="import_updates_for">%1$s కోసం అప్‌డేట్‌లు, %2$s న తయారైనవి</string>
+    <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
+    <string name="map_add_tip_listing">ఈ ఇల్లు ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="map_add_tip_listing_a11y">ఈ ఇల్లు ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="house_dup_title">ఈ లిస్టింగ్‌ను మీరు %1$s న సేవ్ చేశారు</string>
+    <string name="house_dup_text">‘%1$s’కి ఇదే లింక్ ఉంది. దాన్ని తెరవాలా, లేదా లిస్టింగ్‌ను కొత్త ఇల్లుగా మళ్లీ జోడించాలా?</string>
+    <string name="house_dup_open">తెరువు</string>
+    <string name="house_dup_add">అయినా జోడించు</string>
 </resources>

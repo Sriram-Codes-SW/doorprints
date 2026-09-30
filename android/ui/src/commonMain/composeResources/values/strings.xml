@@ -685,4 +685,11 @@
     <string name="share_preparing">Preparing the file…</string>
     <string name="share_failed">The file could not be made. Try again.</string>
     <string name="import_updates_for">Updates for %1$s, made on %2$s</string>
+    <!-- S4b-FR-4, a shared listing (2026-09-30). -->
+    <string name="map_add_tip_listing">Where is this house? Tap ‘Save house here’ if you are there, or long-press the map on it; the listing then fills in the form.</string>
+    <string name="map_add_tip_listing_a11y">Where is this house? Tap ‘Save house here’ while you are at it; the listing then fills in the form.</string>
+    <string name="house_dup_title">You saved this listing on %1$s</string>
+    <string name="house_dup_text">‘%1$s’ has the same link. Open it, or add the listing again as a new house?</string>
+    <string name="house_dup_open">Open</string>
+    <string name="house_dup_add">Add anyway</string>
 </resources>

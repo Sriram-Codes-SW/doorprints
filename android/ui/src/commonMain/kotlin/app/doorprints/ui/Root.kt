@@ -41,6 +41,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.savedstate.read
+import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.ui.res.*
@@ -69,6 +70,12 @@ sealed interface DeepLink {
      * `content://` URI); the Import screen validates it as any picked file.
      */
     data class ImportFile(val file: String) : DeepLink
+
+    /**
+     * A listing shared as text into Doorprints (docs/11 5.29): the Map asks where the house is, then the new-house
+     * form opens with the text parsed into it. [text] is capped by the platform (`ListingText.MAX_CHARS`).
+     */
+    data class NewHouseFromListing(val text: String) : DeepLink
 
     /** A connect link from the server's owner page (its QR code), already checked ([ConnectLink.parse]). */
     data class Connect(val link: ConnectLink) : DeepLink
@@ -175,6 +182,13 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         var importedRun by rememberSaveable { mutableStateOf<String?>(null) }
         // A backup file another app opened in Doorprints (docs/11 5.28), until the Import screen has picked it.
         var pendingImportFile by remember { mutableStateOf<String?>(null) }
+        // A shared listing (docs/11 5.29) waiting for its place on the map, then for the new-house form to take it.
+        var pendingListing by remember { mutableStateOf<String?>(null) }
+        // One-shot: set by the empty house list's "Add a house on the map" (and by a shared listing), cleared by the
+        // map once it has shown how to add a house.
+        var mapAddTip by rememberSaveable { mutableStateOf(false) }
+        // A shared listing whose link is already a saved house: "You saved this on …" with Open or Add anyway.
+        var listingDuplicate by remember { mutableStateOf<Pair<HouseEntity, String>?>(null) }
         // Counts the "See your houses" taps, so the list turns its "Just imported" filter on once per tap and not on
         // every return to the Houses tab, including a second tap for the same run after an undo that kept houses.
         var importedOpen by rememberSaveable { mutableIntStateOf(0) }
@@ -216,6 +230,18 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     pendingImportFile = d.file
                     nav.navigate(Routes.IMPORT) { launchSingleTop = true }
                 }
+                is DeepLink.NewHouseFromListing -> {
+                    // The same link already saved (its tracking parameters aside): offer that house first.
+                    val url = ListingText.urlIn(d.text)?.let(ListingText::cleanUrl)
+                    val saved = url?.let { u -> repo.houseSnapshot().firstOrNull { h -> h.listingUrl?.let(ListingText::cleanUrl) == u } }
+                    if (saved != null) {
+                        listingDuplicate = saved to d.text
+                    } else {
+                        pendingListing = d.text
+                        if (features.map) mapAddTip = true
+                        nav.openTab("map")
+                    }
+                }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
                     Routes.SETTINGS -> nav.openTab(d.route)
@@ -231,9 +257,29 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             }
             onDeepLinkHandled()
         }
+        listingDuplicate?.let { (house, text) ->
+            AlertDialog(
+                onDismissRequest = { listingDuplicate = null },
+                title = { Text(stringResource(Res.string.house_dup_title, house.createdAt.dateText())) },
+                text = { Text(stringResource(Res.string.house_dup_text, house.label)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        listingDuplicate = null
+                        nav.navigate(Routes.house(house.id))
+                    }) { Text(stringResource(Res.string.house_dup_open)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        listingDuplicate = null
+                        pendingListing = text
+                        if (features.map) mapAddTip = true
+                        nav.openTab("map")
+                    }) { Text(stringResource(Res.string.house_dup_add)) }
+                },
+            )
+        }
         // One-shot: set by the empty house list's "Add a house on the map", cleared by the map once it has shown how
         // to add a house (UX review, round 15). Saveable, so a rotation during the switch does not lose it.
-        var mapAddTip by rememberSaveable { mutableStateOf(false) }
         // Without a map (iOS) nothing offers "Add a house on the map", and the tip is never set: the Map tab's note
         // has no snackbar to show it.
         val openMapWithTip = {
@@ -276,6 +322,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
             // bottom bar (Export's action area) must not add them a second time.
             NavHost(nav, startDestination = home, modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
                 composable("map") { entry ->
+                    // A shared listing waiting for its place: the tip says so, and the form takes the text.
+                    val listingPending = pendingListing != null
                     val deleted by entry.savedStateHandle.getStateFlow<String?>(DELETED_HOUSE_KEY, null)
                         .collectAsStateWithLifecycle()
                     MapScreen(
@@ -286,6 +334,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenHouses = { if (resumed(entry)) nav.openTab("houses") },
                         showAddTip = mapAddTip,
                         onAddTipShown = { mapAddTip = false },
+                        addTipForListing = listingPending,
                         deletedHouse = deleted,
                         onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
                     )
@@ -422,6 +471,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         newLat = args?.read { getStringOrNull("lat") }?.toDoubleOrNull(),
                         newLon = args?.read { getStringOrNull("lon") }?.toDoubleOrNull(),
                         visitId = args?.read { getStringOrNull("visitId") },
+                        // A shared listing (docs/11 5.29), parsed into the fresh form once.
+                        listingText = pendingListing,
+                        onListingConsumed = { pendingListing = null },
                         onDone = onDone,
                         // A new house has no stale link and cannot be deleted from its form: both just close it, as
                         // HouseEditScreen's defaults do.
