@@ -53,7 +53,6 @@ on:
       - "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"
       - ".github/workflows/backend.yml"
   pull_request:
-    branches: [main]
     paths:
       - "backend/**"
       - "docs/ai/evals/**"

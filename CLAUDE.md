@@ -32,13 +32,21 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 - **Every change goes through a pull request to `main`.** Since 2026-09-29 the owner lets a Claude session merge its
   own pull request once it is good (all checks green, no conflict, no open review thread); how a session works here,
   step by step, is `docs/14-lead-backlog-and-handoff.md` §7.
-- Work on a branch and open the pull request first (a draft is fine): CI runs on pull requests and on pushes to
-  `main`, not on branch pushes (Web, Backend, Android, Android emulator, Shared-iOS, Security, CodeQL, Pages; since
-  2026-09-29). Deploy, signing and the dependency graph run on `main` only.
+- Work on a branch and open the pull request first (a draft is fine): CI runs on pull requests (whatever their base branch,
+  since 2026-09-30) and on pushes to `main`, not on branch pushes (Web, Backend, Android, Android emulator, Shared-iOS,
+  Security, CodeQL, Pages; since 2026-09-29). Deploy, signing and the dependency graph run on `main` only.
+- **Stacked pull requests** (owner, 2026-09-30): when a change needs an earlier one that is not merged yet, its branch is made
+  from that branch and its pull request has that branch as its base, so development does not wait for CI. Open each as a draft,
+  **never enable auto-merge on a stacked one** (its base has no protection). Merge strictly bottom-up: when the lower pull
+  request is green and merged into `main`, merge `main` into the next branch (a squash merge leaves the same content, so it
+  is clean), retarget the pull request to `main`, let CI run, then merge. Fix a CI failure on the branch that owns it and
+  merge `main` or that branch upward through the stack. Testing and fixing is a separate pass after the development of a
+  batch.
 - **Branch names say what the work is** (owner, 2026-09-29): `<type>/<topic>`, the topic a few lowercase words joined
   by hyphens, with the ticket id when there is one. Types: `feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`.
   Examples: `feat/cmp-9-maplibre-compose`, `fix/india-boundary-lines`, `docs/branch-naming-rule`. One branch per
-  pull request, made from the latest `main`; never reuse a merged branch. This applies to Claude sessions too: do
+  pull request, made from the latest `main` (or, for a stacked pull request, from the branch it builds on); never reuse a
+  merged branch. This applies to Claude sessions too: do
   not work on a session's generated name (such as `claude/sleepy-brown-479259`); make a descriptive branch instead.
 - **Licence notices** (FSF, 2026-09-29): every new source file starts with the copyright and AGPL notice; run
   `python3 .github/scripts/licence-headers.py --fix` before committing (CI's `--check` fails without it). Licence:

@@ -85,6 +85,22 @@ if [ "$up" != 1 ]; then
 fi
 echo "API up; scanning."
 
+# Pull the scanner first, with retries: a dropped connection to ghcr.io's blob store ("connection reset by peer") once
+# failed a whole run before the scan started (PR 83, 2026-09-30). `docker run` below then finds the image locally.
+pulled=0
+for attempt in 1 2 3 4; do
+  if docker pull "$zap_image" >/dev/null 2>&1; then
+    pulled=1
+    break
+  fi
+  echo "::warning::pulling the ZAP image failed (attempt $attempt of 4)"
+  sleep $((attempt * 10))
+done
+if [ "$pulled" != 1 ]; then
+  echo "::error::could not pull the ZAP image after 4 attempts"
+  exit 1
+fi
+
 # -O: the description names the test's random localhost port; scan the container instead. -I: warnings alone do not
 # fail the run here (the High check below decides). -T: at most 10 minutes of active scan. The replacer adds the key
 # to every request.
