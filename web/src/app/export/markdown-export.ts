@@ -30,6 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
+import { roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -137,6 +138,16 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
     out.push(separator(2));
     for (const [name, value] of cost) out.push(row([name, value]));
+    out.push('');
+  }
+
+  // The rooms (slice 1c), after the cost and before the checklist.
+  const rooms = roomCells(entry, bundle.lengthUnit, stringsOf(bundle));
+  if (rooms.length) {
+    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('table.rooms'))}`, '');
+    out.push(row(roomDisplayColumns(bundle)));
+    out.push(separator(7));
+    for (const r of rooms) out.push(row(r.map(escapeMarkdown)));
     out.push('');
   }
 

@@ -52,7 +52,20 @@ import {
   uuid,
 } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
-import { cleanCost } from '../../data/records';
+import { cleanCost, cleanRooms } from '../../data/records';
+import { LocalStore } from '../../data/local-store.service';
+import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
+import type { HouseRoom, RoomType } from '../../core/models';
+import {
+  areaNumber,
+  areaSqCm,
+  cmToFeetInches,
+  metresText,
+  parseFeetInches,
+  parseMetres,
+  totalAreaSqCm,
+} from '../../shared/room-sizes';
+import type { LengthUnit } from '../../shared/room-sizes';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
 import type { BrokerRow } from '../../shared/broker';
@@ -113,6 +126,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly pageTitle = inject(TitleOverride);
   private readonly injector = inject(Injector);
+  private readonly store = inject(LocalStore);
   /** The list's last search and filter, for "Back to map" when there is no page behind this one (and after Delete). */
   protected readonly listReturn = inject(ListReturn);
   protected readonly ai = inject(AiService);
@@ -135,6 +149,16 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly fillError = signal<RunResult<Msg> | null>(null);
 
   protected readonly draft = signal<HouseDto | null>(null);
+  /** Rooms (slice 1c): the length unit is a local display preference; the draft always holds centimetres. */
+  protected readonly lengthUnit = signal<LengthUnit>('FT');
+  protected readonly roomTypes = ROOM_TYPES;
+  protected readonly roomTypeKey = ROOM_TYPE_KEY;
+  protected readonly maxRooms = MAX_ROOMS;
+  protected readonly conditions = [1, 2, 3, 4, 5];
+  protected readonly dims = [
+    { key: 'lengthCm', label: 'rooms.length' },
+    { key: 'widthCm', label: 'rooms.width' },
+  ] as const;
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
   /** The broker the draft is linked to, when it exists: the contact fields then show its name and phone. */
@@ -249,6 +273,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
     this.unsaved.register(this, () => this.persist());
     afterNextRender(() => this.watchToolbar());
+    this.store.lengthUnit().then((u) => this.lengthUnit.set(u), () => undefined);
   }
 
   ngOnDestroy(): void {
@@ -705,6 +730,92 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.markDirty();
   }
 
+  // ---- Rooms (slice 1c, docs/11 5.6) ----
+
+  protected rooms(d: HouseDto): HouseRoom[] {
+    return d.rooms ?? [];
+  }
+
+  /** The name typed, else the type's translated name; with the room's position so every control's name is unique. */
+  protected roomTitle(r: HouseRoom, index: number): string {
+    return `${index + 1}. ${r.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[r.type])}`;
+  }
+
+  protected addRoom(): void {
+    const d = this.draft();
+    if (!d) return;
+    const rooms = this.rooms(d);
+    if (rooms.length >= MAX_ROOMS) return;
+    const sort = rooms.reduce((max, r) => Math.max(max, (r.sort ?? 0) + 1), 0);
+    const room: HouseRoom = { id: uuid(), type: 'BEDROOM', sort };
+    this.patch({ rooms: [...rooms, room] });
+    afterNextRender(() => document.getElementById('room-type-' + room.id)?.focus(), { injector: this.injector });
+  }
+
+  protected editRoom(id: string, changes: Partial<HouseRoom>): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ rooms: this.rooms(d).map((r) => (r.id === id ? { ...r, ...changes } : r)) });
+  }
+
+  protected deleteRoom(id: string): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ rooms: this.rooms(d).filter((r) => r.id !== id) });
+    // The focus goes to Add room, not to the top of the page.
+    afterNextRender(() => document.getElementById('rooms-add')?.focus(), { injector: this.injector });
+  }
+
+  protected setRoomType(id: string, type: string): void {
+    this.editRoom(id, { type: ROOM_TYPES.includes(type as RoomType) ? (type as RoomType) : 'OTHER' });
+  }
+
+  protected setRoomCondition(id: string, value: string): void {
+    this.editRoom(id, { condition: value === '' ? null : Number(value) });
+  }
+
+  /** Feet mode: the two boxes (feet, inches) make one size in cm; both blank is unknown. */
+  protected setRoomFeet(id: string, key: 'lengthCm' | 'widthCm', feet: string, inches: string): void {
+    const blank = feet.trim() === '' && inches.trim() === '';
+    this.editRoom(id, { [key]: blank ? null : parseFeetInches(feet, inches) });
+  }
+
+  /** Metres mode: one decimal number is one size in cm; blank or out of range is unknown. */
+  protected setRoomMetres(id: string, key: 'lengthCm' | 'widthCm', metres: string): void {
+    this.editRoom(id, { [key]: parseMetres(metres) });
+  }
+
+  protected feetOf(cm: number | null | undefined): number | '' {
+    return cm == null ? '' : cmToFeetInches(cm).feet;
+  }
+
+  protected inchesOf(cm: number | null | undefined): number | '' {
+    return cm == null ? '' : cmToFeetInches(cm).inches;
+  }
+
+  protected metresOf(cm: number | null | undefined): string {
+    return cm == null ? '' : metresText(cm);
+  }
+
+  /** "Area: 156 sq ft" (or "14.5 m²") once both sizes are known; the area of the stored centimetres, whatever the unit. */
+  protected roomAreaLine(r: HouseRoom): string | null {
+    const sq = areaSqCm(r);
+    return sq === null ? null : this.i18n.t('rooms.area', { v: this.areaText(sq) });
+  }
+
+  /** "Total area: 312 sq ft" below the list, when at least one room has both sizes. */
+  protected roomsTotalLine(d: HouseDto): string | null {
+    const { total, sized } = totalAreaSqCm(this.rooms(d));
+    return sized === 0 ? null : this.i18n.t('rooms.total', { v: this.areaText(total) });
+  }
+
+  private areaText(sqCm: number): string {
+    const unit = this.lengthUnit();
+    return unit === 'M'
+      ? this.i18n.t('rooms.sqm', { v: areaNumber(sqCm, unit) })
+      : this.i18n.t('rooms.sqft', { v: this.i18n.number(Number(areaNumber(sqCm, unit))) });
+  }
+
   /** The Broker select: a broker fills the contact name and phone from it; None keeps what is there and unlinks. */
   protected pickBroker(id: string): void {
     const row = this.brokers().find((b) => b.id === id);
@@ -887,6 +998,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       areaSqft: toWholeNumber(d.areaSqft),
       // Only the set fields, in range, or null: the store and the wire never see an empty `{}` (slice 1a).
       cost: cleanCost(d.cost),
+      // At most 30, coerced and sorted; absent when empty (never [] on the wire).
+      rooms: cleanRooms(d.rooms),
     };
     this.saving.set(true);
     // Said to screen readers as Android's Save says it through its contentDescription (web UX gate r4): aria-busy on
@@ -1106,6 +1219,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 function clone(h: HouseDto): HouseDto {
   return JSON.parse(JSON.stringify(h)) as HouseDto;
 }
+
+/** The most rooms a house holds (the server and Android agree). */
+const MAX_ROOMS = 30;
 
 /** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
 function withCost(h: HouseDto): HouseDto {

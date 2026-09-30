@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.RoomType
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 
@@ -35,6 +36,21 @@ val HouseStatus.labelResource: StringResource
         HouseStatus.NEW -> Res.string.status_NEW
         HouseStatus.SHORTLISTED -> Res.string.status_SHORTLISTED
         HouseStatus.REJECTED -> Res.string.status_REJECTED
+    }
+
+/** Translated name of a room type (`room_type_*`, slice 1c): a room's name when it has none of its own. */
+val RoomType.labelResource: StringResource
+    get() = when (this) {
+        RoomType.BEDROOM -> Res.string.room_type_BEDROOM
+        RoomType.HALL -> Res.string.room_type_HALL
+        RoomType.KITCHEN -> Res.string.room_type_KITCHEN
+        RoomType.BATHROOM -> Res.string.room_type_BATHROOM
+        RoomType.BALCONY -> Res.string.room_type_BALCONY
+        RoomType.POOJA -> Res.string.room_type_POOJA
+        RoomType.STUDY -> Res.string.room_type_STUDY
+        RoomType.UTILITY -> Res.string.room_type_UTILITY
+        RoomType.STORE -> Res.string.room_type_STORE
+        RoomType.OTHER -> Res.string.room_type_OTHER
     }
 
 /**

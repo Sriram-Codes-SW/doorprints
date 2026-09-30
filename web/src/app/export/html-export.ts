@@ -33,6 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
+import { roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -181,6 +182,20 @@ function houseSection(
     ([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
   );
 
+  // The rooms (slice 1c), after the cost and before the checklist; the total of their areas as a last row.
+  const roomList = roomCells(entry, bundle.lengthUnit, stringsOf(bundle));
+  const roomsHtml = roomList.length
+    ? [
+        `<h3>${escapeHtml(stringsOf(bundle).get('table.rooms'))}</h3>`,
+        '<table>',
+        `<thead><tr>${roomDisplayColumns(bundle).map((c) => `<th scope="col">${escapeHtml(c)}</th>`).join('')}</tr></thead>`,
+        `<tbody>${roomList
+          .map((row) => `<tr>${row.map((c, i) => (i === 0 ? `<th scope="row">${escapeHtml(c)}</th>` : `<td>${escapeHtml(c)}</td>`)).join('')}</tr>`)
+          .join('')}</tbody>`,
+        '</table>',
+      ].join('')
+    : '';
+
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict))}</th><td>${escapeHtml(
@@ -213,6 +228,7 @@ function houseSection(
     costRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.cost'))}</h3><table class="fields">${costRows.join('')}</table>`
       : '',
+    roomsHtml,
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',

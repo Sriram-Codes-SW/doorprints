@@ -35,6 +35,7 @@ import kotlinx.serialization.json.Json
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
 import app.doorprints.export.encodeGrants
@@ -90,6 +91,8 @@ data class AppSettings(
     val pathTrace: Boolean = false,
     /** The people updates are shared with (docs/11 5.28), on this phone only; never synced or exported. */
     val shareContacts: List<ShareContact> = emptyList(),
+    /** How room sizes are shown and typed (slice 1c, `units.length`): on this phone only, never synced or backed up. */
+    val lengthUnit: LengthUnit = LengthUnit.FT,
 ) {
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
@@ -112,7 +115,7 @@ data class AppSettings(
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
             "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
             "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, " +
-            "shareContacts=${shareContacts.size})"
+            "shareContacts=${shareContacts.size}, lengthUnit=$lengthUnit)"
 }
 
 /**
@@ -213,6 +216,8 @@ class SettingsStore(
         /** [AppSettings.shareContacts], as JSON. */
         val shareContacts = stringPreferencesKey("shareContacts")
         val brokersMigrated = booleanPreferencesKey("brokers.migrated")
+        /** [AppSettings.lengthUnit], by name: the web's `SETTING_KEYS.lengthUnit`. */
+        val lengthUnit = stringPreferencesKey("units.length")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -240,8 +245,20 @@ class SettingsStore(
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
             shareContacts = ShareContact.decode(p[Keys.shareContacts]),
+            lengthUnit = LengthUnit.fromWire(p[Keys.lengthUnit]),
         )
     }
+
+    /**
+     * The length setting alone (slice 1c), for an export and a screen that needs nothing else: it reads no secret, so
+     * it never fails while a key cannot be read; a file that cannot be read gives the default.
+     */
+    val lengthUnit: Flow<LengthUnit> = dataStore.data
+        .map { p -> LengthUnit.fromWire(p[Keys.lengthUnit]) }
+        .catch { emit(LengthUnit.FT) }
+        .distinctUntilChanged()
+
+    suspend fun saveLengthUnit(unit: LengthUnit) = dataStore.edit { it[Keys.lengthUnit] = unit.name }
 
     suspend fun current() = settings.first()
 

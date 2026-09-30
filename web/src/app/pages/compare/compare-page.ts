@@ -29,6 +29,9 @@ import { MAX_SELECTED, MIN_SELECTED, idsFromQuery } from './compare-selection';
 import { GLYPHS } from '../../shared/glyphs';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 import { costSummary } from '../../shared/house-cost';
+import { LocalStore } from '../../data/local-store.service';
+import { areaNumber, totalAreaSqCm } from '../../shared/room-sizes';
+import type { LengthUnit } from '../../shared/room-sizes';
 
 /** Above this many candidates the picker gets a search box: a wall of chips cannot be scanned. */
 const SEARCH_ABOVE = 12;
@@ -60,6 +63,9 @@ export class ComparePage {
   private readonly router = inject(Router);
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
+  private readonly store = inject(LocalStore);
+  /** The Length units preference (a local setting): the total area of the rooms is shown in it. */
+  private readonly lengthUnit = signal<LengthUnit>('FT');
 
   protected readonly loading = signal(true);
   /** Why the houses could not be read; keyed on its run so that Retry failing the same way is read again. */
@@ -174,6 +180,24 @@ export class ComparePage {
       cells: houses.map((h) => money(h.cost?.agreedPrice ?? null)),
       best: new Set<number>(),
     });
+    // Slice 1c: the number of rooms, and their total area when at least one has both sizes (the unit is the setting).
+    const unit = this.lengthUnit();
+    rows.push({
+      id: 'rooms',
+      label: i18n.t('compare.rooms'),
+      cells: houses.map((h) => {
+        const list = h.rooms ?? [];
+        if (list.length === 0) return none;
+        const { total, sized } = totalAreaSqCm(list);
+        if (sized === 0) return { text: i18n.number(list.length) };
+        const area =
+          unit === 'M'
+            ? i18n.t('rooms.sqm', { v: areaNumber(total, unit) })
+            : i18n.t('rooms.sqft', { v: i18n.number(Number(areaNumber(total, unit))) });
+        return { text: `${i18n.number(list.length)} · ${area}` };
+      }),
+      best: new Set<number>(),
+    });
     rows.push({
       id: 'rating',
       label: i18n.t('compare.rating'),
@@ -221,6 +245,10 @@ export class ComparePage {
     effect(() => {
       this.api.settled();
       this.reload();
+    });
+    effect(() => {
+      this.api.settled();
+      this.store.lengthUnit().then((u) => this.lengthUnit.set(u), () => undefined);
     });
     effect(() => {
       this.api.settled();

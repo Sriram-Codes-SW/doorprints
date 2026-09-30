@@ -22,7 +22,10 @@ import app.doorprints.server.record.RecordDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -61,6 +64,9 @@ import java.util.UUID;
  *       (FR-068), absent for a house saved before it existed. {@code cost} is a {@link HouseCost} object whose own
  *       absent fields are left out; it is {@code null} when no field is set, and an empty object on input is the
  *       same as none. A value out of range is a 400, like the other fields.</li>
+ *   <li><b>{@code rooms}</b> (slice 1c, docs/11 section 5.6) is a list of at most 30 {@link HouseRoom}s with
+ *       distinct ids, {@code null} when the house has none (an empty list on input is the same as none). A room out
+ *       of range, a 31st room or a repeated id is a 400. A tombstone carries {@code null}.</li>
  *   <li><b>{@code brokerId}</b> (slice 1b, docs/11 section 5.25) is the record id of the house's broker, absent for
  *       none. There is no foreign key: a broker deleted or not yet synced leaves the id dangling, which readers take
  *       as no broker. A tombstone carries {@code null}.</li>
@@ -89,6 +95,8 @@ public record HouseDto(
         @Min(1) @Max(100_000) Integer areaSqft,
         @Pattern(regexp = LOCATION_SOURCES) String locationSource,
         @Valid HouseCost cost,
+        /* Slice 1c: at most 30 rooms with distinct ids; an empty list is the same as none. */
+        @Valid @Size(max = HouseRoom.MAX) List<@NotNull @Valid HouseRoom> rooms,
         /* Slice 1b: a broker's record id. Not checked against the records: a dangling id reads as no broker. */
         @Pattern(regexp = RecordDto.ID_PATTERN) String brokerId,
         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
@@ -109,9 +117,16 @@ public record HouseDto(
         return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), h.getBrokerId(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()), h.getBrokerId(),
                 Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
                 h.getSyncVersion(), distanceMeters);
+    }
+
+    /** Two rooms with one id cannot be told apart by the clients; a getter constraint so Bean Validation runs it. */
+    @JsonIgnore
+    @AssertTrue(message = "rooms must not repeat an id")
+    public boolean isRoomIdsUnique() {
+        return HouseRoom.idsAreUnique(rooms);
     }
 
     void applyTo(House h) {
@@ -133,6 +148,7 @@ public record HouseDto(
         h.setAreaSqft(areaSqft);
         h.setLocationSource(locationSource);
         h.setCost(HouseCost.write(cost));
+        h.setRooms(HouseRoom.write(rooms));
         h.setBrokerId(brokerId);
         h.setChecklist(checklist);
         h.setDeleted(deleted);

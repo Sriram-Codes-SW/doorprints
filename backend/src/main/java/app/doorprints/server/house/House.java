@@ -64,6 +64,10 @@ public class House {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String cost;
+    /** Slice 1c (V9): the {@link HouseRoom} list as compact JSON text, null for no rooms; stored as sent. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String rooms;
     /** Slice 1b (V8): the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
     private String brokerId;
 
@@ -91,7 +95,7 @@ public class House {
 
     /**
      * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
-     * details, prices, the slice 1a values (area, location source, cost, broker) and the checklist (threat model F-16,
+     * details, prices, the slice 1a values (area, location source, cost, broker), the rooms and the checklist (threat model F-16,
      * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
      */
     public void purgeContent() {
@@ -112,6 +116,7 @@ public class House {
         areaSqft = null;
         locationSource = null;
         cost = null;
+        rooms = null;
         brokerId = null;
         checklist.clear();
     }
@@ -153,6 +158,8 @@ public class House {
     public void setLocationSource(String locationSource) { this.locationSource = locationSource; }
     public String getCost() { return cost; }
     public void setCost(String cost) { this.cost = cost; }
+    public String getRooms() { return rooms; }
+    public void setRooms(String rooms) { this.rooms = rooms; }
     public String getBrokerId() { return brokerId; }
     public void setBrokerId(String brokerId) { this.brokerId = brokerId; }
     public Map<String, Integer> getChecklist() { return checklist; }

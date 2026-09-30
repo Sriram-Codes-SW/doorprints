@@ -19,6 +19,7 @@
 package app.doorprints.shared.ai
 
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRoom
 
 /**
  * A saved house as on-device AI sees it (docs/03 §13.1): the fields the server's `HouseDto` gives its AI code, from
@@ -48,6 +49,8 @@ data class AiHouse(
     val areaSqft: Int? = null,
     /** The cost (slice 1a); [HouseDocuments] writes every line of it except `myOffer` (docs/11 5.30 item 5). */
     val cost: HouseCost? = null,
+    /** The rooms (slice 1c); [HouseDocuments] writes their names, sizes and condition, never their notes. */
+    val rooms: List<HouseRoom>? = null,
     val checklist: Map<String, Int> = emptyMap(),
     /** Newest last or in any order; only arrivals and departures are read. */
     val visits: List<AiVisit> = emptyList(),

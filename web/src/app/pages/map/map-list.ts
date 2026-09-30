@@ -92,12 +92,20 @@ function priceGroup(h: HouseDto): number {
 
 /**
  * What a query is matched against: the house's own words plus, for a linked broker, `brokerText` (the broker's name,
- * agency and fee terms, from {@link brokerSearchText}). The contact name stays: it is the broker's name copy.
+ * agency and fee terms, from {@link brokerSearchText}). The contact name stays: it is the broker's name copy. Room
+ * names and notes are included (slice 1c).
  */
 export function searchText(h: HouseDto, brokerText = ''): string {
-  return [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
-    .filter((x) => !!x)
-    .join(' ')
+  const parts = [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
+    .filter((x) => !!x);
+  // Room names and notes (slice 1c)
+  if (h.rooms?.length) {
+    for (const room of h.rooms) {
+      if (room.name) parts.push(room.name);
+      if (room.notes) parts.push(room.notes);
+    }
+  }
+  return parts.join(' ')
     .toLowerCase();
 }
 

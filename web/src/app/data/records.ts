@@ -17,8 +17,8 @@
  */
 
 import { LocalDataError } from '../core/local-error';
-import { COST_FIELDS, LOCATION_SOURCES } from '../core/models';
-import type { HouseCost, HouseDto, HouseStatus, PriceType, RecordDto, VisitDto, VisitSource } from '../core/models';
+import { COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES } from '../core/models';
+import type { HouseCost, HouseDto, HouseRoom, HouseStatus, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
 
 /**
  * What the browser stores locally (IndexedDB). Doorprints is local-first (docs/11 §5.1, D-01): every record below
@@ -101,6 +101,8 @@ export const SETTING_KEYS = {
   syncServer: 'sync.server',
   /** Set once the contacts of the houses have been turned into brokers (slice 1b), so an unlink is never undone. */
   brokersMigrated: 'brokers.migrated',
+  /** Length unit preference for rooms: 'FT' (default) or 'M' (local only, not synced). */
+  lengthUnit: 'units.length',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */
@@ -167,6 +169,7 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     areaSqft: whole(dto.areaSqft, 1, MAX_AREA_SQFT),
     locationSource: dto.locationSource && LOCATION_SOURCES.includes(dto.locationSource) ? dto.locationSource : null,
     cost: cleanCost(dto.cost),
+    rooms: cleanRooms(dto.rooms),
     brokerId: cleanBrokerId(dto.brokerId),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
@@ -269,6 +272,13 @@ export function recordToDto(record: RecordRecord): RecordDto {
 export const MAX_AREA_SQFT = 100_000;
 export const MAX_RUPEES = 1_000_000_000_000;
 export const MAX_MONTHS = 120;
+/** A room's constraints (slice 1c): at most 30 rooms per house. */
+export const MAX_ROOMS = 30;
+export const MAX_ROOM_NAME = 60;
+export const MAX_ROOM_NOTES = 2000;
+export const MAX_ROOM_DIMENSION = 5000;
+/** A room id pattern (same as the general record id, but not `.`/`..`). */
+const ROOM_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 /** A calendar date, `YYYY-MM-DD`; the month and day are checked to be real below. */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -323,6 +333,46 @@ function whole(value: number | null | undefined, min: number, max: number): numb
   return rounded < min || rounded > max ? null : rounded;
 }
 
+/**
+ * Rooms as the store keeps them: at most 30, sorted by sort then id, coerced for safe storage. Unknown type or
+ * condition coerces to unknown (field absent). Duplicate ids keep only the first; a bad id is skipped. Returns
+ * null when the result is empty (no rooms to show).
+ */
+export function cleanRooms(raw: HouseRoom[] | null | undefined): HouseRoom[] | null {
+  if (!raw || !Array.isArray(raw) || raw.length === 0) return null;
+  const seenIds = new Set<string>();
+  const out: HouseRoom[] = [];
+  for (const room of raw) {
+    if (!room || typeof room !== 'object') continue;
+    const id = roomId(room.id);
+    if (!id || seenIds.has(id)) continue;
+    seenIds.add(id);
+    const type: RoomType = ROOM_TYPES.includes(room.type) ? room.type : 'OTHER';
+    const name = text(room.name, MAX_ROOM_NAME) || null;
+    const lengthCm = whole(room.lengthCm, 0, MAX_ROOM_DIMENSION);
+    const widthCm = whole(room.widthCm, 0, MAX_ROOM_DIMENSION);
+    const condition = whole(room.condition, 1, 5);
+    const notes = text(room.notes, MAX_ROOM_NOTES) || null;
+    const sort = whole(room.sort, 0, 1_000_000) ?? 0;
+    const cleaned: HouseRoom = { id, type, sort };
+    if (name !== null) cleaned.name = name;
+    if (lengthCm !== null) cleaned.lengthCm = lengthCm;
+    if (widthCm !== null) cleaned.widthCm = widthCm;
+    if (condition !== null) cleaned.condition = condition;
+    if (notes !== null) cleaned.notes = notes;
+    out.push(cleaned);
+  }
+  if (out.length === 0) return null;
+  // Sort by sort then id, and only then keep the first 30 (Android and the server do the same).
+  out.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return out.slice(0, MAX_ROOMS);
+}
+
+/** A room id: matches the pattern and is not `.`/`..`, or null. */
+function roomId(value: unknown): string | null {
+  return typeof value === 'string' && ROOM_ID_PATTERN.test(value) && value !== '.' && value !== '..' ? value : null;
+}
+
 function cleanChecklist(checklist: Record<string, number> | null | undefined): Record<string, number> {
   const out: Record<string, number> = {};
   if (!checklist || typeof checklist !== 'object') return out;
@@ -335,6 +385,10 @@ function cleanChecklist(checklist: Record<string, number> | null | undefined): R
 
 function nullable(value: string | null | undefined): string | null {
   return typeof value === 'string' && value !== '' ? value : null;
+}
+
+function text(value: unknown, max: number): string | null {
+  return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : null;
 }
 
 function finite(value: number | null | undefined): number | null {

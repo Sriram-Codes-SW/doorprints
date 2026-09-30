@@ -17,9 +17,11 @@
  */
 
 import { houseScore } from '../core/models';
+import type { HouseRoom } from '../core/models';
 import type { Lang } from '../i18n/languages';
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../data/records';
 import type { Broker, BrokerRow } from '../shared/broker';
+import type { LengthUnit } from '../shared/room-sizes';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
@@ -36,6 +38,8 @@ export interface ExportOptions {
   includeContacts: boolean;
   /** The language the file is written in; independent of the language the app is being used in. */
   lang: Lang;
+  /** Length unit for room dimensions in readable copies: 'FT' (feet+inches) or 'M' (metres). */
+  lengthUnit?: 'FT' | 'M';
 }
 
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
@@ -54,6 +58,7 @@ export interface ExportHouse {
   score: number | null;
   visits: readonly VisitRecord[];
   photos: readonly PhotoRecord[];
+  rooms: readonly HouseRoom[];
 }
 
 /** A broker in the copy, with the houses of the copy that use it (slice 1b). */
@@ -80,6 +85,11 @@ export interface ExportBundle {
    */
   brokers: readonly ExportBroker[];
   counts: { houses: number; visits: number; photos: number };
+  /**
+   * The length unit of the device that makes the copy (slice 1c): the rooms' sizes are written in it. A local
+   * preference, so it is not one of the {@link ExportOptions} that are remembered with the export choices.
+   */
+  lengthUnit: LengthUnit;
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
@@ -91,6 +101,8 @@ export interface CollectInput {
   photos: readonly PhotoRecord[];
   /** The live brokers of the store (slice 1b); leave out for none. */
   brokers?: readonly BrokerRow[];
+  /** The length preference of this device; feet when left out. */
+  lengthUnit?: LengthUnit;
   exportedAt: string;
   options: ExportOptions;
 }
@@ -138,6 +150,7 @@ export function collect(input: CollectInput): ExportBundle {
         .slice()
         .sort((a, b) => compare(a.arrivedAt, b.arrivedAt) || compare(a.id, b.id)),
       photos: wantPhotos ? (photosByHouse.get(house.id) ?? []).slice().sort(byCreatedThenId) : [],
+      rooms: house.rooms ?? [],
     };
   });
 
@@ -147,6 +160,7 @@ export function collect(input: CollectInput): ExportBundle {
     houses,
     ranking: rank(houses),
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
+    lengthUnit: input.lengthUnit ?? 'FT',
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),

@@ -20,6 +20,8 @@
 // for rule (backend app.doorprints.server.ai; the phones' copy is android/shared .../shared/ai). The shared vectors in
 // docs/ai/evals/parity-vectors.json hold all three to the server's own answers (ai-core.spec.ts).
 
+import type { HouseRoom } from '../models';
+import { cmToFeetInches } from '../../shared/room-sizes';
 import type { AskResponse, Citation, HouseDraft, PlanResponse, PlannedStop } from '../ai.service';
 
 // ---------------------------------------------------------------- contact removal (ContactRedactor)
@@ -200,6 +202,7 @@ export interface AiHouse {
   notes?: string | null;
   areaSqft?: number | null;
   cost?: AiCost | null;
+  rooms?: HouseRoom[] | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -264,6 +267,7 @@ export function houseText(h: AiHouse): string {
   if (c.noticeMonths != null) line('Notice', months(c.noticeMonths));
   line('Available from', c.availableFrom);
   if (c.agreedPrice != null) line('Agreed price', `Rs ${c.agreedPrice}`);
+  line('Rooms', roomsText(h.rooms, r));
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -274,6 +278,29 @@ export function houseText(h: AiHouse): string {
     line('Notes', r.freeText(notes.length > NOTES_MAX ? notes.slice(0, NOTES_MAX) + ' …' : notes));
   }
   return lines.join('\n');
+}
+
+/**
+ * The rooms line (slice 1c), the same words as the server's HouseDocuments and the phones' AiHouse: name, size (always
+ * feet and inches, only when both sizes exist) and condition (only when set), in the order shown. A blank name is the
+ * type's English name in title case. NEVER a room's notes: they may hold a contact name or number.
+ */
+function roomsText(rooms: HouseRoom[] | null | undefined, r: Redactor): string | null {
+  if (!rooms?.length) return null;
+  const feetInches = (cm: number) => {
+    const { feet, inches } = cmToFeetInches(cm);
+    return `${feet} ft ${inches} in`;
+  };
+  return [...rooms]
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((x) => {
+      const type = x.type ? x.type.charAt(0) + x.type.slice(1).toLowerCase() : 'Room';
+      let out = x.name?.trim() ? (r.freeText(x.name.trim()) as string) : type;
+      if (x.lengthCm != null && x.widthCm != null) out += ` ${feetInches(x.lengthCm)} x ${feetInches(x.widthCm)}`;
+      if (x.condition != null) out += ` (condition ${x.condition}/5)`;
+      return out;
+    })
+    .join('; ');
 }
 
 function months(n: number): string {

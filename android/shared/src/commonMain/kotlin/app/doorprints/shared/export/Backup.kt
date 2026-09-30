@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.HouseRooms
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -37,17 +39,17 @@ import kotlinx.serialization.json.Json
  */
 object BackupFormat {
     /**
-     * Written into `manifest.json` and `data.json` when the copy holds only what `/1` knows. A copy with a `/2` list
-     * (slice 1b: brokers) is written as [ID_2]; [idFor] picks the lowest number that holds everything (docs/schemas
-     * README 1.1). A reader accepts every format up to [MAX_VERSION] (S4b-BL-72).
+     * Written into `manifest.json` and `data.json` when the copy holds only what `/1` knows. A copy with something of
+     * `/2` (slice 1b: a broker; slice 1c: a room) is written as [ID_2]; [idFor] picks the lowest number that holds
+     * everything (docs/schemas README 1.1). A reader accepts every format up to [MAX_VERSION] (S4b-BL-72).
      */
     const val ID = "doorprints-backup/1"
 
     /** The format that adds the `brokers` list (slice 1b). */
     const val ID_2 = "doorprints-backup/2"
 
-    /** The format a copy with [brokers] brokers is written in: `/2` only when it holds one. */
-    fun idFor(brokers: Int): String = if (brokers > 0) ID_2 else ID
+    /** The format a copy with [brokers] brokers and [rooms] rooms is written in: `/2` only when it holds one of either. */
+    fun idFor(brokers: Int, rooms: Int = 0): String = if (brokers > 0 || rooms > 0) ID_2 else ID
 
     /**
      * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
@@ -190,7 +192,7 @@ data class BackupData(
                 .distinctBy { it.id }
                 .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             return BackupData(
-                format = BackupFormat.idFor(bundle.brokers.size),
+                format = BackupFormat.idFor(bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
                 visits = bundle.houses.flatMap { bundle.visitsOf(it) } + houseless,
@@ -270,8 +272,14 @@ object BackupValidation {
         data.brokerRows.any { !isValidId(it.id) || !it.toBroker().isValid } -> BackupProblem.BROKEN_DATA
         data.brokerRows.map { it.id }.toSet().size != data.brokerRows.size -> BackupProblem.BROKEN_DATA
         data.houses.any { h -> h.brokerId?.let { !isValidId(it) } ?: false } -> BackupProblem.BROKEN_DATA
+        // Slice 1c: more than 30 rooms in a house, a room id used twice in it, or a room with a bad id or a value out
+        // of range refuses the whole file, as the server's import does; an unknown type reads as OTHER.
+        data.houses.any { h -> !roomsAreValid(h.rooms) } -> BackupProblem.BROKEN_DATA
         else -> null
     }
+
+    private fun roomsAreValid(rooms: List<HouseRoom>?): Boolean =
+        rooms == null || (rooms.size <= HouseRooms.MAX && rooms.all { it.isValid } && rooms.map { it.id }.toSet().size == rooms.size)
 
     /**
      * A ZIP entry name that must never be written: an absolute path, a Windows drive, a `..` segment or a

@@ -115,6 +115,17 @@ describe('searchText', () => {
     expect(matching('INDIRANAGAR')).toEqual(['green']);
   });
   it('the notes match', () => expect(matching('metro')).toEqual(['green']));
+  it("a query matches a room's note", () => {
+    const withRooms: HouseDto = {
+      ...green,
+      rooms: [
+        { id: 'r1', type: 'BEDROOM', name: 'Master', lengthCm: 300, widthCm: 300, condition: 4, notes: 'Damp wall', sort: 0 },
+      ],
+    };
+    const q = 'damp'.trim().toLowerCase();
+    expect(searchText(withRooms, greenBroker).toLowerCase().includes(q)).toBe(true);
+    expect(searchText(withRooms, greenBroker).toLowerCase().includes('master')).toBe(true);
+  });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
   it("the broker's fee terms match", () => expect(matching('15 days')).toEqual(['green']));

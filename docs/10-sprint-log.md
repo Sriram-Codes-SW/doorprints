@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.93 |
+| Version | 0.94 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -105,6 +105,7 @@
 | 0.91 | 2026-09-30 | Claude (Code), lead | **The records foundations built** (slice 0 of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-0-records`): new **§13.18**; S4b-BL-66, S4b-BL-71 and S4b-BL-72 done in code. |
 | 0.92 | 2026-09-30 | Claude (Code), lead | **The house's cost, carpet area and location source built** (slice 1a of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1-house-values-brokers`): new **§13.19**; §15 S4b-FR-7 done in code; new **S4b-BL-84** (filters over the cost numbers). |
 | 0.93 | 2026-09-30 | Claude (Code), lead | **Brokers built** (slice 1b of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1b-brokers`): new **§13.20**; §15 S4b-FR-11 done in code; new **S4b-BL-85** (the duplicate-flat warning). |
+| 0.94 | 2026-09-30 | Claude (Code), lead | **Rooms built** (slice 1c of [11](11-feature-parity-and-export-spec.md) 5.6 and 5.30, branch `feat/s4b-4c-slice-1c-rooms`): new **§13.21**; new **S4b-BL-87** (reordering rooms). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1204,6 +1205,8 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-84 | Android, Web | **Filters over the cost numbers** ([11](11-feature-parity-and-export-spec.md) 5.21: "the numbers join the filters"; new id): the list's filter sheet gains monthly cost, money to move in and per sq ft ranges once the list has a filter sheet at all (today it has a search box and the status chips). After slice 1a, with the list's own design round. | Open |
 | S4b-BL-85 | Android, Web | **The duplicate-flat warning** ([11](11-feature-parity-and-export-spec.md) 5.25; new id): "two brokers show the same flat", within about 30 m with the same bedrooms and floor, shown when a house is saved and on the broker's page. Needs the floor, so after rooms (slice 1c). | Open |
 | S4b-BL-86 | Android, Web | **Brokers in the Import screen and its undo** (new id; slice 1b left them out): the preview says "N new brokers, N updated" and *Undo* of an import as copies removes the brokers it added. | Open |
+| S4b-BL-87 | Android, Web | **Reorder rooms and add the house's floor** (new id; slice 1c left both out): up and down (or drag) to change a room's `sort`, and a `floor` on the house, which the duplicate-flat warning (S4b-BL-85) needs. | Open |
+| S4b-BL-88 | Web | **`plan-page.spec.ts` fails once in a while** ("withdraws a location failure when the start is then chosen on the map", `maps.length` 0): seen in a full `ng test` run on slices 1b and 1c, green on the rerun and alone. An order-dependent test; find what state it shares (the map fake, a signal) and make it independent. | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2577,6 +2580,27 @@ the first use of the slice 0 records and the first `doorprints-backup/2` list):
 **Not built here:** the duplicate-flat warning (**S4b-BL-85**; needs the floor, which arrives with rooms in 1c); rooms
 (1c); a broker's rating in Compare; the Import screen's wording for brokers (its preview counts them only in the totals) and the
 undo of a copy import, which leaves the brokers it added (**S4b-BL-86**); a *Matches <name>* hint while typing a phone.
+
+### 13.21 Rooms, slice 1c of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-1c-rooms`; [11](11-feature-parity-and-export-spec.md) 5.6 and 5.30, ADR-28):
+
+- **The field**: `rooms` on the house, at most 30, each `{id, type, name, lengthCm, widthCm, condition, notes, sort}`
+  (docs/schemas README §3.5), after `cost` and before `brokerId` in every writer. Room **7** (`MIGRATION_6_7`, `7.json`, the
+  list stored as JSON text like the checklist), Flyway **`V9__house_rooms.sql`**, IndexedDB unchanged. A writer now writes
+  `doorprints-backup/2` when a copy holds a broker or a room; a copy made without contact details keeps its rooms.
+- **Sizes and units**: stored in centimetres; a local *Length units* setting (*Feet* by default, *Metres*) shows feet and
+  inches or metres and a room's area in sq ft or m² (`RoomSizes` in `:shared` and `room-sizes.ts`, one list of vectors).
+- **Screens**: the form's **Rooms** section (type, name, length, width, condition, notes, *Add room*, *Delete*, the cap of 30, each
+  room's area and the total), the *Length units* switch in Settings and on Your data, Compare's *Rooms* row. Four languages
+  (hi, ta, te *under review*), both themes; one new screenshot of the section.
+- **Copies, AI and search**: a `rooms` column, `rooms.csv`, a Rooms sheet and a Rooms table with a total on each house page; the
+  AI documents carry names, sizes and condition, never a room's notes; search covers room names and notes.
+- **Tests and docs**: [06](06-test-plan.md) TC-U-101; docs/schemas README 1.13 (§3.5); [03](03-design.md) §6.1, §9;
+  [14](14-lead-backlog-and-handoff.md) §7 (the builders' models); the guide's houses page; CHANGELOG.
+
+**Not built here:** reordering rooms (**S4b-BL-87**); the house's floor (needed by the duplicate-flat warning, S4b-BL-85);
+photos linked to rooms (slice 5).
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

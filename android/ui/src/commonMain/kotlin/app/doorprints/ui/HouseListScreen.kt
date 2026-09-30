@@ -440,13 +440,14 @@ fun HouseListScreen(
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
         // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
-        // linked broker since slice 1b).
+        // linked broker since slice 1b, the rooms' names and notes since slice 1c).
         .filter {
             HouseSearch.matches(
                 query,
                 HouseSearch.fields(
                     it.label, it.address, it.street, it.locality, it.notes, it.contactName,
                     brokerText = it.brokerId?.let(brokerText::get),
+                    rooms = it.rooms,
                 ),
             )
         }
