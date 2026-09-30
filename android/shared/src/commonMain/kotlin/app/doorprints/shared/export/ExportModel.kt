@@ -157,7 +157,17 @@ data class ExportOptions(
     val language: String = "en",
     val utcOffsetMinutes: Int = 0,
     val exportedAtMillis: Long = 0L,
-)
+    /**
+     * Sharing updates (docs/11 5.28, S4b-FR-3): only the rows changed after this instant (epoch ms; `updatedAt` for
+     * houses and visits, `createdAt` for photos, plus every photo of a changed house). Null: everything, a copy.
+     */
+    val since: Long? = null,
+    /** Who the update is for (a name the person typed), written into the manifest; null for a copy. */
+    val sharedTo: String? = null,
+) {
+    /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
+    val isUpdate: Boolean get() = since != null || sharedTo != null
+}
 
 /**
  * The data a copy is built from, already filtered, ordered and (when contacts are left out) redacted.
@@ -212,19 +222,29 @@ data class ExportBundle(
             visits: List<ExportVisit>,
             photos: List<ExportPhoto>,
         ): ExportBundle {
-            val kept = houses
-                .filter { house ->
-                    when (options.scope) {
-                        ExportScope.ALL -> options.includeRejected || house.status != "REJECTED"
-                        ExportScope.SHORTLISTED -> house.status == "SHORTLISTED"
-                        ExportScope.SELECTED -> house.id in options.selectedIds
-                    }
+            val since = options.since
+            val inScope = houses.filter { house ->
+                when (options.scope) {
+                    ExportScope.ALL -> options.includeRejected || house.status != "REJECTED"
+                    ExportScope.SHORTLISTED -> house.status == "SHORTLISTED"
+                    ExportScope.SELECTED -> house.id in options.selectedIds
                 }
+            }
+            // An update (5.28): the houses changed since, with every visit and photo of theirs, plus a changed visit
+            // of an unchanged house in the scope (the house rides along, so the visit has somewhere to land).
+            val changedHouses = if (since == null) inScope else inScope.filter { it.updatedAt > since }
+            val inScopeIds = inScope.mapTo(HashSet()) { it.id }
+            val changedVisitHouses = if (since == null) emptySet() else
+                visits.filter { it.updatedAt > since && it.houseId != null && it.houseId in inScopeIds }
+                    .mapTo(HashSet()) { it.houseId!! }
+            val changedIds = changedHouses.mapTo(HashSet()) { it.id }
+            val kept = (changedHouses + inScope.filter { it.id in changedVisitHouses && it.id !in changedIds })
                 .map { if (options.includeContacts) it else it.copy(contactName = null, contactPhone = null) }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
             val keptIds = kept.mapTo(HashSet()) { it.id }
             val keptVisits = visits
                 .filter { it.houseId != null && it.houseId in keptIds }
+                .filter { since == null || it.updatedAt > since || it.houseId in changedIds }
                 .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             val photoHouses = when (options.photos) {
                 PhotoScope.NONE -> emptySet()
@@ -233,9 +253,11 @@ data class ExportBundle(
             }
             val keptPhotos = photos
                 .filter { it.houseId in photoHouses }
+                .filter { since == null || it.createdAt > since || it.houseId in changedIds }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
             val unlinked = if (options.scope == ExportScope.ALL) {
-                visits.filter { it.houseId == null }.sortedWith(compareBy({ it.arrivedAt }, { it.id }))
+                visits.filter { it.houseId == null && (since == null || it.updatedAt > since) }
+                    .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             } else {
                 emptyList()
             }
