@@ -871,6 +871,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Fixed
 
+- **The server image takes the operating system's security fixes** (`backend/Dockerfile`): the image build runs an
+  `apt-get upgrade`, so a fix the distribution has published (an OpenSSL one failed the Trivy HIGH gate on
+  2026-09-30) is in the image before the base image is rebuilt.
 - **A malformed photo upload** (a multipart body without a boundary) got a 500 with a stack trace in the server log;
   it is now a 400 (found by the new ZAP API scan).
 - **Android: the map crashed on phones without a Vulkan GPU** ("No Vulkan compatible GPU found", found by the new API
