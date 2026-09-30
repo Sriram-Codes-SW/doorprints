@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.100 |
+| Version | 0.101 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -112,6 +112,7 @@
 | 0.98 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 **built**: §13.24 now says what was done; new S4b-BL-92 (follow-ups of 3b-1). |
 | 0.99 | 2026-09-30 | Claude (Code), lead | Slice 3b-2 **built**: new **§13.25**; new S4b-BL-93 (follow-ups of 3b-2). |
 | 0.100 | 2026-09-30 | Claude (Code), lead | Slice 3c **built**: new **§13.26**; new S4b-BL-94 (follow-ups of 3c). Slice 3 (questions, viewings, reminders, Hunt reminder) is complete. |
+| 0.101 | 2026-09-30 | Claude (Code), lead | Slice 4a **built**: new **§13.27**; new S4b-BL-95 (follow-ups of 4a). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1219,6 +1220,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-92 | Android, iOS, web, backend | **Follow-ups of slice 3b-1** (2026-09-30): (a) the iPhone has no *Add to calendar* (the `.ics` share is not wired there; the button is hidden); (b) the website has no backup importer, so a viewing in a backup cannot be brought in there (S4b-BL-75); (c) the copy dates differ: Kotlin writes the copy's own time offset, the web writes UTC; choose one; (d) a saved viewing does not refresh the AI index of its house until the house changes; (e) undoing a copy import does not remove the imported viewings, questions or brokers; (f) no test for Settings > Viewings navigation, the Your data card or the routes, nor for focus in the website's dialog; (g) hi/ta/te viewing words need a native reader. | Open |
 | S4b-BL-93 | Android, iOS, web | **Follow-ups of slice 3b-2** (2026-09-30): (a) the iPhone reminders are compiled but never run: add them to the launch self-check or test on a device (TC-M); (b) the *Questions* action of a reminder opens the house without scrolling to its questions; (c) nothing asserts the start-up and on-resume reschedule (covered by review only); (d) no screenshot of Settings > Viewings; (e) the service worker's notification click is only syntax-checked; (f) the question about notifications shares one 'asked' flag with Export and Import; (g) hi/ta/te reminder words need a native reader. | Open |
 | S4b-BL-94 | Android, iOS | **Follow-ups of slice 3c** (2026-09-30): (a) `DeepLink.StartHunt` opens the Map tab with `openTab`, and when a sub-screen is already open on top of the Map's stack the sub-screen is restored instead of the Map (the existing shared-listing link behaves the same): make a deep link clear the stack; (b) no TalkBack label on the notification actions (use a custom view or name the action in the text); (c) the iPhone tap does not offer Hunt mode on the Map; (d) the iPhone notifications of slices 3b-2 and 3c are compiled but never run (add them to the launch self-check or test on a device, TC-M); (e) hi/ta/te words need a native reader. | Open |
+| S4b-BL-95 | Android, web, backend | **Follow-ups of slice 4a** (2026-09-30): (a) the sortable distance column in the house list (and the list filter by distance); (b) *Pick on the map* on Android is not run on a device (TC-M); (c) `CommonRepository.aiHouses` (the notes and distances each house gets) and the PDF sections have no direct test; (d) an import can take the live count past 20 areas, 10 places or 200 notes, as with questions; (e) the website has a Plan walking estimate only, no travel-mode setting on either app; (f) hi/ta/te words need a native reader. | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2696,6 +2698,15 @@ ordinary sync and the backup.
 - **iPhone**: a `viewing-hunt-<id>` notification, a tap opens the viewing. Compiled, not run.
 
 **Not built here:** TalkBack labels on the notification actions, the Map offering Hunt mode after an iPhone tap.
+
+### 13.27 Hunting areas, my places and area notes, slice 4a of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-4a-areas-places`; [11](11-feature-parity-and-export-spec.md) 5.17, 5.22, 5.23 and the design table before 5.24, [06](06-test-plan.md) TC-U-107; no migration):
+
+- **Records**: `area` (at most 20, radius 200..2000 m, `enabled`), `place` (at most 10), `areanote` (on an area or a street, at most 200); derived rules for which houses a note reaches and for the distances to the places, vectors N1..N5 and D1..D3.
+- **Screens**: *My areas*, *My places*, the notes list, the house page's *Area notes* and *Distances*, a Compare row per place; search finds a house by the notes that reach it.
+- **Backup, copies, AI, server**: the lists `areas`, `places`, `areaNotes` in `doorprints-backup/2`; Area notes and Distances on the house page of the readable copies; AI lines `Area note:` and `Distance to <place>:`; the server validates and stores the three record types and computes the same lines.
+- **Not built here:** the wake-up (slice 4b), the sortable distance column.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

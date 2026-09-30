@@ -127,6 +127,9 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Areas, places and area notes** ([spec](docs/11-feature-parity-and-export-spec.md) 5.17, 5.22, 5.23, slice 4a of 5.30): **Settings > My areas** (Your data on the website) saves the neighbourhoods you are searching in; **My places** saves up to ten places that matter (work, school, family)
+  and every house shows its distance to each (and the walking time) in its details and in Compare. Write a note for a street or an area ("water tanker every morning") and it shows on every house it covers, in search, in readable copies and in backups.
+  Areas can be marked "Wake me here"; that takes effect in a later update.
 - **Hunt mode reminder before a viewing** ([spec](docs/11-feature-parity-and-export-spec.md) 5.16, slice 3c of 5.30): on a viewing, switch on **Offer Hunt mode before this viewing**; shortly before it starts (15 minutes by default, set under
   **Settings > Hunt mode**) Doorprints asks "Start Hunt mode?" with **Start Hunt mode** and **Dismiss**. It never starts tracking by itself. If a viewing reminder is due within ten minutes, you get one notification with both.
 - **Viewing reminders** ([spec](docs/11-feature-parity-and-export-spec.md) 5.8, slice 3b-2 of 5.30): a viewing with a reminder now tells you before it starts. On Android it is an alarm that works with the phone asleep

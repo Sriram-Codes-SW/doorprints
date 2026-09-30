@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.46 |
+| Version | 0.47 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -58,6 +58,7 @@
 | 0.44 | 2026-09-30 | Claude (Code), lead | **Slice 3c designed** (5.16 Hunt mode reminder before a viewing; [10](10-sprint-log.md) §13.26). |
 | 0.45 | 2026-09-30 | Claude (Code), lead | **Slice 3c built** (5.16 Hunt mode reminder; [10](10-sprint-log.md) §13.26). |
 | 0.46 | 2026-09-30 | Claude (Code), lead | **Slice 4a designed** (hunting areas as records, my places with distances, area notes; [10](10-sprint-log.md) §13.27). The area wake-up (geofences, 5.17/5.18) is slice 4b. |
+| 0.47 | 2026-09-30 | Claude (Code), lead | **Slice 4a built** (areas, places, area notes; [10](10-sprint-log.md) §13.27). The wake-up (4b) is not built. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -667,6 +668,12 @@ redaction as house notes (contacts removed before any AI use); searchable (the s
 | Backup and copies | Lists `areas`, `places`, `areaNotes` after `viewings` in `doorprints-backup/2` (any of them makes a copy `/2`); the manifest counts after `counts.viewings`. A copy made without contact details keeps them all (a place is the person's own data, not a contact). The house page of the readable copies gets an *Area notes* section and a *Distances* table (name, km) after the Viewings section; no new file. |
 | AI | After the viewing lines: `Area note: <text>` (at most 5, newest first, through the contact redactor) and `Distance to <place>: <km> km` (names and distances only, at most 10; never the coordinates of a place). The three stacks write the same words. |
 | Server | Three record types with import validation as the questions; `HouseDocuments` computes the same notes and distances. |
+
+**Built (2026-09-30, slice 4a of 5.30; [10](10-sprint-log.md) §13.27).** The three record types (`docs/schemas/README.md` §3.12), *My areas* and *My places* (Settings on Android, cards on Your data on the website) with the radius slider, the point
+(current location, typed coordinates, and *Pick on the map* on Android; on the website the map picker and the coordinates), the area notes list, the house page's *Area notes* (add for the street or an area) and *Distances* sections, a Compare row per
+place, search over the notes that reach a house, the Area notes and Distances sections of the readable copies, the AI lines, the backup lists and the server. As built: a house at exactly (0,0) or with an APPROX position counts as having no point for
+area-based notes (an APPROX house keeps its distances; street notes always reach); the minutes are the Plan walking estimate ("about N min on foot"), there being no travel-mode setting; deleting an area leaves its notes, shown as "An area that is gone";
+*Pick on the map* is not run on a device. **Not built:** the sortable distance column of the list, any wake-up (4b).
 
 ### 5.24 Moving in (D-30)
 
