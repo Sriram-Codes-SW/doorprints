@@ -32,6 +32,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -81,7 +82,9 @@ public class RecordController {
         }
         var payload = dto.deleted() ? EMPTY : compact(dto.payload());
         versions.lock(); // before reading: last-write-wins check and write are atomic (F-09)
-        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt");
+        // Truncated to what timestamptz keeps (microseconds), so the answer to this PUT is the row every later read
+        // returns, byte for byte: a client compares the two (SyncRules.pushShowsReset) and must never see a difference.
+        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt").truncatedTo(ChronoUnit.MICROS);
         var key = new RecordKey(type, id);
         var record = repo.findById(key).orElseGet(() -> new Record(key));
         if (record.getUpdatedAt() != null && record.getUpdatedAt().isAfter(incomingUpdatedAt)) {
