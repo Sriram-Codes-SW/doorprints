@@ -35,7 +35,7 @@ import java.time.ZoneOffset;
 
 /**
  * {@code GET /api/export}: everything the server holds as one JSON download, in the shared backup format
- * {@code doorprints-backup/1} — the same object an Android or web backup carries as {@code data.json}
+ * {@code doorprints-backup/1} ({@code /2} when the server holds brokers) — the same object an Android or web backup carries as {@code data.json}
  * (docs/schemas/README.md), so a server copy and a device copy are the same file. Photo bytes are not in it; they
  * come from {@code GET /api/photos/{id}} (a device backup puts them in the ZIP's {@code photos/} folder instead).
  *

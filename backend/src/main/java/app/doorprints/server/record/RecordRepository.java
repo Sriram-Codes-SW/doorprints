@@ -34,6 +34,9 @@ public interface RecordRepository extends JpaRepository<Record, RecordKey> {
     /** The change feed of one kind. */
     List<Record> findByKeyTypeAndSyncVersionGreaterThanOrderBySyncVersion(String type, long syncVersion);
 
+    /** Live rows of one kind, for a backup export. */
+    List<Record> findByKeyTypeAndDeletedFalse(String type);
+
     /** Live rows of one kind, for the per-type cap. */
     long countByKeyTypeAndDeletedFalse(String type);
 

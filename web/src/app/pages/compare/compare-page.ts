@@ -19,6 +19,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LocalDataService } from '../../core/local-data.service';
+import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
 import { CHECKLIST, HouseDto, STATUS_ICON, STATUS_KEY, houseScore } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
@@ -64,6 +65,8 @@ export class ComparePage {
   /** Why the houses could not be read; keyed on its run so that Retry failing the same way is read again. */
   protected readonly error = signal<RunResult<Msg> | null>(null);
   private readonly houses = signal<HouseDto[]>([]);
+  /** Broker name and agency by broker id (slice 1b): the Contact row shows them for a linked house. */
+  private readonly brokerLines = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly selectedIds = signal<string[]>([]);
   /** Visit count per house id; missing = not loaded yet. */
   private readonly visitCounts = signal<Record<string, number>>({});
@@ -219,6 +222,13 @@ export class ComparePage {
       this.api.settled();
       this.reload();
     });
+    effect(() => {
+      this.api.settled();
+      this.api.brokers().subscribe({
+        next: (rows) => this.brokerLines.set(new Map(rows.map((r) => [r.id, brokerLine(r.broker)]))),
+        error: () => this.brokerLines.set(new Map()),
+      });
+    });
     // Visit counts for the selected houses, again after any local write: a visit added on the house screen, or one
     // that arrived with a sync pull, changes these numbers. One read of the visits store for all of them.
     effect(() => {
@@ -237,6 +247,11 @@ export class ComparePage {
    * only chosen on the first load: picking it again on every sync would move the columns under the user.
    * `userAsked` is Retry: its failure is a new run and is read again even with the same words (see nextRunResult).
    */
+  /** Who to call for a house: the linked broker's name and agency, else the contact name the house holds. */
+  protected contactOf(h: HouseDto): string | null {
+    return (h.brokerId ? this.brokerLines().get(h.brokerId) : undefined) ?? h.contactName ?? null;
+  }
+
   protected reload(userAsked = false): void {
     this.api.houses().subscribe({
       next: (list) => {

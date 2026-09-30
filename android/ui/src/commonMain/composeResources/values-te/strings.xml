@@ -720,4 +720,33 @@
     <string name="common_sqft">%1$s చ. అడుగులు</string>
     <string name="legend_approx">సుమారు</string>
     <string name="common_ok">సరే</string>
+    <!-- S4b-FR-7 slice 1b, brokers (2026-09-30): under review. -->
+    <string name="settings_brokers">బ్రోకర్లు</string>
+    <string name="settings_brokers_hint">మీకు ఇళ్లు చూపేవారు: వారి ఫోన్, సంస్థ, ఫీజులు</string>
+    <string name="brokers_title">బ్రోకర్లు</string>
+    <string name="brokers_add">బ్రోకర్‌ను జోడించండి</string>
+    <string name="brokers_empty_title">ఇంకా బ్రోకర్లు లేరు.</string>
+    <string name="brokers_empty_body">ఫోన్ నంబర్‌తో ఇంటిని సేవ్ చేసినప్పుడు వారు ఇక్కడ కనిపిస్తారు.</string>
+    <string name="broker_title">బ్రోకర్</string>
+    <string name="broker_name">పేరు</string>
+    <string name="broker_name_needed">పేరు నమోదు చేయండి</string>
+    <string name="broker_phone">ఫోన్</string>
+    <string name="broker_agency">సంస్థ</string>
+    <string name="broker_fee_terms">ఫీజు నిబంధనలు (ఉదా., 15 రోజుల అద్దె, ఒకసారి)</string>
+    <string name="broker_notes">గమనికలు</string>
+    <string name="broker_rating">మీ రేటింగ్</string>
+    <string name="broker_houses">ఈ బ్రోకర్ ఇళ్లు</string>
+    <string name="broker_houses_none">ఈ బ్రోకర్ ఇళ్లు ఇంకా లేవు.</string>
+    <string name="broker_delete">బ్రోకర్‌ను తొలగించండి</string>
+    <string name="broker_delete_title">ఈ బ్రోకర్‌ను తొలగించాలా?</string>
+    <string name="broker_delete_body">ఇళ్లలో వారి సంప్రదింపు వివరాలు అలాగే ఉంటాయి.</string>
+    <string name="broker_gone">ఈ బ్రోకర్ ఇక ఈ ఫోన్‌లో లేరు.</string>
+    <string name="house_broker">బ్రోకర్</string>
+    <string name="house_broker_none">ఎవరూ లేరు</string>
+    <string name="house_broker_new">కొత్త బ్రోకర్</string>
+    <string name="house_broker_hint">బ్రోకర్‌ను ఎంచుకుంటే సంప్రదింపు పేరు, ఫోన్ నిండుతాయి; వాటిని బ్రోకర్ పేజీలో మార్చండి. సేవ్ చేసినప్పుడు ఫోన్ నంబర్ ఇంటిని దాని బ్రోకర్‌తో కలుపుతుంది.</string>
+    <plurals name="brokers_houses_count">
+        <item quantity="one">%1$d ఇల్లు</item>
+        <item quantity="other">%1$d ఇళ్లు</item>
+    </plurals>
 </resources>

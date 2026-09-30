@@ -53,6 +53,9 @@ Open a house from the list or the map. There you can:
   **cost per sq ft**, and **Compare** lines them up across houses;
 - turn on **Approximate location** when you only know the area, not the building: the house shows as a hollow ring
   on the map and Hunt mode will not alert you there until you fix the spot;
+- see or change the house's **Broker**: the person who showed it. Saving a house with a phone number adds that person to
+  **Settings > Brokers**, where each broker has an agency, fee terms, notes, a rating, a **Call** button and a list of the
+  houses they showed you;
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;

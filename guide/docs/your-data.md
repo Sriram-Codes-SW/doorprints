@@ -28,7 +28,7 @@ Always make one before you change phones or clear your browser.
   *What to include*. It is the only file Doorprints can read back in. Android can also read a backup file from your
   server.
 
-A copy with contact details holds owners' and brokers' phone numbers. Share it carefully.
+A copy with contact details holds owners' and brokers' phone numbers, and the list of your **Brokers**. Share it carefully.
 
 ![Your data on the website: Save a copy with six formats, Web page (HTML) chosen, and What to include below](images/web-data.png)
 

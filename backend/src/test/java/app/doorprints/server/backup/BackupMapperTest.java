@@ -21,11 +21,15 @@ package app.doorprints.server.backup;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.photo.PhotoDto;
+import app.doorprints.server.record.Record;
+import app.doorprints.server.record.RecordKey;
 import app.doorprints.server.visit.Visit;
 import app.doorprints.server.visit.VisitSource;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BackupMapperTest {
 
+    private static final ObjectMapper JSON = JsonMapper.builder().build();
     private static final Instant EXPORTED_AT = Instant.parse("2026-09-22T10:15:30Z");
 
     private static final UUID FIRST = UUID.fromString("11111111-1111-4111-8111-111111111111");
@@ -139,6 +144,73 @@ class BackupMapperTest {
         });
     }
 
+    private static Record broker(String id, String payload, Instant updatedAt, boolean deleted) {
+        var record = new Record(new RecordKey("broker", id));
+        record.setPayload(payload);
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(deleted);
+        return record;
+    }
+
+    /** No live broker: the copy is a /1 document with no brokers key at all, exactly as before slice 1b. */
+    @Test
+    void withoutBrokersTheCopyIsVersionOneAndHasNoBrokersKey() {
+        var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(),
+                List.of(broker("gone", "{}", EXPORTED_AT, true)), JSON, EXPORTED_AT);
+        assertThat(data.format()).isEqualTo("doorprints-backup/1");
+        assertThat(data.brokers()).isEmpty();
+        assertThat(JSON.writeValueAsString(data)).doesNotContain("brokers");
+    }
+
+    /** Brokers by updatedAt then id, the record's fields in the format's order, and /2 as soon as there is one. */
+    @Test
+    void brokersMakeItVersionTwoAndAreOrderedByUpdatedAtThenId() {
+        var early = EXPORTED_AT.minusSeconds(60);
+        var data = BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(
+                broker("b-2", "{\"name\":\"Second\",\"rating\":5}", EXPORTED_AT, false),
+                broker("b-1", "{\"notes\":\"n\",\"name\":\"First\",\"agency\":\"A\",\"phone\":\"98400\","
+                        + "\"feeTerms\":\"15 days\"}", EXPORTED_AT, false),
+                broker("a-0", "{\"name\":\"Oldest\"}", early, false),
+                broker("x-9", "{\"name\":\"Deleted\"}", early, true)), JSON, EXPORTED_AT);
+
+        assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        assertThat(data.brokers()).extracting(BackupBroker::id).containsExactly("a-0", "b-1", "b-2");
+        assertThat(JSON.writeValueAsString(data.brokers().get(1))).isEqualTo("{\"id\":\"b-1\",\"name\":\"First\","
+                + "\"phone\":\"98400\",\"agency\":\"A\",\"feeTerms\":\"15 days\",\"notes\":\"n\","
+                + "\"updatedAt\":" + EXPORTED_AT.toEpochMilli() + "}");
+        assertThat(data.brokers().get(2).rating()).isEqualTo(5);
+        assertThat(data.brokers().getFirst().updatedAt()).isEqualTo(early.toEpochMilli());
+    }
+
+    /** The server never reads inside a record, so an export drops what would not import again instead of failing. */
+    @Test
+    void aBrokerPayloadThatWouldNotImportIsCoercedOrLeftOut() {
+        var data = BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(
+                broker("no-name", "{\"phone\":\"1\"}", EXPORTED_AT, false),
+                broker("blank", "{\"name\":\"  \"}", EXPORTED_AT, false),
+                broker("not-json", "not json", EXPORTED_AT, false),
+                broker("long-name", "{\"name\":\"" + "n".repeat(201) + "\"}", EXPORTED_AT, false),
+                broker("odd", "{\"name\":\"Odd\",\"phone\":7,\"rating\":6,\"agency\":\"" + "a".repeat(201)
+                        + "\",\"notes\":null}", EXPORTED_AT, false)), JSON, EXPORTED_AT);
+
+        assertThat(data.brokers()).singleElement().satisfies(b -> {
+            assertThat(b.id()).isEqualTo("odd");
+            assertThat(b.name()).isEqualTo("Odd");
+            assertThat(b.phone()).isNull();
+            assertThat(b.rating()).isNull();
+            assertThat(b.agency()).isNull();
+            assertThat(b.notes()).isNull();
+        });
+    }
+
+    @Test
+    void aHouseKeepsItsBrokerIdEvenWhenNoSuchBrokerExists() {
+        var withBroker = house(FIRST, EXPORTED_AT, false);
+        withBroker.setBrokerId("nobody-yet");
+        var data = BackupMapper.toBackup(List.of(withBroker), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.houses().getFirst().brokerId()).isEqualTo("nobody-yet");
+    }
+
     /** The merge rule: newer in the file wins, newer here is kept, equal writes nothing (S4-00, docs/11 5.2). */
     @Test
     void mergeDecisionIsLastWriteWins() {
@@ -213,7 +285,8 @@ class BackupMapperTest {
     @Test
     void canonicalSampleIsTheSameFormat() {
         var sample = CanonicalSample.json();
-        assertThat(sample).startsWith("{\"format\":\"" + BackupFormat.ID + "\"");
+        // The sample holds brokers, so it is the /2 document; a copy without any is /1 (see the tests below).
+        assertThat(sample).startsWith("{\"format\":\"" + BackupFormat.ID_WITH_BROKERS + "\"");
         assertThat(CanonicalSample.keysInOrder(sample)).startsWith("format", "exportedAt", "houses", "id", "label");
         assertThat(sample).doesNotContain("\"deleted\"").doesNotContain("\"syncVersion\"").doesNotContain("null");
     }

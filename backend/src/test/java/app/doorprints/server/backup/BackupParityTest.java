@@ -105,8 +105,8 @@ class BackupParityTest {
     }
 
     /**
-     * Completeness (readiness review 2026-09-29, docs/14 §8 finding 4): the sample's first house, visit and photo carry
-     * exactly the record components of {@link BackupHouse}, {@link BackupVisit} and {@link BackupPhoto}, in order, so a
+     * Completeness (readiness review 2026-09-29, docs/14 §8 finding 4): the sample's fullest house, visit, photo and broker carry
+     * exactly the record components of {@link BackupHouse}, {@link BackupVisit} and {@link BackupPhoto} and {@link BackupBroker}, in order, so a
      * new field (Sprint 4c) lands in the sample and the three stacks together (Android {@code BackupFieldsTest}, web
      * {@code backup-fields.spec.ts}).
      */
@@ -116,10 +116,20 @@ class BackupParityTest {
         assertThat(keysOf(root, "houses")).isEqualTo(components(BackupHouse.class));
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
+        assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));
+        // The list order of data.json is part of the format too (README section 3): brokers come after photos.
+        assertThat(new java.util.ArrayList<>(root.propertyNames()))
+                .isEqualTo(components(BackupData.class));
     }
 
     private static java.util.List<String> keysOf(tools.jackson.databind.JsonNode root, String list) {
-        return new java.util.ArrayList<>(root.get(list).get(0).propertyNames());
+        // The fullest row: a list may lead with a row that leaves its optional fields out (the sample's first broker).
+        java.util.List<String> fullest = java.util.List.of();
+        for (var row : root.get(list)) {
+            var keys = new java.util.ArrayList<String>(row.propertyNames());
+            if (keys.size() > fullest.size()) fullest = keys;
+        }
+        return fullest;
     }
 
     private static java.util.List<String> components(Class<? extends Record> record) {

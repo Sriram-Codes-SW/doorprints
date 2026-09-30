@@ -35,10 +35,16 @@ class HouseSearchTest {
         label = "Lake Road flat", address = null, street = null, locality = "हिन्दी नगर", notes = null, contactName = null,
     )
 
-    private fun matching(query: String) = listOf("green" to green, "lake" to lake)
+    // The linked broker's name, agency and fee terms (slice 1b), as `Broker.searchText` writes them.
+    private val brokered = HouseSearch.fields(
+        label = "Beach Road", address = null, street = null, locality = null, notes = null, contactName = "Meena",
+        brokerText = Broker(name = "Meena Iyer", agency = "Beach Road Realty", feeTerms = "15 days' rent, once").searchText,
+    )
+
+    private fun matching(query: String) = listOf("green" to green, "lake" to lake, "beach" to brokered)
         .filter { HouseSearch.matches(query, it.second) }.map { it.first }
 
-    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake"), matching("  "))
+    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach"), matching("  "))
     @Test fun theLabelMatchesIgnoringCase() = assertEquals(listOf("green"), matching("green view"))
     @Test fun theAddressStreetAndLocalityMatch() {
         assertEquals(listOf("green"), matching("5th cross"))
@@ -46,6 +52,8 @@ class HouseSearchTest {
     }
     @Test fun theNotesMatch() = assertEquals(listOf("green"), matching("metro"))
     @Test fun theContactNameMatches() = assertEquals(listOf("green"), matching("ravi"))
+    @Test fun aQueryMatchesTheBrokersAgency() = assertEquals(listOf("beach"), matching("realty"))
+    @Test fun aQueryMatchesTheBrokersFeeTerms() = assertEquals(listOf("beach"), matching("days' rent"))
     @Test fun indicTextMatches() = assertEquals(listOf("lake"), matching("हिन्दी"))
     @Test fun aQueryFoundNowhereMatchesNothing() = assertEquals(emptyList(), matching("penthouse"))
     @Test fun theQueryIsTrimmed() = assertEquals(listOf("lake"), matching(" lake "))

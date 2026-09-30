@@ -26,10 +26,15 @@ package app.doorprints.shared.model
  * `map-list.spec.ts`), which keep the same list of cases.
  */
 object HouseSearch {
-    /** The values a house is searched by: label, address, street, locality, notes and the contact's name. */
+    /**
+     * The values a house is searched by: label, address, street, locality, notes, the contact's name and, with a
+     * linked broker (slice 1b), [brokerText] (`Broker.searchText`: its name, agency and fee terms).
+     */
     fun fields(
         label: String?, address: String?, street: String?, locality: String?, notes: String?, contactName: String?,
-    ): List<String> = listOfNotNull(label, address, street, locality, notes, contactName).filter { it.isNotEmpty() }
+        brokerText: String? = null,
+    ): List<String> =
+        listOfNotNull(label, address, street, locality, notes, contactName, brokerText).filter { it.isNotEmpty() }
 
     /** True when [query] is blank or one of [fields] contains it, ignoring case. */
     fun matches(query: String, fields: List<String>): Boolean {

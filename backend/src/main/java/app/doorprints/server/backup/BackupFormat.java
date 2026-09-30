@@ -41,14 +41,16 @@ public final class BackupFormat {
      * Written into {@code manifest.json} and {@code data.json}. Readers accept {@code doorprints-backup/1} up to
      * {@link #MAX_VERSION} (docs/11 section 5.30 item 3, ADR-28): a new entity list means a new format number, and
      * a file newer than {@code MAX_VERSION} is refused with "update the app" rather than read with its lists
-     * dropped in silence. The writers stay at {@code /1} until slice 1 writes the first new list.
+     * dropped in silence. A writer uses the lowest number that holds the copy: {@code /2} once it has a broker (slice 1b), else {@code /1}.
      */
     public static final String ID = "doorprints-backup/1";
+    /** Written instead of {@link #ID} only when the copy holds at least one broker: the lowest number that holds it. */
+    public static final String ID_WITH_BROKERS = "doorprints-backup/2";
     private static final String PREFIX = "doorprints-backup/";
-    /** The newest format this reader understands ({@code /2}: the Sprint 4b lists, none of them written yet). */
+    /** The newest format this reader understands ({@code /2}: the Sprint 4b lists, of which only {@code brokers} is written so far). */
     public static final int MAX_VERSION = 2;
     /** The format ids {@code POST /api/import} accepts, oldest first. */
-    public static final List<String> READ_IDS = List.of(PREFIX + 1, PREFIX + 2);
+    public static final List<String> READ_IDS = List.of(ID, ID_WITH_BROKERS);
 
     /** ZIP entry names used by the device writers (kept here so all three copies of the format agree). */
     public static final String MANIFEST_ENTRY = "manifest.json";

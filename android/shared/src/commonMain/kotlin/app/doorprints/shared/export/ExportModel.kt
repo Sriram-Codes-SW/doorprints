@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseScore
 import kotlinx.serialization.KSerializer
@@ -81,6 +82,8 @@ data class ExportHouse(
      * empty object in a file reads as no cost, and a field out of range as unknown (`ExportHouse.toEntity`).
      */
     val cost: HouseCost? = null,
+    /** The broker's record id (slice 1b, format `/2`); absent for a house without one and in a copy made without contacts. */
+    val brokerId: String? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */
     @Serializable(with = LenientChecklistSerializer::class)
     val checklist: Map<String, Int> = emptyMap(),
@@ -89,6 +92,33 @@ data class ExportHouse(
 ) {
     /** 0–5 overall score, exactly the one the app screens show ([HouseScore.of]); null when nothing is scored. */
     val score: Double? get() = HouseScore.of(checklist, rating)
+}
+
+/**
+ * A broker in a `/2` backup (slice 1b): the record's id and its payload keys in the format's order (docs/schemas
+ * README 3.4), and `updatedAt` in epoch milliseconds, so a backup merges brokers by id like houses.
+ */
+@Serializable
+data class ExportBroker(
+    val id: String,
+    val name: String,
+    val phone: String? = null,
+    val agency: String? = null,
+    val feeTerms: String? = null,
+    val notes: String? = null,
+    val rating: Int? = null,
+    val updatedAt: Long,
+) {
+    fun toBroker() = Broker(name, phone, agency, feeTerms, notes, rating)
+
+    /** The name with " (agency)" when there is one, as the `broker` column and a house page write it. */
+    val label: String get() = toBroker().label
+
+    companion object {
+        fun of(id: String, broker: Broker, updatedAt: Long) = ExportBroker(
+            id, broker.name, broker.phone, broker.agency, broker.feeTerms, broker.notes, broker.rating, updatedAt,
+        )
+    }
 }
 
 /**
@@ -199,8 +229,23 @@ data class ExportBundle(
     val visits: List<ExportVisit>,
     val photos: List<ExportPhoto>,
     val unlinkedVisits: List<ExportVisit> = emptyList(),
+    /**
+     * The brokers in the copy (slice 1b), ordered by `updatedAt` then `id`; empty without contact details. A copy that
+     * has some is a `/2` backup, gets a `broker` column, a house page row, a Brokers section and `brokers.csv`.
+     */
+    val brokers: List<ExportBroker> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
+
+    private val brokersById: Map<String, ExportBroker> = brokers.associateBy { it.id }
+    private val housesByBroker: Map<String, List<ExportHouse>> =
+        houses.filter { it.brokerId != null }.groupBy { it.brokerId!! }
+
+    /** The broker a house names, if it is in this copy (a dangling id reads as none). */
+    fun brokerOf(house: ExportHouse): ExportBroker? = house.brokerId?.let { brokersById[it] }
+
+    /** The houses of the copy that name [broker], in the copy's order. */
+    fun housesOf(broker: ExportBroker): List<ExportHouse> = housesByBroker[broker.id].orEmpty()
 
     private val visitsByHouse: Map<String, List<ExportVisit>> = visits.groupBy { it.houseId ?: "" }
     private val photosByHouse: Map<String, List<ExportPhoto>> = photos.groupBy { it.houseId }
@@ -231,6 +276,7 @@ data class ExportBundle(
             houses: List<ExportHouse>,
             visits: List<ExportVisit>,
             photos: List<ExportPhoto>,
+            brokers: List<ExportBroker> = emptyList(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -249,7 +295,9 @@ data class ExportBundle(
                     .mapTo(HashSet()) { it.houseId!! }
             val changedIds = changedHouses.mapTo(HashSet()) { it.id }
             val kept = (changedHouses + inScope.filter { it.id in changedVisitHouses && it.id !in changedIds })
-                .map { if (options.includeContacts) it else it.copy(contactName = null, contactPhone = null) }
+                .map {
+                    if (options.includeContacts) it else it.copy(contactName = null, contactPhone = null, brokerId = null)
+                }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
             val keptIds = kept.mapTo(HashSet()) { it.id }
             val keptVisits = visits
@@ -271,7 +319,15 @@ data class ExportBundle(
             } else {
                 emptyList()
             }
-            return ExportBundle(options, kept, keptVisits, keptPhotos, unlinked)
+            // Brokers (slice 1b): all of them for the whole set of houses (for an update, those changed since and the ones the
+            // kept houses name), else the ones the kept houses name; none when contacts are left out, and then no `/2` list is written.
+            val brokerIds = kept.mapNotNullTo(HashSet()) { it.brokerId }
+            val keptBrokers = when {
+                !options.includeContacts -> emptyList()
+                options.scope == ExportScope.ALL -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
+                else -> brokers.filter { it.id in brokerIds }
+            }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            return ExportBundle(options, kept, keptVisits, keptPhotos, unlinked, keptBrokers)
         }
     }
 }

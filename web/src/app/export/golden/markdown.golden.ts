@@ -68,6 +68,7 @@ Houses: 3 · Visits: 3 · Photos: 2
 | Listing link | https://example.com/listing/1 |
 | Contact name | Ravi Kumar |
 | Contact phone | \\+91 98400 11111 |
+| Broker | Ravi Kumar (Adyar Homes) |
 | Saved on | 2026-09-01 |
 
 ### Cost
@@ -133,6 +134,7 @@ Ask about water in summer.
 | Your rating | 1 out of 5 stars |
 | Street | Beach Road |
 | Location | 13.050000, 80.280000 |
+| Broker | Meena Iyer (Beach Road Realty) |
 | Saved on | 2026-09-03 |
 
 ### Cost
@@ -162,6 +164,26 @@ Too noisy \\| too dark
 ### Photos
 
 - \`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2.jpg\`
+
+## Brokers
+
+### Meena Iyer
+
+| Detail | Value |
+| --- | --- |
+| Agency | Beach Road Realty |
+| Houses from this broker | Untitled |
+
+### Ravi Kumar
+
+| Detail | Value |
+| --- | --- |
+| Phone | \\+91 98400 11111 |
+| Agency | Adyar Homes |
+| Fee terms | 15 days' rent, once |
+| Your rating | 4 out of 5 stars |
+| Notes | Replies fast; shows keys on weekends |
+| Houses from this broker | Green View 2BHK |
 
 ---
 

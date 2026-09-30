@@ -289,6 +289,31 @@ class ApiIntegrationTest {
         assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
     }
 
+    /** Slice 1b (V8): a house's brokerId goes in through PUT and comes back from GET and the sync list. */
+    @Test
+    void brokerIdRoundTripsAndABadOneIsRefused() {
+        var id = UUID.randomUUID();
+        var broker = UUID.randomUUID().toString();
+        var body = house("With a broker", 13.006, 80.2574, "MG Road");
+        body.put("brokerId", broker);
+
+        var saved = put(id, body);
+        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+                .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
+        for (var h : List.of(saved, read, listed)) assertThat(h).containsEntry("brokerId", broker);
+
+        // Nothing checks the id against the records: a broker that has not synced yet leaves it dangling.
+        // A PUT is a full replacement, so leaving it out unlinks the house.
+        assertThat(put(id, house("With a broker", 13.006, 80.2574, "MG Road")).get("brokerId")).isNull();
+
+        var bad = house("Bad", 12.9, 77.6, null);
+        bad.put("brokerId", "not a record id/../");
+        assertThat(status(() -> put(UUID.randomUUID(), bad))).isEqualTo(400);
+        bad.put("brokerId", "x".repeat(65));
+        assertThat(status(() -> put(UUID.randomUUID(), bad))).isEqualTo(400);
+    }
+
     /** Out-of-range slice 1a values are refused with 400 like the other fields, naming the field. */
     @Test
     void badCarpetAreaLocationSourceOrCostIsABadRequest() {
@@ -383,6 +408,7 @@ class ApiIntegrationTest {
         body.put("areaSqft", 1150);
         body.put("locationSource", "GPS");
         body.put("cost", Map.of("deposit", 64000, "myOffer", 30000));
+        body.put("brokerId", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         put(id, body);
         var photoId = uploadPhoto(id, ImageSanitizerTest.jpegWithExif());
         var visitId = UUID.randomUUID();
@@ -404,6 +430,7 @@ class ApiIntegrationTest {
         assertThat(changed.get("areaSqft")).isNull();
         assertThat(changed.get("locationSource")).isNull();
         assertThat(changed.get("cost")).isNull();
+        assertThat(changed.get("brokerId")).as("the tombstone names no broker").isNull();
         assertThat(changed.get("contactPhone")).isNull();
         assertThat(changed.get("street")).isNull();
         assertThat(changed.get("label")).isEqualTo("");

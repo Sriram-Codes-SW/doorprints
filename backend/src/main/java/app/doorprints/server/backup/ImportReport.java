@@ -28,15 +28,15 @@ import java.util.List;
  * section 5.2: "<em>a</em> new, <em>b</em> newer in file, <em>c</em> newer here".
  *
  * @param dryRun   true when nothing was written
- * @param houses   per-entity outcome counts
+ * @param houses   per-entity outcome counts (also visits, photos and, from {@code doorprints-backup/2}, brokers)
  * @param problems human-readable notes for the operator; never a reason to fail the request. The whole-file notes
  *                 (photo bytes, AI index) come first; the per-row lines after them are capped at
  *                 {@code BackupService.MAX_REPORTED_PROBLEMS} plus one "and N more" tail, so the list is not
  *                 exhaustive and is not meant to be parsed
  */
-@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "problems"})
+@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "brokers", "problems"})
 public record ImportReport(String format, boolean dryRun, Entity houses, Entity visits, Entity photos,
-                           List<String> problems) {
+                           Entity brokers, List<String> problems) {
 
     /**
      * Outcome counts for one kind of row. {@code total} is what the file held;

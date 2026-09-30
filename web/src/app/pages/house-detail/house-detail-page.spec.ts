@@ -27,6 +27,7 @@ import { Announcer } from '../../core/announcer.service';
 import { GeocodeService } from '../../core/geocode.service';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
+import type { BrokerRow } from '../../shared/broker';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
@@ -53,6 +54,7 @@ interface Fakes {
   reverse?: () => Observable<unknown>;
   extractListing?: () => Observable<HouseDraft>;
   aiEnabled?: boolean;
+  brokers?: () => Observable<BrokerRow[]>;
 }
 
 /** Lets the page's promise chains and afterNextRender callbacks run. */
@@ -68,6 +70,7 @@ function create(
 ): { fixture: ComponentFixture<HouseDetailPage>; announce: ReturnType<typeof vi.spyOn>; setTitle: ReturnType<typeof vi.spyOn> } {
   const api = {
     houses: fakes.houses ?? (() => of([])),
+    brokers: fakes.brokers ?? (() => of([])),
     house: () => of(HOUSE),
     visits: () => of([]),
     photoIds: () => of([]),
@@ -277,6 +280,44 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
     deposit.dispatchEvent(new Event('input'));
     await fixture.whenStable();
     expect(host.querySelector('.cost-line')?.textContent).toContain(t({ key: 'cost.lineMoveIn', params: { v: '₹96,000' } }));
+  });
+
+  /** Slice 1b: the Broker select right after Contact; a broker fills the contact and locks the two fields. */
+  it('offers the brokers in a select, fills the contact from the one chosen, and unlinks on None', async () => {
+    const brokers: BrokerRow[] = [
+      { id: 'b-2', updatedAt: null, broker: { name: 'Zed' } },
+      { id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', phone: '+91 98400 11111', agency: 'Adyar Homes' } },
+    ];
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, { brokers: () => of(brokers) });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const draft = () => (fixture.componentInstance as unknown as { draft: () => HouseDto }).draft();
+    const select = host.querySelector<HTMLSelectElement>('#house-broker')!;
+    expect([...select.options].map((o) => o.textContent?.trim())).toEqual([t({ key: 'house.brokerNone' }), 'Ravi Kumar (Adyar Homes)', 'Zed']);
+
+    select.value = 'b-1';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(draft().brokerId).toBe('b-1');
+    expect(draft().contactName).toBe('Ravi Kumar');
+    expect(draft().contactPhone).toBe('+91 98400 11111');
+    expect(host.querySelector<HTMLInputElement>('#house-contact')!.readOnly).toBe(true);
+
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(draft().brokerId).toBeNull();
+    expect(draft().contactName).toBe('Ravi Kumar');
+    expect(host.querySelector<HTMLInputElement>('#house-contact')!.readOnly).toBe(false);
+
+    button(host, t({ key: 'house.brokerNew' })).click();
+    await fixture.whenStable();
+    expect(draft().brokerId).toBeNull();
+    expect(draft().contactName).toBeNull();
+    expect(draft().contactPhone).toBeNull();
   });
 
   it('keeps "Address lookup failed" while looking up again, and removes it when the lookup answers', async () => {

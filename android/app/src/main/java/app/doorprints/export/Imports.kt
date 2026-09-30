@@ -127,7 +127,7 @@ object Imports {
                 fun preview(mode: ImportMode, restore: Boolean = false, skip: Boolean = false) = ImportPlan.preview(
                     reader.data, local.houses, local.visits, local.photoIds, reader.photoEntries, mode,
                     local.deletedHouseIds, local.scoredHouseIds, restoreDeleted = restore, skipUpdates = skip,
-                    localUnlinkedVisitIds = local.unlinkedVisitIds,
+                    localUnlinkedVisitIds = local.unlinkedVisitIds, localBrokers = local.brokers,
                 )
                 // Which houses a merge would replace, by name, for the Replace dialog. The plan is pure and a
                 // merge's needs no new ids; its updatedHouseIds are exactly the preview's updatedHouses.

@@ -39,8 +39,12 @@ import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.BackupValidation
+import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
+import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordLimitException
 import app.doorprints.shared.records.RecordRules
@@ -56,7 +60,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.buffered
@@ -116,7 +125,12 @@ open class CommonRepository(
         runCatching { fs.delete(path, mustExist = false) }
     }
 
-    override val houses = db.houses().observeAll()
+    // Every read of the houses and the records waits for the once-only move of contacts into brokers (slice 1b), so
+    // no screen ever sees the houses before it: the flag makes every later call a plain read.
+    override val houses: Flow<List<HouseEntity>> = flow {
+        migrateContactsToBrokers()
+        emitAll(db.houses().observeAll())
+    }
     override val visitCounts = db.visits().observeCounts()
 
     // The trace's window moves with the clock, so the flow is rebuilt each time it is collected (a screen's lifetime).
@@ -129,16 +143,155 @@ open class CommonRepository(
 
     override suspend fun clearTrack() = db.track().deleteAll()
 
-    override fun house(id: String) = db.houses().observe(id)
+    override fun house(id: String): Flow<HouseEntity?> = flow {
+        migrateContactsToBrokers()
+        emitAll(db.houses().observe(id))
+    }
     override fun visitsFor(houseId: String) = db.visits().observeForHouse(houseId)
     override fun photosFor(houseId: String) = db.photos().observeForHouse(houseId)
 
-    override suspend fun houseSnapshot(): List<HouseEntity> = db.houses().all()
-    override suspend fun getHouse(id: String) = db.houses().get(id)
+    override suspend fun houseSnapshot(): List<HouseEntity> {
+        migrateContactsToBrokers()
+        return db.houses().all()
+    }
+
+    override suspend fun getHouse(id: String): HouseEntity? {
+        migrateContactsToBrokers()
+        return db.houses().get(id)
+    }
 
     override suspend fun saveHouse(house: HouseEntity) {
-        db.houses().upsert(house.copy(updatedAt = now(), dirty = true))
+        db.houses().upsert(withBroker(house).copy(updatedAt = now(), dirty = true))
         syncSoon()
+    }
+
+    // ---- Brokers (docs/11 5.25, slice 1b) ----
+
+    private val brokerGate = Mutex()
+    private var brokersMigrated = false
+
+    /** The live brokers of the table, invalid rows left out. */
+    private suspend fun liveBrokers(): List<Pair<String, Broker>> =
+        db.records().listByType(BrokerType.name).mapNotNull { row -> row.toBroker()?.let { row.id to it } }
+
+    /**
+     * The house with its contact copies made to agree with its broker (`saveHouse`, the one write path every screen
+     * uses): a house that names a live broker takes its name and phone; one that names none but has a phone gets the
+     * broker with that number (`PhoneKey`) or a new one named from the contact (else the number), and is linked. A
+     * blank phone never makes a broker, and a number too short to compare matches none but still makes one. A
+     * tombstone is left as it is, and a dangling id stays (it reads as no broker).
+     */
+    private suspend fun withBroker(house: HouseEntity): HouseEntity {
+        if (house.deleted) return house
+        val linked = house.brokerId
+        if (linked != null) {
+            val broker = db.records().get(BrokerType.name, linked)?.takeUnless { it.deleted }?.toBroker() ?: return house
+            return house.copy(contactName = broker.name, contactPhone = broker.phone)
+        }
+        val phone = house.contactPhone?.trim().orEmpty()
+        if (phone.isEmpty()) return house
+        val key = PhoneKey.of(phone)
+        val existing = key?.let { k -> liveBrokers().firstOrNull { PhoneKey.of(it.second.phone) == k } }
+        val (id, broker) = existing ?: run {
+            val fresh = newBroker(house.contactName, phone)
+            val id = try {
+                saveBroker(fresh)
+            } catch (e: RecordLimitException) {
+                return house
+            }
+            id to fresh
+        }
+        return house.copy(brokerId = id, contactName = broker.name, contactPhone = broker.phone)
+    }
+
+    /** A broker made from a house's contact: the name (else the number) and the number, cut to the record's limits. */
+    private fun newBroker(contactName: String?, phone: String) = Broker(
+        name = (contactName?.trim().takeUnless { it.isNullOrEmpty() } ?: phone).take(Broker.MAX_NAME),
+        phone = phone.take(Broker.MAX_PHONE),
+    )
+
+    override fun observeBrokers(): Flow<List<Pair<String, Broker>>> =
+        db.records().byType(BrokerType.name).map { rows ->
+            rows.mapNotNull { row -> row.toBroker()?.let { row.id to it } }
+                .sortedWith(compareBy({ it.second.name.lowercase() }, { it.first }))
+        }.onStart { migrateContactsToBrokers() }
+
+    override suspend fun saveBroker(broker: Broker, id: String?): String {
+        val clean = requireNotNull(broker.coerced()) { "a broker needs a name of 1..${Broker.MAX_NAME} characters" }
+        val brokerId = id ?: Uuid.random().toString()
+        db.withImmediateTransaction {
+            saveRecord(BrokerType, brokerId, clean)
+            // The linked houses keep copies of the name and phone; they follow the broker.
+            val stamp = now()
+            for (h in db.houses().liveForBroker(brokerId)) {
+                if (h.contactName != clean.name || h.contactPhone != clean.phone) {
+                    db.houses().upsert(h.copy(contactName = clean.name, contactPhone = clean.phone, updatedAt = stamp, dirty = true))
+                }
+            }
+        }
+        syncSoon()
+        return brokerId
+    }
+
+    override suspend fun deleteBroker(id: String) {
+        db.withImmediateTransaction {
+            deleteRecord(BrokerType, id)
+            val stamp = now()
+            for (h in db.houses().liveForBroker(id)) db.houses().upsert(h.copy(brokerId = null, updatedAt = stamp, dirty = true))
+        }
+        syncSoon()
+    }
+
+    override fun brokerHouses(id: String): Flow<List<HouseEntity>> = db.houses().observeForBroker(id)
+
+    /**
+     * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house
+     * with a phone number and no broker joins the broker of that number (`PhoneKey`; a number too short to compare
+     * stands only for itself; a broker that already has the number is reused; a new one is named from the most
+     * recently edited house's contact, else the number) and is linked, the contact it holds left as it is; houses
+     * with a blank phone stay unlinked. Guarded by the `brokers.migrated` setting, set at the end even on an empty
+     * phone, so a person who unlinks a house on purpose is never re-linked, and it changes nothing a second time.
+     * The houses are written dirty with a new `updatedAt`, so the link reaches the server and the other devices.
+     */
+    suspend fun migrateContactsToBrokers() {
+        if (brokersMigrated) return
+        brokerGate.withLock {
+            if (brokersMigrated) return
+            if (!settings.brokersMigrated()) {
+                var linkedHouses = 0
+                db.withImmediateTransaction {
+                    val stamp = now()
+                    fun keyOf(phone: String?) = phone?.trim().orEmpty().let { p -> PhoneKey.of(p) ?: "raw:$p" }
+                    val groups = db.houses().all()
+                        .filter { it.brokerId == null && !it.contactPhone.isNullOrBlank() }
+                        .sortedWith(compareBy({ it.createdAt }, { it.id }))
+                        .groupBy { keyOf(it.contactPhone) }
+                    val known = HashMap<String, String>()
+                    for ((id, broker) in liveBrokers()) if (keyOf(broker.phone) !in known) known[keyOf(broker.phone)] = id
+                    for ((key, houses) in groups) {
+                        // The newest edit names the broker (the later of two equal ones).
+                        val newest = houses.reduce { a, b -> if (b.updatedAt >= a.updatedAt) b else a }
+                        val id = known[key] ?: saveNewBroker(newBroker(newest.contactName, newest.contactPhone!!.trim())) ?: continue
+                        for (h in houses) {
+                            db.houses().upsert(h.copy(brokerId = id, updatedAt = stamp, dirty = true))
+                            linkedHouses++
+                        }
+                    }
+                }
+                settings.markBrokersMigrated()
+                if (linkedHouses > 0) syncSoon()
+            }
+            brokersMigrated = true
+        }
+    }
+
+    /** A new broker's id, or null when the type is full. */
+    private suspend fun saveNewBroker(broker: Broker): String? = try {
+        val id = Uuid.random().toString()
+        saveRecord(BrokerType, id, checkNotNull(broker.coerced()) { "a broker made from a contact has a name" })
+        id
+    } catch (e: RecordLimitException) {
+        null
     }
 
     override suspend fun deleteHouse(id: String) {
@@ -192,6 +345,7 @@ open class CommonRepository(
 
     override fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>> =
         db.records().byType(type.name).map { rows -> rows.mapNotNull { row -> row.decode(type)?.let { row.id to it } } }
+            .onStart { migrateContactsToBrokers() }
 
     override suspend fun <T> saveRecord(type: RecordType<T>, id: String, value: T) {
         require(RecordRules.isValidId(id)) { "record id '$id' is not [A-Za-z0-9._-]{1,64}" }
@@ -546,8 +700,15 @@ open class CommonRepository(
     // ---- Offline copy: export and import (Sprint 4a, S4-02/S4-04) ----
 
     override suspend fun localRows(): LocalRows = withContext(Dispatchers.IO) {
-        LocalRows(db.houses().all(), db.visits().all(), db.photos().all())
+        migrateContactsToBrokers()
+        LocalRows(
+            db.houses().all(), db.visits().all(), db.photos().all(),
+            liveBrokerRows().map { (row, broker) -> ExportBroker.of(row.id, broker, row.updatedAt) },
+        )
     }
+
+    private suspend fun liveBrokerRows(): List<Pair<RecordEntity, Broker>> =
+        db.records().listByType(BrokerType.name).mapNotNull { row -> row.toBroker()?.let { row to it } }
 
     /**
      * [localRows] now, and again after every change to the houses, visits or photos table, for the Export screen's
@@ -568,6 +729,7 @@ open class CommonRepository(
             db.houses().all().filter { it.checklist.isNotEmpty() }.mapTo(HashSet()) { it.id },
             db.visits().unlinkedIds().toSet(),
             db.houses().syncedDeletedIds().toSet(),
+            db.records().versions(BrokerType.name).associate { it.id to it.updatedAt },
         )
     }
 
@@ -645,7 +807,7 @@ open class CommonRepository(
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
-        val total = actions.houses.size + actions.visits.size + actions.photos.size
+        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size
         var done = 0
         var houses = 0
         var visits = 0
@@ -654,6 +816,12 @@ open class CommonRepository(
         var updatedHouses = 0
         var updatedVisits = 0
         var restoredHouses = 0
+        // Brokers first, by id with the file's `updatedAt` (the plan already chose the newer ones): the houses that
+        // name them find them. A broker the file's houses do not name is still kept: it is the person's own record.
+        for (broker in actions.brokers) {
+            db.records().upsert(importedBroker(broker, broker.updatedAt))
+            onProgress(++done, total)
+        }
         for (house in actions.houses) {
             if (house.id in actions.restoredHouseIds) {
                 val tombstone = db.houses().get(house.id)
@@ -711,10 +879,19 @@ open class CommonRepository(
             }
             onProgress(++done, total)
         }
-        val result = ImportResult(houses, visits, photos, skipped, updatedHouses, updatedVisits, restoredHouses)
+        val result = ImportResult(
+            houses, visits, photos, skipped, updatedHouses, updatedVisits, restoredHouses,
+            brokers = actions.brokers.size,
+        )
         if (result.rows > 0) syncSoon()
         result
     }
+
+    /** A backup's broker as the record row an import writes: values coerced, dirty so it is pushed. */
+    private fun importedBroker(b: ExportBroker, updatedAt: Long): RecordEntity = RecordEntity(
+        type = BrokerType.name, id = b.id, payload = BrokerType.encode(checkNotNull(b.toBroker().coerced()) { "broker ${b.id} was not checked" }),
+        updatedAt = updatedAt, deleted = false, dirty = true,
+    )
 
     /**
      * [applyImport] for [ImportMode.COPY]: all or nothing.
@@ -740,7 +917,7 @@ open class CommonRepository(
         onProgress: (done: Int, total: Int) -> Unit,
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult {
-        val total = actions.houses.size + actions.visits.size + actions.photos.size
+        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size
         var done = 0
         var skipped = 0
         // In copy mode every photo belongs to a house of this import (ImportPlan maps it to the house's new id);
@@ -772,6 +949,10 @@ open class CommonRepository(
             // clamped value back, and the undo would take every such copy for one the user edited since.
             val now = now()
             db.withImmediateTransaction {
+                for (broker in actions.brokers) {
+                    db.records().upsert(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
+                    onProgress(++done, total)
+                }
                 for (house in actions.houses) {
                     val row = house.toEntity(dirty = true).copy(updatedAt = CopyUndo.copyStamp(house.updatedAt, now))
                     db.houses().upsert(row)
@@ -795,6 +976,7 @@ open class CommonRepository(
         }
         val result = ImportResult(
             actions.houses.size, actions.visits.size, photoRows.size, skipped,
+            brokers = actions.brokers.size,
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },

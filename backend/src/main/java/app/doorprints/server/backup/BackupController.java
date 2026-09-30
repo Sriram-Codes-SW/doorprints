@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * {@code POST /api/import}: restore a {@code doorprints-backup/1} file (its {@code data.json}) onto this server.
+ * {@code POST /api/import}: restore a {@code doorprints-backup/1} or {@code /2} file (its {@code data.json}) onto this server.
  *
  * <p>Protected by the API key like every other {@code /api} path (deny by default, {@code ApiKeyFilter}). Two
  * size limits guard it: the body is capped at {@code app.limits.max-import-bytes} by {@code RequestSizeLimitFilter}

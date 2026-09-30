@@ -56,6 +56,8 @@ class RoomSchemaTest {
             4 to "e13c40884a09c87c71df21c9864d2d1d",
             // v5 (docs/11 5.30 slice 1a, 2026-09-30): houses.areaSqft, houses.locationSource and the cost_* columns.
             5 to "647cd06d0f59c4c9cafc50b70adadc5f",
+            // v6 (docs/11 5.30 slice 1b, 2026-09-30): houses.brokerId.
+            6 to "2d8989be61a253b05a425724fdac611c",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

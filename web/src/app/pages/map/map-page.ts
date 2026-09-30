@@ -67,6 +67,7 @@ import {
   StatusFilter,
   comparePrice,
   listQueryParams,
+  brokerSearchText,
   parseListQuery,
   searchText,
   timeOf,
@@ -117,6 +118,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly i18n = inject(TranslationService);
 
   protected readonly houses = signal<HouseDto[]>([]);
+  /** The words of each broker (id to name, agency and fee terms), so a search also finds a house by its broker. */
+  private readonly brokerWords = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly stats = signal<StatsDto | null>(null);
   protected readonly loading = signal(true);
   /** Why the houses could not be read; keyed on its run so that Retry failing the same way is read again. */
@@ -176,7 +179,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const status = this.statusFilter();
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
-      .filter((h) => !q || searchText(h).includes(q))
+      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? '')).includes(q))
       .map((house) => ({ house, score: houseScore(house) }));
     switch (this.sort()) {
       case 'score':
@@ -413,6 +416,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
         this.error.update((previous) => nextRunResult(previous, errorMsg(err), userAsked));
         this.loading.set(false);
       },
+    });
+    this.api.brokers().subscribe({
+      next: (rows) => this.brokerWords.set(new Map(rows.map((r) => [r.id, brokerSearchText(r.broker)]))),
+      error: () => this.brokerWords.set(new Map()),
     });
     this.api.stats().subscribe({
       next: (s) => this.stats.set(s),

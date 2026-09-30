@@ -25,6 +25,7 @@ import { SyncService } from '../data/sync.service';
 import { StorageService } from '../data/storage.service';
 import { houseToDto, visitToDto } from '../data/records';
 import { LocalDataError } from './local-error';
+import type { Broker, BrokerRow } from '../shared/broker';
 
 /**
  * What the screens talk to (S4-01). The method names and shapes are the ones `HouseApiService` had, so the pages
@@ -95,6 +96,38 @@ export class LocalDataService {
         }),
       ),
     );
+  }
+
+  /** The live brokers, oldest edit first (slice 1b). */
+  brokers(): Observable<BrokerRow[]> {
+    return defer(() => from(this.store.brokers()));
+  }
+
+  saveBroker(id: string, broker: Broker): Observable<BrokerRow> {
+    return defer(() =>
+      from(
+        this.store.saveBroker(id, broker).then((saved) => {
+          this.sync.syncSoon();
+          return saved;
+        }),
+      ),
+    );
+  }
+
+  /** Deletes a broker; its houses keep the contact details and lose the link. */
+  deleteBroker(id: string): Observable<void> {
+    return defer(() =>
+      from(
+        this.store.deleteBroker(id).then(() => {
+          this.sync.syncSoon();
+        }),
+      ),
+    );
+  }
+
+  /** The live houses linked to a broker. */
+  brokerHouses(id: string): Observable<HouseDto[]> {
+    return defer(() => from(this.store.brokerHouses(id).then((list) => list.map(houseToDto))));
   }
 
   /** Live visits per house id, from one read of this browser's store. */

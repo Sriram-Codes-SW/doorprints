@@ -37,10 +37,17 @@ import kotlinx.serialization.json.Json
  */
 object BackupFormat {
     /**
-     * Written into `manifest.json` and `data.json`. Stays at `/1` until slice 1 of docs/11 5.30 writes the first new
-     * list; a reader accepts every format up to [MAX_VERSION] (S4b-BL-72, docs/schemas/README.md).
+     * Written into `manifest.json` and `data.json` when the copy holds only what `/1` knows. A copy with a `/2` list
+     * (slice 1b: brokers) is written as [ID_2]; [idFor] picks the lowest number that holds everything (docs/schemas
+     * README 1.1). A reader accepts every format up to [MAX_VERSION] (S4b-BL-72).
      */
     const val ID = "doorprints-backup/1"
+
+    /** The format that adds the `brokers` list (slice 1b). */
+    const val ID_2 = "doorprints-backup/2"
+
+    /** The format a copy with [brokers] brokers is written in: `/2` only when it holds one. */
+    fun idFor(brokers: Int): String = if (brokers > 0) ID_2 else ID
 
     /**
      * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
@@ -91,9 +98,18 @@ object BackupFormat {
 
 /** The rows `data.json` holds — unlinked visits included — so a reader can check it got them all. */
 @Serializable
-data class BackupCounts(val houses: Int, val visits: Int, val photos: Int) {
+data class BackupCounts(
+    val houses: Int,
+    val visits: Int,
+    val photos: Int,
+    /** Present only in a `/2` file (slice 1b); absent in a `/1` one, so its manifest is byte for byte what it was. */
+    val brokers: Int? = null,
+) {
     companion object {
-        fun of(data: BackupData): BackupCounts = BackupCounts(data.houses.size, data.visits.size, data.photos.size)
+        fun of(data: BackupData): BackupCounts = BackupCounts(
+            data.houses.size, data.visits.size, data.photos.size,
+            brokers = data.brokers?.size,
+        )
     }
 }
 
@@ -141,7 +157,15 @@ data class BackupData(
     val houses: List<ExportHouse> = emptyList(),
     val visits: List<ExportVisit> = emptyList(),
     val photos: List<ExportPhoto> = emptyList(),
+    /**
+     * `/2` only (slice 1b), after `photos`: null, not empty, when the copy has none, so a `/1` file has no such key
+     * (`encodeDefaults` would write an empty list). Read an absent one as none ([brokerRows]).
+     */
+    val brokers: List<ExportBroker>? = null,
 ) {
+    /** The brokers of the file, none when it has no list. */
+    val brokerRows: List<ExportBroker> get() = brokers.orEmpty()
+
     companion object {
         /**
          * The rows of [bundle] in the order every writer of `doorprints-backup/1` uses (docs/schemas/README.md
@@ -166,11 +190,13 @@ data class BackupData(
                 .distinctBy { it.id }
                 .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             return BackupData(
+                format = BackupFormat.idFor(bundle.brokers.size),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
                 visits = bundle.houses.flatMap { bundle.visitsOf(it) } + houseless,
                 photos = bundle.houses.flatMap { bundle.photosOf(it) } +
                     bundle.photos.filter { it.houseId !in houseIds },
+                brokers = bundle.brokers.takeIf { it.isNotEmpty() },
             )
         }
 
@@ -213,8 +239,8 @@ object BackupValidation {
 
     fun checkManifest(manifest: BackupManifest): BackupProblem? = when {
         !BackupFormat.accepts(manifest.format) -> BackupProblem.UNSUPPORTED_VERSION
-        manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ->
-            BackupProblem.BROKEN_DATA
+        manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ||
+            (manifest.counts.brokers ?: 0) < 0 -> BackupProblem.BROKEN_DATA
         else -> null
     }
 
@@ -239,6 +265,11 @@ object BackupValidation {
         data.houses.map { it.id }.toSet().size != data.houses.size -> BackupProblem.BROKEN_DATA
         data.visits.map { it.id }.toSet().size != data.visits.size -> BackupProblem.BROKEN_DATA
         data.photos.map { it.id }.toSet().size != data.photos.size -> BackupProblem.BROKEN_DATA
+        // Slice 1b: a broker with a blank or oversized name or a rating outside 1..5 refuses the whole file, like a
+        // bad house; a house's broker id must be a usable id, but may name a broker that is not in the file.
+        data.brokerRows.any { !isValidId(it.id) || !it.toBroker().isValid } -> BackupProblem.BROKEN_DATA
+        data.brokerRows.map { it.id }.toSet().size != data.brokerRows.size -> BackupProblem.BROKEN_DATA
+        data.houses.any { h -> h.brokerId?.let { !isValidId(it) } ?: false } -> BackupProblem.BROKEN_DATA
         else -> null
     }
 

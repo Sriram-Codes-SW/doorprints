@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.92 |
+| Version | 0.93 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -104,6 +104,7 @@
 | 0.90 | 2026-09-30 | Claude (Code), lead | **The Sprint 4b data model designed** (N13 4c, [11](11-feature-parity-and-export-spec.md) 5.30, [03](03-design.md) ADR-28): §15 S4b-FR-7..11 designed with their slice; S4b-BL-71, S4b-BL-72 and S4b-BL-66 are slice 0 of the batch; S4b-BL-77 applies to slice 1. |
 | 0.91 | 2026-09-30 | Claude (Code), lead | **The records foundations built** (slice 0 of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-0-records`): new **§13.18**; S4b-BL-66, S4b-BL-71 and S4b-BL-72 done in code. |
 | 0.92 | 2026-09-30 | Claude (Code), lead | **The house's cost, carpet area and location source built** (slice 1a of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1-house-values-brokers`): new **§13.19**; §15 S4b-FR-7 done in code; new **S4b-BL-84** (filters over the cost numbers). |
+| 0.93 | 2026-09-30 | Claude (Code), lead | **Brokers built** (slice 1b of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1b-brokers`): new **§13.20**; §15 S4b-FR-11 done in code; new **S4b-BL-85** (the duplicate-flat warning). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1201,6 +1202,8 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-82 | Shared | **Deletions in an update file** ([11](11-feature-parity-and-export-spec.md) 5.28 item 3; new id): the backup format carries no tombstones (docs/schemas §6 rule 5), so a house one person deleted stays on the other's phone. A `deleted` list in an update file (ids and `updatedAt`), applied by an update import only (a backup restore ignores it), with the preview saying "*d* deleted by Ravi"; the three stacks' format tests. | Open |
 | S4b-BL-83 | Android, iOS, Web | **Look up a locality by name** ([11](11-feature-parity-and-export-spec.md) 5.29 item 4; new id): "Where is it?" for a shared listing offers the locality the parser found, looked up on the person's tap (Android `Geocoder.getFromLocationName`, iPhone `CLGeocoder.geocodeAddressString`, the website Nominatim `/search` under its one-request-a-second policy), then placed on the map for the person to move; the privacy note names the lookup as it names the reverse one. | Open |
 | S4b-BL-84 | Android, Web | **Filters over the cost numbers** ([11](11-feature-parity-and-export-spec.md) 5.21: "the numbers join the filters"; new id): the list's filter sheet gains monthly cost, money to move in and per sq ft ranges once the list has a filter sheet at all (today it has a search box and the status chips). After slice 1a, with the list's own design round. | Open |
+| S4b-BL-85 | Android, Web | **The duplicate-flat warning** ([11](11-feature-parity-and-export-spec.md) 5.25; new id): "two brokers show the same flat", within about 30 m with the same bedrooms and floor, shown when a house is saved and on the broker's page. Needs the floor, so after rooms (slice 1c). | Open |
+| S4b-BL-86 | Android, Web | **Brokers in the Import screen and its undo** (new id; slice 1b left them out): the preview says "N new brokers, N updated" and *Undo* of an import as copies removes the brokers it added. | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2545,6 +2548,36 @@ item 1 and 5.21, ADR-28; slice 1 in three steps, this the first):
 **Not built here:** brokers (1b) and rooms (1c); the price filters over the new numbers (**S4b-BL-84**); the viewing
 questions' pre-fill (slice 3).
 
+### 13.20 Brokers, slice 1b of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-1b-brokers`; [11](11-feature-parity-and-export-spec.md) 5.25 and 5.30, ADR-28;
+the first use of the slice 0 records and the first `doorprints-backup/2` list):
+
+- **The model**: a broker is a record of type `broker` (`name`, `phone`, `agency`, `feeTerms`, `notes`, `rating`;
+  `Broker` in `:shared`, `shared/broker.ts` on the web) and a house carries `brokerId` (Room **6** `MIGRATION_5_6`,
+  `6.json`; Flyway **`V8__house_broker.sql`**; the DTOs, the entities and the backup after `cost`). The contact name and
+  phone stay on the house as copies of the broker's, so old apps, the exports and the AI redaction are untouched.
+- **The rules, once in the repository of each app**: saving a house with a phone number links the broker with that
+  number (compared on the last ten digits) or creates it, never for a blank number; saving a broker rewrites the
+  copies on its houses; deleting one unlinks them and keeps their copies; contacts saved before were migrated once
+  into one broker per distinct number, guarded by a flag so a person who unlinks one is not re-linked.
+- **The backup** (docs/schemas README §3.4, 1.12): a `brokers` list after `photos`, `brokerId` on houses, `counts.brokers`;
+  written as `/2` only when the copy has a broker, `/1` exactly as before otherwise, and neither in a copy made without
+  contact details; import merges by id with the newest edit winning; the server maps the list to and from its `record`
+  table. `backup-sample.json` is a `/2` document; the web byte golden regenerated.
+- **Copies and search**: a `broker` column after `contactPhone` in the CSV and XLSX, `brokers.csv` and a *Brokers* sheet,
+  a Broker row on each house page and a Brokers section in HTML, PDF and Markdown; search covers the broker's name,
+  agency and fee terms. Brokers are never sent to AI.
+- **Screens**: *Brokers* (Settings) with each broker's page (fields, *Call*, its houses, *Delete broker*), a *Broker*
+  section in the house form, Compare's contact row showing the broker. Four languages (hi, ta, te *under review*),
+  both themes; the form's and the new screen's screenshots.
+- **Tests and docs**: [06](06-test-plan.md) TC-U-100; docs/schemas README 1.12; [03](03-design.md) §6.1, §9; the
+  guide's houses and your-data pages; CHANGELOG.
+
+**Not built here:** the duplicate-flat warning (**S4b-BL-85**; needs the floor, which arrives with rooms in 1c); rooms
+(1c); a broker's rating in Compare; the Import screen's wording for brokers (its preview counts them only in the totals) and the
+undo of a copy import, which leaves the brokers it added (**S4b-BL-86**); a *Matches <name>* hint while typing a phone.
+
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
 **The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
@@ -2592,7 +2625,7 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | S4b-FR-8 | **My places and distances** (11 5.22, D-30). | S4-20, with hunting areas (S4-18); the Plan route's offline estimate. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): a `places` record, slice 4 |
 | S4b-FR-9 | **Area notes** (11 5.23, D-30). | S4-20; searchable; redaction as house notes. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): an `areaNotes` record, searchable, slice 4 |
 | S4b-FR-10 | **Moving in**: *Taken*, move-in checklist, condition record, close the hunt (11 5.24, D-30). | S4-21, after viewings (S4-12) and photo tags (S4-15). | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.30, ADR-28): the statuses `TAKEN` and `NOT_CHOSEN` on the house and a `moveIn` record, slice 5 |
-| S4b-FR-11 | **Brokers** as contacts of their own (11 5.25, D-30). | S4-22, with *Add a house from a listing link* (S4b-FR-4) and the duplicate check. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.29 item 5): a data-model change on all three stacks, built with the (4c) batch after the listing flow; **2026-09-30, 5.30:** a `brokers` record and `houses.brokerId`, the contacts migrated in Room 4, slice 1 |
+| S4b-FR-11 | **Brokers** as contacts of their own (11 5.25, D-30). | S4-22, with *Add a house from a listing link* (S4b-FR-4) and the duplicate check. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.29 item 5): a data-model change on all three stacks, built with the (4c) batch after the listing flow; **2026-09-30, 5.30:** a `brokers` record and `houses.brokerId`, the contacts migrated in Room 4, slice 1**Done in code** (2026-09-30, §13.20, slice 1b): brokers as records, `brokerId`, the contacts migrated, the `/2` list, the Brokers screen; the duplicate-flat warning is S4b-BL-85 |
 | S4b-FR-12 | **Voice notes** (11 5.26, D-30). | Parked: the keyboards' voice typing covers the need; audio would weigh on sync and backups. | Parked |
 
 ## 16. Web dependency update of 2026-09-28: Angular 22.2 and maplibre-gl 6.11.2

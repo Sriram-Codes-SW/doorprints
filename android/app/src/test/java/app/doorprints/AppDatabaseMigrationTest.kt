@@ -159,6 +159,31 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    /**
+     * v6 (docs/11 5.30 slice 1b): the whole chain ends in the committed `6.json`; a house from before has no broker,
+     * and `MIGRATION_5_6` alone adds the one nullable column to a version-5 house that keeps its values.
+     */
+    @Test
+    fun migrations1To6MatchTheExportedSchemaAndAHouseFromBeforeHasNoBroker() = runBlocking {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(6, AppDatabase.MIGRATIONS.toList())
+        try {
+            assertEquals(listOf("h1|"), db.rows("SELECT id, IFNULL(brokerId, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            assertEquals(null, opened.houses().get("h1")!!.brokerId)
+            assertEquals(emptyList<Any>(), opened.houses().liveForBroker("b1"))
+        } finally {
+            opened.close()
+        }
+    }
+
     @Test
     fun aVersion1HousehuntDatabaseMovesMigratesAndOpensWithItsRows() = runBlocking {
         val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)

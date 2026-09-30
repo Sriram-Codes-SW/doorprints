@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
+import app.doorprints.shared.model.Broker
 import app.doorprints.ui.res.*
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseStatus
@@ -110,6 +111,8 @@ fun CompareScreen(
     counts: List<HouseVisitCount>,
     onOpenHouse: (String) -> Unit,
     onOpenMap: () -> Unit = {},
+    /** The brokers by id (slice 1b): the Contact row names a linked house's broker and agency. */
+    brokers: Map<String, Broker> = emptyMap(),
 ) {
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
@@ -163,6 +166,7 @@ fun CompareScreen(
                 pickerOpen = pickerOpen,
                 onPickerOpen = { pickerOpen = it },
                 visits = visits,
+                brokers = brokers,
                 nameOf = ::nameOf,
                 onOpenHouse = onOpenHouse,
             )
@@ -180,6 +184,7 @@ private fun ComparePicker(
     pickerOpen: Boolean,
     onPickerOpen: (Boolean) -> Unit,
     visits: Map<String, Int>,
+    brokers: Map<String, Broker>,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -190,7 +195,7 @@ private fun ComparePicker(
         if (chosen.size < 2) {
             Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
         } else {
-            CompareTable(chosen, visits, nameOf, onOpenHouse)
+            CompareTable(chosen, visits, brokers, nameOf, onOpenHouse)
             Text(stringResource(Res.string.compare_footnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
@@ -255,6 +260,7 @@ private fun ComparePicker(
 private fun CompareTable(
     chosen: List<HouseEntity>,
     visits: Map<String, Int>,
+    brokers: Map<String, Broker>,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -293,7 +299,8 @@ private fun CompareTable(
             )
         }
         add(CompareRow(stringResource(Res.string.compare_contact), notSet, {
-            it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
+            it.brokerId?.let(brokers::get)?.label
+                ?: it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
         }))
     }
     val best = chosen.maxByOrNull { it.score ?: -1.0 }?.takeIf { it.score != null }

@@ -34,18 +34,21 @@ import type { Cell, ExportTable } from './export-rows';
  * **text** cells only — a number's leading minus is part of the number, and prefixing it would stop a spreadsheet
  * reading -12.978321 as a coordinate.
  *
- * Sprint 4b adds rooms.csv, answers.csv and viewings.csv when those tables exist.
+ * `brokers.csv` follows when the copy has brokers; Sprint 4b adds rooms.csv, answers.csv and viewings.csv when those
+ * tables exist.
  */
 
 export const CSV_FILES = ['houses.csv', 'scores.csv', 'visits.csv', 'photos.csv'] as const;
 export type CsvFileName = (typeof CSV_FILES)[number];
+/** The four files of every copy, and `brokers.csv` when the copy has brokers (slice 1b). */
+export type CsvTables = Record<CsvFileName, string> & { 'brokers.csv'?: string };
 
 const CRLF = '\r\n';
 
-export function buildCsvTables(bundle: ExportBundle): Record<CsvFileName, string> {
-  const out = {} as Record<CsvFileName, string>;
+export function buildCsvTables(bundle: ExportBundle): CsvTables {
+  const out: Record<string, string> = {};
   for (const table of exportTables(bundle)) out[`${table.name}.csv`] = csvTable(table);
-  return out;
+  return out as CsvTables;
 }
 
 /** One table as an RFC 4180 file. Exported so a test can read a single table without building the ZIP. */

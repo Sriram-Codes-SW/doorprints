@@ -91,6 +91,7 @@ export class ExportService {
       houses: await this.store.allHouses(),
       visits: await this.store.allVisits(),
       photos: await this.store.allPhotos(),
+      brokers: await this.store.brokers(),
       exportedAt,
       options,
     });
@@ -138,9 +139,9 @@ export class ExportService {
       }
       case 'csv': {
         const tables = buildCsvTables(bundle);
-        const entries = Object.keys(tables)
-          .sort()
-          .map((path) => ({ path, data: utf8(tables[path as keyof typeof tables]) }));
+        const entries = Object.entries(tables)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([path, text]) => ({ path, data: utf8(text) }));
         return {
           format,
           fileName: `Doorprints-${stamp}-csv.zip`,
