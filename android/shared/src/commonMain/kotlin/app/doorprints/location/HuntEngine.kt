@@ -72,6 +72,9 @@ class HuntEngine(
     private val stays = StayDetector()
     private val track = TrackRecorder()
     private var houses: List<HouseEntity> = emptyList()
+
+    /** The last fix accurate enough to use: the houses are looked at again from it when the list changes. */
+    private var lastFix: Pair<Double, Double>? = null
     private var alertRadiusM = 30
     private var pathTrace = false
     private val houseAlertedAt = mutableMapOf<String, Long>()
@@ -88,8 +91,17 @@ class HuntEngine(
     /** Hunt mode is on: the houses and settings are followed, walking-rate fixes are asked for, the state says so. */
     fun start() {
         collectors.forEach { it.cancel() }
+        lastFix = null
         collectors = listOf(
-            scope.launch { data.houses.collect { houses = it } },
+            scope.launch {
+                data.houses.collect {
+                    houses = it
+                    // A house saved or changed after the fix (or a list that arrives after it: the platform's first fix
+                    // can beat the database's first answer) is named without waiting for the next fix, which a phone
+                    // standing still may not send for a minute. The iOS launch check hung on this (PR 78).
+                    lastFix?.let { (lat, lon) -> checkNearbyHouses(lat, lon) }
+                }
+            },
             scope.launch {
                 data.tracking.collect {
                     alertRadiusM = it.alertRadiusM
@@ -125,6 +137,7 @@ class HuntEngine(
         if (pathTrace && track.accept(lat, lon, time)) {
             scope.launch { data.saveTrackPoint(TrackPointEntity(at = time, lat = lat, lon = lon, accuracyM = accuracyM)) }
         }
+        lastFix = lat to lon
         checkNearbyHouses(lat, lon)
         checkStreet(lat, lon)
         checkStay(lat, lon, time)

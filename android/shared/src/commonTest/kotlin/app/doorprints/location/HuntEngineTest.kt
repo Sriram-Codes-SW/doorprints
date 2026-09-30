@@ -110,6 +110,20 @@ class HuntEngineTest {
     }
 
     @Test
+    fun aHouseThatArrivesAfterTheFixIsNamedWithoutAnotherFix() = runTest(StandardTestDispatcher()) {
+        // The iOS launch check (PR 78): the platform's one simulated fix came before the database's list, and the
+        // engine named nothing until a second fix that never came.
+        val e = engine(); e.start(); advanceUntilIdle()
+        e.onFix(12.9716, 77.5946, accuracyM = 10f, time = clock)
+        assertNull(HuntState.state.value.nearestHouse)
+        data.houses.value = listOf(house("late", 12.9716, 77.5946))
+        advanceUntilIdle()
+        assertEquals("late", HuntState.state.value.nearestHouse?.id)
+        assertEquals(listOf("late"), effects.houseAlerts.map { it.first })
+        e.stopped(null)
+    }
+
+    @Test
     fun anApproximateHouseIsNeverTheNearestAndNeverAlerts() = runTest(StandardTestDispatcher()) {
         // FR-068 (slice 1a): the house at the fix is only approximately there, so the one 100 m away is the nearest.
         data.houses.value = listOf(
