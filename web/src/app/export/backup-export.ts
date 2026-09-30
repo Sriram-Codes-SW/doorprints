@@ -40,8 +40,19 @@ import type { ZipEntry } from './zip';
  *    the JSON is compact, not pretty-printed, so the output is byte-stable.
  */
 
-/** Written into `manifest.json` and `data.json`; a reader refuses anything else. Kotlin: `BackupFormat.ID`. */
+/**
+ * Written into `manifest.json` and `data.json`. Kotlin: `BackupFormat.ID`. Stays at `/1` until slice 1 of the
+ * Sprint 4b data model writes the first new list (docs/11 5.30 item 3); `/2` then adds the house's nested values
+ * and the record lists.
+ */
 export const BACKUP_FORMAT = 'doorprints-backup/1';
+/**
+ * The rule of S4b-BL-72 (docs/schemas/README.md): a new entity list means a new format number, a reader accepts
+ * every number up to the one it knows and refuses a newer file with "update the app" rather than dropping its
+ * lists in silence. The web has no reader yet (S4b-BL-75); when it lands it accepts exactly these. Kotlin:
+ * `BackupFormat.READABLE`.
+ */
+export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2'];
 export const MANIFEST_ENTRY = 'manifest.json';
 export const DATA_ENTRY = 'data.json';
 

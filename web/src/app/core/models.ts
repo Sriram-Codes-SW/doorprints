@@ -76,6 +76,20 @@ export interface PhotoChangeDto {
   syncVersion: number;
 }
 
+/**
+ * The envelope every Sprint 4b entity other than houses, visits and photos travels in (docs/11 5.30, ADR-28):
+ * `GET /api/records?since=` and `PUT /api/records/{type}/{id}`. The server stores `payload` opaquely and never
+ * reads it; each `type` is a small typed class on the apps (`RecordType<T>` in android/shared, its TypeScript twin).
+ */
+export interface RecordDto {
+  type: string;
+  id: string;
+  payload: Record<string, unknown>;
+  updatedAt?: string | null;
+  deleted: boolean;
+  syncVersion: number;
+}
+
 export interface StatsDto {
   houses: number;
   shortlisted: number;
