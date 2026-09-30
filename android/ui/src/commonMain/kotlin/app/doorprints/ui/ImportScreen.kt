@@ -208,7 +208,7 @@ fun ImportScreen(
     val marks: ResultMarks? by repo.settings.resultMarks.collectAsStateWithLifecycle(initialValue = null)
     /** A run whose result this visit of the screen has shown; it stays up until the user moves on. */
     var shownRunId by remember { mutableStateOf<String?>(null) }
-    val askNotifications = rememberNotificationAsk()
+    val askNotifications = rememberNotificationAsk(enabled = imports.postsResults)
 
     // While this is true a finished import is shown here; while it is false the worker posts a notification.
     LifecycleStartEffect(Unit) {

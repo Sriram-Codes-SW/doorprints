@@ -213,7 +213,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     val marks: ResultMarks? by repo.settings.resultMarks.collectAsStateWithLifecycle(initialValue = null)
     /** A run whose result this visit of the screen has shown; it stays up until the user moves on. */
     var shownRunId by remember { mutableStateOf<String?>(null) }
-    val askNotifications = rememberNotificationAsk()
+    val askNotifications = rememberNotificationAsk(enabled = exports.postsResults)
     /** A problem with a follow-up (no app to share or open with); cleared by the next action. */
     var message by remember { mutableStateOf<String?>(null) }
     /** True from the Save to… tap until the file picker returns, so a double tap cannot open a second picker. */

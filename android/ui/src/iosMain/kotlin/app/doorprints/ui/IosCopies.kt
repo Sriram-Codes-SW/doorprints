@@ -279,6 +279,9 @@ internal class IosExportServices(
         this.visible = visible
     }
 
+    /** No result notifications on iPhone: the screen shows a run that ended while it was away. */
+    override val postsResults: Boolean get() = false
+
     /** This phone's offset and time now, the app's language, everything included (Android's `ExportBuilder.defaults`). */
     @Composable
     override fun rememberDefaultOptions(): () -> ExportOptions = remember {
@@ -411,6 +414,9 @@ internal class IosImportServices(
     override fun screenVisible(visible: Boolean) {
         this.visible = visible
     }
+
+    /** No result notifications on iPhone: the screen shows a run that ended while it was away. */
+    override val postsResults: Boolean get() = false
 
     @Composable
     override fun rememberBackupPicker(onPicked: (file: String?) -> Unit): (folder: String?) -> Boolean {
