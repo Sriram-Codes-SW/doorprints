@@ -126,6 +126,20 @@ describe('searchText', () => {
     expect(searchText(withRooms, greenBroker).toLowerCase().includes(q)).toBe(true);
     expect(searchText(withRooms, greenBroker).toLowerCase().includes('master')).toBe(true);
   });
+  it("a query matches an answer's text and an answer", () => {
+    const withAnswers: HouseDto = {
+      ...green,
+      answers: [
+        { id: 'a1', text: 'Is the terrace open to tenants?', status: 'OPEN', sort: 0 },
+        { id: 'a2', questionId: 'qd_water', text: 'Water supply hours?', answer: 'Borewell, twice a day', status: 'ANSWERED', sort: 1 },
+      ],
+    };
+    const finds = (query: string) => searchText(withAnswers, greenBroker).includes(query);
+    expect(finds('terrace open')).toBe(true);
+    expect(finds('borewell')).toBe(true);
+    expect(finds('helipad')).toBe(false);
+    expect(searchText(green, greenBroker).includes('terrace')).toBe(false);
+  });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
   it("the broker's fee terms match", () => expect(matching('15 days')).toEqual(['green']));

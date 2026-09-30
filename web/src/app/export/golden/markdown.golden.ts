@@ -99,6 +99,13 @@ Rating counts for 40%
 | Kitchen | Kitchen | 9.8 | 8.0 | 79 |  |  |
 | Total |  |  |  | 235 |  |  |
 
+### Questions
+
+| Question | Answer | Status |
+| --- | --- | --- |
+| Is the terrace open to tenants? | – | Open |
+| How much is the maintenance per month, and what does it cover? | ₹2,500 a month; it covers the lift, water and security | Answered |
+
 ### Checklist
 
 | Criterion | Score |

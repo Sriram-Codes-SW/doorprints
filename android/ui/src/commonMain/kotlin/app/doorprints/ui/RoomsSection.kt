@@ -254,7 +254,7 @@ private fun SizeField(
 
 /** A menu of [options] shown as a full-width button with the choice, as the Broker section's (a radio per option). */
 @Composable
-private fun <T> ChoiceMenu(
+internal fun <T> ChoiceMenu(
     label: String,
     options: List<T>,
     chosen: T,

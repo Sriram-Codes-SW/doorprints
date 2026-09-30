@@ -50,10 +50,14 @@ import {
   uuid,
 } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
-import { cleanCost, cleanRooms } from '../../data/records';
+import type { TKey } from '../../i18n/en';
+import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, cleanRooms } from '../../data/records';
 import { LocalStore } from '../../data/local-store.service';
 import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
-import type { HouseRoom, RoomType } from '../../core/models';
+import type { HouseAnswer, HouseRoom, RoomType } from '../../core/models';
+import { QUESTION_CATEGORIES } from '../../shared/question';
+import type { Question, QuestionCategory } from '../../shared/question';
+import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
 import {
   areaNumber,
   areaSqCm,
@@ -223,6 +227,29 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shortQuery: MediaQueryList | null = null;
   private onShortChange: (() => void) | null = null;
 
+  /** The question bank (slice 3a), archived questions included; empty until it is read. */
+  private readonly bank = signal<Question[]>([]);
+  protected readonly maxAnswers = MAX_ANSWERS;
+  protected readonly maxAnswerText = MAX_ANSWER_TEXT;
+  protected readonly maxAnswer = MAX_ANSWER;
+  /** "Add a question" is open: the picker over the bank and the field for something else. */
+  protected readonly pickerOpen = signal(false);
+  protected adhocText = '';
+  /** How many bank questions "Add the usual questions" would add to the draft now; 0 disables it ("Already added"). */
+  protected readonly usualCount = computed(() => {
+    const d = this.draft();
+    return d ? usualQuestions(d, this.bank(), d.answers ?? []).length : 0;
+  });
+  /** The questions the picker offers: not archived, not yet on this house, grouped by category. */
+  protected readonly pickable = computed(() => {
+    const on = new Set((this.draft()?.answers ?? []).map((a) => a.questionId));
+    const free = this.bank().filter((q) => q.archived !== true && !on.has(q.id));
+    return QUESTION_CATEGORIES.map((category) => ({ category, questions: free.filter((q) => q.category === category) })).filter(
+      (g) => g.questions.length > 0,
+    );
+  });
+  /** The ids of the answers in the order the cards are shown; kept while typing so a card does not jump when it turns Answered. */
+  private answerIds: string[] = [];
   /** The effective scoring (slice 2); the defaults until it is read. */
   private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
   /**
@@ -335,6 +362,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.api.questions().subscribe({
+      next: (list) => this.bank.set(list),
+      error: () => this.bank.set([]),
+    });
     this.api.scoring().subscribe({
       next: (scoring) => this.scoring.set(scoring),
       error: () => this.scoring.set(DEFAULT_SCORING),
@@ -756,6 +787,93 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.markDirty();
   }
 
+  // ---- Questions to ask (slice 3a, docs/11 5.5) ----
+
+  /**
+   * The answers in card order: open ones first, then by sort. The order is worked out again only when an answer is
+   * added or removed, not while one is typed or skipped, so the card being typed in stays where it is.
+   */
+  protected shownAnswers(d: HouseDto): HouseAnswer[] {
+    const list = d.answers ?? [];
+    if (list.length !== this.answerIds.length || list.some((a) => !this.answerIds.includes(a.id))) {
+      this.answerIds = ordered(list).map((a) => a.id);
+    }
+    return this.answerIds.map((id) => list.find((a) => a.id === id)).filter((a): a is HouseAnswer => a !== undefined);
+  }
+
+  /** "3 of 8 answered". */
+  protected answeredSummary(d: HouseDto): string {
+    const list = d.answers ?? [];
+    return this.i18n.t('questions.summary', { n: list.filter((a) => a.status === 'ANSWERED').length, total: list.length });
+  }
+
+  private say = (key: TKey, params?: Readonly<Record<string, string | number>>): string => this.i18n.t(key, params);
+
+  protected addUsualQuestions(): void {
+    const d = this.draft();
+    if (!d) return;
+    const before = d.answers ?? [];
+    const next = addUsual(d, this.bank(), before, this.say);
+    if (next.length === before.length) return;
+    this.patch({ answers: next });
+    this.announcer.announce({ key: 'questions.usualAdded', params: { n: next.length - before.length } });
+    afterNextRender(() => document.getElementById('answer-' + next[before.length].id)?.focus(), { injector: this.injector });
+  }
+
+  /** Adds one bank question; a cost value already on the house pre-fills the answer (5.21). */
+  protected addBankQuestion(question: Question): void {
+    const d = this.draft();
+    if (!d || (d.answers ?? []).length >= MAX_ANSWERS) return;
+    this.addAnswer(d, answerFor(question, d, this.nextSort(d), this.say));
+  }
+
+  /** Adds a question that is not in the bank ("Or ask something else"). */
+  protected addAdhocQuestion(): void {
+    const d = this.draft();
+    const text = this.adhocText.trim();
+    if (!d || text === '' || (d.answers ?? []).length >= MAX_ANSWERS) return;
+    this.adhocText = '';
+    this.addAnswer(d, { id: uuid(), text, status: 'OPEN', sort: this.nextSort(d) });
+  }
+
+  private nextSort(d: HouseDto): number {
+    return (d.answers ?? []).reduce((max, a) => Math.max(max, a.sort + 1), 0);
+  }
+
+  private addAnswer(d: HouseDto, answer: HouseAnswer): void {
+    this.patch({ answers: [...(d.answers ?? []), answer] });
+    this.pickerOpen.set(false);
+    afterNextRender(() => document.getElementById('answer-' + answer.id)?.focus(), { injector: this.injector });
+  }
+
+  private editAnswer(id: string, changes: Partial<HouseAnswer>): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ answers: (d.answers ?? []).map((a) => (a.id === id ? { ...a, ...changes } : a)) });
+  }
+
+  /** Typing an answer marks the question Answered; clearing it marks it Open again. */
+  protected setAnswer(id: string, value: string): void {
+    this.editAnswer(id, value.trim() === '' ? { answer: null, status: 'OPEN' } : { answer: value, status: 'ANSWERED' });
+  }
+
+  /** The Skip toggle: Skipped, or back to Answered/Open by whether there is an answer. */
+  protected toggleSkip(a: HouseAnswer): void {
+    this.editAnswer(a.id, { status: a.status === 'SKIPPED' ? (a.answer?.trim() ? 'ANSWERED' : 'OPEN') : 'SKIPPED' });
+  }
+
+  protected removeAnswer(id: string): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ answers: (d.answers ?? []).filter((a) => a.id !== id) });
+    // The focus goes to Add a question, not to the top of the page.
+    afterNextRender(() => document.getElementById('questions-add')?.focus(), { injector: this.injector });
+  }
+
+  protected categoryKey(category: QuestionCategory): TKey {
+    return `questions.category.${category}` as TKey;
+  }
+
   // ---- Rooms (slice 1c, docs/11 5.6) ----
 
   protected rooms(d: HouseDto): HouseRoom[] {
@@ -1026,6 +1144,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       cost: cleanCost(d.cost),
       // At most 30, coerced and sorted; absent when empty (never [] on the wire).
       rooms: cleanRooms(d.rooms),
+      // At most 60, coerced and sorted; absent when empty (slice 3a).
+      answers: cleanAnswers(d.answers),
     };
     this.saving.set(true);
     // Said to screen readers as Android's Save says it through its contentDescription (web UX gate r4): aria-busy on

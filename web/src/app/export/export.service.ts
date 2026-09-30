@@ -94,6 +94,7 @@ export class ExportService {
       brokers: await this.store.brokers(),
       criteria: await this.store.criterionRows(),
       preferences: await this.store.preferenceRows(),
+      questions: await this.store.questionRows(),
       lengthUnit: await this.store.lengthUnit(),
       exportedAt,
       options,

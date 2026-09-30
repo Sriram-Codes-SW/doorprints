@@ -76,6 +76,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/criteria/criteria-page').then((m) => m.CriteriaPage),
   },
   {
+    path: 'questions',
+    title: 'title.questions',
+    loadComponent: () => import('./pages/questions/questions-page').then((m) => m.QuestionsPage),
+  },
+  {
     path: 'data',
     title: 'title.data',
     loadComponent: () => import('./pages/data/data-page').then((m) => m.DataPage),

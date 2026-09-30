@@ -30,7 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
-import { criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -162,6 +162,16 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(row(roomDisplayColumns(bundle)));
     out.push(separator(7));
     for (const r of rooms) out.push(row(r.map(escapeMarkdown)));
+    out.push('');
+  }
+
+  // The questions (slice 3a), after the rooms and before the checklist; open ones first.
+  const questions = answerCells(entry, stringsOf(bundle));
+  if (questions.length) {
+    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.questions'))}`, '');
+    out.push(row(answerDisplayColumns(bundle)));
+    out.push(separator(3));
+    for (const r of questions) out.push(row(r.map(escapeMarkdown)));
     out.push('');
   }
 

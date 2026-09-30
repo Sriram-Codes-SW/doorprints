@@ -181,6 +181,13 @@ object PdfExporter {
         sheet.labelled(s["col.createdAt"], ExportTime.dateTime(house.createdAt, o.utcOffsetMinutes), body)
         sheet.labelled(s["col.updatedAt"], ExportTime.dateTime(house.updatedAt, o.utcOffsetMinutes), body)
 
+        // The questions asked (slice 3a), before the checklist, open ones first: "question: answer · status".
+        val answers = ExportRows.answerRows(house, bundle)
+        if (answers.isNotEmpty()) {
+            sheet.section(s["section.questions"], heading)
+            for ((question, answer, status) in answers) sheet.labelled(question, "$answer · $status", body, 2f)
+        }
+
         val keys = ExportRows.orderedChecklistKeys(house)
         if (keys.isNotEmpty()) {
             sheet.section(s["section.checklist"], heading)

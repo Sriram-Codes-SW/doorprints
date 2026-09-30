@@ -35,9 +35,11 @@ import java.util.List;
  *                    {@code BackupService.MAX_REPORTED_PROBLEMS} plus one "and N more" tail, so the list is not
  *                    exhaustive and is not meant to be parsed
  */
-@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "brokers", "criteria", "preferences", "problems"})
+@JsonPropertyOrder({"format", "dryRun", "houses", "visits", "photos", "brokers", "criteria", "preferences", "questions",
+        "problems"})
 public record ImportReport(String format, boolean dryRun, Entity houses, Entity visits, Entity photos,
-                           Entity brokers, Entity criteria, Entity preferences, List<String> problems) {
+                           Entity brokers, Entity criteria, Entity preferences, Entity questions,
+                           List<String> problems) {
 
     /**
      * Outcome counts for one kind of row. {@code total} is what the file held;

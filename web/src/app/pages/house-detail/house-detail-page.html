@@ -540,6 +540,118 @@
         </div>
       </section>
 
+      <!-- Questions to ask (slice 3a, docs/11 5.5): a card per question, open ones first. Typing an answer marks it
+           Answered, clearing it Open; Skip is a toggle; Remove only takes the question off this house. -->
+      <section class="card" aria-labelledby="questions-heading">
+        <h2 id="questions-heading">{{ 'questions.title' | t }}</h2>
+        @if ((d.answers ?? []).length > 0) {
+          <p id="questions-summary" class="muted" role="status">{{ answeredSummary(d) }}</p>
+        }
+        @for (a of shownAnswers(d); track a.id) {
+          <div class="question" role="group" [attr.aria-label]="a.text" [class.skipped]="a.status === 'SKIPPED'">
+            <p class="question-text">
+              {{ a.text }}
+              @if (a.status === 'SKIPPED') {
+                <span class="muted small">({{ 'questions.skipped' | t }})</span>
+              }
+            </p>
+            <div class="field">
+              <label [for]="'answer-' + a.id">{{ 'questions.answer' | t }}</label>
+              <textarea
+                [id]="'answer-' + a.id"
+                rows="2"
+                [attr.maxlength]="maxAnswer"
+                [attr.aria-label]="'questions.answerAria' | t: { q: a.text }"
+                [ngModel]="a.answer ?? ''"
+                (ngModelChange)="setAnswer(a.id, $event)"
+              ></textarea>
+            </div>
+            <div class="actions">
+              <button
+                type="button"
+                class="btn"
+                [attr.aria-pressed]="a.status === 'SKIPPED'"
+                [attr.aria-label]="'questions.skipAria' | t: { q: a.text }"
+                (click)="toggleSkip(a)"
+              >
+                {{ 'questions.skip' | t }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                [attr.aria-label]="'questions.removeAria' | t: { q: a.text }"
+                (click)="removeAnswer(a.id)"
+              >
+                {{ 'questions.remove' | t }}
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <p id="questions-empty" class="muted">{{ 'questions.emptyHouse' | t }}</p>
+        }
+        <div class="actions">
+          <button
+            id="questions-usual"
+            type="button"
+            class="btn"
+            [disabled]="usualCount() === 0 || (d.answers ?? []).length >= maxAnswers"
+            [attr.aria-describedby]="usualCount() === 0 ? 'questions-usual-hint' : null"
+            (click)="addUsualQuestions()"
+          >
+            {{ 'questions.addUsual' | t }}
+          </button>
+          <button
+            id="questions-add"
+            type="button"
+            class="btn"
+            [disabled]="(d.answers ?? []).length >= maxAnswers"
+            [attr.aria-expanded]="pickerOpen()"
+            aria-controls="questions-picker"
+            (click)="pickerOpen.set(!pickerOpen())"
+          >
+            {{ 'questions.addOne' | t }}
+          </button>
+        </div>
+        @if (usualCount() === 0 && (d.answers ?? []).length < maxAnswers) {
+          <p id="questions-usual-hint" class="muted small">{{ 'questions.alreadyAdded' | t }}</p>
+        }
+        @if ((d.answers ?? []).length >= maxAnswers) {
+          <p id="questions-max" class="muted">{{ 'questions.houseMax' | t }}</p>
+        }
+        @if (pickerOpen() && (d.answers ?? []).length < maxAnswers) {
+          <div id="questions-picker" class="picker">
+            <h3 class="picker-title">{{ 'questions.pick' | t }}</h3>
+            @for (g of pickable(); track g.category) {
+              <p class="picker-group">{{ categoryKey(g.category) | t }}</p>
+              <ul class="picker-list">
+                @for (q of g.questions; track q.id) {
+                  <li>
+                    <button type="button" class="btn picker-item" (click)="addBankQuestion(q)">{{ q.text }}</button>
+                  </li>
+                }
+              </ul>
+            } @empty {
+              <p id="questions-none" class="muted">{{ 'questions.noneToPick' | t }}</p>
+            }
+            <div class="field">
+              <label for="questions-adhoc">{{ 'questions.adhoc' | t }}</label>
+              <input
+                id="questions-adhoc"
+                name="adhoc"
+                type="text"
+                [attr.maxlength]="maxAnswerText"
+                [(ngModel)]="adhocText"
+                (keydown.enter)="$event.preventDefault(); addAdhocQuestion()"
+                autocomplete="off"
+              />
+            </div>
+            <button id="questions-adhoc-add" type="button" class="btn" [disabled]="adhocText.trim() === ''" (click)="addAdhocQuestion()">
+              {{ 'questions.adhocAdd' | t }}
+            </button>
+          </div>
+        }
+      </section>
+
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
         <h2 id="location-heading">{{ 'house.location' | t }}</h2>

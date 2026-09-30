@@ -39,10 +39,12 @@ import {
   FIXTURE_PHOTO_DATA_URIS,
   FIXTURE_PHOTO_MAP,
   FIXTURE_PREFERENCES,
+  FIXTURE_QUESTIONS,
   FIXTURE_VISITS,
   fixtureBundle,
 } from './golden/fixture';
 import {
+  GOLDEN_ANSWERS_CSV,
   GOLDEN_BROKERS_CSV,
   GOLDEN_CRITERIA_CSV,
   GOLDEN_HOUSES_CSV,
@@ -175,7 +177,7 @@ describe('CSV export', () => {
   it('matches the golden brokers.csv, which only a copy with brokers has', () => {
     expect(tables['brokers.csv']).toBe(GOLDEN_BROKERS_CSV);
     const none = buildCsvTables(collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }));
-    expect(Object.keys(none).sort()).toEqual(['houses.csv', 'photos.csv', 'rooms.csv', 'scores.csv', 'visits.csv']);
+    expect(Object.keys(none).sort()).toEqual(['answers.csv', 'houses.csv', 'photos.csv', 'rooms.csv', 'scores.csv', 'visits.csv']);
     expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).not.toContain('brokers.csv');
   });
 
@@ -344,7 +346,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(3649);
+    expect(new TextEncoder().encode(json).length).toBe(4569);
   });
 
   /**
@@ -405,10 +407,10 @@ describe('JSON backup', () => {
   it('counts the brokers in the manifest of a /2 copy only', () => {
     const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     expect(withBrokers).toContain('"format":"doorprints-backup/2"');
-    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1}');
+    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3}');
     const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     // Criteria and preferences are not contacts: a copy without contact details keeps them, and their counts.
-    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1}');
+    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {
@@ -439,7 +441,7 @@ describe('shared ExportRows contract', () => {
   it('uses one column list for the CSV and the workbook', () => {
     const tables = exportTables(fixtureBundle());
     const sheets = buildWorkbook(fixtureBundle());
-    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms', 'criteria']);
+    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms', 'criteria', 'answers']);
     sheets.forEach((sheet, i) => {
       expect(sheet.header).toEqual(tables[i].columns);
       expect(sheet.rows).toHaveLength(tables[i].rows.length);
@@ -549,13 +551,13 @@ describe('determinism across runs', () => {
 
 /** Slice 2 (docs/11 5.4): criteria and the ranking in the copies. */
 describe('criteria and ranking in the copies', () => {
-  const noRooms = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null }));
+  const noRooms = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null, answers: null }));
   const base = { houses: noRooms, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
   /** House 1 scored 3 for Power, and Power is made a must-have from 4: it misses it. */
   const powerMustHave: CriterionRow = { key: 'power', updatedAt: '2026-09-11T00:00:00.000Z', criterion: { key: 'power', weight: 2, mustHave: true, minScore: 4, sort: 1 } };
   const custom: CriterionRow = { key: 'c_1a2b3c4d', updatedAt: '2026-09-03T06:00:00.000Z', criterion: FIXTURE_CRITERIA[1].criterion };
 
-  it('writes /1 with no broker, room, criterion or preference, and /2 with only criteria or only a preference', () => {
+  it('writes /1 with no broker, room, answer, criterion, preference or question, and /2 with only criteria or only a preference', () => {
     expect(buildBackupData(collect(base)).format).toBe(BACKUP_FORMAT);
     const onlyCriteria = buildBackupData(collect({ ...base, criteria: FIXTURE_CRITERIA }));
     expect(onlyCriteria.format).toBe(BACKUP_FORMAT_V2);
@@ -633,5 +635,93 @@ describe('criteria and ranking in the copies', () => {
     const bundle = collect({ ...base, criteria: [powerMustHave, custom] });
     const houses = exportTables(bundle)[0];
     expect(houses.rows.map((row) => plain(row[0]))).toEqual(['3', '2', '1']);
+  });
+});
+
+/** Slice 3a (docs/11 5.5): the viewing questions in the copies. */
+describe('viewing questions in the copies', () => {
+  const plainHouses = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null, answers: null }));
+  const base = { houses: plainHouses, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
+
+  it('matches the golden answers.csv, which only a copy with an answer has', () => {
+    expect(buildCsvTables(fixtureBundle())['answers.csv']).toBe(GOLDEN_ANSWERS_CSV);
+    expect(Object.keys(buildCsvTables(collect(base)))).not.toContain('answers.csv');
+    // Answers are not contacts: a copy without contact details still has them.
+    expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).toContain('answers.csv');
+  });
+
+  it('writes no questions.csv: the bank is settings and travels in the backup', () => {
+    expect(Object.keys(buildCsvTables(fixtureBundle()))).not.toContain('questions.csv');
+  });
+
+  it('puts the Questions section after the Rooms table and before the checklist, open ones first, "–" for no answer', () => {
+    const md = buildMarkdown(fixtureBundle(), en);
+    expect(md.indexOf('### Rooms')).toBeLessThan(md.indexOf('### Questions'));
+    expect(md.indexOf('### Questions')).toBeLessThan(md.indexOf('### Checklist'));
+    expect(md).toContain('| Is the terrace open to tenants? | – | Open |');
+    expect(md.indexOf('Is the terrace open')).toBeLessThan(md.indexOf('How much is the maintenance per month'));
+    const html = buildHtml(fixtureBundle(), en, FIXTURE_PHOTO_DATA_URIS);
+    expect(html.indexOf('<h3>Rooms</h3>')).toBeLessThan(html.indexOf('<h3>Questions</h3>'));
+    expect(html.indexOf('<h3>Questions</h3>')).toBeLessThan(html.indexOf('<h3>Checklist</h3>'));
+    expect(html).toContain('<td>Answered</td>');
+    expect(buildMarkdown(collect(base), en)).not.toContain('### Questions');
+    expect(buildHtml(collect(base), en, new Map())).not.toContain('<h3>Questions</h3>');
+  });
+
+  it('lists the answers by house then open first in the table, with the three ids', () => {
+    const table = exportTables(fixtureBundle()).find((t) => t.name === 'answers');
+    expect(table?.columns).toEqual(['House', 'Question', 'Answer', 'Status', 'House id', 'Id', 'Question id']);
+    expect(table?.rows.map((row) => plain(row[5]))).toEqual([
+      'a2222222-2222-4222-8222-222222222222',
+      'a1111111-1111-4111-8111-111111111111',
+    ]);
+    expect(table?.rows.map((row) => plain(row[6]))).toEqual(['', 'qd_maintenance']);
+  });
+
+  it('adds an Answers sheet to the workbook only when a house has answers', () => {
+    expect(buildWorkbook(fixtureBundle()).map((sheet) => sheet.name)).toContain('answers');
+    expect(buildWorkbook(collect(base)).map((sheet) => sheet.name)).not.toContain('answers');
+  });
+
+  it('writes /1 with neither, /2 with only questions, /2 with only answers', () => {
+    expect(buildBackupData(collect(base)).format).toBe(BACKUP_FORMAT);
+    const onlyQuestions = buildBackupData(collect({ ...base, questions: FIXTURE_QUESTIONS }));
+    expect(onlyQuestions.format).toBe(BACKUP_FORMAT_V2);
+    expect(Object.keys(onlyQuestions)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos', 'questions']);
+    const onlyAnswers = buildBackupData(collect({ ...base, houses: plainHouses.map((h, i) => (i === 0 ? { ...h, answers: FIXTURE_HOUSES[0].answers } : h)) }));
+    expect(onlyAnswers.format).toBe(BACKUP_FORMAT_V2);
+    expect(Object.keys(onlyAnswers)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos']);
+    expect(onlyAnswers.houses[0].answers).toHaveLength(2);
+  });
+
+  it('keeps the questions and the answers whole in a copy without contact details, phone number and all', () => {
+    const withPhone = FIXTURE_HOUSES.map((h, i) =>
+      i === 0 ? { ...h, answers: [{ id: 'a1', text: 'Who do I call?', answer: 'Call 98400 11111', status: 'ANSWERED' as const, sort: 0 }] } : h,
+    );
+    const data = buildBackupData(collect({ ...base, houses: withPhone, questions: FIXTURE_QUESTIONS, options: { ...FIXTURE_OPTIONS, includeContacts: false } }));
+    expect(data.questions).toHaveLength(3);
+    expect(data.houses[0].answers?.[0].answer).toBe('Call 98400 11111');
+    expect(data.houses[0].brokerId).toBeUndefined();
+  });
+
+  it('writes the questions by last edit then id, archived only when true, and counts them only when there are some', () => {
+    const rows = buildBackupData(fixtureBundle()).questions ?? [];
+    expect(rows.map((q) => q.id)).toEqual(['qd_deposit', 'qd_maintenance', 'q_9f8e7d6c']);
+    expect(rows.map((q) => 'archived' in q)).toEqual([false, false, true]);
+    expect(Object.keys(rows[0])).toEqual(['id', 'text', 'category', 'appliesTo', 'defaultOn', 'sort', 'updatedAt']);
+    const without = new TextDecoder().decode(buildBackupZip(collect(base), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
+    expect(without).not.toContain('"questions"');
+  });
+
+  it('names the statuses in the export language, and the four languages carry the question words (Under review outside English)', () => {
+    for (const language of LANGUAGES) {
+      const strings = ExportStrings.of(language.code);
+      const names = (['OPEN', 'ANSWERED', 'SKIPPED'] as const).map((s) => strings.get(`answerStatus.${s}`));
+      expect(new Set(names).size, language.code).toBe(3);
+      for (const key of ['section.questions', 'table.answers', 'col.question', 'col.answer', 'col.questionId'] as const) {
+        expect(strings.get(key).trim(), `${language.code}/${key}`).not.toBe('');
+      }
+    }
+    expect(ExportStrings.of('hi').get('answerStatus.OPEN')).not.toBe(ExportStrings.of('en').get('answerStatus.OPEN'));
   });
 });

@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRoom;
@@ -49,6 +50,7 @@ import java.util.TreeMap;
 public final class HouseDocuments {
 
     static final int NOTES_MAX = 3000;
+    static final int ANSWER_LINES_MAX = 20;
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
 
     private HouseDocuments() {
@@ -74,6 +76,7 @@ public final class HouseDocuments {
         if (h.areaSqft() != null) line(sb, "Carpet area", h.areaSqft() + " sq ft");
         costLines(sb, h.cost());
         line(sb, "Rooms", rooms(h.rooms(), r));
+        answerLines(sb, h.answers(), r);
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -152,6 +155,22 @@ public final class HouseDocuments {
                     parts.add(sb.toString());
                 });
         return String.join("; ", parts);
+    }
+
+    /**
+     * The viewing answers of slice 3a, the same words as the on-device {@code AiHouse} and the web {@code houseText}:
+     * {@code Asked: <question> | Answer: <answer>} for each answered one, then {@code Still to ask: <question>} for
+     * each open one (a skipped question is neither), at most {@value #ANSWER_LINES_MAX} of each kind, in the order
+     * shown ({@link HouseAnswer#ordered}: open first, then sort, then id). Question and answer are the person's own
+     * words and go through the contact redactor exactly like notes: an answer may well hold the owner's number.
+     */
+    static void answerLines(StringBuilder sb, List<HouseAnswer> answers, ContactRedactor.Redactor r) {
+        var ordered = HouseAnswer.ordered(answers);
+        ordered.stream().filter(a -> "ANSWERED".equals(a.reads())).limit(ANSWER_LINES_MAX)
+                .forEach(a -> line(sb, "Asked", r.freeText(a.text().strip()) + " | Answer: "
+                        + r.freeText(a.answer().strip())));
+        ordered.stream().filter(a -> "OPEN".equals(a.reads())).limit(ANSWER_LINES_MAX)
+                .forEach(a -> line(sb, "Still to ask", r.freeText(a.text().strip())));
     }
 
     /** {@code BEDROOM} as {@code Bedroom}. */

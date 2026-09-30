@@ -16,12 +16,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { ApplicationConfig } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { TitleStrategy, provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
 import { routes } from './app.routes';
 import { apiInterceptor } from './core/api.interceptor';
+import { LocalStore } from './data/local-store.service';
 import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
+import { initialLang } from './i18n/translation.service';
 
 // Angular 21+ is zoneless by default, so no zone.js / provideZoneChangeDetection here.
 export const appConfig: ApplicationConfig = {
@@ -39,5 +41,12 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([apiInterceptor])),
     // Route titles below are translation keys; this strategy translates them and follows language changes.
     { provide: TitleStrategy, useClass: I18nTitleStrategy },
+    // The question bank is seeded once per install, before the first screen reads it (slice 3a); a failure must not
+    // stop the app, which then simply starts with an empty bank the person can reset.
+    provideAppInitializer(() =>
+      inject(LocalStore)
+        .seedQuestionsOnce(initialLang)
+        .catch(() => undefined),
+    ),
   ],
 };

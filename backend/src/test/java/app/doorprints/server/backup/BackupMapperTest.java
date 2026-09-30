@@ -253,6 +253,112 @@ class BackupMapperTest {
         assertThat(data.houses().getFirst().brokerId()).isEqualTo("nobody-yet");
     }
 
+    private static Record question(String id, String payload, Instant updatedAt, boolean deleted) {
+        var record = new Record(new RecordKey("question", id));
+        record.setPayload(payload);
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(deleted);
+        return record;
+    }
+
+    private static String answersJson() {
+        return "[{\"id\":\"a2\",\"text\":\"Is the terrace open?\",\"status\":\"OPEN\",\"sort\":1},"
+                + "{\"id\":\"a1\",\"questionId\":\"qd_maintenance\",\"text\":\"Maintenance?\","
+                + "\"answer\":\"Rs 2,500\",\"status\":\"ANSWERED\",\"sort\":0}]";
+    }
+
+    /** Slice 3a: no question and no answers is a /1 document with neither key. */
+    @Test
+    void withoutQuestionsOrAnswersTheCopyIsVersionOneAndHasNeitherKey() {
+        var withEmpty = house(FIRST, EXPORTED_AT, false);
+        withEmpty.setAnswers("[]");
+        var data = BackupMapper.toBackup(List.of(withEmpty), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(question("gone", "{\"text\":\"Old?\"}", EXPORTED_AT, true)), JSON, EXPORTED_AT);
+        assertThat(data.format()).isEqualTo(BackupFormat.ID);
+        assertThat(data.questions()).isEmpty();
+        assertThat(data.houses().getFirst().answers()).isNull();
+        assertThat(JSON.writeValueAsString(data)).doesNotContain("questions").doesNotContain("answers");
+    }
+
+    /** A live question alone makes the copy /2. */
+    @Test
+    void aQuestionAloneMakesItVersionTwo() {
+        var data = BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(question("q_9f8e7d6c", "{\"text\":\"Water meter?\"}", EXPORTED_AT, false)), JSON, EXPORTED_AT);
+        assertThat(data.format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+    }
+
+    /** A house with answers alone makes the copy /2; the answers follow rooms and precede brokerId, in key order. */
+    @Test
+    void answersAloneMakeItVersionTwoAndAreWrittenAfterRoomsInKeyOrder() {
+        var withAnswers = house(FIRST, EXPORTED_AT, false);
+        withAnswers.setRooms(roomsJson());
+        withAnswers.setAnswers(answersJson());
+        withAnswers.setBrokerId("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        var data = BackupMapper.toBackup(List.of(withAnswers), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(data.questions()).isEmpty();
+        var written = JSON.readTree(JSON.writeValueAsString(data.houses().getFirst()));
+        assertThat(new ArrayList<String>(written.propertyNames())).containsSubsequence("rooms", "answers", "brokerId");
+        assertThat(new ArrayList<String>(written.get("answers").get(1).propertyNames()))
+                .containsExactly("id", "questionId", "text", "answer", "status", "sort");
+        assertThat(new ArrayList<String>(written.get("answers").get(0).propertyNames()))
+                .containsExactly("id", "text", "status", "sort");
+    }
+
+    /** A tombstone's answers are never exported, and do not make the copy /2. */
+    @Test
+    void aDeletedHousesAnswersAreNotExported() {
+        var gone = house(FIRST, EXPORTED_AT, true);
+        gone.setAnswers(answersJson());
+        assertThat(BackupMapper.toBackup(List.of(gone), List.of(), List.of(), EXPORTED_AT).format())
+                .isEqualTo(BackupFormat.ID);
+    }
+
+    /** Questions by updatedAt then id, the payload in the format's order, archived only when true. */
+    @Test
+    void questionsAreOrderedByUpdatedAtThenIdAndArchivedIsOnlyWrittenWhenTrue() {
+        var early = EXPORTED_AT.minusSeconds(60);
+        var data = BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(
+                question("q_b", "{\"text\":\"Second\",\"category\":\"RULES\",\"appliesTo\":\"SALE\","
+                        + "\"defaultOn\":true,\"sort\":2,\"archived\":false}", EXPORTED_AT, false),
+                question("q_a", "{\"text\":\"First\",\"category\":\"MONEY\",\"appliesTo\":\"RENT\","
+                        + "\"defaultOn\":false,\"sort\":1,\"archived\":true}", EXPORTED_AT, false),
+                question("q_0", "{\"text\":\"Oldest\",\"category\":\"LEGAL\",\"appliesTo\":\"BOTH\","
+                        + "\"defaultOn\":true,\"sort\":0}", early, false),
+                question("q_x", "{\"text\":\"Deleted\"}", early, true)), JSON, EXPORTED_AT);
+
+        assertThat(data.format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(data.questions()).extracting(BackupQuestion::id).containsExactly("q_0", "q_a", "q_b");
+        assertThat(JSON.writeValueAsString(data.questions().get(1))).isEqualTo("{\"id\":\"q_a\",\"text\":\"First\","
+                + "\"category\":\"MONEY\",\"appliesTo\":\"RENT\",\"defaultOn\":false,\"sort\":1,\"archived\":true,"
+                + "\"updatedAt\":" + EXPORTED_AT.toEpochMilli() + "}");
+        assertThat(JSON.writeValueAsString(data.questions().get(2))).doesNotContain("archived");
+        assertThat(data.questions().getFirst().updatedAt()).isEqualTo(early.toEpochMilli());
+    }
+
+    /** The server never reads inside a record, so an export drops what would not import again instead of failing. */
+    @Test
+    void aQuestionPayloadThatWouldNotImportIsCoercedOrLeftOut() {
+        var data = BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(
+                question("no-text", "{\"category\":\"MONEY\"}", EXPORTED_AT, false),
+                question("blank", "{\"text\":\"  \"}", EXPORTED_AT, false),
+                question("not-json", "not json", EXPORTED_AT, false),
+                question("long", "{\"text\":\"" + "t".repeat(301) + "\"}", EXPORTED_AT, false),
+                question("odd", "{\"text\":\"Odd\",\"category\":\"PETS\",\"appliesTo\":\"EVERYONE\","
+                        + "\"defaultOn\":\"yes\",\"sort\":-4,\"archived\":\"true\"}", EXPORTED_AT, false)),
+                JSON, EXPORTED_AT);
+
+        assertThat(data.questions()).singleElement().satisfies(q -> {
+            assertThat(q.id()).isEqualTo("odd");
+            assertThat(q.category()).isEqualTo("OTHER");
+            assertThat(q.appliesTo()).isEqualTo("BOTH");
+            assertThat(q.defaultOn()).isFalse();
+            assertThat(q.sort()).isZero();
+            assertThat(q.archived()).isNull();
+        });
+    }
+
     /** The merge rule: newer in the file wins, newer here is kept, equal writes nothing (S4-00, docs/11 5.2). */
     @Test
     void mergeDecisionIsLastWriteWins() {

@@ -29,6 +29,7 @@ import org.skyscreamer.jsonassert.Customization;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
@@ -49,6 +50,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@code GET /api/export} and {@code POST /api/import} against the canonical sample
@@ -75,7 +77,11 @@ import static org.assertj.core.api.Assertions.assertThat;
                 // crossed in one import without a second Spring context.
                 "app.limits.max-json-bytes=2048",
                 "app.limits.max-import-bytes=16384",
-                "app.limits.max-import-rows=60"})
+                "app.limits.max-import-rows=60",
+                // The refusal tests each make a handful of calls; keep the per-client throttle (600/min, burst 300)
+                // out of their way, it has its own tests.
+                "app.rate-limit.requests-per-minute=60000",
+                "app.rate-limit.burst=6000"})
 @ResourceLock("database")
 class BackupApiTest {
 
@@ -259,6 +265,8 @@ class BackupApiTest {
         for (int i = 0; i < criteria.length(); i++) putCriterion(criteria.getJSONObject(i));
         var preferences = sample.getJSONArray("preferences");
         for (int i = 0; i < preferences.length(); i++) putPreference(preferences.getJSONObject(i));
+        var questions = sample.getJSONArray("questions");
+        for (int i = 0; i < questions.length(); i++) putQuestion(questions.getJSONObject(i));
         var photos = sample.getJSONArray("photos");
         for (int i = 0; i < photos.length(); i++) {
             var photo = photos.getJSONObject(i);
@@ -299,6 +307,8 @@ class BackupApiTest {
         assertThat(preview).containsEntry("dryRun", true).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
         assertThat(count(preview, "houses", "created")).isEqualTo(3);
         assertThat(count(preview, "brokers", "created")).isEqualTo(2);
+        assertThat(count(preview, "questions", "created")).isEqualTo(3);
+        assertThat(questionRecords()).as("dry run writes no question").isEmpty();
         assertThat(brokerRecords()).as("dry run writes no broker").isEmpty();
         assertThat(count(preview, "visits", "created")).isEqualTo(3);
         assertThat(count(preview, "photos", "skipped")).isEqualTo(2);
@@ -309,6 +319,7 @@ class BackupApiTest {
         assertThat(count(applied, "houses", "created")).isEqualTo(3);
         assertThat(count(applied, "visits", "created")).isEqualTo(3);
         assertThat(count(applied, "brokers", "created")).isEqualTo(2);
+        assertThat(count(applied, "questions", "created")).isEqualTo(3);
         var problems = problems(applied);
         assertThat(problems).anyMatch(p -> p.contains("photo"));
         assertThat(problems).as("a three-house import still updates the AI index row by row")
@@ -1009,6 +1020,303 @@ class BackupApiTest {
     private static String backupWithPreferences(String baseBackup, String preferences) {
         return baseBackup.replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
                 .replace("\"photos\":[]", "\"photos\":[],\"preferences\":[" + preferences + "]");
+    }
+
+    // ---- slice 3a: viewing questions and answers ------------------------------------------------------------------
+
+    @Autowired
+    BackupService backupService;
+
+    private static final String GOOD_ANSWER =
+            "{\"id\":\"a1\",\"questionId\":\"qd_water\",\"text\":\"Water?\",\"answer\":\"Borewell\","
+                    + "\"status\":\"ANSWERED\",\"sort\":0}";
+
+    private void putQuestion(JSONObject row) throws JSONException {
+        var payload = new JSONObject(row.toString());
+        var id = payload.remove("id");
+        var updatedAt = payload.remove("updatedAt");
+        var body = new JSONObject().put("type", "question").put("id", id).put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
+        api.put().uri("/api/records/question/{id}", id.toString()).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    private List<Map<String, Object>> questionRecords() {
+        return api.get().uri("/api/records?since=0&type=question").retrieve().body(LIST);
+    }
+
+    private static String questionRow(String id, String text, String category, String appliesTo, int sort,
+                                      Instant updatedAt) {
+        return "{\"id\":\"" + id + "\",\"text\":\"" + text + "\",\"category\":\"" + category
+                + "\",\"appliesTo\":\"" + appliesTo + "\",\"defaultOn\":true,\"sort\":" + sort
+                + ",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    private static String backupWithQuestions(String houses, String questions) {
+        return backup(houses, "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"questions\":[" + questions + "]");
+    }
+
+    private static String houseWithAnswers(UUID id, String label, Instant at, String answers) {
+        return houseRow(id, label, at).replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"answers\":[" + answers + "]");
+    }
+
+    /** Refused as a whole file (dry run too), naming the rule, never echoing the user's text, and nothing written. */
+    private void assertRefused(String body, String message, String userText) {
+        assertThat(status(() -> postImport(body, false))).as(message).isEqualTo(400);
+        assertThat(status(() -> postImport(body, true))).as("dry run " + message).isEqualTo(400);
+        var error = errorBody(() -> postImport(body, false));
+        assertThat(error).contains(message);
+        if (userText != null) assertThat(error).doesNotContain(userText);
+        assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).as("no house written").isEmpty();
+        assertThat(questionRecords()).as("no question written").isEmpty();
+    }
+
+    /** Questions are records of type question: merged by id, last write wins, exported back as /2 in payload order. */
+    @Test
+    void questionsImportMergeByIdLastWriteWinsAndExportBack() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var file = backupWithQuestions("",
+                questionRow("qd_deposit", "Deposit?", "MONEY", "RENT", 1, now) + ","
+                        + questionRow("q_1a2b3c4d", "Water meter?", "WATER_POWER", "BOTH", 20, now.minusSeconds(60)));
+        assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
+        assertThat(questionRecords()).as("dry run writes nothing").isEmpty();
+        var applied = postImport(file, false);
+        assertThat(count(applied, "questions", "created")).isEqualTo(2);
+        assertThat(count(applied, "questions", "total")).isEqualTo(2);
+        assertThat(questionRecords()).hasSize(2);
+
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        var questions = exported.getJSONArray("questions");
+        assertThat(questions.length()).isEqualTo(2);
+        assertThat(questions.getJSONObject(0).getString("id")).as("ordered by updatedAt then id").isEqualTo("q_1a2b3c4d");
+        assertThat(export()).contains("{\"id\":\"qd_deposit\",\"text\":\"Deposit?\",\"category\":\"MONEY\","
+                + "\"appliesTo\":\"RENT\",\"defaultOn\":true,\"sort\":1,\"updatedAt\":" + now.toEpochMilli() + "}");
+        assertThat(export()).doesNotContain("\"archived\"");
+
+        // The same file again changes nothing; an older row is kept newer here; a newer row wins, archived kept.
+        assertThat(count(postImport(file, false), "questions", "unchanged")).isEqualTo(2);
+        var older = backupWithQuestions("", questionRow("qd_deposit", "Older", "LEGAL", "SALE", 9, now.minusSeconds(30)));
+        assertThat(count(postImport(older, false), "questions", "keptNewer")).isEqualTo(1);
+        var newer = backupWithQuestions("", questionRow("qd_deposit", "Newer", "LEGAL", "SALE", 9, now.plusSeconds(30))
+                .replace("\"sort\"", "\"archived\":true,\"sort\""));
+        assertThat(count(postImport(newer, false), "questions", "updated")).isEqualTo(1);
+        var after = new JSONObject(export()).getJSONArray("questions");
+        JSONObject deposit = null;
+        for (int i = 0; i < after.length(); i++) if ("qd_deposit".equals(after.getJSONObject(i).getString("id"))) deposit = after.getJSONObject(i);
+        assertThat(deposit).isNotNull();
+        assertThat(deposit.getString("text")).isEqualTo("Newer");
+        assertThat(deposit.getString("category")).isEqualTo("LEGAL");
+        assertThat(deposit.getString("appliesTo")).isEqualTo("SALE");
+        assertThat(deposit.getBoolean("archived")).isTrue();
+    }
+
+    /** A deleted question (a tombstone in the record table) is made live again by a newer file, not by an older one. */
+    @Test
+    void aNewerFileRevivesADeletedQuestion() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        postImport(backupWithQuestions("", questionRow("qd_pets", "Pets?", "RULES", "RENT", 3, now)), false);
+        api.delete().uri("/api/records/question/{id}", "qd_pets").retrieve().toBodilessEntity();
+        assertThat(new JSONObject(export()).has("questions")).as("a tombstone is not exported").isFalse();
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
+
+        var older = backupWithQuestions("", questionRow("qd_pets", "Old file", "RULES", "RENT", 3, now.plusSeconds(1)));
+        assertThat(count(postImport(older, false), "questions", "keptNewer")).isEqualTo(1);
+        assertThat(new JSONObject(export()).has("questions")).isFalse();
+
+        var newer = backupWithQuestions("", questionRow("qd_pets", "Back again", "RULES", "RENT", 3,
+                Instant.now().plusSeconds(20)));
+        assertThat(count(postImport(newer, false), "questions", "updated")).isEqualTo(1);
+        var questions = new JSONObject(export()).getJSONArray("questions");
+        assertThat(questions.length()).isEqualTo(1);
+        assertThat(questions.getJSONObject(0).getString("text")).isEqualTo("Back again");
+    }
+
+    /** Answers are part of the house row: /2 even with no question, imported with the house, exported back equal. */
+    @Test
+    void answersImportWithTheirHouseAndExportBackAsVersionTwo() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var id = UUID.randomUUID();
+        var answers = GOOD_ANSWER + ",{\"id\":\"a2\",\"text\":\"Terrace open?\",\"status\":\"OPEN\",\"sort\":1}";
+        var file = backup(houseWithAnswers(id, "With answers", now, answers), "")
+                .replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS);
+
+        assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
+        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
+
+        assertThat((List<?>) api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).hasSize(2);
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(exported.has("questions")).isFalse();
+        JSONAssert.assertEquals("{\"answers\":[" + answers + "]}", exported.getJSONArray("houses").getJSONObject(0).toString(),
+                JSONCompareMode.LENIENT);
+        var written = export();
+        assertThat(written.indexOf("\"label\"")).isPositive().isLessThan(written.indexOf("\"answers\""));
+        assertThat(written.indexOf("\"answers\"")).isLessThan(written.indexOf("\"checklist\""));
+        assertThat(written).doesNotContain("\"answers\":[]");
+
+        // A newer file without answers replaces the house as a whole: the answers go, and the copy is /1 again.
+        var newer = backup(houseRow(id, "No answers now", now.plusSeconds(60)), "");
+        assertThat(count(postImport(newer, false), "houses", "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
+
+        // An empty array in a file is no answers.
+        var emptied = backup(houseWithAnswers(id, "Empty list", now.plusSeconds(120), ""), "");
+        assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("answers")).isNull();
+    }
+
+    /** A copy made without contact details keeps questions and answers: the file is the person's own data. */
+    @Test
+    void answersKeepAPhoneNumberInTheirText() throws JSONException {
+        var id = UUID.randomUUID();
+        var answer = GOOD_ANSWER.replace("Borewell", "Call the caretaker on 98450 12345");
+        postImport(backup(houseWithAnswers(id, "Phone in answer", Instant.now().minusSeconds(60), answer), ""), false);
+        assertThat(export()).contains("Call the caretaker on 98450 12345");
+    }
+
+    @Test
+    void aQuestionWithABadIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        assertRefused(backupWithQuestions(house, questionRow("bad id!", "Text", "MONEY", "BOTH", 0, now)),
+                "questions[0].id is not a valid record id", null);
+        assertRefused(backupWithQuestions(house, questionRow("..", "Text", "MONEY", "BOTH", 0, now)),
+                "questions[0].id is not a valid record id", null);
+    }
+
+    @Test
+    void aQuestionWithBlankTextRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "   ", "MONEY", "BOTH", 0, now)), "questions[0].text is required", null);
+    }
+
+    @Test
+    void aQuestionWithOverLongTextRefusesTheWholeFileWithoutEchoingIt() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "t".repeat(301), "MONEY", "BOTH", 0, now)),
+                "questions[0].text is longer than 300 characters", "ttttttttttttttttttttttttttttt");
+    }
+
+    @Test
+    void aQuestionWithAnUnknownCategoryRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "Text", "PETS", "BOTH", 0, now)), "questions[0].category is out of range", null);
+    }
+
+    @Test
+    void aQuestionWithAnUnknownAppliesToRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "Text", "MONEY", "EVERYONE", 0, now)), "questions[0].appliesTo is out of range", null);
+    }
+
+    @Test
+    void aQuestionWithANegativeSortRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "Text", "MONEY", "BOTH", -1, now)), "questions[0].sort must not be negative", null);
+    }
+
+    @Test
+    void aRepeatedQuestionIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backupWithQuestions(houseRow(UUID.randomUUID(), "Fine", now),
+                questionRow("q_1", "One", "MONEY", "BOTH", 0, now) + "," + questionRow("q_1", "Two", "MONEY", "BOTH", 1, now)),
+                "questions[1].id appears twice", null);
+    }
+
+    /** The row cap of this suite (60) would answer 413 first over HTTP, so the service is called directly. */
+    @Test
+    void moreThanAHundredQuestionsRefuseTheWholeFile() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        var rows = new ArrayList<BackupQuestion>();
+        for (int i = 0; i <= BackupQuestion.MAX; i++) {
+            rows.add(new BackupQuestion("q_" + i, "Question " + i, "OTHER", "BOTH", false, i, null, at));
+        }
+        var data = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), rows);
+        assertThatThrownBy(() -> backupService.importBackup(data, true)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 100 questions");
+        var hundred = new BackupData(BackupFormat.ID_WITH_BROKERS, at, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), rows.subList(0, 100));
+        assertThat(backupService.importBackup(hundred, true).questions().created()).isEqualTo(100);
+    }
+
+    @Test
+    void anAnswerWithABadIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var fine = houseRow(UUID.randomUUID(), "Fine", now);
+        for (var id : List.of("..", "has space")) {
+            assertRefused(backup(fine + "," + houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                    GOOD_ANSWER.replace("\"a1\"", "\"" + id + "\"")), ""), "houses[1].answers[0].id is out of range", null);
+        }
+    }
+
+    @Test
+    void anAnswerWithABadQuestionIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("qd_water", "has space")), ""), "houses[0].answers[0].questionId is out of range", null);
+    }
+
+    @Test
+    void aRepeatedAnswerIdRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now, GOOD_ANSWER + "," + GOOD_ANSWER), ""),
+                "houses[0].answers[1].id is repeated", null);
+    }
+
+    @Test
+    void anAnswerWithBlankQuestionTextRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("Water?", "  ")), ""), "houses[0].answers[0].text is out of range", null);
+    }
+
+    @Test
+    void anAnswerWithOverLongQuestionTextRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("Water?", "t".repeat(301))), ""), "houses[0].answers[0].text is out of range",
+                "ttttttttttttttttttttttttttttt");
+    }
+
+    @Test
+    void anOverLongAnswerRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("Borewell", "a".repeat(2001))), ""), "houses[0].answers[0].answer is out of range",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    }
+
+    @Test
+    void anAnswerWithAnUnknownStatusRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("ANSWERED", "DONE")), ""), "houses[0].answers[0].status is out of range", null);
+    }
+
+    @Test
+    void anAnswerWithANegativeSortRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now,
+                GOOD_ANSWER.replace("\"sort\":0", "\"sort\":-1")), ""), "houses[0].answers[0].sort is out of range", null);
+    }
+
+    @Test
+    void aSixtyFirstAnswerRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(1));
+        var many = new StringBuilder();
+        for (int i = 0; i <= 60; i++) many.append(i == 0 ? "" : ",").append(GOOD_ANSWER.replace("\"a1\"", "\"a" + i + "\""));
+        assertRefused(backup(houseWithAnswers(UUID.randomUUID(), "Bad", now, many.toString()), ""),
+                "houses[0].answers has more than 60 answers", null);
     }
 
     // ---- small readers ------------------------------------------------------------------------------------------

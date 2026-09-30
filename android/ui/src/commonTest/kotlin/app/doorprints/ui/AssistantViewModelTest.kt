@@ -217,6 +217,21 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun deleteCriterion(key: String): Boolean = TODO()
     override suspend fun saveRatingShare(share: Double) = TODO()
     override suspend fun resetScoring() = TODO()
+    override fun observeQuestions(): Flow<List<app.doorprints.shared.model.Question>> = TODO()
+    override suspend fun questions(): List<app.doorprints.shared.model.Question> = TODO()
+    override suspend fun seedQuestions(language: String): Int = TODO()
+    override suspend fun seedQuestionsOnce(language: String) = TODO()
+    override suspend fun resetQuestions(language: String) = TODO()
+    override suspend fun saveQuestion(question: app.doorprints.shared.model.Question) = TODO()
+    override suspend fun saveQuestions(questions: List<app.doorprints.shared.model.Question>) = TODO()
+    override suspend fun addQuestion(
+        text: String,
+        category: app.doorprints.shared.model.QuestionCategory,
+        appliesTo: app.doorprints.shared.model.QuestionScope,
+        defaultOn: Boolean,
+    ): String = TODO()
+    override suspend fun deleteQuestion(id: String) = TODO()
+    override suspend fun saveAnswers(houseId: String, answers: List<app.doorprints.shared.model.HouseAnswer>?) = TODO()
     override suspend fun testConnection(): Result<StatsDto> = TODO()
     override suspend fun extractListing(text: String): HouseDraftDto = TODO()
     override suspend fun sync(photosAllowed: Boolean): SyncOutcome = TODO()

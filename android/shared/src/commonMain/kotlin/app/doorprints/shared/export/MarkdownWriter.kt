@@ -107,6 +107,13 @@ object MarkdownWriter {
                 table(out, ExportRows.roomColumns(bundle), rooms)
             }
 
+            // The questions asked (slice 3a), after the rooms and before the checklist.
+            val answers = ExportRows.answerRows(h, bundle)
+            if (answers.isNotEmpty()) {
+                out.append("\n### ").append(text(s["section.questions"])).append("\n\n")
+                table(out, ExportRows.answerColumns(bundle), answers)
+            }
+
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")

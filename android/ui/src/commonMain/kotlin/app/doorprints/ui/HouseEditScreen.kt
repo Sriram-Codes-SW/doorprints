@@ -90,7 +90,9 @@ import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
@@ -164,6 +166,8 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 it.brokerId,
                 // Slice 1c: the rooms, as the JSON text Room keeps them in (null for none).
                 HouseRooms.encode(it.rooms),
+                // Slice 3a: the questions asked, as the JSON text Room keeps them in (null for none).
+                HouseAnswers.encode(it.answers),
             )
         }
     },
@@ -208,6 +212,8 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         brokerId = v.getOrNull(34) as String?,
         // Absent before slice 1c: no rooms.
         rooms = HouseRooms.decode(v.getOrNull(35) as String?),
+        // Absent before slice 3a: no questions.
+        answers = HouseAnswers.decode(v.getOrNull(36) as String?),
     )
 }.getOrNull()
 
@@ -439,6 +445,8 @@ fun HouseEditScreen(
     val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
+    // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.
+    val questionBank: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -906,6 +914,9 @@ fun HouseEditScreen(
 
                 // The rooms with their sizes and condition (docs/11 5.6, slice 1c), after the cost.
                 RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
+
+                // The questions to ask at the viewing (docs/11 5.5, slice 3a), after the rooms.
+                QuestionsSection(d.answers, questionBank, d.priceType, d.cost) { answers -> update { it.copy(answers = answers) } }
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
                     label = { Text(stringResource(Res.string.house_address)) },

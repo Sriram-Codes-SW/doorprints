@@ -23,6 +23,7 @@ import app.doorprints.shared.export.ExportHouse
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
+import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
@@ -40,7 +41,8 @@ fun HouseEntity.toExport() = ExportHouse(
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    brokerId = brokerId, checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    answers = answers?.takeIf { it.isNotEmpty() }, brokerId = brokerId, checklist = checklist, createdAt = createdAt,
+    updatedAt = updatedAt,
 )
 
 /**
@@ -54,7 +56,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     notes = notes,
     // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
+    brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )
@@ -89,4 +92,5 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     brokers,
     criteria,
     preferences,
+    questions,
 )

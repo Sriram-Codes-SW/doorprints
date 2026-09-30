@@ -166,14 +166,15 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (7 since docs/11 5.6 slice 1c: houses.rooms; 6 added houses.brokerId; 5 the house's
-            // values; 4 records; track_points and records empty after the migration, and a house from before has no
-            // area, source, cost, broker or rooms).
-            assertEquals(listOf("7"), connection.rows("PRAGMA user_version"))
+            // The current version (8 since docs/11 5.5 slice 3a: houses.answers; 7 added houses.rooms; 6 houses.brokerId;
+            // 5 the house's values; 4 records; track_points and records empty after the migration, and a house from
+            // before has no area, source, cost, broker, rooms or answers).
+            assertEquals(listOf("8"), connection.rows("PRAGMA user_version"))
             assertEquals(
-                listOf("h1||||"),
+                listOf("h1|||||"),
                 connection.rows(
-                    "SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, ''), IFNULL(brokerId, ''), IFNULL(rooms, '') FROM houses",
+                    "SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, ''), IFNULL(brokerId, ''), IFNULL(rooms, ''), " +
+                        "IFNULL(answers, '') FROM houses",
                 ),
             )
             assertEquals(listOf("p1|0"), connection.rows("SELECT id, deleted FROM photos"))

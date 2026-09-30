@@ -60,6 +60,8 @@ class RoomSchemaTest {
             6 to "2d8989be61a253b05a425724fdac611c",
             // v7 (docs/11 5.6 slice 1c, 2026-09-30): houses.rooms, the rooms as JSON text.
             7 to "0f1bb1e926eca4448414d4c3f66907ba",
+            // v8 (docs/11 5.5 slice 3a, 2026-09-30): houses.answers, the questions asked as JSON text.
+            8 to "1ef29df83d30a6f86a9b88986f715705",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

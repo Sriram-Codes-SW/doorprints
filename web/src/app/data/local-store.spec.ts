@@ -21,7 +21,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from './local-store.service';
 import { SETTING_KEYS } from './records';
 import { LocalDataError } from '../core/local-error';
-import type { HouseDto, HouseRoom, VisitDto } from '../core/models';
+import type { HouseAnswer, HouseDto, HouseRoom, VisitDto } from '../core/models';
+import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
 import { BUILT_IN_KEYS } from '../shared/scoring';
 import type { Criterion } from '../shared/scoring';
 
@@ -694,5 +695,165 @@ describe('LocalStore criteria', () => {
     expect(water).toMatchObject({ weight: 2, mustHave: false, minScore: 3, sort: 0 });
     await store.saveRecord('preference', 'score.ratingShare', { value: 'lots' }, T1);
     expect((await store.scoring()).ratingShare).toBe(0.5);
+  });
+});
+
+/** Slice 3a (docs/11 5.5): the question bank (records of type `question`) and the answers nested in a house. */
+describe('LocalStore questions', () => {
+  let store: LocalStore;
+  const T3 = Date.parse('2026-09-03T00:00:00.000Z');
+
+  beforeEach(async () => {
+    store = new LocalStore();
+    await store.ready();
+  });
+
+  const ids = async () => (await store.questions()).map((q) => q.id);
+
+  it('seeds every default once: fixed ids, the text of the current language, dirty', async () => {
+    expect(await store.seedQuestions('ta', T1)).toBe(DEFAULT_QUESTIONS.length);
+    const rows = await store.recordsOf('question');
+    expect(rows.map((r) => r.id).sort()).toEqual(DEFAULT_QUESTIONS.map((d) => d.id).sort());
+    expect(rows.every((r) => r.dirty)).toBe(true);
+    const water = (await store.questions()).find((q) => q.id === 'qd_water')!;
+    expect(water.text).toBe(DEFAULT_QUESTIONS.find((d) => d.id === 'qd_water')!.text.ta);
+    // A second run writes nothing: every default already has a record.
+    expect(await store.seedQuestions('ta', T2)).toBe(0);
+  });
+
+  it('seeds in English for a language it has no text for', async () => {
+    await store.seedQuestions('fr', T1);
+    expect((await store.questions()).find((q) => q.id === 'qd_water')!.text).toBe(DEFAULT_QUESTIONS.find((d) => d.id === 'qd_water')!.text.en);
+  });
+
+  it('seeds once per install: the setting stops a second start, and a bank the person emptied stays empty', async () => {
+    await store.seedQuestionsOnce(() => 'hi', T1);
+    expect(await store.setting(SETTING_KEYS.questionsSeeded)).toBe('1');
+    expect(await ids()).toHaveLength(DEFAULT_QUESTIONS.length);
+    for (const id of await ids()) await store.deleteQuestion(id, T2);
+    await store.seedQuestionsOnce(() => 'hi', T3);
+    expect(await ids()).toEqual([]);
+  });
+
+  it('does not bring back a default the person deleted: a tombstone counts as a record', async () => {
+    await store.seedQuestions('en', T1);
+    await store.deleteQuestion('qd_water', T2);
+    expect(await store.seedQuestions('en', T3)).toBe(0);
+    expect(await ids()).not.toContain('qd_water');
+    expect((await store.getRecord('question', 'qd_water'))).toBeUndefined();
+  });
+
+  it('does not seed over a default that another device already sent', async () => {
+    await store.saveRecord('question', 'qd_water', { text: 'Edited elsewhere', category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: 3 }, T1);
+    expect(await store.seedQuestions('en', T2)).toBe(DEFAULT_QUESTIONS.length - 1);
+    expect((await store.questions()).find((q) => q.id === 'qd_water')!.text).toBe('Edited elsewhere');
+  });
+
+  it('resets to defaults: a deleted, edited or archived default comes back in the current language, own questions stay', async () => {
+    await store.seedQuestions('en', T1);
+    const custom = await store.addQuestion('Is there a lift?', 'BUILDING', 'BOTH', T1);
+    await store.deleteQuestion('qd_water', T2);
+    const rent = (await store.questions()).find((q) => q.id === 'qd_deposit')!;
+    await store.saveQuestion({ ...rent, text: 'Changed', archived: true, defaultOn: false, sort: 40 }, T2);
+    await store.resetQuestions('te', T3);
+    const bank = await store.questions();
+    expect(bank).toHaveLength(DEFAULT_QUESTIONS.length + 1);
+    const deposit = bank.find((q) => q.id === 'qd_deposit')!;
+    expect(deposit).toEqual({ id: 'qd_deposit', text: DEFAULT_QUESTIONS.find((d) => d.id === 'qd_deposit')!.text.te, category: 'MONEY', appliesTo: 'RENT', defaultOn: true, sort: 1 });
+    expect(bank.find((q) => q.id === 'qd_water')?.text).toBe(DEFAULT_QUESTIONS.find((d) => d.id === 'qd_water')!.text.te);
+    expect(bank.find((q) => q.id === custom.id)?.text).toBe('Is there a lift?');
+  });
+
+  it('does not bring a default back past 100 questions', async () => {
+    for (let i = 0; i < MAX_QUESTIONS; i++) await store.saveQuestion({ id: `q_${i.toString(16).padStart(8, '0')}`, text: `Own ${i}`, category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: i }, T1);
+    expect(await store.resetQuestions('en', T2)).toBe(0);
+    expect(await store.questions()).toHaveLength(MAX_QUESTIONS);
+  });
+
+  it('adds a custom question at the end with a q_ id of 8 hex characters and defaults off', async () => {
+    await store.seedQuestions('en', T1);
+    const added = await store.addQuestion('  Is there a lift?  ', 'BUILDING', 'SALE', T2);
+    expect(added.id).toMatch(/^q_[0-9a-f]{8}$/);
+    expect(added).toMatchObject({ text: 'Is there a lift?', category: 'BUILDING', appliesTo: 'SALE', defaultOn: false, sort: DEFAULT_QUESTIONS.length });
+    const record = await store.getRecord('question', added.id);
+    expect(Object.keys(record!.payload)).toEqual(['text', 'category', 'appliesTo', 'defaultOn', 'sort']);
+    expect(record!.dirty).toBe(true);
+  });
+
+  it('draws a new id when one clashes with a record, a deleted one included', async () => {
+    await store.saveQuestion({ id: 'q_aaaaaaaa', text: 'One', category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: 0 }, T1);
+    await store.deleteQuestion('q_aaaaaaaa', T1);
+    const drawn = ['q_aaaaaaaa', 'q_aaaaaaaa', 'q_bbbbbbbb'];
+    const added = await store.addQuestion('Two', 'OTHER', 'BOTH', T2, () => drawn.shift() ?? 'q_cccccccc');
+    expect(added.id).toBe('q_bbbbbbbb');
+  });
+
+  it('refuses a blank or over-long text, a bad id, and the 101st question', async () => {
+    await expect(store.addQuestion('   ')).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.addQuestion('x'.repeat(MAX_QUESTION_TEXT + 1))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.saveQuestion({ id: 'whatever', text: 'A', category: 'OTHER', appliesTo: 'BOTH', defaultOn: false, sort: 0 })).rejects.toBeInstanceOf(LocalDataError);
+    for (let i = 0; i < MAX_QUESTIONS; i++) await store.addQuestion(`Own ${i}`, 'OTHER', 'BOTH', T1);
+    await expect(store.addQuestion('One too many')).rejects.toMatchObject({ key: 'questions.max' });
+    // An archived question still counts toward the cap; editing an existing one is fine at the cap.
+    const first = (await store.questions())[0];
+    await store.saveQuestion({ ...first, archived: true }, T2);
+    await expect(store.addQuestion('Still too many')).rejects.toMatchObject({ key: 'questions.max' });
+  });
+
+  it('saves only the record that changed, and reorders by writing the rows whose number moved', async () => {
+    await store.seedQuestions('en', T1);
+    for (const r of await store.dirtyRecords()) await store.markRecordClean('question', r.id, r.updatedAt);
+    expect(await store.dirtyRecords()).toEqual([]);
+    const bank = await store.questions();
+    const [a, b] = [bank[0], bank[1]];
+    await store.saveQuestions([{ ...a, sort: b.sort }, { ...b, sort: a.sort }], T2);
+    expect((await store.dirtyRecords()).map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
+    expect((await store.questions()).slice(0, 2).map((q) => q.id)).toEqual([b.id, a.id]);
+  });
+
+  it('archives and brings back a question, and writes archived only when true', async () => {
+    await store.seedQuestions('en', T1);
+    const q = (await store.questions())[0];
+    await store.saveQuestion({ ...q, archived: true }, T2);
+    expect((await store.getRecord('question', q.id))!.payload['archived']).toBe(true);
+    await store.saveQuestion({ ...q, archived: false }, T3);
+    expect(Object.keys((await store.getRecord('question', q.id))!.payload)).not.toContain('archived');
+  });
+
+  it('deletes any question, a seeded one too, as a tombstone the next sync sends', async () => {
+    await store.seedQuestions('en', T1);
+    await store.deleteQuestion('qd_pets', T2);
+    expect(await ids()).not.toContain('qd_pets');
+    const tomb = (await store.dirtyRecords()).find((r) => r.id === 'qd_pets');
+    expect(tomb).toMatchObject({ deleted: true, payload: {} });
+  });
+
+  it('reads a stored row with a blank text as no question', async () => {
+    await store.saveRecord('question', 'q_bad00001', { text: '  ', category: 'MONEY' }, T1);
+    expect(await ids()).toEqual([]);
+    expect(await store.questionRows()).toEqual([]);
+  });
+
+  it('seeds again after Remove all data, when seeding has been asked for', async () => {
+    await store.seedQuestionsOnce(() => 'en', T1);
+    await store.clearEverything();
+    expect(await ids()).toHaveLength(DEFAULT_QUESTIONS.length);
+    const plain = new LocalStore();
+    await plain.ready();
+    await plain.clearEverything();
+    expect(await plain.questions()).toEqual([]);
+  });
+
+  it('keeps the answers of a house through save and load, cleaned, and touches no question', async () => {
+    const answers: HouseAnswer[] = [
+      { id: 'a2', text: 'Second', status: 'OPEN', sort: 1 },
+      { id: 'a1', questionId: 'qd_water', text: 'First', answer: 'Yes', status: 'OPEN', sort: 0 },
+    ];
+    const saved = await store.saveHouse(house('h1', { answers }), T1);
+    expect(saved.answers?.map((a) => [a.id, a.status])).toEqual([['a1', 'ANSWERED'], ['a2', 'OPEN']]);
+    expect((await store.getHouse('h1'))?.answers).toEqual(saved.answers);
+    expect(await ids()).toEqual([]);
+    await store.saveHouse({ ...saved, answers: [] }, T2);
+    expect((await store.getHouse('h1'))?.answers).toBeNull();
   });
 });

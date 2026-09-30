@@ -591,6 +591,19 @@ describe('SyncService', () => {
       expect(pushed?.rooms).toEqual(roomData);
     });
 
+    it('pushes a dirty house with answers in the PUT body, and pulls them back cleaned', async () => {
+      const answers = [
+        { id: 'a1', questionId: 'qd_water', text: 'Water supply hours?', answer: 'Twice a day', status: 'ANSWERED' as const, sort: 0 },
+        { id: 'a2', text: 'Is the terrace open?', status: 'OPEN' as const, sort: 1 },
+      ];
+      const saved = await store.saveHouse(house('local-answers', { answers }), Date.parse('2026-09-01T00:00:00.000Z'));
+      expect(saved.answers).toEqual(answers);
+      recordedServer();
+      await sync.syncNow(true);
+      expect(api.pushedHouses.find((h) => h.id === 'local-answers')?.answers).toEqual(answers);
+      expect((await store.getHouse('local-answers'))?.answers).toEqual(answers);
+    });
+
     it('sends photo deletes before uploads, so a removed photo is not re-uploaded', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
       await store.addPhoto('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p-keep');

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.95 |
+| Version | 0.96 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -107,6 +107,7 @@
 | 0.93 | 2026-09-30 | Claude (Code), lead | **Brokers built** (slice 1b of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1b-brokers`): new **§13.20**; §15 S4b-FR-11 done in code; new **S4b-BL-85** (the duplicate-flat warning). |
 | 0.94 | 2026-09-30 | Claude (Code), lead | **Rooms built** (slice 1c of [11](11-feature-parity-and-export-spec.md) 5.6 and 5.30, branch `feat/s4b-4c-slice-1c-rooms`): new **§13.21**; new **S4b-BL-87** (reordering rooms). |
 | 0.95 | 2026-09-30 | Claude (Code), lead | **Criteria and ranking built** (slice 2 of [11](11-feature-parity-and-export-spec.md) 5.4 and 5.30, branch `feat/s4b-4c-slice-2-criteria`): new **§13.22**. |
+| 0.96 | 2026-09-30 | Claude (Code), lead | **Viewing questions built** (slice 3a of [11](11-feature-parity-and-export-spec.md) 5.5 and 5.30, branch `feat/s4b-4c-slice-3a-questions`): new **§13.23**; new **S4b-BL-89** (the ZAP SQL-injection false positive). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1208,6 +1209,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-86 | Android, Web | **Brokers in the Import screen and its undo** (new id; slice 1b left them out): the preview says "N new brokers, N updated" and *Undo* of an import as copies removes the brokers it added. | Open |
 | S4b-BL-87 | Android, Web | **Reorder rooms and add the house's floor** (new id; slice 1c left both out): up and down (or drag) to change a room's `sort`, and a `floor` on the house, which the duplicate-flat warning (S4b-BL-85) needs. | Open |
 | S4b-BL-88 | Web | **`plan-page.spec.ts` fails once in a while** ("withdraws a location failure when the start is then chosen on the map", `maps.length` 0): seen in a full `ng test` run on slices 1b and 1c, green on the rerun and alone. An order-dependent test; find what state it shares (the map fake, a signal) and make it independent. **Fixed** (2026-09-30, slice 2): the cause was not timing. The spec's `maplibre-gl` mock is not applied when another spec loaded `map-style` first in the same chunk, so no fake map is made and `maps` stays empty; the test now calls `setStart`, the one thing the map's click handler does, and eight full runs in a row passed. |
+| S4b-BL-89 | Backend, DevOps | **The ZAP API scan's SQL-injection alert is not deterministic** (found on PR #77, 2026-09-30, new id): rule 40018 raised a High on three `POST /api/import` 400 answers, failed the `Build container image` check, and passed on the re-run of the same commit; the same gate run locally on that code was clean, as were #74 to #76. The rule compares answers to fuzzed bodies, and the import answers 400 with messages that differ by input. Find what ZAP sees (keep the report artifact of a failing run: `backend-zap-api-scan`), then make the answer identical for every invalid body (one fixed message, the detail only in the log) or, if it is a scanner artefact, record it in a ZAP rules file with the reason (never a blanket ignore). | Open |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2627,6 +2629,27 @@ photos linked to rooms (slice 5).
 
 **Not built here:** the objective criteria from data (D-13); criteria synced across people (they sync like other records); a
 per-search ranking scope toggle beyond the list's status filter.
+
+### 13.23 Viewing questions, slice 3a of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-3a-questions`; [11](11-feature-parity-and-export-spec.md) 5.5 and 5.30, ADR-28):
+
+- **The bank**: a `question` record per question (`text`, `category`, `appliesTo`, `defaultOn`, `sort`, `archived`; docs/schemas README §3.7), seeded once
+  in the app's language from fourteen defaults with fixed ids (`docs/schemas/default-questions.json`, hi, ta and te *under review*), so two devices
+  seed the same records; a deleted default stays deleted until *Reset to defaults*; at most 100 questions.
+- **The answers**: nested in the house after `rooms` (`answers`, at most 60, §3.8): the question as asked, the answer, and Open, Answered or Skipped.
+  Room **8** (`MIGRATION_7_8`, `8.json`), Flyway **`V10__house_answers.sql`**. *Add the usual questions* asks the defaults that fit the house and that
+  it does not have yet, and fills deposit, maintenance, brokerage and lock-in from its cost (5.21); one implementation per stack over six shared vectors.
+- **Screens**: the house form's **Questions to ask** (open first, answer, skip, remove, add the usual, add one from the bank or your own words, at most
+  60) and **Questions** (Settings on Android, a card on Your data on the web): edit, category, rent or buy, ask by default, move, archive and bring
+  back, delete, add (at most 100), reset. Four languages, both themes; one new screenshot.
+- **Backup, copies, AI and search**: a `questions` list after `preferences` in `doorprints-backup/2` and `answers` in the house (a writer writes `/2`
+  for either; both are kept in a copy made without contact details); a Questions table on each house page, `answers.csv` and an Answers sheet; the AI
+  documents carry answered and still-open questions with contact details redacted; search covers answers.
+- **Tests and docs**: [06](06-test-plan.md) TC-U-103; docs/schemas README 1.15 (§3.7 to §3.9); [03](03-design.md) §6.1, §9; the guide's houses page; CHANGELOG.
+
+**Not built here:** the reminder card inside a viewing reminder (3b); questions grouped per viewing; sharing the bank between people beyond the
+ordinary sync and the backup.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
