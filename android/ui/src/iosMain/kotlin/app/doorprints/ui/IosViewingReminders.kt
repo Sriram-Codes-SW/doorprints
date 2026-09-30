@@ -20,9 +20,11 @@ package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
+import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
 import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.viewing_hunt_reminder_body
 import app.doorprints.ui.res.viewing_reminder_body
 import app.doorprints.ui.res.viewing_reminder_public
 import app.doorprints.ui.res.viewings_houseGone
@@ -55,28 +57,56 @@ import platform.UserNotifications.UNUserNotificationCenter
  * reschedules ([IosAppContainer]). A locked screen with *Show Previews* off shows "Doorprints reminder" (the category's
  * `hiddenPreviewsBodyPlaceholder`). Never `withWhom`. The authorization is asked by the viewing form when a reminder is
  * first saved, never here.
+ *
+ * The Hunt mode reminders (docs/11 5.16, slice 3c) are queued here too, as `viewing-hunt-<id>` ([HUNT_PREFIX], so the
+ * removal above takes them as well): "Viewing at Green View at 10:00. Start Hunt mode?", with the same merge rule and
+ * the cap of 60 over both kinds ([HuntReminders.merged]); a merged one is the Hunt one. A tap opens the viewing
+ * ([IosHunt.KEY_OPEN_VIEWING] through the existing tap handler): an iPhone app cannot start location tracking from a
+ * notification action, so the person turns Hunt mode on from the Map.
  */
 internal object IosViewingReminders {
     const val ID_PREFIX = "viewing-"
+    const val HUNT_PREFIX = "viewing-hunt-"
     private const val CATEGORY = "viewing"
 
     private val center: UNUserNotificationCenter get() = UNUserNotificationCenter.currentNotificationCenter()
 
-    /** Reads the viewings, the houses and *Remind me about viewings* from [repository] and reschedules at [nowMs]. */
+    /**
+     * Reads the viewings, the houses, *Remind me about viewings* and the Hunt reminder's switch and lead time from
+     * [repository] and reschedules at [nowMs].
+     */
     suspend fun rescheduleFrom(repository: Repository, nowMs: Long) {
-        val on = repository.settings.viewingsRemind().first()
-        reschedule(if (on) repository.viewings() else emptyList(), repository.houses.first(), nowMs)
+        val settings = repository.settings
+        reschedule(
+            repository.viewings(), repository.houses.first(), nowMs,
+            viewingsOn = settings.viewingsRemind().first(),
+            huntOn = settings.huntRemind().first(),
+            huntLead = settings.huntReminderMin().first(),
+        )
     }
 
-    /** Replaces the pending viewing reminders with the upcoming ones of [viewings] at [nowMs]. */
-    suspend fun reschedule(viewings: List<Viewing>, houses: List<HouseEntity>, nowMs: Long) {
+    /** Replaces the pending reminders with the upcoming ones of [viewings] at [nowMs], both kinds. */
+    suspend fun reschedule(
+        viewings: List<Viewing>,
+        houses: List<HouseEntity>,
+        nowMs: Long,
+        viewingsOn: Boolean = true,
+        huntOn: Boolean = false,
+        huntLead: Int = HuntReminders.DEFAULT_LEAD,
+    ) {
         val byId = houses.associateBy { it.id }
         val gone = getString(Res.string.viewings_houseGone)
-        val requests = ViewingReminders.upcoming(viewings, nowMs).map { (v, fireAt) ->
+        val requests = HuntReminders.merged(viewings, huntLead, nowMs, viewingsOn, huntOn).map { r ->
+            val v = r.viewing
             val house = byId[v.houseId]
+            val name = house?.label?.ifBlank { null } ?: gone
             val (h, m) = LocalClock.hourMinuteOf(v.startsAt)
             val time = h.toString().padStart(2, '0') + ":" + m.toString().padStart(2, '0')
-            request(v.id, fireAt, getString(Res.string.viewing_reminder_body, house?.label?.ifBlank { null } ?: gone, time), house?.id)
+            if (r.kind == HuntReminders.Kind.VIEWING) {
+                request(ID_PREFIX + v.id, r.at, getString(Res.string.viewing_reminder_body, name, time), house?.id?.let { mapOf(IosHunt.KEY_OPEN_HOUSE to it) })
+            } else {
+                request(HUNT_PREFIX + v.id, r.at, getString(Res.string.viewing_hunt_reminder_body, name, time), mapOf(IosHunt.KEY_OPEN_VIEWING to v.id))
+            }
         }
         center.setNotificationCategories(
             setOf(
@@ -95,17 +125,17 @@ internal object IosViewingReminders {
         }
     }
 
-    private fun request(viewingId: String, fireAt: Long, body: String, houseId: String?): UNNotificationRequest {
+    private fun request(identifier: String, fireAt: Long, body: String, userInfo: Map<String, String>?): UNNotificationRequest {
         val content = UNMutableNotificationContent().apply {
             setBody(body)
             setSound(UNNotificationSound.defaultSound)
             setCategoryIdentifier(CATEGORY)
-            setUserInfo(if (houseId != null) mapOf<Any?, Any?>(IosHunt.KEY_OPEN_HOUSE to houseId) else emptyMap<Any?, Any?>())
+            setUserInfo(userInfo.orEmpty().entries.associate<Map.Entry<String, String>, Any?, Any?> { it.key to it.value })
         }
         val units = NSCalendarUnitYear or NSCalendarUnitMonth or NSCalendarUnitDay or NSCalendarUnitHour or
             NSCalendarUnitMinute or NSCalendarUnitSecond
         val components = NSCalendar.currentCalendar.components(units, fromDate = NSDate.dateWithTimeIntervalSince1970(fireAt / 1000.0))
         val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(components, repeats = false)
-        return UNNotificationRequest.requestWithIdentifier(ID_PREFIX + viewingId, content, trigger)
+        return UNNotificationRequest.requestWithIdentifier(identifier, content, trigger)
     }
 }

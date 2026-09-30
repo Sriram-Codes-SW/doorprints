@@ -193,6 +193,9 @@ fun MapScreen(
     addTipForListing: Boolean = false,
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
+    /** *Start Hunt mode* from a reminder (slice 3c): asked for location if needed, then started, once. */
+    huntRequest: Boolean = false,
+    onStartHuntHandled: () -> Unit = {},
 ) {
     // No map on this platform yet (iOS; PlatformFeatures.map): a note that points to the Houses tab instead, and none
     // of the map's state, permissions or Hunt mode below. The flag is fixed per process, so returning early never
@@ -450,6 +453,12 @@ fun MapScreen(
             AfterGrant.SAVE_HERE -> saveHere()
             AfterGrant.MY_LOCATION -> goToMe()
         }
+    }
+    // A reminder's *Start Hunt mode* (docs/11 5.16, 5.18): the same path as the Hunt switch, location question first.
+    LaunchedEffect(huntRequest) {
+        if (!huntRequest) return@LaunchedEffect
+        onStartHuntHandled()
+        if (!hunt.active) startHunt()
     }
 
     val density = LocalDensity.current

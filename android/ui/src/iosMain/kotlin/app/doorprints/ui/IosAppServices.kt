@@ -128,7 +128,10 @@ object IosAppContainer {
                 repository.observeViewings().distinctUntilChanged(),
                 repository.houses.map { list -> list.map { it.id to it.label } }.distinctUntilChanged(),
                 repository.settings.viewingsRemind(),
-            ) { _, _, _ -> }
+                // The Hunt mode reminder's switch and lead time (slice 3c).
+                repository.settings.huntRemind(),
+                repository.settings.huntReminderMin(),
+            ) { _, _, _, _, _ -> }
                 .debounce(REMINDER_DEBOUNCE_MS)
                 .collect { rescheduleReminders() }
         }

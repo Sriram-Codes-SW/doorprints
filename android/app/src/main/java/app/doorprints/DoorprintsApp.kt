@@ -81,14 +81,18 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     }
 
     /**
-     * The viewing reminders (slice 3b-2) are set again at start (the first emission) and after every change of the
-     * viewings or of *Remind me about viewings*: a burst of edits, an import or a sync is one reschedule a second
-     * later. The records table tells Room about every record type's writes, so equal lists are skipped first.
+     * The viewing and Hunt mode reminders (slices 3b-2, 3c) are set again at start (the first emission) and after every
+     * change of the viewings, of *Remind me about viewings*, or of the Hunt reminder's switch and lead time: a burst of
+     * edits, an import or a sync is one reschedule a second later. The records table tells Room about every record type's writes, so equal lists are skipped first.
      */
     @OptIn(FlowPreview::class)
     private fun watchViewingReminders() {
         appScope.launch {
-            combine(container.repository.observeViewings().distinctUntilChanged(), container.settings.viewingsRemind()) { v, on -> v to on }
+            val settings = container.settings
+            combine(
+                container.repository.observeViewings().distinctUntilChanged(),
+                settings.viewingsRemind(), settings.huntRemind(), settings.huntReminderMin(),
+            ) { v, on, hunt, lead -> listOf(v, on, hunt, lead) }
                 .debounce(REMINDER_DEBOUNCE_MS)
                 .collect { runCatching { container.reminders.rescheduleAll() } }
         }

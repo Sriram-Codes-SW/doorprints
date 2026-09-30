@@ -22,6 +22,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -146,6 +147,32 @@ class RootNavigationTest {
         // The Settings screen's heading (the bar's item says "Settings" too).
         compose.onNodeWithText("Server (optional)").assertExists()
         back()
+        shows(MAP)
+    }
+
+    @Test
+    fun aHuntReminderOpensItsViewingOnce() {
+        // Slice 3c: the body of a Hunt mode reminder opens the viewing; tapped twice, one form.
+        runBlocking {
+            ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+                .saveViewing(app.doorprints.shared.model.Viewing("v_00000001", "h1", 1_790_569_800_000, huntReminder = true))
+        }
+        start(DeepLink.OpenViewing("v_00000001"))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Offer Hunt mode before this viewing").fetchSemanticsNodes().isNotEmpty() }
+        links.value = DeepLink.OpenViewing("v_00000001")
+        compose.waitForIdle()
+        assertEquals(2, handled)
+    }
+
+    @Test
+    fun startHuntModeFromAReminderOpensTheMap() {
+        // *Start Hunt mode* without location (slice 3c): the Map tab, where the Hunt switch's own location question is
+        // asked (5.18), as the shared-listing link opens it.
+        start(DeepLink.OpenScreen(Routes.SETTINGS))
+        compose.onNodeWithText("Server (optional)").assertExists()
+        links.value = DeepLink.StartHunt
+        compose.waitForIdle()
+        assertEquals(2, handled)
         shows(MAP)
     }
 

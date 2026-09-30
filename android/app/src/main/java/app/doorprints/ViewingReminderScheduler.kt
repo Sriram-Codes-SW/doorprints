@@ -18,15 +18,18 @@
 
 package app.doorprints
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -34,6 +37,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import app.doorprints.data.Repository
 import app.doorprints.i18n.AppLocale
+import app.doorprints.location.HuntState
+import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.ViewingReminders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,11 +50,14 @@ import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 /**
- * Schedules the viewing reminders (docs/11 5.8, slice 3b-2; the alarm rules of 5.16 *Scheduling*). Everything comes
- * from the stored viewings each time ([rescheduleAll]): cancel the alarm of every viewing id here, tombstones included,
- * then set the upcoming 60 ([ViewingReminders.upcoming]) while *Remind me about viewings* is on. One immutable
- * [PendingIntent] per viewing to the non-exported [ViewingReminderReceiver]; the request code is the id's hash and the
- * intent's data is the id, so two ids with the same hash still get two alarms.
+ * Schedules the viewing reminders (docs/11 5.8, slice 3b-2; the alarm rules of 5.16 *Scheduling*) and the Hunt mode
+ * reminders (5.16, slice 3c). Everything comes from the stored viewings each time ([rescheduleAll]): cancel both
+ * alarms of every viewing id here, tombstones included, then set the upcoming 60 of both kinds together
+ * ([HuntReminders.merged]: a viewing reminder while *Remind me about viewings* is on, a Hunt reminder while *Offer
+ * Hunt mode before viewings* is on, one alarm when the two are within 10 minutes). One immutable [PendingIntent] per
+ * (viewing, kind) to the non-exported [ViewingReminderReceiver]: the viewing kind's data is `doorprints-viewing:<id>`,
+ * the Hunt kind's (a merged one too) `doorprints-hunt:<id>`, so two ids with the same hash, or the two kinds of one id,
+ * still get two alarms.
  *
  * How each is set: `setExactAndAllowWhileIdle` when `canScheduleExactAlarms()` (checked before every exact call; a
  * `SecurityException` falls back); otherwise `setWindow(fireAt - 10 min, 10 min)`, early and never late; when an alarm
@@ -74,23 +82,38 @@ class ViewingReminderScheduler(
     /** How one reminder was set. */
     enum class How { EXACT, WINDOW, WORK }
 
+    /** One alarm set by [rescheduleAll]: viewing [id]'s, of [kind], and how. */
+    data class Scheduled(val id: String, val kind: HuntReminders.Kind, val how: How)
+
     /** True when an exact alarm may be set: below Android 12 always, from 12 with *Alarms & reminders* allowed. */
     fun canScheduleExact(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()
 
     /**
-     * Cancels every reminder and sets the upcoming ones; returns what was set, by viewing id, earliest first. One run at
+     * Cancels every reminder of both kinds and sets the upcoming ones; returns what was set, earliest first. One run at
      * a time (a boot broadcast and the start-up collector can overlap).
      */
-    suspend fun rescheduleAll(): List<Pair<String, How>> = lock.withLock {
-        for (id in repository.viewingIdsForReminders()) cancel(id)
+    suspend fun rescheduleAll(): List<Scheduled> = lock.withLock {
+        for (id in repository.viewingIdsForReminders()) {
+            cancel(operation(context, id, PendingIntent.FLAG_NO_CREATE))
+            cancel(huntOperation(context, id, PendingIntent.FLAG_NO_CREATE))
+        }
         WorkManager.getInstance(context).cancelAllWorkByTag(WORK_TAG)
-        if (!repository.settings.viewingsRemind().first()) return@withLock emptyList()
+        val settings = repository.settings
+        val viewingsOn = settings.viewingsRemind().first()
+        val huntOn = settings.huntRemind().first()
+        if (!viewingsOn && !huntOn) return@withLock emptyList()
         val t = now()
-        ViewingReminders.upcoming(repository.viewings(), t).map { (v, at) -> v.id to schedule(v.id, at, t) }
+        HuntReminders.merged(repository.viewings(), settings.huntReminderMin().first(), t, viewingsOn, huntOn).map { r ->
+            val operation = if (r.kind == HuntReminders.Kind.VIEWING) {
+                operation(context, r.viewing.id, PendingIntent.FLAG_UPDATE_CURRENT)!!
+            } else {
+                huntOperation(context, r.viewing.id, PendingIntent.FLAG_UPDATE_CURRENT)!!
+            }
+            Scheduled(r.viewing.id, r.kind, schedule(operation, r.viewing.id, r.kind, r.at, t))
+        }
     }
 
-    private fun schedule(id: String, at: Long, nowMs: Long): How {
-        val operation = operation(context, id, PendingIntent.FLAG_UPDATE_CURRENT)!!
+    private fun schedule(operation: PendingIntent, id: String, kind: HuntReminders.Kind, at: Long, nowMs: Long): How {
         if (canScheduleExact()) {
             try {
                 exact(at, operation)
@@ -107,22 +130,28 @@ class ViewingReminderScheduler(
         }
         val work = OneTimeWorkRequestBuilder<ViewingReminderWorker>()
             .setInitialDelay((at - nowMs).coerceAtLeast(0), TimeUnit.MILLISECONDS)
-            .setInputData(workDataOf(EXTRA_VIEWING_ID to id))
+            .setInputData(workDataOf(EXTRA_VIEWING_ID to id, EXTRA_HUNT to (kind != HuntReminders.Kind.VIEWING)))
             .addTag(WORK_TAG)
             .build()
         WorkManager.getInstance(context).enqueue(work)
         return How.WORK
     }
 
-    private fun cancel(id: String) {
-        val operation = operation(context, id, PendingIntent.FLAG_NO_CREATE) ?: return
+    private fun cancel(operation: PendingIntent?) {
+        operation ?: return
         alarms.cancel(operation)
         operation.cancel()
     }
 
     companion object {
         const val ACTION_REMIND = "app.doorprints.action.VIEWING_REMINDER"
+        /** A Hunt mode reminder's alarm (slice 3c), a merged one too. */
+        const val ACTION_HUNT_REMIND = "app.doorprints.action.HUNT_REMINDER"
+        /** A Hunt mode reminder's *Dismiss*. */
+        const val ACTION_HUNT_DISMISS = "app.doorprints.action.HUNT_REMINDER_DISMISS"
         const val EXTRA_VIEWING_ID = "viewingId"
+        /** The WorkManager fallback's input: true for a Hunt (or merged) reminder. */
+        const val EXTRA_HUNT = "hunt"
         const val WORK_TAG = "viewing-reminder"
 
         /** Viewing [id]'s alarm operation; with `FLAG_NO_CREATE` null when none is set. Always immutable (T-E8). */
@@ -134,6 +163,62 @@ class ViewingReminderScheduler(
             return PendingIntent.getBroadcast(context, id.hashCode(), intent, flags or PendingIntent.FLAG_IMMUTABLE)
         }
 
+        /** Viewing [id]'s Hunt mode reminder alarm operation (a merged one too); as [operation], its own data URI. */
+        internal fun huntOperation(context: Context, id: String, flags: Int): PendingIntent? {
+            val intent = Intent(context, ViewingReminderReceiver::class.java)
+                .setAction(ACTION_HUNT_REMIND)
+                .setData(Uri.fromParts("doorprints-hunt", id, null))
+                .putExtra(EXTRA_VIEWING_ID, id)
+            return PendingIntent.getBroadcast(context, ("hunt:$id").hashCode(), intent, flags or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        /** A Hunt mode reminder's *Dismiss*: removes it (immutable, to the same non-exported receiver). */
+        fun dismissIntent(context: Context, id: String): PendingIntent {
+            val intent = Intent(context, ViewingReminderReceiver::class.java)
+                .setAction(ACTION_HUNT_DISMISS)
+                .setData(Uri.fromParts("doorprints-hunt-dismiss", id, null))
+                .putExtra(EXTRA_VIEWING_ID, id)
+            return PendingIntent.getBroadcast(
+                context, ("hunt-dismiss:$id").hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        /**
+         * Shows viewing [id]'s Hunt mode reminder at [nowMs] when it is still due as stored now
+         * ([HuntReminders.showNow]: PLANNED, `huntReminder` still on, not started) and *Offer Hunt mode before viewings*
+         * is on. It is merged (carries *Open house*) when the viewing reminder is on and within 10 minutes. [fineLocation]
+         * and [huntRunning] are read when shown: *Start Hunt mode* starts the service or asks for location, and is left
+         * out while Hunt mode runs. Returns whether it was posted.
+         */
+        suspend fun showHunt(
+            context: Context,
+            repository: Repository,
+            id: String,
+            nowMs: Long,
+            fineLocation: Boolean = hasFineLocation(context),
+            huntRunning: Boolean = HuntState.state.value.active,
+        ): Boolean {
+            val settings = repository.settings
+            if (!settings.huntRemind().first()) return false
+            val viewing = repository.getViewing(id) ?: return false
+            val lead = settings.huntReminderMin().first()
+            val merged = settings.viewingsRemind().first() && HuntReminders.isMerged(viewing, lead)
+            if (!HuntReminders.showNow(viewing, lead, nowMs, withViewing = merged)) return false
+            if (!Notifications.canPost(context)) return false
+            val house = repository.getHouse(viewing.houseId)
+            val n = Notifications.huntReminder(AppLocale.wrap(context), viewing, house, nowMs, merged, fineLocation, huntRunning)
+            return try {
+                NotificationManagerCompat.from(context).notify(Notifications.huntTag(id), Notifications.HUNT_REMINDER_ID, n)
+                true
+            } catch (_: SecurityException) {
+                false
+            }
+        }
+
+        /** Precise location, as Hunt mode's house alerts need (5.18); approximate only asks again from the Map. */
+        fun hasFineLocation(context: Context): Boolean =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
         /**
          * Shows viewing [id]'s reminder at [nowMs] when it is still due as stored now ([ViewingReminders.showNow]) and
          * the setting is on; an alarm left behind by an edit, a cancel, a delete or "remove all data" shows nothing.
@@ -143,6 +228,10 @@ class ViewingReminderScheduler(
             if (!repository.settings.viewingsRemind().first()) return false
             val viewing = repository.getViewing(id) ?: return false
             if (!ViewingReminders.showNow(viewing, nowMs)) return false
+            // Merged into the Hunt mode reminder since this alarm was set (slice 3c): that one carries it.
+            if (repository.settings.huntRemind().first() && HuntReminders.isMerged(viewing, repository.settings.huntReminderMin().first())) {
+                return false
+            }
             if (!Notifications.canPost(context)) return false
             val house = repository.getHouse(viewing.houseId)
             val n = Notifications.viewingReminder(AppLocale.wrap(context), viewing, house, nowMs)
@@ -178,10 +267,19 @@ private fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
  */
 class ViewingReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ViewingReminderScheduler.ACTION_REMIND) return
         val id = intent.getStringExtra(ViewingReminderScheduler.EXTRA_VIEWING_ID) ?: return
-        val app = context.applicationContext as DoorprintsApp
-        runAsync { ViewingReminderScheduler.show(app, app.container.repository, id, System.currentTimeMillis()) }
+        when (intent.action) {
+            ViewingReminderScheduler.ACTION_REMIND -> {
+                val app = context.applicationContext as DoorprintsApp
+                runAsync { ViewingReminderScheduler.show(app, app.container.repository, id, System.currentTimeMillis()) }
+            }
+            ViewingReminderScheduler.ACTION_HUNT_REMIND -> {
+                val app = context.applicationContext as DoorprintsApp
+                runAsync { ViewingReminderScheduler.showHunt(app, app.container.repository, id, System.currentTimeMillis()) }
+            }
+            ViewingReminderScheduler.ACTION_HUNT_DISMISS ->
+                NotificationManagerCompat.from(context).cancel(Notifications.huntTag(id), Notifications.HUNT_REMINDER_ID)
+        }
     }
 }
 
@@ -217,7 +315,11 @@ class ViewingReminderWorker(context: Context, params: WorkerParameters) : Corout
     override suspend fun doWork(): Result {
         val id = inputData.getString(ViewingReminderScheduler.EXTRA_VIEWING_ID) ?: return Result.success()
         val app = applicationContext as DoorprintsApp
-        ViewingReminderScheduler.show(app, app.container.repository, id, System.currentTimeMillis())
+        if (inputData.getBoolean(ViewingReminderScheduler.EXTRA_HUNT, false)) {
+            ViewingReminderScheduler.showHunt(app, app.container.repository, id, System.currentTimeMillis())
+        } else {
+            ViewingReminderScheduler.show(app, app.container.repository, id, System.currentTimeMillis())
+        }
         return Result.success()
     }
 }

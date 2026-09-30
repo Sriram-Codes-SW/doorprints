@@ -123,4 +123,10 @@
     <string name="notif_viewing_directions">దారి</string>
     <string name="notif_viewing_questions">ప్రశ్నలు</string>
     <string name="notif_viewing_house_gone">తొలగించిన ఇల్లు</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="notif_channel_hunt_reminders">హంట్ మోడ్ రిమైండర్‌లు</string>
+    <string name="notif_channel_hunt_reminders_desc">పరిశీలనకు ముందు హంట్ మోడ్ సూచన</string>
+    <string name="notif_hunt_reminder">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో. హంట్ మోడ్ ప్రారంభించాలా?</string>
+    <string name="notif_hunt_reminder_start">హంట్ మోడ్ ప్రారంభించండి</string>
+    <string name="notif_hunt_reminder_dismiss">తీసివేయండి</string>
 </resources>

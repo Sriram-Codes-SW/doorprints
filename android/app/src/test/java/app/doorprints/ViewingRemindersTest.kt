@@ -81,7 +81,7 @@ class ViewingRemindersTest {
         Viewing(id = id, houseId = house.id, startsAt = startsAt, remindMin = remindMin, status = status, withWhom = withWhom)
 
     private fun seed(vararg list: Viewing) = runBlocking { list.forEach { repo.saveViewing(it) } }
-    private fun reschedule() = runBlocking { scheduler.rescheduleAll() }
+    private fun reschedule() = runBlocking { scheduler.rescheduleAll().map { it.id to it.how } }
 
     // ---- scheduling (TC-U-38) ----
 
