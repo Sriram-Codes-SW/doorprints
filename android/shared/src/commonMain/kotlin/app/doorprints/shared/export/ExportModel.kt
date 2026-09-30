@@ -31,6 +31,13 @@ import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseScore
 import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaNote
+import app.doorprints.shared.model.AreaNotes
+import app.doorprints.shared.model.Distances
+import app.doorprints.shared.model.HousePoint
+import app.doorprints.shared.model.Place
+import app.doorprints.shared.model.PlaceDistance
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
@@ -228,6 +235,65 @@ data class ExportViewing(
     }
 }
 
+/**
+ * A hunting area in a `/2` backup (slice 4a): `id, name, lat, lon, radiusM`, `enabled` only when false, `updatedAt`.
+ * An absent radius reads as 500 (the server agrees); a present one out of range is refused ([Area.isValid]).
+ */
+@Serializable
+data class ExportArea(
+    val id: String,
+    val name: String = "",
+    val lat: Double? = null,
+    val lon: Double? = null,
+    val radiusM: Int? = Area.DEFAULT_RADIUS,
+    /** Written only when false (`null` otherwise, which the format leaves out). */
+    val enabled: Boolean? = null,
+    val updatedAt: Long,
+) {
+    /** The area, or null without a point (such a row is refused). */
+    fun toArea(): Area? {
+        if (lat == null || lon == null) return null
+        return Area(id, name, lat, lon, radiusM ?: Area.DEFAULT_RADIUS, enabled != false)
+    }
+
+    companion object {
+        fun of(a: Area, updatedAt: Long) =
+            ExportArea(a.id, a.name, a.lat, a.lon, a.radiusM, false.takeIf { !a.enabled }, updatedAt)
+    }
+}
+
+/** A place in a `/2` backup (slice 4a): `id, name, lat, lon, updatedAt`. */
+@Serializable
+data class ExportPlace(
+    val id: String,
+    val name: String = "",
+    val lat: Double? = null,
+    val lon: Double? = null,
+    val updatedAt: Long,
+) {
+    fun toPlace(): Place? = if (lat == null || lon == null) null else Place(id, name, lat, lon)
+
+    companion object {
+        fun of(p: Place, updatedAt: Long) = ExportPlace(p.id, p.name, p.lat, p.lon, updatedAt)
+    }
+}
+
+/** An area note in a `/2` backup (slice 4a): `id`, `areaId` or `street`, `text`, `updatedAt`. */
+@Serializable
+data class ExportAreaNote(
+    val id: String,
+    val areaId: String? = null,
+    val street: String? = null,
+    val text: String = "",
+    val updatedAt: Long,
+) {
+    fun toAreaNote() = AreaNote(id, areaId, street, text, updatedAt)
+
+    companion object {
+        fun of(n: AreaNote, updatedAt: Long) = ExportAreaNote(n.id, n.areaId, n.street, n.text, updatedAt)
+    }
+}
+
 /** A preference in a `/2` backup (slice 2): its key, its value (≤ 500) and `updatedAt`; merged by key. */
 @Serializable
 data class ExportPreference(val key: String, val value: String, val updatedAt: Long)
@@ -368,8 +434,34 @@ data class ExportBundle(
      * Viewings table on each house page, `viewings.csv` and a Viewings sheet. Without contact details `withWhom` is blanked.
      */
     val viewings: List<ExportViewing> = emptyList(),
+    /**
+     * The areas, places and area notes in the copy (slice 4a), each ordered by `updatedAt` then id: a `/2` backup's
+     * lists, and each house page's *Area notes* and *Distances*. Kept in a copy without contact details (a place is
+     * the person's own, not a contact).
+     */
+    val areas: List<ExportArea> = emptyList(),
+    val places: List<ExportPlace> = emptyList(),
+    val areaNotes: List<ExportAreaNote> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
+
+    private val liveAreas: List<Area> = areas.mapNotNull { it.toArea() }
+    private val areaNames: Map<String, String> = liveAreas.associate { it.id to it.name }
+    private val notes: List<AreaNote> = areaNotes.map { it.toAreaNote() }
+    private val placeList: List<Place> = places.mapNotNull { it.toPlace() }
+
+    /** The notes that reach [house] ([AreaNotes.reaching]), newest first. */
+    fun areaNotesOf(house: ExportHouse): List<AreaNote> =
+        if (notes.isEmpty()) emptyList() else AreaNotes.reaching(house.point(), liveAreas, notes)
+
+    /** Where a note comes from: its area's name, or its street. */
+    fun sourceOf(note: AreaNote): String = note.areaId?.let { areaNames[it] } ?: note.street.orEmpty()
+
+    /** The distances from [house] to the copy's places, nearest first; none without a point. */
+    fun distancesOf(house: ExportHouse): List<PlaceDistance> =
+        if (placeList.isEmpty()) emptyList() else Distances.nearestFirst(Distances.toPlaces(house.point(), placeList))
+
+    private fun ExportHouse.point() = HousePoint(lat, lon, street, locationSource)
 
     private val viewingsByHouse: Map<String, List<ExportViewing>> = viewings.groupBy { it.houseId }
 
@@ -453,6 +545,9 @@ data class ExportBundle(
             preferences: List<ExportPreference> = emptyList(),
             questions: List<ExportQuestion> = emptyList(),
             viewings: List<ExportViewing> = emptyList(),
+            areas: List<ExportArea> = emptyList(),
+            places: List<ExportPlace> = emptyList(),
+            areaNotes: List<ExportAreaNote> = emptyList(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -521,9 +616,14 @@ data class ExportBundle(
                 .filter { since == null || it.updatedAt > since }
                 .map { if (options.includeContacts) it else it.copy(withWhom = null) }
                 .sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            // Areas, places and area notes (slice 4a): the person's own settings, kept in every copy whatever its scope
+            // and contact choice; an update carries the ones changed since.
+            val keptAreas = areas.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            val keptPlaces = places.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            val keptNotes = areaNotes.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             return ExportBundle(
                 options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
-                keptQuestions, keptViewings,
+                keptQuestions, keptViewings, keptAreas, keptPlaces, keptNotes,
             )
         }
     }

@@ -207,6 +207,10 @@ export interface AiHouse {
   answers?: HouseAnswer[] | null;
   /** The viewings of this house (slice 3b-1). */
   viewings?: Viewing[] | null;
+  /** The area notes that reach this house (slice 4a): the text and the last edit (epoch ms), for the ordering. */
+  areaNotes?: AiAreaNote[] | null;
+  /** The straight-line distance from this house to each of my places (slice 4a); never the place's coordinates. */
+  distances?: AiDistance[] | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -274,6 +278,8 @@ export function houseText(h: AiHouse): string {
   line('Rooms', roomsText(h.rooms, r));
   answerLines(h.answers, r).forEach((l) => lines.push(l));
   viewingLines(h.viewings, r).forEach((l) => lines.push(l));
+  areaNoteLines(h.areaNotes, r).forEach((l) => lines.push(l));
+  distanceLines(h.distances, r).forEach((l) => lines.push(l));
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -357,6 +363,46 @@ function viewingLines(viewings: Viewing[] | null | undefined, r: Redactor): stri
     // Whitespace and line breaks collapse to single spaces, so a note can never start a line of its own ("Viewing: ...").
     const notes = ((r.freeText(v.notes) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim();
     return `Viewing: ${when} | ${v.kind} | ${v.status}${notes ? ` | Notes: ${notes}` : ''}`;
+  });
+}
+
+export interface AiAreaNote { id: string; text: string; updatedAt: number }
+export interface AiDistance { name: string; meters: number }
+
+/** At most this many area notes and distances of a house go into its document (slice 4a). */
+const AREA_NOTE_LINES_MAX = 5;
+const DISTANCE_LINES_MAX = 10;
+
+/** Kilometres with one decimal, half up: `8572.7` m is `8.6`. The twin of Kotlin `Distances.km`. */
+export function km1(meters: number): string {
+  return (roundHalfUp(meters / 100) / 10).toFixed(1);
+}
+
+/**
+ * The area notes that reach a house (slice 4a), the same words as the server's HouseDocuments and the phones' AiHouse:
+ * at most 5 lines, newest first (then id), `Area note: <text>` through the contact redactor, whitespace and line breaks
+ * collapsed to single spaces so a note can never start a line of its own.
+ */
+function areaNoteLines(notes: AiAreaNote[] | null | undefined, r: Redactor): string[] {
+  if (!notes?.length) return [];
+  const sorted = [...notes].sort((a, b) => b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return sorted
+    .slice(0, AREA_NOTE_LINES_MAX)
+    .map((n) => ((r.freeText(n.text) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim())
+    .filter((t) => t !== '')
+    .map((t) => `Area note: ${t}`);
+}
+
+/**
+ * The distances from a house to my places (slice 4a): at most 10 lines, nearest first (then name),
+ * `Distance to <place name>: <km> km` with the name through the redactor; never the coordinates.
+ */
+function distanceLines(distances: AiDistance[] | null | undefined, r: Redactor): string[] {
+  if (!distances?.length) return [];
+  const sorted = [...distances].sort((a, b) => a.meters - b.meters || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return sorted.slice(0, DISTANCE_LINES_MAX).map((d) => {
+    const name = ((r.freeText(d.name) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim();
+    return `Distance to ${name}: ${km1(d.meters)} km`;
   });
 }
 

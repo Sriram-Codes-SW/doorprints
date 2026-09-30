@@ -56,7 +56,7 @@ describe('ComparePage', () => {
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(scoring), houses: () => of(list), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(scoring), houses: () => of(list), visitCounts: () => of(new Map()), places: () => of([]), brokers: () => of(brokers) } },
         { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve(unit) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: list.map((h) => h.id).join(',') }) } } },
       ],
@@ -91,7 +91,7 @@ describe('ComparePage', () => {
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), places: () => of([]), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
       ],
     });

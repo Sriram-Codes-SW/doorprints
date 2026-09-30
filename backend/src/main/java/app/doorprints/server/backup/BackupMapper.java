@@ -89,6 +89,15 @@ final class BackupMapper {
     private static final Comparator<BackupViewing> VIEWING_ORDER =
             Comparator.comparing(BackupViewing::updatedAt).thenComparing(BackupViewing::id);
 
+    private static final Comparator<BackupArea> AREA_ORDER =
+            Comparator.comparing(BackupArea::updatedAt).thenComparing(BackupArea::id);
+
+    private static final Comparator<BackupPlace> PLACE_ORDER =
+            Comparator.comparing(BackupPlace::updatedAt).thenComparing(BackupPlace::id);
+
+    private static final Comparator<BackupAreaNote> AREA_NOTE_ORDER =
+            Comparator.comparing(BackupAreaNote::updatedAt).thenComparing(BackupAreaNote::id);
+
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos, Instant exportedAt) {
         return toBackup(houses, visits, photos, List.of(), List.of(), List.of(), null, exportedAt);
     }
@@ -114,6 +123,16 @@ final class BackupMapper {
                                List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
                                List<Record> questionRecords, List<Record> viewingRecords, ObjectMapper json,
                                Instant exportedAt) {
+        return toBackup(houses, visits, photos, brokerRecords, criterionRecords, preferenceRecords, questionRecords,
+                viewingRecords, List.of(), List.of(), List.of(), json, exportedAt);
+    }
+
+    /** As above, with the live {@code area}, {@code place} and {@code areanote} records (slice 4a). */
+    static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
+                               List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
+                               List<Record> questionRecords, List<Record> viewingRecords, List<Record> areaRecords,
+                               List<Record> placeRecords, List<Record> areaNoteRecords, ObjectMapper json,
+                               Instant exportedAt) {
         var liveHouses = houses.stream().filter(h -> !h.isDeleted()).sorted(HOUSE_ORDER).toList();
         var houseOrder = new LinkedHashSet<UUID>();
         for (var house : liveHouses) houseOrder.add(house.getId());
@@ -136,10 +155,18 @@ final class BackupMapper {
         var viewings = viewingRecords.stream().filter(r -> !r.isDeleted()).map(r -> viewing(r, json))
                 .filter(java.util.Objects::nonNull).sorted(VIEWING_ORDER).toList();
 
+        var areas = areaRecords.stream().filter(r -> !r.isDeleted()).map(r -> area(r, json))
+                .filter(java.util.Objects::nonNull).sorted(AREA_ORDER).toList();
+        var places = placeRecords.stream().filter(r -> !r.isDeleted()).map(r -> place(r, json))
+                .filter(java.util.Objects::nonNull).sorted(PLACE_ORDER).toList();
+        var areaNotes = areaNoteRecords.stream().filter(r -> !r.isDeleted()).map(r -> areaNote(r, json))
+                .filter(java.util.Objects::nonNull).sorted(AREA_NOTE_ORDER).toList();
+
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
         // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
                 || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
+                || !areas.isEmpty() || !places.isEmpty() || !areaNotes.isEmpty()
                 || backupHouses.stream().anyMatch(h -> h.answers() != null);
 
         return new BackupData(
@@ -154,7 +181,10 @@ final class BackupMapper {
                 criteria,
                 preferences,
                 questions,
-                viewings);
+                viewings,
+                areas,
+                places,
+                areaNotes);
     }
 
     /**
@@ -298,6 +328,75 @@ final class BackupMapper {
                 hunt.isBoolean() && hunt.asBoolean() ? true : null,
                 text(p, "withWhom", BackupViewing.MAX_WITH_WHOM), text(p, "notes", BackupViewing.MAX_NOTES),
                 text(p, "visitId", BackupViewing.MAX_REF), r.getUpdatedAt().toEpochMilli());
+    }
+
+    /**
+     * An area record as a backup row (slice 4a). A payload without a usable name or point is left out; a radius outside
+     * 200..2000 reads as 500; {@code enabled} is written only when false. The export always imports again.
+     */
+    private static BackupArea area(Record r, ObjectMapper json) {
+        JsonNode p = payload(r, json);
+        if (p == null) return null;
+        var name = name(p, BackupArea.MAX_NAME);
+        var lat = coordinate(p, "lat", 90);
+        var lon = coordinate(p, "lon", 180);
+        if (name == null || lat == null || lon == null) return null;
+        var radius = p.path("radiusM");
+        var enabled = p.path("enabled");
+        return new BackupArea(r.getKey().id(), name, lat, lon,
+                radius.isInt() && radius.asInt() >= BackupArea.MIN_RADIUS && radius.asInt() <= BackupArea.MAX_RADIUS
+                        ? radius.asInt() : BackupArea.DEFAULT_RADIUS,
+                enabled.isBoolean() && !enabled.asBoolean() ? false : null, r.getUpdatedAt().toEpochMilli());
+    }
+
+    private static BackupPlace place(Record r, ObjectMapper json) {
+        JsonNode p = payload(r, json);
+        if (p == null) return null;
+        var name = name(p, BackupPlace.MAX_NAME);
+        var lat = coordinate(p, "lat", 90);
+        var lon = coordinate(p, "lon", 180);
+        if (name == null || lat == null || lon == null) return null;
+        return new BackupPlace(r.getKey().id(), name, lat, lon, r.getUpdatedAt().toEpochMilli());
+    }
+
+    /** A note with neither or both targets, or a blank or too long text, is left out (the file would be refused). */
+    private static BackupAreaNote areaNote(Record r, ObjectMapper json) {
+        JsonNode p = payload(r, json);
+        if (p == null) return null;
+        var areaId = name(p, "areaId", BackupAreaNote.MAX_REF);
+        var street = name(p, "street", BackupAreaNote.MAX_STREET);
+        var text = name(p, "text", BackupAreaNote.MAX_TEXT);
+        var hasArea = p.has("areaId");
+        var hasStreet = p.has("street");
+        if (text == null || hasArea == hasStreet || (hasArea && areaId == null) || (hasStreet && street == null)) {
+            return null;
+        }
+        return new BackupAreaNote(r.getKey().id(), areaId, street, text, r.getUpdatedAt().toEpochMilli());
+    }
+
+    private static JsonNode payload(Record r, ObjectMapper json) {
+        try {
+            return json.readTree(r.getPayload());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static String name(JsonNode payload, int max) {
+        return name(payload, "name", max);
+    }
+
+    /** A non-blank string within {@code max}, else null. */
+    private static String name(JsonNode payload, String key, int max) {
+        var value = text(payload, key, max);
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private static Double coordinate(JsonNode payload, String key, double limit) {
+        var node = payload.path(key);
+        if (!node.isNumber()) return null;
+        var value = node.asDouble();
+        return Double.isFinite(value) && Math.abs(value) <= limit ? value : null;
     }
 
     private static String text(JsonNode payload, String key, int max) {

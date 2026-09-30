@@ -346,7 +346,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(5120);
+    expect(new TextEncoder().encode(json).length).toBe(5846);
   });
 
   /**
@@ -407,10 +407,10 @@ describe('JSON backup', () => {
   it('counts the brokers in the manifest of a /2 copy only', () => {
     const withBrokers = new TextDecoder().decode(buildBackupZip(fixtureBundle(), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     expect(withBrokers).toContain('"format":"doorprints-backup/2"');
-    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3,"viewings":2}');
+    expect(withBrokers).toContain('"counts":{"houses":3,"visits":3,"photos":2,"brokers":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
     const without = new TextDecoder().decode(buildBackupZip(fixtureBundle({ includeContacts: false }), FIXTURE_PHOTO_MAP, 'x', MODIFIED_AT));
     // Criteria and preferences are not contacts: a copy without contact details keeps them, and their counts.
-    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3,"viewings":2}');
+    expect(without).toContain('"counts":{"houses":3,"visits":3,"photos":2,"criteria":3,"preferences":1,"questions":3,"viewings":2,"areas":2,"places":2,"areaNotes":2}');
   });
 
   it('writes the manifest last, with a SHA-256 for every other entry', () => {

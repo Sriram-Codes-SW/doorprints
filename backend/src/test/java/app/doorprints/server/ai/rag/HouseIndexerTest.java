@@ -152,6 +152,44 @@ class HouseIndexerTest {
         assertThat(batch.get(1).getText()).doesNotContain("Viewing:");
     }
 
+    /** Slice 4a: the document of a house carries the area notes that reach it and its distances to the places. */
+    @Test
+    void indexAndReindexCarryTheAreaNotesAndDistancesOfTheHouse() {
+        var records = mock(app.doorprints.server.record.RecordRepository.class);
+        var withAreas = new HouseIndexer(houses, visits, vectorStore, true, records,
+                tools.jackson.databind.json.JsonMapper.builder().build());
+        var mine = liveHouses(1).getFirst();
+        mine.setLat(13.0067);
+        mine.setLon(80.2574);
+        mine.setStreet("MG Road");
+        var area = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("area", "a_1"));
+        area.setPayload("{\"name\":\"Adyar\",\"lat\":13.0067,\"lon\":80.2574,\"radiusM\":500}");
+        var place = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("place", "p_1"));
+        place.setPayload("{\"name\":\"Office\",\"lat\":13.0827,\"lon\":80.2707}");
+        var byArea = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("areanote", "n_1"));
+        byArea.setPayload("{\"areaId\":\"a_1\",\"text\":\"Floods in the monsoon\"}");
+        var byStreet = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("areanote", "n_2"));
+        byStreet.setPayload("{\"street\":\"mg road\",\"text\":\"Noisy after 9 pm\"}");
+        when(records.findByKeyTypeAndDeletedFalse("area")).thenReturn(List.of(area));
+        when(records.findByKeyTypeAndDeletedFalse("place")).thenReturn(List.of(place));
+        when(records.findByKeyTypeAndDeletedFalse("areanote")).thenReturn(List.of(byArea, byStreet));
+        when(houses.findById(mine.getId())).thenReturn(Optional.of(mine));
+        when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(List.of(mine));
+        when(houses.findDeletedIds()).thenReturn(List.of());
+
+        withAreas.index(mine.getId());
+        withAreas.reindexAll();
+
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(vectorStore, times(2)).add(captor.capture());
+        for (var added : captor.getAllValues()) {
+            @SuppressWarnings("unchecked")
+            var docs = (List<org.springframework.ai.document.Document>) added;
+            assertThat(docs.getFirst().getText()).contains("Area note: Floods in the monsoon",
+                    "Area note: Noisy after 9 pm", "Distance to Office: 8.6 km");
+        }
+    }
+
     @Test
     void reindexSucceedsAndRemovesDeletedHouses() {
         var gone = new House(UUID.randomUUID());

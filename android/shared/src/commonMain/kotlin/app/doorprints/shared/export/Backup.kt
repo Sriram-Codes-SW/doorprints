@@ -23,6 +23,9 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaNote
+import app.doorprints.shared.model.Place
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.Preference
 import app.doorprints.shared.records.RecordRules
@@ -57,14 +60,16 @@ object BackupFormat {
 
     /**
      * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
-     * (slice 2), a question or a house with answers (slice 3a), or a viewing (slice 3b-1); else `/1`, byte for byte as
-     * before.
+     * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), or an area, a place or an area
+     * note (slice 4a); else `/1`, byte for byte as before.
      */
     fun idFor(
         brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0, questions: Int = 0, answers: Int = 0,
-        viewings: Int = 0,
+        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0,
     ): String =
-        if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0) ID_2 else ID
+        if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0 ||
+            areas > 0 || places > 0 || areaNotes > 0
+        ) ID_2 else ID
 
     /**
      * The newest format this app reads (S4b-BL-72): a new entity list in `data.json` means a new number, so an older
@@ -128,6 +133,10 @@ data class BackupCounts(
     val questions: Int? = null,
     /** Slice 3b-1, after `questions`: present only when the file has a `viewings` list. */
     val viewings: Int? = null,
+    /** Slice 4a, after `viewings`: present only when the file has the list. */
+    val areas: Int? = null,
+    val places: Int? = null,
+    val areaNotes: Int? = null,
 ) {
     companion object {
         fun of(data: BackupData): BackupCounts = BackupCounts(
@@ -137,6 +146,9 @@ data class BackupCounts(
             preferences = data.preferences?.size,
             questions = data.questions?.size,
             viewings = data.viewings?.size,
+            areas = data.areas?.size,
+            places = data.places?.size,
+            areaNotes = data.areaNotes?.size,
         )
     }
 }
@@ -197,6 +209,10 @@ data class BackupData(
     val questions: List<ExportQuestion>? = null,
     /** `/2` only (slice 3b-1), after `questions`, null when the copy has none, like [brokers]. */
     val viewings: List<ExportViewing>? = null,
+    /** `/2` only (slice 4a), after `viewings`, each null when the copy has none, like [brokers]. */
+    val areas: List<ExportArea>? = null,
+    val places: List<ExportPlace>? = null,
+    val areaNotes: List<ExportAreaNote>? = null,
 ) {
     /** The brokers of the file, none when it has no list. */
     val brokerRows: List<ExportBroker> get() = brokers.orEmpty()
@@ -210,6 +226,11 @@ data class BackupData(
 
     /** The viewings of the file, none when it has no list. */
     val viewingRows: List<ExportViewing> get() = viewings.orEmpty()
+
+    /** The areas, places and area notes of the file, none when it has no list. */
+    val areaRows: List<ExportArea> get() = areas.orEmpty()
+    val placeRows: List<ExportPlace> get() = places.orEmpty()
+    val areaNoteRows: List<ExportAreaNote> get() = areaNotes.orEmpty()
 
     companion object {
         /**
@@ -238,7 +259,7 @@ data class BackupData(
                 format = BackupFormat.idFor(
                     bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
                     bundle.preferences.size, bundle.questions.size, bundle.houses.sumOf { it.answers?.size ?: 0 },
-                    bundle.viewings.size,
+                    bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size,
                 ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
@@ -250,6 +271,9 @@ data class BackupData(
                 preferences = bundle.preferences.takeIf { it.isNotEmpty() },
                 questions = bundle.questions.takeIf { it.isNotEmpty() },
                 viewings = bundle.viewings.takeIf { it.isNotEmpty() },
+                areas = bundle.areas.takeIf { it.isNotEmpty() },
+                places = bundle.places.takeIf { it.isNotEmpty() },
+                areaNotes = bundle.areaNotes.takeIf { it.isNotEmpty() },
             )
         }
 
@@ -295,7 +319,8 @@ object BackupValidation {
         manifest.counts.houses < 0 || manifest.counts.visits < 0 || manifest.counts.photos < 0 ||
             (manifest.counts.brokers ?: 0) < 0 || (manifest.counts.criteria ?: 0) < 0 ||
             (manifest.counts.preferences ?: 0) < 0 || (manifest.counts.questions ?: 0) < 0 ||
-            (manifest.counts.viewings ?: 0) < 0 -> BackupProblem.BROKEN_DATA
+            (manifest.counts.viewings ?: 0) < 0 || (manifest.counts.areas ?: 0) < 0 ||
+            (manifest.counts.places ?: 0) < 0 || (manifest.counts.areaNotes ?: 0) < 0 -> BackupProblem.BROKEN_DATA
         else -> null
     }
 
@@ -343,8 +368,21 @@ object BackupValidation {
         // or more than 5,000 viewings refuse the whole file (an absent or null duration, kind, status or reminder is the
         // default).
         !viewingsAreValid(data.viewingRows) -> BackupProblem.BROKEN_DATA
+        // Slice 4a: an area, place or area note with a bad id, a blank or over-long name or text, a point out of range,
+        // an area's radius outside 200..2000 (an absent one is 500), a note without exactly one target, an id used twice,
+        // or more than 20 areas, 10 places or 200 notes refuse the whole file.
+        !recordsAreValid(data.areaRows, Area.MAX_AREAS, { it.id }, { it.updatedAt }) { it.toArea()?.isValid == true } ->
+            BackupProblem.BROKEN_DATA
+        !recordsAreValid(data.placeRows, Place.MAX_PLACES, { it.id }, { it.updatedAt }) { it.toPlace()?.isValid == true } ->
+            BackupProblem.BROKEN_DATA
+        !recordsAreValid(data.areaNoteRows, AreaNote.MAX_NOTES, { it.id }, { it.updatedAt }) { it.toAreaNote().isValid } ->
+            BackupProblem.BROKEN_DATA
         else -> null
     }
+
+    private fun <T> recordsAreValid(
+        rows: List<T>, max: Int, id: (T) -> String, updatedAt: (T) -> Long, valid: (T) -> Boolean,
+    ): Boolean = rows.size <= max && rows.all { updatedAt(it) >= 0 && valid(it) } && rows.map(id).toSet().size == rows.size
 
     private fun viewingsAreValid(rows: List<ExportViewing>): Boolean =
         rows.size <= Viewing.MAX_VIEWINGS && rows.all { it.updatedAt >= 0 && it.toViewing().isValid } && rows.map { it.id }.toSet().size == rows.size

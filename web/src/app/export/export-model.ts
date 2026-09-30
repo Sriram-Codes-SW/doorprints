@@ -23,6 +23,8 @@ import type { Broker, BrokerRow } from '../shared/broker';
 import type { QuestionRow } from '../shared/question';
 import { viewingsForCopy } from '../shared/viewing';
 import type { Viewing, ViewingRow } from '../shared/viewing';
+import { distancesToPlaces, nearestFirst, notesReaching } from '../shared/area';
+import type { Area, AreaNoteRow, AreaRow, PlaceDistance, PlaceRow } from '../shared/area';
 import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
@@ -72,6 +74,18 @@ export interface ExportHouse {
    * copy's own `exportedAt`, so the copy never reads a clock) soonest first, then the rest newest first.
    */
   viewings: readonly Viewing[];
+  /** The area notes that reach the house (slice 4a), newest first; a house page lists them after the viewings. */
+  areaNotes: readonly ExportAreaNote[];
+  /** The distances from the house to my places (slice 4a), nearest first; empty for a house with no point. */
+  distances: readonly PlaceDistance[];
+}
+
+/** An area note that reaches a house, with where it comes from: the area's name or the street. */
+export interface ExportAreaNote {
+  id: string;
+  text: string;
+  /** The area's name, or the street of a street note. */
+  source: string;
 }
 
 /** A broker in the copy, with the houses of the copy that use it (slice 1b). */
@@ -113,6 +127,13 @@ export interface ExportBundle {
    */
   viewings: readonly ViewingRow[];
   /**
+   * The live areas, places and area notes of the store, oldest edit first then id (the backup's order): the person's
+   * own data, not contacts, so a copy without contact details keeps them all; a partial copy keeps them too (slice 4a).
+   */
+  areas: readonly AreaRow[];
+  places: readonly PlaceRow[];
+  areaNotes: readonly AreaNoteRow[];
+  /**
    * The brokers in the copy, oldest edit first then id (the backup's order). Empty with no contact details. A copy of
    * every house (`scope: 'all'`) carries every live broker; a partial copy only the brokers its houses use.
    */
@@ -142,6 +163,10 @@ export interface CollectInput {
   questions?: readonly QuestionRow[];
   /** The viewing records of the store (slice 3b-1). */
   viewings?: readonly ViewingRow[];
+  /** The area, place and area-note records of the store (slice 4a). */
+  areas?: readonly AreaRow[];
+  places?: readonly PlaceRow[];
+  areaNotes?: readonly AreaNoteRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
   exportedAt: string;
@@ -197,6 +222,13 @@ export function collect(input: CollectInput): ExportBundle {
     viewingsByHouse.set(row.viewing.houseId, [...(viewingsByHouse.get(row.viewing.houseId) ?? []), row.viewing]);
   }
   const copyNow = Date.parse(input.exportedAt) || 0;
+  const byEdit = <T extends { id: string; updatedAt: string | null }>(rows: readonly T[]) =>
+    rows.slice().sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
+  const areas = byEdit(input.areas ?? []);
+  const places = byEdit(input.places ?? []);
+  const areaNotes = byEdit(input.areaNotes ?? []);
+  const liveAreas: Area[] = areas.map((r) => r.area);
+  const areaNames = new Map(liveAreas.map((a) => [a.id, a.name]));
 
   const houses: ExportHouse[] = chosen.map((house) => {
     const wantPhotos =
@@ -213,6 +245,12 @@ export function collect(input: CollectInput): ExportBundle {
       rooms: house.rooms ?? [],
       answers: house.answers ?? [],
       viewings: viewingsForCopy(viewingsByHouse.get(house.id) ?? [], copyNow),
+      areaNotes: notesReaching(house, liveAreas, areaNotes).map((row) => ({
+        id: row.id,
+        text: row.note.text,
+        source: row.note.areaId !== undefined ? (areaNames.get(row.note.areaId) ?? '') : (row.note.street ?? ''),
+      })),
+      distances: nearestFirst(distancesToPlaces(house, places.map((r) => r.place))),
     };
   });
 
@@ -226,6 +264,9 @@ export function collect(input: CollectInput): ExportBundle {
     preferences,
     questions,
     viewings,
+    areas,
+    places,
+    areaNotes,
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     counts: {

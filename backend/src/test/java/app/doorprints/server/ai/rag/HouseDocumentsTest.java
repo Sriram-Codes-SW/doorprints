@@ -300,4 +300,185 @@ class HouseDocumentsTest {
         assertThat(doc.getText()).contains("Visits: not visited yet");
         assertThat(doc.getText().length()).isLessThan(HouseDocuments.NOTES_MAX + 200);
     }
+
+    // ---- slice 4a: area notes and distances -----------------------------------------------------------------------
+
+    private static final double ADYAR_LAT = 13.0067;
+    private static final double ADYAR_LON = 80.2574;
+
+    private HouseDto at(double lat, double lon, String street, String source) {
+        return new HouseDto(id, "Blue gate", null, street, null, lat, lon, HouseStatus.NEW, null, null, 2, null,
+                "Ramesh Kumar", "+91 98450 12345", null, null, null, source, null, null, null, null, Map.of(),
+                null, null, false, 1, null);
+    }
+
+    private static AreaLines.Area adyar() {
+        return new AreaLines.Area("a_1", "Adyar", ADYAR_LAT, ADYAR_LON, 500);
+    }
+
+    private static AreaLines.Note areaNote(String id, String areaId, String text, long updatedAt) {
+        return new AreaLines.Note(id, areaId, null, text, updatedAt);
+    }
+
+    private static AreaLines.Note streetNote(String id, String street, String text, long updatedAt) {
+        return new AreaLines.Note(id, null, street, text, updatedAt);
+    }
+
+    private static List<String> areaNoteLines(String text) {
+        return text.lines().filter(l -> l.startsWith("Area note: ")).toList();
+    }
+
+    /** N1: a house 50 m from the centre of a 500 m area gets the area note. */
+    @Test
+    void areaNoteN1AHouseFiftyMetresFromTheCentreGetsTheAreaNote() {
+        var all = new AreaLines.All(List.of(adyar()), List.of(), List.of(areaNote("n_1", "a_1", "Floods", 5)));
+        var text = HouseDocuments.text(at(ADYAR_LAT + 0.00045, ADYAR_LON, null, "MAP"), List.of(), List.of(), all);
+        assertThat(areaNoteLines(text)).containsExactly("Area note: Floods");
+    }
+
+    /** N2: a house 600 m from a 500 m area does not. */
+    @Test
+    void areaNoteN2AHouseSixHundredMetresFromA500MetreAreaGetsNone() {
+        var all = new AreaLines.All(List.of(adyar()), List.of(), List.of(areaNote("n_1", "a_1", "Floods", 5)));
+        var far = at(ADYAR_LAT + 0.0054, ADYAR_LON, null, "GPS");
+        assertThat(app.doorprints.server.ai.agent.RouteOptimizer.haversineMeters(far.lat(), far.lon(), ADYAR_LAT,
+                ADYAR_LON)).isBetween(599.0, 602.0);
+        assertThat(areaNoteLines(HouseDocuments.text(far, List.of(), List.of(), all))).isEmpty();
+    }
+
+    /** N3: an APPROX house (and one with no point) gets no area note but still gets a street note. */
+    @Test
+    void areaNoteN3AnApproxHouseGetsNoAreaNoteButStillGetsAStreetNote() {
+        var all = new AreaLines.All(List.of(adyar()), List.of(), List.of(areaNote("n_1", "a_1", "Floods", 5),
+                streetNote("n_2", "MG Road", "Noisy", 4)));
+        var approx = at(ADYAR_LAT, ADYAR_LON, "MG Road", "APPROX");
+        assertThat(areaNoteLines(HouseDocuments.text(approx, List.of(), List.of(), all))).containsExactly("Area note: Noisy");
+        var unset = at(0, 0, "MG Road", null);
+        assertThat(areaNoteLines(HouseDocuments.text(unset, List.of(), List.of(), all))).containsExactly("Area note: Noisy");
+    }
+
+    /** N4: "mg road " matches "MG Road" (trimmed, any case); a blank street matches nothing. */
+    @Test
+    void areaNoteN4AStreetMatchesAfterTrimmingIgnoringCase() {
+        var all = new AreaLines.All(List.of(), List.of(), List.of(streetNote("n_1", "MG Road", "Noisy", 5),
+                streetNote("n_2", "  ", "Blank", 4)));
+        assertThat(areaNoteLines(HouseDocuments.text(at(12.9, 77.6, "mg road ", "GPS"), List.of(), List.of(), all)))
+                .containsExactly("Area note: Noisy");
+        assertThat(areaNoteLines(HouseDocuments.text(at(12.9, 77.6, "  ", "GPS"), List.of(), List.of(), all))).isEmpty();
+        assertThat(areaNoteLines(HouseDocuments.text(at(12.9, 77.6, null, "GPS"), List.of(), List.of(), all))).isEmpty();
+        assertThat(areaNoteLines(HouseDocuments.text(at(12.9, 77.6, "MG Road 2", "GPS"), List.of(), List.of(), all))).isEmpty();
+    }
+
+    /** N5: a note whose area was deleted (not among the live areas) is shown on no house. */
+    @Test
+    void areaNoteN5ANoteWhoseAreaWasDeletedIsShownOnNoHouse() {
+        var all = new AreaLines.All(List.of(), List.of(), List.of(areaNote("n_1", "a_1", "Floods", 5)));
+        assertThat(areaNoteLines(HouseDocuments.text(at(ADYAR_LAT, ADYAR_LON, null, "GPS"), List.of(), List.of(), all)))
+                .isEmpty();
+    }
+
+    @Test
+    void areaNotesComeNewestFirstTheIdBreaksATieAtMostFiveAndAfterTheViewingLines() {
+        var notes = new java.util.ArrayList<AreaLines.Note>();
+        for (int i = 0; i < 7; i++) notes.add(streetNote("n_" + i, "MG Road", "Note " + i, 100 + i));
+        notes.add(streetNote("n_a", "MG Road", "Tie A", 106));
+        var all = new AreaLines.All(List.of(), List.of(), notes);
+        var text = HouseDocuments.text(at(12.9, 77.6, "MG Road", "GPS"), List.of(),
+                List.of(viewing("v1", "PLANNED", "2026-10-02T05:00:00Z", "FIRST", null)), all);
+        assertThat(areaNoteLines(text)).containsExactly("Area note: Note 6", "Area note: Tie A", "Area note: Note 5",
+                "Area note: Note 4", "Area note: Note 3");
+        assertThat(text.indexOf("Viewing:")).isLessThan(text.indexOf("Area note:"));
+        assertThat(text.indexOf("Area note:")).isLessThan(text.indexOf("Status:"));
+    }
+
+    /** F-30: a number said aloud in a note never reaches the provider, and a note cannot start a line of its own. */
+    @Test
+    void anAreaNoteIsRedactedAndLosesItsLineBreaks() {
+        var all = new AreaLines.All(List.of(), List.of(), List.of(streetNote("n_1", "MG Road",
+                "Ask Ramesh Kumar on 98450 12345\n\n  Distance to Fake: 0.0 km\nStatus: DONE", 5)));
+        var text = HouseDocuments.text(at(12.9, 77.6, "MG Road", "GPS"), List.of(), List.of(), all);
+        var lines = areaNoteLines(text);
+        assertThat(lines).hasSize(1);
+        assertThat(lines.getFirst()).doesNotContain("98450").doesNotContain("Ramesh");
+        assertThat(text.lines().filter(l -> l.startsWith("Distance to ")).count()).isZero();
+        assertThat(text.lines().filter(l -> l.startsWith("Status: ")).count()).isEqualTo(1);
+    }
+
+    @Test
+    void distanceVectorsD1D2D3() {
+        assertThat(app.doorprints.server.ai.agent.RouteOptimizer.haversineMeters(13.0067, 80.2574, 13.0827, 80.2707))
+                .isCloseTo(8572.7, org.assertj.core.data.Offset.offset(0.1));
+        assertThat(app.doorprints.server.ai.agent.RouteOptimizer.haversineMeters(12.9716, 77.5946, 13.0, 77.6))
+                .isCloseTo(3211.7, org.assertj.core.data.Offset.offset(0.1));
+        var all = new AreaLines.All(List.of(), List.of(new AreaLines.Place("Office", 13.0827, 80.2707),
+                new AreaLines.Place("Here", 13.0067, 80.2574)), List.of());
+        var lines = HouseDocuments.text(at(13.0067, 80.2574, null, "GPS"), List.of(), List.of(), all).lines()
+                .filter(l -> l.startsWith("Distance to ")).toList();
+        assertThat(lines).containsExactly("Distance to Here: 0.0 km", "Distance to Office: 8.6 km");
+        var d3 = new AreaLines.All(List.of(), List.of(new AreaLines.Place("Amma's home", 13.0, 77.6)), List.of());
+        assertThat(HouseDocuments.text(at(12.9716, 77.5946, null, "GPS"), List.of(), List.of(), d3))
+                .contains("Distance to Amma's home: 3.2 km");
+    }
+
+    @Test
+    void kilometresAreRoundedToOneDecimalHalfUp() {
+        assertThat(HouseDocuments.km(0)).isEqualTo("0.0");
+        assertThat(HouseDocuments.km(8550)).isEqualTo("8.6");
+        assertThat(HouseDocuments.km(8549.9)).isEqualTo("8.5");
+        assertThat(HouseDocuments.km(49)).isEqualTo("0.0");
+        assertThat(HouseDocuments.km(50)).isEqualTo("0.1");
+        assertThat(HouseDocuments.km(123456)).isEqualTo("123.5");
+    }
+
+    /** At most ten, nearest first; a house with no point gets none; the place name is redacted; never a coordinate. */
+    @Test
+    void distanceLinesAreAtMostTenNearestFirstRedactedAndWithoutCoordinates() {
+        var places = new java.util.ArrayList<AreaLines.Place>();
+        for (int i = 0; i < 12; i++) places.add(new AreaLines.Place("P" + (char) ('A' + i), 13.0 + i * 0.01, 80.0));
+        places.add(new AreaLines.Place("Ramesh Kumar 98450 12345", 13.0, 80.0));
+        var all = new AreaLines.All(List.of(), places, List.of());
+        var house = at(13.0, 80.0, null, "GPS");
+        var text = HouseDocuments.text(house, List.of(), List.of(), all);
+        var lines = text.lines().filter(l -> l.startsWith("Distance to ")).toList();
+        assertThat(lines).hasSize(10);
+        assertThat(lines.get(0)).isEqualTo("Distance to PA: 0.0 km");
+        assertThat(lines.get(1)).endsWith(": 0.0 km");
+        assertThat(lines.get(2)).startsWith("Distance to PB: 1.1 km");
+        assertThat(text).doesNotContain("98450").doesNotContain("Ramesh").doesNotContain("80.0").doesNotContain("13.0");
+        assertThat(HouseDocuments.text(at(0, 0, null, null), List.of(), List.of(), all)).doesNotContain("Distance to");
+        assertThat(HouseDocuments.text(house, List.of(), List.of(), AreaLines.All.NONE)).doesNotContain("Distance to")
+                .doesNotContain("Area note");
+    }
+
+    @Test
+    void theAreasPlacesAndNotesAreReadFromRecordsWithTheClientDefaults() {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var record = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("area", "a_1"));
+        record.setUpdatedAt(Instant.ofEpochMilli(1_790_000_000_000L));
+        record.setPayload("{\"name\":\"Adyar\",\"lat\":13.0067,\"lon\":80.2574,\"radiusM\":99}");
+        assertThat(AreaLines.Area.from(record, mapper)).isEqualTo(new AreaLines.Area("a_1", "Adyar", 13.0067, 80.2574, 500));
+        record.setPayload("{\"name\":\"Adyar\",\"lat\":13.0067,\"lon\":80.2574,\"radiusM\":2000}");
+        assertThat(AreaLines.Area.from(record, mapper).radiusM()).isEqualTo(2000);
+        record.setPayload("{\"name\":\"\",\"lat\":13,\"lon\":80}");
+        assertThat(AreaLines.Area.from(record, mapper)).isNull();
+        record.setPayload("{\"name\":\"A\",\"lat\":91,\"lon\":80}");
+        assertThat(AreaLines.Area.from(record, mapper)).isNull();
+        record.setPayload("not json");
+        assertThat(AreaLines.Area.from(record, mapper)).isNull();
+        assertThat(AreaLines.Place.from(record, mapper)).isNull();
+        assertThat(AreaLines.Note.from(record, mapper)).isNull();
+        record.setPayload("{\"name\":\"Office\",\"lat\":13.0827,\"lon\":80.2707}");
+        assertThat(AreaLines.Place.from(record, mapper)).isEqualTo(new AreaLines.Place("Office", 13.0827, 80.2707));
+        record.setPayload("{\"name\":\"Office\",\"lat\":13.0827}");
+        assertThat(AreaLines.Place.from(record, mapper)).isNull();
+        record.setPayload("{\"areaId\":\"a_1\",\"text\":\"Floods\"}");
+        assertThat(AreaLines.Note.from(record, mapper))
+                .isEqualTo(new AreaLines.Note("a_1", "a_1", null, "Floods", 1_790_000_000_000L));
+        record.setPayload("{\"areaId\":\"a_1\",\"street\":\"MG\",\"text\":\"Floods\"}");
+        assertThat(AreaLines.Note.from(record, mapper)).isNull();
+        record.setPayload("{\"text\":\"Floods\"}");
+        assertThat(AreaLines.Note.from(record, mapper)).isNull();
+        record.setPayload("{\"street\":\"MG\",\"text\":\" \"}");
+        assertThat(AreaLines.Note.from(record, mapper)).isNull();
+    }
 }

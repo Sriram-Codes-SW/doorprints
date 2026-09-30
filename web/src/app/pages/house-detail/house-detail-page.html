@@ -655,6 +655,10 @@
       <!-- Viewings (slice 3b-1, docs/11 5.8): the next planned viewing, Plan a viewing, Mark viewing done. -->
       <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" />
 
+      <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
+      <app-house-area-notes-card [house]="d" />
+      <app-house-distances-card [house]="d" />
+
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
         <h2 id="location-heading">{{ 'house.location' | t }}</h2>

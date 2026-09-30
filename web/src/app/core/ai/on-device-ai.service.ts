@@ -20,6 +20,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { LocalStore } from '../../data/local-store.service';
+import { distancesToPlaces, notesReaching } from '../../shared/area';
 import type { Viewing } from '../../shared/viewing';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from '../ai.service';
 import {
@@ -162,12 +163,17 @@ export class OnDeviceAiService {
     for (const viewing of await this.store.viewings()) {
       viewingsByHouse.set(viewing.houseId, [...(viewingsByHouse.get(viewing.houseId) ?? []), viewing]);
     }
+    const areas = await this.store.areas();
+    const places = await this.store.places();
+    const noteRows = await this.store.areaNoteRows();
     const live = (await this.store.allHouses()).filter((h) => !h.deleted);
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
       status: h.status, price: h.price, priceType: h.priceType, bedrooms: h.bedrooms, rating: h.rating,
       areaSqft: h.areaSqft, cost: h.cost, rooms: h.rooms, answers: h.answers, viewings: viewingsByHouse.get(h.id) ?? [],
+      areaNotes: notesReaching(h, areas, noteRows).map((n) => ({ id: n.id, text: n.note.text, updatedAt: Date.parse(n.updatedAt ?? '') || 0 })),
+      distances: distancesToPlaces(h, places).map((d) => ({ name: d.place.name, meters: d.meters })),
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,
       checklist: h.checklist, visits: byHouse.get(h.id) ?? [],
     }));

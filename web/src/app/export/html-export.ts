@@ -33,7 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
-import { answerCells, answerDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -248,6 +248,20 @@ function houseSection(
       ].join('')
     : '';
 
+  // Area notes and distances (slice 4a), after the viewings and before the checklist.
+  const simpleTable = (heading: string, columns: string[], list: string[][]): string =>
+    list.length
+      ? [
+          `<h3>${escapeHtml(heading)}</h3>`,
+          '<table>',
+          `<thead><tr>${columns.map((c) => `<th scope="col">${escapeHtml(c)}</th>`).join('')}</tr></thead>`,
+          `<tbody>${list.map((row) => `<tr>${row.map((c, i) => (i === 0 ? `<th scope="row">${escapeHtml(c)}</th>` : `<td>${escapeHtml(c)}</td>`)).join('')}</tr>`).join('')}</tbody>`,
+          '</table>',
+        ].join('')
+      : '';
+  const areaNotesHtml = simpleTable(stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), areaNoteCells(entry));
+  const distancesHtml = simpleTable(stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), distanceCells(entry));
+
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
@@ -283,6 +297,8 @@ function houseSection(
     roomsHtml,
     questionsHtml,
     viewingsHtml,
+    areaNotesHtml,
+    distancesHtml,
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',
