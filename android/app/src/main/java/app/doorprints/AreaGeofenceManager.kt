@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import app.doorprints.data.Repository
 import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaWakeup
@@ -110,8 +111,8 @@ class PlayGeofenceRegistrar(private val context: Context) : GeofenceRegistrar {
             val intent = Intent(context, AreaGeofenceReceiver::class.java).setAction(AreaGeofenceReceiver.ACTION_GEOFENCE)
             val mutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
             // The geofencing PendingIntent must be mutable (Play services adds the event's extras); it is explicit, to
-            // this app's non-exported receiver, so no other app can redirect it. Lint's warning is expected here only.
-            @Suppress("UnspecifiedImmutableFlag")
+            // this app's non-exported receiver, so no other app can redirect it. (Lint 2026 raises no warning here, as the
+            // intent is explicit and the flag is set; nothing is suppressed.)
             return PendingIntent.getBroadcast(context, REQUEST_CODE, intent, PendingIntent.FLAG_UPDATE_CURRENT or mutable)
         }
 
@@ -243,7 +244,7 @@ class AndroidAreaWakeup(private val app: DoorprintsApp) : AreaWakeupServices {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !canAskAgain(prefs.getBoolean(KEY_ASKED, false), rationale)) {
                         openAppSettings(context)
                     } else {
-                        prefs.edit().putBoolean(KEY_ASKED, true).apply()
+                        prefs.edit { putBoolean(KEY_ASKED, true) }
                         try {
                             launcher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                         } catch (_: ActivityNotFoundException) {
