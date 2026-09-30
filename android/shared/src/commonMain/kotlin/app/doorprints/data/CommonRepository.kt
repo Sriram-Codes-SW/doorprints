@@ -579,7 +579,11 @@ open class CommonRepository(
     override suspend fun newPlaceId(): String = usedIds(PlaceType).let { used -> Place.newId({ it in used }) }
     override suspend fun newAreaNoteId(): String = usedIds(AreaNoteType).let { used -> AreaNote.newId({ it in used }) }
 
-    override suspend fun deleteArea(id: String) = deleteRecord(AreaType, id)
+    override suspend fun deleteArea(id: String) {
+        deleteRecord(AreaType, id)
+        // The wake-up's per-area stamp (slice 4b) goes with it; a delete by a sync is pruned when the geofences are set.
+        settings.removeAreaLastNotified(id)
+    }
     override suspend fun deletePlace(id: String) = deleteRecord(PlaceType, id)
     override suspend fun deleteAreaNote(id: String) = deleteRecord(AreaNoteType, id)
 
