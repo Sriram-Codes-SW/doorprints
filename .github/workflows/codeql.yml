@@ -48,7 +48,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   # Weekly, so new queries in the CodeQL bundle reach unchanged code. Monday 05:23 UTC, away from the other
   # scheduled workflows (security.yml runs at 04:17).
   schedule:

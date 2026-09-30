@@ -68,7 +68,6 @@ on:
     branches: [main]
     paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   pull_request:
-    branches: [main]
     paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   workflow_dispatch:
 

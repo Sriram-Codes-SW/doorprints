@@ -21,7 +21,6 @@ name: User guide site
 
 on:
   pull_request:
-    branches: [main]
     paths-ignore:
       - "guide/**"
       - ".github/workflows/pages.yml"
