@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.51 |
+| Version | 0.53 |
 | Date | 2026-09-29 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..65); this file lists the lead-level items and points to the rest. |
@@ -62,6 +62,8 @@
 | 0.49 | 2026-09-30 | Claude (Code), lead | §1: offline maps built (S4b-FR-6, `feat/s4b-fr-6-offline-maps`, [10](10-sprint-log.md) §13.15); §6: TC-M-32 and the owner's word on OpenFreeMap's terms for offline packs. N13 (4a) done in code; next (4b) sharing list updates (S4b-FR-3). |
 | 0.50 | 2026-09-30 | Claude (Code), lead | §1: sharing updates designed (S4b-FR-3, `docs/s4b-fr-3-sharing-design`; [11](11-feature-parity-and-export-spec.md) 5.28, ADR-27); N13 (4b) in progress; §6: the owner's word on the design. |
 | 0.51 | 2026-09-30 | Claude (Code), lead | §1: sharing updates built on Android (S4b-FR-3, `feat/s4b-fr-3-share-updates-android`, [10](10-sprint-log.md) §13.16); §6: TC-M-33. N13 (4b): next S4b-FR-4, a house from a listing link, with brokers (S4b-FR-11); design step first. |
+| 0.52 | 2026-09-30 | Claude (Code), lead | §1: a house from a listing link designed (S4b-FR-4 with S4b-FR-11, `docs/s4b-fr-4-listing-link-design`; [11](11-feature-parity-and-export-spec.md) 5.29); N13 (4b): the build next. |
+| 0.53 | 2026-09-30 | Claude (Code), lead | §1: a shared listing built (S4b-FR-4, `feat/s4b-fr-4-listing-share`, [10](10-sprint-log.md) §13.17); §6: TC-M-34. N13 (4b) done in code; next (4c), the data-model batch, design step first. |
 
 ## 1. Where things stand (2026-09-29, end of the session that built ADR-25 and ADR-26)
 
@@ -122,13 +124,22 @@ section is only today's state. Earlier versions of this file (git history) carry
 - **Sharing updates built on Android** (branch `feat/s4b-fr-3-share-updates-android`; [10](10-sprint-log.md)
   §13.16, [06](06-test-plan.md) TC-U-96): *Share updates with…* in Settings > Your data, the update file, a received
   file opening in the Import screen. On two phones TC-M-33 (owner). The web (after S4b-BL-75) and the iPhone (after
-  S4b-BL-81) follow as their own changes. Next in (4b): a house from a listing link (S4b-FR-4) with brokers
-  (S4b-FR-11), design step first (the portals' terms and the photos' copyright).
+  S4b-BL-81) follow as their own changes.
+- **A house from a listing link designed** (S4b-FR-4, branch `docs/s4b-fr-4-listing-link-design`;
+  [11](11-feature-parity-and-export-spec.md) 5.29): the portal's share text and link parsed on the device without AI
+  (the page is never fetched, 5.9; photos never taken), the Android share receiver and the web share page on one
+  parser with shared fixtures, the duplicate check, the map step first; the locality lookup is S4b-BL-83; brokers
+  (S4b-FR-11) are a data-model change built with the (4c) batch.
+- **A shared listing built** (S4b-FR-4, branch `feat/s4b-fr-4-listing-share`; [10](10-sprint-log.md) §13.17,
+  [06](06-test-plan.md) TC-U-97): the no-AI parser on Android and the web over one fixture file, the Android share
+  receiver, the map step, the duplicate check by link. On a phone TC-M-34 (owner). With this (4b) is done in code;
+  next is (4c), the data-model batch (brokers, the real cost of a house, rooms and criteria, viewings, hunting areas,
+  my places, area notes; [11](11-feature-parity-and-export-spec.md) 14.2), whose design step comes first.
 - **Owner checks still open:** the own-key AI on a real phone and in a real browser (the code paths are proven by the
   real-key run above); TC-M-28 (the iPhone map); TC-M-25/-27 on a device;
   a release candidate through [13](13-release-security-checklist.md); TC-M-29 (the app lock on a phone); TC-M-30
   (the path trace on a phone); TC-M-31 (Hunt mode on an iPhone); TC-M-32 (a saved area, offline, on both phones);
-  TC-M-33 (an exchange of updates between two phones).
+  TC-M-33 (an exchange of updates between two phones); TC-M-34 (a listing shared from a portal app).
 - **CI** runs on pushes to every branch and on pull requests to `main` ([07](07-secure-build-and-deploy.md) §1).
   Deploy, signing and the dependency graph are main-only. With a PR open, one push gives two runs per workflow (branch
   and merge result); accepted in [07](07-secure-build-and-deploy.md) §3. If the wait matters more than testing the

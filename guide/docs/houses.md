@@ -30,6 +30,15 @@ You can move the house's pin later in three ways:
 
 <img src="images/android-house-new.png" width="300" alt="The Android Save a house form: name, status New, rating stars, Rent or Buy, rent, BHK, address, street, locality and location">
 
+## Add a house from a listing you found online
+
+In the portal's app or your browser, share the listing to **Doorprints** (on Android, from the share sheet; on the
+website, once it is installed as an app). Doorprints asks where the house is: tap **Save house here** if you are
+standing at it, or press and hold the map on the spot. The form then opens with what the listing said, such as the
+price, the number of bedrooms, the area name, the link and a phone number, and the whole text in the notes for you
+to check. Nothing is fetched from the portal's site, and nothing is saved until you tap **Save**. If you shared the
+same listing before, Doorprints offers to open the house you already have.
+
 ## Keep notes on a house
 
 Open a house from the list or the map. There you can:
