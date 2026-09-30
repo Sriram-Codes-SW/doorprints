@@ -40,7 +40,7 @@ class BackupSlice5Test {
     private val room = HouseRoom("c1", "KITCHEN", "Kitchen", sort = 0)
     private val metaPhoto = ExportFixture.photo1.copy(
         roomId = "c1", tags = listOf("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), caption = "Tap drips slightly.",
-        metaUpdatedAt = 1_790_813_400_000L,
+        metaUpdatedAt = 1_790_000_000_000L,
     )
 
     private fun data(b: ExportBundle) = BackupFormat.json.encodeToString(BackupData.serializer(), BackupData.of(b))

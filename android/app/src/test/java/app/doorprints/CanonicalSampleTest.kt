@@ -129,7 +129,7 @@ class CanonicalSampleTest {
         val photo = data.photos.first()
         assertEquals(listOf("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), photo.tags)
         assertEquals("Master bedroom", ExportRows.photoRoomName(photo, bundle))
-        assertEquals(1_790_813_400_000L, photo.metaUpdatedAt)
+        assertEquals(1_790_000_000_000L, photo.metaUpdatedAt)
         assertFalse(data.photos[1].hasMeta)
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
