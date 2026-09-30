@@ -30,6 +30,9 @@ import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportCriterion
 import app.doorprints.shared.export.ExportQuestion
 import app.doorprints.shared.export.ExportViewing
+import app.doorprints.shared.export.ExportArea
+import app.doorprints.shared.export.ExportAreaNote
+import app.doorprints.shared.export.ExportPlace
 import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
@@ -40,6 +43,9 @@ import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaNote
+import app.doorprints.shared.model.Place
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
@@ -268,6 +274,55 @@ interface Repository {
      */
     suspend fun viewingIdsForReminders(): List<String> = viewings().map { it.id }
 
+    // Hunting areas, my places and area notes (docs/11 slice 4a): records of type `area`, `place` and `areanote`.
+    // Each list is coerced (untrusted rows left out); a save validates, is written only when something changed and is
+    // dirty; a delete is a tombstone. At most 20 live areas, 10 places and 200 notes (`RecordLimitException`).
+
+    /** The live areas by name (case ignored), then id, now and after each change. */
+    fun observeAreas(): Flow<List<Area>>
+
+    /** The live areas now, read once, by name. */
+    suspend fun areas(): List<Area>
+
+    /**
+     * Saves an area (name trimmed). `IllegalArgumentException` for a bad id, a blank or over-long name, a point out of
+     * range or a radius outside 200..2000; `RecordLimitException` when it would be the 21st.
+     */
+    suspend fun saveArea(area: Area)
+
+    /** A fresh id `a_` + 8 hex that no area record here has used, a tombstone included. */
+    suspend fun newAreaId(): String
+
+    /** Deletes an area (a tombstone); its notes stay and reach no house until an area with that id is back. */
+    suspend fun deleteArea(id: String)
+
+    /** The live places by name (case ignored), then id, now and after each change. */
+    fun observePlaces(): Flow<List<Place>>
+
+    suspend fun places(): List<Place>
+
+    /** Saves a place, as [saveArea]; `RecordLimitException` when it would be the 11th. */
+    suspend fun savePlace(place: Place)
+
+    suspend fun newPlaceId(): String
+
+    suspend fun deletePlace(id: String)
+
+    /** The live area notes, newest first (ties by id), each with its `updatedAt`, now and after each change. */
+    fun observeAreaNotes(): Flow<List<AreaNote>>
+
+    suspend fun areaNotes(): List<AreaNote>
+
+    /**
+     * Saves a note (target and text trimmed). `IllegalArgumentException` without exactly one target or with a text
+     * outside 1..1000; `RecordLimitException` when it would be the 201st.
+     */
+    suspend fun saveAreaNote(note: AreaNote)
+
+    suspend fun newAreaNoteId(): String
+
+    suspend fun deleteAreaNote(id: String)
+
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -369,6 +424,10 @@ interface Repository {
         val questions: List<ExportQuestion> = emptyList(),
         /** The live viewing records (slice 3b-1); a copy without contact details blanks their `withWhom`. */
         val viewings: List<ExportViewing> = emptyList(),
+        /** The live areas, places and area notes (slice 4a); a copy keeps them, with or without contact details. */
+        val areas: List<ExportArea> = emptyList(),
+        val places: List<ExportPlace> = emptyList(),
+        val areaNotes: List<ExportAreaNote> = emptyList(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -408,6 +467,10 @@ interface Repository {
         val questions: Map<String, Long> = emptyMap(),
         /** Every viewing record here, deleted ones too, by id (slice 3b-1): merged by id. */
         val viewings: Map<String, Long> = emptyMap(),
+        /** Every area, place and area note record here, deleted ones too, by id (slice 4a): merged by id. */
+        val areas: Map<String, Long> = emptyMap(),
+        val places: Map<String, Long> = emptyMap(),
+        val areaNotes: Map<String, Long> = emptyMap(),
     )
 
     /** What an import actually managed to write. */
@@ -446,9 +509,15 @@ interface Repository {
         val questions: Int = 0,
         /** Viewings written (slice 3b-1), new and updated together. */
         val viewings: Int = 0,
+        /** Areas, places and area notes written (slice 4a), new and updated together. */
+        val areas: Int = 0,
+        val places: Int = 0,
+        val areaNotes: Int = 0,
     ) {
         /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences + questions + viewings
+        val rows: Int
+            get() = houses + visits + photos + brokers + criteria + preferences + questions + viewings + areas + places +
+                areaNotes
     }
 
     /**

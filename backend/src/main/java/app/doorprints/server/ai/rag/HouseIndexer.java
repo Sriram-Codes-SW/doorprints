@@ -106,6 +106,18 @@ public class HouseIndexer {
                 .filter(Objects::nonNull).collect(Collectors.groupingBy(ViewingLine::houseId));
     }
 
+    /** The live areas, places and area notes (slice 4a): three queries of small types, read once per index run. */
+    private AreaLines.All areaData() {
+        if (records == null) return AreaLines.All.NONE;
+        return new AreaLines.All(
+                records.findByKeyTypeAndDeletedFalse("area").stream().map(r -> AreaLines.Area.from(r, json))
+                        .filter(Objects::nonNull).toList(),
+                records.findByKeyTypeAndDeletedFalse("place").stream().map(r -> AreaLines.Place.from(r, json))
+                        .filter(Objects::nonNull).toList(),
+                records.findByKeyTypeAndDeletedFalse("areanote").stream().map(r -> AreaLines.Note.from(r, json))
+                        .filter(Objects::nonNull).toList());
+    }
+
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onHouseChanged(HouseChangedEvent event) {
@@ -140,7 +152,7 @@ public class HouseIndexer {
             return;
         }
         vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId),
-                viewingsByHouse().getOrDefault(houseId.toString(), List.of()))));
+                viewingsByHouse().getOrDefault(houseId.toString(), List.of()), areaData())));
     }
 
     /**
@@ -157,6 +169,7 @@ public class HouseIndexer {
         int batches = (live.size() + BATCH - 1) / BATCH;
         // Read once for the whole run, not per batch.
         var viewingsByHouse = batches == 0 ? Map.<String, List<ViewingLine>>of() : viewingsByHouse();
+        var areaData = batches == 0 ? AreaLines.All.NONE : areaData();
         int indexed = 0;
         int failedHouses = 0;
         int failedBatches = 0;
@@ -174,7 +187,7 @@ public class HouseIndexer {
                 for (var house : slice) {
                     docs.add(HouseDocuments.toDocument(HouseDto.from(house),
                             visitsByHouse.getOrDefault(house.getId(), List.of()),
-                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of())));
+                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData));
                 }
                 vectorStore.add(docs);
                 indexed += slice.size();

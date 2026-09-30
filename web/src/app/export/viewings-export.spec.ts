@@ -62,7 +62,7 @@ describe('viewings in the copies', () => {
     expect(only.format).toBe(BACKUP_FORMAT_V2);
     expect(Object.keys(only)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos', 'viewings']);
     expect(Object.keys(buildBackupData(fixtureBundle()))).toEqual([
-      'format', 'exportedAt', 'houses', 'visits', 'photos', 'brokers', 'criteria', 'preferences', 'questions', 'viewings',
+      'format', 'exportedAt', 'houses', 'visits', 'photos', 'brokers', 'criteria', 'preferences', 'questions', 'viewings', 'areas', 'places', 'areaNotes',
     ]);
   });
 

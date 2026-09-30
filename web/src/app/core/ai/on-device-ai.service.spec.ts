@@ -44,7 +44,7 @@ describe('OnDeviceAiService (ADR-26)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [] } },
+        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [], areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
       ],
     });
     http = TestBed.inject(HttpTestingController);

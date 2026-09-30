@@ -587,4 +587,83 @@ class BackupMapperTest {
         record.setDeleted(false);
         return record;
     }
+
+    // ---- slice 4a: areas, places and area notes -------------------------------------------------------------------
+
+    private static Record small(String type, String id, String payload, Instant updatedAt, boolean deleted) {
+        var record = new Record(new RecordKey(type, id));
+        record.setPayload(payload);
+        record.setUpdatedAt(updatedAt);
+        record.setDeleted(deleted);
+        return record;
+    }
+
+    private static BackupData withSmall(List<Record> areas, List<Record> places, List<Record> notes) {
+        return BackupMapper.toBackup(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), areas, places, notes, JSON, EXPORTED_AT);
+    }
+
+    /** Nothing (or only tombstones) is a /1 document without the keys; any one of the three makes it /2. */
+    @Test
+    void withoutAreasPlacesOrNotesTheCopyIsVersionOneAndEachAloneMakesItVersionTwo() {
+        var gone = small("area", "a_gone", "{\"name\":\"A\",\"lat\":1,\"lon\":2}", EXPORTED_AT, true);
+        var none = withSmall(List.of(gone), List.of(), List.of());
+        assertThat(none.format()).isEqualTo(BackupFormat.ID);
+        assertThat(JSON.writeValueAsString(none)).doesNotContain("areas").doesNotContain("places")
+                .doesNotContain("areaNotes");
+        var area = small("area", "a_1", "{\"name\":\"A\",\"lat\":1,\"lon\":2}", EXPORTED_AT, false);
+        var place = small("place", "p_1", "{\"name\":\"P\",\"lat\":1,\"lon\":2}", EXPORTED_AT, false);
+        var note = small("areanote", "n_1", "{\"street\":\"MG Road\",\"text\":\"T\"}", EXPORTED_AT, false);
+        assertThat(withSmall(List.of(area), List.of(), List.of()).format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(withSmall(List.of(), List.of(place), List.of()).format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(withSmall(List.of(), List.of(), List.of(note)).format()).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+    }
+
+    /** Ordered by updatedAt then id; keys in the format's order; enabled only when false; a bad radius reads as 500. */
+    @Test
+    void areasAreOrderedAndWrittenWithTheFormatsKeysAndEnabledOnlyWhenFalse() {
+        var early = EXPORTED_AT.minusSeconds(60);
+        var data = withSmall(List.of(
+                small("area", "a_b", "{\"name\":\"B\",\"lat\":12.5,\"lon\":77.5,\"radiusM\":1200,\"enabled\":false}",
+                        EXPORTED_AT, false),
+                small("area", "a_a", "{\"name\":\"A\",\"lat\":13,\"lon\":80,\"radiusM\":9000,\"enabled\":true}",
+                        EXPORTED_AT, false),
+                small("area", "a_0", "{\"name\":\"Z\",\"lat\":13,\"lon\":80,\"radiusM\":\"big\"}", early, false)),
+                List.of(), List.of());
+        assertThat(data.areas()).extracting(BackupArea::id).containsExactly("a_0", "a_a", "a_b");
+        assertThat(JSON.writeValueAsString(data.areas().get(2))).isEqualTo("{\"id\":\"a_b\",\"name\":\"B\","
+                + "\"lat\":12.5,\"lon\":77.5,\"radiusM\":1200,\"enabled\":false,\"updatedAt\":"
+                + EXPORTED_AT.toEpochMilli() + "}");
+        assertThat(JSON.writeValueAsString(data.areas().get(1))).doesNotContain("enabled").contains("\"radiusM\":500");
+        assertThat(data.areas().get(0).radiusM()).isEqualTo(500);
+    }
+
+    /** A stored record that the file rules would refuse is left out (or coerced), so an export always imports again. */
+    @Test
+    void anAreaPlaceOrNotePayloadThatWouldNotImportIsLeftOut() {
+        var data = withSmall(List.of(
+                small("area", "a_ok", "{\"name\":\"A\",\"lat\":13,\"lon\":80}", EXPORTED_AT, false),
+                small("area", "a_noname", "{\"name\":\" \",\"lat\":13,\"lon\":80}", EXPORTED_AT, false),
+                small("area", "a_long", "{\"name\":\"" + "N".repeat(101) + "\",\"lat\":13,\"lon\":80}", EXPORTED_AT, false),
+                small("area", "a_lat", "{\"name\":\"A\",\"lat\":91,\"lon\":80}", EXPORTED_AT, false),
+                small("area", "a_nolon", "{\"name\":\"A\",\"lat\":13}", EXPORTED_AT, false),
+                small("area", "a_text", "{\"name\":\"A\",\"lat\":\"13\",\"lon\":80}", EXPORTED_AT, false),
+                small("area", "a_json", "not json", EXPORTED_AT, false)),
+                List.of(small("place", "p_ok", "{\"name\":\"P\",\"lat\":13,\"lon\":80}", EXPORTED_AT, false),
+                        small("place", "p_long", "{\"name\":\"" + "P".repeat(61) + "\",\"lat\":13,\"lon\":80}", EXPORTED_AT, false),
+                        small("place", "p_lon", "{\"name\":\"P\",\"lat\":13,\"lon\":181}", EXPORTED_AT, false)),
+                List.of(small("areanote", "n_area", "{\"areaId\":\"a_gone\",\"text\":\"T\"}", EXPORTED_AT, false),
+                        small("areanote", "n_none", "{\"text\":\"T\"}", EXPORTED_AT, false),
+                        small("areanote", "n_both", "{\"areaId\":\"a_1\",\"street\":\"MG\",\"text\":\"T\"}", EXPORTED_AT, false),
+                        small("areanote", "n_blank", "{\"street\":\"MG\",\"text\":\"  \"}", EXPORTED_AT, false),
+                        small("areanote", "n_blankstreet", "{\"street\":\" \",\"text\":\"T\"}", EXPORTED_AT, false),
+                        small("areanote", "n_nulltarget", "{\"areaId\":null,\"text\":\"T\"}", EXPORTED_AT, false),
+                        small("areanote", "n_longtext", "{\"street\":\"MG\",\"text\":\"" + "T".repeat(1001) + "\"}", EXPORTED_AT, false),
+                        small("areanote", "n_longstreet", "{\"street\":\"" + "S".repeat(101) + "\",\"text\":\"T\"}", EXPORTED_AT, false)));
+        assertThat(data.areas()).extracting(BackupArea::id).containsExactly("a_ok");
+        assertThat(data.places()).extracting(BackupPlace::id).containsExactly("p_ok");
+        assertThat(data.areaNotes()).extracting(BackupAreaNote::id).containsExactly("n_area");
+        assertThat(JSON.writeValueAsString(data.areaNotes().getFirst())).isEqualTo("{\"id\":\"n_area\","
+                + "\"areaId\":\"a_gone\",\"text\":\"T\",\"updatedAt\":" + EXPORTED_AT.toEpochMilli() + "}");
+    }
 }

@@ -295,6 +295,10 @@ class BackupApiTest {
         for (int i = 0; i < questions.length(); i++) putQuestion(questions.getJSONObject(i));
         var viewings = sample.getJSONArray("viewings");
         for (int i = 0; i < viewings.length(); i++) putViewing(viewings.getJSONObject(i));
+        for (var list : List.of("areas", "places", "areaNotes")) {
+            var rows = sample.getJSONArray(list);
+            for (int i = 0; i < rows.length(); i++) putSmallRecord(SMALL_TYPES.get(list), rows.getJSONObject(i));
+        }
         var photos = sample.getJSONArray("photos");
         for (int i = 0; i < photos.length(); i++) {
             var photo = photos.getJSONObject(i);
@@ -337,6 +341,10 @@ class BackupApiTest {
         assertThat(count(preview, "brokers", "created")).isEqualTo(2);
         assertThat(count(preview, "questions", "created")).isEqualTo(3);
         assertThat(count(preview, "viewings", "created")).isEqualTo(2);
+        assertThat(count(preview, "areas", "created")).isEqualTo(2);
+        assertThat(count(preview, "places", "created")).isEqualTo(2);
+        assertThat(count(preview, "areaNotes", "created")).isEqualTo(2);
+        assertThat(smallRecords("area")).as("dry run writes no area").isEmpty();
         assertThat(viewingRecords()).as("dry run writes no viewing").isEmpty();
         assertThat(questionRecords()).as("dry run writes no question").isEmpty();
         assertThat(brokerRecords()).as("dry run writes no broker").isEmpty();
@@ -351,6 +359,9 @@ class BackupApiTest {
         assertThat(count(applied, "brokers", "created")).isEqualTo(2);
         assertThat(count(applied, "questions", "created")).isEqualTo(3);
         assertThat(count(applied, "viewings", "created")).isEqualTo(2);
+        assertThat(count(applied, "areas", "created")).isEqualTo(2);
+        assertThat(count(applied, "places", "created")).isEqualTo(2);
+        assertThat(count(applied, "areaNotes", "created")).isEqualTo(2);
         var problems = problems(applied);
         assertThat(problems).anyMatch(p -> p.contains("photo"));
         assertThat(problems).as("a three-house import still updates the AI index row by row")
@@ -1102,6 +1113,7 @@ class BackupApiTest {
         assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).as("no house written").isEmpty();
         assertThat(questionRecords()).as("no question written").isEmpty();
         assertThat(viewingRecords()).as("no viewing written").isEmpty();
+        for (var type : SMALL_TYPES.values()) assertThat(smallRecords(type)).as("no " + type + " written").isEmpty();
     }
 
     /** Questions are records of type question: merged by id, last write wins, exported back as /2 in payload order. */
@@ -1592,5 +1604,332 @@ class BackupApiTest {
         } finally {
             recordRepository.deleteAll(stored);
         }
+    }
+
+    // ---- slice 4a: areas, places and area notes --------------------------------------------------------------------
+
+    /** The backup list of each slice 4a type and its record type. */
+    private static final Map<String, String> SMALL_TYPES =
+            Map.of("areas", "area", "places", "place", "areaNotes", "areanote");
+
+    private void putSmallRecord(String type, JSONObject row) throws JSONException {
+        var payload = new JSONObject(row.toString());
+        var id = payload.remove("id");
+        var updatedAt = payload.remove("updatedAt");
+        var body = new JSONObject().put("type", type).put("id", id).put("payload", payload)
+                .put("updatedAt", Instant.ofEpochMilli(((Number) updatedAt).longValue()).toString());
+        api.put().uri("/api/records/{type}/{id}", type, id.toString()).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
+    }
+
+    private List<Map<String, Object>> smallRecords(String type) {
+        return api.get().uri("/api/records?since=0&type={t}", type).retrieve().body(LIST);
+    }
+
+    private static String areaRow(String id, String name, String lat, String lon, String radius, Instant updatedAt) {
+        return "{\"id\":\"" + id + "\",\"name\":\"" + name + "\",\"lat\":" + lat + ",\"lon\":" + lon
+                + (radius == null ? "" : ",\"radiusM\":" + radius) + ",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    private static String placeRow(String id, String name, String lat, String lon, Instant updatedAt) {
+        return "{\"id\":\"" + id + "\",\"name\":\"" + name + "\",\"lat\":" + lat + ",\"lon\":" + lon
+                + ",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    /** {@code target} is a whole JSON member such as {@code "street":"MG Road"}, or empty. */
+    private static String noteRow(String id, String target, String text, Instant updatedAt) {
+        return "{\"id\":\"" + id + "\"," + (target.isEmpty() ? "" : target + ",") + "\"text\":\"" + text
+                + "\",\"updatedAt\":" + updatedAt.toEpochMilli() + "}";
+    }
+
+    private static String backupWithSmall(String list, String rows) {
+        return backup("", "").replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS)
+                .replace("\"photos\":[]", "\"photos\":[],\"" + list + "\":[" + rows + "]");
+    }
+
+    /** The key names of one export list in the order written (JSONObject does not keep the order). */
+    private static List<String> keysInOrderOf(String exported, String list) {
+        var from = exported.substring(exported.indexOf("\"" + list + "\":"));
+        var keys = CanonicalSample.keysInOrder(from);
+        return keys.subList(1, keys.size()); // the first key is the list's own name
+    }
+
+    private String oneValidRow(String list, Instant at) {
+        return switch (list) {
+            case "areas" -> areaRow("a_0000aaaa", "Adyar", "13.0067", "80.2574", "500", at);
+            case "places" -> placeRow("p_0000aaaa", "Office", "13.0827", "80.2707", at);
+            default -> noteRow("n_0000aaaa", "\"street\":\"MG Road\"", "Noisy", at);
+        };
+    }
+
+    /** No area, place or note (or only tombstones) is a /1 document without the keys; each one alone makes it /2. */
+    @Test
+    void aCopyWithoutAreasPlacesOrNotesIsVersionOneAndEachAloneMakesItVersionTwo() throws JSONException {
+        var none = new JSONObject(export());
+        assertThat(none.getString("format")).isEqualTo(BackupFormat.ID);
+        for (var list : SMALL_TYPES.keySet()) assertThat(none.has(list)).isFalse();
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        for (var list : List.of("areas", "places", "areaNotes")) {
+            api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
+            postImport(backupWithSmall(list, oneValidRow(list, now)), false);
+            var exported = new JSONObject(export());
+            assertThat(exported.getString("format")).as(list).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+            assertThat(exported.getJSONArray(list).length()).isEqualTo(1);
+            for (var other : SMALL_TYPES.keySet()) if (!other.equals(list)) assertThat(exported.has(other)).isFalse();
+        }
+    }
+
+    /** Merged by id, last write wins; keys in the format's order; enabled only when false; notes carry one target. */
+    @Test
+    void areasPlacesAndNotesImportMergeByIdLastWriteWinsAndExportBack() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var file = new JSONObject(backupWithSmall("areas",
+                areaRow("a_0000bbbb", "Indiranagar", "12.9784", "77.6408", "1200", now).replace("\"radiusM\":1200",
+                        "\"radiusM\":1200,\"enabled\":false") + ","
+                        + areaRow("a_0000aaaa", "Adyar", "13.0067", "80.2574", "500", now.minusSeconds(60)).replace(
+                        "\"radiusM\":500", "\"radiusM\":500,\"enabled\":true")))
+                .put("places", new JSONArray("[" + placeRow("p_0000aaaa", "Office", "13.0827", "80.2707", now) + "]"))
+                .put("areaNotes", new JSONArray("[" + noteRow("n_0000bbbb", "\"street\":\"MG Road\"", "Noisy", now) + ","
+                        + noteRow("n_0000aaaa", "\"areaId\":\"a_0000aaaa\"", "Floods", now.minusSeconds(60)) + "]"))
+                .toString();
+        var preview = postImport(file, true);
+        assertThat(count(preview, "areas", "created")).isEqualTo(2);
+        assertThat(smallRecords("area")).as("dry run writes nothing").isEmpty();
+        var applied = postImport(file, false);
+        for (var list : List.of("areas", "places", "areaNotes")) {
+            assertThat(count(applied, list, "total")).as(list).isEqualTo(list.equals("places") ? 1 : 2);
+        }
+        var exported = export();
+        var areas = new JSONObject(exported).getJSONArray("areas");
+        assertThat(areas.getJSONObject(0).getString("id")).as("ordered by updatedAt then id").isEqualTo("a_0000aaaa");
+        assertThat(areas.getJSONObject(0).has("enabled")).as("enabled true is not written").isFalse();
+        assertThat(areas.getJSONObject(1).getBoolean("enabled")).isFalse();
+        assertThat(keysInOrderOf(exported, "areas").subList(0, 6))
+                .containsExactly("id", "name", "lat", "lon", "radiusM", "updatedAt");
+        assertThat(keysInOrderOf(exported, "areas").subList(6, 13))
+                .containsExactly("id", "name", "lat", "lon", "radiusM", "enabled", "updatedAt");
+        assertThat(keysInOrderOf(exported, "places").subList(0, 5)).containsExactly("id", "name", "lat", "lon", "updatedAt");
+        assertThat(keysInOrderOf(exported, "areaNotes")).containsExactly("id", "areaId", "text", "updatedAt", "id",
+                "street", "text", "updatedAt");
+        assertThat(CanonicalSample.keysInOrder(exported).indexOf("areas"))
+                .isGreaterThan(CanonicalSample.keysInOrder(exported).indexOf("exportedAt"));
+
+        assertThat(count(postImport(file, false), "areas", "unchanged")).isEqualTo(2);
+        var older = backupWithSmall("places", placeRow("p_0000aaaa", "Older", "1", "2", now.minusSeconds(30)));
+        assertThat(count(postImport(older, false), "places", "keptNewer")).isEqualTo(1);
+        var newer = backupWithSmall("places", placeRow("p_0000aaaa", "Newer", "14.5", "75.5", now.plusSeconds(30)));
+        assertThat(count(postImport(newer, false), "places", "updated")).isEqualTo(1);
+        var place = new JSONObject(export()).getJSONArray("places").getJSONObject(0);
+        assertThat(place.getString("name")).isEqualTo("Newer");
+        assertThat(place.getDouble("lat")).isEqualTo(14.5);
+    }
+
+    /** A deleted record (a tombstone) is made live again by a newer file, not by an older one; never deleted by a file. */
+    @Test
+    void aNewerFileRevivesADeletedAreaPlaceOrNote() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        for (var list : List.of("areas", "places", "areaNotes")) {
+            var type = SMALL_TYPES.get(list);
+            var id = new JSONObject(oneValidRow(list, now)).getString("id");
+            postImport(backupWithSmall(list, oneValidRow(list, now)), false);
+            api.delete().uri("/api/records/{t}/{id}", type, id).retrieve().toBodilessEntity();
+            assertThat(new JSONObject(export()).has(list)).as("a tombstone is not exported").isFalse();
+            var older = backupWithSmall(list, oneValidRow(list, now.plusSeconds(1)));
+            assertThat(count(postImport(older, false), list, "keptNewer")).as(list).isEqualTo(1);
+            assertThat(new JSONObject(export()).has(list)).isFalse();
+            var newer = backupWithSmall(list, oneValidRow(list, Instant.now().plusSeconds(20)));
+            assertThat(count(postImport(newer, false), list, "updated")).as(list).isEqualTo(1);
+            assertThat(new JSONObject(export()).getJSONArray(list).length()).isEqualTo(1);
+            assertThat(postImport(backupWithSmall(list, ""), false)).as("an empty list deletes nothing").isNotNull();
+            assertThat(new JSONObject(export()).getJSONArray(list).length()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void aBadOrRepeatedIdInAnAreaPlaceOrNoteRefusesTheWholeFile() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        for (var list : List.of("areas", "places", "areaNotes")) {
+            var good = oneValidRow(list, now);
+            for (var bad : new String[]{"has space", "a/b", "..", "x".repeat(65), ""}) {
+                assertRefused(backupWithSmall(list, good.replaceFirst("\"id\":\"[^\"]*\"", "\"id\":\"" + bad + "\"")),
+                        list + "[0].id is not a valid record id", bad.length() > 10 ? "xxxxxxxxxxxx" : null);
+            }
+            assertRefused(backupWithSmall(list, good + "," + good), list + "[1].id appears twice", null);
+            assertRefused(backupWithSmall(list, good.replaceFirst("\"id\":\"[^\"]*\",", "")),
+                    list + "[0].id is required", null);
+        }
+    }
+
+    @Test
+    void anAreaOrPlaceWithBadCoordinatesRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "A", "90.5", "80", "500", now)),
+                "areas[0].lat is out of range", null);
+        assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "A", "13", "-180.5", "500", now)),
+                "areas[0].lon is out of range", null);
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "A", "-91", "80", now)),
+                "places[0].lat is out of range", null);
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "A", "13", "181", now)),
+                "places[0].lon is out of range", null);
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "A", "13", "80", now)
+                .replace("\"lat\":13,", "")), "places[0].lat is required", null);
+        assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "A", "13", "80", "500", now)
+                .replace("\"lon\":80,", "")), "areas[0].lon is required", null);
+    }
+
+    @Test
+    void anAreaWithARadiusOutOfRangeRefusesTheWholeFile() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        for (var radius : new String[]{"0", "199", "2001", "-500", "100000"}) {
+            assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "A", "13", "80", radius, now)),
+                    "areas[0].radiusM must be 200..2000", null);
+        }
+        var edge = backupWithSmall("areas", areaRow("a_0000aaaa", "A", "13", "80", "200", now) + ","
+                + areaRow("a_0000bbbb", "B", "13", "80", "2000", now));
+        assertThat(count(postImport(edge, true), "areas", "created")).isEqualTo(2);
+        var none = backupWithSmall("areas", areaRow("a_0000aaaa", "A", "13", "80", null, now));
+        postImport(none, false);
+        assertThat(new JSONObject(export()).getJSONArray("areas").getJSONObject(0).getInt("radiusM"))
+                .as("a missing radius reads as 500").isEqualTo(500);
+    }
+
+    /** The caller's own words are never part of the refusal. */
+    @Test
+    void aBlankOrTooLongNameRefusesTheWholeFileWithoutEchoingIt() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "   ", "13", "80", "500", now)),
+                "areas[0].name is required", null);
+        assertRefused(backupWithSmall("areas", areaRow("a_0000aaaa", "N".repeat(101), "13", "80", "500", now)),
+                "areas[0].name is longer than 100 characters", "NNNNNNNNNNNNNNNN");
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "", "13", "80", now)),
+                "places[0].name is required", null);
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "P".repeat(61), "13", "80", now)),
+                "places[0].name is longer than 60 characters", "PPPPPPPPPPPPPPPP");
+        assertRefused(backupWithSmall("places", placeRow("p_0000aaaa", "x", "13", "80", now).replace("\"name\":\"x\",", "")),
+                "places[0].name is required", null);
+        var edge = backupWithSmall("areas", areaRow("a_0000aaaa", "N".repeat(100), "13", "80", "500", now));
+        assertThat(count(postImport(edge, true), "areas", "created")).isEqualTo(1);
+    }
+
+    @Test
+    void anAreaNoteWithNeitherBothOrABlankTargetOrTextRefusesTheWholeFile() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "", "Text", now)),
+                "areaNotes[0] needs exactly one of areaId and street", null);
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"areaId\":\"a_1\",\"street\":\"MG Road\"", "Text", now)),
+                "areaNotes[0] needs exactly one of areaId and street", "MG Road");
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"street\":\"  \"", "Text", now)),
+                "areaNotes[0].street must not be blank", null);
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"areaId\":\"\"", "Text", now)),
+                "areaNotes[0].areaId must not be blank", null);
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"street\":\"MG Road\"", "  ", now)),
+                "areaNotes[0].text is required", null);
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"street\":\"MG Road\"", "", now)
+                .replace("\"text\":\"\",", "")), "areaNotes[0].text is required", null);
+    }
+
+    @Test
+    void anAreaNoteWithATooLongTextStreetOrAreaIdRefusesTheWholeFileWithoutEchoingIt() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"street\":\"MG Road\"", "T".repeat(1001), now)),
+                "areaNotes[0].text is longer than 1000 characters", "TTTTTTTTTTTTTTTT");
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"street\":\"" + "S".repeat(101) + "\"", "Text", now)),
+                "areaNotes[0].street is longer than 100 characters", "SSSSSSSSSSSSSSSS");
+        assertRefused(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"areaId\":\"" + "I".repeat(65) + "\"", "Text", now)),
+                "areaNotes[0].areaId is longer than 64 characters", "IIIIIIIIIIIIIIII");
+        var edge = backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"areaId\":\"" + "I".repeat(64) + "\"", "T".repeat(1000), now));
+        assertThat(count(postImport(edge, true), "areaNotes", "created")).isEqualTo(1);
+    }
+
+    /** The app caps (20, 10, 200) refuse the file; the row cap of this suite (60) would answer 413 first, so call the service. */
+    @Test
+    void moreThanTheAppCapsOfAreasPlacesOrNotesRefuseTheWholeFile() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        var areas = new ArrayList<BackupArea>();
+        for (int i = 0; i <= BackupArea.MAX; i++) areas.add(new BackupArea("a_" + i, "A", 13.0, 80.0, 500, null, at));
+        var places = new ArrayList<BackupPlace>();
+        for (int i = 0; i <= BackupPlace.MAX; i++) places.add(new BackupPlace("p_" + i, "P", 13.0, 80.0, at));
+        var notes = new ArrayList<BackupAreaNote>();
+        for (int i = 0; i <= BackupAreaNote.MAX; i++) notes.add(new BackupAreaNote("n_" + i, null, "MG Road", "T", at));
+        assertThatThrownBy(() -> backupService.importBackup(data(areas, List.of(), List.of()), true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at most 20 areas");
+        assertThatThrownBy(() -> backupService.importBackup(data(List.of(), places, List.of()), true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at most 10 places");
+        assertThatThrownBy(() -> backupService.importBackup(data(List.of(), List.of(), notes), true))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at most 200 notes");
+        var report = backupService.importBackup(data(areas.subList(0, BackupArea.MAX),
+                places.subList(0, BackupPlace.MAX), notes.subList(0, BackupAreaNote.MAX)), true);
+        assertThat(report.areas().created()).isEqualTo(20);
+        assertThat(report.places().created()).isEqualTo(10);
+        assertThat(report.areaNotes().created()).isEqualTo(200);
+    }
+
+    private BackupData data(List<BackupArea> areas, List<BackupPlace> places, List<BackupAreaNote> notes) {
+        return new BackupData(BackupFormat.ID_WITH_BROKERS, Instant.now().toEpochMilli(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), areas, places, notes);
+    }
+
+    /** The record cap of 5 000 live rows per type: a server at it skips a new row (and says so) but still updates one. */
+    private void assertAServerAtTheRecordCapSkipsAnAdditionalRow(String type, String payload, BackupData withNewAndOld,
+            java.util.function.Function<ImportReport, ImportReport.Entity> entity, String message) {
+        var stamp = Instant.now().minus(Duration.ofHours(2));
+        var stored = new ArrayList<app.doorprints.server.record.Record>();
+        for (int i = 0; i < 5_000; i++) {
+            var record = new app.doorprints.server.record.Record(
+                    new app.doorprints.server.record.RecordKey(type, "full" + i));
+            record.setPayload(payload);
+            record.setUpdatedAt(stamp);
+            record.setSyncVersion(1);
+            stored.add(record);
+        }
+        recordRepository.saveAll(stored);
+        try {
+            var report = backupService.importBackup(withNewAndOld, true);
+            assertThat(entity.apply(report).skipped()).isEqualTo(1);
+            assertThat(entity.apply(report).updated()).isEqualTo(1);
+            assertThat(report.problems()).anyMatch(p -> p.contains(message)).noneMatch(p -> p.contains("extra"));
+        } finally {
+            recordRepository.deleteAll(stored);
+        }
+    }
+
+    @Test
+    void aServerHoldingFiveThousandAreasSkipsAnAdditionalOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAServerAtTheRecordCapSkipsAnAdditionalRow("area", "{\"name\":\"A\",\"lat\":13,\"lon\":80,\"radiusM\":500}",
+                data(List.of(new BackupArea("extra", "X", 13.0, 80.0, 500, null, at),
+                        new BackupArea("full0", "Y", 13.0, 80.0, 500, null, at)), List.of(), List.of()),
+                ImportReport::areas, "the most areas it keeps (5000)");
+    }
+
+    @Test
+    void aServerHoldingFiveThousandPlacesSkipsAnAdditionalOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAServerAtTheRecordCapSkipsAnAdditionalRow("place", "{\"name\":\"A\",\"lat\":13,\"lon\":80}",
+                data(List.of(), List.of(new BackupPlace("extra", "X", 13.0, 80.0, at),
+                        new BackupPlace("full0", "Y", 13.0, 80.0, at)), List.of()),
+                ImportReport::places, "the most places it keeps (5000)");
+    }
+
+    @Test
+    void aServerHoldingFiveThousandAreaNotesSkipsAnAdditionalOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAServerAtTheRecordCapSkipsAnAdditionalRow("areanote", "{\"street\":\"MG Road\",\"text\":\"T\"}",
+                data(List.of(), List.of(), List.of(new BackupAreaNote("extra", null, "A", "X", at),
+                        new BackupAreaNote("full0", null, "B", "Y", at))),
+                ImportReport::areaNotes, "the most area notes it keeps (5000)");
+    }
+
+    /** What the importer writes is what the apps read: keys in order, one note target, enabled only when false. */
+    @Test
+    void importedAreasPlacesAndNotesAreStoredWithTheRecordPayloadOrder() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        postImport(backupWithSmall("areas", areaRow("a_0000aaaa", "Adyar", "13.0067", "80.2574", "500", now)
+                .replace("\"radiusM\":500", "\"radiusM\":500,\"enabled\":false")), false);
+        postImport(backupWithSmall("areaNotes", noteRow("n_0000aaaa", "\"areaId\":\"a_0000aaaa\"", "Floods", now)), false);
+        assertThat(smallRecords("area").getFirst().get("payload").toString())
+                .contains("name=Adyar", "radiusM=500", "enabled=false");
+        assertThat(smallRecords("areanote").getFirst().get("payload").toString())
+                .contains("areaId=a_0000aaaa", "text=Floods").doesNotContain("street");
     }
 }
