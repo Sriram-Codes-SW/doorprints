@@ -131,9 +131,35 @@ class ViewingsScreenTest {
         assertTrue(v.id, Viewing.isAppId(v.id))
         assertEquals(listOf("h1", "SECOND", "PLANNED", "45", "1440", "Ravi", "Bring a tape"),
             listOf(v.houseId, v.kind, v.status, v.durationMin.toString(), v.remindMin.toString(), v.withWhom, v.notes))
-        // No Hunt reminder switch yet (slice 3c), and no status field.
+        // The Hunt reminder switch (slice 3c) is off unless turned on, and then not written; no status field.
         assertFalse(v.huntReminder)
+        assertFalse(kotlinx.serialization.json.Json.encodeToString(Viewing.serializer(), v).contains("huntReminder"))
         compose.waitUntil(5_000) { done }
+    }
+
+    @Test
+    fun theHuntReminderSwitchWritesHuntReminderOnlyWhenOn() {
+        // Slice 3c: *Offer Hunt mode before this viewing*, off by default; on, the record keeps `huntReminder: true`.
+        compose.setContent { ProvideAppServices { ViewingFormScreen(null, "h1", ViewingKind.FIRST, onDone = {}) } }
+        waitFor("Offer Hunt mode before this viewing")
+        compose.onNodeWithText("A notification 15 min before it starts asks whether to start Hunt mode. The time is in Settings > Hunt mode.")
+            .assertExists()
+        compose.onNodeWithText("Offer Hunt mode before this viewing").performScrollTo().performClick()
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+        until { it.size == 1 }
+        val v = viewings().single()
+        assertTrue(v.huntReminder)
+        assertTrue(kotlinx.serialization.json.Json.encodeToString(Viewing.serializer(), v).contains("\"huntReminder\":true"))
+    }
+
+    @Test
+    fun editingAViewingKeepsItsHuntReminderAndTurningItOffRemovesIt() {
+        seed(Viewing("v_00000001", "h1", now + 24 * hour, huntReminder = true))
+        compose.setContent { ProvideAppServices { ViewingFormScreen("v_00000001", null, onDone = {}) } }
+        waitFor("Offer Hunt mode before this viewing")
+        compose.onNodeWithText("Offer Hunt mode before this viewing").performScrollTo().performClick()
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+        until { !it.single().huntReminder }
     }
 
     @Test

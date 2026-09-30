@@ -990,4 +990,12 @@
     <string name="viewings_notify_rationale">பார்வையிடலுக்கு முன் Doorprints அறிவிப்பால் நினைவூட்டும்.</string>
     <string name="viewing_reminder_body">%1$s இல் பார்வையிடல், %2$s மணிக்கு</string>
     <string name="viewing_reminder_public">Doorprints நினைவூட்டல்</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="viewings_huntReminder">இந்தப் பார்வையிடலுக்கு முன் தேடல் பயன்முறையைப் பரிந்துரை</string>
+    <string name="viewings_huntReminder_hint">தொடங்குவதற்கு %1$d நிமிடம் முன் ஒரு அறிவிப்பு தேடல் பயன்முறையைத் தொடங்கவா என்று கேட்கும். நேரம் அமைப்புகள் &gt; தேடல் பயன்முறையில் உள்ளது.</string>
+    <string name="settings_hunt_remind">பார்வையிடல்களுக்கு முன் தேடல் பயன்முறையைப் பரிந்துரை</string>
+    <string name="settings_hunt_remind_hint">இது இயக்கப்பட்ட பார்வையிடலுக்கு முன், தேடல் பயன்முறையைத் தொடங்கவா என்று ஒரு அறிவிப்பு கேட்கும்.</string>
+    <string name="settings_hunt_remind_lead">எவ்வளவு நேரம் முன்</string>
+    <string name="settings_hunt_remind_min">%1$d நிமிடம் முன்</string>
+    <string name="viewing_hunt_reminder_body">%1$s இல் பார்வையிடல், %2$s மணிக்கு. தேடல் பயன்முறையைத் தொடங்கவா?</string>
 </resources>

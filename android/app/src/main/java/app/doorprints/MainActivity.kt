@@ -28,6 +28,8 @@ import app.doorprints.data.ConnectLink
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.AppLockHost
 import app.doorprints.shared.listing.ListingText
+import app.doorprints.shared.records.RecordRules
+import androidx.core.app.NotificationManagerCompat
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
 import app.doorprints.ui.ProvideAppServices
@@ -120,6 +122,16 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE)?.let {
             return if (isUuid(it)) DeepLink.OpenHouse(it) else null
         }
+        // A Hunt mode reminder (docs/11 5.16, slice 3c): its body opens the viewing; *Start Hunt mode* without location
+        // opens the Map, which asks first (5.18). Only a valid record id; the screens look it up locally.
+        intent.getStringExtra(Notifications.EXTRA_OPEN_VIEWING)?.let {
+            return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null
+        }
+        intent.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
+            if (!RecordRules.isValidId(it)) return null
+            NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
+            return DeepLink.StartHunt
+        }
         if (intent.hasExtra(Notifications.EXTRA_NEW_LAT)) {
             val lat = intent.getDoubleExtra(Notifications.EXTRA_NEW_LAT, Double.NaN)
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
@@ -141,6 +153,8 @@ class MainActivity : ComponentActivity() {
             Notifications.EXTRA_NEW_LAT,
             Notifications.EXTRA_NEW_LON,
             Notifications.EXTRA_VISIT_ID,
+            Notifications.EXTRA_OPEN_VIEWING,
+            Notifications.EXTRA_START_HUNT,
         )
     }
 }

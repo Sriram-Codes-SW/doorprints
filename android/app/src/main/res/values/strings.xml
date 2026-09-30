@@ -122,4 +122,10 @@
     <string name="notif_viewing_directions">Directions</string>
     <string name="notif_viewing_questions">Questions</string>
     <string name="notif_viewing_house_gone">a house that is gone</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30). -->
+    <string name="notif_channel_hunt_reminders">Hunt mode reminders</string>
+    <string name="notif_channel_hunt_reminders_desc">Offers Hunt mode before a viewing</string>
+    <string name="notif_hunt_reminder">Viewing at %1$s in %2$d min. Start Hunt mode?</string>
+    <string name="notif_hunt_reminder_start">Start Hunt mode</string>
+    <string name="notif_hunt_reminder_dismiss">Dismiss</string>
 </resources>

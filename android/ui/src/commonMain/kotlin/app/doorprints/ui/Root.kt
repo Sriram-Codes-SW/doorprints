@@ -85,6 +85,15 @@ sealed interface DeepLink {
 
     /** A connect link from the server's owner page (its QR code), already checked ([ConnectLink.parse]). */
     data class Connect(val link: ConnectLink) : DeepLink
+
+    /** A viewing's form, from a tapped Hunt mode reminder (docs/11 5.16, slice 3c); [id] is checked by the platform. */
+    data class OpenViewing(val id: String) : DeepLink
+
+    /**
+     * *Start Hunt mode* from a reminder while location is not granted (5.16, 5.18): the Map, which asks for location
+     * as its own Hunt switch does (the person tapped to start it) and then starts Hunt mode.
+     */
+    data object StartHunt : DeepLink
 }
 
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
@@ -235,6 +244,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // A connect link waiting for *Connect* or *Not now* (docs/03 §12.1). Plain remember on purpose: its invite is a
         // one-time secret and stays out of the saved-state Bundle, so a rotation closes the question (scan again).
         var pendingConnect by remember { mutableStateOf<ConnectLink?>(null) }
+        // *Start Hunt mode* from a reminder, waiting for the Map to ask for location and start it (slice 3c).
+        var huntRequested by remember { mutableStateOf(false) }
         LaunchedEffect(deepLink) {
             if (deepLink == null) return@LaunchedEffect
             // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
@@ -281,6 +292,13 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         if (features.map) mapAddTip = true
                         nav.openTab("map")
                     }
+                }
+                is DeepLink.OpenViewing -> {
+                    if (!onTop(Routes.VIEWING, "id", d.id)) nav.navigate(Routes.viewing(d.id))
+                }
+                DeepLink.StartHunt -> {
+                    huntRequested = true
+                    nav.openTab("map")
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
@@ -375,6 +393,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         showAddTip = mapAddTip,
                         onAddTipShown = { mapAddTip = false },
                         addTipForListing = listingPending,
+                        huntRequest = huntRequested,
+                        onStartHuntHandled = { huntRequested = false },
                         deletedHouse = deleted,
                         onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
                     )
