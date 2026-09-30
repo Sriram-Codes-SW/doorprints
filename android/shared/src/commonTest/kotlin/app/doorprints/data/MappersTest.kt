@@ -159,8 +159,8 @@ class MappersTest {
     @Test
     fun aServerThatWritesMetaUpdatedAtAsAnInstantStillSyncs() {
         val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-        val iso = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":\"2026-10-01T00:10:00Z\"}")
-        assertEquals(1_790_813_400_000L, iso.metaUpdatedAt)
+        val iso = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":\"2026-09-21T14:13:20Z\"}")
+        assertEquals(1_790_000_000_000L, iso.metaUpdatedAt)
         val number = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":5}")
         assertEquals(5L, number.metaUpdatedAt)
         val absent = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":null}")
