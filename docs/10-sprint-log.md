@@ -2350,7 +2350,11 @@ indicator is iOS's own sign that the app uses location. What the lock screen sho
 **How it was verified:** on Linux, `tools/check.sh android ios guide licence` (the Android command with the screenshot
 verify, `StringParityTest` over the shared keys, the iOS main and test klibs cross-compiled, which caught two
 cinterop names: `CLActivityType` and `UNAuthorizationStatus` are integer typealiases, not enums). The adapter, the
-notifications, the simulated location and the new gate run for the first time in CI on this branch. **Not yet:**
+notifications, the simulated location and the new gate ran for the first time in CI on this branch: the first run
+(`e9949ad`) timed out in `hunt` with every other check passing, since a fixed simulated location is delivered once,
+at the start of updates, before the engine's house list had loaded; the smoke now steps the location about 11 m every
+10 s while it waits, and the adapter leaves `DOORPRINTS-HUNT` breadcrumbs (the start, each fix's accuracy, an error's
+code, the stop; debug binaries only) in the smoke's artifact. **Not yet:**
 TC-M-31, the owner's walk with an iPhone (background execution with the screen off, the alerts' timing, the battery
 stop, the trace's line).
 

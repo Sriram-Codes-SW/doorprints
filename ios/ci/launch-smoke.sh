@@ -140,6 +140,13 @@ for ((waited = 0; waited < wait_seconds; waited++)); do
   elif [ "$seen_running" = 1 ] || [ "$waited" -ge 10 ]; then
     break  # the app ended (or never showed up) before the self-check finished
   fi
+  # Hunt mode's check: a fresh fix every 10 s, the location stepping about 11 m east and back, because a fixed
+  # location is delivered once, at the start of updates, which can be before the engine has loaded the house (the
+  # first CI run timed out that way); on a phone the fixes keep coming by themselves.
+  if (( waited % 10 == 5 )); then
+    if (( (waited / 10) % 2 == 0 )); then lon=77.6402; else lon=77.6401; fi
+    xcrun simctl location "$udid" set "12.9701,$lon" 2>/dev/null || true
+  fi
   sleep 1
 done
 # The app may have logged its last line just before it ended.
