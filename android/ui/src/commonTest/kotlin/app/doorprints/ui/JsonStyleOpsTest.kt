@@ -204,10 +204,17 @@ class JsonStyleOpsTest {
             val byStatus = radius[4 + 2 * i].jsonArray
             assertEquals(r.shortlisted, byStatus[3].jsonPrimitive.content.toFloat())
             assertEquals(r.rejected, byStatus[5].jsonPrimitive.content.toFloat())
-            assertEquals(r.new, byStatus[6].jsonPrimitive.content.toFloat())
+            // Slice 5: TAKEN the size of SHORTLISTED, NOT_CHOSEN of REJECTED.
+            assertEquals(listOf("TAKEN", "NOT_CHOSEN"), listOf(6, 8).map { byStatus[it].jsonPrimitive.content })
+            assertEquals(r.shortlisted, byStatus[7].jsonPrimitive.content.toFloat())
+            assertEquals(r.rejected, byStatus[9].jsonPrimitive.content.toFloat())
+            assertEquals(r.new, byStatus[10].jsonPrimitive.content.toFloat())
         }
         val colors = dots["paint"]!!.jsonObject["circle-color"]!!.jsonArray
-        assertEquals(listOf("#1a7a43", "#b3261e", "#3c5a99"), listOf(3, 5, 6).map { colors[it].jsonPrimitive.content })
+        assertEquals(
+            listOf("#1a7a43", "#b3261e", "#6b3fa0", "#5f6368", "#3c5a99"),
+            listOf(3, 5, 7, 9, 10).map { colors[it].jsonPrimitive.content },
+        )
         // FR-068: an approximate house has no fill and its ring in the status colour; the others a white ring.
         val opacity = dots["paint"]!!.jsonObject["circle-opacity"]!!.jsonArray
         assertEquals("case", opacity[0].jsonPrimitive.content)

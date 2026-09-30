@@ -138,7 +138,7 @@ class MappersTest {
         val converters = Converters()
         assertEquals(moveIn, converters.jsonToMoveIn(converters.moveInToJson(moveIn)))
         assertNull(converters.moveInToJson(MoveIn()))
-        assertEquals(listOf("MOVE_IN", "damp"), converters.jsonToTags(converters.tagsToJson(listOf("MOVE_IN", "damp"))))
+        assertEquals(listOf("MOVE_IN", "damp corner"), converters.jsonToTags(converters.tagsToJson(listOf("MOVE_IN", "damp corner"))))
         assertNull(converters.tagsToJson(emptyList()))
         assertNull(converters.jsonToTags("not json"))
         // A photo's meta: pulled coerced, written into the row, sent as the PUT body, and exported only when set.
