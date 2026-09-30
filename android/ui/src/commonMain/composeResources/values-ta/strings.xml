@@ -689,4 +689,35 @@
     <string name="house_dup_text">‘%1$s’-க்கு இதே இணைப்பு உள்ளது. அதைத் திறக்கவா, அல்லது பட்டியலைப் புதிய வீடாக மீண்டும் சேர்க்கவா?</string>
     <string name="house_dup_open">திற</string>
     <string name="house_dup_add">எப்படியும் சேர்</string>
+    <!-- Slice 1a of docs/11 5.30 (2026-09-30): under review. -->
+    <string name="house_area">கார்பெட் பரப்பு (சதுர அடி)</string>
+    <string name="house_cost">செலவு</string>
+    <string name="house_deposit">முன்பணம் (₹)</string>
+    <string name="house_deposit_months">முன்பணம் (மாதங்கள்)</string>
+    <string name="house_maintenance">பராமரிப்பு (₹ மாதத்திற்கு)</string>
+    <string name="house_maintenance_included">வாடகையில் அடங்கும்</string>
+    <string name="house_brokerage">தரகு (₹)</string>
+    <string name="house_brokerage_months">தரகு (மாதங்கள்)</string>
+    <string name="house_lock_in">லாக்-இன் (மாதங்கள்)</string>
+    <string name="house_notice">நோட்டீஸ் (மாதங்கள்)</string>
+    <string name="house_available_from">எப்போதிலிருந்து கிடைக்கும்</string>
+    <string name="house_available_pick">தேதியைத் தேர்வுசெய்</string>
+    <string name="house_available_format">YYYY-MM-DD</string>
+    <string name="house_my_offer">என் சலுகை (₹)</string>
+    <string name="house_agreed_price">ஒப்புக்கொண்ட விலை (₹)</string>
+    <string name="house_cost_monthly">மாதச் செலவு %1$s</string>
+    <string name="house_cost_move_in">குடியேற %1$s</string>
+    <string name="house_cost_per_sqft">சதுர அடிக்கு %1$s</string>
+    <string name="house_approx">தோராயமான இருப்பிடம்</string>
+    <string name="house_approx_hint">குறி ஒரு வளையமாகக் காட்டப்படும்; ஹன்ட் முறை இங்கே எச்சரிக்காது.</string>
+    <string name="paste_field_area">கார்பெட் பரப்பு</string>
+    <string name="compare_area">கார்பெட் பரப்பு</string>
+    <string name="compare_monthly_cost">மாதச் செலவு</string>
+    <string name="compare_move_in">குடியேற</string>
+    <string name="compare_per_sqft">சதுர அடிக்கு</string>
+    <string name="compare_available_from">எப்போதிலிருந்து கிடைக்கும்</string>
+    <string name="compare_agreed_price">ஒப்புக்கொண்ட விலை</string>
+    <string name="common_sqft">%1$s சதுர அடி</string>
+    <string name="legend_approx">தோராயம்</string>
+    <string name="common_ok">சரி</string>
 </resources>

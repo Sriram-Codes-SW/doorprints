@@ -162,6 +162,7 @@ export class OnDeviceAiService {
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
       status: h.status, price: h.price, priceType: h.priceType, bedrooms: h.bedrooms, rating: h.rating,
+      areaSqft: h.areaSqft, cost: h.cost,
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,
       checklist: h.checklist, visits: byHouse.get(h.id) ?? [],
     }));

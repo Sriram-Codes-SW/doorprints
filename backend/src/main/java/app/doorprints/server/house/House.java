@@ -19,6 +19,8 @@
 package app.doorprints.server.house;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -55,6 +57,13 @@ public class House {
     private String contactPhone;
     private String listingUrl;
     private String notes;
+    /* Slice 1a of the Sprint 4b data model (V7): the house's own values, all optional. */
+    private Integer areaSqft;
+    private String locationSource;
+    /** The {@link HouseCost} as compact JSON text, null for no cost; stored as sent, like a record payload. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String cost;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "house_checklist", joinColumns = @JoinColumn(name = "house_id"))
@@ -80,8 +89,8 @@ public class House {
 
     /**
      * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
-     * details, prices and the checklist (threat model F-16, PRV-005). The location stays because the columns are
-     * NOT NULL, but it is reset to 0,0.
+     * details, prices, the slice 1a values (area, location source, cost) and the checklist (threat model F-16,
+     * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
      */
     public void purgeContent() {
         label = "";
@@ -98,6 +107,9 @@ public class House {
         contactPhone = null;
         listingUrl = null;
         notes = null;
+        areaSqft = null;
+        locationSource = null;
+        cost = null;
         checklist.clear();
     }
 
@@ -132,6 +144,12 @@ public class House {
     public void setListingUrl(String listingUrl) { this.listingUrl = listingUrl; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public Integer getAreaSqft() { return areaSqft; }
+    public void setAreaSqft(Integer areaSqft) { this.areaSqft = areaSqft; }
+    public String getLocationSource() { return locationSource; }
+    public void setLocationSource(String locationSource) { this.locationSource = locationSource; }
+    public String getCost() { return cost; }
+    public void setCost(String cost) { this.cost = cost; }
     public Map<String, Integer> getChecklist() { return checklist; }
     public void setChecklist(Map<String, Integer> checklist) {
         this.checklist.clear();

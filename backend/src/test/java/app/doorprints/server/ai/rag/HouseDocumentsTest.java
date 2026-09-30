@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.rag;
 
+import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitDto;
@@ -36,7 +37,7 @@ class HouseDocumentsTest {
     private final UUID id = UUID.randomUUID();
     private final HouseDto house = new HouseDto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
             HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4, "Ramesh", "+91 98450 12345", null,
-            "Great water pressure", Map.of("water", 5, "parking", 2), null, null, false, 7, null);
+            "Great water pressure", null, null, null, Map.of("water", 5, "parking", 2), null, null, false, 7, null);
 
     @Test
     void oneLabelledDocumentPerHouseWithIdAsDocumentId() {
@@ -66,7 +67,7 @@ class HouseDocumentsTest {
                 "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345",
                 "https://example.com/l/9845012345",
                 "Ramesh said water is fine. Call ramesh on 98450-12345 or his wife on +91 99001 23456 after 6.",
-                Map.of("Ramesh Kumar approved", 5), null, null, false, 7, null);
+                null, null, null, Map.of("Ramesh Kumar approved", 5), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(leaky, List.of());
 
@@ -86,7 +87,7 @@ class HouseDocumentsTest {
     void labelNamedAfterTheOwnersFirstNameLosesItInTextAndMetadata() {
         var h = new HouseDto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345", null, "Kumar is fine",
-                Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
+                null, null, null, Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(h, List.of());
 
@@ -102,7 +103,7 @@ class HouseDocumentsTest {
     void careOfAddressWithTheOwnersFullNameLosesItInTextAndMetadata() {
         var h = new HouseDto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
                 "Kumar Ramesh layout", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Mr. Ramesh Kumar",
-                "+91 98450 12345", null, "Fine", Map.of(), null, null, false, 7, null);
+                "+91 98450 12345", null, "Fine", null, null, null, Map.of(), null, null, false, 7, null);
 
         var doc = HouseDocuments.toDocument(h, List.of());
 
@@ -115,10 +116,43 @@ class HouseDocumentsTest {
                 .allSatisfy(v -> assertThat(String.valueOf(v)).doesNotContainIgnoringCase("Ramesh"));
     }
 
+    /**
+     * Slice 1a: the carpet area and the cost lines, in the words the on-device {@code AiHouse} uses too. Rupees win
+     * over months when both are set; {@code myOffer} never goes to the provider (docs/11 section 5.30 item 5).
+     */
+    @Test
+    void carpetAreaAndCostLinesAreIndexedButNeverMyOffer() {
+        var cost = new HouseCost(64000L, 3, 2500L, false, null, 1, 11, 2, "2026-10-15", 30000L, 31000L);
+        var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
+                null, null, null, null, null, 1150, "GPS", cost, Map.of(), null, null, false, 1, null);
+
+        var text = HouseDocuments.text(h, List.of());
+
+        assertThat(text)
+                .contains("Carpet area: 1150 sq ft\n")
+                .contains("Deposit: Rs 64000\n")
+                .contains("Maintenance: Rs 2500 per month (not included)\n")
+                .contains("Brokerage: 1 month\n")
+                .contains("Lock-in: 11 months\n")
+                .contains("Notice: 2 months\n")
+                .contains("Available from: 2026-10-15\n")
+                .contains("Agreed price: Rs 31000\n")
+                .doesNotContain("30000").doesNotContain("offer").doesNotContain("Offer");
+        // Months when there are no rupees, "included" when the rent covers the maintenance, and no line for a
+        // field that is not set.
+        var sale = new HouseCost(null, 2, 2500L, true, 25000L, null, null, null, null, null, null);
+        var saleText = HouseDocuments.text(new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null,
+                null, null, null, null, null, null, null, null, sale, Map.of(), null, null, false, 1, null), List.of());
+        assertThat(saleText).contains("Deposit: 2 months\n").contains("Maintenance: Rs 2500 per month (included)\n")
+                .contains("Brokerage: Rs 25000\n").doesNotContain("Lock-in").doesNotContain("Notice")
+                .doesNotContain("Available").doesNotContain("Agreed").doesNotContain("Carpet");
+        assertThat(HouseDocuments.text(house, List.of())).doesNotContain("Deposit").doesNotContain("Carpet");
+    }
+
     @Test
     void metadataSkipsNullsAndNotesAreCapped() {
         var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
-                "n".repeat(10_000), Map.of(), null, null, false, 1, null);
+                "n".repeat(10_000), null, null, null, Map.of(), null, null, false, 1, null);
         var doc = HouseDocuments.toDocument(bare, List.of());
         assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label");
         assertThat(doc.getText()).contains("Visits: not visited yet");

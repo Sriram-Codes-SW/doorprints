@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.TrackPointEntity
+import app.doorprints.shared.model.LocationSource
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -153,6 +154,8 @@ fun housesGeoJson(houses: List<HouseEntity>): String = buildJsonObject {
                         put("label", h.label)
                         put("status", h.status.name)
                         put("indic", hasIndicScript(h.label))
+                        // An approximate spot (FR-068) is drawn as a ring: no fill, the stroke in the status colour.
+                        put("approx", h.locationSource == LocationSource.APPROX)
                     }
                 },
             )
@@ -201,20 +204,28 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
             add(byStatus(JsonPrimitive(r.shortlisted), JsonPrimitive(r.rejected), JsonPrimitive(r.new)))
         }
     }
+    val approx = buildJsonArray {
+        add("to-boolean")
+        add(buildJsonArray { add("get"); add("approx") })
+    }
+    fun ifApprox(then: JsonElement, otherwise: JsonElement) = buildJsonArray {
+        add("case")
+        add(approx)
+        add(then)
+        add(otherwise)
+    }
+    val statusColor = byStatus(
+        JsonPrimitive(cssColor(MarkerColors.SHORTLISTED)),
+        JsonPrimitive(cssColor(MarkerColors.REJECTED)),
+        JsonPrimitive(cssColor(MarkerColors.NEW)),
+    )
     val dots = buildJsonObject {
         put("id", HOUSE_DOTS_LAYER)
         put("type", "circle")
         put("source", HOUSES_SOURCE)
         putJsonObject("paint") {
             put("circle-radius", radius)
-            put(
-                "circle-color",
-                byStatus(
-                    JsonPrimitive(cssColor(MarkerColors.SHORTLISTED)),
-                    JsonPrimitive(cssColor(MarkerColors.REJECTED)),
-                    JsonPrimitive(cssColor(MarkerColors.NEW)),
-                ),
-            )
+            put("circle-color", statusColor)
             put(
                 "circle-stroke-width",
                 byStatus(
@@ -223,11 +234,12 @@ fun houseLayersJson(labelSizeSp: Float): List<JsonObject> {
                     JsonPrimitive(MARKER_STROKE_DP),
                 ),
             )
+            // The approximate marker (FR-068): the same radius, no fill, the ring in the status colour.
             put(
                 "circle-opacity",
-                byStatus(JsonPrimitive(1f), JsonPrimitive(MARKER_OPACITY_REJECTED), JsonPrimitive(1f)),
+                ifApprox(JsonPrimitive(0f), byStatus(JsonPrimitive(1f), JsonPrimitive(MARKER_OPACITY_REJECTED), JsonPrimitive(1f))),
             )
-            put("circle-stroke-color", "#ffffff")
+            put("circle-stroke-color", ifApprox(statusColor, JsonPrimitive("#ffffff")))
         }
     }
     val labels = buildJsonObject {

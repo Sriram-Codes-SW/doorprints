@@ -20,6 +20,7 @@ package app.doorprints.server.backup;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseStatus;
 
 import java.util.Map;
@@ -60,8 +61,8 @@ import java.util.UUID;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
-        "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "checklist", "createdAt",
-        "updatedAt"})
+        "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
+        "cost", "checklist", "createdAt", "updatedAt"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -80,6 +81,11 @@ public record BackupHouse(
         String contactPhone,
         String listingUrl,
         String notes,
+        /* Slice 1a (docs/11 section 5.30 item 1): the house's own values, each absent when unknown. A cost with no
+           field is left out, never written as {}; an empty object in a file is read as no cost. */
+        Integer areaSqft,
+        String locationSource,
+        HouseCost cost,
         /* Always written, possibly empty; keys are sorted so two copies of the same data are the same document.
            Null only on the way in (absent or null in the file), which BackupService reads as {}: see the class
            comment. */

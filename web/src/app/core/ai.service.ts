@@ -56,6 +56,8 @@ export interface HouseDraft {
   price: number | null;
   priceType: PriceType | null;
   bedrooms: number | null;
+  /** Carpet area in sq ft (slice 1a): the no-AI parser reads it from "1150 sq ft"; the server's draft carries it too. */
+  areaSqft: number | null;
   contactName: string | null;
   contactPhone: string | null;
   listingUrl: string | null;

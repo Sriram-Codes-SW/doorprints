@@ -268,6 +268,9 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
         Expression.zoom(),
         *MARKER_RADII.map { r -> Expression.stop(r.zoom, byStatus(r.shortlisted, r.rejected, r.new)) }.toTypedArray(),
     )
+    // An approximate spot (FR-068, slice 1a): the same radius, no fill, the ring in the status colour, so the marker
+    // says "somewhere here" without a colour of its own (the legend's "Approximate"); iOS reads houseLayersJson.
+    val approx = Expression.toBool(Expression.get("approx"))
     style.addLayer(
         CircleLayer(HOUSE_DOTS_LAYER, HOUSES_SOURCE).withProperties(
             PropertyFactory.circleRadius(radius),
@@ -280,13 +283,18 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
                 ),
             ),
             PropertyFactory.circleOpacity(
-                Expression.match(
-                    Expression.get("status"),
-                    Expression.literal(1f),
-                    Expression.stop("REJECTED", MARKER_OPACITY_REJECTED),
+                Expression.switchCase(
+                    approx, Expression.literal(0f),
+                    Expression.match(
+                        Expression.get("status"),
+                        Expression.literal(1f),
+                        Expression.stop("REJECTED", MARKER_OPACITY_REJECTED),
+                    ),
                 ),
             ),
-            PropertyFactory.circleStrokeColor(0xFFFFFFFF.toInt()),
+            PropertyFactory.circleStrokeColor(
+                Expression.switchCase(approx, statusColor, Expression.color(0xFFFFFFFF.toInt())),
+            ),
         )
     )
     // House names as labels. MapLibre's symbol layer may not shape Devanagari, Tamil or Telugu conjuncts: README

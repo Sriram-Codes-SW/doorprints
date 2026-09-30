@@ -29,6 +29,7 @@ export type FillField =
   | 'price'
   | 'priceType'
   | 'bedrooms'
+  | 'areaSqft'
   | 'contactName'
   | 'contactPhone'
   | 'listingUrl';
@@ -41,6 +42,7 @@ export const FIELD_LABEL: Readonly<Record<FillField, TKey>> = {
   price: 'house.price',
   priceType: 'house.priceType',
   bedrooms: 'house.bhk',
+  areaSqft: 'house.areaSqft',
   contactName: 'house.contactName',
   contactPhone: 'house.contactPhone',
   listingUrl: 'house.listingUrl',
@@ -100,6 +102,7 @@ export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillRes
   consider('price', draft.price, isEmpty(current.price));
   consider('priceType', draft.priceType, isEmpty(current.priceType) || isEmpty(current.price));
   consider('bedrooms', draft.bedrooms, isEmpty(current.bedrooms));
+  consider('areaSqft', draft.areaSqft, isEmpty(current.areaSqft));
   consider('contactName', draft.contactName, isEmpty(current.contactName));
   consider('contactPhone', draft.contactPhone, isEmpty(current.contactPhone));
   consider('listingUrl', draft.listingUrl, isEmpty(current.listingUrl));

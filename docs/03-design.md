@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.49 |
+| Version | 0.50 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -61,6 +61,7 @@
 | 0.47 | 2026-09-30 | Claude (Code), lead | New **ADR-27**: sharing between two people is an update file in the backup format, sent through any app and merged on import; no server, no account ([11](11-feature-parity-and-export-spec.md) 5.28, S4b-FR-3). |
 | 0.48 | 2026-09-30 | Claude (Code), lead | New **ADR-28**: the Sprint 4b data model in one change of format (N13 4c): nested house values, one record envelope and `record` table for the other new entities, `doorprints-backup/2` ([11](11-feature-parity-and-export-spec.md) 5.30). |
 | 0.49 | 2026-09-30 | Claude (Code), lead | Slice 0 of ADR-28 built ([10](10-sprint-log.md) §13.18): the `record` table (Flyway V6) and `/api/records` in §9 and §6.1; every reader of the backup format accepts `/1` and `/2` (docs/schemas §1.1). |
+| 0.50 | 2026-09-30 | Claude (Code), lead | Slice 1a of ADR-28 ([10](10-sprint-log.md) §13.19): `house.area_sqft`, `location_source` and `cost jsonb` (Flyway V7) in §6.1; `HouseDto` gains `areaSqft`, `locationSource`, `cost` in §9. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -449,6 +450,9 @@ erDiagram
         varchar contact_phone "50, third-party PII"
         varchar listing_url "1000"
         text notes "max 20000 via API"
+        integer area_sqft "carpet area (V7, slice 1a)"
+        varchar location_source "GPS MAP APPROX (V7)"
+        jsonb cost "deposit, maintenance, brokerage, lock-in, notice, availableFrom, myOffer, agreedPrice (V7)"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL, LWW clock"
         boolean deleted "tombstone"
@@ -810,7 +814,7 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 
 Common statuses: 400 invalid input or non-canonical path, 401 missing/wrong key, 404, 409 conflict (photo cap, photo id of another house), 413 body too large, 428 missing confirmation header, 429 rate limited (`Retry-After`), 503 AI provider unavailable (`"retryable": true`; when the provider answered HTTP 429 / `RESOURCE_EXHAUSTED`, AI Studio or Vertex AI, the problem also has `"code": "AI_QUOTA_EXHAUSTED"` and the response a `Retry-After: 60` header, so clients and the eval harness can tell a quota stop from an outage without parsing text; the status stays 503 so existing clients keep working; on Vertex AI 401/403/404 the problem also has `setupHint`, an owner-facing string with env-var names (`GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`) and the configured location only, never the project id or the provider message). A spend cap trip has no distinct code yet ([01](01-requirements.md) AI-017).
 
-**HouseDto** fields: `id, label*, address, street, locality, lat*, lon*, status, price, priceType, bedrooms, rating, contactName, contactPhone, listingUrl, notes, checklist{item→0..5}, createdAt, updatedAt, deleted, syncVersion, distanceMeters`. Validation is in [01 FR-002](01-requirements.md#61-houses).
+**HouseDto** fields (since slice 1a of ADR-28 also `areaSqft` 1..100000, `locationSource` GPS|MAP|APPROX and `cost{deposit, depositMonths, maintenance, maintenanceIncluded, brokerage, brokerageMonths, lockInMonths, noticeMonths, availableFrom YYYY-MM-DD, myOffer, agreedPrice}`, all optional, after `notes`): `id, label*, address, street, locality, lat*, lon*, status, price, priceType, bedrooms, rating, contactName, contactPhone, listingUrl, notes, checklist{item→0..5}, createdAt, updatedAt, deleted, syncVersion, distanceMeters`. Validation is in [01 FR-002](01-requirements.md#61-houses).
 **VisitDto** fields: `id, houseId, lat*, lon*, street, arrivedAt*, leftAt, source, updatedAt, deleted, syncVersion`.
 
 ## 10. Sync algorithm

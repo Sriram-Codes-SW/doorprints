@@ -42,6 +42,24 @@ object HouseDocuments {
             line(sb, "Price", "Rs ${h.price}$type")
         }
         if (h.bedrooms != null) line(sb, "Size", if (h.bedrooms == 0) "studio / 1RK" else "${h.bedrooms} BHK")
+        // The house's own values (slice 1a), the same words as the server's; never "My offer" (docs/11 5.30 item 5).
+        if (h.areaSqft != null) line(sb, "Carpet area", "${h.areaSqft} sq ft")
+        h.cost?.let { c ->
+            line(sb, "Deposit", c.deposit?.let { "Rs $it" } ?: c.depositMonths?.let { months(it) })
+            if (c.maintenance != null) {
+                val included = when (c.maintenanceIncluded) {
+                    true -> " (included in the rent)"
+                    false -> " (not included)"
+                    null -> ""
+                }
+                line(sb, "Maintenance", "Rs ${c.maintenance} per month$included")
+            }
+            line(sb, "Brokerage", c.brokerage?.let { "Rs $it" } ?: c.brokerageMonths?.let { months(it) })
+            line(sb, "Lock-in", c.lockInMonths?.let { months(it) })
+            line(sb, "Notice", c.noticeMonths?.let { months(it) })
+            line(sb, "Available from", c.availableFrom)
+            line(sb, "Agreed price", c.agreedPrice?.let { "Rs $it" })
+        }
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -82,6 +100,8 @@ object HouseDocuments {
         val y = yoe + era * 400 + if (m <= 2) 1 else 0
         return "${y.toString().padStart(4, '0')}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
     }
+
+    private fun months(n: Int): String = if (n == 1) "1 month" else "$n months"
 
     private fun line(sb: StringBuilder, key: String, value: String?) {
         if (!value.isNullOrBlank()) sb.append(key).append(": ").append(value.trim()).append('\n')

@@ -26,6 +26,7 @@ import { fixed, rupees } from './deterministic';
 import type { ExportBundle } from './export-model';
 import { ExportStrings } from './export-strings';
 import { photoFileName } from './photo-names';
+import { costSummary } from '../shared/house-cost';
 import type { PhotoRecord, VisitRecord } from '../data/records';
 
 /**
@@ -100,6 +101,10 @@ function maybeCount(value: number | null | undefined): Cell {
   return value === null || value === undefined || !Number.isFinite(value) ? BLANK : cellCount(Math.round(value));
 }
 
+function maybeMoney(value: number | null | undefined): Cell {
+  return value === null || value === undefined || !Number.isFinite(value) ? BLANK : cellMoney(Math.round(value));
+}
+
 /**
  * A table of the copy: one CSV file, one XLSX sheet, one Markdown or HTML table.
  *
@@ -150,6 +155,24 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     ...(contacts ? [s.get('col.contactName'), s.get('col.contactPhone')] : []),
     s.get('col.listingUrl'),
     s.get('col.notes'),
+    // Slice 1a: the house values after the notes and before the counts and ids; the last three are computed
+    // (`costSummary`, the same arithmetic as Kotlin `CostSummary`).
+    s.get('col.areaSqft'),
+    s.get('col.locationSource'),
+    s.get('col.deposit'),
+    s.get('col.depositMonths'),
+    s.get('col.maintenance'),
+    s.get('col.maintenanceIncluded'),
+    s.get('col.brokerage'),
+    s.get('col.brokerageMonths'),
+    s.get('col.lockInMonths'),
+    s.get('col.noticeMonths'),
+    s.get('col.availableFrom'),
+    s.get('col.myOffer'),
+    s.get('col.agreedPrice'),
+    s.get('col.monthlyCost'),
+    s.get('col.moveIn'),
+    s.get('col.perSqFt'),
     s.get('col.visits'),
     s.get('col.photos'),
     s.get('col.createdAt'),
@@ -158,6 +181,8 @@ export function housesTable(bundle: ExportBundle): ExportTable {
   ];
   const rows = bundle.houses.map((entry) => {
     const h = entry.house;
+    const c = h.cost ?? {};
+    const summary = costSummary(h);
     return [
       cellCount(rankOf(bundle, h.id)),
       cellText(h.label),
@@ -175,6 +200,23 @@ export function housesTable(bundle: ExportBundle): ExportTable {
       ...(contacts ? [maybeText(h.contactName), maybeText(h.contactPhone)] : []),
       maybeText(h.listingUrl),
       maybeText(h.notes),
+      maybeCount(h.areaSqft),
+      // The source is written as its enum word (GPS, MAP, APPROX), like a checklist key: a machine value.
+      maybeText(h.locationSource),
+      maybeMoney(c.deposit),
+      maybeCount(c.depositMonths),
+      maybeMoney(c.maintenance),
+      typeof c.maintenanceIncluded === 'boolean' ? cellText(s.get(c.maintenanceIncluded ? 'yes' : 'no')) : BLANK,
+      maybeMoney(c.brokerage),
+      maybeCount(c.brokerageMonths),
+      maybeCount(c.lockInMonths),
+      maybeCount(c.noticeMonths),
+      maybeText(c.availableFrom),
+      maybeMoney(c.myOffer),
+      maybeMoney(c.agreedPrice),
+      maybeMoney(summary.monthlyCost),
+      maybeMoney(summary.moveIn),
+      summary.perSqFt === null ? BLANK : cellNum(summary.perSqFt, 1),
       cellCount(entry.visits.length),
       cellCount(entry.photos.length),
       maybeStamp(h.createdAt),

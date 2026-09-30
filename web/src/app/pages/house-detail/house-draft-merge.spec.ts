@@ -31,6 +31,7 @@ function draft(partial: Partial<HouseDraft>): HouseDraft {
     price: null,
     priceType: null,
     bedrooms: null,
+    areaSqft: null,
     contactName: null,
     contactPhone: null,
     listingUrl: null,

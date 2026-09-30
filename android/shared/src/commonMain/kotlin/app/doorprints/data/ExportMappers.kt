@@ -24,6 +24,8 @@ import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseValues
+import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 
 // Room entity <-> the platform-neutral export model (Sprint 4a, S4-02/S4-04; common code since CMP-4 P4c). The
@@ -35,6 +37,7 @@ fun HouseEntity.toExport() = ExportHouse(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
 )
 
@@ -46,7 +49,10 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = HouseStatus.fromWire(status), price = price, priceType = priceType, bedrooms = bedrooms,
     rating = rating, contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl,
-    notes = notes, checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    notes = notes,
+    // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
+    areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
+    cost = cost?.coerced(), checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )
 

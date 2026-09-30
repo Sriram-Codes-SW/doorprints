@@ -85,8 +85,9 @@ object ListingText {
             else -> null
         }
         val bedrooms = BHK.find(words)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
+        val area = AREA.find(words)?.groupValues?.get(1)
         val details = listOfNotNull(
-            AREA.find(words)?.let { "${it.groupValues[1]} sq ft" },
+            area?.let { "$it sq ft" },
             FURNISHING.find(words)?.value?.lowercase()?.replaceFirstChar { it.uppercase() },
         )
         val notes = (if (details.isEmpty()) t else details.joinToString(", ") + "\n\n" + t).trim()
@@ -96,6 +97,7 @@ object ListingText {
             price = priceText,
             priceType = priceType,
             bedrooms = bedrooms,
+            areaSqft = area,
             contactPhone = PHONE.find(words)?.value,
             listingUrl = url,
             notes = notes,

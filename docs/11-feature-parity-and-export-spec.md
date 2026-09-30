@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.34 |
+| Version | 0.35 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -46,6 +46,7 @@
 | 0.32 | 2026-09-30 | Claude (Code), lead | 5.29 **built** (S4b-FR-4, the listing flow): the no-AI parser on Android and the web with one fixture file, the Android share receiver, the map step, the duplicate check. |
 | 0.33 | 2026-09-30 | Claude (Code), lead | New **5.30**, the design of the Sprint 4b data model in one change of format (N13 4c; [03](03-design.md) ADR-28): nested house values, one record envelope for every other new entity, `doorprints-backup/2`, Room 4 and IndexedDB 2, six slices. 8.1 and 8.2 updated. |
 | 0.34 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 0 built** (the records foundations, [10](10-sprint-log.md) §13.18): the format rule, the server's `record` table and endpoints, the `records` table and store with their sync, the web's upgrade path. |
+| 0.35 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1a built** (the house's cost, carpet area and location source, [10](10-sprint-log.md) §13.19): slice 1 goes in three steps, 1a these values, 1b brokers, 1c rooms; 5.21 built. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -544,6 +545,9 @@ are not searchable; the numbers join the filters). One data-model change with ro
 the backup format and every exporter, on web and Android together, with the viewing questions for deposit and
 maintenance (5.5) pre-filled from these fields.
 
+**Built (2026-09-30, slice 1a of 5.30; [10](10-sprint-log.md) §13.19):** the fields, the arithmetic, the form's *Cost*
+section, Compare and the copies; the viewing questions' pre-fill waits for 5.5 (slice 3) and the filters for S4b-BL-84.
+
 ### 5.22 My places and distances (D-30)
 
 The user saves the places that matter (work, school, parents' home; a name and a point, at most 10). Every house then
@@ -811,8 +815,10 @@ readable copies, the search, the tests and the docs, in this order so that every
 (0) the foundations: the format rule and `/2` readers (S4b-BL-72; the writers stay at `/1` until slice 1 writes the
 first list), the IndexedDB upgrade path with the photo index (S4b-BL-71, S4b-BL-66), the server's `record` table and
 endpoints, the `records` table and store with their sync, no visible change;
-(1) the house's own values and brokers: cost, area, rooms, `locationSource` with the hollow marker, brokers with the
-migration (S4b-FR-7, S4b-FR-11), Compare and search;
+(1) the house's own values and brokers, in three steps so each pull request stays readable: **1a** the cost, the carpet
+area and `locationSource` with the hollow marker (S4b-FR-7; within `/1`, since they are optional fields on a row that
+exists), **1b** brokers with the migration (S4b-FR-11; the first list, so `/2`), **1c** rooms (5.6); Compare and search
+with each;
 (2) criteria and ranking with the preferences (5.4);
 (3) viewing questions and viewings with reminders and the history screen (5.5, 5.8, 5.16);
 (4) hunting areas, area wake-up, my places and area notes (5.17, 5.18, S4b-FR-8, S4b-FR-9);
@@ -824,6 +830,14 @@ complete, so `/2` is the format for all of them.
 reader accepting `/1` and `/2`; the server's `record` table (Flyway V6) and `/api/records`; Room 4 with the `records`
 table, `RecordType<T>` and the records' sync in `:shared`; IndexedDB 2 with the upgrade path, the `records` store,
 the `houseId` indexes and the "updated in another tab" notice on the web. No record type yet: brokers open slice 1.
+
+**Built, slice 1a (2026-09-30, [10](10-sprint-log.md) §13.19).** `areaSqft`, `locationSource` (`GPS`, `MAP`, `APPROX`) and
+the nested `cost` on the house in all three stacks (Room 5, Flyway V7, the backup within `/1`, the six readable copies,
+the AI documents without *my offer*); `CostSummary` in common code with its TypeScript twin over one list of vectors
+(monthly cost, money to move in, cost per sq ft); the form's **Cost** section and *Approximate location* switch; the
+hollow marker on both maps and its legend entry; Hunt mode never alerts at an approximate house; Compare's new rows;
+the listing parser fills the carpet area. Search is unchanged (numbers are not searched; the filters are a later
+round, S4b-BL-84).
 
 ## 6. User stories
 

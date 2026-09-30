@@ -59,6 +59,7 @@ Houses: 3 · Visits: 3 · Photos: 2
 | Overall score | 3.8 |
 | Price | ₹32,000/month |
 | BHK | 2 BHK |
+| Carpet area | 1150 sq ft |
 | Your rating | 4 out of 5 stars |
 | Address | 12, MG Road |
 | Street | MG Road |
@@ -68,6 +69,23 @@ Houses: 3 · Visits: 3 · Photos: 2
 | Contact name | Ravi Kumar |
 | Contact phone | \\+91 98400 11111 |
 | Saved on | 2026-09-01 |
+
+### Cost
+
+| Detail | Value |
+| --- | --- |
+| Deposit | ₹64,000 |
+| Maintenance per month | ₹2,500 |
+| Included in the rent | No |
+| Brokerage (months) | 1 months |
+| Lock-in (months) | 11 months |
+| Notice (months) | 2 months |
+| Available from | 2026-10-15 |
+| My offer | ₹30,000 |
+| Agreed price | ₹31,000 |
+| Monthly cost | ₹34,500 |
+| Money to move in | ₹1,28,000 |
+| Cost per sq ft | ₹27 |
 
 ### Checklist
 
@@ -111,10 +129,19 @@ Ask about water in summer.
 | Overall score | 0.5 |
 | Price | ₹12,50,000 |
 | BHK | 3 BHK |
+| Carpet area | 1450 sq ft |
 | Your rating | 1 out of 5 stars |
 | Street | Beach Road |
 | Location | 13.050000, 80.280000 |
 | Saved on | 2026-09-03 |
+
+### Cost
+
+| Detail | Value |
+| --- | --- |
+| Brokerage | ₹25,000 |
+| Agreed price | ₹12,00,000 |
+| Cost per sq ft | ₹828 |
 
 ### Checklist
 

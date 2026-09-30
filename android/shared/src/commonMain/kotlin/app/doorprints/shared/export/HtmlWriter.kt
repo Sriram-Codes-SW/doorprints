@@ -125,17 +125,27 @@ object HtmlWriter {
         row(out, s["col.price"], h.price?.let { ExportRows.rupees(it) } ?: s["none"])
         if (h.price != null) row(out, s["col.priceType"], s.priceType(h.priceType))
         row(out, s["col.bedrooms"], h.bedrooms?.toString() ?: s["none"])
+        if (h.areaSqft != null) row(out, s["col.areaSqft"], h.areaSqft.toString())
         row(out, s["col.rating"], h.rating?.toString() ?: s["none"])
         row(out, s["col.address"], h.address ?: s["none"])
         row(out, s["col.street"], h.street ?: s["none"])
         row(out, s["col.locality"], h.locality ?: s["none"])
         row(out, s["col.lat"], ExportRows.fixed(h.lat, 6))
         row(out, s["col.lon"], ExportRows.fixed(h.lon, 6))
+        // Only the approximate case says anything: a reader is warned the marker may be off (FR-068).
+        if (h.locationSource == "APPROX") row(out, s["house.approx"], s["yes"])
         // The link is shown as text, never as <a href>: the copy must not be a way to reach the network.
         if (!h.listingUrl.isNullOrEmpty()) row(out, s["col.listingUrl"], h.listingUrl)
         row(out, s["col.createdAt"], ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
         row(out, s["col.updatedAt"], ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
         out.append("</dl>\n")
+
+        val cost = ExportRows.costLines(h, s)
+        if (cost.isNotEmpty()) {
+            out.append("<h3>").append(esc(s["section.cost"])).append("</h3>\n<dl>\n")
+            for ((term, value) in cost) row(out, term, value)
+            out.append("</dl>\n")
+        }
 
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {

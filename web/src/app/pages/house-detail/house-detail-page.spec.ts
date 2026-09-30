@@ -231,6 +231,54 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
     expect(card!.isConnected).toBe(false);
   });
 
+  /** Slice 1a, FR-068: how the pin was placed travels with the house, and the person can call it approximate. */
+  it('starts a map-placed house as MAP, makes it GPS on "Use my location", and APPROX by the switch', async () => {
+    const answers: { ok: PositionCallback }[] = [];
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition: (ok: PositionCallback) => answers.push({ ok }) },
+    });
+    const saved: HouseDto[] = [];
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {
+      saveHouse: () => {
+        saved.push((fixture.componentInstance as unknown as { draft: () => HouseDto }).draft());
+        return of(HOUSE);
+      },
+    });
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const draft = () => (fixture.componentInstance as unknown as { draft: () => HouseDto }).draft();
+    expect(draft().locationSource).toBe('MAP');
+    expect(draft().cost).toEqual({});
+
+    button(host, t({ key: 'house.useMyLocation' })).click();
+    answers[0].ok({ coords: { latitude: 12.98, longitude: 77.6 } } as GeolocationPosition);
+    await fixture.whenStable();
+    expect(draft().locationSource).toBe('GPS');
+
+    const approx = host.querySelector<HTMLInputElement>('#house-approx')!;
+    approx.click();
+    await fixture.whenStable();
+    expect(draft().locationSource).toBe('APPROX');
+    approx.click();
+    await fixture.whenStable();
+    expect(draft().locationSource).toBe('GPS');
+
+    // The Cost section: a sale hides the rent-only fields; the computed line follows the typed values.
+    expect(host.querySelector('#cost-deposit')).not.toBeNull();
+    const name = host.querySelector<HTMLInputElement>('#house-name')!;
+    name.value = 'Blue gate';
+    name.dispatchEvent(new Event('input'));
+    const price = host.querySelector<HTMLInputElement>('#house-price')!;
+    price.value = '32000';
+    price.dispatchEvent(new Event('input'));
+    const deposit = host.querySelector<HTMLInputElement>('#cost-deposit')!;
+    deposit.value = '64000';
+    deposit.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(host.querySelector('.cost-line')?.textContent).toContain(t({ key: 'cost.lineMoveIn', params: { v: '₹96,000' } }));
+  });
+
   it('keeps "Address lookup failed" while looking up again, and removes it when the lookup answers', async () => {
     const lookups: Subject<unknown>[] = [];
     const { fixture } = create({ id: HOUSE.id }, {}, {
@@ -298,6 +346,7 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
       price: 32000,
       priceType: 'RENT',
       bedrooms: 2,
+      areaSqft: null,
       contactName: null,
       contactPhone: null,
       listingUrl: null,

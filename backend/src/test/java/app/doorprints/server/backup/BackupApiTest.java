@@ -494,13 +494,22 @@ class BackupApiTest {
                 visitRow(UUID.randomUUID(), id, now, now).replace("\"lat\":12.9,", ""));
         var absurdClock = backup(good.replace("\"updatedAt\":" + now.toEpochMilli(),
                 "\"updatedAt\":" + Instant.parse("2030-01-02T00:00:00Z").toEpochMilli()), "");
+        // Slice 1a: the house's own values are range-checked like the rest (docs/11 section 5.21).
+        var badArea = backup(good.replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"areaSqft\":0"), "");
+        var badSource = backup(good.replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"locationSource\":\"GUESS\""), "");
+        var negativeDeposit = backup(good.replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"cost\":{\"deposit\":-1}"), "");
+        var noSuchDay = backup(good.replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"cost\":{\"availableFrom\":\"2026-02-30\"}"), "");
         var visitEndsBeforeItStarts = backup(good, "{\"id\":\"" + UUID.randomUUID() + "\",\"houseId\":\"" + id
                 + "\",\"lat\":12.9,\"lon\":77.6,\"arrivedAt\":" + now.toEpochMilli() + ",\"leftAt\":"
                 + now.minus(Duration.ofHours(1)).toEpochMilli() + ",\"source\":\"AUTO\",\"updatedAt\":"
                 + now.toEpochMilli() + "}");
 
         for (var body : List.of(wrongFormat, duplicateIds, noLabel, badLatitude, noLatitude, nullLongitude,
-                visitWithoutLatitude, absurdClock, visitEndsBeforeItStarts)) {
+                visitWithoutLatitude, absurdClock, badArea, badSource, negativeDeposit, noSuchDay,
+                visitEndsBeforeItStarts)) {
             assertThat(status(() -> postImport(body, false))).as("import of %s", body).isEqualTo(400);
             assertThat(status(() -> postImport(body, true))).as("dry run validates too").isEqualTo(400);
         }
@@ -508,7 +517,26 @@ class BackupApiTest {
         assertThat(errorBody(() -> postImport(noLatitude, false))).contains("houses[0].lat is required");
         assertThat(errorBody(() -> postImport(nullLongitude, false))).contains("houses[0].lon is required");
         assertThat(errorBody(() -> postImport(visitWithoutLatitude, false))).contains("visits[0].lat is required");
+        assertThat(errorBody(() -> postImport(negativeDeposit, false)))
+                .contains("houses[0].cost.deposit is out of range");
+        assertThat(errorBody(() -> postImport(noSuchDay, false)))
+                .contains("houses[0].cost.availableFrom is out of range");
         assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
+    }
+
+    /** A {@code cost} of {@code {}} in a file is read as no cost, so the export leaves it out (never writes {}). */
+    @Test
+    void anEmptyCostObjectReadsAsNoCostAndIsNotWrittenBack() throws JSONException {
+        var id = UUID.randomUUID();
+        var row = houseRow(id, "Empty cost", Instant.now()).replace("\"status\":\"NEW\"",
+                "\"status\":\"NEW\",\"areaSqft\":900,\"locationSource\":\"MAP\",\"cost\":{}");
+        assertThat(count(postImport(backup(row, ""), false), "houses", "created")).isEqualTo(1);
+
+        var exported = new JSONObject(export()).getJSONArray("houses").getJSONObject(0);
+        assertThat(exported.getInt("areaSqft")).isEqualTo(900);
+        assertThat(exported.getString("locationSource")).isEqualTo("MAP");
+        assertThat(exported.has("cost")).isFalse();
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
     }
 
     /**

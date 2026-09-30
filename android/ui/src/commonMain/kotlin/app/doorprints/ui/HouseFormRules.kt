@@ -68,7 +68,7 @@ fun fillPlace(
 }
 
 /** A form field that "Fill in from listing text" can set, named in its result line. */
-enum class ListingField { NAME, ADDRESS, STREET, LOCALITY, PRICE, BHK, CONTACT, PHONE, LISTING, NOTES }
+enum class ListingField { NAME, ADDRESS, STREET, LOCALITY, PRICE, BHK, CONTACT, PHONE, LISTING, NOTES, AREA }
 
 /** What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them. */
 data class ListingMerge(
@@ -120,6 +120,7 @@ fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean):
             price = price,
             priceType = priceType,
             bedrooms = pick(ListingField.BHK, h.bedrooms, a.bedrooms) { it == null },
+            areaSqft = pick(ListingField.AREA, h.areaSqft, a.areaSqft) { it == null },
             contactName = pick(ListingField.CONTACT, h.contactName, a.contactName, blank),
             contactPhone = pick(ListingField.PHONE, h.contactPhone, a.contactPhone, blank),
             listingUrl = pick(ListingField.LISTING, h.listingUrl, a.listingUrl, blank),

@@ -127,6 +127,12 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **The real cost of a house** ([spec](docs/11-feature-parity-and-export-spec.md) 5.21, slice 1a of 5.30): a house
+  keeps its deposit (in rupees or months), maintenance and whether the rent includes it, brokerage, lock-in and notice
+  periods, the date it is available from, your offer and the agreed price, and its carpet area; the form shows the
+  monthly cost, the money needed to move in and the cost per sq ft, and Compare lines them up. A house whose spot is
+  only approximate is drawn as a hollow ring on the map and never sets off a Hunt-mode alert. All of it in the
+  backups and the readable copies; the AI never sees your offer.
 - **The ground for the Sprint 4b data model** (slice 0 of [spec](docs/11-feature-parity-and-export-spec.md) 5.30,
   [design](docs/03-design.md) ADR-28; nothing visible yet): a self-hosted server stores every new kind of data of the
   coming slices (criteria, viewings, hunting areas, places, brokers and the rest) as opaque records through
