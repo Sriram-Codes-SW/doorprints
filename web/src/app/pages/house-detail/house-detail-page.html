@@ -398,6 +398,148 @@
         </section>
       }
 
+      <!-- Rooms (slice 1c, docs/11 5.6): a card per room. Sizes are stored in centimetres; the Length units setting
+           (Your data) only changes how they are typed and shown. Every control's name says which room it belongs to. -->
+      <section class="card" aria-labelledby="rooms-heading">
+        <h2 id="rooms-heading">{{ 'rooms.heading' | t }}</h2>
+        @for (r of rooms(d); track r.id; let i = $index) {
+          @let title = roomTitle(r, i);
+          <div class="room" role="group" [attr.aria-label]="title">
+            <h3 class="room-title">{{ title }}</h3>
+            <div class="row">
+              <div class="field">
+                <label [for]="'room-type-' + r.id">{{ 'rooms.type' | t }}</label>
+                <select
+                  [id]="'room-type-' + r.id"
+                  [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.type' | t), room: title }"
+                  [ngModel]="r.type"
+                  (ngModelChange)="setRoomType(r.id, $event)"
+                >
+                  @for (t of roomTypes; track t) {
+                    <option [value]="t">{{ roomTypeKey[t] | t }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label [for]="'room-name-' + r.id">{{ 'rooms.name' | t }}</label>
+                <input
+                  [id]="'room-name-' + r.id"
+                  type="text"
+                  maxlength="60"
+                  autocomplete="off"
+                  [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.name' | t), room: title }"
+                  [ngModel]="r.name ?? ''"
+                  (ngModelChange)="editRoom(r.id, { name: $event || null })"
+                />
+              </div>
+            </div>
+            <div class="row">
+              @for (dim of dims; track dim.key) {
+                <fieldset class="field room-size">
+                  <legend>{{ dim.label | t }}</legend>
+                  @if (lengthUnit() === 'M') {
+                    <div class="size-inputs">
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        step="0.01"
+                        inputmode="decimal"
+                        [id]="'room-' + dim.key + '-' + r.id"
+                        [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.metres' | t) + ')', room: title }"
+                        [value]="metresOf(r[dim.key])"
+                        (change)="setRoomMetres(r.id, dim.key, $any($event.target).value)"
+                      />
+                      <span aria-hidden="true">{{ 'rooms.metres' | t }}</span>
+                    </div>
+                  } @else {
+                    <div class="size-inputs">
+                      <input
+                        #feet
+                        type="number"
+                        min="0"
+                        max="164"
+                        step="1"
+                        inputmode="numeric"
+                        [id]="'room-' + dim.key + '-' + r.id"
+                        [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.feet' | t) + ')', room: title }"
+                        [value]="feetOf(r[dim.key])"
+                        (change)="setRoomFeet(r.id, dim.key, feet.value, inches.value)"
+                      />
+                      <span aria-hidden="true">{{ 'rooms.feet' | t }}</span>
+                      <input
+                        #inches
+                        type="number"
+                        min="0"
+                        max="11"
+                        step="1"
+                        inputmode="numeric"
+                        [attr.aria-label]="'rooms.aria' | t: { field: (dim.label | t) + ' (' + ('rooms.inches' | t) + ')', room: title }"
+                        [value]="inchesOf(r[dim.key])"
+                        (change)="setRoomFeet(r.id, dim.key, feet.value, inches.value)"
+                      />
+                      <span aria-hidden="true">{{ 'rooms.inches' | t }}</span>
+                    </div>
+                  }
+                </fieldset>
+              }
+            </div>
+            @if (roomAreaLine(r); as area) {
+              <p class="room-area" role="status">{{ area }}</p>
+            }
+            <div class="row">
+              <div class="field">
+                <label [for]="'room-condition-' + r.id">{{ 'rooms.condition' | t }}</label>
+                <select
+                  [id]="'room-condition-' + r.id"
+                  [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.condition' | t), room: title }"
+                  [ngModel]="r.condition == null ? '' : '' + r.condition"
+                  (ngModelChange)="setRoomCondition(r.id, $event)"
+                >
+                  <option value="">{{ 'rooms.conditionNone' | t }}</option>
+                  @for (n of conditions; track n) {
+                    <option [value]="'' + n">{{ 'common.stars' | t: { n: n } }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label [for]="'room-notes-' + r.id">{{ 'rooms.notes' | t }}</label>
+              <textarea
+                [id]="'room-notes-' + r.id"
+                rows="2"
+                maxlength="2000"
+                [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.notes' | t), room: title }"
+                [ngModel]="r.notes ?? ''"
+                (ngModelChange)="editRoom(r.id, { notes: $event || null })"
+              ></textarea>
+            </div>
+            <button
+              type="button"
+              class="btn btn-danger"
+              [id]="'room-delete-' + r.id"
+              [attr.aria-label]="'rooms.aria' | t: { field: ('rooms.delete' | t), room: title }"
+              (click)="deleteRoom(r.id)"
+            >
+              {{ 'common.delete' | t }}
+            </button>
+          </div>
+        } @empty {
+          <p id="rooms-empty" class="muted">{{ 'rooms.empty' | t }}</p>
+        }
+        @if (roomsTotalLine(d); as total) {
+          <p class="room-total" role="status">{{ total }}</p>
+        }
+        <div class="actions">
+          <button id="rooms-add" type="button" class="btn" [disabled]="rooms(d).length >= maxRooms" (click)="addRoom()">
+            {{ 'rooms.add' | t }}
+          </button>
+          @if (rooms(d).length >= maxRooms) {
+            <span id="rooms-max" class="muted">{{ 'rooms.max' | t }}</span>
+          }
+        </div>
+      </section>
+
       <!-- Location -->
       <section class="card" aria-labelledby="location-heading">
         <h2 id="location-heading">{{ 'house.location' | t }}</h2>

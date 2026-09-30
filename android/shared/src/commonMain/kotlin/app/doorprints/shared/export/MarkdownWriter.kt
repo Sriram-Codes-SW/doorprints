@@ -102,6 +102,13 @@ object MarkdownWriter {
                 table(out, listOf("", ""), cost.map { listOf(it.first, it.second) })
             }
 
+            // The rooms (slice 1c), after the cost and before the checklist.
+            val rooms = ExportRows.roomRows(h, bundle)
+            if (rooms.isNotEmpty()) {
+                out.append("\n### ").append(text(s["table.rooms"])).append("\n\n")
+                table(out, ExportRows.roomColumns(bundle), rooms)
+            }
+
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")

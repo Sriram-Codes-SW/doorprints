@@ -44,6 +44,7 @@ import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordLimitException
@@ -61,6 +62,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.map
@@ -161,7 +163,8 @@ open class CommonRepository(
     }
 
     override suspend fun saveHouse(house: HouseEntity) {
-        db.houses().upsert(withBroker(house).copy(updatedAt = now(), dirty = true))
+        // The rooms as every reader keeps them (slice 1c): the form's blank names and notes go, the order is the one shown.
+        db.houses().upsert(withBroker(house).copy(rooms = HouseRooms.coerced(house.rooms), updatedAt = now(), dirty = true))
         syncSoon()
     }
 
@@ -458,7 +461,8 @@ open class CommonRepository(
                 id = h.id, label = h.label, address = h.address, street = h.street, locality = h.locality,
                 lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
                 bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
-                listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, checklist = h.checklist,
+                listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, rooms = h.rooms,
+                checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
             )
         }
@@ -704,6 +708,7 @@ open class CommonRepository(
         LocalRows(
             db.houses().all(), db.visits().all(), db.photos().all(),
             liveBrokerRows().map { (row, broker) -> ExportBroker.of(row.id, broker, row.updatedAt) },
+            lengthUnit = settings.lengthUnit.first(),
         )
     }
 

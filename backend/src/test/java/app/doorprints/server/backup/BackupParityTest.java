@@ -114,6 +114,15 @@ class BackupParityTest {
     void theSampleRecordsHaveExactlyTheRecordsComponents() {
         var root = tools.jackson.databind.json.JsonMapper.builder().build().readTree(CanonicalSample.json());
         assertThat(keysOf(root, "houses")).isEqualTo(components(BackupHouse.class));
+        // Slice 1c: the rooms nested in the fullest house carry exactly the components of HouseRoom, in order.
+        var rooms = new java.util.ArrayList<String>();
+        for (var house : root.get("houses")) {
+            if (house.has("rooms")) house.get("rooms").forEach(room -> {
+                var keys = new java.util.ArrayList<String>(room.propertyNames());
+                if (keys.size() > rooms.size()) { rooms.clear(); rooms.addAll(keys); }
+            });
+        }
+        assertThat(rooms).isEqualTo(components(app.doorprints.server.house.HouseRoom.class));
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
         assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));

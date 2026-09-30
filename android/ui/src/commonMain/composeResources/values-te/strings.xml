@@ -749,4 +749,44 @@
         <item quantity="one">%1$d ఇల్లు</item>
         <item quantity="other">%1$d ఇళ్లు</item>
     </plurals>
+    <!-- Slice 1c, rooms (2026-09-30). Under review. -->
+    <string name="house_rooms">గదులు</string>
+    <string name="house_room_add">గది జోడించండి</string>
+    <string name="house_rooms_max">గరిష్ఠంగా %1$d గదులు</string>
+    <string name="house_rooms_empty">ఇంకా గదులు లేవు. ప్రతి గది కొలత, స్థితి రాసుకోవడానికి దాన్ని జోడించండి.</string>
+    <string name="house_room_type">రకం</string>
+    <string name="house_room_name">పేరు</string>
+    <string name="house_room_length_feet">పొడవు (అడుగులు)</string>
+    <string name="house_room_length_inches">పొడవు (అంగుళాలు)</string>
+    <string name="house_room_width_feet">వెడల్పు (అడుగులు)</string>
+    <string name="house_room_width_inches">వెడల్పు (అంగుళాలు)</string>
+    <string name="house_room_length_metres">పొడవు (మీటర్లు)</string>
+    <string name="house_room_width_metres">వెడల్పు (మీటర్లు)</string>
+    <string name="house_room_size_invalid">50 మీటర్ల (164 అడుగుల) వరకు కొలత రాయండి</string>
+    <string name="house_room_condition">స్థితి</string>
+    <string name="house_room_condition_none">చూడలేదు</string>
+    <string name="house_room_condition_value">5లో %1$d</string>
+    <string name="house_room_notes">గమనికలు</string>
+    <string name="house_room_delete">గది తొలగించండి</string>
+    <string name="house_room_area">వైశాల్యం %1$s</string>
+    <string name="house_rooms_total">మొత్తం వైశాల్యం %1$s</string>
+    <string name="room_type_BEDROOM">పడకగది</string>
+    <string name="room_type_HALL">హాల్</string>
+    <string name="room_type_KITCHEN">వంటగది</string>
+    <string name="room_type_BATHROOM">స్నానాల గది</string>
+    <string name="room_type_BALCONY">బాల్కనీ</string>
+    <string name="room_type_POOJA">పూజ గది</string>
+    <string name="room_type_STUDY">చదువుకునే గది</string>
+    <string name="room_type_UTILITY">యుటిలిటీ</string>
+    <string name="room_type_STORE">స్టోర్ రూమ్</string>
+    <string name="room_type_OTHER">ఇతర</string>
+    <string name="settings_length_units">పొడవు కొలమానం</string>
+    <string name="settings_length_hint">గదుల కొలతలు ఎలా చూపాలి, ఎలా రాయాలి. ఈ ఫోన్‌లో మాత్రమే ఉంటుంది.</string>
+    <string name="settings_length_feet">అడుగులు</string>
+    <string name="settings_length_metres">మీటర్లు</string>
+    <string name="compare_rooms">గదులు</string>
+    <plurals name="compare_rooms_count">
+        <item quantity="one">%1$d గది</item>
+        <item quantity="other">%1$d గదులు</item>
+    </plurals>
 </resources>

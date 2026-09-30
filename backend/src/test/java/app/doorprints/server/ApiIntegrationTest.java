@@ -41,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -289,6 +290,85 @@ class ApiIntegrationTest {
         assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
     }
 
+    private static Map<String, Object> room(String id, String type, Integer sort) {
+        var room = new java.util.LinkedHashMap<String, Object>();
+        room.put("id", id);
+        room.put("type", type);
+        room.put("name", "Master bedroom");
+        room.put("lengthCm", 396);
+        room.put("widthCm", 366);
+        room.put("condition", 4);
+        room.put("notes", "Damp patch near the window");
+        room.put("sort", sort);
+        return room;
+    }
+
+    /** Slice 1c (V9): rooms go in through PUT, keep their order and come back from GET and the sync list. */
+    @Test
+    void roomsRoundTripAndAPutWithoutThemClearsThem() {
+        var id = UUID.randomUUID();
+        var body = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        var kitchen = new HashMap<String, Object>(Map.of("id", "c2", "type", "KITCHEN", "lengthCm", 300, "sort", 1));
+        var rooms = List.of(room("c1", "BEDROOM", 0), kitchen);
+        body.put("rooms", rooms);
+
+        var saved = put(id, body);
+        var read = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        var listed = api.get().uri("/api/houses?since=0").retrieve().body(LIST).stream()
+                .filter(h -> h.get("id").equals(id.toString())).findFirst().orElseThrow();
+        for (var h : List.of(saved, read, listed)) {
+            // Absent room fields are left out of the object, like the cost's.
+            assertThat(h.get("rooms")).isEqualTo(rooms);
+        }
+
+        // A PUT is a full replacement; an empty list is the same as none.
+        var empty = house("Green View 2BHK", 13.006, 80.2574, "MG Road");
+        empty.put("rooms", List.of());
+        assertThat(put(id, empty).get("rooms")).isNull();
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("rooms")).isNull();
+        put(id, body);
+        assertThat(put(id, house("Green View 2BHK", 13.006, 80.2574, "MG Road")).get("rooms")).isNull();
+    }
+
+    /** Slice 1c: a bad room, a 31st room or a repeated room id is a 400 and nothing is stored. */
+    @Test
+    void badRoomsAreABadRequest() {
+        var id = UUID.randomUUID();
+        var bad = new ArrayList<Map<String, Object>>();
+        for (var room : List.of(room("r", "GARAGE", 0), room("..", "HALL", 0), room("r", "HALL", -1))) {
+            var body = house("Bad", 12.9, 77.6, null);
+            body.put("rooms", List.of(room));
+            bad.add(body);
+        }
+        var tooLong = room("r", "HALL", 0);
+        tooLong.put("lengthCm", 5001);
+        var badCondition = room("r", "HALL", 0);
+        badCondition.put("condition", 6);
+        for (var room : List.of(tooLong, badCondition)) {
+            var body = house("Bad", 12.9, 77.6, null);
+            body.put("rooms", List.of(room));
+            bad.add(body);
+        }
+        var thirtyOne = house("Bad", 12.9, 77.6, null);
+        var many = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i <= 30; i++) many.add(room("r" + i, "OTHER", i));
+        thirtyOne.put("rooms", many);
+        bad.add(thirtyOne);
+        var twins = house("Bad", 12.9, 77.6, null);
+        twins.put("rooms", List.of(room("same", "HALL", 0), room("same", "KITCHEN", 1)));
+        bad.add(twins);
+
+        for (var body : bad) assertThat(status(() -> put(id, body))).as("%s", body).isEqualTo(400);
+        assertThatThrownBy(() -> put(id, twins)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("rooms must not repeat an id"));
+        assertThatThrownBy(() -> put(id, thirtyOne)).isInstanceOfSatisfying(RestClientResponseException.class,
+                e -> assertThat(e.getResponseBodyAsString()).contains("rooms"));
+        assertThat(status(() -> api.get().uri("/api/houses/{id}", id).retrieve().body(MAP))).isEqualTo(404);
+        // Thirty is fine.
+        thirtyOne.put("rooms", many.subList(0, 30));
+        assertThat(put(id, thirtyOne).get("rooms")).asList().hasSize(30);
+    }
+
     /** Slice 1b (V8): a house's brokerId goes in through PUT and comes back from GET and the sync list. */
     @Test
     void brokerIdRoundTripsAndABadOneIsRefused() {
@@ -409,6 +489,7 @@ class ApiIntegrationTest {
         body.put("locationSource", "GPS");
         body.put("cost", Map.of("deposit", 64000, "myOffer", 30000));
         body.put("brokerId", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        body.put("rooms", List.of(room("c1", "BEDROOM", 0)));
         put(id, body);
         var photoId = uploadPhoto(id, ImageSanitizerTest.jpegWithExif());
         var visitId = UUID.randomUUID();
@@ -431,6 +512,7 @@ class ApiIntegrationTest {
         assertThat(changed.get("locationSource")).isNull();
         assertThat(changed.get("cost")).isNull();
         assertThat(changed.get("brokerId")).as("the tombstone names no broker").isNull();
+        assertThat(changed.get("rooms")).as("the tombstone keeps no room notes").isNull();
         assertThat(changed.get("contactPhone")).isNull();
         assertThat(changed.get("street")).isNull();
         assertThat(changed.get("label")).isEqualTo("");
@@ -711,7 +793,8 @@ class ApiIntegrationTest {
         var response = api.get().uri("/api/export").retrieve().toEntity(MAP);
         assertThat(response.getHeaders().getFirst("Content-Disposition")).startsWith("attachment")
                 .matches("attachment; filename=\"Doorprints-backup-\\d{4}-\\d{2}-\\d{2}\\.json\"");
-        assertThat(response.getBody()).containsEntry("format", "doorprints-backup/1");
+        // /1 or /2: other tests in this class leave houses with rooms behind, and a copy that holds a room is /2.
+        assertThat(response.getBody().get("format")).isIn("doorprints-backup/1", "doorprints-backup/2");
         assertThat((List<?>) response.getBody().get("houses"))
                 .anySatisfy(h -> assertThat(((Map<?, ?>) h).get("id")).isEqualTo(id.toString()));
         assertThat(response.getBody()).containsKeys("visits", "photos", "exportedAt");

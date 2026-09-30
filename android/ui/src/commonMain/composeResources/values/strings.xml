@@ -752,4 +752,44 @@
         <item quantity="one">%1$d house</item>
         <item quantity="other">%1$d houses</item>
     </plurals>
+    <!-- Slice 1c, rooms (2026-09-30). -->
+    <string name="house_rooms">Rooms</string>
+    <string name="house_room_add">Add room</string>
+    <string name="house_rooms_max">At most %1$d rooms</string>
+    <string name="house_rooms_empty">No rooms yet. Add each room to note its size and condition.</string>
+    <string name="house_room_type">Type</string>
+    <string name="house_room_name">Name</string>
+    <string name="house_room_length_feet">Length (ft)</string>
+    <string name="house_room_length_inches">Length (in)</string>
+    <string name="house_room_width_feet">Width (ft)</string>
+    <string name="house_room_width_inches">Width (in)</string>
+    <string name="house_room_length_metres">Length (m)</string>
+    <string name="house_room_width_metres">Width (m)</string>
+    <string name="house_room_size_invalid">Enter a size up to 50 m (164 ft)</string>
+    <string name="house_room_condition">Condition</string>
+    <string name="house_room_condition_none">Not checked</string>
+    <string name="house_room_condition_value">%1$d of 5</string>
+    <string name="house_room_notes">Notes</string>
+    <string name="house_room_delete">Delete room</string>
+    <string name="house_room_area">Area %1$s</string>
+    <string name="house_rooms_total">Total area %1$s</string>
+    <string name="room_type_BEDROOM">Bedroom</string>
+    <string name="room_type_HALL">Hall</string>
+    <string name="room_type_KITCHEN">Kitchen</string>
+    <string name="room_type_BATHROOM">Bathroom</string>
+    <string name="room_type_BALCONY">Balcony</string>
+    <string name="room_type_POOJA">Pooja room</string>
+    <string name="room_type_STUDY">Study</string>
+    <string name="room_type_UTILITY">Utility</string>
+    <string name="room_type_STORE">Store room</string>
+    <string name="room_type_OTHER">Other</string>
+    <string name="settings_length_units">Length units</string>
+    <string name="settings_length_hint">How room sizes are shown and typed. Kept on this phone only.</string>
+    <string name="settings_length_feet">Feet</string>
+    <string name="settings_length_metres">Metres</string>
+    <string name="compare_rooms">Rooms</string>
+    <plurals name="compare_rooms_count">
+        <item quantity="one">%1$d room</item>
+        <item quantity="other">%1$d rooms</item>
+    </plurals>
 </resources>

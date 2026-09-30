@@ -55,7 +55,7 @@ import type { MigrationState } from './sync.service';
  */
 
 const HOUSES_SINCE = `[
-  {"id":"5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10","label":"2BHK near Indiranagar metro","address":"12, 5th Cross, HAL 2nd Stage, Indiranagar, Bengaluru","street":"5th Cross","locality":"Indiranagar","lat":12.978321,"lon":77.640812,"status":"SHORTLISTED","price":32000,"priceType":"RENT","bedrooms":2,"rating":4,"contactName":null,"contactPhone":null,"listingUrl":"https://example.com/listing/123","notes":"Water 24x7, lift, 1 covered parking","checklist":{"water":5,"parking":4,"noise":2},"createdAt":"2026-09-20T08:30:12.345678Z","updatedAt":"2026-09-21T17:02:44.901234Z","deleted":false,"syncVersion":41,"distanceMeters":null},
+  {"id":"5b1f3c1e-8d0a-4c55-9a51-0d2a6f7e9b10","label":"2BHK near Indiranagar metro","address":"12, 5th Cross, HAL 2nd Stage, Indiranagar, Bengaluru","street":"5th Cross","locality":"Indiranagar","lat":12.978321,"lon":77.640812,"status":"SHORTLISTED","price":32000,"priceType":"RENT","bedrooms":2,"rating":4,"contactName":null,"contactPhone":null,"listingUrl":"https://example.com/listing/123","notes":"Water 24x7, lift, 1 covered parking","checklist":{"water":5,"parking":4,"noise":2},"rooms":[{"id":"r1","type":"BEDROOM","name":"Master","lengthCm":300,"widthCm":300,"condition":4,"notes":"","sort":0}],"createdAt":"2026-09-20T08:30:12.345678Z","updatedAt":"2026-09-21T17:02:44.901234Z","deleted":false,"syncVersion":41,"distanceMeters":null},
   {"id":"9e7c2a44-1b3f-4f0e-8a77-2c5d9e0f1a22","label":"Old villa","address":null,"street":null,"locality":null,"lat":12.9352,"lon":77.6245,"status":"ARCHIVED","price":null,"priceType":null,"bedrooms":null,"rating":null,"contactName":null,"contactPhone":null,"listingUrl":null,"notes":null,"checklist":{},"createdAt":"2026-09-01T10:00:00Z","updatedAt":"2026-09-22T06:15:00Z","deleted":true,"syncVersion":42,"distanceMeters":null}
 ]`;
 
@@ -566,6 +566,29 @@ describe('SyncService', () => {
       expect(api.pushedHouses.map((h) => h.id)).toEqual(['local-1']);
       expect(await store.dirtyHouses()).toEqual([]);
       expect(sync.lastOutcome()?.pushed).toBe(1);
+    });
+
+    it('pulls a house with rooms and stores them sorted and capped', async () => {
+      recordedServer();
+      await sync.syncNow(true);
+      const house_with_rooms = await store.getHouse(HOUSE_ID);
+      expect(house_with_rooms?.rooms).not.toBeNull();
+      expect(house_with_rooms?.rooms?.[0].id).toBe('r1');
+      expect(house_with_rooms?.rooms?.[0].type).toBe('BEDROOM');
+      expect(house_with_rooms?.rooms?.[0].name).toBe('Master');
+      expect(house_with_rooms?.rooms?.[0].condition).toBe(4);
+    });
+
+    it('pushes a dirty house with rooms in the PUT body', async () => {
+      const roomData = [
+        { id: 'r1', type: 'BEDROOM' as const, name: 'Bedroom', lengthCm: 300, widthCm: 300, condition: 4, notes: 'OK', sort: 0 },
+      ];
+      await store.saveHouse(house('local-rooms', { rooms: roomData }), Date.parse('2026-09-01T00:00:00.000Z'));
+      recordedServer();
+      await sync.syncNow(true);
+      expect(api.pushedHouses.length).toBeGreaterThan(0);
+      const pushed = api.pushedHouses.find((h) => h.id === 'local-rooms');
+      expect(pushed?.rooms).toEqual(roomData);
     });
 
     it('sends photo deletes before uploads, so a removed photo is not re-uploaded', async () => {

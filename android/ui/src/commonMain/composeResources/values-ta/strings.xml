@@ -749,4 +749,44 @@
         <item quantity="one">%1$d வீடு</item>
         <item quantity="other">%1$d வீடுகள்</item>
     </plurals>
+    <!-- Slice 1c, rooms (2026-09-30). Under review. -->
+    <string name="house_rooms">அறைகள்</string>
+    <string name="house_room_add">அறையைச் சேர்</string>
+    <string name="house_rooms_max">அதிகபட்சம் %1$d அறைகள்</string>
+    <string name="house_rooms_empty">இன்னும் அறைகள் இல்லை. ஒவ்வொரு அறையின் அளவையும் நிலையையும் குறிக்க அதைச் சேர்க்கவும்.</string>
+    <string name="house_room_type">வகை</string>
+    <string name="house_room_name">பெயர்</string>
+    <string name="house_room_length_feet">நீளம் (அடி)</string>
+    <string name="house_room_length_inches">நீளம் (அங்குலம்)</string>
+    <string name="house_room_width_feet">அகலம் (அடி)</string>
+    <string name="house_room_width_inches">அகலம் (அங்குலம்)</string>
+    <string name="house_room_length_metres">நீளம் (மீட்டர்)</string>
+    <string name="house_room_width_metres">அகலம் (மீட்டர்)</string>
+    <string name="house_room_size_invalid">50 மீட்டர் (164 அடி) வரையிலான அளவை உள்ளிடவும்</string>
+    <string name="house_room_condition">நிலை</string>
+    <string name="house_room_condition_none">சரிபார்க்கவில்லை</string>
+    <string name="house_room_condition_value">5-இல் %1$d</string>
+    <string name="house_room_notes">குறிப்புகள்</string>
+    <string name="house_room_delete">அறையை நீக்கு</string>
+    <string name="house_room_area">பரப்பு %1$s</string>
+    <string name="house_rooms_total">மொத்தப் பரப்பு %1$s</string>
+    <string name="room_type_BEDROOM">படுக்கையறை</string>
+    <string name="room_type_HALL">ஹால்</string>
+    <string name="room_type_KITCHEN">சமையலறை</string>
+    <string name="room_type_BATHROOM">குளியலறை</string>
+    <string name="room_type_BALCONY">பால்கனி</string>
+    <string name="room_type_POOJA">பூஜை அறை</string>
+    <string name="room_type_STUDY">படிப்பறை</string>
+    <string name="room_type_UTILITY">பயன்பாட்டு அறை</string>
+    <string name="room_type_STORE">சேமிப்பு அறை</string>
+    <string name="room_type_OTHER">மற்றவை</string>
+    <string name="settings_length_units">நீள அலகு</string>
+    <string name="settings_length_hint">அறை அளவுகள் எப்படிக் காட்டப்பட்டு உள்ளிடப்படும் என்பது. இந்தத் தொலைபேசியில் மட்டும் இருக்கும்.</string>
+    <string name="settings_length_feet">அடி</string>
+    <string name="settings_length_metres">மீட்டர்</string>
+    <string name="compare_rooms">அறைகள்</string>
+    <plurals name="compare_rooms_count">
+        <item quantity="one">%1$d அறை</item>
+        <item quantity="other">%1$d அறைகள்</item>
+    </plurals>
 </resources>

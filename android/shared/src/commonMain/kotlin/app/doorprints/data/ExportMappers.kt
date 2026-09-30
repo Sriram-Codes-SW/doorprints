@@ -23,6 +23,7 @@ import app.doorprints.shared.export.ExportHouse
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
+import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
@@ -38,8 +39,8 @@ fun HouseEntity.toExport() = ExportHouse(
     id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
-    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), brokerId = brokerId,
-    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
+    brokerId = brokerId, checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
 )
 
 /**
@@ -53,8 +54,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     notes = notes,
     // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
-    cost = cost?.coerced(), brokerId = brokerId?.takeIf(RecordRules::isValidId), checklist = checklist,
-    createdAt = createdAt, updatedAt = updatedAt,
+    cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )
 
@@ -81,7 +82,7 @@ fun PhotoEntity.toExport() = ExportPhoto(id = id, houseId = houseId, fileName = 
  * on the main thread for every option tap. Common since ADR-23 CMP-6 P6b.
  */
 fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = ExportBundle.build(
-    options,
+    options.copy(lengthUnit = lengthUnit),
     houses.map { it.toExport() },
     visits.map { it.toExport() },
     photos.map { it.toExport() },

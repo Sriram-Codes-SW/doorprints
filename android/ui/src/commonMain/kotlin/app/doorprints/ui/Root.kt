@@ -45,6 +45,7 @@ import app.doorprints.shared.listing.ListingText
 import app.doorprints.data.ConnectLink
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.LengthUnit
 import app.doorprints.ui.res.*
 import app.doorprints.shared.export.ExportLanguages
 import kotlinx.coroutines.flow.StateFlow
@@ -373,10 +374,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
                     val brokers: Map<String, Broker> by remember(repo) { repo.observeBrokers().map { it.toMap() } }
                         .collectAsStateWithLifecycle(emptyMap())
+                    val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
                     CompareScreen(
                         loaded = loaded,
                         counts = counts,
                         brokers = brokers,
+                        lengthUnit = lengthUnit,
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                         onOpenMap = openMapWithTip,
                     )

@@ -25,6 +25,7 @@ import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
 import { SETTING_KEYS, houseFromDto, isoNow, millis, recordFromDto, visitFromDto } from './records';
+import type { LengthUnit } from '../shared/room-sizes';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
 /** Quiet period after the last write before {@link LocalStore.settled} follows `revision`. */
@@ -556,6 +557,15 @@ export class LocalStore {
   async removeSetting(key: string): Promise<void> {
     const db = await this.db();
     await db.delete('settings', key);
+  }
+
+  /** The length unit preference for rooms (slice 1c): feet unless the person chose metres. Local only, never synced. */
+  async lengthUnit(): Promise<LengthUnit> {
+    return (await this.setting(SETTING_KEYS.lengthUnit)) === 'M' ? 'M' : 'FT';
+  }
+
+  async setLengthUnit(unit: LengthUnit): Promise<void> {
+    await this.setSetting(SETTING_KEYS.lengthUnit, unit);
   }
 
   async numberSetting(key: string): Promise<number> {

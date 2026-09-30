@@ -28,13 +28,15 @@ package app.doorprints.shared.model
 object HouseSearch {
     /**
      * The values a house is searched by: label, address, street, locality, notes, the contact's name and, with a
-     * linked broker (slice 1b), [brokerText] (`Broker.searchText`: its name, agency and fee terms).
+     * linked broker (slice 1b), [brokerText] (`Broker.searchText`: its name, agency and fee terms), and every room's
+     * name and notes (slice 1c), in the order shown.
      */
     fun fields(
         label: String?, address: String?, street: String?, locality: String?, notes: String?, contactName: String?,
-        brokerText: String? = null,
+        brokerText: String? = null, rooms: List<HouseRoom>? = null,
     ): List<String> =
-        listOfNotNull(label, address, street, locality, notes, contactName, brokerText).filter { it.isNotEmpty() }
+        (listOfNotNull(label, address, street, locality, notes, contactName, brokerText) +
+            rooms.orEmpty().flatMap { listOfNotNull(it.name, it.notes) }).filter { it.isNotEmpty() }
 
     /** True when [query] is blank or one of [fields] contains it, ignoring case. */
     fun matches(query: String, fields: List<String>): Boolean {

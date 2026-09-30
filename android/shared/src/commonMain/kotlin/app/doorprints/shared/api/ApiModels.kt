@@ -19,6 +19,7 @@
 package app.doorprints.shared.api
 
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRoom
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -49,6 +50,8 @@ data class HouseDto(
     /** `GPS`, `MAP` or `APPROX` (`LocationSource`); absent for a house saved before slice 1a. */
     val locationSource: String? = null,
     val cost: HouseCost? = null,
+    /** The rooms (slice 1c), at most 30, after `cost`; absent for none (never `[]`), and `[]` read is none too. */
+    val rooms: List<HouseRoom>? = null,
     /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),

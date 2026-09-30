@@ -19,6 +19,10 @@
 package app.doorprints.shared.export
 
 import app.doorprints.shared.model.CostSummary
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.LengthUnit
+import app.doorprints.shared.model.RoomSizes
 import kotlin.math.floor
 
 /**
@@ -68,10 +72,16 @@ data class ExportTable(
  */
 object ExportRows {
 
-    /** The tables of a copy, in file order: the four, and `brokers` last when the copy has brokers (slice 1b). */
+    /**
+     * The tables of a copy, in file order: the four, then `brokers` when the copy has brokers (slice 1b) and `rooms`
+     * when a house of it has a room (slice 1c).
+     */
     fun tables(bundle: ExportBundle): List<ExportTable> =
         listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
-            listOfNotNull(if (bundle.brokers.isEmpty()) null else brokers(bundle))
+            listOfNotNull(
+                if (bundle.brokers.isEmpty()) null else brokers(bundle),
+                if (bundle.hasRooms) rooms(bundle) else null,
+            )
 
     fun houses(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
@@ -85,6 +95,8 @@ object ExportRows {
             }
             add(s["col.listingUrl"]); add(s["col.notes"])
             addAll(COST_COLUMN_KEYS.map { s[it] })
+            // Slice 1c: the number of rooms, right after the cost per sq ft.
+            add(s["col.rooms"])
             add(s["col.visits"]); add(s["col.photos"])
             add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
         }
@@ -105,6 +117,7 @@ object ExportRows {
                 }
                 add(text(h.listingUrl)); add(text(h.notes))
                 addAll(costCells(h, s))
+                add(h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank)
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
                 add(Cell.Count(bundle.photosOf(h).size.toLong()))
                 add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))
@@ -173,6 +186,75 @@ object ExportRows {
             )
         }
         return ExportTable("brokers", s["table.brokers"], columns, rows)
+    }
+
+    /**
+     * The rooms (slice 1c): one row per room, the houses in the copy's order and each house's rooms in the order shown.
+     * Sizes in the unit of the device that made the copy ([ExportOptions.lengthUnit]): decimal feet with one decimal
+     * and whole sq ft, or metres with two decimals and m² with one. A blank name is the type's translated name.
+     */
+    fun rooms(bundle: ExportBundle): ExportTable {
+        val s = bundle.strings
+        val metres = bundle.options.lengthUnit == LengthUnit.M
+        val columns = listOf(
+            s["col.house"], s["col.roomName"], s["col.roomType"],
+            s[if (metres) "col.lengthM" else "col.lengthFt"], s[if (metres) "col.widthM" else "col.widthFt"],
+            s[if (metres) "col.areaSqM" else "col.areaSqFt"],
+            s["col.condition"], s["col.notes"], s["col.houseId"], s["col.id"],
+        )
+        fun length(cm: Int?): Cell = when {
+            cm == null -> Cell.Blank
+            metres -> Cell.Num(cm / 100.0, 2)
+            else -> Cell.Num(cm / (12 * RoomSizes.CM_PER_INCH), 1)
+        }
+        val rows = bundle.houses.flatMap { h ->
+            h.rooms.orEmpty().map { r ->
+                val area = HouseRooms.areaSqCm(r)
+                listOf(
+                    Cell.Text(h.label), Cell.Text(roomName(r, s)), Cell.Text(s.roomType(r.roomType.name)),
+                    length(r.lengthCm), length(r.widthCm),
+                    when {
+                        area == null -> Cell.Blank
+                        metres -> Cell.Num(RoomSizes.sqM(area), 1)
+                        else -> Cell.Count(RoomSizes.sqFt(area))
+                    },
+                    count(r.condition), text(r.notes), Cell.Text(h.id), Cell.Text(r.id),
+                )
+            }
+        }
+        return ExportTable("rooms", s["table.rooms"], columns, rows)
+    }
+
+    /** A room as the copies name it: its own name, or its type's translated name when it has none. */
+    fun roomName(r: HouseRoom, s: ExportStrings): String = r.name?.takeIf { it.isNotBlank() } ?: s.roomType(r.roomType.name)
+
+    /** The headings of a house page's **Rooms** table (HTML, PDF, Markdown): name, size, area, condition, notes. */
+    fun roomColumns(bundle: ExportBundle): List<String> {
+        val s = bundle.strings
+        val area = if (bundle.options.lengthUnit == LengthUnit.M) "col.areaSqM" else "col.areaSqFt"
+        return listOf(s["col.roomName"], s["col.size"], s[area], s["col.condition"], s["col.notes"])
+    }
+
+    /**
+     * The rows of a house page's **Rooms** table, in the reader's form ("13 ft 0 in × 12 ft 0 in", "156", "4/5"), and
+     * the total of the areas as a last row when at least two rooms have both sizes; empty for a house without rooms.
+     */
+    fun roomRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> {
+        val s = bundle.strings
+        val unit = bundle.options.lengthUnit
+        val none = s["none"]
+        val rooms = h.rooms.orEmpty()
+        val rows = rooms.map { r ->
+            listOf(
+                roomName(r, s),
+                RoomSizes.sizeText(r, unit) ?: none,
+                HouseRooms.areaSqCm(r)?.let { RoomSizes.areaNumber(it, unit) } ?: none,
+                r.condition?.let { "$it/5" } ?: none,
+                r.notes ?: "",
+            )
+        }
+        val (total, sized) = HouseRooms.totalAreaSqCm(rooms)
+        return if (sized >= 2) rows + listOf(listOf(s["rooms.total"], "", RoomSizes.areaNumber(total, unit), "", "")) else rows
     }
 
     fun photos(bundle: ExportBundle): ExportTable {

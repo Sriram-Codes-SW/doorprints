@@ -17,8 +17,8 @@
  */
 
 import { COST_FIELDS } from '../core/models';
-import type { HouseCost } from '../core/models';
-import { cleanCost } from '../data/records';
+import type { HouseCost, HouseRoom } from '../core/models';
+import { cleanCost, cleanRooms } from '../data/records';
 import { sortedChecklist } from './export-model';
 import type { ExportBroker, ExportBundle, ExportHouse as BundleHouse } from './export-model';
 import { brokerToPayload } from '../shared/broker';
@@ -107,6 +107,8 @@ export interface BackupHouse {
   areaSqft?: number;
   locationSource?: string;
   cost?: BackupCost;
+  /** Slice 1c (docs/11 5.6): at most 30 rooms, right after `cost` and before `brokerId`. */
+  rooms?: BackupRoom[];
   /** Slice 1b: the record id of the house's broker, right after `cost`. */
   brokerId?: string;
   checklist: Record<string, number>;
@@ -116,6 +118,13 @@ export interface BackupHouse {
 
 /** The eleven cost fields, only the set ones, in `COST_FIELDS` order; the object itself is left out when empty. */
 export type BackupCost = { [K in keyof HouseCost]?: NonNullable<HouseCost[K]> };
+
+/**
+ * A room in the backup, with only the set fields. The array is left out when it is empty or null.
+ * Fields are in the order: id, type, name, lengthCm, widthCm, condition, notes, sort.
+ */
+export type BackupRoom = { [K in keyof HouseRoom]?: Exclude<HouseRoom[K], null> };
+
 
 export interface BackupVisit {
   id: string;
@@ -191,8 +200,9 @@ export interface BackupManifest {
 
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
+  const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);
   return {
-    format: brokers ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
+    format: brokers || hasRooms ? BACKUP_FORMAT_V2 : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
     houses: bundle.houses.map((entry) => backupHouse(entry)),
     visits: bundle.houses.flatMap((entry) =>
@@ -246,6 +256,7 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     areaSqft: house.areaSqft ?? undefined,
     locationSource: house.locationSource ?? undefined,
     cost: backupCost(house.cost),
+    rooms: backupRooms(house.rooms),
     brokerId: house.brokerId ?? undefined,
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
@@ -263,6 +274,25 @@ function backupCost(cost: HouseCost | null | undefined): BackupCost | undefined 
     if (value !== null && value !== undefined) (out as Record<string, unknown>)[field] = value;
   }
   return out;
+}
+
+/**
+ * Rooms in the backup: at most 30, only the set fields in the spec's order (id, type, name, lengthCm, widthCm, condition, notes, sort).
+ * The array itself is left out when there are no rooms.
+ */
+function backupRooms(rooms: HouseRoom[] | null | undefined): BackupRoom[] | undefined {
+  const clean = cleanRooms(rooms);
+  if (!clean) return undefined;
+  return clean.map((room) => {
+    const out: Record<string, unknown> & BackupRoom = { id: room.id, type: room.type };
+    if (room.name) out.name = room.name;
+    if (room.lengthCm !== undefined && room.lengthCm !== null) out.lengthCm = room.lengthCm;
+    if (room.widthCm !== undefined && room.widthCm !== null) out.widthCm = room.widthCm;
+    if (room.condition !== undefined && room.condition !== null) out.condition = room.condition;
+    if (room.notes) out.notes = room.notes;
+    if (room.sort !== undefined && room.sort !== null) out.sort = room.sort;
+    return out as BackupRoom;
+  });
 }
 
 /**
