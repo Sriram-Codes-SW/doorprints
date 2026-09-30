@@ -20,12 +20,14 @@ package app.doorprints.server.common;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.stream.Collectors;
 
@@ -58,6 +60,17 @@ public class ApiExceptionHandler {
                         .map(err -> err.getDefaultMessage()).collect(Collectors.joining(", ")))
                 .collect(Collectors.joining("; "));
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail.isBlank() ? "Invalid request" : detail);
+    }
+
+    /**
+     * A body that is not JSON, or has a value of the wrong type. Without this the answer is Spring's default error
+     * page, whose {@code timestamp} changes with every request: the ZAP API scan read the difference between its
+     * "AND 1=1" and "AND 1=2" answers as a SQL injection on {@code POST /api/import} and failed the gate (S4b-BL-89,
+     * PR 78). The answer is fixed and says nothing of the body.
+     */
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ProblemDetail unreadable(Exception e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed request");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
