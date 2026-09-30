@@ -27,8 +27,12 @@ import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ExportBroker
+import app.doorprints.shared.export.ExportCriterion
+import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
@@ -127,6 +131,43 @@ interface Repository {
     /** The live houses that name the broker, newest edit first: the broker's page. */
     fun brokerHouses(id: String): Flow<List<HouseEntity>>
 
+    // Criteria and ranking (docs/11 5.4, slice 2): records of type `criterion` (id = the key) and `preference`. Only
+    // what differs from the defaults is stored; a built-in with no record is weight 2, not a must-have, minimum 3.
+
+    /** The effective scoring (the criterion and preference records merged with the defaults), now and after each change. */
+    fun observeScoring(): Flow<Scoring>
+
+    /** The effective scoring now, read once (the Hunt notification, a worker). */
+    suspend fun scoring(): Scoring
+
+    /**
+     * Saves one criterion (coerced; `IllegalArgumentException` for a key outside `RecordRules.isValidId`). A built-in
+     * set back to its default has its record deleted; a record that would say nothing new is not written again.
+     * `RecordLimitException` when it would be the 41st criterion ([Criterion.MAX_CRITERIA]).
+     */
+    suspend fun saveCriterion(criterion: Criterion)
+
+    /** [saveCriterion] for each of [criteria] in one transaction: the Criteria screen's move up/down renumbering. */
+    suspend fun saveCriteria(criteria: List<Criterion>)
+
+    /**
+     * Adds a custom criterion named [label] (trimmed, 1..60 characters, else `IllegalArgumentException`) with a fresh key
+     * `c_` + 8 hex that no criterion record has used, at the end of the list; returns the key. `RecordLimitException` at 40.
+     */
+    suspend fun addCriterion(label: String, weight: Int = Criterion.DEFAULT_WEIGHT): String
+
+    /**
+     * Deletes a custom criterion when no live house has a score under its key, and says whether it did; a built-in is
+     * never deleted (it is archived instead).
+     */
+    suspend fun deleteCriterion(key: String): Boolean
+
+    /** Sets the star rating's share of the overall score (0..1); 0.5, the default, deletes the record. */
+    suspend fun saveRatingShare(share: Double)
+
+    /** *Reset to defaults*: every criterion and preference record becomes a tombstone (houses' scores stay). */
+    suspend fun resetScoring()
+
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -221,6 +262,9 @@ interface Repository {
         val brokers: List<ExportBroker> = emptyList(),
         /** This device's length setting (slice 1c): the unit a copy writes the rooms' sizes in. */
         val lengthUnit: LengthUnit = LengthUnit.FT,
+        /** The live criterion and preference records (slice 2); a copy keeps them, with or without contact details. */
+        val criteria: List<ExportCriterion> = emptyList(),
+        val preferences: List<ExportPreference> = emptyList(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -253,6 +297,9 @@ interface Repository {
         val syncedDeletedHouseIds: Set<String> = emptySet(),
         /** Every broker record here, deleted ones too, with its `updatedAt`: an import merges brokers by id (slice 1b). */
         val brokers: Map<String, Long> = emptyMap(),
+        /** Every criterion and preference record here, deleted ones too, by key (slice 2): merged by key. */
+        val criteria: Map<String, Long> = emptyMap(),
+        val preferences: Map<String, Long> = emptyMap(),
     )
 
     /** What an import actually managed to write. */
@@ -284,9 +331,12 @@ interface Repository {
         val copiedPhotos: List<String> = emptyList(),
         /** Brokers written (slice 1b), new and updated together. */
         val brokers: Int = 0,
+        /** Criteria and preferences written (slice 2), new and updated together. */
+        val criteria: Int = 0,
+        val preferences: Int = 0,
     ) {
         /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos + brokers
+        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences
     }
 
     /**

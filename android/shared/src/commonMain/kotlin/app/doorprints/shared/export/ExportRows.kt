@@ -73,14 +73,15 @@ data class ExportTable(
 object ExportRows {
 
     /**
-     * The tables of a copy, in file order: the four, then `brokers` when the copy has brokers (slice 1b) and `rooms`
-     * when a house of it has a room (slice 1c).
+     * The tables of a copy, in file order: the four, then `brokers` when the copy has brokers (slice 1b), `rooms`
+     * when a house of it has a room (slice 1c) and `criteria` when it has a criterion record (slice 2).
      */
     fun tables(bundle: ExportBundle): List<ExportTable> =
         listOf(houses(bundle), scores(bundle), visits(bundle), photos(bundle)) +
             listOfNotNull(
                 if (bundle.brokers.isEmpty()) null else brokers(bundle),
                 if (bundle.hasRooms) rooms(bundle) else null,
+                if (bundle.criteria.isEmpty()) null else criteria(bundle),
             )
 
     fun houses(bundle: ExportBundle): ExportTable {
@@ -105,7 +106,7 @@ object ExportRows {
                 add(Cell.Count(bundle.rankOf(h).toLong()))
                 add(Cell.Text(h.label))
                 add(Cell.Text(s.status(h.status)))
-                add(h.score?.let { Cell.Num(it, 1) } ?: Cell.Blank)
+                add(bundle.overallOf(h)?.let { Cell.Num(it, 1) } ?: Cell.Blank)
                 add(h.price?.let { Cell.Money(it) } ?: Cell.Blank)
                 add(if (h.price == null) Cell.Blank else Cell.Text(s.priceType(h.priceType)))
                 add(h.bedrooms?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
@@ -128,9 +129,8 @@ object ExportRows {
     }
 
     /**
-     * One row per scored checklist item, in the shared display order (`Checklist.keys`), then any custom key the
-     * house carries, alphabetically — Sprint 4b's custom criteria (docs/11 section 5.4) land in the same table
-     * without a format change, because the key travels next to its label.
+     * One row per scored checklist item, in the shared display order (`Checklist.keys`), then any other key the house
+     * carries, alphabetically. The label is a custom criterion's own (slice 2), a built-in's translated name, or the key.
      */
     fun scores(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
@@ -140,7 +140,7 @@ object ExportRows {
                 listOf(
                     Cell.Text(h.label),
                     Cell.Text(key),
-                    Cell.Text(s.check(key)),
+                    Cell.Text(bundle.criterionLabel(key)),
                     Cell.Count(h.checklist.getValue(key).toLong()),
                     Cell.Text(h.id),
                 )
@@ -187,6 +187,87 @@ object ExportRows {
         }
         return ExportTable("brokers", s["table.brokers"], columns, rows)
     }
+
+    /**
+     * The criteria (slice 2), in a copy that has a criterion record: the whole effective list in its order (defaults
+     * included, so the table says how every score was weighed), with the weight's translated name.
+     */
+    fun criteria(bundle: ExportBundle): ExportTable {
+        val s = bundle.strings
+        val columns = listOf(
+            s["col.item"], s["col.name"], s["col.weight"], s["col.mustHave"], s["col.minScore"], s["col.archived"],
+            s["col.sort"],
+        )
+        val rows = bundle.scoring.criteria.map { c ->
+            listOf(
+                Cell.Text(c.key), Cell.Text(bundle.criterionLabel(c.key)), Cell.Text(s["weight.${c.weight}"]),
+                Cell.Text(s[if (c.mustHave) "yes" else "no"]), Cell.Count(c.minScore.toLong()),
+                Cell.Text(s[if (c.archived) "yes" else "no"]), Cell.Count(c.sort.toLong()),
+            )
+        }
+        return ExportTable("criteria", s["table.criteria"], columns, rows)
+    }
+
+    /**
+     * The house page's scoring lines (slice 2), after the score: "Scored 3 of 10 that matter" when a criterion that
+     * counts is scored, and the must-haves the house missed by name.
+     */
+    fun scoringLines(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> {
+        val s = bundle.strings
+        val r = bundle.scoreOf(h)
+        return buildList {
+            if (r.scored > 0) add(s["col.coverage"] to coverageText(r.scored, r.active, s))
+            if (r.failedMustHave.isNotEmpty()) {
+                add(s["mustHave.missed"] to r.failedMustHave.joinToString(", ") { bundle.criterionLabel(it) })
+            }
+        }
+    }
+
+    /** "Scored 7 of 10 that matter" in the copy's language. */
+    fun coverageText(scored: Int, active: Int, s: ExportStrings): String =
+        s["coverage"].replace("{n}", scored.toString()).replace("{m}", active.toString())
+
+    /** A score as the PDF's ranking lines show it: one decimal, "—" when none, and the mark when a must-have is missed. */
+    fun rankedScore(h: ExportHouse, bundle: ExportBundle): String {
+        val s = bundle.strings
+        val r = bundle.scoreOf(h)
+        val score = r.overall?.let { fixed(it, 1) } ?: s["none"]
+        return if (r.missedMustHave) score + " · " + s["mustHave.missed"] else score
+    }
+
+    /**
+     * The ranking table's columns (HTML, Markdown): rank, house, score, then **Must-haves** only when a house of the
+     * copy misses one (slice 2), price, status.
+     */
+    fun rankingColumns(bundle: ExportBundle): List<String> {
+        val s = bundle.strings
+        return listOfNotNull(
+            s["col.rank"], s["col.label"], s["col.score"], if (bundle.anyMissedMustHave) s["col.mustHaves"] else null,
+            s["col.price"], s["col.status"],
+        )
+    }
+
+    /** One row of the ranking table, in the reader's form, for [rankingColumns]; the house's label second. */
+    fun rankingRow(h: ExportHouse, bundle: ExportBundle): List<String> {
+        val s = bundle.strings
+        val r = bundle.scoreOf(h)
+        return listOfNotNull(
+            bundle.rankOf(h).toString(),
+            h.label,
+            r.overall?.let { fixed(it, 1) } ?: s["none"],
+            if (bundle.anyMissedMustHave) {
+                if (r.missedMustHave) r.failedMustHave.joinToString(", ") { bundle.criterionLabel(it) } else s["none"]
+            } else {
+                null
+            },
+            h.price?.let { rupees(it) } ?: s["none"],
+            s.status(h.status),
+        )
+    }
+
+    /** The cover's rating share line value, "40%", when the copy has scoring records; null otherwise. */
+    fun ratingShareText(bundle: ExportBundle): String? =
+        if (bundle.hasScoringRecords) fixed(bundle.scoring.ratingShare * 100, 0) + "%" else null
 
     /**
      * The rooms (slice 1c): one row per room, the houses in the copy's order and each house's rooms in the order shown.
@@ -348,7 +429,10 @@ object ExportRows {
     private fun money(value: Long?): Cell = value?.let { Cell.Money(it) } ?: Cell.Blank
     private fun count(value: Int?): Cell = value?.let { Cell.Count(it.toLong()) } ?: Cell.Blank
 
-    /** Built-in checklist keys in display order first, then anything else the house has, alphabetically. */
+    /**
+     * Built-in checklist keys in display order first, then anything else the house has (custom criteria, a newer
+     * app's keys), alphabetically: the same order on both apps whatever the person's criteria (slice 2 keeps it).
+     */
     fun orderedChecklistKeys(house: ExportHouse): List<String> {
         val builtIn = app.doorprints.shared.model.Checklist.keys.filter { house.checklist.containsKey(it) }
         val extra = house.checklist.keys.filter { it !in app.doorprints.shared.model.Checklist.keys }.sorted()

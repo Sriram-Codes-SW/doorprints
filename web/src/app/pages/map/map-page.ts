@@ -77,10 +77,19 @@ import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
+import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
+import type { ScoreResult, Scoring } from '../../shared/scoring';
 
 interface ListItem {
   house: HouseDto;
   score: number | null;
+  /** The whole score result: a house that misses a must-have shows a chip and sorts after the rest (slice 2). */
+  result: ScoreResult;
+}
+
+/** What the ranking compares for a list row. */
+function rankedOf(item: ListItem) {
+  return { id: item.house.id, result: item.result, price: item.house.price, updatedAt: timeOf(item.house) };
 }
 
 const SOURCE_ID = 'houses';
@@ -174,16 +183,23 @@ export class MapPage implements AfterViewInit, OnDestroy {
   /** Empty-state glyphs (Material, as in the navigation bar). */
   protected readonly glyphs = GLYPHS;
 
+  /** The effective scoring (criteria and rating share); the defaults until it is read. */
+  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+
   protected readonly items = computed<ListItem[]>(() => {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
       .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? '')).includes(q))
-      .map((house) => ({ house, score: houseScore(house) }));
+      .map((house) => {
+        const result = evaluateScore(house.checklist, house.rating, this.scoring());
+        return { house, score: result.overall, result };
+      });
     switch (this.sort()) {
       case 'score':
-        return list.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+        // "Best first" is the ranking of docs/11 5.4: houses that miss a must-have last, then score, coverage, price, edit.
+        return list.sort((a, b) => compareRanked(rankedOf(a), rankedOf(b)));
       case 'price':
         return list.sort((a, b) => comparePrice(a.house, b.house));
       default:
@@ -420,6 +436,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.api.brokers().subscribe({
       next: (rows) => this.brokerWords.set(new Map(rows.map((r) => [r.id, brokerSearchText(r.broker)]))),
       error: () => this.brokerWords.set(new Map()),
+    });
+    this.api.scoring().subscribe({
+      next: (scoring) => this.scoring.set(scoring),
+      error: () => this.scoring.set(DEFAULT_SCORING),
     });
     this.api.stats().subscribe({
       next: (s) => this.stats.set(s),
@@ -753,7 +773,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       `${STATUS_ICON[h.status]} ${this.i18n.t(STATUS_KEY[h.status])}`,
       h.price != null ? this.i18n.price(h.price, h.priceType) : null,
       h.bedrooms != null ? this.i18n.t('common.bhk', { n: h.bedrooms }) : null,
-      this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h)) }),
+      this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, this.scoring())) }),
     ].filter((x): x is string => !!x);
     const sub = document.createElement('div');
     sub.textContent = details.join(' · ');

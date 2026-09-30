@@ -56,6 +56,8 @@ import app.doorprints.ui.res.*
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.Ranking
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.RoomSizes
 import kotlin.math.roundToLong
@@ -119,13 +121,16 @@ fun CompareScreen(
     brokers: Map<String, Broker> = emptyMap(),
     /** This phone's length setting (slice 1c): the unit of the Rooms row's total area. */
     lengthUnit: LengthUnit = LengthUnit.FT,
+    /** The effective scoring (slice 2): the Overall score and Must-haves rows, the checklist rows and the order. */
+    scoring: Scoring = Scoring.DEFAULT,
 ) {
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
     var defaulted by rememberSaveable { mutableStateOf(false) }
     var pickerOpen by rememberSaveable { mutableStateOf(true) }
     val candidates = loaded.orEmpty().filter { it.status != HouseStatus.REJECTED }
-        .sortedWith(compareByDescending<HouseEntity> { it.status == HouseStatus.SHORTLISTED }.thenByDescending { it.score ?: -1.0 })
+        .let { list -> Ranking.sort(list) { it.ranked(scoring) } }
+        .sortedByDescending { it.status == HouseStatus.SHORTLISTED }
     val candidateIds = candidates.map { it.id }.toSet()
     LaunchedEffect(loaded != null, candidateIds) {
         if (loaded == null) return@LaunchedEffect
@@ -138,6 +143,7 @@ fun CompareScreen(
             if (kept != selected) selected = kept
         }
     }
+    // In the ranking's order (slice 2), shortlisted first: the best house leads the table.
     val chosen = candidates.filter { it.id in selected }
     val unnamed = stringResource(Res.string.house_unnamed)
     fun nameOf(h: HouseEntity) = h.label.ifBlank { unnamed }
@@ -174,6 +180,7 @@ fun CompareScreen(
                 visits = visits,
                 brokers = brokers,
                 lengthUnit = lengthUnit,
+                scoring = scoring,
                 nameOf = ::nameOf,
                 onOpenHouse = onOpenHouse,
             )
@@ -193,6 +200,7 @@ private fun ComparePicker(
     visits: Map<String, Int>,
     brokers: Map<String, Broker>,
     lengthUnit: LengthUnit,
+    scoring: Scoring,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -203,7 +211,7 @@ private fun ComparePicker(
         if (chosen.size < 2) {
             Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
         } else {
-            CompareTable(chosen, visits, brokers, lengthUnit, nameOf, onOpenHouse)
+            CompareTable(chosen, visits, brokers, lengthUnit, scoring, nameOf, onOpenHouse)
             Text(stringResource(Res.string.compare_footnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
@@ -270,6 +278,7 @@ private fun CompareTable(
     visits: Map<String, Int>,
     brokers: Map<String, Broker>,
     lengthUnit: LengthUnit,
+    scoring: Scoring,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -281,7 +290,23 @@ private fun CompareTable(
     val bhkFormat = stringResource(Res.string.common_bhk)
     val starsFormat = stringResource(Res.string.common_stars)
     val checkFormat = stringResource(Res.string.house_check_value)
-    val checklistLabels = ChecklistResources.items.map { (key, res) -> key to stringResource(res) }
+    // The criteria that are not archived, in their order, under their names (slice 2): custom ones too.
+    val checklistLabels = scoring.criteria.filter { !it.archived }.map { it.key to it.displayName() }
+    val results = chosen.associate { it.id to it.scoreResult(scoring) }
+    val nameOfKey = scoring.criteria.associate { it.key to it.displayName() }
+    val metText = stringResource(Res.string.compare_must_have_met)
+    val missedFormat = stringResource(Res.string.compare_must_have_missed)
+    val uncheckedFormat = stringResource(Res.string.compare_must_have_unchecked)
+    // "Missed: Water supply", else "Not checked yet: Security", else "All met"; not set when there is no must-have.
+    fun mustHaves(h: HouseEntity): String? {
+        val r = results[h.id] ?: return null
+        fun names(keys: List<String>) = keys.joinToString(", ") { nameOfKey[it] ?: it }
+        return when {
+            r.failedMustHave.isNotEmpty() -> formatPositional(missedFormat, names(r.failedMustHave))
+            r.uncheckedMustHave.isNotEmpty() -> formatPositional(uncheckedFormat, names(r.uncheckedMustHave))
+            else -> metText
+        }
+    }
     val sqftFormat = stringResource(Res.string.common_sqft)
     // The house's own values (docs/11 5.21, slice 1a) line up under the price: what it costs, then the size.
     val summaries = chosen.associate { h -> h.id to CostSummary.of(h.price, h.priceType, h.areaSqft, h.cost) }
@@ -296,7 +321,11 @@ private fun CompareTable(
         }
     }
     val rows = buildList {
-        add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(it) } }))
+        add(CompareRow(scoreRow, notScored, { h -> results[h.id]?.overall?.let { Formats.score(it) } }))
+        // Only when a criterion is a must-have (slice 2): the row would say nothing otherwise.
+        if (scoring.criteria.any { it.mustHave && !it.archived }) {
+            add(CompareRow(stringResource(Res.string.compare_must_haves), notSet, ::mustHaves))
+        }
         add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
         add(CompareRow(stringResource(Res.string.compare_agreed_price), notSet, { h -> h.cost?.agreedPrice?.let { Formats.rupees(it) } }))
         add(CompareRow(stringResource(Res.string.compare_monthly_cost), notSet, { h -> summaries[h.id]?.monthlyCost?.let { Formats.rupees(it) } }))
@@ -323,7 +352,8 @@ private fun CompareTable(
                 ?: it.contactName?.takeIf { n -> n.isNotBlank() } ?: it.contactPhone?.takeIf { p -> p.isNotBlank() }
         }))
     }
-    val best = chosen.maxByOrNull { it.score ?: -1.0 }?.takeIf { it.score != null }
+    // The best by the ranking, when it has a score at all.
+    val best = Ranking.sort(chosen) { it.ranked(scoring) }.firstOrNull()?.takeIf { results[it.id]?.overall != null }
     val bestFormat = stringResource(Res.string.compare_best_name)
     val openLabel = stringResource(Res.string.compare_open_house)
     val headerName: (HouseEntity) -> String = { h -> if (h == best) formatPositional(bestFormat, nameOf(h)) else nameOf(h) }

@@ -75,14 +75,19 @@ final class BackupMapper {
 
     private static final Comparator<BackupBroker> BROKER_ORDER =
             Comparator.comparing(BackupBroker::updatedAt).thenComparing(BackupBroker::id);
+    private static final Comparator<BackupCriterion> CRITERION_ORDER =
+            Comparator.comparing(BackupCriterion::updatedAt).thenComparing(BackupCriterion::key);
+    private static final Comparator<BackupPreference> PREFERENCE_ORDER =
+            Comparator.comparing(BackupPreference::updatedAt).thenComparing(BackupPreference::key);
 
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos, Instant exportedAt) {
-        return toBackup(houses, visits, photos, List.of(), null, exportedAt);
+        return toBackup(houses, visits, photos, List.of(), List.of(), List.of(), null, exportedAt);
     }
 
-    /** {@code brokerRecords} are the live rows of record type {@code broker}; {@code json} reads their payloads. */
+    /** {@code brokerRecords}, {@code criterionRecords}, and {@code preferenceRecords} are the live rows of their respective types; {@code json} reads their payloads. */
     static BackupData toBackup(List<House> houses, List<Visit> visits, List<PhotoDto> photos,
-                               List<Record> brokerRecords, ObjectMapper json, Instant exportedAt) {
+                               List<Record> brokerRecords, List<Record> criterionRecords, List<Record> preferenceRecords,
+                               ObjectMapper json, Instant exportedAt) {
         var liveHouses = houses.stream().filter(h -> !h.isDeleted()).sorted(HOUSE_ORDER).toList();
         var houseOrder = new LinkedHashSet<UUID>();
         for (var house : liveHouses) houseOrder.add(house.getId());
@@ -93,9 +98,16 @@ final class BackupMapper {
         var brokers = brokerRecords.stream().filter(r -> !r.isDeleted()).map(r -> broker(r, json))
                 .filter(java.util.Objects::nonNull).sorted(BROKER_ORDER).toList();
 
+        var criteria = criterionRecords.stream().filter(r -> !r.isDeleted()).map(r -> criterion(r, json))
+                .filter(java.util.Objects::nonNull).sorted(CRITERION_ORDER).toList();
+
+        var preferences = preferenceRecords.stream().filter(r -> !r.isDeleted()).map(r -> preference(r, json))
+                .filter(java.util.Objects::nonNull).sorted(PREFERENCE_ORDER).toList();
+
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
-        // The lowest number that holds the copy: /2 once there is a broker or a room, else /1.
-        var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null);
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, or a preference; else /1.
+        var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
+                || !criteria.isEmpty() || !preferences.isEmpty();
 
         return new BackupData(
                 needsV2 ? BackupFormat.ID_WITH_BROKERS : BackupFormat.ID,
@@ -105,7 +117,9 @@ final class BackupMapper {
                         .map(BackupMapper::visit).toList(),
                 groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
                         .map(BackupMapper::photo).toList(),
-                brokers);
+                brokers,
+                criteria,
+                preferences);
     }
 
     /**
@@ -128,6 +142,66 @@ final class BackupMapper {
                 text(p, "notes", BackupBroker.MAX_NOTES),
                 rating.isInt() && rating.asInt() >= 1 && rating.asInt() <= 5 ? rating.asInt() : null,
                 r.getUpdatedAt().toEpochMilli());
+    }
+
+    /**
+     * A criterion record as a backup row. The server never reads inside a record, so a client may have stored anything:
+     * a field of the wrong type or outside its limit is dropped, so the export always imports again.
+     */
+    private static BackupCriterion criterion(Record r, ObjectMapper json) {
+        JsonNode p;
+        try {
+            p = json.readTree(r.getPayload());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        var weight = p.path("weight");
+        var mustHave = p.path("mustHave");
+        var minScore = p.path("minScore");
+        var sort = p.path("sort");
+        var archived = p.path("archived");
+
+        if (!weight.isInt() || weight.asInt() < BackupCriterion.MIN_WEIGHT || weight.asInt() > BackupCriterion.MAX_WEIGHT) {
+            return null;
+        }
+        if (!mustHave.isBoolean()) {
+            return null;
+        }
+        if (!minScore.isInt() || minScore.asInt() < BackupCriterion.MIN_SCORE || minScore.asInt() > BackupCriterion.MAX_SCORE) {
+            return null;
+        }
+
+        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
+                "maintenance", "neighbourhood", "commute");
+        var key = r.getKey().id();
+        var label = builtInKeys.contains(key) ? null : text(p, "label", BackupCriterion.MAX_LABEL);
+
+        return new BackupCriterion(
+                key,
+                label,
+                weight.asInt(),
+                mustHave.asBoolean(),
+                minScore.asInt(),
+                sort.isInt() && sort.asInt() >= 0 ? sort.asInt() : null,
+                archived.isBoolean() && archived.asBoolean() ? true : null,
+                r.getUpdatedAt().toEpochMilli()
+        );
+    }
+
+    /**
+     * A preference record as a backup row. The server never reads inside a record, so a client may have stored anything:
+     * a payload without a usable value is left out, so the export always imports again.
+     */
+    private static BackupPreference preference(Record r, ObjectMapper json) {
+        JsonNode p;
+        try {
+            p = json.readTree(r.getPayload());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        var value = text(p, "value", BackupPreference.MAX_VALUE);
+        if (value == null) return null;
+        return new BackupPreference(r.getKey().id(), value, r.getUpdatedAt().toEpochMilli());
     }
 
     private static String text(JsonNode payload, String key, int max) {

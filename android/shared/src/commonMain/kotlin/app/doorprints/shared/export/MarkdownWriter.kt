@@ -50,7 +50,12 @@ object MarkdownWriter {
         out.append("- **").append(text(s["cover.contacts"])).append("**: ")
             .append(text(s[if (o.includeContacts) "yes" else "no"])).append('\n')
         out.append("- **").append(text(s["cover.language"])).append("**: ")
-            .append(text(ExportLanguages.nativeName(o.language))).append("\n\n")
+            .append(text(ExportLanguages.nativeName(o.language))).append('\n')
+        // Slice 2: how much the star rating counts, when the copy's scoring is not the default one.
+        ExportRows.ratingShareText(bundle)?.let {
+            out.append("- **").append(text(s["col.ratingShare"])).append("**: ").append(text(it)).append('\n')
+        }
+        out.append('\n')
         out.append("> ").append(text(s["cover.privacy"])).append('\n')
         if (o.includeContacts) out.append("> ").append(text(s["cover.contactWarning"])).append('\n')
         out.append('\n')
@@ -59,16 +64,8 @@ object MarkdownWriter {
         out.append("## ").append(text(s["section.ranking"])).append("\n\n")
         table(
             out,
-            listOf(s["col.rank"], s["col.label"], s["col.score"], s["col.price"], s["col.status"]),
-            bundle.ranked.map { h ->
-                listOf(
-                    bundle.rankOf(h).toString(),
-                    h.label,
-                    h.score?.let { ExportRows.fixed(it, 1) } ?: s["none"],
-                    h.price?.let { ExportRows.rupees(it) } ?: s["none"],
-                    s.status(h.status),
-                )
-            },
+            ExportRows.rankingColumns(bundle),
+            bundle.ranked.map { h -> ExportRows.rankingRow(h, bundle) },
         )
 
         // One section per house, in the copy's fixed order (createdAt, id).
@@ -78,7 +75,8 @@ object MarkdownWriter {
             out.append("### ").append(text(s["section.details"])).append("\n\n")
             val details = buildList {
                 add(s["col.status"] to s.status(h.status))
-                add(s["col.score"] to (h.score?.let { ExportRows.fixed(it, 1) } ?: s["none"]))
+                add(s["col.score"] to (bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } ?: s["none"]))
+                addAll(ExportRows.scoringLines(h, bundle))
                 add(s["col.price"] to (h.price?.let { ExportRows.rupees(it) } ?: s["none"]))
                 if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
                 add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
@@ -115,7 +113,7 @@ object MarkdownWriter {
                 table(
                     out,
                     listOf(s["col.itemLabel"], s["col.score"]),
-                    keys.map { listOf(s.check(it), h.checklist.getValue(it).toString() + "/5") },
+                    keys.map { listOf(bundle.criterionLabel(it), h.checklist.getValue(it).toString() + "/5") },
                 )
             }
 

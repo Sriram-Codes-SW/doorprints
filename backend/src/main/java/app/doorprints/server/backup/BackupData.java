@@ -39,7 +39,7 @@ import java.util.List;
  * {@link BackupService} answers that with a 400 instead of failing here.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers"})
+@JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers", "criteria", "preferences"})
 public record BackupData(
         String format,
         /* When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. */
@@ -49,13 +49,19 @@ public record BackupData(
         List<BackupPhoto> photos,
         /* Slice 1b, {@code doorprints-backup/2}: left out of the JSON while empty, so a copy without brokers is a
            /1 document exactly as before. Absent on the way in reads as none. */
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupBroker> brokers
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupBroker> brokers,
+        /* Slice 2, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupCriterion> criteria,
+        /* Slice 2, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupPreference> preferences
 ) {
     public BackupData {
         houses = copy(houses);
         visits = copy(visits);
         photos = copy(photos);
         brokers = copy(brokers);
+        criteria = copy(criteria);
+        preferences = copy(preferences);
     }
 
     private static <T> List<T> copy(List<T> rows) {
@@ -64,6 +70,6 @@ public record BackupData(
 
     /** Total rows, the number the import size limit is measured in. */
     public int rowCount() {
-        return houses.size() + visits.size() + photos.size() + brokers.size();
+        return houses.size() + visits.size() + photos.size() + brokers.size() + criteria.size() + preferences.size();
     }
 }

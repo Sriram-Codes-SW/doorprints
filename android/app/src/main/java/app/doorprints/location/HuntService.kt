@@ -40,8 +40,10 @@ import app.doorprints.data.HouseEntity
 import app.doorprints.data.labelRes
 import app.doorprints.shared.location.StreetAlerts
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.Scoring
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
+import kotlinx.coroutines.launch
 
 /**
  * "Hunt mode" on Android: a foreground service around the common [HuntEngine] (Sprint 4b, 2026-09-29; the rules were
@@ -164,14 +166,18 @@ class HuntService : LifecycleService(), HuntEffects {
     override fun stop(reason: HuntState.StopReason) = stopFor(reason)
 
     override fun alertHouse(house: HouseEntity, distanceM: Int) {
-        Notifications.alert(
-            this, house.id.hashCode(),
-            getString(R.string.notif_seen_house, house.label),
-            getString(R.string.notif_distance, describe(house), distanceM),
-            Notifications.openAppIntent(this, house.id.hashCode()) {
-                putExtra(Notifications.EXTRA_OPEN_HOUSE, house.id)
-            },
-        )
+        // The score under this phone's criteria (slice 2): one small read of the records before the alert is worded.
+        lifecycleScope.launch {
+            val scoring = repo.scoring()
+            Notifications.alert(
+                this@HuntService, house.id.hashCode(),
+                getString(R.string.notif_seen_house, house.label),
+                getString(R.string.notif_distance, describe(house, scoring), distanceM),
+                Notifications.openAppIntent(this@HuntService, house.id.hashCode()) {
+                    putExtra(Notifications.EXTRA_OPEN_HOUSE, house.id)
+                },
+            )
+        }
     }
 
     override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
@@ -200,12 +206,12 @@ class HuntService : LifecycleService(), HuntEffects {
         )
     }
 
-    private fun describe(h: HouseEntity): String {
+    private fun describe(h: HouseEntity, scoring: Scoring): String {
         val parts = mutableListOf<String>()
         if (h.status != HouseStatus.NEW) parts += getString(h.status.labelRes)
         Formats.price(h.price, h.priceType) { getString(R.string.price_per_month, it) }?.let { parts += it }
         h.rating?.let { parts += "★".repeat(it) }
-        h.score?.let { parts += getString(R.string.common_score_value, Formats.score(it)) }
+        h.score(scoring)?.let { parts += getString(R.string.common_score_value, Formats.score(it)) }
         return parts.joinToString(" · ").ifEmpty { getString(R.string.notif_visited_before) }
     }
 

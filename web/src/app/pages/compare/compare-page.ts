@@ -21,7 +21,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LocalDataService } from '../../core/local-data.service';
 import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
-import { CHECKLIST, HouseDto, STATUS_ICON, STATUS_KEY, houseScore } from '../../core/models';
+import { HouseDto, STATUS_ICON, STATUS_KEY } from '../../core/models';
 import { errorMsg, telHref } from '../../core/format';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
@@ -30,8 +30,17 @@ import { GLYPHS } from '../../shared/glyphs';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 import { costSummary } from '../../shared/house-cost';
 import { LocalStore } from '../../data/local-store.service';
+import { criterionName } from '../../shared/criterion-name';
+import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
+import type { Scoring } from '../../shared/scoring';
+import { timeOf } from '../map/map-list';
 import { areaNumber, totalAreaSqCm } from '../../shared/room-sizes';
 import type { LengthUnit } from '../../shared/room-sizes';
+
+/** What the ranking compares for a candidate. */
+function rankedOf(c: { house: HouseDto; result: ReturnType<typeof evaluateScore> }) {
+  return { id: c.house.id, result: c.result, price: c.house.price, updatedAt: timeOf(c.house) };
+}
 
 /** Above this many candidates the picker gets a search box: a wall of chips cannot be scanned. */
 const SEARCH_ABOVE = 12;
@@ -91,14 +100,20 @@ export class ComparePage {
   protected readonly maxSelected = MAX_SELECTED;
   protected readonly minSelected = MIN_SELECTED;
 
-  /** Non-rejected houses, shortlisted first, then by score. */
+  /** The effective scoring (criteria and rating share); the defaults until it is read. */
+  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+
+  /** Non-rejected houses, shortlisted first, then by the ranking (must-haves met, score, coverage, price, edit). */
   protected readonly candidates = computed(() =>
     this.houses()
       .filter((h) => h.status !== 'REJECTED' && !h.deleted)
-      .map((h) => ({ house: h, score: houseScore(h) }))
+      .map((h) => {
+        const result = evaluateScore(h.checklist, h.rating, this.scoring());
+        return { house: h, score: result.overall, result };
+      })
       .sort((a, b) => {
         const s = Number(b.house.status === 'SHORTLISTED') - Number(a.house.status === 'SHORTLISTED');
-        return s !== 0 ? s : (b.score ?? -1) - (a.score ?? -1);
+        return s !== 0 ? s : compareRanked(rankedOf(a), rankedOf(b));
       }),
   );
 
@@ -132,13 +147,31 @@ export class ComparePage {
     const none: Cell = { text: '–', srText: i18n.t('compare.noValue') };
     const plain = (text: string | null): Cell => (text ? { text } : none);
     const rows: Row[] = [];
-    const scores = houses.map((h) => houseScore(h));
+    const scoring = this.scoring();
+    const results = houses.map((h) => evaluateScore(h.checklist, h.rating, scoring));
+    const scores = results.map((r) => r.overall);
     rows.push({
       id: 'score',
       label: i18n.t('compare.overall'),
       cells: scores.map((s) => (s === null ? none : { text: i18n.score(s) })),
       best: bestOf(scores),
     });
+    // Slice 2: the must-haves the person set, house by house: "Missed: Water", "Not checked yet" or "All met".
+    const named = (keys: string[]) => keys.map((k) => criterionName(scoring.criteria.find((c) => c.key === k) ?? { key: k }, (key) => i18n.t(key))).join(', ');
+    if (scoring.criteria.some((c) => c.mustHave && c.archived !== true)) {
+      rows.push({
+        id: 'mustHaves',
+        label: i18n.t('compare.mustHaves'),
+        cells: results.map((r) =>
+          r.failedMustHave.length > 0
+            ? { text: '✕ ' + i18n.t('compare.mustHaveMissed', { names: named(r.failedMustHave) }) }
+            : r.uncheckedMustHave.length > 0
+              ? { text: i18n.t('compare.mustHaveUnchecked') }
+              : { text: '✓ ' + i18n.t('compare.mustHaveMet') },
+        ),
+        best: new Set<number>(),
+      });
+    }
     rows.push({
       id: 'price',
       label: i18n.t('compare.price'),
@@ -225,14 +258,15 @@ export class ComparePage {
       cells: houses.map((h) => plain([h.street, h.locality].filter((x) => !!x).join(', ') || null)),
       best: new Set<number>(),
     });
-    for (const item of CHECKLIST) {
+    // The criteria that are not archived, in the person's order (custom ones by their label).
+    for (const item of scoring.criteria.filter((c) => c.archived !== true)) {
       const values = houses.map((h) => {
         const v = h.checklist[item.key];
         return typeof v === 'number' ? v : null;
       });
       rows.push({
         id: 'check-' + item.key,
-        label: i18n.t(item.labelKey),
+        label: criterionName(item, (key) => i18n.t(key)),
         cells: values.map((v) => (v === null ? none : { text: i18n.number(v) })),
         best: bestOf(values),
       });
@@ -245,6 +279,13 @@ export class ComparePage {
     effect(() => {
       this.api.settled();
       this.reload();
+    });
+    effect(() => {
+      this.api.settled();
+      this.api.scoring().subscribe({
+        next: (scoring) => this.scoring.set(scoring),
+        error: () => this.scoring.set(DEFAULT_SCORING),
+      });
     });
     effect(() => {
       this.api.settled();

@@ -30,7 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
-import { roomCells, roomDisplayColumns, stringsOf } from './export-rows';
+import { criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -50,6 +50,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
     escapeMarkdown(tr(dict, 'exp.counts', { houses: counts.houses, visits: counts.visits, photos: counts.photos })),
     '',
   );
+  if (ratingShareLine(bundle)) out.push(escapeMarkdown(ratingShareLine(bundle)), '');
   out.push(`## ${escapeMarkdown(tr(dict, 'exp.optionsHeading'))}`, '');
   for (const key of optionSummaryKeys(options)) out.push(`- ${escapeMarkdown(tr(dict, key))}`);
   out.push('');
@@ -58,11 +59,14 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
   if (bundle.houses.length === 0) {
     out.push(escapeMarkdown(tr(dict, 'exp.noHouses')), '');
     out.push(...brokersSection(bundle, dict));
+    out.push(...criteriaSection(bundle));
     out.push('---', '', escapeMarkdown(tr(dict, 'exp.footer')), '');
     return out.join('\n');
   }
 
   out.push(`## ${escapeMarkdown(tr(dict, 'exp.ranking'))}`, '');
+  // The Must-haves column is there only when some house of the copy misses one: an empty column says nothing.
+  const anyMissed = bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
   out.push(
     row([
       tr(dict, 'exp.colRank'),
@@ -70,9 +74,10 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
       tr(dict, 'common.score'),
       tr(dict, 'compare.price'),
       tr(dict, 'house.status'),
+      ...(anyMissed ? [tr(dict, 'exp.colMustHave')] : []),
     ]),
   );
-  out.push(separator(5));
+  out.push(separator(anyMissed ? 6 : 5));
   bundle.ranking.forEach((entry, index) => {
     out.push(
       row([
@@ -81,6 +86,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
         entry.score === null ? tr(dict, 'house.notScored') : formatDecimal(entry.score, 1),
         formatPrice(dict, entry.house.price, entry.house.priceType),
         statusText(entry.house.status, dict),
+        ...(anyMissed ? [entry.result.failedMustHave.length > 0 ? `✕ ${tr(dict, 'exp.mustHaveMissed')}` : ''] : []),
       ]),
     );
   });
@@ -88,6 +94,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
 
   bundle.houses.forEach((entry, index) => out.push(...houseSection(entry, index + 1, bundle, dict)));
   out.push(...brokersSection(bundle, dict));
+  out.push(...criteriaSection(bundle));
 
   out.push('---', '', escapeMarkdown(tr(dict, 'exp.footer')), '');
   return out.join('\n');
@@ -96,6 +103,7 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
 function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle, dict: Dict): string[] {
   const { house, score, visits, photos } = entry;
   const label = labelOf(house.label, dict);
+  const labels = customLabels(bundle);
   const out: string[] = [];
   out.push(`## ${position}. ${escapeMarkdown(label)}`, '');
 
@@ -107,6 +115,12 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   const rating = house.rating ?? null;
   push('house.status', statusText(house.status, dict));
   push('compare.overall', score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1));
+  if (entry.result.scored > 0) {
+    push('exp.coverageLabel', tr(dict, 'exp.coverage', { n: entry.result.scored, total: entry.result.active }));
+  }
+  if (entry.result.failedMustHave.length > 0) {
+    push('exp.mustHaveMissed', entry.result.failedMustHave.map((key) => checklistLabel(key, dict, labels)).join(', '));
+  }
   push('compare.price', formatPrice(dict, house.price, house.priceType));
   if (bedrooms !== null) push('compare.bhk', tr(dict, 'common.bhk', { n: bedrooms }));
   if (house.areaSqft != null) push('compare.area', tr(dict, 'common.sqft', { n: house.areaSqft }));
@@ -156,7 +170,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(`### ${escapeMarkdown(tr(dict, 'house.checklist'))}`, '');
     out.push(row([tr(dict, 'compare.criterion'), tr(dict, 'common.score')]));
     out.push(separator(2));
-    for (const [key, value] of checklist) out.push(row([checklistLabel(key, dict), tr(dict, 'exp.scoreOf5', { n: value })]));
+    for (const [key, value] of checklist) out.push(row([checklistLabel(key, dict, labels), tr(dict, 'exp.scoreOf5', { n: value })]));
     out.push('');
   }
 
@@ -200,6 +214,20 @@ function brokersSection(bundle: ExportBundle, dict: Dict): string[] {
     for (const [name, value] of rows) out.push(row([name, value]));
     out.push('');
   }
+  return out;
+}
+
+/** The **Criteria** section after the brokers (slice 2): name, weight, must-have, minimum score and archived. */
+function criteriaSection(bundle: ExportBundle): string[] {
+  if (bundle.criteria.length === 0) return [];
+  const table = criteriaTable(bundle);
+  const strings = stringsOf(bundle);
+  const shown = [1, 2, 3, 4, 5];
+  const out: string[] = [`## ${escapeMarkdown(table.title)}`, ''];
+  out.push(row(shown.map((i) => table.columns[i])));
+  out.push(separator(shown.length));
+  for (const r of table.rows) out.push(row(shown.map((i) => display(r[i], strings))));
+  out.push('');
   return out;
 }
 

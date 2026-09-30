@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.94 |
+| Version | 0.95 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -106,6 +106,7 @@
 | 0.92 | 2026-09-30 | Claude (Code), lead | **The house's cost, carpet area and location source built** (slice 1a of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1-house-values-brokers`): new **§13.19**; §15 S4b-FR-7 done in code; new **S4b-BL-84** (filters over the cost numbers). |
 | 0.93 | 2026-09-30 | Claude (Code), lead | **Brokers built** (slice 1b of [11](11-feature-parity-and-export-spec.md) 5.30, branch `feat/s4b-4c-slice-1b-brokers`): new **§13.20**; §15 S4b-FR-11 done in code; new **S4b-BL-85** (the duplicate-flat warning). |
 | 0.94 | 2026-09-30 | Claude (Code), lead | **Rooms built** (slice 1c of [11](11-feature-parity-and-export-spec.md) 5.6 and 5.30, branch `feat/s4b-4c-slice-1c-rooms`): new **§13.21**; new **S4b-BL-87** (reordering rooms). |
+| 0.95 | 2026-09-30 | Claude (Code), lead | **Criteria and ranking built** (slice 2 of [11](11-feature-parity-and-export-spec.md) 5.4 and 5.30, branch `feat/s4b-4c-slice-2-criteria`): new **§13.22**. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1206,7 +1207,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-85 | Android, Web | **The duplicate-flat warning** ([11](11-feature-parity-and-export-spec.md) 5.25; new id): "two brokers show the same flat", within about 30 m with the same bedrooms and floor, shown when a house is saved and on the broker's page. Needs the floor, so after rooms (slice 1c). | Open |
 | S4b-BL-86 | Android, Web | **Brokers in the Import screen and its undo** (new id; slice 1b left them out): the preview says "N new brokers, N updated" and *Undo* of an import as copies removes the brokers it added. | Open |
 | S4b-BL-87 | Android, Web | **Reorder rooms and add the house's floor** (new id; slice 1c left both out): up and down (or drag) to change a room's `sort`, and a `floor` on the house, which the duplicate-flat warning (S4b-BL-85) needs. | Open |
-| S4b-BL-88 | Web | **`plan-page.spec.ts` fails once in a while** ("withdraws a location failure when the start is then chosen on the map", `maps.length` 0): seen in a full `ng test` run on slices 1b and 1c, green on the rerun and alone. An order-dependent test; find what state it shares (the map fake, a signal) and make it independent. | Open |
+| S4b-BL-88 | Web | **`plan-page.spec.ts` fails once in a while** ("withdraws a location failure when the start is then chosen on the map", `maps.length` 0): seen in a full `ng test` run on slices 1b and 1c, green on the rerun and alone. An order-dependent test; find what state it shares (the map fake, a signal) and make it independent. **Fixed** (2026-09-30, slice 2): the cause was not timing. The spec's `maplibre-gl` mock is not applied when another spec loaded `map-style` first in the same chunk, so no fake map is made and `maps` stays empty; the test now calls `setStart`, the one thing the map's click handler does, and eight full runs in a row passed. |
 | ~~S4b-BL-65~~ | Web, Android, iOS | **No app shows its legal notices or links to its source** (the licence change, §12.6). The FSF asks an AGPL program that people use over a network to offer them its source (a "Source" link), and suggests a notice about copyright and copying permission; Doorprints' own copies are not bound by section 13 (the owner holds the copyright), but modified versions are, and the link shows them where to put theirs | An About section on each app (web *Your data*, Android and iOS settings): "Copyright 2026 Sriram (Sriram-Codes-SW)", "Doorprints comes with ABSOLUTELY NO WARRANTY", "free software under the GNU AGPL version 3", and links to the source (`https://github.com/Sriram-Codes-SW/doorprints`) and the licence; four languages (hi/ta/te *under review*), with tests | Web, Android **Done 2026-09-29** (branch `feat/about-legal-notices`, TC-U-82) |
 | ~~(W2)~~ | Web | ~~Plan's submit focuses the start latitude: already a carried minor in §11.7~~ **Done by Web in the buddy pre-review, awaiting review** (`pages/plan/start-field.ts`, `start-field.spec.ts`; §11.7); the round 1 review added `nextTypedStart` (§11.7) | As in §11.7 | Web |
 
@@ -2601,6 +2602,31 @@ undo of a copy import, which leaves the brokers it added (**S4b-BL-86**); a *Mat
 
 **Not built here:** reordering rooms (**S4b-BL-87**); the house's floor (needed by the duplicate-flat warning, S4b-BL-85);
 photos linked to rooms (slice 5).
+
+### 13.22 Criteria and ranking, slice 2 of the data model, done in code
+
+**What was done** (branch `feat/s4b-4c-slice-2-criteria`; [11](11-feature-parity-and-export-spec.md) 5.4 and 5.30, ADR-28):
+
+- **The model**: criteria are records of type `criterion` (the key is the id; `label`, `weight` 0..3, `mustHave`, `minScore`, `sort`,
+  `archived`) and the rating share a record of type `preference` (`score.ratingShare`), so no table or migration; a built-in with no
+  record uses the defaults and only what differs is stored; at most 40 criteria (docs/schemas README §3.6).
+- **One scoring implementation per stack** (`HouseScore`/`Ranking` in `:shared`, `shared/scoring.ts`) over eight shared vectors: the
+  weighted checklist, the blend with the rating, coverage, must-haves (failed or not yet checked) and the ranking order (no failed
+  must-have, overall, coverage, price, newest). Every caller of the old score now passes the effective scoring: the house list,
+  form and Compare, the Hunt notification, the readable copies and the PDF.
+- **Screens**: *Criteria* (Settings on Android, a card on Your data on the web): weight, must-have with a minimum score, move up and
+  down, archive and restore, add a criterion (at most 40), the rating share, reset to defaults. The house form lists the active criteria (a
+  custom one by its name), shows how many that matter are scored and any missed must-have; the list marks a house that missed one and *best
+  first* uses the ranking; Compare orders by it. Four languages (hi, ta, te *under review*), both themes.
+- **Backup and copies**: `criteria` and `preferences` lists after `brokers` in `doorprints-backup/2` (a writer writes `/2` for a broker, a
+  room, a criterion or a preference), merged by key on import, kept in a copy made without contact details; the server maps them to its
+  `record` table. The scores table and the house pages use a custom criterion's name; a `criteria.csv` and a Criteria sheet; the
+  ranking table follows the ranking. The AI and search are unchanged.
+- **Tests and docs**: [06](06-test-plan.md) TC-U-102; docs/schemas README 1.14 (§3.6); [03](03-design.md) §9; the guide's houses
+  and compare pages; CHANGELOG.
+
+**Not built here:** the objective criteria from data (D-13); criteria synced across people (they sync like other records); a
+per-search ranking scope toggle beyond the list's status filter.
 
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 

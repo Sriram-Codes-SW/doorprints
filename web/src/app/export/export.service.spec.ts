@@ -41,6 +41,8 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
     allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
     allPhotos: () => Promise.resolve(photos),
     brokers: () => Promise.resolve(FIXTURE_BROKERS),
+    criterionRows: () => Promise.resolve([]),
+    preferenceRows: () => Promise.resolve([]),
     lengthUnit: () => Promise.resolve('FT' as const),
   };
 }
@@ -269,6 +271,8 @@ describe('lengthUnit (slice 1c)', () => {
       allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
       allPhotos: () => Promise.resolve(FIXTURE_PHOTOS),
       brokers: () => Promise.resolve(FIXTURE_BROKERS),
+      criterionRows: () => Promise.resolve([]),
+      preferenceRows: () => Promise.resolve([]),
       lengthUnit: () => Promise.resolve('M' as const),
     };
     TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: metersStore }] });

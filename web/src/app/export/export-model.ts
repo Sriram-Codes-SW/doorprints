@@ -16,11 +16,12 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { houseScore } from '../core/models';
 import type { HouseRoom } from '../core/models';
 import type { Lang } from '../i18n/languages';
 import type { HouseRecord, PhotoRecord, VisitRecord } from '../data/records';
 import type { Broker, BrokerRow } from '../shared/broker';
+import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
+import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
 
 /** The six deterministic formats of docs/11 §5.2. */
@@ -54,8 +55,10 @@ export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
 /** One house with everything that belongs to it, already filtered and ordered. */
 export interface ExportHouse {
   house: HouseRecord;
-  /** 0–5 overall score, or null when nothing has been scored (same rule as the app: models.houseScore). */
+  /** 0–5 overall score, or null when nothing has been scored (same rule as the app: `evaluateScore`). */
   score: number | null;
+  /** The whole result under the copy's scoring: coverage and the must-haves the house misses (slice 2). */
+  result: ScoreResult;
   visits: readonly VisitRecord[];
   photos: readonly PhotoRecord[];
   rooms: readonly HouseRoom[];
@@ -77,8 +80,17 @@ export interface ExportBundle {
   exportedAt: string;
   options: ExportOptions;
   houses: readonly ExportHouse[];
-  /** Houses ordered best first, for the ranking table: score desc, then label, then id. */
+  /** Houses ordered best first, for the ranking table: `compareRanked` (slice 2, docs/11 5.4). */
   ranking: readonly ExportHouse[];
+  /** The effective scoring the scores were computed with: the defaults merged with `criteria` and `preferences`. */
+  scoring: Scoring;
+  /**
+   * The criterion records that exist (only what differs from the defaults), oldest edit first then key (the backup's
+   * order). Criteria are not contacts, so a copy without contact details keeps them.
+   */
+  criteria: readonly CriterionRow[];
+  /** The preference records that exist (the rating share), in the same order. */
+  preferences: readonly PreferenceRow[];
   /**
    * The brokers in the copy, oldest edit first then id (the backup's order). Empty with no contact details. A copy of
    * every house (`scope: 'all'`) carries every live broker; a partial copy only the brokers its houses use.
@@ -101,6 +113,10 @@ export interface CollectInput {
   photos: readonly PhotoRecord[];
   /** The live brokers of the store (slice 1b); leave out for none. */
   brokers?: readonly BrokerRow[];
+  /** The criterion records of the store (slice 2); leave out for the defaults. */
+  criteria?: readonly CriterionRow[];
+  /** The preference records of the store (slice 2). */
+  preferences?: readonly PreferenceRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
   exportedAt: string;
@@ -140,12 +156,18 @@ export function collect(input: CollectInput): ExportBundle {
     photosByHouse.set(photo.houseId, list);
   }
 
+  const criteria = sortRows(input.criteria ?? []);
+  const preferences = sortRows(input.preferences ?? []);
+  const scoring = scoringOf(criteria, preferences);
+
   const houses: ExportHouse[] = chosen.map((house) => {
     const wantPhotos =
       options.photos === 'all' || (options.photos === 'shortlisted' && house.status === 'SHORTLISTED');
+    const result = evaluateScore(house.checklist, house.rating, scoring);
     return {
       house,
-      score: houseScore(house),
+      score: result.overall,
+      result,
       visits: (visitsByHouse.get(house.id) ?? [])
         .slice()
         .sort((a, b) => compare(a.arrivedAt, b.arrivedAt) || compare(a.id, b.id)),
@@ -159,6 +181,9 @@ export function collect(input: CollectInput): ExportBundle {
     options,
     houses,
     ranking: rank(houses),
+    scoring,
+    criteria,
+    preferences,
     brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
     lengthUnit: input.lengthUnit ?? 'FT',
     counts: {
@@ -182,19 +207,26 @@ function collectBrokers(rows: readonly BrokerRow[], houses: readonly ExportHouse
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
 }
 
+/** Rows in backup order: oldest edit first, then key. */
+function sortRows<T extends { key: string; updatedAt: string | null }>(rows: readonly T[]): T[] {
+  return rows
+    .slice()
+    .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.key, b.key));
+}
+
 /**
- * Best first, with unscored houses last. The tie-break is `createdAt` then `id`, matching
- * `ExportBundle.ranked` in `android/shared/.../export/ExportModel.kt`, so the ranking table of a phone copy and
- * of a browser copy of the same data lists the houses in the same order.
+ * Best first by `compareRanked` (docs/11 5.4; the twin of `Ranking.compare` in `android/shared`): a house that
+ * misses no must-have first, then the overall score, the coverage, the lower price, the newer edit, and finally the
+ * id, so the ranking table of a phone copy and of a browser copy of the same data lists the houses in one order.
  */
 export function rank(houses: readonly ExportHouse[]): ExportHouse[] {
-  return houses.slice().sort((a, b) => {
-    // HouseScore.rankKey: a missing score sorts as -1, below a real 0.
-    const sa = a.score ?? -1;
-    const sb = b.score ?? -1;
-    if (sa !== sb) return sb - sa;
-    return compare(a.house.createdAt ?? '', b.house.createdAt ?? '') || compare(a.house.id, b.house.id);
+  const key = (entry: ExportHouse) => ({
+    id: entry.house.id,
+    result: entry.result,
+    price: entry.house.price,
+    updatedAt: Date.parse(entry.house.updatedAt ?? entry.house.createdAt ?? '') || 0,
   });
+  return houses.slice().sort((a, b) => compareRanked(key(a), key(b)));
 }
 
 /**

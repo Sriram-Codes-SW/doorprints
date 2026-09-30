@@ -25,6 +25,8 @@ import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import type { BrokerRow } from '../../shared/broker';
+import { DEFAULT_SCORING, scoringOf } from '../../shared/scoring';
+import type { Scoring } from '../../shared/scoring';
 import { LocalStore } from '../../data/local-store.service';
 import { ComparePage } from './compare-page';
 
@@ -48,14 +50,15 @@ interface Row {
 
 /** The rows slice 1a adds to Compare: the carpet area and what a house really costs, from `costSummary`. */
 describe('ComparePage', () => {
-  async function render(brokers: BrokerRow[] = [], unit: 'FT' | 'M' = 'FT', list: HouseDto[] = [RENT, SALE]) {
+  async function render(brokers: BrokerRow[] = [], unit: 'FT' | 'M' = 'FT', list: HouseDto[] = [RENT, SALE], scoring: Scoring = DEFAULT_SCORING) {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of(list), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(scoring), houses: () => of(list), visitCounts: () => of(new Map()), brokers: () => of(brokers) } },
         { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve(unit) } },
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: list.map((h) => h.id).join(',') }) } } },
       ],
     });
     const fixture = TestBed.createComponent(ComparePage);
@@ -88,7 +91,7 @@ describe('ComparePage', () => {
       imports: [ComparePage],
       providers: [
         provideRouter([]),
-        { provide: LocalDataService, useValue: { settled: signal(0), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
+        { provide: LocalDataService, useValue: { settled: signal(0), scoring: () => of(DEFAULT_SCORING), houses: () => of([linked, SALE]), visitCounts: () => of(new Map()), brokers: () => of([{ id: 'b-1', updatedAt: null, broker: { name: 'Ravi Kumar', agency: 'Adyar Homes' } }]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ ids: 'a,b' }) } } },
       ],
     });
@@ -131,6 +134,55 @@ describe('ComparePage', () => {
       const fixture = await render([], 'FT', [{ ...RENT, rooms: [{ id: 'r1', type: 'HALL', sort: 0 }] }, SALE]);
       const row = (fixture.componentInstance as unknown as { rows: () => Row[] }).rows().find((r) => r.id === 'rooms')!;
       expect(row.cells.map((c) => c.text)).toEqual(['1', '–']);
+    });
+  });
+  /** Slice 2 (docs/11 5.4): the ranking order, the Must-haves row and the person's criteria. */
+  describe('criteria and ranking (slice 2)', () => {
+    const scoring = scoringOf(
+      [
+        { key: 'security', updatedAt: null, criterion: { key: 'security', weight: 2, mustHave: true, minScore: 4, sort: 6 } },
+        { key: 'noise', updatedAt: null, criterion: { key: 'noise', weight: 0, mustHave: false, minScore: 3, sort: 5, archived: true } },
+        { key: 'c_1a2b3c4d', updatedAt: null, criterion: { key: 'c_1a2b3c4d', label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 } },
+      ],
+      [],
+    );
+    const failing: HouseDto = { ...RENT, id: 'f', label: 'Missed', rating: 5, checklist: { security: 2, water: 5 } };
+    const passing: HouseDto = { ...SALE, id: 'p', label: 'Met', rating: 3, checklist: { security: 5, c_1a2b3c4d: 4 } };
+    const unchecked: HouseDto = { ...SALE, id: 'u', label: 'Unchecked', rating: 1, checklist: { water: 1 } };
+
+    async function pageRows(list: HouseDto[]) {
+      const fixture = await render([], 'FT', list, scoring);
+      return (fixture.componentInstance as unknown as { rows: () => Row[]; candidates: () => { house: HouseDto }[] });
+    }
+
+    it('orders the picker by the ranking: a house that misses a must-have comes after the others, whatever its score', async () => {
+      const page = await pageRows([failing, unchecked, passing]);
+      // Both have status NEW or SHORTLISTED: RENT is SHORTLISTED (first), then the ranking among the rest is by score.
+      expect(page.candidates().map((c) => c.house.id)).toEqual(['f', 'p', 'u']);
+      const both = await pageRows([{ ...failing, status: 'NEW' }, unchecked, passing]);
+      expect(both.candidates().map((c) => c.house.id)).toEqual(['p', 'u', 'f']);
+    });
+
+    it('has a Must-haves row: Missed, Not checked yet or All met, with the names of what was missed', async () => {
+      const page = await pageRows([failing, passing, unchecked]);
+      const row = page.rows().find((r) => r.id === 'mustHaves')!;
+      expect(row.label).toBe('Must-haves');
+      expect(row.cells.map((c) => c.text)).toEqual(['✕ Missed: Safety and security', '✓ All met', 'Not checked yet']);
+    });
+
+    it('has no Must-haves row when no criterion is a must-have', async () => {
+      const fixture = await render();
+      const rows = (fixture.componentInstance as unknown as { rows: () => Row[] }).rows();
+      expect(rows.some((r) => r.id === 'mustHaves')).toBe(false);
+    });
+
+    it('lists the person\'s criteria as rows: a custom one by its label, an archived one left out', async () => {
+      const page = await pageRows([failing, passing]);
+      const checks = page.rows().filter((r) => r.id.startsWith('check-'));
+      expect(checks.map((r) => r.label)).toContain('Pets allowed');
+      expect(checks.map((r) => r.label)).not.toContain('Quiet (low noise)');
+      expect(checks.find((r) => r.id === 'check-c_1a2b3c4d')!.cells.map((c) => c.text)).toEqual(['–', '4']);
+      expect(page.rows()[0].cells.map((c) => c.text)).toEqual(['4.3', '3.8']);
     });
   });
 });

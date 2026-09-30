@@ -40,10 +40,18 @@ import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.BackupValidation
 import app.doorprints.shared.export.ExportBroker
+import app.doorprints.shared.export.ExportCriterion
+import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.BrokerType
+import app.doorprints.shared.model.Checklist
+import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.CriterionType
+import app.doorprints.shared.model.Preference
+import app.doorprints.shared.model.PreferenceType
+import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.PhoneKey
 import app.doorprints.shared.model.VisitSource
@@ -60,6 +68,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -246,6 +255,94 @@ open class CommonRepository(
     }
 
     override fun brokerHouses(id: String): Flow<List<HouseEntity>> = db.houses().observeForBroker(id)
+
+    // ---- Criteria and ranking (docs/11 5.4, slice 2) ----
+
+    /** A criterion row with its key; null when the payload does not decode or the key is not a usable id. */
+    private fun RecordEntity.toCriterion(): Criterion? = decode(CriterionType)?.copy(key = id)?.coerced()
+
+    private fun scoringOf(criteria: List<RecordEntity>, preferences: List<RecordEntity>): Scoring = Scoring.of(
+        criteria.mapNotNull { it.toCriterion() },
+        preferences.mapNotNull { row -> row.decode(PreferenceType)?.let { row.id to it.value } }.toMap(),
+    )
+
+    override fun observeScoring(): Flow<Scoring> =
+        combine(db.records().byType(CriterionType.name), db.records().byType(PreferenceType.name), ::scoringOf)
+
+    override suspend fun scoring(): Scoring =
+        scoringOf(db.records().listByType(CriterionType.name), db.records().listByType(PreferenceType.name))
+
+    override suspend fun saveCriterion(criterion: Criterion) {
+        db.withImmediateTransaction { writeCriterion(criterion, scoring()) }
+    }
+
+    override suspend fun saveCriteria(criteria: List<Criterion>) {
+        db.withImmediateTransaction {
+            for (c in criteria) writeCriterion(c, scoring())
+        }
+    }
+
+    /**
+     * One criterion as a record, or no record for a built-in at its default (a reset of that one). Nothing is written
+     * when the record already says the same, so a renumbering does not stamp criteria that did not move.
+     */
+    private suspend fun writeCriterion(criterion: Criterion, current: Scoring) {
+        val clean = requireNotNull(criterion.coerced()) { "criterion key '${criterion.key}' is not [A-Za-z0-9._-]{1,64}" }
+        if (clean.isDefault) {
+            deleteRecord(CriterionType, clean.key)
+            return
+        }
+        val stored = db.records().get(CriterionType.name, clean.key)?.takeUnless { it.deleted }?.toCriterion()
+        if (stored == clean) return
+        if (current[clean.key] == null && current.criteria.size >= Criterion.MAX_CRITERIA) {
+            throw RecordLimitException(CriterionType.name, Criterion.MAX_CRITERIA)
+        }
+        saveRecord(CriterionType, clean.key, clean)
+    }
+
+    override suspend fun addCriterion(label: String, weight: Int): String {
+        val name = label.trim()
+        require(name.isNotEmpty() && name.length <= Criterion.MAX_LABEL) { "a criterion needs a name of 1..${Criterion.MAX_LABEL} characters" }
+        var key = ""
+        db.withImmediateTransaction {
+            val current = scoring()
+            if (current.criteria.size >= Criterion.MAX_CRITERIA) throw RecordLimitException(CriterionType.name, Criterion.MAX_CRITERIA)
+            // A key a tombstone holds is taken too: reusing it would bring back the old criterion's scores on the houses.
+            val used = db.records().versions(CriterionType.name).mapTo(HashSet()) { it.id }
+            key = Criterion.newCustomKey({ it in used })
+            val sort = (current.criteria.maxOfOrNull { it.sort } ?: -1) + 1
+            saveRecord(CriterionType, key, Criterion(key = key, label = name, weight = weight, sort = sort).coerced()!!)
+        }
+        return key
+    }
+
+    override suspend fun deleteCriterion(key: String): Boolean {
+        if (key in Checklist.keys) return false
+        var deleted = false
+        db.withImmediateTransaction {
+            if (db.houses().all().none { !it.deleted && it.checklist.containsKey(key) }) {
+                deleteRecord(CriterionType, key)
+                deleted = true
+            }
+        }
+        return deleted
+    }
+
+    override suspend fun saveRatingShare(share: Double) {
+        val value = share.coerceIn(0.0, 1.0)
+        if (value == Scoring.DEFAULT_RATING_SHARE) {
+            deleteRecord(PreferenceType, Preference.RATING_SHARE)
+        } else {
+            saveRecord(PreferenceType, Preference.RATING_SHARE, Preference(Scoring.shareText(value)))
+        }
+    }
+
+    override suspend fun resetScoring() {
+        db.withImmediateTransaction {
+            for (row in db.records().listByType(CriterionType.name)) deleteRecord(CriterionType, row.id)
+            for (row in db.records().listByType(PreferenceType.name)) deleteRecord(PreferenceType, row.id)
+        }
+    }
 
     /**
      * The once-only move of contacts into brokers (slice 1b), on the first read after the update: every live house
@@ -709,6 +806,13 @@ open class CommonRepository(
             db.houses().all(), db.visits().all(), db.photos().all(),
             liveBrokerRows().map { (row, broker) -> ExportBroker.of(row.id, broker, row.updatedAt) },
             lengthUnit = settings.lengthUnit.first(),
+            // At most 40 criteria (more can only come from a newer app's sync), so the copy's own check accepts it.
+            criteria = db.records().listByType(CriterionType.name)
+                .mapNotNull { row -> row.toCriterion()?.let { ExportCriterion.of(it, row.updatedAt) } }
+                .take(Criterion.MAX_CRITERIA),
+            preferences = db.records().listByType(PreferenceType.name).mapNotNull { row ->
+                row.decode(PreferenceType)?.let { ExportPreference(row.id, it.value.take(Preference.MAX_VALUE), row.updatedAt) }
+            },
         )
     }
 
@@ -735,6 +839,8 @@ open class CommonRepository(
             db.visits().unlinkedIds().toSet(),
             db.houses().syncedDeletedIds().toSet(),
             db.records().versions(BrokerType.name).associate { it.id to it.updatedAt },
+            db.records().versions(CriterionType.name).associate { it.id to it.updatedAt },
+            db.records().versions(PreferenceType.name).associate { it.id to it.updatedAt },
         )
     }
 
@@ -812,7 +918,8 @@ open class CommonRepository(
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult = withContext(Dispatchers.IO) {
         if (actions.mode == ImportMode.COPY) return@withContext applyCopy(actions, onProgress, photoBytes)
-        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size
+        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
+            actions.criteria.size + actions.preferences.size
         var done = 0
         var houses = 0
         var visits = 0
@@ -825,6 +932,15 @@ open class CommonRepository(
         // name them find them. A broker the file's houses do not name is still kept: it is the person's own record.
         for (broker in actions.brokers) {
             db.records().upsert(importedBroker(broker, broker.updatedAt))
+            onProgress(++done, total)
+        }
+        // Criteria and preferences (slice 2), by key with the file's `updatedAt`: the plan kept the new and newer ones.
+        for (c in actions.criteria) {
+            db.records().upsert(importedCriterion(c, c.updatedAt))
+            onProgress(++done, total)
+        }
+        for (p in actions.preferences) {
+            db.records().upsert(importedPreference(p, p.updatedAt))
             onProgress(++done, total)
         }
         for (house in actions.houses) {
@@ -887,6 +1003,8 @@ open class CommonRepository(
         val result = ImportResult(
             houses, visits, photos, skipped, updatedHouses, updatedVisits, restoredHouses,
             brokers = actions.brokers.size,
+            criteria = actions.criteria.size,
+            preferences = actions.preferences.size,
         )
         if (result.rows > 0) syncSoon()
         result
@@ -895,6 +1013,18 @@ open class CommonRepository(
     /** A backup's broker as the record row an import writes: values coerced, dirty so it is pushed. */
     private fun importedBroker(b: ExportBroker, updatedAt: Long): RecordEntity = RecordEntity(
         type = BrokerType.name, id = b.id, payload = BrokerType.encode(checkNotNull(b.toBroker().coerced()) { "broker ${b.id} was not checked" }),
+        updatedAt = updatedAt, deleted = false, dirty = true,
+    )
+
+    /** A backup's criterion as its record row: coerced (the plan checked it), dirty so it is pushed. */
+    private fun importedCriterion(c: ExportCriterion, updatedAt: Long): RecordEntity = RecordEntity(
+        type = CriterionType.name, id = c.key,
+        payload = CriterionType.encode(checkNotNull(c.toCriterion().coerced()) { "criterion ${c.key} was not checked" }),
+        updatedAt = updatedAt, deleted = false, dirty = true,
+    )
+
+    private fun importedPreference(p: ExportPreference, updatedAt: Long): RecordEntity = RecordEntity(
+        type = PreferenceType.name, id = p.key, payload = PreferenceType.encode(Preference(p.value)),
         updatedAt = updatedAt, deleted = false, dirty = true,
     )
 
@@ -922,7 +1052,8 @@ open class CommonRepository(
         onProgress: (done: Int, total: Int) -> Unit,
         photoBytes: suspend (entry: String) -> ByteArray?,
     ): ImportResult {
-        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size
+        val total = actions.houses.size + actions.visits.size + actions.photos.size + actions.brokers.size +
+            actions.criteria.size + actions.preferences.size
         var done = 0
         var skipped = 0
         // In copy mode every photo belongs to a house of this import (ImportPlan maps it to the house's new id);
@@ -958,6 +1089,15 @@ open class CommonRepository(
                     db.records().upsert(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
                     onProgress(++done, total)
                 }
+                // A copy keeps the criteria's keys (the copied houses' scores name them) and merges them like a merge.
+                for (c in actions.criteria) {
+                    db.records().upsert(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
+                    onProgress(++done, total)
+                }
+                for (p in actions.preferences) {
+                    db.records().upsert(importedPreference(p, CopyUndo.copyStamp(p.updatedAt, now)))
+                    onProgress(++done, total)
+                }
                 for (house in actions.houses) {
                     val row = house.toEntity(dirty = true).copy(updatedAt = CopyUndo.copyStamp(house.updatedAt, now))
                     db.houses().upsert(row)
@@ -982,6 +1122,8 @@ open class CommonRepository(
         val result = ImportResult(
             actions.houses.size, actions.visits.size, photoRows.size, skipped,
             brokers = actions.brokers.size,
+            criteria = actions.criteria.size,
+            preferences = actions.preferences.size,
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },

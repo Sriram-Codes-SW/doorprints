@@ -31,6 +31,8 @@ import type { BrokerRow } from '../../shared/broker';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
+import { DEFAULT_SCORING, scoringOf } from '../../shared/scoring';
+import type { CriterionRow, Scoring } from '../../shared/scoring';
 import { draftKey, writeDraft } from './draft-store';
 import { HouseDetailPage } from './house-detail-page';
 
@@ -55,6 +57,7 @@ interface Fakes {
   extractListing?: () => Observable<HouseDraft>;
   aiEnabled?: boolean;
   brokers?: () => Observable<BrokerRow[]>;
+  scoring?: () => Observable<Scoring>;
 }
 
 /** Lets the page's promise chains and afterNextRender callbacks run. */
@@ -71,6 +74,7 @@ function create(
   const api = {
     houses: fakes.houses ?? (() => of([])),
     brokers: fakes.brokers ?? (() => of([])),
+    scoring: fakes.scoring ?? (() => of(DEFAULT_SCORING)),
     house: () => of(HOUSE),
     visits: () => of([]),
     photoIds: () => of([]),
@@ -398,5 +402,66 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
     reads[1].complete();
     await fixture.whenStable();
     expect(card!.isConnected).toBe(false);
+  });
+});
+
+/** Slice 2 (docs/11 5.4): the checklist lists the active criteria, the coverage line and the must-have warnings. */
+describe('HouseDetailPage: the checklist under the effective scoring (slice 2)', () => {
+  const PETS: CriterionRow = {
+    key: 'c_1a2b3c4d',
+    updatedAt: null,
+    criterion: { key: 'c_1a2b3c4d', label: 'Pets allowed', weight: 2, mustHave: false, minScore: 3, sort: 10 },
+  };
+  const NOISE: CriterionRow = { key: 'noise', updatedAt: null, criterion: { key: 'noise', weight: 0, mustHave: false, minScore: 3, sort: 5, archived: true } };
+  const POWER_IGNORED: CriterionRow = { key: 'power', updatedAt: null, criterion: { key: 'power', weight: 0, mustHave: false, minScore: 3, sort: 1 } };
+  const WATER_MUST: CriterionRow = { key: 'water', updatedAt: null, criterion: { key: 'water', weight: 3, mustHave: true, minScore: 4, sort: 0 } };
+  const SECURITY_MUST: CriterionRow = { key: 'security', updatedAt: null, criterion: { key: 'security', weight: 2, mustHave: true, minScore: 4, sort: 6 } };
+
+  async function open(rows: CriterionRow[], checklist: Record<string, number>, rating: number | null = null) {
+    const house: HouseDto = { ...HOUSE, checklist, rating };
+    TestBed.resetTestingModule();
+    const { fixture } = create({ id: house.id }, {}, { scoring: () => of(scoringOf(rows, [])) });
+    (fixture.componentInstance as unknown as { api: { house: () => Observable<HouseDto> } }).api.house = () => of(house);
+    fixture.detectChanges();
+    await settle();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const legends = (host: HTMLElement) => [...host.querySelectorAll('.check-row > legend')].map((l) => l.textContent?.replace(/\s+/g, ' ').trim());
+
+  it('lists the active criteria in the person\'s order: a custom one by its label, an ignored one marked, an archived one hidden', async () => {
+    const host = await open([PETS, NOISE, POWER_IGNORED], { noise: 2 });
+    const list = legends(host);
+    expect(list).toHaveLength(10);
+    expect(list[0]).toBe('Water supply');
+    expect(list[1]).toBe('Power backup (ignored)');
+    expect(list).not.toContain('Quiet (low noise)');
+    expect(list[9]).toBe('Pets allowed');
+    // Every listed criterion is still a group of 0..5 and "not scored".
+    expect(host.querySelectorAll('input[name="check-c_1a2b3c4d"]')).toHaveLength(7);
+  });
+
+  it('says how many of the criteria that matter are scored', async () => {
+    const host = await open([], { water: 5, parking: 4 });
+    expect(host.querySelector('#coverage-line')?.textContent).toContain('Scored 2 of 10 that matter');
+    const none = await open([], {});
+    expect(none.querySelector('#coverage-line')?.textContent).toContain('Scored 0 of 10 that matter');
+  });
+
+  it('warns about a must-have scored below its minimum, and only names one not checked yet', async () => {
+    const host = await open([WATER_MUST, SECURITY_MUST], { water: 2 });
+    const text = host.textContent ?? '';
+    expect(text).toContain('Must-have missed: Water supply');
+    expect(text).toContain('Not checked yet: Safety and security');
+    const ok = await open([WATER_MUST, SECURITY_MUST], { water: 4, security: 5 });
+    expect(ok.textContent).not.toContain('Must-have missed');
+    expect(ok.textContent).not.toContain('Not checked yet');
+  });
+
+  it('shows the overall score under the person\'s weights and rating share', async () => {
+    const host = await open([{ key: 'water', updatedAt: null, criterion: { key: 'water', weight: 3, mustHave: false, minScore: 3, sort: 0 } }], { water: 5, power: 1 });
+    // (3*5 + 2*1) / 5 = 3.4
+    expect(host.querySelector('.score b')?.textContent?.trim()).toBe('3.4');
   });
 });

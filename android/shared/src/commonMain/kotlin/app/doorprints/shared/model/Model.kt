@@ -71,21 +71,58 @@ object Checklist {
 /** Same cap as the server's app.limits.max-photos-per-house default (threat model F-06). */
 const val MAX_PHOTOS_PER_HOUSE = 20
 
-/** Overall house score, used for sorting ("best first"), Compare and the Hunt notification. */
+/**
+ * Overall house score (docs/11 5.4, slice 2): the one implementation, used by the list's "best first", Compare, the
+ * house form, the Hunt notification and the readable copies. The web's twin is `scoring.ts`; both pass vectors V1..V8.
+ */
 object HouseScore {
     /**
-     * 0-5 overall score: average of the checklist, blended 50/50 with the star rating when both exist.
-     * Null if nothing has been scored yet. A 0 is a real score, not "missing".
+     * The house's score under [scoring]. Active criteria are the ones not archived and not *Ignore* (weight 0):
+     * - the weighted checklist `wc` = Σ(w·s) / Σ(w) over active criteria with a score; null when none. A 0 is a real
+     *   score, and a score under a key that is not a known criterion (a newer app's) is ignored;
+     * - `overall` = (1 − r)·wc + r·rating when both exist, else whichever exists, null when neither (r = rating share);
+     * - `coverage` = Σw of the scored active criteria / Σw of all active ones; null when none is active;
+     * - a must-have (not archived; its weight does not matter) scored below its minimum is failed, one not scored yet
+     *   is unchecked, not failed.
      */
-    fun of(checklist: Map<String, Int>, rating: Int?): Double? {
-        val check = if (checklist.isEmpty()) null else checklist.values.average()
-        val stars = rating?.toDouble()
-        return when {
-            check != null && stars != null -> (check + stars) / 2
-            else -> check ?: stars
+    fun evaluate(checklist: Map<String, Int>, rating: Int?, scoring: Scoring): ScoreResult {
+        var weightSum = 0
+        var scoredWeight = 0
+        var total = 0.0
+        var scored = 0
+        var active = 0
+        val failed = ArrayList<String>()
+        val unchecked = ArrayList<String>()
+        for (c in scoring.criteria) {
+            val score = checklist[c.key]
+            if (c.isActive) {
+                active++
+                weightSum += c.weight
+                if (score != null) {
+                    scored++
+                    scoredWeight += c.weight
+                    total += c.weight * score.toDouble()
+                }
+            }
+            if (c.mustHave && !c.archived) {
+                when {
+                    score == null -> unchecked += c.key
+                    score < c.minScore -> failed += c.key
+                }
+            }
         }
+        val wc = if (scoredWeight > 0) total / scoredWeight else null
+        val stars = rating?.toDouble()
+        val r = scoring.ratingShare
+        val overall = when {
+            wc != null && stars != null -> (1 - r) * wc + r * stars
+            else -> wc ?: stars
+        }
+        val coverage = if (weightSum > 0) scoredWeight.toDouble() / weightSum else null
+        return ScoreResult(overall, coverage, failed, unchecked, wc, scored, active)
     }
 
-    /** Sort key for "best first": unscored houses go last. */
-    fun rankKey(score: Double?): Double = score ?: -1.0
+    /** The overall score alone ([evaluate]); the default scoring is the pre-slice formula (vector V7). */
+    fun of(checklist: Map<String, Int>, rating: Int?, scoring: Scoring = Scoring.DEFAULT): Double? =
+        evaluate(checklist, rating, scoring).overall
 }
