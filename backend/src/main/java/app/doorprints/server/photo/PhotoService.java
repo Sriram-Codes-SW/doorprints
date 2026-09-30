@@ -119,6 +119,12 @@ public class PhotoService {
                 PhotoMeta.orNull(caption), Math.max(stamp, current.metaUpdatedAt() + 1), now, versions.next()) > 0;
     }
 
+    /** Metadata of one photo (live or tombstone), or null. */
+    @Transactional(readOnly = true)
+    public PhotoDto metadata(UUID id) {
+        return photos.findMetadataById(id);
+    }
+
     @Transactional(readOnly = true)
     public List<UUID> liveIds(UUID houseId) {
         return photos.findIdsByHouseId(houseId);

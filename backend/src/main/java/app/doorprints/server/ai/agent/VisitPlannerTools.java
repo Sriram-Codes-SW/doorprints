@@ -76,7 +76,7 @@ public class VisitPlannerTools {
             status, price, priceType, bedrooms, rating, lat, lon). Omit a filter to not filter on it.""")
     public List<HouseSummary> searchHouses(
             @ToolParam(required = false, description = "Case-insensitive text to find in label, address, street, locality or notes") String text,
-            @ToolParam(required = false, description = "NEW, SHORTLISTED or REJECTED") String status,
+            @ToolParam(required = false, description = "NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN") String status,
             @ToolParam(required = false, description = "RENT or SALE") String priceType,
             @ToolParam(required = false, description = "Maximum price in rupees (monthly rent for RENT)") Long maxPrice,
             @ToolParam(required = false, description = "Minimum number of bedrooms") Integer minBedrooms,

@@ -78,7 +78,7 @@ class BackupMapperTest {
     }
 
     private static PhotoDto photo(UUID id, UUID houseId, Instant createdAt, boolean deleted) {
-        return new PhotoDto(id, houseId, "image/jpeg", 3, createdAt, createdAt, deleted, 1);
+        return new PhotoDto(id, houseId, "image/jpeg", 3, createdAt, createdAt, deleted, 1, null, (java.util.List<String>) null, null, 0);
     }
 
     @Test
