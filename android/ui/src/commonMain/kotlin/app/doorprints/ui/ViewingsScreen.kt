@@ -75,11 +75,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.VisitEntity
+import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.ViewingKind
-import app.doorprints.shared.model.ViewingReminders
 import app.doorprints.shared.model.ViewingStatus
 import app.doorprints.shared.model.Viewings
 import app.doorprints.shared.records.RecordLimitException
@@ -449,15 +449,17 @@ private data class ViewingDraft(
     val withWhom: String,
     val notes: String,
     val status: ViewingStatus = ViewingStatus.PLANNED,
+    /** *Offer Hunt mode before this viewing* (slice 3c): off unless turned on. */
+    val huntReminder: Boolean = false,
 )
 
 /** [ViewingDraft] in the saved-state bundle: plain values only. */
 private val ViewingDraftSaver = listSaver<ViewingDraft, Any?>(
-    save = { listOf(it.houseId, it.startsAt, it.durationMin, it.kind.name, it.remindMin, it.withWhom, it.notes, it.status.name) },
+    save = { listOf(it.houseId, it.startsAt, it.durationMin, it.kind.name, it.remindMin, it.withWhom, it.notes, it.status.name, it.huntReminder) },
     restore = {
         ViewingDraft(
             it[0] as String?, it[1] as Long, it[2] as Int, ViewingKind.fromWire(it[3] as String), it[4] as Int, it[5] as String,
-            it[6] as String, ViewingStatus.fromWire(it[7] as String),
+            it[6] as String, ViewingStatus.fromWire(it[7] as String), it[8] as Boolean,
         )
     },
 )
@@ -468,8 +470,9 @@ private val DURATIONS: List<Int> = (Viewing.MIN_DURATION..Viewing.MAX_DURATION s
 /**
  * The viewing form (docs/11 5.8): house (preselected when opened from one), date and time (the phone's locale), duration,
  * kind, reminder, with whom and notes; *Save*, *Cancel viewing* (CANCELLED), *Delete* and *Add to calendar* (the phone's
- * calendar app, no permission). House and time are required; a past time is fine (a viewing logged afterwards). No
- * Hunt reminder switch yet (slice 3c). [viewingId] null plans a new one for [houseId] of [kind].
+ * calendar app, no permission). House and time are required; a past time is fine (a viewing logged afterwards). Where
+ * the phone has Hunt mode, *Offer Hunt mode before this viewing* (slice 3c, off by default; the record keeps
+ * `huntReminder` only when it is on). [viewingId] null plans a new one for [houseId] of [kind].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -502,6 +505,7 @@ fun ViewingFormScreen(
         if (v != null && !filled) {
             draft = ViewingDraft(
                 v.houseId, v.startsAt, v.durationMin, v.viewingKind, v.remindMin, v.withWhom.orEmpty(), v.notes.orEmpty(), v.viewingStatus,
+                v.huntReminder,
             )
             filled = true
         }
@@ -522,6 +526,9 @@ fun ViewingFormScreen(
     // and never at start-up; whatever the answer, the viewing is already saved.
     val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale)
     val remindOn by remember(repo) { repo.settings.viewingsRemind() }.collectAsStateWithLifecycle(initialValue = true)
+    val huntRemindOn by remember(repo) { repo.settings.huntRemind() }.collectAsStateWithLifecycle(initialValue = true)
+    val huntLead by remember(repo) { repo.settings.huntReminderMin() }.collectAsStateWithLifecycle(initialValue = HuntReminders.DEFAULT_LEAD)
+    val huntMode = LocalPlatformFeatures.current.huntMode
 
     fun write(status: ViewingStatus = draft.status, then: () -> Unit = onDone) {
         tried = true
@@ -536,9 +543,13 @@ fun ViewingFormScreen(
                         id = id, houseId = house, startsAt = draft.startsAt, durationMin = draft.durationMin,
                         kind = draft.kind.name, status = status.name, remindMin = draft.remindMin,
                         withWhom = draft.withWhom, notes = draft.notes,
+                        // Without Hunt mode on this phone the switch is hidden and the stored value is kept as it is.
+                        huntReminder = if (huntMode) draft.huntReminder else stored?.huntReminder ?: false,
                     ).also { repo.saveViewing(it) }
                 }
-                if (remindOn && ViewingReminders.upcoming(listOf(saved), nowMillis()).isNotEmpty()) askNotifications(then) else then()
+                val t = nowMillis()
+                val ahead = HuntReminders.merged(listOf(saved), huntLead, t, viewingReminders = remindOn, huntReminders = huntRemindOn)
+                if (ahead.isNotEmpty()) askNotifications(then) else then()
                 null
             } catch (e: CancellationException) {
                 throw e
@@ -618,6 +629,15 @@ fun ViewingFormScreen(
                     chosen = d.remindMin,
                     text = { stringResource(remindResource(it)) },
                 ) { draft = draft.copy(remindMin = it) }
+                if (huntMode) {
+                    SwitchRow(
+                        text = stringResource(Res.string.viewings_huntReminder),
+                        hint = stringResource(Res.string.viewings_huntReminder_hint, huntLead),
+                        checked = d.huntReminder,
+                        horizontalPadding = 0.dp,
+                        onChange = { draft = draft.copy(huntReminder = it) },
+                    )
+                }
                 OutlinedTextField(
                     d.withWhom, { draft = draft.copy(withWhom = it.take(Viewing.MAX_WITH_WHOM)) },
                     label = { Text(stringResource(Res.string.viewings_withWhomLabel)) },

@@ -21,6 +21,7 @@ package app.doorprints.ui
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.ComposeUIViewController
 import app.doorprints.data.ConnectLink
+import app.doorprints.shared.records.RecordRules
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.setUnhandledExceptionHook
 import kotlin.native.terminateWithUnhandledException
@@ -79,6 +80,7 @@ fun installNotifications() {
  */
 internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
     (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
+    (userInfo[IosHunt.KEY_OPEN_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null }
     val lat = (userInfo[IosHunt.KEY_NEW_LAT] as? String)?.toDoubleOrNull() ?: return null
     val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null

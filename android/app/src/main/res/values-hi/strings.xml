@@ -123,4 +123,10 @@
     <string name="notif_viewing_directions">रास्ता</string>
     <string name="notif_viewing_questions">सवाल</string>
     <string name="notif_viewing_house_gone">हटाया गया मकान</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="notif_channel_hunt_reminders">हंट मोड रिमाइंडर</string>
+    <string name="notif_channel_hunt_reminders_desc">मकान देखने से पहले हंट मोड का सुझाव</string>
+    <string name="notif_hunt_reminder">%1$s में मकान देखना %2$d मिनट में। हंट मोड शुरू करें?</string>
+    <string name="notif_hunt_reminder_start">हंट मोड शुरू करें</string>
+    <string name="notif_hunt_reminder_dismiss">हटाएँ</string>
 </resources>

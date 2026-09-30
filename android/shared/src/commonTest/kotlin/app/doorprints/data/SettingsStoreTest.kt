@@ -93,6 +93,26 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun huntRemindersStartOnAtFifteenMinutesAndTakeOnlyTheChoices() = runTest {
+        // docs/11 5.16, slice 3c: `hunt.remind` on and `hunt.reminderMin` 15 until the person changes them; local only.
+        assertTrue(store.huntRemind().first())
+        assertEquals(15, store.huntReminderMin().first())
+        store.setHuntRemind(false)
+        assertFalse(store.huntRemind().first())
+        assertEquals(false, raw()["hunt.remind"])
+        for (m in listOf(5, 10, 15, 20, 30, 45, 60)) {
+            store.setHuntReminderMin(m)
+            assertEquals(m, store.huntReminderMin().first())
+            assertEquals(m, raw()["hunt.reminderMin"])
+        }
+        // A value that is not a choice is not kept, and one already stored (another app, an old file) reads 15.
+        store.setHuntReminderMin(7)
+        assertEquals(15, store.huntReminderMin().first())
+        dataStore.updateData { p -> p.toMutablePreferences().apply { this[androidx.datastore.preferences.core.intPreferencesKey("hunt.reminderMin")] = 90 } }
+        assertEquals(15, store.huntReminderMin().first())
+    }
+
+    @Test
     fun aiFeaturesStartOffAndAreKept() = runTest {
         // docs/03 §12.1: off until the person turns them on.
         assertFalse(store.current().aiFeatures)

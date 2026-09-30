@@ -427,6 +427,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                 onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
             Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
             PathTraceSection(settings)
+            // The Hunt mode reminder before a viewing (docs/11 5.16, slice 3c): the switch and the lead time.
+            HuntRemindersSection()
         }
 
         // Offline maps (docs/11 5.20), where the phone has the store; saved from the Map.
