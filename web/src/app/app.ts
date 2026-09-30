@@ -36,6 +36,8 @@ import { isLang } from './i18n/languages';
 import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
 import { AppBanners } from './shared/app-banners';
+import { ReminderBanners } from './shared/reminder-banners';
+import { ViewingReminderService } from './core/viewing-reminder.service';
 import { PwaService } from './core/pwa.service';
 import { SyncService } from './data/sync.service';
 import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
@@ -61,7 +63,7 @@ const NAV_ICONS = {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners],
   template: `
     <a class="skip-link" href="#main" (click)="skipToMain($event)">{{ 'app.skip' | t }}</a>
     <header class="topbar">
@@ -151,6 +153,7 @@ const NAV_ICONS = {
       </nav>
     </header>
     <app-banners />
+    <app-reminder-banners />
     <main id="main" #main class="content" tabindex="-1">
       <router-outlet />
     </main>
@@ -574,6 +577,8 @@ export class App {
   private readonly scrollPositions = new Map<number, number>();
 
   constructor() {
+    // Looks once a minute for a viewing reminder while the app is open (slice 3b-2); cleared when the app is destroyed.
+    inject(ViewingReminderService).start();
     this.measureBottomBar();
     this.watchPhoneLayout();
     // After a navigation, a language switch or Ask and Plan appearing: the bottom bar may have gone or come back (a

@@ -32,7 +32,11 @@ import app.doorprints.export.Imports
 import app.doorprints.i18n.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 
@@ -40,6 +44,9 @@ class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
     val repository = AndroidRepository(app, AppDatabase.create(app), settings)
+
+    /** The viewing reminders' alarms (docs/11 5.8, slice 3b-2). */
+    val reminders = ViewingReminderScheduler(app, repository)
 
     /** What the common screens in :ui need from the app (ADR-23 CMP-5), provided by ProvideAppServices. */
     val services = AndroidAppServices(app, repository)
@@ -73,6 +80,20 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         AppLocale.wrap(this)
     }
 
+    /**
+     * The viewing reminders (slice 3b-2) are set again at start (the first emission) and after every change of the
+     * viewings or of *Remind me about viewings*: a burst of edits, an import or a sync is one reschedule a second
+     * later. The records table tells Room about every record type's writes, so equal lists are skipped first.
+     */
+    @OptIn(FlowPreview::class)
+    private fun watchViewingReminders() {
+        appScope.launch {
+            combine(container.repository.observeViewings().distinctUntilChanged(), container.settings.viewingsRemind()) { v, on -> v to on }
+                .debounce(REMINDER_DEBOUNCE_MS)
+                .collect { runCatching { container.reminders.rescheduleAll() } }
+        }
+    }
+
     /** Platform services and start-up work; the data container above is all the screens need. */
     protected open fun startServices() {
         MapLibre.getInstance(this)
@@ -84,6 +105,7 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         // every activity recreation, and a rotation while offline hid the Assistant tab under the user's thumb.
         // Settings' "Save and test" and the Assistant's "Try again" ask again; see Repository.refreshAiStatus.
         appScope.launch { runCatching { container.repository.refreshAiStatus() } }
+        watchViewingReminders()
         appScope.launch {
             runCatching {
                 // The weekly backup (S4-07) is re-registered on every start: WorkManager keeps periodic work
@@ -99,3 +121,5 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         }
     }
 }
+
+private const val REMINDER_DEBOUNCE_MS = 1_000L

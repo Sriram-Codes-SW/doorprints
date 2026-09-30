@@ -220,6 +220,8 @@ class SettingsStore(
         val questionsSeeded = booleanPreferencesKey("questions.seeded")
         /** [AppSettings.lengthUnit], by name: the web's `SETTING_KEYS.lengthUnit`. */
         val lengthUnit = stringPreferencesKey("units.length")
+        /** Viewing reminders on this device (slice 3b-2): the web's `SETTING_KEYS.viewingsRemind`, not synced. */
+        val viewingsRemind = booleanPreferencesKey("viewings.remind")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -261,6 +263,17 @@ class SettingsStore(
         .distinctUntilChanged()
 
     suspend fun saveLengthUnit(unit: LengthUnit) = dataStore.edit { it[Keys.lengthUnit] = unit.name }
+
+    /**
+     * *Remind me about viewings* (docs/11 5.8, slice 3b-2), on unless turned off; this device's own choice. Off, the
+     * scheduler cancels every reminder and sets none. Reads no secret; a file that cannot be read gives the default.
+     */
+    fun viewingsRemind(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.viewingsRemind] ?: true }
+        .catch { emit(true) }
+        .distinctUntilChanged()
+
+    suspend fun setViewingsRemind(on: Boolean) = dataStore.edit { it[Keys.viewingsRemind] = on }
 
     suspend fun current() = settings.first()
 

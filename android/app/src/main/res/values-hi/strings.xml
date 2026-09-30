@@ -112,4 +112,15 @@
         <item quantity="other">%1$d मकान वापस लाए गए।</item>
     </plurals>
     <string name="price_per_month">%1$s/माह</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
+    <string name="notif_channel_viewings">मकान देखने के रिमाइंडर</string>
+    <string name="notif_channel_viewings_desc">आपके तय मकान देखने से पहले</string>
+    <string name="notif_viewing_soon">%1$s में मकान देखना %2$d मिनट में</string>
+    <string name="notif_viewing_title">%1$s में मकान देखना</string>
+    <string name="notif_viewing_text">शुरू: %1$s</string>
+    <string name="notif_viewing_public">Doorprints रिमाइंडर</string>
+    <string name="notif_viewing_open">मकान खोलें</string>
+    <string name="notif_viewing_directions">रास्ता</string>
+    <string name="notif_viewing_questions">सवाल</string>
+    <string name="notif_viewing_house_gone">हटाया गया मकान</string>
 </resources>

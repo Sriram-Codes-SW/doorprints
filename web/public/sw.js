@@ -303,3 +303,22 @@ function fetchAndKeep(request) {
     return response;
   });
 }
+
+// A tap on a viewing reminder (slice 3b-2, shown by the open app through showNotification): focus the app and go to
+// the Viewings page, or open it. The address is relative to the worker's scope, so a sub-path deployment works.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(String((event.notification.data && event.notification.data.url) || ''), self.registration.scope).href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const open = windows.find((w) => w.url.startsWith(self.registration.scope));
+      if (open) {
+        await open.focus();
+        if ('navigate' in open && open.url !== target) await open.navigate(target).catch(() => undefined);
+      } else {
+        await self.clients.openWindow(target);
+      }
+    })(),
+  );
+});

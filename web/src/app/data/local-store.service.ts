@@ -964,6 +964,15 @@ export class LocalStore {
     await this.setSetting(SETTING_KEYS.lengthUnit, unit);
   }
 
+  /** *Notify me while Doorprints is open* (slice 3b-2): on unless the person turned it off. Local only, never synced. */
+  async viewingsRemind(): Promise<boolean> {
+    return (await this.setting(SETTING_KEYS.viewingsRemind)) !== '0';
+  }
+
+  async setViewingsRemind(on: boolean): Promise<void> {
+    await this.setSetting(SETTING_KEYS.viewingsRemind, on ? '1' : '0');
+  }
+
   async numberSetting(key: string): Promise<number> {
     const raw = await this.setting(key);
     const n = raw === null ? Number.NaN : Number(raw);
