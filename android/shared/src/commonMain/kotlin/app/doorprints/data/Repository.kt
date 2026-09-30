@@ -27,6 +27,7 @@ import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
+import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,6 +88,22 @@ interface Repository {
 
     /** Deletes the photo's local file now; a photo the server has is queued for deletion on the next sync. */
     suspend fun deletePhoto(photo: PhotoEntity)
+
+    // The record envelope (docs/11 5.30 item 2, ADR-28): every new kind of data of Sprint 4b, typed by a RecordType.
+
+    /** The live records of [type] as id to value; a row whose payload does not decode is left out, never thrown. */
+    fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>>
+
+    /**
+     * Writes [value] under [type] and [id] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. Throws
+     * `IllegalArgumentException` for an id outside `RecordRules.isValidId` or a payload over
+     * `RecordRules.MAX_PAYLOAD_BYTES`, and `RecordLimitException` when the type already has
+     * `RecordRules.MAX_ROWS_PER_TYPE` live rows and [id] is not one of them.
+     */
+    suspend fun <T> saveRecord(type: RecordType<T>, id: String, value: T)
+
+    /** Turns the record into a tombstone with `{}` as its payload; nothing when there is no such live record. */
+    suspend fun deleteRecord(type: RecordType<*>, id: String)
 
     suspend fun testConnection(): Result<StatsDto>
 

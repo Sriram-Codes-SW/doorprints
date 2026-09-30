@@ -42,6 +42,10 @@ import app.doorprints.shared.export.BackupValidation
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.VisitSource
+import app.doorprints.shared.records.RecordLimitException
+import app.doorprints.shared.records.RecordRules
+import app.doorprints.shared.records.RecordType
+import app.doorprints.shared.records.decode
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.shared.sync.SyncRules
 import kotlinx.coroutines.Dispatchers
@@ -184,6 +188,29 @@ open class CommonRepository(
         } else {
             db.photos().delete(photo.id)
         }
+    }
+
+    override fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>> =
+        db.records().byType(type.name).map { rows -> rows.mapNotNull { row -> row.decode(type)?.let { row.id to it } } }
+
+    override suspend fun <T> saveRecord(type: RecordType<T>, id: String, value: T) {
+        require(RecordRules.isValidId(id)) { "record id '$id' is not [A-Za-z0-9._-]{1,64}" }
+        val payload = type.encode(value)
+        require(RecordRules.fitsPayload(payload)) { "record payload over ${RecordRules.MAX_PAYLOAD_BYTES} bytes" }
+        // The cap counts live rows: writing over one, or reviving a tombstone, adds none.
+        val existing = db.records().get(type.name, id)
+        if (existing?.deleted != false && db.records().countLive(type.name) >= RecordRules.MAX_ROWS_PER_TYPE) {
+            throw RecordLimitException(type.name, RecordRules.MAX_ROWS_PER_TYPE)
+        }
+        db.records().upsert(RecordEntity(type = type.name, id = id, payload = payload, updatedAt = now()))
+        syncSoon()
+    }
+
+    override suspend fun deleteRecord(type: RecordType<*>, id: String) {
+        val record = db.records().get(type.name, id) ?: return
+        if (record.deleted) return
+        db.records().upsert(record.copy(payload = "{}", updatedAt = now(), deleted = true, dirty = true))
+        syncSoon()
     }
 
     override suspend fun testConnection(): Result<StatsDto> = withContext(Dispatchers.IO) {
@@ -339,7 +366,7 @@ open class CommonRepository(
         // is unknown) below a cursor means it lost what this phone sent and hides changes below the cursors, so
         // everything goes again and the pull starts from 0. A push answer can show the same ([pushAll]).
         val stored = settings.cursors()
-        val storedCursors = listOf(stored.house, stored.visit, stored.photo)
+        val storedCursors = listOf(stored.house, stored.visit, stored.photo, stored.record)
         var serverReset = false
         if (storedCursors.any { it > 0 }) {
             val highest = try {
@@ -386,7 +413,17 @@ open class CommonRepository(
             if (SyncRules.keepLocal(local, incoming)) continue
             db.visits().upsert(incoming); pulled++
         }
-        settings.saveCursors(houseCursor, visitCursor)
+        // Records (docs/11 5.30): a row this phone cannot use (toEntity null) is skipped and the cursor still moves
+        // past it, as the web does; the next app version that can read it pulls it again from a fresh cursor.
+        var recordCursor = cursors.record
+        for (dto in api.recordsSince(recordCursor)) {
+            recordCursor = maxOf(recordCursor, dto.syncVersion)
+            val incoming = dto.toEntity() ?: continue
+            val local = db.records().get(incoming.type, incoming.id)
+            if (SyncRules.keepLocal(local, incoming)) continue
+            db.records().upsert(incoming); pulled++
+        }
+        settings.saveCursors(houseCursor, visitCursor, recordCursor)
 
         // Photos: apply delete tombstones from other devices, download new photos of live houses.
         var photoCursor = cursors.photo
@@ -426,22 +463,23 @@ open class CommonRepository(
     private class ServerWasReset(val pushed: Int) : Exception()
 
     /**
-     * Marks every house and visit for upload and every live photo for upload again, then resets the pull cursors
+     * Marks every house, visit and record for upload and every live photo for upload again, then resets the pull cursors
      * (S4b-BL-20). Rows first: a sync cut off in between finds the server behind again on its next run, instead of
      * leaving rows marked clean that the server does not have.
      */
     private suspend fun resetForServer() {
         db.houses().markAllDirty()
         db.visits().markAllDirty()
+        db.records().markAllDirty()
         db.photos().markAllForUpload()
         settings.resetCursors()
     }
 
     /**
-     * Pushes local changes: visit tombstones without a house, houses, the other visits, photo deletes, photo uploads.
-     * Returns the rows pushed and the photos left waiting for Wi-Fi. With a [highestCursor] above 0, an accepted
-     * house or visit write answered with a version at or below it ([SyncRules.pushShowsReset]) stops the push with
-     * [ServerWasReset].
+     * Pushes local changes: visit tombstones without a house, houses, the other visits, records, photo deletes, photo
+     * uploads. Returns the rows pushed and the photos left waiting for Wi-Fi. With a [highestCursor] above 0, an
+     * accepted house, visit or record write answered with a version at or below it ([SyncRules.pushShowsReset])
+     * stops the push with [ServerWasReset].
      */
     private suspend fun pushAll(api: ApiClient, photosAllowed: Boolean, highestCursor: Long): Pair<Int, Int> {
         var pushed = 0
@@ -470,6 +508,13 @@ open class CommonRepository(
             val answer = api.putVisit(v.toDto())
             check(v.updatedAt, answer.updatedAt, answer.syncVersion)
             db.visits().markClean(v.id, v.updatedAt); pushed++
+        }
+        // Records after the houses and visits: a record may name a house (a viewing, slice 3), so the house is on
+        // the server first.
+        for (r in db.records().dirty()) {
+            val answer = api.putRecord(r.toDto())
+            check(r.updatedAt, answer.updatedAt, answer.syncVersion)
+            db.records().markClean(r.type, r.id, r.updatedAt); pushed++
         }
         // Deletes are tiny, so they go out on any network.
         for (p in db.photos().pendingDelete()) {

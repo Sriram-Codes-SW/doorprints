@@ -20,6 +20,7 @@ import { computed } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from './local-store.service';
 import { SETTING_KEYS } from './records';
+import { LocalDataError } from '../core/local-error';
 import type { HouseDto, VisitDto } from '../core/models';
 
 /**
@@ -236,12 +237,79 @@ describe('LocalStore', () => {
 
   it('reads and writes settings, including the sync cursors', async () => {
     expect(await store.setting('nothing')).toBeNull();
-    expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0 });
+    expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
     await store.setSetting(SETTING_KEYS.houseCursor, '12');
     await store.setSetting(SETTING_KEYS.photoCursor, 'not a number');
     const cursors = await store.cursors();
     expect(cursors.house).toBe(12);
     expect(cursors.photo).toBe(0);
+    await store.setSetting(SETTING_KEYS.recordCursor, '3');
+    expect((await store.cursors()).record).toBe(3);
+    await store.resetCursors();
+    expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
+  });
+
+  // ---- Records: the one store for every other Sprint 4b entity (docs/11 5.30 item 2) ----
+
+  it('saves a record as dirty with a fresh updatedAt, keeps the sync version, and lists live rows by type', async () => {
+    await store.saveRecord('broker', 'b2', { name: 'Later' }, T2);
+    await store.saveRecord('broker', 'b1', { name: 'Earlier' }, T1);
+    await store.saveRecord('place', 'p1', { name: 'Office' }, T1);
+    await store.putRecordFromServer({ type: 'broker', id: 'b3', payload: {}, updatedAt: '2026-09-03T00:00:00.000Z', deleted: false, syncVersion: 9 });
+    expect((await store.recordsOf('broker')).map((r) => r.id)).toEqual(['b1', 'b2', 'b3']);
+    expect(await store.recordsOf('viewing')).toEqual([]);
+
+    const b1 = await store.getRecord('broker', 'b1');
+    expect(b1).toEqual({ type: 'broker', id: 'b1', payload: { name: 'Earlier' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 0, dirty: true });
+    // A local edit of a synced row keeps the row's sync version.
+    await store.saveRecord('broker', 'b3', { name: 'Edited' }, T2);
+    expect((await store.getRecord('broker', 'b3'))?.syncVersion).toBe(9);
+    expect((await store.dirtyRecords()).map((r) => `${r.type}/${r.id}`)).toEqual(['broker/b1', 'place/p1', 'broker/b2', 'broker/b3']);
+  });
+
+  it('turns a deleted record into a tombstone with an empty payload, hidden from reads but kept for the sync', async () => {
+    await store.saveRecord('viewing', 'v1', { at: '2026-10-01' }, T1);
+    await store.deleteRecord('viewing', 'v1', T2);
+    await store.deleteRecord('viewing', 'never-there', T2);
+    expect(await store.getRecord('viewing', 'v1')).toBeUndefined();
+    expect(await store.recordsOf('viewing')).toEqual([]);
+    const [tombstone] = await store.dirtyRecords();
+    expect(tombstone).toEqual({ type: 'viewing', id: 'v1', payload: {}, updatedAt: '2026-09-02T00:00:00.000Z', deleted: true, syncVersion: 0, dirty: true });
+  });
+
+  it('clears a record’s dirty flag only when nothing changed while the push was in flight', async () => {
+    const saved = await store.saveRecord('place', 'p1', { name: 'Office' }, T1);
+    await store.saveRecord('place', 'p1', { name: 'Office, moved' }, T2);
+    await store.markRecordClean('place', 'p1', saved.updatedAt);
+    expect((await store.getRecord('place', 'p1'))?.dirty).toBe(true);
+    await store.markRecordClean('place', 'p1', '2026-09-02T00:00:00.000Z');
+    expect((await store.getRecord('place', 'p1'))?.dirty).toBe(false);
+    // A resync after a server reset marks it again, with everything else.
+    await store.markAllForResync();
+    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['p1']);
+  });
+
+  it('refuses a record it could not sync: a bad type or id, or a payload over the server’s cap', async () => {
+    for (const [type, id, payload] of [
+      ['Broker', 'b1', {}],
+      ['broker', 'a/b', {}],
+      ['broker', 'b1', { n: 'x'.repeat(70_000) }],
+    ] as const) {
+      let thrown: unknown = null;
+      try {
+        await store.saveRecord(type, id, payload as Record<string, unknown>, T1);
+      } catch (err: unknown) {
+        thrown = err;
+      }
+      expect(thrown, `${type}/${id}`).toBeInstanceOf(LocalDataError);
+    }
+    expect(await store.dirtyRecords()).toEqual([]);
+  });
+
+  it('removes the records with everything else when the user clears this browser', async () => {
+    await store.saveRecord('broker', 'b1', { name: 'A' }, T1);
+    await store.clearEverything();
+    expect(await store.dirtyRecords()).toEqual([]);
   });
 
   it('knows when this browser holds nothing yet', async () => {

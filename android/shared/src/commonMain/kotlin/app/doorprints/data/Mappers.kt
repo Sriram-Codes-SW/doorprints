@@ -20,9 +20,12 @@ package app.doorprints.data
 
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.api.RecordDto
 import app.doorprints.shared.api.VisitDto
+import app.doorprints.shared.records.RecordRules
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
+import kotlinx.serialization.json.JsonObject
 
 // Room entity <-> API DTO, common code since CMP-4 P4c (were :app's; the entities moved in P4a). Behaviour is
 // unchanged from the v0.1 mappers in data/Api.kt: ISO-8601 instants on the wire, unknown status/source fall back to
@@ -61,3 +64,26 @@ fun VisitDto.toEntity() = VisitEntity(
     source = VisitSource.fromWire(source),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(), deleted = deleted, dirty = false,
 )
+
+/** The stored JSON text goes out as the object it is; a payload that is not one (never written here) becomes `{}`. */
+fun RecordEntity.toDto() = RecordDto(
+    type = type, id = id,
+    payload = runCatching { RecordRules.json.parseToJsonElement(payload) as? JsonObject }.getOrNull()
+        ?: JsonObject(emptyMap()),
+    updatedAt = IsoTime.format(updatedAt), deleted = deleted,
+)
+
+/**
+ * Null for a row this phone cannot use (a type or id outside the rules, a payload over the cap): the pull skips it
+ * and the cursor still moves past it, as the web does ("a row that cannot become usable does not hold the cursor").
+ */
+fun RecordDto.toEntity(): RecordEntity? {
+    if (!RecordRules.isValidType(type) || !RecordRules.isValidId(id)) return null
+    val text = payload.toString()
+    if (!RecordRules.fitsPayload(text)) return null
+    return RecordEntity(
+        type = type, id = id, payload = text,
+        updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
+        deleted = deleted, dirty = false,
+    )
+}

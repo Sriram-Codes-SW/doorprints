@@ -229,7 +229,8 @@ class BackupReader private constructor(
          * A bare `data.json`. The same checks as the ZIP's `data.json` — size first, then the format id, then the
          * shape — in an order that gives the most useful answer: a file that is JSON but not ours is
          * [BackupProblem.NOT_A_BACKUP], one of ours from a newer format is [BackupProblem.UNSUPPORTED_VERSION], and
-         * only a file that says it is `doorprints-backup/1` and then does not parse is [BackupProblem.BROKEN_DATA].
+         * only a file that says it is a format this app reads (`BackupFormat.accepts`, S4b-BL-72) and then does not
+         * parse is [BackupProblem.BROKEN_DATA].
          */
         private fun openBareData(file: File): BackupOpen {
             val size = file.length()
@@ -245,7 +246,7 @@ class BackupReader private constructor(
                 ?: return BackupOpen.Failed(BackupProblem.NOT_A_BACKUP)
             val format = (root["format"] as? JsonPrimitive)?.takeIf { it.isString }?.content
                 ?: return BackupOpen.Failed(BackupProblem.NOT_A_BACKUP)
-            if (format != BackupFormat.ID) {
+            if (!BackupFormat.accepts(format)) {
                 val newer = format.startsWith(FORMAT_FAMILY)
                 return BackupOpen.Failed(if (newer) BackupProblem.UNSUPPORTED_VERSION else BackupProblem.NOT_A_BACKUP)
             }
@@ -255,7 +256,7 @@ class BackupReader private constructor(
             return BackupOpen.Ok(BackupReader(null, null, data, emptySet(), size))
         }
 
-        /** `doorprints-backup/2` is ours from a newer app; `house-hunt-export/1` or anything else is not ours at all. */
+        /** `doorprints-backup/9` is ours from a newer app; `house-hunt-export/1` or anything else is not ours at all. */
         private const val FORMAT_FAMILY = "doorprints-backup/"
 
         /** `manifest.json` for 5 000 entries is well under a megabyte. */

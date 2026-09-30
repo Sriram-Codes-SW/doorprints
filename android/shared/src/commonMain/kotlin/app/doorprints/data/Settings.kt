@@ -186,6 +186,8 @@ class SettingsStore(
         val houseCursor = longPreferencesKey("houseCursor")
         val visitCursor = longPreferencesKey("visitCursor")
         val photoCursor = longPreferencesKey("photoCursor")
+        /** The record envelope's pull cursor (docs/11 5.30 slice 0); dotted, as the web names its new keys. */
+        val recordCursor = longPreferencesKey("cursor.record")
         val autoBackup = booleanPreferencesKey("autoBackup")
         val autoBackupFolder = stringPreferencesKey("autoBackupFolder")
         val autoBackupKeep = intPreferencesKey("autoBackupKeep")
@@ -304,6 +306,7 @@ class SettingsStore(
             it[Keys.houseCursor] = 0
             it[Keys.visitCursor] = 0
             it[Keys.photoCursor] = 0
+            it[Keys.recordCursor] = 0
         }
         // A new server or key starts a new record: the failures counted against the old setup say nothing about it.
         if (changed || key.isNotBlank()) {
@@ -391,16 +394,21 @@ class SettingsStore(
         if (outcome.kind == SyncOutcome.Kind.OK) it[Keys.lastSyncOkAt] = at
     }
 
-    data class Cursors(val house: Long, val visit: Long, val photo: Long)
+    data class Cursors(val house: Long, val visit: Long, val photo: Long, val record: Long = 0L)
 
     suspend fun cursors(): Cursors {
         val p = dataStore.data.first()
-        return Cursors(p[Keys.houseCursor] ?: 0L, p[Keys.visitCursor] ?: 0L, p[Keys.photoCursor] ?: 0L)
+        return Cursors(
+            p[Keys.houseCursor] ?: 0L, p[Keys.visitCursor] ?: 0L, p[Keys.photoCursor] ?: 0L,
+            p[Keys.recordCursor] ?: 0L,
+        )
     }
 
-    suspend fun saveCursors(house: Long, visit: Long) = dataStore.edit {
+    /** The row cursors, saved together after their pull; the photo cursor has its own save (it can lag on mobile). */
+    suspend fun saveCursors(house: Long, visit: Long, record: Long) = dataStore.edit {
         it[Keys.houseCursor] = house
         it[Keys.visitCursor] = visit
+        it[Keys.recordCursor] = record
     }
 
     suspend fun savePhotoCursor(photo: Long) = dataStore.edit { it[Keys.photoCursor] = photo }
@@ -413,6 +421,7 @@ class SettingsStore(
         it[Keys.houseCursor] = 0
         it[Keys.visitCursor] = 0
         it[Keys.photoCursor] = 0
+        it[Keys.recordCursor] = 0
     }
 
     /**

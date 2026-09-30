@@ -28,7 +28,7 @@ import { TPipe } from '../i18n/t.pipe';
 import type { TKey } from '../i18n/en';
 
 /** Which of the non-error banners is on screen; at most one at a time. */
-type Notice = 'migration' | 'update' | 'install' | 'storageRisk' | null;
+type Notice = 'closed' | 'migration' | 'update' | 'install' | 'storageRisk' | null;
 
 /** 20px Material glyphs (Apache-2.0) in front of each banner title, so the kinds of notice differ by more than text. */
 const BANNER_ICONS = {
@@ -41,6 +41,7 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
   sending: 'data.progressSending',
   houses: 'data.progressHouses',
   visits: 'data.progressVisits',
+  records: 'data.progressRecords',
   photos: 'data.progressPhotos',
 };
 
@@ -48,8 +49,9 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
  * The few things the app must tell the user without interrupting them (S4-01 storage warnings, S4-05 install and
  * update). They are banners under the header, never pop-ups, and each can be answered or dismissed.
  *
- * **At most one non-error banner is shown at a time**, in this order: the one-off migration question, the update,
- * the install offer, the storage-risk advice. On a 640px-tall phone two or three stacked banners took a third of
+ * **At most one non-error banner is shown at a time**, in this order: the database closed for a newer tab (S4b-BL-71:
+ * nothing can be saved until a reload), the one-off migration question, the update, the install offer, the
+ * storage-risk advice. On a 640px-tall phone two or three stacked banners took a third of
  * the map; the next one simply appears when the current one is answered. The error banner (the browser is not
  * storing anything) is the exception and can sit on top of one other, because it means data is being lost now.
  *
@@ -77,6 +79,21 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
     }
 
     @switch (notice()) {
+      @case ('closed') {
+        <div class="banner" role="region" aria-labelledby="closed-title">
+          <div class="body">
+            <strong id="closed-title" class="title warn">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path [attr.d]="icons.warning" /></svg>
+              {{ 'storage.closedTitle' | t }}
+            </strong>
+            <p>{{ 'storage.closedBody' | t }}</p>
+          </div>
+          <div class="actions">
+            <!-- No "Not now": the database is closed, so nothing can be saved until the page is reloaded. -->
+            <button type="button" class="btn btn-primary btn-sm" (click)="reload()">{{ 'pwa.reload' | t }}</button>
+          </div>
+        </div>
+      }
       @case ('migration') {
         <div class="banner" role="region" aria-labelledby="migration-title">
           <div class="body">
@@ -321,8 +338,9 @@ export class AppBanners {
     () => !this.storage.riskDismissed() && this.storage.atRisk() && this.store.storageProblem() === null,
   );
 
-  /** The one non-error banner to show, by priority: migration > update > install > storage risk. */
+  /** The one non-error banner to show, by priority: closed > migration > update > install > storage risk. */
   protected readonly notice = computed<Notice>(() => {
+    if (this.store.closedByNewerTab()) return 'closed';
     const migration = this.sync.migration();
     if (migration === 'offered' || migration === 'running') return 'migration';
     if (this.pwa.updateReady() && !this.pwa.updateDismissed()) return 'update';
@@ -333,7 +351,8 @@ export class AppBanners {
 
   private counting = false;
   private recount = false;
-  private updateAnnounced = false;
+  /** Which of the two update notices was last announced, so each is read out once. */
+  private updateAnnounced: Notice = null;
 
   constructor() {
     void this.storage.refresh();
@@ -343,11 +362,13 @@ export class AppBanners {
       this.store.settled();
       void this.countHouses();
     });
-    // The update notice is a labelled region, not a live one; say it once, when it first appears.
+    // The update notices are labelled regions, not live ones; say each once, when it first appears.
     effect(() => {
-      if (this.notice() !== 'update' || this.updateAnnounced) return;
-      this.updateAnnounced = true;
-      untracked(() => this.announcer.announce({ key: 'pwa.updateTitle' }));
+      const notice = this.notice();
+      if (notice !== 'update' && notice !== 'closed') return;
+      if (this.updateAnnounced === notice) return;
+      this.updateAnnounced = notice;
+      untracked(() => this.announcer.announce({ key: notice === 'closed' ? 'storage.closedTitle' : 'pwa.updateTitle' }));
     });
   }
 

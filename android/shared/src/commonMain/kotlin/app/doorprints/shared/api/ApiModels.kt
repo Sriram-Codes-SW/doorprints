@@ -19,6 +19,7 @@
 package app.doorprints.shared.api
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 // Wire types of the Spring Boot API (backend app.doorprints.server.*). Moved unchanged from :app's data/Api.kt in
 // Sprint 3.5: same property names, defaults and nullability, so the JSON on the wire is identical. Timestamps are ISO-8601
@@ -72,6 +73,20 @@ data class PhotoChangeDto(
     val contentType: String? = null,
     val sizeBytes: Int? = null,
     val createdAt: String? = null,
+    val updatedAt: String? = null,
+    val deleted: Boolean = false,
+    val syncVersion: Long = 0,
+)
+
+/**
+ * One row of the record envelope (docs/11 5.30 item 2, ADR-28; `GET /api/records?since=`, `PUT /api/records/{type}/{id}`):
+ * the server stores [payload] opaquely and never reads it. A tombstone carries `{}`.
+ */
+@Serializable
+data class RecordDto(
+    val type: String,
+    val id: String,
+    val payload: JsonObject = JsonObject(emptyMap()),
     val updatedAt: String? = null,
     val deleted: Boolean = false,
     val syncVersion: Long = 0,

@@ -134,6 +134,7 @@ public class BackupService {
      *
      * @param dryRun when true nothing is written and the report is a preview
      * @throws IllegalArgumentException (answered with 400) when the file is not a valid {@code doorprints-backup/1}
+     *                                  or {@code /2} document (a newer format is refused with "update the app")
      */
     @Transactional
     public ImportReport importBackup(BackupData data, boolean dryRun) {
@@ -174,7 +175,7 @@ public class BackupService {
 
         var reported = new ArrayList<String>(fileNotes);
         reported.addAll(capped(rowProblems, "and %d more row problem(s) not listed"));
-        var report = new ImportReport(BackupFormat.ID, dryRun, houseTally.toEntity(), visitTally.toEntity(),
+        var report = new ImportReport(data.format(), dryRun, houseTally.toEntity(), visitTally.toEntity(),
                 photoTally.toEntity(), List.copyOf(reported));
         if (!dryRun) {
             log.info("import: houses={} visits={} (created/updated/keptNewer/unchanged/skipped)",
@@ -315,11 +316,15 @@ public class BackupService {
      * a broken row would leave data nobody asked for and no way to tell what landed.
      */
     private void validate(BackupData data) {
-        if (!BackupFormat.ID.equals(data.format())) {
+        if (!BackupFormat.accepts(data.format())) {
             // The format id is echoed (shortened) because it is what the user has to fix; no other part of the
             // body ever appears in an error message (SEC-015).
             var seen = data.format() == null ? "missing"
                     : "\"" + data.format().substring(0, Math.min(40, data.format().length())) + "\"";
+            if (BackupFormat.isNewer(data.format())) {
+                throw new IllegalArgumentException("This backup (format " + seen + ") is newer than this server reads"
+                        + " (up to doorprints-backup/" + BackupFormat.MAX_VERSION + "): update the app");
+            }
             throw new IllegalArgumentException("Not a " + BackupFormat.ID + " backup (format was " + seen + ")");
         }
         var problems = new ArrayList<String>();

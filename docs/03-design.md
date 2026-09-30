@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.48 |
+| Version | 0.49 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -60,6 +60,7 @@
 | 0.46 | 2026-09-30 | Claude (Code), lead | **Offline maps** (S4b-FR-6, [11](11-feature-parity-and-export-spec.md) 5.20): MapLibre's offline packs on both phones behind the common `OfflineMapsServices`, `OfflineTiles` (the estimate and the 2,000-tile cap); new **§11.2** on OpenFreeMap's public tiles and offline areas; component table. |
 | 0.47 | 2026-09-30 | Claude (Code), lead | New **ADR-27**: sharing between two people is an update file in the backup format, sent through any app and merged on import; no server, no account ([11](11-feature-parity-and-export-spec.md) 5.28, S4b-FR-3). |
 | 0.48 | 2026-09-30 | Claude (Code), lead | New **ADR-28**: the Sprint 4b data model in one change of format (N13 4c): nested house values, one record envelope and `record` table for the other new entities, `doorprints-backup/2` ([11](11-feature-parity-and-export-spec.md) 5.30). |
+| 0.49 | 2026-09-30 | Claude (Code), lead | Slice 0 of ADR-28 built ([10](10-sprint-log.md) §13.18): the `record` table (Flyway V6) and `/api/records` in §9 and §6.1; every reader of the backup format accepts `/1` and `/2` (docs/schemas §1.1). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -422,6 +423,14 @@ erDiagram
     HOUSE ||--o{ HOUSE_CHECKLIST : "scored on"
     HOUSE ||--o{ PHOTO : "has"
     HOUSE |o--o{ VISIT : "visited in"
+    RECORD {
+        varchar type PK "40; criteria, viewings, brokers, ... (V6, ADR-28)"
+        varchar id PK "64"
+        jsonb payload "opaque, at most 64 KiB, {} when deleted"
+        timestamptz updated_at
+        boolean deleted
+        bigint sync_version "index"
+    }
     HOUSE {
         uuid id PK "client generated"
         varchar label "NOT NULL, 200"
@@ -791,7 +800,10 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 | GET | `/api/stats` | - | `{houses, shortlisted, rejected, visits, streets, maxSyncVersion}` | `maxSyncVersion` (since 2026-09-24, S4b-BL-20): the highest sync version the server has handed out, `sync_seq`'s position (`SyncVersions.highest()`, 0 before the first write). It never goes back on a healthy server, also after `DELETE /api/data`; clients read a value below a stored cursor as a reset server (§10.1). Older servers omit it (clients: unknown) |
 | GET | `/api/export` | - | `BackupData`: `{format: "doorprints-backup/1", exportedAt, houses[], visits[], photos[]}` | **Changed in Sprint 4a** (ADR-20): the response is now the shared backup object — the same thing a device backup carries as `data.json` — instead of the old `house-hunt-export/1` shape, so there is one format and no converter ([schemas/README.md](schemas/README.md)). `Content-Disposition: attachment; filename="Doorprints-backup-<UTC date>.json"`. Live data only; photo **bytes** are not in it (fetch them from `GET /api/photos/{id}`; a device backup puts them in the ZIP's `photos/` folder). |
 | POST | `/api/import` | `BackupData` JSON (a backup's `data.json`), optional `?dryRun=true` | `ImportReport` | **New in Sprint 4a.** Restores a backup onto the server. `dryRun=true` runs the same validation and the same merge decisions and writes nothing — that is the preview the clients show before asking the user to confirm. Same API key as everything else. Two caps, both 413: the body (`app.limits.max-import-bytes`, applied by `RequestSizeLimitFilter`, which lets only this path exceed the 256 KB JSON cap) and the row count (`app.limits.max-import-rows`). Anything else wrong with the file is a 400 that names the rows. |
-| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos and AI index rows. 428 without the exact header. Devices keep their local copies. |
+| GET | `/api/records` | `since` (long, required, ≥ 0), `type` (optional) | `RecordDto[]` | **New 2026-09-30** (ADR-28, [11](11-feature-parity-and-export-spec.md) 5.30): the change feed of every record type (or one), tombstones included, ordered by `syncVersion`. The server never reads a payload. |
+| PUT | `/api/records/{type}/{id}` | `RecordDto` JSON: `type` (`[a-z][a-zA-Z0-9]{0,39}`), `id` (`[A-Za-z0-9._-]{1,64}`), `payload` (a JSON object, at most 65,536 bytes compact; `{}` when `deleted`), `updatedAt`, `deleted` | `RecordDto` | LWW by `updatedAt`; path and body must agree (400); a record that becomes live beyond 5,000 live rows of its type is 409. |
+| DELETE | `/api/records/{type}/{id}` | - | 204 | Tombstone (payload `{}`) + new sync version; 404 if unknown. |
+| DELETE | `/api/data` | header `X-Confirm-Delete: DELETE-ALL-MY-DATA` | 204 | Hard-deletes houses, visits, photos, records and AI index rows. 428 without the exact header. Devices keep their local copies. |
 | GET | `/actuator/health` | - | `{"status":"UP"}` | **Public**, no details |
 | GET, POST | `/api/ai/status`, `/api/ai/extract-listing`, `/api/ai/ask`, `/api/ai/plan-visits`, `/api/ai/reindex` | see [ai/ai-design.md](ai/ai-design.md) §13 | | Same key; AI rate limit (except status); 404 when AI is off |
 | POST, GET | `/mcp` | MCP Streamable HTTP | | Off by default; same key (or Bearer) |

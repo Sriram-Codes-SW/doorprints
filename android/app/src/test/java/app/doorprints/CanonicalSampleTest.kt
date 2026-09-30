@@ -136,7 +136,11 @@ class CanonicalSampleTest {
         assertEquals(BackupProblem.NOT_A_BACKUP, problemOf("not json at all"))
         assertEquals(BackupProblem.NOT_A_BACKUP, problemOf("{\"houses\":[]}"))
         assertEquals(BackupProblem.NOT_A_BACKUP, problemOf("{\"format\":\"house-hunt-export/1\",\"houses\":[]}"))
-        assertEquals(BackupProblem.UNSUPPORTED_VERSION, problemOf("{\"format\":\"doorprints-backup/2\"}"))
+        // S4b-BL-72: `/2` is read (BackupFormat.MAX_VERSION); the first number past it is a newer app's file.
+        assertEquals(
+            BackupProblem.UNSUPPORTED_VERSION,
+            problemOf("{\"format\":\"doorprints-backup/${BackupFormat.MAX_VERSION + 1}\"}"),
+        )
         // Ours, but a house without lat/lon/status/...: refused whole (section 4.4), not imported at 0, 0.
         assertEquals(
             BackupProblem.BROKEN_DATA,

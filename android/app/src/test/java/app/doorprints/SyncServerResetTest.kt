@@ -154,7 +154,7 @@ class SyncServerResetTest {
         db.visits().upsert(VisitEntity(id = "v1", houseId = "h1", lat = 12.97, lon = 77.59, arrivedAt = at, updatedAt = at, dirty = false))
         val photo = repo.photoFile("p1").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         db.photos().upsert(PhotoEntity("p1", "h1", photo.absolutePath, uploaded = true, createdAt = at))
-        settings.saveCursors(house = 250, visit = 240)
+        settings.saveCursors(house = 250, visit = 240, record = 235)
         settings.savePhotoCursor(230)
     }
 
@@ -175,9 +175,9 @@ class SyncServerResetTest {
         assertTrue(server.seen.contains("PUT /api/houses/h1"))
         assertTrue(server.seen.contains("PUT /api/visits/v1"))
         assertTrue(server.seen.contains("POST /api/houses/h1/photos"))
-        assertEquals(listOf("GET /api/houses?since=0", "GET /api/visits?since=0", "GET /api/photos?since=0"), pulls())
+        assertEquals(listOf("GET /api/houses?since=0", "GET /api/visits?since=0", "GET /api/records?since=0", "GET /api/photos?since=0"), pulls())
         runBlocking {
-            assertEquals(SettingsStore.Cursors(0, 0, 0), settings.cursors())
+            assertEquals(SettingsStore.Cursors(0, 0, 0, 0), settings.cursors())
             assertTrue(db.houses().dirty().isEmpty())
             assertTrue(db.visits().dirty().isEmpty())
             assertTrue(db.photos().pendingUpload().isEmpty())
@@ -199,7 +199,7 @@ class SyncServerResetTest {
         val outcome = sync()
         assertFalse(outcome.serverReset)
         assertEquals(0, outcome.pushed)
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 
     @Test
@@ -207,7 +207,7 @@ class SyncServerResetTest {
         server.maxSyncVersion = null
         val outcome = sync()
         assertFalse(outcome.serverReset)
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 
     @Test
@@ -232,6 +232,6 @@ class SyncServerResetTest {
         val outcome = sync()
         assertFalse(outcome.serverReset)
         assertEquals(1, server.seen.count { it.startsWith("PUT ") })
-        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/photos?since=230"), pulls())
+        assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 }

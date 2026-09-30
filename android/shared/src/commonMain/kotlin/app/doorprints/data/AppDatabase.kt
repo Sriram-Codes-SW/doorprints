@@ -204,16 +204,63 @@ interface TrackDao {
     suspend fun deleteAll()
 }
 
+/**
+ * The `records` table (docs/11 5.30, Room version 4): one DAO for every record type, the type's name a column, so
+ * slice 1 onwards adds no DAO. The sync functions mirror [HouseDao]'s.
+ */
+@Dao
+interface RecordDao {
+    /** The live rows of one type, for a screen. */
+    @Query("SELECT * FROM records WHERE type = :type AND deleted = 0 ORDER BY id")
+    fun byType(type: String): Flow<List<RecordEntity>>
+
+    /** The live rows of one type, read once (an export). */
+    @Query("SELECT * FROM records WHERE type = :type AND deleted = 0 ORDER BY id")
+    suspend fun listByType(type: String): List<RecordEntity>
+
+    /** Tombstones included: the sync's last-write-wins needs a deleted row's `updatedAt` too. */
+    @Query("SELECT * FROM records WHERE type = :type AND id = :id")
+    suspend fun get(type: String, id: String): RecordEntity?
+
+    @Upsert
+    suspend fun upsert(record: RecordEntity)
+
+    @Query("SELECT * FROM records WHERE dirty = 1")
+    suspend fun dirty(): List<RecordEntity>
+
+    /** Clean only while the row is still the one that was pushed, as [HouseDao.markClean] does. */
+    @Query("UPDATE records SET dirty = 0 WHERE type = :type AND id = :id AND updatedAt = :updatedAt")
+    suspend fun markClean(type: String, id: String, updatedAt: Long)
+
+    /** Every record, tombstones too, to be sent again: the server was found behind this phone (S4b-BL-20). */
+    @Query("UPDATE records SET dirty = 1")
+    suspend fun markAllDirty()
+
+    /** Every row of every type, tombstones included (tests, and the backup's writer from slice 1). */
+    @Query("SELECT * FROM records ORDER BY type, id")
+    suspend fun all(): List<RecordEntity>
+
+    /** The "remove all local data" path: records go with the houses. */
+    @Query("DELETE FROM records")
+    suspend fun deleteAll()
+
+    /** For the per-type cap (`RecordRules.MAX_ROWS_PER_TYPE`) before a new row is written. */
+    @Query("SELECT COUNT(*) FROM records WHERE type = :type AND deleted = 0")
+    suspend fun countLive(type: String): Int
+}
+
 // Room KMP since CMP-4 P4a (ADR-23): this file moved from :app to :shared commonMain with its package, tables,
 // columns, version and migration unchanged. Every DAO function is suspend or returns a Flow, as common code requires.
 // exportSchema (Sprint 3.5): Room writes shared/schemas/app.doorprints.data.AppDatabase/<version>.json on every build
-// (room { schemaDirectory } in shared/build.gradle.kts). The committed 2.json and RoomSchemaTest pin the identity hash,
-// so a change to the table layout fails the unit tests instead of crashing upgraded installs with "Room cannot verify
-// the data integrity". The builders are per platform: :app's data/AppDatabaseFactory.kt (the Context, the file name
-// through DatabaseFile, the framework SQLite) and iosMain's AppDatabaseIos.kt (the bundled driver).
+// (room { schemaDirectory } in shared/build.gradle.kts). The committed <version>.json files and RoomSchemaTest pin the
+// identity hash, so a change to the table layout fails the unit tests instead of crashing upgraded installs with "Room
+// cannot verify the data integrity". The builders are per platform: :app's data/AppDatabaseFactory.kt (the Context, the
+// file name through DatabaseFile, the framework SQLite) and iosMain's AppDatabaseIos.kt (the bundled driver).
 @Database(
-    entities = [HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class],
-    version = 3,
+    entities = [
+        HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
+    ],
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -223,6 +270,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun visits(): VisitDao
     abstract fun photos(): PhotoDao
     abstract fun track(): TrackDao
+    abstract fun records(): RecordDao
 
     companion object {
         /**
@@ -252,7 +300,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        /**
+         * v4 (docs/11 5.30 slice 0, ADR-28, 2026-09-30): the `records` table, one envelope for every new kind of data
+         * of Sprint 4b; the SQL is what Room generates for [RecordEntity] (`4.json`).
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `records` (`type` TEXT NOT NULL, `id` TEXT NOT NULL, " +
+                        "`payload` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deleted` INTEGER NOT NULL, " +
+                        "`dirty` INTEGER NOT NULL, PRIMARY KEY(`type`, `id`))",
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_records_type` ON `records` (`type`)")
+            }
+        }
+
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
     }
 }
 
