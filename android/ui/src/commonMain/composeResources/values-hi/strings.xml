@@ -1019,7 +1019,7 @@
     <string name="area_radius">दायरा: %1$d मी.</string>
     <string name="area_radius_label">दायरा</string>
     <string name="area_wake">यहाँ मुझे जगाएँ</string>
-    <string name="area_wake_hint">यह बाद के किसी अपडेट में काम करेगा।</string>
+    <string name="area_wake_hint">मेरे खोज वाले इलाक़ों में मुझे जगाएँ इसका उपयोग करता है।</string>
     <string name="area_delete">इलाक़ा हटाएँ</string>
     <string name="area_delete_title">यह इलाक़ा हटाएँ?</string>
     <string name="area_delete_body">इसके नोट रहेंगे, पर अब किसी मकान पर नहीं दिखेंगे।</string>
@@ -1063,4 +1063,16 @@
     <string name="house_distance_value">%1$s कि.मी. · पैदल लगभग %2$d मिनट</string>
     <string name="house_distances_hint">सीधी रेखा में; समय योजना का पैदल अनुमान है।</string>
     <string name="compare_km">%1$s कि.मी.</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="area_wakeup_switch">मेरे खोज वाले इलाक़ों में मुझे जगाएँ</string>
+    <string name="area_wakeup_hint">जब आप ऐसे इलाक़े में पहुँचें जिस पर यहाँ मुझे जगाएँ चालू है, Doorprints हंट मोड का सुझाव देता है, आम तौर पर कुछ मिनटों में। इसके लिए जगह की अनुमति हर समय चाहिए।</string>
+    <string name="area_wakeup_why">क्यों: ताकि Doorprints जान सके कि आप अपने खोज वाले किसी इलाक़े में पहुँचे हैं और हंट मोड का सुझाव दे। यह हंट मोड अपने आप कभी शुरू नहीं करता।</string>
+    <string name="area_wakeup_what">कैसे: Google Play services फ़ोन पर ही फ़ोन की जगह की तुलना आपके इलाक़ों से करता है। Doorprints जगह का कोई इतिहास नहीं रखता और आपकी जगह कहीं नहीं भेजता।</string>
+    <string name="area_wakeup_battery">बैटरी: थोड़ी। Doorprints अपनी तरफ़ से जगह नहीं माँगता।</string>
+    <string name="area_wakeup_how_off">बंद करने के लिए मेरे इलाक़े में मेरे खोज वाले इलाक़ों में मुझे जगाएँ बंद करें, या फ़ोन की सेटिंग्स में जगह की अनुमति हटा दें।</string>
+    <string name="area_wakeup_pick">आगे Android जगह के बारे में पूछेगा। हर समय अनुमति दें चुनें। नए Android में यह ऐप के जगह वाले पेज पर होता है: वहाँ चुनें, फिर लौट आएँ।</string>
+    <string name="area_wakeup_continue">आगे बढ़ें</string>
+    <string name="area_wakeup_not_now">अभी नहीं</string>
+    <string name="area_wakeup_still_off">इलाक़े में जगाना अभी भी बंद है: इसके लिए सटीक जगह की अनुमति हर समय चाहिए।</string>
+    <string name="area_wakeup_off_card">इलाक़े में जगाना बंद है क्योंकि Doorprints के पास अब हर समय जगह की अनुमति नहीं है।</string>
 </resources>

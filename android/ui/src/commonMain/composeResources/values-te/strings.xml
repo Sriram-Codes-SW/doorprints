@@ -1019,7 +1019,7 @@
     <string name="area_radius">వ్యాసార్ధం: %1$d మీ.</string>
     <string name="area_radius_label">వ్యాసార్ధం</string>
     <string name="area_wake">ఇక్కడ నన్ను మేల్కొలుపు</string>
-    <string name="area_wake_hint">ఇది తర్వాతి అప్‌డేట్‌లో పని చేస్తుంది.</string>
+    <string name="area_wake_hint">నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు దీన్ని ఉపయోగిస్తుంది.</string>
     <string name="area_delete">ప్రాంతం తొలగించు</string>
     <string name="area_delete_title">ఈ ప్రాంతాన్ని తొలగించాలా?</string>
     <string name="area_delete_body">దీని గమనికలు ఉంటాయి, కానీ ఇకపై ఏ ఇంటిపైనా కనిపించవు.</string>
@@ -1063,4 +1063,16 @@
     <string name="house_distance_value">%1$s కి.మీ. · నడకన సుమారు %2$d నిమిషాలు</string>
     <string name="house_distances_hint">సరళ రేఖలో; సమయం ప్లాన్ నడక అంచనా.</string>
     <string name="compare_km">%1$s కి.మీ.</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="area_wakeup_switch">నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు</string>
+    <string name="area_wakeup_hint">ఇక్కడ నన్ను మేల్కొలుపు ఆన్‌లో ఉన్న ప్రాంతానికి మీరు చేరినప్పుడు, Doorprints హంట్ మోడ్ సూచిస్తుంది, సాధారణంగా కొన్ని నిమిషాల్లో. దీనికి ఎల్లప్పుడూ లొకేషన్ అనుమతి కావాలి.</string>
+    <string name="area_wakeup_why">ఎందుకు: మీరు వెతుకుతున్న ప్రాంతానికి చేరినప్పుడు Doorprints గమనించి హంట్ మోడ్ సూచించడానికి. ఇది హంట్ మోడ్‌ను తనంతట తాను ఎప్పుడూ ప్రారంభించదు.</string>
+    <string name="area_wakeup_what">ఎలా: Google Play services ఫోన్‌లోనే ఫోన్ స్థానాన్ని మీ ప్రాంతాలతో పోలుస్తుంది. Doorprints లొకేషన్ చరిత్ర ఏదీ ఉంచదు, మీ స్థానాన్ని ఎక్కడికీ పంపదు.</string>
+    <string name="area_wakeup_battery">బ్యాటరీ: కొద్దిగా. Doorprints తన కోసం లొకేషన్ అడగదు.</string>
+    <string name="area_wakeup_how_off">ఆపడానికి, నా ప్రాంతాలులో నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు ఆఫ్ చేయండి, లేదా ఫోన్ సెట్టింగ్‌లలో లొకేషన్ అనుమతిని తీసేయండి.</string>
+    <string name="area_wakeup_pick">తర్వాత Android లొకేషన్ గురించి అడుగుతుంది. ఎల్లప్పుడూ అనుమతించు ఎంచుకోండి. కొత్త Android లో ఇది యాప్ లొకేషన్ పేజీలో ఉంటుంది: అక్కడ ఎంచుకుని, తిరిగి రండి.</string>
+    <string name="area_wakeup_continue">కొనసాగించు</string>
+    <string name="area_wakeup_not_now">ఇప్పుడు కాదు</string>
+    <string name="area_wakeup_still_off">ప్రాంత మేల్కొలుపు ఇంకా ఆఫ్‌లో ఉంది: దీనికి ఖచ్చితమైన లొకేషన్‌కు ఎల్లప్పుడూ అనుమతి కావాలి.</string>
+    <string name="area_wakeup_off_card">Doorprints కు ఇకపై ఎల్లప్పుడూ లొకేషన్ అనుమతి లేనందున ప్రాంత మేల్కొలుపు ఆఫ్ అయింది.</string>
 </resources>
