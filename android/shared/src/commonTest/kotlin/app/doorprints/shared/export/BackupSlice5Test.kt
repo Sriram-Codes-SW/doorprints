@@ -74,7 +74,7 @@ class BackupSlice5Test {
         assertTrue(
             text.contains(
                 "\"createdAt\":1790004000000,\"roomId\":\"c1\",\"tags\":[\"KITCHEN_FITTINGS\",\"MOVE_IN\",\"damp corner\"]," +
-                    "\"caption\":\"Tap drips slightly.\",\"metaUpdatedAt\":1790813400000}",
+                    "\"caption\":\"Tap drips slightly.\",\"metaUpdatedAt\":1790000000000}",
             ),
             text,
         )

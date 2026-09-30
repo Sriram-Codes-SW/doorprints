@@ -167,7 +167,7 @@ data class DoorprintsColors(
 
 private val LightExtra = DoorprintsColors(
     new = Color(0xFF3C5A99), shortlisted = Color(0xFF1A7A43), rejected = Color(0xFFB3261E), star = Color(0xFFA86A00),
-    taken = Color(0xFF6B3FA0), notChosen = Color(0xFF5F6368), // 7.4:1 and 6.0:1 on white
+    taken = Color(0xFF8A5A00), notChosen = Color(0xFF5F6B66), // 5.9:1 and 5.6:1 on white (as the web)
     success = Color(0xFFE7F5ED), onSuccess = Color(0xFF1A7A43), // 4.78:1
     successBorder = Color(0xFFB5DCC4), errorBorder = Color(0xFFE8B4B0),
     warn = Color(0xFFFFF4E0), onWarn = Color(0xFF8A5A00), warnBorder = Color(0xFFF0C987), // 5.44:1
@@ -308,9 +308,9 @@ object MarkerColors {
     const val SHORTLISTED = 0xFF1A7A43.toInt()
     const val REJECTED = 0xFFB3261E.toInt()
 
-    /** Slice 5: TAKEN purple and NOT_CHOSEN grey, apart from the three others in hue and, with size, in shape. */
-    const val TAKEN = 0xFF6B3FA0.toInt()
-    const val NOT_CHOSEN = 0xFF5F6368.toInt()
+    /** Slice 5: TAKEN amber and NOT_CHOSEN grey (the web's colours), apart from the three others in hue and, with size, in shape. */
+    const val TAKEN = 0xFF8A5A00.toInt()
+    const val NOT_CHOSEN = 0xFF5F6B66.toInt()
 
     /** The marker colour of a status name (`HouseStatus.name`); anything unknown is NEW's. */
     fun of(status: String): Int = when (status) {

@@ -119,6 +119,18 @@ class CanonicalSampleTest {
         assertEquals(listOf(listOf("n_55667788", "n_11223344"), emptyList(), emptyList()), data.houses.map { h -> slice4a.areaNotesOf(h).map { it.id } })
         assertEquals(listOf(listOf("Office" to "8.6", "Amma's home" to "288.5"), emptyList(), listOf("Office" to "3.8", "Amma's home" to "291.1")),
             data.houses.map { h -> ExportRows.distanceRows(h, slice4a).map { it[0] to it[1] } })
+        // Slice 5: house 1 is TAKEN with a move-in (a date, notes, a ticked and an open item), and photo 1 has a room of
+        // house 1, three tags (two fixed, one custom) and a caption; photo 2 has no meta.
+        assertEquals(listOf("TAKEN", "NEW", "REJECTED"), data.houses.map { it.status })
+        val moveIn = data.houses.first().moveIn!!
+        assertEquals(1_790_812_800_000L, moveIn.date)
+        assertEquals(listOf("mi_agreement" to true, "mi_police" to false), moveIn.items!!.map { it.id to it.isDone })
+        assertEquals(listOf(null, null), data.houses.drop(1).map { it.moveIn })
+        val photo = data.photos.first()
+        assertEquals(listOf("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), photo.tags)
+        assertEquals("Master bedroom", ExportRows.photoRoomName(photo, bundle))
+        assertEquals(1_790_813_400_000L, photo.metaUpdatedAt)
+        assertFalse(data.photos[1].hasMeta)
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }
