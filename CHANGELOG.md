@@ -127,6 +127,10 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Viewings** ([spec](docs/11-feature-parity-and-export-spec.md) 5.8, slice 3b-1 of 5.30): plan a viewing from a house (date and time, how long, first or second, whom you meet, notes), see them all under
+  **Viewings** (Settings on the phone, Your data on the website) with filters and search, and mark one done or cancelled. A viewing that has passed without being marked is offered as
+  *Missed?*. **Add to calendar** puts it in your phone's calendar (the website gives you a `.ics` file). After a viewing you can book a second one, with a short list of what to re-check.
+  Backups and readable copies carry your viewings (a copy made without contact details leaves out whom you met). Reminders come in the next update.
 - **Questions to ask at a viewing** ([spec](docs/11-feature-parity-and-export-spec.md) 5.5, slice 3a of 5.30): each house has a **Questions to ask** list.
   **Add the usual questions** brings the standard ones that fit the house (maintenance, deposit, brokerage, lock-in, water, power, parking, the
   floor and the lift; for a purchase the occupancy certificates, RERA and khata), in your language, and fills in what you already noted under
