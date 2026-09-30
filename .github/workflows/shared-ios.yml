@@ -314,7 +314,7 @@ jobs:
           echo "Compose resources: $res ($(find "$res" -type f | wc -l | tr -d ' ') files)"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CADisableMinimumFrameDurationOnPhone' "$app/Info.plist")" = true \
             || { echo "::error::CADisableMinimumFrameDurationOnPhone is not true in the built Info.plist"; exit 1; }
-          for key in NSLocationWhenInUseUsageDescription NSLocalNetworkUsageDescription; do
+          for key in NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription NSLocalNetworkUsageDescription; do
             /usr/libexec/PlistBuddy -c "Print :$key" "$app/Info.plist" > /dev/null \
               || { echo "::error::$key missing from the built Info.plist"; exit 1; }
           done

@@ -18,9 +18,13 @@
 
 package app.doorprints.shared.model
 
+import app.doorprints.shared.location.Geo
+import app.doorprints.shared.records.RecordRules
+import kotlin.math.abs
+
 // The area wake-up (docs/11 "Design of slice 4b", 5.17, 5.18): which areas get a geofence, and when entering one may
-// offer Hunt mode. Pure rules; the geofences themselves are registered by `:app` (`AreaGeofenceManager`), and the
-// iPhone has no wake-up yet (S4b-BL-96).
+// offer Hunt mode. Pure rules; the geofences themselves are registered by `:app` (`AreaGeofenceManager`), the iPhone's
+// regions by `:ui`'s iosMain (`IosAreaWakeup`, S4b-BL-96) with [AreaRegions].
 
 /** When entering an area may notify (5.17 *Cooldown*): once per area per [COOLDOWN_MS], never while Hunt mode runs. */
 object AreaCooldown {
@@ -61,4 +65,69 @@ object AreaWakeup {
             .take(limit)
             .toList()
     }
+}
+
+/**
+ * The iPhone's region monitoring (S4b-BL-96): Core Location watches at most [MAX_REGIONS] circular regions per app,
+ * all of the app's own kinds together, and keeps them across launches, so each registration works out what to stop and
+ * what to start ([plan]) instead of starting everything again.
+ */
+object AreaRegions {
+    /** Core Location's limit per app: every region the app monitors counts, whatever set it. */
+    const val MAX_REGIONS = 20
+
+    /** An area's region identifier is this and the area's id; regions without it are not the wake-up's. */
+    const val ID_PREFIX = "doorprints.area."
+
+    /** One circular region as Core Location keeps it: its identifier, centre and radius in metres. */
+    data class Region(val identifier: String, val lat: Double, val lon: Double, val radiusM: Double)
+
+    /** What a registration changes: the identifiers to stop monitoring, then the regions to start. */
+    data class Plan(val stop: List<String>, val start: List<Region>)
+
+    fun identifier(areaId: String): String = ID_PREFIX + areaId
+
+    /** The area id in a region [identifier] (untrusted: Core Location hands it back), or null when it is not one. */
+    fun areaId(identifier: String): String? =
+        identifier.takeIf { it.startsWith(ID_PREFIX) }?.removePrefix(ID_PREFIX)?.takeIf(RecordRules::isValidId)
+
+    /**
+     * The regions wanted now: [AreaWakeup.geofencesFor] with no limit of its own, then, when the phone's last known
+     * position [near] is there, the nearest first (ties in the screens' order), at most [MAX_REGIONS]. The radius is
+     * the area's, at most [maxRadiusM] (Core Location's `maximumRegionMonitoringDistance`; ignored when not positive).
+     */
+    fun wanted(
+        areas: List<Area>,
+        wakeupOn: Boolean,
+        alwaysGranted: Boolean,
+        near: Pair<Double, Double>? = null,
+        maxRadiusM: Double = 0.0,
+    ): List<Region> {
+        val set = AreaWakeup.geofencesFor(areas, wakeupOn, alwaysGranted, limit = Int.MAX_VALUE)
+        val ordered = if (near == null) set else set.sortedBy { Geo.distanceM(near.first, near.second, it.lat, it.lon) }
+        return ordered.take(MAX_REGIONS).map { a ->
+            val radius = a.radiusM.toDouble()
+            Region(identifier(a.id), a.lat, a.lon, if (maxRadiusM > 0.0) minOf(radius, maxRadiusM) else radius)
+        }
+    }
+
+    /**
+     * From the regions Core Location monitors now ([monitored]) to [wanted]: the wake-up's regions that are not wanted,
+     * or have moved or changed size, stop; the wanted ones not already monitored as they are start. Regions without
+     * [ID_PREFIX] are left alone and use up places under [MAX_REGIONS], so the nearest of [wanted] that fit are kept.
+     */
+    fun plan(monitored: List<Region>, wanted: List<Region>): Plan {
+        val foreign = monitored.count { !it.identifier.startsWith(ID_PREFIX) }
+        val fit = wanted.distinctBy { it.identifier }.take((MAX_REGIONS - foreign).coerceAtLeast(0))
+        val ours = monitored.filter { it.identifier.startsWith(ID_PREFIX) }
+        val kept = ours.filter { m -> fit.any { same(it, m) } }
+        return Plan(
+            stop = ours.filter { it !in kept }.map { it.identifier }.distinct(),
+            start = fit.filter { w -> kept.none { same(it, w) } },
+        )
+    }
+
+    /** The same region, allowing for the rounding of Core Location's own copy. */
+    private fun same(a: Region, b: Region): Boolean =
+        a.identifier == b.identifier && abs(a.lat - b.lat) < 1e-7 && abs(a.lon - b.lon) < 1e-7 && abs(a.radiusM - b.radiusM) < 0.5
 }

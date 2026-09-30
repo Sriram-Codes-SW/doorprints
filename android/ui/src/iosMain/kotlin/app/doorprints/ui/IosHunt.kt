@@ -120,7 +120,7 @@ internal object IosHunt : HuntEffects {
             activityType = CLActivityTypeFitness
             // iOS would otherwise stop the updates for good after a long stay and not resume them on its own.
             pausesLocationUpdatesAutomatically = false
-            // Needs UIBackgroundModes "location" in Info.plist; "When in use" is enough, "Always" is never asked.
+            // Needs UIBackgroundModes "location" in Info.plist; "When in use" is enough ("Always" is the area wake-up's).
             allowsBackgroundLocationUpdates = true
             showsBackgroundLocationIndicator = true
         }

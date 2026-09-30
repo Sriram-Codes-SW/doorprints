@@ -36,9 +36,11 @@ import platform.UserNotifications.UNNotificationResponse
 import platform.UserNotifications.UNNotificationSound
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.UserNotifications.UNUserNotificationCenterDelegateProtocol
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
+import kotlin.coroutines.resume
 
 /**
  * Local notifications on iOS (S4b-BL-69, Hunt mode on iPhone): the alerts [IosHunt] posts through
@@ -95,6 +97,20 @@ internal object IosNotifications {
             else -> false
         }
     }
+
+    /**
+     * The authorization read now rather than the last answer (the area wake-up, S4b-BL-96, may run in a background
+     * relaunch before anything has read it): true when an alert can reach the user. Any thread.
+     */
+    suspend fun authorized(): Boolean = suspendCancellableCoroutine { continuation ->
+        center.getNotificationSettingsWithCompletionHandler { settings ->
+            val read = settings?.authorizationStatus ?: UNAuthorizationStatusNotDetermined
+            dispatch_async(dispatch_get_main_queue()) { status = read }
+            if (continuation.isActive) continuation.resume(read in POSTABLE)
+        }
+    }
+
+    private val POSTABLE = setOf(UNAuthorizationStatusAuthorized, UNAuthorizationStatusProvisional, UNAuthorizationStatusEphemeral)
 
     /** True while iOS will still show its prompt: before the first answer only (it never asks twice). */
     fun canAsk(): Boolean = status == null || status == UNAuthorizationStatusNotDetermined

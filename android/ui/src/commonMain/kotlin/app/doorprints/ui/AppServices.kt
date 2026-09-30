@@ -80,7 +80,10 @@ interface AppServices {
      */
     fun rescheduleReminders() {}
 
-    /** The area wake-up (docs/11 "Design of slice 4b"): Android's geofencing; none elsewhere ([NoAreaWakeup]). */
+    /**
+     * The area wake-up (docs/11 "Design of slice 4b"): Android's geofencing, the iPhone's region monitoring
+     * (`IosAreaWakeup`, S4b-BL-96); none elsewhere ([NoAreaWakeup]).
+     */
     val areaWakeup: AreaWakeupServices get() = NoAreaWakeup
 
     /**
@@ -92,12 +95,19 @@ interface AppServices {
 
 /**
  * What *Wake me in my hunting areas* needs from the app (docs/11 "Design of slice 4b", 5.17, 5.18). Android:
- * `AndroidAreaWakeup` in `:app` (Google Play services' geofencing, `AreaGeofenceManager`). The setting itself is
+ * `AndroidAreaWakeup` in `:app` (Google Play services' geofencing, `AreaGeofenceManager`); iOS: `IosAreaWakeupServices`
+ * (Core Location's region monitoring and the "Always" permission, S4b-BL-96). The setting itself is
  * `SettingsStore.areaWakeup`; turning it on goes through [AreaWakeupRationaleScreen].
  */
 interface AreaWakeupServices {
     /** True where the wake-up can work (Android: Google Play services are there). False hides the setting. */
     val available: Boolean
+
+    /**
+     * True on iPhone: the rationale's *How* and *Next* lines name iOS and its two location prompts (*Allow While Using
+     * App*, then *Change to Always Allow*) instead of Google Play services and Android's *Allow all the time*.
+     */
+    val iphoneWording: Boolean get() = false
 
     /**
      * True when the wake-up's permissions are all granted: precise location and background location (*Allow all the
@@ -124,7 +134,7 @@ interface AreaWakeupServices {
     fun rememberForegroundLocationRequest(onResult: () -> Unit): () -> Unit
 }
 
-/** No area wake-up (the iPhone, the website's twin has none either): hidden. */
+/** No area wake-up (the default; the website has none either): hidden. */
 object NoAreaWakeup : AreaWakeupServices {
     override val available: Boolean get() = false
     override fun backgroundGranted(): Boolean = false

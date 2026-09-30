@@ -52,22 +52,23 @@ data class PlatformFeatures(
     val inAppLanguage: Boolean = true,
     /**
      * *Wake me in my hunting areas* in Settings > My areas (docs/11 "Design of slice 4b"). Android also hides it where
-     * Google Play services are missing ([AreaWakeupServices.available]); the iPhone has no wake-up yet (S4b-BL-96).
+     * Google Play services are missing ([AreaWakeupServices.available]), the iPhone where Core Location cannot monitor
+     * regions (since S4b-BL-96).
      */
     val areaWakeup: Boolean = true,
 ) {
     companion object {
         /**
          * The iPhone app: since CMP-8c the map (with India's boundary rules, adding a house on it), since S4b-BL-69 Hunt
-         * mode (`IosHunt`, the adapter around the common `HuntEngine`), and since CMP-8b the list, the house form without
-         * new photos, Compare, the Assistant and Settings.
+         * mode (`IosHunt`, the adapter around the common `HuntEngine`), since S4b-BL-96 the area wake-up
+         * (`IosAreaWakeup`), and since CMP-8b the list, the house form without new photos, Compare, the Assistant and
+         * Settings.
          */
         val Ios = PlatformFeatures(
             addPhotos = false,
             copiesAndImports = false,
             weeklyBackup = false,
             inAppLanguage = false,
-            areaWakeup = false,
         )
     }
 }
