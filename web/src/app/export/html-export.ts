@@ -17,7 +17,10 @@
  */
 
 import type { Dict, TKey } from '../i18n/en';
-import { CHECKLIST, STATUS_ICON } from '../core/models';
+import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
+import type { HouseCost } from '../core/models';
+import { costSummary } from '../shared/house-cost';
+import { rupees } from './deterministic';
 import {
   escapeHtml,
   formatCoord,
@@ -154,17 +157,25 @@ function houseSection(
   const bedrooms = house.bedrooms ?? null;
   const rating = house.rating ?? null;
   add('compare.bhk', bedrooms === null ? '' : escapeHtml(tr(dict, 'common.bhk', { n: bedrooms })));
+  const area = house.areaSqft ?? null;
+  add('compare.area', area === null ? '' : escapeHtml(tr(dict, 'common.sqft', { n: area })));
   add('compare.rating', rating === null ? '' : escapeHtml(tr(dict, 'common.stars', { n: rating })));
   add('house.address', escapeHtml(house.address ?? ''));
   add('house.street', escapeHtml(house.street ?? ''));
   add('house.locality', escapeHtml(house.locality ?? ''));
   add('house.location', escapeHtml(`${formatCoord(house.lat)}, ${formatCoord(house.lon)}`));
+  // FR-068: the reader learns the pin is only the locality, as the hollow marker says on the map.
+  if (house.locationSource === 'APPROX') add('house.approx', escapeHtml(tr(dict, 'common.yes')));
   add('house.listingUrl', house.listingUrl ? escapeHtml(house.listingUrl) : '');
   if (bundle.options.includeContacts) {
     add('house.contactName', escapeHtml(house.contactName ?? ''));
     add('house.contactPhone', escapeHtml(house.contactPhone ?? ''));
   }
   add('exp.fieldSaved', escapeHtml(formatDate(house.createdAt)));
+
+  const costRows = costEntries(house, dict).map(
+    ([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
+  );
 
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
@@ -195,6 +206,9 @@ function houseSection(
     '<section class="house">',
     `<h2>${escapeHtml(`${position}. ${label}`)}</h2>`,
     `<table class="fields">${rows.join('')}</table>`,
+    costRows.length
+      ? `<h3>${escapeHtml(tr(dict, 'house.cost'))}</h3><table class="fields">${costRows.join('')}</table>`
+      : '',
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',
@@ -223,6 +237,45 @@ function houseSection(
   ]
     .filter((part) => part !== '')
     .join('\n');
+}
+
+/** The label key of each cost field, for the Cost block and the form. */
+export const COST_FIELD_KEY: Readonly<Record<keyof HouseCost, TKey>> = {
+  deposit: 'cost.deposit',
+  depositMonths: 'cost.depositMonths',
+  maintenance: 'cost.maintenance',
+  maintenanceIncluded: 'cost.maintenanceIncluded',
+  brokerage: 'cost.brokerage',
+  brokerageMonths: 'cost.brokerageMonths',
+  lockInMonths: 'cost.lockInMonths',
+  noticeMonths: 'cost.noticeMonths',
+  availableFrom: 'cost.availableFrom',
+  myOffer: 'cost.myOffer',
+  agreedPrice: 'cost.agreedPrice',
+};
+
+/**
+ * The **Cost** block of a readable copy (HTML, PDF, Markdown): a row per set cost field in the shared order, then
+ * the monthly cost, the money to move in and the cost per sq ft when they compute (`costSummary`). Rupees are
+ * written whole with Indian grouping; months as "{n} months".
+ */
+export function costEntries(house: ExportHouse['house'], dict: Dict): [string, string][] {
+  const out: [string, string][] = [];
+  const cost = house.cost ?? {};
+  for (const field of COST_FIELDS) {
+    const value = cost[field];
+    if (value === null || value === undefined) continue;
+    const label = tr(dict, COST_FIELD_KEY[field]);
+    if (typeof value === 'boolean') out.push([label, tr(dict, value ? 'common.yes' : 'common.no')]);
+    else if (typeof value === 'string') out.push([label, value]);
+    else if (field.endsWith('Months')) out.push([label, tr(dict, 'common.months', { n: value })]);
+    else out.push([label, rupees(value)]);
+  }
+  const summary = costSummary(house);
+  if (summary.monthlyCost !== null) out.push([tr(dict, 'cost.monthlyCost'), rupees(summary.monthlyCost)]);
+  if (summary.moveIn !== null) out.push([tr(dict, 'cost.moveIn'), rupees(summary.moveIn)]);
+  if (summary.perSqFt !== null) out.push([tr(dict, 'cost.perSqFt'), rupees(summary.perSqFt)]);
+  return out;
 }
 
 /** Checklist items in the app's fixed order first, then any unknown keys alphabetically. */

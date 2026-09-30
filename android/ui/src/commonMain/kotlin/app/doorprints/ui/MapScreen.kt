@@ -1155,6 +1155,7 @@ private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.
 private fun statusLabel(status: String): StringResource = when (status) {
     "SHORTLISTED" -> Res.string.status_SHORTLISTED
     "REJECTED" -> Res.string.status_REJECTED
+    "APPROX" -> Res.string.legend_approx
     else -> Res.string.status_NEW
 }
 
@@ -1180,8 +1181,13 @@ private fun LegendDotMark(dot: LegendDot) {
             alpha = LEGEND_OUTLINE_ALPHA * dot.alpha,
             style = Stroke(width = outline),
         )
-        drawCircle(color = Color.White, radius = radius - ring / 2f, alpha = dot.alpha, style = Stroke(width = ring))
-        drawCircle(color = fill, radius = radius - ring, alpha = dot.alpha)
+        if (dot.hollow) {
+            // The approximate marker (FR-068): the ring in the status colour, nothing inside, as on the map.
+            drawCircle(color = fill, radius = radius - ring / 2f, alpha = dot.alpha, style = Stroke(width = ring))
+        } else {
+            drawCircle(color = Color.White, radius = radius - ring / 2f, alpha = dot.alpha, style = Stroke(width = ring))
+            drawCircle(color = fill, radius = radius - ring, alpha = dot.alpha)
+        }
     }
 }
 

@@ -18,6 +18,7 @@
 
 package app.doorprints.server.house;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.time.Instant;
@@ -54,6 +55,11 @@ import java.util.UUID;
  *   <li><b>A tombstone</b> (a row with {@code deleted: true}) carries {@code label: ""} and {@code null} in every
  *       other content field: the content is purged, not hidden (threat model F-16). Tombstones are never
  *       exported.</li>
+ *   <li><b>The slice 1a values</b> ({@code areaSqft}, {@code locationSource}, {@code cost}; docs/11 section 5.30
+ *       item 1) are optional like the rest. {@code locationSource} is {@code GPS}, {@code MAP} or {@code APPROX}
+ *       (FR-068), absent for a house saved before it existed. {@code cost} is a {@link HouseCost} object whose own
+ *       absent fields are left out; it is {@code null} when no field is set, and an empty object on input is the
+ *       same as none. A value out of range is a 400, like the other fields.</li>
  * </ul>
  */
 public record HouseDto(
@@ -76,6 +82,9 @@ public record HouseDto(
         @Size(max = 50) String contactPhone,
         @Size(max = 1000) String listingUrl,
         @Size(max = 20000) String notes,
+        @Min(1) @Max(100_000) Integer areaSqft,
+        @Pattern(regexp = LOCATION_SOURCES) String locationSource,
+        @Valid HouseCost cost,
         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
         Instant createdAt,
         Instant updatedAt,
@@ -83,6 +92,9 @@ public record HouseDto(
         long syncVersion,
         Double distanceMeters
 ) {
+    /** GPS = <i>Use my location</i>; MAP = a tap or the crosshair; APPROX = the person says the spot is approximate. */
+    public static final String LOCATION_SOURCES = "GPS|MAP|APPROX";
+
     public static HouseDto from(House h) {
         return from(h, null);
     }
@@ -91,6 +103,7 @@ public record HouseDto(
         return new HouseDto(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()),
                 Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
                 h.getSyncVersion(), distanceMeters);
     }
@@ -111,6 +124,9 @@ public record HouseDto(
         h.setContactPhone(contactPhone);
         h.setListingUrl(listingUrl);
         h.setNotes(notes);
+        h.setAreaSqft(areaSqft);
+        h.setLocationSource(locationSource);
+        h.setCost(HouseCost.write(cost));
         h.setChecklist(checklist);
         h.setDeleted(deleted);
     }

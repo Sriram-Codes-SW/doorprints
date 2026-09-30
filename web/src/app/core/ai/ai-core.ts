@@ -198,8 +198,24 @@ export interface AiHouse {
   contactPhone?: string | null;
   listingUrl?: string | null;
   notes?: string | null;
+  areaSqft?: number | null;
+  cost?: AiCost | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
+}
+
+/** The cost lines a house document carries (slice 1a): all but `myOffer`, a negotiation being the person's own. */
+export interface AiCost {
+  deposit?: number | null;
+  depositMonths?: number | null;
+  maintenance?: number | null;
+  maintenanceIncluded?: boolean | null;
+  brokerage?: number | null;
+  brokerageMonths?: number | null;
+  lockInMonths?: number | null;
+  noticeMonths?: number | null;
+  availableFrom?: string | null;
+  agreedPrice?: number | null;
 }
 
 export const NOTES_MAX = 3000;
@@ -233,6 +249,21 @@ export function houseText(h: AiHouse): string {
     line('Price', `Rs ${h.price}${type}`);
   }
   if (h.bedrooms != null) line('Size', h.bedrooms === 0 ? 'studio / 1RK' : `${h.bedrooms} BHK`);
+  // The same words as the server's HouseDocuments and the phones' AiHouse (slice 1a); never the person's own offer.
+  if (h.areaSqft != null) line('Carpet area', `${h.areaSqft} sq ft`);
+  const c = h.cost ?? {};
+  if (c.deposit != null) line('Deposit', `Rs ${c.deposit}`);
+  else if (c.depositMonths != null) line('Deposit', months(c.depositMonths));
+  if (c.maintenance != null) {
+    const included = c.maintenanceIncluded == null ? '' : c.maintenanceIncluded ? ' (included in the rent)' : ' (not included)';
+    line('Maintenance', `Rs ${c.maintenance} per month${included}`);
+  }
+  if (c.brokerage != null) line('Brokerage', `Rs ${c.brokerage}`);
+  else if (c.brokerageMonths != null) line('Brokerage', months(c.brokerageMonths));
+  if (c.lockInMonths != null) line('Lock-in', months(c.lockInMonths));
+  if (c.noticeMonths != null) line('Notice', months(c.noticeMonths));
+  line('Available from', c.availableFrom);
+  if (c.agreedPrice != null) line('Agreed price', `Rs ${c.agreedPrice}`);
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -243,6 +274,10 @@ export function houseText(h: AiHouse): string {
     line('Notes', r.freeText(notes.length > NOTES_MAX ? notes.slice(0, NOTES_MAX) + ' …' : notes));
   }
   return lines.join('\n');
+}
+
+function months(n: number): string {
+  return `${n} month${n === 1 ? '' : 's'}`;
 }
 
 export function houseLabel(h: AiHouse): string {
@@ -400,7 +435,7 @@ function defaultLabel(bhk: number | null, locality: string | null, street: strin
 
 export function sanitizeDraft(raw: RawListing | null, sourceText: string | null): HouseDraft {
   if (raw == null) {
-    return { label: 'Untitled listing', address: null, street: null, locality: null, price: null, priceType: null, bedrooms: null, contactName: null, contactPhone: null, listingUrl: null, notes: null, amenities: [], warnings: ['Model returned nothing usable'] };
+    return { label: 'Untitled listing', address: null, street: null, locality: null, price: null, priceType: null, bedrooms: null, areaSqft: null, contactName: null, contactPhone: null, listingUrl: null, notes: null, amenities: [], warnings: ['Model returned nothing usable'] };
   }
   const warnings: string[] = [];
   const source = sourceText ?? '';
@@ -420,7 +455,8 @@ export function sanitizeDraft(raw: RawListing | null, sourceText: string | null)
     label = defaultLabel(bhk, locality, street);
     warnings.push('label: generated because the model returned none');
   }
-  return { label, address, street, locality, price: amount, priceType: type, bedrooms: bhk, contactName, contactPhone, listingUrl, notes, amenities: list, warnings };
+  // The on-device model is not asked for the area (the Kotlin sanitiser is not either); the no-AI parser finds it.
+  return { label, address, street, locality, price: amount, priceType: type, bedrooms: bhk, areaSqft: null, contactName, contactPhone, listingUrl, notes, amenities: list, warnings };
 }
 
 // ---------------------------------------------------------------- Ask checks (RagService.citations, AskPrompts.snippet)

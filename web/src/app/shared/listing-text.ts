@@ -61,6 +61,7 @@ const PHONE_MAX = 50;
 const URL_MAX = 1000;
 const PRICE_MAX = 1_000_000_000_000;
 const BEDROOMS_MAX = 20;
+const AREA_MAX = 100_000;
 
 /** The first link in the text, as written (trailing punctuation dropped), or null. */
 export function listingUrlIn(text: string): string | null {
@@ -128,6 +129,8 @@ export function parseListingText(text: string): HouseDraft {
   const bedroomsRaw = bhk ? Number(bhk[1]) : STUDIO.test(words) ? 0 : null;
   const bedrooms = bedroomsRaw !== null && bedroomsRaw <= BEDROOMS_MAX ? bedroomsRaw : null;
   const area = AREA.exec(words);
+  // The same match feeds the notes' first line ("1150 sq ft, …") and the carpet area field (slice 1a).
+  const areaSqft = area && Number(area[1]) >= 1 && Number(area[1]) <= AREA_MAX ? Number(area[1]) : null;
   const furnishing = FURNISHING.exec(words);
   const details = [
     area ? `${area[1]} sq ft` : null,
@@ -145,6 +148,7 @@ export function parseListingText(text: string): HouseDraft {
     price,
     priceType,
     bedrooms,
+    areaSqft,
     contactName: null,
     contactPhone: phone,
     listingUrl: url && url.length <= URL_MAX ? cleanListingUrl(url) : null,

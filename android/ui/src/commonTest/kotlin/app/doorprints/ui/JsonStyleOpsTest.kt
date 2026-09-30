@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.LocationSource
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -207,6 +208,15 @@ class JsonStyleOpsTest {
         }
         val colors = dots["paint"]!!.jsonObject["circle-color"]!!.jsonArray
         assertEquals(listOf("#1a7a43", "#b3261e", "#3c5a99"), listOf(3, 5, 6).map { colors[it].jsonPrimitive.content })
+        // FR-068: an approximate house has no fill and its ring in the status colour; the others a white ring.
+        val opacity = dots["paint"]!!.jsonObject["circle-opacity"]!!.jsonArray
+        assertEquals("case", opacity[0].jsonPrimitive.content)
+        assertEquals("0.0", opacity[2].jsonPrimitive.content)
+        assertEquals("match", opacity[3].jsonArray[0].jsonPrimitive.content)
+        val stroke = dots["paint"]!!.jsonObject["circle-stroke-color"]!!.jsonArray
+        assertEquals("case", stroke[0].jsonPrimitive.content)
+        assertEquals(colors, stroke[2].jsonArray)
+        assertEquals("#ffffff", stroke[3].jsonPrimitive.content)
         assertEquals(14f, labels["layout"]!!.jsonObject["text-size"]!!.jsonPrimitive.content.toFloat())
         assertEquals(HOUSES_SOURCE, labels["source"]!!.jsonPrimitive.content)
     }
@@ -223,6 +233,9 @@ class JsonStyleOpsTest {
         assertEquals("h1", p["id"]!!.jsonPrimitive.content)
         assertEquals("SHORTLISTED", p["status"]!!.jsonPrimitive.content)
         assertEquals("true", p["indic"]!!.jsonPrimitive.content)
+        assertEquals("false", p["approx"]!!.jsonPrimitive.content)
+        val approx = json(housesGeoJson(listOf(house.copy(locationSource = LocationSource.APPROX)))).jsonObject["features"]!!.jsonArray[0].jsonObject
+        assertEquals("true", approx["properties"]!!.jsonObject["approx"]!!.jsonPrimitive.content)
     }
 
     private fun JsonObject.withLayer(id: String, change: (Map<String, JsonElement>) -> Map<String, JsonElement>): JsonObject {

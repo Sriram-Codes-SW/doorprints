@@ -28,7 +28,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBundle, ExportHouse } from './export-model';
-import { checklistEntries, checklistLabel, labelOf, statusText } from './html-export';
+import { checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -105,11 +105,13 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   push('compare.overall', score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1));
   push('compare.price', formatPrice(dict, house.price, house.priceType));
   if (bedrooms !== null) push('compare.bhk', tr(dict, 'common.bhk', { n: bedrooms }));
+  if (house.areaSqft != null) push('compare.area', tr(dict, 'common.sqft', { n: house.areaSqft }));
   if (rating !== null) push('compare.rating', tr(dict, 'common.stars', { n: rating }));
   push('house.address', house.address ?? '');
   push('house.street', house.street ?? '');
   push('house.locality', house.locality ?? '');
   push('house.location', `${formatCoord(house.lat)}, ${formatCoord(house.lon)}`);
+  if (house.locationSource === 'APPROX') push('house.approx', tr(dict, 'common.yes'));
   push('house.listingUrl', house.listingUrl ?? '');
   if (bundle.options.includeContacts) {
     push('house.contactName', house.contactName ?? '');
@@ -121,6 +123,15 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
     out.push(separator(2));
     for (const [name, value] of facts) out.push(row([name, value]));
+    out.push('');
+  }
+
+  const cost = costEntries(house, dict);
+  if (cost.length) {
+    out.push(`### ${escapeMarkdown(tr(dict, 'house.cost'))}`, '');
+    out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
+    out.push(separator(2));
+    for (const [name, value] of cost) out.push(row([name, value]));
     out.push('');
   }
 

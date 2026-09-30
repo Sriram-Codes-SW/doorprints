@@ -52,6 +52,10 @@ describe('parseListingText', () => {
     expect(d.price).toBe(c.expect.price);
     expect(d.priceType).toBe(c.expect.priceType);
     expect(d.bedrooms).toBe(c.expect.bedrooms);
+    // The fixture has no `areaSqft` key (the lead's file): a case whose expected notes begin with an area is one
+    // where the parser found it, so the field holds that number; otherwise nothing.
+    const areaInNotes = /^(\d+) sq ft/.exec(c.expect.notesStart ?? '');
+    expect(d.areaSqft).toBe(areaInNotes ? Number(areaInNotes[1]) : null);
     expect(d.locality).toBe(c.expect.locality);
     expect(d.contactPhone).toBe(c.expect.contactPhone);
     expect(d.listingUrl).toBe(c.expect.listingUrl);

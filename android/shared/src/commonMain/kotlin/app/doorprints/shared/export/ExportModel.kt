@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseScore
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
@@ -71,6 +72,15 @@ data class ExportHouse(
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
+    /** Carpet area in sq ft (docs/11 5.30 item 1, slice 1a); absent when unknown. */
+    val areaSqft: Int? = null,
+    /** `GPS`, `MAP` or `APPROX`; absent for a house saved before slice 1a. */
+    val locationSource: String? = null,
+    /**
+     * The cost, absent when every field is absent (the mappers write [HouseCost.orNull]; never `{}` in a file). An
+     * empty object in a file reads as no cost, and a field out of range as unknown (`ExportHouse.toEntity`).
+     */
+    val cost: HouseCost? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */
     @Serializable(with = LenientChecklistSerializer::class)
     val checklist: Map<String, Int> = emptyMap(),

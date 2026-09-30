@@ -17,7 +17,8 @@
  */
 
 import { LocalDataError } from '../core/local-error';
-import type { HouseDto, HouseStatus, PriceType, RecordDto, VisitDto, VisitSource } from '../core/models';
+import { COST_FIELDS, LOCATION_SOURCES } from '../core/models';
+import type { HouseCost, HouseDto, HouseStatus, PriceType, RecordDto, VisitDto, VisitSource } from '../core/models';
 
 /**
  * What the browser stores locally (IndexedDB). Doorprints is local-first (docs/11 §5.1, D-01): every record below
@@ -161,6 +162,9 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     contactPhone: nullable(dto.contactPhone),
     listingUrl: nullable(dto.listingUrl),
     notes: nullable(dto.notes),
+    areaSqft: whole(dto.areaSqft, 1, MAX_AREA_SQFT),
+    locationSource: dto.locationSource && LOCATION_SOURCES.includes(dto.locationSource) ? dto.locationSource : null,
+    cost: cleanCost(dto.cost),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
     updatedAt: nullable(dto.updatedAt),
@@ -256,6 +260,59 @@ export function visitToDto(record: VisitRecord): VisitDto {
 export function recordToDto(record: RecordRecord): RecordDto {
   const { dirty: _dirty, ...dto } = record;
   return dto;
+}
+
+/** The ranges of the house values (slice 1a): the same numbers the server's `HouseDto` refuses with 400. */
+export const MAX_AREA_SQFT = 100_000;
+export const MAX_RUPEES = 1_000_000_000_000;
+export const MAX_MONTHS = 120;
+/** A calendar date, `YYYY-MM-DD`; the month and day are checked to be real below. */
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The cost as the store keeps it and the wire and the backup write it: only the fields that are set, in
+ * {@link COST_FIELDS} order, or `null` when none is (an empty `{}` from a file reads as no cost). A value out of its
+ * range is unknown for that field, like every other coerced house value here.
+ */
+export function cleanCost(raw: HouseCost | null | undefined): HouseCost | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const out: HouseCost = {};
+  const rupees = (value: number | null | undefined) => whole(value, 0, MAX_RUPEES);
+  const months = (value: number | null | undefined) => whole(value, 0, MAX_MONTHS);
+  const clean: { [K in keyof HouseCost]-?: HouseCost[K] } = {
+    deposit: rupees(raw.deposit),
+    depositMonths: months(raw.depositMonths),
+    maintenance: rupees(raw.maintenance),
+    maintenanceIncluded: typeof raw.maintenanceIncluded === 'boolean' ? raw.maintenanceIncluded : null,
+    brokerage: rupees(raw.brokerage),
+    brokerageMonths: months(raw.brokerageMonths),
+    lockInMonths: months(raw.lockInMonths),
+    noticeMonths: months(raw.noticeMonths),
+    availableFrom: calendarDate(raw.availableFrom),
+    myOffer: rupees(raw.myOffer),
+    agreedPrice: rupees(raw.agreedPrice),
+  };
+  for (const field of COST_FIELDS) {
+    const value = clean[field];
+    if (value !== null) (out as Record<string, unknown>)[field] = value;
+  }
+  return Object.keys(out).length === 0 ? null : out;
+}
+
+/** `YYYY-MM-DD` naming a real day (no 2026-02-30), or null. */
+export function calendarDate(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d ? value : null;
+}
+
+/** A whole number within [min, max], or null: a decimal is rounded, anything else is unknown. */
+function whole(value: number | null | undefined, min: number, max: number): number | null {
+  const n = finite(value);
+  if (n === null) return null;
+  const rounded = Math.round(n);
+  return rounded < min || rounded > max ? null : rounded;
 }
 
 function cleanChecklist(checklist: Record<string, number> | null | undefined): Record<string, number> {

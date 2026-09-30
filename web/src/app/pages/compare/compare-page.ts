@@ -27,6 +27,7 @@ import { TPipe } from '../../i18n/t.pipe';
 import { MAX_SELECTED, MIN_SELECTED, idsFromQuery } from './compare-selection';
 import { GLYPHS } from '../../shared/glyphs';
 import { RunResult, nextRunResult } from '../../shared/run-result';
+import { costSummary } from '../../shared/house-cost';
 
 /** Above this many candidates the picker gets a search box: a wall of chips cannot be scanned. */
 const SEARCH_ABOVE = 12;
@@ -139,6 +140,35 @@ export class ComparePage {
       id: 'bhk',
       label: i18n.t('compare.bhk'),
       cells: houses.map((h) => plain(h.bedrooms != null ? i18n.number(h.bedrooms) : null)),
+      best: new Set<number>(),
+    });
+    // Slice 1a: the carpet area and what the house really costs (docs/11 5.21), the same arithmetic as the form.
+    rows.push({
+      id: 'area',
+      label: i18n.t('compare.area'),
+      cells: houses.map((h) => plain(h.areaSqft != null ? i18n.t('common.sqft', { n: i18n.number(h.areaSqft) }) : null)),
+      best: new Set<number>(),
+    });
+    const summaries = houses.map((h) => costSummary(h));
+    const money = (v: number | null) => plain(v !== null ? i18n.price(v, null) : null);
+    rows.push({ id: 'monthlyCost', label: i18n.t('cost.monthlyCost'), cells: summaries.map((s) => money(s.monthlyCost)), best: new Set<number>() });
+    rows.push({ id: 'moveIn', label: i18n.t('cost.moveIn'), cells: summaries.map((s) => money(s.moveIn)), best: new Set<number>() });
+    rows.push({
+      id: 'perSqFt',
+      label: i18n.t('cost.perSqFt'),
+      cells: summaries.map((s) => money(s.perSqFt !== null ? Math.round(s.perSqFt) : null)),
+      best: new Set<number>(),
+    });
+    rows.push({
+      id: 'availableFrom',
+      label: i18n.t('cost.availableFrom'),
+      cells: houses.map((h) => plain(h.cost?.availableFrom ?? null)),
+      best: new Set<number>(),
+    });
+    rows.push({
+      id: 'agreedPrice',
+      label: i18n.t('cost.agreedPrice'),
+      cells: houses.map((h) => money(h.cost?.agreedPrice ?? null)),
       best: new Set<number>(),
     });
     rows.push({

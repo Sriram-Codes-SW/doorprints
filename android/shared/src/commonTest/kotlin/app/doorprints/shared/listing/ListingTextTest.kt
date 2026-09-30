@@ -42,6 +42,7 @@ class ListingTextTest {
         assertEquals("https://www.magicbricks.com/propertyDetails/2-BHK-1150-Sq-ft-Multistorey-Apartment-FOR-Rent-Indiranagar-in-Bangalore&id=4d4235", d.listingUrl)
         assertEquals("MagicBricks", ListingText.portal(d.listingUrl))
         assertEquals(true, d.notes!!.startsWith("1150 sq ft, Semi-furnished\n\n2 BHK"))
+        assertEquals(1150, d.areaSqft, "the area the notes line names is the draft's carpet area (slice 1a)")
     }
 
     @Test
@@ -65,6 +66,7 @@ class ListingTextTest {
         assertEquals("https://www.nobroker.in/property/12345", d.listingUrl)
         assertNull(d.price)
         assertNull(d.bedrooms)
+        assertNull(d.areaSqft)
         assertNull(d.contactPhone)
         assertEquals("House", d.label, "the sanitiser's label when the text gives none")
         assertEquals(emptyList(), d.warnings)

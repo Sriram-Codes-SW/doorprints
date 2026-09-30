@@ -45,7 +45,6 @@ import { LocalDataService } from '../../core/local-data.service';
 import {
   HouseDto,
   STATUSES,
-  STATUS_COLOR,
   STATUS_ICON,
   STATUS_KEY,
   StatsDto,
@@ -75,6 +74,7 @@ import {
 import { ListReturn } from './list-return';
 import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
+import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
 
 interface ListItem {
@@ -341,34 +341,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         id: LAYER_ID,
         type: 'circle',
         source: SOURCE_ID,
-        paint: {
-          // Size also encodes status (shortlisted larger, rejected smaller), so colour is not the only cue.
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            8,
-            ['match', ['get', 'status'], 'SHORTLISTED', 7, 'REJECTED', 4, 5],
-            14,
-            ['match', ['get', 'status'], 'SHORTLISTED', 11, 'REJECTED', 6, 8],
-            18,
-            ['match', ['get', 'status'], 'SHORTLISTED', 15, 'REJECTED', 9, 12],
-          ],
-          'circle-color': [
-            'match',
-            ['get', 'status'],
-            'NEW',
-            STATUS_COLOR.NEW,
-            'SHORTLISTED',
-            STATUS_COLOR.SHORTLISTED,
-            'REJECTED',
-            STATUS_COLOR.REJECTED,
-            '#888888',
-          ],
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': ['match', ['get', 'status'], 'SHORTLISTED', 3, 2],
-          'circle-opacity': ['match', ['get', 'status'], 'REJECTED', 0.75, 1],
-        },
+        paint: HOUSE_PAINT,
       } as unknown as Parameters<MlMap['addLayer']>[0]);
       // mapReady may already be true (a style reloaded after going online): push the houses in either case.
       this.setMapData(this.items().map((i) => i.house));
@@ -674,12 +647,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (!source) return;
     void source.setData({
       type: 'FeatureCollection',
-      features: houses.map((h) => ({
-        type: 'Feature',
-        id: h.id,
-        geometry: { type: 'Point', coordinates: [h.lon, h.lat] },
-        properties: { id: h.id, status: h.status, label: h.label },
-      })),
+      features: houseFeatures(houses),
     });
   }
 

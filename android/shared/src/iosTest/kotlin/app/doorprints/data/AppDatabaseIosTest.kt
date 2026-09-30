@@ -166,8 +166,10 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (4 since docs/11 5.30 slice 0: records; track_points and records empty after the migration).
-            assertEquals(listOf("4"), connection.rows("PRAGMA user_version"))
+            // The current version (5 since docs/11 5.30 slice 1a: the house's values; 4 added records; track_points and
+            // records empty after the migration, and a house from before has no area, source or cost).
+            assertEquals(listOf("5"), connection.rows("PRAGMA user_version"))
+            assertEquals(listOf("h1||"), connection.rows("SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, '') FROM houses"))
             assertEquals(listOf("p1|0"), connection.rows("SELECT id, deleted FROM photos"))
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM track_points"))
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM records"))

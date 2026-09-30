@@ -16,6 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { COST_FIELDS } from '../core/models';
+import type { HouseCost } from '../core/models';
+import { cleanCost } from '../data/records';
 import { sortedChecklist } from './export-model';
 import type { ExportBundle, ExportHouse as BundleHouse } from './export-model';
 import { htmlCopyName, isoUtc } from './deterministic';
@@ -93,10 +96,17 @@ export interface BackupHouse {
   contactPhone?: string;
   listingUrl?: string;
   notes?: string;
+  /** Slice 1a (docs/11 5.30 item 1): the three house values, in this order, between `notes` and `checklist`. */
+  areaSqft?: number;
+  locationSource?: string;
+  cost?: BackupCost;
   checklist: Record<string, number>;
   createdAt: number;
   updatedAt: number;
 }
+
+/** The eleven cost fields, only the set ones, in `COST_FIELDS` order; the object itself is left out when empty. */
+export type BackupCost = { [K in keyof HouseCost]?: NonNullable<HouseCost[K]> };
 
 export interface BackupVisit {
   id: string;
@@ -201,10 +211,25 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     contactPhone: house.contactPhone ?? undefined,
     listingUrl: house.listingUrl ?? undefined,
     notes: house.notes ?? undefined,
+    areaSqft: house.areaSqft ?? undefined,
+    locationSource: house.locationSource ?? undefined,
+    cost: backupCost(house.cost),
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
     updatedAt: millisOf(house.updatedAt),
   };
+}
+
+/** `cleanCost` keeps only the set fields in the contract's order, so the file never holds a null or an empty `{}`. */
+function backupCost(cost: HouseCost | null | undefined): BackupCost | undefined {
+  const clean = cleanCost(cost);
+  if (!clean) return undefined;
+  const out: BackupCost = {};
+  for (const field of COST_FIELDS) {
+    const value = clean[field];
+    if (value !== null && value !== undefined) (out as Record<string, unknown>)[field] = value;
+  }
+  return out;
 }
 
 /**
