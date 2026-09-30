@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.48 |
+| Version | 0.49 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -60,6 +60,7 @@
 | 0.46 | 2026-09-30 | Claude (Code), lead | **Slice 4a designed** (hunting areas as records, my places with distances, area notes; [10](10-sprint-log.md) §13.27). The area wake-up (geofences, 5.17/5.18) is slice 4b. |
 | 0.47 | 2026-09-30 | Claude (Code), lead | **Slice 4a built** (areas, places, area notes; [10](10-sprint-log.md) §13.27). The wake-up (4b) is not built. |
 | 0.48 | 2026-09-30 | Claude (Code), lead | **Slice 4b designed** (5.17 and 5.18: the area wake-up, the background-location rationale and the cooldown; [10](10-sprint-log.md) §13.28). |
+| 0.49 | 2026-09-30 | Claude (Code), lead | **Slice 4b built** (the area wake-up on Android; [10](10-sprint-log.md) §13.28). The iPhone part (S4b-BL-96) follows. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -686,6 +687,13 @@ area-based notes (an APPROX house keeps its distances; street notes always reach
 | On entering | `AreaCooldown` (pure, `:shared`): notify when the area's `lastNotifiedAt` (local, unsynced, per area id) is at least 6 hours old, Hunt mode is not running and the setting is on; *Dismiss* counts as notified. The notification on channel `area_wakeup` (default importance, private on the lock screen with the public text "Doorprints reminder", no full-screen intent, no Do Not Disturb bypass): "You're in <area>. Start Hunt mode?" with **Start Hunt mode** (the 3c path: the service with fine location, otherwise the Map asks) and **Dismiss**. It never starts tracking by itself. |
 | Revoked or downgraded | On resume, when background (or fine) location is no longer granted the setting is switched off, the geofences are removed and a card in My areas says once why ("Area wake-up is off because Doorprints no longer has location access all the time."). Hunt mode, reminders and the rest keep working. |
 | Vectors | C1 never notified: notify; C2 notified 5 h 59 min ago: no; C3 exactly 6 h ago: notify; C4 Hunt mode running: no; C5 the setting off: no; C6 a disabled or deleted area: no geofence; C7 the registered set equals the enabled areas, at most 20. |
+
+**Built (2026-09-30, slice 4b of 5.30; [10](10-sprint-log.md) §13.28).** `AreaCooldown` and `AreaWakeup` (C1..C7) in `:shared`; the local settings `areas.wakeup`, a stamp per area and the one-time "switched off" notice; on Android `AreaGeofenceManager`
+(ENTER only, no expiry, radius `radiusM`, request id = the area id, initial trigger 0; the mutable, explicit PendingIntent to the non-exported `AreaGeofenceReceiver`), registered again at start, on every change, on resume, after boot and an
+update and on `GEOFENCE_NOT_AVAILABLE`; the channel `area_wakeup` (notification id 11, tag `area:<id>`), *Start Hunt mode* (the 3c path; the service with precise location, otherwise the Map asks) and *Dismiss*; the rationale screen and the permission
+steps (precise location first, then "Allow all the time": the system dialog on Android 10, the app's location page on Android 11 and later, `ACTION_APPLICATION_DETAILS_SETTINGS` as the fallback); the card when the permission is lost. As built: the
+wake-up needs precise as well as background location (geofencing requires it); the cooldown stamp is set when the notification is posted and again on *Dismiss*; there is no listener for "location switched back on" (Android 8+ gives a manifest receiver
+no `PROVIDERS_CHANGED`), so recovery after `GEOFENCE_NOT_AVAILABLE` comes at the next resume, boot or edit. The switch is hidden without Google Play services and on the iPhone. **Not run:** real geofencing and the permission pages (TC-M).
 
 ### 5.24 Moving in (D-30)
 
