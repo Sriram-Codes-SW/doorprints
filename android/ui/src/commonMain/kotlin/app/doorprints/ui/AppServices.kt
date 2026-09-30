@@ -70,6 +70,9 @@ interface AppServices {
     /** The Map's Hunt mode, its notification check and the system's motion and font settings (CMP-7). */
     val mapScreen: MapServices
 
+    /** The phone's offline map store (docs/11 5.20): the Map's *Save this area for offline* and Settings' list. */
+    val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
+
     /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".

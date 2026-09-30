@@ -172,6 +172,8 @@ internal class IosAppServices(
 
     override val mapScreen: MapServices = IosMapServices
 
+    override val offlineMaps: OfflineMapsServices = IosOfflineMapsServices
+
     /** The language is iOS's per-app setting, changed outside the app: there is never a change to confirm. */
     override fun consumeLanguageChange(): LanguageChange? = null
 }

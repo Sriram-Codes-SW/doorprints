@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.45 |
+| Version | 0.46 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -57,6 +57,7 @@
 | 0.43 | 2026-09-29 | Claude (Code), lead | **`HuntEngine`** in `:shared` commonMain (Sprint 4b, owner request "add Hunt mode to iOS as well"): Hunt mode's rules moved out of Android's `HuntService`, which keeps only the foreground service, the fused location client, the battery, the geocoder and the alerts' wording (`HuntEffects`); no behaviour change. The component table and §7 follow. |
 | 0.44 | 2026-09-29 | Claude (Code), lead | **The path trace** (S4b-FR-2, [11](11-feature-parity-and-export-spec.md) 5.27) inside `HuntEngine`: `TrackRecorder` (20 m or 5 min thinning), `track_points` (Room version 3, `MIGRATION_2_3`), the map's line layer built once in `MapStyleJson` (`trackLayerJson`, under the houses) for both phones; never in a backup, a copy or the sync. |
 | 0.45 | 2026-09-29 | Claude (Code), lead | **Hunt mode on iPhone** (S4b-BL-69, [10](10-sprint-log.md) §13.14): `IosHunt` (Core Location, background updates under *When in use*, a throttle to the fused client's rate), `IosNotifications` and `IosGeocoder` in `:ui` iosMain; component table. |
+| 0.46 | 2026-09-30 | Claude (Code), lead | **Offline maps** (S4b-FR-6, [11](11-feature-parity-and-export-spec.md) 5.20): MapLibre's offline packs on both phones behind the common `OfflineMapsServices`, `OfflineTiles` (the estimate and the 2,000-tile cap); new **§11.2** on OpenFreeMap's public tiles and offline areas; component table. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -235,6 +236,7 @@ flowchart TB
 | `HuntEngine` | `:shared` `app.doorprints.location.HuntEngine` (since 2026-09-29) | Hunt mode's rules in common code, so the iPhone gets them from the same engine: a fix's meaning (the accuracy gate, the nearest house and the alert radius with its 30-minute repeat, the street alert through `StreetAlerts` with the platform's `StreetLookup` asked at most every 45 s or 80 m, the stay through `StayDetector` and its visit, the walking or staying fix rate, the low-battery stop). Reads `HuntData` (the part of `Repository` it needs) and a `BatteryReader`; asks the platform for the alerts and the fix rate through `HuntEffects`; keeps `HuntState`. Unit-tested with fakes in `commonTest` (`HuntEngineTest`, [06](06-test-plan.md) TC-U-92). |
 | `TrackRecorder`, `TrackDao` | `:shared` `location/HuntEngine.kt`, `data/AppDatabase.kt` (since 2026-09-29) | The path trace ([11](11-feature-parity-and-export-spec.md) 5.27): while `Settings.pathTrace` is on, the engine keeps a fix that passed the accuracy gate when it is the first, 20 m from the last kept or 5 minutes after it; `track_points` (id, at, lat, lon, accuracyM; index on `at`) is local only, pruned to 30 days at each Hunt start, cleared from Settings; the Map draws `Repository.trackPoints` through `trackGeoJson` (one line per walk, split at 30-minute gaps) into the `track` source and `track-line` layer that `prepareMapStyle` puts under the houses (Android builds the same layer in `PlatformMap.android.kt`) |
 | `IosHunt`, `IosNotifications`, `IosGeocoder` | `:ui` iosMain `IosHunt.kt`, `IosNotifications.kt` (since S4b-BL-69, [10](10-sprint-log.md) §13.14) | The iPhone around `HuntEngine`: `CLLocationManager` (best accuracy, every fix, background updates under *When in use* with the indicator shown, the `location` background mode) thinned by `HuntFixThrottle` to the rate `HuntService` gets from the fused client; the battery from `UIDevice`; Apple's `CLGeocoder` for the street alerts and the new-house form's address; the alerts worded from the Compose resources and posted as local notifications (`UNUserNotificationCenter`, the delegate set at launch; a tap is a `DeepLink` checked as MainActivity checks its intent) |
+| `OfflineMapsServices`, `OfflineTiles` | `:ui` commonMain `OfflineMaps.kt`, `OfflineMapsUi.kt`; Android `AndroidOfflineMaps` (`:app`), iPhone `IosOfflineMapsServices` over `MapLibreOfflineMaps.swift` (since S4b-FR-6, 2026-09-30) | Offline maps ([11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as one of MapLibre's offline packs (`OfflineManager` / `MLNOfflineStorage`, the map's own tile store, the Liberty style from zoom 0 to 14), its id and name in the pack's metadata; the tile count and size estimated in common code before the download, at most 2,000 tiles an area (§11.2); the phone's metered state for the Wi-Fi note; the areas with their progress as one state flow for the Map's snackbar and Settings' list |
 | `HuntService` | `location/HuntService.kt` (Android; iPhone: `IosHunt`) | The platform around `HuntEngine`: the foreground service (location type) and its notification, the fused location client (15 s walking, 60 s staying), the battery reading, `ReverseGeocoder`, and the alerts as notifications with their wording. Section 7.2, 7.3, 8.2 |
 | `StayDetector`, `StreetAlerts`, `Geo` | `:shared` `app.doorprints.shared.location` | Pure stay logic, street-alert rule and haversine distance (`Geo.distanceM`), unit-tested in `commonTest` (section 4.2.1) |
 | `ReverseGeocoder` | `location/ReverseGeocoder.kt` | Android Geocoder wrapper (API 33+ async), 10 s limit |
@@ -891,6 +893,18 @@ records the owner's and the team's reading of the guidelines, not legal advice.
 
 Section 2(2) of the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's
 maps; ADR-22's reason) still applies alongside these guidelines.
+
+### 11.2 OpenFreeMap's public tiles and offline areas (S4b-FR-6)
+
+The map's tiles come from OpenFreeMap's public instance (Liberty style, OpenStreetMap data), which allows commercial
+use with attribution and states no limit on map views or requests; its terms of service forbid "collecting data from
+the service in automated ways without permission" (read 2026-09-30). An offline area ([11](11-feature-parity-and-export-spec.md)
+5.20) is the box a person sees on the Map, fetched once through MapLibre's own offline pack, the standard client
+feature of the same map engine that fetches the tiles as the map is panned: at most `OfflineTiles.MAX_TILES` (2,000)
+tiles, about 100 MB, a whole large city being a few hundred, with the size shown first and mobile data warned about.
+That is one person's ordinary use of the map, not a bulk copy; a bulk copy is what OpenFreeMap's weekly planet
+downloads are for. The owner's word on this reading is an open item in [14](14-lead-backlog-and-handoff.md) §6; the
+zero-cost alternative, should OpenFreeMap object, is a self-hosted extract (S4b-BL-80), which is not free to run.
 
 ## 12. Security design (summary)
 

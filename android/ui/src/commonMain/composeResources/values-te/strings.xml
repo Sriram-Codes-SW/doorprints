@@ -645,4 +645,22 @@
     <string name="notif_stay_text">మీరు కొన్ని నిమిషాలుగా ఇక్కడ ఉన్నారు. గమనికలు, ఫోటోలతో సేవ్ చేయడానికి నొక్కండి.</string>
     <string name="notif_battery_title">హంట్ మోడ్ ఆగింది</string>
     <string name="hunt_battery_text">బ్యాటరీ తక్కువగా ఉంది (%1$d శాతం). ఛార్జ్ చేస్తున్నప్పుడు హంట్ మోడ్ మళ్లీ ఆన్ చేయండి.</string>
+    <!-- S4b-FR-6, offline maps (2026-09-30): under review. -->
+    <string name="map_save_area">ఈ ప్రాంతాన్ని ఆఫ్‌లైన్ కోసం సేవ్ చేయి</string>
+    <string name="offline_dialog_text">మీరు చూస్తున్న మ్యాప్, వీధి స్థాయి వరకు, ఈ ఫోన్‌లో ఉంటుంది: సుమారు %1$s MB డౌన్‌లోడ్.</string>
+    <string name="offline_area_name">పేరు</string>
+    <string name="offline_area_default_name">నా ప్రాంతం</string>
+    <string name="offline_too_large">ఈ ప్రాంతం చాలా పెద్దది (సుమారు %1$d మ్యాప్ టైల్స్; పరిమితి %2$d). జూమ్ చేసి మళ్లీ ప్రయత్నించండి.</string>
+    <string name="offline_metered">మీరు మొబైల్ డేటాలో ఉన్నారు. దీనికి Wi-Fi చౌక.</string>
+    <string name="offline_saving">‘%1$s’ ఆఫ్‌లైన్ కోసం సేవ్ అవుతోంది…</string>
+    <string name="offline_saved">‘%1$s’ ఆఫ్‌లైన్ కోసం సేవ్ అయింది (%2$s MB).</string>
+    <string name="offline_failed">‘%1$s’ సేవ్ కాలేదు. వీలైతే Wi-Fi‌లో మళ్లీ ప్రయత్నించండి.</string>
+    <string name="settings_offline_maps">ఆఫ్‌లైన్ మ్యాప్‌లు</string>
+    <string name="settings_offline_hint">సేవ్ చేసిన ప్రాంతాలు నెట్‌వర్క్ లేకుండా, వీధి స్థాయి వరకు, మ్యాప్‌ను చూపిస్తాయి. మ్యాప్ నుండి ఒకటి సేవ్ చేయండి. మ్యాప్ డేటా © OpenStreetMap కంట్రిబ్యూటర్లు, టైల్స్ OpenFreeMap నుండి.</string>
+    <string name="settings_offline_empty">ఇంకా ప్రాంతాలు సేవ్ కాలేదు.</string>
+    <string name="offline_size_mb">%1$s MB</string>
+    <string name="offline_state_saving">సేవ్ అవుతోంది… ఇప్పటివరకు %1$s MB</string>
+    <string name="offline_state_failed">సేవ్ కాలేదు</string>
+    <string name="offline_delete">%1$s తొలగించు</string>
+    <string name="offline_delete_confirm">సేవ్ చేసిన ప్రాంతం ‘%1$s’ తొలగించాలా? అక్కడ మ్యాప్‌కు మళ్లీ నెట్‌వర్క్ కావాలి.</string>
 </resources>

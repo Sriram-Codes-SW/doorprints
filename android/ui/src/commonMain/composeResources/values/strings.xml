@@ -649,4 +649,22 @@
     <string name="notif_stay_text">You have been here a few minutes. Tap to save it with notes and photos.</string>
     <string name="notif_battery_title">Hunt mode stopped</string>
     <string name="hunt_battery_text">Battery is low (%1$d percent). Turn hunt mode on again when charging.</string>
+    <!-- S4b-FR-6, offline maps (2026-09-30). -->
+    <string name="map_save_area">Save this area for offline</string>
+    <string name="offline_dialog_text">The map you see, down to street level, kept on this phone: about %1$s MB to download.</string>
+    <string name="offline_area_name">Name</string>
+    <string name="offline_area_default_name">My area</string>
+    <string name="offline_too_large">This area is too large (about %1$d map tiles; the limit is %2$d). Zoom in and try again.</string>
+    <string name="offline_metered">You are on mobile data. Wi-Fi is cheaper for this.</string>
+    <string name="offline_saving">Saving ‘%1$s’ for offline…</string>
+    <string name="offline_saved">‘%1$s’ is saved for offline (%2$s MB).</string>
+    <string name="offline_failed">‘%1$s’ could not be saved. Try again, on Wi-Fi if you can.</string>
+    <string name="settings_offline_maps">Offline maps</string>
+    <string name="settings_offline_hint">Saved areas draw the map with no network, down to street level. Save one from the Map. Map data © OpenStreetMap contributors, tiles from OpenFreeMap.</string>
+    <string name="settings_offline_empty">No areas saved yet.</string>
+    <string name="offline_size_mb">%1$s MB</string>
+    <string name="offline_state_saving">Saving… %1$s MB so far</string>
+    <string name="offline_state_failed">Could not save</string>
+    <string name="offline_delete">Delete %1$s</string>
+    <string name="offline_delete_confirm">Delete the saved area ‘%1$s’? The map will need the network there again.</string>
 </resources>

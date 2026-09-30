@@ -63,6 +63,7 @@ import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
 import app.doorprints.ui.LocationSource
 import app.doorprints.ui.MapServices
+import app.doorprints.ui.OfflineMapsServices
 import app.doorprints.ui.PhotoSources
 import app.doorprints.ui.PickedPhoto
 import app.doorprints.ui.SettingsServices
@@ -115,6 +116,8 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val importScreen: ImportServices = AndroidImportServices(app)
 
     override val mapScreen: MapServices = AndroidMapServices(app)
+
+    override val offlineMaps: OfflineMapsServices = AndroidOfflineMaps(app)
 
     override fun consumeLanguageChange(): LanguageChange? =
         AppLocale.consumeChange(app)?.let { LanguageChange(it.language) }

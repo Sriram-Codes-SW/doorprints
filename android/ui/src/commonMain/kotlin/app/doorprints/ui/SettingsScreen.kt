@@ -423,6 +423,12 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             PathTraceSection(settings)
         }
 
+        // Offline maps (docs/11 5.20), where the phone has the store; saved from the Map.
+        if (platformFeatures.map && services.offlineMaps.supported) {
+            HorizontalDivider()
+            OfflineMapsSection(services.offlineMaps)
+        }
+
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_server))
         Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
