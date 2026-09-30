@@ -663,4 +663,22 @@
     <string name="offline_state_failed">सहेजा नहीं जा सका</string>
     <string name="offline_delete">%1$s मिटाएँ</string>
     <string name="offline_delete_confirm">सहेजा इलाक़ा ‘%1$s’ मिटाएँ? वहाँ नक़्शे को फिर नेटवर्क चाहिए होगा।</string>
+    <!-- S4b-FR-3, sharing updates (2026-09-30): under review. -->
+    <string name="settings_share">अपडेट साझा करें…</string>
+    <string name="settings_share_hint">जो बदला है वह साथ में मकान ढूँढ़ रहे किसी को भेजें; वे उसे आयात करके मिला लेते हैं</string>
+    <string name="share_title">अपडेट साझा करें…</string>
+    <string name="share_intro">Doorprints इस व्यक्ति को आपके पिछले साझा करने के बाद जो बदला है उसकी एक फ़ाइल बनाता है, जिसे आप किसी भी ऐप से भेज सकते हैं। उनके फ़ोन पर वह Doorprints में खुलती है और उनकी सूची में मिल जाती है। पहली बार पूरी सूची जाती है।</string>
+    <string name="share_who">किसके लिए?</string>
+    <string name="share_add_name">नाम जोड़ें</string>
+    <string name="share_add">जोड़ें</string>
+    <string name="share_remove">%1$s हटाएँ</string>
+    <string name="share_last">%1$s को आपके अपडेट पिछली बार %2$s को मिले।</string>
+    <string name="share_first">%1$s को अभी तक कोई अपडेट नहीं मिला, इसलिए इस बार पूरी सूची जाएगी।</string>
+    <string name="share_photos">तस्वीरें शामिल करें</string>
+    <string name="share_count">फ़ाइल में %1$d मकान, %2$d दौरे और %3$d तस्वीरें होंगी।</string>
+    <string name="share_nothing">तब से कुछ नहीं बदला।</string>
+    <string name="share_go">%1$s के साथ अपडेट साझा करें</string>
+    <string name="share_preparing">फ़ाइल बन रही है…</string>
+    <string name="share_failed">फ़ाइल नहीं बन सकी। फिर कोशिश करें।</string>
+    <string name="import_updates_for">%1$s के लिए अपडेट, %2$s को बने</string>
 </resources>

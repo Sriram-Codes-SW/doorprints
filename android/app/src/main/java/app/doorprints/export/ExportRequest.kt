@@ -47,6 +47,8 @@ data class ExportRequest(
         KEY_LANGUAGE to options.language,
         KEY_OFFSET to options.utcOffsetMinutes,
         KEY_AT to options.exportedAtMillis,
+        KEY_SINCE to (options.since ?: -1L),
+        KEY_SHARED_TO to options.sharedTo,
     )
 
     companion object {
@@ -60,6 +62,9 @@ data class ExportRequest(
         const val KEY_LANGUAGE = "language"
         const val KEY_OFFSET = "offset"
         const val KEY_AT = "at"
+        /** Sharing updates (docs/11 5.28): the "since" instant (-1: none) and the name the update is for. */
+        const val KEY_SINCE = "since"
+        const val KEY_SHARED_TO = "sharedTo"
 
         /** Progress and result keys, read by the screen. */
         const val KEY_DONE = "done"
@@ -107,6 +112,8 @@ data class ExportRequest(
                     language = data.getString(KEY_LANGUAGE) ?: "en",
                     utcOffsetMinutes = data.getInt(KEY_OFFSET, 0),
                     exportedAtMillis = data.getLong(KEY_AT, 0L),
+                    since = data.getLong(KEY_SINCE, -1L).takeIf { it >= 0 },
+                    sharedTo = data.getString(KEY_SHARED_TO),
                 ),
             )
         }

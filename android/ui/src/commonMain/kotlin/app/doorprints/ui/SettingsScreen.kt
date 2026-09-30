@@ -112,7 +112,9 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {}) {
+fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
+    onOpenShare: () -> Unit = {},
+) {
     val services = LocalAppServices.current
     val repo = services.repository
     // The app features that are still Android code (language, the weekly backup, the version; CMP-5).
@@ -226,6 +228,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {})
             NavRow(
                 stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport,
             )
+            // Sharing updates with someone (docs/11 5.28, S4b-FR-3): a file of what changed, through any app.
+            NavRow(stringResource(Res.string.settings_share), stringResource(Res.string.settings_share_hint), onOpenShare)
         }
 
         if (platformFeatures.weeklyBackup) {

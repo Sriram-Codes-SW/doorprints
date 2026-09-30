@@ -663,4 +663,22 @@
     <string name="offline_state_failed">சேமிக்க முடியவில்லை</string>
     <string name="offline_delete">%1$s-ஐ நீக்கு</string>
     <string name="offline_delete_confirm">சேமித்த பகுதி ‘%1$s’-ஐ நீக்கவா? அங்கே வரைபடத்திற்கு மீண்டும் நெட்வொர்க் தேவைப்படும்.</string>
+    <!-- S4b-FR-3, sharing updates (2026-09-30): under review. -->
+    <string name="settings_share">புதுப்பிப்புகளைப் பகிர்…</string>
+    <string name="settings_share_hint">மாறியவற்றை உங்களுடன் தேடும் ஒருவருக்கு அனுப்புங்கள்; அவர்கள் இறக்குமதி செய்து இணைத்துக்கொள்வார்கள்</string>
+    <string name="share_title">புதுப்பிப்புகளைப் பகிர்…</string>
+    <string name="share_intro">இந்த நபருக்கு நீங்கள் கடைசியாகப் பகிர்ந்த பிறகு மாறியவற்றின் கோப்பை Doorprints உருவாக்குகிறது; அதை எந்த ஆப்பிலும் அனுப்பலாம். அவர்களின் தொலைபேசியில் அது Doorprints-இல் திறந்து அவர்களின் பட்டியலுடன் இணைகிறது. முதல் பகிர்வு உங்கள் முழுப் பட்டியல்.</string>
+    <string name="share_who">யாருக்கு?</string>
+    <string name="share_add_name">பெயரைச் சேர்</string>
+    <string name="share_add">சேர்</string>
+    <string name="share_remove">%1$s-ஐ நீக்கு</string>
+    <string name="share_last">%1$s உங்கள் புதுப்பிப்புகளைக் கடைசியாக %2$s அன்று பெற்றார்.</string>
+    <string name="share_first">%1$s இன்னும் எதையும் பெறவில்லை; இந்தப் பகிர்வு உங்கள் முழுப் பட்டியல்.</string>
+    <string name="share_photos">படங்களைச் சேர்</string>
+    <string name="share_count">கோப்பில் %1$d வீடுகள், %2$d வருகைகள், %3$d படங்கள் இருக்கும்.</string>
+    <string name="share_nothing">அதற்குப் பிறகு எதுவும் மாறவில்லை.</string>
+    <string name="share_go">%1$s-உடன் புதுப்பிப்புகளைப் பகிர்</string>
+    <string name="share_preparing">கோப்பு தயாராகிறது…</string>
+    <string name="share_failed">கோப்பை உருவாக்க முடியவில்லை. மீண்டும் முயலவும்.</string>
+    <string name="import_updates_for">%1$s-க்கான புதுப்பிப்புகள், %2$s அன்று உருவாக்கியது</string>
 </resources>
