@@ -92,6 +92,7 @@ export class ExportService {
       visits: await this.store.allVisits(),
       photos: await this.store.allPhotos(),
       brokers: await this.store.brokers(),
+      lengthUnit: await this.store.lengthUnit(),
       exportedAt,
       options,
     });

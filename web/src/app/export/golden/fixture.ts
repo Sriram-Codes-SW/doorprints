@@ -81,6 +81,27 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
     },
     // Slice 1b: the broker `docs/schemas/backup-sample.json` links to house 1.
     brokerId: B1,
+    // Slice 1c: two rooms with sizes, condition and notes.
+    rooms: [
+      {
+        id: 'c1111111-1111-4111-8111-111111111111',
+        type: 'BEDROOM',
+        name: 'Master bedroom',
+        lengthCm: 396,
+        widthCm: 366,
+        condition: 4,
+        notes: 'Damp patch near the window',
+        sort: 0,
+      },
+      {
+        id: 'c2222222-2222-4222-8222-222222222222',
+        type: 'KITCHEN',
+        name: 'Kitchen',
+        lengthCm: 300,
+        widthCm: 244,
+        sort: 1,
+      },
+    ],
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
     updatedAt: '2026-09-10T08:30:00.000Z',

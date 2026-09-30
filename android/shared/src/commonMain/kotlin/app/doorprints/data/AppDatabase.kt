@@ -23,6 +23,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.HouseRooms
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -36,6 +38,14 @@ class Converters {
     @TypeConverter
     fun jsonToChecklist(json: String): Map<String, Int> =
         if (json.isBlank()) emptyMap() else Json.decodeFromString(mapSerializer, json)
+
+    /** The rooms (slice 1c) as compact JSON in the format's key order; null for none, never `[]`. */
+    @TypeConverter
+    fun roomsToJson(rooms: List<HouseRoom>?): String? = HouseRooms.encode(rooms)
+
+    /** Coerced on the way out as well: text that does not decode (never written here) reads as no rooms, not a crash. */
+    @TypeConverter
+    fun jsonToRooms(json: String?): List<HouseRoom>? = HouseRooms.coerced(HouseRooms.decode(json))
 }
 
 @Dao
@@ -271,7 +281,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -357,8 +367,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v7 (docs/11 5.6, slice 1c, 2026-09-30): `houses.rooms`, the house's rooms as JSON text ([Converters]),
+         * nullable with no default as Room lists it in `7.json`. A house from before has none.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `rooms` TEXT")
+            }
+        }
+
         val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
     }
 }
 

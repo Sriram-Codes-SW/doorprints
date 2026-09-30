@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -48,6 +48,7 @@
 | 0.34 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 0 built** (the records foundations, [10](10-sprint-log.md) §13.18): the format rule, the server's `record` table and endpoints, the `records` table and store with their sync, the web's upgrade path. |
 | 0.35 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1a built** (the house's cost, carpet area and location source, [10](10-sprint-log.md) §13.19): slice 1 goes in three steps, 1a these values, 1b brokers, 1c rooms; 5.21 built. |
 | 0.36 | 2026-09-30 | Claude (Code), lead | 5.30 **slice 1b built** (brokers, [10](10-sprint-log.md) §13.20): the first record type and the first `doorprints-backup/2` list; 5.25 built. |
+| 0.37 | 2026-09-30 | Claude (Code), lead | 5.6 and 5.30 **slice 1c built** (rooms, [10](10-sprint-log.md) §13.21): rooms nested in the house, the length units, the `/2` rule now "a broker or a room". |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -281,6 +282,14 @@ sequenceDiagram
 `rooms[]` embedded in `HouseDto`: `{id, type (BEDROOM, HALL, KITCHEN, BATHROOM, BALCONY, POOJA, STUDY, UTILITY, STORE, OTHER), name (≤ 60), lengthCm, widthCm (0–5 000), condition 1–5 (null = not checked), notes (≤ 2 000), sort}`.
 Display in feet (default, India) or metres (preference `units.length`); area in sq ft or m². At most 30 rooms per house.
 House gets `areaSqft` (carpet area as the user writes it). Sizes are stored in centimetres so the unit choice never loses precision.
+
+**Built (2026-09-30, slice 1c of 5.30; [10](10-sprint-log.md) §13.21):** the fields as designed, `rooms` after `cost` on the house
+in all three stacks (Room 7, Flyway V9), at most 30, ordered by `sort`; the length unit (*Feet* or *Metres*) is a local
+setting, not synced and not in a backup; sizes show as feet and inches or metres with one decimal, and a room's area in sq ft
+or m². The form's **Rooms** section adds, edits and deletes rooms (no reordering yet, S4b-BL-87), Compare shows the count and
+the total area, the copies gain a `rooms` column, `rooms.csv`, a Rooms sheet and a Rooms table on each house page, the AI
+documents carry names, sizes and condition (never a room's notes), and search covers room names and notes. The house's
+*floor*, which the duplicate-flat warning needs, is not a field yet (S4b-BL-85).
 
 ### 5.7 Photo tags
 
@@ -852,6 +861,10 @@ TypeScript, `houses.brokerId` (Room 6, Flyway V8), the repository's `ensureBroke
 once-only migration of contacts, the first `doorprints-backup/2` list (`brokers`, written only when the copy has one), the
 server mapping the list to its `record` table, a `broker` column and `brokers.csv` in the copies, search over the broker's
 name, agency and fee terms, and the *Brokers* screen on both apps. Brokers are never sent to AI.
+
+**Built, slice 1c (2026-09-30, [10](10-sprint-log.md) §13.21).** Rooms nested in the house: `rooms` after `cost`, Room 7, Flyway V9, the length-unit
+setting, a writer that now writes `/2` when a copy holds a broker or a room, the copies, the AI line, search and the form's Rooms
+section on both apps.
 
 ## 6. User stories
 

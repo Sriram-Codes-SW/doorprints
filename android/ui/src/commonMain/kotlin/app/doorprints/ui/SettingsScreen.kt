@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
+import app.doorprints.shared.model.LengthUnit
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -697,6 +698,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers)
 
+        // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
+        HorizontalDivider()
+        LengthUnitSection(settings.lengthUnit) { unit -> scope.launch { repo.settings.saveLengthUnit(unit) } }
+
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_privacy))
         // iOS has the map (CMP-8c) but no street-name lookup and no photos taken yet (they come in one later step), so
@@ -854,4 +859,21 @@ internal val VisibilityOffIcon: ImageVector by lazy {
             ),
             fill = SolidColor(Color.Black),
         ).build()
+}
+
+/** *Length units*: Feet or Metres, a single choice of two short labels (the house form's Rent / Buy row). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LengthUnitSection(unit: LengthUnit, onChange: (LengthUnit) -> Unit) {
+    SectionHeading(stringResource(Res.string.settings_length_units))
+    Text(stringResource(Res.string.settings_length_hint), style = MaterialTheme.typography.bodySmall)
+    val labels = listOf(LengthUnit.FT to Res.string.settings_length_feet, LengthUnit.M to Res.string.settings_length_metres)
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        labels.forEachIndexed { i, (value, label) ->
+            SegmentedButton(
+                selected = unit == value, onClick = { if (unit != value) onChange(value) },
+                shape = SegmentedButtonDefaults.itemShape(i, labels.size),
+            ) { Text(stringResource(label)) }
+        }
+    }
 }

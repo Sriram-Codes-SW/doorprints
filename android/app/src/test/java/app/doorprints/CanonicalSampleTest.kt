@@ -77,6 +77,9 @@ class CanonicalSampleTest {
         // Slice 1b: houses 1 and 3 name a broker of the file, and the sample is a `/2` document.
         assertEquals("doorprints-backup/2", data.format)
         assertEquals(listOf("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", null, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), data.houses.map { it.brokerId })
+        // Slice 1c: house 1 has two rooms, in the order shown, with every key the format has on the first.
+        assertEquals(listOf(listOf("Master bedroom", "Kitchen"), null, null), data.houses.map { h -> h.rooms?.map { it.name } })
+        assertEquals(listOf(396, 366, 4, 0), data.houses.first().rooms!!.first().let { listOf(it.lengthCm, it.widthCm, it.condition, it.sort) })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }

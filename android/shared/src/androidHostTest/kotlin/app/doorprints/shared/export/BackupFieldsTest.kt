@@ -70,12 +70,23 @@ class BackupFieldsTest {
             sample.getValue("brokers").jsonArray.map { it.jsonObject.keys.toList() }.maxBy { it.size },
         )
 
+    /** The room with the most keys (slice 1c): the first house's master bedroom carries every one. */
+    @Test
+    fun theSampleRoomWithEveryKeyHasExactlyTheModelsFields() =
+        assertEquals(
+            app.doorprints.shared.model.HouseRoom.serializer().descriptor.elementNames.toList(),
+            sample.getValue("houses").jsonArray.flatMap { h -> h.jsonObject["rooms"]?.jsonArray.orEmpty() }
+                .map { it.jsonObject.keys.toList() }.maxBy { it.size },
+        )
+
     /** The sample is the golden of a `/2` copy: its `brokers` list is what makes the format `/2` (README 1.1). */
     @Test
     fun theSampleIsTheFormatTheReadersAcceptAndTheOneAWriterPicks() {
         val format = sample.getValue("format").toString().trim('"')
         assertTrue(BackupFormat.accepts(format))
-        assertEquals(BackupFormat.idFor(sample.getValue("brokers").jsonArray.size), format)
+        val rooms = sample.getValue("houses").jsonArray.sumOf { h -> h.jsonObject["rooms"]?.jsonArray?.size ?: 0 }
+        assertEquals(BackupFormat.idFor(sample.getValue("brokers").jsonArray.size, rooms), format)
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, rooms))
         assertEquals("doorprints-backup/2", format)
     }
 }

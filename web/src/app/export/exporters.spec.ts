@@ -166,7 +166,7 @@ describe('CSV export', () => {
   it('matches the golden brokers.csv, which only a copy with brokers has', () => {
     expect(tables['brokers.csv']).toBe(GOLDEN_BROKERS_CSV);
     const none = buildCsvTables(collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }));
-    expect(Object.keys(none).sort()).toEqual(['houses.csv', 'photos.csv', 'scores.csv', 'visits.csv']);
+    expect(Object.keys(none).sort()).toEqual(['houses.csv', 'photos.csv', 'rooms.csv', 'scores.csv', 'visits.csv']);
     expect(Object.keys(buildCsvTables(fixtureBundle({ includeContacts: false })))).not.toContain('brokers.csv');
   });
 
@@ -327,7 +327,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(2928);
+    expect(new TextEncoder().encode(json).length).toBe(3232);
   });
 
   /**
@@ -361,26 +361,28 @@ describe('JSON backup', () => {
     expect(json).not.toContain('"deleted"');
   });
 
-  /** The rule of docs/schemas README 1.1: `/2` only when the copy holds a list `/1` has no room for. */
-  it('writes /1 with no brokers key when the copy has no broker, and /2 with the list when it has', () => {
-    const plain1 = buildBackupData(
+  /** The rule of docs/schemas README 1.1: `/2` when the copy holds brokers or rooms. */
+  it('writes /2 with rooms and no brokers, and /2 with the list when it has brokers', () => {
+    const plain2Rooms = buildBackupData(
       collect({ houses: FIXTURE_HOUSES, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS }),
     );
-    expect(plain1.format).toBe(BACKUP_FORMAT);
-    expect(Object.keys(plain1)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos']);
+    expect(plain2Rooms.format).toBe(BACKUP_FORMAT_V2);
+    expect(Object.keys(plain2Rooms)).toEqual(['format', 'exportedAt', 'houses', 'visits', 'photos']);
     const withBrokers = buildBackupData(fixtureBundle());
     expect(withBrokers.format).toBe(BACKUP_FORMAT_V2);
     expect(withBrokers.brokers?.map((b) => b.id.slice(0, 2))).toEqual(['bb', 'aa']);
     expect(Object.keys(withBrokers.brokers?.[1] ?? {})).toEqual(['id', 'name', 'phone', 'agency', 'feeTerms', 'notes', 'rating', 'updatedAt']);
   });
 
-  it('leaves the brokers and every brokerId out of a copy without contact details, and writes /1', () => {
+  it('leaves the brokers and every brokerId out of a copy without contact details, but keeps rooms and writes /2', () => {
     const data = buildBackupData(fixtureBundle({ includeContacts: false }));
-    expect(data.format).toBe(BACKUP_FORMAT);
+    expect(data.format).toBe(BACKUP_FORMAT_V2);
     expect(data.brokers).toBeUndefined();
     const json = backupJson(data);
     expect(json).not.toContain('brokerId');
     expect(json).not.toContain('"brokers"');
+    // Rooms are kept even without contacts
+    expect(json).toContain('"rooms"');
   });
 
   it('counts the brokers in the manifest of a /2 copy only', () => {
@@ -419,7 +421,7 @@ describe('shared ExportRows contract', () => {
   it('uses one column list for the CSV and the workbook', () => {
     const tables = exportTables(fixtureBundle());
     const sheets = buildWorkbook(fixtureBundle());
-    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers']);
+    expect(sheets.map((s) => s.name)).toEqual(['houses', 'scores', 'visits', 'photos', 'brokers', 'rooms']);
     sheets.forEach((sheet, i) => {
       expect(sheet.header).toEqual(tables[i].columns);
       expect(sheet.rows).toHaveLength(tables[i].rows.length);

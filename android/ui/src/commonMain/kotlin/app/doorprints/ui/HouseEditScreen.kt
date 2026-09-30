@@ -88,6 +88,8 @@ import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.CalendarDate
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
@@ -158,6 +160,8 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 it.cost?.availableFrom, it.cost?.myOffer, it.cost?.agreedPrice,
                 // Slice 1b: the broker's record id.
                 it.brokerId,
+                // Slice 1c: the rooms, as the JSON text Room keeps them in (null for none).
+                HouseRooms.encode(it.rooms),
             )
         }
     },
@@ -200,6 +204,8 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         ).orNull(),
         // Absent in a draft saved by the version before slice 1b: no broker.
         brokerId = v.getOrNull(34) as String?,
+        // Absent before slice 1c: no rooms.
+        rooms = HouseRooms.decode(v.getOrNull(35) as String?),
     )
 }.getOrNull()
 
@@ -427,6 +433,8 @@ fun HouseEditScreen(
     val photos by photosFlow.collectAsStateWithLifecycle(emptyList())
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
+    // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
+    val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -891,6 +899,9 @@ fun HouseEditScreen(
                 // The real cost of the house (docs/11 5.21, slice 1a): the fields, then what they add up to.
                 SectionHeading(stringResource(Res.string.house_cost))
                 CostSection(d, ::update)
+
+                // The rooms with their sizes and condition (docs/11 5.6, slice 1c), after the cost.
+                RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
 
                 OutlinedTextField(d.address ?: "", { v -> update { it.copy(address = v) } },
                     label = { Text(stringResource(Res.string.house_address)) },
@@ -1408,7 +1419,7 @@ fun HouseEditScreen(
  * [secondFixedWidth] the second field is 100 dp wide beside the first (BHK).
  */
 @Composable
-private fun PairOrStack(
+internal fun PairOrStack(
     first: @Composable (Modifier) -> Unit,
     second: @Composable (Modifier) -> Unit,
     secondFixedWidth: Boolean = false,

@@ -203,6 +203,48 @@ class BackupMapperTest {
         });
     }
 
+    private static String roomsJson() {
+        return "[{\"id\":\"c2\",\"type\":\"KITCHEN\",\"name\":\"Kitchen\",\"lengthCm\":300,\"widthCm\":244,\"sort\":1},"
+                + "{\"id\":\"c1\",\"type\":\"BEDROOM\",\"name\":\"Master bedroom\",\"lengthCm\":396,\"widthCm\":366,"
+                + "\"condition\":4,\"notes\":\"Damp\",\"sort\":0}]";
+    }
+
+    /** Slice 1c: rooms alone make the copy /2, are written after cost and before brokerId, and only when there are some. */
+    @Test
+    void roomsMakeItVersionTwoAndAreWrittenOnlyWhenThereAreSome() {
+        var withRooms = house(FIRST, EXPORTED_AT, false);
+        withRooms.setRooms(roomsJson());
+        withRooms.setCost("{\"deposit\":64000}");
+        withRooms.setBrokerId("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        var withEmpty = house(SECOND, EXPORTED_AT.plusSeconds(1), false);
+        withEmpty.setRooms("[]");
+        var none = BackupMapper.toBackup(List.of(withEmpty), List.of(), List.of(), EXPORTED_AT);
+        assertThat(none.format()).as("an empty list is no rooms").isEqualTo("doorprints-backup/1");
+        assertThat(none.houses().getFirst().rooms()).isNull();
+        assertThat(JSON.writeValueAsString(none)).doesNotContain("rooms");
+
+        var data = BackupMapper.toBackup(List.of(withRooms, withEmpty), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        assertThat(data.brokers()).isEmpty();
+        assertThat(data.houses().getFirst().rooms()).extracting(r -> r.id()).containsExactly("c2", "c1");
+        assertThat(data.houses().get(1).rooms()).isNull();
+        var written = JSON.readTree(JSON.writeValueAsString(data.houses().getFirst()));
+        assertThat(new ArrayList<String>(written.propertyNames())).containsSubsequence("cost", "rooms", "brokerId", "checklist");
+        assertThat(new ArrayList<String>(written.get("rooms").get(1).propertyNames()))
+                .containsExactly("id", "type", "name", "lengthCm", "widthCm", "condition", "notes", "sort");
+        assertThat(new ArrayList<String>(written.get("rooms").get(0).propertyNames()))
+                .containsExactly("id", "type", "name", "lengthCm", "widthCm", "sort");
+    }
+
+    /** A tombstone's rooms are never exported, and do not make the copy /2. */
+    @Test
+    void aDeletedHousesRoomsAreNotExported() {
+        var gone = house(FIRST, EXPORTED_AT, true);
+        gone.setRooms(roomsJson());
+        assertThat(BackupMapper.toBackup(List.of(gone), List.of(), List.of(), EXPORTED_AT).format())
+                .isEqualTo("doorprints-backup/1");
+    }
+
     @Test
     void aHouseKeepsItsBrokerIdEvenWhenNoSuchBrokerExists() {
         var withBroker = house(FIRST, EXPORTED_AT, false);

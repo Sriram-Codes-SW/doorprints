@@ -22,6 +22,7 @@ import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.VisitDto
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRules
@@ -46,6 +47,10 @@ class MappersTest {
         areaSqft = 1150, locationSource = "GPS",
         cost = HouseCost(deposit = 64_000, depositMonths = 2, maintenance = 2_500, maintenanceIncluded = false, brokerage = 16_000,
             brokerageMonths = 1, lockInMonths = 11, noticeMonths = 3, availableFrom = "2026-10-15", myOffer = 30_000, agreedPrice = 31_000),
+        rooms = listOf(
+            HouseRoom("r1", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch", 0),
+            HouseRoom("r2", "KITCHEN", lengthCm = 300, widthCm = 244, sort = 1),
+        ),
         createdAt = 1_790_072_130_000, updatedAt = 1_790_072_130_120, deleted = false, dirty = true,
     )
 
@@ -73,6 +78,31 @@ class MappersTest {
         assertEquals("https://example.com/l/1", dto.listingUrl); assertEquals("Water 24x7", dto.notes)
         assertEquals(mapOf("water" to 5, "noise" to 2), dto.checklist); assertFalse(dto.deleted)
         assertEquals(1150, dto.areaSqft); assertEquals("GPS", dto.locationSource); assertEquals(house.cost, dto.cost)
+        assertEquals(house.rooms, dto.rooms); assertEquals(house.rooms, house.toExport().rooms)
+    }
+
+    @Test
+    fun pulledAndImportedRoomsAreCoercedAndNoneIsNeverAnEmptyList() {
+        // Slice 1c: an unknown type is OTHER, a size out of range unknown, a duplicate id dropped; [] reads as none.
+        val odd = listOf(HouseRoom("r1", "GARAGE", lengthCm = 9_999, condition = 7), HouseRoom("r1", "HALL", sort = 1))
+        val expected = listOf(HouseRoom("r1", "OTHER"))
+        assertEquals(expected, house.toDto().copy(rooms = odd).toEntity().rooms)
+        assertEquals(expected, house.toExport().copy(rooms = odd).toEntity().rooms)
+        assertNull(house.toDto().copy(rooms = emptyList()).toEntity().rooms)
+        assertNull(house.copy(rooms = emptyList()).toDto().rooms)
+        assertNull(house.copy(rooms = emptyList()).toExport().rooms)
+        // Room's column: JSON text in the format's key order, and back.
+        val converters = Converters()
+        val text = converters.roomsToJson(house.rooms)
+        assertEquals(
+            "[{\"id\":\"r1\",\"type\":\"BEDROOM\",\"name\":\"Master bedroom\",\"lengthCm\":396,\"widthCm\":366," +
+                "\"condition\":4,\"notes\":\"Damp patch\",\"sort\":0},{\"id\":\"r2\",\"type\":\"KITCHEN\",\"lengthCm\":300," +
+                "\"widthCm\":244,\"sort\":1}]",
+            text,
+        )
+        assertEquals(house.rooms, converters.jsonToRooms(text))
+        assertNull(converters.roomsToJson(emptyList()))
+        assertNull(converters.jsonToRooms("not json"))
     }
 
     @Test

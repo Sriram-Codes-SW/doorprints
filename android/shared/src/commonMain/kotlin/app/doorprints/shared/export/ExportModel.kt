@@ -20,6 +20,8 @@ package app.doorprints.shared.export
 
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseScore
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Required
@@ -82,6 +84,11 @@ data class ExportHouse(
      * empty object in a file reads as no cost, and a field out of range as unknown (`ExportHouse.toEntity`).
      */
     val cost: HouseCost? = null,
+    /**
+     * The rooms (slice 1c, format `/2`), in the order shown; absent for none, never `[]` (an empty list read is none).
+     * Kept in a copy made without contact details: a room is not a contact.
+     */
+    val rooms: List<HouseRoom>? = null,
     /** The broker's record id (slice 1b, format `/2`); absent for a house without one and in a copy made without contacts. */
     val brokerId: String? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */
@@ -204,6 +211,11 @@ data class ExportOptions(
     val since: Long? = null,
     /** Who the update is for (a name the person typed), written into the manifest; null for a copy. */
     val sharedTo: String? = null,
+    /**
+     * The unit the rooms' sizes are written in (slice 1c): the length setting of the device that makes the copy
+     * (`units.length`), not an export option and not in the manifest. Ignored by a backup's `data.json` (centimetres).
+     */
+    val lengthUnit: LengthUnit = LengthUnit.FT,
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
@@ -243,6 +255,9 @@ data class ExportBundle(
 
     /** The broker a house names, if it is in this copy (a dangling id reads as none). */
     fun brokerOf(house: ExportHouse): ExportBroker? = house.brokerId?.let { brokersById[it] }
+
+    /** True when a house of the copy has a room (slice 1c): the copy then has `rooms.csv`, a Rooms sheet and is `/2`. */
+    val hasRooms: Boolean get() = houses.any { !it.rooms.isNullOrEmpty() }
 
     /** The houses of the copy that name [broker], in the copy's order. */
     fun housesOf(broker: ExportBroker): List<ExportHouse> = housesByBroker[broker.id].orEmpty()

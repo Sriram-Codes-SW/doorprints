@@ -749,4 +749,44 @@
         <item quantity="one">%1$d मकान</item>
         <item quantity="other">%1$d मकान</item>
     </plurals>
+    <!-- Slice 1c, rooms (2026-09-30). Under review. -->
+    <string name="house_rooms">कमरे</string>
+    <string name="house_room_add">कमरा जोड़ें</string>
+    <string name="house_rooms_max">ज़्यादा से ज़्यादा %1$d कमरे</string>
+    <string name="house_rooms_empty">अभी कोई कमरा नहीं। हर कमरे का माप और हालत लिखने के लिए उसे जोड़ें।</string>
+    <string name="house_room_type">प्रकार</string>
+    <string name="house_room_name">नाम</string>
+    <string name="house_room_length_feet">लंबाई (फ़ुट)</string>
+    <string name="house_room_length_inches">लंबाई (इंच)</string>
+    <string name="house_room_width_feet">चौड़ाई (फ़ुट)</string>
+    <string name="house_room_width_inches">चौड़ाई (इंच)</string>
+    <string name="house_room_length_metres">लंबाई (मीटर)</string>
+    <string name="house_room_width_metres">चौड़ाई (मीटर)</string>
+    <string name="house_room_size_invalid">50 मीटर (164 फ़ुट) तक का माप लिखें</string>
+    <string name="house_room_condition">हालत</string>
+    <string name="house_room_condition_none">जाँचा नहीं</string>
+    <string name="house_room_condition_value">5 में से %1$d</string>
+    <string name="house_room_notes">नोट</string>
+    <string name="house_room_delete">कमरा हटाएँ</string>
+    <string name="house_room_area">क्षेत्रफल %1$s</string>
+    <string name="house_rooms_total">कुल क्षेत्रफल %1$s</string>
+    <string name="room_type_BEDROOM">बेडरूम</string>
+    <string name="room_type_HALL">हॉल</string>
+    <string name="room_type_KITCHEN">रसोई</string>
+    <string name="room_type_BATHROOM">बाथरूम</string>
+    <string name="room_type_BALCONY">बालकनी</string>
+    <string name="room_type_POOJA">पूजा घर</string>
+    <string name="room_type_STUDY">पढ़ाई का कमरा</string>
+    <string name="room_type_UTILITY">यूटिलिटी</string>
+    <string name="room_type_STORE">स्टोर रूम</string>
+    <string name="room_type_OTHER">अन्य</string>
+    <string name="settings_length_units">लंबाई की इकाई</string>
+    <string name="settings_length_hint">कमरों के माप कैसे दिखें और लिखे जाएँ। केवल इस फ़ोन पर रहता है।</string>
+    <string name="settings_length_feet">फ़ुट</string>
+    <string name="settings_length_metres">मीटर</string>
+    <string name="compare_rooms">कमरे</string>
+    <plurals name="compare_rooms_count">
+        <item quantity="one">%1$d कमरा</item>
+        <item quantity="other">%1$d कमरे</item>
+    </plurals>
 </resources>

@@ -22,6 +22,7 @@ import type { UpgradeDb, UpgradeStore, UpgradeTx } from './local-db';
 import {
   MAX_RECORD_PAYLOAD_BYTES,
   cleanCost,
+  cleanRooms,
   houseFromDto,
   isRecordId,
   isoNow,
@@ -271,6 +272,43 @@ describe('records', () => {
     expect(houseFromDto({ ...wire, cost: 'lots' as unknown as HouseDto['cost'] }).cost).toBeNull();
     expect(cleanCost({ availableFrom: '2026-10-15' })).toEqual({ availableFrom: '2026-10-15' });
     expect(cleanCost({ availableFrom: '15/10/2026' })).toBeNull();
+  });
+
+  it('coerces rooms: caps at 30, converts unknown type to OTHER, drops duplicates (keeping first), and sorts by sort then id', () => {
+    const base = [
+      { id: 'r1', type: 'BEDROOM', name: 'Master', lengthCm: 300, widthCm: 300, condition: 4, sort: 1 },
+      { id: 'r1', type: 'KITCHEN', name: 'Kitchen', lengthCm: 200, widthCm: 200, condition: 3, sort: 0 }, // duplicate id, should be dropped
+      { id: 'r2', type: 'UNKNOWN' as never, name: 'Unknown room', lengthCm: 100, widthCm: 100, condition: 2, sort: 2 }, // unknown type → OTHER
+      { id: 'r3', type: 'HALL', name: 'Hall', lengthCm: null, widthCm: null, condition: null, sort: 0 }, // null dimensions/condition
+    ];
+    const result = cleanRooms(base as never);
+    expect(result).not.toBeNull();
+    expect(result!).toHaveLength(3);
+    expect(result![0].id).toBe('r3'); // sort 0, id r3
+    expect(result![0].type).toBe('HALL');
+    expect(result![1].id).toBe('r1'); // sort 1, id r1
+    expect(result![1].type).toBe('BEDROOM');
+    expect(result![1].name).toBe('Master');
+    expect(result![2].id).toBe('r2'); // sort 2, id r2
+    expect(result![2].type).toBe('OTHER'); // unknown → OTHER
+  });
+
+  it('keeps the first 30 by sort, not by position', () => {
+    const reversed = Array.from({ length: 32 }, (_, i) => ({ id: 'r' + String(i).padStart(2, '0'), type: 'OTHER', sort: 31 - i }));
+    const result = cleanRooms(reversed as never)!;
+    expect(result).toHaveLength(30);
+    expect(result.map((r) => r.sort)).toEqual(Array.from({ length: 30 }, (_, i) => i));
+  });
+
+  it('stores a blank room name as absent, never as an empty string', () => {
+    const [room] = cleanRooms([{ id: 'r1', type: 'HALL', name: '   ', sort: 0 }] as never)!;
+    expect('name' in room).toBe(false);
+  });
+
+  it('returns null when rooms is empty, null, or all entries are dropped', () => {
+    expect(cleanRooms([])).toBeNull();
+    expect(cleanRooms(null as never)).toBeNull();
+    expect(cleanRooms([{ id: 'r1', type: 'BEDROOM', sort: 0 }, { id: 'r1', type: 'KITCHEN', sort: 1 }])).toHaveLength(1);
   });
 
   it('sorts checklist keys, so the same scores always serialise the same way', () => {

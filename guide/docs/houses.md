@@ -56,6 +56,8 @@ Open a house from the list or the map. There you can:
 - see or change the house's **Broker**: the person who showed it. Saving a house with a phone number adds that person to
   **Settings > Brokers**, where each broker has an agency, fee terms, notes, a rating, a **Call** button and a list of the
   houses they showed you;
+- add up to 30 **Rooms**: for each, its type, name, length and width, a condition from one to five stars and a note. Doorprints
+  shows each room's area and the total; switch between feet and metres with **Length units** in **Settings**;
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;

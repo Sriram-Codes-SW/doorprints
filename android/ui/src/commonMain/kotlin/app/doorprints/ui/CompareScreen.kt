@@ -54,8 +54,12 @@ import app.doorprints.data.HouseVisitCount
 import app.doorprints.shared.model.Broker
 import app.doorprints.ui.res.*
 import app.doorprints.shared.model.CostSummary
+import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.LengthUnit
+import app.doorprints.shared.model.RoomSizes
 import kotlin.math.roundToLong
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** The most houses the table compares. */
@@ -113,6 +117,8 @@ fun CompareScreen(
     onOpenMap: () -> Unit = {},
     /** The brokers by id (slice 1b): the Contact row names a linked house's broker and agency. */
     brokers: Map<String, Broker> = emptyMap(),
+    /** This phone's length setting (slice 1c): the unit of the Rooms row's total area. */
+    lengthUnit: LengthUnit = LengthUnit.FT,
 ) {
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
@@ -167,6 +173,7 @@ fun CompareScreen(
                 onPickerOpen = { pickerOpen = it },
                 visits = visits,
                 brokers = brokers,
+                lengthUnit = lengthUnit,
                 nameOf = ::nameOf,
                 onOpenHouse = onOpenHouse,
             )
@@ -185,6 +192,7 @@ private fun ComparePicker(
     onPickerOpen: (Boolean) -> Unit,
     visits: Map<String, Int>,
     brokers: Map<String, Broker>,
+    lengthUnit: LengthUnit,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -195,7 +203,7 @@ private fun ComparePicker(
         if (chosen.size < 2) {
             Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
         } else {
-            CompareTable(chosen, visits, brokers, nameOf, onOpenHouse)
+            CompareTable(chosen, visits, brokers, lengthUnit, nameOf, onOpenHouse)
             Text(stringResource(Res.string.compare_footnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
@@ -261,6 +269,7 @@ private fun CompareTable(
     chosen: List<HouseEntity>,
     visits: Map<String, Int>,
     brokers: Map<String, Broker>,
+    lengthUnit: LengthUnit,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -276,6 +285,16 @@ private fun CompareTable(
     val sqftFormat = stringResource(Res.string.common_sqft)
     // The house's own values (docs/11 5.21, slice 1a) line up under the price: what it costs, then the size.
     val summaries = chosen.associate { h -> h.id to CostSummary.of(h.price, h.priceType, h.areaSqft, h.cost) }
+    // The rooms (slice 1c): "3 rooms · 235 sq ft", the total when a room has both sizes; not set without rooms.
+    val roomTexts = chosen.associate { h ->
+        h.id to key(h.id) {
+            h.rooms?.takeIf { it.isNotEmpty() }?.let { rooms ->
+                val (total, sized) = HouseRooms.totalAreaSqCm(rooms)
+                val count = pluralStringResource(Res.plurals.compare_rooms_count, rooms.size, rooms.size)
+                if (sized > 0) "$count · ${RoomSizes.areaText(total, lengthUnit)}" else count
+            }
+        }
+    }
     val rows = buildList {
         add(CompareRow(scoreRow, notScored, { h -> h.score?.let { Formats.score(it) } }))
         add(CompareRow(stringResource(Res.string.compare_price), notSet, { h -> prices[h.id] }))
@@ -285,6 +304,7 @@ private fun CompareTable(
         add(CompareRow(stringResource(Res.string.compare_per_sqft), notSet, { h -> summaries[h.id]?.perSqFt?.let { Formats.rupees(it.roundToLong()) } }))
         add(CompareRow(stringResource(Res.string.compare_bhk), notSet, { h -> h.bedrooms?.let { formatPositional(bhkFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_area), notSet, { h -> h.areaSqft?.let { formatPositional(sqftFormat, it) } }))
+        add(CompareRow(stringResource(Res.string.compare_rooms), notSet, { h -> roomTexts[h.id] }))
         add(CompareRow(stringResource(Res.string.compare_available_from), notSet, { h -> h.cost?.availableFrom }))
         add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))

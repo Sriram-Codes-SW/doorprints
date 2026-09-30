@@ -404,6 +404,24 @@
     </div>
   </section>
 
+  <section class="card" aria-labelledby="units-heading">
+    <h2 id="units-heading">{{ 'units.heading' | t }}</h2>
+    <p class="muted">{{ 'units.body' | t }}</p>
+    <fieldset>
+      <legend class="sr-only">{{ 'units.heading' | t }}</legend>
+      <div class="formats">
+        <label class="format" [class.chosen]="lengthUnit() === 'FT'">
+          <input type="radio" name="lengthUnit" value="FT" [checked]="lengthUnit() === 'FT'" (change)="setLengthUnit('FT')" />
+          <span><strong>{{ 'units.feet' | t }}</strong></span>
+        </label>
+        <label class="format" [class.chosen]="lengthUnit() === 'M'">
+          <input type="radio" name="lengthUnit" value="M" [checked]="lengthUnit() === 'M'" (change)="setLengthUnit('M')" />
+          <span><strong>{{ 'units.metres' | t }}</strong></span>
+        </label>
+      </div>
+    </fieldset>
+  </section>
+
   <section class="card danger" aria-labelledby="clear-heading">
     <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
     <p class="muted">{{ 'data.clearBody' | t }}</p>

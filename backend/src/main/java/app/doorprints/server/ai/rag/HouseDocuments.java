@@ -21,15 +21,18 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.visit.VisitDto;
 import org.springframework.ai.document.Document;
 
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.TreeMap;
 
 /**
@@ -70,6 +73,7 @@ public final class HouseDocuments {
         if (h.bedrooms() != null) line(sb, "Size", h.bedrooms() == 0 ? "studio / 1RK" : h.bedrooms() + " BHK");
         if (h.areaSqft() != null) line(sb, "Carpet area", h.areaSqft() + " sq ft");
         costLines(sb, h.cost());
+        line(sb, "Rooms", rooms(h.rooms(), r));
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -124,6 +128,42 @@ public final class HouseDocuments {
         if (c.noticeMonths() != null) line(sb, "Notice", months(c.noticeMonths()));
         line(sb, "Available from", c.availableFrom());
         if (c.agreedPrice() != null) line(sb, "Agreed price", "Rs " + c.agreedPrice());
+    }
+
+    /**
+     * The rooms of slice 1c, the same words as the on-device {@code AiHouse} and the web {@code houseText}:
+     * {@code Master bedroom 13 ft 0 in x 12 ft 0 in (condition 4/5); Kitchen 9 ft 10 in x 8 ft 0 in}, in the order
+     * shown (sort, then id), always feet and inches. Names (redacted like the label), sizes and condition only: the
+     * room notes may hold a contact name or number and are never sent (docs/11 section 5.30 item 5).
+     */
+    static String rooms(List<HouseRoom> rooms, ContactRedactor.Redactor r) {
+        if (rooms == null || rooms.isEmpty()) return null;
+        var parts = new java.util.ArrayList<String>();
+        rooms.stream().filter(java.util.Objects::nonNull)
+                .sorted(Comparator.comparing((HouseRoom x) -> x.sort() == null ? 0 : x.sort())
+                        .thenComparing(x -> x.id() == null ? "" : x.id()))
+                .forEach(x -> {
+                    var name = x.name() == null || x.name().isBlank() ? typeName(x.type()) : r.freeText(x.name().strip());
+                    var sb = new StringBuilder(name);
+                    if (x.lengthCm() != null && x.widthCm() != null) {
+                        sb.append(' ').append(feetInches(x.lengthCm())).append(" x ").append(feetInches(x.widthCm()));
+                    }
+                    if (x.condition() != null) sb.append(" (condition ").append(x.condition()).append("/5)");
+                    parts.add(sb.toString());
+                });
+        return String.join("; ", parts);
+    }
+
+    /** {@code BEDROOM} as {@code Bedroom}. */
+    private static String typeName(String type) {
+        if (type == null || type.isEmpty()) return "Room";
+        return type.charAt(0) + type.substring(1).toLowerCase(Locale.ROOT);
+    }
+
+    /** Whole centimetres as {@code 13 ft 0 in}: the nearest inch, then feet and the inches left. */
+    static String feetInches(int cm) {
+        int inches = (int) Math.round(cm / 2.54);
+        return inches / 12 + " ft " + inches % 12 + " in";
     }
 
     private static String rupeesOrMonths(Long rupees, Integer months) {

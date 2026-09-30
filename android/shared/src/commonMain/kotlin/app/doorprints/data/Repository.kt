@@ -29,6 +29,7 @@ import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
 import kotlinx.coroutines.flow.Flow
@@ -218,6 +219,8 @@ interface Repository {
         val photos: List<PhotoEntity>,
         /** The live brokers (slice 1b); an export writes them only for a copy with contact details. */
         val brokers: List<ExportBroker> = emptyList(),
+        /** This device's length setting (slice 1c): the unit a copy writes the rooms' sizes in. */
+        val lengthUnit: LengthUnit = LengthUnit.FT,
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */

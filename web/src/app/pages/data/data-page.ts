@@ -40,6 +40,7 @@ import { ConfigService } from '../../core/config.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalStore } from '../../data/local-store.service';
+import type { LengthUnit } from '../../shared/room-sizes';
 import { StorageService } from '../../data/storage.service';
 import { SyncService } from '../../data/sync.service';
 import { ExportService, isAbortError } from '../../export/export.service';
@@ -139,6 +140,8 @@ export class DataPage implements OnInit, OnDestroy {
    * template event (a query-parameter stream, after a render), and in this zoneless app only a signal makes the
    * radios follow — otherwise the screen said "Web page" while Download built the backup ZIP.
    */
+  /** The *Length units* preference (slice 1c): local only, read from the store when the page opens. */
+  protected readonly lengthUnit = signal<LengthUnit>('FT');
   protected readonly format = signal<ExportFormat>('html');
   protected readonly options = signal<ExportOptions>({ ...DEFAULT_EXPORT_OPTIONS, lang: this.i18n.lang() });
 
@@ -276,6 +279,12 @@ export class DataPage implements OnInit, OnDestroy {
     if (event.relatedTarget) this.stopFocused = false;
   }
 
+  /** Feet or Metres: how the rooms' sizes are shown; the stored centimetres never change. */
+  protected async setLengthUnit(unit: LengthUnit): Promise<void> {
+    this.lengthUnit.set(unit);
+    await this.store.setLengthUnit(unit);
+  }
+
   async ngOnInit(): Promise<void> {
     // "Save a backup" from the storage-risk banner arrives as /data?export=backup: choose the restorable ZIP and
     // put focus on its button (once the saved options are read), so the next obvious tap makes a backup and not
@@ -290,6 +299,7 @@ export class DataPage implements OnInit, OnDestroy {
 
     this.canShareFiles.set(this.exporter.canShareFiles());
     await this.store.ready();
+    this.lengthUnit.set(await this.store.lengthUnit());
     await this.storage.refresh();
     const saved = await this.store.setting(SETTING_KEYS.exportOptions);
     if (saved) {

@@ -18,6 +18,10 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.RoomSizes
+
 /**
  * One house as labelled plain text for Ask: the server's `HouseDocuments.text` (docs/03 §13.1), with the same lines in
  * the same order. No contact line; every text field goes through [ContactRedactor] (label, checklist keys and notes
@@ -60,6 +64,7 @@ object HouseDocuments {
             line(sb, "Available from", c.availableFrom)
             line(sb, "Agreed price", c.agreedPrice?.let { "Rs $it" })
         }
+        line(sb, "Rooms", rooms(h.rooms, r))
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -72,6 +77,27 @@ object HouseDocuments {
             line(sb, "Notes", r.freeText(if (notes.length > NOTES_MAX) notes.take(NOTES_MAX) + " …" else notes))
         }
         return sb.toString().trim()
+    }
+
+    /**
+     * The rooms (slice 1c), the same words as the server's `HouseDocuments.rooms` and the web's `houseText`:
+     * `Master bedroom 13 ft 0 in x 12 ft 0 in (condition 4/5); Kitchen 9 ft 10 in x 8 ft 0 in`, in the order shown,
+     * always feet and inches. Names (redacted like the label; a blank one is the type's English name), sizes and
+     * condition only: a room's notes may hold a contact's name or number and never go to the provider.
+     */
+    internal fun rooms(rooms: List<HouseRoom>?, r: ContactRedactor.Redactor): String? {
+        if (rooms.isNullOrEmpty()) return null
+        return rooms.sortedWith(HouseRooms.ORDER).joinToString("; ") { room ->
+            val name = room.name?.trim()?.takeIf { it.isNotEmpty() }?.let { r.freeText(it) }
+                ?: room.type.lowercase().replaceFirstChar { it.uppercase() }.ifEmpty { "Room" }
+            buildString {
+                append(name)
+                if (room.lengthCm != null && room.widthCm != null) {
+                    append(' ').append(RoomSizes.feetInchesText(room.lengthCm)).append(" x ").append(RoomSizes.feetInchesText(room.widthCm))
+                }
+                if (room.condition != null) append(" (condition ").append(room.condition).append("/5)")
+            }
+        }
     }
 
     /** The label as Ask's citations show it: free text, redacted. */

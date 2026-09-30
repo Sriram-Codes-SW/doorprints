@@ -32,6 +32,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.create
+import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import kotlinx.coroutines.runBlocking
@@ -181,6 +182,49 @@ class AppDatabaseMigrationTest {
             assertEquals(emptyList<Any>(), opened.houses().liveForBroker("b1"))
         } finally {
             opened.close()
+        }
+    }
+
+    /**
+     * v7 (docs/11 5.6 slice 1c): the whole chain from version 1 ends in the committed `7.json`; a house from before has
+     * no rooms, and a house written through the DAO keeps its rooms as JSON text in `houses.rooms` and reads them back.
+     */
+    @Test
+    fun migrations1To7MatchTheExportedSchemaAndAHouseFromBeforeHasNoRooms() = runBlocking {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(7, AppDatabase.MIGRATIONS.toList())
+        try {
+            assertEquals(listOf("h1|"), db.rows("SELECT id, IFNULL(rooms, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.rooms)
+            val rooms = listOf(HouseRoom("r1", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch", 0))
+            opened.houses().upsert(house.copy(rooms = rooms))
+            assertEquals(rooms, opened.houses().get("h1")!!.rooms)
+        } finally {
+            opened.close()
+        }
+    }
+
+    /** `MIGRATION_6_7` alone: a version-6 house keeps its values and its broker, and has no rooms. */
+    @Test
+    fun migration6To7AddsTheRoomsColumnToAVersion6House() {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(6, AppDatabase.MIGRATIONS.toList().take(5)).use { v6 ->
+            v6.execSQL("UPDATE houses SET areaSqft = 1150, brokerId = 'b1', cost_deposit = 64000")
+        }
+        val db = helper.runMigrationsAndValidate(7, listOf(AppDatabase.MIGRATION_6_7))
+        try {
+            assertEquals(listOf("h1|1150|b1|64000|"), db.rows("SELECT id, areaSqft, brokerId, cost_deposit, IFNULL(rooms, '') FROM houses"))
+        } finally {
+            db.close()
         }
     }
 

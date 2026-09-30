@@ -158,6 +158,21 @@ object HtmlWriter {
             out.append("</dl>\n")
         }
 
+        // The rooms (slice 1c), after the cost and before the checklist; the total of their areas as a last row.
+        val rooms = ExportRows.roomRows(h, bundle)
+        if (rooms.isNotEmpty()) {
+            out.append("<h3>").append(esc(s["table.rooms"])).append("</h3>\n")
+            out.append("<table>\n<thead><tr>")
+            for (c in ExportRows.roomColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+            out.append("</tr></thead>\n<tbody>\n")
+            for (r in rooms) {
+                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                out.append("</tr>\n")
+            }
+            out.append("</tbody>\n</table>\n")
+        }
+
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")

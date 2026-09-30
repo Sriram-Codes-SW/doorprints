@@ -20,6 +20,7 @@ package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseCost;
+import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.photo.PhotoDto;
 import app.doorprints.server.record.Record;
 import app.doorprints.server.visit.Visit;
@@ -53,7 +54,7 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>rows whose house is not in the export (a visit unlinked by a house delete) come last, in the same order.
  *       The device writers walk visits through their house and so have nothing to put here.</li>
  *   <li>checklist keys alphabetically ({@link TreeMap});</li>
- *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when there is one.</li>
+ *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when there is one or a house has rooms.</li>
  * </ul>
  *
  * <p>Tombstones are never exported; callers pass live rows only.
@@ -92,10 +93,14 @@ final class BackupMapper {
         var brokers = brokerRecords.stream().filter(r -> !r.isDeleted()).map(r -> broker(r, json))
                 .filter(java.util.Objects::nonNull).sorted(BROKER_ORDER).toList();
 
+        var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
+        // The lowest number that holds the copy: /2 once there is a broker or a room, else /1.
+        var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null);
+
         return new BackupData(
-                brokers.isEmpty() ? BackupFormat.ID : BackupFormat.ID_WITH_BROKERS,
+                needsV2 ? BackupFormat.ID_WITH_BROKERS : BackupFormat.ID,
                 exportedAt.toEpochMilli(),
-                liveHouses.stream().map(BackupMapper::house).toList(),
+                backupHouses,
                 groupByHouse(liveVisits, Visit::getHouseId, VISIT_ORDER, houseOrder).stream()
                         .map(BackupMapper::visit).toList(),
                 groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
@@ -161,7 +166,7 @@ final class BackupMapper {
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), h.getBrokerId(),
+                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()), h.getBrokerId(),
                 sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 
