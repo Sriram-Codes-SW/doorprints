@@ -195,6 +195,18 @@ object PdfExporter {
             for (row in viewings) sheet.labelled(row[0], row.drop(1).joinToString(" · "), body, 2f)
         }
 
+        // The area notes that reach the house and its distances to my places (slice 4a): "note: where from", "place: km".
+        val notes = ExportRows.areaNoteRows(house, bundle)
+        if (notes.isNotEmpty()) {
+            sheet.section(s["section.areaNotes"], heading)
+            for ((text, source) in notes) sheet.labelled(source, text, body, 2f)
+        }
+        val distances = ExportRows.distanceRows(house, bundle)
+        if (distances.isNotEmpty()) {
+            sheet.section(s["section.distances"], heading)
+            for ((place, km) in distances) sheet.labelled(place, "$km ${s["col.km"]}", body, 2f)
+        }
+
         val keys = ExportRows.orderedChecklistKeys(house)
         if (keys.isNotEmpty()) {
             sheet.section(s["section.checklist"], heading)

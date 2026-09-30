@@ -433,6 +433,23 @@ object ExportRows {
         }
     }
 
+    /** The headings of a house page's **Area notes** table (slice 4a): the note, and where it comes from. */
+    fun areaNoteColumns(bundle: ExportBundle): List<String> = listOf(bundle.strings["col.notes"], bundle.strings["col.source"])
+
+    /**
+     * The rows of a house page's **Area notes** table (slice 4a): each note that reaches the house, newest first
+     * ([ExportBundle.areaNotesOf]), with its area's name or its street. Empty when none reaches it.
+     */
+    fun areaNoteRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> =
+        bundle.areaNotesOf(h).map { listOf(it.text, bundle.sourceOf(it)) }
+
+    /** The headings of a house page's **Distances** table (slice 4a): the place and the straight-line km. */
+    fun distanceColumns(bundle: ExportBundle): List<String> = listOf(bundle.strings["col.place"], bundle.strings["col.km"])
+
+    /** The rows of a house page's **Distances** table, nearest first, the km with one decimal; empty without a point. */
+    fun distanceRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> =
+        bundle.distancesOf(h).map { listOf(it.place.name, it.km) }
+
     fun photos(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
         val columns = listOf(s["col.house"], s["col.fileName"], s["col.createdAt"], s["col.houseId"], s["col.id"])
