@@ -55,6 +55,22 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
 
     override fun canPostNotifications(): Boolean = canPostNotifications(app)
 
+    override fun canScheduleExactAlarms(): Boolean =
+        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S ||
+            app.getSystemService(android.app.AlarmManager::class.java)?.canScheduleExactAlarms() != false
+
+    /** The app's own *Alarms & reminders* page (`ACTION_REQUEST_SCHEDULE_EXACT_ALARM`, Android 12+). */
+    override fun openExactAlarmSettings() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return
+        try {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + app.packageName)),
+            )
+        } catch (_: ActivityNotFoundException) {
+            openAppSettings(context)
+        }
+    }
+
     /** From the activity, as the house form did before CMP-6. */
     override fun dial(number: String) {
         context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))

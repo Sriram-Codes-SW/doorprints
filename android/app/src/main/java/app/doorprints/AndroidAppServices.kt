@@ -119,6 +119,11 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
 
     override val offlineMaps: OfflineMapsServices = AndroidOfflineMaps(app)
 
+    /** Resume: an exact-alarm grant, a time change or an edit elsewhere is picked up (docs/11 5.16). */
+    override fun rescheduleReminders() {
+        app.appScope.launch { runCatching { app.container.reminders.rescheduleAll() } }
+    }
+
     override fun consumeLanguageChange(): LanguageChange? =
         AppLocale.consumeChange(app)?.let { LanguageChange(it.language) }
 }

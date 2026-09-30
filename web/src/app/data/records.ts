@@ -105,6 +105,8 @@ export const SETTING_KEYS = {
   lengthUnit: 'units.length',
   /** Set once the question bank has been seeded on this install, so a question the person deleted stays deleted (slice 3a; not synced). */
   questionsSeeded: 'questions.seeded',
+  /** Remind me about viewings (slice 3b-2; default on, stored as '0' when off; local only, not synced). */
+  viewingsRemind: 'viewings.remind',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */

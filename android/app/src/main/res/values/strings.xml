@@ -111,4 +111,15 @@
         <item quantity="other">Brought back %1$d houses.</item>
     </plurals>
     <string name="price_per_month">%1$s/month</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30). -->
+    <string name="notif_channel_viewings">Viewing reminders</string>
+    <string name="notif_channel_viewings_desc">Before a viewing you have planned</string>
+    <string name="notif_viewing_soon">Viewing at %1$s in %2$d min</string>
+    <string name="notif_viewing_title">Viewing at %1$s</string>
+    <string name="notif_viewing_text">Starts %1$s</string>
+    <string name="notif_viewing_public">Doorprints reminder</string>
+    <string name="notif_viewing_open">Open house</string>
+    <string name="notif_viewing_directions">Directions</string>
+    <string name="notif_viewing_questions">Questions</string>
+    <string name="notif_viewing_house_gone">a house that is gone</string>
 </resources>

@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavBackStackEntry
@@ -186,6 +187,13 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // The Assistant tab stays while the user is on it, even if the status turns off meanwhile: otherwise the bar,
         // which is drawn only on a tab, vanished and left the screen with no navigation (whole-app audit).
         val tabs = baseTabs + (if (aiEnabled || current == "assistant") listOf(assistantTab) else emptyList()) + settingsTab
+
+        // The viewing reminders are set again on every resume (docs/11 5.16): an "Alarms & reminders" grant, a clock
+        // change or an edit made while the app was away is picked up.
+        LifecycleResumeEffect(services) {
+            services.rescheduleReminders()
+            onPauseOrDispose {}
+        }
 
         // "Language changed to தமிழ்", once, after the recreate that the language switch causes (AppLocale.set).
         val rootSnackbar = remember { SnackbarHostState() }

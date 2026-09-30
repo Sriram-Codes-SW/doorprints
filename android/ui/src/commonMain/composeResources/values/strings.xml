@@ -985,4 +985,12 @@
     <string name="viewings_recheckScores">Scored 2 or less: %1$s</string>
     <string name="viewings_recheckNothing">Nothing open. Think of anything you forgot to check.</string>
     <string name="viewings_forHouse">Viewings of %1$s</string>
+    <!-- Slice 3b-2, viewing reminders (2026-09-30). -->
+    <string name="settings_viewings_remind">Remind me about viewings</string>
+    <string name="settings_viewings_remind_hint">A notification before each planned viewing, at the time chosen on it.</string>
+    <string name="settings_viewings_exact_note">Reminders may arrive up to about 10 minutes early (or later if the phone is in battery saver).</string>
+    <string name="settings_viewings_exact_allow">Allow on-time reminders</string>
+    <string name="viewings_notify_rationale">Doorprints reminds you with a notification before the viewing.</string>
+    <string name="viewing_reminder_body">Viewing at %1$s at %2$s</string>
+    <string name="viewing_reminder_public">Doorprints reminder</string>
 </resources>

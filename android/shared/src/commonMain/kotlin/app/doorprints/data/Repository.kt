@@ -262,6 +262,12 @@ interface Repository {
     /** Marks viewing [id] DONE, with the visit that shows it happened when there is one; nothing for an unknown id. */
     suspend fun markViewingDone(id: String, visitId: String? = null)
 
+    /**
+     * Every viewing id here, deleted ones too (slice 3b-2): the reminder scheduler cancels each one's alarm before it
+     * sets the upcoming ones, so a viewing deleted here or by a sync loses its reminder. The default reads the live ones.
+     */
+    suspend fun viewingIdsForReminders(): List<String> = viewings().map { it.id }
+
     suspend fun testConnection(): Result<StatsDto>
 
     /**

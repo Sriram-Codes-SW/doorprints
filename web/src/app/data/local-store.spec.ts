@@ -108,6 +108,14 @@ describe('LocalStore', () => {
     expect(retrieved?.rooms?.[1].notes).toBe('Damp');
   });
 
+  it('viewingsRemind setting: on by default, off when stored off, on again when set', async () => {
+    expect(await store.viewingsRemind()).toBe(true);
+    await store.setViewingsRemind(false);
+    expect(await store.viewingsRemind()).toBe(false);
+    await store.setViewingsRemind(true);
+    expect(await store.viewingsRemind()).toBe(true);
+  });
+
   it('reads lengthUnit setting: defaults to FT, stores and retrieves M', async () => {
     expect(await store.lengthUnit()).toBe('FT');
     // After setting to M

@@ -155,4 +155,31 @@ class StringParityTest {
             }
         }
     }
+
+    /**
+     * The viewing reminders' words (slice 3b-2) in all four languages, each translated (hi, ta and te ship under
+     * review): the notification's in the Android resources, Settings' and the iPhone's in the Compose resources.
+     */
+    @Test fun viewingReminderStringsAreInEveryLanguage() {
+        val androidKeys = listOf(
+            "notif_channel_viewings", "notif_channel_viewings_desc", "notif_viewing_soon", "notif_viewing_title",
+            "notif_viewing_text", "notif_viewing_public", "notif_viewing_open", "notif_viewing_directions",
+            "notif_viewing_questions", "notif_viewing_house_gone",
+        )
+        val composeKeys = listOf(
+            "settings_viewings_remind", "settings_viewings_remind_hint", "settings_viewings_exact_note",
+            "settings_viewings_exact_allow", "viewings_notify_rationale", "viewing_reminder_body", "viewing_reminder_public",
+        )
+        for ((dir, keys) in listOf(android to androidKeys, compose to composeKeys)) {
+            val english = read(dir.resolve("values/strings.xml"))
+            for (lang in languages) {
+                val texts = read(dir.resolve("values$lang/strings.xml"))
+                for (key in keys) {
+                    assertTrue("values$lang/$key missing", key in texts)
+                    // "Doorprints reminder" keeps the brand word but is translated around it.
+                    if (lang.isNotEmpty()) assertTrue("values$lang/$key is English", texts[key] != english[key])
+                }
+            }
+        }
+    }
 }

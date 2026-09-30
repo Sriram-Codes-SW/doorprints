@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.41 |
+| Version | 0.43 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -53,6 +53,8 @@
 | 0.39 | 2026-09-30 | Claude (Code), lead | 5.5 and 5.30 **slice 3a built** (viewing questions, [10](10-sprint-log.md) §13.23); slice 3 is split into 3a questions, 3b viewings with reminders, 3c Hunt reminders. |
 | 0.40 | 2026-09-30 | Claude (Code), lead | **Slice 3b designed** (5.8 viewings, [10](10-sprint-log.md) §13.24): the `viewing` record, the split into 3b-1 (data, screens, history, calendar file, backup, copies, server) and 3b-2 (the reminders on Android, iPhone and the website), the pure reminder rules, the vectors V1..V6. |
 | 0.41 | 2026-09-30 | Claude (Code), lead | 5.8 and 5.30 **slice 3b-1 built** (viewings: the record, screens, history, calendar file, backup, copies, AI, server; [10](10-sprint-log.md) §13.24). The reminders (3b-2) and the Hunt reminder (3c) are not built. |
+| 0.42 | 2026-09-30 | Claude (Code), lead | **Slice 3b-2 designed** (5.8 reminders: one pure rule set, Android alarms, iPhone notifications, the website's while-open notifications; [10](10-sprint-log.md) §13.25). |
+| 0.43 | 2026-09-30 | Claude (Code), lead | **Slice 3b-2 built** (5.8 reminders on Android, iPhone and the website; [10](10-sprint-log.md) §13.25). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -351,6 +353,23 @@ A `roomId` that no longer exists is shown as "untagged" (no foreign key, so phot
 the filters, search and the *Missed?* buttons, the form (plan, edit, cancel, delete, *Add to calendar*: Android's calendar insert, the website's `.ics` download), the house card (next viewing, *Plan a viewing*, *Mark
 viewing done* when a visit is within two hours, the second-viewing dialog with its re-check list), the `viewings` list in `doorprints-backup/2` (`withWhom` blanked without contact details), a Viewings section in the readable
 copies plus `viewings.csv` and a sheet, the AI lines and the server (a `viewing` record type with its import validation). **Not built:** any reminder (3b-2), the iPhone's `.ics` share, a backup importer on the website.
+
+**Design of slice 3b-2, the reminders (2026-09-30; [10](10-sprint-log.md) §13.25).** Builds on the 5.16 scheduling text; 3c adds the Hunt action later.
+
+| Item | Decision |
+|---|---|
+| The rule (shared) | `ViewingReminders` (`:shared` commonMain, TypeScript twin): a viewing has a reminder at `fireAt = startsAt - remindMin minutes` when it is PLANNED, `remindMin` > 0 and `fireAt` is after now. `upcoming(viewings, nowMs, limit = 60)` returns the (viewing, `fireAt`) pairs, earliest first, ties by id. A reminder whose time has passed is not sent (nothing fires late or at once when a viewing is planned close to its start). Vectors R1 60 min before 10:00 is 09:00; R2 `remindMin` 0 gives none; R3 DONE or CANCELLED gives none; R4 a `fireAt` at or before now gives none; R5 70 viewings give the earliest 60. |
+| Setting | Local setting `viewings.remind` (default on, not synced): *Remind me about viewings*, in Settings > Viewings on the phones and on the Viewings page of the website (there it means *Notify me while Doorprints is open* and needs a tap to ask the browser). Off cancels every scheduled reminder. |
+| Android | `:app` scheduler as in 5.16: `setExactAndAllowWhileIdle` when `canScheduleExactAlarms()`, otherwise `setWindow(fireAt - 10 min, 10 min)` (early, never late), WorkManager one-time work when an alarm cannot be set; one `PendingIntent` per viewing (request code from its id, immutable); `SCHEDULE_EXACT_ALARM` and `RECEIVE_BOOT_COMPLETED` declared. Everything is rescheduled from the stored viewings (cancel all known ids, tombstones included, set the upcoming 60) on app start, on every change of the viewings, on boot, time and time-zone change, app update and the exact-alarm permission change. Notification channel `viewings` (default importance, private on the lock screen with the public text "Doorprints reminder"); the text is worked out when it is shown ("Viewing at <house> in 25 min"); actions *Open house*, *Directions* (a `geo:` intent, only when the house has a real position) and *Questions* (opens the house at its questions); never `withWhom`. POST_NOTIFICATIONS (Android 13+) is asked when the first reminder is saved, never at start-up. Settings shows the 5.16 note and the *Allow on-time reminders* button while exact alarms are not allowed. |
+| iPhone | `UNUserNotificationCenter`: on start, on resume and after each change remove the pending requests whose identifier starts with `viewing-` and add the upcoming 60 (iOS keeps 64) with calendar triggers at `fireAt`; the body "Viewing at <house> at 10:00", `hiddenPreviewsBodyPlaceholder` "Doorprints reminder"; a tap opens the house through the existing tap handler; the authorization is asked when the first reminder is saved. |
+| Website | While the app is open (a timer re-checks every minute, nothing long-lived): when permission is granted the reminder is a browser notification through the service worker, otherwise an in-page banner; the text carries the time only ("A viewing at 10:00. Open Doorprints for the place") because a browser notification has no private version. The Viewings page says: "Reminders on the website only work while it is open. Add to calendar for a reminder that always arrives." |
+| Not here | The Hunt action (3c); a server push (excluded by D-03). |
+
+**Built (2026-09-30, slice 3b-2 of 5.30; [10](10-sprint-log.md) §13.25).** `ViewingReminders` (R1..R6) on both stacks; the local setting `viewings.remind`; on Android the scheduler, receivers, channel `viewings`
+(notification id 9, tag `viewing:<id>`), the exact-alarm note and button, and the notification permission asked when the first reminder is saved; on the iPhone `IosViewingReminders` (compiled, not yet run on a device); on the website the
+while-open timer, banner and browser notification with a click handler in the service worker. **As built, differing from or adding to the design:** the title says "in N min" only up to 90 minutes ahead, further ahead it says "Viewing at X" and
+"Starts <date time>"; the alarm checks the stored viewing again when it fires (still PLANNED, not started, at most about 11 minutes early) so an alarm left behind by a deletion shows nothing; the *Questions* action opens the house but
+does not scroll to its questions; the exact-alarm note shows only while reminders are on; the permission question shares the single "asked" flag with Export and Import.
 
 ### 5.9 Share to Doorprints: *Add a shared listing* (Indian portals)
 
