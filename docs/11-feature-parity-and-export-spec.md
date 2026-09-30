@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.43 |
+| Version | 0.45 |
 | Date | 2026-09-30 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -55,6 +55,8 @@
 | 0.41 | 2026-09-30 | Claude (Code), lead | 5.8 and 5.30 **slice 3b-1 built** (viewings: the record, screens, history, calendar file, backup, copies, AI, server; [10](10-sprint-log.md) §13.24). The reminders (3b-2) and the Hunt reminder (3c) are not built. |
 | 0.42 | 2026-09-30 | Claude (Code), lead | **Slice 3b-2 designed** (5.8 reminders: one pure rule set, Android alarms, iPhone notifications, the website's while-open notifications; [10](10-sprint-log.md) §13.25). |
 | 0.43 | 2026-09-30 | Claude (Code), lead | **Slice 3b-2 built** (5.8 reminders on Android, iPhone and the website; [10](10-sprint-log.md) §13.25). |
+| 0.44 | 2026-09-30 | Claude (Code), lead | **Slice 3c designed** (5.16 Hunt mode reminder before a viewing; [10](10-sprint-log.md) §13.26). |
+| 0.45 | 2026-09-30 | Claude (Code), lead | **Slice 3c built** (5.16 Hunt mode reminder; [10](10-sprint-log.md) §13.26). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -370,6 +372,21 @@ copies plus `viewings.csv` and a sheet, the AI lines and the server (a `viewing`
 while-open timer, banner and browser notification with a click handler in the service worker. **As built, differing from or adding to the design:** the title says "in N min" only up to 90 minutes ahead, further ahead it says "Viewing at X" and
 "Starts <date time>"; the alarm checks the stored viewing again when it fires (still PLANNED, not started, at most about 11 minutes early) so an alarm left behind by a deletion shows nothing; the *Questions* action opens the house but
 does not scroll to its questions; the exact-alarm note shows only while reminders are on; the permission question shares the single "asked" flag with Export and Import.
+
+**Design of slice 3c, the Hunt mode reminder (2026-09-30; [10](10-sprint-log.md) §13.26).** Builds on 5.16 and on the 3b-2 reminders.
+
+| Item | Decision |
+|---|---|
+| Field and setting | The viewing's `huntReminder` (already in the record and the backup) gets its switch in the viewing form on the phones (*Offer Hunt mode before this viewing*, off by default, hidden on the website, which has no Hunt mode). The lead time is the local, unsynced setting `hunt.reminderMin` (5, 10, 15, 20, 30, 45 or 60; default 15) and the global switch *Offer Hunt mode before viewings* (`hunt.remind`, default on), both in Settings > Hunt mode. |
+| The rule (shared) | `HuntReminders.fireAt(viewing, leadMin) = startsAt - leadMin minutes` for a PLANNED viewing with `huntReminder` true; `upcoming(viewings, leadMin, nowMs, limit)` as `ViewingReminders.upcoming` (after now, earliest first, ties by id). `merged(viewings, leadMin, nowMs)` joins a viewing reminder and a Hunt reminder of the same viewing when their times are within 10 minutes: one notification at the earlier time carrying both actions. Vectors H1 15 min before 10:00 is 09:45; H2 `huntReminder` false gives none; H3 DONE/CANCELLED gives none; H4 a past time gives none; H5 the viewing reminder at 09:00 and the Hunt reminder at 09:45 stay two; H6 at 09:50 and 09:45 they merge into one at 09:45; H7 the cap of 60 over both kinds. |
+| Android | The 3b-2 scheduler also schedules the Hunt reminders (the same exact or early-window rules, the same reschedule triggers and WorkManager fallback); channel `hunt_reminders` (default importance, no full-screen intent, no Do Not Disturb bypass, private on the lock screen with the public text "Doorprints reminder"); the text is worked out when shown ("Viewing at <house> in 15 min. Start Hunt mode?"); actions **Start Hunt mode** (an immutable `PendingIntent` that starts `HuntService` when foreground location is granted, otherwise opens the app at the location question of 5.18) and **Dismiss**; tapping the body opens the viewing. A merged notification also carries *Open house*. Hunt mode already on: the action is left out. |
+| iPhone | A `viewing-hunt-<id>` calendar notification with the same text; a tap opens the app (an iPhone app cannot start location tracking from a notification action), and if Hunt mode is off the Map offers it. |
+| Website | Nothing (no Hunt mode there). |
+
+**Built (2026-09-30, slice 3c of 5.30; [10](10-sprint-log.md) §13.26).** `HuntReminders` with H1..H7, the local settings `hunt.remind` and `hunt.reminderMin`, the form switch (phones only), Settings > Hunt mode, the Android alarms for both kinds
+through the 3b-2 scheduler (a merged pair is one alarm at the earlier time, posted as the Hunt notification, with *Open house*), channel `hunt_reminders` (id 10, tag `hunt:<id>`), *Start Hunt mode* (starts the service with fine location,
+otherwise opens the Map, which asks through its own Hunt switch) and *Dismiss*, and the iPhone `viewing-hunt-<id>` notification (compiled, not yet run). **Not built:** TalkBack labels on the notification actions (a notification action has no
+content description), "the Map offers Hunt mode" after an iPhone tap (a tap opens the viewing).
 
 ### 5.9 Share to Doorprints: *Add a shared listing* (Indian portals)
 

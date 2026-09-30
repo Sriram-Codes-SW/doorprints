@@ -123,4 +123,10 @@
     <string name="notif_viewing_directions">வழி</string>
     <string name="notif_viewing_questions">கேள்விகள்</string>
     <string name="notif_viewing_house_gone">நீக்கப்பட்ட வீடு</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="notif_channel_hunt_reminders">தேடல் பயன்முறை நினைவூட்டல்கள்</string>
+    <string name="notif_channel_hunt_reminders_desc">பார்வையிடலுக்கு முன் தேடல் பயன்முறை பரிந்துரை</string>
+    <string name="notif_hunt_reminder">%1$s இல் பார்வையிடல் %2$d நிமிடத்தில். தேடல் பயன்முறையைத் தொடங்கவா?</string>
+    <string name="notif_hunt_reminder_start">தேடல் பயன்முறையைத் தொடங்கு</string>
+    <string name="notif_hunt_reminder_dismiss">மூடு</string>
 </resources>

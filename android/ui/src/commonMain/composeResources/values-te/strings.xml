@@ -990,4 +990,12 @@
     <string name="viewings_notify_rationale">పరిశీలనకు ముందు Doorprints నోటిఫికేషన్‌తో గుర్తు చేస్తుంది.</string>
     <string name="viewing_reminder_body">%1$s వద్ద పరిశీలన, %2$s కి</string>
     <string name="viewing_reminder_public">Doorprints రిమైండర్</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="viewings_huntReminder">ఈ పరిశీలనకు ముందు హంట్ మోడ్‌ను సూచించండి</string>
+    <string name="viewings_huntReminder_hint">ప్రారంభానికి %1$d నిమిషాల ముందు ఒక నోటిఫికేషన్ హంట్ మోడ్ ప్రారంభించాలా అని అడుగుతుంది. సమయం సెట్టింగ్‌లు &gt; హంట్ మోడ్‌లో ఉంది.</string>
+    <string name="settings_hunt_remind">పరిశీలనలకు ముందు హంట్ మోడ్‌ను సూచించండి</string>
+    <string name="settings_hunt_remind_hint">ఇది ఆన్ చేసిన పరిశీలనకు ముందు, హంట్ మోడ్ ప్రారంభించాలా అని ఒక నోటిఫికేషన్ అడుగుతుంది.</string>
+    <string name="settings_hunt_remind_lead">ఎంత ముందు</string>
+    <string name="settings_hunt_remind_min">%1$d నిమిషాల ముందు</string>
+    <string name="viewing_hunt_reminder_body">%1$s వద్ద పరిశీలన, %2$s కి. హంట్ మోడ్ ప్రారంభించాలా?</string>
 </resources>

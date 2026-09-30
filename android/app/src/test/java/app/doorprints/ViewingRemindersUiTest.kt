@@ -24,6 +24,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -36,6 +37,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.doorprints.data.HouseEntity
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.shared.model.ViewingKind
+import app.doorprints.ui.HuntRemindersSection
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.ViewingFormScreen
 import app.doorprints.ui.ViewingRemindersSection
@@ -118,6 +120,37 @@ class ViewingRemindersUiTest {
         waitFor("Remind me about viewings")
         assertFalse(shown(note))
         assertFalse(shown("Allow on-time reminders"))
+    }
+
+    // ---- Settings > Hunt mode (slice 3c) ----
+
+    @Test
+    fun theHuntReminderSwitchAndLeadTimeAreKept() {
+        compose.setContent { ProvideAppServices { Column { HuntRemindersSection() } } }
+        waitFor("Offer Hunt mode before viewings")
+        // The seven lead times, 15 chosen by default.
+        for (m in listOf(5, 10, 15, 20, 30, 45, 60)) waitFor("$m min before")
+        compose.onNodeWithText("15 min before").assertIsSelected()
+        compose.onNodeWithText("45 min before").performClick()
+        compose.waitUntil(5_000) { runBlocking { repo.settings.huntReminderMin().first() } == 45 }
+        compose.onNodeWithText("Offer Hunt mode before viewings").performClick()
+        compose.waitUntil(5_000) { !runBlocking { repo.settings.huntRemind().first() } }
+        // Off: the lead time goes with it.
+        compose.waitUntil(5_000) { !shown("45 min before") }
+        compose.onNodeWithText("Offer Hunt mode before viewings").performClick()
+        compose.waitUntil(5_000) { runBlocking { repo.settings.huntRemind().first() } }
+    }
+
+    @Test
+    fun aViewingWithOnlyAHuntReminderAsksForNotificationsWhenSaved() {
+        var done = 0
+        compose.setContent { ProvideAppServices { ViewingFormScreen(null, "h1", ViewingKind.FIRST, onDone = { done++ }, nowMs = later) } }
+        waitFor("House: Green View")
+        pick("Reminder", "Off")
+        compose.onNodeWithText("Offer Hunt mode before this viewing").performScrollTo().performClick()
+        compose.onNodeWithText("Save").performScrollTo().performClick()
+        waitFor(rationale)
+        assertTrue(runBlocking { repo.viewings() }.single().huntReminder)
     }
 
     // ---- the permission, asked when a reminder is first saved ----

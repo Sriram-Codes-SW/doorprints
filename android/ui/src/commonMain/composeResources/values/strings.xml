@@ -993,4 +993,12 @@
     <string name="viewings_notify_rationale">Doorprints reminds you with a notification before the viewing.</string>
     <string name="viewing_reminder_body">Viewing at %1$s at %2$s</string>
     <string name="viewing_reminder_public">Doorprints reminder</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30). -->
+    <string name="viewings_huntReminder">Offer Hunt mode before this viewing</string>
+    <string name="viewings_huntReminder_hint">A notification %1$d min before it starts asks whether to start Hunt mode. The time is in Settings &gt; Hunt mode.</string>
+    <string name="settings_hunt_remind">Offer Hunt mode before viewings</string>
+    <string name="settings_hunt_remind_hint">Before a viewing that has it switched on, a notification asks whether to start Hunt mode.</string>
+    <string name="settings_hunt_remind_lead">How long before</string>
+    <string name="settings_hunt_remind_min">%1$d min before</string>
+    <string name="viewing_hunt_reminder_body">Viewing at %1$s at %2$s. Start Hunt mode?</string>
 </resources>

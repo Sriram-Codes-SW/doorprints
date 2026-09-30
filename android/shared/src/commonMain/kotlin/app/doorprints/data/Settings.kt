@@ -35,6 +35,7 @@ import kotlinx.serialization.json.Json
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
@@ -222,6 +223,9 @@ class SettingsStore(
         val lengthUnit = stringPreferencesKey("units.length")
         /** Viewing reminders on this device (slice 3b-2): the web's `SETTING_KEYS.viewingsRemind`, not synced. */
         val viewingsRemind = booleanPreferencesKey("viewings.remind")
+        /** The Hunt mode reminder on this device (slice 3c): *Offer Hunt mode before viewings* and its lead time, not synced. */
+        val huntRemind = booleanPreferencesKey("hunt.remind")
+        val huntReminderMin = intPreferencesKey("hunt.reminderMin")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -274,6 +278,26 @@ class SettingsStore(
         .distinctUntilChanged()
 
     suspend fun setViewingsRemind(on: Boolean) = dataStore.edit { it[Keys.viewingsRemind] = on }
+
+    /**
+     * *Offer Hunt mode before viewings* (docs/11 5.16, slice 3c), on unless turned off; this device's own choice. Off,
+     * the scheduler sets no Hunt reminder (the viewing reminders stay as they are).
+     */
+    fun huntRemind(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.huntRemind] ?: true }
+        .catch { emit(true) }
+        .distinctUntilChanged()
+
+    suspend fun setHuntRemind(on: Boolean) = dataStore.edit { it[Keys.huntRemind] = on }
+
+    /** The Hunt reminder's lead time in minutes: one of [HuntReminders.LEAD_CHOICES], anything else (or none) reads 15. */
+    fun huntReminderMin(): Flow<Int> = dataStore.data
+        .map { p -> HuntReminders.validLead(p[Keys.huntReminderMin]) }
+        .catch { emit(HuntReminders.DEFAULT_LEAD) }
+        .distinctUntilChanged()
+
+    /** Keeps [minutes] when it is one of the choices, otherwise the default. */
+    suspend fun setHuntReminderMin(minutes: Int) = dataStore.edit { it[Keys.huntReminderMin] = HuntReminders.validLead(minutes) }
 
     suspend fun current() = settings.first()
 

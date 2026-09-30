@@ -28,6 +28,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import app.doorprints.data.HouseEntity
+import app.doorprints.location.HuntService
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
@@ -42,6 +43,8 @@ object Notifications {
     const val CHANNEL_EXPORT = "exports"
     /** Viewing reminders (docs/11 5.8, slice 3b-2): default importance, private on the lock screen. */
     const val CHANNEL_VIEWINGS = "viewings"
+    /** Hunt mode reminders (docs/11 5.16, slice 3c): default importance, private on the lock screen, no DND bypass. */
+    const val CHANNEL_HUNT_REMINDERS = "hunt_reminders"
     // Every fixed notification id the app uses lives here, so two features cannot pick the same number. (The
     // per-house, per-street and per-visit alerts use hash codes and cannot be reserved; they are rare and
     // short-lived.)
@@ -93,6 +96,15 @@ object Notifications {
     fun viewingTag(viewingId: String) = "viewing:$viewingId"
 
     /**
+     * Every Hunt mode reminder (slice 3c) is posted under this id with the tag [huntTag] of its viewing, as
+     * [VIEWING_ID] with [viewingTag]; a merged one (the viewing reminder in it too) is posted here alone.
+     */
+    const val HUNT_REMINDER_ID = 10
+
+    /** The tag of viewing [viewingId]'s Hunt mode reminder, posted under [HUNT_REMINDER_ID]. */
+    fun huntTag(viewingId: String) = "hunt:$viewingId"
+
+    /**
      * The status-bar icon for every notification: a single-colour silhouette. The launcher icon is a full-bleed
      * square, and small icons are drawn as an alpha mask, so it showed as a solid white block.
      */
@@ -113,6 +125,15 @@ object Notifications {
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
 
+    /** A viewing to open (a Hunt mode reminder's body, slice 3c); MainActivity accepts only a valid record id. */
+    const val EXTRA_OPEN_VIEWING = "openViewing"
+
+    /**
+     * *Start Hunt mode* from viewing (the value) [huntTag]'s reminder: to `HuntService`, which then removes that
+     * reminder; to MainActivity while location is not granted, which removes it and opens the Map, asking first (5.18).
+     */
+    const val EXTRA_START_HUNT = "startHunt"
+
     /** Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language. */
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -132,6 +153,14 @@ object Notifications {
                 description = context.getString(R.string.notif_channel_viewings_desc)
                 // The house's name is private: a locked screen shows the public version, "Doorprints reminder".
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_HUNT_REMINDERS, context.getString(R.string.notif_channel_hunt_reminders), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_channel_hunt_reminders_desc)
+                // As the viewing reminders: "Doorprints reminder" on a locked screen; Do Not Disturb applies as set.
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                setBypassDnd(false)
             }
         )
         nm.createNotificationChannel(
@@ -285,6 +314,73 @@ object Notifications {
             }
             .build()
     }
+
+    /**
+     * The Hunt mode reminder of [viewing] at [nowMs] (docs/11 5.16, slice 3c), worked out when it is shown: "Viewing at
+     * Green View in 15 min. Start Hunt mode?" (the minutes from the start, as an inexact alarm may come early). Never
+     * `withWhom`. Actions: **Start Hunt mode** (left out while [huntRunning]): when [fineLocation] is granted an
+     * immutable PendingIntent that starts `HuntService` (a start from the person's tap on a notification may run a
+     * location foreground service), otherwise MainActivity with [EXTRA_START_HUNT], whose Map asks for location first
+     * (5.18); *Open house* when [merged] (the viewing reminder is in this one) and the house is there; and **Dismiss**.
+     * Tapping the body opens the viewing. Private on a locked screen with the public version "Doorprints reminder".
+     */
+    fun huntReminder(
+        context: Context,
+        viewing: Viewing,
+        house: HouseEntity?,
+        nowMs: Long,
+        merged: Boolean,
+        fineLocation: Boolean,
+        huntRunning: Boolean,
+    ): Notification {
+        val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)
+        val minutes = ViewingReminders.minutesUntil(viewing.startsAt, nowMs)
+        val title = context.getString(R.string.notif_hunt_reminder, name, minutes)
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_HUNT_REMINDERS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_viewing_public))
+            .build()
+        val openViewing = openAppIntent(context, ("hunt-open:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_VIEWING, viewing.id) }
+        return NotificationCompat.Builder(context, CHANNEL_HUNT_REMINDERS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(title)
+            .setContentText(context.getString(R.string.notif_viewing_text, Formats.dateTime(viewing.startsAt)))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(title))
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setContentIntent(openViewing)
+            .apply {
+                if (!huntRunning) {
+                    addAction(0, context.getString(R.string.notif_hunt_reminder_start), startHuntIntent(context, viewing.id, fineLocation))
+                }
+                if (merged && house != null) {
+                    addAction(
+                        0, context.getString(R.string.notif_viewing_open),
+                        openAppIntent(context, ("hunt-house:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, house.id) },
+                    )
+                }
+                addAction(0, context.getString(R.string.notif_hunt_reminder_dismiss), ViewingReminderScheduler.dismissIntent(context, viewing.id))
+            }
+            .build()
+    }
+
+    /**
+     * *Start Hunt mode*'s PendingIntent, immutable: `HuntService` itself with [fineLocation] (the service stops quietly
+     * if the permission went away since), else MainActivity at the Map's location question ([EXTRA_START_HUNT]).
+     */
+    fun startHuntIntent(context: Context, viewingId: String, fineLocation: Boolean): PendingIntent =
+        if (fineLocation) {
+            PendingIntent.getForegroundService(
+                context, ("hunt-start:$viewingId").hashCode(),
+                Intent(context, HuntService::class.java).putExtra(EXTRA_START_HUNT, viewingId),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        } else {
+            openAppIntent(context, ("hunt-ask:$viewingId").hashCode()) { putExtra(EXTRA_START_HUNT, viewingId) }
+        }
 
     /** Up to this many minutes ahead the reminder says "in 25 min"; further ahead (2 hours, 1 day) it gives the start. */
     private const val SOON_MINUTES = 90

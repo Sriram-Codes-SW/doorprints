@@ -990,4 +990,12 @@
     <string name="viewings_notify_rationale">Doorprints मकान देखने से पहले सूचना से याद दिलाता है।</string>
     <string name="viewing_reminder_body">%1$s में मकान देखना, %2$s बजे</string>
     <string name="viewing_reminder_public">Doorprints रिमाइंडर</string>
+    <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
+    <string name="viewings_huntReminder">इस मकान देखने से पहले हंट मोड का सुझाव दें</string>
+    <string name="viewings_huntReminder_hint">शुरू होने से %1$d मिनट पहले एक सूचना पूछेगी कि हंट मोड शुरू करें या नहीं। समय सेटिंग्स &gt; हंट मोड में है।</string>
+    <string name="settings_hunt_remind">मकान देखने से पहले हंट मोड का सुझाव दें</string>
+    <string name="settings_hunt_remind_hint">जिस मकान देखने पर यह चालू हो, उससे पहले एक सूचना पूछेगी कि हंट मोड शुरू करें या नहीं।</string>
+    <string name="settings_hunt_remind_lead">कितनी देर पहले</string>
+    <string name="settings_hunt_remind_min">%1$d मिनट पहले</string>
+    <string name="viewing_hunt_reminder_body">%1$s में मकान देखना, %2$s बजे। हंट मोड शुरू करें?</string>
 </resources>

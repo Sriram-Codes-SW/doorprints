@@ -28,6 +28,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -131,6 +132,10 @@ class HuntService : LifecycleService(), HuntEffects {
 
         stopReason = null
         engine.start()
+        // Started from a Hunt mode reminder's *Start Hunt mode* (slice 3c): that reminder has done its job.
+        intent?.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
+            NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
+        }
         return START_STICKY
     }
 
