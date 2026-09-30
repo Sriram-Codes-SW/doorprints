@@ -165,6 +165,19 @@ class BackupApiTest {
         assertThat(one).isEqualTo(other);
     }
 
+    /**
+     * S4b-BL-89 (PR 78): a body that cannot be read is answered with the same bytes every time, with no timestamp.
+     * Spring's default error page carries one, and the ZAP API scan read the changing answer as a "SQL Injection".
+     */
+    @Test
+    void aBodyThatCannotBeReadIsAnsweredTheSameEveryTime() throws Exception {
+        var first = errorBody(() -> postImport("{\"format\":\"x\",\"exportedAt\":\"10 AND 1=1 -- \"}", false));
+        Thread.sleep(20);
+        var second = errorBody(() -> postImport("{\"format\":\"x\",\"exportedAt\":\"10 AND 1=2 -- \"}", false));
+        assertThat(first).contains("Malformed request").doesNotContain("timestamp").doesNotContain("AND 1=");
+        assertThat(second).isEqualTo(first);
+    }
+
     // ---- helpers ----------------------------------------------------------------------------------------------
 
     /** The body of the error response {@code call} provoked (a ProblemDetail), or "" if it succeeded. */
