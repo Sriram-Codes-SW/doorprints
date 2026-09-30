@@ -25,6 +25,7 @@ import type { HouseAnswer, HouseDto, HouseRoom, VisitDto } from '../core/models'
 import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
 import { BUILT_IN_KEYS } from '../shared/scoring';
 import type { Criterion } from '../shared/scoring';
+import type { Viewing } from '../shared/viewing';
 
 /**
  * The repository the whole web app reads and writes (S4-01). jsdom has no IndexedDB, so `openLocalDb()` hands back
@@ -856,4 +857,133 @@ describe('LocalStore questions', () => {
     await store.saveHouse({ ...saved, answers: [] }, T2);
     expect((await store.getHouse('h1'))?.answers).toBeNull();
   });
+});
+
+/** Slice 3b-1 (docs/11 5.8): viewings, records of type `viewing`; no migration, a house is untouched. */
+describe('LocalStore viewings', () => {
+  let store: LocalStore;
+  const NOW = Date.parse('2026-09-30T12:00:00.000Z');
+  const HOUR = 3_600_000;
+  const viewing = (id: string, over: Partial<Viewing> = {}): Viewing => ({
+    id,
+    houseId: 'h1',
+    startsAt: NOW + HOUR,
+    durationMin: 30,
+    kind: 'FIRST',
+    status: 'PLANNED',
+    remindMin: 60,
+    ...over,
+  });
+
+  beforeEach(async () => {
+    store = new LocalStore();
+    await store.ready();
+  });
+
+  it('saves a viewing as a dirty record of type viewing with the payload keys in the contract order', async () => {
+    await store.saveViewing(viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' }), T1);
+    const record = await store.getRecord('viewing', 'v_00000001');
+    expect(Object.keys(record!.payload)).toEqual(['houseId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'withWhom', 'notes']);
+    expect(record).toMatchObject({ dirty: true, deleted: false });
+    expect(await store.viewings()).toEqual([viewing('v_00000001', { notes: 'Bring a tape', withWhom: 'Meena' })]);
+  });
+
+  it('writes only when something changed: an unchanged save keeps updatedAt and the sync queue as they were', async () => {
+    await store.saveViewing(viewing('v_00000001'), T1);
+    const first = await store.getRecord('viewing', 'v_00000001');
+    for (const r of await store.dirtyRecords()) await store.markRecordClean('viewing', r.id, r.updatedAt);
+    await store.saveViewing(viewing('v_00000001'), T2);
+    expect((await store.getRecord('viewing', 'v_00000001'))?.updatedAt).toBe(first?.updatedAt);
+    expect(await store.dirtyRecords()).toEqual([]);
+    await store.saveViewing(viewing('v_00000001', { notes: 'Now with notes' }), T2);
+    expect((await store.dirtyRecords()).map((r) => r.id)).toEqual(['v_00000001']);
+    expect((await store.getRecord('viewing', 'v_00000001'))?.updatedAt).not.toBe(first?.updatedAt);
+  });
+
+  it('lists the viewings by start then id, and those of one house', async () => {
+    await store.saveViewing(viewing('v_0000000b', { startsAt: NOW }), T1);
+    await store.saveViewing(viewing('v_0000000a', { startsAt: NOW }), T1);
+    await store.saveViewing(viewing('v_00000003', { startsAt: NOW - HOUR, houseId: 'h2' }), T1);
+    expect((await store.viewings()).map((v) => v.id)).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
+    expect((await store.viewingsOf('h1')).map((v) => v.id)).toEqual(['v_0000000a', 'v_0000000b']);
+    expect((await store.viewingRows()).map((r) => r.id).sort()).toEqual(['v_00000003', 'v_0000000a', 'v_0000000b']);
+  });
+
+  it('draws a new v_ id that clashes with no record, a deleted one included', async () => {
+    await store.saveViewing(viewing('v_aaaaaaaa'), T1);
+    await store.deleteViewing('v_aaaaaaaa', T1);
+    const drawn = ['v_aaaaaaaa', 'v_aaaaaaaa', 'v_bbbbbbbb'];
+    expect(await store.newViewingId(() => drawn.shift() ?? 'v_cccccccc')).toBe('v_bbbbbbbb');
+    expect(await store.newViewingId()).toMatch(/^v_[0-9a-f]{8}$/);
+  });
+
+  it('deletes a viewing as a tombstone the next sync sends, and leaves the house alone', async () => {
+    await store.saveHouse(house('h1'), T1);
+    await store.saveViewing(viewing('v_00000001'), T1);
+    await store.deleteViewing('v_00000001', T2);
+    expect(await store.viewings()).toEqual([]);
+    expect((await store.dirtyRecords()).find((r) => r.id === 'v_00000001')).toMatchObject({ deleted: true, payload: {} });
+    expect((await store.getHouse('h1'))?.deleted).toBe(false);
+  });
+
+  it('keeps the viewings of a house that is deleted (they are shown as a house that is gone)', async () => {
+    await store.saveHouse(house('h1'), T1);
+    await store.saveViewing(viewing('v_00000001'), T1);
+    await store.deleteHouse('h1', T2);
+    expect((await store.viewings()).map((v) => v.id)).toEqual(['v_00000001']);
+  });
+
+  it('finds the next PLANNED viewing of a house at or after now', async () => {
+    await store.saveViewing(viewing('v_00000001', { startsAt: NOW + 5 * HOUR }), T1);
+    await store.saveViewing(viewing('v_00000002', { startsAt: NOW + HOUR }), T1);
+    await store.saveViewing(viewing('v_00000003', { startsAt: NOW + 30 * 60_000, status: 'CANCELLED' }), T1);
+    await store.saveViewing(viewing('v_00000004', { startsAt: NOW - HOUR }), T1);
+    await store.saveViewing(viewing('v_00000005', { startsAt: NOW + 30 * 60_000, houseId: 'h2' }), T1);
+    expect((await store.nextViewing('h1', NOW))?.id).toBe('v_00000002');
+    expect((await store.nextViewing('h1', NOW + 2 * HOUR))?.id).toBe('v_00000001');
+    expect(await store.nextViewing('h1', NOW + 6 * HOUR)).toBeNull();
+    expect(await store.nextViewing('nobody', NOW)).toBeNull();
+  });
+
+  it('marks a viewing done with its visit, keeping the old visit when none is given', async () => {
+    await store.saveViewing(viewing('v_00000001'), T1);
+    const done = await store.markViewingDone('v_00000001', 'visit-1', T2);
+    expect(done).toMatchObject({ status: 'DONE', visitId: 'visit-1' });
+    expect((await store.getRecord('viewing', 'v_00000001'))?.payload).toMatchObject({ status: 'DONE', visitId: 'visit-1' });
+    await store.saveViewing(viewing('v_00000002', { visitId: 'old-visit' }), T1);
+    expect(await store.markViewingDone('v_00000002', undefined, T2)).toMatchObject({ status: 'DONE', visitId: 'old-visit' });
+    await expect(store.markViewingDone('v_99999999')).rejects.toBeInstanceOf(LocalDataError);
+  });
+
+  it('refuses a bad id, a blank house, a start that is not positive, a duration outside 5..480 and over-long text', async () => {
+    const refused = (over: Partial<Viewing>) => expect(store.saveViewing(viewing('v_00000001', over))).rejects.toBeInstanceOf(LocalDataError);
+    await expect(store.saveViewing(viewing('bad id'))).rejects.toBeInstanceOf(LocalDataError);
+    await refused({ houseId: '  ' });
+    await refused({ houseId: 'x'.repeat(65) });
+    await refused({ startsAt: 0 });
+    await refused({ startsAt: -1 });
+    await refused({ durationMin: 4 });
+    await refused({ durationMin: 481 });
+    await refused({ remindMin: 7 });
+    await refused({ withWhom: 'x'.repeat(201) });
+    await refused({ notes: 'x'.repeat(2001) });
+    await refused({ kind: 'THIRD' as Viewing['kind'] });
+    expect(await store.viewings()).toEqual([]);
+  });
+
+  it('reads a stored row with no house or no time as no viewing', async () => {
+    await store.saveRecord('viewing', 'v_00000001', { startsAt: NOW }, T1);
+    await store.saveRecord('viewing', 'v_00000002', { houseId: 'h1' }, T1);
+    expect(await store.viewings()).toEqual([]);
+    expect(await store.viewingRows()).toEqual([]);
+  });
+
+  it('refuses the 5 001st viewing, and still lets an existing one be edited at the cap', async () => {
+    for (let i = 0; i < 5000; i++) {
+      await store.saveRecord('viewing', 'v_' + i.toString(16).padStart(8, '0'), { houseId: 'h1', startsAt: NOW + i }, T1);
+    }
+    await expect(store.saveViewing(viewing('v_ffffffff'))).rejects.toMatchObject({ key: 'viewings.max' });
+    await store.saveViewing(viewing('v_00000000', { startsAt: NOW, notes: 'edited at the cap' }), T2);
+    expect((await store.getRecord('viewing', 'v_00000000'))?.payload).toMatchObject({ notes: 'edited at the cap' });
+  }, 60_000);
 });

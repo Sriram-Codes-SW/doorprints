@@ -114,6 +114,13 @@ object MarkdownWriter {
                 table(out, ExportRows.answerColumns(bundle), answers)
             }
 
+            // The viewings (slice 3b-1), after the questions and before the checklist.
+            val viewings = ExportRows.viewingRows(h, bundle)
+            if (viewings.isNotEmpty()) {
+                out.append("\n### ").append(text(s["section.viewings"])).append("\n\n")
+                table(out, ExportRows.viewingColumns(bundle), viewings)
+            }
+
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")

@@ -51,17 +51,29 @@ public final class HouseDocuments {
 
     static final int NOTES_MAX = 3000;
     static final int ANSWER_LINES_MAX = 20;
+    static final int VIEWING_LINES_MAX = 10;
+    private static final DateTimeFormatter WHEN =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
 
     private HouseDocuments() {
     }
 
     public static Document toDocument(HouseDto h, List<VisitDto> visits) {
-        return new Document(h.id().toString(), text(h, visits), metadata(h));
+        return toDocument(h, visits, List.of());
+    }
+
+    static Document toDocument(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings) {
+        return new Document(h.id().toString(), text(h, visits, viewings), metadata(h));
     }
 
     /** Stable, labelled plain text; the labels double as grounding cues for the model. No contact name or phone. */
     public static String text(HouseDto h, List<VisitDto> visits) {
+        return text(h, visits, List.of());
+    }
+
+    /** As above, with the viewings of this house (slice 3b-1), a line each after the questions. */
+    static String text(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings) {
         var r = ContactRedactor.forHouse(h);
         var sb = new StringBuilder();
         line(sb, "House", r.freeText(h.label()));
@@ -77,6 +89,7 @@ public final class HouseDocuments {
         costLines(sb, h.cost());
         line(sb, "Rooms", rooms(h.rooms(), r));
         answerLines(sb, h.answers(), r);
+        viewingLines(sb, viewings, r);
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -171,6 +184,29 @@ public final class HouseDocuments {
                         + r.freeText(a.answer().strip())));
         ordered.stream().filter(a -> "OPEN".equals(a.reads())).limit(ANSWER_LINES_MAX)
                 .forEach(a -> line(sb, "Still to ask", r.freeText(a.text().strip())));
+    }
+
+    /**
+     * The viewings of slice 3b-1, the same words as the on-device {@code AiHouse} and the web {@code houseText}:
+     * {@code Viewing: 2026-10-02 10:30 | SECOND | PLANNED | Notes: Ask for the water bill}, at most
+     * {@value #VIEWING_LINES_MAX}, PLANNED first and then the newest first (the id breaks a tie). The time is UTC. Never
+     * {@code withWhom}; the notes go through the contact redactor and lose their line breaks, so a note cannot start a
+     * line of its own.
+     */
+    static void viewingLines(StringBuilder sb, List<ViewingLine> viewings, ContactRedactor.Redactor r) {
+        if (viewings == null) return;
+        viewings.stream().filter(java.util.Objects::nonNull)
+                .sorted(Comparator.comparing((ViewingLine v) -> "PLANNED".equals(v.status()) ? 0 : 1)
+                        .thenComparing(Comparator.comparingLong(ViewingLine::startsAt).reversed())
+                        .thenComparing(ViewingLine::id))
+                .limit(VIEWING_LINES_MAX)
+                .forEach(v -> {
+                    var value = new StringBuilder(WHEN.format(java.time.Instant.ofEpochMilli(v.startsAt())))
+                            .append(" | ").append(v.kind()).append(" | ").append(v.status());
+                    var notes = v.notes() == null ? "" : r.freeText(v.notes().strip()).replaceAll("\\s+", " ").strip();
+                    if (!notes.isEmpty()) value.append(" | Notes: ").append(notes);
+                    line(sb, "Viewing", value.toString());
+                });
     }
 
     /** {@code BEDROOM} as {@code Bedroom}. */

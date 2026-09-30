@@ -29,6 +29,7 @@ import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ExportBroker
 import app.doorprints.shared.export.ExportCriterion
 import app.doorprints.shared.export.ExportQuestion
+import app.doorprints.shared.export.ExportViewing
 import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
@@ -38,6 +39,7 @@ import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.Scoring
+import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.sync.SyncOutcome
@@ -226,6 +228,40 @@ interface Repository {
      */
     suspend fun saveAnswers(houseId: String, answers: List<HouseAnswer>?)
 
+    // Viewings (docs/11 5.8, slice 3b-1): records of type `viewing` (id `v_` + 8 hex). A house's delete leaves its
+    // viewings as they are; the history shows them as "a house that is gone". At most 5,000 live ones (the record cap).
+
+    /** The live viewings (coerced, untrusted rows left out) by `startsAt` then id, now and after each change. */
+    fun observeViewings(): Flow<List<Viewing>>
+
+    /** The live viewings now, read once, by `startsAt` then id. */
+    suspend fun viewings(): List<Viewing>
+
+    /** The live viewings of house [houseId], by `startsAt` then id. */
+    suspend fun viewingsOf(houseId: String): List<Viewing>
+
+    /** The earliest PLANNED viewing of [houseId] at or after [nowMs], or null. */
+    suspend fun nextViewing(houseId: String, nowMs: Long): Viewing?
+
+    /** One live viewing, or null. */
+    suspend fun getViewing(id: String): Viewing?
+
+    /**
+     * Saves a viewing (coerced: texts trimmed, out-of-range values to their defaults), dirty. `IllegalArgumentException`
+     * for a bad id, a blank house or no positive start; nothing is written when the record already says the same;
+     * `RecordLimitException` when it would be the 5,001st.
+     */
+    suspend fun saveViewing(viewing: Viewing)
+
+    /** A fresh id `v_` + 8 hex that no viewing record here has used, a tombstone included. */
+    suspend fun newViewingId(): String
+
+    /** Deletes a viewing (a tombstone). */
+    suspend fun deleteViewing(id: String)
+
+    /** Marks viewing [id] DONE, with the visit that shows it happened when there is one; nothing for an unknown id. */
+    suspend fun markViewingDone(id: String, visitId: String? = null)
+
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -325,6 +361,8 @@ interface Repository {
         val preferences: List<ExportPreference> = emptyList(),
         /** The live question records (slice 3a); a copy keeps them, with or without contact details. */
         val questions: List<ExportQuestion> = emptyList(),
+        /** The live viewing records (slice 3b-1); a copy without contact details blanks their `withWhom`. */
+        val viewings: List<ExportViewing> = emptyList(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -362,6 +400,8 @@ interface Repository {
         val preferences: Map<String, Long> = emptyMap(),
         /** Every question record here, deleted ones too, by id (slice 3a): merged by id. */
         val questions: Map<String, Long> = emptyMap(),
+        /** Every viewing record here, deleted ones too, by id (slice 3b-1): merged by id. */
+        val viewings: Map<String, Long> = emptyMap(),
     )
 
     /** What an import actually managed to write. */
@@ -398,9 +438,11 @@ interface Repository {
         val preferences: Int = 0,
         /** Questions written (slice 3a), new and updated together. */
         val questions: Int = 0,
+        /** Viewings written (slice 3b-1), new and updated together. */
+        val viewings: Int = 0,
     ) {
         /** Everything written, of every type. */
-        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences + questions
+        val rows: Int get() = houses + visits + photos + brokers + criteria + preferences + questions + viewings
     }
 
     /**

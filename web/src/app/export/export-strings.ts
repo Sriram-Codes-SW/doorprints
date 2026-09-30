@@ -173,6 +173,20 @@ export const EXPORT_STRING_KEYS = [
   'answerStatus.OPEN',
   'answerStatus.ANSWERED',
   'answerStatus.SKIPPED',
+  'table.viewings',
+  'section.viewings',
+  'col.when',
+  'col.kind',
+  'col.withWhom',
+  'col.durationMin',
+  'col.remindMin',
+  'col.visitId',
+  'viewingKind.FIRST',
+  'viewingKind.SECOND',
+  'viewingKind.FOLLOW_UP',
+  'viewingStatus.PLANNED',
+  'viewingStatus.DONE',
+  'viewingStatus.CANCELLED',
   'status.NEW',
   'status.SHORTLISTED',
   'status.REJECTED',
@@ -330,6 +344,21 @@ const EXPORT_EN: ExportDict = {
   'answerStatus.OPEN': 'Open',
   'answerStatus.ANSWERED': 'Answered',
   'answerStatus.SKIPPED': 'Skipped',
+  // Slice 3b-1 (2026-09-30): viewings.
+  'table.viewings': 'Viewings',
+  'section.viewings': 'Viewings',
+  'col.when': 'When',
+  'col.kind': 'Kind',
+  'col.withWhom': 'With whom',
+  'col.durationMin': 'Duration (minutes)',
+  'col.remindMin': 'Reminder (minutes before)',
+  'col.visitId': 'Visit id',
+  'viewingKind.FIRST': 'First viewing',
+  'viewingKind.SECOND': 'Second viewing',
+  'viewingKind.FOLLOW_UP': 'Follow-up',
+  'viewingStatus.PLANNED': 'Planned',
+  'viewingStatus.DONE': 'Done',
+  'viewingStatus.CANCELLED': 'Cancelled',
   'status.NEW': 'New',
   'status.SHORTLISTED': 'Shortlisted',
   'status.REJECTED': 'Rejected',
@@ -488,6 +517,21 @@ const EXPORT_HI: ExportDict = {
   'answerStatus.OPEN': 'बाकी',
   'answerStatus.ANSWERED': 'उत्तर मिला',
   'answerStatus.SKIPPED': 'छोड़ा गया',
+  // Slice 3b-1 (2026-09-30): viewings. Under review (owner rule: hi/ta/te ship marked under review).
+  'table.viewings': 'मकान देखना',
+  'section.viewings': 'मकान देखना',
+  'col.when': 'कब',
+  'col.kind': 'प्रकार',
+  'col.withWhom': 'किसके साथ',
+  'col.durationMin': 'अवधि (मिनट)',
+  'col.remindMin': 'याद दिलाना (मिनट पहले)',
+  'col.visitId': 'दौरा आईडी',
+  'viewingKind.FIRST': 'पहली बार देखना',
+  'viewingKind.SECOND': 'दूसरी बार देखना',
+  'viewingKind.FOLLOW_UP': 'फ़ॉलो-अप',
+  'viewingStatus.PLANNED': 'तय',
+  'viewingStatus.DONE': 'हो गया',
+  'viewingStatus.CANCELLED': 'रद्द',
   'status.NEW': 'नया',
   'status.SHORTLISTED': 'चुना गया',
   'status.REJECTED': 'अस्वीकृत',
@@ -646,6 +690,21 @@ const EXPORT_TA: ExportDict = {
   'answerStatus.OPEN': 'நிலுவை',
   'answerStatus.ANSWERED': 'பதில் கிடைத்தது',
   'answerStatus.SKIPPED': 'தவிர்க்கப்பட்டது',
+  // Slice 3b-1 (2026-09-30): viewings. Under review (owner rule: hi/ta/te ship marked under review).
+  'table.viewings': 'வீடு பார்வையிடல்',
+  'section.viewings': 'வீடு பார்வையிடல்',
+  'col.when': 'எப்போது',
+  'col.kind': 'வகை',
+  'col.withWhom': 'யாருடன்',
+  'col.durationMin': 'கால அளவு (நிமிடங்கள்)',
+  'col.remindMin': 'நினைவூட்டல் (நிமிடங்கள் முன்)',
+  'col.visitId': 'வருகை அடையாளம்',
+  'viewingKind.FIRST': 'முதல் பார்வை',
+  'viewingKind.SECOND': 'இரண்டாம் பார்வை',
+  'viewingKind.FOLLOW_UP': 'தொடர் பார்வை',
+  'viewingStatus.PLANNED': 'திட்டமிட்டது',
+  'viewingStatus.DONE': 'முடிந்தது',
+  'viewingStatus.CANCELLED': 'ரத்து',
   'status.NEW': 'புதியது',
   'status.SHORTLISTED': 'தேர்வானது',
   'status.REJECTED': 'நிராகரிக்கப்பட்டது',
@@ -804,6 +863,21 @@ const EXPORT_TE: ExportDict = {
   'answerStatus.OPEN': 'పెండింగ్',
   'answerStatus.ANSWERED': 'సమాధానం వచ్చింది',
   'answerStatus.SKIPPED': 'వదిలివేశారు',
+  // Slice 3b-1 (2026-09-30): viewings. Under review (owner rule: hi/ta/te ship marked under review).
+  'table.viewings': 'ఇంటి పరిశీలన',
+  'section.viewings': 'ఇంటి పరిశీలన',
+  'col.when': 'ఎప్పుడు',
+  'col.kind': 'రకం',
+  'col.withWhom': 'ఎవరితో',
+  'col.durationMin': 'వ్యవధి (నిమిషాలు)',
+  'col.remindMin': 'రిమైండర్ (నిమిషాల ముందు)',
+  'col.visitId': 'సందర్శన ఐడీ',
+  'viewingKind.FIRST': 'మొదటి పరిశీలన',
+  'viewingKind.SECOND': 'రెండో పరిశీలన',
+  'viewingKind.FOLLOW_UP': 'తదుపరి పరిశీలన',
+  'viewingStatus.PLANNED': 'ప్రణాళిక',
+  'viewingStatus.DONE': 'పూర్తయింది',
+  'viewingStatus.CANCELLED': 'రద్దు',
   'status.NEW': 'కొత్తది',
   'status.SHORTLISTED': 'ఎంపికైంది',
   'status.REJECTED': 'తిరస్కరించబడింది',
@@ -870,6 +944,16 @@ export class ExportStrings {
   /** Translated name of a room type; the name itself when this version does not know it. */
   roomType(name: string): string {
     return this.lookup(`roomType.${name}`) ?? name;
+  }
+
+  /** Translated kind of a viewing; the name itself when unknown. */
+  viewingKind(name: string): string {
+    return this.lookup(`viewingKind.${name}`) ?? name;
+  }
+
+  /** Translated status of a viewing; the name itself when unknown. */
+  viewingStatus(name: string): string {
+    return this.lookup(`viewingStatus.${name}`) ?? name;
   }
 
   priceType(name: string | null | undefined): string {

@@ -40,7 +40,7 @@ import java.util.List;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"format", "exportedAt", "houses", "visits", "photos", "brokers", "criteria", "preferences",
-        "questions"})
+        "questions", "viewings"})
 public record BackupData(
         String format,
         /* When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. */
@@ -56,7 +56,9 @@ public record BackupData(
         /* Slice 2, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupPreference> preferences,
         /* Slice 3a, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupQuestion> questions
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupQuestion> questions,
+        /* Slice 3b-1, {@code doorprints-backup/2}: left out of the JSON while empty. Absent on the way in reads as none. */
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<BackupViewing> viewings
 ) {
     public BackupData {
         houses = copy(houses);
@@ -66,6 +68,7 @@ public record BackupData(
         criteria = copy(criteria);
         preferences = copy(preferences);
         questions = copy(questions);
+        viewings = copy(viewings);
     }
 
     private static <T> List<T> copy(List<T> rows) {
@@ -75,6 +78,6 @@ public record BackupData(
     /** Total rows, the number the import size limit is measured in. */
     public int rowCount() {
         return houses.size() + visits.size() + photos.size() + brokers.size() + criteria.size() + preferences.size()
-                + questions.size();
+                + questions.size() + viewings.size();
     }
 }

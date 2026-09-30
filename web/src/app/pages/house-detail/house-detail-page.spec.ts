@@ -78,6 +78,8 @@ function create(
     questions: () => of([]),
     house: () => of(HOUSE),
     visits: () => of([]),
+    viewingsOf: () => of([]),
+    settled: signal(0),
     photoIds: () => of([]),
     saveHouse: fakes.saveHouse ?? (() => of(HOUSE)),
   };

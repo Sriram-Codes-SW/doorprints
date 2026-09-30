@@ -20,6 +20,7 @@ import type { HouseRecord, PhotoRecord, VisitRecord } from '../../data/records';
 import type { BrokerRow } from '../../shared/broker';
 import type { CriterionRow, PreferenceRow } from '../../shared/scoring';
 import type { QuestionRow } from '../../shared/question';
+import type { ViewingRow } from '../../shared/viewing';
 import { DEFAULT_EXPORT_OPTIONS, collect } from '../export-model';
 import type { ExportBundle, ExportOptions } from '../export-model';
 
@@ -395,6 +396,44 @@ export const FIXTURE_PHOTO_MAP: ReadonlyMap<string, Uint8Array> = new Map(
   FIXTURE_PHOTOS.map((photo): [string, Uint8Array] => [photo.id, FIXTURE_PHOTO_BYTES]),
 );
 
+/**
+ * The two viewings of `docs/schemas/backup-sample.json` (slice 3b-1), both at house 1: a first viewing that is done, with
+ * the visit `…aaa1` and the person met (contact data), and a planned second one after `exportedAt` with a hunt reminder
+ * and notes. The backup lists them by last edit; a house page lists the upcoming one first.
+ */
+export const FIXTURE_VIEWINGS: ViewingRow[] = [
+  {
+    id: 'v_3c4d5e6f',
+    updatedAt: '2026-09-05T11:10:00.000Z',
+    viewing: {
+      id: 'v_3c4d5e6f',
+      houseId: H1,
+      startsAt: 1788604800000,
+      durationMin: 30,
+      kind: 'FIRST',
+      status: 'DONE',
+      remindMin: 60,
+      withWhom: 'Ravi Kumar',
+      visitId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    },
+  },
+  {
+    id: 'v_a1b2c3d4',
+    updatedAt: '2026-09-22T10:15:30.000Z',
+    viewing: {
+      id: 'v_a1b2c3d4',
+      houseId: H1,
+      startsAt: 1790501400000,
+      durationMin: 45,
+      kind: 'SECOND',
+      status: 'PLANNED',
+      remindMin: 30,
+      huntReminder: true,
+      notes: 'Ask for the water bill. Bring a tape; check the terrace, please.',
+    },
+  },
+];
+
 /** Fixed `data:` URIs, so the HTML golden does not depend on a canvas being available. */
 export const FIXTURE_PHOTO_DATA_URIS: ReadonlyMap<string, string> = new Map(
   FIXTURE_PHOTOS.map((photo): [string, string] => [photo.id, 'data:image/jpeg;base64,/9j/']),
@@ -411,6 +450,7 @@ export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundl
     criteria: FIXTURE_CRITERIA,
     preferences: FIXTURE_PREFERENCES,
     questions: FIXTURE_QUESTIONS,
+    viewings: FIXTURE_VIEWINGS,
     exportedAt: FIXTURE_EXPORTED_AT,
     options: { ...FIXTURE_OPTIONS, ...options },
   });

@@ -121,6 +121,37 @@ class HouseIndexerTest {
         verify(vectorStore).delete(List.of(gone.getId().toString()));
     }
 
+    /** Slice 3b-1: the document of a house carries its viewings (read once from the viewing records), not another's. */
+    @Test
+    void indexAndReindexCarryTheViewingsOfTheHouse() {
+        var records = mock(app.doorprints.server.record.RecordRepository.class);
+        var withViewings = new HouseIndexer(houses, visits, vectorStore, true, records,
+                tools.jackson.databind.json.JsonMapper.builder().build());
+        var mine = liveHouses(1).getFirst();
+        var other = liveHouses(1).getFirst();
+        var viewing = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("viewing", "v_1"));
+        viewing.setPayload("{\"houseId\":\"" + mine.getId() + "\",\"startsAt\":1790501400000,\"kind\":\"SECOND\","
+                + "\"status\":\"PLANNED\",\"withWhom\":\"Ravi\",\"notes\":\"Bring a tape\"}");
+        when(records.findByKeyTypeAndDeletedFalse("viewing")).thenReturn(List.of(viewing));
+        when(houses.findById(mine.getId())).thenReturn(Optional.of(mine));
+        when(houses.findByDeletedFalseOrderByUpdatedAtDesc()).thenReturn(List.of(mine, other));
+        when(houses.findDeletedIds()).thenReturn(List.of());
+
+        withViewings.index(mine.getId());
+        withViewings.reindexAll();
+
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(vectorStore, times(2)).add(captor.capture());
+        @SuppressWarnings("unchecked")
+        var single = (List<org.springframework.ai.document.Document>) captor.getAllValues().get(0);
+        @SuppressWarnings("unchecked")
+        var batch = (List<org.springframework.ai.document.Document>) captor.getAllValues().get(1);
+        assertThat(single.getFirst().getText())
+                .contains("Viewing: 2026-09-27 09:30 | SECOND | PLANNED | Notes: Bring a tape").doesNotContain("Ravi");
+        assertThat(batch.get(0).getText()).contains("Viewing: 2026-09-27");
+        assertThat(batch.get(1).getText()).doesNotContain("Viewing:");
+    }
+
     @Test
     void reindexSucceedsAndRemovesDeletedHouses() {
         var gone = new House(UUID.randomUUID());

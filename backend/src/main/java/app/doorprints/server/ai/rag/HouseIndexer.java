@@ -24,6 +24,7 @@ import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
+import app.doorprints.server.record.RecordRepository;
 import app.doorprints.server.visit.Visit;
 import app.doorprints.server.visit.VisitDto;
 import app.doorprints.server.visit.VisitRepository;
@@ -38,10 +39,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
@@ -67,21 +71,39 @@ public class HouseIndexer {
     private final VectorStore vectorStore;
     private final FailureSummary asyncFailures = new FailureSummary(log, FAILURE_WINDOW, System::nanoTime);
     private final boolean indexOnChange;
+    /** Where the viewings come from (records of type {@code viewing}); null in a unit test that has none. */
+    private final RecordRepository records;
+    private final ObjectMapper json;
 
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore) {
-        this(houses, visits, vectorStore, true);
+        this(houses, visits, vectorStore, true, null, null);
     }
 
     @Autowired
-    public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, AiProperties props) {
-        this(houses, visits, vectorStore, props.indexOnChange());
+    public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, AiProperties props,
+                        RecordRepository records, ObjectMapper json) {
+        this(houses, visits, vectorStore, props.indexOnChange(), records, json);
     }
 
     HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, boolean indexOnChange) {
+        this(houses, visits, vectorStore, indexOnChange, null, null);
+    }
+
+    HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, boolean indexOnChange,
+                 RecordRepository records, ObjectMapper json) {
         this.houses = houses;
         this.visits = visits;
         this.vectorStore = vectorStore;
         this.indexOnChange = indexOnChange;
+        this.records = records;
+        this.json = json;
+    }
+
+    /** The live viewings by house id: one query of the {@code viewing} type (at most 5 000 rows), not one per house. */
+    private Map<String, List<ViewingLine>> viewingsByHouse() {
+        if (records == null) return Map.of();
+        return records.findByKeyTypeAndDeletedFalse("viewing").stream().map(r -> ViewingLine.from(r, json))
+                .filter(Objects::nonNull).collect(Collectors.groupingBy(ViewingLine::houseId));
     }
 
     @Async
@@ -117,7 +139,8 @@ public class HouseIndexer {
             vectorStore.delete(List.of(houseId.toString()));
             return;
         }
-        vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId))));
+        vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId),
+                viewingsByHouse().getOrDefault(houseId.toString(), List.of()))));
     }
 
     /**
@@ -132,6 +155,8 @@ public class HouseIndexer {
     public int reindexAll() {
         var live = houses.findByDeletedFalseOrderByUpdatedAtDesc();
         int batches = (live.size() + BATCH - 1) / BATCH;
+        // Read once for the whole run, not per batch.
+        var viewingsByHouse = batches == 0 ? Map.<String, List<ViewingLine>>of() : viewingsByHouse();
         int indexed = 0;
         int failedHouses = 0;
         int failedBatches = 0;
@@ -148,7 +173,8 @@ public class HouseIndexer {
                 var docs = new ArrayList<Document>(slice.size());
                 for (var house : slice) {
                     docs.add(HouseDocuments.toDocument(HouseDto.from(house),
-                            visitsByHouse.getOrDefault(house.getId(), List.of())));
+                            visitsByHouse.getOrDefault(house.getId(), List.of()),
+                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of())));
                 }
                 vectorStore.add(docs);
                 indexed += slice.size();

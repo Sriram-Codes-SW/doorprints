@@ -57,6 +57,7 @@ import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
 import type { HouseAnswer, HouseRoom, RoomType } from '../../core/models';
 import { QUESTION_CATEGORIES } from '../../shared/question';
 import type { Question, QuestionCategory } from '../../shared/question';
+import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
 import {
   areaNumber,
@@ -114,7 +115,7 @@ const DRAFT_SAVE_MS = 500;
 
 @Component({
   selector: 'app-house-detail-page',
-  imports: [FormsModule, RouterLink, LocationMap, AuthImage, TPipe],
+  imports: [FormsModule, RouterLink, LocationMap, AuthImage, TPipe, HouseViewingsCard],
   templateUrl: './house-detail-page.html',
   styleUrl: './house-detail-page.css',
   // Tab close, browser reload and the update banner's reload do not go through the router's canDeactivate.

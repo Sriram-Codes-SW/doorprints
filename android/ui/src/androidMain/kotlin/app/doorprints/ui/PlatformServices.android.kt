@@ -23,6 +23,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.CalendarContract
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -66,6 +67,15 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
         false
     }
 
+    override val canAddToCalendar: Boolean get() = true
+
+    override fun addToCalendar(event: CalendarEvent): Boolean = try {
+        context.startActivity(calendarInsertIntent(event))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+
     /** The model, as the phone's own settings name it ("Pixel 9"), with the maker only when the model lacks it. */
     override fun deviceName(): String = androidDeviceName(android.os.Build.MANUFACTURER, android.os.Build.MODEL)
 
@@ -77,6 +87,19 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
         context.findActivity()?.moveTaskToBack(true)
     }
 }
+
+/**
+ * The calendar's *new event* screen for [event] (docs/11 5.8): `ACTION_INSERT` on `CalendarContract.Events`, which
+ * needs no calendar permission, with the title, begin, end and, when known, the location and description.
+ */
+fun calendarInsertIntent(event: CalendarEvent): Intent =
+    Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI).apply {
+        putExtra(CalendarContract.Events.TITLE, event.title)
+        putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, event.beginMillis)
+        putExtra(CalendarContract.EXTRA_EVENT_END_TIME, event.endMillis)
+        event.location?.takeIf { it.isNotEmpty() }?.let { putExtra(CalendarContract.Events.EVENT_LOCATION, it) }
+        event.description?.takeIf { it.isNotEmpty() }?.let { putExtra(CalendarContract.Events.DESCRIPTION, it) }
+    }
 
 /** "Pixel 9 (Android app)", "Samsung SM-S921B (Android app)": the maker is added unless the model starts with it. */
 internal fun androidDeviceName(manufacturer: String?, model: String?): String {

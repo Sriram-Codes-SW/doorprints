@@ -93,4 +93,5 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     criteria,
     preferences,
     questions,
+    viewings,
 )

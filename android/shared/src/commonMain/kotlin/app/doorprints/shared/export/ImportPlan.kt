@@ -102,16 +102,24 @@ data class ImportPreview(
     /** Questions of a `/2` file (slice 3a), new here and newer in the file: merged by id like the criteria, never deleted. */
     val newQuestions: Int = 0,
     val updatedQuestions: Int = 0,
+    /**
+     * Viewings of a `/2` file (slice 3b-1), new here and newer in the file: merged by id, last edit wins, never deleted
+     * (a newer file row brings back one deleted here). A COPY adds them all under new ids, on the copied houses.
+     */
+    val newViewings: Int = 0,
+    val updatedViewings: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
         get() = newHouses == 0 && updatedHouses == 0 && newVisits == 0 && updatedVisits == 0 && newPhotos == 0 &&
             restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
-            newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0
+            newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0 &&
+            newViewings == 0 && updatedViewings == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
     val overwrites: Int
-        get() = updatedHouses + updatedVisits + updatedBrokers + updatedCriteria + updatedPreferences + updatedQuestions
+        get() = updatedHouses + updatedVisits + updatedBrokers + updatedCriteria + updatedPreferences + updatedQuestions +
+            updatedViewings
 }
 
 /**
@@ -159,6 +167,11 @@ data class ImportActions(
     val preferences: List<ExportPreference> = emptyList(),
     /** The questions to write (slice 3a): new here or newer in the file, by id, in both modes (a copy keeps the ids). */
     val questions: List<ExportQuestion> = emptyList(),
+    /**
+     * The viewings to write (slice 3b-1): in MERGE those new here or newer in the file, by id; in COPY all of them under
+     * new ids, naming the copied houses and visits by their new ids (one of a house not in the file keeps its house id).
+     */
+    val viewings: List<ExportViewing> = emptyList(),
 )
 
 /**
@@ -225,12 +238,16 @@ object ImportPlan {
         localCriteria: Map<String, Long> = emptyMap(),
         localPreferences: Map<String, Long> = emptyMap(),
         localQuestions: Map<String, Long> = emptyMap(),
+        localViewings: Map<String, Long> = emptyMap(),
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val (newC, updC) = settingsCounts(data.criterionRows.map { it.key to it.updatedAt }, localCriteria, skipSettings)
         val (newPr, updPr) = settingsCounts(data.preferenceRows.map { it.key to it.updatedAt }, localPreferences, skipSettings)
         val (newQ, updQ) = settingsCounts(data.questionRows.map { it.id to it.updatedAt }, localQuestions, skipSettings)
+        // Viewings merge by id like the questions; a copy adds every one of them under a new id.
+        val (newVw, updVw) = if (mode == ImportMode.COPY) data.viewingRows.size to 0 else
+            settingsCounts(data.viewingRows.map { it.id to it.updatedAt }, localViewings, skipSettings)
         if (mode == ImportMode.COPY) {
             // Nothing local is consulted in COPY mode, not even a tombstone: every row gets a new id. What does
             // matter is that `plan` drops a visit or a photo whose houseId is not one of the *file's* own houses,
@@ -258,6 +275,7 @@ object ImportPlan {
                 newBrokers = data.brokerRows.size,
                 newCriteria = newC, updatedCriteria = updC, newPreferences = newPr, updatedPreferences = updPr,
                 newQuestions = newQ, updatedQuestions = updQ,
+                newViewings = newVw, updatedViewings = updVw,
             )
         }
         var newH = 0; var updH = 0; var hereH = 0; var sameH = 0; var clearedH = 0; var deletedH = 0
@@ -334,6 +352,8 @@ object ImportPlan {
             updatedPreferences = updPr,
             newQuestions = newQ,
             updatedQuestions = updQ,
+            newViewings = newVw,
+            updatedViewings = updVw,
             checklistsCleared = clearedH,
             deletedHereHouses = deletedH,
             deletedHereVisits = deletedV,
@@ -393,16 +413,19 @@ object ImportPlan {
         localCriteria: Map<String, Long> = emptyMap(),
         localPreferences: Map<String, Long> = emptyMap(),
         localQuestions: Map<String, Long> = emptyMap(),
+        localViewings: Map<String, Long> = emptyMap(),
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
         val preferences = data.preferenceRows.filter { settingWrites(it.key, it.updatedAt, localPreferences, skipSettings) }
         val questions = data.questionRows.filter { settingWrites(it.id, it.updatedAt, localQuestions, skipSettings) }
+        val mergedViewings = data.viewingRows.filter { settingWrites(it.id, it.updatedAt, localViewings, skipSettings) }
         if (mode == ImportMode.COPY) {
             val houseIds = data.houses.associate { it.id to newId() }
+            val visitIds = HashMap<String, String>()
             val visits = data.visits
                 .filter { it.houseId == null || it.houseId in houseIds }
-                .map { it.copy(id = newId(), houseId = it.houseId?.let(houseIds::getValue)) }
+                .map { v -> v.copy(id = newId().also { visitIds[v.id] = it }, houseId = v.houseId?.let(houseIds::getValue)) }
             val photoSources = LinkedHashMap<String, String>()
             val photos = data.photos.mapNotNull { p ->
                 val entry = BackupFormat.photoEntry(p.fileName)
@@ -420,9 +443,16 @@ object ImportPlan {
                 it.copy(id = houseIds.getValue(it.id), brokerId = it.brokerId?.let { b -> brokerIds[b] ?: b })
             }
             val brokers = data.brokerRows.map { it.copy(id = brokerIds.getValue(it.id)) }
+            // The viewings last, for the same reason: a copied house's viewings follow it under new ids.
+            val viewings = data.viewingRows.map { v ->
+                v.copy(
+                    id = newId(), houseId = houseIds[v.houseId] ?: v.houseId,
+                    visitId = v.visitId?.let { visitIds[it] ?: it },
+                )
+            }
             return ImportActions(
                 mode, houses, visits, photos, photoSources, brokers = brokers, criteria = criteria, preferences = preferences,
-                questions = questions,
+                questions = questions, viewings = viewings,
             )
         }
 
@@ -497,6 +527,7 @@ object ImportPlan {
             criteria = criteria,
             preferences = preferences,
             questions = questions,
+            viewings = mergedViewings,
         )
     }
 
