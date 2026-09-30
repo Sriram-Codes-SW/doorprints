@@ -34,6 +34,16 @@ A copy with contact details holds owners' and brokers' phone numbers. Share it c
 
 <img src="images/android-export.png" width="300" alt="Save a copy on Android: format choices Web page (HTML), PDF and Tables (CSV), the counts, and Share and Save to buttons"> <img src="images/android-settings.png" width="300" alt="Android Settings: Language choices, then Your data with Save a copy, Import a backup and Weekly automatic backup, then Hunt mode settings">
 
+## Share updates with someone you hunt with
+
+In **Settings**, under **Your data**, tap **Share updates with…**. Add the person's name once ("Priya"), then tap
+**Share updates with Priya**: Doorprints makes a file of everything that changed since you last shared with her
+(the first time, your whole list) and opens the share sheet, so you can send it on WhatsApp, by email or any other
+way. On her phone, opening the file starts Doorprints, which shows what would change and merges it with her list
+when she taps **Import**. When both of you share your updates now and then, you hunt as one from two phones. Turn
+**Include contact details** off to keep owners' and brokers' phone numbers out of the file. A house one of you
+deleted stays on the other's phone until they delete it too.
+
 ## Import a backup
 
 **Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**. Today only the Android app

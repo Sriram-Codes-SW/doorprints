@@ -94,7 +94,15 @@ class MainActivity : ComponentActivity() {
     private fun parse(intent: Intent): DeepLink? {
         // A connect link (doorprints://connect, the owner page's QR code): only a checked one; the app asks first.
         if (intent.action == Intent.ACTION_VIEW) {
-            return ConnectLink.parse(intent.dataString)?.let { DeepLink.Connect(it) }
+            ConnectLink.parse(intent.dataString)?.let { return DeepLink.Connect(it) }
+            // A backup or update file opened in Doorprints (docs/11 5.28): a document another app holds. The Import
+            // screen validates it as any picked file; only a content or file reference is taken, never a link.
+            return intent.data?.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+        }
+        if (intent.action == Intent.ACTION_SEND) {
+            @Suppress("DEPRECATION")
+            val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM) ?: return null
+            return stream.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
         }
         intent.getStringExtra(Notifications.EXTRA_OPEN_SCREEN)?.let {
             // A fixed allow-list, never a route taken from the extra as-is.

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.86 |
+| Version | 0.87 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -98,6 +98,7 @@
 | 0.84 | 2026-09-29 | Claude (Code), lead | **Hunt mode on iPhone** (S4b-BL-69, branch `feat/s4b-bl-69-ios-hunt-mode`): new **§13.14**, the adapter around the common `HuntEngine` (Core Location in the background under *When in use*, local notifications, Apple's geocoder, the battery), `PlatformFeatures.Ios.huntMode` on, the launch smoke's `hunt` gate ([06](06-test-plan.md) TC-I-41), the device check TC-M-31 (owner). §12.7 S4b-BL-69 done in code; the path trace (S4b-FR-2) is recorded on iPhone too. |
 | 0.85 | 2026-09-30 | Claude (Code), lead | **Offline maps built** (S4b-FR-6, branch `feat/s4b-fr-6-offline-maps`): new **§13.15**; §15 S4b-FR-6 done in code on Android and iPhone; new **S4b-BL-79** (the website's offline tiles) and **S4b-BL-80** (a self-hosted extract, should OpenFreeMap object); TC-M-32 (owner). |
 | 0.86 | 2026-09-30 | Claude (Code), lead | **Sharing updates designed** (S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28, [03](03-design.md) ADR-27): an update file in the backup format. §15 S4b-FR-3 designed; new **S4b-BL-81** (iPhone copies and imports) and **S4b-BL-82** (deletions in an update file). |
+| 0.87 | 2026-09-30 | Claude (Code), lead | **Sharing updates built on Android** (S4b-FR-3, branch `feat/s4b-fr-3-share-updates-android`): new **§13.16**; §15 S4b-FR-3 done in code on Android; TC-M-33 (owner). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -2410,6 +2411,38 @@ cross-compiled). The Swift store, `MLNOfflineStorage` and the packs run for the 
 app build and the launch smoke, which does not save an area). **Not yet:** TC-M-32, the owner's saved area on a
 phone and the boundary re-check offline.
 
+### 13.16 S4b-FR-3, sharing updates on Android, done in code
+
+**What was done** (branch `feat/s4b-fr-3-share-updates-android`, from `main` at `445f021`, the design of
+[11](11-feature-parity-and-export-spec.md) 5.28 and ADR-27 built as designed):
+
+- **`:shared`**: `ExportOptions.since` and `sharedTo` (`isUpdate`); `ExportBundle.build` keeps, with `since`, the
+  houses and visits with `updatedAt` after it and the photos with `createdAt` after it, every visit and photo of a
+  changed house, and the unchanged house of a changed visit (so the visit has somewhere to land); the file stem
+  `Doorprints-updates-<date>`; `BackupManifest.sharedSince` and `sharedTo`, optional and ignored by every reader
+  (docs/schemas 1.7). `ShareContact` (id, name, `lastSharedAt`) as JSON in the settings store, on the phone only:
+  `addShareContact` (trimmed, one per name in any case), `markShared`, `removeShareContact`; the redacted print
+  says only how many.
+- **`:ui`**: `ShareUpdatesScreen` (Settings > Your data > *Share updates with…*): the names, *Add a name*, what the
+  chosen person last got and when, *Include contact details* with the copy's warning, *Include photos*, the counts
+  from the rows through the same bundle, *Share updates with Priya*; the export worker writes the ZIP into the
+  share-copies folder (the Export screen's stop, cleanup and notification apply), the finished run's file goes to
+  the share sheet and `lastSharedAt` moves to the export's instant once the sheet opened (Android does not report
+  whether a file was sent). `DeepLink.ImportFile` and the Import screen's `initialFile`, picked once; its header
+  reads "Updates for Priya, made on <date>" from the manifest. Strings in four languages (hi, ta, te *under
+  review*).
+- **`:app`**: `ExportRequest` carries `since` and `sharedTo` to the worker, `Exporters` writes them into the
+  manifest; MainActivity turns an `ACTION_VIEW` of a `content` or `file` document, or an `ACTION_SEND` with a
+  stream, into `DeepLink.ImportFile` (a link is never taken; F-25: the Import screen validates the file as any
+  picked one); the manifest's intent filters for `application/zip` and `application/json`.
+- **Tests and docs**: `ShareUpdatesTest` (4), `SettingsStoreTest` (+1), the `share_updates` screenshots (8, and
+  `settings` re-recorded for its new row);
+  [06](06-test-plan.md) TC-U-96, TC-M-33; [01](01-requirements.md) PRV-029; [02](02-threat-model.md) T-I31;
+  docs/schemas 1.7; the guide's data page; CHANGELOG.
+
+**Not built here:** the web (S4b-BL-75 first) and the iPhone (S4b-BL-81 first); deletions (S4b-BL-82); the Drive
+folder (with sign-in, D-28). **Not yet:** TC-M-33, the owner's exchange between two phones.
+
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
 **The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
@@ -2449,7 +2482,7 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 |---|---|---|---|
 | S4b-FR-1 | **Search the saved houses.** | **Both apps already search** the house list as you type, offline: the web over the label, address, street, locality, notes and contact name (`searchText`, `pages/map/map-list.ts`), Android over the same without the contact name (`HouseListScreen.kt`). **Owner decision of 2026-09-28:** "Anything more that adds value to the search can be updated as the House values get updated." No separate search project: search grows with the house's values. A change that adds a house field, or changes what one holds, also decides whether both apps' search covers it and updates `searchText` (web) and the `HouseListScreen` filter (Android) together, with a test on each side; the next such change also closes the Android contact-name gap. | Rule in force (CLAUDE.md) |
 | S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is geospatial data under the DST guidelines of 2021 (phone accuracy, coarser than their 1 m threshold, so no storage rule applies; [03](03-design.md) §11.1) and location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | **Done in code** (2026-09-29, Android; [11](11-feature-parity-and-export-spec.md) 5.27): step 1 `HuntEngine` in common code (`refactor/hunt-engine-common`, PR #63); step 2 the trace inside the engine (`feat/s4b-fr-2-path-trace`): opt-in in Settings, `TrackRecorder`, `track_points` (Room v3), the line under the houses from shared style code, 30-day retention, *Clear the path*, never in a backup, a copy or the sync (T-I30, PRV-028); the iPhone records it too since S4b-BL-69 (§13.14); on a phone TC-M-30 (owner). Step 3 offline maps (S4b-FR-6) next. |
-| S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | **Designed** (2026-09-30, [11](11-feature-parity-and-export-spec.md) 5.28, ADR-27): the third option, as the backup format with `sharedSince` and `sharedTo` in the manifest and per-name bookkeeping on the phone; Android first, then the web (after S4b-BL-75) and the iPhone (after S4b-BL-81); deletions S4b-BL-82; the Drive folder of D-28 later as the automatic channel |
+| S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | **Done in code on Android** (2026-09-30, §13.16; designed the same day, [11](11-feature-parity-and-export-spec.md) 5.28, ADR-27): the backup format with `sharedSince` and `sharedTo` in the manifest and per-name bookkeeping on the phone; *Share updates with…* in Settings; a received file opens in the Import screen. The web after S4b-BL-75, the iPhone after S4b-BL-81; deletions S4b-BL-82; the Drive folder of D-28 later as the automatic channel; on two phones TC-M-33 (owner) |
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
 | S4b-FR-5 | **App lock** on the phones: PIN, fingerprint or face, with the phone's own credential ([11](11-feature-parity-and-export-spec.md) 5.19, D-30). | With Google sign-in (N13 3b); threat-model item for a lost or shared phone; emulator test and a device check. | **Done in code** (2026-09-29, `feat/s4b-fr-5-app-lock`): Settings > Privacy > *Lock Doorprints*; threat model T-I29; [06](06-test-plan.md) TC-U-90, device check TC-M-29; emulator test S4b-BL-67. |
 | S4b-FR-6 | **Offline maps for the hunting area** (11 5.20, D-30). | With the path trace (S4b-FR-2): one map change, one TC-M-25 re-check; India's boundary rules on the offline tiles; free tile sources only, size shown first, Wi-Fi by default. | **Done in code** (2026-09-30, Android and iPhone, §13.15; [11](11-feature-parity-and-export-spec.md) 5.20): the box on screen as MapLibre's own offline pack, the estimate and the 2,000-tile cap in common code, the mobile-data note, Settings > Offline maps; the website is S4b-BL-79; on a phone TC-M-32 (owner), which is the TC-M-25 re-check offline |

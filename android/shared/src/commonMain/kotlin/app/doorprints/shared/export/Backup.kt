@@ -99,6 +99,13 @@ data class BackupManifest(
     val includeContacts: Boolean = true,
     val counts: BackupCounts,
     val files: List<BackupFile> = emptyList(),
+    /**
+     * An update file (docs/11 5.28, S4b-FR-3): the rows changed after this instant (ISO-8601) only; absent on a copy
+     * or a full share. Read for the Import screen's header, never to gate an import.
+     */
+    val sharedSince: String? = null,
+    /** Who the update was made for (the name its maker typed); absent on a copy. */
+    val sharedTo: String? = null,
 )
 
 /**

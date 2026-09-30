@@ -667,4 +667,22 @@
     <string name="offline_state_failed">Could not save</string>
     <string name="offline_delete">Delete %1$s</string>
     <string name="offline_delete_confirm">Delete the saved area ‘%1$s’? The map will need the network there again.</string>
+    <!-- S4b-FR-3, sharing updates (2026-09-30). -->
+    <string name="settings_share">Share updates with…</string>
+    <string name="settings_share_hint">Send what changed to someone you hunt with; they import it and merge</string>
+    <string name="share_title">Share updates with…</string>
+    <string name="share_intro">Doorprints makes a file of what changed since your last share to this person, for you to send in any app. On their phone it opens in Doorprints and merges with their list. The first share is your whole list.</string>
+    <string name="share_who">Who is it for?</string>
+    <string name="share_add_name">Add a name</string>
+    <string name="share_add">Add</string>
+    <string name="share_remove">Remove %1$s</string>
+    <string name="share_last">%1$s last got your updates on %2$s.</string>
+    <string name="share_first">%1$s has not had any yet, so this share is your whole list.</string>
+    <string name="share_photos">Include photos</string>
+    <string name="share_count">%1$d houses, %2$d visits and %3$d photos will be in the file.</string>
+    <string name="share_nothing">Nothing has changed since then.</string>
+    <string name="share_go">Share updates with %1$s</string>
+    <string name="share_preparing">Preparing the file…</string>
+    <string name="share_failed">The file could not be made. Try again.</string>
+    <string name="import_updates_for">Updates for %1$s, made on %2$s</string>
 </resources>

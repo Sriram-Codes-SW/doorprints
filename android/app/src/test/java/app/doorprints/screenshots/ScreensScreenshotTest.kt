@@ -38,6 +38,7 @@ import app.doorprints.data.AppSettings
 import app.doorprints.data.TrackPointEntity
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppLockSection
+import app.doorprints.ui.ShareUpdatesScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import app.doorprints.ui.SaveAreaDialogContent
 import app.doorprints.ui.OfflineMapsServices
@@ -267,6 +268,16 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 bounds = GeoBounds(12.96, 77.63, 12.985, 77.655), metered = true, name = "Indiranagar", onName = {},
             )
         }
+    }
+    /** *Share updates with…* (docs/11 5.28): two names, one shared to before, the counts and the switches. */
+    @Test fun shareUpdates() {
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            val priya = repo.settings.addShareContact("Priya")!!
+            repo.settings.markShared(priya.id, 1_759_900_000_000)
+            repo.settings.addShareContact("Amma")
+        }
+        shoot("share_updates") { ShareUpdatesScreen(onBack = {}) }
     }
     @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
     @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }

@@ -63,6 +63,13 @@ sealed interface DeepLink {
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
     data class OpenScreen(val route: String) : DeepLink
 
+    /**
+     * A backup or update file another app opened in Doorprints (docs/11 5.28: "open with" or "share to" from WhatsApp,
+     * email, the Files app): the Import screen with that file picked. [file] is the platform's reference (Android: a
+     * `content://` URI); the Import screen validates it as any picked file.
+     */
+    data class ImportFile(val file: String) : DeepLink
+
     /** A connect link from the server's owner page (its QR code), already checked ([ConnectLink.parse]). */
     data class Connect(val link: ConnectLink) : DeepLink
 }
@@ -82,6 +89,8 @@ object Routes {
     const val SETTINGS = "settings"
     const val EXPORT = "export"
     const val IMPORT = "import"
+    /** *Share updates with…* (docs/11 5.28). */
+    const val SHARE = "share-updates"
 
     /** The screens a notification may open ([DeepLink.OpenScreen]); `:app`'s `Notifications.SCREENS`. */
     val NOTIFICATION_SCREENS = setOf(EXPORT, IMPORT, SETTINGS)
@@ -164,6 +173,8 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // Back, the list must not keep pointing at the first one, whose undo would then remove the wrong copies. The
         // list itself also prefers a newer undoable import over this run.
         var importedRun by rememberSaveable { mutableStateOf<String?>(null) }
+        // A backup file another app opened in Doorprints (docs/11 5.28), until the Import screen has picked it.
+        var pendingImportFile by remember { mutableStateOf<String?>(null) }
         // Counts the "See your houses" taps, so the list turns its "Just imported" filter on once per tap and not on
         // every return to the Houses tab, including a second tap for the same run after an undo that kept houses.
         var importedOpen by rememberSaveable { mutableIntStateOf(0) }
@@ -199,6 +210,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     // Asked on Settings, where the server's address and status are.
                     nav.openTab(Routes.SETTINGS)
                     pendingConnect = d.link
+                }
+                is DeepLink.ImportFile -> {
+                    importedRun = null
+                    pendingImportFile = d.file
+                    nav.navigate(Routes.IMPORT) { launchSingleTop = true }
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
@@ -318,7 +334,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                             importedRun = null
                             nav.navigate("import")
                         },
+                        onOpenShare = { nav.navigate(Routes.SHARE) },
                     )
+                }
+                composable(Routes.SHARE) {
+                    ShareUpdatesScreen(onBack = dropUnlessResumed { nav.popBackStack() })
                 }
                 // Offline copy (Sprint 4a). Both are full screens with their own back arrow rather than tabs:
                 // they are a task the user finishes and leaves, not a place to come back to.
@@ -338,6 +358,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 composable("import") {
                     ImportScreen(
                         onBack = dropUnlessResumed { nav.popBackStack() },
+                        // A file another app opened in Doorprints (DeepLink.ImportFile), picked once.
+                        initialFile = pendingImportFile,
+                        onInitialFileConsumed = { pendingImportFile = null },
                         onOpenHouses = { run ->
                             importedRun = run
                             importedOpen++

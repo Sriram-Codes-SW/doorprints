@@ -30,6 +30,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
@@ -84,6 +88,8 @@ data class AppSettings(
      * phone only, for 30 days. Off by default.
      */
     val pathTrace: Boolean = false,
+    /** The people updates are shared with (docs/11 5.28), on this phone only; never synced or exported. */
+    val shareContacts: List<ShareContact> = emptyList(),
 ) {
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
@@ -105,7 +111,8 @@ data class AppSettings(
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
             "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
-            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace)"
+            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, " +
+            "shareContacts=${shareContacts.size})"
 }
 
 /**
@@ -201,6 +208,8 @@ class SettingsStore(
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
         /** [AppSettings.pathTrace]. */
         val pathTrace = booleanPreferencesKey("pathTrace")
+        /** [AppSettings.shareContacts], as JSON. */
+        val shareContacts = stringPreferencesKey("shareContacts")
     }
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
@@ -227,6 +236,7 @@ class SettingsStore(
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
+            shareContacts = ShareContact.decode(p[Keys.shareContacts]),
         )
     }
 
@@ -319,6 +329,31 @@ class SettingsStore(
     suspend fun saveAppLockAfter(seconds: Int) = dataStore.edit { it[Keys.appLockAfter] = AppLockTimes.valid(seconds) }
 
     suspend fun savePathTrace(on: Boolean) = dataStore.edit { it[Keys.pathTrace] = on }
+
+    /** Adds a person to share updates with (docs/11 5.28); the name trimmed, a duplicate name not added twice. */
+    suspend fun addShareContact(name: String): ShareContact? {
+        val trimmed = name.trim().take(ShareContact.MAX_NAME)
+        if (trimmed.isBlank()) return null
+        var added: ShareContact? = null
+        dataStore.edit {
+            val current = ShareContact.decode(it[Keys.shareContacts])
+            val existing = current.firstOrNull { c -> c.name.equals(trimmed, ignoreCase = true) }
+            added = existing ?: ShareContact(id = newShareContactId(), name = trimmed).also { c ->
+                it[Keys.shareContacts] = ShareContact.encode(current + c)
+            }
+        }
+        return added
+    }
+
+    /** Records that an update up to [at] went to [id] (the share sheet opened for it). */
+    suspend fun markShared(id: String, at: Long) = dataStore.edit {
+        val current = ShareContact.decode(it[Keys.shareContacts])
+        it[Keys.shareContacts] = ShareContact.encode(current.map { c -> if (c.id == id) c.copy(lastSharedAt = at) else c })
+    }
+
+    suspend fun removeShareContact(id: String) = dataStore.edit {
+        it[Keys.shareContacts] = ShareContact.encode(ShareContact.decode(it[Keys.shareContacts]).filter { c -> c.id != id })
+    }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 
@@ -425,3 +460,25 @@ class SettingsStore(
         }
     }
 }
+
+/**
+ * Someone updates are shared with (docs/11 5.28, S4b-FR-3): a name the person typed once, and when the last update
+ * went to them (0: never, so the next share is the whole list). Kept in the settings store as JSON, on this phone
+ * only.
+ */
+@Serializable
+data class ShareContact(val id: String, val name: String, val lastSharedAt: Long = 0) {
+    companion object {
+        const val MAX_NAME = 40
+        private val json = Json { ignoreUnknownKeys = true }
+
+        fun decode(text: String?): List<ShareContact> =
+            text?.takeIf { it.isNotBlank() }?.let { runCatching { json.decodeFromString<List<ShareContact>>(it) }.getOrNull() }
+                .orEmpty()
+
+        fun encode(contacts: List<ShareContact>): String = json.encodeToString(contacts)
+    }
+}
+
+@OptIn(ExperimentalUuidApi::class)
+private fun newShareContactId(): String = Uuid.random().toString()

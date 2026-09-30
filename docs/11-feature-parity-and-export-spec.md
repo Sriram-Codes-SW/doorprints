@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.29 |
+| Version | 0.30 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -41,6 +41,7 @@
 | 0.27 | 2026-09-29 | Claude (Code), lead | 5.27: the path trace is recorded on iPhone too (S4b-BL-69, Hunt mode on iPhone; [10](10-sprint-log.md) §13.14). |
 | 0.28 | 2026-09-30 | Claude (Code), lead | 5.20 **offline maps built** on Android and iPhone (S4b-FR-6): the map's visible area as one of MapLibre's offline packs, the estimate and the cap in common code; the website is S4b-BL-79. |
 | 0.29 | 2026-09-30 | Claude (Code), lead | New **5.28**, the design of sharing updates between two people who know each other (S4b-FR-3): an update file in the backup format, sent through any app, imported with the existing merge; the Drive folder of D-28 later as the automatic channel. New US-40. |
+| 0.30 | 2026-09-30 | Claude (Code), lead | 5.28 **built on Android** (S4b-FR-3): *Share updates with…* from Settings > Your data, the update file, a received file opening in the Import screen. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -637,6 +638,20 @@ few, and a peer-to-peer link needs both phones online at once and a relay. A fil
 through the apps people already trust each other on, and it is the format the apps already test in three stacks
 (TC-U-93). What it costs: the two people must remember to share; the update carries no deletions at first; the
 iPhone and the website need their import first.
+
+**Built on Android (2026-09-30, [10](10-sprint-log.md) §13.16).** Settings > Your data > *Share updates with…*: the
+names (`ShareContact` in the settings store, on the phone only: id, name, `lastSharedAt`), *Add a name*, what the
+chosen person last got and when, *Include contact details* with its warning, *Include photos*, the counts the file
+will hold ("3 houses, 2 visits and 4 photos"; "Nothing has changed since then" disables the button), and *Share
+updates with Priya*: the export worker writes a backup ZIP into the share-copies folder with `since` and `sharedTo`
+in the options (`ExportBundle.build` keeps the houses and visits with `updatedAt` after `since`, the photos with
+`createdAt` after it, every visit and photo of a changed house, and the unchanged house of a changed visit so it has
+somewhere to land), the share sheet opens with it and the name's `lastSharedAt` moves to the export's instant once
+the sheet has opened (Android does not report whether a file was sent, so this is the nearest moment). The manifest
+carries `sharedSince` and `sharedTo` (docs/schemas §2); the file is `Doorprints-updates-<date>.zip`. A ZIP or JSON
+another app opens in Doorprints (*open with*, or *share to Doorprints*) arrives as `DeepLink.ImportFile` and the
+Import screen picks it as if chosen; its header then reads "Updates for Priya, made on <date>". Tests
+[06](06-test-plan.md) TC-U-96; the exchange between two phones TC-M-33 (owner).
 
 **Order of work.** (1) Android: the per-name bookkeeping, the "since" filter in `ExportBundle`, the manifest
 fields, the share sheet, the intent filter, the Import screen's "updates from" line; the readable copies unchanged.

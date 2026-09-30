@@ -127,6 +127,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Share updates with someone, on Android** (S4b-FR-3, [spec](docs/11-feature-parity-and-export-spec.md) 5.28):
+  Settings > Your data > *Share updates with…* makes a file of what changed since your last share to a named person
+  (the whole list the first time), for you to send in any app; on their phone it opens in Doorprints and merges
+  with their list. No account, no server; the names stay on your phone. A backup or update file opened from
+  another app now goes straight to the Import screen.
 - **Offline maps on Android and iPhone** (S4b-FR-6, [spec](docs/11-feature-parity-and-export-spec.md) 5.20): *Save
   this area for offline* on the Map keeps the map you see, down to street level, on the phone (about 50 KB a tile,
   at most 2,000 tiles an area; the size shown first, a note on mobile data, the area named after its locality).

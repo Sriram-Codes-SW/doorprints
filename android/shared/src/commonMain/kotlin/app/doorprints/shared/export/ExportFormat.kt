@@ -51,8 +51,9 @@ enum class ExportFormat(val mimeType: String) {
         CSV -> "$dateStem-csv.zip"
         XLSX -> "$dateStem.xlsx"
         MARKDOWN -> "$dateStem.md"
-        // "Doorprints-2026-09-22" -> "Doorprints-backup-2026-09-22.zip"
-        BACKUP -> dateStem.replaceFirst("Doorprints-", "Doorprints-backup-") + ".zip"
+        // "Doorprints-2026-09-22" -> "Doorprints-backup-2026-09-22.zip"; an update's stem already says what it is
+        // ("Doorprints-updates-2026-09-22", docs/11 5.28) and stays.
+        BACKUP -> (if (dateStem.startsWith("Doorprints-updates-")) dateStem else dateStem.replaceFirst("Doorprints-", "Doorprints-backup-")) + ".zip"
     }
 
     fun fileName(bundle: ExportBundle): String = fileName(bundle.fileStem)
@@ -65,6 +66,7 @@ enum class ExportFormat(val mimeType: String) {
          * screen needs it before the bundle exists, to suggest a name in the system "Save as" dialog.
          */
         fun stem(options: ExportOptions): String =
-            "Doorprints-" + ExportTime.date(options.exportedAtMillis, options.utcOffsetMinutes)
+            (if (options.isUpdate) "Doorprints-updates-" else "Doorprints-") +
+                ExportTime.date(options.exportedAtMillis, options.utcOffsetMinutes)
     }
 }
