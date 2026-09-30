@@ -21,6 +21,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.agent.RouteOptimizer;
 import app.doorprints.server.house.HouseAnswer;
+import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRoom;
@@ -105,6 +106,7 @@ public final class HouseDocuments {
         viewingLines(sb, viewings, r);
         areaNoteLines(sb, h, areas, r);
         distanceLines(sb, h, areas, r);
+        movingInLines(sb, h.moveIn(), r);
         line(sb, "Status", h.status() == null ? null : h.status().name());
         if (h.rating() != null) line(sb, "My rating", h.rating() + "/5");
         if (h.checklist() != null && !h.checklist().isEmpty()) {
@@ -222,6 +224,21 @@ public final class HouseDocuments {
                     if (!notes.isEmpty()) value.append(" | Notes: ").append(notes);
                     line(sb, "Viewing", value.toString());
                 });
+    }
+
+    /**
+     * The moving-in card of slice 5, the same words as the on-device {@code AiHouse} and the web {@code houseText}:
+     * {@code Moving in: <done> of <total> done} (only when there are items) and {@code Moving in notes: <text>} (one
+     * line, through the contact redactor). Never the item texts or the date: the ticks say how far it is.
+     */
+    static void movingInLines(StringBuilder sb, HouseMoveIn m, ContactRedactor.Redactor r) {
+        if (m == null) return;
+        if (m.items() != null && !m.items().isEmpty()) {
+            line(sb, "Moving in", m.doneCount() + " of " + m.items().size() + " done");
+        }
+        if (m.notes() != null && !m.notes().isBlank()) {
+            line(sb, "Moving in notes", r.freeText(m.notes().strip()).replaceAll("\\s+", " ").strip());
+        }
     }
 
     /** A house with the point (0, 0) has none yet (the sync API's default), and an APPROX point is a ring, not a place. */

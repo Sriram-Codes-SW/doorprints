@@ -60,7 +60,8 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         if (request.isSecure()) {
             response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
         }
-        if (!path.startsWith("/api/photos/")) {
+        // Only a photo's bytes may be cached (GET); the meta answer of PUT /api/photos/{id}/meta is the person's own words.
+        if (!(path.startsWith("/api/photos/") && "GET".equals(request.getMethod()))) {
             response.setHeader("Cache-Control", "no-store");
         }
         chain.doFilter(request, response);

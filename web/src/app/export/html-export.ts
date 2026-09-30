@@ -19,7 +19,7 @@
 import type { Dict, TKey } from '../i18n/en';
 import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
 import { brokerLine } from '../shared/broker';
-import type { HouseCost } from '../core/models';
+import type { HouseCost, HouseStatus } from '../core/models';
 import { costSummary } from '../shared/house-cost';
 import { rupees } from './deterministic';
 import {
@@ -443,7 +443,7 @@ export function checklistLabel(key: string, dict: Dict, labels: ReadonlyMap<stri
   return item ? tr(dict, item.labelKey) : (labels.get(key) ?? key);
 }
 
-export function statusText(status: 'NEW' | 'SHORTLISTED' | 'REJECTED', dict: Dict): string {
+export function statusText(status: HouseStatus, dict: Dict): string {
   // The icon repeats the status in a second channel, so the file never relies on colour (WCAG 1.4.1).
   return `${STATUS_ICON[status]} ${tr(dict, `status.${status}`)}`;
 }

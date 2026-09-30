@@ -24,7 +24,7 @@ import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
-import { SETTING_KEYS, houseFromDto, isoNow, millis, recordFromDto, visitFromDto } from './records';
+import { SETTING_KEYS, houseFromDto, isoNow, millis, photoMetaOf, recordFromDto, visitFromDto, withPhotoMeta } from './records';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -106,6 +106,9 @@ import {
 } from '../shared/area';
 import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 import type { LengthUnit } from '../shared/room-sizes';
+import { MOVE_IN_TAG, cleanMeta, hasMeta, incomingWins } from '../shared/photo-tags';
+import type { PhotoMeta } from '../shared/photo-tags';
+import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
 /** Quiet period after the last write before {@link LocalStore.settled} follows `revision`. */
@@ -370,8 +373,18 @@ export class LocalStore {
     return db.get<PhotoRecord>('photos', id);
   }
 
-  /** Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. */
-  async addPhoto(houseId: string, blob: Blob, id: string = uuid(), now: number = Date.now()): Promise<AddPhotoResult> {
+  /**
+   * Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. `meta` is the photo's
+   * room, tags and caption when they are known at once (the condition record's *Add a photo* chooses MOVE_IN), stamped
+   * `metaUpdatedAt = now` and waiting to be pushed.
+   */
+  async addPhoto(
+    houseId: string,
+    blob: Blob,
+    id: string = uuid(),
+    now: number = Date.now(),
+    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
+  ): Promise<AddPhotoResult> {
     if ((await this.photosOf(houseId)).length >= MAX_PHOTOS_PER_HOUSE) return { ok: false, reason: 'limit' };
     const db = await this.db();
     const record: PhotoRecord = {
@@ -386,9 +399,92 @@ export class LocalStore {
       syncVersion: 0,
       uploaded: false,
     };
-    await db.put('photos', record);
+    const clean = meta ? cleanMeta({ ...meta, metaUpdatedAt: now }) : null;
+    await db.put('photos', clean && hasMeta({ ...clean, metaUpdatedAt: 0 }) ? withPhotoMeta(record, clean, true) : record);
     this.touch();
     return { ok: true, id };
+  }
+
+  /**
+   * Saves a photo's room, tags and caption (docs/11 5.7): coerced, stamped `metaUpdatedAt = now` and marked for the next
+   * sync. Nothing is written, and `false` comes back, when the photo is gone or the meta is what it already is.
+   */
+  async setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>, now: number = Date.now()): Promise<boolean> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (!existing || existing.deleted) return false;
+    const clean = cleanMeta({ ...meta, metaUpdatedAt: 1 });
+    const before = photoMetaOf(existing);
+    if (before.roomId === clean.roomId && before.caption === clean.caption && before.tags.join('\n') === clean.tags.join('\n')) return false;
+    // Strictly newer than what is stored, so two edits inside one millisecond still order.
+    const stamp = Math.max(now, before.metaUpdatedAt + 1);
+    await db.put('photos', withPhotoMeta(existing, { ...clean, metaUpdatedAt: stamp }, true));
+    this.touch();
+    return true;
+  }
+
+  /** Applies the meta a server row carries when it is strictly newer than the stored one (last write wins). */
+  async applyPhotoMetaFromServer(id: string, incoming: PhotoMeta): Promise<boolean> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (!existing || existing.deleted) return false;
+    if (!incomingWins(photoMetaOf(existing).metaUpdatedAt, incoming.metaUpdatedAt)) return false;
+    await db.put('photos', withPhotoMeta(existing, incoming, false));
+    this.touch();
+    return true;
+  }
+
+  /** The push of a photo's meta went through: the flag clears only when the meta was not edited again meanwhile. */
+  async markPhotoMetaClean(id: string, pushedAt: number): Promise<void> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) await db.put('photos', { ...existing, metaDirty: false });
+  }
+
+  /** The photos of one house tagged MOVE_IN, oldest first: the condition record (docs/11 5.24). */
+  async conditionPhotos(houseId: string): Promise<PhotoRecord[]> {
+    return (await this.photosOf(houseId)).filter((p) => photoMetaOf(p).tags.some((t) => t === MOVE_IN_TAG));
+  }
+
+  /**
+   * Choosing TAKEN, after the chosen house itself is saved: the house that was TAKEN goes back to SHORTLISTED (M1) and,
+   * when `markOthers`, every other house still open becomes NOT_CHOSEN (`closeTargets`). Returns how many houses
+   * were changed. Each changed house is saved like an edit (dirty, `updatedAt` now).
+   */
+  async applyTaken(takenId: string, markOthers: boolean, now: number = Date.now()): Promise<number> {
+    const live = await this.liveHouses();
+    let next = chooseStatus(live, takenId, 'TAKEN');
+    if (markOthers) {
+      const targets = new Set(closeTargets(next, takenId));
+      next = next.map((h) => (targets.has(h.id) ? { ...h, status: 'NOT_CHOSEN' as const } : h));
+    }
+    return this.saveStatusChanges(live, next, takenId, now);
+  }
+
+  /** How many houses *Close this hunt* would mark NOT_CHOSEN for the TAKEN house. */
+  async closeCount(takenId: string): Promise<number> {
+    return closeTargets(await this.liveHouses(), takenId).length;
+  }
+
+  /** *Close this hunt*: every `closeTargets` house becomes NOT_CHOSEN in one step; nothing is deleted. Returns how many. */
+  async closeHunt(takenId: string, now: number = Date.now()): Promise<number> {
+    const live = await this.liveHouses();
+    const targets = new Set(closeTargets(live, takenId));
+    const next = live.map((h) => (targets.has(h.id) ? { ...h, status: 'NOT_CHOSEN' as const } : h));
+    return this.saveStatusChanges(live, next, takenId, now);
+  }
+
+  private async saveStatusChanges(before: readonly HouseRecord[], after: readonly HouseRecord[], exceptId: string, now: number): Promise<number> {
+    const db = await this.db();
+    const was = new Map(before.map((h) => [h.id, h.status]));
+    let changed = 0;
+    for (const house of after) {
+      if (house.id === exceptId || was.get(house.id) === house.status) continue;
+      await db.put('houses', { ...house, dirty: true, updatedAt: isoNow(now) });
+      changed++;
+    }
+    if (changed > 0) this.touch();
+    return changed;
   }
 
   /**
