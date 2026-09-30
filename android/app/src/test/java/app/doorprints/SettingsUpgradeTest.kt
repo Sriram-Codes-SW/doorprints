@@ -192,7 +192,7 @@ class SettingsUpgradeTest {
         withNewStore { store ->
             store.saveServer("https://api.example.com/", TEST_KEY)
             store.saveTracking(alertRadiusM = 60, minStayMinutes = 9)
-            store.saveCursors(house = 4, visit = 5)
+            store.saveCursors(house = 4, visit = 5, record = 0)
         }
         withOldStore { old ->
             val p = old.data.first()

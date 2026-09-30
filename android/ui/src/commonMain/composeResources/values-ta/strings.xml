@@ -537,7 +537,8 @@
     <string name="export_problem_cannot_write">தேர்ந்தெடுத்த கோப்பிலோ கோப்புறையிலோ எழுத முடியவில்லை</string>
     <string name="export_problem_unknown">எழுதும்போது ஏதோ தவறு நடந்தது</string>
     <string name="problem_not_a_backup">இது Doorprints காப்புப்பிரதி அல்ல</string>
-    <string name="problem_unsupported">இது Doorprints-இன் புதிய பதிப்பால் உருவாக்கப்பட்டது</string>
+    <!-- S4b-BL-72 (2026-09-30): under review (problem_unsupported now says to update the app). -->
+    <string name="problem_unsupported">இது Doorprints-இன் புதிய பதிப்பால் உருவாக்கப்பட்டது; இதை இறக்குமதி செய்ய Doorprints-ஐப் புதுப்பிக்கவும்</string>
     <string name="problem_too_many">இதில் மிக அதிகக் கோப்புகள் உள்ளன</string>
     <string name="problem_too_large">இது மிகப் பெரியது</string>
     <string name="problem_suspicious">இதில் பாதுகாப்பற்ற கோப்புப் பெயர் உள்ளது</string>

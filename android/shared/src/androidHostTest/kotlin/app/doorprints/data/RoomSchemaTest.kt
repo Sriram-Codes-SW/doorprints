@@ -52,6 +52,8 @@ class RoomSchemaTest {
             2 to "539964c2013f14439605fab0d18a142a",
             // v3 (S4b-FR-2, 2026-09-29): track_points, the path trace.
             3 to "49e636464035d2b630ae32d44d609d99",
+            // v4 (docs/11 5.30 slice 0, 2026-09-30): records, the envelope for every new kind of data of Sprint 4b.
+            4 to "e13c40884a09c87c71df21c9864d2d1d",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

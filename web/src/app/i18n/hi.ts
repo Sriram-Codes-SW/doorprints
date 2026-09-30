@@ -426,6 +426,9 @@ export const hi: Dict = {
   'storage.noIdbTitle': 'यह ब्राउज़र आपका डेटा सहेज नहीं रहा',
   'storage.noIdbBody': 'निजी ब्राउज़िंग या कोई ब्राउज़र सेटिंग भंडारण रोक रही है, इसलिए यह टैब बंद करते ही आपका जोड़ा हुआ सब कुछ खो जाएगा। सामान्य विंडो का उपयोग करें, या जाने से पहले एक प्रति सहेज लें।',
   'storage.blockedBody': 'ब्राउज़र ने अपने डेटाबेस तक पहुँच से इनकार कर दिया। ऐसा निजी ब्राउज़िंग में, या तब होता है जब कोई दूसरा टैब पुराना संस्करण खोले हुए हो। आपका काम केवल इसी टैब तक रहेगा।',
+  // S4b-BL-71 (2026-09-30): the database closed for a newer tab. Under review (owner rule: hi/ta/te ship marked under review).
+  'storage.closedTitle': 'Doorprints किसी दूसरे टैब में अपडेट हो गया',
+  'storage.closedBody': 'इस टैब ने आपके डेटा की अपनी कॉपी बंद कर दी ताकि नया टैब उसे अपडेट कर सके। जारी रखने के लिए पेज दोबारा लोड करें।',
   'pwa.installTitle': 'Doorprints इंस्टॉल करें',
   'pwa.installBody': 'इंस्टॉल करें ताकि Doorprints होम स्क्रीन से खुले और ऑफ़लाइन भी चले।',
   'pwa.install': 'ऐप इंस्टॉल करें',
@@ -474,6 +477,7 @@ export const hi: Dict = {
   'data.progressHouses': 'मकान डाउनलोड हो रहे हैं: {total} में से {done}',
   'data.progressVisits': 'दौरे डाउनलोड हो रहे हैं: {total} में से {done}',
   'data.progressPhotos': 'फ़ोटो डाउनलोड हो रही हैं: {total} में से {done}',
+  'data.progressRecords': 'अन्य डेटा डाउनलोड हो रहा है: {total} में से {done}',
   'data.backupFirst': 'पहले बैकअप सहेजें',
   'data.syncFirst': 'पहले सिंक करें',
   'confirm.clearUnsynced': 'जो बदलाव अभी आपके सर्वर तक नहीं पहुँचे: {n}। ये खो जाएँगे। फिर भी इस ब्राउज़र से सारा डेटा हटाएँ?',

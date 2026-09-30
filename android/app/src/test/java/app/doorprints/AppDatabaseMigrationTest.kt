@@ -97,15 +97,34 @@ class AppDatabaseMigrationTest {
         }
     }
 
-    /** v3 (S4b-FR-2): the whole chain from version 1 ends in the committed `3.json`, with `track_points` empty. */
+    /** v3 (S4b-FR-2): the chain from version 1 to 3 matches the committed `3.json`, with `track_points` empty. */
     @Test
     fun migrations1To3MatchTheExportedSchemaAndStartWithAnEmptyTrace() {
         writeVersion1(helperFile)
 
-        val db = helper.runMigrationsAndValidate(3, AppDatabase.MIGRATIONS.toList())
+        val db = helper.runMigrationsAndValidate(3, listOf(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3))
         try {
             assertEquals(listOf("h1"), db.rows("SELECT id FROM houses"))
             assertEquals(listOf("0"), db.rows("SELECT COUNT(*) FROM track_points"))
+        } finally {
+            db.close()
+        }
+    }
+
+    /**
+     * v4 (docs/11 5.30 slice 0): the whole chain from version 1 ends in the committed `4.json`, the `records` table
+     * empty and taking a row under its two-column key.
+     */
+    @Test
+    fun migrations1To4MatchTheExportedSchemaAndStartWithNoRecords() {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(4, AppDatabase.MIGRATIONS.toList())
+        try {
+            assertEquals(listOf("h1"), db.rows("SELECT id FROM houses"))
+            assertEquals(listOf("0"), db.rows("SELECT COUNT(*) FROM records"))
+            db.execSQL("INSERT INTO records (type, id, payload, updatedAt, deleted, dirty) VALUES ('broker', 'b1', '{}', 5, 0, 1)")
+            assertEquals(listOf("broker|b1|{}|5|0|1"), db.rows("SELECT type, id, payload, updatedAt, deleted, dirty FROM records"))
         } finally {
             db.close()
         }

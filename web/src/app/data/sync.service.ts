@@ -34,12 +34,14 @@ import {
   isRecordId,
   isoNow,
   millis,
+  recordToDto,
   tryHouseFromDto,
+  tryRecordFromDto,
   tryVisitFromDto,
   visitToDto,
 } from './records';
 import { keepLocalRecord } from './sync-rules';
-import type { HouseRecord, PhotoRecord, VisitRecord } from './records';
+import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from './records';
 
 /** Debounce for `syncSoon()`; matches the Android app's "sync soon after a change" (docs/11 §5.10). */
 const DEBOUNCE_MS = 3000;
@@ -60,7 +62,7 @@ export interface SyncOutcome {
 
 /** Where a running sync is, for the first-run banner ("Downloading photos 34 of 212"). */
 export interface SyncProgress {
-  phase: 'sending' | 'houses' | 'visits' | 'photos';
+  phase: 'sending' | 'houses' | 'visits' | 'records' | 'photos';
   done: number;
   total: number;
 }
@@ -94,7 +96,8 @@ class ServerReset extends Error {}
  *
  * Same algorithm and the same conflict rule as the Android app (docs/03 §10, Repository.sync): push dirty rows,
  * pull with `since` cursors, last-write-wins via {@link keepLocalRecord}, tombstones for deletes, photo metadata
- * with the bytes fetched separately. It runs only when the user has configured a server; with no server the app is
+ * with the bytes fetched separately. Records (the envelope of docs/11 5.30 item 2) take the same path as visits,
+ * with a cursor of their own. It runs only when the user has configured a server; with no server the app is
  * complete on its own and this service stays quiet.
  *
  * Three things can end a run early, and each is handled differently:
@@ -237,7 +240,7 @@ export class SyncService {
    * The cursors are positions in **one** server's change log. Kept across a switch to another server (or a
    * disconnect and a connect elsewhere), they would pull `since` numbers that mean nothing there: every older row
    * would silently never arrive while "0 received" said all was well. So when the address differs from the one the
-   * cursors were recorded against, all three go back to 0 and the migration answer is forgotten, so the first-run
+   * cursors were recorded against, all of them go back to 0 and the migration answer is forgotten, so the first-run
    * question is asked afresh for the new server (or, with data here already, a full two-way sync simply runs).
    *
    * With no address recorded yet — every browser that synced before this was added — the current server is
@@ -249,9 +252,7 @@ export class SyncService {
     const recorded = await this.store.setting(SETTING_KEYS.syncServer);
     if (recorded === current) return;
     if (recorded !== null) {
-      await this.store.setSetting(SETTING_KEYS.houseCursor, '0');
-      await this.store.setSetting(SETTING_KEYS.visitCursor, '0');
-      await this.store.setSetting(SETTING_KEYS.photoCursor, '0');
+      await this.store.resetCursors();
       await this.store.removeSetting(SETTING_KEYS.migration);
       this.lastOutcome.set(null);
       this.lastSkipped.set(0);
@@ -313,16 +314,17 @@ export class SyncService {
   }
 
   /**
-   * Local changes a server has not received yet: dirty houses and visits, photos never uploaded, and photo
+   * Local changes a server has not received yet: dirty houses, visits and records, photos never uploaded, and photo
    * deletes not yet sent. What "Remove all data" would destroy, and what the offline line says is waiting.
    */
   async pendingCount(): Promise<number> {
     const houses = (await this.store.dirtyHouses()).length;
     const visits = (await this.store.dirtyVisits()).length;
+    const records = (await this.store.dirtyRecords()).length;
     const photos = (await this.store.allPhotos()).filter(
       (p) => (p.deleted && p.uploaded) || (!p.deleted && !p.uploaded && !!p.blob),
     ).length;
-    return houses + visits + photos;
+    return houses + visits + records + photos;
   }
 
   /**
@@ -417,7 +419,7 @@ export class SyncService {
   private async statsShowReset(gen: number): Promise<boolean> {
     const cursors = await this.store.cursors();
     this.live(gen);
-    const stored = [cursors.house, cursors.visit, cursors.photo];
+    const stored = [cursors.house, cursors.visit, cursors.photo, cursors.record];
     if (!stored.some((c) => c > 0)) return false;
     let highest: unknown = null;
     try {
@@ -439,9 +441,7 @@ export class SyncService {
     this.live(gen);
     await this.store.markAllForResync();
     this.live(gen);
-    await this.store.setSetting(SETTING_KEYS.houseCursor, '0');
-    await this.store.setSetting(SETTING_KEYS.visitCursor, '0');
-    await this.store.setSetting(SETTING_KEYS.photoCursor, '0');
+    await this.store.resetCursors();
     this.live(gen);
     this.serverResetAt.set(isoNow());
     // Heard on whatever page is open; Your data also shows it (data.serverReset), outside its live region.
@@ -484,21 +484,23 @@ export class SyncService {
 
   private async push(gen: number): Promise<number> {
     // The highest position this browser has reached in the server's change log. The server hands every accepted
-    // write the next number of one sequence shared by houses, visits and photos, so an accepted push that comes back
-    // at or below it means the log went backwards: the server was reset (serverWasReset).
+    // write the next number of one sequence shared by houses, visits, photos and records, so an accepted push that
+    // comes back at or below it means the log went backwards: the server was reset (serverWasReset).
     const cursors = await this.store.cursors();
     this.live(gen);
-    const highest = Math.max(cursors.house, cursors.visit, cursors.photo);
+    const highest = Math.max(cursors.house, cursors.visit, cursors.photo, cursors.record);
     const houses = await this.store.dirtyHouses();
     this.live(gen);
     const visits = await this.store.dirtyVisits();
+    this.live(gen);
+    const records = await this.store.dirtyRecords();
     this.live(gen);
     const photos = await this.store.allPhotos();
     this.live(gen);
     // Deletes first, so a house that lost a photo does not re-upload it.
     const photoDeletes = photos.filter((p) => p.deleted && p.uploaded);
     const photoUploads = photos.filter((p) => !p.deleted && !p.uploaded && p.blob);
-    const total = houses.length + visits.length + photoDeletes.length + photoUploads.length;
+    const total = houses.length + visits.length + records.length + photoDeletes.length + photoUploads.length;
     let pushed = 0;
     const step = () => {
       pushed++;
@@ -519,6 +521,14 @@ export class SyncService {
       this.live(gen);
       if (serverWasReset(visit.updatedAt, saved, highest)) throw new ServerReset();
       await this.store.markVisitClean(visit.id, visit.updatedAt);
+      this.live(gen);
+      step();
+    }
+    for (const record of records) {
+      const saved = await this.call(gen, () => this.api.pushRecord(recordToDto(record)));
+      this.live(gen);
+      if (serverWasReset(record.updatedAt, saved, highest)) throw new ServerReset();
+      await this.store.markRecordClean(record.type, record.id, record.updatedAt);
       this.live(gen);
       step();
     }
@@ -637,6 +647,38 @@ export class SyncService {
       pulled++;
     }
     await this.store.setSetting(SETTING_KEYS.visitCursor, String(visitCursor));
+    this.live(gen);
+
+    // Records follow the visits' two decisions exactly; a row over the payload cap is untrusted and skipped.
+    const records = new Map<string, RecordRecord>(
+      (await this.store.dirtyRecords()).map((r): [string, RecordRecord] => [recordKey(r), r]),
+    );
+    this.live(gen);
+    let recordCursor = cursors.record;
+    const recordRows = wireRows(await this.call(gen, () => this.api.recordsSince(recordCursor)));
+    this.live(gen);
+    for (let i = 0; i < recordRows.length; i++) {
+      await this.stopPoint(gen, SETTING_KEYS.recordCursor, recordCursor, recordRows, i);
+      this.progress.set({ phase: 'records', done: i + 1, total: recordRows.length });
+      const dto = recordRows[i];
+      const version = wireVersion(dto?.syncVersion);
+      if (version === null) {
+        skipped++;
+        continue;
+      }
+      recordCursor = Math.max(recordCursor, version);
+      const record = tryRecordFromDto(dto);
+      if (!record) {
+        skipped++;
+        continue;
+      }
+      // Only a dirty local row can win against the server's (sync-rules.ts keepLocal), so only those were read.
+      if (keepLocalRecord(records.get(recordKey(record)), record)) continue;
+      await this.store.putRecordFromServer(record);
+      this.live(gen);
+      pulled++;
+    }
+    await this.store.setSetting(SETTING_KEYS.recordCursor, String(recordCursor));
     this.live(gen);
 
     let photoCursor = cursors.photo;
@@ -818,6 +860,11 @@ export function serverBehind(maxSyncVersion: unknown, cursors: readonly number[]
   const highest = wireVersion(maxSyncVersion);
   if (highest === null) return false;
   return cursors.some((cursor) => cursor > highest);
+}
+
+/** The one map key of a record: its store key, (type, id). */
+function recordKey(record: { type: string; id: string }): string {
+  return `${record.type}\u0000${record.id}`;
 }
 
 /** Two messages say the same thing: the same key and the same parameters. */

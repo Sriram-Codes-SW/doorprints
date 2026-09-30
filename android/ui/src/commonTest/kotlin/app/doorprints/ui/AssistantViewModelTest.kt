@@ -33,6 +33,7 @@ import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PairPolledDto
 import app.doorprints.shared.api.PairStartedDto
 import app.doorprints.shared.api.PlanRequest
+import app.doorprints.shared.records.RecordType
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.StatsDto
 import app.doorprints.shared.export.ImportActions
@@ -200,6 +201,9 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun markVisitedNow(house: HouseEntity) = TODO()
     override suspend fun streetInfo(street: String): Repository.StreetInfo = TODO()
     override suspend fun deletePhoto(photo: PhotoEntity) = TODO()
+    override fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>> = TODO()
+    override suspend fun <T> saveRecord(type: RecordType<T>, id: String, value: T) = TODO()
+    override suspend fun deleteRecord(type: RecordType<*>, id: String) = TODO()
     override suspend fun testConnection(): Result<StatsDto> = TODO()
     override suspend fun extractListing(text: String): HouseDraftDto = TODO()
     override suspend fun sync(photosAllowed: Boolean): SyncOutcome = TODO()

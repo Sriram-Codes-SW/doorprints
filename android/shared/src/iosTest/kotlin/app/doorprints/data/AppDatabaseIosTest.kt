@@ -166,10 +166,11 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (3 since S4b-FR-2: track_points, empty after the migration).
-            assertEquals(listOf("3"), connection.rows("PRAGMA user_version"))
+            // The current version (4 since docs/11 5.30 slice 0: records; track_points and records empty after the migration).
+            assertEquals(listOf("4"), connection.rows("PRAGMA user_version"))
             assertEquals(listOf("p1|0"), connection.rows("SELECT id, deleted FROM photos"))
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM track_points"))
+            assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM records"))
         } finally {
             connection.close()
         }

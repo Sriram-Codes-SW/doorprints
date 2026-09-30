@@ -74,7 +74,7 @@ class BackupTest {
         assertEquals(
             BackupProblem.UNSUPPORTED_VERSION,
             BackupValidation.checkManifest(
-                BackupManifest(format = "doorprints-backup/2", createdAt = "2026-09-22T10:15:30Z", counts = counts)
+                BackupManifest(format = "doorprints-backup/3", createdAt = "2026-09-22T10:15:30Z", counts = counts)
             ),
         )
         assertEquals(
@@ -85,6 +85,35 @@ class BackupTest {
             BackupValidation.checkManifest(BackupManifest(createdAt = "2026-09-22T10:15:30Z", counts = counts))
         )
         assertNull(BackupValidation.checkData(BackupData.of(bundle)))
+    }
+
+    /**
+     * S4b-BL-72: readers accept `/1` up to [BackupFormat.MAX_VERSION] and write [BackupFormat.ID]. A `/2` file with a
+     * list this app does not know (slice 1's brokers) reads fine, its unknown key ignored; the number past the
+     * maximum is a newer app's file and is refused, never read with its lists dropped.
+     */
+    @Test
+    fun aFormatUpToTheMaximumIsReadAndTheNextOneIsRefused() {
+        assertEquals("doorprints-backup/1", BackupFormat.ID)
+        assertEquals(listOf("doorprints-backup/1", "doorprints-backup/2"), BackupFormat.READ_IDS)
+        assertTrue(BackupFormat.accepts("doorprints-backup/2"))
+        assertFalse(BackupFormat.accepts("doorprints-backup/3"))
+        assertFalse(BackupFormat.accepts("doorprints-backup/"))
+        assertFalse(BackupFormat.accepts(null))
+
+        val v2 = "{\"format\":\"doorprints-backup/2\",\"exportedAt\":1,\"houses\":[],\"brokers\":[]}"
+        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), v2)
+        assertEquals("doorprints-backup/2", data.format)
+        assertNull(BackupValidation.checkData(data))
+        assertNull(
+            BackupValidation.checkManifest(
+                BackupManifest(format = "doorprints-backup/2", createdAt = "2026-09-30T10:15:30Z", counts = BackupCounts(0, 0, 0))
+            ),
+        )
+        assertEquals(
+            BackupProblem.UNSUPPORTED_VERSION,
+            BackupValidation.checkData(BackupData(format = "doorprints-backup/3", exportedAt = 1)),
+        )
     }
 
     @Test

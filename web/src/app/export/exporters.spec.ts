@@ -22,7 +22,7 @@ import { DICTIONARIES } from '../i18n/all-dictionaries';
 import { buildCsvTables } from './csv-export';
 import { buildMarkdown } from './markdown-export';
 import { buildHtml } from './html-export';
-import { BACKUP_APP, BACKUP_FORMAT, BACKUP_LIMITS, backupJson, buildBackupData, buildBackupZip } from './backup-export';
+import { BACKUP_APP, BACKUP_FORMAT, BACKUP_FORMATS_READ, BACKUP_LIMITS, backupJson, buildBackupData, buildBackupZip } from './backup-export';
 import { buildXlsx } from './xlsx-export';
 import { buildWorkbook } from './xlsx-sheets';
 import { display, exportTables, plain } from './export-rows';
@@ -251,6 +251,17 @@ describe('JSON backup', () => {
       maxCompressionRatio: 100,
       maxDataJsonBytes: 16_777_216,
     });
+  });
+
+  /**
+   * S4b-BL-72: the web still writes `/1` (slice 1 of docs/11 5.30 is the first to write a new list) and a reader,
+   * when S4b-BL-75 adds one, accepts `/1` and `/2` and refuses a newer number. Change together with Kotlin
+   * `BackupFormat.READABLE` and the Android tests of it.
+   */
+  it('pins the backup format it writes and the formats a reader accepts', () => {
+    expect(BACKUP_FORMAT).toBe('doorprints-backup/1');
+    expect(BACKUP_FORMATS_READ).toEqual(['doorprints-backup/1', 'doorprints-backup/2']);
+    expect(BACKUP_FORMATS_READ).toContain(BACKUP_FORMAT);
   });
 
   it('matches the golden data.json', () => {

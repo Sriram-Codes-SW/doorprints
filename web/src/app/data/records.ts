@@ -17,7 +17,7 @@
  */
 
 import { LocalDataError } from '../core/local-error';
-import type { HouseDto, HouseStatus, PriceType, VisitDto, VisitSource } from '../core/models';
+import type { HouseDto, HouseStatus, PriceType, RecordDto, VisitDto, VisitSource } from '../core/models';
 
 /**
  * What the browser stores locally (IndexedDB). Doorprints is local-first (docs/11 §5.1, D-01): every record below
@@ -60,6 +60,22 @@ export interface PhotoRecord {
   uploaded: boolean;
 }
 
+/**
+ * One row of the `records` store (docs/11 5.30 item 2): the wire envelope plus the local `dirty` flag, keyed by
+ * (`type`, `id`). Criteria, viewings, brokers and the rest of the Sprint 4b entities are all rows of this shape;
+ * the typed accessors of each slice read and write `payload`.
+ */
+export interface RecordRecord extends RecordDto {
+  dirty: boolean;
+}
+
+/** A record's `type`: a lower-case word, as the server's `RecordType` pattern. */
+export const RECORD_TYPE_PATTERN = /^[a-z][a-zA-Z0-9]{0,39}$/;
+/** A record's `id`: a UUID, or another safe key such as a photo's or a house's id. */
+export const RECORD_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
+/** The server's cap on a serialised `payload` (docs/11 5.30: "payload at most 64 KB"); a larger row is untrusted. */
+export const MAX_RECORD_PAYLOAD_BYTES = 65_536;
+
 /** One row of the `settings` store: sync cursors, first-run flags and user preferences. */
 export interface SettingRecord {
   key: string;
@@ -70,6 +86,7 @@ export const SETTING_KEYS = {
   houseCursor: 'cursor.house',
   visitCursor: 'cursor.visit',
   photoCursor: 'cursor.photo',
+  recordCursor: 'cursor.record',
   /** Set once the "download my houses to this browser" migration has run or been dismissed. */
   migration: 'migration.state',
   /** Remembers that navigator.storage.persist() was already requested, so we ask the browser only once. */
@@ -77,7 +94,7 @@ export const SETTING_KEYS = {
   /** Remembers the export options the user last chose. */
   exportOptions: 'export.options',
   /**
-   * The normalized server address the three cursors belong to. When the user connects a different server the
+   * The normalized server address the four cursors belong to. When the user connects a different server the
    * cursors go back to 0 and the migration question is asked again (Android: Settings.saveServer).
    */
   syncServer: 'sync.server',
@@ -179,6 +196,52 @@ export function tryVisitFromDto(dto: VisitDto | null | undefined, dirty = false)
   };
 }
 
+/**
+ * {@link tryRecordFromDto}'s strict form for local writes.
+ *
+ * @throws LocalDataError when the type or id is not usable, or the payload is too large.
+ */
+export function recordFromDto(dto: RecordDto, dirty = false): RecordRecord {
+  const record = tryRecordFromDto(dto, dirty);
+  if (!record) throw new LocalDataError('error.badRecord');
+  return record;
+}
+
+/**
+ * Accepts a record envelope from the network or an import file: `null` when the row cannot be trusted (a type or
+ * id outside the server's patterns, a payload over {@link MAX_RECORD_PAYLOAD_BYTES}). The payload is kept as it
+ * is, or replaced by `{}` when it is not a plain object: the server never reads it and each slice's typed
+ * accessor validates its own fields.
+ */
+export function tryRecordFromDto(dto: RecordDto | null | undefined, dirty = false): RecordRecord | null {
+  if (!dto || typeof dto !== 'object') return null;
+  if (typeof dto.type !== 'string' || !RECORD_TYPE_PATTERN.test(dto.type)) return null;
+  // `.` and `..` fit the pattern but are path segments in `/api/records/{type}/{id}`; the phone refuses them too.
+  if (typeof dto.id !== 'string' || !RECORD_ID_PATTERN.test(dto.id) || dto.id === '.' || dto.id === '..') return null;
+  const payload = isPlainObject(dto.payload) ? dto.payload : {};
+  if (payloadBytes(payload) > MAX_RECORD_PAYLOAD_BYTES) return null;
+  return {
+    type: dto.type,
+    id: dto.id,
+    payload,
+    updatedAt: nullable(dto.updatedAt),
+    deleted: dto.deleted === true,
+    syncVersion: finite(dto.syncVersion) ?? 0,
+    dirty,
+  };
+}
+
+/** The serialised size of a payload, as the server measures it (UTF-8 bytes of its JSON). */
+export function payloadBytes(payload: Record<string, unknown>): number {
+  return new TextEncoder().encode(JSON.stringify(payload)).length;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 /** The wire form of a stored house: the local flags are stripped. */
 export function houseToDto(record: HouseRecord): HouseDto {
   const { dirty: _dirty, ...dto } = record;
@@ -186,6 +249,11 @@ export function houseToDto(record: HouseRecord): HouseDto {
 }
 
 export function visitToDto(record: VisitRecord): VisitDto {
+  const { dirty: _dirty, ...dto } = record;
+  return dto;
+}
+
+export function recordToDto(record: RecordRecord): RecordDto {
   const { dirty: _dirty, ...dto } = record;
   return dto;
 }
