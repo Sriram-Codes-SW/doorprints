@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.HouseVisitCount
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.Distances
+import app.doorprints.shared.model.Place
 import app.doorprints.ui.res.*
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseRooms
@@ -123,6 +125,8 @@ fun CompareScreen(
     lengthUnit: LengthUnit = LengthUnit.FT,
     /** The effective scoring (slice 2): the Overall score and Must-haves rows, the checklist rows and the order. */
     scoring: Scoring = Scoring.DEFAULT,
+    /** My places (slice 4a): one row each, the straight-line km from each house. */
+    places: List<Place> = emptyList(),
 ) {
     val visits = counts.associate { it.houseId to it.visits }
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
@@ -181,6 +185,7 @@ fun CompareScreen(
                 brokers = brokers,
                 lengthUnit = lengthUnit,
                 scoring = scoring,
+                places = places,
                 nameOf = ::nameOf,
                 onOpenHouse = onOpenHouse,
             )
@@ -201,6 +206,7 @@ private fun ComparePicker(
     brokers: Map<String, Broker>,
     lengthUnit: LengthUnit,
     scoring: Scoring,
+    places: List<Place>,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -211,7 +217,7 @@ private fun ComparePicker(
         if (chosen.size < 2) {
             Text(stringResource(Res.string.compare_pick_more), Modifier.padding(bottom = 16.dp))
         } else {
-            CompareTable(chosen, visits, brokers, lengthUnit, scoring, nameOf, onOpenHouse)
+            CompareTable(chosen, visits, brokers, lengthUnit, scoring, places, nameOf, onOpenHouse)
             Text(stringResource(Res.string.compare_footnote),
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         }
@@ -279,6 +285,7 @@ private fun CompareTable(
     brokers: Map<String, Broker>,
     lengthUnit: LengthUnit,
     scoring: Scoring,
+    places: List<Place>,
     nameOf: (HouseEntity) -> String,
     onOpenHouse: (String) -> Unit,
 ) {
@@ -338,6 +345,13 @@ private fun CompareTable(
         add(CompareRow(stringResource(Res.string.compare_rating), notScored, { h -> h.rating?.let { formatPositional(starsFormat, it) } }))
         add(CompareRow(stringResource(Res.string.compare_visits), notSet, { (visits[it.id] ?: 0).toString() }))
         add(CompareRow(stringResource(Res.string.compare_street), notSet, { it.street?.takeIf { s -> s.isNotBlank() } }))
+        // One row per place (slice 4a): the straight-line km, not set for a house without a point.
+        val kmFormat = stringResource(Res.string.compare_km)
+        places.forEach { place ->
+            add(CompareRow(place.name, notSet, { h ->
+                Distances.toPlaces(h.point(), listOf(place)).firstOrNull()?.let { formatPositional(kmFormat, it.km) }
+            }))
+        }
         checklistLabels.forEach { (key, label) ->
             add(
                 CompareRow(

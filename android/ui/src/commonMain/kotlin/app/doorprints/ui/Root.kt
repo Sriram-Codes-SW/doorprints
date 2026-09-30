@@ -130,6 +130,16 @@ object Routes {
     const val VIEWING = "viewing/{id}?houseId={houseId}&kind={kind}"
     const val NEW_VIEWING = "new"
 
+    /** Settings > My areas and My places (docs/11 slice 4a), and the form of one; the id [NEW_RECORD] adds one. */
+    const val AREAS = "areas"
+    const val AREA = "area/{id}"
+    const val PLACES = "places"
+    const val PLACE = "place/{id}"
+    const val NEW_RECORD = "new"
+
+    fun area(id: String) = "area/$id"
+    fun place(id: String) = "place/$id"
+
     fun viewings(houseId: String? = null) = "viewings" + (houseId?.let { "?houseId=$it" } ?: "")
     fun viewing(id: String?, houseId: String? = null, kind: String? = null) =
         "viewing/${id ?: NEW_VIEWING}?" + listOfNotNull(houseId?.let { "houseId=$it" }, kind?.let { "kind=$it" }).joinToString("&")
@@ -427,12 +437,14 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         .collectAsStateWithLifecycle(emptyMap())
                     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
                     val scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+                    val places by remember(repo) { repo.observePlaces() }.collectAsStateWithLifecycle(emptyList())
                     CompareScreen(
                         loaded = loaded,
                         counts = counts,
                         brokers = brokers,
                         lengthUnit = lengthUnit,
                         scoring = scoring,
+                        places = places,
                         onOpenHouse = { if (resumed(entry)) nav.navigate(Routes.house(it)) },
                         onOpenMap = openMapWithTip,
                     )
@@ -455,6 +467,33 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenCriteria = { nav.navigate(Routes.CRITERIA) },
                         onOpenQuestions = { nav.navigate(Routes.QUESTIONS) },
                         onOpenViewings = { nav.navigate(Routes.viewings()) },
+                        onOpenAreas = { nav.navigate(Routes.AREAS) },
+                        onOpenPlaces = { nav.navigate(Routes.PLACES) },
+                    )
+                }
+                // My areas and My places (docs/11 slice 4a): sub-screens of Settings with a back arrow, like Brokers.
+                composable(Routes.AREAS) { entry ->
+                    AreasScreen(
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenArea = { if (resumed(entry)) nav.navigate(Routes.area(it)) },
+                    )
+                }
+                composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                    AreaFormScreen(
+                        areaId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
+                        onDone = dropUnlessResumed { nav.popBackStack() },
+                    )
+                }
+                composable(Routes.PLACES) { entry ->
+                    PlacesScreen(
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenPlace = { if (resumed(entry)) nav.navigate(Routes.place(it)) },
+                    )
+                }
+                composable(Routes.PLACE, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
+                    PlaceFormScreen(
+                        placeId = entry.arguments?.read { getStringOrNull("id") }?.takeIf { it != Routes.NEW_RECORD },
+                        onDone = dropUnlessResumed { nav.popBackStack() },
                     )
                 }
                 // Viewings (docs/11 5.8, slice 3b-1): the history (all, or one house's) and the form, sub-screens with a back arrow.

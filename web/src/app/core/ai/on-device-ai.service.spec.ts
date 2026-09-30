@@ -37,14 +37,20 @@ describe('OnDeviceAiService (ADR-26)', () => {
   let http: HttpTestingController;
   let ai: OnDeviceAiService;
   let houses: unknown[];
+  let areas: unknown[] = [];
+  let places: unknown[] = [];
+  let noteRows: unknown[] = [];
 
   beforeEach(() => {
+    areas = [];
+    places = [];
+    noteRows = [];
     houses = [house('h1'), house('h2', { locality: 'Koramangala', lat: 12.93, lon: 77.62 })];
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [], areas: async () => [], places: async () => [], areaNoteRows: async () => [] } },
+        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [], areas: async () => areas, places: async () => places, areaNoteRows: async () => noteRows } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -85,6 +91,20 @@ describe('OnDeviceAiService (ADR-26)', () => {
     const res = await answer;
     expect(res.grounded).toBe(true);
     expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
+  });
+
+  it('sends the area notes that reach a house and its distances to my places, never the coordinates', async () => {
+    areas = [{ id: 'a_1', name: 'Indiranagar', lat: 12.97, lon: 77.64, radiusM: 500, enabled: true }];
+    places = [{ id: 'p_1', name: 'Office', lat: 12.9716, lon: 77.5946 }];
+    noteRows = [{ id: 'n_1', updatedAt: '2026-09-20T10:00:00Z', note: { id: 'n_1', areaId: 'a_1', text: 'Water tanker every morning' } }];
+    const answer = ai.ask('AIzaTestKey1234', 'Which house has water?');
+    const req = await geminiRequest();
+    const sent = JSON.stringify(req.request.body);
+    expect(sent).toContain('Area note: Water tanker every morning');
+    expect(sent).toContain('Distance to Office: 4.9 km');
+    expect(sent).not.toContain('12.9716');
+    req.flush(reply({ answer: 'h1 [house:h1]', citedHouseIds: ['h1'] }));
+    await answer;
   });
 
   it('with no houses, Ask answers "I don\'t know" without calling Google', async () => {
