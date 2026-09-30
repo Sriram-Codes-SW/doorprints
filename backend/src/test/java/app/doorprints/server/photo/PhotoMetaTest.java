@@ -41,7 +41,7 @@ class PhotoMetaTest {
     void goodMetaPassesAndTheLimitsAreInclusive() {
         assertThat(violations(new PhotoMeta(null, null, null, 0))).isEmpty();
         assertThat(violations(new PhotoMeta("c1111111-1111-4111-8111-111111111111",
-                List.of("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), "Kitchen at move-in", 1790813400000L))).isEmpty();
+                List.of("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), "Kitchen at move-in", 1790000000000L))).isEmpty();
         var ten = new ArrayList<String>(List.of("EXTERIOR", "ENTRANCE", "KITCHEN_FITTINGS", "BATHROOM_FITTINGS", "DAMP",
                 "CRACK", "LEAK", "VIEW", "WATER_TANK", "METER"));
         assertThat(violations(new PhotoMeta("r".repeat(64), ten, "c".repeat(200), 1))).isEmpty();

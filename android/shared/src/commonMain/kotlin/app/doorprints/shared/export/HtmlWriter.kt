@@ -222,7 +222,7 @@ object HtmlWriter {
             }
             val items = ExportRows.moveInItems(h)
             if (items.isNotEmpty()) {
-                out.append("<ul class=\"movein\">\n")
+                out.append("<ul class=\"move-in\">\n")
                 for (item in items) out.append("<li>").append(esc(item)).append("</li>\n")
                 out.append("</ul>\n")
             }

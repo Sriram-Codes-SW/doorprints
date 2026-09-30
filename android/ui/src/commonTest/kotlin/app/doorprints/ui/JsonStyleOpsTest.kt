@@ -212,7 +212,7 @@ class JsonStyleOpsTest {
         }
         val colors = dots["paint"]!!.jsonObject["circle-color"]!!.jsonArray
         assertEquals(
-            listOf("#1a7a43", "#b3261e", "#6b3fa0", "#5f6368", "#3c5a99"),
+            listOf("#1a7a43", "#b3261e", "#8a5a00", "#5f6b66", "#3c5a99"),
             listOf(3, 5, 7, 9, 10).map { colors[it].jsonPrimitive.content },
         )
         // FR-068: an approximate house has no fill and its ring in the status colour; the others a white ring.

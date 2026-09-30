@@ -169,12 +169,12 @@ class BackupMapperTest {
 
         var id = UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1");
         var full = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(),
-                List.of(photoWithMeta(id, FIRST, "c1", List.of("KITCHEN_FITTINGS", "damp corner"), "Tap drips", 1790813400000L)),
+                List.of(photoWithMeta(id, FIRST, "c1", List.of("KITCHEN_FITTINGS", "damp corner"), "Tap drips", 1790000000000L)),
                 EXPORTED_AT);
         assertThat(JSON.writeValueAsString(full.photos().getFirst())).isEqualTo("{\"id\":\"" + id + "\",\"houseId\":\""
                 + FIRST + "\",\"fileName\":\"" + id + ".jpg\",\"createdAt\":" + EXPORTED_AT.toEpochMilli()
                 + ",\"roomId\":\"c1\",\"tags\":[\"KITCHEN_FITTINGS\",\"damp corner\"],\"caption\":\"Tap drips\","
-                + "\"metaUpdatedAt\":1790813400000}");
+                + "\"metaUpdatedAt\":1790000000000}");
     }
 
     /** Slice 5: the status TAKEN or NOT_CHOSEN, or a move-in, makes the copy /2 even with nothing else in it. */

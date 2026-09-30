@@ -75,7 +75,7 @@ describe('photo meta and moving in in the copies', () => {
     const tagsOnly = buildBackupData(collect({ ...base, photos: withPhoto0({ tags: ['DAMP'] }) }));
     expect(Object.keys(tagsOnly.photos[0])).toEqual(['id', 'houseId', 'fileName', 'createdAt', 'tags']);
     const all = buildBackupData(fixtureBundle());
-    expect(all.photos[0]).toMatchObject({ roomId: ROOM, tags: ['KITCHEN_FITTINGS', 'MOVE_IN', 'damp corner'], caption: 'Kitchen at move-in: tap drips slightly.', metaUpdatedAt: 1790813400000 });
+    expect(all.photos[0]).toMatchObject({ roomId: ROOM, tags: ['KITCHEN_FITTINGS', 'MOVE_IN', 'damp corner'], caption: 'Kitchen at move-in: tap drips slightly.', metaUpdatedAt: 1790000000000 });
     expect(Object.keys(all.photos[1])).toEqual(['id', 'houseId', 'fileName', 'createdAt']);
   });
 

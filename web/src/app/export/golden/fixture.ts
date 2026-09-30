@@ -389,7 +389,7 @@ export const FIXTURE_PHOTOS: PhotoRecord[] = [
     roomId: 'c1111111-1111-4111-8111-111111111111',
     tags: ['KITCHEN_FITTINGS', 'MOVE_IN', 'damp corner'],
     caption: 'Kitchen at move-in: tap drips slightly.',
-    metaUpdatedAt: 1790813400000,
+    metaUpdatedAt: 1790000000000,
   },
   {
     // House 3's photo, created two days *before* house 1's: the second half of the interleaving pair.

@@ -62,14 +62,16 @@ class ExportMovingInTest {
         assertTrue(
             html.contains(
                 "<h3>Moving in</h3>\n<dl>\n<dt>Move-in date</dt><dd>2026-10-01</dd>\n<dt>Notes</dt><dd>Keys from Ravi</dd>\n</dl>\n" +
-                    "<ul class=\"movein\">\n<li>✓ Agreement signed</li>\n<li>○ Police verification done</li>\n</ul>\n",
+                    "<ul class=\"move-in\">\n<li>✓ Agreement signed</li>\n<li>○ Police verification done</li>\n</ul>\n",
             ),
             html,
         )
         assertTrue(html.indexOf("<h3>Moving in</h3>") < html.indexOf("<h3>What I checked</h3>"))
-        assertTrue(html.contains("<figcaption>p1.jpg · Kitchen · MOVE_IN; damp corner · Tap drips</figcaption>") ||
-            html.contains("<p class=\"missing\">p1.jpg · Kitchen · MOVE_IN; damp corner · Tap drips</p>"), html)
-        assertTrue(html.contains("Rank 2 · Not chosen") || html.contains("· Not chosen</p>"), html)
+        // No photo bytes are given here, so the listing names the file, then its room, tags and caption.
+        assertTrue(html.contains("<p class=\"missing\">p1.jpg · Kitchen · MOVE_IN; damp corner · Tap drips</p>"), html)
+        val withSrc = HtmlWriter.write(bundle()) { "data:image/jpeg;base64,AA" }
+        assertTrue(withSrc.contains("<figcaption>p1.jpg · Kitchen · MOVE_IN; damp corner · Tap drips</figcaption>"), withSrc)
+        assertTrue(html.contains(" · Taken</p>") && html.contains(" · Not chosen</p>"), html)
         val md = MarkdownWriter.write(bundle())
         assertTrue(
             md.contains(
