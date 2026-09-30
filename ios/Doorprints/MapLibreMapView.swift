@@ -148,6 +148,15 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
 
     func centerLatitude() -> Double { mapView.centerCoordinate.latitude }
 
+    // The box on screen (offline maps, docs/11 5.20); NaN before the view has a size.
+    func visibleSouth() -> Double { mapView.bounds.isEmpty ? .nan : mapView.visibleCoordinateBounds.sw.latitude }
+
+    func visibleWest() -> Double { mapView.visibleCoordinateBounds.sw.longitude }
+
+    func visibleNorth() -> Double { mapView.visibleCoordinateBounds.ne.latitude }
+
+    func visibleEast() -> Double { mapView.visibleCoordinateBounds.ne.longitude }
+
     func centerLongitude() -> Double { mapView.centerCoordinate.longitude }
 
     func zoomLevel() -> Double { mapView.zoomLevel }
