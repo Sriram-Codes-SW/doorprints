@@ -85,12 +85,14 @@ fun QuestionsSection(
     bank: List<Question>,
     priceType: String?,
     cost: HouseCost?,
+    /** On the heading: the house form scrolls it into view for a reminder's *Questions* (S4b-BL-93b). */
+    headingModifier: Modifier = Modifier,
     onChange: (List<HouseAnswer>?) -> Unit,
 ) {
     val list = answers.orEmpty()
     val words = answerWords()
     var picking by rememberSaveable { mutableStateOf(false) }
-    SectionHeading(stringResource(Res.string.house_questions))
+    SectionHeading(stringResource(Res.string.house_questions), headingModifier)
     if (list.isEmpty()) {
         Text(stringResource(Res.string.house_questions_empty), style = MaterialTheme.typography.bodySmall)
     } else {

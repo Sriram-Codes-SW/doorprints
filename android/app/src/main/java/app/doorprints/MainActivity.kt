@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
             return if (it in Notifications.SCREENS) DeepLink.OpenScreen(it) else null
         }
         intent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE)?.let {
-            return if (isUuid(it)) DeepLink.OpenHouse(it) else null
+            return if (isUuid(it)) DeepLink.OpenHouse(it, questions = intent.getBooleanExtra(Notifications.EXTRA_OPEN_QUESTIONS, false)) else null
         }
         // A Hunt mode reminder (docs/11 5.16, slice 3c): its body opens the viewing; *Start Hunt mode* without location
         // opens the Map, which asks first (5.18). Only a valid record id; the screens look it up locally.
@@ -156,6 +156,7 @@ class MainActivity : ComponentActivity() {
         val DEEP_LINK_EXTRAS = listOf(
             Notifications.EXTRA_OPEN_SCREEN,
             Notifications.EXTRA_OPEN_HOUSE,
+            Notifications.EXTRA_OPEN_QUESTIONS,
             Notifications.EXTRA_NEW_LAT,
             Notifications.EXTRA_NEW_LON,
             Notifications.EXTRA_VISIT_ID,

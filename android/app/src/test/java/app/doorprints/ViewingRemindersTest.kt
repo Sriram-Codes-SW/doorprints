@@ -207,6 +207,9 @@ class ViewingRemindersTest {
         // Open house and Questions open the house through the existing deep link; Directions is a geo: link.
         assertEquals(house.id, shadowOf(n.actions[0].actionIntent).savedIntent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE))
         assertEquals(house.id, shadowOf(n.actions[2].actionIntent).savedIntent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE))
+        // Questions opens it scrolled to its questions (S4b-BL-93b); Open house does not.
+        assertTrue(shadowOf(n.actions[2].actionIntent).savedIntent.getBooleanExtra(Notifications.EXTRA_OPEN_QUESTIONS, false))
+        assertFalse(shadowOf(n.actions[0].actionIntent).savedIntent.getBooleanExtra(Notifications.EXTRA_OPEN_QUESTIONS, false))
         val geo = shadowOf(n.actions[1].actionIntent).savedIntent
         assertEquals(Intent.ACTION_VIEW, geo.action)
         assertEquals("geo:12.970000,77.590000?q=12.970000,77.590000", geo.dataString)
