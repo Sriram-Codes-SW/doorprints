@@ -19,7 +19,9 @@
 package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import app.doorprints.data.CommonRepository
 import app.doorprints.data.Repository
 import app.doorprints.data.iosAppDatabase
@@ -46,9 +48,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import platform.Foundation.NSBundle
@@ -220,14 +220,14 @@ private object IosSettingsServices : SettingsServices {
 
 /**
  * The house form on iOS: the stored photos are shown; taking or picking one is hidden ([PlatformFeatures.addPhotos]),
- * so there are no sources and [addPhoto] refuses. There is no reverse geocoder yet (Core Location's `CLGeocoder` is a
- * later step): the address fields stay for the user to type, as on an Android phone without a geocoder.
+ * so there are no sources and [addPhoto] refuses. The address of a new house comes from Apple's geocoder
+ * ([IosGeocoder], since S4b-BL-69, as Android's `ReverseGeocoder`); the fields stay editable, as there.
  */
 private class IosHouseFormServices(private val repository: CommonRepository) : HouseFormServices {
-    override suspend fun reverseGeocode(lat: Double, lon: Double): Place? = null
+    override suspend fun reverseGeocode(lat: Double, lon: Double): Place? = IosGeocoder.place(lat, lon)
 
-    /** No visit alerts on iOS (Hunt mode is hidden). */
-    override fun clearVisitAlert(visitId: String) = Unit
+    /** The "are you at a house?" alert of [visitId] comes down once the visit is saved as a house (as on Android). */
+    override fun clearVisitAlert(visitId: String) = IosNotifications.remove(IosHunt.stayAlertId(visitId))
 
     @Composable
     override fun rememberPhotoSources(onPicked: (PickedPhoto) -> Unit): PhotoSources = NoPhotoSources
@@ -247,17 +247,26 @@ private object NoPhotoSources : PhotoSources {
     override fun pickFromGallery() = Unit
 }
 
-/** The Map's services on iOS: no Hunt mode (hidden) and no notifications; the system's motion and text size. */
+/**
+ * The Map's services on iOS: Hunt mode through [IosHunt] (S4b-BL-69), its alerts through [IosNotifications], and the
+ * system's motion and text size.
+ */
 private object IosMapServices : MapServices {
-    private val idle = MutableStateFlow(HuntState.State())
-    override val hunt: StateFlow<HuntState.State> = idle.asStateFlow()
-    override fun startHunt(): Boolean = false
-    override fun stopHunt() = Unit
-    override fun clearHuntStopReason() = Unit
-    override fun notificationsReachUser(): Boolean = false
+    override val hunt: StateFlow<HuntState.State> get() = HuntState.state
+    override fun startHunt(): Boolean = IosHunt.start()
+    override fun stopHunt() = IosHunt.stop()
+    override fun clearHuntStopReason() = IosHunt.clearStopReason()
+    override fun notificationsReachUser(): Boolean = IosNotifications.canPost()
 
+    /** The system's prompt while iOS will still show it (once), otherwise the app's page in the Settings app. */
     @Composable
-    override fun rememberAllowNotifications(onAnswered: () -> Unit): () -> Unit = { onAnswered() }
+    override fun rememberAllowNotifications(onAnswered: () -> Unit): () -> Unit {
+        val platform = LocalPlatformServices.current
+        val latest by rememberUpdatedState(onAnswered)
+        return remember(platform) {
+            { if (IosNotifications.canAsk()) IosNotifications.request { latest() } else platform.openAppSettings() }
+        }
+    }
 
     /** *Reduce Motion* (Settings > Accessibility > Motion), iOS's nearest to Android's *Remove animations*. */
     override fun animationsOff(): Boolean = UIAccessibilityIsReduceMotionEnabled()

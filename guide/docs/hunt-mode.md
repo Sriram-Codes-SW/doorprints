@@ -1,4 +1,4 @@
-# Hunt mode (Android)
+# Hunt mode
 
 Turn on **Hunt mode** on the **Map** while you walk around an area. Your phone then tells you, with a notification (a
 message at the top of the screen), when you come near a house you have saved. It also shows whether you have been on
@@ -16,3 +16,7 @@ In **Settings**, under **Hunt mode**, choose:
 GPS (how the phone finds where you are) is usually correct to within 5–20 m, so houses next door can be mixed up.
 Alerts pause when the signal is weak, such as indoors. Hunt mode stops by itself when the battery is low. It needs
 precise location and notifications turned on.
+
+On an iPhone, Hunt mode works the same way. While it is on, the blue location sign at the top of the screen shows that
+Doorprints is using your location, also with the screen off. Doorprints asks for "While using the app" only, never
+"Always".

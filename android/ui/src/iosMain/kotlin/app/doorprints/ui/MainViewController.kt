@@ -42,7 +42,7 @@ fun MainViewController(): UIViewController {
     startSelfCheckIfRequested()
     val platform = IosPlatformServices()
     val services = IosAppContainer.services
-    // No notifications on iOS yet; the one deep link is a connect link from the owner page's QR code (handleOpenUrl).
+    // The deep links: a tapped Hunt alert (installNotifications) or a connect link from the owner page (handleOpenUrl).
     val deepLinks = iosDeepLinks
     return ComposeUIViewController {
         CompositionLocalProvider(
@@ -63,6 +63,32 @@ fun MainViewController(): UIViewController {
 
 /** The deep links of this process; main thread only. */
 private val iosDeepLinks = MutableStateFlow<DeepLink?>(null)
+
+/**
+ * Hunt mode's alerts as notifications (S4b-BL-69): sets the notification centre's delegate, so a tapped alert opens
+ * its house or the new-house form. The Swift app calls it from its `init`, before the app finishes launching, as iOS
+ * requires for a tap that starts the app; `MainViewControllerKt.installNotifications()`. Main thread.
+ */
+fun installNotifications() {
+    IosNotifications.install { userInfo -> notificationDeepLink(userInfo)?.let { iosDeepLinks.value = it } }
+}
+
+/**
+ * The deep link a tapped alert carries, checked as `:app`'s MainActivity checks its intent (threat model F-25): a
+ * well-formed UUID for a house or visit, coordinates in range; anything else is ignored.
+ */
+internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
+    (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
+    val lat = (userInfo[IosHunt.KEY_NEW_LAT] as? String)?.toDoubleOrNull() ?: return null
+    val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
+    if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
+    val visitId = (userInfo[IosHunt.KEY_VISIT_ID] as? String)?.takeIf(::isUuid)
+    return DeepLink.NewHouse(lat, lon, visitId)
+}
+
+private val UUID_PATTERN = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+private fun isUuid(value: String): Boolean = UUID_PATTERN.matches(value)
 
 /**
  * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code): the

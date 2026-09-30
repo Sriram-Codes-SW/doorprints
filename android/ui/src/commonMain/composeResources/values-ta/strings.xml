@@ -563,7 +563,7 @@
     <string name="map_not_on_this_phone">வரைபடம் இன்னும் iPhone-இல் இல்லை. உங்கள் எல்லா வீடுகளும் ‘வீடுகள்’ தாவலில் உள்ளன.</string>
     <string name="settings_language_phone">Doorprints உங்கள் iPhone-இன் மொழியைப் பயன்படுத்துகிறது. Doorprints-க்கு மட்டும் வேறு மொழி வேண்டுமெனில், அமைப்புகள் செயலியில் பொது › மொழி &amp; பகுதி என்பதில் அதைச் சேர்த்து, பிறகு அதே செயலியின் Doorprints பக்கத்தில் அதைத் தேர்ந்தெடுக்கவும்.</string>
     <string name="settings_language_open_settings">iPhone அமைப்புகளைத் திற</string>
-    <string name="settings_privacy_note_ios">உங்கள் வீடுகளும் வருகைகளும் இந்த iPhone-இலும், நீங்கள் இணைத்தால் உங்கள் சொந்த சர்வரிலும் மட்டுமே இருக்கும். வரைபடங்கள் OpenFreeMap-இலிருந்து வருகின்றன.</string>
+    <string name="settings_privacy_note_ios">உங்கள் வீடுகளும் வருகைகளும் இந்த iPhone-இலும், நீங்கள் இணைத்தால் உங்கள் சொந்த சர்வரிலும் மட்டுமே இருக்கும். வரைபடங்கள் OpenFreeMap-இலிருந்தும், தெருப் பெயர்கள் Apple-இன் ஜியோகோடரிலிருந்தும் வருகின்றன.</string>
     <string name="houses_empty_ios">இன்னும் வீடுகள் இல்லை. iPhone-இல் இப்போது வீடுகளைச் சேர்க்க முடியாது. உங்களிடம் Doorprints சர்வர் இருந்தால், அதை அமைப்புகளில் இணைக்கவும்; உங்கள் வீடுகள் இங்கே தோன்றும்.</string>
     <string name="map_location_off_no_hunt">Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. ‘இங்கே வீட்டைச் சேமி’க்கு இது தேவை.</string>
     <string name="map_needs_precise_no_hunt">‘இங்கே வீட்டைச் சேமி’க்குத் துல்லியமான இருப்பிடம் தேவை.</string>
@@ -634,4 +634,15 @@
     <string name="settings_path_trace_hint">தேடல் பயன்முறை இயங்கும்போது நீங்கள் நடந்த இடங்களை வைத்து வரைபடத்தில் வரைகிறது; எந்தத் தெருக்களைப் பார்த்தீர்கள் என்று தெரியும். இந்தத் தொலைபேசியில் மட்டும் இருக்கும்: காப்புப் பிரதியிலோ, நகலிலோ, சேவையகத்திலோ இல்லை; 30 நாட்களுக்குப் பிறகு நீங்கும்.</string>
     <string name="settings_path_trace_clear">பாதையை அழி</string>
     <string name="settings_path_trace_cleared">பாதை அழிக்கப்பட்டது.</string>
+    <!-- S4b-BL-69, Hunt mode on iPhone (2026-09-29): under review. -->
+    <string name="notif_seen_house">இதை ஏற்கெனவே பார்த்துள்ளீர்கள்: %1$s</string>
+    <string name="notif_distance">%1$s · %2$d மீ தொலைவில்</string>
+    <string name="notif_visited_before">முன்பு பார்த்தது</string>
+    <string name="notif_street_title">நீங்கள் %1$s-இல் முன்பு வந்துள்ளீர்கள்</string>
+    <string name="notif_street_text">சேமித்த வீடுகள்: %1$d, வருகைகள்: %2$d</string>
+    <string name="notif_street_text_since">சேமித்த வீடுகள்: %1$d, வருகைகள்: %2$d, முதல் முறை %3$s</string>
+    <string name="notif_stay_title">நீங்கள் ஒரு வீட்டில் இருக்கிறீர்களா?</string>
+    <string name="notif_stay_text">சில நிமிடங்களாக இங்கே இருக்கிறீர்கள். குறிப்புகள், படங்களுடன் சேமிக்கத் தட்டவும்.</string>
+    <string name="notif_battery_title">தேடல் பயன்முறை நிறுத்தப்பட்டது</string>
+    <string name="hunt_battery_text">பேட்டரி குறைவு (%1$d சதவீதம்). சார்ஜ் செய்யும்போது தேடல் பயன்முறையை மீண்டும் இயக்கவும்.</string>
 </resources>

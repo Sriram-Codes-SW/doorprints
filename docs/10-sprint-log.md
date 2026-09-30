@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.83 |
+| Version | 0.84 |
 | Date | 2026-09-29 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3) |
@@ -95,6 +95,7 @@
 | 0.81 | 2026-09-29 | Claude (Code), lead | §12.7: **S4b-BL-70..78** from the readiness review ([14](14-lead-backlog-and-handoff.md) §8): the `SyncBackend` seam, the IndexedDB upgrade path, the backup format's versioning rule, the CSP/COOP change for sign-in with the Noto fonts, docs/13 re-scoped for D-28, the web backup reader, `:app` code to common, the screenshot matrix, MapLibre shipped twice. |
 | 0.82 | 2026-09-29 | Claude (Code), lead | The readiness review's safe items done (`chore/sprint-readiness`, [14](14-lead-backlog-and-handoff.md) §8 findings 4a, 4b, 5, 6, 7a, 12, 15; [06](06-test-plan.md) TC-U-93): S4b-BL-29 closed (the settings' `toString()` redacted), Android search gains the contact name (S4b-FR-1's open gap). |
 | 0.83 | 2026-09-29 | Claude (Code), lead | **The path trace built** (S4b-FR-2, branch `feat/s4b-fr-2-path-trace`; [11](11-feature-parity-and-export-spec.md) 5.27, [02](02-threat-model.md) T-I30, [06](06-test-plan.md) TC-U-94, TC-M-30): §15 S4b-FR-2 done in code on Android, the iPhone with S4b-BL-69; step 3 of the map work (offline maps, S4b-FR-6) next. |
+| 0.84 | 2026-09-29 | Claude (Code), lead | **Hunt mode on iPhone** (S4b-BL-69, branch `feat/s4b-bl-69-ios-hunt-mode`): new **§13.14**, the adapter around the common `HuntEngine` (Core Location in the background under *When in use*, local notifications, Apple's geocoder, the battery), `PlatformFeatures.Ios.huntMode` on, the launch smoke's `hunt` gate ([06](06-test-plan.md) TC-I-39), the device check TC-M-31 (owner). §12.7 S4b-BL-69 done in code; the path trace (S4b-FR-2) is recorded on iPhone too. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 
@@ -1176,7 +1177,7 @@ S4b-BL-60 and S4b-BL-61 in v0.57, from the user guide (§17); S4b-BL-62 in v0.58
 | S4b-BL-66 | Web | **Counting and filtering photos reads every photo's bytes** (found in the optimisation review of 2026-09-29, PR #54; new id). `LocalStore.allPhotos()` is a `getAll` on the `photos` store, which returns every Blob; `SyncService.pendingCount()` (each refresh of *Your data*), the photo push and `photosOf` (delete a house, add a photo) use it only to count or filter by `houseId`. Fix: a `houseId` index on `photos` (a `DB_VERSION` bump with an upgrade step and a migration test) and reads through it or a key cursor. Low urgency at personal scale (20 photos per house). |
 | S4b-BL-67 | Android, QA | **The app lock's emulator test** (S4b-FR-5, [11](11-feature-parity-and-export-spec.md) 5.19; new id): set a PIN on the emulator (`locksettings set-pin`), turn *Lock Doorprints* on, send the app to the background past the chosen time, and unlock with the PIN on the system prompt (UI Automator), on API 26 (the keyguard screen) and 34 or 36 (BiometricPrompt). Today the rules are unit-tested (`AppLockGateTest`) and the prompts are checked on a device (TC-M-29). | Open |
 | S4b-BL-68 | Android | **Hunt mode's alerts on the phone's lock screen while the app lock is on** (S4b-FR-5; new id): the "you are near *house*" notification can show a house's name on the phone's lock screen. With the app lock on, post them with `VISIBILITY_PRIVATE` and a public version without the name (threat model T-I29, residual). | Open |
-| S4b-BL-69 | iOS | **Hunt mode on iPhone: the adapter around `HuntEngine`** (owner request of 2026-09-29; new id): `CLLocationManager` with `allowsBackgroundLocationUpdates` (the `location` background mode in `Info.plist`, the *When in use* permission already asked for; no *Always*), `UNUserNotificationCenter` for the alerts (the iPhone's first notification prompt, its copy in four languages), the engine's fix rate as `desiredAccuracy` and `distanceFilter`, the battery from `UIDevice`, then `PlatformFeatures.Ios.huntMode = true` (the Hunt card, the Settings sliders and the map's Hunt UI are common already). CI: the simulator fed a route (`simctl location`) past a saved house in the launch smoke; a device check (background execution, notification timing, battery) is the owner's. | Open |
+| S4b-BL-69 | iOS | **Hunt mode on iPhone: the adapter around `HuntEngine`** (owner request of 2026-09-29; new id): `CLLocationManager` with `allowsBackgroundLocationUpdates` (the `location` background mode in `Info.plist`, the *When in use* permission already asked for; no *Always*), `UNUserNotificationCenter` for the alerts (the iPhone's first notification prompt, its copy in four languages), the engine's fix rate as `desiredAccuracy` and `distanceFilter`, the battery from `UIDevice`, then `PlatformFeatures.Ios.huntMode = true` (the Hunt card, the Settings sliders and the map's Hunt UI are common already). CI: the simulator fed a route (`simctl location`) past a saved house in the launch smoke; a device check (background execution, notification timing, battery) is the owner's. | **Done in code** (2026-09-29, §13.14, `feat/s4b-bl-69-ios-hunt-mode`): `IosHunt`, `IosNotifications`, `IosGeocoder` in `:ui` iosMain; the fix rate is a throttle over every fix (`HuntFixThrottle`, Core Location has no interval); Apple's geocoder also fills the new-house form's address; the launch smoke sets one simulated location next to a house the self-check saves (TC-I-39); the device check is TC-M-31 (owner) |
 | S4b-BL-70 | Android, Web | **A `SyncBackend` seam** before Google sign-in with Drive sync (3b; [14](14-lead-backlog-and-handoff.md) §8 finding 1): `CommonRepository.sync()` and the web's `sync.service.ts` call the server API directly; extract push, pull-since-cursor, photos and "is it behind" behind an interface, today's code as `ServerSyncBackend`, `SyncRules` shared; decide one Drive snapshot file or one file per record. | Open |
 | S4b-BL-71 | Web | **The IndexedDB upgrade path** (§8 finding 2): no `onversionchange` (an open tab blocks the upgrade and the new tab falls back to the in-memory store), `onupgradeneeded` ignores `oldVersion`, no index read. Close on `versionchange` with the update banner, upgrade in steps, `getAllByIndex`; S4b-BL-66 (the photo `houseId` index) is the pilot; a Playwright check of the upgrade against the built site. | Open |
 | S4b-BL-72 | All | **The backup format's versioning rule** (§8 finding 3): readers accept only `doorprints-backup/1` with unknown keys ignored, so an old app importing a newer backup silently drops new fields and lists. Write the rule in `docs/schemas/README.md`, counts as a map, readers accepting `1..MAX`, one constant per stack; a track is never in a backup. Before 4c. | Open |
@@ -2300,6 +2301,63 @@ cinterop mistake before CI); every MapLibre iOS name the Swift file uses read in
 the package, the app build, the launch and the gate run for the first time in CI on this branch. **Not yet:** TC-M-28,
 the owner's look at the map on an iPhone.
 
+### 13.14 S4b-BL-69, Hunt mode on iPhone, done in code
+
+**What was done** (branch `feat/s4b-bl-69-ios-hunt-mode`, from `main` at `fd746b4`): the iPhone app has Hunt mode, from
+the same engine as Android (`HuntEngine`, §13 0.80), with the path trace of S4b-FR-2 inside it. Owner request of
+2026-09-29: "add Hunt mode to iOS as well so that we have less to develop later".
+
+- **`IosHunt`** (`:ui` iosMain), the adapter, what `HuntService` is on Android: one `CLLocationManager` per run
+  (`kCLLocationAccuracyBest`, every fix, `CLActivityTypeFitness`, automatic pausing off, background updates on under
+  the *When in use* permission with the blue indicator shown; `UIBackgroundModes` `location` in `Info.plist`, checked
+  in the app bundle by CI), a delegate on the main thread, the engine in a main-dispatcher scope that ends with Hunt
+  mode. Core Location has no request interval, so `HuntFixThrottle` hands the engine fixes at the fused client's rate
+  (walking: every 15 s, or 5 m after 5 s; staying: every 60 s, or 10 m after 30 s), which keeps the Hunt card and the
+  stay detector fed while standing still. The battery from `UIDevice` (monitoring on while Hunt mode runs; null in the
+  simulator, so no stop there). A revoked permission or a denial error ends Hunt mode with `NO_PERMISSION`, as on
+  Android; `NOT_ALLOWED` is Android-only. The alerts are worded here from the Compose resources (the `notif_*` strings
+  now in both places with the same text, `StringParityTest`; `hunt_battery_text` says "percent", Compose resources
+  showing a bare `%` as written) and posted from a scope of their own, so the low-battery alert survives the stop that
+  follows it.
+- **`IosNotifications`**: `UNUserNotificationCenter` with a delegate set from the Swift app's `init`
+  (`MainViewControllerKt.installNotifications()`, before the app finishes launching, as a tap that starts the app
+  needs); banners with sound in the foreground too; the prompt (alerts and sound, no badge) asked in context when Hunt
+  mode is turned on, through the common `rememberNotificationAsk`; the authorization read asynchronously and kept, so
+  the synchronous `canPostNotifications` and the Hunt card's *Allow notifications* (the prompt while iOS will still
+  show it, else the Settings app) answer from the last read. A tapped alert becomes a `DeepLink` (`notificationDeepLink`:
+  a UUID for the house or visit, coordinates in range, as MainActivity checks its intent, F-25); the "are you at a
+  house?" alert comes down once its visit is saved as a house (`clearVisitAlert`).
+- **`IosGeocoder`**: Apple's `CLGeocoder` (free, no key) for the street alerts and, from the same object, the new-house
+  form's address (`reverseGeocode`, which returned null on iPhone until now); 10 s timeout, cancelled with the caller,
+  main thread. The iPhone privacy note names it, as Android's names Google's geocoder.
+- **`PlatformFeatures.Ios.huntMode = true`**: the Hunt card on the Map, the Hunt mode section in Settings (the sliders
+  and *Trace my path on the map*) and the location note's Hunt wording are the common screens'; `ios_map` and
+  `ios_settings` re-recorded (16 images). The location purpose string names Hunt mode in the four languages
+  (`Info.plist`, `<lang>.lproj/InfoPlist.strings`).
+- **CI** (`shared-ios.yml`, `ios/ci/launch-smoke.sh`, TC-I-39): the bundle check requires the background mode; the
+  smoke grants the app location (`simctl privacy`), sets a simulated location about 15 m from where the self-check
+  saves a house (`simctl location set`, cleared at the end) and requires `DOORPRINTS-SELFCHECK hunt PASS` alongside
+  `indiaView` and `map`: the check saves the house, starts `IosHunt`, waits until the engine names it as the nearest
+  house from a fix, stops and deletes the house (SKIP without the permission, FAIL when the start is refused or no fix
+  names it within 60 s). Notifications cannot be granted on a simulator, so iOS drops the alerts; the engine's state
+  is what is checked. `IosHuntTest` (iosTest, 3 tests): the throttle's two rates and the deep-link check.
+
+**Decisions.** *When in use* with background updates, never *Always* (PRV-001, PRV-024: Hunt mode runs from the visible
+app; iOS shows the blue indicator while it collects in the background). No ongoing notification as on Android: the
+indicator is iOS's own sign that the app uses location. What the lock screen shows is iOS's *Show Previews* setting
+(F-14 on Android is `VISIBILITY_PRIVATE`). Hunt mode's alerts are the iPhone app's only notifications.
+
+**How it was verified:** on Linux, `tools/check.sh android ios guide licence` (the Android command with the screenshot
+verify, `StringParityTest` over the shared keys, the iOS main and test klibs cross-compiled, which caught two
+cinterop names: `CLActivityType` and `UNAuthorizationStatus` are integer typealiases, not enums). The adapter, the
+notifications, the simulated location and the new gate ran for the first time in CI on this branch: the first run
+(`e9949ad`) timed out in `hunt` with every other check passing, since a fixed simulated location is delivered once,
+at the start of updates, before the engine's house list had loaded; the smoke now steps the location about 11 m every
+10 s while it waits, and the adapter leaves `DOORPRINTS-HUNT` breadcrumbs (the start, each fix's accuracy, an error's
+code, the stop; debug binaries only) in the smoke's artifact. **Not yet:**
+TC-M-31, the owner's walk with an iPhone (background execution with the screen off, the alerts' timing, the battery
+stop, the trace's line).
+
 ## 14. Owner request of 2026-09-24: legacy House Hunt names become Doorprints
 
 **The request.** "The app needs to be Doorprints and also references of legacy House Hunt needs to be changed to it"
@@ -2338,7 +2396,7 @@ Android alike, and keeps the owner rules (zero cost; no public server until the 
 | ID | Feature | Notes for the design step | Status |
 |---|---|---|---|
 | S4b-FR-1 | **Search the saved houses.** | **Both apps already search** the house list as you type, offline: the web over the label, address, street, locality, notes and contact name (`searchText`, `pages/map/map-list.ts`), Android over the same without the contact name (`HouseListScreen.kt`). **Owner decision of 2026-09-28:** "Anything more that adds value to the search can be updated as the House values get updated." No separate search project: search grows with the house's values. A change that adds a house field, or changes what one holds, also decides whether both apps' search covers it and updates `searchText` (web) and the `HouseListScreen` filter (Android) together, with a test on each side; the next such change also closes the Android contact-name gap. | Rule in force (CLAUDE.md) |
-| S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is geospatial data under the DST guidelines of 2021 (phone accuracy, coarser than their 1 m threshold, so no storage rule applies; [03](03-design.md) §11.1) and location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | **Done in code** (2026-09-29, Android; [11](11-feature-parity-and-export-spec.md) 5.27): step 1 `HuntEngine` in common code (`refactor/hunt-engine-common`, PR #63); step 2 the trace inside the engine (`feat/s4b-fr-2-path-trace`): opt-in in Settings, `TrackRecorder`, `track_points` (Room v3), the line under the houses from shared style code, 30-day retention, *Clear the path*, never in a backup, a copy or the sync (T-I30, PRV-028); the iPhone records it with S4b-BL-69; on a phone TC-M-30 (owner). Step 3 offline maps (S4b-FR-6) next. |
+| S4b-FR-2 | **Trace the path travelled, as a coloured line on the map, while visiting houses.** | Hunt mode already reads the location; a stored track is geospatial data under the DST guidelines of 2021 (phone accuracy, coarser than their 1 m threshold, so no storage rule applies; [03](03-design.md) §11.1) and location history, so it needs the privacy review first ([02](02-threat-model.md), [01](01-requirements.md) §9): opt-in, kept on the device, a retention limit, and whether it syncs, exports or is left out of backups. Battery cost; the line's colour in both themes and against the map's own lines. | **Done in code** (2026-09-29, Android; [11](11-feature-parity-and-export-spec.md) 5.27): step 1 `HuntEngine` in common code (`refactor/hunt-engine-common`, PR #63); step 2 the trace inside the engine (`feat/s4b-fr-2-path-trace`): opt-in in Settings, `TrackRecorder`, `track_points` (Room v3), the line under the houses from shared style code, 30-day retention, *Clear the path*, never in a backup, a copy or the sync (T-I30, PRV-028); the iPhone records it too since S4b-BL-69 (§13.14); on a phone TC-M-30 (owner). Step 3 offline maps (S4b-FR-6) next. |
 | S4b-FR-3 | **Share list updates between two people who know each other**, each on their own device. | Today two devices that use the same self-hosted server share one list, but there is no public server (owner rule) and no per-person access. Options for the design step, all zero cost: a shared self-hosted server with a key per person; sending a Full backup and importing it with *merge* (works today, by hand); a new share format for the changes since the last exchange. Conflicts follow the existing last-edit-wins rule. | Planned |
 | S4b-FR-4 | **Add a house from a portal's listing link**: MagicBricks, 99acres, Housing.com, NoBroker, Square Yards, NestAway; the photos and details fill in the new-house form. | Builds on *Add a shared listing* (a link shared into the app) and *Fill in from listing text* (FR-038). To check before building: each portal's terms of use and robots rules on automated reading, and the photos' copyright (a copy kept for the user's own record only); the web app cannot read another site's page from the browser (CORS), so the web needs the optional server or stays text-only; the page's own preview data (Open Graph title, description, image) versus reading the page in full; nothing saved until the user saves, as FR-038; a listing's own map or location is the portal's, so only its address or coordinates are taken, drawn on our map with India's boundary as ADR-22 shows it. | Planned |
 | S4b-FR-5 | **App lock** on the phones: PIN, fingerprint or face, with the phone's own credential ([11](11-feature-parity-and-export-spec.md) 5.19, D-30). | With Google sign-in (N13 3b); threat-model item for a lost or shared phone; emulator test and a device check. | **Done in code** (2026-09-29, `feat/s4b-fr-5-app-lock`): Settings > Privacy > *Lock Doorprints*; threat model T-I29; [06](06-test-plan.md) TC-U-90, device check TC-M-29; emulator test S4b-BL-67. |
