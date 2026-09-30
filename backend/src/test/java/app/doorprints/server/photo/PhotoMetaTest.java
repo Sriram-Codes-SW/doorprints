@@ -89,12 +89,12 @@ class PhotoMetaTest {
         assertThat(PhotoMeta.problems("photos[0]", null, null, null, null)).isEmpty();
         assertThat(PhotoMeta.problems("photos[0]", "room", List.of("KITCHEN_FITTINGS", "custom"), "caption", 5L)).isEmpty();
         var secret = "secret ".repeat(40);
-        var problems = PhotoMeta.problems("photos[2]", "r".repeat(65), List.of("damp", "DAMP", "kitchen_fittings", secret),
+        var problems = PhotoMeta.problems("photos[2]", "r".repeat(65), List.of("old paint", "Old Paint", "kitchen_fittings", secret),
                 "c".repeat(201), -1L);
         assertThat(problems).contains("photos[2].roomId is out of range", "photos[2].caption is out of range",
                 "photos[2].metaUpdatedAt must not be negative", "photos[2].tags[3] is out of range",
                 "photos[2].tags repeats a tag");
-        assertThat(String.join(" ", problems)).doesNotContain("secret").doesNotContain("damp");
+        assertThat(String.join(" ", problems)).doesNotContain("secret").doesNotContain("old paint").doesNotContain("Old Paint");
         assertThat(PhotoMeta.problems("photos[0]", null, List.of("kitchen_fittings"), null, null))
                 .containsExactly("photos[0].tags spells a fixed key in another case");
         var eleven = new ArrayList<String>();

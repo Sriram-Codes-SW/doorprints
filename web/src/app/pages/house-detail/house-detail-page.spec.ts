@@ -83,7 +83,7 @@ function create(
     areaNotes: () => of([]),
     places: () => of([]),
     settled: signal(0),
-    photoIds: () => of([]),
+    photos: () => of([]),
     saveHouse: fakes.saveHouse ?? (() => of(HOUSE)),
   };
   TestBed.configureTestingModule({

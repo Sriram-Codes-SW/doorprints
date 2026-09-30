@@ -72,7 +72,7 @@ export interface PhotoRecord {
 }
 
 /** The meta a stored photo carries, coerced (docs/11 5.7): empty and `metaUpdatedAt` 0 for a photo never edited. */
-export function photoMetaOf(record: Pick<PhotoRecord, 'roomId' | 'tags' | 'caption' | 'metaUpdatedAt'>): PhotoMeta {
+export function photoMetaOf(record: { roomId?: string | null; tags?: string[] | null; caption?: string | null; metaUpdatedAt?: number | null }): PhotoMeta {
   return cleanMeta(record);
 }
 

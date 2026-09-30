@@ -600,7 +600,12 @@ export class LocalStore {
       if (!record.dirty) await db.put('records', { ...record, dirty: true });
     }
     for (const photo of await db.getAll<PhotoRecord>('photos')) {
-      if (!photo.deleted && photo.blob && photo.uploaded) await db.put('photos', { ...photo, uploaded: false });
+      if (photo.deleted) continue;
+      const resendBytes = !!photo.blob && photo.uploaded;
+      const resendMeta = (photo.metaUpdatedAt ?? 0) > 0 && photo.metaDirty !== true;
+      if (resendBytes || resendMeta) {
+        await db.put('photos', { ...photo, ...(resendBytes ? { uploaded: false } : {}), ...(resendMeta ? { metaDirty: true } : {}) });
+      }
     }
     this.touch();
   }

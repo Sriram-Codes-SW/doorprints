@@ -218,6 +218,13 @@ class BackupApiTest {
         JSONAssert.assertEquals(expected, actual, new CustomComparator(JSONCompareMode.STRICT,
                 new Customization("exportedAt", (a, e) -> true),
                 new Customization("photos[0].createdAt", (a, e) -> true),
+                // The server clamps an edit stamp that is ahead of its own clock to now, like every client stamp, so the
+                // sample's stamp (written on a phone whose clock may run ahead of this machine) comes back as itself
+                // or, when it is still in this machine's future, as a time between an hour ago and then.
+                new Customization("photos[0].metaUpdatedAt", (a, e) -> ((Number) a).longValue() == ((Number) e).longValue()
+                        || (((Number) e).longValue() > Instant.now().toEpochMilli()
+                        && ((Number) a).longValue() >= Instant.now().minusSeconds(3600).toEpochMilli()
+                        && ((Number) a).longValue() <= ((Number) e).longValue())),
                 new Customization("photos[1].createdAt", (a, e) -> true)));
     }
 
@@ -312,6 +319,7 @@ class BackupApiTest {
             });
             api.post().uri("/api/houses/{id}/photos", photo.getString("houseId"))
                     .contentType(MediaType.MULTIPART_FORM_DATA).body(form).retrieve().toBodilessEntity();
+            if (photo.has("metaUpdatedAt")) putPhotoMeta(photo);
         }
 
         var exported = export();
@@ -370,6 +378,16 @@ class BackupApiTest {
         // Photo rows carry no bytes over JSON, so the restored server has none; everything else must match.
         var expected = new JSONObject(SAMPLE).put("photos", new JSONArray()).toString();
         assertExportEquals(expected, export());
+    }
+
+    /** The sample photo's room, tags, caption and edit time, put the way the apps put them. */
+    private void putPhotoMeta(JSONObject photo) throws JSONException {
+        var body = new JSONObject();
+        for (var key : List.of("roomId", "tags", "caption", "metaUpdatedAt")) {
+            if (photo.has(key)) body.put(key, photo.get(key));
+        }
+        api.put().uri("/api/photos/{id}/meta", photo.getString("id")).contentType(MediaType.APPLICATION_JSON)
+                .body(body.toString()).retrieve().toBodilessEntity();
     }
 
     /** Slice 1b: a broker is a {@code broker} record, put the way the phone and the browser put it. */
@@ -1931,5 +1949,215 @@ class BackupApiTest {
                 .contains("name=Adyar", "radiusM=500", "enabled=false");
         assertThat(smallRecords("areanote").getFirst().get("payload").toString())
                 .contains("areaId=a_0000aaaa", "text=Floods").doesNotContain("street");
+    }
+
+    // ---- slice 5: moving in, the two new statuses, photo tags --------------------------------------------------------
+
+    private static final String GOOD_MOVE_IN =
+            "{\"date\":1790812800000,\"notes\":\"Keys handed over\",\"items\":["
+                    + "{\"id\":\"mi_agreement\",\"text\":\"Agreement signed\",\"done\":true,\"sort\":0},"
+                    + "{\"id\":\"mi_police\",\"text\":\"Police verification done\",\"sort\":1}]}";
+
+    private static String houseWithMoveIn(UUID id, String label, Instant at, String moveIn) {
+        return houseRow(id, label, at).replace("\"status\":\"NEW\"", "\"status\":\"TAKEN\",\"moveIn\":" + moveIn);
+    }
+
+    private static String v2(String file) {
+        return file.replace(BackupFormat.ID, BackupFormat.ID_WITH_BROKERS);
+    }
+
+    /** The move-in is part of the house row, after the answers: /2 even with nothing else, written back equal. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void moveInImportsWithItsHouseAndExportsBackAsVersionTwo() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var id = UUID.randomUUID();
+        var file = v2(backup(houseWithMoveIn(id, "Taken", now, GOOD_MOVE_IN), ""));
+
+        assertThat(postImport(file, true)).containsEntry("format", BackupFormat.ID_WITH_BROKERS);
+        assertThat(api.get().uri("/api/houses").retrieve().body(LIST)).as("dry run writes nothing").isEmpty();
+        assertThat(count(postImport(file, false), "houses", "created")).isEqualTo(1);
+
+        var house = api.get().uri("/api/houses/{id}", id).retrieve().body(MAP);
+        assertThat(house).containsEntry("status", "TAKEN");
+        assertThat((Map<String, Object>) house.get("moveIn")).containsEntry("notes", "Keys handed over");
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        JSONAssert.assertEquals("{\"moveIn\":" + GOOD_MOVE_IN + "}", exported.getJSONArray("houses").getJSONObject(0).toString(),
+                JSONCompareMode.LENIENT);
+        var written = export();
+        assertThat(written.indexOf("\"status\"")).isLessThan(written.indexOf("\"moveIn\""));
+        assertThat(written.indexOf("\"moveIn\"")).isLessThan(written.indexOf("\"checklist\""));
+        assertThat(written).doesNotContain("\"done\":false").doesNotContain("\"moveIn\":{}");
+
+        // A newer file without a move-in replaces the house as a whole: the move-in goes, and the copy is /1 again.
+        assertThat(count(postImport(backup(houseRow(id, "No move-in now", now.plusSeconds(60)), ""), false), "houses",
+                "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
+
+        // An empty object in a file is no move-in.
+        var emptied = v2(backup(houseWithMoveIn(id, "Empty object", now.plusSeconds(120), "{}"), ""));
+        assertThat(count(postImport(emptied, false), "houses", "updated")).isEqualTo(1);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("moveIn")).isNull();
+    }
+
+    @Test
+    void aTakenOrNotChosenHouseAloneMakesTheCopyVersionTwo() throws JSONException {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var taken = UUID.randomUUID();
+        postImport(v2(backup(houseRow(taken, "Taken", now).replace("\"NEW\"", "\"TAKEN\""), "")), false);
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(api.get().uri("/api/houses/{id}", taken).retrieve().body(MAP)).containsEntry("status", "TAKEN");
+
+        api.delete().uri("/api/data").header("X-Confirm-Delete", "DELETE-ALL-MY-DATA").retrieve().toBodilessEntity();
+        var left = UUID.randomUUID();
+        postImport(v2(backup(houseRow(left, "Left", now).replace("\"NEW\"", "\"NOT_CHOSEN\""), "")), false);
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        assertThat(api.get().uri("/api/houses/{id}", left).retrieve().body(MAP)).containsEntry("status", "NOT_CHOSEN");
+    }
+
+    private void assertMoveInRefused(String moveIn, String message, String userText) {
+        assertRefused(v2(backup(houseWithMoveIn(UUID.randomUUID(), "Bad", Instant.now().minus(Duration.ofMinutes(1)), moveIn), "")),
+                message, userText);
+    }
+
+    @Test
+    void aBadMoveInRefusesTheWholeFileWithoutEchoingTheCallersText() {
+        var item = "{\"id\":\"a\",\"text\":\"Item\",\"sort\":0}";
+        assertMoveInRefused("{\"date\":0}", "houses[0].moveIn.date is out of range", null);
+        assertMoveInRefused("{\"date\":-4}", "houses[0].moveIn.date is out of range", null);
+        assertMoveInRefused("{\"notes\":\"" + "secret words ".repeat(200) + "\"}", "houses[0].moveIn.notes is out of range", "secret");
+        assertMoveInRefused("{\"items\":[{\"id\":\"has space secret\",\"text\":\"Item\",\"sort\":0}]}",
+                "houses[0].moveIn.items[0].id is out of range", "secret");
+        assertMoveInRefused("{\"items\":[{\"id\":\"..\",\"text\":\"Item\",\"sort\":0}]}",
+                "houses[0].moveIn.items[0].id is out of range", null);
+        assertMoveInRefused("{\"items\":[" + item + "," + item + "]}", "houses[0].moveIn.items[1].id is repeated", null);
+        assertMoveInRefused("{\"items\":[{\"id\":\"a\",\"text\":\"  \",\"sort\":0}]}",
+                "houses[0].moveIn.items[0].text is out of range", null);
+        assertMoveInRefused("{\"items\":[{\"id\":\"a\",\"text\":\"" + "secret ".repeat(40) + "\",\"sort\":0}]}",
+                "houses[0].moveIn.items[0].text is out of range", "secret");
+        assertMoveInRefused("{\"items\":[{\"id\":\"a\",\"text\":\"Item\",\"sort\":-1}]}",
+                "houses[0].moveIn.items[0].sort is out of range", null);
+        var many = new StringBuilder();
+        for (int i = 0; i <= 30; i++) many.append(i == 0 ? "" : ",").append(item.replace("\"a\"", "\"a" + i + "\""));
+        assertMoveInRefused("{\"items\":[" + many + "]}", "houses[0].moveIn.items has more than 30 items", null);
+    }
+
+    private UUID houseWithAPhoto(UUID photoId) {
+        var houseId = UUID.randomUUID();
+        postImport(backup(houseRow(houseId, "With a photo", Instant.now().minus(Duration.ofMinutes(10))), ""), false);
+        var form = new LinkedMultiValueMap<String, Object>();
+        form.add("id", photoId.toString());
+        form.add("file", new ByteArrayResource(ImageSanitizerTest.jpegWithExif()) {
+            @Override
+            public String getFilename() {
+                return "photo.jpg";
+            }
+        });
+        api.post().uri("/api/houses/{id}/photos", houseId).contentType(MediaType.MULTIPART_FORM_DATA).body(form)
+                .retrieve().toBodilessEntity();
+        return houseId;
+    }
+
+    private static String photoRow(UUID photoId, UUID houseId, String meta) {
+        return "{\"id\":\"" + photoId + "\",\"houseId\":\"" + houseId + "\",\"fileName\":\"" + photoId
+                + ".jpg\",\"createdAt\":" + Instant.now().minus(Duration.ofMinutes(9)).toEpochMilli() + meta + "}";
+    }
+
+    private static String withPhotos(String file, String rows) {
+        return v2(file.replace("\"photos\":[]", "\"photos\":[" + rows + "]"));
+    }
+
+    /** A photo with a room, tags, a caption or an edit time makes the copy /2, and the keys are written only when set. */
+    @Test
+    void photoMetaMakesTheCopyVersionTwoAndIsWrittenOnlyWhenSet() throws JSONException {
+        var photoId = UUID.randomUUID();
+        var houseId = houseWithAPhoto(photoId);
+        assertThat(new JSONObject(export()).getString("format")).isEqualTo(BackupFormat.ID);
+        assertThat(export()).doesNotContain("\"roomId\"").doesNotContain("\"tags\"").doesNotContain("\"caption\"")
+                .doesNotContain("\"metaUpdatedAt\"");
+
+        var at = Instant.now().minusSeconds(600).toEpochMilli();
+        api.put().uri("/api/photos/{id}/meta", photoId).contentType(MediaType.APPLICATION_JSON)
+                .body("{\"roomId\":\"c1\",\"tags\":[\"MOVE_IN\",\"damp corner\"],\"caption\":\"Tap drips\",\"metaUpdatedAt\":" + at + "}")
+                .retrieve().toBodilessEntity();
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo(BackupFormat.ID_WITH_BROKERS);
+        var row = exported.getJSONArray("photos").getJSONObject(0);
+        var written = export();
+        assertThat(CanonicalSample.keysInOrder(written.substring(written.indexOf("\"photos\""))))
+                .containsExactly("photos", "id", "houseId", "fileName", "createdAt", "roomId", "tags", "caption",
+                        "metaUpdatedAt");
+        assertThat(row.getString("roomId")).isEqualTo("c1");
+        assertThat(row.getJSONArray("tags").toString()).isEqualTo("[\"MOVE_IN\",\"damp corner\"]");
+        assertThat(row.getLong("metaUpdatedAt")).isEqualTo(at);
+        assertThat(houseId).isNotNull();
+
+        // Only a caption: still /2, and only that key is added.
+        api.put().uri("/api/photos/{id}/meta", photoId).contentType(MediaType.APPLICATION_JSON)
+                .body("{\"caption\":\"Only words\",\"metaUpdatedAt\":" + (at + 1000) + "}").retrieve().toBodilessEntity();
+        var only = new JSONObject(export()).getJSONArray("photos").getJSONObject(0);
+        assertThat(only.has("roomId")).isFalse();
+        assertThat(only.has("tags")).isFalse();
+        assertThat(only.getString("caption")).isEqualTo("Only words");
+    }
+
+    /** Photo meta in a file merges into a photo the server already holds, last write wins on metaUpdatedAt. */
+    @Test
+    void photoMetaInAFileMergesByLastWriteWins() throws JSONException {
+        var photoId = UUID.randomUUID();
+        var houseId = houseWithAPhoto(photoId);
+        var base = Instant.now().minusSeconds(3600).toEpochMilli();
+        var house = houseRow(houseId, "With a photo", Instant.now().minus(Duration.ofMinutes(10)));
+        Map<String, Object> dryReport;
+
+        // Newer in the file: updated (a dry run says so and writes nothing).
+        var first = withPhotos(backup(house, ""), photoRow(photoId, houseId,
+                ",\"roomId\":\"c1\",\"tags\":[\"LEAK\"],\"caption\":\"from the file\",\"metaUpdatedAt\":" + base));
+        dryReport = postImport(first, true);
+        assertThat(count(dryReport, "photos", "updated")).isEqualTo(1);
+        assertThat(new JSONObject(export()).getJSONArray("photos").getJSONObject(0).has("caption")).isFalse();
+        assertThat(count(postImport(first, false), "photos", "updated")).isEqualTo(1);
+        var row = new JSONObject(export()).getJSONArray("photos").getJSONObject(0);
+        assertThat(row.getString("caption")).isEqualTo("from the file");
+        assertThat(row.getLong("metaUpdatedAt")).isEqualTo(base);
+
+        // The same stamp: unchanged. Older: this server's row is kept.
+        assertThat(count(postImport(first, false), "photos", "unchanged")).isEqualTo(1);
+        var older = withPhotos(backup(house, ""), photoRow(photoId, houseId,
+                ",\"roomId\":\"c9\",\"caption\":\"older words\",\"metaUpdatedAt\":" + (base - 5000)));
+        assertThat(count(postImport(older, false), "photos", "keptNewer")).isEqualTo(1);
+        assertThat(new JSONObject(export()).getJSONArray("photos").getJSONObject(0).getString("caption"))
+                .isEqualTo("from the file");
+
+        // A row with no edit time, or for a photo this server does not hold, changes nothing (no bytes in a JSON copy).
+        var noMeta = withPhotos(backup(house, ""), photoRow(photoId, houseId, "") + ","
+                + photoRow(UUID.randomUUID(), houseId, ",\"caption\":\"x\",\"metaUpdatedAt\":" + base));
+        assertThat(count(postImport(noMeta, false), "photos", "skipped")).isEqualTo(2);
+    }
+
+    private void assertPhotoMetaRefused(String meta, String message, String userText) {
+        var houseId = UUID.randomUUID();
+        var file = withPhotos(backup(houseRow(houseId, "Bad photo", Instant.now().minus(Duration.ofMinutes(1))), ""),
+                photoRow(UUID.randomUUID(), houseId, meta));
+        assertRefused(file, message, userText);
+    }
+
+    @Test
+    void badPhotoMetaRefusesTheWholeFileWithoutEchoingTheCallersText() {
+        var at = ",\"metaUpdatedAt\":" + Instant.now().minusSeconds(60).toEpochMilli();
+        assertPhotoMetaRefused(",\"tags\":[\"" + "secret ".repeat(6) + "\"]" + at, "photos[0].tags[0] is out of range", "secret");
+        assertPhotoMetaRefused(",\"tags\":[\"\"]" + at, "photos[0].tags[0] is out of range", null);
+        var eleven = new StringBuilder();
+        for (int i = 0; i < 11; i++) eleven.append(i == 0 ? "" : ",").append("\"tag ").append(i).append('"');
+        assertPhotoMetaRefused(",\"tags\":[" + eleven + "]" + at, "photos[0].tags has more than 10 tags", null);
+        assertPhotoMetaRefused(",\"tags\":[\"kitchen_fittings\"]" + at, "photos[0].tags spells a fixed key in another case", "kitchen_fittings");
+        assertPhotoMetaRefused(",\"tags\":[\"Damp\"]" + at, "photos[0].tags spells a fixed key in another case", null);
+        assertPhotoMetaRefused(",\"tags\":[\"old paint\",\"OLD PAINT\"]" + at, "photos[0].tags repeats a tag", "old paint");
+        assertPhotoMetaRefused(",\"caption\":\"" + "secret ".repeat(40) + "\"" + at, "photos[0].caption is out of range", "secret");
+        assertPhotoMetaRefused(",\"roomId\":\"" + "secret".repeat(12) + "\"" + at, "photos[0].roomId is out of range", "secret");
+        assertPhotoMetaRefused(",\"metaUpdatedAt\":-1", "photos[0].metaUpdatedAt must not be negative", null);
+        assertPhotoMetaRefused(",\"metaUpdatedAt\":1000", "photos[0].metaUpdatedAt is out of range (check the device clock)", "1000");
     }
 }

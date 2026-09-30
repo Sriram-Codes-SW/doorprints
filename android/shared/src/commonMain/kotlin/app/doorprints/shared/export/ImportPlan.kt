@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.PhotoMeta
+
 /** How an import treats rows that already exist (docs/11 section 5.2, "Import (exact round trip)"). */
 enum class ImportMode {
     /** Merge by id, last edit wins: a row that is newer in the file replaces the local one, otherwise nothing. */
@@ -115,6 +117,11 @@ data class ImportPreview(
     val updatedPlaces: Int = 0,
     val newAreaNotes: Int = 0,
     val updatedAreaNotes: Int = 0,
+    /**
+     * MERGE only (slice 5): photos already on this phone whose meta (room, tags, caption) is newer in the file, by
+     * `metaUpdatedAt`; the import writes the file's meta onto them. An older or equal one changes nothing.
+     */
+    val updatedPhotoMeta: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
@@ -122,7 +129,7 @@ data class ImportPreview(
             restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
             newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0 &&
             newViewings == 0 && updatedViewings == 0 && newAreas == 0 && updatedAreas == 0 && newPlaces == 0 &&
-            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0
+            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0 && updatedPhotoMeta == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
     val overwrites: Int
@@ -184,6 +191,11 @@ data class ImportActions(
     val areas: List<ExportArea> = emptyList(),
     val places: List<ExportPlace> = emptyList(),
     val areaNotes: List<ExportAreaNote> = emptyList(),
+    /**
+     * MERGE only (slice 5): the file's rows of photos already on this phone whose meta is newer in the file
+     * ([ImportPreview.updatedPhotoMeta]); the writer puts only their meta on the local row, never a new file.
+     */
+    val photoMeta: List<ExportPhoto> = emptyList(),
 )
 
 /**
@@ -254,6 +266,7 @@ object ImportPlan {
         localAreas: Map<String, Long> = emptyMap(),
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
+        localPhotoMeta: Map<String, Long> = emptyMap(),
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
@@ -389,8 +402,21 @@ object ImportPlan {
             keptMineHouses = mineH,
             keptMineVisits = mineV,
             relinkedVisits = relinkV,
+            updatedPhotoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates).size,
         )
     }
+
+    /**
+     * The file's photos already on this phone ([localPhotoIds]) whose meta is newer than the phone's
+     * ([localPhotoMeta], `metaUpdatedAt` by id; last write wins, slice 5): the same list for [preview] and [plan].
+     * [skipUpdates] leaves them all as they are.
+     */
+    private fun photoMetaUpdates(
+        data: BackupData, localPhotoIds: Set<String>, localPhotoMeta: Map<String, Long>, skipUpdates: Boolean,
+    ): List<ExportPhoto> =
+        if (skipUpdates) emptyList() else data.photos.filter { p ->
+            p.id in localPhotoIds && PhotoMeta.incomingWins(localPhotoMeta[p.id] ?: 0L, p.meta.metaUpdatedAt)
+        }
 
     /**
      * How many houses a [ImportMode.COPY] import would put on this phone a second time: houses in the file whose id
@@ -444,6 +470,7 @@ object ImportPlan {
         localAreas: Map<String, Long> = emptyMap(),
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
+        localPhotoMeta: Map<String, Long> = emptyMap(),
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
@@ -564,6 +591,7 @@ object ImportPlan {
             areas = areas,
             places = places,
             areaNotes = areaNotes,
+            photoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates),
         )
     }
 

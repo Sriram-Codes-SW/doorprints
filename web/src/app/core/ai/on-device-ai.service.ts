@@ -171,7 +171,7 @@ export class OnDeviceAiService {
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
       status: h.status, price: h.price, priceType: h.priceType, bedrooms: h.bedrooms, rating: h.rating,
-      areaSqft: h.areaSqft, cost: h.cost, rooms: h.rooms, answers: h.answers, viewings: viewingsByHouse.get(h.id) ?? [],
+      areaSqft: h.areaSqft, cost: h.cost, rooms: h.rooms, answers: h.answers, moveIn: h.moveIn, viewings: viewingsByHouse.get(h.id) ?? [],
       areaNotes: notesReaching(h, areas, noteRows).map((n) => ({ id: n.id, text: n.note.text, updatedAt: Date.parse(n.updatedAt ?? '') || 0 })),
       distances: distancesToPlaces(h, places).map((d) => ({ name: d.place.name, meters: d.meters })),
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,

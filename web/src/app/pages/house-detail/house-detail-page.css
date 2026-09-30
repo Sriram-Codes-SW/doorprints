@@ -395,12 +395,46 @@ app-location-map {
   gap: var(--space-2);
 }
 
+.photo-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The details editor needs the width of the gallery, not one thumbnail's. */
+.photo-item.editing {
+  grid-column: 1 / -1;
+}
+
 .photo {
   position: relative;
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
   background: var(--surface-2);
+}
+
+.photo-item.editing .photo {
+  width: 7rem;
+}
+
+/* What was said about the photo (slice 5), under the thumbnail. */
+.photo-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.photo-room {
+  font-weight: 600;
+}
+
+.photo-tags {
+  color: var(--muted);
 }
 
 .photo-del {

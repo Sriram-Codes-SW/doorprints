@@ -23,6 +23,7 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.RoomSizes
 import app.doorprints.shared.model.Distances
 
@@ -73,6 +74,7 @@ object HouseDocuments {
         viewingLines(sb, h.viewings, r)
         areaNoteLines(sb, h.areaNotes, r)
         distanceLines(sb, h.distances, r)
+        moveInLines(sb, h.moveIn, r)
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -175,6 +177,18 @@ object HouseDocuments {
             val name = oneLine(r.freeText(d.name.trim()))
             if (!name.isNullOrEmpty()) sb.append("Distance to ").append(name).append(": ").append(Distances.km(d.meters)).append(" km\n")
         }
+    }
+
+    /**
+     * Moving in (slice 5), after the distances, the same words as the server's and the web's `houseText`:
+     * `Moving in: <done> of <total> done` when it has items, and `Moving in notes: <notes>` through the redactor on one
+     * line (its white space collapsed). The items' own texts are not sent.
+     */
+    internal fun moveInLines(sb: StringBuilder, moveIn: MoveIn?, r: ContactRedactor.Redactor) {
+        val m = moveIn ?: return
+        val (done, total) = m.progress
+        if (total > 0) line(sb, "Moving in", "$done of $total done")
+        line(sb, "Moving in notes", oneLine(m.notes?.trim()?.let { r.freeText(it) }))
     }
 
     private fun oneLine(text: String?): String? = text?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(" ")

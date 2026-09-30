@@ -60,7 +60,7 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
     locality: 'Adyar',
     lat: 13.006,
     lon: 80.2574,
-    status: 'SHORTLISTED',
+    status: 'TAKEN',
     price: 32000,
     priceType: 'RENT',
     bedrooms: 2,
@@ -119,6 +119,15 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
       },
       { id: 'a2222222-2222-4222-8222-222222222222', text: 'Is the terrace open to tenants?', status: 'OPEN', sort: 1 },
     ],
+    // Slice 5: house 1 is the one taken; the move-in date is 2026-10-01 (00:00 UTC), one item ticked and one not.
+    moveIn: {
+      date: 1790812800000,
+      notes: 'Keys handed over by Ravi. Electricity meter reads 4521.',
+      items: [
+        { id: 'mi_agreement', text: 'Rental agreement signed and registered', done: true, sort: 0 },
+        { id: 'mi_police', text: 'Police verification done', sort: 1 },
+      ],
+    },
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
     updatedAt: '2026-09-10T08:30:00.000Z',
@@ -376,6 +385,11 @@ export const FIXTURE_PHOTOS: PhotoRecord[] = [
     deleted: false,
     syncVersion: 2,
     uploaded: true,
+    // Slice 5: the room, tags (two fixed, one custom), caption and meta stamp `docs/schemas/backup-sample.json` carries.
+    roomId: 'c1111111-1111-4111-8111-111111111111',
+    tags: ['KITCHEN_FITTINGS', 'MOVE_IN', 'damp corner'],
+    caption: 'Kitchen at move-in: tap drips slightly.',
+    metaUpdatedAt: 1790813400000,
   },
   {
     // House 3's photo, created two days *before* house 1's: the second half of the interleaving pair.
