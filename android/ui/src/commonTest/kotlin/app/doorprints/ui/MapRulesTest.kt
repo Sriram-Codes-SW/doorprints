@@ -143,15 +143,21 @@ class MapRulesTest {
     fun theLegendDrawsTheMarkersAsTheWebDoes() {
         // The web's order and .dot sizes (map-page.css): new 12 px, shortlisted 16 px, rejected 9 px.
         // Then "Approximate" (FR-068, slice 1a): a hollow ring the size of a new house's dot.
-        assertEquals(listOf("NEW", "SHORTLISTED", "REJECTED", "APPROX"), LEGEND_DOTS.map { it.status })
-        assertEquals(listOf(12f, 16f, 9f, 12f), LEGEND_DOTS.map { it.diameterDp })
+        // Slice 5: Taken like Shortlisted and Not chosen like Rejected, before "Approximate".
+        assertEquals(listOf("NEW", "SHORTLISTED", "REJECTED", "TAKEN", "NOT_CHOSEN", "APPROX"), LEGEND_DOTS.map { it.status })
+        assertEquals(listOf(12f, 16f, 9f, 16f, 9f, 12f), LEGEND_DOTS.map { it.diameterDp })
         // The same ring and opacity as the markers on the map, so the key matches what it explains.
         assertEquals(
-            listOf(MARKER_STROKE_DP, MARKER_STROKE_SHORTLISTED_DP, MARKER_STROKE_DP, MARKER_STROKE_DP),
+            listOf(
+                MARKER_STROKE_DP, MARKER_STROKE_SHORTLISTED_DP, MARKER_STROKE_DP, MARKER_STROKE_SHORTLISTED_DP, MARKER_STROKE_DP,
+                MARKER_STROKE_DP,
+            ),
             LEGEND_DOTS.map { it.ringDp },
         )
-        assertEquals(listOf(1f, 1f, MARKER_OPACITY_REJECTED, 1f), LEGEND_DOTS.map { it.alpha })
-        assertEquals(listOf(false, false, false, true), LEGEND_DOTS.map { it.hollow })
+        assertEquals(listOf(1f, 1f, MARKER_OPACITY_REJECTED, 1f, MARKER_OPACITY_REJECTED, 1f), LEGEND_DOTS.map { it.alpha })
+        assertEquals(listOf(false, false, false, false, false, true), LEGEND_DOTS.map { it.hollow })
+        // Each status has a marker colour of its own.
+        assertEquals(5, listOf("NEW", "SHORTLISTED", "REJECTED", "TAKEN", "NOT_CHOSEN").map { MarkerColors.of(it) }.toSet().size)
         val (new, shortlisted, rejected) = LEGEND_DOTS
         assertTrue(shortlisted.diameterDp > new.diameterDp && new.diameterDp > rejected.diameterDp)
         // Every dot has some colour inside its white ring.
