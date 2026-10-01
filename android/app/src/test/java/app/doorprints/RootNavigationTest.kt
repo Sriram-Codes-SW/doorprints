@@ -24,11 +24,13 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -55,7 +57,8 @@ import org.robolectric.annotation.Config
  * opens as its tab, Export is single-top, each link is reported handled, and Back returns to the Map. Every screen is
  * the real, common one: the house form, Export and Import since CMP-6 (English: "Save a house" for a new house, "House
  * details" for a stored one, "Save a copy"), and since CMP-7 the Map's chrome, recognised by its Hunt card ("Hunt
- * mode"), around an empty map view (inspection mode).
+ * mode"), around an empty map view (inspection mode). Settings > Viewings (S4b-BL-103) opens the whole history, a row
+ * opens its viewing and *Plan a viewing* a new one, and Back walks back through each.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35], application = ScreenshotTestApp::class)
@@ -66,6 +69,12 @@ class RootNavigationTest {
 
     /** The Map's Hunt card title (map_hunt_mode, English). */
     private val MAP = "Hunt mode"
+
+    /** Settings > Viewings (English): the row's hint, the history's intro, its empty state and a form field. */
+    private val VIEWINGS_HINT = "Plan a viewing, and see the ones coming up and the ones you have done."
+    private val VIEWINGS_INTRO = "When you plan to see a house, and how it went."
+    private val NO_VIEWINGS = "No viewings yet. Plan one from a house."
+    private val WITH_WHOM = "With whom"
     private var handled = 0
 
     @Before fun clearFileProviderCache() {
@@ -222,6 +231,63 @@ class RootNavigationTest {
         shows(MAP)
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Start Hunt mode?").fetchSemanticsNodes().isNotEmpty() }
         shows("Start Hunt mode")
+    }
+
+    private fun waitFor(text: String) =
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+
+    /** Opens Settings > Viewings by its row (found by its hint, the row's own words; the row is one button). */
+    private fun openSettingsViewings() {
+        compose.onNodeWithText(VIEWINGS_HINT).performScrollTo().performClick()
+        compose.waitForIdle()
+        waitFor(VIEWINGS_INTRO)
+    }
+
+    @Test
+    fun settingsViewingsOpensTheHistoryAStoredViewingAndBackWalksBack() {
+        // S4b-BL-103 (S4b-BL-92f): Settings > Viewings, a row of the history, then Back to the history, Settings, the Map.
+        runBlocking {
+            val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+            val at = 1_760_000_000_000
+            repo.saveHouse(HouseEntity(id = "h-nav", label = "Green View", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at))
+            repo.saveViewing(app.doorprints.shared.model.Viewing("v_0000000a", "h-nav", System.currentTimeMillis() + 86_400_000))
+        }
+        start(DeepLink.OpenScreen(Routes.SETTINGS))
+        openSettingsViewings()
+        // The whole history ("When you plan…", not one house's), with the stored viewing's row.
+        val row = hasContentDescription("Open the viewing: Green View", substring = true)
+        compose.waitUntil(5_000) { compose.onAllNodes(row).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(row).performScrollTo().performClick()
+        compose.waitForIdle()
+        // The stored viewing's form (titled "Viewing", not "Plan a viewing"), in place of the history.
+        waitFor(WITH_WHOM)
+        compose.onNodeWithText("Viewing").assertExists()
+        compose.onNodeWithText("Plan a viewing").assertDoesNotExist()
+        compose.onNodeWithText(VIEWINGS_INTRO).assertDoesNotExist()
+        back()
+        waitFor(VIEWINGS_INTRO)
+        back()
+        compose.onNodeWithText("Server (optional)").assertExists()
+        compose.onNodeWithText(VIEWINGS_INTRO).assertDoesNotExist()
+        back()
+        shows(MAP)
+    }
+
+    @Test
+    fun settingsViewingsPlansANewViewingAndTheFormsBackReturnsToTheHistory() {
+        start(DeepLink.OpenScreen(Routes.SETTINGS))
+        openSettingsViewings()
+        compose.onNodeWithText(NO_VIEWINGS).assertExists()
+        compose.onNodeWithText("Plan a viewing").performClick()
+        compose.waitForIdle()
+        // The form for a new viewing: titled with the button's words, in place of the history.
+        waitFor(WITH_WHOM)
+        compose.onNodeWithText("Plan a viewing").assertExists()
+        compose.onNodeWithText(VIEWINGS_INTRO).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitForIdle()
+        waitFor(VIEWINGS_INTRO)
+        compose.onNodeWithText(NO_VIEWINGS).assertExists()
     }
 
     @Test
