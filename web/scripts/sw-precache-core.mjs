@@ -82,7 +82,7 @@ export function precacheList(files) {
  *
  * Input: one `{ path, digest }` per precached file, where `digest` is a hash of the file's **bytes** (the runner
  * uses SHA-256). Hashing contents rather than names alone matters for the files whose names carry no hash:
- * a maplibre-gl bump changes `maplibre/maplibre-gl-worker.mjs` under the same name, and that alone must produce
+ * a maplibre-gl bump changes `maplibre-gl-worker.mjs` under the same name, and that alone must produce
  * a new id — a new sw.js, a new cache, and the update banner.
  *
  * The combining step is 64-bit FNV-1a over a canonical, order-independent text of the entries. It is not a

@@ -19,6 +19,22 @@
 package app.doorprints.screenshots
 
 import android.app.KeyguardManager
+import android.graphics.Bitmap
+import androidx.arch.core.executor.ArchTaskExecutor
+import androidx.arch.core.executor.DefaultTaskExecutor
+import androidx.arch.core.executor.TaskExecutor
+import java.util.concurrent.atomic.AtomicInteger
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.house_checklist
+import app.doorprints.ui.res.house_contact
+import app.doorprints.ui.res.house_cost
+import app.doorprints.ui.res.house_questions
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import android.os.LocaleList
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
@@ -134,6 +150,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     @get:Rule val compose = createComposeRule(effects)
 
     @Before fun setUp() {
+        ArchTaskExecutor.getInstance().setDelegate(countingExecutor)
         // androidx FileProvider caches its path roots per authority in a static map, but Robolectric gives each test a
         // new data directory, so from the second test on the cached root no longer contains the camera file.
         runCatching {
@@ -155,6 +172,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     private val locales: LocaleList = LocaleList.getDefault()
 
     @After fun tearDown() {
+        ArchTaskExecutor.getInstance().setDelegate(null)
         TimeZone.setDefault(timeZone)
         LocaleList.setDefault(locales)
     }
@@ -165,7 +183,9 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             locality = "Indiranagar", checklist = checklist, createdAt = at, updatedAt = at,
         )
 
-    private fun shoot(screen: String, content: @Composable () -> Unit) {
+    private fun file(screen: String) = "src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png"
+
+    private fun show(content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
             // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
@@ -174,36 +194,130 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             }
         }
         awaitStableFrame()
-        compose.onRoot().captureRoboImage("src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png")
+    }
+
+    private fun shoot(screen: String, content: @Composable () -> Unit) {
+        show(content)
+        compose.onRoot().captureRoboImage(file(screen))
     }
 
     /**
-     * Room answers on its own threads, which Compose's idling does not wait for (the Export screen's counts and
-     * buttons came in after the first frame on some runs): idle the main looper, run the effects waiting in [effects]'
-     * scheduler, and wait until three frames in a row are the same, up to about 4.5 s.
+     * Room and DataStore answer on their own threads, which Compose's idling does not wait for (the Export screen's
+     * counts and buttons came in after the first frame on some runs): [settle] until those threads, the main looper and
+     * [effects]' scheduler are all idle, then capture; the frame is taken when two settled frames in a row are the same
+     * (a last check, should an answer land between the threads' check and the capture). Until S4b-BL-77 this slept 150
+     * ms per pass and needed three like passes: at least 0.45 s a shot, up to 4.5 s.
      */
     private fun awaitStableFrame() {
         var last: IntArray? = null
-        var unchanged = 0
-        repeat(30) {
-            // About 150 ms per pass, in short steps, each running the effects that resumed since the last one (a Room
-            // or DataStore answer, Export's count) here, on the main thread: an answer that starts the next step (an
-            // effect relaunched for new rows, whose count comes back from a worker) is followed up in the same pass.
-            // runCurrent, not advanceUntilIdle, so no delay is skipped and no ticking clock runs forever.
-            repeat(10) {
-                Thread.sleep(15)
-                shadowOf(Looper.getMainLooper()).idle()
-                compose.runOnIdle { effects.scheduler.runCurrent() }
-                compose.waitForIdle()
-            }
+        val deadline = System.nanoTime() + 20_000_000_000L
+        while (System.nanoTime() < deadline) {
+            settle()
             val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
             val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-            // Three passes alike, not two, so a slow answer that lands a pass late is still waited for.
-            unchanged = if (last?.contentEquals(pixels) == true) unchanged + 1 else 0
-            if (unchanged >= 2) return
+            if (last?.contentEquals(pixels) == true) return
             last = pixels
         }
+        error("The screen did not settle in 20 s")
     }
+
+    /**
+     * Runs the main looper, the effects that resumed since (a Room or DataStore answer, Export's count) on the main
+     * thread, and Compose, until Room has no task and the coroutine workers are parked three checks in a row and for at
+     * least 25 ms: an answer that starts the next step (an effect relaunched for new rows, whose count comes back from a
+     * worker) is followed up in the same call. runCurrent, not advanceUntilIdle, so no delay is skipped and no ticking
+     * clock runs forever. The 25 ms are for a worker that was just handed a task but has not started on it, which still
+     * looks parked (Dispatchers.Default and IO have no public queue to look at; DataStore reads there, and so does the
+     * houses' flow, behind the brokers move): on a loaded machine 10 ms once let Compare's houses come in too late.
+     */
+    private fun settle() {
+        var quiet = 0
+        val start = System.nanoTime()
+        while (quiet < 3 || System.nanoTime() - start < 25_000_000L) {
+            val workersIdle = workersParked()
+            shadowOf(Looper.getMainLooper()).idle()
+            compose.runOnIdle { effects.scheduler.runCurrent() }
+            compose.waitForIdle()
+            quiet = if (workersIdle && shadowOf(Looper.getMainLooper()).isIdle) quiet + 1 else 0
+            Thread.sleep(1)
+        }
+    }
+
+    /** Room and the coroutine workers (Dispatchers.Default and IO: DataStore's, Export's count) have nothing to run. */
+    private fun workersParked(): Boolean = roomTasks.get() == 0 && Thread.getAllStackTraces().keys.none { t ->
+        t.name.startsWith("DefaultDispatcher-worker") && (t.state == Thread.State.RUNNABLE || t.state == Thread.State.BLOCKED)
+    }
+
+    /**
+     * Room's tasks queued or running: Room runs its queries on the architecture components' disk executor, through
+     * [ArchTaskExecutor] at each call, so a delegate that counts them sees every one from its hand-over to its end (a
+     * worker's thread state alone missed a query handed over but not yet started, once in a full run).
+     */
+    private val roomTasks = AtomicInteger()
+
+    private val countingExecutor = object : TaskExecutor() {
+        private val real = DefaultTaskExecutor()
+        override fun executeOnDiskIO(runnable: Runnable) {
+            roomTasks.incrementAndGet()
+            real.executeOnDiskIO {
+                try {
+                    runnable.run()
+                } finally {
+                    roomTasks.decrementAndGet()
+                }
+            }
+        }
+        override fun postToMainThread(runnable: Runnable) = real.postToMainThread(runnable)
+        override fun isMainThread(): Boolean = real.isMainThread
+    }
+
+    /**
+     * The house form in bands of sections (S4b-BL-77), so that a change to one section re-records that band's images
+     * only, not the whole form's: [bands] names each band after the heading it starts at ([Res.string] keys, read in
+     * the shot's language), the first band from the top of the screen, the last to the end of the form. The window is
+     * tall enough for the whole form (the test fails when the form scrolls), and the shots are English in both themes
+     * and Hindi light only, to keep the image set small; [only] keeps the bands named (the iPhone's differ in one).
+     */
+    private fun shootForm(screen: String, only: Set<String>? = null, content: @Composable () -> Unit) {
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
+        RuntimeEnvironment.setQualifiers("+h4600dp")
+        val headings = mutableMapOf<String, String>()
+        show {
+            bands.forEach { (name, res) -> if (res != null) headings[name] = stringResource(res) }
+            content()
+        }
+        val scroll = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .fetchSemanticsNodes().maxOf { it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() }
+        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h4600dp)" }
+        val image = compose.onRoot().captureToImage().asAndroidBitmap()
+        val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
+        // The form ends at its lowest node (the Save button, then its 24 dp spacer), not at the bottom of the window.
+        val all = compose.onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true).fetchSemanticsNodes()
+        val end = (all.filter { it.boundsInRoot.height < image.height / 2 }.maxOf { it.boundsInRoot.bottom } + 24 * density)
+            .toInt().coerceAtMost(image.height)
+        val tops = bands.map { (name, res) ->
+            if (res == null) {
+                0
+            } else {
+                compose.onAllNodes(isHeading() and hasText(headings.getValue(name)), useUnmergedTree = true)
+                    .fetchSemanticsNodes().single().boundsInRoot.top.toInt()
+            }
+        }
+        check(tops.zipWithNext().all { (a, b) -> a < b }) { "The form's sections are not in the order of bands: $tops" }
+        bands.forEachIndexed { i, (name, _) ->
+            if (only != null && name !in only) return@forEachIndexed
+            val bottom = tops.getOrElse(i + 1) { end }
+            Bitmap.createBitmap(image, 0, tops[i], image.width, bottom - tops[i]).captureRoboImage(file("${screen}_$name"))
+        }
+    }
+
+    private val bands: List<Pair<String, StringResource?>> = listOf(
+        "top" to null,
+        "cost" to Res.string.house_cost,
+        "questions" to Res.string.house_questions,
+        "checklist" to Res.string.house_checklist,
+        "contact" to Res.string.house_contact,
+    )
 
     @Test fun houses() = shoot("houses") { HouseListScreen(onOpenHouse = {}) }
     @Test fun compare() = shoot("compare") {
@@ -213,8 +327,17 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         val counts by repo.visitCounts.collectAsState(initial = emptyList())
         CompareScreen(houses, counts, onOpenHouse = {})
     }
-    @Test fun houseEdit() = shoot("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
-    @Test fun houseNew() = shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
+    /** The form of a saved house, in its bands (see [shootForm]). */
+    @Test fun houseEdit() = shootForm("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
+
+    /**
+     * A new house's form as it opens, one screen high (its title and the top of the form; the rest is the edit form's,
+     * but for the Photos prompt and no Visits): English in both themes and Hindi light only, as the bands above.
+     */
+    @Test fun houseNew() {
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
+        shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
+    }
     @Test fun settings() = shoot("settings") { SettingsScreen() }
 
     /** Settings → AI features turned on with "Use my own Gemini key on this phone" chosen (docs/03 §13.1, ADR-26). */
@@ -364,10 +487,10 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
     /**
      * Settings > Viewings (docs/11 5.8, slice 3b-1): an upcoming, a missed and a done viewing at a fixed clock, English
-     * and Hindi light only, to keep the image set small.
+     * in both themes (the dark one since Wave D) and Hindi light only, to keep the image set small.
      */
     @Test fun viewings() {
-        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         val now = 1_760_100_000_000
         runBlocking {
@@ -431,11 +554,12 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
     // The Assistant with AI off (as in the Android shot): Try again, without "Go to the map".
     @Test fun iosAssistant() = shootIos("assistant") { AssistantScreen(onOpenHouse = {}) }
-    // On a screen tall enough for the whole form, so the shot shows the listing and Visits with no Photos section
-    // between them (the house has no photos); the top of the form is the same as Android's.
-    @Test fun iosHouseEdit() {
-        RuntimeEnvironment.setQualifiers("+h2400dp")
-        shootIos("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
+    // The form's last band, from Contact to the end: the listing and Visits with no Photos section between them (the
+    // house has no photos). The bands above it are the same as Android's.
+    @Test fun iosHouseEdit() = shootForm("ios_house_edit", only = setOf("contact")) {
+        CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios) {
+            HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {})
+        }
     }
 
     companion object {

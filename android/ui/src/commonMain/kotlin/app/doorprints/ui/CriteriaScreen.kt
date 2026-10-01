@@ -51,9 +51,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -237,15 +234,18 @@ private fun RatingShareSection(share: Double, onChange: (Double) -> Unit) {
     Text(stringResource(Res.string.criteria_rating_share_hint), style = MaterialTheme.typography.bodySmall)
     // The nearest step, so a share synced from elsewhere (0.4) still shows a choice.
     val current = RATING_SHARES.minBy { kotlin.math.abs(it - share) }
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        RATING_SHARES.forEachIndexed { i, value ->
-            SegmentedButton(
-                selected = current == value,
+    // Chips that wrap, as the weights above (Wave D): a row of five segments cut "100%" to "100" at 200 % text.
+    FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        RATING_SHARES.forEach { value ->
+            val selected = current == value
+            FilterChip(
+                selected = selected,
                 onClick = { if (share != value) onChange(value) },
-                shape = SegmentedButtonDefaults.itemShape(i, RATING_SHARES.size),
-                icon = {},
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text("${(value * 100).toInt()}%", maxLines = 1) }
+                label = { Text("${(value * 100).toInt()}%") },
+                leadingIcon = if (selected) ChipCheck else null,
+                border = brandFilterChipBorder(selected),
+                modifier = Modifier.heightIn(min = 48.dp).semantics { role = Role.RadioButton },
+            )
         }
     }
 }

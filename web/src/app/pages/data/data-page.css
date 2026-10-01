@@ -247,3 +247,10 @@ fieldset.sub > legend {
   display: block;
   margin-bottom: var(--space-2);
 }
+
+/* Help (S4b-BL-60): on wider screens the link is in the header, so this card is for phones only. */
+@media (min-width: 601px) {
+  .help-card {
+    display: none;
+  }
+}

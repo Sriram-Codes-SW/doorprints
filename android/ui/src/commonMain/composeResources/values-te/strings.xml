@@ -518,6 +518,10 @@
     <string name="settings_licence_link">లైసెన్స్</string>
     <string name="settings_licence_link_desc">GNU Affero General Public License, వెర్షన్ 3, బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
     <string name="settings_link_failed">ఇక్కడ ఏ యాప్ కూడా ఈ లింక్‌ను తెరవలేదు. చిరునామా %1$s</string>
+    <!-- The Help link in Settings > About, to the user guide (S4b-BL-60, 2026-10-01). Under review. -->
+    <string name="settings_help">సహాయం</string>
+    <string name="settings_help_desc">సహాయం: వినియోగదారు గైడ్, బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
+    <string name="settings_help_hint">ప్రాజెక్ట్ వెబ్‌సైట్‌లో చిత్రాలతో, ప్రతి దశతో వినియోగదారు గైడ్.</string>
     <string name="sync_warning">%1$s నుండి సింక్ పని చేయలేదు. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">ప్రణాళిక సిద్ధం: %1$d స్టాప్</item>
@@ -1168,4 +1172,6 @@
     <string name="houses_filters_clear">ఖర్చు ఫిల్టర్లను తీసివేయండి</string>
     <string name="import_new_brokers">కొత్త బ్రోకర్లు</string>
     <string name="import_updated_brokers">బ్యాకప్‌లో కొత్త వెర్షన్ ఉన్న బ్రోకర్లు</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
+    <string name="house_loading">ఇల్లు తెరుచుకుంటోంది…</string>
 </resources>

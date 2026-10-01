@@ -59,6 +59,9 @@ import type { TKey } from '../../i18n/en';
 import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
+import { OfflineAreasCard } from './offline-areas';
+import { OfflineMapsService } from '../../offline/offline-maps.service';
+import { guideUrl } from '../../shared/help-link';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -100,7 +103,7 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
 })
@@ -122,6 +125,9 @@ export class DataPage implements OnInit, OnDestroy {
   protected readonly i18n = inject(TranslationService);
   /** The AGPL notices and source offer of *About Doorprints* (S4b-BL-65). */
   protected readonly legal = LEGAL_NOTICE;
+  /** The user guide, opened by the Help card (phones; the header has the link elsewhere). */
+  protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
+  private readonly offlineMaps = inject(OfflineMapsService);
 
   protected readonly formats = FORMATS;
   protected readonly icons = ICONS;
@@ -678,6 +684,7 @@ export class DataPage implements OnInit, OnDestroy {
     this.aiSession.clear();
     this.abort?.abort();
     clearMapView();
+    await this.offlineMaps.removeAll();
     await this.store.clearEverything();
     try {
       clearSessionLeftovers(tabSessionStorage());

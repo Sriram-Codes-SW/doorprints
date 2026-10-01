@@ -518,6 +518,10 @@
     <string name="settings_licence_link">लाइसेंस</string>
     <string name="settings_licence_link_desc">GNU Affero General Public License, संस्करण 3, ब्राउज़र में खुलता है</string>
     <string name="settings_link_failed">यहाँ कोई ऐप यह लिंक नहीं खोल सकता। पता है %1$s</string>
+    <!-- The Help link in Settings > About, to the user guide (S4b-BL-60, 2026-10-01). Under review. -->
+    <string name="settings_help">सहायता</string>
+    <string name="settings_help_desc">सहायता: उपयोगकर्ता गाइड, ब्राउज़र में खुलती है</string>
+    <string name="settings_help_hint">प्रोजेक्ट की वेबसाइट पर तस्वीरों और हर क़दम के साथ उपयोगकर्ता गाइड।</string>
     <string name="sync_warning">%1$s से सिंक नहीं हुआ है। %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">योजना तैयार: %1$d पड़ाव</item>
@@ -1168,4 +1172,6 @@
     <string name="houses_filters_clear">लागत के फ़िल्टर हटाएँ</string>
     <string name="import_new_brokers">नए ब्रोकर</string>
     <string name="import_updated_brokers">जिन ब्रोकरों का बैकअप में नया रूप है</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
+    <string name="house_loading">मकान खुल रहा है…</string>
 </resources>

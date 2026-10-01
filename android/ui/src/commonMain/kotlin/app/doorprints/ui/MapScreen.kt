@@ -833,6 +833,7 @@ fun MapScreen(
             }
         }
         val saveHereButton: @Composable () -> Unit = {
+            val saveHereLabel = stringResource(Res.string.map_save_here)
             // Only the icon changes while locating: the label stays, so the button keeps its width (round 3).
             ExtendedFloatingActionButton(
                 onClick = { saveHere() },
@@ -843,13 +844,18 @@ fun MapScreen(
                         Icon(Icons.Default.Add, contentDescription = null)
                     }
                 },
-                text = { Text(stringResource(Res.string.map_save_here)) },
+                text = { Text(saveHereLabel) },
                 modifier = Modifier
                     .onSizeChanged {
                         fabWidthPx = it.width
                         fabHeightPx = it.height
                     }
-                    .semantics { if (locating) stateDescription = findingText },
+                    // The name on the button itself (Wave D): M3's expanding FAB clears its text's semantics, so with
+                    // a decorative icon TalkBack read a button with no name.
+                    .semantics {
+                        contentDescription = saveHereLabel
+                        if (locating) stateDescription = findingText
+                    },
             )
         }
         // Neither layout has pointer input of its own, so the map still gets the touches between and beside the
@@ -1071,7 +1077,7 @@ private fun HuntCard(
                             Text(stringResource(Res.string.map_hunt_off), style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    Switch(checked = hunt.active, onCheckedChange = null)
+                    Switch(checked = hunt.active, onCheckedChange = null, colors = brandSwitchColors())
                 }
                 if (hunt.active) {
                     Column {

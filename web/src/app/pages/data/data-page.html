@@ -260,6 +260,8 @@
   </section>
 
   <!-- The permanent home of the install offer (docs/05 §14.4): the banner only ever shows it once. -->
+  <app-offline-areas />
+
   <section class="card" aria-labelledby="install-heading">
     <h2 id="install-heading" #installHeading tabindex="-1">{{ 'data.installHeading' | t }}</h2>
     @if (isStandalone) {
@@ -480,6 +482,17 @@
       <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="clearBrowser()">
         {{ 'data.clear' | t }}
       </button>
+    </div>
+  </section>
+
+  <!-- Help (S4b-BL-60): on wider screens it is in the header; on phones this card is the way to the guide. -->
+  <section class="card help-card" aria-labelledby="help-heading">
+    <h2 id="help-heading">{{ 'help.link' | t }}</h2>
+    <p class="muted">{{ 'help.hint' | t }}</p>
+    <div class="actions">
+      <a class="btn" [href]="guideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
+        {{ 'help.open' | t }} <span aria-hidden="true">↗</span>
+      </a>
     </div>
   </section>
 

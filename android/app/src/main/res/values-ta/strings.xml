@@ -36,7 +36,8 @@
     <string name="notif_channel_alerts_desc">முன்பு பார்த்த வீடு அல்லது தெருவைக் கடக்கும்போது</string>
     <string name="notif_hunt_title">தேடல் பயன்முறை இயக்கத்தில் உள்ளது</string>
     <string name="notif_hunt_text">நீங்கள் பார்த்த வீடுகளையும் தெருக்களையும் கவனிக்கிறது</string>
-    <string name="notif_stop">நிறுத்து</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_stop">தேடல் பயன்முறையை நிறுத்து</string>
     <string name="notif_seen_house">இதை ஏற்கெனவே பார்த்துள்ளீர்கள்: %1$s</string>
     <string name="notif_distance">%1$s · %2$d மீ தொலைவில்</string>
     <string name="notif_visited_before">முன்பு பார்த்தது</string>
@@ -122,17 +123,24 @@
     <string name="notif_viewing_text">தொடக்கம்: %1$s</string>
     <string name="notif_viewing_public">Doorprints நினைவூட்டல்</string>
     <string name="notif_viewing_open">வீட்டைத் திற</string>
-    <string name="notif_viewing_directions">வழி</string>
-    <string name="notif_viewing_questions">கேள்விகள்</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_directions">வீட்டுக்கு வழி</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_questions">கேட்க வேண்டிய கேள்விகள்</string>
     <string name="notif_viewing_house_gone">நீக்கப்பட்ட வீடு</string>
     <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
     <string name="notif_channel_hunt_reminders">தேடல் பயன்முறை நினைவூட்டல்கள்</string>
     <string name="notif_channel_hunt_reminders_desc">பார்வையிடலுக்கு முன் தேடல் பயன்முறை பரிந்துரை</string>
     <string name="notif_hunt_reminder">%1$s இல் பார்வையிடல் %2$d நிமிடத்தில். தேடல் பயன்முறையைத் தொடங்கவா?</string>
     <string name="notif_hunt_reminder_start">தேடல் பயன்முறையைத் தொடங்கு</string>
-    <string name="notif_hunt_reminder_dismiss">மூடு</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_hunt_reminder_dismiss">நினைவூட்டலை மூடு</string>
     <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
     <string name="notif_channel_area_wakeup">பகுதி எழுப்புதல்</string>
     <string name="notif_channel_area_wakeup_desc">உங்கள் தேடல் பகுதிகளில் ஒன்றுக்கு வந்ததும் தேடல் பயன்முறையைப் பரிந்துரைக்கிறது</string>
     <string name="notif_area_wakeup">நீங்கள் %1$s இல் இருக்கிறீர்கள். தேடல் பயன்முறையைத் தொடங்கவா?</string>
+    <!-- Wave D (2026-10-01): the notifications' own action names, which say what they act on (S4b-BL-94b): under review. -->
+    <string name="notif_copy_open">நகலைத் திற</string>
+    <string name="notif_copy_share">நகலைப் பகிர்</string>
+    <string name="notif_task_stop">இந்தப் பணியை நிறுத்து</string>
 </resources>

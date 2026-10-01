@@ -1,0 +1,75 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The user guide in Telugu (S4b-BL-60): the English site's settings (mkdocs.yml), with this language's pages in
+# i18n/te/. Built by hooks/i18n.py after the English site, into <site>/te/; its images are the English ones, or the
+# Android screenshot tests' shots in this language where they exist. Marked under review on every page, as the apps'
+# Telugu strings ship.
+INHERIT: mkdocs.yml
+site_name: "Doorprints వినియోగదారు గైడ్"
+site_description: "Doorprints ఎలా వాడాలి: భారతదేశంలో ఇల్లు వెతుకుతున్నప్పుడు మీరు చూసిన ఇళ్లను గుర్తుంచుకునే యాప్."
+site_url: https://sriram-codes-sw.github.io/doorprints/te/
+docs_dir: i18n/te
+edit_uri: edit/main/guide/i18n/te/
+copyright: "Doorprints. ఉచిత, ఓపెన్ సోర్స్ (AGPL-3.0-only); ప్రకటనలు లేవు."
+
+nav:
+  - "హోమ్": index.md
+  - "స్క్రీన్ ఒక చూపులో": screen-at-a-glance.md
+  - "మీ ఇళ్లు": houses.md
+  - "పోల్చడం, ప్రణాళిక": compare-and-plan.md
+  - "మీ డేటా": your-data.md
+  - "సర్వర్, షేరింగ్": server-and-sharing.md
+  - "మీ సొంత సర్వర్‌ను ఏర్పాటు చేయండి": set-up-a-server.md
+  - "హంట్ మోడ్": hunt-mode.md
+  - "భాష, థీమ్, గోప్యత, ఆఫ్‌లైన్ మ్యాప్‌లు": settings-and-privacy.md
+  - "సమస్యలు, తరచూ అడిగే ప్రశ్నలు": faq.md
+
+theme:
+  language: te
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: డార్క్ థీమ్‌కు మారండి
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: లైట్ థీమ్‌కు మారండి
+
+extra:
+  under_review:
+    title: "ఈ అనువాదం సమీక్షలో ఉంది (under review)"
+    text: "యాప్‌లోని తెలుగు పదాల లాగే, ఈ గైడ్ తెలుగు అనువాదం కూడా ఇంకా సమీక్షలో ఉంది. ఏదైనా స్పష్టంగా లేకపోతే, పైన భాషను ఎంచుకుని ఇదే పేజీని English‌లో చూడండి."
+  alternate:
+    - name: English
+      link: "../"
+      lang: en
+    - name: हिन्दी
+      link: "../hi/"
+      lang: hi
+    - name: தமிழ்
+      link: "../ta/"
+      lang: ta
+    - name: తెలుగు
+      link: ""
+      lang: te

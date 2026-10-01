@@ -29,11 +29,11 @@ textarea {
   margin: var(--space-3) 0;
 }
 
+/* list-item, not flex: a flex summary loses its disclosure triangle, the only sign that it opens. */
 .filters summary {
   cursor: pointer;
   min-height: var(--target);
-  display: flex;
-  align-items: center;
+  padding: var(--space-2) 0;
 }
 
 .filter-grid {

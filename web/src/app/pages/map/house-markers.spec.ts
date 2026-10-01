@@ -32,7 +32,7 @@ describe('house markers', () => {
 
   it('draws an approx house with no fill and its status colour as the stroke', () => {
     const approx = ['==', ['get', 'approx'], true];
-    expect(HOUSE_PAINT['circle-opacity']).toEqual(['case', approx, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.6, 1]]);
+    expect(HOUSE_PAINT['circle-opacity']).toEqual(['case', approx, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.75, 1]]);
     expect(HOUSE_PAINT['circle-stroke-color']).toEqual(['case', approx, HOUSE_PAINT['circle-color'], '#ffffff']);
     expect(HOUSE_PAINT['circle-color']).toContain(STATUS_COLOR.SHORTLISTED);
   });

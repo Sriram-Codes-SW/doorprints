@@ -45,6 +45,13 @@ export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 export const GEMINI_KEY_KEY = `${STORAGE_PREFIX}gemini-key`;
 
 /**
+ * The map areas saved for offline use (localStorage, JSON; S4b-BL-79): a name, a box and the files' addresses. The
+ * tiles themselves are in Cache Storage (`offline/offline-protocol.ts`). The name and place are the person's, so
+ * "Remove all data" sweeps this key with the others and deletes the cache beside it.
+ */
+export const OFFLINE_AREAS_KEY = `${STORAGE_PREFIX}offlineAreas`;
+
+/**
  * Stored names from before the rename, kept only so {@link migrateLegacyStorage} can find them: a key in this
  * list moves to the name beside it, and a key starting with {@link LEGACY_PREFIX} moves to the same suffix after
  * {@link STORAGE_PREFIX}.
