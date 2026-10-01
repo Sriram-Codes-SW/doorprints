@@ -37,7 +37,7 @@ Selection rule (a selection aid only: no Natural Earth coordinate is ever writte
     as it was for the 2026-10-01 build (web/public/geo/in-boundaries.geojson of commit 52453f7, kinds world and claim:
     every international land boundary at 1:50m in India's point of view, and India's own outline at 1:10m in the four
     claim areas; `git show 52453f7:web/public/geo/in-boundaries.geojson > ne-reference.geojson`; the file shipped since
-    S4b-BL-99 holds only the world lines the Survey of India data does not cover), unless the nearest point of those lines
+    S4b-BL-114 holds only the world lines the Survey of India data does not cover), unless the nearest point of those lines
     is a free end of one of them (where a land boundary meets the sea, as at Sir Creek and the Sundarbans) and the
     vertex is more than END_KM beyond it;
   * an external edge is LAND when both its vertices are near land, else COAST;

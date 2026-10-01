@@ -44,7 +44,7 @@ import kotlinx.serialization.json.floatOrNull
  * What must hold, for the OpenFreeMap Liberty style as it is today (a renamed layer fails, so the change is seen):
  *  1. the disputed lines ([DISPUTED_LAYER]) are in the style and hidden;
  *  2. [COUNTRY_LAYER] starts at zoom 5 or later, its filter holds the adm0 rule, the tile-zoom guard and the Survey of
- *     India corridor's `within` rule (S4b-BL-99);
+ *     India corridor's `within` rule (S4b-BL-114);
  *  3. [STATE_LINE_LAYER] holds the tile-zoom guard and the held areas' `within` rule; every other `boundary` line
  *     layer from zoom 5 holds the guard;
  *  4. the outline: the source [SOURCE_ID] with the 'world' lines inline, the source [SOI_SOURCE_ID] with the Survey of

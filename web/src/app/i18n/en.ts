@@ -113,7 +113,7 @@ export const en = {
   'map.myLocation': 'Show my location',
   'map.locationUnavailable': 'Location not available',
   'map.attribution': 'Show map credits',
-  // S4b-BL-99 (2026-10-01): the Survey of India's credit on the map.
+  // S4b-BL-114 (2026-10-01): the Survey of India's credit on the map.
   'map.boundaryCredit': 'Boundary: Survey of India',
   'map.unavailable': 'The map can’t be shown in this browser because WebGL 2 is not available. Everything else still works.',
   'map.legend': 'Legend',
@@ -427,7 +427,7 @@ export const en = {
   'data.aboutHeading': 'About Doorprints',
   'data.aboutLicence': 'Doorprints is free software: you can share and change it under the GNU Affero General Public License, version 3.',
   'data.aboutWarranty': 'It comes with ABSOLUTELY NO WARRANTY.',
-  // S4b-BL-99 (2026-10-01): the Survey of India's acknowledgement in About.
+  // S4b-BL-114 (2026-10-01): the Survey of India's acknowledgement in About.
   'data.aboutBoundary': 'Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright Survey of India, Government of India.',
   'data.aboutSource': 'Source code',
   'data.aboutSourceAria': 'Source code on GitHub (opens in a new tab)',

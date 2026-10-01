@@ -73,7 +73,7 @@ actual fun PlatformMap(
     }
     val currentEvents by rememberUpdatedState(events)
     val currentLabelSize by rememberUpdatedState(labelSizeSp)
-    // The Survey of India's credit in the app's language, for the attribution sheet (S4b-BL-99).
+    // The Survey of India's credit in the app's language, for the attribution sheet (S4b-BL-114).
     val currentCredit by rememberUpdatedState(stringResource(Res.string.map_boundary_credit))
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()

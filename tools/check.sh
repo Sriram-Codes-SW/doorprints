@@ -43,7 +43,7 @@ else
   grep -qE '^(android/(shared|ui)/src/(commonMain|iosMain|nativeMain)|ios/)' <<<"$changed" && AREAS="$AREAS ios"
   grep -qE '^web/' <<<"$changed" && AREAS="$AREAS web"
   grep -qE '^guide/' <<<"$changed" && AREAS="$AREAS guide"
-  # geo: the map data's builders and tests, and the data files they check (S4b-BL-99: web/public/geo, the app copy)
+  # geo: the map data's builders and tests, and the data files they check (S4b-BL-114: web/public/geo, the app copy)
   grep -qE '^(web/scripts/geo/|web/public/geo/|android/app/src/main/assets/geo/|tools/soi-verify\.py)' <<<"$changed" &&
     AREAS="$AREAS geo"
   [ "$AREAS" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide file changed: licence headers only."

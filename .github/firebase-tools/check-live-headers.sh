@@ -32,7 +32,7 @@
 #   The hashed main-*.js that this build's index.html loads: HTTP 200 and a JavaScript Content-Type. The live "/"
 #     must reference that same file, which proves that this deploy, not the previous release, is being served.
 #   /geo/in-boundaries.geojson (India's boundary on the map, 2026-09-24) and /geo/in-boundaries-soi.json (the Survey of
-#     India's lines, 2026-10-01, S4b-BL-99): HTTP 200, Content-Type application/geo+json
+#     India's lines, 2026-10-01, S4b-BL-114): HTTP 200, Content-Type application/geo+json
 #     or application/json (so not the rewritten shell), X-Content-Type-Options nosniff, Cache-Control with no-cache
 #     and without immutable (the name is not content-hashed), and the same bytes as the build's copy.
 #   Strict-Transport-Security: reported, and only a warning when missing. The whole .app TLD is HSTS-preloaded in
@@ -199,7 +199,7 @@ else
   fail "no content-hashed .js file found in ${build}; cannot check that assets are served as files"
 fi
 
-# 4. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-99): each served
+# 4. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-114): each served
 #    as itself, as JSON, under nosniff, revalidated, and byte-identical to this build's copy. Runs after section 1 has
 #    seen this release live.
 for boundary in /geo/in-boundaries.geojson /geo/in-boundaries-soi.json; do

@@ -144,7 +144,7 @@ data class NewLineLayer(
  * it, and no Line of Control or Line of Actual Control (ADR-22). Call it from every style load, before the app's own
  * layers are added, so a retry or any later style load gets it too. Common since CMP-7 (was `:app`'s `IndiaView.kt`,
  * over MapLibre's `Style`), with the same steps in the same order. [soiAttribution] is the Survey of India's credit
- * in the app's language (`map_boundary_credit`; S4b-BL-99).
+ * in the app's language (`map_boundary_credit`; S4b-BL-114).
  *
  * Nothing here can crash the map: each step runs on its own, and a missing layer or a refusal is logged with
  * [StyleOps.warn] and skipped. The outline is added even when the base layers it refers to are missing (rule 5).
@@ -227,7 +227,7 @@ fun applyIndiaView(ops: StyleOps, soiAttribution: String = IndiaViewRules.SOI_AT
         }
     }
 
-    // 2d. One line along the Survey of India's (S4b-BL-99): the country lines leave out India's tile lines wholly
+    // 2d. One line along the Survey of India's (S4b-BL-114): the country lines leave out India's tile lines wholly
     //     inside the corridor around it. After the guard, so the layer's filter reads all(all(all(Liberty's, rule 2),
     //     guard), corridor), as on the web.
     if (countryIsLine) {

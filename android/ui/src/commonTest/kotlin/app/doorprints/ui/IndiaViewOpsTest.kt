@@ -178,7 +178,7 @@ class IndiaViewOpsTest {
 
         assertTrue(style.layer(DISPUTED_LAYER).hidden)
         // Rule 2: the country lines' own filter ANDed with the adm0 / Pakistan-China rule, then the tile-zoom guard,
-        // then the Survey of India corridor (S4b-BL-99).
+        // then the Survey of India corridor (S4b-BL-114).
         assertEquals(
             "[\"all\", [\"all\", [\"all\", [\"==\", [\"get\", \"admin_level\"], 2], ${IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER}], " +
                 "${IndiaViewRules.TILE_ZOOM_GUARD}], ${IndiaViewRules.soiCorridorFilter(listOf(CORRIDOR_GEOMETRY))}]",

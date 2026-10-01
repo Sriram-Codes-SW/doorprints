@@ -513,7 +513,7 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_licence">Doorprints is free software: you can share and change it under the GNU Affero General Public License, version 3.</string>
     <string name="settings_warranty">It comes with ABSOLUTELY NO WARRANTY.</string>
-    <!-- The Survey of India's credit on the map's attribution and its acknowledgement in Settings > About (S4b-BL-99, 2026-10-01). -->
+    <!-- The Survey of India's credit on the map's attribution and its acknowledgement in Settings > About (S4b-BL-114, 2026-10-01). -->
     <string name="map_boundary_credit">Boundary: Survey of India</string>
     <string name="settings_about_boundary">Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright Survey of India, Government of India.</string>
     <string name="settings_source">Source code</string>

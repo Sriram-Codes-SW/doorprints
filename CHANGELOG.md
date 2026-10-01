@@ -115,6 +115,23 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or released; [sprint log](docs/10-sprint-log.md) §13.29..§13.40) adds the first fourteen entries below.
+
+- **Moving in** ([spec](docs/11-feature-parity-and-export-spec.md) 5.24, slice 5): two new statuses, **Taken** and **Not chosen**. Mark the house you chose as Taken and Doorprints offers to mark the others Not chosen. A Taken house has a **Moving in** card: **Start moving in** adds the usual checklist (rental agreement, police verification, ID copies, deposit receipt, meter readings, keys) in your language, you add your own items, the move-in date and notes, and a **Condition record** of dated photos per room for when the deposit is returned. **Close this hunt** marks the remaining houses Not chosen (nothing is deleted) and offers to save a copy.
+- **Photo tags** ([spec](docs/11-feature-parity-and-export-spec.md) 5.7, slice 5): each photo can name its room, carry up to ten tags (Damp, Crack, Leak, Meter, Move-in and others, or your own) and a caption; they sync, and appear in backups and readable copies.
+- **The house's floor and moving rooms** (S4b-BL-87): a **Floor** field (0 the ground floor, -1 a basement), and **Move up** / **Move down** on each room.
+- **"Maybe the same flat"** (S4b-BL-85): the house form warns when another saved house is within about 30 m with the same bedrooms and floor, as when two brokers show the same flat.
+- **Filter by cost** (S4b-BL-84): ranges over the monthly cost, the money to move in and the cost per sq ft, on Android and the website.
+- **Import a backup on the website** (S4b-BL-75): a Full backup (ZIP), the server's `.json` backup or an update someone shared; the same preview and choices as on Android (**Merge with what I have**, **Add everything as new copies**, **Keep mine, add only what's new**), and **Undo this import** while the page is open.
+- **Deletions in shared updates** (S4b-BL-82): an update file now carries the houses the sender deleted, and importing it deletes them here too (unless you changed the house since). Such a file is `doorprints-backup/3`; an older Doorprints asks to be updated before importing it.
+- **Find a shared listing's area on the map** (S4b-BL-83): **Find "<place>" on the map** puts the pin roughly at the locality the listing names, only when you tap it.
+- **Offline maps on the website** (S4b-BL-79): **Save this area for offline** on the Map keeps the area you see, down to street level, in the browser; **Offline maps** on **Your data** lists and deletes them.
+- **On iPhone** (compiled and checked at launch in CI; not yet tried on a phone): **Wake me in my hunting areas** (S4b-BL-96), **Save a copy** (every format but PDF) through the share sheet and Files, **Import a backup** from Files or another app (S4b-BL-81), and **Add to calendar** for a viewing (S4b-BL-92a).
+- **Start Hunt mode?** after a reminder: tapping a viewing or area reminder opens the Map with the offer (S4b-BL-94c); a reminder's **Questions** opens the house at its questions.
+- **Help** (S4b-BL-60): the user guide in Hindi, Tamil and Telugu (under review), opened in the app's language from **Settings > About** on the phones and from the website's header or **Your data**.
+- **Search engines and link previews** for https://doorprints.web.app (Wave E): a public landing page and `about.html` in four languages, a title and description, link previews, `robots.txt` and `sitemap.xml`; every page that shows your own data tells search engines not to index it.
+- **`tools/server-smoke.sh`** (S4b-BL-63): checks a self-hosted server end to end with made-up houses (sync, import, export) and removes them.
+
 - **Required status checks and auto-merge** (the owner's ruleset on `main`): the six path-filtered workflows get
   "always report" twins (`.github/workflows/*-required.yml`) so every required check reports on every pull request.
 - **`tools/check.sh`:** the local checks (Android with the screenshot verify, the iOS klib compile, web tests and
@@ -465,7 +482,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
-- **Maps: India's northern and north-eastern boundary is the Survey of India's own line** (S4b-BL-99, branch
+- **Maps: India's northern and north-eastern boundary is the Survey of India's own line** (S4b-BL-114, branch
   `feat/soi-boundary-data`; [design](docs/03-design.md) ADR-22). On the web, Android and the iPhone the land boundary along
   Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh, and the Assam-Arunachal
   Pradesh line, come from the Survey of India's Administrative Boundary Database OVSF/1M/7
@@ -476,6 +493,13 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   The map credits "Boundary: Survey of India" and About gives the full acknowledgement, in all four languages
   (Hindi, Tamil and Telugu under review). The rest of India's land border is unchanged (the base map's line); Sir Creek,
   the Sundarbans and Dahagram-Angarpota are open questions with the Survey of India.
+- **Readable copies show times in UTC on Android and iPhone too**, as the website's always did; the cover says so (S4b-BL-92c).
+- **With the app lock on, Hunt mode's alerts show nothing on the phone's locked screen** (S4b-BL-68).
+- **Importing keeps to the limits**: at most 100 questions and 40 criteria after a merge (S4b-BL-90b); undoing an import made as copies also removes the brokers, viewings, questions and criteria it added (S4b-BL-92e).
+- **The website loads the map faster**: MapLibre's shared code is downloaded once instead of twice (the map chunk 1.08 MB to 0.61 MB, S4b-BL-78).
+- **Accessibility** (Wave D): screen readers hear each control's visible label; a floor out of range now stops the save and says why (it was silently dropped on the website); the notification actions say what they do (*Directions to the house*); the dark Taken and Not chosen colours and every switch's "off" thumb meet the contrast rules (the thumb 2.93:1 to 4.48:1).
+- **The *Set up your own server* page** (S4b-BL-63): the health check's answer, the owner page's address (`/owner`), restarting with `docker compose restart api` for a new owner link, and the new smoke test.
+- **The Android screenshot tests** take the house form by sections and wait for the screen to settle: 171 images, 9.5 MB, in half the time (S4b-BL-77).
 
 - **Backups from a newer Doorprints are refused rather than half-imported** (docs/schemas README §1.1): every app and
   server reads `doorprints-backup/1` and `/2` and says "update Doorprints to import it" for a higher number. Files are
@@ -927,6 +951,11 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   threshold).
 
 ### Fixed
+
+- **The app lock could not open its prompt on Android 10 and later** (found by the new emulator test, S4b-BL-67, on its first run on the API 34 and 36 emulators): `BiometricPrompt.authenticate` threw a `SecurityException` ("Must have USE_BIOMETRIC permission") because the manifest lacked that normal permission, so the lock screen could not ask for the phone's PIN, pattern or password. `USE_BIOMETRIC` is now declared; the test also sets its PIN once the app is on screen, so the keyguard of API 26 does not hide the app.
+- **Seeded questions no longer overwrite another device's edits**: they are stamped 2000-01-01 and stored as already synced (S4b-BL-90a).
+- **The Telugu name of the Bedroom room type** was Korean text on the website (Wave D).
+- **A deep link from a notification** now shows the screen it names even when another screen was open on that tab (S4b-BL-94a).
 
 - **The server image takes the operating system's security fixes** (`backend/Dockerfile`): the image build runs an
   `apt-get upgrade`, so a fix the distribution has published (an OpenSSL one failed the Trivy HIGH gate on

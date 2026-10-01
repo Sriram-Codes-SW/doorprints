@@ -543,7 +543,7 @@ async function mobile(browser) {
 }
 
 async function boundaries(browser) {
-  // Natural Earth's world lines (below zoom 5) and, since S4b-BL-99, the Survey of India's lines (polyline7).
+  // Natural Earth's world lines (below zoom 5) and, since S4b-BL-114, the Survey of India's lines (polyline7).
   const request = (await browser.newContext()).request;
   const r = await request.get(`${BASE}/geo/in-boundaries.geojson`);
   const g = r.status() === 200 ? await r.json() : null;

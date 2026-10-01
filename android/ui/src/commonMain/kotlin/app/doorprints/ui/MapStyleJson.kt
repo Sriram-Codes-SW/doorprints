@@ -305,7 +305,7 @@ class PreparedMapStyle(val json: String, val style: JsonObject, val problems: Li
  * boundary as the Government of India shows it ([applyIndiaView] over [JsonStyleOps], the same steps as Android's), then
  * the houses' empty source and their two layers on top ([houseLayersJson] at [labelSizeSp]), then [IndiaViewCheck].
  * [readAsset] reads the bundled geo files; [warn] logs the steps' warnings; [soiAttribution] is the Survey of India's
- * credit in the app's language, which MapLibre iOS lists in its attribution sheet (S4b-BL-99). Throws only when
+ * credit in the app's language, which MapLibre iOS lists in its attribution sheet (S4b-BL-114). Throws only when
  * [baseStyleJson] is not a JSON object; a problem with the rules is reported in [PreparedMapStyle.problems], never
  * thrown (rule 5).
  */

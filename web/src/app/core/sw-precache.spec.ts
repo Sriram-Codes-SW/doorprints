@@ -94,7 +94,7 @@ describe('service worker precache stamp', () => {
       // web/public/geo/in-boundaries.geojson is copied by the `public` assets glob; `shared/india-boundaries.ts`
       // loads it from the same path relative to the base href, and sw.js answers it cache-first from PRECACHED.
       expect(precacheList([...build, 'geo/in-boundaries.geojson'])).toContain('geo/in-boundaries.geojson');
-      // The Survey of India's lines (fetched by `loadSoiBoundary`, S4b-BL-99) and the corridor polygons (bundled in
+      // The Survey of India's lines (fetched by `loadSoiBoundary`, S4b-BL-114) and the corridor polygons (bundled in
       // the JavaScript, but shipped in public/ too) are precached the same way: nothing under geo/ is left out.
       const geo = ['geo/in-boundaries-soi.json', 'geo/in-soi-corridor.geojson', 'geo/in-held-areas.geojson'];
       for (const file of geo) expect(precacheList([...build, ...geo])).toContain(file);

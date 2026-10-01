@@ -26,7 +26,7 @@ import build_in_boundaries_soi as B  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..', '..'))
 # The selection reference as it was for the 2026-10-01 build (in-boundaries.geojson of commit 52453f7), clipped around
-# the fixture's pieces: the shipped in-boundaries.geojson no longer holds the claim lines (S4b-BL-99).
+# the fixture's pieces: the shipped in-boundaries.geojson no longer holds the claim lines (S4b-BL-114).
 NE = os.path.join(HERE, 'testdata', 'ne-reference-excerpt.geojson')
 
 

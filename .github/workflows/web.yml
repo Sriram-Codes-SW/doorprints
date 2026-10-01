@@ -59,7 +59,7 @@
 # 2026-09-24 (DevSecOps), branch fix/india-boundary-lines: pwa-files also requires the kind "state" (the
 #   Assam-Arunachal Pradesh state line, india-boundaries.ts in-boundary-state; S4b-BL-15).
 #
-# 2026-10-01 (lead), branch feat/soi-boundary-data (S4b-BL-99): India's northern boundary and the Assam-Arunachal
+# 2026-10-01 (lead), branch feat/soi-boundary-data (S4b-BL-114): India's northern boundary and the Assam-Arunachal
 #   line come from the Survey of India's file geo/in-boundaries-soi.json (kinds "claim" and "state", polyline7);
 #   pwa-files requires it, geo/in-soi-corridor.geojson (Polygons) and, in geo/in-boundaries.geojson, the kind "world"
 #   only. The live check also checks /geo/in-boundaries-soi.json.
@@ -135,7 +135,7 @@ jobs:
   # change that drops the service worker or the manifest would otherwise ship a site that cannot be installed and
   # cannot start offline, with a green build. Checks the uploaded artifact, i.e. exactly the bytes that get deployed.
   # Since 2026-09-24 it also requires India's boundary files (section 6 of the script; the Survey of India's since
-  # 2026-10-01, S4b-BL-99); the job name is kept so that any required status check that names it keeps matching.
+  # 2026-10-01, S4b-BL-114); the job name is kept so that any required status check that names it keeps matching.
   pwa-files:
     name: PWA files in the build (service worker, manifest, icons, screenshots)
     needs: build
@@ -276,7 +276,7 @@ jobs:
             if (exists(rel)) warnings.push(`${rel} is in the build but unused by Firebase Hosting (headers live in web/firebase.json); remove it from web/public`);
           }
 
-          // 6. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-99).
+          // 6. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-114).
           //    src/app/shared/india-boundaries.ts hides Liberty's disputed lines and draws India's external boundary
           //    from these same-origin files on every style load. Without them the "**" rewrite would answer the request
           //    with index.html, the overlay would fail to parse and the map would show no boundary where the hidden

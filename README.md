@@ -193,7 +193,7 @@ Both apps draw OpenFreeMap vector tiles (OpenStreetMap data, ODbL, credited in t
 OpenFreeMap's "liberty" style. **India's boundaries are shown as the Government of India depicts them**, the only view,
 because every user is in India: all of Jammu and Kashmir and Ladakh and Arunachal Pradesh inside India, one solid
 outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.md) ADR-22). Since 2026-10-01
-(S4b-BL-99) India's northern and north-eastern boundary (Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand,
+(S4b-BL-114) India's northern and north-eastern boundary (Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand,
 Sikkim, Arunachal Pradesh) and the Assam-Arunachal Pradesh state line are the **Survey of India's** own lines, at every
 zoom: *Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration.
 Copyright Survey of India, Government of India.* The file (`web/public/geo/in-boundaries-soi.json`, the same bytes in
