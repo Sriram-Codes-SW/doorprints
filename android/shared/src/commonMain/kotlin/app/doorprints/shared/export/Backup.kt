@@ -327,6 +327,13 @@ enum class BackupProblem {
     WRITE_FAILED,
 }
 
+/**
+ * The problem a worker reported by name (Android's WorkManager output; common since S4b-BL-76); anything unrecognised is
+ * treated as "not a backup".
+ */
+fun backupProblemOf(name: String?): BackupProblem =
+    BackupProblem.entries.firstOrNull { it.name == name } ?: BackupProblem.NOT_A_BACKUP
+
 /** Structural checks that do not need the ZIP itself; the platform reader adds the size and path checks. */
 object BackupValidation {
 
