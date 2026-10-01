@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.68 |
+| Version | 0.70 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -68,8 +68,9 @@
 | 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
-| 0.68 | 2026-10-01 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.47 (RR-16), 03 v0.60 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.94 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.118 (S4b-BL-114; S4b-BL-10), 14 v0.72, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.2, NOTICE, the root and web READMEs, the guide, the CHANGELOG. |
-| 0.67 | 2026-10-01 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
+| 0.70 | 2026-10-01 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.47 (RR-16), 03 v0.60 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.95 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.119 (S4b-BL-114; S4b-BL-10), 14 v0.72, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.2, NOTICE, the root and web READMEs, the guide, the CHANGELOG. |
+| 0.69 | 2026-10-01 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
+| 0.67 | 2026-10-01 | Claude (Code), lead | S4b-BL-108 (branch `feat/web-open-backup-file-handler`): 06 v0.94 (TC-U-122, TC-M-45), 10 v0.118 (S4b-BL-108 done in code), 11 v0.54 (5.2, 5.28: the website's file handler). |
 | 0.66 | 2026-10-01 | Claude (Code), lead | S4b-BL-103 (branch `test/followup-gaps`): 06 v0.93 (TC-U-119, TC-U-120, TC-U-121), 10 v0.117 (S4b-BL-103 done; S4b-BL-90d, -92f, -93e tested). |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |

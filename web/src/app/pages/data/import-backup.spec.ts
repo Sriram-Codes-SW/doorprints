@@ -18,8 +18,9 @@
 
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import vectorsJson from '../../../../../docs/schemas/import-vectors.json';
+import { LaunchFilesService } from '../../core/launch-files.service';
 import { LocalStore } from '../../data/local-store.service';
 import { EMPTY_LOCAL, preview } from '../../export/import-plan';
 import { ImportBackupCard, previewLines } from './import-backup';
@@ -52,6 +53,21 @@ describe('ImportBackupCard', () => {
     expect(textOf(el.querySelector('h2')!)).toBe('Import a backup');
     expect(textOf(el.querySelector('.actions .btn-primary')!)).toBe('Choose a backup file');
     expect(el.querySelector('fieldset')).toBeNull();
+  });
+
+  it('checks a backup the system opened the app with, as if it was picked (S4b-BL-108)', async () => {
+    const fixture = await render();
+    const launch = TestBed.inject(LaunchFilesService);
+    launch.pending.set(new File([fileOf('a stored backup')], 'Doorprints-backup-2026-05-28.zip'));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(el.querySelector('fieldset')).not.toBeNull();
+    });
+    expect(textOf(el)).toContain('Doorprints-backup-2026-05-28.zip');
+    expect(launch.pending()).toBeNull();
+    expect(await TestBed.inject(LocalStore).getHouse('h1')).toBeUndefined();
   });
 
   it('refuses a file that is not a backup and says why', async () => {
