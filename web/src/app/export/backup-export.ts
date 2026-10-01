@@ -72,7 +72,7 @@ export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
  * lists in silence. The web has no reader yet (S4b-BL-75); when it lands it accepts exactly these. Kotlin:
  * `BackupFormat.READABLE`.
  */
-export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2'];
+export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];
 export const MANIFEST_ENTRY = 'manifest.json';
 export const DATA_ENTRY = 'data.json';
 

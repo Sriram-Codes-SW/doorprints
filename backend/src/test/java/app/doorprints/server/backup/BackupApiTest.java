@@ -144,12 +144,33 @@ class BackupApiTest {
         assertThat(count(report, "houses", "created")).isEqualTo(1);
         assertThat(export()).startsWith("{\"format\":\"" + BackupFormat.ID + "\"").contains("From a /2 file");
 
-        var v3 = v2.replace("doorprints-backup/2", "doorprints-backup/3");
-        assertThat(status(() -> postImport(v3, false))).isEqualTo(400);
-        assertThat(status(() -> postImport(v3, true))).isEqualTo(400);
-        assertThat(errorBody(() -> postImport(v3, false))).contains("update the app");
+        var v4 = v2.replace("doorprints-backup/2", "doorprints-backup/4");
+        assertThat(status(() -> postImport(v4, false))).isEqualTo(400);
+        assertThat(status(() -> postImport(v4, true))).isEqualTo(400);
+        assertThat(errorBody(() -> postImport(v4, false))).contains("update the app");
         assertThat(errorBody(() -> postImport(v2.replace("doorprints-backup/2", "doorprints-backup/x"), false)))
                 .contains("Not a " + BackupFormat.ID);
+    }
+
+    /**
+     * S4b-BL-82: an update file is {@code doorprints-backup/3} with a {@code deleted} list. The server reads it as a
+     * restore, and a restore never deletes (docs/schemas/README.md section 6 rule 5): the house the list names stays,
+     * and the file's own house imports.
+     */
+    @Test
+    void aVersionThreeUpdateFileImportsAndItsDeletionsAreIgnored() {
+        var kept = UUID.randomUUID();
+        postImport(backup(houseRow(kept, "Here before", Instant.now().minusSeconds(60)), ""), false);
+        var fresh = UUID.randomUUID();
+        var v3 = backup(houseRow(fresh, "From an update", Instant.now()), "")
+                .replace(BackupFormat.ID, BackupFormat.ID_WITH_DELETIONS)
+                .replace("\"photos\":[]", "\"photos\":[],\"deleted\":[{\"kind\":\"house\",\"id\":\"" + kept
+                        + "\",\"updatedAt\":" + Instant.now().toEpochMilli() + "}]");
+        var report = postImport(v3, false);
+        assertThat(report).containsEntry("format", BackupFormat.ID_WITH_DELETIONS);
+        assertThat(count(report, "houses", "created")).isEqualTo(1);
+        assertThat(export()).contains("Here before").contains("From an update");
+        assertThat(BackupFormat.READ_IDS).containsExactly("doorprints-backup/1", "doorprints-backup/2", "doorprints-backup/3");
     }
 
     /**

@@ -326,6 +326,8 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">इस फ़ोन पर हटाए गए; ये हटे ही रहेंगे</string>
+    <!-- S4b-BL-82 (2026-10-01): under review. -->
+    <string name="import_removed_houses">भेजने वाले के हटाए मकान</string>
     <string name="import_bring_back">इन्हें वापस लाएँ</string>
     <string name="import_show_copies">कॉपी के रूप में दिखाएँ</string>
     <string name="import_stop_other">दूसरा आयात रोकें</string>

@@ -307,6 +307,21 @@ data class ExportAreaNote(
     }
 }
 
+/**
+ * A deletion an update file carries (S4b-BL-82, docs/schemas §3.13): the `kind` of row (only [HOUSE] so far), its
+ * `id` and the `updatedAt` of the delete. Written only into an update file (`/3`), applied only by an update import,
+ * when the row here is live and older; a backup restore and a copy ignore it. An unknown kind is ignored.
+ */
+@Serializable
+data class ExportDeletion(val kind: String, val id: String, val updatedAt: Long) {
+    companion object {
+        const val HOUSE = "house"
+
+        /** At most this many deletions in one file; more refuses it. */
+        const val MAX = 20_000
+    }
+}
+
 /** A preference in a `/2` backup (slice 2): its key, its value (≤ 500) and `updatedAt`; merged by key. */
 @Serializable
 data class ExportPreference(val key: String, val value: String, val updatedAt: Long)
@@ -474,6 +489,11 @@ data class ExportBundle(
     val areas: List<ExportArea> = emptyList(),
     val places: List<ExportPlace> = emptyList(),
     val areaNotes: List<ExportAreaNote> = emptyList(),
+    /**
+     * An update file's deletions (S4b-BL-82): the houses deleted after [ExportOptions.since], ordered by `updatedAt`
+     * then id. Empty for a copy or a full share; only `data.json` carries them (a readable copy has nothing to show).
+     */
+    val deletions: List<ExportDeletion> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
 
@@ -594,6 +614,8 @@ data class ExportBundle(
             areas: List<ExportArea> = emptyList(),
             places: List<ExportPlace> = emptyList(),
             areaNotes: List<ExportAreaNote> = emptyList(),
+            /** The houses deleted on this device, id to the `updatedAt` of the delete (tombstones; S4b-BL-82). */
+            deletedHouses: Map<String, Long> = emptyMap(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -668,9 +690,16 @@ data class ExportBundle(
             val keptAreas = areas.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             val keptPlaces = places.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             val keptNotes = areaNotes.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            // An update's deletions (S4b-BL-82): the houses deleted since, whatever the scope (a house that is gone has
+            // no status worth filtering on); a copy or a full share has none. A row that is live again is not one.
+            val liveIds = houses.mapTo(HashSet()) { it.id }
+            val deletions = if (since == null) emptyList() else deletedHouses
+                .filter { (id, at) -> at > since && id !in liveIds }
+                .map { (id, at) -> ExportDeletion(ExportDeletion.HOUSE, id, at) }
+                .sortedWith(compareBy({ it.updatedAt }, { it.id }))
             return ExportBundle(
                 options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
-                keptQuestions, keptViewings, keptAreas, keptPlaces, keptNotes,
+                keptQuestions, keptViewings, keptAreas, keptPlaces, keptNotes, deletions,
             )
         }
     }
