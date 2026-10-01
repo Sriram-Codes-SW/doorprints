@@ -20,6 +20,7 @@ package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.api.PlannedStopDto
+import app.doorprints.shared.model.HouseStatusRules
 import kotlinx.serialization.Serializable
 
 /** What the model returns for Plan (the server's `PlanModels.AgentPlan`). */
@@ -84,7 +85,7 @@ object PlanChecks {
             fallback = true
             chosen.clear()
             reasons.clear()
-            val points = seen.values.filter { it.status != "REJECTED" }.take(maxStops)
+            val points = seen.values.filter { HouseStatusRules.inTheRunning(it.status) }.take(maxStops)
                 .map { RouteOptimizer.Point(it.id, it.lat, it.lon) }
             legs = RouteOptimizer.nearestNeighbour(startLat, startLon, points)
             legs.forEach { l ->

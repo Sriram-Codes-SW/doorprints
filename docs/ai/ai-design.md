@@ -24,6 +24,7 @@
 | v0.20   | 2026-09-24 | Claude (Code), engineer       | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](../03-design.md) ADR-24): backend package `app.doorprints.server.ai` (was `com.househunt.ai`) and the code paths that name it; the MCP tool `askHouseHunt` is now **`askDoorprints`** (12: saved client permissions or prompts that name it are updated by hand); the compose volume is `doorprints-pgdata18`. No behaviour, prompt or eval change. |
 | v0.21   | 2026-09-29 | Claude (Code), lead           | 8, 8.1: golden set **v0.6**, the prompt-injection set grown from 3 to 25 cases for the release security gate (TC-AI-04, S4b-SEC-1), two fixture houses with payloads in their notes (one with contact data, so contact redaction is now exercised end to end), and the guard keys `draftMustNotContain` and `summaryMustNotContain`. Thresholds unchanged. Not yet run against a model: the next manual AI evals run is the first on v0.6. |
 | v0.22   | 2026-09-29 | Claude (Code), lead           | 8: `ai-evals.yml` gains input `suites` and the job *On-device AI, real key*: one real Extract, Ask and Plan through the phones' and the website's own-key AI (ADR-26), with `AI_API_KEY` (docs/06 TC-U-88). |
+| v0.23   | 2026-10-01 | Claude (Code), lead           | 6: the Plan prompt on the phones and the website skips NOT_CHOSEN as well as REJECTED unless asked, as the server's did since slice 5, and the fallback route leaves out the same two statuses; new parity vector `inTheRunning` (S4b-BL-99 a). |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -582,7 +583,7 @@ Q&A — "only the records; otherwise reply exactly *I don't know based on the ho
 first, a contrast house only briefly and cited" (v0.11, see 8.5). The server enforces the citation rule (v0.18,
 `RagService.citations`): the **inline `[house:id]` markers are authoritative**; `citedHouseIds` is used only as a
 fallback when the answer has no marker at all, ids listed there but not marked inline are dropped (and logged as a
-count), only retrieved ids are kept, and the refusal sentence (curly apostrophes folded) never has citations; agent — "only ids returned by tools; prefer SHORTLISTED/NEW; skip REJECTED unless asked; be economical".
+count), only retrieved ids are kept, and the refusal sentence (curly apostrophes folded) never has citations; agent — "only ids returned by tools; prefer SHORTLISTED/NEW; skip REJECTED and NOT_CHOSEN unless asked; be economical" (NOT_CHOSEN since slice 5; the fallback route leaves out the same two statuses, on the server, the phones and the website, vector `inTheRunning`, S4b-BL-99 a).
 
 ## 7. RAG: indexing, retrieval and structured filtering
 
