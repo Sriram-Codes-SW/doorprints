@@ -59,7 +59,7 @@ const URL_ = 'https://doorprints.web.app/geo/in-boundaries.geojson';
 const SOI_URL = 'https://doorprints.web.app/geo/in-boundaries-soi.json';
 /** Rule 2 on boundary_3 with the bundled polygon (S4b-BL-12). */
 const HELD_RULE = heldAreasRule(HELD_AREAS!);
-/** Rule 2 on boundary_2 with the bundled corridor (S4b-BL-99). */
+/** Rule 2 on boundary_2 with the bundled corridor (S4b-BL-114). */
 const CORRIDOR_RULE = soiCorridorRule(SOI_CORRIDOR!);
 /** The Survey of India's source as indiaBoundaryStyle adds it when no lines have been read yet. */
 const EMPTY_SOI_SOURCE = { type: 'geojson', data: NO_SOI_LINES, attribution: SOI_ATTRIBUTION };
@@ -892,7 +892,7 @@ async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-describe('the Survey of India lines (rule 3, S4b-BL-99)', () => {
+describe('the Survey of India lines (rule 3, S4b-BL-114)', () => {
   afterEach(() => forgetSoiBoundary());
   const lines = soiBoundaryGeoJson(soiText)!;
   const ofKind = (kind: string) => lines.features.filter((f) => f.properties.kind === kind).map((f) => f.geometry.coordinates);
@@ -991,7 +991,7 @@ describe('the Survey of India lines (rule 3, S4b-BL-99)', () => {
   });
 });
 
-describe('the Survey of India corridor (rule 2 on boundary_2, S4b-BL-99)', () => {
+describe('the Survey of India corridor (rule 2 on boundary_2, S4b-BL-114)', () => {
   const liberty = libertyExcerpt();
   const { style } = indiaBoundaryStyle(liberty, URL_);
   const filter = layer(style, 'boundary_2')['filter'];

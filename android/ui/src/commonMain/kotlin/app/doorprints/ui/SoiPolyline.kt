@@ -27,7 +27,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
- * The Survey of India's lines (`geo/in-boundaries-soi.json`, OVSF/1M/7, S4b-BL-99; docs/03 ADR-22): India's
+ * The Survey of India's lines (`geo/in-boundaries-soi.json`, OVSF/1M/7, S4b-BL-114; docs/03 ADR-22): India's
  * international land boundary along Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal
  * Pradesh (kind `claim`) and the Assam-Arunachal Pradesh state line (kind `state`), each run an encoded polyline at
  * 1e-7 degree written by web/scripts/geo/build_in_boundaries_soi.py. Decoded here for the map, with every vertex as

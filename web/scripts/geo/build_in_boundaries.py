@@ -31,7 +31,7 @@ cover, so the two never show side by side:
      is within JOIN_KM, so the line still meets India's boundary below zoom 5 (Uttar Pradesh-Nepal, Nepal-China,
      West Bengal-Bhutan, Bhutan-China, Nagaland-Myanmar, Myanmar-China). The joined vertex is a copy, rounded like the
      rest of this file; the Survey of India file is never changed. Pieces shorter than MIN_KM are left out.
-Gone with this change (S4b-BL-99): the claim kind (Natural Earth 1:10m inside the boxes), the state kind (the Natural
+Gone with this change (S4b-BL-114): the claim kind (Natural Earth 1:10m inside the boxes), the state kind (the Natural
 Earth Assam-Arunachal line) and the SHARED stretches with their connectors (find_shared_stretches.py, S4b-BL-11/16/17):
 the Survey of India lines replace all three, and from zoom 5 the apps hide the tiles' own lines along them instead
 (in-soi-corridor.geojson, build_in_soi_corridor.py).

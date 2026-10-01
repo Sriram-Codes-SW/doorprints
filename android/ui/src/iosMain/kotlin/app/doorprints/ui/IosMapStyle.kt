@@ -72,7 +72,7 @@ internal object IosMapStyle {
 
     /**
      * Downloads (or reads the cached) base style and prepares it, off the main thread; throws when neither works.
-     * [soiAttribution] is the Survey of India's credit in the app's language (S4b-BL-99).
+     * [soiAttribution] is the Survey of India's credit in the app's language (S4b-BL-114).
      */
     suspend fun prepare(
         labelSizeSp: Float,

@@ -24,7 +24,7 @@ import org.maplibre.android.maps.AttributionDialogManager
 import org.maplibre.android.maps.MapLibreMap
 
 /**
- * The map's attribution dialog (its "i" button) with the Survey of India's credit as the last line (S4b-BL-99,
+ * The map's attribution dialog (its "i" button) with the Survey of India's credit as the last line (S4b-BL-114,
  * docs/03 ADR-22): MapLibre Android lists the attributions of the style's sources, and a GeoJsonSource added at run
  * time cannot carry one, so the line is added here. [credit] is `map_boundary_credit` in the app's language; [credit]
  * is read each time the dialog opens, so a language switch shows at once. The line opens nothing; the others open

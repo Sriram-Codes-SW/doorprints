@@ -102,7 +102,7 @@ export function localizeMap(
 }
 
 /**
- * The Survey of India's credit in the map's attribution ("Boundary: Survey of India", S4b-BL-99), in the current
+ * The Survey of India's credit in the map's attribution ("Boundary: Survey of India", S4b-BL-114), in the current
  * language: the source's `attribution` is read by MapLibre's attribution control, which rewrites its text only on a
  * style or source change, so after a language switch the control is asked to read it again (`_updateAttributions`,
  * maplibre-gl-js v6.11.2 `src/ui/control/attribution_control.ts`; read through a cast like `_locale`). True when the
@@ -242,7 +242,7 @@ export function createMlMap(
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
     foldAttributionLater(map);
-    // The Survey of India's lines (S4b-BL-99) are read once per page, starting now, so they are usually decoded by the
+    // The Survey of India's lines (S4b-BL-114) are read once per page, starting now, so they are usually decoded by the
     // time the base style has loaded; each style load gets them, and the credit in the current language.
     const soiUrl = inBoundariesSoiUrl(document.baseURI);
     void loadSoiBoundary(soiUrl);

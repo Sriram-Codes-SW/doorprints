@@ -76,7 +76,7 @@ describe('ensureMapStyles (MapLibre CSS out of the render-blocking stylesheet)',
   });
 });
 
-describe('relabelBoundaryCredit (the Survey of India credit after a language switch, S4b-BL-99)', () => {
+describe('relabelBoundaryCredit (the Survey of India credit after a language switch, S4b-BL-114)', () => {
   /** A map with the Survey of India's source (or none) and an attribution control that counts its rereads. */
   function fakeMap(withSource: boolean) {
     const source = { attribution: 'Boundary: Survey of India' };

@@ -95,7 +95,7 @@ actual fun PlatformMap(
     // instead of the ones captured on the first composition.
     val currentEvents by rememberUpdatedState(events)
     val currentLabelSize by rememberUpdatedState(labelSizeSp)
-    // The Survey of India's credit in the app's language (S4b-BL-99): in the attribution dialog and the style's rules.
+    // The Survey of India's credit in the app's language (S4b-BL-114): in the attribution dialog and the style's rules.
     val currentCredit by rememberUpdatedState(stringResource(Res.string.map_boundary_credit))
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }

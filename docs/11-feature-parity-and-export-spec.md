@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.50 |
-| Date | 2026-09-30 |
+| Version | 0.51 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
 
@@ -62,6 +62,7 @@
 | 0.48 | 2026-09-30 | Claude (Code), lead | **Slice 4b designed** (5.17 and 5.18: the area wake-up, the background-location rationale and the cooldown; [10](10-sprint-log.md) §13.28). |
 | 0.49 | 2026-09-30 | Claude (Code), lead | **Slice 4b built** (the area wake-up on Android; [10](10-sprint-log.md) §13.28). The iPhone part (S4b-BL-96) follows. |
 | 0.50 | 2026-09-30 | Claude (Code), lead | **Slice 5 designed** (5.7 photo tags, 5.24 moving in: the statuses Taken and Not chosen, the move-in checklist and condition record, *Close this hunt*; [10](10-sprint-log.md) §13.29). |
+| 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -254,6 +255,17 @@ sequenceDiagram
     S-->>U: Saved. Open or Share
 ```
 
+**Built later (2026-10-01, [10](10-sprint-log.md) §13.31, §13.32, §13.34).** The Kotlin copies now write their times
+in UTC, as the website's always did (the cover says "Times shown for UTC +00:00"; the writer still takes any offset,
+and its goldens keep +05:30 to prove it), so one backup reads the same on every device (S4b-BL-92c). The iPhone has
+*Save a copy* (every copy but the PDF) through the share sheet and Files and *Import a backup* from Files or from
+another app, on common code (`Zip.kt`, `BackupArchive.kt`, `CopyWriter.kt`, `ArchiveImports.kt`; S4b-BL-81, compiled
+only). The website has *Import a backup* (S4b-BL-75): a Doorprints ZIP or the server's `.json`, the checks of
+docs/schemas §6 over the shared `import-vectors.json`, the preview, *Merge*, *Add everything as new copies*, *Keep
+mine*, and undo while the page is open. An import keeps to 100 questions and 40 criteria; the undo of a copy import
+removes the houses, visits, photos, brokers, viewings, questions and criteria it created (not preferences, areas,
+places or notes).
+
 ### 5.3 AI custom export
 
 | Item | Design |
@@ -322,11 +334,25 @@ the total area, the copies gain a `rooms` column, `rooms.csv`, a Rooms sheet and
 documents carry names, sizes and condition (never a room's notes), and search covers room names and notes. The house's
 *floor*, which the duplicate-flat warning needs, is not a field yet (S4b-BL-85).
 
+**Built later (2026-10-01, S4b-BL-87, [10](10-sprint-log.md) §13.33):** *Move up* and *Move down* on each room (its
+`sort`), and the house's `floor`, a whole number -5..200 (0 the ground floor, below 0 a basement), after `moveIn` in
+every writer, a `/2` field (Room 10, Flyway V13). The form refuses a floor out of range with a message and focus on
+both apps (the website silently dropped it until Wave D). Search finds it as "floor 3", "ground floor" or "basement 2",
+in English only (S4b-BL-104).
+
 ### 5.7 Photo tags
 
 Photo metadata: `roomId` (a room of the same house or null), `tags` (≤ 10; fixed keys `EXTERIOR, ENTRANCE, KITCHEN_FITTINGS, BATHROOM_FITTINGS, DAMP, CRACK, LEAK, VIEW, WATER_TANK, METER, PARKING, LIFT, GOOD_POINT, PROBLEM` translated in the UI, plus custom tags ≤ 30 chars), `caption` (≤ 200).
 Edited with `PUT /api/photos/{id}/meta` (LWW on `metaUpdatedAt`, new `sync_version`), carried in the photo change feed.
 A `roomId` that no longer exists is shown as "untagged" (no foreign key, so photos may sync before the house).
+
+**Built (2026-10-01, slice 5 of 5.30; [10](10-sprint-log.md) §13.29).** As the design of slice 5 (5.24) says: `roomId`,
+`tags` (the fixed keys above plus `MOVE_IN`, or the person's own, at most 10, each at most 30 characters, a custom tag
+never equal to a fixed key), `caption` (at most 200) and `metaUpdatedAt` on the photo, on the three stacks (Room 9,
+Flyway V12, the website's photo store without a version change); *Room, tags and caption* on each photo of a house;
+`PUT /api/photos/{id}/meta` and the fields in `PhotoDto`, so both syncs carry them; the backup's photo rows write the
+four keys only when set. Not built: search over captions and tags (neither list shows photos), the tags' translated
+words in the copies (they write the keys) (S4b-BL-99).
 
 ### 5.8 Viewings: schedule, local reminders, second viewing, history
 
@@ -392,6 +418,13 @@ does not scroll to its questions; the exact-alarm note shows only while reminder
 through the 3b-2 scheduler (a merged pair is one alarm at the earlier time, posted as the Hunt notification, with *Open house*), channel `hunt_reminders` (id 10, tag `hunt:<id>`), *Start Hunt mode* (starts the service with fine location,
 otherwise opens the Map, which asks through its own Hunt switch) and *Dismiss*, and the iPhone `viewing-hunt-<id>` notification (compiled, not yet run). **Not built:** TalkBack labels on the notification actions (a notification action has no
 content description), "the Map offers Hunt mode" after an iPhone tap (a tap opens the viewing).
+
+**Built later (2026-10-01, [10](10-sprint-log.md) §13.31, §13.32).** The iPhone's *Add to calendar* shares the
+viewing's `.ics` (S4b-BL-92a; its `DTSTAMP` is the share time, S4b-BL-101). A reminder's *Questions* opens the house at
+its questions; a reminder tap on either phone opens the Map with *Start Hunt mode?* (`DeepLink.OfferHunt`); a deep link
+clears the tab's stack first; the reminders keep their own "notifications asked" flag (`viewings.notificationsAsked`);
+the notification actions name what they do (*Directions to the house*), for TalkBack. A saved or imported viewing
+refreshes its house's AI document on the server.
 
 ### 5.9 Share to Doorprints: *Add a shared listing* (Indian portals)
 
@@ -600,6 +633,11 @@ app. A rotation or a language switch is not leaving the app. A settings file tha
 Tests: `AppLockGateTest`, `SettingsStoreTest`, the `app_lock` screenshots ([06](06-test-plan.md) TC-U-90); on a
 device TC-M-29; the emulator test with a device PIN is S4b-BL-67.
 
+**Later (2026-10-01, [10](10-sprint-log.md) §13.32, §13.36).** With the lock on, Hunt mode's alerts are posted
+`VISIBILITY_SECRET`, so a locked phone's screen shows nothing of them (S4b-BL-68; they were `VISIBILITY_PRIVATE`).
+`AppLockEmulatorTest` (S4b-BL-67) sets a PIN on the emulator and unlocks with it; it is compiled and joins the emulator
+matrix, and its first run is the stacked pull request's.
+
 ### 5.20 Offline maps for the hunting area (D-30)
 
 Today the houses are on the device but the map tiles come from OpenFreeMap over the network (NFR-004 promises only
@@ -627,6 +665,15 @@ in [14](14-lead-backlog-and-handoff.md) §6). Not built: drawing an area or pick
 4c), and the website (S4b-BL-79: the service worker ignores cross-origin tiles, so it needs MapLibre's `addProtocol`
 over Cache Storage). Tests: `OfflineTilesTest`, the `offline_maps` screenshots ([06](06-test-plan.md) TC-U-95).
 
+**Built on the website (2026-10-01, S4b-BL-79, [10](10-sprint-log.md) §13.35; [03](03-design.md) ADR-30).** *Save this
+area for offline* on the Map takes the box on screen to zoom 14 with the same estimate and caps (at most 2,000 tiles a
+box, 10 areas), adding the raster layer, the style files and the glyph ranges of the Indic scripts (about 5 MB more);
+the dialog shows the size and the browser's free storage and warns on a metered connection. The tiles go into Cache
+Storage (`doorprints-offline-maps-v1`, apart from the service worker's shell cache) and MapLibre GL JS reads them through
+`addProtocol` (`dpmap-tile`, `dpmap-file`), offline as online, with India's boundary rules applied as on every style
+load. *Offline maps* on *Your data* lists and deletes them; *Remove all data* clears them. Tests [06](06-test-plan.md)
+TC-U-115; the boundary re-check offline is TC-M-36.
+
 ### 5.21 The real cost of a house, my offer and the agreed price (D-30)
 
 New house fields, all optional: **deposit** (rupees, or months of rent, shown as both), **maintenance** per month and
@@ -640,7 +687,10 @@ the backup format and every exporter, on web and Android together, with the view
 maintenance (5.5) pre-filled from these fields.
 
 **Built (2026-09-30, slice 1a of 5.30; [10](10-sprint-log.md) §13.19):** the fields, the arithmetic, the form's *Cost*
-section, Compare and the copies; the viewing questions' pre-fill waits for 5.5 (slice 3) and the filters for S4b-BL-84.
+section, Compare and the copies; the viewing questions' pre-fill waits for 5.5 (slice 3) and the filters for S4b-BL-84. **Filters built** (2026-10-01,
+S4b-BL-84, [10](10-sprint-log.md) §13.33): *Filter by cost* over monthly cost, money to move in and cost per sq ft
+(whole rupees, from and up to); a house whose number cannot be worked out is left out while a range is set (a sale
+has no monthly cost); on the website the ranges are kept in the address, on Android until the app is closed.
 
 ### 5.22 My places and distances (D-30)
 
@@ -696,6 +746,14 @@ steps (precise location first, then "Allow all the time": the system dialog on A
 wake-up needs precise as well as background location (geofencing requires it); the cooldown stamp is set when the notification is posted and again on *Dismiss*; there is no listener for "location switched back on" (Android 8+ gives a manifest receiver
 no `PROVIDERS_CHANGED`), so recovery after `GEOFENCE_NOT_AVAILABLE` comes at the next resume, boot or edit. The switch is hidden without Google Play services and on the iPhone. **Not run:** real geofencing and the permission pages (TC-M).
 
+**Built on iPhone (2026-10-01, S4b-BL-96, [10](10-sprint-log.md) §13.30; compiled, not run).** `IosAreaWakeup`: Core
+Location region monitoring of the enabled areas (at most 20, the platform's limit), registered again at start, on
+changes and on resume; the same rationale screen naming the iPhone's two prompts ("While using", then "Always",
+`NSLocationAlwaysAndWhenInUseUsageDescription`), the notification permission asked after "Always"; on entering, "You're
+in <area>. Start Hunt mode?" as a notification whose tap opens the Map and offers Hunt mode (an iPhone app cannot
+start tracking from a notification). No *Dismiss* on iPhone, so the 6-hour cooldown is stamped when it is posted. The
+switch shows on iPhone where Core Location can monitor regions. On a device TC-M-35 (iPhone part).
+
 ### 5.24 Moving in (D-30)
 
 When a house is chosen: status **Taken** (new; only one at a time, the others can be marked *Not chosen* in one step),
@@ -715,6 +773,16 @@ hunt*: the hunt's houses are archived, not deleted, and a readable copy is offer
 | Copies, AI, search | The house page of the readable copies gets a **Moving in** section (date, notes, the items with a tick) and a photo listing with room, tags and caption; `photos.csv` gains the columns room, tags, caption; the AI lines `Moving in: <done> of <total> done` and `Moving in notes: <text>` (redacted, one line); the list search includes the move-in item texts and notes and each photo's caption and tags where the list has them. |
 | Vectors | M1 choosing TAKEN returns the previous TAKEN house to SHORTLISTED; M2 `closeTargets` leaves out the TAKEN, REJECTED and NOT_CHOSEN houses; M3 after any sequence of choices at most one house is TAKEN; M4 *Start moving in* adds the six items in order and again adds nothing; M5 the cap of 30 items; M6 a custom tag equal to a fixed key (any case) is refused, a repeated tag is dropped, more than 10 tags are refused. |
 
+**Built (2026-10-01, slice 5 of 5.30; [10](10-sprint-log.md) §13.29).** As designed, on the three stacks (Room 9,
+Flyway V11 and V12), with these choices made while building: the statuses' colours are Taken amber `#8A5A00` and Not
+chosen grey `#5F6B66` (dark `#F2C265`, `#B4BEB9`), the same on both apps; the *Moving in* card is on the house form on
+Android and on the house page on the website, and appears once the house is Taken; *Close this hunt* asks first ("Mark
+*n* other houses Not chosen and close this hunt?"), and needs the Taken status saved. In the copies a photo's tags are
+the stored keys, the website labels the move-in date *When* (Kotlin: *Move-in date*), and a *Shortlisted only* copy
+leaves the Taken house out. **Not built or not the same everywhere** (S4b-BL-99): archiving the houses at *Close this
+hunt* (they are marked, not hidden); Compare and the own-key AI Plan still leave out only REJECTED while the server's
+planner also skips NOT_CHOSEN; search over photo captions and tags. Tests [06](06-test-plan.md) TC-U-109.
+
 ### 5.25 Brokers (D-30)
 
 A broker (or owner) becomes a contact of its own: name, phone, agency, fee terms, the user's notes and rating; a house
@@ -729,7 +797,11 @@ agency, fee terms, notes, rating) and a house carries `brokerId` with copies of 
 contact fields, so old apps, the exports and the AI redaction keep working. Saving a house with a phone number links the
 broker with that number or creates it (one broker per distinct number, compared on the last ten digits); the contacts of
 existing houses were migrated once the same way. *Brokers* (Settings) lists them, and a broker's page edits it, calls it
-and lists its houses. Not built: the duplicate-flat warning (S4b-BL-85; it needs the floor, which arrives with rooms).
+and lists its houses. Not built: the duplicate-flat warning (S4b-BL-85; it needs the floor, which arrives with rooms). **Built later**
+(2026-10-01, S4b-BL-85, [10](10-sprint-log.md) §13.33): the house form warns inline, "Maybe the same flat as …: within
+about 30 m, with the same bedrooms and floor", against the other saved houses; a house with an approximate location is
+never compared. Not built: the same warning on the broker's page. The import preview counts new and updated brokers
+(S4b-BL-86).
 
 ### 5.26 Voice notes (parked, D-30)
 
@@ -812,6 +884,16 @@ another app opens in Doorprints (*open with*, or *share to Doorprints*) arrives 
 Import screen picks it as if chosen; its header then reads "Updates for Priya, made on <date>". Tests
 [06](06-test-plan.md) TC-U-96; the exchange between two phones TC-M-33 (owner).
 
+**Deletions and the other platforms (2026-10-01, S4b-BL-82, -75, -81; [10](10-sprint-log.md) §13.31, §13.34;
+[03](03-design.md) ADR-29).** An update file now carries the houses deleted on the sender's phone after
+`sharedSince` in a `deleted` list (kind `house`, id, the delete's `updatedAt`), which makes the file
+`doorprints-backup/3` (docs/schemas §3.13); a file without deletions stays `/1` or `/2`. Only an update import applies
+it, with *Merge*: a live house here older than the delete is deleted as if by the person (a tombstone that syncs); a
+house edited here after the delete, *Keep mine*, *Add as copies* and a backup restore leave it. The preview says
+"Houses deleted by the sender" (the sender's name is not in the file, S4b-BL-107). The server reads `/3` as a restore
+and ignores the list. The website now reads update files with its importer; the iPhone imports them from Files or
+another app (compiled only); neither shares updates yet, and the PWA's `file_handlers` is S4b-BL-108.
+
 **Order of work.** (1) Android: the per-name bookkeeping, the "since" filter in `ExportBundle`, the manifest
 fields, the share sheet, the intent filter, the Import screen's "updates from" line; the readable copies unchanged.
 (2) The web's backup reader (S4b-BL-75) and then its share and file handler. (3) iPhone copies and imports
@@ -882,7 +964,12 @@ MainActivity takes `ACTION_SEND` `text/plain` (the subject first, the text cappe
 through the same merge and summary as *Fill in from listing text*. Web: the share page's text reaches the new-house
 page as before and the parser fills the fields on arrival, the AI fill staying the second pass. Tests
 [06](06-test-plan.md) TC-U-97; on a phone TC-M-34 (owner). The label-within-100 m duplicate and the locality lookup
-(S4b-BL-83) are not built.
+(S4b-BL-83) are not built. **Locality lookup built** (2026-10-01, S4b-BL-83, [10](10-sprint-log.md) §13.34): *Find
+"<place>" on the map* offers the parser's locality, looked up only on the person's tap (`PlaceLookup` in common code;
+Android `Geocoder.getFromLocationName`, iPhone `CLGeocoder` compiled only, the website Nominatim `/search` at most once a
+second, restricted to India, with the reverse lookup under the same throttle); the pin lands roughly there for the
+person to move, and the privacy note on the website names both lookups (`house.lookupNote`). Android fills the form but
+moves no pin on the map yet (S4b-BL-107).
 
 **Order of work.** (1) The parser with its fixtures, the Android share receiver, the web share page's parser, the
 duplicate check, the map step (one change). (2) S4b-BL-83, the locality lookup. (3) Brokers with (4c).

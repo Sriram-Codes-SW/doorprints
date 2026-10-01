@@ -44,7 +44,7 @@ import kotlinx.serialization.json.doubleOrNull
  *     (so a zoom 0-4 tile's Natural Earth line is never drawn, even when MapLibre shows that tile in place of a
  *     missing zoom 5+ one) and never the Pakistan-China line or India's line with China, which India's outline draws
  *     instead ([COUNTRY_LINE_EXTRA_FILTER]); nor one of India's lines that lies wholly inside the corridor around the
- *     Survey of India's lines ([soiCorridorFilter], [SOI_CORRIDOR_ASSET_PATH]; S4b-BL-99), which draw it instead; and
+ *     Survey of India's lines ([soiCorridorFilter], [SOI_CORRIDOR_ASSET_PATH]; S4b-BL-114), which draw it instead; and
  *     [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
@@ -72,7 +72,7 @@ object IndiaViewRules {
     const val ASSET_PATH = "geo/in-boundaries.geojson"
     const val SOURCE_URI = "asset://$ASSET_PATH"
 
-    /** The Survey of India's lines (S4b-BL-99), byte-identical to web/public/geo/in-boundaries-soi.json. */
+    /** The Survey of India's lines (S4b-BL-114), byte-identical to web/public/geo/in-boundaries-soi.json. */
     const val SOI_SOURCE_ID = "in-boundaries-soi"
     const val SOI_ASSET_PATH = "geo/in-boundaries-soi.json"
 
@@ -83,7 +83,7 @@ object IndiaViewRules {
     const val SOI_ATTRIBUTION = "Boundary: Survey of India"
 
     /**
-     * The corridor around the Survey of India's land-boundary lines (S4b-BL-99), built by
+     * The corridor around the Survey of India's land-boundary lines (S4b-BL-114), built by
      * web/scripts/geo/build_in_soi_corridor.py and byte-identical to web/public/geo/in-soi-corridor.geojson.
      */
     const val SOI_CORRIDOR_ASSET_PATH = "geo/in-soi-corridor.geojson"
@@ -217,7 +217,7 @@ object IndiaViewRules {
     }
 
     /**
-     * India's lines as the tiles carry them, in India's view (S4b-BL-99): India or no country on a side (the tiles
+     * India's lines as the tiles carry them, in India's view (S4b-BL-114): India or no country on a side (the tiles
      * often leave India's side empty), or Pakistan and Afghanistan, whose Wakhan line is Gilgit-Baltistan's border.
      * `match` rather than `in`, as in [COUNTRY_LINE_EXTRA_FILTER]. The web's `INDIA_LINE`.
      */
@@ -227,7 +227,7 @@ object IndiaViewRules {
             "[\"all\", ${matchAny(get("adm0_l"), listOf("PAK", "AFG"))}, ${matchAny(get("adm0_r"), listOf("PAK", "AFG"))}]]"
 
     /**
-     * ANDed with [COUNTRY_LAYER]'s filter (S4b-BL-99): not one of India's lines ([INDIA_LINE]) that lies wholly inside
+     * ANDed with [COUNTRY_LAYER]'s filter (S4b-BL-114): not one of India's lines ([INDIA_LINE]) that lies wholly inside
      * one of the corridor's polygons [geometriesJson] ([soiCorridorGeometries]); the Survey of India's line draws that
      * boundary instead, so from zoom 5 it is drawn once, not twice side by side (they lie a median 20-30 m apart along
      * Nepal and Bhutan, about 500 m in the Wakhan). `within` is all or nothing per tile feature ([heldAreasFilter]): a

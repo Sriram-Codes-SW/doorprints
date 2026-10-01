@@ -38,9 +38,9 @@ import java.security.MessageDigest
  * India's boundary files (owner issue P0, 2026-09-24): the phone and the web draw the same outline, so the files the
  * app bundles (android/app/src/main/assets/geo/) and the ones the web serves (web/public/geo/) must be the same bytes,
  * and those bytes are the reviewed builds: the Survey of India's lines (in-boundaries-soi.json, OVSF/1M/7, built by
- * web/scripts/geo/build_in_boundaries_soi.py and checked against the source by tools/soi-verify.py; S4b-BL-99), the
+ * web/scripts/geo/build_in_boundaries_soi.py and checked against the source by tools/soi-verify.py; S4b-BL-114), the
  * corridor around them (in-soi-corridor.geojson, build_in_soi_corridor.py) and Natural Earth's world lines
- * (in-boundaries.geojson, build_in_boundaries.py, Natural Earth commit ca96624; since S4b-BL-99 without the stretches the
+ * (in-boundaries.geojson, build_in_boundaries.py, Natural Earth commit ca96624; since S4b-BL-114 without the stretches the
  * Survey of India draws). A change to either copy without the other, or a rebuild nobody reviewed, fails here. The same
  * holds for the held areas' polygon (in-held-areas.geojson, web/scripts/geo/build_in_held_areas.py, S4b-BL-12), which
  * both apps use to leave the Pakistani and Chinese admin lines out of `boundary_3`; the web spec pins the same sha256s.

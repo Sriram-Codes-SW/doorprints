@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""Tests of build_in_boundaries.py and of the three map files the apps ship (S4b-BL-99; Python 3 standard library
+"""Tests of build_in_boundaries.py and of the three map files the apps ship (S4b-BL-114; Python 3 standard library
 only): the Survey of India file decodes to the vertex counts and checksums that the web and Android tests pin too
 (india-boundaries.spec.ts, SoiPolylineTest.kt), the Natural Earth file holds only world lines and none along the Survey
 of India lines, and the corridor's polygons hold every Survey of India land-boundary vertex.

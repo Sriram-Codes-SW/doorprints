@@ -28,7 +28,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
- * The Survey of India decoder (S4b-BL-99) in common code, on the JVM host and (compiled) Kotlin/Native alike: known
+ * The Survey of India decoder (S4b-BL-114) in common code, on the JVM host and (compiled) Kotlin/Native alike: known
  * vectors, the same ones as the web spec and web/scripts/geo/test_build_in_boundaries.py, and the file checks. The
  * shipped file's counts and checksums: IndiaBoundaryDataTest (it reads the file; common tests cannot).
  */

@@ -27,7 +27,8 @@ The Gemini key is only for AI. You can add it any time later
 ([step 5](set-up-a-server.md#step-5-write-the-servers-settings-file)).
 
 **Can I move my houses from the website to the Android app?** Yes. On the website, **Save a copy** as a **Full
-backup (ZIP)**. Then on Android use **Import a backup**. Or connect both to the same server.
+backup (ZIP)**. Then on Android use **Import a backup**. It works the other way too: the website and the iPhone app
+can import a backup made on any device. Or connect both to the same server.
 
 **I added the same house twice.** Open the extra one and choose **Delete house**.
 

@@ -28,7 +28,7 @@ import type {
 // The held areas' polygon (S4b-BL-12), bundled into the app as text: the rule needs it when the style loads, before
 // any fetch could answer. Byte-identical to Android's asset (IndiaBoundaryDataTest; the spec pins the same sha256).
 import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loader: 'text' };
-// The corridor around the Survey of India's lines (S4b-BL-99), bundled the same way and for the same reason: rule 2
+// The corridor around the Survey of India's lines (S4b-BL-114), bundled the same way and for the same reason: rule 2
 // filters boundary_2 with it as the style loads. Byte-identical to Android's asset (the spec and IndiaBoundaryDataTest).
 import soiCorridorText from '../../../public/geo/in-soi-corridor.geojson' with { loader: 'text' };
 
@@ -46,7 +46,7 @@ import soiCorridorText from '../../../public/geo/in-soi-corridor.geojson' with {
  *     lines with at least one of the two, and leaves out the Pakistan-China line (both sides in PAK/CHN), India's line
  *     with China (China on one side, India or nothing on the other) and every one of India's lines (India or nothing
  *     on a side, or the Pakistan-Afghanistan line of the Wakhan) that lies wholly inside the corridor around the
- *     Survey of India's lines ({@link soiCorridorRule}, `geo/in-soi-corridor.geojson`, S4b-BL-99): the Survey of India
+ *     Survey of India's lines ({@link soiCorridorRule}, `geo/in-soi-corridor.geojson`, S4b-BL-114): the Survey of India
  *     line draws all of them instead. Below zoom
  *     5 the tiles' lines come from Natural Earth's ISO view with no country codes, so no filter can take the Pakistan
  *     line through Kashmir out of them. MapLibre draws a zoom 0-4 tile, overzoomed, in place of a zoom 5+ tile that is
@@ -276,7 +276,7 @@ export function heldAreasRule(geometry: HeldAreasGeometry): ExpressionSpecificat
 }
 
 /**
- * The polygons of `geo/in-soi-corridor.geojson` (web/scripts/geo/build_in_soi_corridor.py, S4b-BL-99): a
+ * The polygons of `geo/in-soi-corridor.geojson` (web/scripts/geo/build_in_soi_corridor.py, S4b-BL-114): a
  * FeatureCollection of one or more features, each a Polygon of closed [longitude, latitude] rings, one per chain of the
  * Survey of India's land-boundary lines (Jammu and Kashmir to Uttarakhand, Sikkim, Arunachal Pradesh), 5.5 km wide on
  * each side. Null (and the rule is skipped with a warning) when the text is anything else. Polygons, not one
@@ -293,7 +293,7 @@ export function soiCorridorGeometries(text: string): HeldAreasGeometry[] | null 
 export const SOI_CORRIDOR: HeldAreasGeometry[] | null = soiCorridorGeometries(soiCorridorText);
 
 /**
- * Rule 2, `boundary_2` (S4b-BL-99): India's lines as the tiles carry them, in India's view: India or no country on a
+ * Rule 2, `boundary_2` (S4b-BL-114): India's lines as the tiles carry them, in India's view: India or no country on a
  * side (the tiles often leave India's side empty), or Pakistan and Afghanistan, whose Wakhan line is Gilgit-Baltistan's
  * border. Android's `IndiaViewRules.INDIA_LINE`, with `in` for `match`.
  */
@@ -305,7 +305,7 @@ const INDIA_LINE: ExpressionSpecification = [
 ];
 
 /**
- * Rule 2, `boundary_2` (S4b-BL-99): not one of India's lines ({@link INDIA_LINE}) that lies wholly inside the corridor
+ * Rule 2, `boundary_2` (S4b-BL-114): not one of India's lines ({@link INDIA_LINE}) that lies wholly inside the corridor
  * around the Survey of India's lines, which draw that boundary instead, so from zoom 5 it is one line, not the Survey
  * of India's and OpenStreetMap's side by side (they lie a median 20-30 m apart along Nepal and Bhutan, about 500 m in
  * the Wakhan). `within` is all or nothing per tile feature ({@link heldAreasRule}): a tile feature that runs on past
@@ -595,7 +595,7 @@ export function indiaBoundaryStyle(
     }
   }
 
-  // 2d. One line along the Survey of India's (S4b-BL-99): boundary_2 leaves out India's tile lines wholly inside the
+  // 2d. One line along the Survey of India's (S4b-BL-114): boundary_2 leaves out India's tile lines wholly inside the
   //     corridor around it. After the guard, so the filter reads all(all(all(Liberty's, rule 2), guard), corridor),
   //     as on Android and iOS.
   if (country >= 0) {

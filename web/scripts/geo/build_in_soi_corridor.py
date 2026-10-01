@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-"""Builds in-soi-corridor.geojson (S4b-BL-99): the polygons around the Survey of India's land-boundary lines
+"""Builds in-soi-corridor.geojson (S4b-BL-114): the polygons around the Survey of India's land-boundary lines
 (in-boundaries-soi.json, kind=claim) inside which the apps hide the base map's own country lines, so from zoom 5
 India's northern and north-eastern boundary is drawn once, by the Survey of India line, and not a second time by the
 OpenStreetMap line of the tiles beside it (docs/03 ADR-22 rule 2; web src/app/shared/india-boundaries.ts
