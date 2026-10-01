@@ -21,6 +21,7 @@ package app.doorprints.shared.model
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -53,6 +54,13 @@ class HouseStatusRulesTest {
         )
         assertEquals(listOf("n", "s", "n2"), HouseStatusRules.closeTargets(houses, "t"))
         assertEquals(emptyList(), HouseStatusRules.closeTargets(listOf(h("t", HouseStatus.TAKEN)), "t"))
+    }
+
+    @Test fun rejectedAndNotChosenAreOutOfTheRunningEverythingElseIsIn() {
+        assertEquals(setOf(HouseStatus.REJECTED, HouseStatus.NOT_CHOSEN), HouseStatus.entries.filterNot { HouseStatusRules.inTheRunning(it) }.toSet())
+        assertTrue(HouseStatusRules.inTheRunning(null as String?))
+        assertTrue(HouseStatusRules.inTheRunning("SOMETHING_NEWER"))
+        assertFalse(HouseStatusRules.inTheRunning("NOT_CHOSEN"))
     }
 
     @Test fun m3_afterAnySequenceOfChoicesAtMostOneHouseIsTaken() {

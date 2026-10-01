@@ -943,6 +943,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **Compare and Plan visits offered Not chosen houses** on the phones and the website (with your own Gemini key): they now leave out Not chosen houses as well as Rejected ones, as the server's planner already did; change a house back to Shortlisted to bring it back. One rule on the three stacks, checked by a shared test vector (S4b-BL-99 a).
+- **The website's readable copies labelled the move-in date *When***: it is now *Move-in date*, in the same words as the phones' copies (S4b-BL-99 d).
 - **The website's readable copies had no Rooms column** in the houses table (CSV, Excel): it now has the rooms' count between the cost per sq ft and the floor, as the phone's copies do (S4b-BL-104 a).
 - **A basement floor could not be typed on a number keypad without a minus key**: a **Basement** switch under Floor now holds the sign, so the level is typed as 1 to 5, on Android, iPhone and the website (S4b-BL-104 c).
 - **An import quietly blanked a floor out of range**: a backup whose house has a floor outside -5 to 200 (only an edited file has one) still imports, with that floor left blank, and the preview now says so in a warning line; the server keeps refusing such a file (S4b-BL-104 d).

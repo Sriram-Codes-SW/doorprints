@@ -3,7 +3,7 @@
 ## Compare houses
 
 1. Open **Compare**.
-2. Pick two to four houses. Shortlisted houses are offered first. Rejected houses are left out.
+2. Pick two to four houses. Shortlisted houses are offered first. Rejected and Not chosen houses are left out.
 
 Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item. On the
 website, the best value in each row is highlighted and marked ✓. Choose a house's name to open it.

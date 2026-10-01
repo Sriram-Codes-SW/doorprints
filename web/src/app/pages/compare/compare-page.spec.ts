@@ -99,6 +99,19 @@ describe('ComparePage', () => {
     expect((await rows()).filter((r) => r.id.startsWith('place-'))).toEqual([]);
   });
 
+  /** S4b-BL-99 a: only the houses in the running, so neither a Rejected nor a Not chosen house; the Taken one stays. */
+  it('leaves Rejected and Not chosen houses out of the picker and the table, as the phones and the Plan do', async () => {
+    const taken: HouseDto = { ...SALE, id: 't', label: 'Taken one', status: 'TAKEN' };
+    const rejected: HouseDto = { ...SALE, id: 'r', label: 'Turned down', status: 'REJECTED' };
+    const notChosen: HouseDto = { ...SALE, id: 'n', label: 'Passed over', status: 'NOT_CHOSEN' };
+    const fixture = await render([], 'FT', [RENT, rejected, taken, notChosen]);
+    const page = fixture.componentInstance as unknown as { candidates: () => { house: HouseDto }[] };
+    expect(page.candidates().map((c) => c.house.id)).toEqual(['a', 't']);
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).not.toContain('Turned down');
+    expect(text).not.toContain('Passed over');
+  });
+
   /** Slice 1b: a linked house shows its broker's name and agency in the Contact row, the phone as before. */
   it('shows the broker and agency in the Contact row of a linked house', async () => {
     const linked = { ...RENT, brokerId: 'b-1', contactName: 'Ravi Kumar', contactPhone: '+91 98400 11111' };
