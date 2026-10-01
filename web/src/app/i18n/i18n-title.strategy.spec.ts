@@ -24,7 +24,7 @@ import { en } from './en';
 import './all-dictionaries'; // every language registered, so setLang switches at once
 import { hi } from './hi';
 import { ta } from './ta';
-import { I18nTitleStrategy, TitleOverride } from './i18n-title.strategy';
+import { I18nTitleStrategy, SITE_URL, TitleOverride, isIndexable } from './i18n-title.strategy';
 import { TranslationService } from './translation.service';
 
 /** The snapshot is never read: buildTitle() is stubbed, so each test picks the route title key directly. */
@@ -110,12 +110,41 @@ describe('I18nTitleStrategy', () => {
     const updateTag = vi.spyOn(meta, 'updateTag');
     navigateTo('title.compare');
     navigateTo('title.map');
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(updateTag.mock.calls.filter(([tag]) => tag.name === 'description')).toHaveLength(0);
     expect(description()).toBe(en['app.description']);
 
     i18n.setLang('ta');
     TestBed.tick();
     expect(description()).toBe(ta['app.description']);
-    expect(updateTag).toHaveBeenCalledTimes(1);
+    expect(updateTag.mock.calls.filter(([tag]) => tag.name === 'description')).toHaveLength(1);
+  });
+
+  describe('search tags follow the route', () => {
+    const route = (data: Record<string, unknown>) =>
+      ({ root: { data: {}, firstChild: { data: {}, firstChild: { data, firstChild: null } } } }) as unknown as RouterStateSnapshot;
+    const robots = () => meta.getTag('name="robots"')?.content;
+    const canonical = () => document.head.querySelector('link[rel="canonical"]');
+
+    beforeEach(() => vi.spyOn(strategy, 'buildTitle').mockReturnValue(undefined));
+    afterEach(() => canonical()?.remove());
+
+    it('indexes only a route with data.index, with a canonical link', () => {
+      expect(isIndexable(route({ index: true }))).toBe(true);
+      expect(isIndexable(route({}))).toBe(false);
+      expect(isIndexable(route({ index: 'yes' }))).toBe(false);
+      strategy.updateTitle(route({ index: true }));
+      TestBed.tick();
+      expect(robots()).toBe('index, follow');
+      expect(canonical()?.getAttribute('href')).toBe(SITE_URL);
+    });
+
+    it('marks every other route noindex, nofollow and drops the canonical link', () => {
+      strategy.updateTitle(route({ index: true }));
+      TestBed.tick();
+      strategy.updateTitle(route({}));
+      TestBed.tick();
+      expect(robots()).toBe('noindex, nofollow');
+      expect(canonical()).toBeNull();
+    });
   });
 });

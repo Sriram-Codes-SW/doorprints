@@ -61,7 +61,7 @@ import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { OfflineAreasCard } from './offline-areas';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
-import { GUIDE_URL } from '../../shared/help-link';
+import { guideUrl } from '../../shared/help-link';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -126,7 +126,7 @@ export class DataPage implements OnInit, OnDestroy {
   /** The AGPL notices and source offer of *About Doorprints* (S4b-BL-65). */
   protected readonly legal = LEGAL_NOTICE;
   /** The user guide, opened by the Help card (phones; the header has the link elsewhere). */
-  protected readonly guideUrl = GUIDE_URL;
+  protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
   private readonly offlineMaps = inject(OfflineMapsService);
 
   protected readonly formats = FORMATS;
