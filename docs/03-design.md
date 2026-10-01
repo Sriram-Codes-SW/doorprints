@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.56 |
-| Date | 2026-09-30 |
+| Version | 0.59 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -68,6 +68,9 @@
 | 0.54 | 2026-09-30 | Claude (Code), lead | Slice 3a of ADR-28 ([10](10-sprint-log.md) §13.23): `house.answers jsonb` (Flyway V10) in §6.1 and `answers` on `HouseDto` in §9; questions are `record` rows of type `question`; `GET /api/export` writes `/2` when the server holds a question or a house with answers. |
 | 0.55 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 of ADR-28 ([10](10-sprint-log.md) §13.24): `viewing` is a record type; `/api/import` and `/api/export` carry a `viewings` list and write `/2` when the server holds a live viewing. |
 | 0.56 | 2026-09-30 | Claude (Code), lead | Slice 4a of ADR-28 ([10](10-sprint-log.md) §13.27): `area`, `place` and `areanote` are record types; `/api/import` and `/api/export` carry `areas`, `places`, `areaNotes` and write `/2` when the server holds any. |
+| 0.59 | 2026-10-01 | Claude (Code), lead | §11.1: the reply read against the 2021 guidelines PDF (8(ii)(1), 8(xii), 8(xiii); "adhere to these standards" as the sense of "no alteration"); the National Geospatial Policy 2022 guidelines still to be read (S4b-BL-111 P2). |
+| 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
+| 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -447,7 +450,7 @@ erDiagram
         double_precision lat "NOT NULL"
         double_precision lon "NOT NULL"
         geography geog "GENERATED Point 4326, GIST index"
-        varchar status "NEW SHORTLISTED REJECTED, default NEW"
+        varchar status "NEW SHORTLISTED REJECTED TAKEN NOT_CHOSEN, default NEW"
         bigint price "INR"
         varchar price_type "RENT or SALE"
         integer bedrooms "BHK"
@@ -462,6 +465,8 @@ erDiagram
         varchar broker_id "64, a record id of type broker, no FK (V8)"
         jsonb rooms "at most 30: id, type, name, lengthCm, widthCm, condition, notes, sort (V9)"
         jsonb answers "at most 60: id, questionId, text, answer, status, sort (V10)"
+        jsonb move_in "date, notes, at most 30 items: id, text, done, sort (V11, slice 5)"
+        integer floor "-5..200, 0 ground (V13, S4b-BL-87)"
         timestamptz created_at "NOT NULL"
         timestamptz updated_at "NOT NULL, LWW clock"
         boolean deleted "tombstone"
@@ -496,6 +501,10 @@ erDiagram
         timestamptz updated_at "NOT NULL, V3"
         boolean deleted "tombstone, V3"
         bigint sync_version "NOT NULL, indexed, V3"
+        varchar room_id "64, a room of its house, may dangle (V12, slice 5)"
+        jsonb tags "at most 10: fixed keys or own text (V12)"
+        varchar caption "200 (V12)"
+        bigint meta_updated_at "NOT NULL default 0, LWW of the meta (V12)"
     }
 ```
 
@@ -758,13 +767,18 @@ stateDiagram-v2
     REJECTED --> SHORTLISTED: user reconsiders
     SHORTLISTED --> NEW: reset
     REJECTED --> NEW: reset
+    SHORTLISTED --> TAKEN: chosen (at most one)
+    TAKEN --> SHORTLISTED: another house chosen
+    NEW --> NOT_CHOSEN: Mark them Not chosen, Close this hunt
+    SHORTLISTED --> NOT_CHOSEN: Mark them Not chosen, Close this hunt
+    NOT_CHOSEN --> SHORTLISTED: user reconsiders
     NEW --> Deleted: delete
     SHORTLISTED --> Deleted: delete
     REJECTED --> Deleted: delete
     Deleted --> [*]: tombstone purged after 90 days
 ```
 
-Status is a plain field with no server-side transition rules. Any value can change to any other. "Deleted" is the `deleted` flag, not a status value.
+Status is a plain field with no server-side transition rules. Any value can change to any other. Since slice 5 ([11](11-feature-parity-and-export-spec.md) 5.24) the apps keep **at most one TAKEN** house (`HouseStatusRules`: choosing TAKEN returns the previous one to SHORTLISTED) and offer to mark the rest NOT_CHOSEN (`closeTargets`: every house but the TAKEN one that is not REJECTED or NOT_CHOSEN); the diagram shows those transitions, the others stay possible from the status field. "Deleted" is the `deleted` flag, not a status value.
 
 ### 8.2 Hunt service
 
@@ -804,7 +818,8 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 | GET | `/api/houses/street` | `name` (1..200) | `HouseDto[]` | Case-insensitive exact match on `lower(street)` (uses the index), live only |
 | GET | `/api/houses/{houseId}/photos` | - | `UUID[]` | Live photos, ordered by `createdAt` |
 | POST | `/api/houses/{houseId}/photos` | multipart: `file` (JPEG/PNG/WebP by magic bytes, at most 5 MB), `id` (UUID, optional) | `{ "id": UUID }` | Idempotent on `id` (never resurrects a deleted photo). 404 if the house is unknown or deleted, 400 if not an image, 409 over 20 photos, 413 over 5 MB. Metadata stripped. |
-| GET | `/api/photos?since=` | `since` (long, required) | `PhotoDto[]` | Change feed: `{id, houseId, contentType, sizeBytes, createdAt, updatedAt, deleted, syncVersion}`, no bytes |
+| GET | `/api/photos?since=` | `since` (long, required) | `PhotoDto[]` | Change feed: `{id, houseId, contentType, sizeBytes, createdAt, updatedAt, deleted, syncVersion}` and, since slice 5, `roomId, tags, caption, metaUpdatedAt`; no bytes |
+| PUT | `/api/photos/{id}/meta` | `{roomId, tags, caption, metaUpdatedAt}` | `PhotoDto` | **New 2026-10-01** (slice 5): last write wins on `metaUpdatedAt`; an edit not newer than the stored one changes nothing and gets the stored meta back; new `sync_version`, so the photo feed carries it. 400 on a bad tag, room id or caption, 404 for an unknown or deleted photo. |
 | GET | `/api/photos/{id}` | - | image bytes | `Cache-Control: private, max-age=2592000`. 404 for tombstones. |
 | DELETE | `/api/photos/{id}` | - | 204 | Tombstone (bytes removed) + new sync version. No error if missing or already deleted. |
 | GET | `/api/visits` | `since` or `houseId` (optional) | `VisitDto[]` | `since`: change feed. `houseId`: live visits for the house, newest first. Neither: all live visits. |
@@ -812,7 +827,7 @@ Base path `/api`. Auth: header `X-API-Key: <key>` on every `/api/**` call (401 J
 | DELETE | `/api/visits/{id}` | - | 204 | Tombstone; the place (lat/lon/street/leftAt) is removed |
 | GET | `/api/stats` | - | `{houses, shortlisted, rejected, visits, streets, maxSyncVersion}` | `maxSyncVersion` (since 2026-09-24, S4b-BL-20): the highest sync version the server has handed out, `sync_seq`'s position (`SyncVersions.highest()`, 0 before the first write). It never goes back on a healthy server, also after `DELETE /api/data`; clients read a value below a stored cursor as a reset server (§10.1). Older servers omit it (clients: unknown) |
 | GET | `/api/export` | - | `BackupData`: `{format: "doorprints-backup/1", exportedAt, houses[], visits[], photos[]}` | **Changed in Sprint 4a** (ADR-20): the response is now the shared backup object — the same thing a device backup carries as `data.json` — instead of the old `house-hunt-export/1` shape, so there is one format and no converter ([schemas/README.md](schemas/README.md)). `Content-Disposition: attachment; filename="Doorprints-backup-<UTC date>.json"`. Live data only; photo **bytes** are not in it (fetch them from `GET /api/photos/{id}`; a device backup puts them in the ZIP's `photos/` folder). |
-| POST | `/api/import` | `BackupData` JSON (a backup's `data.json`), optional `?dryRun=true` | `ImportReport` | **New in Sprint 4a.** Restores a backup onto the server. `dryRun=true` runs the same validation and the same merge decisions and writes nothing — that is the preview the clients show before asking the user to confirm. Same API key as everything else. Two caps, both 413: the body (`app.limits.max-import-bytes`, applied by `RequestSizeLimitFilter`, which lets only this path exceed the 256 KB JSON cap) and the row count (`app.limits.max-import-rows`). Anything else wrong with the file is a 400 that names the rows. |
+| POST | `/api/import` | `BackupData` JSON (a backup's `data.json`), optional `?dryRun=true` | `ImportReport` | **New in Sprint 4a.** Restores a backup onto the server. `dryRun=true` runs the same validation and the same merge decisions and writes nothing — that is the preview the clients show before asking the user to confirm. Same API key as everything else. Two caps, both 413: the body (`app.limits.max-import-bytes`, applied by `RequestSizeLimitFilter`, which lets only this path exceed the 256 KB JSON cap) and the row count (`app.limits.max-import-rows`). Anything else wrong with the file is a 400 that names the rows. Since 2026-10-01 it also accepts `doorprints-backup/3` (ADR-29) and reads it as a restore: the `deleted` list of an update file is ignored. |
 | GET | `/api/records` | `since` (long, required, ≥ 0), `type` (optional) | `RecordDto[]` | **New 2026-09-30** (ADR-28, [11](11-feature-parity-and-export-spec.md) 5.30): the change feed of every record type (or one), tombstones included, ordered by `syncVersion`. The server never reads a payload. |
 | PUT | `/api/records/{type}/{id}` | `RecordDto` JSON: `type` (`[a-z][a-zA-Z0-9]{0,39}`), `id` (`[A-Za-z0-9._-]{1,64}`), `payload` (a JSON object, at most 65,536 bytes compact; `{}` when `deleted`), `updatedAt`, `deleted` | `RecordDto` | LWW by `updatedAt`; path and body must agree (400); a record that becomes live beyond 5,000 live rows of its type is 409. |
 | DELETE | `/api/records/{type}/{id}` | - | 204 | Tombstone (payload `{}`) + new sync version; 404 if unknown. |
@@ -921,6 +936,15 @@ records the owner's and the team's reading of the guidelines, not legal advice.
 Section 2(2) of the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's
 maps; ADR-22's reason) still applies alongside these guidelines.
 
+**The Survey of India's reply (2026-10-01).** The Online Maps Portal team (NGDR & UGI Directorate) answered the letter of
+2026-09-28: no prior permission is required for its Administrative Boundary Database (that database only); no alteration
+or modification of the dataset is permitted; due acknowledgement is to be given in the publication; the use is subject to
+the National Geospatial Policy 2022 guidelines. The consequence for ADR-22 is that the outline built from Natural Earth
+(cut by claim boxes, simplified, joined to the base map's lines) is a stop-gap: the Survey of India's own file can only be
+shipped as published, and the base map's lines near India are hidden instead of joined. The plan is
+[ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5 (P0..P6), [10](10-sprint-log.md) S4b-BL-111. The
+clause table for the National Geospatial Policy 2022 guidelines goes here once P2 has read them.
+
 ### 11.2 OpenFreeMap's public tiles and offline areas (S4b-FR-6)
 
 The map's tiles come from OpenFreeMap's public instance (Liberty style, OpenStreetMap data), which allows commercial
@@ -932,6 +956,12 @@ tiles, about 100 MB, a whole large city being a few hundred, with the size shown
 That is one person's ordinary use of the map, not a bulk copy; a bulk copy is what OpenFreeMap's weekly planet
 downloads are for. The owner's word on this reading is an open item in [14](14-lead-backlog-and-handoff.md) §6; the
 zero-cost alternative, should OpenFreeMap object, is a self-hosted extract (S4b-BL-80), which is not free to run.
+
+**The website (S4b-BL-79, ADR-30, 2026-10-01).** The same reading and the same caps hold: the box on screen to zoom 14,
+at most 2,000 tiles and 10 areas, the size and the browser's free storage shown first, a metered connection warned
+about, a few requests at a time, each tile fetched once. The website also keeps the style's raster layer, its style
+files and the glyph ranges of Devanagari, Tamil and Telugu, about 5 MB more. Nothing is fetched in the background or
+refreshed on its own; a person deletes an area, or *Remove all data* removes all of them.
 
 ## 12. Security design (summary)
 
@@ -1168,6 +1198,10 @@ sync (D-28) then reuses on-device AI (D-27).
 | ADR-28 | **The Sprint 4b data model: nested house values, one record envelope for every other new entity, a numbered backup format** (lead, 2026-09-30, for N13 4c; [11](11-feature-parity-and-export-spec.md) 5.30) | A table, entity, DTO, controller and repository per new kind of data on the server (the 8.1 plan of docs/11: `criterion`, `question`, `house_room`, `house_answer`, `viewing`, four migrations); eleven cost columns side by side on the house; keeping `doorprints-backup/1` with unknown keys ignored | The self-hosted server stores criteria, questions, viewings, hunting areas, places, area notes, brokers, photo metadata, the move-in record and preferences as opaque records `{type, id, updatedAt, deleted, syncVersion, payload}` in one `record` table with one cursor endpoint pair, never reading a payload (nothing needs a server-side query of them before Sprint 6; the server's AI never sees them); each kind is one `@Serializable` class in `:shared` with its TypeScript twin, all of them in one `records` table on the phone and one `records` store in the browser, read through typed accessors. The house's own new values (`cost`, `rooms`, `answers`, `areaSqft`, `locationSource`, `brokerId`) stay on the house, nested, so the mappers, the forms and the readable copies grow by one object. The backup format becomes `doorprints-backup/2` (readers accept `1..MAX`, a newer file is refused with "update the app"), so an older app never drops a list in silence. Costs: the server cannot filter inside a record; the web needs its backup reader (S4b-BL-75) before it can import a `/2` file; two migrations on each store across the slices (Room 4 and 5, IndexedDB 2 and 3, Flyway V6 and V7). |
 | ADR-26 | **Two AI providers behind one interface: the server, or the person's own Gemini key on the device** (owner, 2026-09-29; §13.1) | Server-only AI (today); a hosted AI proxy (ruled out: no hosted server, D-28); on-device models (too large for phones, and weaker) | One interface keeps the screens unaware of who answers; a person without a server gets AI with a free Gemini key; the key never leaves the device (D-27). Costs: the prompts and the safety code exist in Java, Kotlin and TypeScript, held together by shared test vectors; on-device Ask ranks by shared words, not embeddings; on-device Plan is one structured call, not an agent. |
 | ADR-25 | **Per-device keys obtained by pairing, and an owner page served by the server; the Gemini key set there, encrypted** (owner request and choices of 2026-09-29; §12.1). Supersedes ADR-03's single shared key for the apps: the owner key stays in the server's settings for MCP and recovery. | Keep pasting the one shared key (ADR-03); per-device keys created on the owner page and pasted (still pasting); a user and password login on the server (a password to keep, and 2FA to build); Google sign-in now (needs the hosted server, D-01, which comes next) | Nothing to paste: a code to type on a page the owner controls, or a QR code to scan. The master key never leaves the server, a lost phone is revoked on its own, last use is visible, and each device's changes can be told apart (T-R1). The pairing is RFC 8628's shape, which people know from signing in on a TV. Cost: a database table and a small page on the server; the owner page is a new attack surface on the server, kept to a strict CSP, a `SameSite=Strict` session and an origin check (§12.1; [02](02-threat-model.md) T-S8, T-E9, AB-11). Closes F-01b once the apps use it. |
+| ADR-29 | **Deletions travel only in an update file, as a new list that makes the file `doorprints-backup/3`** (lead, 2026-10-01, S4b-BL-82; [11](11-feature-parity-and-export-spec.md) 5.28, [schemas](schemas/README.md) §3.13) | Tombstone rows in every backup; a `deleted` flag on the rows within `/2`; deletions never shared | A backup restores what a person had, so a deletion in it would delete on a restore by surprise; an update file is a merge, where the sender's delete is what the person wants. A new list is a new number by the versioning rule (§1.1 there): an older app that ignored it would keep a house the sender deleted, so it refuses the file with "update the app". Only houses so far (their visits and photos go with them); the server reads `/3` as a restore and ignores the list. The sender's name is not in the file (only `sharedTo`), so the preview says "deleted by the sender". |
+| ADR-30 | **Offline map tiles on the website go through MapLibre's `addProtocol` over Cache Storage, outside the service worker** (lead, 2026-10-01, S4b-BL-79; §11.2) | The service worker caching tile requests (it ignores cross-origin requests by design, and its shell cache is replaced on every deploy); the Origin Private File System with a PMTiles file (a second format and a reader library); IndexedDB blobs | `dpmap-tile` and `dpmap-file` URLs in the style are answered from the cache `doorprints-offline-maps-v1` when it has the tile and from the network otherwise, so one map code path draws online and offline, and India's boundary rules apply on every style load as they do online (ADR-22). No new library. The cache name does not start with `doorprints-shell-`, so a deploy never clears it; *Remove all data* does. |
+| ADR-31 | **Search engines see one page: the landing page (and `about.html`); every other route says `noindex`** (lead, 2026-10-01, Wave E; owner request for an SEO pass) | Prerendering every route; per-language addresses; a `Disallow` list in `robots.txt` | Every route other than the landing page shows the visitor's own local data, so it has nothing for a search result and must never be indexed: the title strategy writes `robots: noindex, nofollow` and removes the canonical link unless the route's data says `index: true` (only `''`). `robots.txt` disallows nothing, because a crawler that may not fetch a page cannot read its `noindex`. `index.html` carries a static landing block, Open Graph and Twitter cards, JSON-LD `SoftwareApplication` and an `x-default` hreflang; per-language `hreflang` needs one address per language, which the app does not have (S4b-BL-102). |
+| ADR-32 | **Accessibility rules are checked by tests on both apps, and fixed in code before release** (lead, 2026-10-01, Wave D; owner, 2026-09-30) | Manual checks only; a new accessibility-test library | The website's helper `shared/testing/a11y.ts` (roles, names, labels inside names, focus, targets) runs over 44 pages in four languages and about 55 colour pairs; Android's `A11yAudit` and `ScreensA11ySweepTest` over 34 screens, `ContrastTest` over the theme. Rules the batch fixed in code: an accessible name contains the visible label; a validation error blocks the save, says why and takes the focus (the floor); a status is never told by colour alone, and its colours meet 4.5:1 in both themes (Taken, Not chosen, the switch's unchecked thumb at 4.48:1 on its track, a control's 3:1 against the page); a notification action names what it does. Android's `enableAccessibilityChecks` is not used because it needs a new test dependency (S4b-BL-110). Screen readers, 200 % text on a device and forced colours stay manual (TC-M-41, TC-M-42). |
 
 ## 15. Design risks and open items
 
@@ -1304,3 +1338,19 @@ flowchart LR
   link); the service worker precache makes that cheap. A long `max-age` or `immutable` rule must not come back
   unless the rewrite is first narrowed, because the `**` rewrite answers a missing old chunk with the HTML shell and
   status 200 and header rules match the request path ([07](07-secure-build-and-deploy.md) §6.3).
+
+## 17. Decisions of the finishing batch (2026-10-01)
+
+Smaller decisions taken while the slice 5 to Wave E batch was built ([10](10-sprint-log.md) §13.29..§13.39); each is
+the default unless the owner objects.
+
+| Decision | Why |
+|---|---|
+| **Readable copies and backups write their times in UTC on every stack** (S4b-BL-92c); the cover says "Times shown for UTC +00:00". The Kotlin writer still takes an offset and its goldens keep +05:30. | The website always wrote UTC; one file now reads the same whoever made it, and a test still proves the offset path. |
+| **Seeded records are stamped 2000-01-01T00:00:00Z and written clean** (the default questions, S4b-BL-90a); *Reset to defaults* writes them dirty. | A fresh device's seed must never win last-write-wins against another device's edit or revive its deletion; 2000-01-01 is the earliest `updatedAt` the server accepts. |
+| **With the app lock on, Hunt mode's alerts are `VISIBILITY_SECRET`** (S4b-BL-68). | The lock exists for a shared or lost phone; a house's name on its locked screen would defeat it. Reminders stay `VISIBILITY_PRIVATE` with a public "Doorprints reminder". |
+| **One set of status colours on both apps**: Taken `#8A5A00` / dark `#F2C265`, Not chosen `#5F6B66` / dark `#B4BEB9`; a Not chosen marker at 0.75 opacity. | Android took the website's values (contrast checked in both themes, ADR-32). |
+| **The locality lookup runs only on the person's tap** (S4b-BL-83): Android's `Geocoder`, Apple's `CLGeocoder`, and on the website Nominatim `/search` at most once a second, India only. | ADR-07: Nominatim's policy forbids automatic use; a tap is the person's own request, disclosed in the privacy note. |
+| **On iPhone, the area wake-up's notification opens the Map, which offers Hunt mode** (S4b-BL-96); no *Dismiss*, so the cooldown is stamped when it is posted; the notification permission is asked after "Always". | An iPhone app cannot start tracking from a notification action; the cooldown must hold without a button. |
+| **An import keeps to the caps**: 100 questions, 40 criteria (backend and phones; the website's importer too). | A merge of two full banks could pass the caps the screens and the server enforce. |
+
