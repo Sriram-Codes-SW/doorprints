@@ -2046,6 +2046,95 @@ class BackupApiTest {
                 ImportReport::areaNotes, "the most area notes it keeps (5000)");
     }
 
+    // ---- S4b-BL-103 (S4b-BL-90d): the per-type caps of a broker, preference, question or criterion import --------
+
+    /**
+     * A server holding 5 000 live records of {@code type} (what the records API lets a device push) gets a file with a
+     * new row {@code extra} and an update of a row it holds ({@code full0}): the preview and the real import skip the
+     * new row, naming it and {@code message}, and still update the held one; {@code created} rows the cap does not
+     * count (a built-in criterion) still go in. The real import writes the update and never the skipped row.
+     */
+    private void assertAnImportAtTheCapSkipsTheNewRowButUpdatesAHeldOne(String type, String payload, BackupData file,
+            java.util.function.Function<ImportReport, ImportReport.Entity> entity, String message, int created) {
+        var stamp = Instant.now().minus(Duration.ofHours(2));
+        var stored = new ArrayList<app.doorprints.server.record.Record>();
+        for (int i = 0; i < app.doorprints.server.record.RecordController.MAX_LIVE_ROWS_PER_TYPE; i++) {
+            var record = new app.doorprints.server.record.Record(
+                    new app.doorprints.server.record.RecordKey(type, "full" + i));
+            record.setPayload(payload);
+            record.setUpdatedAt(stamp);
+            record.setSyncVersion(1);
+            stored.add(record);
+        }
+        recordRepository.saveAll(stored);
+        try {
+            for (var dryRun : List.of(true, false)) {
+                var report = backupService.importBackup(file, dryRun);
+                assertThat(entity.apply(report).skipped()).as("skipped, dry run " + dryRun).isEqualTo(1);
+                assertThat(entity.apply(report).updated()).as("updated, dry run " + dryRun).isEqualTo(1);
+                assertThat(entity.apply(report).created()).as("created, dry run " + dryRun).isEqualTo(created);
+                assertThat(report.problems()).anyMatch(p -> p.contains(message) && p.contains("extra"));
+            }
+            assertThat(recordRepository.findById(new app.doorprints.server.record.RecordKey(type, "extra")))
+                    .as("the skipped row is not written").isEmpty();
+            var held = recordRepository.findById(new app.doorprints.server.record.RecordKey(type, "full0")).orElseThrow();
+            assertThat(held.getUpdatedAt()).as("the held row is updated").isAfter(stamp);
+            assertThat(held.getPayload()).isNotEqualTo(payload);
+            assertThat(recordRepository.countByKeyTypeAndDeletedFalse(type))
+                    .isEqualTo(app.doorprints.server.record.RecordController.MAX_LIVE_ROWS_PER_TYPE + created);
+        } finally {
+            recordRepository.deleteAllInBatch(recordRepository.findByKeyTypeAndDeletedFalse(type));
+        }
+    }
+
+    private static BackupData recordsFile(List<BackupBroker> brokers, List<BackupCriterion> criteria,
+                                          List<BackupPreference> preferences, List<BackupQuestion> questions) {
+        return new BackupData(BackupFormat.ID_WITH_BROKERS, Instant.now().toEpochMilli(), List.of(), List.of(),
+                List.of(), brokers, criteria, preferences, questions, List.of());
+    }
+
+    @Test
+    void aServerHoldingFiveThousandBrokersSkipsAnImportedNewOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAnImportAtTheCapSkipsTheNewRowButUpdatesAHeldOne("broker", "{\"name\":\"A\"}",
+                recordsFile(List.of(new BackupBroker("extra", "X", null, null, null, null, null, at),
+                        new BackupBroker("full0", "Y", null, null, null, null, 4, at)), List.of(), List.of(), List.of()),
+                ImportReport::brokers, "the most brokers it keeps (5000)", 0);
+    }
+
+    @Test
+    void aServerHoldingFiveThousandPreferencesSkipsAnImportedNewOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAnImportAtTheCapSkipsTheNewRowButUpdatesAHeldOne("preference", "{\"value\":\"a\"}",
+                recordsFile(List.of(), List.of(), List.of(new BackupPreference("extra", "x", at),
+                        new BackupPreference("full0", "y", at)), List.of()),
+                ImportReport::preferences, "the most preferences it keeps (5000)", 0);
+    }
+
+    /** Past the bank's 100 (records pushed by a device can reach 5 000), a new question is skipped, an update is not. */
+    @Test
+    void aServerHoldingFiveThousandQuestionsSkipsAnImportedNewOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAnImportAtTheCapSkipsTheNewRowButUpdatesAHeldOne("question",
+                "{\"text\":\"Q\",\"category\":\"OTHER\",\"appliesTo\":\"BOTH\",\"defaultOn\":false,\"sort\":0}",
+                recordsFile(List.of(), List.of(), List.of(),
+                        List.of(new BackupQuestion("extra", "X?", "OTHER", "BOTH", false, 1, null, at),
+                                new BackupQuestion("full0", "Y?", "MONEY", "RENT", true, 0, null, at))),
+                ImportReport::questions, "already holds 100 questions", 0);
+    }
+
+    /** Past the 40 criteria, a new custom criterion is skipped; an update and a built-in key still go in. */
+    @Test
+    void aServerHoldingFiveThousandCriteriaSkipsAnImportedNewCustomOne() {
+        var at = Instant.now().minus(Duration.ofMinutes(1)).toEpochMilli();
+        assertAnImportAtTheCapSkipsTheNewRowButUpdatesAHeldOne("criterion",
+                "{\"weight\":2,\"mustHave\":false,\"minScore\":3,\"label\":\"C\"}",
+                recordsFile(List.of(), List.of(new BackupCriterion("extra", "X", 2, false, 3, 1, null, at),
+                        new BackupCriterion("full0", "Y", 3, true, 4, 0, null, at),
+                        new BackupCriterion("water", null, 3, true, 4, 0, null, at)), List.of(), List.of()),
+                ImportReport::criteria, "already 40 criteria", 1);
+    }
+
     /** What the importer writes is what the apps read: keys in order, one note target, enabled only when false. */
     @Test
     void importedAreasPlacesAndNotesAreStoredWithTheRecordPayloadOrder() {
