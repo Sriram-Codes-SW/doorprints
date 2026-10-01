@@ -24,15 +24,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 /** How often a worker publishes its progress to WorkManager (and so to the screen's progress bar). */
-internal const val PROGRESS_INTERVAL_MS = 400L
+const val PROGRESS_INTERVAL_MS = 400L
 
 /** How often the foreground notification may be rebuilt; see [reportProgress]. */
-internal const val FOREGROUND_INTERVAL_MS = 1_000L
+const val FOREGROUND_INTERVAL_MS = 1_000L
 
 /** At or above this many photos, an export, import or automatic backup asks to run in the foreground. */
-internal const val FOREGROUND_PHOTO_THRESHOLD = 25
+const val FOREGROUND_PHOTO_THRESHOLD = 25
 
 /**
  * The progress loop the export, import and automatic-backup workers share.
@@ -44,8 +45,11 @@ internal const val FOREGROUND_PHOTO_THRESHOLD = 25
  * not cancel the scope and with it the work it is reporting on.
  *
  * Cancel the returned job when the work is done; it never finishes on its own.
+ *
+ * Common since S4b-BL-106 (was `:app`'s `WorkProgress.kt`), so a platform without WorkManager can drive its progress
+ * bar and notification with the same pacing; Android's export, import and automatic-backup workers call it.
  */
-internal fun CoroutineScope.reportProgress(
+fun CoroutineScope.reportProgress(
     progress: StateFlow<Pair<Int, Int>>,
     foreground: Boolean,
     publish: suspend (done: Int, total: Int) -> Unit,
@@ -58,7 +62,7 @@ internal fun CoroutineScope.reportProgress(
         runCatching { publish(done, total) }
         if (foreground) {
             val percent = if (total > 0) done * 100 / total else -1
-            val now = System.currentTimeMillis()
+            val now = Clock.System.now().toEpochMilliseconds()
             if (percent != lastPercent && now - lastNotifiedAt >= FOREGROUND_INTERVAL_MS) {
                 lastPercent = percent
                 lastNotifiedAt = now

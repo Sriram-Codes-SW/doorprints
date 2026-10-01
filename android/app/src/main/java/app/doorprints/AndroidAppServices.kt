@@ -44,7 +44,6 @@ import app.doorprints.data.Repository
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
 import app.doorprints.export.AutoBackupWorker
-import app.doorprints.export.CopyImportUndo
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.export.ImportUndo
@@ -58,6 +57,7 @@ import app.doorprints.location.ReverseGeocoder
 import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.AreaWakeupServices
+import app.doorprints.ui.CopyImportUndo
 import app.doorprints.ui.CopyImportUndoes
 import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
@@ -96,9 +96,18 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
         override fun hasPrecisePermission(): Boolean = hasLocationPermission(app)
     }
 
+    /** The copy imports' undo, one per process as this class is (common since S4b-BL-106); records by [ImportUndo]. */
+    private val copyUndo by lazy {
+        CopyImportUndo(
+            app.appScope, repository,
+            saveRecord = { ImportUndo.save(app, it) },
+            deleteRecord = { ImportUndo.delete(app, it) },
+        )
+    }
+
     override val copyImports: CopyImportUndoes = object : CopyImportUndoes {
-        override val undoingRun: String? get() = CopyImportUndo.undoingRun
-        override val outcome: CopyUndoOutcome? get() = CopyImportUndo.outcome
+        override val undoingRun: String? get() = copyUndo.undoingRun
+        override val outcome: CopyUndoOutcome? get() = copyUndo.outcome
         override suspend fun load(runId: String): CopyRecord? =
             withContext(Dispatchers.IO) { ImportUndo.load(app, runId) }
         override suspend fun latestUndoable(): CopyRecord? =
@@ -106,7 +115,7 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
         override fun hideRow(runId: String) {
             app.appScope.launch(Dispatchers.IO) { ImportUndo.hideRow(app, runId) }
         }
-        override fun start(record: CopyRecord): Boolean = CopyImportUndo.start(app, record)
+        override fun start(record: CopyRecord): Boolean = copyUndo.start(record)
     }
 
     override val settingsScreen: SettingsServices = AndroidSettingsServices(app)
