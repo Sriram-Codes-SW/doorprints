@@ -18,5 +18,15 @@ Alerts pause when the signal is weak, such as indoors. Hunt mode stops by itself
 precise location and notifications turned on.
 
 On an iPhone, Hunt mode works the same way. While it is on, the blue location sign at the top of the screen shows that
-Doorprints is using your location, also with the screen off. Doorprints asks for "While using the app" only, never
-"Always".
+Doorprints is using your location, also with the screen off. For Hunt mode Doorprints asks for "While using the app"
+only.
+
+## Wake me in my hunting areas
+
+In **Settings > My areas**, **Wake me in my hunting areas** (off unless you turn it on) tells you when you arrive in
+one of your areas: "You're in <area>. Start Hunt mode?". Doorprints explains what it does first, then asks for your
+precise location and for location "all the time" (on iPhone, "Always"), because the phone must notice your arrival
+while Doorprints is closed. The phone compares your position with your areas itself; Doorprints keeps no location
+history. You get it at most once every six hours per area, never while Hunt mode is on, and it never starts tracking
+by itself: on Android tap **Start Hunt mode**, on iPhone tap the notification and start it on the Map. If you take the
+permission away, the switch turns itself off and says why. The website cannot do this.
