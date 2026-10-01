@@ -20,7 +20,9 @@ Light and dark themes follow your device's setting on all three.
   your own Gemini key, straight from your phone or browser. The contact names and phone numbers saved with a house are
   left out.
 - Hunt mode's location stays on your phone.
-- India's boundaries on the map are shown as the Government of India depicts them.
+- India's boundaries on the map are shown as the Government of India depicts them. The northern and north-eastern
+  boundary is the Survey of India's own line: the map credits **Boundary: Survey of India**, and **About** gives the
+  full acknowledgement.
 
 ## Save an area of the map for offline
 

@@ -465,6 +465,18 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Changed
 
+- **Maps: India's northern and north-eastern boundary is the Survey of India's own line** (S4b-BL-99, branch
+  `feat/soi-boundary-data`; [design](docs/03-design.md) ADR-22). On the web, Android and the iPhone the land boundary along
+  Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh, and the Assam-Arunachal
+  Pradesh line, come from the Survey of India's Administrative Boundary Database OVSF/1M/7
+  (`web/public/geo/in-boundaries-soi.json`, 28 751 + 8 252 vertices, unaltered; decoded from its compact polyline
+  encoding on each platform), at every zoom. The base map's own lines along them are hidden (a corridor polygon,
+  `in-soi-corridor.geojson`), so the border is drawn once. Natural Earth now only draws the world's land boundaries
+  below zoom 5; its claim outline, its Assam-Arunachal line and the shared stretches with their connectors are gone.
+  The map credits "Boundary: Survey of India" and About gives the full acknowledgement, in all four languages
+  (Hindi, Tamil and Telugu under review). The rest of India's land border is unchanged (the base map's line); Sir Creek,
+  the Sundarbans and Dahagram-Angarpota are open questions with the Survey of India.
+
 - **Backups from a newer Doorprints are refused rather than half-imported** (docs/schemas README §1.1): every app and
   server reads `doorprints-backup/1` and `/2` and says "update Doorprints to import it" for a higher number. Files are
   still written as `/1`.
