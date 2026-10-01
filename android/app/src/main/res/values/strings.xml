@@ -36,7 +36,8 @@
     <string name="notif_channel_alerts_desc">When you pass a house or street you have visited before</string>
     <string name="notif_hunt_title">Hunt mode is on</string>
     <string name="notif_hunt_text">Watching for houses and streets you have visited</string>
-    <string name="notif_stop">Stop</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="notif_stop">Stop Hunt mode</string>
     <string name="notif_seen_house">You have seen this one: %1$s</string>
     <string name="notif_distance">%1$s · %2$d m away</string>
     <string name="notif_visited_before">Visited before</string>
@@ -51,11 +52,13 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">Saving and importing</string>
     <string name="notif_channel_export_desc">Shown while a copy is being saved or a backup is being read</string>
-    <string name="export_share">Share</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="export_share">Share the copy</string>
     <string name="export_working">Saving your copy…</string>
     <string name="export_done">Saved: %1$s</string>
     <string name="export_failed">The copy could not be saved: %1$s</string>
-    <string name="export_stop">Stop</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="export_stop">Stop this task</string>
     <string name="export_problem_no_space">there is not enough free space</string>
     <string name="export_problem_cannot_write">the chosen file or folder cannot be written to</string>
     <string name="export_problem_unknown">something went wrong while writing it</string>
@@ -72,7 +75,8 @@
     <string name="problem_broken">its data could not be read</string>
     <string name="problem_read_failed">it could not be read from storage</string>
     <string name="problem_write_failed">it could not be written — check free space</string>
-    <string name="export_open">Open</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="export_open">Open the copy</string>
     <string name="export_ready">Ready to share: %1$s</string>
     <string name="export_done_plain">Saved.</string>
     <string name="export_notif_saved">Your copy is saved</string>
@@ -121,15 +125,18 @@
     <string name="notif_viewing_text">Starts %1$s</string>
     <string name="notif_viewing_public">Doorprints reminder</string>
     <string name="notif_viewing_open">Open house</string>
-    <string name="notif_viewing_directions">Directions</string>
-    <string name="notif_viewing_questions">Questions</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="notif_viewing_directions">Directions to the house</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="notif_viewing_questions">Questions to ask</string>
     <string name="notif_viewing_house_gone">a house that is gone</string>
     <!-- Slice 3c, the Hunt mode reminder (2026-09-30). -->
     <string name="notif_channel_hunt_reminders">Hunt mode reminders</string>
     <string name="notif_channel_hunt_reminders_desc">Offers Hunt mode before a viewing</string>
     <string name="notif_hunt_reminder">Viewing at %1$s in %2$d min. Start Hunt mode?</string>
     <string name="notif_hunt_reminder_start">Start Hunt mode</string>
-    <string name="notif_hunt_reminder_dismiss">Dismiss</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
+    <string name="notif_hunt_reminder_dismiss">Dismiss reminder</string>
     <!-- Slice 4b, the area wake-up (2026-09-30). -->
     <string name="notif_channel_area_wakeup">Area wake-up</string>
     <string name="notif_channel_area_wakeup_desc">Offers Hunt mode when you arrive in one of your hunting areas</string>

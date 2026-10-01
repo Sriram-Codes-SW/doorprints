@@ -36,7 +36,8 @@
     <string name="notif_channel_alerts_desc">जब आप पहले देखे मकान या सड़क से गुज़रें</string>
     <string name="notif_hunt_title">हंट मोड चालू है</string>
     <string name="notif_hunt_text">आपके देखे मकानों और सड़कों पर नज़र रखी जा रही है</string>
-    <string name="notif_stop">बंद करें</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_stop">हंट मोड बंद करें</string>
     <string name="notif_seen_house">यह मकान आप देख चुके हैं: %1$s</string>
     <string name="notif_distance">%1$s · %2$d मी दूर</string>
     <string name="notif_visited_before">पहले देखा गया</string>
@@ -51,11 +52,13 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">सहेजना और आयात</string>
     <string name="notif_channel_export_desc">जब प्रति सहेजी जा रही हो या बैकअप पढ़ा जा रहा हो तब दिखता है</string>
-    <string name="export_share">साझा करें</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_share">प्रति साझा करें</string>
     <string name="export_working">आपकी प्रति सहेजी जा रही है…</string>
     <string name="export_done">सहेजा गया: %1$s</string>
     <string name="export_failed">प्रति सहेजी नहीं जा सकी: %1$s</string>
-    <string name="export_stop">रोकें</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_stop">यह काम रोकें</string>
     <string name="export_problem_no_space">पर्याप्त खाली जगह नहीं है</string>
     <string name="export_problem_cannot_write">चुनी गई फ़ाइल या फ़ोल्डर में लिखा नहीं जा सकता</string>
     <string name="export_problem_unknown">लिखते समय कुछ गड़बड़ हो गई</string>
@@ -73,7 +76,8 @@
     <string name="problem_broken">इसका डेटा पढ़ा नहीं जा सका</string>
     <string name="problem_read_failed">इसे स्टोरेज से पढ़ा नहीं जा सका</string>
     <string name="problem_write_failed">इसे लिखा नहीं जा सका — खाली जगह देखें</string>
-    <string name="export_open">खोलें</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_open">प्रति खोलें</string>
     <string name="export_ready">साझा करने के लिए तैयार: %1$s</string>
     <string name="export_done_plain">सहेजा गया।</string>
     <string name="export_notif_saved">आपकी प्रति सहेज ली गई</string>
@@ -122,15 +126,18 @@
     <string name="notif_viewing_text">शुरू: %1$s</string>
     <string name="notif_viewing_public">Doorprints रिमाइंडर</string>
     <string name="notif_viewing_open">मकान खोलें</string>
-    <string name="notif_viewing_directions">रास्ता</string>
-    <string name="notif_viewing_questions">सवाल</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_directions">मकान तक रास्ता</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_questions">पूछने के सवाल</string>
     <string name="notif_viewing_house_gone">हटाया गया मकान</string>
     <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
     <string name="notif_channel_hunt_reminders">हंट मोड रिमाइंडर</string>
     <string name="notif_channel_hunt_reminders_desc">मकान देखने से पहले हंट मोड का सुझाव</string>
     <string name="notif_hunt_reminder">%1$s में मकान देखना %2$d मिनट में। हंट मोड शुरू करें?</string>
     <string name="notif_hunt_reminder_start">हंट मोड शुरू करें</string>
-    <string name="notif_hunt_reminder_dismiss">हटाएँ</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_hunt_reminder_dismiss">रिमाइंडर हटाएँ</string>
     <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
     <string name="notif_channel_area_wakeup">इलाक़े में जगाना</string>
     <string name="notif_channel_area_wakeup_desc">जब आप अपने किसी खोज वाले इलाक़े में पहुँचें, हंट मोड का सुझाव</string>

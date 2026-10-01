@@ -201,7 +201,7 @@ class ViewingRemindersTest {
         assertEquals(Notifications.CHANNEL_VIEWINGS, n.channelId)
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         assertEquals("Doorprints reminder", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
-        assertEquals(listOf("Open house", "Directions", "Questions"), n.actions.map { it.title.toString() })
+        assertEquals(listOf("Open house", "Directions to the house", "Questions to ask"), n.actions.map { it.title.toString() })
         for (a in n.actions) assertTrue(a.title.toString(), shadowOf(a.actionIntent).isImmutable)
         assertTrue(shadowOf(n.contentIntent).isImmutable)
         // Open house and Questions open the house through the existing deep link; Directions is a geo: link.
@@ -219,7 +219,7 @@ class ViewingRemindersTest {
     fun directionsAreOfferedOnlyForAHouseWithARealPosition() {
         val v = viewing("v_00000001", startsAt = now + 25 * min)
         val approx = Notifications.viewingReminder(app, v, house.copy(locationSource = LocationSource.APPROX), now)
-        assertEquals(listOf("Open house", "Questions"), approx.actions.map { it.title.toString() })
+        assertEquals(listOf("Open house", "Questions to ask"), approx.actions.map { it.title.toString() })
         // A house that is gone: no house actions, the tap opens the app.
         val gone = Notifications.viewingReminder(app, v, null, now)
         assertEquals("Viewing at a house that is gone in 25 min", gone.extras.getCharSequence(Notification.EXTRA_TITLE).toString())

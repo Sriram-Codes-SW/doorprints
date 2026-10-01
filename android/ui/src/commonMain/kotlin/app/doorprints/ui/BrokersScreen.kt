@@ -21,6 +21,7 @@ package app.doorprints.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -301,7 +302,8 @@ fun BrokerForm(
             minLines = 3, modifier = Modifier.fillMaxWidth(),
         )
         SectionHeading(stringResource(Res.string.broker_rating))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Wraps at large text, as the house form's (Wave D: the stars grow with the font).
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             RatingRow(rating.takeIf { it > 0 }) { star -> rating = if (rating == star) 0 else star }
             TextButton(onClick = { rating = 0 }, enabled = rating > 0, modifier = Modifier.heightIn(min = 48.dp)) {
                 ButtonLabel(stringResource(Res.string.house_clear_rating))
