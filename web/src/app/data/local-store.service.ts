@@ -45,6 +45,7 @@ import {
 import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
 import {
   DEFAULT_QUESTIONS,
+  DEFAULT_QUESTIONS_SEEDED_AT,
   MAX_QUESTIONS,
   MAX_QUESTION_TEXT,
   QUESTION_TYPE,
@@ -865,8 +866,9 @@ export class LocalStore {
   }
 
   /**
-   * Seeds the bank: for each default whose id has NO record a dirty record with the text in [language] (hi, ta or te;
-   * anything else English). A tombstone counts as a record, so a default the person deleted is not brought back.
+   * Seeds the bank: for each default whose id has NO record a clean record stamped {@link DEFAULT_QUESTIONS_SEEDED_AT}
+   * with the text in [language] (hi, ta or te; anything else English; S4b-BL-90a). A tombstone counts as a record, so
+   * a default the person deleted is not brought back.
    * Returns how many were written.
    */
   async seedQuestions(language: string, now: number = Date.now()): Promise<number> {
@@ -912,11 +914,13 @@ export class LocalStore {
           type: QUESTION_TYPE,
           id: def.id,
           payload: questionToPayload(defaultQuestion(def, language)),
-          updatedAt: isoNow(now),
+          // A seed is clean and stamped DEFAULT_QUESTIONS_SEEDED_AT (S4b-BL-90a): never pushed, and whatever another
+          // device did to it wins when pulled. *Reset to defaults* is the person's own edit: now, dirty.
+          updatedAt: isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT),
           deleted: false,
           syncVersion: existing?.syncVersion ?? 0,
         },
-        true,
+        overwrite,
       );
       await db.put('records', record);
       written += 1;

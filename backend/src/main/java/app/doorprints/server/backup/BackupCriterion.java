@@ -21,6 +21,8 @@ package app.doorprints.server.backup;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.util.Set;
+
 /**
  * One criterion in the shared backup format ({@code doorprints-backup/2}, docs/11 section 5.4).
  *
@@ -49,4 +51,9 @@ public record BackupCriterion(
     public static final int MAX_WEIGHT = 3;
     public static final int MIN_SCORE = 1;
     public static final int MAX_SCORE = 5;
+    /** The ten built-in keys: always there in the apps, with or without a record. */
+    public static final Set<String> BUILT_IN_KEYS = Set.of("water", "power", "parking", "sunlight", "ventilation",
+            "noise", "security", "maintenance", "neighbourhood", "commute");
+    /** At most this many criteria in all, the built-in ones included (the apps' cap; S4b-BL-90b). */
+    public static final int MAX = 40;
 }

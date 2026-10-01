@@ -493,6 +493,9 @@ interface Repository {
         val areaNotes: Map<String, Long> = emptyMap(),
         /** Every photo's `metaUpdatedAt` by id (slice 5), 0 for one never edited: an import's meta merge, last write wins. */
         val photoMeta: Map<String, Long> = emptyMap(),
+        /** The live question and criterion records' ids, for the caps an import keeps (S4b-BL-90b). */
+        val liveQuestions: Set<String> = emptySet(),
+        val liveCriteria: Set<String> = emptySet(),
     )
 
     /** What an import actually managed to write. */

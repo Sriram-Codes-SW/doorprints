@@ -131,6 +131,7 @@ object Imports {
                     localCriteria = local.criteria, localPreferences = local.preferences, localQuestions = local.questions,
                     localViewings = local.viewings, localAreas = local.areas, localPlaces = local.places,
                     localAreaNotes = local.areaNotes, localPhotoMeta = local.photoMeta,
+                    liveQuestions = local.liveQuestions, liveCriteria = local.liveCriteria,
                 )
                 // Which houses a merge would replace, by name, for the Replace dialog. The plan is pure and a
                 // merge's needs no new ids; its updatedHouseIds are exactly the preview's updatedHouses.

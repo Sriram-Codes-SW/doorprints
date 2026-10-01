@@ -243,8 +243,7 @@ final class BackupMapper {
             return null;
         }
 
-        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
-                "maintenance", "neighbourhood", "commute");
+        var builtInKeys = BackupCriterion.BUILT_IN_KEYS;
         var key = r.getKey().id();
         var label = builtInKeys.contains(key) ? null : text(p, "label", BackupCriterion.MAX_LABEL);
 
