@@ -80,7 +80,7 @@ internal val LightScheme = lightColorScheme(
     onPrimary = Color.White,
     primaryContainer = Color(0xFFE3F0EC),    // --primary-soft
     onPrimaryContainer = Color(0xFF0B3B30),
-    secondary = Color(0xFFA86A00),           // --star
+    secondary = Color(0xFF966000),           // --star
     onSecondary = Color.White,
     // --primary-soft, not the amber star family: M3's selected chips, active nav pill and tonal fills read it.
     secondaryContainer = Color(0xFFE3F0EC),
@@ -170,7 +170,7 @@ data class DoorprintsColors(
 )
 
 internal val LightExtra = DoorprintsColors(
-    new = Color(0xFF3C5A99), shortlisted = Color(0xFF1A7A43), rejected = Color(0xFFB3261E), star = Color(0xFFA86A00),
+    new = Color(0xFF3C5A99), shortlisted = Color(0xFF1A7A43), rejected = Color(0xFFB3261E), star = Color(0xFF966000),
     taken = Color(0xFF8A5A00), notChosen = Color(0xFF5F6B66), // 5.9:1 and 5.6:1 on white (as the web)
     success = Color(0xFFE7F5ED), onSuccess = Color(0xFF1A7A43), // 4.78:1
     successBorder = Color(0xFFB5DCC4), errorBorder = Color(0xFFE8B4B0),

@@ -27,8 +27,9 @@ import kotlin.test.assertTrue
 
 /**
  * The contrast of every colour pair the screens draw, in both schemes (Wave D; WCAG 1.4.3 and 1.4.11): 4.5:1 for text
- * (the status words and the TAKEN and NOT_CHOSEN ones included, on every surface a card or a chip sits on), 3:1 for
- * icons, stars and borders that identify a control, and the map markers on the light tiles. The ratio is WCAG's, from
+ * (the status words and the TAKEN and NOT_CHOSEN ones included, on every surface a card or a chip sits on, and the
+ * star glyphs, which read like letters: S4b-BL-110, they were 4.44:1 on white), 3:1 for icons and borders that
+ * identify a control, and the map markers on the light tiles. The ratio is WCAG's, from
  * the relative luminance of the sRGB values.
  */
 class ContrastTest {
@@ -61,6 +62,8 @@ class ContrastTest {
             Check("onTertiary on tertiary", s.onTertiary, s.tertiary, text),
             Check("onSurfaceVariant on primaryContainer", s.onSurfaceVariant, s.primaryContainer, text),
             Check("onSuccess on success", x.onSuccess, x.success, text),
+            Check("star on primaryContainer", x.star, s.primaryContainer, text),
+            Check("secondary (--star) on surface", s.secondary, s.surface, text),
             Check("onWarn on warn", x.onWarn, x.warn, text),
         )
         val onSurfaces = listOf(
@@ -71,9 +74,9 @@ class ContrastTest {
         )
         for ((bgName, bg) in surfaces(s)) {
             onSurfaces.forEach { (fgName, fg) -> list += Check("$fgName on $bgName", fg, bg, text) }
-            // Graphics: the stars (always with their words or a description), the outline of fields, chips and the
-            // unchecked switch's track.
-            list += Check("star on $bgName", x.star, bg, ui)
+            // The stars (always with their words or a description) at the text minimum (S4b-BL-110).
+            list += Check("star on $bgName", x.star, bg, text)
+            // Graphics: the outline of fields, chips and the unchecked switch's track.
             list += Check("outline on $bgName", s.outline, bg, ui)
             // The switch against the page: the checked track, the unchecked track's border.
             list += Check("switch checked track on $bgName", sw.checkedTrack, bg, ui)
@@ -117,6 +120,9 @@ class ContrastTest {
         assertEquals(Color(0xFF5F6B66), LightExtra.notChosen)
         assertEquals(Color(0xFFF2C265), DarkExtra.taken)
         assertEquals(Color(0xFFB4BEB9), DarkExtra.notChosen)
+        assertEquals(Color(0xFF966000), LightExtra.star) // --star (S4b-BL-110)
+        assertEquals(Color(0xFFF2B84B), DarkExtra.star)
+        assertEquals(LightExtra.star, LightScheme.secondary)
         // The markers are the light theme's colours (the tiles stay light).
         assertEquals(LightExtra.taken, Color(MarkerColors.TAKEN))
         assertEquals(LightExtra.notChosen, Color(MarkerColors.NOT_CHOSEN))

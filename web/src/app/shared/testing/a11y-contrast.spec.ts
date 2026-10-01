@@ -45,7 +45,8 @@ const PAIRS: Pair[] = [
     ['error-text', s, TEXT, 'field errors'],
     ['success-text', s, TEXT, 'saved'],
     ['warn-text', s, TEXT, 'caution text'],
-    ['star', s, UI, 'rating stars (a glyph, not text)'],
+    // A glyph, but read like a letter: held to the text minimum (S4b-BL-110; it was 4.44:1 on white).
+    ['star', s, TEXT, 'rating stars'],
     ['focus', s, UI, 'focus ring'],
     ['border-strong', s, UI, 'form control borders'],
     ['primary', s, UI, 'selected borders, icons'],
@@ -58,6 +59,7 @@ const PAIRS: Pair[] = [
   ['on-header', 'header-bg', TEXT, 'the header'],
   ['on-header-alert', 'header-bg', UI, 'sync-problem mark on the header'],
   ['focus', 'primary-soft', UI, 'focus ring on a selected chip'],
+  ['star', 'primary-soft', TEXT, 'star on a selected Compare chip'],
   ['error-text', 'error-bg', TEXT, 'error box'],
   ['success-text', 'success-bg', TEXT, 'success box'],
   ['warn-text', 'warn-bg', TEXT, 'caution box'],
