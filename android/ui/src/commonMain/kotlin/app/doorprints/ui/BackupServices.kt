@@ -125,6 +125,12 @@ interface ExportServices {
     fun screenVisible(visible: Boolean)
 
     /**
+     * Whether a run that ends while the screen is away posts a notification (Android); where it does not (the iPhone,
+     * S4b-BL-81) the screen asks for no notification permission and shows the result next time.
+     */
+    val postsResults: Boolean get() = true
+
+    /**
      * Returns the function that gives the options the screen starts from, read at each call: this phone's current UTC
      * offset and time, the app's language, everything included.
      */
@@ -166,6 +172,9 @@ interface ImportServices {
 
     /** The screen is on screen (started); see [ExportServices.screenVisible]. */
     fun screenVisible(visible: Boolean)
+
+    /** See [ExportServices.postsResults]. */
+    val postsResults: Boolean get() = true
 
     /**
      * Returns the function that opens the system's file picker for a backup, at the weekly backup [folder] when one is
