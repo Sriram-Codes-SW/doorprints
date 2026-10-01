@@ -487,10 +487,10 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
     /**
      * Settings > Viewings (docs/11 5.8, slice 3b-1): an upcoming, a missed and a done viewing at a fixed clock, English
-     * and Hindi light only, to keep the image set small.
+     * in both themes (the dark one since Wave D) and Hindi light only, to keep the image set small.
      */
     @Test fun viewings() {
-        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        assumeTrue(lang == "en" || (lang == "hi" && !dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         val now = 1_760_100_000_000
         runBlocking {

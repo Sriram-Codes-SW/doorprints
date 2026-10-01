@@ -1172,4 +1172,6 @@
     <string name="houses_filters_clear">लागत के फ़िल्टर हटाएँ</string>
     <string name="import_new_brokers">नए ब्रोकर</string>
     <string name="import_updated_brokers">जिन ब्रोकरों का बैकअप में नया रूप है</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
+    <string name="house_loading">मकान खुल रहा है…</string>
 </resources>

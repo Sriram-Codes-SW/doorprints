@@ -302,8 +302,7 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
     @media (pointer: coarse) {
       .banner summary {
         min-height: var(--target);
-        display: flex;
-        align-items: center;
+        padding-block: var(--space-2);
       }
     }
   `,
