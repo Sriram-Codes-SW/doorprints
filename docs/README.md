@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.56 |
-| Date | 2026-09-29 |
+| Version | 0.57 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -68,6 +68,7 @@
 | 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
+| 0.57 | 2026-10-01 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
 
 ---
 
@@ -99,6 +100,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 13 | [Release security checklist](13-release-security-checklist.md) | The manual part of the release security gate: the one-hour list per release (web WSTG-lite, Android MASTG-lite, MobSF dynamic, the server, the OWASP Top 10 for LLM applications, the DPDP Act and Play data safety, India's boundaries), the deep self-run pentest's scope, and a release record to copy; the automated checks are in [06](06-test-plan.md) §11.1 | Lead, with DevSecOps |
 | 14 | [Lead backlog and handoff](14-lead-backlog-and-handoff.md) | Where things stand, open pull requests, the ordered next steps, parked items and owner rules still in force, for a new session to continue from | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
+| – | [ops/soi-review-pack.md](ops/soi-review-pack.md) | For the Survey of India's reviewers: the OVSF/1M/7 data used, what was done to it (selection of whole vertex runs, exact re-projection, 7-decimal rounding), how to check it with `tools/soi-verify.py`, the size options and the questions for SoI | Lead |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json`: the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
