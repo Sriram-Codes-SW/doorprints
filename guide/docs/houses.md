@@ -39,14 +39,19 @@ price, the number of bedrooms, the area name, the link and a phone number, and t
 to check. Nothing is fetched from the portal's site, and nothing is saved until you tap **Save**. If you shared the
 same listing before, Doorprints offers to open the house you already have.
 
+If the listing names the area, **Find "<area>" on the map** takes you roughly there; then put the house on its
+exact spot. The lookup asks the phone's address finder (on the website, OpenStreetMap's) only when you tap it.
+
 ## Keep notes on a house
 
 Open a house from the list or the map. There you can:
 
-- set the **Status**: **New**, **Shortlisted** or **Rejected**;
+- set the **Status**: **New**, **Shortlisted**, **Rejected**, **Taken** (the house you chose) or **Not chosen** (see
+  [Moving in](#moving-in));
 - give **Your rating**, from one to five stars;
-- fill in the price, **BHK**, **Carpet area**, address, contact and **Listing link** (the web address of an advert for
-  the house);
+- fill in the price, **BHK**, **Carpet area**, the **Floor** (0 is the ground floor, -1 a basement), address, contact and
+  **Listing link** (the web address of an advert for the house). If another saved house is within about 30 m with the
+  same BHK and floor, Doorprints says it may be the same flat (two brokers often show the same one);
 - under **Cost**, what the advert does not say at first: the deposit (in rupees or months of rent), the maintenance
   and whether the rent includes it, the brokerage, the lock-in and notice periods, the date the house is free from,
   your offer and the price you agreed. Doorprints then shows the **monthly cost**, the **money to move in** and the
@@ -57,7 +62,8 @@ Open a house from the list or the map. There you can:
   **Settings > Brokers**, where each broker has an agency, fee terms, notes, a rating, a **Call** button and a list of the
   houses they showed you;
 - add up to 30 **Rooms**: for each, its type, name, length and width, a condition from one to five stars and a note. Doorprints
-  shows each room's area and the total; switch between feet and metres with **Length units** in **Settings**;
+  shows each room's area and the total; **Move up** and **Move down** change their order; switch between feet and metres
+  with **Length units** in **Settings**;
 - keep a list of **Questions to ask** at the viewing: **Add the usual questions** brings the standard ones that fit the house (for a rent: maintenance,
   deposit, brokerage, lock-in, water, power, parking, floor) and fills in what you already noted under **Cost**; write the answer as you hear it, or
   **Skip** one. Change the standard list, or add your own, in **Settings > Questions**;
@@ -66,7 +72,9 @@ Open a house from the list or the map. There you can:
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;
-- add photos: **Add photos** on the website, **Take photo** or **From gallery** on Android. Save the house first.
+- add photos: **Add photos** on the website, **Take photo** or **From gallery** on Android. Save the house first. Each
+  photo's **Details** (on Android **Room, tags and caption**) say which room it shows, add tags such as **Damp**,
+  **Crack**, **Meter** or your own words (up to ten), and a caption.
 
 Doorprints gives each house an overall **score** out of 5. It works this out from your rating and the checklist. Open **Settings > Criteria**
 to choose what matters: set each item to Ignore, Low, Medium or High, mark **must-haves** with a minimum score, add your own items and choose
@@ -81,13 +89,36 @@ Remember to choose **Save**.
 
 **Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history.
 
+## Moving in
+
+When you have chosen a house, set its status to **Taken**. Only one house can be Taken: choosing another puts the
+first back to Shortlisted. Doorprints then asks **Mark the other houses Not chosen?**: **Mark them Not chosen** or
+**Keep them**. Nothing is deleted either way.
+
+A Taken house has a **Moving in** card:
+
+- **Start moving in** adds the usual checklist in your language: the rental agreement signed and registered, police
+  verification, ID copies exchanged, the deposit receipt, the meter readings and the keys. Tick each one when it is
+  done, change or remove it, or add your own (up to 30);
+- the **Move-in date** and **Move-in notes**;
+- the **Condition record**: the photos tagged **Move-in**, by room, with their date and caption, to keep for when the
+  deposit is returned. **Add a photo** takes one with the Move-in tag already chosen.
+
+**Close this hunt** marks all the other houses you have not rejected as **Not chosen** and offers to **Save a copy**
+of everything. Your houses stay in Doorprints.
+
 ## Find a house again
 
 1. Type in **Search houses** (on Android: **Search name, street, notes**). The list gets shorter as you type.
 2. To show only some houses, tap a status chip (a small button), such as **Shortlisted**.
-3. To put the best score or the lowest price first, use **Sort by**.
+3. To set a price range, open **Filter by cost** (on Android under **Filters**): the monthly cost, the money to move
+   in, or the cost per sq ft, from and up to an amount in rupees. A house whose number is not known is left out while
+   a range is set. **Clear cost filters** shows them all again.
+4. To put the best score or the lowest price first, use **Sort by**.
 
-The search looks at the name, address, street, locality and notes. The website also looks at the contact name.
+The search looks at the name, address, street, locality, notes and contact name, and also at the broker, the rooms,
+the answers to your questions, the area notes, the move-in list and the floor (type "floor 3", "ground floor" or
+"basement 1").
 
 <img src="images/web-search.png" width="300" alt="The website's house list after searching for Koramangala: one house shown of four"> <img src="images/web-phone-list.png" width="300" alt="The house list on a phone with the Shortlisted filter chosen: two shortlisted houses shown of four">
 
