@@ -3,16 +3,17 @@
 | Field | Value |
 |---|---|
 | Document | Statement for the Survey of India's reviewers: the data used, what was done to it, how to check it, and our questions |
-| Version | 0.1 |
+| Version | 0.2 |
 | Date | 2026-10-01 |
 | Author | Claude (Code), lead, for the owner (Sriram, maintainer of Doorprints) |
-| Status | Draft, not sent. Branch `feat/soi-boundary-data`; the data file is built but not yet shown in the apps |
+| Status | Draft, not sent. Branch `feat/soi-boundary-data`; since S4b-BL-99 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-10-01 | Claude (Code), lead | First version, after the Survey of India's reply of 2026-10-01 ([soi-boundary-data-request.md](soi-boundary-data-request.md): no prior permission needed; no alteration or modification of the dataset; acknowledgement; National Geospatial Policy 2022). Pipeline `web/scripts/geo/build_in_boundaries_soi.py`, checker `tools/soi-verify.py`, data `web/public/geo/in-boundaries-soi.json`. |
+| 0.2 | 2026-10-01 | Claude (Code), lead | The apps draw the compact file (S4b-BL-99): §3 says what is shipped and how the apps use it (decoded unaltered, MapLibre's screen generalisation only, the corridor mask, the credit); §4's rebuild names the selection reference (`--ne`, commit 52453f7). |
 
 ## 1. What we did to your data, step by step
 
@@ -64,11 +65,11 @@ record, part and vertex range) is kept as a test fixture, `web/scripts/geo/testd
 
 All of Jammu and Kashmir and Ladakh, including the areas under the occupation of Pakistan and China, and all of
 Arunachal Pradesh are inside the line, because the line is your polygons' own edge (Ladakh's run reaches 37.088 N and
-80.345 E). The file is `web/public/geo/in-boundaries-soi.json` (sha256 `d12d8ed8…20dac6`). The apps (the web app at
+80.345 E). **What the apps ship (since 2026-10-01, Doorprints S4b-BL-99)** is the compact selection of section 5, row 4: the runs of Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh (6 `claim` runs, 28,751 vertices) and the Assam-Arunachal Pradesh line (1 `state` run, 8,252 vertices), each run's vertices encoded as a polyline at 7 decimals (224,099 bytes). The apps decode every vertex back to the same 7-decimal value and hand all of them to the map library; the only generalisation is the map library's own for the screen (at each zoom it draws a subset of your vertices, unchanged, as it cuts the lines into tiles). Inside the app, a corridor 5.5 km either side of these lines (derived from them, never drawn and never offered as data; compare question 11) hides the base map's own lines there, so your line is the only one. The rest of India's land border is still drawn by the base map (OpenStreetMap) until your answers to questions 9 and 10. The file is `web/public/geo/in-boundaries-soi.json` (sha256 `d12d8ed8…20dac6`). The apps (the web app at
 https://doorprints.web.app, the Android app and the iPhone app in progress) will draw it as India's boundary over the
 base map, at every zoom, the base map's own lines for India's border hidden, with **"Boundary: Survey of India"** on
 the map and the line in section 7 in the About screen, the NOTICE file and the README. The apps do not offer the data
-for download on its own. Until that change is made the apps keep their current outline.
+for download on its own. Since 2026-10-01 they do so with the compact file (below).
 
 ## 4. How to check it
 
@@ -95,7 +96,7 @@ OK: every shipped vertex is a source vertex, in order, none added or removed, wi
 ```
 
 Any moved, added, removed or reordered vertex makes it print `VIOLATION` and exit with status 1. To rebuild the file:
-`python3 web/scripts/geo/build_in_boundaries_soi.py File_962036_download.zip out.geojson --report report.json`
+`git show 52453f7:web/public/geo/in-boundaries.geojson > ne-reference.geojson` (the selection reference as it was), then `python3 web/scripts/geo/build_in_boundaries_soi.py File_962036_download.zip out.geojson --ne ne-reference.geojson --report report.json` (add `--encoding polyline7 --states "JAMMU AND KASHMIR,LADAKH,HIMACHAL PRADESH,UTTARAKHAND,SIKKIM,ARUNACHAL PRADESH"` for the compact file the apps ship)
 (the output is byte-identical on every run).
 
 ## 5. The size problem

@@ -192,21 +192,22 @@ JDK 21 and the Android SDK (compileSdk 37): `cd android && ./gradlew assembleDeb
 Both apps draw OpenFreeMap vector tiles (OpenStreetMap data, ODbL, credited in the map's attribution) with
 OpenFreeMap's "liberty" style. **India's boundaries are shown as the Government of India depicts them**, the only view,
 because every user is in India: all of Jammu and Kashmir and Ladakh and Arunachal Pradesh inside India, one solid
-outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.md) ADR-22). That outline comes from
-[Natural Earth](https://www.naturalearthdata.com/) (public domain; `natural-earth-vector` commit `ca96624`, India
-point of view), bundled as `web/public/geo/in-boundaries.geojson` and `android/app/src/main/assets/geo/in-boundaries.geojson`
-and built by `web/scripts/geo/build_in_boundaries.py`. Public-domain data needs no credit; the web app credits
-"Natural Earth" in the map attribution anyway. Both apps apply the same rules. The outline alone draws India's whole border with China (the
-base map's own pieces of that line are left out). Where the base map's tiles draw India's border with Nepal, Bhutan
-or Myanmar themselves, or in the Wakhan, the outline is drawn only in the country view and the tiles' more precise
-line takes over from zoom 5, so the border is one line; the Assam-Arunachal Pradesh state line, which the tiles leave
-undrawn, is drawn from zoom 5 from the same file (branch `fix/india-boundary-lines`, PR #16, not yet deployed). Known
-limits: the outline is typically 1.5-3 km off the true line, up to about 5 km in a few mountain stretches, visible
-only when zoomed into the Himalaya; at street zoom a hand-over to the tiles' line shows as a small step, at
-Sikkim's two tri-junctions as a small loop (about 13 x 3 km at Nepal-China-India, on glaciers and only from about
-zoom 10; about 2 km at Doklam), and at two hand-overs (Jomotsangkha and Longwa) as the tiles' line running on for
-about 9 km and 3 km from zoom 11; and while closer tiles load, or offline without them,
-those stretches show no line from zoom 5 (ADR-22 *Consequences*).
+outline, no Line of Control or Line of Actual Control ([docs/03](docs/03-design.md) ADR-22). Since 2026-10-01
+(S4b-BL-99) India's northern and north-eastern boundary (Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand,
+Sikkim, Arunachal Pradesh) and the Assam-Arunachal Pradesh state line are the **Survey of India's** own lines, at every
+zoom: *Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration.
+Copyright Survey of India, Government of India.* The file (`web/public/geo/in-boundaries-soi.json`, the same bytes in
+`android/app/src/main/assets/geo/`) is built by `web/scripts/geo/build_in_boundaries_soi.py`, checked against the
+download by `tools/soi-verify.py` ([docs/ops/soi-review-pack.md](docs/ops/soi-review-pack.md)), and is not under the
+app's licence (NOTICE). Every map shows **"Boundary: Survey of India"** in its credits (on Android in the "i" dialog),
+and About repeats the acknowledgement. The base map's own lines along it are hidden, so the border is one line. The
+rest of India's land border is the base map's (OpenStreetMap) from zoom 5; below zoom 5 the world's land boundaries
+come from [Natural Earth](https://www.naturalearthdata.com/) (public domain, India point of view;
+`web/public/geo/in-boundaries.geojson`, built by `web/scripts/geo/build_in_boundaries.py`; the web credits "Natural
+Earth" too). Known limits: in the map tile that holds an end of the Survey of India line, the base map's Nepal or
+Bhutan line may run on beside it for a few km (they coincide to within tens of metres); west of Tawang the base
+map's Bhutan-China line ends a few km from ours, a small loop; Sir Creek, the Sundarbans and Dahagram-Angarpota are
+open questions with the Survey of India (ADR-22).
 
 ## Deploy for free
 

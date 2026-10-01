@@ -83,11 +83,14 @@ OSM Liberty and the Mapbox Open Styles: copyright (c) 2014, Mapbox, all rights r
   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The Natural Earth data in web/public/geo and android/app/src/main/assets/geo is in the public domain
-(https://www.naturalearthdata.com/about/terms-of-use/).
+The Natural Earth data in web/public/geo and android/app/src/main/assets/geo (in-boundaries.geojson and
+in-held-areas.geojson) and web/scripts/geo/testdata/ne-reference-excerpt.geojson is in the public domain
+(https://www.naturalearthdata.com/about/terms-of-use/). in-soi-corridor.geojson in the same folders is derived from
+the Survey of India's lines below, as a mask the apps use and never draw.
 
 Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright
-Survey of India, Government of India. This applies to web/public/geo/in-boundaries-soi.json and to the excerpt
+Survey of India, Government of India. This applies to web/public/geo/in-boundaries-soi.json, its identical copy
+android/app/src/main/assets/geo/in-boundaries-soi.json (bundled by the Android and iPhone apps) and the excerpt
 web/scripts/geo/testdata/soi-fixture.json: they hold the Survey of India's own vertices (selected, and re-projected to
 longitude and latitude only; docs/ops/soi-review-pack.md), they are not part of Doorprints and not under the AGPL or
 the permissions above, and they are used on the Survey of India's conditions (no alteration, acknowledgement).

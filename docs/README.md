@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.57 |
+| Version | 0.58 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -69,6 +69,7 @@
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
+| 0.58 | 2026-10-01 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-99, branch `feat/soi-boundary-data`): 02 v0.47 (RR-16), 03 v0.57 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.87 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.103 (S4b-BL-99; S4b-BL-10), 14 v0.67, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.2, NOTICE, the root and web READMEs, the guide, the CHANGELOG. |
 
 ---
 
