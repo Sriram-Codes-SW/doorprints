@@ -55,7 +55,8 @@ changed it after you deleted it. She can also import your update on the website 
 1. On the website, open **Your data** and find **Import a backup**. On Android or iPhone, open **Settings**, then
    **Import a backup**.
 2. Choose **Choose a backup file**. (On a phone you can also open the file from another app, such as WhatsApp or
-   Files, and choose Doorprints.)
+   Files, and choose Doorprints.) If you installed the website on a computer (Chrome or Edge), you can also
+   double-click a Doorprints backup (`.zip`) to open it in **Import a backup**.
 3. Doorprints checks the file and shows **What this would change**. Nothing changes yet.
 4. Choose how to import:
     - **Merge with what I have:** a house already on this phone is updated only if the backup's version is newer.

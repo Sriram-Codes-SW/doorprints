@@ -21,6 +21,7 @@ import indexHtml from '../index.html' with { loader: 'text' };
 import aboutHtml from '../../public/about.html' with { loader: 'text' };
 import robotsTxt from '../../public/robots.txt' with { loader: 'text' };
 import sitemapXml from '../../public/sitemap.xml' with { loader: 'text' };
+import { IMPORT_ROUTE } from './core/launch-files.service';
 import manifestText from '../../public/manifest.webmanifest' with { loader: 'text' };
 import firebaseJson from '../../firebase.json';
 import { routes } from './app.routes';
@@ -216,6 +217,15 @@ describe('web manifest', () => {
     expect(sizes).toContain('192x192');
     expect(sizes).toContain('512x512');
     expect(manifest.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true);
+  });
+
+  // S4b-BL-108: the installed app on a computer offers to open a Doorprints backup (a ZIP) and lands on Your data,
+  // where Import a backup is; relative like start_url, so a sub-path deployment works too. ZIP only: a bare data.json
+  // stays a choice in the picker, not something the system hands every JSON file to.
+  it('opens a .zip backup on Your data (file_handlers)', () => {
+    expect(manifest.file_handlers).toEqual([{ action: './data', accept: { 'application/zip': ['.zip'] } }]);
+    expect(`/${manifest.file_handlers[0].action.replace(/^\.\//, '')}`).toBe(IMPORT_ROUTE);
+    expect(routes.some((r) => r.path === IMPORT_ROUTE.slice(1))).toBe(true);
   });
 
   it('is served with the manifest media type', () => {
