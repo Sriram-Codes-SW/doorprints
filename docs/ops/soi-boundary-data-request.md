@@ -175,7 +175,7 @@ inter-state areas. The India outline is the union of the state polygons' outer e
    **Ask the Survey of India (a second short question, after its answer to the first)**: is a re-projection from the
    database's LCC to WGS 84 longitude/latitude, at full precision, an alteration? Until it answers, nothing is converted.
 2. **Size.** 1.7 million vertices for the state layer alone is tens of MB as GeoJSON text (the current outline is 415 KB), far
-   over the repository rule and the app size budget, and the district layer is 6 MB of vertices more than three times larger. Lossless
+   over the repository rule and the app size budget, and the district layer (5.7 million vertices) is more than three times larger. Lossless
    cannot be small here. P3 must choose with the owner: (a) ask whether extracting *runs of unchanged vertices* (for
    example the external land boundary only, which drops the coastline's detail but changes no vertex) is allowed; (b) ask
    whether a generalised *data file* (not only generalisation on the screen) is allowed, which question 3 of the letter did not
