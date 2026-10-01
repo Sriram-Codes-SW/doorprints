@@ -69,7 +69,6 @@ data class PlatformFeatures(
             copiesAndImports = false,
             weeklyBackup = false,
             inAppLanguage = false,
-            areaWakeup = false,
         )
     }
 }
