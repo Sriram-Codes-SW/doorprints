@@ -3,15 +3,16 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.4 |
-| Date | 2026-09-29 |
+| Version | 0.5 |
+| Date | 2026-10-01 |
 | Author | Claude (Code), lead |
-| Status | **Sent** by the owner on 2026-09-28 22:11 UTC (29 September, 03:41 IST) to `mtr.soi@gov.in`, with the three web map screenshots; awaiting the reply |
+| Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.5 | 2026-10-01 | Claude (Code), lead | **The reply came** (owner message of 2026-10-01; Gmail thread "Re: Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source app", from `mtr.soi@gov.in`, 2026-10-01 04:44 UTC, copied to the NGDC, NGDR & UGI Directorate): the conditions, what they change in the build, and the plan P0..P6 (new section *The reply and the plan*, with a follow-up letter to send). |
 | 0.4 | 2026-09-29 | Claude (Code), lead | **Sent** by the owner (2026-09-28 22:11 UTC) to `mtr.soi@gov.in` with `map_india_z4.png`, `map_kashmir_z6.png` and `map_arunachal_z7.png` attached (checked in the owner's Sent folder). The two links show the right addresses as text; their targets still pass through Google's redirect (the connector's wrapping), which after about a day shows Google's redirect notice before the site. No follow-up needed for that. |
 | 0.3 | 2026-09-29 | Claude (Code), lead | Owner request to do the whole process (email access given): the portal read on 2026-09-28. **No account is needed** for the free database (its FAQ: free to all users, downloadable without registration from *Quick Access*); the download dialog asks for a CAPTCHA and a tick-box, which the owner does. Registration, if ever wanted, needs the owner's mobile OTP and an ID card (PDF) and SoI's approval, so it was not done. Contact found: The Director, NGDR & UGI Directorate (`mtr.soi@gov.in`). The letter is a **Gmail draft** in the owner's account (not sent), with product OVSF/1M/7 named; the web map screenshots were handed to the owner to attach. Steps rewritten to match. |
 | 0.2 | 2026-09-29 | Claude (Code), lead | Owner request: steps for the web and the Android app. The letter names both apps (web address, Android package `app.doorprints`) and the iOS app to come (CMP-8), so one permission covers all three; the repository is public, so the source-code sentence is no longer conditional; new *Steps* section with what to attach. |
@@ -63,6 +64,84 @@ its byte-identical Android copy, `android/app/src/main/assets/geo/in-boundaries.
    date. A yes, or a licence that clearly allows it, starts the rebuild of `in-boundaries.geojson` from SoI's data
    for both apps at once (the files stay byte-identical), with the attribution SoI asks for on both maps, then
    TC-M-25 on the live site and on a phone. A no keeps Natural Earth, with SoI's data as the reference only.
+
+## The reply and the plan
+
+### What the Survey of India wrote (2026-10-01, 04:44 UTC, from `mtr.soi@gov.in`, Team Online Maps Portal, NGDR & UGI Directorate, Dehradun)
+
+1. "There is **no requirement to obtain prior permission** from Survey of India for the use of Survey of India
+   Administrative Database." It "applies to the SoI Administrative Boundary Database only" (not to other SoI products).
+2. "**No alteration or modification to the Survey of India dataset is permitted.**"
+3. "**Due acknowledgement to Survey of India** should also be provided in the publication for the use of the data."
+4. "You may accordingly proceed with the publication, subject to the above conditions and **National Geospatial Policy
+   2022 Guidelines**."
+
+So the question of the letter is answered (no permission needed, no licence fee), with three conditions: unaltered data,
+acknowledgement, and the National Geospatial Policy 2022 guidelines. This is the owner's correspondence, not legal
+advice; the reply is the record to cite in [10](../10-sprint-log.md) S4b-BL-10 and [03](../03-design.md) §11.1.
+
+### What it changes in the build (the part that needs care)
+
+The current outline is **not** a file that could be swapped for SoI's data. `web/scripts/geo/build_in_boundaries.py`
+builds it from Natural Earth by cutting it with claim boxes, simplifying, cutting "shared stretches" out of it where
+the base map's own tile line is more precise (S4b-BL-11, -16, -17) and joining the pieces with short connectors; the
+held-areas polygon (`in-held-areas.geojson`) is derived the same way. Every one of those steps **alters** a boundary
+dataset. With SoI's data they are not allowed. The rule for SoI's data is therefore:
+
+- **Ship SoI's geometry exactly as SoI published it:** the same vertices in the same order and the same attributes, no
+  simplification, no moving, joining, cutting, clipping, buffering or "correcting" of any line, no added connector.
+- **Allowed without asking (our reading, to be confirmed by question 1 below):** a lossless change of container
+  (shapefile to GeoJSON or another text/binary format) with the coordinates written at the source precision; lossless
+  compression (gzip or brotli by the host, deflate inside the APK and the iOS bundle); a script that only *selects* whole
+  features. Not allowed: a re-projection that moves the numbers (check the shapefile's `.prj`; if it is not WGS 84,
+  ask first), dropping vertices, rounding coordinates.
+- The base map's own boundary lines near India are **not** SoI data, so the app may hide them (as it does now by rule,
+  [03](../03-design.md) ADR-22); with SoI's line as the one line, the "shared stretch" machinery is not needed and is
+  retired rather than adapted.
+- SoI's data in the repository is **not** under the AGPL: `NOTICE` and the app's About page say so, name the Survey of
+  India, and keep the conditions above next to the file.
+
+### The plan
+
+| Step | Who | What | Done when |
+|---|---|---|---|
+| P0 | Owner | Download OVSF/1M/7 as in *Steps* above (CAPTCHA and tick-box are yours), keep the ZIP outside the repository, and **attach it in a session**. Note the product's date/version on the portal page and the file name. Optionally send the follow-up letter below first (it settles questions 1-4; the safe default holds if you do not). | The ZIP is in the session |
+| P1 | Claude | Inspect without changing anything: CRS (`.prj`), feature count, attributes, vertex count, bounding box, size; check the extent against ADR-22 (all of Jammu and Kashmir and Ladakh with the areas Pakistan and China hold, and all of Arunachal Pradesh, inside India) and measure the old Natural Earth outline's offset from it (RR-16 method, [02](../02-threat-model.md)). If SoI's data lacks something ADR-22 needs, say so; we do not add to it. Record the sha256 of the ZIP and of each extracted file. | A short findings note in [10](../10-sprint-log.md) S4b-BL-111 |
+| P2 | Claude | Read the **National Geospatial Policy 2022** and its guidelines (the reply makes them a condition) and write a clause table (what applies to a free app showing a boundary, what we do) into [03](../03-design.md) §11.1. | The table is in §11.1 |
+| P3 | Claude | Design change to ADR-22 (an ADR-22 amendment): draw SoI's external boundary, unaltered, at every zoom; hide the base map's country lines wherever they border India (by the tiles' own attributes); decide, with the owner, how the held-areas rule works without a derived polygon (for example, the mask is SoI's own India polygon used read-only as a filter, which question 2 below asks about). Size budget: lossless text of the whole-country outline plus state lines must fit the repository rule (few, small binaries) - measure in P1; if it is large, ship only the features needed (whole features, no editing) and say which. | ADR-22 amended; the owner agrees |
+| P4 | Claude | Build: `web/scripts/geo/build_in_boundaries_soi.py` (selection and container change only, deterministic, prints the sha256 of what it read and wrote); `web/public/geo/in-boundaries.geojson` and its byte-identical Android copy (iPhone via the shared copy) replaced; the sha256 pinned in `IndiaBoundaryDataTest`; a test that the shipped coordinates are exactly the source's (a fixture of a few hundred vertices cut from the real file, listed in the test); the old Natural Earth script and `find_shared_stretches.py` removed with their SHARED lists; web `india-boundaries.ts`, Android `IndiaViewRules.kt` and the iPhone map follow the amended rules, with their tests. | Tests green on web, Android, iPhone compile |
+| P5 | Claude, owner | **Acknowledgement:** "Boundary: Survey of India" (or the wording SoI prefers) in the map attribution on web, Android and iPhone (replacing "Natural Earth"), in the About page / `NOTICE` / README, and in the guide (four languages). **Re-run TC-M-25** on the live site and on phones, TC-M-26 after the web deploy, and the iPhone check on a device. | TC-M-25/26 pass; the owner signs off |
+| P6 | Claude | Close the records: [02](../02-threat-model.md) RR-16 (offset gone), [03](../03-design.md) §11.1 and ADR-22, [06](../06-test-plan.md), [10](../10-sprint-log.md) S4b-BL-10 done and S4b-BL-50 closed, [14](../14-lead-backlog-and-handoff.md) §6 and N11, `CHANGELOG`. A standing item: when SoI publishes a revised boundary, repeat P1-P5 (add it to the release checklist). | Docs updated |
+
+Order: after the stacked pull requests are merged and the manual list (N15) has started, because P3-P5 touch the same map
+code on all three stacks. P0 can happen any time, and P1-P2 need no code.
+
+### Follow-up letter (optional; the owner sends it, as the first letter; not sent by a session)
+
+> **Subject:** Re: Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source
+> app (to `mtr.soi@gov.in`, copy the same officers)
+>
+> Dear Sir or Madam,
+>
+> Thank you for your reply of 1 October 2026. We will use the Administrative Boundary Database without alteration and
+> will acknowledge the Survey of India on the map and in the app, and we will follow the National Geospatial Policy 2022
+> guidelines. So that we do not alter the data by mistake, may we confirm four points?
+>
+> 1. Converting the shapefile to another file format (for example GeoJSON), with every coordinate and attribute kept as
+>    published, and compressing the file without loss, is not an alteration. Is that right?
+> 2. Using only whole features of the database (for example the outline of India and the state boundaries), and
+>    using the India polygon only to decide where the app hides other maps' lines, without changing the polygon, is not an
+>    alteration. Is that right?
+> 3. A map library draws the data at lower detail when the map is zoomed out (it does this on the screen only; the
+>    file is not changed). Is that acceptable?
+> 4. Is "Boundary: Survey of India" on the map and in the app's About page the acknowledgement you want, and should it
+>    name the product (OVSF/1M/7) and the version or date of the data?
+>
+> Yours faithfully,
+> [name, address, phone, date]
+
+Until an answer comes, the safe default above holds (container change and lossless compression only; whole features
+only; acknowledgement as in P5).
 
 ## Draft
 

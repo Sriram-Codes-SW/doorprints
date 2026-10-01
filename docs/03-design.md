@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.57 |
+| Version | 0.58 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -68,6 +68,7 @@
 | 0.54 | 2026-09-30 | Claude (Code), lead | Slice 3a of ADR-28 ([10](10-sprint-log.md) §13.23): `house.answers jsonb` (Flyway V10) in §6.1 and `answers` on `HouseDto` in §9; questions are `record` rows of type `question`; `GET /api/export` writes `/2` when the server holds a question or a house with answers. |
 | 0.55 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 of ADR-28 ([10](10-sprint-log.md) §13.24): `viewing` is a record type; `/api/import` and `/api/export` carry a `viewings` list and write `/2` when the server holds a live viewing. |
 | 0.56 | 2026-09-30 | Claude (Code), lead | Slice 4a of ADR-28 ([10](10-sprint-log.md) §13.27): `area`, `place` and `areanote` are record types; `/api/import` and `/api/export` carry `areas`, `places`, `areaNotes` and write `/2` when the server holds any. |
+| 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
@@ -933,6 +934,15 @@ records the owner's and the team's reading of the guidelines, not legal advice.
 
 Section 2(2) of the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's
 maps; ADR-22's reason) still applies alongside these guidelines.
+
+**The Survey of India's reply (2026-10-01).** The Online Maps Portal team (NGDR & UGI Directorate) answered the letter of
+2026-09-28: no prior permission is required for its Administrative Boundary Database (that database only); no alteration
+or modification of the dataset is permitted; due acknowledgement is to be given in the publication; the use is subject to
+the National Geospatial Policy 2022 guidelines. The consequence for ADR-22 is that the outline built from Natural Earth
+(cut by claim boxes, simplified, joined to the base map's lines) is a stop-gap: the Survey of India's own file can only be
+shipped as published, and the base map's lines near India are hidden instead of joined. The plan is
+[ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5 (P0..P6), [10](10-sprint-log.md) S4b-BL-111. The
+clause table for the National Geospatial Policy 2022 guidelines goes here once P2 has read them.
 
 ### 11.2 OpenFreeMap's public tiles and offline areas (S4b-FR-6)
 
