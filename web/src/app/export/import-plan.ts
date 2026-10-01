@@ -21,6 +21,7 @@ import { BUILT_IN_KEYS, MAX_CRITERIA } from '../shared/scoring';
 import { MAX_QUESTIONS } from '../shared/question';
 import type { BackupBroker, BackupCriterion, BackupData, BackupHouse, BackupPhoto, BackupQuestion, BackupVisit, BackupViewing } from './backup-export';
 import { photoEntry } from './photo-names';
+import { MAX_FLOOR, MIN_FLOOR } from '../data/records';
 
 /**
  * The pure part of importing a backup on the website (S4b-BL-75): the TypeScript port of Kotlin's `ImportPlan`
@@ -112,6 +113,12 @@ export interface ImportPreview {
   updatedAreaNotes: number;
   updatedPhotoMeta: number;
   removedHouses: number;
+  /**
+   * Houses the import writes whose `floor` is outside -5..200 (S4b-BL-104 d): the store reads such a floor as unknown,
+   * so the house lands with its floor blank and the preview warns. The server refuses the file; a device stays tolerant.
+   * A note only: not part of `isEmpty` or `overwrites`.
+   */
+  floorsLeftBlank: number;
   /** True when the import would change nothing. */
   isEmpty: boolean;
   /** Rows that would be replaced. */
@@ -295,7 +302,7 @@ export function preview(data: BackupData, photoEntries: ReadonlySet<string>, loc
     deletedHereVisits: 0, deletedHerePhotos: 0, restoredHouses: 0, keptMineHouses: 0, keptMineVisits: 0, relinkedVisits: 0,
     newBrokers: 0, updatedBrokers: 0, newCriteria, updatedCriteria, newPreferences, updatedPreferences, newQuestions, updatedQuestions,
     newViewings, updatedViewings, newAreas, updatedAreas, newPlaces, updatedPlaces, newAreaNotes, updatedAreaNotes, updatedPhotoMeta: 0,
-    removedHouses: 0,
+    removedHouses: 0, floorsLeftBlank: 0,
   };
   if (mode === 'COPY') {
     const fileHouses = new Set(data.houses.map((h) => h.id));
@@ -310,11 +317,15 @@ export function preview(data: BackupData, photoEntries: ReadonlySet<string>, loc
     return finish({
       ...zero, newHouses: data.houses.length, newVisits: data.visits.filter((v) => v.houseId == null || fileHouses.has(v.houseId)).length,
       newPhotos: withFiles, skippedPhotos: orphaned, photosMissingFromFile: missing, newBrokers: (data.brokers ?? []).length,
+      floorsLeftBlank: data.houses.filter(floorOutOfRange).length,
     });
   }
   const out = { ...zero };
   for (const h of data.houses) {
-    switch (houseOutcome(h, local, restore, skip)) {
+    const outcome = houseOutcome(h, local, restore, skip);
+    // Only a house the import writes lands with its floor blank.
+    if (floorOutOfRange(h) && (outcome === 'NEW' || outcome === 'UPDATE' || outcome === 'RESTORE')) out.floorsLeftBlank++;
+    switch (outcome) {
       case 'NEW': out.newHouses++; break;
       case 'UPDATE':
         out.updatedHouses++;
@@ -451,4 +462,9 @@ export function plan(data: BackupData, photoEntries: ReadonlySet<string>, local:
   actions.photoMeta = photoMetaUpdates(data, local, skip);
   actions.removedHouseIds = removals(data, local, flags);
   return actions;
+}
+
+/** A floor in the file that the store reads as unknown (S4b-BL-104 d; Kotlin `ImportPlan.floorOutOfRange`). */
+function floorOutOfRange(h: BackupHouse): boolean {
+  return typeof h.floor === 'number' && (h.floor < MIN_FLOOR || h.floor > MAX_FLOOR);
 }

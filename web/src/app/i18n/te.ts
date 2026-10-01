@@ -1189,4 +1189,9 @@ export const te: Dict = {
   'help.linkAria': 'సహాయం: వినియోగదారు గైడ్‌ను తెరవండి (కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది)',
   'help.hint': 'ప్రాజెక్ట్ వెబ్‌సైట్‌లో చిత్రాలతో, ప్రతి దశతో వినియోగదారు గైడ్.',
   'help.open': 'వినియోగదారు గైడ్‌ను తెరవండి',
+  // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
+  'house.floorBasementToggle': 'బేస్‌మెంట్',
+  'house.floorBasementHint': 'నేల కింద ఉన్న స్థాయి, 1 నుండి 5 వరకు',
+  'house.floorBasementInvalid': '1 నుండి 5 వరకు బేస్‌మెంట్ స్థాయి నమోదు చేయండి',
+  'imp.floorsLeftBlank': 'ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న ఇళ్లు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది',
 };

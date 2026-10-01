@@ -21,6 +21,7 @@ package app.doorprints.ui
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPreview
 import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.import_floors_left_blank
 import app.doorprints.ui.res.import_new_brokers
 import app.doorprints.ui.res.import_new_houses
 import app.doorprints.ui.res.import_updated_brokers
@@ -40,5 +41,12 @@ class ImportPreviewGroupsTest {
         assertEquals(listOf(listOf(Res.string.import_updated_brokers to 4)),
             previewGroups(preview(updatedBrokers = 4), 0).map { g -> g.map { it.label to it.count } })
         assertEquals(emptyList(), previewGroups(preview(), 0))
+    }
+
+    /** S4b-BL-104 (d): houses whose floor in the file is out of range get a warning line after the houses. */
+    @Test fun aFloorOutOfRangeIsAWarningLineWithTheHouses() {
+        val line = previewGroups(preview(newHouses = 2).copy(floorsLeftBlank = 1), 0).single().last()
+        assertEquals(Res.string.import_floors_left_blank to 1, line.label to line.count)
+        assertEquals(true, line.loss)
     }
 }

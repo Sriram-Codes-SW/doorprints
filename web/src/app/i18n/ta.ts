@@ -1189,4 +1189,9 @@ export const ta: Dict = {
   'help.linkAria': 'உதவி: பயனர் வழிகாட்டியைத் திற (புதிய தாவலில் திறக்கும்)',
   'help.hint': 'திட்டத்தின் இணையதளத்தில் படங்களுடனும் ஒவ்வொரு படியுடனும் பயனர் வழிகாட்டி.',
   'help.open': 'பயனர் வழிகாட்டியைத் திற',
+  // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
+  'house.floorBasementToggle': 'அடித்தளம்',
+  'house.floorBasementHint': 'தரைக்குக் கீழே உள்ள நிலை, 1 முதல் 5 வரை',
+  'house.floorBasementInvalid': '1 முதல் 5 வரை ஒரு அடித்தள நிலையை உள்ளிடவும்',
+  'imp.floorsLeftBlank': 'கோப்பில் தளம் -5 முதல் 200 வரம்பிற்கு வெளியே உள்ள வீடுகள்; அவற்றின் தளம் காலியாக விடப்படும்',
 };

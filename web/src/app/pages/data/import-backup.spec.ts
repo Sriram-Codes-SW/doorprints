@@ -104,4 +104,13 @@ describe('ImportBackupCard', () => {
     const lines = previewLines(preview(data, new Set(), local, { mode: 'MERGE', applyDeletions: true }), 0);
     expect(lines).toEqual([{ key: 'imp.removedHouses', count: 1, loss: true }]);
   });
+
+  it('warns of the houses whose floor is out of range and lands blank (S4b-BL-104 d)', () => {
+    const house = (id: string, floor: number) => ({
+      id, label: id, lat: 12.97, lon: 77.59, status: 'NEW', floor, checklist: {}, createdAt: 1, updatedAt: 2,
+    });
+    const data = { format: 'doorprints-backup/2', exportedAt: 1, houses: [house('h1', 201), house('h2', -5)], visits: [], photos: [] };
+    const lines = previewLines(preview(data as never, new Set(), EMPTY_LOCAL, { mode: 'MERGE' }), 0);
+    expect(lines).toEqual([{ key: 'imp.newHouses', count: 2 }, { key: 'imp.floorsLeftBlank', count: 1, loss: true }]);
+  });
 });

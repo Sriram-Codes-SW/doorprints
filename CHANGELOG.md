@@ -943,6 +943,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 ### Fixed
 
 - **The website's readable copies had no Rooms column** in the houses table (CSV, Excel): it now has the rooms' count between the cost per sq ft and the floor, as the phone's copies do (S4b-BL-104 a).
+- **A basement floor could not be typed on a number keypad without a minus key**: a **Basement** switch under Floor now holds the sign, so the level is typed as 1 to 5, on Android, iPhone and the website (S4b-BL-104 c).
+- **An import quietly blanked a floor out of range**: a backup whose house has a floor outside -5 to 200 (only an edited file has one) still imports, with that floor left blank, and the preview now says so in a warning line; the server keeps refusing such a file (S4b-BL-104 d).
 - **Search found a floor by English words only**: "भूतल", "அடித்தளம் 2" or "అంతస్తు 3" now find it too, on the website and on the phones, as well as "ground floor", "basement 2" or "floor 3" (S4b-BL-104 b).
 - **The app lock could not open its prompt on Android 10 and later** (found by the new emulator test, S4b-BL-67, on its first run on the API 34 and 36 emulators): `BiometricPrompt.authenticate` threw a `SecurityException` ("Must have USE_BIOMETRIC permission") because the manifest lacked that normal permission, so the lock screen could not ask for the phone's PIN, pattern or password. `USE_BIOMETRIC` is now declared; the test also sets its PIN once the app is on screen, so the keyguard of API 26 does not hide the app.
 - **Seeded questions no longer overwrite another device's edits**: they are stamped 2000-01-01 and stored as already synced (S4b-BL-90a).
