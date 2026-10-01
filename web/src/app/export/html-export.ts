@@ -21,6 +21,7 @@ import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
 import { brokerLine } from '../shared/broker';
 import type { HouseCost, HouseStatus } from '../core/models';
 import { costSummary } from '../shared/house-cost';
+import { floorWords } from '../shared/house-floor';
 import { rupees } from './deterministic';
 import {
   escapeHtml,
@@ -186,6 +187,8 @@ function houseSection(
   add('compare.bhk', bedrooms === null ? '' : escapeHtml(tr(dict, 'common.bhk', { n: bedrooms })));
   const area = house.areaSqft ?? null;
   add('compare.area', area === null ? '' : escapeHtml(tr(dict, 'common.sqft', { n: area })));
+  // S4b-BL-87: the floor in words (0 the ground floor), after the area.
+  add('house.floor', house.floor == null ? '' : escapeHtml(floorWords((k, p) => tr(dict, k, p), house.floor)));
   add('compare.rating', rating === null ? '' : escapeHtml(tr(dict, 'common.stars', { n: rating })));
   add('house.address', escapeHtml(house.address ?? ''));
   add('house.street', escapeHtml(house.street ?? ''));

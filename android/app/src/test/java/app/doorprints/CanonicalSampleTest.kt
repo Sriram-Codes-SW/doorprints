@@ -131,6 +131,8 @@ class CanonicalSampleTest {
         assertEquals("Master bedroom", ExportRows.photoRoomName(photo, bundle))
         assertEquals(1_790_000_000_000L, photo.metaUpdatedAt)
         assertFalse(data.photos[1].hasMeta)
+        // S4b-BL-87: house 1 is on the third floor and house 3 on the ground floor (0 is written, not left out).
+        assertEquals(listOf(3, null, 0), data.houses.map { it.floor })
         // The unknown checklist key from a newer app survives the read (NFR-025).
         assertEquals(2, data.houses.first().checklist["newItemFromNewerApp"])
     }

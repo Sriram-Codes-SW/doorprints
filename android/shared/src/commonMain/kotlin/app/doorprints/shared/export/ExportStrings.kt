@@ -63,6 +63,13 @@ class ExportStrings internal constructor(
     /** "{n} months" in the export language, for the Cost block of a readable copy. */
     fun months(n: Int): String = values.getValue("months").replace("{n}", n.toString())
 
+    /** A house's floor in words (S4b-BL-87): 0 the ground floor, -n basement n, else the number. */
+    fun floor(n: Int): String = when {
+        n == 0 -> values.getValue("floor.ground")
+        n < 0 -> values.getValue("floor.basement").replace("{n}", (-n).toString())
+        else -> n.toString()
+    }
+
     internal val keys: Set<String> get() = values.keys
 
     companion object {
@@ -210,6 +217,9 @@ class ExportStrings internal constructor(
                 "col.moveIn" to "Money to move in",
                 "col.perSqFt" to "Cost per sq ft",
                 "col.rooms" to "Rooms",
+                "col.floor" to "Floor",
+                "floor.ground" to "Ground floor",
+                "floor.basement" to "Basement {n}",
                 "col.roomName" to "Room",
                 "col.roomType" to "Type",
                 "col.condition" to "Condition",
@@ -408,6 +418,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "प्रति वर्ग फ़ुट खर्च",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "कमरे",
+                "col.floor" to "मंज़िल",
+                "floor.ground" to "भूतल",
+                "floor.basement" to "बेसमेंट {n}",
                 "col.roomName" to "कमरा",
                 "col.roomType" to "प्रकार",
                 "col.condition" to "हालत",
@@ -606,6 +619,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "சதுர அடிக்கு செலவு",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "அறைகள்",
+                "col.floor" to "தளம்",
+                "floor.ground" to "தரைத்தளம்",
+                "floor.basement" to "அடித்தளம் {n}",
                 "col.roomName" to "அறை",
                 "col.roomType" to "வகை",
                 "col.condition" to "நிலை",
@@ -804,6 +820,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "చదరపు అడుగుకు ఖర్చు",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "గదులు",
+                "col.floor" to "అంతస్తు",
+                "floor.ground" to "నేల అంతస్తు",
+                "floor.basement" to "బేస్‌మెంట్ {n}",
                 "col.roomName" to "గది",
                 "col.roomType" to "రకం",
                 "col.condition" to "స్థితి",

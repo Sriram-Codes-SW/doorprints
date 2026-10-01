@@ -50,7 +50,7 @@ fun HouseEntity.toDto() = HouseDto(
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), brokerId = brokerId, checklist = checklist,
+    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId, checklist = checklist,
     createdAt = IsoTime.format(createdAt), updatedAt = IsoTime.format(updatedAt),
     deleted = deleted,
 )
@@ -65,7 +65,8 @@ fun HouseDto.toEntity() = HouseEntity(
     contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
     cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
-    moveIn = MoveIn.coerced(moveIn), brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    moveIn = MoveIn.coerced(moveIn), floor = HouseValues.floor(floor),
+    brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     updatedAt = updatedAt?.let(IsoTime::parseMillis) ?: IsoTime.nowMillis(),
     deleted = deleted, dirty = false,

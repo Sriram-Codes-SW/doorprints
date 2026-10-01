@@ -65,6 +65,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.CostFilter
 import app.doorprints.shared.model.HouseSearch
 import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
@@ -94,6 +95,12 @@ private val StatusFilterSaver = Saver<HouseStatus?, String>(
 private val SortSaver = Saver<Sort, String>(
     save = { it.name },
     restore = { name -> Sort.entries.firstOrNull { it.name == name } ?: Sort.RECENT },
+)
+
+/** The cost filters by their six ends (S4b-BL-84), for the same reason. */
+private val CostFilterSaver = Saver<CostFilter, ArrayList<Long?>>(
+    save = { ArrayList(it.ends()) },
+    restore = { CostFilter.ofEnds(it) },
 )
 
 /** How long the results count waits for typing to settle before TalkBack reads it. */
@@ -248,6 +255,8 @@ fun HouseListScreen(
     var filter by rememberSaveable(stateSaver = StatusFilterSaver) { mutableStateOf<HouseStatus?>(null) }
     var sort by rememberSaveable(stateSaver = SortSaver) { mutableStateOf(Sort.RECENT) }
     var query by rememberSaveable { mutableStateOf("") }
+    // The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search.
+    var costFilter by rememberSaveable(stateSaver = CostFilterSaver) { mutableStateOf(CostFilter()) }
     val firstRun = loaded && houses.isEmpty()
     // The copy import the list shows (see the KDoc): the one it was opened for, unless a newer one can still be
     // undone, else the newest that can. Read again whenever an undo ends, because the undo deletes or reduces the
@@ -443,6 +452,7 @@ fun HouseListScreen(
         if (firstRun) {
             filter = null
             query = ""
+            costFilter = CostFilter()
             importedOnly = false
         }
     }
@@ -450,6 +460,7 @@ fun HouseListScreen(
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
+        .filter { costFilter.matches(it.price, it.priceType, it.areaSqft, it.cost) }
         // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
         // linked broker since slice 1b, the rooms' names and notes since slice 1c, the questions asked and their answers
         // since slice 3a).
@@ -462,6 +473,7 @@ fun HouseListScreen(
                     rooms = it.rooms,
                     answers = it.answers,
                     moveIn = it.moveIn,
+                    floor = it.floor,
                     noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
                 ),
             )
@@ -541,10 +553,10 @@ fun HouseListScreen(
                 }
             }
             else -> HouseList(
-                houses, shown, visitsByHouse, filter, sort, query, scoring = scoring,
+                houses, shown, visitsByHouse, filter, sort, query, scoring = scoring, costFilter = costFilter,
                 importedCount = importedCount, importedOnly = onlyImported, undoRow = undoRow,
                 importedChipFocus = importedChipFocus, allChipFocus = allChipFocus, chipFocusable = focusChips,
-                onFilter = { filter = it }, onSort = { sort = it }, onQuery = { query = it },
+                onFilter = { filter = it }, onSort = { sort = it }, onQuery = { query = it }, onCostFilter = { costFilter = it },
                 onImportedOnly = {
                     importedOnly = it
                     filterRun = shownRun
@@ -585,6 +597,7 @@ private fun HouseList(
     sort: Sort,
     query: String,
     scoring: Scoring,
+    costFilter: CostFilter,
     importedCount: Int?,
     importedOnly: Boolean,
     undoRow: (@Composable (Modifier) -> Unit)?,
@@ -594,6 +607,7 @@ private fun HouseList(
     onFilter: (HouseStatus?) -> Unit,
     onSort: (Sort) -> Unit,
     onQuery: (String) -> Unit,
+    onCostFilter: (CostFilter) -> Unit,
     onImportedOnly: (Boolean) -> Unit,
     onOpenHouse: (String) -> Unit,
     syncWarning: (@Composable () -> Unit)? = null,
@@ -603,7 +617,7 @@ private fun HouseList(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val searchFocus = remember { FocusRequester() }
-    val filtering = query.isNotBlank() || filter != null || importedOnly
+    val filtering = query.isNotBlank() || filter != null || importedOnly || costFilter.active > 0
 
     // The results count (docs/05 4.1.3, the web's role="status" "Houses shown: x of y"), always drawn (see the
     // screen's KDoc). The line on screen follows every keystroke; what TalkBack hears waits until typing has paused
@@ -709,7 +723,13 @@ private fun HouseList(
                 }
             }
         }
-        item(key = "sort") { SortMenu(sort, onSort, Modifier.animateItem()) }
+        // The sort and, beside it, the cost filters' sheet (S4b-BL-84).
+        item(key = "sort") {
+            FlowRow(Modifier.animateItem().fillMaxWidth(), verticalArrangement = Arrangement.Center) {
+                SortMenu(sort, onSort)
+                CostFilterButton(costFilter, onCostFilter)
+            }
+        }
         // Always composed (round 16), so the node is in place before the first filter makes it a live region.
         item(key = "count") {
             Text(
@@ -737,6 +757,7 @@ private fun HouseList(
                                 onClick = {
                                     onFilter(null)
                                     onQuery("")
+                                    onCostFilter(CostFilter())
                                     onImportedOnly(false)
                                     // The button vanishes with the no-match state; put focus (and TalkBack) back in the
                                     // search field rather than letting it drop to the top of the screen.

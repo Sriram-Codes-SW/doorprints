@@ -42,7 +42,7 @@ class HouseMoveInTest {
 
     private static HouseDto house(HouseMoveIn moveIn) {
         return new HouseDto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.TAKEN, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, moveIn, null, Map.of(), null, null,
+                null, null, null, null, null, null, null, null, null, null, null, moveIn, null, null, Map.of(), null, null,
                 false, 0, null);
     }
 

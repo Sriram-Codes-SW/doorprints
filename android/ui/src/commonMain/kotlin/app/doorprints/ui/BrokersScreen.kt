@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
 import app.doorprints.shared.model.Broker
+import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.broker_agency
 import app.doorprints.ui.res.broker_delete
@@ -260,6 +261,8 @@ fun BrokerForm(
     var busy by remember { mutableStateOf(false) }
     val nameMissing = name.isBlank()
     val unnamed = stringResource(Res.string.house_unnamed)
+    // Every live house, for the duplicate-flat warning under each of this broker's houses (S4b-BL-85).
+    val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
 
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
@@ -334,6 +337,12 @@ fun BrokerForm(
                     Text(house.label.ifBlank { unnamed }, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                // Another house (of any broker) that looks like this same flat: within about 30 m, same bedrooms and floor.
+                val sameFlat = remember(house, allHouses) {
+                    DuplicateFlat.of(house.flatFacts(), allHouses.map { it.flatFacts() })
+                        .mapNotNull { other -> allHouses.firstOrNull { it.id == other }?.label?.ifBlank { unnamed } }
+                }
+                DuplicateFlatWarning(sameFlat, Modifier.padding(bottom = 8.dp))
             }
             HorizontalDivider()
             OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

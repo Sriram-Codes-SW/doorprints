@@ -125,7 +125,9 @@ describe('backup fields', () => {
     const keys = Object.keys(written.houses[0]);
     expect(keys.indexOf('answers')).toBe(keys.indexOf('rooms') + 1);
     expect(keys.indexOf('moveIn')).toBe(keys.indexOf('answers') + 1);
-    expect(keys.indexOf('brokerId')).toBe(keys.indexOf('moveIn') + 1);
+    // S4b-BL-87: the floor between the move-in and the broker.
+    expect(keys.indexOf('floor')).toBe(keys.indexOf('moveIn') + 1);
+    expect(keys.indexOf('brokerId')).toBe(keys.indexOf('floor') + 1);
   });
   it('writes exactly the format\'s moveIn keys and its item keys, for the ticked item and the open one (slice 5)', () => {
     const moveIn = written.houses[0].moveIn;

@@ -922,10 +922,10 @@ private fun ImportResult(info: ImportRun, onDismiss: () -> Unit) {
 }
 
 /** One preview line: its sign, its label, and its number. */
-private data class PreviewLine(val icon: ImageVector, val label: StringResource, val count: Int, val loss: Boolean = false)
+internal data class PreviewLine(val icon: ImageVector, val label: StringResource, val count: Int, val loss: Boolean = false)
 
 /**
- * The preview (docs/05 section 14.3, "the safety mechanism"), grouped as houses / visits / photos with a thin
+ * The preview (docs/05 section 14.3, "the safety mechanism"), grouped as houses / visits / photos / brokers with a thin
  * divider between groups. Lines that are zero are hidden. Each line is a sign, a label and the number in its own
  * right-aligned column with tabular figures, so the numbers can be scanned down one edge instead of sitting at
  * the ragged end of a wrapped Tamil or Telugu sentence: + for something new, a refresh sign for something the
@@ -941,7 +941,28 @@ private data class PreviewLine(val icon: ImageVector, val label: StringResource,
  */
 @Composable
 private fun PreviewCard(preview: ImportPreview, duplicates: Int, modifier: Modifier) {
-    val groups = listOf(
+    val groups = previewGroups(preview, duplicates)
+    if (groups.isEmpty()) return
+    OutlinedCard(modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            groups.forEachIndexed { index, group ->
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                group.forEach { line ->
+                    Line(
+                        icon = line.icon,
+                        label = stringResource(line.label),
+                        count = line.count,
+                        tint = if (line.loss) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** [PreviewCard]'s groups of lines, in order, without the lines that are zero and the groups left empty. */
+internal fun previewGroups(preview: ImportPreview, duplicates: Int): List<List<PreviewLine>> =
+    listOf(
         listOf(
             PreviewLine(Icons.Default.Warning, Res.string.import_copy_duplicates, duplicates, loss = true),
             PreviewLine(Icons.Default.Add, Res.string.import_new_houses, preview.newHouses),
@@ -961,24 +982,12 @@ private fun PreviewCard(preview: ImportPreview, duplicates: Int, modifier: Modif
             PreviewLine(Icons.Default.Add, Res.string.import_new_photos, preview.newPhotos),
             PreviewLine(Icons.Default.Warning, Res.string.import_photos_missing, preview.photosMissingFromFile, loss = true),
         ),
+        // Brokers of a `/2` file (S4b-BL-86): new here, and newer in the file (a merge only; a copy adds them all as new).
+        listOf(
+            PreviewLine(Icons.Default.Add, Res.string.import_new_brokers, preview.newBrokers),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_brokers, preview.updatedBrokers),
+        ),
     ).map { group -> group.filter { it.count > 0 } }.filter { it.isNotEmpty() }
-    if (groups.isEmpty()) return
-    OutlinedCard(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            groups.forEachIndexed { index, group ->
-                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                group.forEach { line ->
-                    Line(
-                        icon = line.icon,
-                        label = stringResource(line.label),
-                        count = line.count,
-                        tint = if (line.loss) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
 
 /**
  * Read by TalkBack as one item, "New houses 3". Label and number share one baseline (they are different sizes,

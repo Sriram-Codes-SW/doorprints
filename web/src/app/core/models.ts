@@ -203,6 +203,8 @@ export interface HouseDto {
   answers?: HouseAnswer[] | null;
   /** Moving in (slice 5), right after `answers`; absent when it has no date, no notes and no items. */
   moveIn?: MoveIn | null;
+  /** The floor (S4b-BL-87), -5..200 with 0 the ground floor, right after `moveIn`; absent when unknown. */
+  floor?: number | null;
   /**
    * The record id of the broker this house is linked to (slice 1b); no foreign key, so an id that names no broker
    * reads as "no broker". The house keeps copies of the broker's name and phone in `contactName`/`contactPhone`.
@@ -365,6 +367,7 @@ export function newHouse(lat: number, lon: number, locationSource: LocationSourc
     rooms: null,
     answers: null,
     moveIn: null,
+    floor: null,
     brokerId: null,
     checklist: {},
     deleted: false,

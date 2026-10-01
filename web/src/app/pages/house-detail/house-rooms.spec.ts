@@ -52,8 +52,8 @@ interface Page {
 }
 
 /** The house form on a saved house holding `rooms`, the length unit as the local setting has it. */
-async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT') {
-  const house: HouseDto = { ...HOUSE, rooms };
+async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT', extra: Partial<HouseDto> = {}, others: HouseDto[] = []) {
+  const house: HouseDto = { ...HOUSE, rooms, ...extra };
   const saved: HouseDto[] = [];
   TestBed.configureTestingModule({
     imports: [HouseDetailPage],
@@ -62,7 +62,7 @@ async function open(rooms: HouseRoom[] | null, unit: 'FT' | 'M' = 'FT') {
       {
         provide: LocalDataService,
         useValue: {
-          houses: () => of([]),
+          houses: () => of([house, ...others]),
           brokers: () => of([]),
           scoring: () => of(DEFAULT_SCORING),
           questions: () => of([]),
@@ -254,3 +254,49 @@ describe('HouseDetailPage: the Rooms section (slice 1c)', () => {
     expect(again.host.querySelectorAll('.room').length).toBe(2);
   });
 });
+
+describe('HouseDetailPage: moving rooms and the floor (S4b-BL-87, S4b-BL-85)', () => {
+  const two: HouseRoom[] = [ROOM, { id: 'r2', type: 'KITCHEN', name: 'Kitchen', sort: 1 }];
+
+  it('moves a room up and down with buttons named after it, renumbering the sort; the ends are disabled', async () => {
+    const { fixture, host, page } = await open(two);
+    const up = (id: string) => host.querySelector<HTMLButtonElement>('#room-up-' + id)!;
+    const down = (id: string) => host.querySelector<HTMLButtonElement>('#room-down-' + id)!;
+    expect(up('r1').disabled).toBe(true);
+    expect(down('r2').disabled).toBe(true);
+    expect(up('r2').getAttribute('aria-label')).toBe('Move 2. Kitchen up');
+    up('r2').click();
+    await settled(fixture);
+    expect(page.draft().rooms!.map((r) => [r.id, r.sort])).toEqual([['r2', 0], ['r1', 1]]);
+    expect([...host.querySelectorAll('.room-title')].map((h) => h.textContent?.trim())).toEqual(['1. Kitchen', '2. Big hall']);
+    down('r2').click();
+    await settled(fixture);
+    expect(page.draft().rooms!.map((r) => r.id)).toEqual(['r1', 'r2']);
+  });
+
+  it('saves a typed floor, 0 and a basement level included, and leaves one out of range unknown with a message', async () => {
+    const { fixture, host, saved } = await open(null);
+    const floor = host.querySelector<HTMLInputElement>('#house-floor')!;
+    expect(host.querySelector('#house-floor-hint')?.textContent).toContain('0 is the ground floor');
+    await type(fixture, floor, '-2');
+    expect(host.querySelector('#house-floor-error')).toBeNull();
+    await type(fixture, floor, '300');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('-5 to 200');
+    expect(floor.getAttribute('aria-invalid')).toBe('true');
+    await type(fixture, floor, '0');
+    [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save')!.click();
+    await settled(fixture);
+    expect(saved.at(-1)!.floor).toBe(0);
+  });
+
+  it('warns, without blocking, of another house within 30 m with the same bedrooms and floor', async () => {
+    const twin: HouseDto = { ...HOUSE, id: 'twin', label: 'Same flat, other broker', lat: 12.97161, bedrooms: 2, floor: 3, rooms: null };
+    const far: HouseDto = { ...twin, id: 'far', label: 'Down the road', lat: 12.9726 };
+    const { fixture, host } = await open(null, 'FT', { bedrooms: 2, floor: 3, locationSource: 'GPS' }, [twin, far]);
+    expect(host.querySelector('#house-same-flat')?.textContent).toContain('Maybe the same flat as Same flat, other broker');
+    expect(host.querySelector('#house-same-flat')?.textContent).not.toContain('Down the road');
+    await type(fixture, host.querySelector<HTMLInputElement>('#house-floor')!, '4');
+    expect(host.querySelector('#house-same-flat')).toBeNull();
+  });
+});
+

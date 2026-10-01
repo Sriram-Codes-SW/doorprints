@@ -23,6 +23,7 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.doorprints.shared.model.FlatFacts
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
@@ -74,6 +75,8 @@ data class HouseEntity(
     // Moving in (docs/11 5.24, slice 5, Room version 9) as JSON text in `moveIn` ([Converters]); null when it has no
     // date, notes or items. The repository's save coerces it (`MoveIn.coerced`).
     val moveIn: MoveIn? = null,
+    // The floor the flat is on (S4b-BL-87, Room version 10): -5..200, 0 the ground floor; null when unknown.
+    val floor: Int? = null,
     // The broker's record id (slice 1b, Room version 6): no foreign key, a dangling id reads as no broker. The
     // contact fields stay as copies of the broker's name and phone (`CommonRepository.saveHouse`).
     val brokerId: String? = null,
@@ -92,6 +95,9 @@ data class HouseEntity(
 
     /** What [Ranking] orders this house by. */
     fun ranked(scoring: Scoring): RankedHouse = RankedHouse(id, scoreResult(scoring), price, updatedAt)
+
+    /** What the duplicate-flat warning compares ([DuplicateFlat], S4b-BL-85). */
+    fun flatFacts(): FlatFacts = FlatFacts(id, lat, lon, locationSource, bedrooms, rooms, floor)
 }
 
 @Entity(tableName = "visits", indices = [Index("houseId"), Index("street")])

@@ -81,6 +81,7 @@ object MarkdownWriter {
                 if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
                 add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
                 if (h.areaSqft != null) add(s["col.areaSqft"] to h.areaSqft.toString())
+                if (h.floor != null) add(s["col.floor"] to s.floor(h.floor))
                 add(s["col.rating"] to (h.rating?.toString() ?: s["none"]))
                 add(s["col.address"] to (h.address ?: s["none"]))
                 add(s["col.street"] to (h.street ?: s["none"]))

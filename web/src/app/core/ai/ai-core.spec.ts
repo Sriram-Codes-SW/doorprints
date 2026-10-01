@@ -104,6 +104,13 @@ describe('AI core (what the vectors do not cover)', () => {
       .toContain('Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)');
   });
 
+  it('writes a Floor line right after the carpet area, in the words of the server and the phones (S4b-BL-87)', () => {
+    expect(houseText({ ...house, areaSqft: 1150, floor: 3 })).toContain('Carpet area: 1150 sq ft\nFloor: 3\n');
+    expect(houseText({ ...house, floor: 0 })).toContain('\nFloor: ground floor\n');
+    expect(houseText({ ...house, floor: -2 })).toContain('\nFloor: basement 2\n');
+    expect(houseText(house)).not.toContain('Floor:');
+  });
+
   it('writes the questions after the Rooms line: answered as Asked/Answer, open as Still to ask, skipped not at all', () => {
     const text = houseText({
       ...house,

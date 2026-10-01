@@ -1145,4 +1145,20 @@
     <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
     <string name="map_hunt_offer">हंट मोड शुरू करें?</string>
     <string name="map_hunt_offer_start">हंट मोड शुरू करें</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview: under review. -->
+    <string name="house_floor">मंज़िल</string>
+    <string name="house_floor_hint">0 भूतल है, -1 बेसमेंट</string>
+    <string name="house_floor_invalid">-5 से 200 तक की मंज़िल लिखें</string>
+    <string name="house_room_move_up">%1$s को ऊपर ले जाएँ</string>
+    <string name="house_room_move_down">%1$s को नीचे ले जाएँ</string>
+    <string name="duplicate_flat_warning">शायद यह %1$s वाला ही फ़्लैट है: लगभग 30 मीटर के भीतर, उतने ही बेडरूम और वही मंज़िल।</string>
+    <string name="houses_filters">फ़िल्टर</string>
+    <string name="houses_filters_count">फ़िल्टर (%1$d)</string>
+    <string name="houses_filters_title">लागत से छाँटें</string>
+    <string name="houses_filters_hint">पूरे रुपयों में। जिस मकान की यह रकम नहीं निकल सकती, वह छोड़ दिया जाता है (बिक्री की कोई मासिक लागत नहीं होती)।</string>
+    <string name="houses_filter_min">%1$s, कम से कम (₹)</string>
+    <string name="houses_filter_max">%1$s, अधिक से अधिक (₹)</string>
+    <string name="houses_filters_clear">लागत के फ़िल्टर हटाएँ</string>
+    <string name="import_new_brokers">नए ब्रोकर</string>
+    <string name="import_updated_brokers">जिन ब्रोकरों का बैकअप में नया रूप है</string>
 </resources>

@@ -246,4 +246,11 @@ class HouseFormRulesTest {
         assertFalse(isWebLink("http://%20%20/x"))
         assertTrue(isWebLink("http://%zz"))
     }
+
+    /** The form's floor (S4b-BL-87): an optional minus and up to three digits within -5..200, else unknown. */
+    @Test
+    fun theFloorFieldReadsMinusFiveToTwoHundred() {
+        assertEquals(listOf(0, 3, -2, 200, -5), listOf("0", " 3 ", "-2", "200", "-5").map(::floorOf))
+        for (bad in listOf("", "-", "201", "-6", "1.5", "2-", "--1", "1000")) assertNull(floorOf(bad), bad)
+    }
 }
