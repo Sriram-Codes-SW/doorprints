@@ -66,6 +66,11 @@ describe.each(Object.entries(pages))('%s as a search result and a link preview',
     expect(canonical[0].getAttribute('href')).toBe(url);
   });
 
+  it('carries the Search Console ownership tag on the landing page only', () => {
+    const tag = doc.head.querySelectorAll('meta[name="google-site-verification"]');
+    expect(tag).toHaveLength(name === 'index.html' ? 1 : 0);
+  });
+
   it('has Open Graph and Twitter card tags with absolute https URLs', () => {
     for (const property of ['og:type', 'og:site_name', 'og:title', 'og:description', 'og:url', 'og:image']) {
       expect(meta(doc, `property="${property}"`), property).toBeTruthy();
