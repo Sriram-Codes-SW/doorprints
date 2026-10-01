@@ -537,7 +537,8 @@ describe('the page shell and the stylesheet (TC-U-WEB-A11Y-7)', () => {
   it('index.html declares the language, allows pinch zoom and links the Indic fallback fonts', () => {
     expect(indexHtml).toMatch(/<html lang="en">/);
     expect(indexHtml).toMatch(/name="viewport"/);
-    expect(indexHtml.replace(/<!--[\s\S]*?-->/g, '')).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale/);
+    const viewport = new DOMParser().parseFromString(indexHtml, 'text/html').querySelector('meta[name="viewport"]')?.getAttribute('content') ?? '';
+    expect(viewport).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale/);
     for (const font of ['Noto+Sans+Devanagari', 'Noto+Sans+Tamil', 'Noto+Sans+Telugu']) expect(indexHtml).toContain(font);
   });
 
