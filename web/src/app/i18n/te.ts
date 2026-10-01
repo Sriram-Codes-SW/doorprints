@@ -33,7 +33,7 @@ export const te: Dict = {
   'lang.changed': 'భాష తెలుగుకు మార్చబడింది',
 
   'title.app': 'Doorprints',
-  'title.map': 'ఇళ్లు · Doorprints',
+  'title.map': 'Doorprints: మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి',
   'title.newHouse': 'కొత్త ఇల్లు · Doorprints',
   'title.house': 'ఇంటి వివరాలు · Doorprints',
   'title.compare': 'పోలిక · Doorprints',

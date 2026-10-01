@@ -16,17 +16,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Lang } from '../i18n/languages';
-
 /**
- * The user guide (an MkDocs site, `guide/`, published by `.github/workflows/pages.yml`), which the **Help** link opens
- * in a new tab (S4b-BL-60): in the header on wider screens, inside *Your data* on phones. English at the root; the
- * Hindi, Tamil and Telugu guides (under review) are built into `hi/`, `ta/` and `te/` beside it (`guide/hooks/i18n.py`),
- * and `guideUrl` picks the one in the app's language. Android has the same link in Settings under *About*.
+ * Files imported with `with { loader: 'text' }` (Angular's esbuild text loader) so a spec can hold them to what a
+ * search engine expects: `public/robots.txt`, `public/sitemap.xml`, `public/manifest.webmanifest` (seo.spec.ts).
  */
-export const GUIDE_URL = 'https://sriram-codes-sw.github.io/doorprints/';
+declare module '*.txt' {
+  const text: string;
+  export default text;
+}
 
-/** The guide in `lang`: the English root, or the `hi/`, `ta/`, `te/` translation. */
-export function guideUrl(lang: Lang): string {
-  return lang === 'en' ? GUIDE_URL : `${GUIDE_URL}${lang}/`;
+declare module '*.xml' {
+  const text: string;
+  export default text;
+}
+
+declare module '*.webmanifest' {
+  const text: string;
+  export default text;
 }
