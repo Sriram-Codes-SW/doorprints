@@ -20,6 +20,8 @@ package app.doorprints.shared.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * The house list's search rule ([HouseSearch]), the same cases as the website's `map-list.spec.ts` ("searchText"),
@@ -93,6 +95,25 @@ class HouseSearchTest {
         assertEquals(listOf("oak"), matching("floor 3"))
         assertEquals(emptyList(), matching("ground floor"))
         assertEquals(listOf("ground floor 0", "basement 2", "floor 12"), listOf(0, -2, 12).map(HouseSearch::floorText))
+    }
+    @Test fun aQueryMatchesTheFloorInTheAppLanguageToo() {
+        // S4b-BL-104 b: the words of the app's language as well as English (web `floorLocalSearchText`, map-list.spec.ts).
+        fun fields(floor: Int, language: String) = HouseSearch.fields(
+            label = "Oak Tower", address = null, street = null, locality = null, notes = null, contactName = null,
+            floor = floor, language = language,
+        )
+        assertTrue(HouseSearch.matches("भूतल", fields(0, "hi")))
+        assertTrue(HouseSearch.matches("ground floor", fields(0, "hi")))
+        assertTrue(HouseSearch.matches("बेसमेंट 2", fields(-2, "hi")))
+        assertTrue(HouseSearch.matches("मंज़िल 3", fields(3, "hi")))
+        assertTrue(HouseSearch.matches("floor 3", fields(3, "hi")))
+        assertFalse(HouseSearch.matches("भूतल", fields(3, "hi")))
+        assertFalse(HouseSearch.matches("भूतल", fields(0, "en")))
+        assertEquals(fields(3, "en"), HouseSearch.fields(
+            label = "Oak Tower", address = null, street = null, locality = null, notes = null, contactName = null, floor = 3,
+        ))
+        assertEquals(listOf("தரைத்தளம்", "அடித்தளம் 2", "தளம் 12"), listOf(0, -2, 12).map { HouseSearch.localFloorText(it, "ta") })
+        assertEquals(listOf("నేల అంతస్తు", "బేస్‌మెంట్ 2", "అంతస్తు 12"), listOf(0, -2, 12).map { HouseSearch.localFloorText(it, "te") })
     }
     @Test fun aQueryMatchesTheMoveInItemsAndNotes() {
         assertEquals(listOf("fern"), matching("keys received"))
