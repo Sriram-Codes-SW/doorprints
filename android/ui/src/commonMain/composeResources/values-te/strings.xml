@@ -1145,4 +1145,20 @@
     <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
     <string name="map_hunt_offer">హంట్ మోడ్ ప్రారంభించాలా?</string>
     <string name="map_hunt_offer_start">హంట్ మోడ్ ప్రారంభించండి</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview: under review. -->
+    <string name="house_floor">అంతస్తు</string>
+    <string name="house_floor_hint">0 అంటే నేల అంతస్తు, -1 బేస్‌మెంట్</string>
+    <string name="house_floor_invalid">-5 నుండి 200 వరకు అంతస్తు నమోదు చేయండి</string>
+    <string name="house_room_move_up">%1$sను పైకి జరపండి</string>
+    <string name="house_room_move_down">%1$sను కిందికి జరపండి</string>
+    <string name="duplicate_flat_warning">ఇది %1$s లాంటి అదే ఫ్లాట్ కావచ్చు: సుమారు 30 మీటర్లలోపు, అవే పడకగదులు, అదే అంతస్తు.</string>
+    <string name="houses_filters">ఫిల్టర్లు</string>
+    <string name="houses_filters_count">ఫిల్టర్లు (%1$d)</string>
+    <string name="houses_filters_title">ఖర్చు ప్రకారం ఫిల్టర్ చేయండి</string>
+    <string name="houses_filters_hint">పూర్తి రూపాయల్లో. ఈ మొత్తం లెక్కించలేని ఇల్లు వదిలేయబడుతుంది (అమ్మకానికి నెలవారీ ఖర్చు ఉండదు).</string>
+    <string name="houses_filter_min">%1$s, కనీసం (₹)</string>
+    <string name="houses_filter_max">%1$s, గరిష్ఠం (₹)</string>
+    <string name="houses_filters_clear">ఖర్చు ఫిల్టర్లను తీసివేయండి</string>
+    <string name="import_new_brokers">కొత్త బ్రోకర్లు</string>
+    <string name="import_updated_brokers">బ్యాకప్‌లో కొత్త వెర్షన్ ఉన్న బ్రోకర్లు</string>
 </resources>

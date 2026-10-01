@@ -65,6 +65,8 @@ class RoomSchemaTest {
             // v9 (docs/11 5.7 and 5.24, slice 5, 2026-09-30): the photos' roomId, tags, caption, metaUpdatedAt and
             // metaDirty, and houses.moveIn.
             9 to "680c57fd1f6c668e1169c9014a9b2a66",
+            // v10 (S4b-BL-87, 2026-10-01): houses.floor.
+            10 to "0365b6bdbbacce16395d044cf2c0100c",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

@@ -289,7 +289,7 @@ class AppDatabaseMigrationTest {
     fun migrations1To9MatchTheExportedSchemaAndAPhotoFromBeforeHasNoMeta() = runBlocking {
         writeVersion1(helperFile)
 
-        val db = helper.runMigrationsAndValidate(9, AppDatabase.MIGRATIONS.toList())
+        val db = helper.runMigrationsAndValidate(9, AppDatabase.MIGRATIONS.toList().take(8))
         try {
             assertEquals(listOf("h1|"), db.rows("SELECT id, IFNULL(moveIn, '') FROM houses"))
             assertEquals(
@@ -336,6 +336,32 @@ class AppDatabaseMigrationTest {
             assertEquals(listOf("p1|0|0|0"), db.rows("SELECT id, deleted, metaUpdatedAt, metaDirty FROM photos"))
         } finally {
             db.close()
+        }
+    }
+
+    /** `MIGRATION_9_10` alone (S4b-BL-87): a version-9 house keeps its move-in and has no floor, and a floor round-trips. */
+    @Test
+    fun migration9To10AddsTheFloorColumn() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(9, AppDatabase.MIGRATIONS.toList().take(8)).use { v9 ->
+            v9.execSQL("UPDATE houses SET moveIn = '{\"notes\":\"Keys\"}'")
+        }
+        val db = helper.runMigrationsAndValidate(10, listOf(AppDatabase.MIGRATION_9_10))
+        try {
+            assertEquals(listOf("h1|{\"notes\":\"Keys\"}|"), db.rows("SELECT id, moveIn, IFNULL(floor, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.floor)
+            opened.houses().upsert(house.copy(floor = -1))
+            assertEquals(-1, opened.houses().get("h1")!!.floor)
+        } finally {
+            opened.close()
         }
     }
 

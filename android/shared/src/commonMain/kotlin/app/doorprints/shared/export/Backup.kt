@@ -62,14 +62,14 @@ object BackupFormat {
      * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
      * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), an area, a place or an area
      * note (slice 4a), or [slice5]: a house TAKEN or NOT_CHOSEN, a house with a move-in or a photo with meta
-     * ([ExportBundle.hasSlice5]); else `/1`, byte for byte as before.
+     * ([ExportBundle.hasSlice5]), or a house with a floor ([floors], S4b-BL-87); else `/1`, byte for byte as before.
      */
     fun idFor(
         brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0, questions: Int = 0, answers: Int = 0,
-        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0, slice5: Boolean = false,
+        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0, slice5: Boolean = false, floors: Int = 0,
     ): String =
         if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0 ||
-            areas > 0 || places > 0 || areaNotes > 0 || slice5
+            areas > 0 || places > 0 || areaNotes > 0 || slice5 || floors > 0
         ) ID_2 else ID
 
     /**
@@ -261,6 +261,7 @@ data class BackupData(
                     bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
                     bundle.preferences.size, bundle.questions.size, bundle.houses.sumOf { it.answers?.size ?: 0 },
                     bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size, bundle.hasSlice5,
+                    bundle.houses.count { it.floor != null },
                 ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },

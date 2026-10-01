@@ -27,7 +27,9 @@ import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
 import { uuid } from '../../core/models';
 import { TPipe } from '../../i18n/t.pipe';
+import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
+import { duplicateFlats } from '../../shared/duplicate-flat';
 import {
   MAX_BROKER_AGENCY,
   MAX_BROKER_FEE_TERMS,
@@ -66,6 +68,7 @@ export class BrokerPage implements OnInit {
   private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
+  private readonly i18n = inject(TranslationService);
 
   protected id = '';
   protected readonly isNew = signal(false);
@@ -75,6 +78,8 @@ export class BrokerPage implements OnInit {
   protected readonly nameError = signal(false);
   protected readonly error = signal<RunResult<Msg> | null>(null);
   protected readonly houses = signal<HouseDto[]>([]);
+  /** Every house in this browser, for the duplicate-flat warning under each of this broker's houses (S4b-BL-85). */
+  private readonly allHouses = signal<HouseDto[]>([]);
   protected form: BrokerForm = { name: '', phone: '', agency: '', feeTerms: '', notes: '', rating: null };
 
   protected readonly telHref = telHref;
@@ -112,6 +117,19 @@ export class BrokerPage implements OnInit {
       next: (list) => this.houses.set(list),
       error: () => this.houses.set([]),
     });
+    this.api.houses().subscribe({
+      next: (list) => this.allHouses.set(list),
+      error: () => this.allHouses.set([]),
+    });
+  }
+
+  /** "Maybe the same flat as …" for one of this broker's houses (any broker's house may be the other one); null for none. */
+  protected sameFlatLine(h: HouseDto): string | null {
+    const all = this.allHouses();
+    const ids = duplicateFlats(h, all);
+    if (ids.length === 0) return null;
+    const names = ids.map((id) => all.find((o) => o.id === id)?.label?.trim() || this.i18n.t('common.untitled'));
+    return this.i18n.t('house.duplicateFlat', { names: this.i18n.list(names) });
   }
 
   protected setRating(n: number | null): void {

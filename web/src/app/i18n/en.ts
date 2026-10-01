@@ -1097,6 +1097,21 @@ export const en = {
   'movein.closed': 'This hunt is closed. Houses marked Not chosen: {n}.',
   'movein.saveCopy': 'Save a copy',
   'movein.closeFailed': 'Could not close the hunt: {reason}',
+  // S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning and the cost filters.
+  'house.floor': 'Floor',
+  'house.floorHint': '0 is the ground floor, -1 a basement',
+  'house.floorInvalid': 'Enter a floor from -5 to 200',
+  'house.floorGround': 'Ground floor',
+  'house.floorBasement': 'Basement {n}',
+  'rooms.moveUp': 'Move {name} up',
+  'rooms.moveDown': 'Move {name} down',
+  'house.duplicateFlat': 'Maybe the same flat as {names}: within about 30 m, with the same bedrooms and floor.',
+  'map.costFilters': 'Filter by cost',
+  'map.costFiltersOn': 'Filter by cost ({n})',
+  'map.costFiltersHint': 'In whole rupees. A house is left out when its number cannot be worked out (a sale has no monthly cost).',
+  'map.costMin': '{what} from (₹)',
+  'map.costMax': '{what} up to (₹)',
+  'map.costClear': 'Clear cost filters',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

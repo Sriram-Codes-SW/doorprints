@@ -103,6 +103,13 @@ object HouseValues {
 
     /** The carpet area as read, or null when outside 1..[MAX_AREA_SQFT]. */
     fun areaSqft(value: Int?): Int? = value?.takeIf { it in 1..MAX_AREA_SQFT }
+
+    /** The floor a flat is on (S4b-BL-87): 0 the ground floor, negative a basement level. */
+    const val MIN_FLOOR = -5
+    const val MAX_FLOOR = 200
+
+    /** The floor as read, or null when outside [MIN_FLOOR]..[MAX_FLOOR] (the server refuses such a row instead). */
+    fun floor(value: Int?): Int? = value?.takeIf { it in MIN_FLOOR..MAX_FLOOR }
 }
 
 /**

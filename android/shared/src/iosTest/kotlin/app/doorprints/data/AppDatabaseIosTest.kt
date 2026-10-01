@@ -166,15 +166,15 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (9 since docs/11 slice 5: the photos' meta and houses.moveIn; 8 houses.answers; 7
-            // houses.rooms; 6 houses.brokerId; 5 the house's values; 4 records; track_points and records empty after the
-            // migration, and a house from before has no area, source, cost, broker, rooms, answers or move-in).
-            assertEquals(listOf("9"), connection.rows("PRAGMA user_version"))
+            // The current version (10 since S4b-BL-87: houses.floor; 9 the photos' meta and houses.moveIn; 8 houses.answers;
+            // 7 houses.rooms; 6 houses.brokerId; 5 the house's values; 4 records; track_points and records empty after the
+            // migration, and a house from before has no area, source, cost, broker, rooms, answers, move-in or floor).
+            assertEquals(listOf("10"), connection.rows("PRAGMA user_version"))
             assertEquals(
-                listOf("h1||||||"),
+                listOf("h1|||||||"),
                 connection.rows(
                     "SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, ''), IFNULL(brokerId, ''), IFNULL(rooms, ''), " +
-                        "IFNULL(answers, ''), IFNULL(moveIn, '') FROM houses",
+                        "IFNULL(answers, ''), IFNULL(moveIn, ''), IFNULL(floor, '') FROM houses",
                 ),
             )
             // A photo from before has no meta: no room, tags or caption, never edited, nothing to send (slice 5).

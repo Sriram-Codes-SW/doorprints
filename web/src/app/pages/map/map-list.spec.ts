@@ -24,6 +24,9 @@ function house(label: string, price: number | null, priceType: PriceType | null)
   return { ...newHouse(12.9, 77.6), label, price, priceType };
 }
 
+const NONE = { monthly: {}, moveIn: {}, perSqFt: {} };
+const NO_COST_PARAMS = { monthlyMin: null, monthlyMax: null, moveInMin: null, moveInMax: null, sqftMin: null, sqftMax: null };
+
 describe('the house list in the URL', () => {
   const read = (params: Record<string, string>) => parseListQuery((name) => params[name] ?? null);
 
@@ -32,12 +35,13 @@ describe('the house list in the URL', () => {
       q: 'park',
       status: 'SHORTLISTED',
       sort: 'price',
+      cost: NONE,
     });
   });
 
   it('falls back to the defaults for missing or unknown values', () => {
-    expect(read({})).toEqual({ q: '', status: 'ALL', sort: 'recent' });
-    expect(read({ status: 'shortlisted', sort: 'cheapest' })).toEqual({ q: '', status: 'ALL', sort: 'recent' });
+    expect(read({})).toEqual({ q: '', status: 'ALL', sort: 'recent', cost: NONE });
+    expect(read({ status: 'shortlisted', sort: 'cheapest' })).toEqual({ q: '', status: 'ALL', sort: 'recent', cost: NONE });
   });
 
   it('gives the way back to the list only the values that differ from the defaults, with no empty ones', () => {
@@ -50,12 +54,20 @@ describe('the house list in the URL', () => {
   });
 
   it('leaves the defaults out of the URL, so a plain list keeps a plain address', () => {
-    expect(listQueryParams({ q: '  ', status: 'ALL', sort: 'recent' })).toEqual({ q: null, status: null, sort: null });
+    expect(listQueryParams({ q: '  ', status: 'ALL', sort: 'recent' })).toEqual({ q: null, status: null, sort: null, ...NO_COST_PARAMS });
     expect(listQueryParams({ q: ' 2BHK ', status: 'NEW', sort: 'score' })).toEqual({
       q: '2BHK',
       status: 'NEW',
       sort: 'score',
+      ...NO_COST_PARAMS,
     });
+  });
+
+  it('keeps the cost filters in the URL as whole rupees and reads only those back (S4b-BL-84)', () => {
+    const cost = { monthly: { min: 20000 }, moveIn: {}, perSqFt: { max: 60 } };
+    expect(listReturnParams({ q: '', status: 'ALL', sort: 'recent', cost })).toEqual({ monthlyMin: '20000', sqftMax: '60' });
+    expect(read({ monthlyMin: '20000', sqftMax: '60' }).cost).toEqual(cost);
+    expect(read({ monthlyMin: '-1', moveInMax: '1.5', sqftMin: 'x', sqftMax: '99999999999999' }).cost).toEqual(NONE);
   });
 });
 
@@ -159,7 +171,14 @@ describe('searchText', () => {
     expect(parseListQuery((name) => (name === 'status' ? 'TAKEN' : null)).status).toBe('TAKEN');
     expect(parseListQuery((name) => (name === 'status' ? 'NOT_CHOSEN' : null)).status).toBe('NOT_CHOSEN');
     expect(parseListQuery((name) => (name === 'status' ? 'ARCHIVED' : null)).status).toBe('ALL');
-    expect(listQueryParams({ q: '', status: 'NOT_CHOSEN', sort: 'recent' })).toEqual({ q: null, status: 'NOT_CHOSEN', sort: null });
+    expect(listQueryParams({ q: '', status: 'NOT_CHOSEN', sort: 'recent' })).toEqual({ q: null, status: 'NOT_CHOSEN', sort: null, ...NO_COST_PARAMS });
+  });
+  it('a query matches the floor (S4b-BL-87) in the same words as Android', () => {
+    const high = { ...green, floor: 3 };
+    expect(searchText(high, greenBroker).includes('floor 3')).toBe(true);
+    expect(searchText(high, greenBroker).includes('ground floor')).toBe(false);
+    expect(searchText({ ...green, floor: 0 }, greenBroker).includes('ground floor')).toBe(true);
+    expect(searchText({ ...green, floor: null }, greenBroker)).toBe(searchText(green, greenBroker));
   });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));

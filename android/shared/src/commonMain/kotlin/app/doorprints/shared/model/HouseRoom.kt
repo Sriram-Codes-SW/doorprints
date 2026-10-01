@@ -124,6 +124,19 @@ object HouseRooms {
     /** The next room's sort: one past the largest, 0 for the first. */
     fun nextSort(rooms: List<HouseRoom>?): Int = (rooms.orEmpty().maxOfOrNull { it.sort } ?: -1) + 1
 
+    /**
+     * The rooms after moving room [id] one place up ([by] -1) or down (+1) in the order shown (S4b-BL-87), every
+     * `sort` renumbered 0..n-1 in that order; the list as it was (in the order shown) when [id] is not in it or is
+     * already first or last. The web's `moveRoom` (`room-sizes.ts`) keeps the same vectors (`HouseRoomsTest`).
+     */
+    fun move(rooms: List<HouseRoom>, id: String, by: Int): List<HouseRoom> {
+        val ordered = rooms.sortedWith(ORDER).toMutableList()
+        val from = ordered.indexOfFirst { it.id == id }
+        val to = from + by
+        if (from >= 0 && to in ordered.indices) ordered.add(to, ordered.removeAt(from))
+        return ordered.mapIndexed { i, r -> if (r.sort == i) r else r.copy(sort = i) }
+    }
+
     private fun text(value: String?, max: Int): String? = value?.trim()?.takeIf { it.isNotEmpty() && it.length <= max }
 
     private val listSerializer = ListSerializer(HouseRoom.serializer())

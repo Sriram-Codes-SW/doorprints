@@ -859,7 +859,7 @@ open class CommonRepository(
                 lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
                 bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
                 listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, rooms = h.rooms,
-                answers = h.answers, moveIn = h.moveIn, checklist = h.checklist,
+                answers = h.answers, moveIn = h.moveIn, floor = h.floor, checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
                 viewings = viewings[h.id].orEmpty().map { AiViewing(it.id, it.startsAt, it.kind, it.status, it.notes) },
                 areaNotes = AreaNotes.reaching(point, areas, notes).map { AiAreaNote(it.id, it.text, it.updatedAt) },

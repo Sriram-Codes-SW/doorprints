@@ -272,6 +272,36 @@
   margin: 0;
 }
 
+/* The cost filters (S4b-BL-84): a disclosure under the sort; two ends per range side by side, wrapping on a phone. */
+.cost-filters summary {
+  min-height: var(--target);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cost-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.cost-range legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+
+.cost-range .field {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
 .count {
   font-weight: 400;
 }

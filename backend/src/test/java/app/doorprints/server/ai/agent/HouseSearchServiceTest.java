@@ -33,7 +33,7 @@ class HouseSearchServiceTest {
 
     private static HouseDto house(HouseStatus status, Long price, Integer bedrooms, Integer rating, String notes) {
         return new HouseDto(UUID.randomUUID(), "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
-                status, price, "RENT", bedrooms, rating, null, null, null, notes, null, null, null, null, null, null, null, Map.of(), null, null, false, 1,
+                status, price, "RENT", bedrooms, rating, null, null, null, notes, null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1,
                 null);
     }
 

@@ -121,6 +121,16 @@ describe('BrokerPage', () => {
     expect(host.querySelector('.btn-danger')?.textContent).toContain(text({ key: 'brokers.delete' }));
   });
 
+  it('warns under a house of this broker that another broker shows the same flat (S4b-BL-85), and only then', async () => {
+    const flat = { ...HOUSE, bedrooms: 2, floor: 3, locationSource: 'GPS' as const };
+    const other: HouseDto = { ...flat, id: 'h-9', label: 'Meena shows it too', brokerId: 'b-2', lat: 13.00009 };
+    const { host } = await render('b-1', api({ brokerHouses: () => of([flat]), houses: () => of([flat, other]) }));
+    expect(host.querySelector('.warn-box')?.textContent).toContain('Maybe the same flat as Meena shows it too');
+    TestBed.resetTestingModule();
+    const { host: plain } = await render('b-1', api({ brokerHouses: () => of([flat]), houses: () => of([flat, { ...other, floor: 4 }]) }));
+    expect(plain.querySelector('.warn-box')).toBeNull();
+  });
+
   it('says so for a broker that is not in this browser', async () => {
     const { host } = await render('nope');
     expect(host.textContent).toContain(text({ key: 'brokers.notFound' }));

@@ -50,9 +50,10 @@ class ExportCostTest {
             ),
             table.columns.subList(notes + 1, notes + 17),
         )
-        // Slice 1c's room count, then the visits.
+        // Slice 1c's room count, S4b-BL-87's floor, then the visits.
         assertEquals("Rooms", table.columns[notes + 17])
-        assertEquals("Visits", table.columns[notes + 18])
+        assertEquals("Floor", table.columns[notes + 18])
+        assertEquals("Visits", table.columns[notes + 19])
         val row = table.rows.first { (it[1] as Cell.Text).value == "Sunrise Apartments" }
         val cells = row.subList(notes + 1, notes + 17).map { ExportRows.plain(it, bundle.options) }
         assertEquals(

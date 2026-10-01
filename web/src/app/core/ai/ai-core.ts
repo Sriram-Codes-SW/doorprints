@@ -213,6 +213,8 @@ export interface AiHouse {
   distances?: AiDistance[] | null;
   /** Moving in (slice 5): only the progress and the notes are read; the item texts and the date are not sent. */
   moveIn?: { notes?: string | null; items?: { done?: boolean | null }[] | null } | null;
+  /** The floor (S4b-BL-87), 0 the ground floor; written as words. */
+  floor?: number | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -264,6 +266,8 @@ export function houseText(h: AiHouse): string {
   if (h.bedrooms != null) line('Size', h.bedrooms === 0 ? 'studio / 1RK' : `${h.bedrooms} BHK`);
   // The same words as the server's HouseDocuments and the phones' AiHouse (slice 1a); never the person's own offer.
   if (h.areaSqft != null) line('Carpet area', `${h.areaSqft} sq ft`);
+  // S4b-BL-87: the floor in the server's words, 0 the ground floor and a negative one a basement level.
+  if (h.floor != null) line('Floor', h.floor === 0 ? 'ground floor' : h.floor < 0 ? `basement ${-h.floor}` : String(h.floor));
   const c = h.cost ?? {};
   if (c.deposit != null) line('Deposit', `Rs ${c.deposit}`);
   else if (c.depositMonths != null) line('Deposit', months(c.depositMonths));
