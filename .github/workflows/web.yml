@@ -58,6 +58,9 @@
 #
 # 2026-09-24 (DevSecOps), branch fix/india-boundary-lines: pwa-files also requires the kind "state" (the
 #   Assam-Arunachal Pradesh state line, india-boundaries.ts in-boundary-state; S4b-BL-15).
+#
+# 2026-10-01 (Web), branch feat/web-open-backup-file-handler: pwa-files also checks the manifest's file_handlers
+#   (S4b-BL-108): a relative action and at least one ".ext" accepted per handler.
 name: Web
 
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
@@ -244,6 +247,23 @@ jobs:
             }
             if (!icons.some((i) => String(i.purpose || '').split(/\s+/).includes('maskable'))) {
               warnings.push('manifest.webmanifest has no maskable icon (Android adaptive icons)');
+            }
+            // S4b-BL-108: file_handlers (a Doorprints backup opens Import a backup in the installed app). Each action
+            // must stay a relative, same-origin page like start_url, and each handler must accept at least one
+            // extension; a wrong entry is ignored by Chromium without a word, so it is caught here.
+            const handlers = manifest.file_handlers;
+            if (handlers !== undefined) {
+              if (!Array.isArray(handlers)) errors.push('manifest.webmanifest "file_handlers" is not a list');
+              (Array.isArray(handlers) ? handlers : []).forEach((h, i) => {
+                const action = String((h && h.action) || '');
+                if (!action) errors.push(`manifest file_handlers[${i}] has no "action"`);
+                else if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(action)) errors.push(`manifest file_handlers[${i}] action ${action} is not a relative path`);
+                const accept = h && h.accept && typeof h.accept === 'object' ? h.accept : {};
+                const exts = Object.values(accept).flat();
+                if (exts.length === 0 || exts.some((e) => !/^\.[a-z0-9]+$/i.test(String(e)))) {
+                  errors.push(`manifest file_handlers[${i}] "accept" needs MIME types with extensions such as ".zip"`);
+                } else console.log(`ok: file_handlers[${i}] ${action} for ${exts.join(' ')}`);
+              });
             }
           }
 

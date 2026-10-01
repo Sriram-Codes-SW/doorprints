@@ -148,8 +148,8 @@ describe('unregisterOwnWorker', () => {
 });
 
 /*
- * `public/manifest.webmanifest` carries the same rule — `start_url`, `scope`, the share target's `action`, the icon
- * `src`s and the shortcut `url`s are all relative, because those resolve against the **manifest URL**, which
+ * `public/manifest.webmanifest` carries the same rule — `start_url`, `scope`, the share target's `action`, the file
+ * handler's `action` (S4b-BL-108), the icon `src`s and the shortcut `url`s are all relative, because those resolve against the **manifest URL**, which
  * `<link rel="manifest" href="manifest.webmanifest">` already makes base-href-relative. The same bytes therefore
  * describe the `/` deployment (Firebase Hosting, live) and a sub-path one such as `/doorprints/`.
  *
