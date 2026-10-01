@@ -50,6 +50,11 @@ data class PlatformFeatures(
      * the app and opens them ([PlatformServices.openAppSettings]).
      */
     val inAppLanguage: Boolean = true,
+    /**
+     * *Wake me in my hunting areas* in Settings > My areas (docs/11 "Design of slice 4b"). Android also hides it where
+     * Google Play services are missing ([AreaWakeupServices.available]); the iPhone has no wake-up yet (S4b-BL-96).
+     */
+    val areaWakeup: Boolean = true,
 ) {
     companion object {
         /**
@@ -62,6 +67,7 @@ data class PlatformFeatures(
             copiesAndImports = false,
             weeklyBackup = false,
             inAppLanguage = false,
+            areaWakeup = false,
         )
     }
 }

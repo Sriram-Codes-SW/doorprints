@@ -56,6 +56,7 @@ import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.location.ReverseGeocoder
 import app.doorprints.ui.AppServices
+import app.doorprints.ui.AreaWakeupServices
 import app.doorprints.ui.CopyImportUndoes
 import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
@@ -118,6 +119,8 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val mapScreen: MapServices = AndroidMapServices(app)
 
     override val offlineMaps: OfflineMapsServices = AndroidOfflineMaps(app)
+
+    override val areaWakeup: AreaWakeupServices = AndroidAreaWakeup(app)
 
     /** Resume: an exact-alarm grant, a time change or an edit elsewhere is picked up (docs/11 5.16). */
     override fun rescheduleReminders() {

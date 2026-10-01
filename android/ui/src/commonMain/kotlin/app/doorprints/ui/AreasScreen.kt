@@ -66,7 +66,8 @@ import kotlin.math.roundToInt
 
 // Hunting areas, my places and area notes (docs/11 "Design of slice 4a", 5.17, 5.22, 5.23): Settings > My areas (the
 // areas and every area note) and Settings > My places, their forms, the house page's Area notes and Distances, and the
-// note dialog they share. The wake-up on entering an area is slice 4b: the *Wake me here* switch only stores the flag.
+// note dialog they share. The wake-up on entering an area (slice 4b) is AreaWakeupScreen.kt: *Wake me here* marks the
+// areas it watches.
 
 /** How long *Use my current location* waits for a fix, as on the house form. */
 private const val POINT_LOCATION_TIMEOUT_MS = 15_000L
@@ -77,7 +78,7 @@ internal fun HouseEntity.point() = HousePoint(lat, lon, street, locationSource)
 /** A screen with a top bar, a back arrow and a scrolling column no wider than [ContentMaxWidth]. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun SubScreen(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,21 +100,25 @@ private fun SubScreen(title: String, onBack: () -> Unit, content: @Composable Co
 
 // ---- My areas ----
 
-/** Settings > My areas: the areas, *Add area* (up to 20), and every area note with a filter; a row opens its form. */
+/**
+ * Settings > My areas: *Wake me in my hunting areas* (slice 4b; [onTurnOnWakeup] opens its rationale), the areas, *Add
+ * area* (up to 20), and every area note with a filter; a row opens its form.
+ */
 @Composable
-fun AreasScreen(onBack: () -> Unit, onOpenArea: (String) -> Unit) {
-    SubScreen(stringResource(Res.string.areas_title), onBack) { AreasEditor(onOpenArea) }
+fun AreasScreen(onBack: () -> Unit, onOpenArea: (String) -> Unit, onTurnOnWakeup: () -> Unit = {}) {
+    SubScreen(stringResource(Res.string.areas_title), onBack) { AreasEditor(onOpenArea, onTurnOnWakeup) }
 }
 
 /** The list and the notes without the screen around them (the screenshot and the tests show this). */
 @Composable
-fun AreasEditor(onOpenArea: (String) -> Unit) {
+fun AreasEditor(onOpenArea: (String) -> Unit, onTurnOnWakeup: () -> Unit = {}) {
     val repo = LocalAppServices.current.repository
     // null until the database answers, so the empty state does not flash on the way in.
     val areas: List<Area>? by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(initialValue = null)
     val notes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val list = areas ?: return@Column
+        AreaWakeupSection(onTurnOnWakeup)
         AddButton(stringResource(Res.string.areas_add), list.size < Area.MAX_AREAS, stringResource(Res.string.areas_cap)) {
             onOpenArea(Routes.NEW_RECORD)
         }
@@ -303,8 +308,8 @@ private fun NoteRow(note: AreaNote, source: String, areas: List<Area>) {
 
 /**
  * The form of an area, or a new one when [areaId] is null: the name, the point (*Use my current location*, *Pick on the
- * map*, the latitude and longitude), the radius (200 to 2,000 m in 100 m steps), *Wake me here* (stored only, slice 4b
- * wakes), *Save* and *Delete area* after a confirmation.
+ * map*, the latitude and longitude), the radius (200 to 2,000 m in 100 m steps), *Wake me here* (the areas *Wake me in
+ * my hunting areas* watches, slice 4b), *Save* and *Delete area* after a confirmation.
  */
 @Composable
 fun AreaFormScreen(areaId: String?, onDone: () -> Unit) {

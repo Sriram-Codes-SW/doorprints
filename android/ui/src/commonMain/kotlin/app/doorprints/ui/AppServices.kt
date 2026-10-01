@@ -80,11 +80,61 @@ interface AppServices {
      */
     fun rescheduleReminders() {}
 
+    /** The area wake-up (docs/11 "Design of slice 4b"): Android's geofencing; none elsewhere ([NoAreaWakeup]). */
+    val areaWakeup: AreaWakeupServices get() = NoAreaWakeup
+
     /**
      * The language chosen in Settings just before the app was recreated for it, once: the root's "Language changed to
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".
      */
     fun consumeLanguageChange(): LanguageChange?
+}
+
+/**
+ * What *Wake me in my hunting areas* needs from the app (docs/11 "Design of slice 4b", 5.17, 5.18). Android:
+ * `AndroidAreaWakeup` in `:app` (Google Play services' geofencing, `AreaGeofenceManager`). The setting itself is
+ * `SettingsStore.areaWakeup`; turning it on goes through [AreaWakeupRationaleScreen].
+ */
+interface AreaWakeupServices {
+    /** True where the wake-up can work (Android: Google Play services are there). False hides the setting. */
+    val available: Boolean
+
+    /**
+     * True when the wake-up's permissions are all granted: precise location and background location (*Allow all the
+     * time*; below Android 10 the foreground grant covers it). Read at the moment it matters (on resume, on return).
+     */
+    fun backgroundGranted(): Boolean
+
+    /**
+     * Called on every app resume: a permission lost since switches the setting off (the geofences go and My areas says
+     * once why), otherwise the geofences are registered again. Returns at once; the work runs in the app's scope.
+     */
+    fun resumed()
+
+    /**
+     * Returns what asks for background location (5.18 *Area wake-up turned on*, step 2): Android 10's system dialog; on
+     * Android 11 and later the app's location permission page, or the app's settings page when Android will not open
+     * it. [onResult] runs after the dialog's answer; a return from a settings page is read on resume.
+     */
+    @Composable
+    fun rememberBackgroundLocationRequest(onResult: () -> Unit): () -> Unit
+
+    /** The precise location prompt the rationale shows first when it is missing ([rememberLocationPermissionRequest]). */
+    @Composable
+    fun rememberForegroundLocationRequest(onResult: () -> Unit): () -> Unit
+}
+
+/** No area wake-up (the iPhone, the website's twin has none either): hidden. */
+object NoAreaWakeup : AreaWakeupServices {
+    override val available: Boolean get() = false
+    override fun backgroundGranted(): Boolean = false
+    override fun resumed() {}
+
+    @Composable
+    override fun rememberBackgroundLocationRequest(onResult: () -> Unit): () -> Unit = onResult
+
+    @Composable
+    override fun rememberForegroundLocationRequest(onResult: () -> Unit): () -> Unit = rememberLocationPermissionRequest(onResult)
 }
 
 /** A language change to confirm; [language] is null for "System default". */

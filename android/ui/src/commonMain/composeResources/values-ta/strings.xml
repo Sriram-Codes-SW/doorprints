@@ -1019,7 +1019,7 @@
     <string name="area_radius">ஆரம்: %1$d மீ.</string>
     <string name="area_radius_label">ஆரம்</string>
     <string name="area_wake">இங்கே என்னை எழுப்பு</string>
-    <string name="area_wake_hint">இது பிந்தைய புதுப்பிப்பில் செயல்படும்.</string>
+    <string name="area_wake_hint">என் தேடல் பகுதிகளில் என்னை எழுப்பு இதைப் பயன்படுத்துகிறது.</string>
     <string name="area_delete">பகுதியை நீக்கு</string>
     <string name="area_delete_title">இந்தப் பகுதியை நீக்கவா?</string>
     <string name="area_delete_body">இதன் குறிப்புகள் இருக்கும், ஆனால் இனி எந்த வீட்டிலும் தெரியாது.</string>
@@ -1063,4 +1063,16 @@
     <string name="house_distance_value">%1$s கி.மீ. · நடந்தால் சுமார் %2$d நிமிடம்</string>
     <string name="house_distances_hint">நேர்கோட்டில்; நேரம் திட்டமிடலின் நடை மதிப்பீடு.</string>
     <string name="compare_km">%1$s கி.மீ.</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="area_wakeup_switch">என் தேடல் பகுதிகளில் என்னை எழுப்பு</string>
+    <string name="area_wakeup_hint">இங்கே என்னை எழுப்பு இயக்கத்தில் உள்ள பகுதிக்கு நீங்கள் வந்ததும், Doorprints தேடல் பயன்முறையைப் பரிந்துரைக்கும், பொதுவாகச் சில நிமிடங்களில். இதற்கு எப்போதும் இருப்பிட அனுமதி தேவை.</string>
+    <string name="area_wakeup_why">ஏன்: நீங்கள் தேடும் பகுதிக்கு வந்ததை Doorprints அறிந்து தேடல் பயன்முறையைப் பரிந்துரைக்க. இது தேடல் பயன்முறையைத் தானாக ஒருபோதும் தொடங்காது.</string>
+    <string name="area_wakeup_what">எப்படி: Google Play services போனிலேயே போனின் இருப்பிடத்தை உங்கள் பகுதிகளுடன் ஒப்பிடுகிறது. Doorprints இருப்பிட வரலாறு எதையும் வைத்திருக்காது, உங்கள் இருப்பிடத்தை எங்கும் அனுப்பாது.</string>
+    <string name="area_wakeup_battery">பேட்டரி: சிறிது. Doorprints தனக்கென இருப்பிடத்தைக் கேட்பதில்லை.</string>
+    <string name="area_wakeup_how_off">நிறுத்த, என் பகுதிகளில் என் தேடல் பகுதிகளில் என்னை எழுப்பு என்பதை அணைக்கவும், அல்லது போன் அமைப்புகளில் இருப்பிட அனுமதியை நீக்கவும்.</string>
+    <string name="area_wakeup_pick">அடுத்து Android இருப்பிடம் பற்றிக் கேட்கும். எப்போதும் அனுமதி என்பதைத் தேர்ந்தெடுக்கவும். புதிய Android இல் இது பயன்பாட்டின் இருப்பிடப் பக்கத்தில் இருக்கும்: அங்கே தேர்ந்தெடுத்து, திரும்பி வாருங்கள்.</string>
+    <string name="area_wakeup_continue">தொடர்க</string>
+    <string name="area_wakeup_not_now">இப்போது வேண்டாம்</string>
+    <string name="area_wakeup_still_off">பகுதி எழுப்புதல் இன்னும் அணைப்பில் உள்ளது: இதற்குத் துல்லியமான இருப்பிடத்திற்கு எப்போதும் அனுமதி தேவை.</string>
+    <string name="area_wakeup_off_card">Doorprints க்கு இனி எப்போதும் இருப்பிட அனுமதி இல்லாததால் பகுதி எழுப்புதல் அணைக்கப்பட்டது.</string>
 </resources>

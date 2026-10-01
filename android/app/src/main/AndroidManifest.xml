@@ -24,6 +24,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- The area wake-up's geofences (docs/11 5.17, 5.18, slice 4b): "Allow all the time". Only requested when the
+         person turns *Wake me in my hunting areas* on, after the in-app rationale screen; never at first launch. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
@@ -126,6 +129,19 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- The area wake-up (slice 4b): geofence events, the notification's Dismiss, and after a boot or an app update the
+             geofences set again. Not exported: the geofencing PendingIntent is explicit to this receiver and mutable
+             only because the Geofencing API requires it (Play services fills in the event's extras); the Dismiss
+             PendingIntent is immutable; the two system broadcasts reach a non-exported receiver. -->
+        <receiver
+            android:name=".AreaGeofenceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

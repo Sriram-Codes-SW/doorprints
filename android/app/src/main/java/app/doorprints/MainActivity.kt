@@ -132,6 +132,12 @@ class MainActivity : ComponentActivity() {
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
             return DeepLink.StartHunt
         }
+        // An area wake-up's *Start Hunt mode* without location (slice 4b): the same Map question.
+        intent.getStringExtra(Notifications.EXTRA_START_HUNT_AREA)?.let {
+            if (!RecordRules.isValidId(it)) return null
+            NotificationManagerCompat.from(this).cancel(Notifications.areaTag(it), Notifications.AREA_WAKEUP_ID)
+            return DeepLink.StartHunt
+        }
         if (intent.hasExtra(Notifications.EXTRA_NEW_LAT)) {
             val lat = intent.getDoubleExtra(Notifications.EXTRA_NEW_LAT, Double.NaN)
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
@@ -155,6 +161,7 @@ class MainActivity : ComponentActivity() {
             Notifications.EXTRA_VISIT_ID,
             Notifications.EXTRA_OPEN_VIEWING,
             Notifications.EXTRA_START_HUNT,
+            Notifications.EXTRA_START_HUNT_AREA,
         )
     }
 }
