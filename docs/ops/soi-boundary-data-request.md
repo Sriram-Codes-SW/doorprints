@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.8 |
+| Version | 0.9 |
 | Date | 2026-10-01 |
 | Author | Claude (Code), lead |
 | Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below. **Follow-up letter sent 2026-10-01 07:15 UTC; awaiting the answer** |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.9 | 2026-10-01 | Claude (Code), lead | **P1 started: the downloaded file was read** (the owner shared it by link; kept outside the repository). New subsection *P1 findings*: its projected coordinate system (a re-projection to longitude/latitude is needed, which the follow-up letter does not ask about), its size (1.7 million vertices in the state layer alone), its layers and extent. |
 | 0.8 | 2026-10-01 | Claude (Code), lead | **The follow-up letter was sent** by the owner on 2026-10-01 at 07:15 UTC (12:45 IST) as a reply in the same Gmail thread to `mtr.soi@gov.in`, copied to the four officers they copied on their reply (names and addresses are in the Gmail thread, not recorded here) (checked in the owner's Gmail: third message of the thread, label SENT). It thanks the Survey of India, confirms the three conditions and asks the four questions below, with the proposed acknowledgement wording and a request for the Boundary Verification Wing contact. Awaiting the reply. |
 | 0.7 | 2026-10-01 | Claude (Code), lead | An AI search answer the owner pasted (answers to the four follow-up questions, with six references) was checked against its sources: the new subsection *What the Survey of India's own documents say (checked 2026-10-01)*. Its conclusions stay unconfirmed; the follow-up letter stays worth sending and now offers two wordings for the acknowledgement and names the Boundary Verification Wing. |
 | 0.6 | 2026-10-01 | Claude (Code), lead | Owner supplied the DST guidelines PDF ("Final Approved Guidelines on Geospatial Data", authority F.No.SM/25/02/2020 (Part-I), 15 February 2021, 5 pages) to help read the reply: new subsection *Reading the reply against the 2021 guidelines*; P2 now says what that PDF does and does not settle. |
@@ -142,6 +143,48 @@ Boundary Verification Wing as a contact. The sentence "Others may publish such m
 "Boundary: Survey of India", and in About / `NOTICE` / README the fuller line "Boundaries: Survey of India, Administrative
 Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright Survey of India, Government of India." Both are
 ours, not the Survey of India's; the letter asks which it prefers (and offers the Licence 6.3 notation as the alternative).
+
+### P1 findings (the downloaded OVSF/1M/7 file, read 2026-10-01; nothing was changed or committed)
+
+**Provenance.** File name `File_962036_8518ee870554465ba55d2b5aadd72bc9.zip` (as downloaded by the owner; the portal shows no
+version). The copy read here came through the owner's shared Drive link: 80,777,293 bytes, **sha256
+`e2225e73e00852d81141960eea69afeb78313003123c5f2420fca9ab583206ce`** (the owner can compare it with
+`Get-FileHash` on the original). The ZIP holds `91/` with five shapefile layers (each with `.dbf`, `.prj`, `.shx`, and
+mostly `.shp.xml`, `.sbn`, `.sbx`, `.cpg`); the boundary layers' files are dated 2026-09-12 and the metadata says "created
+20260912, modified 20251016"; the lineage records say the state layer was dissolved from the district layer (Esri
+ArcGIS 10.7, 2021, edited 2024-12-07). Per-file sha256 values are in the owner's session notes, not in the repository.
+
+| Layer | Geometry | Features | Parts | Vertices | `.shp` bytes |
+|---|---|---|---|---|---|
+| `STATE_BOUNDARY` | polygon | 40 | 1,322 | 1,719,455 | 27,518,748 |
+| `DISTRICT_BOUNDARY` | polygon | 810 | 2,445 | 5,698,882 | 182,442,144 |
+| `DISTRICT_HQ`, `STATE_HQ`, `MAJOR_TOWNS` | point | 780, 34, 13,844 | | | small |
+
+**Extent matches ADR-22.** The layers span longitude 69.5 to 98.6 and latitude 7.0 to 37.1. The `LADAKH` polygon alone spans
+72.5-80.4 E and 32.3-37.1 N (so it includes the areas Pakistan and China hold), `ARUNACHAL PRADESH` 91.6-97.4 E; the state
+layer has no separate country outline and no international-boundary line layer, and holds four `DISPUTED (...)`
+inter-state areas. The India outline is the union of the state polygons' outer edges.
+
+**What this means for the plan**
+
+1. **The coordinate system is projected, not longitude/latitude.** Every layer is `LCC_WGS84`: Lambert Conformal Conic on the WGS 84
+   ellipsoid, metres, central meridian 80 E, standard parallels 12.472944 and 35.172806, latitude of origin 24, false easting
+   and northing 4,000,000. GeoJSON and the map libraries need longitude/latitude, so using the file means
+   **re-projecting every coordinate**. The projection is exact mathematics on the same datum and moves no feature, but the
+   numbers change; follow-up letter question 1 said "every coordinate ... kept exactly as published" and did not mention this.
+   **Ask the Survey of India (a second short question, after its answer to the first)**: is a re-projection from the
+   database's LCC to WGS 84 longitude/latitude, at full precision, an alteration? Until it answers, nothing is converted.
+2. **Size.** 1.7 million vertices for the state layer alone is tens of MB as GeoJSON text (the current outline is 415 KB), far
+   over the repository rule and the app size budget, and the district layer is 6 MB of vertices more than three times larger. Lossless
+   cannot be small here. P3 must choose with the owner: (a) ask whether extracting *runs of unchanged vertices* (for
+   example the external land boundary only, which drops the coastline's detail but changes no vertex) is allowed; (b) ask
+   whether a generalised *data file* (not only generalisation on the screen) is allowed, which question 3 of the letter did not
+   cover; (c) ship the full lossless file outside the repository's source tree (for example fetched by the build, not
+   committed) and keep a small compliant outline in the repository; (d) keep Natural Earth for the base outline and use the
+   Survey of India's data only for what the app can afford. The safe default stays: no change of any vertex.
+3. **No separate outline layer.** An India outline needs the union of the state polygons; whether a union (a derived line)
+   is an alteration is question 2 of the letter, which asked about "whole features" and not about a union.
+4. **Attributes.** Keep every attribute exactly (names such as `DISPUTED (RAJATHAN & GUJARAT)` carry the source's spelling).
 
 ### The plan
 
