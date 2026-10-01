@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.58 |
+| Version | 0.59 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -68,6 +68,7 @@
 | 0.54 | 2026-09-30 | Claude (Code), lead | Slice 3a of ADR-28 ([10](10-sprint-log.md) §13.23): `house.answers jsonb` (Flyway V10) in §6.1 and `answers` on `HouseDto` in §9; questions are `record` rows of type `question`; `GET /api/export` writes `/2` when the server holds a question or a house with answers. |
 | 0.55 | 2026-09-30 | Claude (Code), lead | Slice 3b-1 of ADR-28 ([10](10-sprint-log.md) §13.24): `viewing` is a record type; `/api/import` and `/api/export` carry a `viewings` list and write `/2` when the server holds a live viewing. |
 | 0.56 | 2026-09-30 | Claude (Code), lead | Slice 4a of ADR-28 ([10](10-sprint-log.md) §13.27): `area`, `place` and `areanote` are record types; `/api/import` and `/api/export` carry `areas`, `places`, `areaNotes` and write `/2` when the server holds any. |
+| 0.59 | 2026-10-01 | Claude (Code), lead | §11.1: the reply read against the 2021 guidelines PDF (8(ii)(1), 8(xii), 8(xiii); "adhere to these standards" as the sense of "no alteration"); the National Geospatial Policy 2022 guidelines still to be read (S4b-BL-111 P2). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
