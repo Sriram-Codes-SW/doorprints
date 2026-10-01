@@ -56,7 +56,7 @@ class IosAreaWakeupTest {
 
     @Test
     fun aTappedWakeUpOpensTheMapForHuntModeOnlyForAValidId() {
-        assertEquals(DeepLink.StartHunt, notificationDeepLink(mapOf(IosAreaWakeup.KEY_START_HUNT_AREA to "a_00000001")))
+        assertEquals(DeepLink.OfferHunt, notificationDeepLink(mapOf(IosAreaWakeup.KEY_START_HUNT_AREA to "a_00000001")))
         assertNull(notificationDeepLink(mapOf(IosAreaWakeup.KEY_START_HUNT_AREA to "..")))
     }
 }

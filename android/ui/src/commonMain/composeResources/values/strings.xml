@@ -1145,4 +1145,7 @@
     <string name="notif_area_wakeup">You're in %1$s. Start Hunt mode?</string>
     <!-- S4b-BL-81, copies on iPhone (2026-09-30): the Save a copy hint without the PDF, which the iPhone does not make. -->
     <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown or a full backup</string>
+    <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30). -->
+    <string name="map_hunt_offer">Start Hunt mode?</string>
+    <string name="map_hunt_offer_start">Start Hunt mode</string>
 </resources>

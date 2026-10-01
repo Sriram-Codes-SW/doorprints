@@ -196,6 +196,9 @@ fun MapScreen(
     /** *Start Hunt mode* from a reminder (slice 3c): asked for location if needed, then started, once. */
     huntRequest: Boolean = false,
     onStartHuntHandled: () -> Unit = {},
+    /** An iPhone reminder or area tap (S4b-BL-94c): a snackbar offers *Start Hunt mode*, once. */
+    huntOffer: Boolean = false,
+    onHuntOfferHandled: () -> Unit = {},
 ) {
     // No map on this platform yet (iOS; PlatformFeatures.map): a note that points to the Houses tab instead, and none
     // of the map's state, permissions or Hunt mode below. The flag is fixed per process, so returning early never
@@ -459,6 +462,23 @@ fun MapScreen(
         if (!huntRequest) return@LaunchedEffect
         onStartHuntHandled()
         if (!hunt.active) startHunt()
+    }
+    // A tap on an iPhone reminder or area wake-up (S4b-BL-94c): the tap only opened the app, so the Map asks; the
+    // action is the Hunt switch's path. Nothing is offered while Hunt mode is on or where the platform has none.
+    val huntOfferText = stringResource(Res.string.map_hunt_offer)
+    val huntOfferAction = stringResource(Res.string.map_hunt_offer_start)
+    LaunchedEffect(huntOffer) {
+        if (!huntOffer) return@LaunchedEffect
+        onHuntOfferHandled()
+        if (hunt.active || !platformFeatures.huntMode) return@LaunchedEffect
+        // In the screen's scope, as the add tip's: clearing the flag restarts this effect.
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val result = snackbar.showSnackbar(
+                huntOfferText, actionLabel = huntOfferAction, withDismissAction = true, duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed && !hunt.active) startHunt()
+        }
     }
 
     val density = LocalDensity.current

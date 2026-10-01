@@ -51,12 +51,18 @@ data class CopyRecord(
     val photos: List<String> = emptyList(),
     val undone: Boolean = false,
     val rowHidden: Boolean = false,
+    /**
+     * The brokers, viewings, questions and criteria the copy created (S4b-BL-92e, 90c), by `CopyUndo.recordKey`, with
+     * the `updatedAt` each was written with. Old files without the field read it as empty.
+     */
+    val records: Map<String, Long> = emptyMap(),
 ) {
     /** What is left of this record after an undo that kept [keptHouses]: those houses only, and no undo. */
     fun keptOnly(keptHouses: Set<String>): CopyRecord = copy(
         houses = houses.filterKeys { it in keptHouses },
         visits = emptyMap(),
         photos = emptyList(),
+        records = emptyMap(),
         undone = true,
     )
 

@@ -210,7 +210,9 @@ public class BackupService {
         for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
 
         // Criteria and preferences (slice 2) merge after brokers.
-        var liveCriteria = new long[]{records.countByKeyTypeAndDeletedFalse(BackupCriterion.TYPE)};
+        // Counted as the apps count them (S4b-BL-90b): the ten built-ins always, plus the live custom ones.
+        var liveCriteria = new long[]{BackupCriterion.BUILT_IN_KEYS.size() + records.findByKeyTypeAndDeletedFalse(
+                BackupCriterion.TYPE).stream().filter(r -> !BackupCriterion.BUILT_IN_KEYS.contains(r.getKey().id())).count()};
         var criterionTally = new Tally();
         for (var row : data.criteria()) criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems));
 
@@ -226,7 +228,9 @@ public class BackupService {
         // Viewings (slice 3b-1) merge after the questions; a viewing's house is not checked (it may be gone).
         var liveViewings = new long[]{records.countByKeyTypeAndDeletedFalse(BackupViewing.TYPE)};
         var viewingTally = new Tally();
-        for (var row : data.viewings()) viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems));
+        for (var row : data.viewings()) {
+            viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems, changedHouses));
+        }
 
         // Areas, places and area notes (slice 4a) merge after the viewings; the apps hold the small caps, the server the record cap.
         var areaTally = new Tally();
@@ -418,11 +422,12 @@ public class BackupService {
         var existing = records.findById(key).orElse(null);
         var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
-        var becomesLive = existing == null || existing.isDeleted();
+        // A built-in key never adds one; a custom key that becomes live stays within the apps' 40 (S4b-BL-90b).
+        var becomesLive = (existing == null || existing.isDeleted()) && !BackupCriterion.BUILT_IN_KEYS.contains(row.key());
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("criterion " + row.key() + ": skipped, this server holds the most criteria it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            if (liveCount[0] >= BackupCriterion.MAX) {
+                problems.add("criterion " + row.key() + ": skipped, there are already " + BackupCriterion.MAX
+                        + " criteria, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -482,9 +487,10 @@ public class BackupService {
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
         var becomesLive = existing == null || existing.isDeleted();
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("question " + row.id() + ": skipped, this server holds the most questions it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            // The bank's 100 (the apps' cap, S4b-BL-90b), counting what is here and what this file added before.
+            if (liveCount[0] >= BackupQuestion.MAX) {
+                problems.add("question " + row.id() + ": skipped, the question bank already holds " + BackupQuestion.MAX
+                        + " questions, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -511,7 +517,8 @@ public class BackupService {
      * A viewing as a {@code viewing} record: payload keys in the format's order, {@code huntReminder} only when true,
      * {@code withWhom}, {@code notes} and {@code visitId} only when set. A problem line never carries the row's text.
      */
-    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems) {
+    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems,
+                                 Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "viewings.updatedAt");
         var key = new RecordKey(BackupViewing.TYPE, row.id());
         var existing = records.findById(key).orElse(null);
@@ -525,6 +532,16 @@ public class BackupService {
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
+        }
+        // A viewing is part of its house's AI document (S4b-BL-92d): that house, and the one it named before, change.
+        houseOf(row.houseId(), changedHouses);
+        if (existing != null && !existing.isDeleted()) {
+            try {
+                var before = json.readTree(existing.getPayload()).path("houseId");
+                if (before.isString()) houseOf(before.asString(), changedHouses);
+            } catch (RuntimeException e) {
+                // A stored payload that does not read names no house.
+            }
         }
         if (dryRun) return outcome;
 
@@ -546,6 +563,16 @@ public class BackupService {
         record.setSyncVersion(versions.next());
         records.save(record);
         return outcome;
+    }
+
+    /** Adds the house [id] names to [changed] when it is a UUID; a viewing may name anything. */
+    private static void houseOf(String id, Set<UUID> changed) {
+        if (id == null) return;
+        try {
+            changed.add(UUID.fromString(id));
+        } catch (IllegalArgumentException e) {
+            // Not a house id: nothing to re-index.
+        }
     }
 
     private Outcome mergeArea(BackupArea row, boolean dryRun, long[] liveCount, List<String> problems) {
@@ -815,8 +842,7 @@ public class BackupService {
 
     private void validateCriteria(List<BackupCriterion> rows, List<String> problems) {
         var seen = new HashSet<String>();
-        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
-                "maintenance", "neighbourhood", "commute");
+        var builtInKeys = BackupCriterion.BUILT_IN_KEYS;
         for (int i = 0; i < rows.size(); i++) {
             var row = rows.get(i);
             var at = "criteria[" + i + "]";

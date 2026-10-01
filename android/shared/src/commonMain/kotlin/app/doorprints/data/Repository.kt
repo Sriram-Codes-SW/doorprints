@@ -413,6 +413,8 @@ interface Repository {
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        /** The records the copy created (`CopyRecord.records`, S4b-BL-92e). */
+        records: Map<String, Long> = emptyMap(),
     ): UndoResult
 
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
@@ -493,6 +495,9 @@ interface Repository {
         val areaNotes: Map<String, Long> = emptyMap(),
         /** Every photo's `metaUpdatedAt` by id (slice 5), 0 for one never edited: an import's meta merge, last write wins. */
         val photoMeta: Map<String, Long> = emptyMap(),
+        /** The live question and criterion records' ids, for the caps an import keeps (S4b-BL-90b). */
+        val liveQuestions: Set<String> = emptySet(),
+        val liveCriteria: Set<String> = emptySet(),
     )
 
     /** What an import actually managed to write. */
@@ -522,6 +527,8 @@ interface Repository {
         val copiedHouses: Map<String, Long> = emptyMap(),
         val copiedVisits: Map<String, Long> = emptyMap(),
         val copiedPhotos: List<String> = emptyList(),
+        /** COPY only: the brokers, viewings, questions and criteria it created, by `CopyUndo.recordKey` (S4b-BL-92e). */
+        val copiedRecords: Map<String, Long> = emptyMap(),
         /** Brokers written (slice 1b), new and updated together. */
         val brokers: Int = 0,
         /** Criteria and preferences written (slice 2), new and updated together. */

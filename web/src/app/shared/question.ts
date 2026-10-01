@@ -73,6 +73,14 @@ export interface DefaultQuestion {
 }
 
 /**
+ * The `updatedAt` of a seeded default (S4b-BL-90a): 2000-01-01T00:00:00Z, the earliest the server accepts, so any real
+ * edit or deletion made on another device is later and wins. Seeds are also written clean (not pushed): an untouched
+ * default never reaches the server, so it cannot overwrite another device's record, not even on a tie, and a pulled
+ * edit or tombstone always replaces it. The Kotlin twin is `DefaultQuestions.SEEDED_AT`.
+ */
+export const DEFAULT_QUESTIONS_SEEDED_AT = Date.UTC(2000, 0, 1);
+
+/**
  * The seed of the bank, copied from `docs/schemas/default-questions.json` (`question.spec.ts` reads that file and
  * compares). hi, ta and te are under review (I18N-B06).
  */

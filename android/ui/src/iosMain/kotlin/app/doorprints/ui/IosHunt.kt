@@ -90,8 +90,10 @@ internal object IosHunt : HuntEffects {
     const val KEY_NEW_LAT = "newLat"
     const val KEY_NEW_LON = "newLon"
     const val KEY_VISIT_ID = "visitId"
-    /** A Hunt mode reminder's viewing (slice 3c, [IosViewingReminders]); its tap opens the viewing. */
+    /** A viewing to open (slice 3c); a reminder queued before S4b-BL-94c still carries it. */
     const val KEY_OPEN_VIEWING = "openViewing"
+    /** A Hunt mode reminder's viewing ([IosViewingReminders], S4b-BL-94c): its tap opens the Map, which offers Hunt mode. */
+    const val KEY_OFFER_HUNT_VIEWING = "offerHuntViewing"
 
     private val alerts = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val throttle = HuntFixThrottle()

@@ -443,7 +443,12 @@ open class CommonRepository(
             for (d in DefaultQuestions.ALL) {
                 // A tombstone is a record too: a default the person deleted stays deleted (Reset brings it back).
                 if (db.records().get(QuestionType.name, d.id) != null) continue
-                saveRecord(QuestionType, d.id, d.question(language))
+                // Clean and stamped SEEDED_AT (S4b-BL-90a): an untouched default is never pushed, and whatever another
+                // device did to it wins when it is pulled. An edit here makes it dirty with a real time.
+                val payload = QuestionType.encode(d.question(language))
+                db.records().upsert(
+                    RecordEntity(QuestionType.name, d.id, payload, updatedAt = DefaultQuestions.SEEDED_AT, dirty = false),
+                )
                 written++
             }
         }
@@ -1191,6 +1196,8 @@ open class CommonRepository(
             db.records().versions(PlaceType.name).associate { it.id to it.updatedAt },
             db.records().versions(AreaNoteType.name).associate { it.id to it.updatedAt },
             photoMeta = db.photos().metaVersions().associate { it.id to it.updatedAt },
+            liveQuestions = db.records().listByType(QuestionType.name).mapTo(HashSet()) { it.id },
+            liveCriteria = db.records().listByType(CriterionType.name).mapTo(HashSet()) { it.id },
         )
     }
 
@@ -1474,6 +1481,14 @@ open class CommonRepository(
         // The id and the updatedAt each row was written with, for the undo record (ImportUndo).
         val copiedHouses = LinkedHashMap<String, Long>()
         val copiedVisits = LinkedHashMap<String, Long>()
+        // The records this copy creates (S4b-BL-92e, 90c): one that was not here, or only as a tombstone. One written
+        // over a live record here is a merge's update, which the undo cannot put back, so it is not recorded.
+        val copiedRecords = LinkedHashMap<String, Long>()
+        suspend fun writeRecord(row: RecordEntity) {
+            val before = db.records().get(row.type, row.id)
+            db.records().upsert(row)
+            if (before == null || before.deleted) copiedRecords[CopyUndo.recordKey(row.type, row.id)] = row.updatedAt
+        }
         try {
             for (photo in actions.photos) {
                 val entry = actions.photoSources[photo.id]
@@ -1493,12 +1508,12 @@ open class CommonRepository(
             val now = now()
             db.withImmediateTransaction {
                 for (broker in actions.brokers) {
-                    db.records().upsert(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
+                    writeRecord(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 // A copy keeps the criteria's keys (the copied houses' scores name them) and merges them like a merge.
                 for (c in actions.criteria) {
-                    db.records().upsert(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
+                    writeRecord(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (p in actions.preferences) {
@@ -1506,7 +1521,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (q in actions.questions) {
-                    db.records().upsert(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
+                    writeRecord(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (house in actions.houses) {
@@ -1522,7 +1537,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (v in actions.viewings) {
-                    db.records().upsert(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
+                    writeRecord(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 // A copy keeps the ids of areas, places and notes (a note names its area) and merges them like a merge.
@@ -1552,6 +1567,7 @@ open class CommonRepository(
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },
+            copiedRecords = copiedRecords,
         )
         if (result.rows > 0) syncSoon()
         return result
@@ -1592,10 +1608,12 @@ open class CommonRepository(
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        records: Map<String, Long>,
     ): UndoResult = withContext(Dispatchers.IO) {
         val photoIds = photos.toHashSet()
         val files = ArrayList<Path>()
         var removed = 0
+        var changedRecords = false
         val keptHouses = HashSet<String>()
         db.withImmediateTransaction {
             val now = now()
@@ -1633,10 +1651,36 @@ open class CommonRepository(
                 db.photos().delete(id)
                 files += photoFileOf(photo.id)
             }
+            // The brokers, viewings, questions and criteria it created (S4b-BL-92e, 90c), once the houses are decided:
+            // what a house that stays still uses stays with it.
+            if (records.isNotEmpty()) {
+                val live = db.houses().all().filter { !it.deleted }
+                for ((key, writtenAt) in records) {
+                    val (type, id) = CopyUndo.recordOf(key) ?: continue
+                    val row = db.records().get(type, id)
+                    val inUse = row != null && !row.deleted && when (type) {
+                        ViewingType.name -> row.toViewing()?.houseId?.let { h -> live.any { it.id == h } } == true
+                        BrokerType.name -> live.any { it.brokerId == id }
+                        CriterionType.name -> id !in Checklist.keys && live.any { it.checklist.containsKey(id) }
+                        QuestionType.name -> live.any { h -> h.answers.orEmpty().any { it.questionId == id } }
+                        else -> true
+                    }
+                    val state = row?.let { CopyUndo.RecordNow(it.updatedAt, it.deleted) }
+                    if (CopyUndo.decideRecord(state, writtenAt, inUse) == CopyUndo.Decision.REMOVE) {
+                        db.records().upsert(
+                            checkNotNull(row).copy(
+                                payload = "{}", deleted = true, dirty = true,
+                                updatedAt = CopyUndo.tombstoneStamp(row.updatedAt, now),
+                            ),
+                        )
+                        changedRecords = true
+                    }
+                }
+            }
         }
         // After the commit: a rolled-back undo must not have deleted a single photo file.
         files.forEach { deleteFile(it) }
-        if (removed > 0) syncSoon()
+        if (removed > 0 || changedRecords) syncSoon()
         UndoResult(removed, keptHouses.size, keptHouses)
     }
 
