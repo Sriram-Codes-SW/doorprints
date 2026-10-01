@@ -61,6 +61,7 @@ import type { Area, AreaNoteRow } from '../../shared/area';
 import { COUNTRY_VIEW, loadMapView, locationErrorKey, saveMapView } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { GLYPHS } from '../../shared/glyphs';
+import { floorLocalSearchText } from '../../shared/house-floor';
 import { TKey } from '../../i18n/en';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
@@ -215,10 +216,13 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly items = computed<ListItem[]>(() => {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
+    // The floor in the app's language as well as in English (S4b-BL-104 b); reading `t` here tracks the language.
+    const t = this.i18n.t.bind(this.i18n);
+    const localFloor = this.i18n.lang() === 'en' ? undefined : (floor: number) => floorLocalSearchText(t, floor);
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
       .filter((h) => costFilterMatches(this.costFilter(), h))
-      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id)).includes(q))
+      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor).includes(q))
       .map((house) => {
         const result = evaluateScore(house.checklist, house.rating, this.scoring());
         return { house, score: result.overall, result };
