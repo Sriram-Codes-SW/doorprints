@@ -26,6 +26,7 @@ import app.doorprints.location.HuntEngine
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.shared.location.Geo
+import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.shared.location.StreetAlerts
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.ui.res.Res
@@ -349,6 +350,26 @@ internal object IosGeocoder {
         geocoder.reverseGeocodeLocation(CLLocation(latitude = lat, longitude = lon)) { placemarks, _ ->
             val mark = placemarks?.firstOrNull() as? CLPlacemark
             if (continuation.isActive) continuation.resume(mark?.toPlace())
+        }
+        continuation.invokeOnCancellation { geocoder.cancelGeocode() }
+    }
+
+    /**
+     * Where [query] is (S4b-BL-83: a shared listing's locality, `PlaceLookup.query`): the first placemark inside India
+     * ([PlaceLookup.pick]), or null when offline, when Apple has no answer, or after [LOOKUP_TIMEOUT_MS]. On the tap only.
+     */
+    suspend fun find(query: String): PlaceLookup.Found? = withContext(Dispatchers.Main) {
+        withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { search(query) }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private suspend fun search(query: String): PlaceLookup.Found? = suspendCancellableCoroutine { continuation ->
+        val geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(query) { placemarks, _ ->
+            val points = placemarks.orEmpty().mapNotNull { mark ->
+                (mark as? CLPlacemark)?.location?.coordinate?.useContents { latitude to longitude }
+            }
+            if (continuation.isActive) continuation.resume(PlaceLookup.pick(points))
         }
         continuation.invokeOnCancellation { geocoder.cancelGeocode() }
     }
