@@ -61,6 +61,7 @@ import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseStatusRules
 import app.doorprints.shared.model.MoveIn
@@ -206,10 +207,10 @@ open class CommonRepository(
 
     override suspend fun saveHouse(house: HouseEntity) {
         // The rooms, answers and move-in as every reader keeps them (slices 1c, 3a, 5): the form's blank names and notes
-        // go, a typed answer reads ANSWERED, the order is the one shown.
+        // go, a typed answer reads ANSWERED, the order is the one shown; a floor outside -5..200 is unknown (S4b-BL-87).
         val row = withBroker(house).copy(
             rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
-            moveIn = MoveIn.coerced(house.moveIn), updatedAt = now(), dirty = true,
+            moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
         )
         if (row.status == HouseStatus.TAKEN && !row.deleted) {
             // At most one house is TAKEN (slice 5, M1): the one that was returns to SHORTLISTED, in the same transaction.
