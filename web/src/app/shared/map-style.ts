@@ -16,12 +16,15 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { GPUInitializationError, Map as MlMap, type IControl, type MapOptions, setWorkerUrl } from 'maplibre-gl';
+import { GPUInitializationError, Map as MlMap, type AddProtocolAction, type IControl, type MapOptions, addProtocol, setWorkerUrl } from 'maplibre-gl';
 import { TranslationService } from '../i18n/translation.service';
+import { OFFLINE_CACHE, ASSET_SCHEME, TILE_SCHEME, offlineActive, protocolHandler, rewriteForOffline } from '../offline/offline-protocol';
+import type { OfflineDeps } from '../offline/offline-protocol';
+import { syncOfflineActive } from '../offline/offline-store';
+import { MAP_STYLE_URL } from './map-style-url';
 import { applyIndiaBoundaries, type BoundaryStyleTarget, inBoundariesUrl } from './india-boundaries';
 
-/** Free OpenFreeMap vector style — no API key needed. */
-export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+export { MAP_STYLE_URL };
 
 /**
  * Translated labels for MapLibre's own controls (zoom buttons, geolocate, attribution, marker).
@@ -94,8 +97,11 @@ function setText(root: HTMLElement, selector: string, text: string): void {
 
 /**
  * MapLibre GL 6 is ESM-only and no longer inlines its worker as a blob: URL. angular.json copies
- * `maplibre-gl-worker.mjs` and its `maplibre-gl-shared.mjs` chunk to `/maplibre/`, so the worker is
- * same-origin (CSP `worker-src 'self'`, no `blob:` needed).
+ * `maplibre-gl-worker.mjs` and its `maplibre-gl-shared.mjs` chunk to the site root, so the worker is same-origin
+ * (CSP `worker-src 'self'`, no `blob:` needed). `externalDependencies` (angular.json) keeps that shared chunk out of
+ * the app's own MapLibre chunk, which imports the same `./maplibre-gl-shared.mjs` at run time: one copy (516 KB)
+ * serves the page and the worker instead of two (S4b-BL-78). They sit side by side at the root because both import
+ * it by that relative path.
  */
 let workerConfigured = false;
 
@@ -120,9 +126,28 @@ export function ensureMapStyles(doc: Document = document): void {
   doc.head.appendChild(link);
 }
 
+let offlineConfigured = false;
+
+/**
+ * Offline maps (S4b-BL-79): registers the two protocols a saved area is served through (`offline-protocol.ts`) and
+ * reads from storage whether any area is saved, so a map started with no network already asks for the saved style.
+ * With no saved area `transformRequest` rewrites nothing and the map behaves as before.
+ */
+function configureOfflineMaps(): void {
+  syncOfflineActive();
+  if (offlineConfigured) return;
+  offlineConfigured = true;
+  const deps: OfflineDeps = {
+    openCache: async () => (typeof caches === 'undefined' ? null : caches.open(OFFLINE_CACHE)),
+    fetch: (url, init) => fetch(url, init),
+  };
+  addProtocol(TILE_SCHEME, protocolHandler(true, deps) as AddProtocolAction);
+  addProtocol(ASSET_SCHEME, protocolHandler(false, deps) as AddProtocolAction);
+}
+
 function configureWorker(): void {
   if (workerConfigured) return;
-  setWorkerUrl(new URL('maplibre/maplibre-gl-worker.mjs', document.baseURI).href);
+  setWorkerUrl(new URL('maplibre-gl-worker.mjs', document.baseURI).href);
   workerConfigured = true;
 }
 
@@ -165,11 +190,13 @@ export function createMlMap(
 ): MlMap | null {
   ensureMapStyles();
   configureWorker();
+  configureOfflineMaps();
   try {
     const map = new MlMap({
       style: MAP_STYLE_URL,
       attributionControl: { compact: true },
       locale: mapLocale(i18n),
+      transformRequest: (url, type) => rewriteForOffline(url, type, offlineActive()),
       cooperativeGestures: isPhoneMap(),
       dragRotate: false,
       pitchWithRotate: false,

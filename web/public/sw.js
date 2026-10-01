@@ -55,7 +55,7 @@
 
 /** This build's id (16 hex characters once stamped). The literal is replaced by scripts/sw-precache.mjs. */
 const BUILD = '__BUILD_ID__';
-/** Every file of this build, relative to BASE: `index.html`, `main-….js`, `chunk-….js`, `maplibre/…`, `icons/…`. */
+/** Every file of this build, relative to BASE: `index.html`, `main-….js`, `chunk-….js`, `icons/…`. */
 const PRECACHE = [/*__PRECACHE__*/];
 /** False when served straight from `public/` (the dev server): then nothing is cached and nothing intercepted. */
 const STAMPED = /^[0-9a-f]{16}$/.test(BUILD);

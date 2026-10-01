@@ -1,1 +1,3 @@
 site/
+# MkDocs imports hooks/i18n.py, which leaves its bytecode next to it.
+__pycache__/

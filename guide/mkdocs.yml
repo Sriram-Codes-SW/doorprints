@@ -16,6 +16,8 @@
 
 # The Doorprints user guide site (owner request of 2026-09-29). Built by .github/workflows/pages.yml with
 # `mkdocs build --strict` and published to GitHub Pages from main. Pages live in docs/, images in docs/images/.
+# Hindi, Tamil and Telugu (S4b-BL-60): mkdocs.<lang>.yml with its pages in i18n/<lang>/, built by hooks/i18n.py right
+# after this one into <site>/<lang>/, with Material's language selector (extra.alternate) on every page.
 site_name: Doorprints user guide
 site_description: How to use Doorprints, the app that remembers the houses you visit while house-hunting in India.
 site_url: https://sriram-codes-sw.github.io/doorprints/
@@ -42,6 +44,8 @@ nav:
 theme:
   name: material
   language: en
+  # partials/alternate.html: the language selector opens the same page in the other language.
+  custom_dir: overrides
   logo: images/favicon.svg
   favicon: images/favicon.svg
   features:
@@ -69,6 +73,25 @@ theme:
 
 extra_css:
   - stylesheets/doorprints.css
+
+hooks:
+  - hooks/i18n.py
+
+# The language selector: each link is that language's site root, relative to this one's (the translations repeat it).
+extra:
+  alternate:
+    - name: English
+      link: ""
+      lang: en
+    - name: हिन्दी
+      link: hi/
+      lang: hi
+    - name: தமிழ்
+      link: ta/
+      lang: ta
+    - name: తెలుగు
+      link: te/
+      lang: te
 
 markdown_extensions:
   - admonition
