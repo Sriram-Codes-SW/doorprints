@@ -41,7 +41,7 @@ export const en = {
 
   // Page titles (browser tab)
   'title.app': 'Doorprints',
-  'title.map': 'Houses · Doorprints',
+  'title.map': "Doorprints: remember every house you've seen",
   'title.newHouse': 'New house · Doorprints',
   'title.house': 'House details · Doorprints',
   'title.compare': 'Compare · Doorprints',

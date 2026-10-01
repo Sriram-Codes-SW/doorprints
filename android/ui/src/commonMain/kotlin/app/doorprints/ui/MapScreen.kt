@@ -1077,7 +1077,7 @@ private fun HuntCard(
                             Text(stringResource(Res.string.map_hunt_off), style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    Switch(checked = hunt.active, onCheckedChange = null)
+                    Switch(checked = hunt.active, onCheckedChange = null, colors = brandSwitchColors())
                 }
                 if (hunt.active) {
                     Column {

@@ -490,7 +490,7 @@
     <h2 id="help-heading">{{ 'help.link' | t }}</h2>
     <p class="muted">{{ 'help.hint' | t }}</p>
     <div class="actions">
-      <a class="btn" [href]="guideUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
+      <a class="btn" [href]="guideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
         {{ 'help.open' | t }} <span aria-hidden="true">↗</span>
       </a>
     </div>

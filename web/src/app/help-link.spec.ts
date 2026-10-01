@@ -27,7 +27,7 @@ import { ta } from './i18n/ta';
 import { te } from './i18n/te';
 import { TranslationService } from './i18n/translation.service';
 import type { Lang } from './i18n/languages';
-import { GUIDE_URL } from './shared/help-link';
+import { GUIDE_URL, guideUrl } from './shared/help-link';
 
 /**
  * The in-app Help link (S4b-BL-60 (2)): the header on wider screens, the Help card in Your data on phones. Which of the
@@ -93,6 +93,29 @@ describe('Help link to the user guide', () => {
     const card = (data.nativeElement as HTMLElement).querySelector<HTMLElement>('section.help-card')!;
     expect(card.querySelector('h2')!.textContent).toBe(DICTS[lang]['help.link']);
     expect(card.querySelector('a')!.textContent).toContain(DICTS[lang]['help.open']);
+    // The guide opens in the app's language: the translation lives at <guide>/<lang>/.
+    expect(link.getAttribute('href')).toBe(`${GUIDE_URL}${lang}/`);
+    expect(card.querySelector('a')!.getAttribute('href')).toBe(`${GUIDE_URL}${lang}/`);
     expect(DICTS[lang]['help.link']).not.toBe(en['help.link']);
+  });
+
+  it('follows a language change: the English root, then /hi/', async () => {
+    TestBed.configureTestingModule({ imports: [App], providers: [provideRouter([])] });
+    const i18n = TestBed.inject(TranslationService);
+    await i18n.setLang('en');
+    const fixture = TestBed.createComponent(App);
+    await settle(fixture);
+    const link = (fixture.nativeElement as HTMLElement).querySelector<HTMLAnchorElement>('a.help-link')!;
+    expect(link.getAttribute('href')).toBe(GUIDE_URL);
+    await i18n.setLang('hi');
+    await settle(fixture);
+    expect(link.getAttribute('href')).toBe('https://sriram-codes-sw.github.io/doorprints/hi/');
+  });
+
+  it('guideUrl: English at the root, the others in their own folder', () => {
+    expect(guideUrl('en')).toBe(GUIDE_URL);
+    expect(guideUrl('hi')).toBe(`${GUIDE_URL}hi/`);
+    expect(guideUrl('ta')).toBe(`${GUIDE_URL}ta/`);
+    expect(guideUrl('te')).toBe(`${GUIDE_URL}te/`);
   });
 });
