@@ -47,7 +47,9 @@ class ExportRoomTest {
         val table = ExportRows.houses(b)
         val at = table.columns.indexOf("Cost per sq ft") + 1
         assertEquals("Rooms", table.columns[at])
-        assertEquals("Visits", table.columns[at + 1])
+        // S4b-BL-87: the floor between the rooms and the visits.
+        assertEquals("Floor", table.columns[at + 1])
+        assertEquals("Visits", table.columns[at + 2])
         assertEquals(listOf("3", ""), table.rows.map { ExportRows.plain(it[at], b.options) })
         assertEquals(table.columns.size, table.rows.first().size)
     }

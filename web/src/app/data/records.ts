@@ -207,6 +207,7 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     rooms: cleanRooms(dto.rooms),
     answers: cleanAnswers(dto.answers),
     moveIn: cleanMoveIn(dto.moveIn),
+    floor: whole(dto.floor, MIN_FLOOR, MAX_FLOOR),
     brokerId: cleanBrokerId(dto.brokerId),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
@@ -307,6 +308,9 @@ export function recordToDto(record: RecordRecord): RecordDto {
 
 /** The ranges of the house values (slice 1a): the same numbers the server's `HouseDto` refuses with 400. */
 export const MAX_AREA_SQFT = 100_000;
+/** The floor's range (S4b-BL-87; Kotlin `HouseValues.floor`): 0 the ground floor, down to basement level 5. */
+export const MIN_FLOOR = -5;
+export const MAX_FLOOR = 200;
 export const MAX_RUPEES = 1_000_000_000_000;
 export const MAX_MONTHS = 120;
 /** A room's constraints (slice 1c): at most 30 rooms per house. */

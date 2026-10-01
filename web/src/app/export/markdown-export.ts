@@ -30,6 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
+import { floorWords } from '../shared/house-floor';
 import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
@@ -124,6 +125,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   push('compare.price', formatPrice(dict, house.price, house.priceType));
   if (bedrooms !== null) push('compare.bhk', tr(dict, 'common.bhk', { n: bedrooms }));
   if (house.areaSqft != null) push('compare.area', tr(dict, 'common.sqft', { n: house.areaSqft }));
+  if (house.floor != null) push('house.floor', floorWords((k, p) => tr(dict, k, p), house.floor));
   if (rating !== null) push('compare.rating', tr(dict, 'common.stars', { n: rating }));
   push('house.address', house.address ?? '');
   push('house.street', house.street ?? '');

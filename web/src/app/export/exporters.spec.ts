@@ -236,8 +236,8 @@ describe('CSV export', () => {
   it('drops the contact columns entirely when contacts are excluded', () => {
     const header = buildCsvTables(fixtureBundle({ includeContacts: false }))['houses.csv'].split('\r\n')[0];
     expect(header).not.toContain(ExportStrings.of('en').get('col.contactPhone'));
-    expect(header.split(',')).toHaveLength(36);
-    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(39);
+    expect(header.split(',')).toHaveLength(37);
+    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(40);
   });
 
   /**
@@ -351,7 +351,7 @@ describe('JSON backup', () => {
     const json = backupJson(buildBackupData(fixtureBundle()));
     expect(json).toBe(GOLDEN_BACKUP_DATA_JSON);
     // The byte count the golden's comment states, so a silent re-generation cannot quietly shrink the contract.
-    expect(new TextEncoder().encode(json).length).toBe(6283);
+    expect(new TextEncoder().encode(json).length).toBe(6303);
   });
 
   /**

@@ -63,6 +63,7 @@ Rating counts for 40%
 | Price | ₹32,000/month |
 | BHK | 2 BHK |
 | Carpet area | 1150 sq ft |
+| Floor | 3 |
 | Your rating | 4 out of 5 stars |
 | Address | 12, MG Road |
 | Street | MG Road |
@@ -180,6 +181,7 @@ Ask about water in summer.
 | Price | ₹12,50,000 |
 | BHK | 3 BHK |
 | Carpet area | 1450 sq ft |
+| Floor | Ground floor |
 | Your rating | 1 out of 5 stars |
 | Street | Beach Road |
 | Location | 13.050000, 80.280000 |

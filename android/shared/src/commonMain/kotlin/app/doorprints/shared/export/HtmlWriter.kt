@@ -141,6 +141,7 @@ object HtmlWriter {
         if (h.price != null) row(out, s["col.priceType"], s.priceType(h.priceType))
         row(out, s["col.bedrooms"], h.bedrooms?.toString() ?: s["none"])
         if (h.areaSqft != null) row(out, s["col.areaSqft"], h.areaSqft.toString())
+        if (h.floor != null) row(out, s["col.floor"], s.floor(h.floor))
         row(out, s["col.rating"], h.rating?.toString() ?: s["none"])
         row(out, s["col.address"], h.address ?: s["none"])
         row(out, s["col.street"], h.street ?: s["none"])

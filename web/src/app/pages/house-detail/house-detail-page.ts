@@ -71,10 +71,13 @@ import {
   areaSqCm,
   cmToFeetInches,
   metresText,
+  moveRoom,
   parseFeetInches,
   parseMetres,
   totalAreaSqCm,
 } from '../../shared/room-sizes';
+import { duplicateFlats } from '../../shared/duplicate-flat';
+import { parseFloor } from '../../shared/house-floor';
 import type { LengthUnit } from '../../shared/room-sizes';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
@@ -185,6 +188,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   ] as const;
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
+  /** Every house in this browser, for the duplicate-flat warning under the floor (S4b-BL-85). */
+  private readonly others = signal<HouseDto[]>([]);
   /** The broker the draft is linked to, when it exists: the contact fields then show its name and phone. */
   protected readonly linkedBroker = computed(() => {
     const id = this.draft()?.brokerId;
@@ -396,6 +401,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.api.brokers().subscribe({
       next: (rows) => this.brokers.set(sortBrokers(rows)),
       error: () => this.brokers.set([]),
+    });
+    this.api.houses().subscribe({
+      next: (rows) => this.others.set(rows),
+      error: () => this.others.set([]),
     });
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
@@ -937,6 +946,39 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ rooms: this.rooms(d).map((r) => (r.id === id ? { ...r, ...changes } : r)) });
   }
 
+  /** Up (-1) or down (+1) in the order shown, every sort renumbered (S4b-BL-87); focus stays on the button pressed. */
+  protected moveRoom(id: string, by: -1 | 1): void {
+    const d = this.draft();
+    if (!d) return;
+    this.patch({ rooms: moveRoom(this.rooms(d), id, by) });
+    const button = `room-${by < 0 ? 'up' : 'down'}-${id}`;
+    afterNextRender(() => {
+      const el = document.getElementById(button) as HTMLButtonElement | null;
+      // At the top or the bottom the pressed button is disabled: the other one takes the focus.
+      (el && !el.disabled ? el : document.getElementById(`room-${by < 0 ? 'down' : 'up'}-${id}`))?.focus();
+    }, { injector: this.injector });
+  }
+
+  // ---- The floor and the duplicate-flat warning (S4b-BL-87, S4b-BL-85) ----
+
+  /** Something is typed in Floor that is not a floor from -5 to 200. */
+  protected floorInvalid(d: HouseDto): boolean {
+    return d.floor != null && (d.floor as unknown) !== '' && floorOf(d.floor) === null;
+  }
+
+  /**
+   * "Maybe the same flat as …": the other houses within about 30 m with the same bedrooms and floor as what is typed
+   * (`duplicateFlats`, docs/11 5.25); null when there are none. A warning, never a block.
+   */
+  protected sameFlatLine(d: HouseDto): string | null {
+    const others = this.others();
+    const facts = { ...d, bedrooms: toWholeNumber(d.bedrooms), floor: floorOf(d.floor), rooms: cleanRooms(d.rooms) };
+    const ids = duplicateFlats(facts, others);
+    if (ids.length === 0) return null;
+    const names = ids.map((id) => others.find((h) => h.id === id)?.label?.trim() || this.i18n.t('common.untitled'));
+    return this.i18n.t('house.duplicateFlat', { names: this.i18n.list(names) });
+  }
+
   protected deleteRoom(id: string): void {
     const d = this.draft();
     if (!d) return;
@@ -1239,6 +1281,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       price: toWholeNumber(d.price),
       bedrooms: toWholeNumber(d.bedrooms),
       areaSqft: toWholeNumber(d.areaSqft),
+      // -5..200 or unknown (S4b-BL-87); the field says so when what is typed is not a floor.
+      floor: floorOf(d.floor),
       // Only the set fields, in range, or null: the store and the wire never see an empty `{}` (slice 1a).
       cost: cleanCost(d.cost),
       // At most 30, coerced and sorted; absent when empty (never [] on the wire).
@@ -1490,6 +1534,11 @@ function clone(h: HouseDto): HouseDto {
 
 /** The most rooms a house holds (the server and Android agree). */
 const MAX_ROOMS = 30;
+
+/** A typed floor (a number input gives a number, or "" when cleared) as -5..200, else null (S4b-BL-87). */
+function floorOf(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? parseFloor(String(value)) : null;
+}
 
 /** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
 function withCost(h: HouseDto): HouseDto {

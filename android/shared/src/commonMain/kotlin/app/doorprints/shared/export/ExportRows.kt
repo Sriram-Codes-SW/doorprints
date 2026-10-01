@@ -101,8 +101,8 @@ object ExportRows {
             }
             add(s["col.listingUrl"]); add(s["col.notes"])
             addAll(COST_COLUMN_KEYS.map { s[it] })
-            // Slice 1c: the number of rooms, right after the cost per sq ft.
-            add(s["col.rooms"])
+            // Slice 1c: the number of rooms, right after the cost per sq ft; S4b-BL-87: the floor after it.
+            add(s["col.rooms"]); add(s["col.floor"])
             add(s["col.visits"]); add(s["col.photos"])
             add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
         }
@@ -124,6 +124,7 @@ object ExportRows {
                 add(text(h.listingUrl)); add(text(h.notes))
                 addAll(costCells(h, s))
                 add(h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank)
+                add(h.floor?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
                 add(Cell.Count(bundle.photosOf(h).size.toLong()))
                 add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))

@@ -798,6 +798,8 @@ class BackupApiTest {
                 "\"status\":\"NEW\",\"cost\":{\"deposit\":-1}"), "");
         var noSuchDay = backup(good.replace("\"status\":\"NEW\"",
                 "\"status\":\"NEW\",\"cost\":{\"availableFrom\":\"2026-02-30\"}"), "");
+        // S4b-BL-87: the floor is -5..200.
+        var badFloor = backup(good.replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"floor\":201"), "");
         var visitEndsBeforeItStarts = backup(good, "{\"id\":\"" + UUID.randomUUID() + "\",\"houseId\":\"" + id
                 + "\",\"lat\":12.9,\"lon\":77.6,\"arrivedAt\":" + now.toEpochMilli() + ",\"leftAt\":"
                 + now.minus(Duration.ofHours(1)).toEpochMilli() + ",\"source\":\"AUTO\",\"updatedAt\":"
@@ -805,7 +807,7 @@ class BackupApiTest {
 
         for (var body : List.of(wrongFormat, duplicateIds, noLabel, badLatitude, noLatitude, nullLongitude,
                 visitWithoutLatitude, absurdClock, badArea, badSource, negativeDeposit, noSuchDay,
-                visitEndsBeforeItStarts)) {
+                visitEndsBeforeItStarts, badFloor)) {
             assertThat(status(() -> postImport(body, false))).as("import of %s", body).isEqualTo(400);
             assertThat(status(() -> postImport(body, true))).as("dry run validates too").isEqualTo(400);
         }
@@ -817,6 +819,7 @@ class BackupApiTest {
                 .contains("houses[0].cost.deposit is out of range");
         assertThat(errorBody(() -> postImport(noSuchDay, false)))
                 .contains("houses[0].cost.availableFrom is out of range");
+        assertThat(errorBody(() -> postImport(badFloor, false))).contains("houses[0].floor must be -5..200");
         assertThat(api.get().uri("/api/houses?since=0").retrieve().body(LIST)).isEmpty();
     }
 
@@ -833,6 +836,19 @@ class BackupApiTest {
         assertThat(exported.getString("locationSource")).isEqualTo("MAP");
         assertThat(exported.has("cost")).isFalse();
         assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("cost")).isNull();
+    }
+
+    /** S4b-BL-87: a floor of 0 (the ground floor) is imported, kept and written back, and makes the export a /2 copy. */
+    @Test
+    void aGroundFloorIsImportedAndWrittenBack() throws JSONException {
+        var id = UUID.randomUUID();
+        var row = houseRow(id, "Ground floor", Instant.now()).replace("\"status\":\"NEW\"", "\"status\":\"NEW\",\"floor\":0");
+        assertThat(count(postImport(backup(row, ""), false), "houses", "created")).isEqualTo(1);
+
+        var exported = new JSONObject(export());
+        assertThat(exported.getString("format")).isEqualTo("doorprints-backup/2");
+        assertThat(exported.getJSONArray("houses").getJSONObject(0).getInt("floor")).isEqualTo(0);
+        assertThat(api.get().uri("/api/houses/{id}", id).retrieve().body(MAP).get("floor")).isEqualTo(0);
     }
 
     /**

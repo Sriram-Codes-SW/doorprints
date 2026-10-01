@@ -1145,4 +1145,20 @@
     <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
     <string name="map_hunt_offer">தேடல் பயன்முறையைத் தொடங்கவா?</string>
     <string name="map_hunt_offer_start">தேடல் பயன்முறையைத் தொடங்கு</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview: under review. -->
+    <string name="house_floor">தளம்</string>
+    <string name="house_floor_hint">0 என்பது தரைத்தளம், -1 அடித்தளம்</string>
+    <string name="house_floor_invalid">-5 முதல் 200 வரை ஒரு தளத்தை உள்ளிடவும்</string>
+    <string name="house_room_move_up">%1$s ஐ மேலே நகர்த்து</string>
+    <string name="house_room_move_down">%1$s ஐ கீழே நகர்த்து</string>
+    <string name="duplicate_flat_warning">இது %1$s போன்ற அதே வீடாக இருக்கலாம்: சுமார் 30 மீட்டருக்குள், அதே படுக்கையறைகளும் அதே தளமும்.</string>
+    <string name="houses_filters">வடிகட்டிகள்</string>
+    <string name="houses_filters_count">வடிகட்டிகள் (%1$d)</string>
+    <string name="houses_filters_title">செலவின்படி வடிகட்டு</string>
+    <string name="houses_filters_hint">முழு ரூபாயில். இந்தத் தொகையைக் கணக்கிட முடியாத வீடு விடப்படும் (விற்பனைக்கு மாதச் செலவு இல்லை).</string>
+    <string name="houses_filter_min">%1$s, குறைந்தது (₹)</string>
+    <string name="houses_filter_max">%1$s, அதிகபட்சம் (₹)</string>
+    <string name="houses_filters_clear">செலவு வடிகட்டிகளை அழி</string>
+    <string name="import_new_brokers">புதிய தரகர்கள்</string>
+    <string name="import_updated_brokers">காப்புப்பிரதியில் புதிய பதிப்பு உள்ள தரகர்கள்</string>
 </resources>

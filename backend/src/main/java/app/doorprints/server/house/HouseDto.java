@@ -70,6 +70,8 @@ import java.util.UUID;
  *   <li><b>{@code moveIn}</b> (slice 5, docs/11 section 5.24) is a {@link HouseMoveIn} (date, notes, at most 30 items
  *       with distinct ids), {@code null} when the house has none (an empty object on input is the same as none). A
  *       value out of range, a 31st item or a repeated id is a 400. A tombstone carries {@code null}.</li>
+ *   <li><b>{@code floor}</b> (S4b-BL-87) is the floor the flat is on, -5..200 with 0 the ground floor, {@code null}
+ *       when unknown; a value out of range is a 400. A tombstone carries {@code null}.</li>
  *   <li><b>{@code brokerId}</b> (slice 1b, docs/11 section 5.25) is the record id of the house's broker, absent for
  *       none. There is no foreign key: a broker deleted or not yet synced leaves the id dangling, which readers take
  *       as no broker. A tombstone carries {@code null}.</li>
@@ -104,6 +106,8 @@ public record HouseDto(
         @Valid @Size(max = HouseAnswer.MAX) List<@NotNull @Valid HouseAnswer> answers,
         /* Slice 5: the moving-in card of a taken house (date, notes, at most 30 items); an empty object is the same as none. */
         @Valid HouseMoveIn moveIn,
+        /* S4b-BL-87: the floor the flat is on, 0 the ground floor and a negative one a basement level. */
+        @Min(House.MIN_FLOOR) @Max(House.MAX_FLOOR) Integer floor,
         /* Slice 1b: a broker's record id. Not checked against the records: a dangling id reads as no broker. */
         @Pattern(regexp = RecordDto.ID_PATTERN) String brokerId,
         Map<@Size(max = 100) String, @Min(0) @Max(5) Integer> checklist,
@@ -125,7 +129,7 @@ public record HouseDto(
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
                 h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getBrokerId(),
+                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
                 Map.copyOf(h.getChecklist()), h.getCreatedAt(), h.getUpdatedAt(), h.isDeleted(),
                 h.getSyncVersion(), distanceMeters);
     }
@@ -166,6 +170,7 @@ public record HouseDto(
         h.setRooms(HouseRoom.write(rooms));
         h.setAnswers(HouseAnswer.write(answers));
         h.setMoveIn(HouseMoveIn.write(moveIn));
+        h.setFloor(floor);
         h.setBrokerId(brokerId);
         h.setChecklist(checklist);
         h.setDeleted(deleted);

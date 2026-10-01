@@ -67,6 +67,8 @@ data class HouseDto(
     val answers: List<HouseAnswer>? = null,
     /** Moving in (slice 5), after `answers`; absent when it has no date, notes or items. */
     val moveIn: MoveIn? = null,
+    /** The floor (S4b-BL-87), -5..200 with 0 the ground floor, after `moveIn`; absent when unknown. */
+    val floor: Int? = null,
     /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
