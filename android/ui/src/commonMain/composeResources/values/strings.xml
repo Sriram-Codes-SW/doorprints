@@ -1175,4 +1175,9 @@
     <string name="import_updated_brokers">Brokers the backup has a newer version of</string>
     <!-- Wave D (2026-10-01): the house form's loading spinner has a name. -->
     <string name="house_loading">Opening the house…</string>
+    <!-- S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. -->
+    <string name="house_floor_basement">Basement</string>
+    <string name="house_floor_basement_hint">The level below the ground, 1 to 5</string>
+    <string name="house_floor_basement_invalid">Enter a basement level from 1 to 5</string>
+    <string name="import_floors_left_blank">Houses whose floor in the file is outside -5 to 200; their floor is left blank</string>
 </resources>

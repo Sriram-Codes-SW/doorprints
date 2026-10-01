@@ -121,7 +121,7 @@ class ImportVectorsTest {
         "checklistsCleared" to p.checklistsCleared, "deletedHereHouses" to p.deletedHereHouses,
         "restoredHouses" to p.restoredHouses, "keptMineHouses" to p.keptMineHouses, "newBrokers" to p.newBrokers,
         "updatedBrokers" to p.updatedBrokers, "newViewings" to p.newViewings, "updatedViewings" to p.updatedViewings,
-        "removedHouses" to p.removedHouses, "isEmpty" to p.isEmpty,
+        "removedHouses" to p.removedHouses, "floorsLeftBlank" to p.floorsLeftBlank, "isEmpty" to p.isEmpty,
     )
 
     @Test

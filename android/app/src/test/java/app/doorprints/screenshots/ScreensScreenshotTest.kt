@@ -280,7 +280,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      */
     private fun shootForm(screen: String, only: Set<String>? = null, content: @Composable () -> Unit) {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
-        RuntimeEnvironment.setQualifiers("+h4600dp")
+        RuntimeEnvironment.setQualifiers("+h4800dp")
         val headings = mutableMapOf<String, String>()
         show {
             bands.forEach { (name, res) -> if (res != null) headings[name] = stringResource(res) }
@@ -288,7 +288,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
         val scroll = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .fetchSemanticsNodes().maxOf { it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() }
-        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h4600dp)" }
+        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h4800dp)" }
         val image = compose.onRoot().captureToImage().asAndroidBitmap()
         val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
         // The form ends at its lowest node (the Save button, then its 24 dp spacer), not at the bottom of the window.

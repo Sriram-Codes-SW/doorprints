@@ -1206,6 +1206,11 @@ export const en = {
   'help.linkAria': 'Help: open the user guide (opens in a new tab)',
   'help.hint': 'The user guide, with pictures and every step, on the project’s website.',
   'help.open': 'Open the user guide',
+  // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range.
+  'house.floorBasementToggle': 'Basement',
+  'house.floorBasementHint': 'The level below the ground, 1 to 5',
+  'house.floorBasementInvalid': 'Enter a basement level from 1 to 5',
+  'imp.floorsLeftBlank': 'Houses whose floor in the file is outside -5 to 200; their floor is left blank',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

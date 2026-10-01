@@ -52,6 +52,8 @@ export function previewLines(p: ImportPreview, duplicates: number): PreviewLine[
     { key: 'imp.newHouses', count: p.newHouses },
     { key: 'imp.updatedHouses', count: p.updatedHouses },
     { key: 'imp.checklistsCleared', count: p.checklistsCleared, loss: true },
+    // S4b-BL-104 (d): a floor outside -5..200 in the file lands blank (the server refuses such a file).
+    { key: 'imp.floorsLeftBlank', count: p.floorsLeftBlank, loss: true },
     { key: 'imp.restoredHouses', count: p.restoredHouses },
     { key: 'imp.newerHere', count: p.newerHereHouses },
     { key: 'imp.deletedHere', count: p.deletedHereHouses },
