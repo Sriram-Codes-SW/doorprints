@@ -1,0 +1,75 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The user guide in Hindi (S4b-BL-60): the English site's settings (mkdocs.yml), with this language's pages in
+# i18n/hi/. Built by hooks/i18n.py after the English site, into <site>/hi/; its images are the English ones, or the
+# Android screenshot tests' shots in this language where they exist. Marked under review on every page, as the apps'
+# Hindi strings ship.
+INHERIT: mkdocs.yml
+site_name: "Doorprints उपयोगकर्ता गाइड"
+site_description: "Doorprints का इस्तेमाल कैसे करें: वह ऐप जो भारत में मकान ढूँढते समय आपके देखे मकान याद रखता है।"
+site_url: https://sriram-codes-sw.github.io/doorprints/hi/
+docs_dir: i18n/hi
+edit_uri: edit/main/guide/i18n/hi/
+copyright: "Doorprints. मुफ़्त और ओपन सोर्स (AGPL-3.0-only); कोई विज्ञापन नहीं।"
+
+nav:
+  - "मुख्य पृष्ठ": index.md
+  - "एक नज़र में स्क्रीन": screen-at-a-glance.md
+  - "आपके मकान": houses.md
+  - "तुलना और योजना": compare-and-plan.md
+  - "आपका डेटा": your-data.md
+  - "सर्वर और साझा करना": server-and-sharing.md
+  - "अपना सर्वर लगाएँ": set-up-a-server.md
+  - "हंट मोड": hunt-mode.md
+  - "भाषा, थीम, गोपनीयता, ऑफ़लाइन नक़्शे": settings-and-privacy.md
+  - "समस्याएँ और आम सवाल": faq.md
+
+theme:
+  language: hi
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: गहरी थीम चुनें
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: हल्की थीम चुनें
+
+extra:
+  under_review:
+    title: "यह अनुवाद समीक्षाधीन है (under review)"
+    text: "ऐप के हिन्दी शब्दों की तरह, इस गाइड के हिन्दी अनुवाद की भी अभी समीक्षा हो रही है। कोई बात साफ़ न लगे, तो ऊपर भाषा चुनकर यही पेज English में देखें।"
+  alternate:
+    - name: English
+      link: "../"
+      lang: en
+    - name: हिन्दी
+      link: ""
+      lang: hi
+    - name: தமிழ்
+      link: "../ta/"
+      lang: ta
+    - name: తెలుగు
+      link: "../te/"
+      lang: te

@@ -518,6 +518,10 @@
     <string name="settings_licence_link">உரிமம்</string>
     <string name="settings_licence_link_desc">GNU Affero General Public License, பதிப்பு 3, உலாவியில் திறக்கும்</string>
     <string name="settings_link_failed">இங்குள்ள எந்தச் செயலியாலும் இந்த இணைப்பைத் திறக்க முடியாது. முகவரி %1$s</string>
+    <!-- The Help link in Settings > About, to the user guide (S4b-BL-60, 2026-10-01). Under review. -->
+    <string name="settings_help">உதவி</string>
+    <string name="settings_help_desc">உதவி: பயனர் வழிகாட்டி, உலாவியில் திறக்கும்</string>
+    <string name="settings_help_hint">திட்டத்தின் இணையதளத்தில் படங்களுடனும் ஒவ்வொரு படியுடனும் பயனர் வழிகாட்டி.</string>
     <string name="sync_warning">%1$s முதல் ஒத்திசைவு வேலை செய்யவில்லை. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">திட்டம் தயார்: %1$d நிறுத்தம்</item>
