@@ -99,6 +99,8 @@ export const te: Dict = {
   'map.myLocation': 'నా స్థానాన్ని చూపించు',
   'map.locationUnavailable': 'స్థానం అందుబాటులో లేదు',
   'map.attribution': 'మ్యాప్ క్రెడిట్స్ చూపించు',
+  // S4b-BL-114 (2026-10-01): the Survey of India's credit on the map. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.boundaryCredit': 'సరిహద్దు: సర్వే ఆఫ్ ఇండియా',
   'map.unavailable': 'WebGL 2 అందుబాటులో లేనందున ఈ బ్రౌజర్‌లో మ్యాప్ చూపించలేము. మిగతావన్నీ యథావిధిగా పని చేస్తాయి.',
   'map.legend': 'సూచిక',
   'map.statsLabel': 'సారాంశం',
@@ -407,6 +409,8 @@ export const te: Dict = {
   'data.aboutHeading': 'Doorprints గురించి',
   'data.aboutLicence': 'Doorprints స్వేచ్ఛా సాఫ్ట్‌వేర్: GNU Affero General Public License, వెర్షన్ 3 నిబంధనల ప్రకారం మీరు దీన్ని పంచుకోవచ్చు, మార్చవచ్చు.',
   'data.aboutWarranty': 'దీనికి ఎలాంటి వారంటీ లేదు.',
+  // S4b-BL-114 (2026-10-01): the Survey of India's acknowledgement in About. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.aboutBoundary': 'సరిహద్దులు: సర్వే ఆఫ్ ఇండియా, పరిపాలనా సరిహద్దుల డేటాబేస్ (OVSF/1M/7), ఎలాంటి మార్పు లేకుండా. © సర్వే ఆఫ్ ఇండియా, భారత ప్రభుత్వం.',
   'data.aboutSource': 'సోర్స్ కోడ్',
   'data.aboutSourceAria': 'GitHubలో సోర్స్ కోడ్ (కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది)',
   'data.aboutLicenceLink': 'లైసెన్స్',

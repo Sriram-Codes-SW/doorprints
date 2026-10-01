@@ -484,6 +484,17 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Changed
 
+- **Maps: India's northern and north-eastern boundary is the Survey of India's own line** (S4b-BL-114, branch
+  `feat/soi-boundary-data`; [design](docs/03-design.md) ADR-22). On the web, Android and the iPhone the land boundary along
+  Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh, and the Assam-Arunachal
+  Pradesh line, come from the Survey of India's Administrative Boundary Database OVSF/1M/7
+  (`web/public/geo/in-boundaries-soi.json`, 28 751 + 8 252 vertices, unaltered; decoded from its compact polyline
+  encoding on each platform), at every zoom. The base map's own lines along them are hidden (a corridor polygon,
+  `in-soi-corridor.geojson`), so the border is drawn once. Natural Earth now only draws the world's land boundaries
+  below zoom 5; its claim outline, its Assam-Arunachal line and the shared stretches with their connectors are gone.
+  The map credits "Boundary: Survey of India" and About gives the full acknowledgement, in all four languages
+  (Hindi, Tamil and Telugu under review). The rest of India's land border is unchanged (the base map's line); Sir Creek,
+  the Sundarbans and Dahagram-Angarpota are open questions with the Survey of India.
 - **Android code that belongs in common code moved there** (S4b-BL-106, the rest of S4b-BL-76; no behaviour change): the progress loop of the export, import and automatic-backup workers and the cause walk that classifies a failed export are in `:shared`, the copy import's undo in `:ui`; the workers' notifications read the same Compose resources as the screens, so 38 texts that were kept twice (as Android resources too) now live once. Android's deflating ZIP writer stays in `:app` (S4b-BL-101 e).
 - **Tests for what the follow-ups left untested** (S4b-BL-103; TC-U-119..121, test code only): an import into a server at 5,000 brokers, preferences, questions or criteria skips the new row and still updates a held one (backend); the website's *Your data* cards for questions and viewings, its `/viewings` routes and the service worker's tap on a viewing reminder; Settings > Viewings on Android. No bug was found.
 - **App lock emulator test:** every PIN entry now retries until the screen it should have changed has changed (the lock turning on, the app unlocking), because the PIN, typed into the system's window, was sometimes not taken (API 26, 34 and 36, one run in a few; the push run of `main` at `f0f20dd` failed on API 34 at the first entry). A real failure still fails after three tries.

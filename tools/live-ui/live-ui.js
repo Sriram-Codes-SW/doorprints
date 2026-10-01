@@ -543,12 +543,20 @@ async function mobile(browser) {
 }
 
 async function boundaries(browser) {
-  const r = await (await browser.newContext()).request.get(`${BASE}/geo/in-boundaries.geojson`);
+  // Natural Earth's world lines (below zoom 5) and, since S4b-BL-114, the Survey of India's lines (polyline7).
+  const request = (await browser.newContext()).request;
+  const r = await request.get(`${BASE}/geo/in-boundaries.geojson`);
   const g = r.status() === 200 ? await r.json() : null;
-  check('map', 'in-boundaries.geojson served with world, claim and state', !!g && ['world', 'claim', 'state'].every((k) => g.features.some((f) => f.properties.kind === k)));
+  check('map', 'in-boundaries.geojson served with the world lines', !!g && g.features.some((f) => f.properties.kind === 'world'));
+  const s = await request.get(`${BASE}/geo/in-boundaries-soi.json`);
+  const soi = s.status() === 200 ? await s.json() : null;
+  check('map', 'in-boundaries-soi.json served with the claim and state runs', !!soi && ['claim', 'state'].every((k) => soi.features.some((f) => f.properties.kind === k && typeof f.properties.polyline7 === 'string')));
+  // docs/06 TC-M-25: the spots, hand-overs and tri-junctions of the Survey of India's lines.
   const views = [
     ['india_z4', 23.5, 80, 4], ['kashmir_z6', 34.5, 76, 6], ['arunachal_z7', 28, 94, 7],
-    ['sikkim_z9', 27.5, 88.4, 9], ['singalila_z10', 27.2, 88.0, 10], ['assam_state_z7', 27.3, 93.5, 7],
+    ['sikkim_z9', 27.5, 88.4, 9], ['singalila_z11', 27.2, 88.02, 11], ['assam_state_z8', 27.2, 93.6, 8],
+    ['wakhan_z9', 36.95, 74.1, 9], ['kathua_z11', 32.36, 75.36, 11], ['uk_up_nepal_z12', 28.84, 80.07, 12],
+    ['uk_nepal_street_z15', 29.5103, 80.3417, 15], ['jomotsangkha_z12', 26.9, 92.11, 12], ['tawang_trijunction_z10', 27.86, 91.62, 10],
   ];
   const ctx = await newCtx(browser, { vp: 'desktop' });
   for (const [name, lat, lon, zoom] of views) {

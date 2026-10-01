@@ -21,6 +21,7 @@ package app.doorprints.ui
 import app.doorprints.ui.IndiaViewRules.CLAIM_LAYER
 import app.doorprints.ui.IndiaViewRules.COUNTRY_LAYER
 import app.doorprints.ui.IndiaViewRules.DISPUTED_LAYER
+import app.doorprints.ui.IndiaViewRules.SOI_SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.STATE_LINE_LAYER
 import app.doorprints.ui.IndiaViewRules.STATE_OVERLAY_LAYER
@@ -42,12 +43,14 @@ import kotlinx.serialization.json.floatOrNull
  *
  * What must hold, for the OpenFreeMap Liberty style as it is today (a renamed layer fails, so the change is seen):
  *  1. the disputed lines ([DISPUTED_LAYER]) are in the style and hidden;
- *  2. [COUNTRY_LAYER] starts at zoom 5 or later, its filter holds the adm0 rule and the tile-zoom guard;
+ *  2. [COUNTRY_LAYER] starts at zoom 5 or later, its filter holds the adm0 rule, the tile-zoom guard and the Survey of
+ *     India corridor's `within` rule (S4b-BL-114);
  *  3. [STATE_LINE_LAYER] holds the tile-zoom guard and the held areas' `within` rule; every other `boundary` line
  *     layer from zoom 5 holds the guard;
- *  4. the outline: the source [SOURCE_ID] with the 'world', 'claim' and 'state' lines inline, [WORLD_LAYER] below zoom 5
- *     directly above [COUNTRY_LAYER], [CLAIM_LAYER] directly above it, [STATE_OVERLAY_LAYER] from zoom 5 directly
- *     above [STATE_LINE_LAYER], each with its own filter;
+ *  4. the outline: the source [SOURCE_ID] with the 'world' lines inline, the source [SOI_SOURCE_ID] with the Survey of
+ *     India's 'claim' and 'state' lines inline and its credit, [WORLD_LAYER] below zoom 5 directly above
+ *     [COUNTRY_LAYER], [CLAIM_LAYER] directly above it, [STATE_OVERLAY_LAYER] from zoom 5 directly above
+ *     [STATE_LINE_LAYER], each with its own source and filter;
  *  5. every state label layer holds the state-label rule, and there is at least one;
  *  6. the house layers are the top two, so no base layer covers a marker.
  */
@@ -77,6 +80,7 @@ object IndiaViewCheck {
                 problems += "$COUNTRY_LAYER lacks the country-line rule"
             }
             if (!has(COUNTRY_LAYER, IndiaViewRules.TILE_ZOOM_GUARD)) problems += "$COUNTRY_LAYER lacks the tile-zoom guard"
+            if (country["filter"]?.let(::hasCorridorRule) != true) problems += "$COUNTRY_LAYER lacks the Survey of India corridor"
         }
 
         // 3. The state lines, and every other boundary line layer from zoom 5.
@@ -100,29 +104,34 @@ object IndiaViewCheck {
             if (!has(id, IndiaViewRules.TILE_ZOOM_GUARD)) problems += "$id lacks the tile-zoom guard"
         }
 
-        // 4. The outline.
-        val source = (style["sources"] as? JsonObject)?.get(SOURCE_ID) as? JsonObject
-        val kinds = ((source?.get("data") as? JsonObject)?.get("features") as? JsonArray).orEmpty()
-            .mapNotNull { ((it as? JsonObject)?.get("properties") as? JsonObject)?.str("kind") }.toSet()
-        if (source?.str("type") != "geojson") {
-            problems += "the source $SOURCE_ID is not in the style"
-        } else {
-            listOf("world", "claim", "state").filter { it !in kinds }
-                .forEach { problems += "the source $SOURCE_ID has no '$it' line" }
+        // 4. The outline: Natural Earth's world lines and the Survey of India's lines, each in its own source.
+        fun source(id: String, wanted: List<String>): JsonObject? {
+            val source = (style["sources"] as? JsonObject)?.get(id) as? JsonObject
+            val kinds = ((source?.get("data") as? JsonObject)?.get("features") as? JsonArray).orEmpty()
+                .mapNotNull { ((it as? JsonObject)?.get("properties") as? JsonObject)?.str("kind") }.toSet()
+            if (source?.str("type") != "geojson") {
+                problems += "the source $id is not in the style"
+            } else {
+                wanted.filter { it !in kinds }.forEach { problems += "the source $id has no '$it' line" }
+            }
+            return source
         }
-        fun outline(id: String, filter: String, directlyAbove: String?) {
+        source(SOURCE_ID, listOf("world"))
+        val soi = source(SOI_SOURCE_ID, listOf("claim", "state"))
+        if (soi != null && soi.str("attribution").isNullOrBlank()) problems += "the source $SOI_SOURCE_ID has no credit"
+        fun outline(id: String, sourceId: String, filter: String, directlyAbove: String?) {
             val l = layer(id)
             when {
                 l == null -> problems += "$id is not in the style"
-                l.str("type") != "line" || l.str("source") != SOURCE_ID -> problems += "$id is not a line of $SOURCE_ID"
+                l.str("type") != "line" || l.str("source") != sourceId -> problems += "$id is not a line of $sourceId"
                 l["filter"] != Json.parseToJsonElement(filter) -> problems += "$id has the wrong filter"
                 directlyAbove != null && ids.indexOf(id) != ids.indexOf(directlyAbove) + 1 ->
                     problems += "$id is not directly above $directlyAbove"
             }
         }
-        outline(WORLD_LAYER, IndiaViewRules.WORLD_FILTER, COUNTRY_LAYER)
-        outline(CLAIM_LAYER, IndiaViewRules.CLAIM_FILTER, WORLD_LAYER)
-        outline(STATE_OVERLAY_LAYER, IndiaViewRules.STATE_FILTER, STATE_LINE_LAYER)
+        outline(WORLD_LAYER, SOURCE_ID, IndiaViewRules.WORLD_FILTER, COUNTRY_LAYER)
+        outline(CLAIM_LAYER, SOI_SOURCE_ID, IndiaViewRules.CLAIM_FILTER, WORLD_LAYER)
+        outline(STATE_OVERLAY_LAYER, SOI_SOURCE_ID, IndiaViewRules.STATE_FILTER, STATE_LINE_LAYER)
         val worldMax = (layer(WORLD_LAYER)?.get("maxzoom") as? JsonPrimitive)?.floatOrNull
         if (layer(WORLD_LAYER) != null && (worldMax == null || worldMax >= IndiaViewRules.DETAILED_FROM_ZOOM)) {
             problems += "$WORLD_LAYER is drawn at zoom 5"
@@ -177,6 +186,28 @@ object IndiaViewCheck {
     private fun JsonElement.contains(rule: JsonElement): Boolean = when {
         this == rule -> true
         this is JsonArray -> any { it.contains(rule) }
+        else -> false
+    }
+
+    /**
+     * The Survey of India corridor's rule anywhere in [filter]: `["!", ["all", <India's line>, ["any", ["within",
+     * <Polygon>], ...]]]` with [IndiaViewRules.INDIA_LINE] and at least one polygon.
+     */
+    private fun hasCorridorRule(filter: JsonElement): Boolean = when (filter) {
+        is JsonArray -> {
+            val all = filter.getOrNull(1) as? JsonArray
+            val any = all?.getOrNull(2) as? JsonArray
+            val isRule = (filter.getOrNull(0) as? JsonPrimitive)?.contentOrNull == "!" &&
+                (all?.getOrNull(0) as? JsonPrimitive)?.contentOrNull == "all" &&
+                all.getOrNull(1) == Json.parseToJsonElement(IndiaViewRules.INDIA_LINE) &&
+                (any?.getOrNull(0) as? JsonPrimitive)?.contentOrNull == "any" && any.size >= 2 &&
+                any.drop(1).all { w ->
+                    val within = w as? JsonArray
+                    (within?.getOrNull(0) as? JsonPrimitive)?.contentOrNull == "within" &&
+                        ((within.getOrNull(1) as? JsonObject)?.get("type") as? JsonPrimitive)?.contentOrNull == "Polygon"
+                }
+            isRule || filter.any(::hasCorridorRule)
+        }
         else -> false
     }
 

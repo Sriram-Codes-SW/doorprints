@@ -329,7 +329,7 @@ jobs:
           resolved=ios/Doorprints.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           grep -q '"revision" *: *"13e41ab3d77ff5113e7e5d4ee87803b1f81f5683"' "$resolved" \
             || { echo "::error::$resolved does not pin MapLibre to the revision in ios/project.yml"; cat "$resolved"; exit 1; }
-          for f in in-boundaries.geojson in-held-areas.geojson; do
+          for f in in-boundaries.geojson in-held-areas.geojson in-boundaries-soi.json in-soi-corridor.geojson; do
             cmp "$app/geo/$f" "android/app/src/main/assets/geo/$f" || { echo "::error::geo/$f in the app differs from the repository's"; exit 1; }
           done
           # The ad-hoc signature the Keychain needs (see the build step).

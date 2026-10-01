@@ -36,9 +36,12 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.TrackPointEntity
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.map_boundary_credit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The Map's view on iOS (ADR-23 CMP-8c): MapLibre iOS's `MLNMapView`, made by the Swift app through [IosMap.factory]
@@ -70,6 +73,8 @@ actual fun PlatformMap(
     }
     val currentEvents by rememberUpdatedState(events)
     val currentLabelSize by rememberUpdatedState(labelSizeSp)
+    // The Survey of India's credit in the app's language, for the attribution sheet (S4b-BL-114).
+    val currentCredit by rememberUpdatedState(stringResource(Res.string.map_boundary_credit))
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
     // The style the map was last given, and whether it has loaded (the houses and label size wait for it).
@@ -119,7 +124,7 @@ actual fun PlatformMap(
         styleLoaded = false
         loading = scope.launch {
             try {
-                val prepared = IosMapStyle.prepare(currentLabelSize)
+                val prepared = IosMapStyle.prepare(currentLabelSize, currentCredit)
                 style = prepared
                 styleLoaded = false
                 awaitingStyle = true

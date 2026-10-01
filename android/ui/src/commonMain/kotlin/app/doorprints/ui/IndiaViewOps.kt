@@ -23,6 +23,7 @@ import app.doorprints.ui.IndiaViewRules.COUNTRY_LAYER
 import app.doorprints.ui.IndiaViewRules.DISPUTED_LAYER
 import app.doorprints.ui.IndiaViewRules.LayerInfo
 import app.doorprints.ui.IndiaViewRules.Placement
+import app.doorprints.ui.IndiaViewRules.SOI_SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.STATE_LINE_LAYER
 import app.doorprints.ui.IndiaViewRules.STATE_OVERLAY_LAYER
@@ -77,6 +78,13 @@ interface StyleOps {
     fun addGeoJsonSource(id: String, uri: String)
 
     /**
+     * Adds a GeoJSON source [id] holding [geoJson] (a FeatureCollection's text) and crediting [attribution] in the
+     * map's attribution (iOS: the source's `attribution`; Android's GeoJsonSource cannot carry one, so the app's
+     * attribution dialog adds the credit itself, `SoiAttributionDialogManager`).
+     */
+    fun addGeoJsonSourceText(id: String, geoJson: String, attribution: String)
+
+    /**
      * Line layer [layerId]'s [paint] property as a value another layer can take ([PaintValue.Copied]), or null when it
      * holds nothing usable (the caller then uses Liberty's value).
      */
@@ -87,7 +95,8 @@ interface StyleOps {
 
     /**
      * The text of the app's bundled file [path] (Android: from the APK's assets), for the held areas' polygon
-     * ([IndiaViewRules.HELD_AREAS_ASSET_PATH]). May throw when the file cannot be read.
+     * ([IndiaViewRules.HELD_AREAS_ASSET_PATH]), the Survey of India's lines ([IndiaViewRules.SOI_ASSET_PATH]) and their
+     * corridor ([IndiaViewRules.SOI_CORRIDOR_ASSET_PATH]). May throw when the file cannot be read.
      */
     fun readAsset(path: String): String
 
@@ -134,12 +143,13 @@ data class NewLineLayer(
  * Applies [IndiaViewRules] to a freshly loaded base style: India's external boundary as the Government of India shows
  * it, and no Line of Control or Line of Actual Control (ADR-22). Call it from every style load, before the app's own
  * layers are added, so a retry or any later style load gets it too. Common since CMP-7 (was `:app`'s `IndiaView.kt`,
- * over MapLibre's `Style`), with the same steps in the same order.
+ * over MapLibre's `Style`), with the same steps in the same order. [soiAttribution] is the Survey of India's credit
+ * in the app's language (`map_boundary_credit`; S4b-BL-114).
  *
  * Nothing here can crash the map: each step runs on its own, and a missing layer or a refusal is logged with
  * [StyleOps.warn] and skipped. The outline is added even when the base layers it refers to are missing (rule 5).
  */
-fun applyIndiaView(ops: StyleOps) {
+fun applyIndiaView(ops: StyleOps, soiAttribution: String = IndiaViewRules.SOI_ATTRIBUTION) {
     // 1. No disputed lines at all.
     ops.step("hide $DISPUTED_LAYER") {
         if (ops.kind(DISPUTED_LAYER) == null) {
@@ -217,7 +227,43 @@ fun applyIndiaView(ops: StyleOps) {
         }
     }
 
-    // 3. India's outline from the bundled file, drawn like the country lines.
+    // 2d. One line along the Survey of India's (S4b-BL-114): the country lines leave out India's tile lines wholly
+    //     inside the corridor around it. After the guard, so the layer's filter reads all(all(all(Liberty's, rule 2),
+    //     guard), corridor), as on the web.
+    if (countryIsLine) {
+        ops.step("filter $COUNTRY_LAYER by the Survey of India corridor") {
+            val polygons = IndiaViewRules.soiCorridorGeometries(ops.readAsset(IndiaViewRules.SOI_CORRIDOR_ASSET_PATH))
+            val rule = polygons?.let { IndiaViewRules.soiCorridorFilterFor(ops.filter(COUNTRY_LAYER), it) }
+            when {
+                polygons == null -> ops.warn(
+                    "the Survey of India corridor is malformed; $COUNTRY_LAYER keeps its lines beside the Survey of India's",
+                )
+                rule == null -> ops.warn(
+                    "the filter of $COUNTRY_LAYER is in the deprecated syntax, which has no within; " +
+                        "its lines beside the Survey of India's are kept",
+                )
+                else -> ops.andFilter(COUNTRY_LAYER, rule)
+            }
+        }
+    }
+
+    // 3. India's outline from the bundled files, drawn like the country lines: the Survey of India's lines (decoded,
+    //    every vertex as published) and Natural Earth's world lines below zoom 5. A Survey of India file that cannot
+    //    be read leaves its source empty, with a warning, so the layers are still added (rule 5).
+    ops.step("add the Survey of India's lines") {
+        if (!ops.hasSource(SOI_SOURCE_ID)) {
+            val geoJson = try {
+                SoiPolyline.geoJson(ops.readAsset(IndiaViewRules.SOI_ASSET_PATH))
+            } catch (e: Exception) {
+                ops.warn("reading ${IndiaViewRules.SOI_ASSET_PATH} failed", e)
+                null
+            }
+            if (geoJson == null) {
+                ops.warn("the Survey of India's lines are missing or malformed; India's northern boundary is not drawn")
+            }
+            ops.addGeoJsonSourceText(SOI_SOURCE_ID, geoJson ?: NO_LINES, soiAttribution)
+        }
+    }
     ops.step("add the outline") {
         if (!ops.hasSource(SOURCE_ID)) ops.addGeoJsonSource(SOURCE_ID, IndiaViewRules.SOURCE_URI)
         val paint = countryPaint(ops, if (countryIsLine) COUNTRY_LAYER else null)
@@ -226,7 +272,7 @@ fun applyIndiaView(ops: StyleOps) {
             WORLD_LAYER, SOURCE_ID, IndiaViewRules.WORLD_FILTER, paint, roundCap = true,
             maxZoom = IndiaViewRules.WORLD_MAX_ZOOM,
         )
-        val claim = NewLineLayer(CLAIM_LAYER, SOURCE_ID, IndiaViewRules.CLAIM_FILTER, paint, roundCap = true)
+        val claim = NewLineLayer(CLAIM_LAYER, SOI_SOURCE_ID, IndiaViewRules.CLAIM_FILTER, paint, roundCap = true)
         // Each layer on its own, so a refusal for one never leaves the other out (rule 5).
         ops.step("add $WORLD_LAYER") {
             if (ops.kind(WORLD_LAYER) == null) addAtItsPlace(ops, world)
@@ -250,7 +296,7 @@ fun applyIndiaView(ops: StyleOps) {
     // 3b. India's state line that the tiles leave undrawn (Assam-Arunachal Pradesh), from zoom 5, drawn like the other
     //     state lines, directly above them.
     ops.step("add $STATE_OVERLAY_LAYER") {
-        if (ops.hasSource(SOURCE_ID) && ops.kind(STATE_OVERLAY_LAYER) == null) {
+        if (ops.hasSource(SOI_SOURCE_ID) && ops.kind(STATE_OVERLAY_LAYER) == null) {
             val stateLinesIsLine = try {
                 ops.kind(STATE_LINE_LAYER) == StyleOps.Kind.LINE
             } catch (e: Exception) {
@@ -258,7 +304,7 @@ fun applyIndiaView(ops: StyleOps) {
                 false
             }
             val state = NewLineLayer(
-                STATE_OVERLAY_LAYER, SOURCE_ID, IndiaViewRules.STATE_FILTER,
+                STATE_OVERLAY_LAYER, SOI_SOURCE_ID, IndiaViewRules.STATE_FILTER,
                 statePaint(ops, if (stateLinesIsLine) STATE_LINE_LAYER else null), roundCap = false,
                 minZoom = IndiaViewRules.STATE_MIN_ZOOM,
             )
@@ -289,6 +335,9 @@ fun applyIndiaView(ops: StyleOps) {
         }
     }
 }
+
+/** An empty FeatureCollection: the Survey of India's source when its file cannot be read. */
+private const val NO_LINES = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
 /**
  * Adds [layer] where [IndiaViewRules.placement] puts the outline; if that place is refused, on top, because the

@@ -28,6 +28,9 @@ import type {
 // The held areas' polygon (S4b-BL-12), bundled into the app as text: the rule needs it when the style loads, before
 // any fetch could answer. Byte-identical to Android's asset (IndiaBoundaryDataTest; the spec pins the same sha256).
 import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loader: 'text' };
+// The corridor around the Survey of India's lines (S4b-BL-114), bundled the same way and for the same reason: rule 2
+// filters boundary_2 with it as the style loads. Byte-identical to Android's asset (the spec and IndiaBoundaryDataTest).
+import soiCorridorText from '../../../public/geo/in-soi-corridor.geojson' with { loader: 'text' };
 
 /**
  * India's external boundary as the Government of India shows it, on top of the OpenFreeMap "liberty" style.
@@ -40,8 +43,11 @@ import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loa
  *
  *  1. layer `boundary_disputed` (every disputed line: the LoC, the LAC, claim lines) is hidden;
  *  2. layer `boundary_2` (country lines) starts at zoom 5, where the tiles carry `adm0_l`/`adm0_r`, keeps only the
- *     lines with at least one of the two, and leaves out the Pakistan-China line (both sides in PAK/CHN) and India's
- *     line with China (China on one side, India or nothing on the other), which India's outline draws instead. Below zoom
+ *     lines with at least one of the two, and leaves out the Pakistan-China line (both sides in PAK/CHN), India's line
+ *     with China (China on one side, India or nothing on the other) and every one of India's lines (India or nothing
+ *     on a side, or the Pakistan-Afghanistan line of the Wakhan) that lies wholly inside the corridor around the
+ *     Survey of India's lines ({@link soiCorridorRule}, `geo/in-soi-corridor.geojson`, S4b-BL-114): the Survey of India
+ *     line draws all of them instead. Below zoom
  *     5 the tiles' lines come from Natural Earth's ISO view with no country codes, so no filter can take the Pakistan
  *     line through Kashmir out of them. MapLibre draws a zoom 0-4 tile, overzoomed, in place of a zoom 5+ tile that is
  *     still loading or missing offline, so `boundary_2`, `boundary_3` and every other `boundary` line layer that
@@ -53,16 +59,20 @@ import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loa
  *     that Pakistan and China hold ({@link heldAreasRule}, `geo/in-held-areas.geojson`): from tile zoom 9 the tiles
  *     carry Pakistan's district and tehsil lines across Gilgit-Baltistan and PoK and China's county lines across
  *     Aksai Chin as undisputed admin level 5-6 lines with no country code, so only where they lie tells them apart;
- *  3. GeoJSON source `in-boundaries` (the bundled `geo/in-boundaries.geojson`, Natural Earth, public domain) with
- *     two line layers directly above `boundary_2`: `in-boundary-world` (kind `world`, below zoom 5 only, in place of
- *     the tiles' lines: the world's land boundaries with India's classification, and the stretches of India's own
- *     outline along which the tiles draw a country line of their own from zoom 5, so the two never show side by side)
- *     and `in-boundary-claim` (kind `claim`, the rest of India's own outline in the four disputed areas, at every
- *     zoom: the stretches the tiles leave to disputed lines). They copy `boundary_2`'s colour, width and opacity so
- *     they look like the base map's own lines ({@link FALLBACK_LINE_PAINT} where it has none). A third layer,
- *     `in-boundary-state` (kind `state`, the Assam-Arunachal Pradesh state line, which the tiles mark disputed and
- *     claimed by China, so no layer draws it), goes directly above `boundary_3` from zoom 5 and copies its dashed
- *     paint ({@link STATE_FALLBACK_LINE_PAINT} where it has none);
+ *  3. two GeoJSON sources with three line layers. `in-boundaries-soi` is the Survey of India's data
+ *     (`geo/in-boundaries-soi.json`, OVSF/1M/7, vertices unaltered, decoded here from its polyline7 encoding,
+ *     {@link soiBoundaryGeoJson}; credited "Boundary: Survey of India" in the map's attribution): `in-boundary-claim`
+ *     (kind `claim`, India's international land boundary along Jammu and Kashmir, Ladakh, Himachal Pradesh,
+ *     Uttarakhand, Sikkim and Arunachal Pradesh, at every zoom) and `in-boundary-state` (kind `state`, the
+ *     Assam-Arunachal Pradesh state line, which the tiles mark disputed and claimed by China, so no layer draws it;
+ *     from zoom 5, directly above `boundary_3`, with its dashed paint, {@link STATE_FALLBACK_LINE_PAINT} where it has
+ *     none). `in-boundaries` is Natural Earth (`geo/in-boundaries.geojson`, public domain): `in-boundary-world` (kind
+ *     `world`, below zoom 5 only, in place of the tiles' lines: the world's land boundaries with India's
+ *     classification, without the stretches the Survey of India lines draw). `in-boundary-world` and
+ *     `in-boundary-claim` go directly above `boundary_2` and copy its colour, width and opacity so they look like the
+ *     base map's own lines ({@link FALLBACK_LINE_PAINT} where it has none). MapLibre generalises a GeoJSON line for
+ *     the screen as it cuts it into tiles (geojson-vt keeps a subset of the vertices, whole, per zoom); the data it
+ *     is given holds every Survey of India vertex as published;
  *  4. the state labels "Azad Kashmir" and "Gilgit-Baltistan" (English or Urdu name), which sit inside India's
  *     territory, are filtered out of every `place` label layer that can show a state;
  *  5. a layer that is missing is skipped with a warning, never an error, and the overlay is still added. A layer whose
@@ -74,18 +84,27 @@ import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loa
  * script (`web/scripts/geo/`) are the lead's; this file only decides how the map uses them.
  */
 
-/** Id of the GeoJSON source that carries India's boundary lines. */
+/** Id of the GeoJSON source of the Natural Earth lines (kind `world`). */
 export const IN_BOUNDARIES_SOURCE = 'in-boundaries';
-/** The world's land boundaries with India's classification, used below zoom 5 (kind `world`). */
+/** Id of the GeoJSON source of the Survey of India's lines (kinds `claim` and `state`). */
+export const IN_BOUNDARIES_SOI_SOURCE = 'in-boundaries-soi';
+/** The world's land boundaries with India's classification, used below zoom 5 (kind `world`, Natural Earth). */
 export const IN_BOUNDARY_WORLD_LAYER = 'in-boundary-world';
-/** India's own outline in the four disputed areas, used at every zoom (kind `claim`). */
+/** India's international land boundary by the Survey of India, used at every zoom (kind `claim`). */
 export const IN_BOUNDARY_CLAIM_LAYER = 'in-boundary-claim';
-/** India's state lines that the tiles leave undrawn (kind `state`: Assam-Arunachal Pradesh), from zoom 5. */
+/** India's state lines that the tiles leave undrawn (kind `state`: Assam-Arunachal Pradesh, Survey of India), from zoom 5. */
 export const IN_BOUNDARY_STATE_LAYER = 'in-boundary-state';
 /** The bundled data, relative to the app's base href (web/public/geo/, precached by sw.js with the rest of the build). */
 export const IN_BOUNDARIES_PATH = 'geo/in-boundaries.geojson';
+/** The Survey of India's lines, likewise (fetched and decoded on the first style load, {@link loadSoiBoundary}). */
+export const IN_BOUNDARIES_SOI_PATH = 'geo/in-boundaries-soi.json';
 /** Credit shown in the map's attribution while the overlay is drawn. Natural Earth is public domain; credit is courtesy. */
 export const IN_BOUNDARIES_ATTRIBUTION = 'Natural Earth';
+/**
+ * The Survey of India's credit on the map (its condition of use, docs/ops/soi-review-pack.md section 7), in English;
+ * the app passes the translated `map.boundaryCredit` ({@link applyIndiaBoundaries}).
+ */
+export const SOI_ATTRIBUTION = 'Boundary: Survey of India';
 
 /** Liberty's country lines. */
 export const COUNTRY_LINES_LAYER = 'boundary_2';
@@ -203,6 +222,13 @@ export interface HeldAreasGeometry {
  * `IndiaViewRules.heldAreasGeometry`.
  */
 export function heldAreasGeometry(text: string): HeldAreasGeometry | null {
+  const features = featuresOf(text);
+  if (!features || features.length !== 1) return null;
+  return polygonOf(features[0]);
+}
+
+/** The features of a GeoJSON FeatureCollection's text, or null when it is not one. */
+function featuresOf(text: string): unknown[] | null {
   let root: unknown;
   try {
     root = JSON.parse(text);
@@ -210,10 +236,13 @@ export function heldAreasGeometry(text: string): HeldAreasGeometry | null {
     return null;
   }
   const features = (root as { type?: unknown; features?: unknown } | null)?.features;
-  if ((root as { type?: unknown } | null)?.type !== 'FeatureCollection' || !Array.isArray(features) || features.length !== 1) {
-    return null;
-  }
-  const geometry = (features[0] as { geometry?: { type?: unknown; coordinates?: unknown } } | null)?.geometry;
+  if ((root as { type?: unknown } | null)?.type !== 'FeatureCollection' || !Array.isArray(features)) return null;
+  return features;
+}
+
+/** A feature's geometry when it is a Polygon of closed rings of finite [longitude, latitude] pairs, else null. */
+function polygonOf(feature: unknown): HeldAreasGeometry | null {
+  const geometry = (feature as { geometry?: { type?: unknown; coordinates?: unknown } } | null)?.geometry;
   const isPosition = (p: unknown) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number' && Number.isFinite(v));
   const isRing = (ring: unknown) =>
     Array.isArray(ring) &&
@@ -244,6 +273,189 @@ export const HELD_AREAS: HeldAreasGeometry | null = heldAreasGeometry(heldAreasT
  */
 export function heldAreasRule(geometry: HeldAreasGeometry): ExpressionSpecification {
   return ['!', ['within', geometry]];
+}
+
+/**
+ * The polygons of `geo/in-soi-corridor.geojson` (web/scripts/geo/build_in_soi_corridor.py, S4b-BL-114): a
+ * FeatureCollection of one or more features, each a Polygon of closed [longitude, latitude] rings, one per chain of the
+ * Survey of India's land-boundary lines (Jammu and Kashmir to Uttarakhand, Sikkim, Arunachal Pradesh), 5.5 km wide on
+ * each side. Null (and the rule is skipped with a warning) when the text is anything else. Polygons, not one
+ * MultiPolygon, for Android (see {@link HeldAreasGeometry}). Android's `IndiaViewRules.soiCorridorGeometries`.
+ */
+export function soiCorridorGeometries(text: string): HeldAreasGeometry[] | null {
+  const features = featuresOf(text);
+  if (!features || features.length === 0) return null;
+  const polygons = features.map(polygonOf);
+  return polygons.every((p) => p !== null) ? (polygons as HeldAreasGeometry[]) : null;
+}
+
+/** The bundled corridor, read once; null when the bundled file is not what {@link soiCorridorGeometries} expects. */
+export const SOI_CORRIDOR: HeldAreasGeometry[] | null = soiCorridorGeometries(soiCorridorText);
+
+/**
+ * Rule 2, `boundary_2` (S4b-BL-114): India's lines as the tiles carry them, in India's view: India or no country on a
+ * side (the tiles often leave India's side empty), or Pakistan and Afghanistan, whose Wakhan line is Gilgit-Baltistan's
+ * border. Android's `IndiaViewRules.INDIA_LINE`, with `in` for `match`.
+ */
+const INDIA_LINE: ExpressionSpecification = [
+  'any',
+  ['==', ['coalesce', ['get', 'adm0_l'], 'IND'], 'IND'],
+  ['==', ['coalesce', ['get', 'adm0_r'], 'IND'], 'IND'],
+  ['all', ['in', ['get', 'adm0_l'], ['literal', ['PAK', 'AFG']]], ['in', ['get', 'adm0_r'], ['literal', ['PAK', 'AFG']]]],
+];
+
+/**
+ * Rule 2, `boundary_2` (S4b-BL-114): not one of India's lines ({@link INDIA_LINE}) that lies wholly inside the corridor
+ * around the Survey of India's lines, which draw that boundary instead, so from zoom 5 it is one line, not the Survey
+ * of India's and OpenStreetMap's side by side (they lie a median 20-30 m apart along Nepal and Bhutan, about 500 m in
+ * the Wakhan). `within` is all or nothing per tile feature ({@link heldAreasRule}): a tile feature that runs on past
+ * the end of a Survey of India line (the Nepal line along Uttar Pradesh, the Bhutan line along Assam) is drawn whole,
+ * so in the tiles that hold such an end both lines show for up to a tile's width (docs/06 TC-M-25). A line of another
+ * country that meets India's (Nepal-China, Bhutan-China) is never hidden. Expression syntax only (Android's
+ * `IndiaViewRules.soiCorridorFilter`).
+ */
+export function soiCorridorRule(polygons: readonly HeldAreasGeometry[]): ExpressionSpecification {
+  return ['!', ['all', INDIA_LINE, ['any', ...polygons.map((p): ExpressionSpecification => ['within', p])]]];
+}
+
+/** A GeoJSON FeatureCollection of the Survey of India's lines as the map draws them ({@link soiBoundaryGeoJson}). */
+export interface SoiFeatureCollection {
+  type: 'FeatureCollection';
+  features: {
+    type: 'Feature';
+    properties: { kind: 'claim' | 'state'; state: string };
+    geometry: { type: 'LineString'; coordinates: [number, number][] };
+  }[];
+}
+
+/** No Survey of India line yet: the source's data until {@link loadSoiBoundary} has read the file. */
+export const NO_SOI_LINES: SoiFeatureCollection = Object.freeze({ type: 'FeatureCollection', features: [] }) as SoiFeatureCollection;
+
+/**
+ * Google's encoded polyline algorithm, decoded at a precision of 1e-7 degree (`in-boundaries-soi.json`, written by
+ * web/scripts/geo/build_in_boundaries_soi.py): latitude then longitude, each a zigzag-encoded delta in 5-bit chunks
+ * offset by 63. Gives [longitude, latitude] pairs, each the 1e-7 integer divided by 1e7, which is the double nearest
+ * to the 7-decimal value the build wrote, so every vertex is the Survey of India's as published. Arithmetic, not
+ * 32-bit bitwise operators: a longitude delta can reach 3.6e9. Throws on a character outside the alphabet or a
+ * truncated value. Android's `SoiPolyline.decode` (common Kotlin); the parity test pins both to the same counts and
+ * checksums.
+ */
+export function decodePolyline7(encoded: string): [number, number][] {
+  const out: [number, number][] = [];
+  let i = 0;
+  let lat = 0;
+  let lon = 0;
+  const next = (): number => {
+    let result = 0;
+    let factor = 1;
+    for (;;) {
+      if (i >= encoded.length) throw new Error('polyline7: truncated value');
+      const b = encoded.charCodeAt(i++) - 63;
+      if (b < 0 || b > 63) throw new Error(`polyline7: character ${JSON.stringify(encoded[i - 1])} out of range`);
+      result += (b & 0x1f) * factor;
+      factor *= 32;
+      if (b < 0x20) break;
+      if (factor > 2 ** 45) throw new Error('polyline7: value too long');
+    }
+    return result % 2 === 1 ? -(result + 1) / 2 : result / 2;
+  };
+  while (i < encoded.length) {
+    lat += next();
+    lon += next();
+    out.push([lon / 1e7, lat / 1e7]);
+  }
+  return out;
+}
+
+/**
+ * The Survey of India's file (`geo/in-boundaries-soi.json`) as the map's GeoJSON: one LineString per run, with its
+ * kind (`claim` or `state`) and state, the vertices decoded ({@link decodePolyline7}) and none added, moved or
+ * removed. Null when the text is not that file (not JSON, a run of another kind, a run whose decoded vertex count
+ * differs from the `vertices` it states, or one of fewer than two), so a broken or partial file never reaches the
+ * map. Android's `SoiPolyline.geoJson`.
+ */
+export function soiBoundaryGeoJson(text: string): SoiFeatureCollection | null {
+  const features = featuresOf(text);
+  if (!features || features.length === 0) return null;
+  const out: SoiFeatureCollection['features'] = [];
+  for (const f of features) {
+    const p = (f as { properties?: Record<string, unknown> } | null)?.properties;
+    const kind = p?.['kind'];
+    const encoded = p?.['polyline7'];
+    if ((kind !== 'claim' && kind !== 'state') || typeof encoded !== 'string') return null;
+    let coordinates: [number, number][];
+    try {
+      coordinates = decodePolyline7(encoded);
+    } catch {
+      return null;
+    }
+    if (coordinates.length < 2 || coordinates.length !== p?.['vertices']) return null;
+    out.push({
+      type: 'Feature',
+      properties: { kind, state: typeof p?.['state'] === 'string' ? p['state'] : '' },
+      geometry: { type: 'LineString', coordinates },
+    });
+  }
+  return { type: 'FeatureCollection', features: out };
+}
+
+/**
+ * Adler-style sums (mod 2^31 - 1) over the vertices of `lines` as 1e-7 degree integers, longitude then latitude, in
+ * order: [s1, s2]. The parity check of the decoders (web/scripts/geo/test_build_in_boundaries.py and Android's
+ * `SoiPolyline.checksum` compute the same); both stay below 2^32, so plain numbers are exact.
+ */
+export function soiChecksum(lines: readonly (readonly (readonly number[])[])[]): [number, number] {
+  const m = 2147483647;
+  let s1 = 0;
+  let s2 = 0;
+  for (const line of lines) {
+    for (const [lon, lat] of line) {
+      for (const v of [Math.round(lon * 1e7), Math.round(lat * 1e7)]) {
+        s1 = (s1 + (((v % m) + m) % m)) % m;
+        s2 = (s2 + s1) % m;
+      }
+    }
+  }
+  return [s1, s2];
+}
+
+const soiPromises = new Map<string, Promise<SoiFeatureCollection | null>>();
+const soiLoaded = new Map<string, SoiFeatureCollection>();
+
+/**
+ * The Survey of India's lines from `url`, fetched and decoded once per page ({@link soiBoundaryGeoJson}); null when
+ * the file cannot be read or is not that file (then the next call tries again). Same-origin and precached by sw.js,
+ * so it also loads offline once the app has been installed or opened.
+ */
+export function loadSoiBoundary(
+  url: string,
+  fetchFn: (url: string) => Promise<{ ok: boolean; text(): Promise<string> }> = (u) => fetch(u),
+): Promise<SoiFeatureCollection | null> {
+  let pending = soiPromises.get(url);
+  if (!pending) {
+    pending = fetchFn(url)
+      .then((r) => (r.ok ? r.text() : null))
+      .then((text) => (text === null ? null : soiBoundaryGeoJson(text)))
+      .catch(() => null)
+      .then((fc) => {
+        if (fc) soiLoaded.set(url, fc);
+        else soiPromises.delete(url);
+        return fc;
+      });
+    soiPromises.set(url, pending);
+  }
+  return pending;
+}
+
+/** The lines {@link loadSoiBoundary} has already read from `url`, or undefined. */
+export function loadedSoiBoundary(url: string): SoiFeatureCollection | undefined {
+  return soiLoaded.get(url);
+}
+
+/** Forgets what {@link loadSoiBoundary} has read (for the specs). */
+export function forgetSoiBoundary(): void {
+  soiPromises.clear();
+  soiLoaded.clear();
 }
 
 /** Rule 4: neither the English (or default) name nor the local name is one of the hidden state labels. */
@@ -284,17 +496,32 @@ export function inBoundariesUrl(baseUri: string): string {
   return new URL(IN_BOUNDARIES_PATH, baseUri).href;
 }
 
+/** The absolute URL of the Survey of India's file, likewise. */
+export function inBoundariesSoiUrl(baseUri: string): string {
+  return new URL(IN_BOUNDARIES_SOI_PATH, baseUri).href;
+}
+
+/** What the Survey of India's source gets: its data (the decoded lines, or none yet) and its credit. */
+export interface SoiOverlay {
+  data: SoiFeatureCollection;
+  attribution: string;
+}
+
 /**
  * `style` with the five rules above applied. Pure: `style` is not changed, and each changed layer is a new object.
  *
- * `dataUrl` is where MapLibre loads the GeoJSON from ({@link inBoundariesUrl} on the web); `heldAreas` is the polygon
- * for `boundary_3` ({@link HELD_AREAS} unless a test gives another). A style that already has the `in-boundaries`
- * source is returned as it is, so applying the rules twice changes nothing.
+ * `dataUrl` is where MapLibre loads the Natural Earth GeoJSON from ({@link inBoundariesUrl} on the web); `heldAreas`
+ * is the polygon for `boundary_3` ({@link HELD_AREAS} unless a test gives another); `soi` is the Survey of India's
+ * source (no lines and the English credit unless the caller gives them, {@link applyIndiaBoundaries}); `corridor` the
+ * polygons for `boundary_2` ({@link SOI_CORRIDOR}). A style that already has the `in-boundaries` source is returned
+ * as it is, so applying the rules twice changes nothing.
  */
 export function indiaBoundaryStyle(
   style: StyleSpecification,
   dataUrl: string,
   heldAreas: HeldAreasGeometry | null = HELD_AREAS,
+  soi: SoiOverlay = { data: NO_SOI_LINES, attribution: SOI_ATTRIBUTION },
+  corridor: readonly HeldAreasGeometry[] | null = SOI_CORRIDOR,
 ): IndiaBoundaryResult {
   const warnings: string[] = [];
   if (style.sources && IN_BOUNDARIES_SOURCE in style.sources) return { style, warnings };
@@ -368,6 +595,24 @@ export function indiaBoundaryStyle(
     }
   }
 
+  // 2d. One line along the Survey of India's (S4b-BL-114): boundary_2 leaves out India's tile lines wholly inside the
+  //     corridor around it. After the guard, so the filter reads all(all(all(Liberty's, rule 2), guard), corridor),
+  //     as on Android and iOS.
+  if (country >= 0) {
+    const layer = layers[country];
+    const existing = read(layer, 'filter') as FilterSpecification | undefined;
+    if (!corridor) {
+      warnings.push(`the Survey of India corridor is missing or malformed; "${COUNTRY_LINES_LAYER}" keeps its lines beside them`);
+    } else if (existing !== undefined && existing !== true && isLegacyFilter(existing)) {
+      warnings.push(
+        `layer "${COUNTRY_LINES_LAYER}" has a filter in the deprecated syntax, which has no "within"; its lines beside the Survey of India's are kept`,
+      );
+    } else {
+      const rule = soiCorridorRule(corridor);
+      layers[country] = patch(layer, { filter: existing === undefined || existing === true ? rule : ['all', existing, rule] });
+    }
+  }
+
   // 4. No "Azad Kashmir" or "Gilgit-Baltistan" state label. (Before 3, so the indexes of 3 are final.)
   let labelLayers = 0;
   for (let i = 0; i < layers.length; i++) {
@@ -388,13 +633,13 @@ export function indiaBoundaryStyle(
     return false;
   };
   const overlay = [
-    overlayLayer(IN_BOUNDARY_WORLD_LAYER, 'world', paint, undefined, TILE_BOUNDARY_MIN_ZOOM),
-    overlayLayer(IN_BOUNDARY_CLAIM_LAYER, 'claim', paint),
+    overlayLayer(IN_BOUNDARY_WORLD_LAYER, IN_BOUNDARIES_SOURCE, 'world', paint, undefined, TILE_BOUNDARY_MIN_ZOOM),
+    overlayLayer(IN_BOUNDARY_CLAIM_LAYER, IN_BOUNDARIES_SOI_SOURCE, 'claim', paint),
   ].filter(free);
   layers.splice(at, 0, ...overlay);
   const stateLines = indexOf(STATE_LINES_LAYER);
   const statePaint = copyPaint(stateLines < 0 ? undefined : read(layers[stateLines], 'paint'), STATE_FALLBACK_LINE_PAINT, STATE_LINE_PAINT_KEYS);
-  const state = overlayLayer(IN_BOUNDARY_STATE_LAYER, 'state', statePaint, TILE_BOUNDARY_MIN_ZOOM);
+  const state = overlayLayer(IN_BOUNDARY_STATE_LAYER, IN_BOUNDARIES_SOI_SOURCE, 'state', statePaint, TILE_BOUNDARY_MIN_ZOOM);
   if (free(state)) {
     // Without boundary_3, directly below the other overlay layers (or where they would have gone).
     const worldAt = overlay.some((l) => l.id === IN_BOUNDARY_WORLD_LAYER) ? indexOf(IN_BOUNDARY_WORLD_LAYER) : -1;
@@ -402,8 +647,17 @@ export function indiaBoundaryStyle(
   }
 
   const source: GeoJSONSourceSpecification = { type: 'geojson', data: dataUrl, attribution: IN_BOUNDARIES_ATTRIBUTION };
+  const soiSource: GeoJSONSourceSpecification = {
+    type: 'geojson',
+    data: soi.data as unknown as GeoJSONSourceSpecification['data'],
+    attribution: soi.attribution,
+  };
   return {
-    style: { ...style, sources: { ...(style.sources ?? {}), [IN_BOUNDARIES_SOURCE]: source }, layers },
+    style: {
+      ...style,
+      sources: { ...(style.sources ?? {}), [IN_BOUNDARIES_SOURCE]: source, [IN_BOUNDARIES_SOI_SOURCE]: soiSource },
+      layers,
+    },
     warnings,
   };
 }
@@ -420,18 +674,38 @@ export interface BoundaryStyleTarget {
   setVisibility(layerId: string, visibility: 'visible' | 'none'): void;
   setFilter(layerId: string, filter: FilterSpecification | null): void;
   setZoomRange(layerId: string, minzoom: number, maxzoom: number): void;
+  /** Replaces a GeoJSON source's data (`GeoJSONSource.setData`), for the Survey of India's lines once they are read. */
+  setSourceData(sourceId: string, data: SoiFeatureCollection): void;
+}
+
+/** Where {@link applyIndiaBoundaries} reads the Survey of India's lines from, and their translated credit. */
+export interface SoiOptions {
+  /** The file's absolute URL ({@link inBoundariesSoiUrl}). */
+  url: string;
+  /** `map.boundaryCredit` in the current language. */
+  attribution: string;
+  /** Reads the file ({@link loadSoiBoundary} unless a test gives another). */
+  load?: (url: string) => Promise<SoiFeatureCollection | null>;
+  /** The lines already read, if any ({@link loadedSoiBoundary} unless a test gives another). */
+  loaded?: (url: string) => SoiFeatureCollection | undefined;
 }
 
 /**
  * Applies {@link indiaBoundaryStyle} to a map whose style has just loaded (`style.load`): works out what the rules
- * change and makes exactly those changes (visibility, filter, zoom range, the new source and layers). Every rule it
+ * change and makes exactly those changes (visibility, filter, zoom range, the new sources and layers). Every rule it
  * had to skip, and every map call that failed, is passed to `warn`; nothing throws, so a changed base style can
  * never take the map (or the page) down with it.
+ *
+ * The Survey of India's source starts with the lines {@link loadSoiBoundary} has already read from `soi.url`; on the
+ * first style load of a page they are usually still on their way, so the source starts empty and gets them
+ * (`setSourceData`) as soon as they are read. A file that cannot be read is a warning: the map then has no northern
+ * boundary line until the next style load tries again (the tiles' own lines there stay hidden, as ADR-22 requires).
  */
 export function applyIndiaBoundaries(
   target: BoundaryStyleTarget,
   dataUrl: string,
   warn: (message: string) => void = (message) => console.warn(`India boundaries: ${message}`),
+  soi?: SoiOptions,
 ): void {
   let before: StyleSpecification | undefined;
   try {
@@ -444,7 +718,9 @@ export function applyIndiaBoundaries(
     warn('no style loaded yet');
     return;
   }
-  const { style: after, warnings } = indiaBoundaryStyle(before, dataUrl);
+  const ready = soi ? (soi.loaded ?? loadedSoiBoundary)(soi.url) : undefined;
+  const overlay: SoiOverlay = { data: ready ?? NO_SOI_LINES, attribution: soi?.attribution ?? SOI_ATTRIBUTION };
+  const { style: after, warnings } = indiaBoundaryStyle(before, dataUrl, HELD_AREAS, overlay);
   for (const message of warnings) warn(message);
   if (after === before) return;
 
@@ -485,6 +761,16 @@ export function applyIndiaBoundaries(
       attempt(`setting the zoom range of layer "${layer.id}"`, () => target.setZoomRange(layer.id, minzoom, maxzoom));
     }
   });
+
+  if (soi && !ready) {
+    void (soi.load ?? loadSoiBoundary)(soi.url).then((lines) => {
+      if (!lines) {
+        warn(`the Survey of India's lines (${soi.url}) could not be read; India's northern boundary is not drawn`);
+        return;
+      }
+      attempt(`setting the data of source "${IN_BOUNDARIES_SOI_SOURCE}"`, () => target.setSourceData(IN_BOUNDARIES_SOI_SOURCE, lines));
+    });
+  }
 }
 
 /**
@@ -536,6 +822,7 @@ function overlayIndex(layers: LayerSpecification[], country: number): number {
 
 function overlayLayer(
   id: string,
+  source: string,
   kind: 'world' | 'claim' | 'state',
   paint: Record<string, unknown>,
   minzoom?: number,
@@ -544,7 +831,7 @@ function overlayLayer(
   const layer: LineLayerSpecification = {
     id,
     type: 'line',
-    source: IN_BOUNDARIES_SOURCE,
+    source,
     filter: ['==', ['get', 'kind'], kind],
     // A dashed line keeps butt caps, as boundary_3 does (round caps would fill its gaps).
     layout: kind === 'state' ? { 'line-join': 'round' } : { 'line-join': 'round', 'line-cap': 'round' },

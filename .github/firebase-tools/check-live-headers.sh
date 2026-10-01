@@ -31,7 +31,8 @@
 #     served: a missing file would be answered by the rewrite with index.html and HTTP 200.
 #   The hashed main-*.js that this build's index.html loads: HTTP 200 and a JavaScript Content-Type. The live "/"
 #     must reference that same file, which proves that this deploy, not the previous release, is being served.
-#   /geo/in-boundaries.geojson (India's boundary on the map, 2026-09-24): HTTP 200, Content-Type application/geo+json
+#   /geo/in-boundaries.geojson (India's boundary on the map, 2026-09-24) and /geo/in-boundaries-soi.json (the Survey of
+#     India's lines, 2026-10-01, S4b-BL-114): HTTP 200, Content-Type application/geo+json
 #     or application/json (so not the rewritten shell), X-Content-Type-Options nosniff, Cache-Control with no-cache
 #     and without immutable (the name is not content-hashed), and the same bytes as the build's copy.
 #   Strict-Transport-Security: reported, and only a warning when missing. The whole .app TLD is HSTS-preloaded in
@@ -198,28 +199,30 @@ else
   fail "no content-hashed .js file found in ${build}; cannot check that assets are served as files"
 fi
 
-# 4. India's boundary file (owner issue P0, 2026-09-24): served as itself, as JSON, under nosniff, revalidated, and
-#    byte-identical to this build's copy. Runs after section 1 has seen this release live.
-boundary=/geo/in-boundaries.geojson
-if [ ! -f "${build}${boundary}" ]; then
-  fail "${boundary} is not in ${build}; the map would draw no India boundary where Liberty's disputed lines are hidden"
-else
-  status=$(fetch "$boundary" boundary)
-  h="${work}/boundary.h"
-  ctype=$(header "$h" content-type)
-  echo "--- ${base}${boundary} (HTTP ${status}): Content-Type: ${ctype:-(none)}; Cache-Control: $(header "$h" cache-control)"
-  if [ "$status" != "200" ]; then
-    fail "${boundary} answered HTTP ${status}, expected 200$(last_error boundary)"
+# 4. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-114): each served
+#    as itself, as JSON, under nosniff, revalidated, and byte-identical to this build's copy. Runs after section 1 has
+#    seen this release live.
+for boundary in /geo/in-boundaries.geojson /geo/in-boundaries-soi.json; do
+  if [ ! -f "${build}${boundary}" ]; then
+    fail "${boundary} is not in ${build}; the map would draw no India boundary where Liberty's disputed lines are hidden"
   else
-    printf '%s' "$ctype" | grep -qiE '^application/(geo\+)?json' || fail "${boundary}: Content-Type is '${ctype:-missing}', expected application/geo+json or application/json (a missing file is answered with index.html)"
-    xcto=$(header "$h" x-content-type-options)
-    printf '%s' "$xcto" | grep -qix 'nosniff' || fail "${boundary}: X-Content-Type-Options is '${xcto:-missing}', expected nosniff"
-    # Not content-hashed, so it must be revalidated: a long-lived copy would keep an old boundary in browsers.
-    expect_no_cache boundary "$boundary"
-    # curl sends no Accept-Encoding here, so the body is the file itself (section 1 relies on the same for index.html).
-    cmp -s "${work}/boundary.b" "${build}${boundary}" || fail "${boundary}: the live bytes differ from this build's copy (Content-Encoding: $(header "$h" content-encoding | grep . || echo none))"
+    status=$(fetch "$boundary" boundary)
+    h="${work}/boundary.h"
+    ctype=$(header "$h" content-type)
+    echo "--- ${base}${boundary} (HTTP ${status}): Content-Type: ${ctype:-(none)}; Cache-Control: $(header "$h" cache-control)"
+    if [ "$status" != "200" ]; then
+      fail "${boundary} answered HTTP ${status}, expected 200$(last_error boundary)"
+    else
+      printf '%s' "$ctype" | grep -qiE '^application/(geo\+)?json' || fail "${boundary}: Content-Type is '${ctype:-missing}', expected application/geo+json or application/json (a missing file is answered with index.html)"
+      xcto=$(header "$h" x-content-type-options)
+      printf '%s' "$xcto" | grep -qix 'nosniff' || fail "${boundary}: X-Content-Type-Options is '${xcto:-missing}', expected nosniff"
+      # Not content-hashed, so it must be revalidated: a long-lived copy would keep an old boundary in browsers.
+      expect_no_cache boundary "$boundary"
+      # curl sends no Accept-Encoding here, so the body is the file itself (section 1 relies on the same for index.html).
+      cmp -s "${work}/boundary.b" "${build}${boundary}" || fail "${boundary}: the live bytes differ from this build's copy (Content-Encoding: $(header "$h" content-encoding | grep . || echo none))"
+    fi
   fi
-fi
+done
 
 rm -rf "$work"
 if [ "$errors" -gt 0 ]; then

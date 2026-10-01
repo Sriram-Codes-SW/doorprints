@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { ensureMapStyles, foldAttribution } from './map-style';
+import { ensureMapStyles, foldAttribution, relabelBoundaryCredit } from './map-style';
 
 /** A map container with MapLibre's credits control in the given state, `width` px wide. */
 function mapRoot(width: number, classes: string): HTMLElement {
@@ -73,5 +73,34 @@ describe('ensureMapStyles (MapLibre CSS out of the render-blocking stylesheet)',
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(true);
     links[0].dispatchEvent(new Event('load'));
     expect(doc.documentElement.classList.contains('maplibre-css-loading')).toBe(false);
+  });
+});
+
+describe('relabelBoundaryCredit (the Survey of India credit after a language switch, S4b-BL-114)', () => {
+  /** A map with the Survey of India's source (or none) and an attribution control that counts its rereads. */
+  function fakeMap(withSource: boolean) {
+    const source = { attribution: 'Boundary: Survey of India' };
+    const control = { rereads: 0, _updateAttributions() { this.rereads++; } };
+    const map = {
+      getSource: (id: string) => (withSource && id === 'in-boundaries-soi' ? source : undefined),
+      _controls: [{}, control],
+    };
+    return { map: map as unknown as Parameters<typeof relabelBoundaryCredit>[0], source, control };
+  }
+
+  it('sets the source\'s credit and has the attribution control read it again', () => {
+    const { map, source, control } = fakeMap(true);
+    expect(relabelBoundaryCredit(map, 'सीमा: भारतीय सर्वेक्षण विभाग')).toBe(true);
+    expect(source.attribution).toBe('सीमा: भारतीय सर्वेक्षण विभाग');
+    expect(control.rereads).toBe(1);
+    // The same text again changes nothing.
+    expect(relabelBoundaryCredit(map, 'सीमा: भारतीय सर्वेक्षण विभाग')).toBe(false);
+    expect(control.rereads).toBe(1);
+  });
+
+  it('leaves a map without the source alone (the next style load sets the credit)', () => {
+    const { map, control } = fakeMap(false);
+    expect(relabelBoundaryCredit(map, 'x')).toBe(false);
+    expect(control.rereads).toBe(0);
   });
 });

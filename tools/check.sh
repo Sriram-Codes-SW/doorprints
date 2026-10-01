@@ -17,8 +17,8 @@
 
 # The local checks before a push (docs/14 §7), run together where they are independent, so a change is validated in
 # the time of the slowest one instead of the sum. Areas are chosen from the files changed against main (or given as
-# arguments: android, ios, web, guide, licence, all). Each area's log is written under android/build/check/ and its tail is
-# shown when it fails. Exit 1 on any failure.
+# arguments: android, ios, web, guide, geo, licence, all). Each area's log is written under android/build/check/ and its
+# tail is shown when it fails. Exit 1 on any failure.
 #
 #   tools/check.sh            # the areas the branch touches
 #   tools/check.sh android ios
@@ -27,13 +27,15 @@
 # An area is picked from the same paths as its CI workflow's path filter (S4b-BL-105): android from android.yml's
 # (android/**, docs/schemas/**, web/public/geo/**, the two AI test-vector files), ios from the inputs of the iOS klib
 # compile in shared-ios.yml's, web from web.yml's (web/**, docs/schemas/**, .github/firebase-tools/**) and guide from
-# pages.yml's (guide/**, the Android screenshots). Keep them in step when a filter changes. The backend is not an area
-# (mvn verify needs PostGIS): a change to backend.yml's inputs prints a reminder.
+# pages.yml's (guide/**, the Android screenshots); geo (the boundary-data tests) has no workflow and is picked by
+# web/scripts/geo/, web/public/geo/, the app's copy, tools/soi-verify.py and docs/ops/soi-review-pack.md. Keep them in
+# step when a filter changes. The backend is not an area (mvn verify needs PostGIS): a change to backend.yml's inputs
+# prints a reminder.
 #
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
-# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide and
-# the licence headers run beside it.
+# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide, geo
+# and the licence headers run beside it.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,9 +52,13 @@ areas_for() {
     <<<"$changed" && areas="$areas ios"
   grep -qE '^(web/|docs/schemas/|\.github/firebase-tools/|\.github/workflows/web\.yml$)' <<<"$changed" && areas="$areas web"
   grep -qE '^(guide/|android/app/src/test/screenshots/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
+  # geo: the boundary data's builders and tests, the data files they check and the Survey of India review pack
+  # (S4b-BL-114; no CI workflow of its own, so these paths are this script's).
+  grep -qE '^(web/scripts/geo/|web/public/geo/|android/app/src/main/assets/geo/|tools/soi-verify\.py$|docs/ops/soi-review-pack\.md$)' \
+    <<<"$changed" && areas="$areas geo"
   grep -qE '^(backend/|docs/ai/evals/|docs/schemas/|docker-compose\.yml$|web/src/app/export/backup-export\.ts$|web/src/app/export/golden/|android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup\.kt$|\.github/workflows/backend\.yml$)' \
     <<<"$changed" && echo "Backend inputs changed: run cd backend && mvn -B -ntp verify (needs PostGIS, see backend.yml); not run here." >&2
-  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide input changed: licence headers only." >&2
+  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web, guide or geo input changed: licence headers only." >&2
   echo "$areas"
 }
 
@@ -67,7 +73,7 @@ else
     git -C "$ROOT" ls-files --others --exclude-standard; } | areas_for)"
 fi
 echo "areas: $AREAS"
-case " $AREAS " in *" all "*) AREAS="licence android ios web guide";; esac
+case " $AREAS " in *" all "*) AREAS="licence android ios web guide geo";; esac
 has() { case " $AREAS " in *" $1 "*) return 0;; esac; return 1; }
 
 declare -A PIDS
@@ -102,6 +108,8 @@ guide_check() {
   [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out"
 }
 has guide && start guide guide_check
+# The boundary-data pipeline's unit tests (Python standard library only; docs/ops/soi-review-pack.md).
+has geo && start geo python3 -m unittest discover "$ROOT/web/scripts/geo"
 
 failed=0
 for name in "${!PIDS[@]}"; do

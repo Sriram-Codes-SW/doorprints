@@ -59,6 +59,10 @@
 # 2026-09-24 (DevSecOps), branch fix/india-boundary-lines: pwa-files also requires the kind "state" (the
 #   Assam-Arunachal Pradesh state line, india-boundaries.ts in-boundary-state; S4b-BL-15).
 #
+# 2026-10-01 (lead), branch feat/soi-boundary-data (S4b-BL-114): India's northern boundary and the Assam-Arunachal
+#   line come from the Survey of India's file geo/in-boundaries-soi.json (kinds "claim" and "state", polyline7);
+#   pwa-files requires it, geo/in-soi-corridor.geojson (Polygons) and, in geo/in-boundaries.geojson, the kind "world"
+#   only. The live check also checks /geo/in-boundaries-soi.json.
 # 2026-10-01 (Web), branch feat/web-open-backup-file-handler: pwa-files also checks the manifest's file_handlers
 #   (S4b-BL-108): a relative action and at least one ".ext" accepted per handler.
 name: Web
@@ -136,8 +140,8 @@ jobs:
   # Guards the installable-app promise (S4-05) against a silent build regression: an assets glob or an output path
   # change that drops the service worker or the manifest would otherwise ship a site that cannot be installed and
   # cannot start offline, with a green build. Checks the uploaded artifact, i.e. exactly the bytes that get deployed.
-  # Since 2026-09-24 it also requires India's boundary file geo/in-boundaries.geojson (section 6 of the script); the
-  # job name is kept so that any required status check that names it keeps matching.
+  # Since 2026-09-24 it also requires India's boundary files (section 6 of the script; the Survey of India's since
+  # 2026-10-01, S4b-BL-114); the job name is kept so that any required status check that names it keeps matching.
   pwa-files:
     name: PWA files in the build (service worker, manifest, icons, screenshots)
     needs: build
@@ -295,26 +299,32 @@ jobs:
             if (exists(rel)) warnings.push(`${rel} is in the build but unused by Firebase Hosting (headers live in web/firebase.json); remove it from web/public`);
           }
 
-          // 6. India's boundary file (owner issue P0, 2026-09-24). src/app/shared/india-boundaries.ts hides Liberty's
-          //    disputed lines and draws India's external boundary from this same-origin file on every style load.
-          //    Without it the "**" rewrite would answer the request with index.html, the overlay would fail to parse
-          //    and the map would show no boundary where the hidden lines were. So: present, valid GeoJSON, and it
-          //    holds the three kinds the layers filter on. Byte identity with the Android copy and the reviewed sha256
-          //    are held by IndiaBoundaryDataTest in android.yml, which this file's folder also triggers.
-          const boundaryFile = 'geo/in-boundaries.geojson';
-          if (required(boundaryFile, "India's boundary on the map, loaded by src/app/shared/india-boundaries.ts")) {
+          // 6. India's boundary files (owner issue P0, 2026-09-24; the Survey of India's since 2026-10-01, S4b-BL-114).
+          //    src/app/shared/india-boundaries.ts hides Liberty's disputed lines and draws India's external boundary
+          //    from these same-origin files on every style load. Without them the "**" rewrite would answer the request
+          //    with index.html, the overlay would fail to parse and the map would show no boundary where the hidden
+          //    lines were. So: present, valid JSON, and holding what the layers filter on: in-boundaries.geojson
+          //    (Natural Earth) the kind "world"; in-boundaries-soi.json (Survey of India, polyline7) the kinds "claim"
+          //    and "state", each run an encoded string; in-soi-corridor.geojson (bundled in the JavaScript too) one
+          //    Polygon or more. Byte identity with the Android copies and the reviewed sha256 are held by
+          //    IndiaBoundaryDataTest in android.yml, which this file's folder also triggers.
+          const geoChecks = [
+            ['geo/in-boundaries.geojson', (f) => f.properties && f.properties.kind, ['world']],
+            ['geo/in-boundaries-soi.json', (f) => f.properties && typeof f.properties.polyline7 === 'string' && f.properties.kind, ['claim', 'state']],
+            ['geo/in-soi-corridor.geojson', (f) => f.geometry && f.geometry.type, ['Polygon']],
+          ];
+          for (const [file, kindOf, wanted] of geoChecks) {
+            if (!required(file, "India's boundary on the map, loaded by src/app/shared/india-boundaries.ts")) continue;
             try {
-              const geo = JSON.parse(read(boundaryFile));
+              const geo = JSON.parse(read(file));
               const features = geo && Array.isArray(geo.features) ? geo.features : [];
-              if (!geo || geo.type !== 'FeatureCollection') {
-                errors.push(`${boundaryFile} is not a GeoJSON FeatureCollection`);
-              }
-              const kinds = new Set(features.map((f) => String((f && f.properties && f.properties.kind) || '')));
-              for (const kind of ['world', 'claim', 'state']) {
-                if (!kinds.has(kind)) errors.push(`${boundaryFile} has no feature with properties.kind "${kind}"`);
+              if (!geo || geo.type !== 'FeatureCollection') errors.push(`${file} is not a GeoJSON FeatureCollection`);
+              const kinds = new Set(features.map((f) => String((f && kindOf(f)) || '')));
+              for (const kind of wanted) {
+                if (!kinds.has(kind)) errors.push(`${file} has no feature of the kind or type "${kind}"`);
               }
             } catch (e) {
-              errors.push(`${boundaryFile} is not valid JSON: ${String(e.message).replace(/\s+/g, ' ')}`);
+              errors.push(`${file} is not valid JSON: ${String(e.message).replace(/\s+/g, ' ')}`);
             }
           }
 

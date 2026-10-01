@@ -20,10 +20,27 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FilterSpecification, LayerSpecification, SourceSpecification, StyleSpecification } from 'maplibre-gl';
 import { featureFilter } from '@maplibre/maplibre-gl-style-spec';
 import heldAreasText from '../../../public/geo/in-held-areas.geojson' with { loader: 'text' };
+import soiCorridorText from '../../../public/geo/in-soi-corridor.geojson' with { loader: 'text' };
+// The Survey of India's file as the build ships it (web/public/geo; the Android copy is the same bytes), as text: the
+// text loader gives a string, whatever type resolveJsonModule gives the import.
+import soiJson from '../../../public/geo/in-boundaries-soi.json' with { loader: 'text' };
 import {
   applyIndiaBoundaries,
   type BoundaryStyleTarget,
+  decodePolyline7,
   FALLBACK_LINE_PAINT,
+  forgetSoiBoundary,
+  inBoundariesSoiUrl,
+  loadedSoiBoundary,
+  loadSoiBoundary,
+  NO_SOI_LINES,
+  SOI_ATTRIBUTION,
+  SOI_CORRIDOR,
+  soiBoundaryGeoJson,
+  soiChecksum,
+  soiCorridorGeometries,
+  soiCorridorRule,
+  type SoiFeatureCollection,
   HELD_AREAS,
   heldAreasGeometry,
   heldAreasRule,
@@ -37,9 +54,15 @@ import {
 } from './india-boundaries';
 import { libertyExcerpt } from './testing/liberty-style.fixture';
 
+const soiText = soiJson as unknown as string;
 const URL_ = 'https://doorprints.web.app/geo/in-boundaries.geojson';
+const SOI_URL = 'https://doorprints.web.app/geo/in-boundaries-soi.json';
 /** Rule 2 on boundary_3 with the bundled polygon (S4b-BL-12). */
 const HELD_RULE = heldAreasRule(HELD_AREAS!);
+/** Rule 2 on boundary_2 with the bundled corridor (S4b-BL-114). */
+const CORRIDOR_RULE = soiCorridorRule(SOI_CORRIDOR!);
+/** The Survey of India's source as indiaBoundaryStyle adds it when no lines have been read yet. */
+const EMPTY_SOI_SOURCE = { type: 'geojson', data: NO_SOI_LINES, attribution: SOI_ATTRIBUTION };
 
 type Json = Record<string, unknown>;
 const ids = (style: StyleSpecification) => style.layers.map((l) => l.id);
@@ -182,7 +205,7 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
     const before = layer(liberty, 'boundary_2');
     const after = layer(style, 'boundary_2');
     expect(after['minzoom']).toBe(5);
-    expect(after['filter']).toEqual(['all', ['all', before['filter'], COUNTRY_RULE], ['>=', ['zoom'], 5]]);
+    expect(after['filter']).toEqual(['all', ['all', ['all', before['filter'], COUNTRY_RULE], ['>=', ['zoom'], 5]], CORRIDOR_RULE]);
     expect(TILE_ZOOM_GUARD).toEqual(['>=', ['zoom'], 5]);
     expect(after['paint']).toEqual(before['paint']);
     expect(after['layout']).toEqual(before['layout']);
@@ -261,6 +284,9 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
 
   it('rule 3: adds the bundled Natural Earth source, same-origin, credited in the attribution', () => {
     expect(style.sources['in-boundaries']).toEqual({ type: 'geojson', data: URL_, attribution: 'Natural Earth' });
+    // The Survey of India's lines: none until the file is read (applyIndiaBoundaries), credited as its terms ask.
+    expect(style.sources['in-boundaries-soi']).toEqual(EMPTY_SOI_SOURCE);
+    expect(SOI_ATTRIBUTION).toBe('Boundary: Survey of India');
     expect(style.sources['openmaptiles']).toEqual(liberty.sources['openmaptiles']);
     expect(style.sources['ne2_shaded']).toEqual(liberty.sources['ne2_shaded']);
   });
@@ -281,7 +307,7 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
     expect(layer(style, 'in-boundary-state')).toEqual({
       id: 'in-boundary-state',
       type: 'line',
-      source: 'in-boundaries',
+      source: 'in-boundaries-soi',
       filter: ['==', ['get', 'kind'], 'state'],
       layout: { 'line-join': 'round' },
       paint: { 'line-color': paint['line-color'], 'line-width': paint['line-width'], 'line-dasharray': paint['line-dasharray'] },
@@ -299,17 +325,22 @@ describe('indiaBoundaryStyle, on the Liberty style as both apps load it', () => 
     const paint = layer(liberty, 'boundary_2')['paint'] as Json;
     const common = {
       type: 'line',
-      source: 'in-boundaries',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': paint['line-color'], 'line-width': paint['line-width'], 'line-opacity': paint['line-opacity'] },
     };
     expect(layer(style, 'in-boundary-world')).toEqual({
       id: 'in-boundary-world',
       ...common,
+      source: 'in-boundaries',
       filter: ['==', ['get', 'kind'], 'world'],
       maxzoom: 5,
     });
-    expect(layer(style, 'in-boundary-claim')).toEqual({ id: 'in-boundary-claim', ...common, filter: ['==', ['get', 'kind'], 'claim'] });
+    expect(layer(style, 'in-boundary-claim')).toEqual({
+      id: 'in-boundary-claim',
+      ...common,
+      source: 'in-boundaries-soi',
+      filter: ['==', ['get', 'kind'], 'claim'],
+    });
     expect(shows(style, 'in-boundary-world', { kind: 'world' })).toBe(true);
     expect(shows(style, 'in-boundary-world', { kind: 'claim' })).toBe(false);
     expect(shows(style, 'in-boundary-claim', { kind: 'claim' })).toBe(true);
@@ -436,11 +467,11 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
     expect(ids(style)).toContain('in-boundary-claim');
   });
 
-  it('with an empty style: warns for each rule and adds the overlay and its source', () => {
+  it('with an empty style: warns for each rule and adds the overlay and its sources', () => {
     const { style, warnings } = indiaBoundaryStyle({ version: 8, sources: {}, layers: [] }, URL_);
     expect(warnings).toHaveLength(4);
     expect(ids(style)).toEqual(['in-boundary-state', 'in-boundary-world', 'in-boundary-claim']);
-    expect(Object.keys(style.sources)).toEqual(['in-boundaries']);
+    expect(Object.keys(style.sources)).toEqual(['in-boundaries', 'in-boundaries-soi']);
   });
 
   it('without boundary_3: puts the state line directly below the other overlay layers, with the fallback paint', () => {
@@ -473,7 +504,7 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
     expect(layer(style, 'in-boundary-claim')['paint']).toEqual({ 'line-color': '#123456', 'line-width': 1.2, 'line-opacity': 1 });
   });
 
-  it('boundary_2 with no filter gets only the India rules and the tile-zoom guard; a state layer with none gets both', () => {
+  it('boundary_2 with no filter gets only the India rules, the tile-zoom guard and the corridor; a state layer with none gets both', () => {
     const base = libertyExcerpt();
     const bare = {
       ...base,
@@ -482,7 +513,7 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
       ),
     };
     const { style } = indiaBoundaryStyle(bare, URL_);
-    expect(layer(style, 'boundary_2')['filter']).toEqual(['all', COUNTRY_RULE, TILE_ZOOM_GUARD]);
+    expect(layer(style, 'boundary_2')['filter']).toEqual(['all', ['all', COUNTRY_RULE, TILE_ZOOM_GUARD], CORRIDOR_RULE]);
     expect(shows(style, 'boundary_2', { adm0_l: 'PAK', adm0_r: 'CHN' })).toBe(false);
     expect(shows(style, 'boundary_2', { adm0_r: 'BTN' })).toBe(true);
     expect(shows(style, 'boundary_2', { adm0_r: 'BTN' }, 4)).toBe(false);
@@ -521,8 +552,10 @@ describe('indiaBoundaryStyle when the base style has changed (rule 5: skip with 
         ],
       ],
     ]);
+    // Nor the corridor (that syntax has no within): a second warning.
     expect(warnings).toEqual([
       'layer "boundary_2" has a filter in the deprecated syntax, which has no zoom; not guarded against zoom 0-4 tiles',
+      'layer "boundary_2" has a filter in the deprecated syntax, which has no "within"; its lines beside the Survey of India\'s are kept',
     ]);
     expect(layer(style, 'boundary_2')['minzoom']).toBe(5);
     // boundary_3 is still in expression syntax, so it is still guarded and still leaves out the held areas' lines.
@@ -771,6 +804,7 @@ function fakeMap(style: StyleSpecification | undefined, failOn?: string) {
     setVisibility: (id, visibility) => record('setVisibility', id, visibility),
     setFilter: (id, filter) => record('setFilter', id, filter),
     setZoomRange: (id, min, max) => record('setZoomRange', id, min, max),
+    setSourceData: (id, data) => record('setSourceData', id, data.features.length),
   };
   return { target, calls };
 }
@@ -787,6 +821,7 @@ describe('applyIndiaBoundaries (on style.load of a live map)', () => {
     expect(warn).not.toHaveBeenCalled();
     expect(calls).toEqual([
       ['addSource', 'in-boundaries', { type: 'geojson', data: URL_, attribution: 'Natural Earth' }],
+      ['addSource', 'in-boundaries-soi', EMPTY_SOI_SOURCE],
       ['setFilter', 'boundary_3', layer(expected, 'boundary_3')['filter']],
       ['addLayer', 'in-boundary-state', 'boundary_2'],
       ['setFilter', 'boundary_2', layer(expected, 'boundary_2')['filter']],
@@ -848,5 +883,169 @@ describe('applyIndiaBoundaries (on style.load of a live map)', () => {
     const { target } = fakeMap(without(libertyExcerpt(), ['boundary_disputed']));
     applyIndiaBoundaries(target, URL_);
     expect(spy).toHaveBeenCalledWith('India boundaries: layer "boundary_disputed" not found; nothing to hide');
+  });
+});
+
+/** A sha256 in hex, as IndiaBoundaryDataTest pins the Android copies. */
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+describe('the Survey of India lines (rule 3, S4b-BL-114)', () => {
+  afterEach(() => forgetSoiBoundary());
+  const lines = soiBoundaryGeoJson(soiText)!;
+  const ofKind = (kind: string) => lines.features.filter((f) => f.properties.kind === kind).map((f) => f.geometry.coordinates);
+
+  it('decodes Google\'s encoded polyline at 1e-7 degree, every vertex exactly as written', () => {
+    // Google's documented example (written at 1e-5), read at 1e-7: the same integers.
+    const e5 = decodePolyline7('_p~iF~ps|U_ulLnnqC_mqNvxq`@').map((p) => p.map((v) => Math.round(v * 1e7)));
+    expect(e5).toEqual([[-12020000, 3850000], [-12095000, 4070000], [-12645300, 4325200]]);
+    // Written by build_in_boundaries_soi.encode_polyline; the doubles are the 7-decimal values themselves.
+    expect(decodePolyline7('ommeeMeeaxsg@oxmtrAypd~kP|vpnmeA`wfw`y@}nsrst@__hfhjB')).toEqual([
+      [68.1985123, 23.8132456],
+      [97.4, 28.2],
+      [-0.0000001, -89.9999999],
+      [179.9999999, 0],
+    ]);
+    expect(decodePolyline7('')).toEqual([]);
+    expect(() => decodePolyline7('_p~iF~ps|')).toThrow(/truncated/);
+    expect(() => decodePolyline7('_p~iF ps|U')).toThrow(/out of range/);
+  });
+
+  it('reads the shipped file: 6 land-boundary runs of 28,751 vertices and the 8,252-vertex state line (parity)', async () => {
+    expect(await sha256(soiText)).toBe('d12d8ed85dd1847c976f62b5451f6ef47efd698858431e29d7ff00a8fc20dac6');
+    const claim = ofKind('claim');
+    const state = ofKind('state');
+    expect([claim.length, claim.reduce((n, l) => n + l.length, 0)]).toEqual([6, 28751]);
+    expect([state.length, state.reduce((n, l) => n + l.length, 0)]).toEqual([1, 8252]);
+    // The same sums as web/scripts/geo/test_build_in_boundaries.py and Android's SoiPolylineTest.
+    expect(soiChecksum(claim)).toEqual([176943357, 571665185]);
+    expect(soiChecksum(state)).toEqual([1805079313, 1863970484]);
+    expect(lines.features.map((f) => f.properties.state)).toEqual([
+      'JAMMU AND KASHMIR', 'LADAKH', 'HIMACHAL PRADESH', 'ARUNACHAL PRADESH', 'SIKKIM', 'UTTARAKHAND', 'ARUNACHAL PRADESH',
+    ]);
+    // The first vertex of Jammu and Kashmir's run and the last of Uttarakhand's, as tools/soi-verify.py checks them.
+    expect(claim[0][0]).toEqual([75.3322322, 32.326683]);
+    expect(claim[5][claim[5].length - 1]).toEqual([80.0653611, 28.8368995]);
+  });
+
+  it('refuses anything but that file, so a broken copy never reaches the map', () => {
+    const fc = (...features: unknown[]) => JSON.stringify({ type: 'FeatureCollection', features });
+    const run = (props: Json) => ({ type: 'Feature', geometry: null, properties: { kind: 'claim', state: 'X', polyline7: '_p~iF~ps|U_ulLnnqC', vertices: 2, ...props } });
+    expect(soiBoundaryGeoJson(fc(run({})))?.features[0].geometry.coordinates.length).toBe(2);
+    expect(soiBoundaryGeoJson(fc(run({ vertices: 3 })))).toBeNull();
+    expect(soiBoundaryGeoJson(fc(run({ kind: 'world' })))).toBeNull();
+    expect(soiBoundaryGeoJson(fc(run({ polyline7: undefined })))).toBeNull();
+    expect(soiBoundaryGeoJson(fc(run({ polyline7: '_p~iF~ps|' })))).toBeNull();
+    expect(soiBoundaryGeoJson(fc(run({ polyline7: '_p~iF~ps|U', vertices: 1 })))).toBeNull();
+    expect(soiBoundaryGeoJson(fc())).toBeNull();
+    expect(soiBoundaryGeoJson('not json')).toBeNull();
+    expect(soiBoundaryGeoJson('{"type":"Feature"}')).toBeNull();
+  });
+
+  it('loads the file once per page, and tries again after a failure', async () => {
+    const fetchFn = vi.fn(async () => ({ ok: true, text: async () => soiText }));
+    const [a, b] = await Promise.all([loadSoiBoundary(SOI_URL, fetchFn), loadSoiBoundary(SOI_URL, fetchFn)]);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(a).toBe(b);
+    expect(loadedSoiBoundary(SOI_URL)).toBe(a);
+    const other = 'https://doorprints.web.app/x/geo/in-boundaries-soi.json';
+    const failing = vi.fn(async () => ({ ok: false, text: async () => '' }));
+    expect(await loadSoiBoundary(other, failing)).toBeNull();
+    expect(loadedSoiBoundary(other)).toBeUndefined();
+    expect(await loadSoiBoundary(other, async () => { throw new Error('offline'); })).toBeNull();
+    expect(await loadSoiBoundary(other, async () => ({ ok: true, text: async () => soiText }))).not.toBeNull();
+    expect(inBoundariesSoiUrl('https://owner.github.io/doorprints/')).toBe('https://owner.github.io/doorprints/geo/in-boundaries-soi.json');
+  });
+
+  it('applyIndiaBoundaries adds the source empty, then gives it the lines once read, with the translated credit', async () => {
+    const { target, calls } = fakeMap(libertyExcerpt());
+    const warn = vi.fn();
+    let resolve: (fc: SoiFeatureCollection | null) => void = () => undefined;
+    const load = vi.fn(() => new Promise<SoiFeatureCollection | null>((r) => (resolve = r)));
+    applyIndiaBoundaries(target, URL_, warn, { url: SOI_URL, attribution: 'सीमा: भारतीय सर्वेक्षण विभाग', load, loaded: () => undefined });
+    expect(calls).toContainEqual(['addSource', 'in-boundaries-soi', { type: 'geojson', data: NO_SOI_LINES, attribution: 'सीमा: भारतीय सर्वेक्षण विभाग' }]);
+    expect(load).toHaveBeenCalledWith(SOI_URL);
+    resolve(lines);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(calls[calls.length - 1]).toEqual(['setSourceData', 'in-boundaries-soi', 7]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('applyIndiaBoundaries uses lines already read at once, and warns when the file cannot be read', async () => {
+    const ready = fakeMap(libertyExcerpt());
+    const load = vi.fn();
+    applyIndiaBoundaries(ready.target, URL_, vi.fn(), { url: SOI_URL, attribution: SOI_ATTRIBUTION, load, loaded: () => lines });
+    expect(ready.calls).toContainEqual(['addSource', 'in-boundaries-soi', { type: 'geojson', data: lines, attribution: SOI_ATTRIBUTION }]);
+    expect(load).not.toHaveBeenCalled();
+
+    const failing = fakeMap(libertyExcerpt());
+    const warn = vi.fn();
+    applyIndiaBoundaries(failing.target, URL_, warn, { url: SOI_URL, attribution: SOI_ATTRIBUTION, load: async () => null, loaded: () => undefined });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(warn).toHaveBeenCalledWith(`the Survey of India's lines (${SOI_URL}) could not be read; India's northern boundary is not drawn`);
+    expect(failing.calls.some((c) => c[0] === 'setSourceData')).toBe(false);
+  });
+});
+
+describe('the Survey of India corridor (rule 2 on boundary_2, S4b-BL-114)', () => {
+  const liberty = libertyExcerpt();
+  const { style } = indiaBoundaryStyle(liberty, URL_);
+  const filter = layer(style, 'boundary_2')['filter'];
+  /** A tile feature of boundary_2 with these country sides, along `parts`. */
+  const country = (z: number, sides: Json, ...parts: [number, number][][]) => {
+    const line = tileLine(z, ...parts);
+    return { ...line, feature: { ...line.feature, properties: { admin_level: 2, disputed: 0, maritime: 0, ...sides } } };
+  };
+  // Pieces of tile line about 50 m beside the Survey of India's (its vertices 3881, 3896 of Uttarakhand; 1796, 1811 of
+  // Sikkim; 1079, 1094 of Ladakh, in the Wakhan).
+  const uttarakhandNepal: [number, number][] = [[80.3417, 29.5098], [80.3362, 29.5121]];
+  const sikkimNepal: [number, number][] = [[88.0549, 27.5046], [88.0562, 27.5064]];
+  const wakhan: [number, number][] = [[74.1965, 36.9054], [74.2781, 36.9076]];
+
+  it('bundles the reviewed polygons, the same bytes as the Android asset (IndiaBoundaryDataTest pins this sha256)', async () => {
+    expect(await sha256(soiCorridorText)).toBe('aa95954874604f88201bae862f73d4047231c52b1de8293c6478ed23efb50fba');
+    expect(SOI_CORRIDOR?.length).toBe(3);
+    const vertices = SOI_CORRIDOR!.reduce((n, p) => n + p.coordinates.reduce((m, r) => m + r.length, 0), 0);
+    // Modest, so evaluating the filter per boundary_2 feature stays cheap on a phone.
+    expect(vertices).toBeLessThanOrEqual(1300);
+  });
+
+  it('is the last part of boundary_2\'s filter, in expression syntax, and needs the features\' geometry', () => {
+    expect((filter as unknown[])[2]).toEqual(CORRIDOR_RULE);
+    expect(isLegacyFilter(filter)).toBe(false);
+    expect(featureFilter(filter as FilterSpecification, 'layers[0].filter').needGeometry).toBe(true);
+  });
+
+  it('hides India\'s tile lines along the Survey of India line: Nepal, and the Wakhan, at tile zoom 9 and 14', () => {
+    for (const z of [9, 14]) {
+      expect(draws(filter, country(z, { adm0_l: 'NPL', adm0_r: 'IND' }, uttarakhandNepal)), `Uttarakhand, z${z}`).toBe(false);
+      expect(draws(filter, country(z, { adm0_l: 'IND', adm0_r: 'NPL' }, sikkimNepal)), `Sikkim, z${z}`).toBe(false);
+      expect(draws(filter, country(z, { adm0_r: 'NPL' }, sikkimNepal)), `Sikkim, India's side empty, z${z}`).toBe(false);
+      expect(draws(filter, country(z, { adm0_l: 'PAK', adm0_r: 'AFG' }, wakhan)), `Wakhan, z${z}`).toBe(false);
+    }
+  });
+
+  it('keeps other countries\' lines there, India\'s lines elsewhere, and a tile line that runs on past the corridor', () => {
+    expect(draws(filter, country(14, { adm0_l: 'NPL', adm0_r: 'CHN' }, uttarakhandNepal))).toBe(true);
+    expect(draws(filter, country(14, { adm0_l: 'PAK', adm0_r: 'CHN' }, wakhan))).toBe(false); // rule 2's own
+    // Nepal along Uttar Pradesh and Bihar, Bhutan along Assam: no Survey of India line yet, so the tiles' line.
+    expect(draws(filter, country(12, { adm0_l: 'NPL', adm0_r: 'IND' }, [[84.8, 27.05], [84.9, 27.0]]))).toBe(true);
+    expect(draws(filter, country(12, { adm0_l: 'BTN', adm0_r: 'IND' }, [[90.5, 26.75], [90.6, 26.76]]))).toBe(true);
+    // One feature from along Uttarakhand into Uttar Pradesh: drawn whole (within is all or nothing).
+    expect(draws(filter, country(9, { adm0_l: 'NPL', adm0_r: 'IND' }, [...uttarakhandNepal, [80.5, 28.6]]))).toBe(true);
+  });
+
+  it('with a missing or malformed corridor, or boundary_2 in the deprecated syntax: warns and leaves it out (rule 5)', () => {
+    const none = indiaBoundaryStyle(libertyExcerpt(), URL_, HELD_AREAS, undefined, null);
+    expect(none.warnings).toEqual(['the Survey of India corridor is missing or malformed; "boundary_2" keeps its lines beside them']);
+    expect(JSON.stringify(layer(none.style, 'boundary_2')['filter'])).not.toContain('within');
+    expect(soiCorridorGeometries(soiCorridorText)).toEqual(SOI_CORRIDOR);
+    expect(soiCorridorGeometries('{"type":"FeatureCollection","features":[]}')).toBeNull();
+    expect(soiCorridorGeometries(heldAreasText)?.length).toBe(1);
+    expect(soiCorridorGeometries('{"type":"FeatureCollection","features":[{"geometry":{"type":"LineString","coordinates":[]}}]}')).toBeNull();
   });
 });

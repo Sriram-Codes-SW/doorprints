@@ -16,13 +16,29 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { GPUInitializationError, Map as MlMap, type AddProtocolAction, type IControl, type MapOptions, addProtocol, setWorkerUrl } from 'maplibre-gl';
+import {
+  GPUInitializationError,
+  Map as MlMap,
+  type AddProtocolAction,
+  type GeoJSONSource,
+  type IControl,
+  type MapOptions,
+  addProtocol,
+  setWorkerUrl,
+} from 'maplibre-gl';
 import { TranslationService } from '../i18n/translation.service';
 import { OFFLINE_CACHE, ASSET_SCHEME, TILE_SCHEME, offlineActive, protocolHandler, rewriteForOffline } from '../offline/offline-protocol';
 import type { OfflineDeps } from '../offline/offline-protocol';
 import { syncOfflineActive } from '../offline/offline-store';
 import { MAP_STYLE_URL } from './map-style-url';
-import { applyIndiaBoundaries, type BoundaryStyleTarget, inBoundariesUrl } from './india-boundaries';
+import {
+  applyIndiaBoundaries,
+  type BoundaryStyleTarget,
+  IN_BOUNDARIES_SOI_SOURCE,
+  inBoundariesSoiUrl,
+  inBoundariesUrl,
+  loadSoiBoundary,
+} from './india-boundaries';
 
 export { MAP_STYLE_URL };
 
@@ -76,12 +92,32 @@ export function localizeMap(
     attribution.title = locale['AttributionControl.ToggleAttribution'];
     attribution.setAttribute('aria-label', locale['AttributionControl.ToggleAttribution']);
   }
+  relabelBoundaryCredit(map, i18n.t('map.boundaryCredit'));
   for (const control of old) {
     if (map.hasControl(control)) map.removeControl(control);
   }
   const fresh = makeControls();
   for (const control of fresh) map.addControl(control, position);
   return fresh;
+}
+
+/**
+ * The Survey of India's credit in the map's attribution ("Boundary: Survey of India", S4b-BL-114), in the current
+ * language: the source's `attribution` is read by MapLibre's attribution control, which rewrites its text only on a
+ * style or source change, so after a language switch the control is asked to read it again (`_updateAttributions`,
+ * maplibre-gl-js v6.11.2 `src/ui/control/attribution_control.ts`; read through a cast like `_locale`). True when the
+ * credit changed. A map without the source (no style yet) is left alone: the next style load sets the credit.
+ */
+export function relabelBoundaryCredit(map: MlMap, text: string): boolean {
+  const source = map.getSource(IN_BOUNDARIES_SOI_SOURCE) as (GeoJSONSource & { attribution?: string }) | undefined;
+  if (!source || source.attribution === text) return false;
+  source.attribution = text;
+  const controls = (map as unknown as { _controls?: unknown[] })._controls ?? [];
+  for (const control of controls) {
+    const update = (control as { _updateAttributions?: unknown })._updateAttributions;
+    if (typeof update === 'function') update.call(control);
+  }
+  return true;
 }
 
 /** The "map unavailable" sentence {@link createMlMap} left in a container, rewritten in the current language. */
@@ -206,7 +242,16 @@ export function createMlMap(
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
     foldAttributionLater(map);
-    map.on('style.load', () => applyIndiaBoundaries(boundaryTarget(map), inBoundariesUrl(document.baseURI)));
+    // The Survey of India's lines (S4b-BL-114) are read once per page, starting now, so they are usually decoded by the
+    // time the base style has loaded; each style load gets them, and the credit in the current language.
+    const soiUrl = inBoundariesSoiUrl(document.baseURI);
+    void loadSoiBoundary(soiUrl);
+    map.on('style.load', () =>
+      applyIndiaBoundaries(boundaryTarget(map), inBoundariesUrl(document.baseURI), undefined, {
+        url: soiUrl,
+        attribution: i18n.t('map.boundaryCredit'),
+      }),
+    );
     return map;
   } catch (e) {
     if (!(e instanceof GPUInitializationError)) throw e;
@@ -273,8 +318,9 @@ function foldAttributionLater(map: MlMap): void {
 }
 
 /**
- * The six map calls `applyIndiaBoundaries` makes, on a MapLibre map (`Map.getStyle`, `addSource`, `addLayer`,
- * `setLayoutProperty`, `setFilter`, `setLayerZoomRange`, as in maplibre-gl-js v6.11.2 `src/ui/map.ts`).
+ * The seven map calls `applyIndiaBoundaries` makes, on a MapLibre map (`Map.getStyle`, `addSource`, `addLayer`,
+ * `setLayoutProperty`, `setFilter`, `setLayerZoomRange`, as in maplibre-gl-js v6.11.2 `src/ui/map.ts`, and
+ * `GeoJSONSource.setData`).
  */
 function boundaryTarget(map: MlMap): BoundaryStyleTarget {
   return {
@@ -293,6 +339,11 @@ function boundaryTarget(map: MlMap): BoundaryStyleTarget {
     },
     setZoomRange: (layerId, minzoom, maxzoom) => {
       map.setLayerZoomRange(layerId, minzoom, maxzoom);
+    },
+    setSourceData: (sourceId, data) => {
+      const source = map.getSource(sourceId) as GeoJSONSource | undefined;
+      if (!source) throw new Error(`no source "${sourceId}"`);
+      source.setData(data as unknown as Parameters<GeoJSONSource['setData']>[0]);
     },
   };
 }

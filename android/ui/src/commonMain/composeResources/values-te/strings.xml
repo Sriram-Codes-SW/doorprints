@@ -513,6 +513,9 @@
     <string name="settings_version">వెర్షన్ %1$s</string>
     <string name="settings_licence">Doorprints స్వేచ్ఛా సాఫ్ట్‌వేర్: GNU Affero General Public License, వెర్షన్ 3 నిబంధనల ప్రకారం మీరు దీన్ని పంచుకోవచ్చు, మార్చవచ్చు.</string>
     <string name="settings_warranty">దీనికి ఎలాంటి వారంటీ లేదు.</string>
+    <!-- The Survey of India's credit on the map's attribution and its acknowledgement in Settings > About (S4b-BL-114, 2026-10-01). Under review. -->
+    <string name="map_boundary_credit">సరిహద్దు: సర్వే ఆఫ్ ఇండియా</string>
+    <string name="settings_about_boundary">సరిహద్దులు: సర్వే ఆఫ్ ఇండియా, పరిపాలనా సరిహద్దుల డేటాబేస్ (OVSF/1M/7), ఎలాంటి మార్పు లేకుండా. © సర్వే ఆఫ్ ఇండియా, భారత ప్రభుత్వం.</string>
     <string name="settings_source">సోర్స్ కోడ్</string>
     <string name="settings_source_desc">GitHubలో సోర్స్ కోడ్, బ్రౌజర్‌లో తెరుచుకుంటుంది</string>
     <string name="settings_licence_link">లైసెన్స్</string>
