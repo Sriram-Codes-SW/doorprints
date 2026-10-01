@@ -134,7 +134,7 @@ describe('photo meta and moving in in the copies', () => {
     const md = buildMarkdown(fixtureBundle(), en);
     expect(md.indexOf('### Distances')).toBeLessThan(md.indexOf('### Moving in'));
     expect(md.indexOf('### Moving in')).toBeLessThan(md.indexOf('### Checklist'));
-    expect(md).toContain('| When | 2026-10-01 |');
+    expect(md).toContain('| Move-in date | 2026-10-01 |');
     expect(md).toContain('- ✓ Rental agreement signed and registered');
     expect(md).toContain('- ○ Police verification done');
     const html = buildHtml(fixtureBundle(), en, new Map());
@@ -161,6 +161,17 @@ describe('photo meta and moving in in the copies', () => {
     }
     expect(ExportStrings.of('en').status('TAKEN')).toBe('Taken');
     expect(ExportStrings.of('en').status('NOT_CHOSEN')).toBe('Not chosen');
+  });
+
+  /** S4b-BL-99 d: the move-in date is labelled as the phones' copies label it (Kotlin `col.moveInDate`), not *When*. */
+  it('labels the move-in date with the same words as the phones\' copies, in every language', () => {
+    const kotlin = { en: 'Move-in date', hi: 'शिफ़्ट होने की तारीख', ta: 'குடிபுகும் தேதி', te: 'మారే తేదీ' } as const;
+    for (const code of ['en', 'hi', 'ta', 'te'] as const) {
+      const s = ExportStrings.of(code);
+      expect(s.get('col.moveInDate'), code).toBe(kotlin[code]);
+      const md = buildMarkdown(collect({ ...base, houses: withHouse0({ status: 'TAKEN', moveIn: { date: 1790812800000 } }), options: { ...FIXTURE_OPTIONS, lang: code } }), DICTIONARIES[code]);
+      expect(md, code).toContain(`| ${kotlin[code]} | 2026-10-01 |`);
+    }
   });
 
   it('shows the two new statuses in houses.csv and the ranking', () => {

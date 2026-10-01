@@ -324,6 +324,18 @@ class AiCoreTest {
     }
 
     @Test
+    fun aPlanLeavesNotChosenHousesOutOfTheFallbackAndThePromptSkipsThemAsTheServerDoes() {
+        val c = "33333333-3333-4333-8333-333333333333"
+        fun cand(id: String, status: String, lat: Double) =
+            PlanCandidate(id, id.take(4), "L", null, status, null, null, null, null, lat, 77.59, 0)
+        val seen = linkedMapOf(a to cand(a, "NOT_CHOSEN", 12.972), b to cand(b, "TAKEN", 12.975), c to cand(c, "REJECTED", 12.971))
+        val fallback = PlanChecks.assemble(AgentPlan("x", listOf(AgentStop("made-up"))), seen, emptyList(), 12.9716, 77.5946, 8)
+        assertTrue(fallback.fallback)
+        assertEquals(listOf(b), fallback.stops.map { it.houseId })
+        assertTrue(AiPrompts.plan("a walk", 12.9716, 77.5946, 5, "", "n1").system.contains("skip REJECTED and NOT_CHOSEN unless asked."))
+    }
+
+    @Test
     fun askSendsEveryHouseUpToFortyThenTheOnesSharingMostWords() {
         val few = (1..3).map { house.copy(id = "id-$it", label = "House $it") }
         assertEquals(3, OnDeviceSelection.forAsk(few, "anything").size)

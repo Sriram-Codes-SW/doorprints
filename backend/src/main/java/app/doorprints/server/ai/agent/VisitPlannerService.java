@@ -27,7 +27,6 @@ import app.doorprints.server.ai.agent.PlanModels.PlannedStop;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
-import app.doorprints.server.house.HouseStatus;
 import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,12 +153,12 @@ public class VisitPlannerService {
         String summary = plan == null || plan.summary() == null ? null : plan.summary().strip();
         List<RouteOptimizer.Leg> legs;
         if (plan == null || (chosen.isEmpty() && !seen.isEmpty() && (plan.stops() != null && !plan.stops().isEmpty()))) {
-            // No usable plan: nearest-neighbour over non-rejected houses the agent found.
+            // No usable plan: nearest-neighbour over the houses in the running that the agent found.
             fallback = true;
             chosen.clear();
             reasons.clear();
             var points = seen.values().stream()
-                    .filter(h -> h.status() != HouseStatus.REJECTED && h.status() != HouseStatus.NOT_CHOSEN)
+                    .filter(h -> h.status() == null || h.status().inTheRunning())
                     .limit(maxStops)
                     .map(h -> new RouteOptimizer.Point(h.id().toString(), h.lat(), h.lon()))
                     .toList();

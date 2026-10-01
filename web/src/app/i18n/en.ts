@@ -227,7 +227,7 @@ export const en = {
 
   // Compare page
   'compare.title': 'Compare houses',
-  'compare.empty': 'No houses to compare yet. Rejected houses are left out.',
+  'compare.empty': 'No houses to compare yet. Rejected and Not chosen houses are left out.',
   'compare.addSome': 'Add houses on the map',
   'compare.pickerLabel': 'Houses to compare',
   'compare.choose': 'Choose {min} to {max} houses. Selected: {n}.',
@@ -587,7 +587,7 @@ export const en = {
   'confirm.leaveUploading': 'Photos are still being added. If you leave now, you will not see whether they all worked. Leave anyway?',
   'confirm.leaveAnyway': 'Leave anyway',
   'confirm.leaveShared': 'Leave this page? The text you edited here will be lost.',
-  'compare.onlyOne': 'Only one house can be compared so far. Add at least one more. Rejected houses are left out.',
+  'compare.onlyOne': 'Only one house can be compared so far. Add at least one more. Rejected and Not chosen houses are left out.',
   'compare.search': 'Find a house',
   'data.introSynced': 'Everything you save is kept in this browser and synced with your server. Take a copy whenever you like; the file is yours and works offline.',
   'data.emptyAction': 'Add a house on the map',

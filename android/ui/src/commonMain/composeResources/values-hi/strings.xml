@@ -135,7 +135,7 @@
     <string name="house_paste_go">भरें</string>
     <string name="house_paste_busy">लिस्टिंग पढ़ी जा रही है…</string>
     <string name="compare_title">तुलना</string>
-    <string name="compare_hint">4 मकान तक चुनें (चुने गए पहले दिखते हैं)। अस्वीकृत मकान शामिल नहीं किए जाते।</string>
+    <string name="compare_hint">4 मकान तक चुनें (चुने गए पहले दिखते हैं)। अस्वीकृत और नहीं चुने गए मकान शामिल नहीं किए जाते।</string>
     <string name="compare_pick_more">तुलना के लिए कम से कम दो मकान चुनें।</string>
     <string name="compare_overall">कुल अंक</string>
     <string name="compare_price">कीमत</string>
@@ -435,7 +435,7 @@
     <string name="compare_best_name">%1$s (सबसे अच्छा)</string>
     <string name="compare_choose">मकान चुनें (%2$d में से %1$d)</string>
     <string name="compare_empty">तुलना के लिए कम से कम दो मकान जोड़ें।</string>
-    <string name="compare_empty_body">अस्वीकृत मकान शामिल नहीं किए जाते।</string>
+    <string name="compare_empty_body">अस्वीकृत और नहीं चुने गए मकान शामिल नहीं किए जाते।</string>
     <string name="compare_max">आप 4 मकानों तक की तुलना कर सकते हैं। दूसरा चुनने के लिए किसी एक का निशान हटाएँ।</string>
     <string name="compare_not_scored">अंक नहीं दिए</string>
     <string name="compare_not_set">नहीं भरा</string>

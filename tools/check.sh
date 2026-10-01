@@ -22,32 +22,57 @@
 #
 #   tools/check.sh            # the areas the branch touches
 #   tools/check.sh android ios
+#   git diff --name-only origin/main | tools/check.sh --print-areas   # only print what a list of changed files picks
+#
+# An area is picked from the same paths as its CI workflow's path filter (S4b-BL-105): android from android.yml's
+# (android/**, docs/schemas/**, web/public/geo/**, the two AI test-vector files), ios from the inputs of the iOS klib
+# compile in shared-ios.yml's, web from web.yml's (web/**, docs/schemas/**, .github/firebase-tools/**) and guide from
+# pages.yml's (guide/**, the Android screenshots); geo (the boundary-data tests) has no workflow and is picked by
+# web/scripts/geo/, web/public/geo/, the app's copy, tools/soi-verify.py and docs/ops/soi-review-pack.md. Keep them in
+# step when a filter changes. The backend is not an area (mvn verify needs PostGIS): a change to backend.yml's inputs
+# prints a reminder.
 #
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
-# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide and
-# the licence headers run beside it.
+# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide, geo
+# and the licence headers run beside it.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS="$ROOT/android/build/check" # git-ignored (android/build)
 mkdir -p "$LOGS"
 
-if [ $# -gt 0 ]; then
+# The areas a list of changed files (stdin, one path per line) picks, on stdout; notes go to stderr.
+areas_for() {
+  local changed areas="licence"
+  changed="$(cat)"
+  grep -qE '^(android/|docs/schemas/|web/public/geo/|docs/ai/evals/parity-vectors\.json$|web/src/app/core/ai/parity-vectors\.json$|\.github/workflows/android\.yml$)' \
+    <<<"$changed" && areas="$areas android"
+  grep -qE '^(android/(shared|ui)/(src/(commonMain|iosMain|nativeMain)/|build\.gradle\.kts$)|android/(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties)$|android/gradle/|ios/|\.github/workflows/shared-ios\.yml$)' \
+    <<<"$changed" && areas="$areas ios"
+  grep -qE '^(web/|docs/schemas/|\.github/firebase-tools/|\.github/workflows/web\.yml$)' <<<"$changed" && areas="$areas web"
+  grep -qE '^(guide/|android/app/src/test/screenshots/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
+  # geo: the boundary data's builders and tests, the data files they check and the Survey of India review pack
+  # (S4b-BL-114; no CI workflow of its own, so these paths are this script's).
+  grep -qE '^(web/scripts/geo/|web/public/geo/|android/app/src/main/assets/geo/|tools/soi-verify\.py$|docs/ops/soi-review-pack\.md$)' \
+    <<<"$changed" && areas="$areas geo"
+  grep -qE '^(backend/|docs/ai/evals/|docs/schemas/|docker-compose\.yml$|web/src/app/export/backup-export\.ts$|web/src/app/export/golden/|android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup\.kt$|\.github/workflows/backend\.yml$)' \
+    <<<"$changed" && echo "Backend inputs changed: run cd backend && mvn -B -ntp verify (needs PostGIS, see backend.yml); not run here." >&2
+  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web, guide or geo input changed: licence headers only." >&2
+  echo "$areas"
+}
+
+if [ "${1:-}" = "--print-areas" ]; then
+  areas_for
+  exit 0
+elif [ $# -gt 0 ]; then
   AREAS="$*"
 else
   base="$(git -C "$ROOT" merge-base HEAD origin/main 2>/dev/null || git -C "$ROOT" merge-base HEAD main)"
-  changed="$(git -C "$ROOT" diff --name-only "$base" HEAD; git -C "$ROOT" diff --name-only HEAD; git -C "$ROOT" ls-files --others --exclude-standard)"
-  AREAS="licence"
-  grep -qE '^android/' <<<"$changed" && AREAS="$AREAS android"
-  grep -qE '^(android/(shared|ui)/src/(commonMain|iosMain|nativeMain)|ios/)' <<<"$changed" && AREAS="$AREAS ios"
-  grep -qE '^web/' <<<"$changed" && AREAS="$AREAS web"
-  grep -qE '^guide/' <<<"$changed" && AREAS="$AREAS guide"
-  # geo: the map data's builders and tests, and the data files they check (S4b-BL-114: web/public/geo, the app copy)
-  grep -qE '^(web/scripts/geo/|web/public/geo/|android/app/src/main/assets/geo/|tools/soi-verify\.py)' <<<"$changed" &&
-    AREAS="$AREAS geo"
-  [ "$AREAS" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide file changed: licence headers only."
+  AREAS="$({ git -C "$ROOT" diff --name-only "$base" HEAD; git -C "$ROOT" diff --name-only HEAD
+    git -C "$ROOT" ls-files --others --exclude-standard; } | areas_for)"
 fi
+echo "areas: $AREAS"
 case " $AREAS " in *" all "*) AREAS="licence android ios web guide geo";; esac
 has() { case " $AREAS " in *" $1 "*) return 0;; esac; return 1; }
 

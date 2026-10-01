@@ -135,7 +135,7 @@
     <string name="house_paste_go">Fill in</string>
     <string name="house_paste_busy">Reading the listing…</string>
     <string name="compare_title">Compare</string>
-    <string name="compare_hint">Pick up to 4 houses (shortlisted ones first). Rejected houses are left out.</string>
+    <string name="compare_hint">Pick up to 4 houses (shortlisted ones first). Rejected and Not chosen houses are left out.</string>
     <string name="compare_pick_more">Select at least two houses to compare.</string>
     <string name="compare_overall">Overall score</string>
     <string name="compare_price">Price</string>
@@ -434,7 +434,7 @@
     <string name="compare_best_name">%1$s (best)</string>
     <string name="compare_choose">Choose houses (%1$d of %2$d)</string>
     <string name="compare_empty">Add at least two houses to compare.</string>
-    <string name="compare_empty_body">Rejected houses are left out.</string>
+    <string name="compare_empty_body">Rejected and Not chosen houses are left out.</string>
     <string name="compare_max">You can compare up to 4. Untick one to pick another.</string>
     <string name="compare_not_scored">not scored</string>
     <string name="compare_not_set">not set</string>

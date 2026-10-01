@@ -3,7 +3,8 @@
 ## Compare houses
 
 1. Open **Compare**.
-2. Pick two to four houses. Shortlisted houses are offered first. Rejected houses are left out.
+2. Pick two to four houses. Shortlisted houses are offered first. Rejected and Not chosen houses are left out. To bring
+   one back, change its status to Shortlisted or New.
 
 Each row shows one detail: overall score, price, BHK, your rating, visits, street and each checklist item. On the
 website, the best value in each row is highlighted and marked ✓. Choose a house's name to open it.
@@ -36,6 +37,8 @@ To plan on Android:
 1. Open **Assistant**.
 2. Open **Plan visits**.
 3. Tap **Plan from my location**.
+
+**Plan visits** leaves out Rejected and Not chosen houses too, in the same way as Compare.
 
 The walking times are only a rough guess.
 

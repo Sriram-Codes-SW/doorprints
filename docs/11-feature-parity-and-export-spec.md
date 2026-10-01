@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.52 |
+| Version | 0.53 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -62,6 +62,7 @@
 | 0.48 | 2026-09-30 | Claude (Code), lead | **Slice 4b designed** (5.17 and 5.18: the area wake-up, the background-location rationale and the cooldown; [10](10-sprint-log.md) §13.28). |
 | 0.49 | 2026-09-30 | Claude (Code), lead | **Slice 4b built** (the area wake-up on Android; [10](10-sprint-log.md) §13.28). The iPhone part (S4b-BL-96) follows. |
 | 0.50 | 2026-09-30 | Claude (Code), lead | **Slice 5 designed** (5.7 photo tags, 5.24 moving in: the statuses Taken and Not chosen, the move-in checklist and condition record, *Close this hunt*; [10](10-sprint-log.md) §13.29). |
+| 0.53 | 2026-10-01 | Claude (Code), lead | 5.24: the houses **in the running** (not Rejected, not Not chosen) are what Compare offers and a Plan visits, on the three stacks (S4b-BL-99 a); the website's copies label the move-in date *Move-in date* (S4b-BL-99 d). |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -785,10 +786,18 @@ Flyway V11 and V12), with these choices made while building: the statuses' colou
 chosen grey `#5F6B66` (dark `#F2C265`, `#B4BEB9`), the same on both apps; the *Moving in* card is on the house form on
 Android and on the house page on the website, and appears once the house is Taken; *Close this hunt* asks first ("Mark
 *n* other houses Not chosen and close this hunt?"), and needs the Taken status saved. In the copies a photo's tags are
-the stored keys, the website labels the move-in date *When* (Kotlin: *Move-in date*), and a *Shortlisted only* copy
-leaves the Taken house out. **Not built or not the same everywhere** (S4b-BL-99): archiving the houses at *Close this
-hunt* (they are marked, not hidden); Compare and the own-key AI Plan still leave out only REJECTED while the server's
-planner also skips NOT_CHOSEN; search over photo captions and tags. Tests [06](06-test-plan.md) TC-U-109.
+the stored keys, the move-in date is labelled *Move-in date* (the website said *When* until S4b-BL-99 d), and a
+*Shortlisted only* copy leaves the Taken house out. **Not built or not the same everywhere** (S4b-BL-99): archiving the houses at *Close this
+hunt* (they are marked, not hidden); search over photo captions and tags. Tests [06](06-test-plan.md) TC-U-109.
+
+**In the running (2026-10-01, S4b-BL-99 a).** A house is *in the running* unless it is REJECTED (turned down after
+looking) or NOT_CHOSEN (passed over once another house was taken); a status sent by an unknown name counts as in the
+running. Compare offers only houses in the running (shortlisted first), and a Plan visits only them: the prompt says
+*skip REJECTED and NOT_CHOSEN unless asked*, and the fallback route (no usable plan from the model) leaves them out. The
+same on the server (`HouseStatus.inTheRunning`, `VisitPlannerService`), the phones (`HouseStatusRules.inTheRunning`,
+`CompareScreen`, `PlanChecks`, `AiPrompts`) and the website (`house-status.ts` `inTheRunning`, `compare-page.ts`,
+`ai-core.ts`), pinned by the vector `inTheRunning` in `docs/ai/evals/parity-vectors.json`. A Taken house stays in the
+running. Changing a Not chosen house back to Shortlisted or New brings it back.
 
 ### 5.25 Brokers (D-30)
 

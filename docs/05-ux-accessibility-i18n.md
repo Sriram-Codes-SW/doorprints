@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.25 |
-| Date | 2026-09-24 |
+| Version | 0.26 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -38,6 +38,7 @@
 | 0.23 | 2026-09-24 | Claude (Code), engineer | CMP-4 P4c ([03](03-design.md) ADR-23 P4c): §8.2 *Strings*: 413 Compose strings (the ten `check_*` added for Compare in `:ui`); **27 keys in both places** (24 strings and 3 plurals, the ten `check_*` added; TC-U-59); the Android `check_*` copies go with [10](10-sprint-log.md) S4b-BL-31. |
 | 0.24 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change with the web backlog and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24). **§4.1, §4.2**: the invalid-field edge (S4b-BL-6) with its contrast. **§5**: the text field's visible invalid state; **§5.1** *Retry*: the scope now includes the sync card, the first-run banner (S4b-BL-1) and the house page's four cards (S4b-BL-2). New **§5.2**: the web on phones (visible-height sizing, 44 px targets, the credits fold, the legend and buttons, capped banners, the keyboard, long words, the skip link). **§8.2**: 444 Compose strings and 17 plurals, 71 service strings and 4 plurals, 46 keys in both places (S4b-BL-31, S4b-BL-35). New **§8.3**: the server-reset message in four languages (S4b-BL-20). |
 | 0.25 | 2026-09-29 | Claude (Code), lead | §9: the web loads one language at a time (English built in; hi, ta, te as chunks, the saved one before the app starts); the add-a-language steps follow. |
+| 0.26 | 2026-10-01 | Claude (Code), lead | §4.1, §4.4 and §7: the light `--star` is `#966000` (was `#A86A00`, 4.44:1 on white), at least 4.5:1 on every surface a star sits on, web and phones alike (S4b-BL-110); 2.3.3 notes that Compose follows *Remove animations* on Android and *Reduce Motion* on iPhone through its frame clock. |
 
 ---
 
@@ -114,7 +115,7 @@ Source of truth: `web/src/styles.css` (`:root` and the `prefers-color-scheme: da
 | `--status-new` | `#3C5A99` | NEW pill and marker | white on it / it on white map | 6.74 | AA |
 | `--status-shortlisted` | `#1A7A43` (**changed** from `#1F8A4C`) | SHORTLISTED pill and marker | white on it | 5.37 (was 4.38, failed) | AA |
 | `--status-rejected` | `#B3261E` | REJECTED pill and marker, errors | white on it | 6.54 | AA |
-| `--star` | `#A86A00` (**changed** from `#E8A317`) | Stars | on `#FFFFFF` | 4.44 (was 2.17, failed 3:1) | 3:1 graphic |
+| `--star` | `#966000` (**changed** from `#E8A317`, then `#A86A00`) | Stars | on `#FFFFFF` / `#F4F6F5` / `#EEF2F0` / `#E3F0EC` | 5.29 / 4.87 / 4.68 / 4.52 (`#E8A317` was 2.17; `#A86A00` 4.44, S4b-BL-110) | AA (held to 4.5:1: the glyph reads like a letter) |
 | `--border-strong` | `#7D8985` (**new**) | Input, button, chip borders | on `#FFFFFF` / `#F4F6F5` | 3.63 / 3.34 | 3:1 (1.4.11) |
 | `--border` | `#D9E0DD` | Decorative card dividers only | – | 1.34 | Not relied on |
 | `--error-text` on `--error-bg` | `#B3261E` on `#FBECEB` | Error messages | – | 5.70 | AA |
@@ -209,7 +210,7 @@ lavender or pink, and components read more roles than the screens name (the Swit
 | `surfaceVariant` | `--surface-2` | `#EEF2F0` (was `#F4F6F5`) | `#212B28` | Count chips; `onSurfaceVariant` (`--muted`) on it 4.91:1 |
 | `primaryContainer` | `--primary-soft` | `#E3F0EC` | `#1D3B33` (was `--header-bg` `#173F35`) | The chosen format card; dark `onPrimaryContainer` 10.05:1, `primary` 6.63:1 |
 | `surfaceContainerLowest` … `Highest`, `surfaceDim`, `surfaceBright` | – (between `--bg` and `--surface`) | `#FFFFFF`, `#F7F9F8`, `#F1F4F3`, `#EBEFED`, `#E3E8E6`; `#DCE2DF`, `#FFFFFF` | `#0B100F`, `#151C1A`, `#1B2422`, `#212B28`, `#2A3531`; `#101614`, `#343F3B` | A neutral green-grey ramp instead of M3's lavender (navigation bar, switch track, dialogs on `surfaceContainerHigh`) |
-| `secondary` | `--star` | `#A86A00` | `#F2B84B` | Star colour only (the stars themselves use `LocalDoorprintsColors.star`) |
+| `secondary` | `--star` | `#966000` | `#F2B84B` | Star colour only (the stars themselves use `LocalDoorprintsColors.star`) |
 | `secondaryContainer` / `onSecondaryContainer` | `--primary-soft` | `#E3F0EC` / `#0B3B30` (10.66:1) | `#1D3B33` / `#E4EBE8` (10.05:1) | M3's **selected state**: the selected FilterChip and InputChip, the NavigationBar's active pill, the SegmentedButton, progress tracks, the Slider's inactive track and tonal buttons. It was the amber star family (`#FBE7C2` / `#3A2C10`) until Android 1.21, which painted selected chips and the active tab amber. `WorkProgress`, `brandSliderColors()` and `tonalPrimaryColors()` still name `primaryContainer`, now only as a safety net (`android/shared/README.md` §9 item 25 (a)) |
 | `errorContainer` / `onErrorContainer` / `errorBorder` | `--error-bg` / `--error-text` / `--error-border` | `#FBECEB` / `#B3261E` / `#E8B4B0` | `#3A1B19` / `#FF8E86` / `#6E2C27` | Error result card, 1 dp border |
 | `success` / `onSuccess` / `successBorder` | `--success-bg` / `--success-text` / `--success-border` | `#E7F5ED` / `#1A7A43` / `#B5DCC4` | `#15301F` / `#6FD69A` / `#2B5A3B` | "Done" result card, 1 dp border |
@@ -366,7 +367,7 @@ Status: **Met** (implemented and checked by code review), **Partial** (known gap
 | 1.4.4 | Resize text | AA | Verify | rem type scale, no `maximum-scale`, header and toolbars wrap. | `sp` units everywhere, test at 200 % font scale. |
 | 1.4.5 | Images of text | AA | Met | None. | None. |
 | 1.4.10 | Reflow | AA | Verify | Single column below 760 px, 320 px checked for checklist row (7 × 34 px fits), header wraps. Comparison table scrolls horizontally inside a labelled region (allowed exception for data tables). | Layouts use `FlowRow`/`LazyColumn`; no fixed widths; test on 320 dp. |
-| 1.4.11 | Non-text contrast | AA | Met | Control borders `--border-strong` 3.63:1, focus ring 6:1, stars 4.44:1, markers ≥ 5.37:1 on white tiles. | Outline colour ≥ 3:1 in both themes. |
+| 1.4.11 | Non-text contrast | AA | Met | Control borders `--border-strong` 3.63:1, focus ring 6:1, stars 4.52:1 or more (S4b-BL-110), markers ≥ 5.37:1 on white tiles. | Outline colour ≥ 3:1 in both themes. |
 | 1.4.12 | Text spacing | AA | Verify | No fixed-height text containers except the 72 px score circle (short numeric content). | Avoid fixed heights on text. |
 | 1.4.13 | Content on hover or focus | AA | Partial | List-item hover/focus shows a map popup; it can be dismissed by moving away or clicking the map but not with Esc, and it is not hoverable. Information is duplicated in the list. | No hover content. |
 | 2.1.1 | Keyboard | A | Met | All actions are native controls; add-house has "Place here"; pin has coordinate fields; photo opens from a button. | D-pad/keyboard focus on all clickables (`Modifier.clickable` / `selectable`). |
@@ -404,7 +405,7 @@ Status: **Met** (implemented and checked by code review), **Partial** (known gap
 | 3.3.8 | Accessible authentication (minimum) | AA | Met | API key can be pasted and shown; no cognitive test. | Same; allow paste and password managers. |
 | 4.1.2 | Name, role, value | A | Met | Native controls; `aria-pressed` on toggles; radio `checked`; dialog labelled. | Compose semantics roles and state descriptions ("Selected"). |
 | 4.1.3 | Status messages | AA | Met | Polite live region (saved, uploaded, results count), `role="alert"` for errors. The add-house hint is not a live region: the announcer says it once when add mode starts (section 5). | Met since the audit (code review; device checks open): statuses are polite live regions, assertive only for failures, most of them through `LiveMessage`, whose node exists before its text arrives (the Map's notes, the Assistant, Settings' server result). Known minor: the automatic backup's error region in Settings is created already assertive, so it may not be announced ([10](10-sprint-log.md) §11.7). The house list says "Houses shown: *x* of *y*" (`houses_shown`, the web's `map.shown`), always visible and announced 500 ms after typing pauses while a search or status filter is on; Settings' result and the Assistant's error card stay in place during a retry with the state "Updating…" / "Thinking…" / "Planning…" (§5.1). |
-| 2.3.3 (AAA, adopted) | Animation from interactions | AAA | Met | `prefers-reduced-motion` honoured. | Respect "Remove animations". |
+| 2.3.3 (AAA, adopted) | Animation from interactions | AAA | Met | `prefers-reduced-motion` honoured. | Respect "Remove animations": Compose scales every animation by the frame clock's `MotionDurationScale`, which Android sets from the animator duration scale and Compose Multiplatform 1.12.1 on iPhone from *Reduce Motion* (`UIAccessibilityIsReduceMotionEnabled`), so no app code is needed; the Map's camera reads `animationsOff()` itself. Checked on a device under TC-M-42 (S4b-BL-110). |
 
 ### 7.1 Android (implemented in wave 2)
 
