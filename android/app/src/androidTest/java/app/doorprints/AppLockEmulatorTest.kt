@@ -116,8 +116,9 @@ class AppLockEmulatorTest {
         setDevicePin()
 
         // Turning the lock on asks for the phone's credential first (Confirm it's you).
-        compose.onNode(hasText("Lock Doorprints") and isToggleable()).performScrollTo().performClick()
-        enterPin()
+        val lockToggle: () -> Unit = { compose.onNode(hasText("Lock Doorprints") and isToggleable()).performScrollTo().performClick() }
+        lockToggle()
+        enterPinUntil(again = lockToggle) { compose.onAllNodes(hasText("Right away")).fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntilAtLeastOneExists(hasText("Right away"), TIMEOUT_MS)
 
         // Away for a few seconds, less than the default minute: it opens as it was.
@@ -133,17 +134,23 @@ class AppLockEmulatorTest {
         compose.waitUntilAtLeastOneExists(hasText("Right away") and isSelected(), TIMEOUT_MS)
         leaveAndReturn()
         compose.waitUntilAtLeastOneExists(hasText("Doorprints is locked"), TIMEOUT_MS)
-        // The PIN is typed into another app's window and can land before the field takes input (seen once on API 36:
-        // the prompt stayed up for 30 s); a second go at the prompt tells that apart from a real failure.
-        repeat(UNLOCK_TRIES) { attempt ->
-            if (compose.onAllNodes(hasText("Right away")).fetchSemanticsNodes().isNotEmpty() &&
-                compose.onAllNodes(hasText("Doorprints is locked")).fetchSemanticsNodes().isEmpty()
-            ) return@repeat
-            if (findPinField() != null || attempt == 0) enterPin()
-            val deadline = SystemClock.uptimeMillis() + UNLOCK_WAIT_MS
-            while (SystemClock.uptimeMillis() < deadline && !isUnlocked()) SystemClock.sleep(POLL_MS)
-        }
+        enterPinUntil { isUnlocked() }
         compose.waitUntil(TIMEOUT_MS) { isUnlocked() }
+    }
+
+    /**
+     * Types the PIN, then waits for [done]. The PIN goes into another app's window and can land before the field takes
+     * input, or the result of the credential screen can be lost (seen on API 34, 36 and 26, one run in a few): if
+     * [done] still does not hold, the prompt is answered again when it is still up, or [again] (what opened it) is
+     * repeated when it is gone, up to [UNLOCK_TRIES] times. A real failure still fails the test.
+     */
+    private fun enterPinUntil(again: () -> Unit = {}, done: () -> Boolean) {
+        repeat(UNLOCK_TRIES) { attempt ->
+            if (done()) return
+            if (findPinField() != null || attempt == 0) enterPin() else again()
+            val deadline = SystemClock.uptimeMillis() + UNLOCK_WAIT_MS
+            while (SystemClock.uptimeMillis() < deadline && !done()) SystemClock.sleep(POLL_MS)
+        }
     }
 
     private fun isUnlocked() =
