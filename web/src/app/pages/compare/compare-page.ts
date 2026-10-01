@@ -37,6 +37,7 @@ import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scor
 import type { Scoring } from '../../shared/scoring';
 import { timeOf } from '../map/map-list';
 import { areaNumber, totalAreaSqCm } from '../../shared/room-sizes';
+import { inTheRunning } from '../../shared/house-status';
 import type { LengthUnit } from '../../shared/room-sizes';
 
 /** What the ranking compares for a candidate. */
@@ -107,10 +108,13 @@ export class ComparePage {
   /** The effective scoring (criteria and rating share); the defaults until it is read. */
   private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
 
-  /** Non-rejected houses, shortlisted first, then by the ranking (must-haves met, score, coverage, price, edit). */
+  /**
+   * The houses in the running (not Rejected, not Not chosen, `inTheRunning`, S4b-BL-99 a), shortlisted first, then by
+   * the ranking (must-haves met, score, coverage, price, edit).
+   */
   protected readonly candidates = computed(() =>
     this.houses()
-      .filter((h) => h.status !== 'REJECTED' && !h.deleted)
+      .filter((h) => inTheRunning(h.status) && !h.deleted)
       .map((h) => {
         const result = evaluateScore(h.checklist, h.rating, this.scoring());
         return { house: h, score: result.overall, result };

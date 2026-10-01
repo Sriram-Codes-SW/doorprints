@@ -10,7 +10,8 @@ browsers may delete a website's data when space runs low. To protect it:
 
 ![The storage warning under the website's menu: Your data may not be kept, with Save a backup and Not now](images/web-storage-warning.png)
 
-**The map is blank or grey.** The map needs an internet connection. Your houses are still in the list. On the
+**The map is blank or grey.** The map needs an internet connection, except in the areas you
+[saved for offline](settings-and-privacy.md#save-an-area-of-the-map-for-offline). Your houses are still in the list. On the
 website you can still add a house offline with **Add at my location** or **Type latitude and longitude**.
 
 **I don't see Ask, Plan or Assistant.** They appear once AI is turned on: with

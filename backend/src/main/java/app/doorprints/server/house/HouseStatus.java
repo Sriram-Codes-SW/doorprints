@@ -23,4 +23,16 @@ package app.doorprints.server.house;
  * with slice 5 (docs/11 section 5.24); {@code REJECTED} keeps its meaning, rejected after looking. A backup with
  * either new status is {@code doorprints-backup/2}.
  */
-public enum HouseStatus { NEW, SHORTLISTED, REJECTED, TAKEN, NOT_CHOSEN }
+public enum HouseStatus {
+    NEW, SHORTLISTED, REJECTED, TAKEN, NOT_CHOSEN;
+
+    /**
+     * False for the statuses out of the running, {@code REJECTED} and {@code NOT_CHOSEN} (S4b-BL-99 a): the planner's
+     * fallback route leaves them out and its prompt skips them unless asked, as the phones' and the website's Compare
+     * and Plan do ({@code HouseStatusRules.inTheRunning}, {@code house-status.ts}), pinned by the parity vectors'
+     * {@code inTheRunning}.
+     */
+    public boolean inTheRunning() {
+        return this != REJECTED && this != NOT_CHOSEN;
+    }
+}

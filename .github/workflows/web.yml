@@ -68,12 +68,16 @@ name: Web
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
 # merge result; also covers fork PRs) and manual runs. The two path lists are identical and must stay that way.
 # Only a push or manual run on main can deploy.
+# docs/schemas/** (S4b-BL-105 a): load-bearing, the unit tests import the shared contract files (import-vectors.json,
+# update-sample.json, default-questions.json, default-movein.json, listing-fixtures.json, viewing-sample.ics), so
+# editing one alone can turn this workflow red; android.yml and backend.yml have the same path. A schema-only merge
+# to main also redeploys (the built site is unchanged).
 on:
   push:
     branches: [main]
-    paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
+    paths: ["web/**", "docs/schemas/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   pull_request:
-    paths: ["web/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
+    paths: ["web/**", "docs/schemas/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   workflow_dispatch:
 
 # Least privilege: nothing by default; each job asks for what it needs (contents: read; deploy-firebase also

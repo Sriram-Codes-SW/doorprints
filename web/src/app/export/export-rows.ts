@@ -456,7 +456,7 @@ export function photoNote(entry: ExportHouse, photo: PhotoRecord, strings: Expor
 export function movingInView(house: ExportHouse, strings: ExportStrings): { facts: [string, string][]; items: { done: boolean; text: string }[] } {
   const moveIn = house.house.moveIn;
   const facts: [string, string][] = [];
-  if (moveIn?.date) facts.push([strings.get('col.when'), utcDate(moveIn.date)]);
+  if (moveIn?.date) facts.push([strings.get('col.moveInDate'), utcDate(moveIn.date)]);
   if (moveIn?.notes) facts.push([strings.get('col.notes'), moveIn.notes]);
   const items = orderedItems(moveIn?.items).map((i) => ({ done: i.done === true, text: i.text }));
   return { facts, items };

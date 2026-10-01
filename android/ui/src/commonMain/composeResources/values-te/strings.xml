@@ -135,7 +135,7 @@
     <string name="house_paste_go">నింపండి</string>
     <string name="house_paste_busy">లిస్టింగ్ చదువుతోంది…</string>
     <string name="compare_title">పోల్చండి</string>
-    <string name="compare_hint">4 ఇళ్ల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన ఇళ్లు చేర్చబడవు.</string>
+    <string name="compare_hint">4 ఇళ్ల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన, ఎంచుకోని ఇళ్లు చేర్చబడవు.</string>
     <string name="compare_pick_more">పోల్చడానికి కనీసం రెండు ఇళ్లు ఎంచుకోండి.</string>
     <string name="compare_overall">మొత్తం స్కోర్</string>
     <string name="compare_price">ధర</string>
@@ -435,7 +435,7 @@
     <string name="compare_best_name">%1$s (ఉత్తమం)</string>
     <string name="compare_choose">ఇళ్లు ఎంచుకోండి (%2$d లో %1$d)</string>
     <string name="compare_empty">పోల్చడానికి కనీసం రెండు ఇళ్లు జోడించండి.</string>
-    <string name="compare_empty_body">తిరస్కరించిన ఇళ్లు చేర్చబడవు.</string>
+    <string name="compare_empty_body">తిరస్కరించిన, ఎంచుకోని ఇళ్లు చేర్చబడవు.</string>
     <string name="compare_max">మీరు 4 వరకు పోల్చవచ్చు. మరొకటి ఎంచుకోవడానికి ఒకదాని టిక్ తీసివేయండి.</string>
     <string name="compare_not_scored">స్కోర్ ఇవ్వలేదు</string>
     <string name="compare_not_set">సెట్ చేయలేదు</string>

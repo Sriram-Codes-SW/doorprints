@@ -19,11 +19,14 @@
 package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseStatusRules
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.double
@@ -110,5 +113,17 @@ class ParityVectorsTest {
         val lon = start[1].jsonPrimitive.double
         check("nearestNeighbour", RouteOptimizer.nearestNeighbour(lat, lon, points))
         check("inOrder", RouteOptimizer.legsInOrder(lat, lon, points))
+    }
+
+    @Test
+    fun theStatusesInTheRunningMatchTheServer() {
+        val cases = root.getValue("inTheRunning").jsonArray.map { it.jsonObject }
+        assertEquals(5, cases.size)
+        for (o in cases) {
+            val status = str(o["status"])!!
+            val expected = o.getValue("expected").jsonPrimitive.boolean
+            assertEquals(expected, HouseStatusRules.inTheRunning(status), status)
+            assertEquals(expected, HouseStatusRules.inTheRunning(HouseStatus.valueOf(status)), status)
+        }
     }
 }

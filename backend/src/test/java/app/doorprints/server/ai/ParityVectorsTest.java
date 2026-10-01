@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The server's AI safety code against the shared test vectors (docs/ai/evals/parity-vectors.json; docs/03 §13.1,
- * ADR-26): contact removal, the listing checks, the Ask snippet and citation markers, and the walking route. The same
+ * ADR-26): contact removal, the listing checks, the Ask snippet and citation markers, the walking route, and the statuses in the running. The same
  * file is checked by the phones' Kotlin (`ParityVectorsTest` in `:shared`) and the website's TypeScript, so on-device
  * AI treats text exactly as the server does. The expected values are the server's own answers: run this test with
  * {@code -Dparity.write=true} to fill them in after changing the inputs, and review the diff.
@@ -96,6 +96,10 @@ class ParityVectorsTest {
             ids.add(o);
         }
         out.set("inlineIds", ids);
+        for (var c : (ArrayNode) out.get("inTheRunning")) {
+            var o = (ObjectNode) c;
+            o.put("expected", app.doorprints.server.house.HouseStatus.valueOf(o.get("status").asText()).inTheRunning());
+        }
         var route = (ObjectNode) out.get("route");
         var start = route.get("start");
         var points = new ArrayList<RouteOptimizer.Point>();
