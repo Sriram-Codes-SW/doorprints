@@ -64,7 +64,7 @@ export const HOUSE_PAINT = {
   // A hollow ring for an approximate spot: no fill, the stroke takes the status colour instead of white.
   'circle-stroke-color': ['case', IS_APPROX, STATUS_COLOUR, '#ffffff'],
   'circle-stroke-width': ['match', ['get', 'status'], 'SHORTLISTED', 3, 'TAKEN', 3, 2],
-  'circle-opacity': ['case', IS_APPROX, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.6, 1]],
+  'circle-opacity': ['case', IS_APPROX, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.75, 1]],
 } as const;
 
 export interface HouseFeature {

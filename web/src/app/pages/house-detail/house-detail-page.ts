@@ -1314,6 +1314,15 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       field?.focus({ preventScroll: true });
       return false;
     }
+    if (this.floorInvalid(d)) {
+      // Not a floor from -5 to 200: saving would drop what was typed without a word, so the field's message stays and
+      // focus goes to it (WCAG 3.3.1, 3.3.3), as for the name and the position above.
+      this.error.set(runResult({ key: 'house.floorInvalid' }));
+      const field = document.getElementById('house-floor');
+      field?.scrollIntoView({ block: 'center' });
+      field?.focus({ preventScroll: true });
+      return false;
+    }
     const body: HouseDto = {
       ...d,
       label,

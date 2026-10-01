@@ -354,7 +354,7 @@ const NAV_ICONS = {
       background: var(--on-header-alert);
       box-shadow: 0 0 0 2px var(--on-header);
       color: var(--header-bg);
-      font-size: 12px;
+      font-size: 0.75rem;
       font-weight: 800;
       line-height: 16px;
       text-align: center;

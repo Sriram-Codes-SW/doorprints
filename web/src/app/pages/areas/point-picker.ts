@@ -54,6 +54,7 @@ import { Msg } from '../../i18n/translation.service';
           spellcheck="false"
           [value]="lat() ?? ''"
           [attr.aria-invalid]="invalid() || showRequired() ? 'true' : null"
+          [attr.aria-describedby]="invalid() || showRequired() ? idPrefix() + '-error' : null"
           (change)="typed('lat', $event)"
         />
       </div>
@@ -67,15 +68,16 @@ import { Msg } from '../../i18n/translation.service';
           spellcheck="false"
           [value]="lon() ?? ''"
           [attr.aria-invalid]="invalid() || showRequired() ? 'true' : null"
+          [attr.aria-describedby]="invalid() || showRequired() ? idPrefix() + '-error' : null"
           (change)="typed('lon', $event)"
         />
       </div>
     </div>
     <div role="alert">
       @if (invalid()) {
-        <p class="field-error">{{ 'house.coordsInvalid' | t }}</p>
+        <p [id]="idPrefix() + '-error'" class="field-error">{{ 'house.coordsInvalid' | t }}</p>
       } @else if (showRequired()) {
-        <p class="field-error">{{ 'point.required' | t }}</p>
+        <p [id]="idPrefix() + '-error'" class="field-error">{{ 'point.required' | t }}</p>
       }
       @if (failure(); as f) {
         <p class="field-error">{{ f.key | t }}</p>
