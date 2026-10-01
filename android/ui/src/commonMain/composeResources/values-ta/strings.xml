@@ -1177,4 +1177,9 @@
     <string name="import_updated_brokers">காப்புப்பிரதியில் புதிய பதிப்பு உள்ள தரகர்கள்</string>
     <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
     <string name="house_loading">வீடு திறக்கப்படுகிறது…</string>
+    <!-- S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range: under review. -->
+    <string name="house_floor_basement">அடித்தளம்</string>
+    <string name="house_floor_basement_hint">தரைக்குக் கீழே உள்ள நிலை, 1 முதல் 5 வரை</string>
+    <string name="house_floor_basement_invalid">1 முதல் 5 வரை ஒரு அடித்தள நிலையை உள்ளிடவும்</string>
+    <string name="import_floors_left_blank">கோப்பில் தளம் -5 முதல் 200 வரம்பிற்கு வெளியே உள்ள வீடுகள்; அவற்றின் தளம் காலியாக விடப்படும்</string>
 </resources>

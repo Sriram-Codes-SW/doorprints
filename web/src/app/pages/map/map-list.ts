@@ -131,10 +131,16 @@ function priceGroup(h: HouseDto): number {
  * agency and fee terms, from {@link brokerSearchText}). The contact name stays: it is the broker's name copy. Room
  * names and notes are included (slice 1c), and so are the questions asked and their answers (slice 3a), the texts of
  * the area notes that reach the house (`noteTexts`, slice 4a: `notesReaching`), and the move-in notes and checklist
- * item texts (slice 5), and the floor as `floorSearchText` words it (S4b-BL-87). Photo captions and tags are not matched: the list holds no photos (reading them would read
+ * item texts (slice 5), and the floor as `floorSearchText` words it (S4b-BL-87) and, when given, as `localFloor` words it
+ * in the app's language (`floorLocalSearchText`, S4b-BL-104 b), so "भूतल" finds a ground floor as "ground floor" does. Photo captions and tags are not matched: the list holds no photos (reading them would read
  * every photo of the store).
  */
-export function searchText(h: HouseDto, brokerText = '', noteTexts: readonly string[] = []): string {
+export function searchText(
+  h: HouseDto,
+  brokerText = '',
+  noteTexts: readonly string[] = [],
+  localFloor?: (floor: number) => string,
+): string {
   const parts = [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
     .filter((x) => !!x);
   // Room names and notes (slice 1c)
@@ -157,7 +163,11 @@ export function searchText(h: HouseDto, brokerText = '', noteTexts: readonly str
   // The area notes that reach the house (slice 4a)
   for (const text of noteTexts) if (text) parts.push(text);
   // The floor in the same English words as on Android (S4b-BL-87)
-  if (typeof h.floor === 'number') parts.push(floorSearchText(h.floor));
+  // and in the app's language (S4b-BL-104 b; Kotlin `HouseSearch.localFloorText`)
+  if (typeof h.floor === 'number') {
+    parts.push(floorSearchText(h.floor));
+    if (localFloor) parts.push(localFloor(h.floor));
+  }
   return parts.join(' ')
     .toLowerCase();
 }

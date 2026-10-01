@@ -253,4 +253,13 @@ class HouseFormRulesTest {
         assertEquals(listOf(0, 3, -2, 200, -5), listOf("0", " 3 ", "-2", "200", "-5").map(::floorOf))
         for (bad in listOf("", "-", "201", "-6", "1.5", "2-", "--1", "1000")) assertNull(floorOf(bad), bad)
     }
+
+    /** The Basement switch (S4b-BL-104 c): the digits are a level 1 to 5 below the ground, no minus needed. */
+    @Test
+    fun theBasementSwitchMakesTheDigitsALevelBelowTheGround() {
+        assertEquals(listOf(-1, -2, -5, -3), listOf("1", " 2 ", "5", "-3").map { floorOf(it, basement = true) })
+        for (bad in listOf("", "0", "6", "200", "1.5", "--1")) assertNull(floorOf(bad, basement = true), bad)
+        // Off, the field reads as before.
+        assertEquals(listOf(0, 3, -2), listOf("0", "3", "-2").map { floorOf(it, basement = false) })
+    }
 }

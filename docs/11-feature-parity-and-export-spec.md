@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.51 |
+| Version | 0.52 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -62,6 +62,7 @@
 | 0.48 | 2026-09-30 | Claude (Code), lead | **Slice 4b designed** (5.17 and 5.18: the area wake-up, the background-location rationale and the cooldown; [10](10-sprint-log.md) §13.28). |
 | 0.49 | 2026-09-30 | Claude (Code), lead | **Slice 4b built** (the area wake-up on Android; [10](10-sprint-log.md) §13.28). The iPhone part (S4b-BL-96) follows. |
 | 0.50 | 2026-09-30 | Claude (Code), lead | **Slice 5 designed** (5.7 photo tags, 5.24 moving in: the statuses Taken and Not chosen, the move-in checklist and condition record, *Close this hunt*; [10](10-sprint-log.md) §13.29). |
+| 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
@@ -338,7 +339,13 @@ documents carry names, sizes and condition (never a room's notes), and search co
 `sort`), and the house's `floor`, a whole number -5..200 (0 the ground floor, below 0 a basement), after `moveIn` in
 every writer, a `/2` field (Room 10, Flyway V13). The form refuses a floor out of range with a message and focus on
 both apps (the website silently dropped it until Wave D). Search finds it as "floor 3", "ground floor" or "basement 2",
-in English only (S4b-BL-104).
+and in the app's language too ("भूतल", "बेसमेंट 2"; S4b-BL-104 b). A **Basement** switch under Floor (S4b-BL-104 c) holds
+the sign, so a basement level 1..5 is typed without a minus (some number keypads have none); a minus typed anyway turns
+the switch on. **Import** (S4b-BL-104 d, decided 2026-10-01): a device reads a floor outside -5..200 as unknown and imports
+the house with the floor blank, and the preview says so as a warning ("Houses whose floor in the file is outside -5 to
+200; their floor is left blank"); the server refuses such a file (`houses[i].floor must be -5..200`). The device stays
+tolerant because it reads an area out of range the same way, and a refusal there would say only that the file is
+damaged, not which value; no app writes such a floor, so only an edited file has one.
 
 ### 5.7 Photo tags
 

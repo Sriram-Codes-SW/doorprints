@@ -100,6 +100,23 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest
 
+      # The emulator package download sometimes dies half way ("Error reading Zip content"); the runner then finds no
+      # emulator. Fetch the packages here with retries so its own install step has nothing left to download.
+      - name: Install the emulator and system image (with retries)
+        env:
+          API: ${{ matrix.api-level }}
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for attempt in 1 2 3 4; do
+            if yes | "$sdkmanager" --install emulator platform-tools "system-images;android-$API;google_apis;x86_64" >/dev/null; then
+              exit 0
+            fi
+            echo "sdkmanager failed (attempt $attempt); retrying"
+            sleep $((attempt * 10))
+          done
+          echo "::error::Could not install the emulator packages after 4 attempts"
+          exit 1
+
       - name: Run the smoke and app lock tests on the emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:

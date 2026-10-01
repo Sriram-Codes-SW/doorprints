@@ -1177,4 +1177,9 @@
     <string name="import_updated_brokers">जिन ब्रोकरों का बैकअप में नया रूप है</string>
     <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
     <string name="house_loading">मकान खुल रहा है…</string>
+    <!-- S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range: under review. -->
+    <string name="house_floor_basement">बेसमेंट</string>
+    <string name="house_floor_basement_hint">ज़मीन के नीचे का स्तर, 1 से 5</string>
+    <string name="house_floor_basement_invalid">1 से 5 तक का बेसमेंट स्तर लिखें</string>
+    <string name="import_floors_left_blank">जिन मकानों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी</string>
 </resources>

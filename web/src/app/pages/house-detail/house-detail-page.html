@@ -248,25 +248,32 @@
             <label for="house-area">{{ 'house.areaSqft' | t }}</label>
             <input id="house-area" type="number" min="1" max="100000" step="1" inputmode="numeric" [(ngModel)]="d.areaSqft" />
           </div>
-          <!-- S4b-BL-87: the floor; a number input takes the minus of a basement level. -->
+          <!-- S4b-BL-87: the floor. S4b-BL-104 (c): the field holds the number and the Basement switch below the sign, so a
+               basement needs no minus key (a numeric keypad may have none); a minus typed anyway turns the switch on. -->
           <div class="field narrow">
             <label for="house-floor">{{ 'house.floor' | t }}</label>
             <input
               id="house-floor"
               type="number"
-              min="-5"
+              min="0"
               max="200"
               step="1"
-              [(ngModel)]="d.floor"
+              inputmode="numeric"
+              [ngModel]="floorShown(d)"
+              (ngModelChange)="typeFloor(d, $event)"
               [attr.aria-invalid]="floorInvalid(d) ? 'true' : null"
               [attr.aria-describedby]="floorInvalid(d) ? 'house-floor-error' : 'house-floor-hint'"
             />
             @if (floorInvalid(d)) {
-              <span id="house-floor-error" class="field-error" role="alert">{{ 'house.floorInvalid' | t }}</span>
+              <span id="house-floor-error" class="field-error" role="alert">{{ (floorBasement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid') | t }}</span>
             } @else {
-              <span id="house-floor-hint" class="field-hint">{{ 'house.floorHint' | t }}</span>
+              <span id="house-floor-hint" class="field-hint">{{ (floorBasement(d) ? 'house.floorBasementHint' : 'house.floorHint') | t }}</span>
             }
           </div>
+        </div>
+        <div class="field checkbox">
+          <input id="house-floor-basement" type="checkbox" role="switch" [checked]="floorBasement(d)" (change)="setBasement(d, $event)" />
+          <label for="house-floor-basement">{{ 'house.floorBasementToggle' | t }}</label>
         </div>
         <!-- S4b-BL-85: another house within about 30 m with the same bedrooms and floor; a warning, never a block. -->
         <div role="status">

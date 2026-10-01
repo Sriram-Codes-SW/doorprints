@@ -533,6 +533,10 @@ input[type='tel'],
 input[type='number'],
 input[type='password'],
 input[type='search'],
+input[type='email'],
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'],
 select,
 textarea {
   width: 100%;
@@ -643,6 +647,18 @@ textarea[aria-invalid='true'] {
 /* Touch screens: filter and picker chips get the full 44px target (UX-007), like .btn-sm above. */
 @media (pointer: coarse) {
   .chip {
+    min-height: var(--target);
+  }
+}
+
+/*
+ * Touch screens: a plain link in a row of actions ("All viewings of this house", "All area notes") is a target like
+ * the buttons beside it: 44px high, its text centred. Found by the live UI test (TC-M-26) on every phone profile.
+ */
+@media (pointer: coarse) {
+  .actions > a:not(.btn) {
+    display: inline-flex;
+    align-items: center;
     min-height: var(--target);
   }
 }
