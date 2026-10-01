@@ -443,7 +443,12 @@ open class CommonRepository(
             for (d in DefaultQuestions.ALL) {
                 // A tombstone is a record too: a default the person deleted stays deleted (Reset brings it back).
                 if (db.records().get(QuestionType.name, d.id) != null) continue
-                saveRecord(QuestionType, d.id, d.question(language))
+                // Clean and stamped SEEDED_AT (S4b-BL-90a): an untouched default is never pushed, and whatever another
+                // device did to it wins when it is pulled. An edit here makes it dirty with a real time.
+                val payload = QuestionType.encode(d.question(language))
+                db.records().upsert(
+                    RecordEntity(QuestionType.name, d.id, payload, updatedAt = DefaultQuestions.SEEDED_AT, dirty = false),
+                )
                 written++
             }
         }
@@ -1191,6 +1196,8 @@ open class CommonRepository(
             db.records().versions(PlaceType.name).associate { it.id to it.updatedAt },
             db.records().versions(AreaNoteType.name).associate { it.id to it.updatedAt },
             photoMeta = db.photos().metaVersions().associate { it.id to it.updatedAt },
+            liveQuestions = db.records().listByType(QuestionType.name).mapTo(HashSet()) { it.id },
+            liveCriteria = db.records().listByType(CriterionType.name).mapTo(HashSet()) { it.id },
         )
     }
 

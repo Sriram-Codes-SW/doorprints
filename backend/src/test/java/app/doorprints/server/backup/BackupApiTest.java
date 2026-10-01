@@ -1134,6 +1134,61 @@ class BackupApiTest {
         for (var type : SMALL_TYPES.values()) assertThat(smallRecords(type)).as("no " + type + " written").isEmpty();
     }
 
+    /** S4b-BL-90b: a merge cannot take the bank past 100 questions, counting what is here and what the file adds. */
+    @Test
+    void aMergedImportStaysWithinOneHundredQuestions() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        // 98 here, in two files (this test server takes at most 60 rows per import).
+        for (int part = 0; part < 2; part++) {
+            var first = new StringBuilder();
+            for (int i = part * 49; i < part * 49 + 49; i++) {
+                if (i > part * 49) first.append(",");
+                first.append(questionRow("q_" + String.format("%08x", i), "Q" + i, "OTHER", "BOTH", i, now));
+            }
+            assertThat(count(postImport(backupWithQuestions("", first.toString()), false), "questions", "created")).isEqualTo(49);
+        }
+        // One update of a question here (adds none), then five new: two fit, three are skipped with a reason.
+        var second = new StringBuilder(questionRow("q_00000000", "Q0 again", "OTHER", "BOTH", 0, now.plusSeconds(1)));
+        for (int i = 200; i < 205; i++) {
+            second.append(",").append(questionRow("q_" + String.format("%08x", i), "Q" + i, "OTHER", "BOTH", i, now));
+        }
+        var body = backupWithQuestions("", second.toString());
+        var preview = postImport(body, true);
+        assertThat(count(preview, "questions", "created")).isEqualTo(2);
+        assertThat(count(preview, "questions", "skipped")).isEqualTo(3);
+        var applied = postImport(body, false);
+        assertThat(count(applied, "questions", "updated")).isEqualTo(1);
+        assertThat(count(applied, "questions", "created")).isEqualTo(2);
+        assertThat(count(applied, "questions", "skipped")).isEqualTo(3);
+        assertThat(problems(applied)).anyMatch(p -> p.contains("already holds 100 questions"));
+        assertThat(questionRecords()).hasSize(100);
+    }
+
+    /** S4b-BL-90b: a merge cannot take the criteria past 40, the ten built-ins included; a built-in key adds none. */
+    @Test
+    void aMergedImportStaysWithinFortyCriteria() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var house = houseRow(UUID.randomUUID(), "Fine", now);
+        var first = new StringBuilder();
+        for (int i = 0; i < 28; i++) {
+            if (i > 0) first.append(",");
+            first.append(criterionRow("c_" + String.format("%08x", i), "Criterion " + i, 2, false, 3, i, now));
+        }
+        assertThat(count(postImport(backupWithCriteria(backup(house, ""), first.toString()), false), "criteria", "created"))
+                .isEqualTo(28);
+        var second = new StringBuilder("{\"key\":\"water\",\"weight\":3,\"mustHave\":true,\"minScore\":4,\"sort\":0,"
+                + "\"updatedAt\":" + now.toEpochMilli() + "}");
+        for (int i = 100; i < 104; i++) {
+            second.append(",").append(criterionRow("c_" + String.format("%08x", i), "Criterion " + i, 2, false, 3, i, now));
+        }
+        var applied = postImport(backupWithCriteria(backup("", ""), second.toString()), false);
+        // 10 built-ins + 28 here leave room for two custom ones; water is a built-in and always goes.
+        assertThat(count(applied, "criteria", "created")).isEqualTo(3);
+        assertThat(count(applied, "criteria", "skipped")).isEqualTo(2);
+        assertThat(problems(applied)).anyMatch(p -> p.contains("already 40 criteria"));
+        assertThat(criterionRecords()).hasSize(28 + 3);
+    }
+
     /** Questions are records of type question: merged by id, last write wins, exported back as /2 in payload order. */
     @Test
     void questionsImportMergeByIdLastWriteWinsAndExportBack() throws JSONException {

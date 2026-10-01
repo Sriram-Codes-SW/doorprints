@@ -210,7 +210,9 @@ public class BackupService {
         for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
 
         // Criteria and preferences (slice 2) merge after brokers.
-        var liveCriteria = new long[]{records.countByKeyTypeAndDeletedFalse(BackupCriterion.TYPE)};
+        // Counted as the apps count them (S4b-BL-90b): the ten built-ins always, plus the live custom ones.
+        var liveCriteria = new long[]{BackupCriterion.BUILT_IN_KEYS.size() + records.findByKeyTypeAndDeletedFalse(
+                BackupCriterion.TYPE).stream().filter(r -> !BackupCriterion.BUILT_IN_KEYS.contains(r.getKey().id())).count()};
         var criterionTally = new Tally();
         for (var row : data.criteria()) criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems));
 
@@ -418,11 +420,12 @@ public class BackupService {
         var existing = records.findById(key).orElse(null);
         var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
-        var becomesLive = existing == null || existing.isDeleted();
+        // A built-in key never adds one; a custom key that becomes live stays within the apps' 40 (S4b-BL-90b).
+        var becomesLive = (existing == null || existing.isDeleted()) && !BackupCriterion.BUILT_IN_KEYS.contains(row.key());
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("criterion " + row.key() + ": skipped, this server holds the most criteria it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            if (liveCount[0] >= BackupCriterion.MAX) {
+                problems.add("criterion " + row.key() + ": skipped, there are already " + BackupCriterion.MAX
+                        + " criteria, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -482,9 +485,10 @@ public class BackupService {
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
         var becomesLive = existing == null || existing.isDeleted();
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("question " + row.id() + ": skipped, this server holds the most questions it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            // The bank's 100 (the apps' cap, S4b-BL-90b), counting what is here and what this file added before.
+            if (liveCount[0] >= BackupQuestion.MAX) {
+                problems.add("question " + row.id() + ": skipped, the question bank already holds " + BackupQuestion.MAX
+                        + " questions, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -815,8 +819,7 @@ public class BackupService {
 
     private void validateCriteria(List<BackupCriterion> rows, List<String> problems) {
         var seen = new HashSet<String>();
-        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
-                "maintenance", "neighbourhood", "commute");
+        var builtInKeys = BackupCriterion.BUILT_IN_KEYS;
         for (int i = 0; i < rows.size(); i++) {
             var row = rows.get(i);
             var at = "criteria[" + i + "]";
