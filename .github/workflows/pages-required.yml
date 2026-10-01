@@ -23,6 +23,7 @@ on:
   pull_request:
     paths-ignore:
       - "guide/**"
+      - "android/app/src/test/screenshots/**"
       - ".github/workflows/pages.yml"
 
 permissions: {}

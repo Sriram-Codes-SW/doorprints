@@ -28,6 +28,8 @@ on:
       - "android/**"
       - "docs/schemas/**"
       - "web/public/geo/**"
+      - "docs/ai/evals/parity-vectors.json"
+      - "web/src/app/core/ai/parity-vectors.json"
       - ".github/workflows/android.yml"
 
 permissions: {}

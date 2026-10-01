@@ -483,6 +483,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Changed
 
+- **CI runs the tests that read a changed shared file** (S4b-BL-105): the web workflow also runs on `docs/schemas/**`, the Android workflow on the two AI test-vector files, and the guide's always-report twin mirrors its workflow again; `tools/check.sh` picks its local areas from the same paths and `--print-areas` shows them for a list of changed files.
 - **Readable copies show times in UTC on Android and iPhone too**, as the website's always did; the cover says so (S4b-BL-92c).
 - **With the app lock on, Hunt mode's alerts show nothing on the phone's locked screen** (S4b-BL-68).
 - **Importing keeps to the limits**: at most 100 questions and 40 criteria after a merge (S4b-BL-90b); undoing an import made as copies also removes the brokers, viewings, questions and criteria it added (S4b-BL-92e).
