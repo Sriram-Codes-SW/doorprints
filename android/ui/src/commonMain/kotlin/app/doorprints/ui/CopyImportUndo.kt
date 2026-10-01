@@ -16,14 +16,17 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package app.doorprints.export
+package app.doorprints.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import app.doorprints.DoorprintsApp
+import app.doorprints.data.Repository
 import app.doorprints.data.ResultScreen
+import app.doorprints.export.CopyRecord
+import app.doorprints.export.CopyUndoOutcome
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -35,19 +38,29 @@ import kotlinx.coroutines.withContext
  * of copies, which is exactly where they decide to undo, so the undo has to work from there too, and both screens must
  * see the same run being undone and the same outcome.
  *
- * The undo runs in the application's scope, so leaving a screen does not cut it short, and its state is Compose
- * snapshot state held for the life of the process: [undoingRun] while it writes, then [outcome]. Whichever screen is
- * showing when it ends reads the outcome; nothing is delivered only to a ViewModel that has been cleared meanwhile.
+ * The undo runs in [scope] (the application's), so leaving a screen does not cut it short, and its state is Compose
+ * snapshot state held for the life of the one instance the platform keeps per process (Android: `AndroidAppServices`,
+ * in the app's container): [undoingRun] while it writes, then [outcome]. Whichever screen is showing when it ends reads
+ * the outcome; nothing is delivered only to a ViewModel that has been cleared meanwhile.
  *
- * What it does, in order: `Repository.undoCopyImport` (one transaction; every keep-or-remove rule is [CopyUndo]'s),
- * then the record goes — deleted when every house went, or replaced by [CopyRecord.keptOnly] when some houses were kept
- * because they had been edited since, so those can still be found behind the "Just imported" chip — and the import's
- * result is marked closed, so a later visit to the Import screen does not show "Added 40 houses" for houses that are
- * gone. A failure has rolled everything back; the record stays and the undo can be tried again.
+ * What it does, in order: `Repository.undoCopyImport` (one transaction; every keep-or-remove rule is `CopyUndo`'s),
+ * then the record goes — [deleteRecord] when every house went, or [saveRecord] with [CopyRecord.keptOnly] when some
+ * houses were kept because they had been edited since, so those can still be found behind the "Just imported" chip —
+ * and the import's result is marked closed, so a later visit to the Import screen does not show "Added 40 houses" for
+ * houses that are gone. A failure has rolled everything back; the record stays and the undo can be tried again. The
+ * record files are the platform's (Android: `ImportUndo`).
  *
- * [start] is called on the main thread (from a tap), which is what keeps two undos from running at once.
+ * [start] is called on the main thread (from a tap), which is what keeps two undos from running at once. Common since
+ * S4b-BL-106 (was `:app`'s `CopyImportUndo` object).
  */
-object CopyImportUndo {
+class CopyImportUndo(
+    private val scope: CoroutineScope,
+    private val repository: Repository,
+    /** Writes [CopyRecord] over the run's record; false when it could not be written. */
+    private val saveRecord: (CopyRecord) -> Boolean,
+    /** Deletes the record of a run id. */
+    private val deleteRecord: (String) -> Unit,
+) {
 
     /** The run whose copies are being removed right now, or null. */
     var undoingRun by mutableStateOf<String?>(null)
@@ -61,19 +74,18 @@ object CopyImportUndo {
      * Starts undoing [record]. Returns false, and does nothing, while another undo is running or when the record is
      * what an earlier undo left behind ([CopyRecord.undone]).
      */
-    fun start(app: DoorprintsApp, record: CopyRecord): Boolean {
+    fun start(record: CopyRecord): Boolean {
         if (undoingRun != null || record.undone) return false
         undoingRun = record.runId
-        app.appScope.launch {
+        scope.launch {
             var result = CopyUndoOutcome(record.runId, 0, 0, failed = true)
             try {
-                val repository = app.container.repository
                 val done = repository.undoCopyImport(record.houses, record.visits, record.photos, record.records)
                 if (done.keptHouses.isEmpty()) {
-                    ImportUndo.delete(app, record.runId)
-                } else if (!ImportUndo.save(app, record.keptOnly(done.keptHouses))) {
+                    deleteRecord(record.runId)
+                } else if (!saveRecord(record.keptOnly(done.keptHouses))) {
                     // The kept houses cannot be pointed at any more; the record must not offer the undo again.
-                    ImportUndo.delete(app, record.runId)
+                    deleteRecord(record.runId)
                 }
                 runCatching { repository.settings.markResultDismissed(ResultScreen.IMPORT, record.runId) }
                 result = CopyUndoOutcome(record.runId, done.removed, done.kept)
@@ -83,7 +95,7 @@ object CopyImportUndo {
                 // One transaction: a failure has rolled everything back, and the undo can be tried again.
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
-                    outcome = result.copy(finishedAt = System.currentTimeMillis())
+                    outcome = result.copy(finishedAt = nowMillis())
                     undoingRun = null
                 }
             }

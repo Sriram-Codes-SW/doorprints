@@ -53,67 +53,17 @@
     <string name="notif_channel_export">సేవ్ చేయడం, దిగుమతి</string>
     <string name="notif_channel_export_desc">కాపీ సేవ్ అవుతున్నప్పుడు లేదా బ్యాకప్ చదువుతున్నప్పుడు కనిపిస్తుంది</string>
     <string name="export_share">షేర్ చేయండి</string>
-    <string name="export_working">మీ కాపీ సేవ్ అవుతోంది…</string>
-    <string name="export_done">సేవ్ అయింది: %1$s</string>
-    <string name="export_failed">కాపీ సేవ్ చేయలేకపోయాం: %1$s</string>
-    <string name="export_stop">ఆపండి</string>
-    <string name="export_problem_no_space">తగినంత ఖాళీ స్థలం లేదు</string>
-    <string name="export_problem_cannot_write">ఎంచుకున్న ఫైల్ లేదా ఫోల్డర్‌లో రాయలేకపోయాం</string>
-    <string name="export_problem_unknown">రాస్తున్నప్పుడు ఏదో తప్పు జరిగింది</string>
-    <string name="auto_backup_working">మీ ఇళ్ల బ్యాకప్ జరుగుతోంది…</string>
-    <string name="import_working">దిగుమతి అవుతోంది…</string>
-    <string name="import_write_failed">దిగుమతి మధ్యలో ఆగిపోయింది — కొన్ని అంశాలు ఇప్పటికే జోడించబడి ఉండవచ్చు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, పూర్తి చేయడానికి అదే ఫైల్‌ను మళ్లీ దిగుమతి చేయండి.</string>
-    <string name="import_failed">ఈ ఫైల్‌ను దిగుమతి చేయలేం: %1$s</string>
-    <string name="problem_not_a_backup">ఇది Doorprints బ్యాకప్ కాదు</string>
     <!-- S4b-BL-72 (2026-09-30): under review (problem_unsupported now says to update the app). -->
-    <string name="problem_unsupported">ఇది Doorprints కొత్త వెర్షన్‌తో తయారైంది; దీన్ని దిగుమతి చేయడానికి Doorprints‌ను అప్‌డేట్ చేయండి</string>
-    <string name="problem_too_many">ఇందులో చాలా ఎక్కువ ఫైళ్లు ఉన్నాయి</string>
-    <string name="problem_too_large">ఇది చాలా పెద్దది</string>
-    <string name="problem_suspicious">ఇందులో సురక్షితం కాని ఫైల్ పేరు ఉంది</string>
-    <string name="problem_checksum">ఇది పాడైంది: చెక్‌సమ్ సరిపోలలేదు</string>
-    <string name="problem_broken">దీని డేటాను చదవలేకపోయాం</string>
-    <string name="problem_read_failed">దీన్ని స్టోరేజ్ నుండి చదవలేకపోయాం</string>
-    <string name="problem_write_failed">రాయలేకపోయాం — ఖాళీ స్థలం చూడండి</string>
     <string name="export_open">తెరవండి</string>
-    <string name="export_ready">పంచుకోవడానికి సిద్ధం: %1$s</string>
-    <string name="export_done_plain">సేవ్ అయింది.</string>
     <string name="export_notif_saved">మీ కాపీ సేవ్ అయింది</string>
     <string name="export_notif_ready">మీ కాపీ పంచుకోవడానికి సిద్ధంగా ఉంది</string>
     <string name="export_notif_failed">కాపీని సేవ్ చేయలేకపోయాం</string>
     <string name="import_notif_done">బ్యాకప్ దిగుమతి అయింది</string>
     <string name="import_notif_failed">బ్యాకప్‌ను దిగుమతి చేయలేకపోయాం</string>
-    <string name="import_write_failed_copy">దిగుమతి పూర్తి కాలేదు, కాబట్టి ఏదీ జోడించబడలేదు. ఫోన్‌లో ఖాళీ స్థలం ఉందో లేదో చూసి, మళ్లీ ప్రయత్నించండి.</string>
     <string name="auto_backup_stopped_title">ఆటోమేటిక్ బ్యాకప్ ఆగిపోయింది</string>
     <string name="auto_backup_stopped_text">ఆ ఫోల్డర్ ఇప్పుడు అందుబాటులో లేదు. మళ్లీ ఎంచుకోవడానికి నొక్కండి.</string>
     <string name="auto_backup_failed_title">ఆటోమేటిక్ బ్యాకప్ పని చేయలేదు</string>
-    <plurals name="count_houses">
-        <item quantity="one">%d ఇల్లు</item>
-        <item quantity="other">%d ఇళ్లు</item>
-    </plurals>
-    <plurals name="count_visits">
-        <item quantity="one">%d సందర్శన</item>
-        <item quantity="other">%d సందర్శనలు</item>
-    </plurals>
-    <plurals name="count_photos">
-        <item quantity="one">%d ఫోటో</item>
-        <item quantity="other">%d ఫోటోలు</item>
-    </plurals>
-    <string name="import_added">జోడించినవి: %1$s.</string>
-    <string name="import_updated">నవీకరించినవి: %1$s.</string>
-    <string name="import_done_nothing">దిగుమతి పూర్తయింది. ఏదీ జోడించాల్సిన లేదా నవీకరించాల్సిన అవసరం లేదు.</string>
-    <string name="import_list_two">%1$s, %2$s</string>
-    <string name="import_list_three">%1$s, %2$s, %3$s</string>
-    <string name="import_list_middle">%1$s, %2$s</string>
-    <string name="export_done_in">%1$sలో సేవ్ అయింది: %2$s</string>
-    <string name="export_done_partial">పాక్షిక బ్యాకప్ సేవ్ అయింది: %1$s</string>
-    <string name="export_done_partial_in">%1$sలో పాక్షిక బ్యాకప్ సేవ్ అయింది: %2$s</string>
-    <string name="export_done_partial_plain">పాక్షిక బ్యాకప్ సేవ్ అయింది.</string>
-    <string name="export_ready_partial">పాక్షిక బ్యాకప్ పంచుకోవడానికి సిద్ధం: %1$s</string>
     <string name="export_location_downloads">డౌన్‌లోడ్‌లు</string>
-    <plurals name="import_restored_result">
-        <item quantity="one">%1$d ఇల్లు తిరిగి తీసుకురాబడింది.</item>
-        <item quantity="other">%1$d ఇళ్లు తిరిగి తీసుకురాబడ్డాయి.</item>
-    </plurals>
     <string name="price_per_month">%1$s/నెల</string>
     <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
     <string name="notif_channel_viewings">పరిశీలన రిమైండర్‌లు</string>

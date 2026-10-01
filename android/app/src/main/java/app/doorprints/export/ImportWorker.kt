@@ -22,7 +22,6 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
-import androidx.annotation.StringRes
 import androidx.work.*
 import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
@@ -30,13 +29,19 @@ import app.doorprints.R
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.ImportMode
-import app.doorprints.ui.joinList
+import app.doorprints.ui.importWriteFailedResource
+import app.doorprints.ui.importedSentence
+import app.doorprints.ui.messageResource
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.import_failed
+import app.doorprints.ui.res.import_working
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import org.jetbrains.compose.resources.getString
 import java.io.File
 import java.util.UUID
 
@@ -127,8 +132,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     val notified = ScreenWatch.importScreen || Notifications.result(
                         localised, Notifications.IMPORT_DONE_ID,
                         localised.getString(R.string.import_notif_done),
-                        importedText(
-                            localised, result.houses, result.visits, result.photos,
+                        importedSentence(
+                            result.houses, result.visits, result.photos,
                             result.updatedHouses, result.updatedVisits, result.restoredHouses,
                         ),
                         Notifications.openScreenIntent(localised, Notifications.SCREEN_IMPORT),
@@ -177,23 +182,23 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
      * A failure nobody saw on screen is posted, with the same translated reason the screen would show. Returns
      * whether anyone was told: the screen was showing, or the notification was really posted.
      */
-    private fun notifyIfUnseen(context: Context, problem: BackupProblem, mode: ImportMode? = null): Boolean {
+    private suspend fun notifyIfUnseen(context: Context, problem: BackupProblem, mode: ImportMode? = null): Boolean {
         if (ScreenWatch.importScreen) return true
         return Notifications.result(
             context, Notifications.IMPORT_DONE_ID,
             context.getString(R.string.import_notif_failed),
             if (problem == BackupProblem.WRITE_FAILED) {
-                context.getString(writeFailedRes(mode))
+                getString(importWriteFailedResource(mode))
             } else {
-                context.getString(R.string.import_failed, context.getString(problem.messageRes()))
+                getString(Res.string.import_failed, getString(problem.messageResource))
             },
             Notifications.openScreenIntent(context, Notifications.SCREEN_IMPORT),
         )
     }
 
-    private fun foregroundInfo(context: Context, done: Int, total: Int): ForegroundInfo {
+    private suspend fun foregroundInfo(context: Context, done: Int, total: Int): ForegroundInfo {
         val notification = Notifications.progress(
-            context, context.getString(R.string.import_working), done, total,
+            context, getString(Res.string.import_working), done, total,
             tap = Notifications.openScreenIntent(context, Notifications.SCREEN_IMPORT),
             stop = WorkManager.getInstance(context).createCancelPendingIntent(id),
         )
@@ -259,54 +264,6 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
         }
 
-        /**
-         * "Added 2 houses and 20 photos. Updated 3 houses.", in the app's language, for the notification (the Import
-         * screen's copy is `importedText` in `:ui`, CMP-6; UX review, 2026-09-22). Built from the non-zero parts only, so it never says "0 houses", and
-         * in the preview's own words: a merge's rows that replaced one on the phone are *updated*, not "imported".
-         * [houses] and [visits] are everything written; [updatedHouses] and [updatedVisits] the part of them that
-         * were updates; [restoredHouses] the part of [houses] that were deleted on this phone and are back ("Brought
-         * back 3 houses.", UX review round 11).
-         */
-        fun importedText(
-            context: Context,
-            houses: Int,
-            visits: Int,
-            photos: Int,
-            updatedHouses: Int = 0,
-            updatedVisits: Int = 0,
-            restoredHouses: Int = 0,
-        ): String {
-            val r = context.resources
-            fun parts(vararg counts: Pair<Int, Int>): List<String> =
-                counts.filter { it.second > 0 }.map { (plural, n) -> r.getQuantityString(plural, n, n) }
-            val added = parts(
-                R.plurals.count_houses to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
-                R.plurals.count_visits to (visits - updatedVisits).coerceAtLeast(0),
-                R.plurals.count_photos to photos,
-            )
-            val updated = parts(R.plurals.count_houses to updatedHouses, R.plurals.count_visits to updatedVisits)
-            val sentences = buildList {
-                if (restoredHouses > 0) {
-                    add(r.getQuantityString(R.plurals.import_restored_result, restoredHouses, restoredHouses))
-                }
-                if (added.isNotEmpty()) add(context.getString(R.string.import_added, joined(context, added)))
-                if (updated.isNotEmpty()) add(context.getString(R.string.import_updated, joined(context, updated)))
-            }
-            return if (sentences.isEmpty()) context.getString(R.string.import_done_nothing) else sentences.joinToString(" ")
-        }
-
-        /**
-         * "a", "a and b", "a, b and c", "a, b, c and d", … with each language's own list pattern, for the
-         * notification's sentence. Any number of items ([joinList], common since CMP-6; the screens use `joinedList`
-         * with the same patterns as Compose resources).
-         */
-        fun joined(context: Context, items: List<String>): String = joinList(
-            items,
-            two = { a, b -> context.getString(R.string.import_list_two, a, b) },
-            three = { a, b, c -> context.getString(R.string.import_list_three, a, b, c) },
-            middle = { a, b -> context.getString(R.string.import_list_middle, a, b) },
-        )
-
         /** Prefix of the tag that records a run's [ImportMode]; tags survive a cancelled run, output data does not. */
         private const val MODE_TAG = "import-mode:"
 
@@ -318,16 +275,6 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             if (!tag.startsWith(MODE_TAG)) return@firstNotNullOfOrNull null
             ImportMode.entries.firstOrNull { it.name == tag.removePrefix(MODE_TAG) }
         }
-
-        /**
-         * "The import stopped part-way": a merge says what finishes it (importing the same file again, which is
-         * idempotent); a copy says nothing was added, because it is rolled back — and never tells the user to import
-         * again "to finish", which would add every house a second time. A run of unknown mode (started before this
-         * tag existed) gets the merge text, as before. The notification's; the screen's is `importWriteFailedResource`.
-         */
-        @StringRes
-        fun writeFailedRes(mode: ImportMode?): Int =
-            if (mode == ImportMode.COPY) R.string.import_write_failed_copy else R.string.import_write_failed
 
         fun observe(context: Context): Flow<List<WorkInfo>> =
             WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(WORK_NAME)

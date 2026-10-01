@@ -31,6 +31,10 @@ import app.doorprints.data.AppSettings
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.ExportFormat
 import app.doorprints.shared.export.PhotoScope
+import app.doorprints.ui.messageResource
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.auto_backup_working
+import app.doorprints.ui.res.export_failed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -38,6 +42,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.getString
 import java.io.BufferedOutputStream
 import java.util.concurrent.TimeUnit
 
@@ -216,7 +221,7 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
                         localised,
                         localised.getString(R.string.auto_backup_failed_title),
                         // A whole sentence, as ExportWorker's notification: the bare reason is a lowercase fragment.
-                        localised.getString(R.string.export_failed, localised.getString(problem.messageRes())),
+                        getString(Res.string.export_failed, getString(problem.messageResource)),
                     )
                 }
                 Result.failure()
@@ -238,9 +243,9 @@ class AutoBackupWorker(context: Context, params: WorkerParameters) : CoroutineWo
         withContext(NonCancellable + Dispatchers.IO) { Saf.delete(applicationContext, document) }
     }
 
-    private fun foregroundInfo(context: Context, done: Int, total: Int, manual: Boolean): ForegroundInfo {
+    private suspend fun foregroundInfo(context: Context, done: Int, total: Int, manual: Boolean): ForegroundInfo {
         val notification = Notifications.progress(
-            context, context.getString(R.string.auto_backup_working), done, total,
+            context, getString(Res.string.auto_backup_working), done, total,
             tap = Notifications.openScreenIntent(context, Notifications.SCREEN_SETTINGS),
             // Only for "Back up now": cancelling the weekly run by id would cancel the whole schedule.
             stop = if (manual) WorkManager.getInstance(context).createCancelPendingIntent(id) else null,

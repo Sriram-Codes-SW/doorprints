@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.67 |
+| Version | 0.68 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -70,6 +70,7 @@
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
 | 0.66 | 2026-10-01 | Claude (Code), lead | S4b-BL-103 (branch `test/followup-gaps`): 06 v0.93 (TC-U-119, TC-U-120, TC-U-121), 10 v0.117 (S4b-BL-103 done; S4b-BL-90d, -92f, -93e tested). |
 | 0.67 | 2026-10-01 | Claude (Code), lead | S4b-BL-108 (branch `feat/web-open-backup-file-handler`): 06 v0.94 (TC-U-122, TC-M-45), 10 v0.118 (S4b-BL-108 done in code), 11 v0.54 (5.2, 5.28: the website's file handler). |
+| 0.68 | 2026-10-01 | Claude (Code), lead | S4b-BL-106 (branch `refactor/app-to-shared-s4b-bl-106`): 06 v0.95 (TC-U-47, TC-U-52, TC-U-59), 10 v0.119 (S4b-BL-106 and S4b-BL-76 done in code, S4b-BL-41 nearer). |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |
 | 0.63 | 2026-10-01 | Claude (Code), Docs team | The guide's *Compare and plan* page, in four languages, names Not chosen as well as Rejected houses as left out of Compare and Plan visits, and how to bring one back (10 v0.113). |
