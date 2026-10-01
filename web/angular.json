@@ -18,6 +18,7 @@
             "outputPath": "dist/web",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "externalDependencies": ["./maplibre-gl-shared.mjs"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -27,12 +28,12 @@
               {
                 "glob": "maplibre-gl-worker.mjs",
                 "input": "node_modules/maplibre-gl/dist",
-                "output": "maplibre"
+                "output": "/"
               },
               {
                 "glob": "maplibre-gl-shared.mjs",
                 "input": "node_modules/maplibre-gl/dist",
-                "output": "maplibre"
+                "output": "/"
               }
             ],
             "styles": [

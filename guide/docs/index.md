@@ -38,3 +38,6 @@ What each one can do ("offline" means without internet; "AI" means the computer 
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | No |
 | Ask and Plan visits (AI) | Only with [your own server](set-up-a-server.md) with AI turned on | Same | Same |
 | Works offline | Yes, after the first visit | Yes | Yes |
+
+On the phones, **Help** in **Settings**, under **About**, opens this guide in the app's language. The website has a
+**Help** link too, at the top and on **Your data**.

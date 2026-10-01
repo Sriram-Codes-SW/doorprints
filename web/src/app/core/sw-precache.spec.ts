@@ -52,8 +52,8 @@ describe('service worker precache stamp', () => {
     'polyfills-QWER7890.js',
     'styles-ZXCV4567.css',
     'chunk-AB_cd-12.js',
-    'maplibre/maplibre-gl-worker.mjs',
-    'maplibre/maplibre-gl-shared.mjs',
+    'maplibre-gl-worker.mjs',
+    'maplibre-gl-shared.mjs',
     'manifest.webmanifest',
     'favicon.svg',
     'icons/icon-192.png',
@@ -74,8 +74,8 @@ describe('service worker precache stamp', () => {
         'index.html',
         'main-ABCD2345.js',
         'manifest.webmanifest',
-        'maplibre/maplibre-gl-shared.mjs',
-        'maplibre/maplibre-gl-worker.mjs',
+        'maplibre-gl-shared.mjs',
+        'maplibre-gl-worker.mjs',
         'media/font-ABCDEFGH.woff2',
         'polyfills-QWER7890.js',
         'styles-ZXCV4567.css',
@@ -127,7 +127,7 @@ describe('service worker precache stamp', () => {
       // A maplibre-gl bump replaces maplibre/maplibre-gl-worker.mjs in place: same path, new digest. That alone
       // has to give a new worker and a new cache, or a new main bundle meets last month's cached map worker.
       const bumped = entries.map((e) =>
-        e.path === 'maplibre/maplibre-gl-worker.mjs' ? { ...e, digest: 'sha256-of-the-new-worker' } : e,
+        e.path === 'maplibre-gl-worker.mjs' ? { ...e, digest: 'sha256-of-the-new-worker' } : e,
       );
       expect(buildId(bumped)).not.toBe(buildId(entries));
     });
@@ -148,7 +148,7 @@ describe('service worker precache stamp', () => {
     };
 
     it('writes the id and the list in as JavaScript the worker can run', () => {
-      const precache = ['index.html', 'main-ABCD2345.js', 'maplibre/maplibre-gl-worker.mjs'];
+      const precache = ['index.html', 'main-ABCD2345.js', 'maplibre-gl-worker.mjs'];
       const stamped = stampServiceWorker(template, { id: '0123456789abcdef', precache });
       expect(read(stamped)).toEqual({ BUILD: '0123456789abcdef', PRECACHE: precache });
       // Unstamped, the template is valid JavaScript too — that is what `ng serve` serves — with an empty list.
@@ -277,7 +277,7 @@ describe('service worker precache stamp', () => {
     });
 
     it("does not insist on a script type, so a host's odd type for .mjs or none at all still installs", () => {
-      expect(isAcceptable('maplibre/maplibre-gl-worker.mjs', false, answer(200, 'application/octet-stream'))).toBe(true);
+      expect(isAcceptable('maplibre-gl-worker.mjs', false, answer(200, 'application/octet-stream'))).toBe(true);
       expect(isAcceptable('icons/icon-192.png', false, answer(200, null))).toBe(true);
       // web/firebase.json types .geojson explicitly; any non-HTML type would do.
       expect(isAcceptable('geo/in-boundaries.geojson', false, answer(200, 'application/geo+json'))).toBe(true);

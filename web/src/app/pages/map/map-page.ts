@@ -75,6 +75,8 @@ import {
   timeOf,
 } from './map-list';
 import { ListReturn } from './list-return';
+import { OfflineSave } from './offline-save';
+import type { GeoBounds } from '../../offline/offline-tiles';
 import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
 import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
@@ -114,7 +116,7 @@ let fittedThisSession = false;
 
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe],
+  imports: [RouterLink, TPipe, OfflineSave],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
   host: { '(document:keydown.escape)': 'onEscape()' },
@@ -625,6 +627,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected fitAll(): void {
     this.fitToHouses(this.items().map((i) => i.house));
   }
+
+  /** The box on the map's screen now, for *Save this area for offline* (S4b-BL-79); null before the map exists. */
+  protected readonly currentBounds = (): GeoBounds | null => {
+    const b = this.map?.getBounds();
+    return b ? { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() } : null;
+  };
 
   /** "Try again" on the offline overlay: request the map style now rather than waiting for the `online` event. */
   protected retryMap(): void {
