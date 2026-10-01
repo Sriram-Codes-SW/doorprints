@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.6 |
+| Version | 0.7 |
 | Date | 2026-10-01 |
 | Author | Claude (Code), lead |
 | Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.7 | 2026-10-01 | Claude (Code), lead | An AI search answer the owner pasted (answers to the four follow-up questions, with six references) was checked against its sources: the new subsection *What the Survey of India's own documents say (checked 2026-10-01)*. Its conclusions stay unconfirmed; the follow-up letter stays worth sending and now offers two wordings for the acknowledgement and names the Boundary Verification Wing. |
 | 0.6 | 2026-10-01 | Claude (Code), lead | Owner supplied the DST guidelines PDF ("Final Approved Guidelines on Geospatial Data", authority F.No.SM/25/02/2020 (Part-I), 15 February 2021, 5 pages) to help read the reply: new subsection *Reading the reply against the 2021 guidelines*; P2 now says what that PDF does and does not settle. |
 | 0.5 | 2026-10-01 | Claude (Code), lead | **The reply came** (owner message of 2026-10-01; Gmail thread "Re: Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source app", from `mtr.soi@gov.in`, 2026-10-01 04:44 UTC, copied to the NGDC, NGDR & UGI Directorate): the conditions, what they change in the build, and the plan P0..P6 (new section *The reply and the plan*, with a follow-up letter to send). |
 | 0.4 | 2026-09-29 | Claude (Code), lead | **Sent** by the owner (2026-09-28 22:11 UTC) to `mtr.soi@gov.in` with `map_india_z4.png`, `map_kashmir_z6.png` and `map_arunachal_z7.png` attached (checked in the owner's Sent folder). The two links show the right addresses as text; their targets still pass through Google's redirect (the connector's wrapping), which after about a day shows Google's redirect notice before the site. No follow-up needed for that. |
@@ -116,6 +117,31 @@ Read next to the reply it says:
 
 Other clauses that were checked for this use and need no action: the accuracy thresholds in 8(iv)(a) (1 metre horizontal) matter only for data *finer* than the threshold (8(vii), (viii), (ix): Indian entities, storage in India); the 1:1M boundary database is far coarser, so none of that applies, but the app must not claim finer accuracy for the line. 8(iii) and its Explanation: there is "no negative list of prohibited areas"; a negative list of sensitive *attributes* may be notified by DST, so P2 also checks DST's site for it before release. 8(ii)(1) names self-certification, which is [03](../03-design.md) §11.1. Violations are "dealt with under the applicable laws" (8(xv)), and the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's maps) still applies, as ADR-22 says.
 
+### What the Survey of India's own documents say (checked 2026-10-01, from the sources themselves)
+
+An AI search answer the owner pasted gave "yes" to questions 1-3 of the follow-up letter and a fixed acknowledgement
+wording, citing six pages. Reading those pages: **its conclusions may be right, but the sources do not say what it says
+they say, and the wording is not from any of them.** Do not rely on it; the letter's questions stay open until the
+Survey of India answers.
+
+| The answer's claim | What the cited source actually says |
+|---|---|
+| The SoI Digital Licence "strictly prohibits ... proscribed changes to boundaries" and altering geometric fidelity, so a lossless format change is fine (reference: `surveyofindia.gov.in/documents/digital-licence.pdf`) | The Licence (a 2007 form, "Digital Licence", 6 pages) defines **Proscribed Changes** as "changes in SOI mapping with regard to internal and external administrative boundaries and depiction of Vital Areas and Vital Points as intimated by MOD vide their letter No. 2(7)2003-D (GSIII) Vol.III dtd. 26th sept. 2005". It says nothing about file formats, compression or geometric fidelity. It is also a paid, signed licence for *internal business use* of licensed products that "specifically excludes commercial use", and its clause 3.2 lists, as needing "the prior written permission of SOI": "(iv) The incorporation of digital products in a third party product" and publication, which "includes sale or free distribution". The Survey of India's reply (2026-10-01) is what lifts that for the Administrative Boundary Database; the Licence does not. So questions 1-3 are *not* settled by it |
+| Using the India polygon as a read-only clipping mask is "standard practice and perfectly legal" (references 2, 3) | Nothing in the Licence or in reference 3 (it is the Survey of India's *Annual Report 2021-22*, 63 pages, which reprints the 2021 guidelines) mentions masks or clipping. The statement is the answer's own, not a quotation |
+| On-screen generalisation is fine (references 1, 4) | Reference 1 is the portal's page of the 2021 guidelines: clause 8(xiii) says "digital display and printing shall be permissible", nothing about generalisation. **Reference 4 is a 2020 TerrSet software manual from a US university** (`s45055.pcdn.co`, Clark Labs): irrelevant to Indian rules; do not cite it |
+| The "standard attribution required by the Government of India" is "© Survey of India, Government of India. All rights reserved." (reference 2) and an alternative "Administrative boundaries sourced from the SOI Online Maps Portal" (reference 5) | **Neither wording is in the sources.** The portal's *About* page (reference 5) has no attribution or copyright text, only "Content Owned & Maintained by Survey of India". The Licence's own notation (clause 6.3, for licensed copies) is: "Reproduced by permission of Surveyor General of India on behalf of the Government of India. All rights reserved. Govt. of India Licence number nnnnn." The portal footer reads "Copyright @ 2026 All rights reserved. Office of the Surveyor General of India", and the help page says "Maps published by Survey of India are under copyright act." |
+| A "formal boundary verification certificate" (reference 6) | The help page does not mention a certificate. It says "You may write to Incharge, Boundary Verification Wing (SGO), MA&DC Campus, Survey of India, Hathibarkala Estate, Dehradun, who will guide you further." That wing is the right place to ask about the correctness of how a boundary is depicted |
+
+What is real and useful: the Licence's definition of Proscribed Changes (changes to internal and external administrative
+boundaries are the thing the Survey of India guards), the 6.3 notation as a model for the acknowledgement, and the
+Boundary Verification Wing as a contact. The sentence "Others may publish such maps that adhere to these standards"
+(8(xiii)) remains the best available reading of "no alteration".
+
+**Acknowledgement wording to offer in the letter (question 4), until the Survey of India names one:** short form on the map
+"Boundary: Survey of India", and in About / `NOTICE` / README the fuller line "Boundaries: Survey of India, Administrative
+Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright Survey of India, Government of India." Both are
+ours, not the Survey of India's; the letter asks which it prefers (and offers the Licence 6.3 notation as the alternative).
+
 ### The plan
 
 | Step | Who | What | Done when |
@@ -149,8 +175,12 @@ code on all three stacks. P0 can happen any time, and P1-P2 need no code.
 >    alteration. Is that right?
 > 3. A map library draws the data at lower detail when the map is zoomed out (it does this on the screen only; the
 >    file is not changed). Is that acceptable?
-> 4. Is "Boundary: Survey of India" on the map and in the app's About page the acknowledgement you want, and should it
->    name the product (OVSF/1M/7) and the version or date of the data?
+> 4. Is "Boundary: Survey of India" on the map, with "Boundaries: Survey of India, Administrative Boundary Database
+>    (OVSF/1M/7), reproduced without alteration" in the app's About page, the acknowledgement you want? If you prefer
+>    another wording (for example the notation of clause 6.3 of your Digital Licence), please give it.
+>
+> (If more suitable, we would also be grateful to be pointed to the Boundary Verification Wing for any check of how the
+> boundary is shown.)
 >
 > Yours faithfully,
 > [name, address, phone, date]
