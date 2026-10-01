@@ -21,6 +21,27 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Import a backup from another app (S4b-BL-81, docs/11 5.28): "Open in Doorprints" for a backup or update ZIP, or
+	     the bare data.json of a server's export. Alternate: Doorprints is not the app for every ZIP. Not in place: iOS
+	     hands over a copy in Documents/Inbox, which the Import screen stages and then deletes. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Doorprints backup</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.json</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleLocalizations</key>

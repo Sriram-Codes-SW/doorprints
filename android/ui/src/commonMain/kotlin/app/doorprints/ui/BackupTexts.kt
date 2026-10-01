@@ -68,8 +68,11 @@ fun importWriteFailedResource(mode: ImportMode?): StringResource =
 fun importStoppedResource(mode: ImportMode?): StringResource =
     if (mode == ImportMode.COPY) Res.string.import_stopped_copy else Res.string.import_stopped
 
-/** True for a copy written into the app's cache for the share sheet rather than saved where the user chose. */
-fun isShareCopy(target: String): Boolean = !target.startsWith("content://")
+/**
+ * True for a copy written into the app's cache for the share sheet (a plain path) rather than saved where the user
+ * chose: Android's `content://` document, or the `file://` URL the iPhone's Files picker saved it to (S4b-BL-81).
+ */
+fun isShareCopy(target: String): Boolean = !target.startsWith("content://") && !target.startsWith("file://")
 
 /**
  * The success sentence of a finished export (UX review, round 11): "Saved to Download: Doorprints-2026-09-22.html"

@@ -25,8 +25,8 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationOpenSettingsURLString
 
 /**
- * [PlatformServices] on iOS (ADR-23 CMP-8b): VoiceOver, Core Location's authorization ([iosLocationAccess]) and
- * UIKit's `openURL` for the settings, the dialler and the browser. Holds nothing, so one instance serves the process
+ * [PlatformServices] on iOS (ADR-23 CMP-8b): VoiceOver, Core Location's authorization ([iosLocationAccess]),
+ * UIKit's `openURL` for the settings, the dialler and the browser, and the share sheet for a viewing's calendar file. Holds nothing, so one instance serves the process
  * ([MainViewController]). Called on the main thread, as UIKit needs.
  */
 class IosPlatformServices : PlatformServices {
@@ -76,6 +76,17 @@ class IosPlatformServices : PlatformServices {
 
     override fun hasScreenLock(): Boolean = iosHasScreenLock()
 
+    /** A viewing's `.ics` through the share sheet (S4b-BL-92a), where the person adds it to Calendar. */
+    override val canShareCalendarFile: Boolean get() = true
+
+    /** Written into `tmp/copies/calendar/` (files older than a day go first), then shared. */
+    override fun shareCalendarFile(fileName: String, ics: String): Boolean {
+        val folder = IosCopyFolders.calendar
+        IosCopyFolders.sweep(folder, DAY_MS)
+        val path = writeTextFile(folder, fileName.substringAfterLast('/'), ics) ?: return false
+        return IosSheets.share(NSURL.fileURLWithPath(path))
+    }
+
     /** iOS takes the app switcher's picture as the app resigns active; the app lock covers the app first. */
     override val coverWhenInactive: Boolean get() = true
 
@@ -85,5 +96,6 @@ class IosPlatformServices : PlatformServices {
 
     private companion object {
         const val KEY_LOCATION_ASKED = "locationAsked"
+        const val DAY_MS = 24 * 60 * 60 * 1000L
     }
 }

@@ -23,3 +23,6 @@
 
 /* S4b-BL-96, under review. */
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "మీరు సేవ్ చేసే ఇళ్ల స్థానాన్ని గుర్తించడానికి, మీరు ఉన్న చోటు నుండి సందర్శనల ప్రణాళిక వేయడానికి, హంట్ మోడ్ ఆన్‌లో ఉన్నప్పుడు సేవ్ చేసిన ఇంటి పక్కగా వెళ్తే మీకు చెప్పడానికి Doorprints మీ స్థానాన్ని ఉపయోగిస్తుంది. నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు ఆన్‌లో ఉంటే, మీ ప్రాంతాల్లో ఒకదానికి మీరు చేరినప్పుడు iOS Doorprints కు చెబుతుంది, అలా అది హంట్ మోడ్ సూచిస్తుంది. Doorprints లొకేషన్ చరిత్ర ఏదీ ఉంచదు.";
+
+/* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes), under review. */
+"Doorprints backup" = "Doorprints బ్యాకప్";
