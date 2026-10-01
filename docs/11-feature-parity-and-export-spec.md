@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.53 |
+| Version | 0.54 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -63,6 +63,7 @@
 | 0.49 | 2026-09-30 | Claude (Code), lead | **Slice 4b built** (the area wake-up on Android; [10](10-sprint-log.md) §13.28). The iPhone part (S4b-BL-96) follows. |
 | 0.50 | 2026-09-30 | Claude (Code), lead | **Slice 5 designed** (5.7 photo tags, 5.24 moving in: the statuses Taken and Not chosen, the move-in checklist and condition record, *Close this hunt*; [10](10-sprint-log.md) §13.29). |
 | 0.53 | 2026-10-01 | Claude (Code), lead | 5.24: the houses **in the running** (not Rejected, not Not chosen) are what Compare offers and a Plan visits, on the three stacks (S4b-BL-99 a); the website's copies label the move-in date *Move-in date* (S4b-BL-99 d). |
+| 0.54 | 2026-10-01 | Claude (Code), lead | 5.2 and 5.28: the installed website opens a Doorprints `.zip` from the system in *Import a backup* (`file_handlers`, Chromium on a computer; S4b-BL-108). |
 | 0.52 | 2026-10-01 | Claude (Code), lead | 5.6: the **Basement** switch under Floor and the import's tolerant reading of a floor out of range, with a warning in the preview (S4b-BL-104 c, d); search finds the floor in the app's language too (S4b-BL-104 b). |
 | 0.51 | 2026-10-01 | Claude (Code), lead | **The finishing batch built** (on stacked branches, [10](10-sprint-log.md) §13.29..§13.40): built notes for 5.2 (copies in UTC, the iPhone's copies and imports, the website's import), 5.6 (the floor, moving rooms), 5.7 (photo tags), 5.8 (the iPhone's calendar file, the reminder follow-ups), 5.17 and 5.18 (the iPhone wake-up), 5.19 (the emulator test, Hunt alerts with the app lock), 5.20 (offline maps on the website), 5.21 (the cost filters), 5.24 (moving in, the statuses Taken and Not chosen), 5.25 (the duplicate-flat warning), 5.28 (deletions in an update file, `/3`) and 5.29 (the locality lookup). |
 
@@ -264,7 +265,8 @@ and its goldens keep +05:30 to prove it), so one backup reads the same on every 
 another app, on common code (`Zip.kt`, `BackupArchive.kt`, `CopyWriter.kt`, `ArchiveImports.kt`; S4b-BL-81, compiled
 only). The website has *Import a backup* (S4b-BL-75): a Doorprints ZIP or the server's `.json`, the checks of
 docs/schemas §6 over the shared `import-vectors.json`, the preview, *Merge*, *Add everything as new copies*, *Keep
-mine*, and undo while the page is open. An import keeps to 100 questions and 40 criteria; the undo of a copy import
+mine*, and undo while the page is open. Installed on a computer (Chrome or Edge), the website also opens a
+Doorprints `.zip` double-clicked in the file manager straight in *Import a backup* (`file_handlers`, S4b-BL-108). An import keeps to 100 questions and 40 criteria; the undo of a copy import
 removes the houses, visits, photos, brokers, viewings, questions and criteria it created (not preferences, areas,
 places or notes).
 
@@ -908,7 +910,8 @@ it, with *Merge*: a live house here older than the delete is deleted as if by th
 house edited here after the delete, *Keep mine*, *Add as copies* and a backup restore leave it. The preview says
 "Houses deleted by the sender" (the sender's name is not in the file, S4b-BL-107). The server reads `/3` as a restore
 and ignores the list. The website now reads update files with its importer; the iPhone imports them from Files or
-another app (compiled only); neither shares updates yet, and the PWA's `file_handlers` is S4b-BL-108.
+another app (compiled only); neither shares updates yet. The installed website opens a `.zip` from the system
+in *Import a backup* (the manifest's `file_handlers` with `window.launchQueue`, Chromium on a computer only; S4b-BL-108).
 
 **Order of work.** (1) Android: the per-name bookkeeping, the "since" filter in `ExportBundle`, the manifest
 fields, the share sheet, the intent filter, the Import screen's "updates from" line; the readable copies unchanged.
