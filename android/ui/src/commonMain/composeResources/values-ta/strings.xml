@@ -1142,4 +1142,7 @@
     <string name="notif_area_wakeup">நீங்கள் %1$s இல் இருக்கிறீர்கள். தேடல் பயன்முறையைத் தொடங்கவா?</string>
     <!-- S4b-BL-81, copies on iPhone (2026-09-30): under review. -->
     <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown அல்லது முழுக் காப்புப்பிரதி</string>
+    <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
+    <string name="map_hunt_offer">தேடல் பயன்முறையைத் தொடங்கவா?</string>
+    <string name="map_hunt_offer_start">தேடல் பயன்முறையைத் தொடங்கு</string>
 </resources>

@@ -47,6 +47,7 @@ object ArchiveImports {
             localCriteria = local.criteria, localPreferences = local.preferences, localQuestions = local.questions,
             localViewings = local.viewings, localAreas = local.areas, localPlaces = local.places,
             localAreaNotes = local.areaNotes, localPhotoMeta = local.photoMeta,
+            liveQuestions = local.liveQuestions, liveCriteria = local.liveCriteria,
         )
         // Which houses a merge would replace, by name, for the Replace dialog (a merge's plan needs no new ids).
         val replaced = ImportPlan.plan(
@@ -106,6 +107,7 @@ object ArchiveImports {
             localPlaces = local.places,
             localAreaNotes = local.areaNotes,
             localPhotoMeta = local.photoMeta,
+            liveQuestions = local.liveQuestions, liveCriteria = local.liveCriteria,
         )
         return repository.applyImport(actions, onProgress) { entry -> archive.photoBytes(entry) }
     }

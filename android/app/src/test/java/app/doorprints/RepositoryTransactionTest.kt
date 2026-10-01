@@ -37,11 +37,16 @@ import app.doorprints.data.SettingsStore
 import app.doorprints.data.VisitEntity
 import app.doorprints.data.create
 import app.doorprints.data.withImmediateTransaction
+import app.doorprints.shared.export.ExportBroker
+import app.doorprints.shared.export.ExportCriterion
 import app.doorprints.shared.export.ExportHouse
 import app.doorprints.shared.export.ExportPhoto
+import app.doorprints.shared.export.ExportQuestion
+import app.doorprints.shared.export.ExportViewing
 import app.doorprints.shared.export.ExportVisit
 import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
+import app.doorprints.shared.model.Question
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -216,6 +221,41 @@ class RepositoryTransactionTest {
         assertEquals(Triple(setOf("c1", "c2"), setOf("cv1"), setOf("cp1")), ids(repo.localRows()))
         assertTrue(repo.photoFile("cp1").exists())
         assertEquals(setOf("c1", "c2"), result.copiedHouses.keys)
+    }
+
+    @Test
+    fun undoingACopyAlsoRemovesTheBrokersViewingsQuestionsAndCriteriaItCreated() = runBlocking {
+        // S4b-BL-92e, 90c. A question already here that the copy updates is not the copy's to remove.
+        val at = 1_760_000_000_000
+        repo.saveQuestion(Question("q_aaaaaaaa", "Mine?"))
+        val bank = ExportQuestion("q_aaaaaaaa", "Theirs?", "OTHER", "BOTH", false, 0, updatedAt = System.currentTimeMillis() + 1)
+        val base = copyActions()
+        val actions = base.copy(
+            houses = base.houses.map { if (it.id == "c1") it.copy(brokerId = "b_00000001") else it.copy(brokerId = "b_00000002") },
+            brokers = listOf(ExportBroker("b_00000001", "Ravi", updatedAt = at), ExportBroker("b_00000002", "Asha", updatedAt = at)),
+            viewings = listOf(ExportViewing("v_00000001", "c1", startsAt = at, updatedAt = at), ExportViewing("v_00000002", "c2", startsAt = at, updatedAt = at)),
+            questions = listOf(bank, ExportQuestion("q_bbbbbbbb", "Pets?", "RULES", "BOTH", false, 1, updatedAt = at),
+                ExportQuestion("q_cccccccc", "Lift?", "BUILDING", "BOTH", false, 2, updatedAt = at)),
+            criteria = listOf(ExportCriterion("c_11111111", "Pets", 2, false, 3, 10, updatedAt = at)),
+        )
+        val result = repo.applyImport(actions, photoBytes = photoBytes)
+        assertEquals(
+            setOf("broker/b_00000001", "broker/b_00000002", "viewing/v_00000001", "viewing/v_00000002", "question/q_bbbbbbbb",
+                "question/q_cccccccc", "criterion/c_11111111"),
+            result.copiedRecords.keys,
+        )
+        // Since then: house c2 was edited (so it stays with its broker and viewing), and question q_cccccccc too.
+        repo.saveHouse(checkNotNull(db.houses().get("c2")).copy(notes = "Edited"))
+        repo.saveQuestion(repo.questions().first { it.id == "q_cccccccc" }.copy(text = "Lift working?"))
+        val undo = repo.undoCopyImport(result.copiedHouses, result.copiedVisits, result.copiedPhotos, result.copiedRecords)
+        assertEquals(1, undo.removed)
+        fun live(type: String) = runBlocking { db.records().listByType(type).map { it.id }.toSet() }
+        assertEquals(setOf("b_00000002"), live("broker"))
+        assertEquals(setOf("v_00000002"), live("viewing"))
+        assertEquals(setOf("q_aaaaaaaa", "q_cccccccc"), live("question"))
+        assertEquals(emptySet<String>(), live("criterion"))
+        // The removals are tombstones that sync, as a house's.
+        assertTrue(checkNotNull(db.records().get("viewing", "v_00000001")).let { it.deleted && it.dirty })
     }
 
     @Test

@@ -558,7 +558,7 @@ fun ViewingFormScreen(
     val word = stringResource(Res.string.viewings_icsWord)
     // Slice 3b-2: the first save of a viewing with a reminder ahead asks for notifications (Android 13+, iOS), once
     // and never at start-up; whatever the answer, the viewing is already saved.
-    val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale)
+    val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale, forViewings = true)
     val remindOn by remember(repo) { repo.settings.viewingsRemind() }.collectAsStateWithLifecycle(initialValue = true)
     val huntRemindOn by remember(repo) { repo.settings.huntRemind() }.collectAsStateWithLifecycle(initialValue = true)
     val huntLead by remember(repo) { repo.settings.huntReminderMin() }.collectAsStateWithLifecycle(initialValue = HuntReminders.DEFAULT_LEAD)

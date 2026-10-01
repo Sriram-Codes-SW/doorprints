@@ -18,7 +18,10 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.Checklist
+import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.model.Question
 
 /** How an import treats rows that already exist (docs/11 section 5.2, "Import (exact round trip)"). */
 enum class ImportMode {
@@ -267,12 +270,15 @@ object ImportPlan {
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
         localPhotoMeta: Map<String, Long> = emptyMap(),
+        /** The live questions and custom criteria here, by id: a merge stays within the caps (S4b-BL-90b). */
+        liveQuestions: Set<String> = emptySet(),
+        liveCriteria: Set<String> = emptySet(),
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
-        val (newC, updC) = settingsCounts(data.criterionRows.map { it.key to it.updatedAt }, localCriteria, skipSettings)
+        val (newC, updC) = counts(criteriaWrites(data, localCriteria, skipSettings, liveCriteria).map { it.key }, localCriteria)
         val (newPr, updPr) = settingsCounts(data.preferenceRows.map { it.key to it.updatedAt }, localPreferences, skipSettings)
-        val (newQ, updQ) = settingsCounts(data.questionRows.map { it.id to it.updatedAt }, localQuestions, skipSettings)
+        val (newQ, updQ) = counts(questionWrites(data, localQuestions, skipSettings, liveQuestions).map { it.id }, localQuestions)
         // Viewings merge by id like the questions; a copy adds every one of them under a new id.
         val (newVw, updVw) = if (mode == ImportMode.COPY) data.viewingRows.size to 0 else
             settingsCounts(data.viewingRows.map { it.id to it.updatedAt }, localViewings, skipSettings)
@@ -471,11 +477,13 @@ object ImportPlan {
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
         localPhotoMeta: Map<String, Long> = emptyMap(),
+        liveQuestions: Set<String> = emptySet(),
+        liveCriteria: Set<String> = emptySet(),
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
-        val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
+        val criteria = criteriaWrites(data, localCriteria, skipSettings, liveCriteria)
         val preferences = data.preferenceRows.filter { settingWrites(it.key, it.updatedAt, localPreferences, skipSettings) }
-        val questions = data.questionRows.filter { settingWrites(it.id, it.updatedAt, localQuestions, skipSettings) }
+        val questions = questionWrites(data, localQuestions, skipSettings, liveQuestions)
         val mergedViewings = data.viewingRows.filter { settingWrites(it.id, it.updatedAt, localViewings, skipSettings) }
         val areas = data.areaRows.filter { settingWrites(it.id, it.updatedAt, localAreas, skipSettings) }
         val places = data.placeRows.filter { settingWrites(it.id, it.updatedAt, localPlaces, skipSettings) }
@@ -602,6 +610,51 @@ object ImportPlan {
             Verdict.INCOMING_NEWER -> !skipUpdates
             else -> false
         }
+
+    /**
+     * The file's questions an import writes (new here or newer), within [Question.MAX_QUESTIONS] live ones (S4b-BL-90b):
+     * a row that replaces a live question here always goes; one that adds a question (new here, or over a tombstone)
+     * goes while the bank, [live] here plus those added before it in file order, has room, and is left out after.
+     */
+    private fun questionWrites(data: BackupData, local: Map<String, Long>, skip: Boolean, live: Set<String>) =
+        withinCap(data.questionRows.filter { settingWrites(it.id, it.updatedAt, local, skip) }, { it.id }, live, Question.MAX_QUESTIONS)
+
+    /**
+     * The file's criteria an import writes, within [Criterion.MAX_CRITERIA] (built-in ones included, S4b-BL-90b): a
+     * built-in key or one live here never adds one; a new custom key goes while there is room, as for the questions.
+     */
+    private fun criteriaWrites(data: BackupData, local: Map<String, Long>, skip: Boolean, live: Set<String>): List<ExportCriterion> {
+        val rows = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, local, skip) }
+        val custom = live.filterTo(HashSet()) { it !in Checklist.keys }
+        return withinCap(rows, { it.key }, custom + Checklist.keys, Criterion.MAX_CRITERIA, start = Checklist.keys.size + custom.size)
+    }
+
+    /**
+     * [rows] in file order, less each one that would add a live row once [max] are live: [live] (ids here) count, and
+     * every kept row whose id is not in [live] adds one. [start] is how many count at the outset (default [live]'s size).
+     */
+    private fun <T> withinCap(rows: List<T>, id: (T) -> String, live: Set<String>, max: Int, start: Int = live.size): List<T> {
+        var count = start
+        val added = HashSet<String>()
+        return rows.filter { r ->
+            val k = id(r)
+            when {
+                k in live || k in added -> true
+                count < max -> {
+                    count++
+                    added += k
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** How many of [keys] are new here and how many replace a row here. */
+    private fun counts(keys: List<String>, local: Map<String, Long>): Pair<Int, Int> {
+        val updated = keys.count { it in local }
+        return (keys.size - updated) to updated
+    }
 
     /** How many of [rows] (key, updatedAt) are new here and how many replace a row here: the preview of [settingWrites]. */
     private fun settingsCounts(rows: List<Pair<String, Long>>, local: Map<String, Long>, skipUpdates: Boolean): Pair<Int, Int> {

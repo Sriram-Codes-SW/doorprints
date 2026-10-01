@@ -149,7 +149,7 @@ internal fun canMonitorCircles(): Boolean = CLLocationManager.isMonitoringAvaila
  * setting off when "Always" is gone). One run at a time.
  */
 internal object IosAreaWakeup {
-    /** A tapped wake-up notification's `userInfo` key, the area's id: the Map, with Hunt mode ([DeepLink.StartHunt]). */
+    /** A tapped wake-up notification's `userInfo` key, the area's id: the Map, which offers Hunt mode ([DeepLink.OfferHunt]). */
     const val KEY_START_HUNT_AREA = "startHuntArea"
 
     private const val WATCH_DEBOUNCE_MS = 1_000L

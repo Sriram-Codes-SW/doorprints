@@ -49,6 +49,7 @@ import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.QuestionType
 import app.doorprints.shared.records.RecordLimitException
+import app.doorprints.shared.sync.SyncRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -119,6 +120,9 @@ class QuestionsRepositoryTest {
 
     private suspend fun ids() = repo.questions().map { it.id }
 
+    /** Another device's edit of a default, pulled: any real time is later than a seed's. */
+    private val pulledEditAt = 1_760_000_000_000L
+
     @Test
     fun seedingWritesTheFourteenDefaultsOnceWithTheirFixedIdsInTheAppsLanguage(): Unit = runBlocking {
         assertEquals(emptyList<String>(), ids())
@@ -126,7 +130,15 @@ class QuestionsRepositoryTest {
         assertEquals(DefaultQuestions.ALL.map { it.id }, ids())
         val water = repo.questions().first { it.id == "qd_water" }
         assertEquals(DefaultQuestions.byId("qd_water")!!.text.getValue("ta"), water.text)
-        assertTrue("seeded records are pushed on the next sync", db.records().get(QuestionType.name, "qd_water")!!.dirty)
+        // S4b-BL-90a: clean and stamped 2000-01-01, so a seed is never pushed and another device's edit or deletion wins.
+        val seeded = db.records().get(QuestionType.name, "qd_water")!!
+        assertFalse("a seed is not pushed", seeded.dirty)
+        assertEquals(DefaultQuestions.SEEDED_AT, seeded.updatedAt)
+        assertEquals("2000-01-01T00:00:00Z", java.time.Instant.ofEpochMilli(DefaultQuestions.SEEDED_AT).toString())
+        assertFalse(SyncRules.keepLocal(seeded, seeded.copy(updatedAt = pulledEditAt, dirty = false)))
+        // An edit here is the person's: dirty, pushed with its own time.
+        repo.saveQuestion(water.copy(text = "Borewell?"))
+        assertTrue(db.records().get(QuestionType.name, "qd_water")!!.dirty)
         // Once per install: a second start seeds nothing, even after every default was deleted.
         for (id in ids()) repo.deleteQuestion(id)
         repo.seedQuestionsOnce("ta")

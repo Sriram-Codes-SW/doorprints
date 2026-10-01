@@ -20,6 +20,7 @@ package app.doorprints
 
 import android.app.Application
 import android.content.res.Configuration
+import androidx.annotation.VisibleForTesting
 import androidx.work.Configuration as WorkConfiguration
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.create
@@ -33,6 +34,7 @@ import app.doorprints.i18n.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -89,7 +91,8 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
      * edits, an import or a sync is one reschedule a second later. The records table tells Room about every record type's writes, so equal lists are skipped first.
      */
     @OptIn(FlowPreview::class)
-    private fun watchViewingReminders() {
+    @VisibleForTesting
+    internal fun watchViewingReminders(): Job =
         appScope.launch {
             val settings = container.settings
             combine(
@@ -99,7 +102,6 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
                 .debounce(REMINDER_DEBOUNCE_MS)
                 .collect { runCatching { container.reminders.rescheduleAll() } }
         }
-    }
 
     /**
      * The area wake-up's geofences (slice 4b) are set at start (the first emission) and after every change of the areas

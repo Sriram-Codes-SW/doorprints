@@ -177,7 +177,9 @@ class ViewingRemindersUiTest {
         assertEquals(0, done)
         compose.onNodeWithText("Not now").performClick()
         compose.waitUntil(5_000) { done == 1 }
-        compose.waitUntil(5_000) { runBlocking { repo.settings.notificationsAsked.first() } }
+        compose.waitUntil(5_000) { runBlocking { repo.settings.viewingsNotificationsAsked.first() } }
+        // Its own flag (S4b-BL-93f): Export and Import still ask their question.
+        assertFalse(runBlocking { repo.settings.notificationsAsked.first() })
         // Asked once: the next save goes straight on.
         compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitUntil(5_000) { done == 2 }
@@ -193,7 +195,7 @@ class ViewingRemindersUiTest {
         compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitUntil(5_000) { done == 1 }
         assertFalse(shown(rationale))
-        assertFalse(runBlocking { repo.settings.notificationsAsked.first() })
+        assertFalse(runBlocking { repo.settings.viewingsNotificationsAsked.first() })
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         pick("Reminder", "1 hour before")
         compose.onNodeWithText("Save").performScrollTo().performClick()

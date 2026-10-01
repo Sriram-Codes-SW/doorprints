@@ -130,6 +130,14 @@ enum class QuestionScope {
  * The web's twin is `DEFAULT_QUESTIONS` in `question.ts`.
  */
 object DefaultQuestions {
+    /**
+     * The `updatedAt` of a seeded default (S4b-BL-90a): 2000-01-01T00:00:00Z, the earliest the server accepts, so any
+     * real edit or deletion made on another device is later and wins. Seeds are also written clean (not pushed): an
+     * untouched default never reaches the server, so it cannot overwrite another device's record, not even on a tie,
+     * and a pulled edit or tombstone always replaces it. The web's twin is `DEFAULT_QUESTIONS_SEEDED_AT`.
+     */
+    const val SEEDED_AT = 946_684_800_000L
+
     /** One default: its fixed id, its fields and its text by language (en, hi, ta, te). */
     data class Default(
         val id: String,

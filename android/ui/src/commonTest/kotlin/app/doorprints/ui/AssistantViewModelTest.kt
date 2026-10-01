@@ -274,5 +274,6 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        records: Map<String, Long>,
     ): Repository.UndoResult = TODO()
 }

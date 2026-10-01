@@ -69,5 +69,8 @@ class IosHuntTest {
         // A Hunt mode reminder (slice 3c) opens its viewing; only a valid record id.
         assertEquals(DeepLink.OpenViewing("v_00000001"), notificationDeepLink(mapOf(IosHunt.KEY_OPEN_VIEWING to "v_00000001")))
         assertNull(notificationDeepLink(mapOf(IosHunt.KEY_OPEN_VIEWING to "..")), "not a record id")
+        // A Hunt mode reminder (S4b-BL-94c): the Map's offer, for a valid record id only.
+        assertEquals(DeepLink.OfferHunt, notificationDeepLink(mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to "v_00000001")))
+        assertNull(notificationDeepLink(mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to "..")), "not a record id")
     }
 }

@@ -60,9 +60,9 @@ import platform.UserNotifications.UNUserNotificationCenter
  *
  * The Hunt mode reminders (docs/11 5.16, slice 3c) are queued here too, as `viewing-hunt-<id>` ([HUNT_PREFIX], so the
  * removal above takes them as well): "Viewing at Green View at 10:00. Start Hunt mode?", with the same merge rule and
- * the cap of 60 over both kinds ([HuntReminders.merged]); a merged one is the Hunt one. A tap opens the viewing
- * ([IosHunt.KEY_OPEN_VIEWING] through the existing tap handler): an iPhone app cannot start location tracking from a
- * notification action, so the person turns Hunt mode on from the Map.
+ * the cap of 60 over both kinds ([HuntReminders.merged]); a merged one is the Hunt one. A tap opens the Map, which
+ * offers Hunt mode in a snackbar ([IosHunt.KEY_OFFER_HUNT_VIEWING], [DeepLink.OfferHunt]; S4b-BL-94c): an iPhone app
+ * cannot start location tracking from a notification action, so the person starts it from the Map.
  */
 internal object IosViewingReminders {
     const val ID_PREFIX = "viewing-"
@@ -104,7 +104,7 @@ internal object IosViewingReminders {
             if (r.kind == HuntReminders.Kind.VIEWING) {
                 request(ID_PREFIX + v.id, r.at, getString(Res.string.viewing_reminder_body, name, time), house?.id?.let { mapOf(IosHunt.KEY_OPEN_HOUSE to it) })
             } else {
-                request(HUNT_PREFIX + v.id, r.at, getString(Res.string.viewing_hunt_reminder_body, name, time), mapOf(IosHunt.KEY_OPEN_VIEWING to v.id))
+                request(HUNT_PREFIX + v.id, r.at, getString(Res.string.viewing_hunt_reminder_body, name, time), mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to v.id))
             }
         }
         center.getPendingNotificationRequestsWithCompletionHandler { pending ->
