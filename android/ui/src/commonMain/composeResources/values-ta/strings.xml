@@ -326,6 +326,8 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">இந்தத் தொலைபேசியில் நீக்கப்பட்டவை; அவை நீக்கப்பட்டே இருக்கும்</string>
+    <!-- S4b-BL-82 (2026-10-01): under review. -->
+    <string name="import_removed_houses">அனுப்பியவர் நீக்கிய வீடுகள்</string>
     <string name="import_bring_back">அவற்றைத் திரும்பக் கொண்டு வா</string>
     <string name="import_show_copies">நகல்களாகக் காட்டு</string>
     <string name="import_stop_other">மற்ற இறக்குமதியை நிறுத்து</string>

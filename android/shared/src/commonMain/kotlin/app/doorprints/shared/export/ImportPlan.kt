@@ -125,6 +125,11 @@ data class ImportPreview(
      * `metaUpdatedAt`; the import writes the file's meta onto them. An older or equal one changes nothing.
      */
     val updatedPhotoMeta: Int = 0,
+    /**
+     * MERGE of an update file only (S4b-BL-82, `applyDeletions`): live houses here that the file's `deleted` list
+     * removes, because the delete is newer than this phone's row. Shown as "*d* deleted by the sender".
+     */
+    val removedHouses: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
@@ -132,7 +137,7 @@ data class ImportPreview(
             restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
             newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0 &&
             newViewings == 0 && updatedViewings == 0 && newAreas == 0 && updatedAreas == 0 && newPlaces == 0 &&
-            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0 && updatedPhotoMeta == 0
+            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0 && updatedPhotoMeta == 0 && removedHouses == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
     val overwrites: Int
@@ -199,6 +204,8 @@ data class ImportActions(
      * ([ImportPreview.updatedPhotoMeta]); the writer puts only their meta on the local row, never a new file.
      */
     val photoMeta: List<ExportPhoto> = emptyList(),
+    /** MERGE of an update file only (S4b-BL-82): the live houses here the file deletes ([ImportPreview.removedHouses]). */
+    val removedHouseIds: List<String> = emptyList(),
 )
 
 /**
@@ -214,6 +221,33 @@ data class ImportActions(
  * their data.
  */
 object ImportPlan {
+
+    /**
+     * Whether [manifest] is an update file's (docs/11 5.28): only then are its deletions applied (S4b-BL-82). A backup,
+     * a full share (no `sharedSince`) and a bare `data.json` (no manifest) are restores, which never delete.
+     */
+    fun isUpdate(manifest: BackupManifest?): Boolean = manifest?.sharedSince != null
+
+    /**
+     * The live houses here that an update import deletes (S4b-BL-82): a `house` of the file's `deleted` list whose row
+     * here is live and older than the delete (last write wins; an equal or newer row here stays). Nothing in a COPY,
+     * with [skipUpdates] ("Keep mine"), or when [applyDeletions] is off (a restore).
+     */
+    private fun removals(
+        data: BackupData,
+        localHouses: Map<String, Long>,
+        locallyDeletedHouseIds: Set<String>,
+        mode: ImportMode,
+        skipUpdates: Boolean,
+        applyDeletions: Boolean,
+    ): List<String> {
+        if (!applyDeletions || mode == ImportMode.COPY || skipUpdates) return emptyList()
+        return data.deletedRows.asSequence()
+            .filter { it.kind == ExportDeletion.HOUSE && it.id !in locallyDeletedHouseIds }
+            .filter { d -> localHouses[d.id]?.let { it < d.updatedAt } ?: false }
+            .map { it.id }
+            .toList()
+    }
 
     /**
      * [locallyDeletedHouseIds] are houses this phone holds a tombstone for. They are in [localHouses] on
@@ -273,6 +307,8 @@ object ImportPlan {
         /** The live questions and custom criteria here, by id: a merge stays within the caps (S4b-BL-90b). */
         liveQuestions: Set<String> = emptySet(),
         liveCriteria: Set<String> = emptySet(),
+        /** An update import ([isUpdate]): the file's `deleted` list applies (S4b-BL-82). */
+        applyDeletions: Boolean = false,
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
@@ -409,6 +445,7 @@ object ImportPlan {
             keptMineVisits = mineV,
             relinkedVisits = relinkV,
             updatedPhotoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates).size,
+            removedHouses = removals(data, localHouses, locallyDeletedHouseIds, mode, skipUpdates, applyDeletions).size,
         )
     }
 
@@ -479,6 +516,7 @@ object ImportPlan {
         localPhotoMeta: Map<String, Long> = emptyMap(),
         liveQuestions: Set<String> = emptySet(),
         liveCriteria: Set<String> = emptySet(),
+        applyDeletions: Boolean = false,
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
         val criteria = criteriaWrites(data, localCriteria, skipSettings, liveCriteria)
@@ -600,6 +638,7 @@ object ImportPlan {
             places = places,
             areaNotes = areaNotes,
             photoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates),
+            removedHouseIds = removals(data, localHouses, locallyDeletedHouseIds, mode, skipUpdates, applyDeletions),
         )
     }
 

@@ -326,6 +326,8 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">ఈ ఫోన్‌లో తొలగించినవి; అవి తొలగించినట్లే ఉంటాయి</string>
+    <!-- S4b-BL-82 (2026-10-01): under review. -->
+    <string name="import_removed_houses">పంపినవారు తొలగించిన ఇళ్లు</string>
     <string name="import_bring_back">వాటిని తిరిగి తీసుకురండి</string>
     <string name="import_show_copies">కాపీలుగా చూపించండి</string>
     <string name="import_stop_other">మరో దిగుమతిని ఆపండి</string>

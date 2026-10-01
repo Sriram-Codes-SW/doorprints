@@ -973,6 +973,8 @@ internal fun previewGroups(preview: ImportPreview, duplicates: Int): List<List<P
             PreviewLine(Icons.Default.Info, Res.string.import_newer_here, preview.newerHereHouses),
             // Not "kept": these houses are not on the phone, and a merge leaves them deleted (UX review, round 10).
             PreviewLine(Icons.Default.Info, Res.string.import_deleted_here, preview.deletedHereHouses),
+            // An update file's deletions (S4b-BL-82): houses here the sender deleted after editing them last.
+            PreviewLine(Icons.Default.Warning, Res.string.import_removed_houses, preview.removedHouses, loss = true),
         ),
         listOf(
             PreviewLine(Icons.Default.Add, Res.string.import_new_visits, preview.newVisits),

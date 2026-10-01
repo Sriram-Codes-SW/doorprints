@@ -111,4 +111,5 @@ fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = Export
     areas,
     places,
     areaNotes,
+    deletedHouses,
 )

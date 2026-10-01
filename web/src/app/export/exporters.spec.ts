@@ -342,7 +342,7 @@ describe('JSON backup', () => {
   it('pins the backup format it writes and the formats a reader accepts', () => {
     expect(BACKUP_FORMAT).toBe('doorprints-backup/1');
     expect(BACKUP_FORMAT_V2).toBe('doorprints-backup/2');
-    expect(BACKUP_FORMATS_READ).toEqual(['doorprints-backup/1', 'doorprints-backup/2']);
+    expect(BACKUP_FORMATS_READ).toEqual(['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3']);
     expect(BACKUP_FORMATS_READ).toContain(BACKUP_FORMAT);
     expect(BACKUP_FORMATS_READ).toContain(BACKUP_FORMAT_V2);
   });

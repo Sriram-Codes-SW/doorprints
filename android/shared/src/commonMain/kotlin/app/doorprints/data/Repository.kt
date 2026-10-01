@@ -450,6 +450,8 @@ interface Repository {
         val areas: List<ExportArea> = emptyList(),
         val places: List<ExportPlace> = emptyList(),
         val areaNotes: List<ExportAreaNote> = emptyList(),
+        /** The houses deleted here, id to the `updatedAt` of the delete: an update file's deletions (S4b-BL-82). */
+        val deletedHouses: Map<String, Long> = emptyMap(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -542,11 +544,13 @@ interface Repository {
         val areas: Int = 0,
         val places: Int = 0,
         val areaNotes: Int = 0,
+        /** Houses an update file deleted here (S4b-BL-82, `ImportActions.removedHouseIds`). */
+        val removedHouses: Int = 0,
     ) {
         /** Everything written, of every type. */
         val rows: Int
             get() = houses + visits + photos + brokers + criteria + preferences + questions + viewings + areas + places +
-                areaNotes
+                areaNotes + removedHouses
     }
 
     /**
