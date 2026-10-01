@@ -36,7 +36,8 @@
     <string name="notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు</string>
     <string name="notif_hunt_title">హంట్ మోడ్ ఆన్‌లో ఉంది</string>
     <string name="notif_hunt_text">మీరు చూసిన ఇళ్లు, వీధుల కోసం గమనిస్తోంది</string>
-    <string name="notif_stop">ఆపండి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_stop">హంట్ మోడ్ ఆపండి</string>
     <string name="notif_seen_house">దీన్ని మీరు ఇప్పటికే చూశారు: %1$s</string>
     <string name="notif_distance">%1$s · %2$d మీ దూరంలో</string>
     <string name="notif_visited_before">ఇంతకు ముందు చూసింది</string>
@@ -51,11 +52,13 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">సేవ్ చేయడం, దిగుమతి</string>
     <string name="notif_channel_export_desc">కాపీ సేవ్ అవుతున్నప్పుడు లేదా బ్యాకప్ చదువుతున్నప్పుడు కనిపిస్తుంది</string>
-    <string name="export_share">షేర్ చేయండి</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_share">కాపీని షేర్ చేయండి</string>
     <string name="export_working">మీ కాపీ సేవ్ అవుతోంది…</string>
     <string name="export_done">సేవ్ అయింది: %1$s</string>
     <string name="export_failed">కాపీ సేవ్ చేయలేకపోయాం: %1$s</string>
-    <string name="export_stop">ఆపండి</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_stop">ఈ పనిని ఆపండి</string>
     <string name="export_problem_no_space">తగినంత ఖాళీ స్థలం లేదు</string>
     <string name="export_problem_cannot_write">ఎంచుకున్న ఫైల్ లేదా ఫోల్డర్‌లో రాయలేకపోయాం</string>
     <string name="export_problem_unknown">రాస్తున్నప్పుడు ఏదో తప్పు జరిగింది</string>
@@ -73,7 +76,8 @@
     <string name="problem_broken">దీని డేటాను చదవలేకపోయాం</string>
     <string name="problem_read_failed">దీన్ని స్టోరేజ్ నుండి చదవలేకపోయాం</string>
     <string name="problem_write_failed">రాయలేకపోయాం — ఖాళీ స్థలం చూడండి</string>
-    <string name="export_open">తెరవండి</string>
+    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="export_open">కాపీని తెరవండి</string>
     <string name="export_ready">పంచుకోవడానికి సిద్ధం: %1$s</string>
     <string name="export_done_plain">సేవ్ అయింది.</string>
     <string name="export_notif_saved">మీ కాపీ సేవ్ అయింది</string>
@@ -122,15 +126,18 @@
     <string name="notif_viewing_text">ప్రారంభం: %1$s</string>
     <string name="notif_viewing_public">Doorprints రిమైండర్</string>
     <string name="notif_viewing_open">ఇంటిని తెరవండి</string>
-    <string name="notif_viewing_directions">దారి</string>
-    <string name="notif_viewing_questions">ప్రశ్నలు</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_directions">ఇంటికి దారి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_questions">అడగాల్సిన ప్రశ్నలు</string>
     <string name="notif_viewing_house_gone">తొలగించిన ఇల్లు</string>
     <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
     <string name="notif_channel_hunt_reminders">హంట్ మోడ్ రిమైండర్‌లు</string>
     <string name="notif_channel_hunt_reminders_desc">పరిశీలనకు ముందు హంట్ మోడ్ సూచన</string>
     <string name="notif_hunt_reminder">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో. హంట్ మోడ్ ప్రారంభించాలా?</string>
     <string name="notif_hunt_reminder_start">హంట్ మోడ్ ప్రారంభించండి</string>
-    <string name="notif_hunt_reminder_dismiss">తీసివేయండి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_hunt_reminder_dismiss">రిమైండర్ తీసివేయండి</string>
     <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
     <string name="notif_channel_area_wakeup">ప్రాంత మేల్కొలుపు</string>
     <string name="notif_channel_area_wakeup_desc">మీ వెతుకులాట ప్రాంతాల్లో ఒకదానికి చేరినప్పుడు హంట్ మోడ్ సూచన</string>

@@ -200,7 +200,7 @@ class HuntRemindersAndroidTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         assertEquals("Doorprints reminder", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertNull(n.fullScreenIntent)
-        assertEquals(listOf("Start Hunt mode", "Dismiss"), n.actions.map { it.title.toString() })
+        assertEquals(listOf("Start Hunt mode", "Dismiss reminder"), n.actions.map { it.title.toString() })
         for (a in n.actions) assertTrue(a.title.toString(), shadowOf(a.actionIntent).isImmutable)
         // The body opens the viewing.
         val body = shadowOf(n.contentIntent)
@@ -225,9 +225,9 @@ class HuntRemindersAndroidTest {
     @Test
     fun noStartActionWhileHuntModeRunsAndAMergedOneAlsoOpensTheHouse() {
         val v = viewing("v_00000001", startsAt = now + 15 * min)
-        assertEquals(listOf("Dismiss"), hunt(v, running = true).actions.map { it.title.toString() })
+        assertEquals(listOf("Dismiss reminder"), hunt(v, running = true).actions.map { it.title.toString() })
         val merged = hunt(v, merged = true)
-        assertEquals(listOf("Start Hunt mode", "Open house", "Dismiss"), merged.actions.map { it.title.toString() })
+        assertEquals(listOf("Start Hunt mode", "Open house", "Dismiss reminder"), merged.actions.map { it.title.toString() })
         assertEquals(house.id, shadowOf(merged.actions[1].actionIntent).savedIntent.getStringExtra(Notifications.EXTRA_OPEN_HOUSE))
     }
 
@@ -278,7 +278,7 @@ class HuntRemindersAndroidTest {
         // Hunt mode already on: no *Start Hunt mode*.
         HuntState.update { it.copy(active = true) }
         assertTrue(runBlocking { ViewingReminderScheduler.showHunt(app, repo, "v_00000001", now + 105 * min) })
-        assertEquals(listOf("Dismiss"), posted().actions.map { it.title.toString() })
+        assertEquals(listOf("Dismiss reminder"), posted().actions.map { it.title.toString() })
     }
 
     @Test

@@ -1172,4 +1172,6 @@
     <string name="houses_filters_clear">செலவு வடிகட்டிகளை அழி</string>
     <string name="import_new_brokers">புதிய தரகர்கள்</string>
     <string name="import_updated_brokers">காப்புப்பிரதியில் புதிய பதிப்பு உள்ள தரகர்கள்</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
+    <string name="house_loading">வீடு திறக்கப்படுகிறது…</string>
 </resources>
