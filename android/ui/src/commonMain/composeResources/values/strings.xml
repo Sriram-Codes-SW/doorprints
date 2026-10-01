@@ -531,8 +531,8 @@
     <string name="import_list_two">%1$s and %2$s</string>
     <string name="import_list_three">%1$s, %2$s and %3$s</string>
     <string name="import_list_middle">%1$s, %2$s</string>
-    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). All but import_stopped* are also Android
-         resources, for the notifications (StringParityTest keeps the two equal). -->
+    <!-- Export and import results and failure reasons (CMP-6 P6b, S4b-BL-35). The workers' notifications read them here
+         too since S4b-BL-106 (they had Android copies before). -->
     <string name="export_done">Saved: %1$s</string>
     <string name="export_done_in">Saved to %1$s: %2$s</string>
     <string name="export_done_plain">Saved.</string>

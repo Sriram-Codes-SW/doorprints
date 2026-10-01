@@ -23,15 +23,18 @@ import app.doorprints.export.ExportProblem
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.ui.res.*
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /*
- * The Export, Import and Settings screens' texts for a finished run (ADR-23 CMP-6 P6b, S4b-BL-35), as Compose
- * resources. `:app`'s workers and notifications keep the same sentences as Android resources (ProblemMessages.kt,
- * ExportWorker.resultText, ImportWorker.importedText), because a notification has no composition; `StringParityTest`
- * keeps the two copies equal.
+ * The texts for a finished run (ADR-23 CMP-6 P6b, S4b-BL-35), as Compose resources: in composition for the Export,
+ * Import and Settings screens, and outside it ([exportResultSentence], [importedSentence], `getString` of a
+ * [messageResource]) for `:app`'s workers' notifications, which read the same keys since S4b-BL-106 (they had their
+ * own copies as Android resources before).
  */
 
 /** The translated reason for an export or backup failure code (`export_problem_*`). */
@@ -77,8 +80,8 @@ fun isShareCopy(target: String): Boolean = !target.startsWith("content://") && !
 /**
  * The success sentence of a finished export (UX review, round 11): "Saved to Download: Doorprints-2026-09-22.html"
  * where the storage says where, "Saved: …" where it does not, "Ready to share: …" for a share copy, and "Saved a
- * partial backup…" for a full backup made with options that leave something out. `ExportWorker.resultText` writes the
- * notification's copy of it.
+ * partial backup…" for a full backup made with options that leave something out. [exportResultSentence] is the same
+ * sentence outside composition.
  */
 @Composable
 fun exportResultText(target: String?, name: String?, location: String?, partial: Boolean): String = when {
@@ -96,13 +99,13 @@ fun exportResultText(target: String?, name: String?, location: String?, partial:
 
 /**
  * "Added 2 houses and 20 photos. Updated 3 houses." for a finished import (UX review, 2026-09-22): the non-zero parts
- * only, in the preview's own words, and "Brought back 3 houses." first (round 11). `ImportWorker.importedText`
- * writes the notification's copy of it.
+ * only, in the preview's own words, and "Brought back 3 houses." first (round 11). [importedSentence] is the same
+ * sentence outside composition.
  */
 @Composable
 fun importedText(run: ImportRun): String {
     @Composable
-    fun parts(vararg counts: Pair<org.jetbrains.compose.resources.PluralStringResource, Int>): List<String> =
+    fun parts(vararg counts: Pair<PluralStringResource, Int>): List<String> =
         counts.filter { it.second > 0 }.map { (plural, n) -> pluralStringResource(plural, n, n) }
     val added = parts(
         Res.plurals.count_houses to (run.houses - run.updatedHouses - run.restoredHouses).coerceAtLeast(0),
@@ -118,4 +121,49 @@ fun importedText(run: ImportRun): String {
         if (updated.isNotEmpty()) add(stringResource(Res.string.import_updated, joinedList(updated)))
     }
     return if (sentences.isEmpty()) stringResource(Res.string.import_done_nothing) else sentences.joinToString(" ")
+}
+
+/**
+ * [exportResultText] outside composition, for the export notification (S4b-BL-106: was `ExportWorker.resultText`
+ * with its own Android resources), so the notification and the result card say the same sentence.
+ */
+suspend fun exportResultSentence(target: String?, name: String?, location: String?, partial: Boolean): String = when {
+    target != null && isShareCopy(target) -> getString(
+        if (partial) Res.string.export_ready_partial else Res.string.export_ready,
+        name ?: target.substringAfterLast('/'),
+    )
+    name == null -> getString(if (partial) Res.string.export_done_partial_plain else Res.string.export_done_plain)
+    location != null -> getString(
+        if (partial) Res.string.export_done_partial_in else Res.string.export_done_in, location, name,
+    )
+    else -> getString(if (partial) Res.string.export_done_partial else Res.string.export_done, name)
+}
+
+/**
+ * [importedText] outside composition, for the import notification (S4b-BL-106: was `ImportWorker.importedText` with
+ * its own Android resources). [houses] and [visits] are everything written; [updatedHouses] and [updatedVisits] the
+ * part of them that were updates; [restoredHouses] the part of [houses] that were deleted on this phone and are back.
+ */
+suspend fun importedSentence(
+    houses: Int,
+    visits: Int,
+    photos: Int,
+    updatedHouses: Int = 0,
+    updatedVisits: Int = 0,
+    restoredHouses: Int = 0,
+): String {
+    suspend fun parts(vararg counts: Pair<PluralStringResource, Int>): List<String> =
+        counts.filter { it.second > 0 }.map { (plural, n) -> getPluralString(plural, n, n) }
+    val added = parts(
+        Res.plurals.count_houses to (houses - updatedHouses - restoredHouses).coerceAtLeast(0),
+        Res.plurals.count_visits to (visits - updatedVisits).coerceAtLeast(0),
+        Res.plurals.count_photos to photos,
+    )
+    val updated = parts(Res.plurals.count_houses to updatedHouses, Res.plurals.count_visits to updatedVisits)
+    val sentences = buildList {
+        if (restoredHouses > 0) add(getPluralString(Res.plurals.import_restored_result, restoredHouses, restoredHouses))
+        if (added.isNotEmpty()) add(getString(Res.string.import_added, joinedListText(added)))
+        if (updated.isNotEmpty()) add(getString(Res.string.import_updated, joinedListText(updated)))
+    }
+    return if (sentences.isEmpty()) getString(Res.string.import_done_nothing) else sentences.joinToString(" ")
 }

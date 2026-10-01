@@ -30,6 +30,11 @@ import app.doorprints.R
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.BackupCompleteness
 import app.doorprints.shared.export.ExportFormat
+import app.doorprints.ui.exportResultSentence
+import app.doorprints.ui.messageResource
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.export_failed
+import app.doorprints.ui.res.export_working
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -41,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.getString
 import java.io.BufferedOutputStream
 import java.io.File
 import java.util.UUID
@@ -179,7 +185,7 @@ class ExportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 localised.getString(R.string.export_notif_failed),
                 // A whole sentence, as on the screen: the bare reason ("there is not enough free space")
                 // is a lowercase fragment made to be slotted into export_failed.
-                localised.getString(R.string.export_failed, localised.getString(problem.messageRes())),
+                getString(Res.string.export_failed, getString(problem.messageResource)),
                 Notifications.openScreenIntent(localised, Notifications.SCREEN_EXPORT),
             )
             Result.failure(
@@ -227,10 +233,10 @@ class ExportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     /**
      * The export finished while no Export screen was showing (the user left the app, or went back): say so, with
      * Open and Share, because otherwise a copy made for the share sheet sits unreachable in the cache and a saved
-     * one is found only by chance. The text is the result card's own sentence ([resultText]), so a partial backup
+     * one is found only by chance. The text is the result card's own sentence ([exportResultSentence]), so a partial backup
      * is called partial here too. Returns whether the notification was posted.
      */
-    private fun notifyDone(
+    private suspend fun notifyDone(
         context: Context,
         request: ExportRequest,
         name: String?,
@@ -241,15 +247,15 @@ class ExportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         return Notifications.result(
             context, Notifications.EXPORT_DONE_ID,
             context.getString(if (shareCopy) R.string.export_notif_ready else R.string.export_notif_saved),
-            resultText(context, request.target, name, location, partial),
+            exportResultSentence(request.target, name, location, partial),
             Notifications.openScreenIntent(context, Notifications.SCREEN_EXPORT),
             ResultActions.notificationActions(context, request.target, request.format),
         )
     }
 
-    private fun foregroundInfo(context: Context, done: Int, total: Int): ForegroundInfo {
+    private suspend fun foregroundInfo(context: Context, done: Int, total: Int): ForegroundInfo {
         val notification = Notifications.progress(
-            context, context.getString(R.string.export_working), done, total,
+            context, getString(Res.string.export_working), done, total,
             tap = Notifications.openScreenIntent(context, Notifications.SCREEN_EXPORT),
             // Cancels this run by id: the same CANCELLED state as the screen's Stop, so the worker deletes its
             // half-written file exactly as it does then (see the class KDoc).
@@ -380,30 +386,6 @@ class ExportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         /** Whether anyone was told how the run ended; true for a row written by an older build. */
         fun notifiedOf(data: Data): Boolean = data.getBoolean(ExportRequest.KEY_NOTIFIED, true)
-
-        /**
-         * The success sentence, for the result card and the notification alike (UX review, round 11): "Saved to
-         * Download: Doorprints-2026-09-22.html" where the provider says where, "Saved: …" where it does not, "Ready
-         * to share: …" for a Share copy, and "Saved a partial backup…" for a full backup made with options that leave
-         * something out, so neither place calls that file complete.
-         */
-        fun resultText(context: Context, target: String?, name: String?, location: String?, partial: Boolean): String {
-            val shareCopy = target != null && ResultActions.isShareCopy(target)
-            return when {
-                // A copy in the app's private cache is not "saved" anywhere the user can reach.
-                shareCopy -> context.getString(
-                    if (partial) R.string.export_ready_partial else R.string.export_ready,
-                    name ?: File(target!!).name,
-                )
-                name == null -> context.getString(
-                    if (partial) R.string.export_done_partial_plain else R.string.export_done_plain,
-                )
-                location != null -> context.getString(
-                    if (partial) R.string.export_done_partial_in else R.string.export_done_in, location, name,
-                )
-                else -> context.getString(if (partial) R.string.export_done_partial else R.string.export_done, name)
-            }
-        }
 
         /** The format an export was for, so the screen can offer "Share" with the right media type. */
         fun formatOf(data: Data): ExportFormat? =

@@ -33,7 +33,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  *  - every translation has the same placeholders as English, counted and in position;
  *  - the Compose side has only positional placeholders (%1$s, %1$d), the only ones Compose resources fill in, and none
  *    of Android's escapes (\' \" \@ \?), which Compose resources would show as written;
- *  - a key in both places reads the same in both, compared as each side shows it.
+ *  - a key in both places reads the same in both, compared as each side shows it;
+ *  - only the keys Android code reads at once (outside a coroutine) are in both places: the workers read the
+ *    Compose resources since S4b-BL-106, so a new key for a notification they post goes there only.
  */
 class StringParityTest {
     private val languages = listOf("", "-hi", "-ta", "-te")
@@ -154,6 +156,23 @@ class StringParityTest {
                 assertEquals("values$lang/$key", androidShown, c.getValue(key).map(::composeValue))
             }
         }
+    }
+
+    /**
+     * The keys kept in both places (S4b-BL-106; there were 58 before it): the manifest's `app_name`, and the texts the
+     * hunt service, the area wake-up's notification and the share and open choosers read synchronously from an
+     * Android `Context`. Every other text the Android code shares with the screens comes from the Compose resources.
+     */
+    @Test fun onlyTheSynchronousAndroidTextsAreInBothPlaces() {
+        val expected = setOf(
+            "app_name", "common_score_value", "price_per_month",
+            "status_NEW", "status_SHORTLISTED", "status_REJECTED", "status_TAKEN", "status_NOT_CHOSEN",
+            "notif_seen_house", "notif_distance", "notif_visited_before", "notif_street_title", "notif_street_text",
+            "notif_street_text_since", "notif_stay_title", "notif_stay_text", "notif_battery_title",
+            "notif_area_wakeup", "export_share", "export_open",
+        )
+        val both = read(android.resolve("values/strings.xml")).keys intersect read(compose.resolve("values/strings.xml")).keys
+        assertEquals("keys in both places", expected, both)
     }
 
     /**
