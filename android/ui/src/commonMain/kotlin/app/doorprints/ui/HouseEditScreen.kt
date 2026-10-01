@@ -793,7 +793,11 @@ fun HouseEditScreen(
         }
         val d = draft
         if (d == null) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            // Named, so TalkBack says what is loading rather than a bare "in progress" (Wave D).
+            val loading = stringResource(Res.string.house_loading)
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.semantics { contentDescription = loading })
+            }
             return@Scaffold
         }
 
@@ -1325,10 +1329,16 @@ fun HouseEditScreen(
                 }
 
                 HorizontalDivider()
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // A FlowRow, so *I'm here now* goes under the heading when both do not fit (Wave D: in a Row the
+                // button's Tamil label at 200 % squeezed the heading to no width).
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(stringResource(Res.string.house_visits, visits.size), fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f).semantics { heading() })
+                        modifier = Modifier.semantics { heading() })
                     if (saved != null) {
                         val recorded = stringResource(Res.string.house_visit_recorded)
                         val recent = stringResource(Res.string.house_visit_recent)
@@ -1988,8 +1998,9 @@ internal fun RatingRow(rating: Int?, onPick: (Int) -> Unit) {
         (1..5).forEach { star ->
             val selected = rating == star
             val desc = stringResource(Res.string.common_stars, star)
+            // At least 48 dp, and larger when the star does (Wave D: a fixed 48 dp box cut the star at 200 % text).
             Box(
-                Modifier.size(48.dp)
+                Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .selectable(selected = selected, role = Role.RadioButton, onClick = { onPick(star) })
                     .semantics { contentDescription = desc },
                 contentAlignment = Alignment.Center,

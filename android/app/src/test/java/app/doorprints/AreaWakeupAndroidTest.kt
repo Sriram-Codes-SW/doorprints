@@ -342,7 +342,7 @@ class AreaWakeupAndroidTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
         assertEquals("Doorprints reminder", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertNull(n.fullScreenIntent)
-        assertEquals(listOf("Start Hunt mode", "Dismiss"), n.actions.map { it.title.toString() })
+        assertEquals(listOf("Start Hunt mode", "Dismiss reminder"), n.actions.map { it.title.toString() })
         for (a in n.actions) assertTrue(a.title.toString(), shadowOf(a.actionIntent).isImmutable)
         assertTrue(shadowOf(n.contentIntent).isImmutable)
         assertEquals(MainActivity::class.java.name, shadowOf(n.contentIntent).savedIntent.component?.className)
@@ -360,7 +360,7 @@ class AreaWakeupAndroidTest {
         assertTrue(without.isActivity)
         assertEquals(MainActivity::class.java.name, without.savedIntent.component?.className)
         assertEquals(adyar.id, without.savedIntent.getStringExtra(Notifications.EXTRA_START_HUNT_AREA))
-        assertEquals(listOf("Dismiss"), Notifications.areaWakeup(app, adyar, fineLocation = true, huntRunning = true).actions.map { it.title.toString() })
+        assertEquals(listOf("Dismiss reminder"), Notifications.areaWakeup(app, adyar, fineLocation = true, huntRunning = true).actions.map { it.title.toString() })
     }
 
     @Test

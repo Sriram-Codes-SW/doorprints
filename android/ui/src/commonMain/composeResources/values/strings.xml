@@ -1173,4 +1173,6 @@
     <string name="houses_filters_clear">Clear cost filters</string>
     <string name="import_new_brokers">New brokers</string>
     <string name="import_updated_brokers">Brokers the backup has a newer version of</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name. -->
+    <string name="house_loading">Opening the house…</string>
 </resources>
