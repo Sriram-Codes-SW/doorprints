@@ -23,6 +23,52 @@
   <title>Doorprints</title>
   <meta name="description" content="Doorprints: Remember every house you've seen. Save, rate and compare the houses you visit.">
   <meta name="application-name" content="Doorprints">
+  <!--
+    Search and sharing (Wave E; src/app/seo.spec.ts pins these). The app is one address that switches language on the
+    device, so there is one canonical URL and no hreflang alternates between languages (they would all point to the same
+    page, which is not what hreflang means); the guide's translations are linked from about.html. The router rewrites
+    robots and canonical for every route except the landing page (I18nTitleStrategy): the rest of the app shows the
+    visitor's own local data and is noindex.
+  -->
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://doorprints.web.app/">
+  <link rel="alternate" hreflang="x-default" href="https://doorprints.web.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Doorprints">
+  <meta property="og:title" content="Doorprints: remember every house you've seen">
+  <meta property="og:description" content="Save, rate and compare the houses you visit while house-hunting in India. On your own device, with no account, in English, Hindi, Tamil and Telugu.">
+  <meta property="og:url" content="https://doorprints.web.app/">
+  <meta property="og:image" content="https://doorprints.web.app/icons/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="The Doorprints mark: a door with footprints">
+  <meta property="og:locale" content="en_IN">
+  <meta property="og:locale:alternate" content="hi_IN">
+  <meta property="og:locale:alternate" content="ta_IN">
+  <meta property="og:locale:alternate" content="te_IN">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Doorprints: remember every house you've seen">
+  <meta name="twitter:description" content="Save, rate and compare the houses you visit while house-hunting in India. On your own device, with no account.">
+  <meta name="twitter:image" content="https://doorprints.web.app/icons/icon-512.png">
+  <meta name="twitter:image:alt" content="The Doorprints mark: a door with footprints">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Doorprints",
+    "description": "Remember every house you've seen. Save, rate and compare the houses you visit while house-hunting in India, on your own device, with no account.",
+    "url": "https://doorprints.web.app/",
+    "applicationCategory": "LifestyleApplication",
+    "operatingSystem": "Web browser (Android, iPhone, desktop)",
+    "browserRequirements": "Requires JavaScript",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+    "inLanguage": ["en", "hi", "ta", "te"],
+    "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+    "image": "https://doorprints.web.app/icons/icon-512.png",
+    "softwareHelp": { "@type": "WebSite", "url": "https://sriram-codes-sw.github.io/doorprints/" }
+  }
+  </script>
   <base href="/">
   <!--
     No maximum-scale / user-scalable=no: pinch zoom must keep working (WCAG 1.4.4).
@@ -60,7 +106,27 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap">
 </head>
 <body>
-  <app-root></app-root>
+  <!--
+    What a crawler, a link preview or a reader without scripts sees: Angular replaces the content of <app-root> when it
+    starts. Plain words, no markup the app styles; the longer version, in four languages, is about.html.
+  -->
+  <app-root>
+    <main>
+      <h1>Doorprints: remember every house you've seen</h1>
+      <p>Doorprints is a free, open-source notebook for house-hunting in India. Save the houses you visit on a map, rate them
+        against what matters to you, keep notes, photos, viewings and brokers, and compare houses side by side.</p>
+      <p>Your houses stay on your own device, in your browser. There is no account, no advertising and no tracking. The app
+        works offline once opened, and shows India's boundaries as the Government of India depicts them.</p>
+      <p>Available in English, हिन्दी, தமிழ் and తెలుగు.</p>
+      <ul>
+        <li><a href="about.html">About Doorprints, privacy and languages</a></li>
+        <li><a href="https://sriram-codes-sw.github.io/doorprints/">User guide</a>
+          (<a href="https://sriram-codes-sw.github.io/doorprints/hi/" hreflang="hi" lang="hi">हिन्दी</a>,
+          <a href="https://sriram-codes-sw.github.io/doorprints/ta/" hreflang="ta" lang="ta">தமிழ்</a>,
+          <a href="https://sriram-codes-sw.github.io/doorprints/te/" hreflang="te" lang="te">తెలుగు</a>)</li>
+      </ul>
+    </main>
+  </app-root>
   <noscript>Doorprints needs JavaScript. · Doorprints के लिए JavaScript चाहिए। · Doorprints-க்கு JavaScript தேவை. · Doorprintsకు JavaScript అవసరం.</noscript>
 </body>
 </html>

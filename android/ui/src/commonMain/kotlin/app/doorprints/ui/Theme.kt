@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -31,6 +32,8 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -242,6 +245,35 @@ fun DoorprintsTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
 @Composable
 fun brandSliderColors(): SliderColors =
     SliderDefaults.colors(inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer)
+
+/**
+ * The roles an enabled Switch draws with (Wave E; WCAG 1.4.11), read by [brandSwitchColors] and checked by
+ * `ContrastTest`. M3 paints the unchecked thumb in `outline`, which is 2.93:1 on the light unchecked track
+ * (#7D8985 on `surfaceContainerHighest` #E3E8E6); the thumb is the switch's state, so it takes `onSurfaceVariant`
+ * (`--muted`): light #5F6B67, 4.48:1 on the track; dark #A7B3AE, 5.87:1 (was #7F8C87, 3.63:1). The track, its
+ * `outline` border (the control against the page, 3:1 or more on every surface) and the checked pair (`onPrimary`
+ * on `primary`) stay M3's.
+ */
+internal class BrandSwitchPalette(s: ColorScheme) {
+    val checkedThumb = s.onPrimary
+    val checkedTrack = s.primary
+    val uncheckedThumb = s.onSurfaceVariant
+    val uncheckedTrack = s.surfaceContainerHighest
+    val uncheckedBorder = s.outline
+}
+
+/** A Switch whose thumb stands out from its track in both states and schemes ([BrandSwitchPalette]). */
+@Composable
+fun brandSwitchColors(): SwitchColors {
+    val p = BrandSwitchPalette(MaterialTheme.colorScheme)
+    return SwitchDefaults.colors(
+        checkedThumbColor = p.checkedThumb,
+        checkedTrackColor = p.checkedTrack,
+        uncheckedThumbColor = p.uncheckedThumb,
+        uncheckedTrackColor = p.uncheckedTrack,
+        uncheckedBorderColor = p.uncheckedBorder,
+    )
+}
 
 /**
  * A FilledTonalButton on `primaryContainer` (onPrimaryContainer on it: 10.66:1 light, 10.05:1 dark). M3's default
