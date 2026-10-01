@@ -17,8 +17,8 @@
 
 # The local checks before a push (docs/14 §7), run together where they are independent, so a change is validated in
 # the time of the slowest one instead of the sum. Areas are chosen from the files changed against main (or given as
-# arguments: android, ios, web, guide, licence, all). Each area's log is written under android/build/check/ and its tail is
-# shown when it fails. Exit 1 on any failure.
+# arguments: android, ios, web, guide, geo, licence, all). Each area's log is written under android/build/check/ and its
+# tail is shown when it fails. Exit 1 on any failure.
 #
 #   tools/check.sh            # the areas the branch touches
 #   tools/check.sh android ios
@@ -43,9 +43,10 @@ else
   grep -qE '^(android/(shared|ui)/src/(commonMain|iosMain|nativeMain)|ios/)' <<<"$changed" && AREAS="$AREAS ios"
   grep -qE '^web/' <<<"$changed" && AREAS="$AREAS web"
   grep -qE '^guide/' <<<"$changed" && AREAS="$AREAS guide"
+  grep -qE '^(web/scripts/geo/|tools/soi-verify\.py)' <<<"$changed" && AREAS="$AREAS geo"
   [ "$AREAS" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web or guide file changed: licence headers only."
 fi
-case " $AREAS " in *" all "*) AREAS="licence android ios web guide";; esac
+case " $AREAS " in *" all "*) AREAS="licence android ios web guide geo";; esac
 has() { case " $AREAS " in *" $1 "*) return 0;; esac; return 1; }
 
 declare -A PIDS
@@ -80,6 +81,8 @@ guide_check() {
   [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out"
 }
 has guide && start guide guide_check
+# The boundary-data pipeline's unit tests (Python standard library only; docs/ops/soi-review-pack.md).
+has geo && start geo python3 -m unittest discover "$ROOT/web/scripts/geo"
 
 failed=0
 for name in "${!PIDS[@]}"; do

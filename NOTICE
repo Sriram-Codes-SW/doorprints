@@ -86,5 +86,11 @@ OSM Liberty and the Mapbox Open Styles: copyright (c) 2014, Mapbox, all rights r
 The Natural Earth data in web/public/geo and android/app/src/main/assets/geo is in the public domain
 (https://www.naturalearthdata.com/about/terms-of-use/).
 
+Boundaries: Survey of India, Administrative Boundary Database (OVSF/1M/7), reproduced without alteration. Copyright
+Survey of India, Government of India. This applies to web/public/geo/in-boundaries-soi.json and to the excerpt
+web/scripts/geo/testdata/soi-fixture.json: they hold the Survey of India's own vertices (selected, and re-projected to
+longitude and latitude only; docs/ops/soi-review-pack.md), they are not part of Doorprints and not under the AGPL or
+the permissions above, and they are used on the Survey of India's conditions (no alteration, acknowledgement).
+
 Files without a notice of their own (data, images, documentation, and the database migrations, which cannot change
 once applied) are part of Doorprints under the same licence and permissions as the rest.
