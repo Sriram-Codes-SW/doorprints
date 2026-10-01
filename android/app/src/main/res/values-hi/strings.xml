@@ -53,67 +53,17 @@
     <string name="notif_channel_export">सहेजना और आयात</string>
     <string name="notif_channel_export_desc">जब प्रति सहेजी जा रही हो या बैकअप पढ़ा जा रहा हो तब दिखता है</string>
     <string name="export_share">साझा करें</string>
-    <string name="export_working">आपकी प्रति सहेजी जा रही है…</string>
-    <string name="export_done">सहेजा गया: %1$s</string>
-    <string name="export_failed">प्रति सहेजी नहीं जा सकी: %1$s</string>
-    <string name="export_stop">रोकें</string>
-    <string name="export_problem_no_space">पर्याप्त खाली जगह नहीं है</string>
-    <string name="export_problem_cannot_write">चुनी गई फ़ाइल या फ़ोल्डर में लिखा नहीं जा सकता</string>
-    <string name="export_problem_unknown">लिखते समय कुछ गड़बड़ हो गई</string>
-    <string name="auto_backup_working">आपके मकानों का बैकअप बन रहा है…</string>
-    <string name="import_working">आयात हो रहा है…</string>
-    <string name="import_write_failed">आयात बीच में रुक गया — कुछ चीज़ें शायद पहले ही जुड़ चुकी हैं। देखें कि फ़ोन में खाली जगह है, फिर पूरा करने के लिए वही फ़ाइल फिर से आयात करें।</string>
-    <string name="import_failed">यह फ़ाइल आयात नहीं हो सकती: %1$s</string>
-    <string name="problem_not_a_backup">यह Doorprints बैकअप नहीं है</string>
     <!-- S4b-BL-72 (2026-09-30): under review (problem_unsupported now says to update the app). -->
-    <string name="problem_unsupported">यह Doorprints के नए संस्करण से बना है; इसे आयात करने के लिए Doorprints अपडेट करें</string>
-    <string name="problem_too_many">इसमें बहुत ज़्यादा फ़ाइलें हैं</string>
-    <string name="problem_too_large">यह बहुत बड़ी है</string>
-    <string name="problem_suspicious">इसमें एक असुरक्षित फ़ाइल नाम है</string>
-    <string name="problem_checksum">यह ख़राब है: चेकसम मेल नहीं खाता</string>
-    <string name="problem_broken">इसका डेटा पढ़ा नहीं जा सका</string>
-    <string name="problem_read_failed">इसे स्टोरेज से पढ़ा नहीं जा सका</string>
-    <string name="problem_write_failed">इसे लिखा नहीं जा सका — खाली जगह देखें</string>
     <string name="export_open">खोलें</string>
-    <string name="export_ready">साझा करने के लिए तैयार: %1$s</string>
-    <string name="export_done_plain">सहेजा गया।</string>
     <string name="export_notif_saved">आपकी प्रति सहेज ली गई</string>
     <string name="export_notif_ready">आपकी प्रति साझा करने के लिए तैयार है</string>
     <string name="export_notif_failed">प्रति सहेजी नहीं जा सकी</string>
     <string name="import_notif_done">बैकअप आयात हो गया</string>
     <string name="import_notif_failed">बैकअप आयात नहीं हो सका</string>
-    <string name="import_write_failed_copy">आयात पूरा नहीं हो सका, इसलिए कुछ भी नहीं जोड़ा गया। देखें कि फ़ोन में खाली जगह है, फिर दोबारा कोशिश करें।</string>
     <string name="auto_backup_stopped_title">अपने आप बैकअप रुक गया</string>
     <string name="auto_backup_stopped_text">वह फ़ोल्डर अब उपलब्ध नहीं है। फिर से चुनने के लिए टैप करें।</string>
     <string name="auto_backup_failed_title">अपने आप बैकअप नहीं हो सका</string>
-    <plurals name="count_houses">
-        <item quantity="one">%d मकान</item>
-        <item quantity="other">%d मकान</item>
-    </plurals>
-    <plurals name="count_visits">
-        <item quantity="one">%d दौरा</item>
-        <item quantity="other">%d दौरे</item>
-    </plurals>
-    <plurals name="count_photos">
-        <item quantity="one">%d तस्वीर</item>
-        <item quantity="other">%d तस्वीरें</item>
-    </plurals>
-    <string name="import_added">जोड़े गए: %1$s।</string>
-    <string name="import_updated">अपडेट किए गए: %1$s।</string>
-    <string name="import_done_nothing">आयात पूरा हुआ। कुछ भी जोड़ने या अपडेट करने की ज़रूरत नहीं थी।</string>
-    <string name="import_list_two">%1$s और %2$s</string>
-    <string name="import_list_three">%1$s, %2$s और %3$s</string>
-    <string name="import_list_middle">%1$s, %2$s</string>
-    <string name="export_done_in">%1$s में सहेजा गया: %2$s</string>
-    <string name="export_done_partial">अधूरा बैकअप सहेजा गया: %1$s</string>
-    <string name="export_done_partial_in">%1$s में अधूरा बैकअप सहेजा गया: %2$s</string>
-    <string name="export_done_partial_plain">अधूरा बैकअप सहेजा गया।</string>
-    <string name="export_ready_partial">अधूरा बैकअप साझा करने के लिए तैयार: %1$s</string>
     <string name="export_location_downloads">डाउनलोड</string>
-    <plurals name="import_restored_result">
-        <item quantity="one">%1$d मकान वापस लाया गया।</item>
-        <item quantity="other">%1$d मकान वापस लाए गए।</item>
-    </plurals>
     <string name="price_per_month">%1$s/माह</string>
     <!-- Slice 3b-2, viewing reminders (2026-09-30): under review. -->
     <string name="notif_channel_viewings">मकान देखने के रिमाइंडर</string>

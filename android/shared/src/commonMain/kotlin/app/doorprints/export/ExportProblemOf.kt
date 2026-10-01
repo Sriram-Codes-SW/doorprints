@@ -19,19 +19,18 @@
 package app.doorprints.export
 
 /**
- * Classifies a failure by walking its cause chain ([ExportProblem] is common since ADR-23 CMP-6 P6b; this reads JVM
- * exception types, so it stays in `:app`).
+ * Classifies a failure by walking its cause chain (common since S4b-BL-106; was `:app`'s `ExportProblemOf.kt`).
  *
- * Out-of-space is recognised by the `ENOSPC` errno name, which Android's `ErrnoException` puts in its message and
- * `IoBridge` copies into the `IOException` it rethrows — so the check works at every level of the chain without
- * touching `android.system` classes. "Cannot write" is a `FileNotFoundException` (what
- * `ContentResolver.openOutputStream` throws for a document that is gone or read-only, and what [Saf.openOutput] throws
- * when a provider hands back no stream) or a `SecurityException` (a revoked grant).
+ * Out-of-space is recognised by the `ENOSPC` errno name anywhere in the chain's messages: Android's `ErrnoException`
+ * puts it in its message and `IoBridge` copies it into the `IOException` it rethrows, so the check works at every
+ * level without touching `android.system` classes. Whether a cause means "cannot write" depends on the platform's
+ * exception types, so the caller names them in [cannotWrite]; Android's one-argument [of] (androidMain) passes
+ * `FileNotFoundException` and `SecurityException`.
  */
-fun ExportProblem.Companion.of(error: Throwable): ExportProblem {
+fun ExportProblem.Companion.of(error: Throwable, cannotWrite: (Throwable) -> Boolean): ExportProblem {
     val chain = generateSequence(error) { it.cause }.take(MAX_CAUSES).toList()
     if (chain.any { it.message?.contains("ENOSPC") == true }) return ExportProblem.NO_SPACE
-    if (chain.any { it is java.io.FileNotFoundException || it is SecurityException }) return ExportProblem.CANNOT_WRITE
+    if (chain.any(cannotWrite)) return ExportProblem.CANNOT_WRITE
     return ExportProblem.UNKNOWN
 }
 

@@ -16,10 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package app.doorprints
+package app.doorprints.export
 
-import app.doorprints.export.ExportProblem
-import app.doorprints.export.of
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.FileNotFoundException
@@ -27,7 +25,8 @@ import java.io.IOException
 
 /**
  * Export and automatic-backup failures reach the screen as a stable code, never as exception text (which is
- * English, may contain a `content://` URI, and was shown to Hindi, Tamil and Telugu users as-is).
+ * English, may contain a `content://` URI, and was shown to Hindi, Tamil and Telugu users as-is). In `:shared` since
+ * S4b-BL-106, with the classifier.
  */
 class ExportProblemTest {
 

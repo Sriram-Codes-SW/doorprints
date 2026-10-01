@@ -163,8 +163,9 @@ interface LocationSource {
 }
 
 /**
- * The copy imports' undo (UX review, rounds 16 to 21), as the house list and the Import screen use it. Android: `ImportUndo`'s record files and `CopyImportUndo`, which runs the undo in the
- * application's scope and holds its state for the life of the process.
+ * The copy imports' undo (UX review, rounds 16 to 21), as the house list and the Import screen use it. Android:
+ * `ImportUndo`'s record files and [CopyImportUndo] (common since S4b-BL-106), which runs the undo in the application's
+ * scope and holds its state for the life of the process.
  */
 interface CopyImportUndoes {
     /** The run whose copies are being removed right now, or null. Compose snapshot state. */
