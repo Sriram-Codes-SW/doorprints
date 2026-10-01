@@ -58,6 +58,7 @@ import { TPipe } from '../../i18n/t.pipe';
 import type { TKey } from '../../i18n/en';
 import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
+import { ImportBackupCard } from './import-backup';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -99,7 +100,7 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
 })
