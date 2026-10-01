@@ -70,6 +70,7 @@ import app.doorprints.ui.res.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import app.doorprints.shared.location.PlaceLookup
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -191,6 +192,8 @@ fun MapScreen(
     onAddTipShown: () -> Unit = {},
     /** The tip is for a shared listing (docs/11 5.29): where is this house? */
     addTipForListing: Boolean = false,
+    /** The shared listing's locality (S4b-BL-83): *Find* looks it up, on the tap only, and the map goes there. */
+    listingPlace: String? = null,
     deletedHouse: String? = null,
     onDeletedShown: () -> Unit = {},
     /** *Start Hunt mode* from a reminder (slice 3c): asked for location if needed, then started, once. */
@@ -289,6 +292,9 @@ fun MapScreen(
     // (UX review, whole-app audit, round 2: MapLibre delivers the idle of the initial setCameraPosition after the
     // listener is registered, and the framing then saw a saved camera and never ran).
     var framed by rememberSaveable { mutableStateOf(false) }
+    // *Find “Indiranagar” on the map* (S4b-BL-83): running, and what it found, said in the card.
+    var findingPlace by remember { mutableStateOf(false) }
+    var placeNote by remember(listingPlace) { mutableStateOf<String?>(null) }
 
     // Permissions, checked again on every resume (a grant in system settings counts as soon as the user is back).
     // Whether location was asked, and whether Android will still ask, is shared with the house form and the Assistant
@@ -707,6 +713,35 @@ fun MapScreen(
                         }
                     }
                 }
+            }
+            // A shared listing's locality (S4b-BL-83): looked up only on this tap, by the platform's own geocoder; the map
+            // then goes there, and the person long-presses the house's spot (or saves it from there).
+            val lookupQuery = listingPlace?.takeIf { addTipForListing }?.let { PlaceLookup.query(it) }
+            if (lookupQuery != null && listingPlace != null) {
+                PlaceLookupCard(
+                    place = listingPlace,
+                    finding = findingPlace,
+                    note = placeNote,
+                    onFind = { foundText, notFoundText ->
+                        if (!findingPlace) {
+                            findingPlace = true
+                            scope.launch {
+                                val found = try {
+                                    services.houseForm.findPlace(lookupQuery)
+                                } finally {
+                                    findingPlace = false
+                                }
+                                if (found != null) {
+                                    framed = true
+                                    map?.moveTo(found.lat, found.lon, PLACE_ZOOM, animate = !noAnimations)
+                                    placeNote = foundText
+                                } else {
+                                    placeNote = notFoundText
+                                }
+                            }
+                        }
+                    },
+                )
             }
             // Always composed, so the error or the loading line is announced when it appears.
             LiveMessage(assertive = mapFailed) {
@@ -1218,3 +1253,35 @@ private fun LegendDotMark(dot: LegendDot) {
 
 /** Precise location is allowed: what Hunt mode, *Save house here* and *My location* need. */
 private fun hasPreciseLocation(platform: PlatformServices): Boolean = platform.locationAccess() == LocationAccess.PRECISE
+
+/** The zoom a looked-up locality is shown at: the streets of a neighbourhood. */
+private const val PLACE_ZOOM = 15.0
+
+/**
+ * *Find “Indiranagar” on the map* for a shared listing (S4b-BL-83): the button, and what the lookup found in a polite
+ * live line. [onFind] gets the two sentences to say, already in the person's language.
+ */
+@Composable
+fun PlaceLookupCard(
+    place: String,
+    finding: Boolean,
+    note: String?,
+    onFind: (foundText: String, notFoundText: String) -> Unit,
+) {
+    val foundText = stringResource(Res.string.map_place_found, place)
+    val notFoundText = stringResource(Res.string.map_place_not_found, place)
+    ElevatedCard(Modifier.padding(top = 8.dp).fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LiveMessage {
+                if (note != null) Text(note, style = MaterialTheme.typography.bodyMedium)
+            }
+            OutlinedButton(
+                onClick = { onFind(foundText, notFoundText) },
+                enabled = !finding,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                ButtonLabel(stringResource(if (finding) Res.string.map_finding_place else Res.string.map_find_place, place))
+            }
+        }
+    }
+}

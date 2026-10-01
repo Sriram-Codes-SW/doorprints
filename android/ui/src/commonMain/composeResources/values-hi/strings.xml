@@ -171,7 +171,7 @@
     <string name="settings_min_stay">%1$d मिनट रुकने पर दौरा मानें</string>
     <string name="settings_gps_note">GPS आमतौर पर 5–20 मी तक सटीक होता है, इसलिए पास-पास के मकान गड़बड़ा सकते हैं। सिग्नल कमज़ोर हो (अंदर) तो सूचनाएँ रुक जाती हैं, और बैटरी कम होने पर हंट मोड अपने-आप बंद हो जाता है।</string>
     <string name="settings_privacy">गोपनीयता</string>
-    <string name="settings_privacy_note">आपके मकान और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
+    <string name="settings_privacy_note">आपके मकान और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
     <string name="settings_about">ऐप के बारे में</string>
     <string name="sync_ok">सिंक हुआ: भेजे %1$d, मिले %2$d</string>
     <string name="sync_ok_photos_waiting">सिंक हुआ: भेजे %1$d, मिले %2$d। Wi-Fi का इंतज़ार कर रही तस्वीरें: %3$d</string>
@@ -568,7 +568,7 @@
     <string name="map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी मकान ‘मकान’ टैब में हैं।</string>
     <string name="settings_language_phone">Doorprints आपके iPhone की भाषा इस्तेमाल करता है। सिर्फ़ Doorprints के लिए कोई दूसरी भाषा चाहिए, तो सेटिंग्स ऐप में सामान्य › भाषा और क्षेत्र में उसे जोड़ें, फिर सेटिंग्स ऐप के Doorprints पेज पर उसे चुनें।</string>
     <string name="settings_language_open_settings">iPhone सेटिंग्स खोलें</string>
-    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम Apple के जियोकोडर से।</string>
+    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, Apple के जियोकोडर से।</string>
     <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।</string>
     <string name="map_location_off_no_hunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
     <string name="map_needs_precise_no_hunt">‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।</string>
@@ -689,6 +689,11 @@
     <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
     <string name="map_add_tip_listing">यह मकान कहाँ है? वहाँ हों तो ‘यहाँ मकान सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
     <string name="map_add_tip_listing_a11y">यह मकान कहाँ है? वहाँ पहुँचकर ‘यहाँ मकान सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <!-- S4b-BL-83 (2026-10-01): under review. -->
+    <string name="map_find_place">“%1$s” नक्शे पर खोजें</string>
+    <string name="map_finding_place">“%1$s” खोजा जा रहा है…</string>
+    <string name="map_place_found">नक्शा “%1$s” दिखा रहा है। मकान वहाँ जोड़ने के लिए उसकी जगह को देर तक दबाएँ।</string>
+    <string name="map_place_not_found">भारत में “%1$s” नाम की कोई जगह नहीं मिली। नक्शे को ख़ुद मकान तक ले जाएँ।</string>
     <string name="house_dup_title">यह लिस्टिंग आपने %1$s को सहेजी थी</string>
     <string name="house_dup_text">‘%1$s’ का लिंक यही है। उसे खोलें, या लिस्टिंग को नए मकान के रूप में फिर जोड़ें?</string>
     <string name="house_dup_open">खोलें</string>

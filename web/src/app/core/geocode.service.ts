@@ -18,7 +18,9 @@
 
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, defer, map, of, switchMap, timer } from 'rxjs';
+import { NOMINATIM_SEARCH, RequestThrottle, placeOf, searchParams } from './place-search';
+import type { FoundPlace } from './place-search';
 
 export interface ReverseGeocode {
   address: string | null;
@@ -32,16 +34,30 @@ interface NominatimResponse {
 }
 
 /**
- * Reverse geocoding via OpenStreetMap Nominatim. Their usage policy allows at most 1 request/second,
- * so this is only ever called from an explicit button press.
+ * Reverse geocoding and the locality search (S4b-BL-83) via OpenStreetMap Nominatim. Their usage policy allows at most
+ * 1 request/second, so both are only ever called from an explicit button press, and one throttle spaces the two.
  */
 @Injectable({ providedIn: 'root' })
 export class GeocodeService {
   private readonly http = inject(HttpClient);
+  private readonly throttle = new RequestThrottle();
+
+  /** The request, once its one-a-second slot has come. */
+  private spaced<T>(request: () => Observable<T>): Observable<T> {
+    return defer(() => timer(this.throttle.next())).pipe(switchMap(request));
+  }
+
+  /** Where `place` (a locality, or an address) is in India, or `null` when Nominatim knows none (or the name is blank). */
+  search(place: string, language: string): Observable<FoundPlace | null> {
+    const query = searchParams(place, language);
+    if (!query) return of(null);
+    const params = new HttpParams({ fromObject: query });
+    return this.spaced(() => this.http.get<unknown>(NOMINATIM_SEARCH, { params })).pipe(map(placeOf));
+  }
 
   reverse(lat: number, lon: number): Observable<ReverseGeocode> {
     const params = new HttpParams().set('format', 'jsonv2').set('lat', lat).set('lon', lon);
-    return this.http.get<NominatimResponse>('https://nominatim.openstreetmap.org/reverse', { params }).pipe(
+    return this.spaced(() => this.http.get<NominatimResponse>('https://nominatim.openstreetmap.org/reverse', { params })).pipe(
       map((r) => {
         const a = r.address ?? {};
         return {

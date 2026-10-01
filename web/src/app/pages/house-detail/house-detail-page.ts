@@ -205,6 +205,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   /** Save failures only (name or location missing, the save itself failed) and a failed load; at the top. */
   protected readonly error = signal<RunResult<Msg> | null>(null);
   protected readonly geocoding = signal(false);
+  /** *Find “Indiranagar” on the map* is running (S4b-BL-83). */
+  protected readonly finding = signal(false);
+  /** What *Find* put on the map, said under the buttons until the pin is moved or the page is left. */
+  protected readonly placeMsg = signal<RunResult<Msg> | null>(null);
   /**
    * False for a new house opened without a position (the share target, a bookmarked /houses/new) until the user
    * has put the pin: chosen a spot on the map, typed coordinates, or used their location. Saving is refused until
@@ -308,6 +312,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    */
   private fillRequest: Subscription | null = null;
   private lookupRequest: Subscription | null = null;
+  private findRequest: Subscription | null = null;
   private destroyed = false;
   /**
    * Set just before this page calls `Location.back()` itself, once leaving has been settled (asked and answered in
@@ -342,6 +347,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.destroyed = true;
     this.fillRequest?.unsubscribe();
     this.lookupRequest?.unsubscribe();
+    this.findRequest?.unsubscribe();
     this.unsaved.release(this);
     this.toolbarObserver?.disconnect();
     if (this.shortQuery && this.onShortChange) this.shortQuery.removeEventListener('change', this.onShortChange);
@@ -1180,6 +1186,46 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * none). A value the user typed is only replaced after asking, with the old and new values shown; afterwards the
    * filled fields are named.
    */
+  /**
+   * The place name a shared listing (or the person) gave, while the house has no position yet: *Find* looks it up
+   * (S4b-BL-83, docs/11 5.29 item 4). The locality first, else the address.
+   */
+  protected placeQuery(): string | null {
+    // A method, not a computed: the form's fields write into the draft object in place (ngModel).
+    const d = this.draft();
+    if (!d || this.locationSet()) return null;
+    return d.locality?.trim() || d.address?.trim() || null;
+  }
+
+  /**
+   * *Find “…” on the map*, on the person's tap only: Nominatim's `/search` (one request a second, `GeocodeService`)
+   * puts the pin at the place, marked approximate, for the person to drag to the house; a name it does not know says so.
+   */
+  protected findPlace(): void {
+    const place = this.placeQuery();
+    if (!place || this.finding()) return;
+    this.finding.set(true);
+    this.findRequest = this.geocode.search(place, this.i18n.lang()).subscribe({
+      next: (found) => {
+        this.findRequest = null;
+        this.finding.set(false);
+        if (!found) {
+          this.locationMsg.set(runResult({ key: 'house.placeNotFound', params: { place } }));
+          return;
+        }
+        this.locationMsg.set(null);
+        this.placePin(round6(found.lat), round6(found.lon), 'APPROX');
+        this.placeMsg.set(runResult({ key: 'house.placeFound', params: { place } }));
+        this.announcer.announce({ key: 'house.placeFound', params: { place } });
+      },
+      error: (err: unknown) => {
+        this.findRequest = null;
+        this.finding.set(false);
+        this.locationMsg.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));
+      },
+    });
+  }
+
   protected fillAddress(): void {
     const d = this.draft();
     if (!d || this.geocoding() || !this.locationSet()) return;
