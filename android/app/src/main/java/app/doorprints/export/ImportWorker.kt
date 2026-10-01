@@ -135,7 +135,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     // not to the output Data, which is capped at 10 KB. If the file cannot be written the import
                     // still stands; the screen then simply offers no undo.
                     val undoable = request.mode == ImportMode.COPY &&
-                        (result.copiedHouses.isNotEmpty() || result.copiedVisits.isNotEmpty()) &&
+                        (result.copiedHouses.isNotEmpty() || result.copiedVisits.isNotEmpty() ||
+                            result.copiedRecords.isNotEmpty()) &&
                         ImportUndo.save(
                             applicationContext,
                             CopyRecord(
@@ -144,6 +145,7 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                                 houses = result.copiedHouses,
                                 visits = result.copiedVisits,
                                 photos = result.copiedPhotos,
+                                records = result.copiedRecords,
                             ),
                         )
                     // Told = seen on the Import screen, or a notification that was really posted.

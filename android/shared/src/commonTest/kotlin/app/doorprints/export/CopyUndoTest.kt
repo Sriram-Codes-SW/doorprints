@@ -222,4 +222,22 @@ class CopyUndoTest {
         )
         assertEquals(Decision.REMOVE, decision)
     }
+
+    // ---- the records a copy created (S4b-BL-92e, 90c) ----
+
+    @Test
+    fun aCreatedRecordGoesOnlyWhenUnchangedAndNotInUse() {
+        val now = CopyUndo.RecordNow(updatedAt = 5, deleted = false)
+        assertEquals(Decision.REMOVE, CopyUndo.decideRecord(now, recordedAt = 5, inUse = false))
+        assertEquals(Decision.KEEP, CopyUndo.decideRecord(now, recordedAt = 5, inUse = true), "a house that stays uses it")
+        assertEquals(Decision.KEEP, CopyUndo.decideRecord(now.copy(updatedAt = 6), recordedAt = 5, inUse = false), "edited since")
+        assertEquals(Decision.SKIP, CopyUndo.decideRecord(now.copy(deleted = true), recordedAt = 5, inUse = false))
+        assertEquals(Decision.SKIP, CopyUndo.decideRecord(null, recordedAt = 5, inUse = false))
+    }
+
+    @Test
+    fun aRecordKeyReadsBackAndABadOneIsNone() {
+        assertEquals("viewing" to "v_1a2b3c4d", CopyUndo.recordOf(CopyUndo.recordKey("viewing", "v_1a2b3c4d")))
+        for (bad in listOf("", "viewing", "/v_1", "viewing/")) assertNull(CopyUndo.recordOf(bad), bad)
+    }
 }
