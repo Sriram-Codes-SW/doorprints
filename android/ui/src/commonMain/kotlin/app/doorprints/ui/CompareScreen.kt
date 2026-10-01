@@ -58,6 +58,7 @@ import app.doorprints.ui.res.*
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseStatusRules
 import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.LengthUnit
@@ -93,7 +94,7 @@ private val SelectionSaver = listSaver<Set<String>, String>(save = { it.toList()
  *
  * **Kept.** The selection is saved state, so opening a house from the table (the designed way to look at one) and
  * coming back, a rotation or the language switch keep the comparison the user built. The top-3 default applies once,
- * when there is no saved choice yet; ids of houses that were deleted or rejected since are dropped.
+ * when there is no saved choice yet; ids of houses that were deleted, rejected or not chosen since are dropped.
  *
  * **Table first.** The table is at the top and the picker below it, in a "Choose houses (3 of 4)" section that can be
  * collapsed. With four houses chosen, "You can compare up to 4…" says why the others are disabled.
@@ -105,13 +106,22 @@ private val SelectionSaver = listSaver<Set<String>, String>(save = { it.toList()
  * **Pinned labels.** The criterion column stays put while the house columns scroll sideways together (one shared
  * [ScrollState]); the row dividers run the full width.
  *
- * **Empty.** Fewer than two houses to compare (rejected ones are left out) is a designed empty state with *Add a house
- * on the map* ([onOpenMap]).
+ * **Empty.** Fewer than two houses to compare (Rejected and Not chosen ones are left out, [compareCandidates]) is a
+ * designed empty state with *Add a house on the map* ([onOpenMap]).
  *
  * **Data.** [loaded] is the repository's live houses, null until the database answers, so the empty state does not
  * flash on the way in; [counts] its visits per house. Common code since CMP-4 P4c: `:app`'s `CompareScreen(onOpenHouse,
  * onOpenMap)` (`ui/CompareTab.kt`) collects both from the repository with the activity's lifecycle and passes them in.
  */
+/**
+ * The houses Compare offers (S4b-BL-99 a): those in the running ([HouseStatusRules.inTheRunning]: not Rejected, not Not
+ * chosen, the same rule as the website's Compare and every Plan), shortlisted first, then by the ranking.
+ */
+internal fun compareCandidates(houses: List<HouseEntity>, scoring: Scoring): List<HouseEntity> =
+    houses.filter { HouseStatusRules.inTheRunning(it.status) }
+        .let { list -> Ranking.sort(list) { it.ranked(scoring) } }
+        .sortedByDescending { it.status == HouseStatus.SHORTLISTED }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CompareScreen(
@@ -132,9 +142,7 @@ fun CompareScreen(
     var selected by rememberSaveable(stateSaver = SelectionSaver) { mutableStateOf(emptySet<String>()) }
     var defaulted by rememberSaveable { mutableStateOf(false) }
     var pickerOpen by rememberSaveable { mutableStateOf(true) }
-    val candidates = loaded.orEmpty().filter { it.status != HouseStatus.REJECTED }
-        .let { list -> Ranking.sort(list) { it.ranked(scoring) } }
-        .sortedByDescending { it.status == HouseStatus.SHORTLISTED }
+    val candidates = compareCandidates(loaded.orEmpty(), scoring)
     val candidateIds = candidates.map { it.id }.toSet()
     LaunchedEffect(loaded != null, candidateIds) {
         if (loaded == null) return@LaunchedEffect

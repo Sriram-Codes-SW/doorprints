@@ -59,7 +59,7 @@ object OnDeviceSelection {
         return true
     }
 
-    /** Plan's candidates: every house (Rejected included, the prompt says to skip them unless asked), nearest first. */
+    /** Plan's candidates: every house (Rejected and Not chosen included, the prompt says to skip them unless asked), nearest first. */
     fun forPlan(houses: List<AiHouse>, startLat: Double, startLon: Double): List<PlanCandidate> =
         houses.map { h ->
             val r = ContactRedactor.forContact(h.contactName, h.contactPhone)

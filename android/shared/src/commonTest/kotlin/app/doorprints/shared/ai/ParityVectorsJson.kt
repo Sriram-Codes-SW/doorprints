@@ -589,6 +589,22 @@ internal const val PARITY_VECTORS_JSON: String = """{
       "meters" : 1912,
       "walkMinutes" : 32
     } ]
-  }
+  },
+  "inTheRunning" : [ {
+    "status" : "NEW",
+    "expected" : true
+  }, {
+    "status" : "SHORTLISTED",
+    "expected" : true
+  }, {
+    "status" : "REJECTED",
+    "expected" : false
+  }, {
+    "status" : "TAKEN",
+    "expected" : true
+  }, {
+    "status" : "NOT_CHOSEN",
+    "expected" : false
+  } ]
 }
 """
