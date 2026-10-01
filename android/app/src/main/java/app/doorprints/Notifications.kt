@@ -472,7 +472,13 @@ object Notifications {
     /** True when this app may post notifications at all: below API 33 always, from 33 with `POST_NOTIFICATIONS`. */
     fun canPost(context: Context): Boolean = canPostNotifications(context)
 
-    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?) {
+    /**
+     * A Hunt mode alert: private on a locked screen, which shows the public version "Doorprints alert" (F-14, SEC-022).
+     * [hideOnLockScreen] (the app lock is on, S4b-BL-68, T-I29) makes it secret: a locked screen shows nothing of it
+     * even where the phone is set to show all notification content, which would show a private one whole and name the
+     * house; it still sounds and shows once the phone is unlocked.
+     */
+    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false) {
         if (!canPost(context)) return
         // What a locked screen shows instead of the house details (threat model F-14, SEC-022).
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
@@ -486,7 +492,7 @@ object Notifications {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(if (hideOnLockScreen) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .apply { if (tap != null) setContentIntent(tap) }
             .build()
