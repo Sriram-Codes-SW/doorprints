@@ -3,15 +3,16 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-10-01 |
 | Author | Claude (Code), lead |
-| Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below |
+| Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below. **Follow-up letter sent 2026-10-01 07:15 UTC; awaiting the answer** |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.8 | 2026-10-01 | Claude (Code), lead | **The follow-up letter was sent** by the owner on 2026-10-01 at 07:15 UTC (12:45 IST) as a reply in the same Gmail thread to `mtr.soi@gov.in`, copied to `ngdc.soi@gov.in`, `tusharv.soi@gov.in`, `vaibhavk.soi@surveyofindia.gov.in` and `usyadaw.soi@gov.in` (checked in the owner's Gmail: third message of the thread, label SENT). It thanks the Survey of India, confirms the three conditions and asks the four questions below, with the proposed acknowledgement wording and a request for the Boundary Verification Wing contact. Awaiting the reply. |
 | 0.7 | 2026-10-01 | Claude (Code), lead | An AI search answer the owner pasted (answers to the four follow-up questions, with six references) was checked against its sources: the new subsection *What the Survey of India's own documents say (checked 2026-10-01)*. Its conclusions stay unconfirmed; the follow-up letter stays worth sending and now offers two wordings for the acknowledgement and names the Boundary Verification Wing. |
 | 0.6 | 2026-10-01 | Claude (Code), lead | Owner supplied the DST guidelines PDF ("Final Approved Guidelines on Geospatial Data", authority F.No.SM/25/02/2020 (Part-I), 15 February 2021, 5 pages) to help read the reply: new subsection *Reading the reply against the 2021 guidelines*; P2 now says what that PDF does and does not settle. |
 | 0.5 | 2026-10-01 | Claude (Code), lead | **The reply came** (owner message of 2026-10-01; Gmail thread "Re: Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source app", from `mtr.soi@gov.in`, 2026-10-01 04:44 UTC, copied to the NGDC, NGDR & UGI Directorate): the conditions, what they change in the build, and the plan P0..P6 (new section *The reply and the plan*, with a follow-up letter to send). |
@@ -157,7 +158,7 @@ ours, not the Survey of India's; the letter asks which it prefers (and offers th
 Order: after the stacked pull requests are merged and the manual list (N15) has started, because P3-P5 touch the same map
 code on all three stacks. P0 can happen any time, and P1-P2 need no code.
 
-### Follow-up letter (optional; the owner sends it, as the first letter; not sent by a session)
+### Follow-up letter (sent by the owner on 2026-10-01 at 07:15 UTC; text below is the draft it was based on; the sent text, in the Gmail thread, is the record)
 
 > **Subject:** Re: Request for permission to use the Administrative Boundary Database (OVSF/1M/7) in a free, open-source
 > app (to `mtr.soi@gov.in`, copy the same officers)
