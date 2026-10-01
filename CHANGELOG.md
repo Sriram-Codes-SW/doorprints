@@ -941,6 +941,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **The app lock could not open its prompt on Android 10 and later** (found by the new emulator test, S4b-BL-67, on its first run on the API 34 and 36 emulators): `BiometricPrompt.authenticate` threw a `SecurityException` ("Must have USE_BIOMETRIC permission") because the manifest lacked that normal permission, so the lock screen could not ask for the phone's PIN, pattern or password. `USE_BIOMETRIC` is now declared; the test also sets its PIN once the app is on screen, so the keyguard of API 26 does not hide the app.
 - **Seeded questions no longer overwrite another device's edits**: they are stamped 2000-01-01 and stored as already synced (S4b-BL-90a).
 - **The Telugu name of the Bedroom room type** was Korean text on the website (Wave D).
 - **A deep link from a notification** now shows the screen it names even when another screen was open on that tab (S4b-BL-94a).
