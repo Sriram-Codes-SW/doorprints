@@ -282,12 +282,12 @@ internal class IosExportServices(
     /** No result notifications on iPhone: the screen shows a run that ended while it was away. */
     override val postsResults: Boolean get() = false
 
-    /** This phone's offset and time now, the app's language, everything included (Android's `ExportBuilder.defaults`). */
+    /** UTC as the website and Android (S4b-BL-92c), the time now, the app's language, everything included (`ExportBuilder.defaults`). */
     @Composable
     override fun rememberDefaultOptions(): () -> ExportOptions = remember {
         {
             val now = nowMillis()
-            ExportOptions(language = appLanguage(), utcOffsetMinutes = utcOffsetMillis(now) / 60_000, exportedAtMillis = now)
+            ExportOptions(language = appLanguage(), utcOffsetMinutes = 0, exportedAtMillis = now)
         }
     }
 

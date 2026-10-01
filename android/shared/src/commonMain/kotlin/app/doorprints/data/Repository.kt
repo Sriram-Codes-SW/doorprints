@@ -413,6 +413,8 @@ interface Repository {
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        /** The records the copy created (`CopyRecord.records`, S4b-BL-92e). */
+        records: Map<String, Long> = emptyMap(),
     ): UndoResult
 
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
@@ -525,6 +527,8 @@ interface Repository {
         val copiedHouses: Map<String, Long> = emptyMap(),
         val copiedVisits: Map<String, Long> = emptyMap(),
         val copiedPhotos: List<String> = emptyList(),
+        /** COPY only: the brokers, viewings, questions and criteria it created, by `CopyUndo.recordKey` (S4b-BL-92e). */
+        val copiedRecords: Map<String, Long> = emptyMap(),
         /** Brokers written (slice 1b), new and updated together. */
         val brokers: Int = 0,
         /** Criteria and preferences written (slice 2), new and updated together. */
