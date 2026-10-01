@@ -115,7 +115,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
-The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or released; [sprint log](docs/10-sprint-log.md) §13.29..§13.40) adds the first eleven entries below.
+The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or released; [sprint log](docs/10-sprint-log.md) §13.29..§13.40) adds the first fourteen entries below.
 
 - **Moving in** ([spec](docs/11-feature-parity-and-export-spec.md) 5.24, slice 5): two new statuses, **Taken** and **Not chosen**. Mark the house you chose as Taken and Doorprints offers to mark the others Not chosen. A Taken house has a **Moving in** card: **Start moving in** adds the usual checklist (rental agreement, police verification, ID copies, deposit receipt, meter readings, keys) in your language, you add your own items, the move-in date and notes, and a **Condition record** of dated photos per room for when the deposit is returned. **Close this hunt** marks the remaining houses Not chosen (nothing is deleted) and offers to save a copy.
 - **Photo tags** ([spec](docs/11-feature-parity-and-export-spec.md) 5.7, slice 5): each photo can name its room, carry up to ten tags (Damp, Crack, Leak, Meter, Move-in and others, or your own) and a caption; they sync, and appear in backups and readable copies.
