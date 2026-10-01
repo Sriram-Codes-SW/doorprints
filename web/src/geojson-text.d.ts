@@ -18,7 +18,8 @@
 
 /**
  * A `.geojson` file imported with `with { loader: 'text' }` (Angular's esbuild text loader): its content as a string.
- * Used for the held areas' polygon (src/app/shared/india-boundaries.ts, S4b-BL-12).
+ * Used for the held areas' polygon (S4b-BL-12) and the Survey of India corridor (S4b-BL-99), both in
+ * src/app/shared/india-boundaries.ts.
  */
 declare module '*.geojson' {
   const text: string;

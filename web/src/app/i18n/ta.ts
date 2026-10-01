@@ -99,6 +99,8 @@ export const ta: Dict = {
   'map.myLocation': 'என் இருப்பிடத்தைக் காட்டு',
   'map.locationUnavailable': 'இருப்பிடம் கிடைக்கவில்லை',
   'map.attribution': 'வரைபட நன்றிக்குறிப்பைக் காட்டு',
+  // S4b-BL-99 (2026-10-01): the Survey of India's credit on the map. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.boundaryCredit': 'எல்லை: இந்திய நில அளவைத் துறை',
   'map.unavailable': 'WebGL 2 கிடைக்காததால் இந்த உலாவியில் வரைபடத்தைக் காட்ட முடியாது. மற்ற அனைத்தும் வழக்கம்போல் இயங்கும்.',
   'map.legend': 'குறிப்பு',
   'map.statsLabel': 'சுருக்கம்',
@@ -407,6 +409,8 @@ export const ta: Dict = {
   'data.aboutHeading': 'Doorprints பற்றி',
   'data.aboutLicence': 'Doorprints ஒரு கட்டற்ற மென்பொருள்: GNU Affero General Public License, பதிப்பு 3-இன் விதிகளின்படி இதைப் பகிரலாம், மாற்றலாம்.',
   'data.aboutWarranty': 'இதற்கு எந்த உத்தரவாதமும் இல்லை.',
+  // S4b-BL-99 (2026-10-01): the Survey of India's acknowledgement in About. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.aboutBoundary': 'எல்லைகள்: இந்திய நில அளவைத் துறை, நிர்வாக எல்லைத் தரவுத்தளம் (OVSF/1M/7), எந்த மாற்றமும் இன்றி. © இந்திய நில அளவைத் துறை, இந்திய அரசு.',
   'data.aboutSource': 'மூலக் குறியீடு',
   'data.aboutSourceAria': 'GitHub-இல் மூலக் குறியீடு (புதிய தாவலில் திறக்கும்)',
   'data.aboutLicenceLink': 'உரிமம்',

@@ -99,6 +99,8 @@ export const hi: Dict = {
   'map.myLocation': 'मेरी जगह दिखाएँ',
   'map.locationUnavailable': 'जगह उपलब्ध नहीं है',
   'map.attribution': 'नक्शे का श्रेय दिखाएँ',
+  // S4b-BL-99 (2026-10-01): the Survey of India's credit on the map. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.boundaryCredit': 'सीमा: भारतीय सर्वेक्षण विभाग',
   'map.unavailable': 'इस ब्राउज़र में नक्शा नहीं दिखाया जा सकता क्योंकि WebGL 2 उपलब्ध नहीं है। बाकी सब कुछ काम करता है।',
   'map.legend': 'संकेत',
   'map.statsLabel': 'सारांश',
@@ -407,6 +409,8 @@ export const hi: Dict = {
   'data.aboutHeading': 'Doorprints के बारे में',
   'data.aboutLicence': 'Doorprints मुक्त सॉफ़्टवेयर है: आप इसे GNU Affero General Public License, संस्करण 3 की शर्तों के तहत साझा कर सकते हैं और बदल सकते हैं।',
   'data.aboutWarranty': 'इसके साथ कोई भी वारंटी नहीं है।',
+  // S4b-BL-99 (2026-10-01): the Survey of India's acknowledgement in About. Under review (owner rule: hi/ta/te ship marked under review).
+  'data.aboutBoundary': 'सीमाएँ: भारतीय सर्वेक्षण विभाग, प्रशासनिक सीमा डेटाबेस (OVSF/1M/7), बिना किसी बदलाव के। © भारतीय सर्वेक्षण विभाग, भारत सरकार।',
   'data.aboutSource': 'सोर्स कोड',
   'data.aboutSourceAria': 'GitHub पर सोर्स कोड (नए टैब में खुलता है)',
   'data.aboutLicenceLink': 'लाइसेंस',
