@@ -499,6 +499,56 @@ class IndiaViewRulesTest {
         assertFalse(eval(filter, tehsil, 4f, tileLine(4, listOf(74.75 to 34.05, 74.85 to 34.1))))
     }
 
+    @Test
+    fun theCorridorFileIsReadAsPolygonsAndNothingElse() {
+        val ring = "[[80,29],[81,29],[81,31],[80,29]]"
+        val polygon = "{\"type\":\"Polygon\",\"coordinates\":[$ring]}"
+        assertEquals(listOf(polygon), IndiaViewRules.soiCorridorGeometries(file("Polygon", "[$ring]")))
+        val one = "{\"type\":\"Feature\",\"properties\":{},\"geometry\":$polygon}"
+        assertEquals(listOf(polygon, polygon), IndiaViewRules.soiCorridorGeometries("{\"type\":\"FeatureCollection\",\"features\":[$one,$one]}"))
+        assertNull(IndiaViewRules.soiCorridorGeometries("{\"type\":\"FeatureCollection\",\"features\":[]}"))
+        assertNull(IndiaViewRules.soiCorridorGeometries(file("MultiPolygon", "[[$ring]]")))
+        assertNull(IndiaViewRules.soiCorridorGeometries(file("Polygon", "[[[80,29],[81,29],[81,31],[80,31]]]")), "not closed")
+        assertNull(IndiaViewRules.soiCorridorGeometries("not json"))
+        // In expression syntax only: the deprecated syntax has no within.
+        val rule = IndiaViewRules.soiCorridorFilter(listOf(polygon))
+        assertEquals("[\"!\", [\"all\", ${IndiaViewRules.INDIA_LINE}, [\"any\", [\"within\", $polygon]]]]", rule)
+        assertEquals(rule, IndiaViewRules.soiCorridorFilterFor(toList(parse(LIBERTY_BOUNDARY_2)), listOf(polygon)))
+        assertNull(IndiaViewRules.soiCorridorFilterFor(listOf("==", "admin_level", 2f), listOf(polygon)))
+    }
+
+    @Test
+    fun indiasTileLinesInsideTheCorridorAreNotDrawnOtherLinesAndCrossingOnesAre() {
+        // boundary_2's filter as applyIndiaView leaves it: all(all(all(Liberty's, rule 2), guard), corridor), with two
+        // test squares standing in for the corridor (the real file: IndiaBoundaryDataTest), one around Uttarakhand's
+        // border with Nepal (80-81 E, 29-31 N) and one around the Wakhan (73.5-75 E, 36.7-37.2 N).
+        val polygons = listOf(
+            "{\"type\":\"Polygon\",\"coordinates\":[[[80,29],[81,29],[81,31],[80,31],[80,29]]]}",
+            "{\"type\":\"Polygon\",\"coordinates\":[[[73.5,36.7],[75,36.7],[75,37.2],[73.5,37.2],[73.5,36.7]]]}",
+        )
+        val filter = parse(
+            "[\"all\", [\"all\", [\"all\", $LIBERTY_BOUNDARY_2, ${IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER}], " +
+                "${IndiaViewRules.TILE_ZOOM_GUARD}], ${IndiaViewRules.soiCorridorFilter(polygons)}]",
+        )
+        val line: Map<String, Any> = mapOf("admin_level" to 2, "disputed" to 0, "maritime" to 0)
+        val nepal = listOf(80.34 to 29.51, 80.336 to 29.513)
+        val wakhan = listOf(74.2 to 36.9, 74.28 to 36.91)
+        listOf(9, 14).forEach { z ->
+            // India's lines along the Survey of India's: hidden, also with India's side empty, and the Wakhan.
+            assertFalse(eval(filter, line + mapOf("adm0_l" to "NPL", "adm0_r" to "IND"), z.toFloat(), tileLine(z, nepal)), "z$z")
+            assertFalse(eval(filter, line + mapOf("adm0_l" to "NPL"), z.toFloat(), tileLine(z, nepal)), "z$z")
+            assertFalse(eval(filter, line + mapOf("adm0_l" to "PAK", "adm0_r" to "AFG"), z.toFloat(), tileLine(z, wakhan)), "z$z")
+            // Another country's line there: drawn.
+            assertTrue(eval(filter, line + mapOf("adm0_l" to "NPL", "adm0_r" to "CHN"), z.toFloat(), tileLine(z, nepal)), "z$z")
+        }
+        // India's line elsewhere (Nepal along Bihar), and one that runs on past the corridor: drawn.
+        val india = line + mapOf("adm0_l" to "NPL", "adm0_r" to "IND")
+        assertTrue(eval(filter, india, 12f, tileLine(12, listOf(84.8 to 27.05, 84.9 to 27.0))))
+        assertTrue(eval(filter, india, 9f, tileLine(9, nepal + listOf(80.5 to 28.6))))
+        // A feature without geometry is not within: drawn.
+        assertTrue(eval(filter, india, 12f))
+    }
+
     // --- helpers ---------------------------------------------------------------------------------------------------
 
     private companion object {

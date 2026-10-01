@@ -513,6 +513,9 @@
     <string name="settings_version">பதிப்பு %1$s</string>
     <string name="settings_licence">Doorprints ஒரு கட்டற்ற மென்பொருள்: GNU Affero General Public License, பதிப்பு 3-இன் விதிகளின்படி இதைப் பகிரலாம், மாற்றலாம்.</string>
     <string name="settings_warranty">இதற்கு எந்த உத்தரவாதமும் இல்லை.</string>
+    <!-- The Survey of India's credit on the map's attribution and its acknowledgement in Settings > About (S4b-BL-99, 2026-10-01). Under review. -->
+    <string name="map_boundary_credit">எல்லை: இந்திய நில அளவைத் துறை</string>
+    <string name="settings_about_boundary">எல்லைகள்: இந்திய நில அளவைத் துறை, நிர்வாக எல்லைத் தரவுத்தளம் (OVSF/1M/7), எந்த மாற்றமும் இன்றி. © இந்திய நில அளவைத் துறை, இந்திய அரசு.</string>
     <string name="settings_source">மூலக் குறியீடு</string>
     <string name="settings_source_desc">GitHub-இல் மூலக் குறியீடு, உலாவியில் திறக்கும்</string>
     <string name="settings_licence_link">உரிமம்</string>

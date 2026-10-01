@@ -70,8 +70,14 @@ internal object IosMapStyle {
     /** What [IndiaViewCheck.loadedProblems] found in the style the map last loaded; null until one has loaded. */
     val loadedProblems = MutableStateFlow<List<String>?>(null)
 
-    /** Downloads (or reads the cached) base style and prepares it, off the main thread; throws when neither works. */
-    suspend fun prepare(labelSizeSp: Float): PreparedMapStyle = withContext(Dispatchers.Default) {
+    /**
+     * Downloads (or reads the cached) base style and prepares it, off the main thread; throws when neither works.
+     * [soiAttribution] is the Survey of India's credit in the app's language (S4b-BL-99).
+     */
+    suspend fun prepare(
+        labelSizeSp: Float,
+        soiAttribution: String = IndiaViewRules.SOI_ATTRIBUTION,
+    ): PreparedMapStyle = withContext(Dispatchers.Default) {
         val base = try {
             // One retry: a single dropped connection should not cost the map its fresh style (or CI its gate).
             (runCatching { download() }.getOrNull() ?: download()).also { saveCache(it) }
@@ -79,7 +85,7 @@ internal object IosMapStyle {
             warn("the base style did not download; the cached copy is used", e)
             readCache() ?: throw IllegalStateException("the base style could not be downloaded and none is cached", e)
         }
-        prepareMapStyle(base.decodeToString(), labelSizeSp, ::readBundledAsset, ::warn).also { style ->
+        prepareMapStyle(base.decodeToString(), labelSizeSp, ::readBundledAsset, ::warn, soiAttribution).also { style ->
             style.problems.forEach { logLine("DOORPRINTS-MAP india-view problem: $it") }
             prepared.value = style
         }

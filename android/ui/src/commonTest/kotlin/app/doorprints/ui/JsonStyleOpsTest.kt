@@ -39,18 +39,26 @@ import kotlin.test.assertTrue
  * makes a CI gate.
  */
 class JsonStyleOpsTest {
-    /** Stand-ins for the bundled files: one line of each kind, and a small closed polygon for the held areas. */
+    /**
+     * Stand-ins for the bundled files: a world line, a Survey of India file with a claim and a state run (Google's
+     * documented polyline, read at 1e-7 degree), a small closed polygon for the held areas and one for the corridor.
+     */
     private val boundaries = """{"type":"FeatureCollection","features":[""" +
-        """{"type":"Feature","properties":{"kind":"world"},"geometry":{"type":"LineString","coordinates":[[70,30],[71,31]]}},""" +
-        """{"type":"Feature","properties":{"kind":"claim"},"geometry":{"type":"LineString","coordinates":[[75,35],[76,36]]}},""" +
-        """{"type":"Feature","properties":{"kind":"state"},"geometry":{"type":"LineString","coordinates":[[92,27],[93,28]]}}]}"""
+        """{"type":"Feature","properties":{"kind":"world"},"geometry":{"type":"LineString","coordinates":[[70,30],[71,31]]}}]}"""
+    private val soi = """{"type":"FeatureCollection","features":[""" +
+        """{"type":"Feature","properties":{"kind":"claim","state":"A","vertices":2,"polyline7":"_p~iF~ps|U_ulLnnqC"},"geometry":null},""" +
+        """{"type":"Feature","properties":{"kind":"state","state":"B","vertices":2,"polyline7":"_p~iF~ps|U_ulLnnqC"},"geometry":null}]}"""
     private val heldAreas = """{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},""" +
         """"geometry":{"type":"Polygon","coordinates":[[[73,34],[78,34],[78,37],[73,37],[73,34]]]}}]}"""
+    private val corridor = """{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},""" +
+        """"geometry":{"type":"Polygon","coordinates":[[[80,29],[81,29],[81,31],[80,31],[80,29]]]}}]}"""
     private val warnings = mutableListOf<String>()
 
     private fun readAsset(path: String): String = when (path) {
         IndiaViewRules.ASSET_PATH -> boundaries
+        IndiaViewRules.SOI_ASSET_PATH -> soi
         IndiaViewRules.HELD_AREAS_ASSET_PATH -> heldAreas
+        IndiaViewRules.SOI_CORRIDOR_ASSET_PATH -> corridor
         else -> error("no asset $path")
     }
 
@@ -109,8 +117,9 @@ class JsonStyleOpsTest {
     fun rulesAreAndedToLibertysOwnFiltersAsJsonInTheOrderAndroidAppliesThem() {
         val style = prepare().style
         val guard = json(IndiaViewRules.TILE_ZOOM_GUARD)
+        val corridorRule = json(IndiaViewRules.soiCorridorFilter(IndiaViewRules.soiCorridorGeometries(corridor)!!))
         assertEquals(
-            all(all(libertyLayer("boundary_2")["filter"]!!, json(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER)), guard),
+            all(all(all(libertyLayer("boundary_2")["filter"]!!, json(IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER)), guard), corridorRule),
             layer(style, "boundary_2")["filter"],
         )
         val held = json(IndiaViewRules.heldAreasFilter(IndiaViewRules.heldAreasGeometry(heldAreas)!!))
@@ -136,6 +145,12 @@ class JsonStyleOpsTest {
         val source = style["sources"]!!.jsonObject[IndiaViewRules.SOURCE_ID]!!.jsonObject
         assertEquals("geojson", source["type"]!!.jsonPrimitive.content)
         assertEquals(json(boundaries), source["data"])
+        // The Survey of India's lines decoded inline, with the credit MapLibre iOS lists in its attribution sheet.
+        val soiSource = style["sources"]!!.jsonObject[IndiaViewRules.SOI_SOURCE_ID]!!.jsonObject
+        assertEquals(json(SoiPolyline.geoJson(soi)!!), soiSource["data"])
+        assertEquals(IndiaViewRules.SOI_ATTRIBUTION, soiSource["attribution"]!!.jsonPrimitive.content)
+        assertEquals(IndiaViewRules.SOI_SOURCE_ID, layer(style, IndiaViewRules.CLAIM_LAYER)["source"]!!.jsonPrimitive.content)
+        assertEquals(IndiaViewRules.SOI_SOURCE_ID, layer(style, IndiaViewRules.STATE_OVERLAY_LAYER)["source"]!!.jsonPrimitive.content)
         val country = libertyLayer("boundary_2")["paint"]!!.jsonObject
         val world = layer(style, IndiaViewRules.WORLD_LAYER)
         assertEquals(country["line-color"], world["paint"]!!.jsonObject["line-color"])
@@ -173,6 +188,12 @@ class JsonStyleOpsTest {
             listOf("boundary_3 lacks the tile-zoom guard", "boundary_3 lacks the held areas' rule"),
             IndiaViewCheck.problems(unguarded),
         )
+        val noCorridor = style.withLayer("boundary_2") { it + ("filter" to libertyLayer("boundary_2")["filter"]!!) }
+        assertTrue("boundary_2 lacks the Survey of India corridor" in IndiaViewCheck.problems(noCorridor))
+        val sources = style["sources"]!!.jsonObject
+        val soiWithoutCredit = JsonObject(sources[IndiaViewRules.SOI_SOURCE_ID]!!.jsonObject - "attribution")
+        val uncredited = JsonObject(style + ("sources" to JsonObject(sources + (IndiaViewRules.SOI_SOURCE_ID to soiWithoutCredit))))
+        assertEquals(listOf("the source ${IndiaViewRules.SOI_SOURCE_ID} has no credit"), IndiaViewCheck.problems(uncredited))
         val noLabelRule = style.withLayer("label_other") { it + ("filter" to libertyLayer("label_other")["filter"]!!) }
         assertEquals(listOf("label_other lacks the state-label rule"), IndiaViewCheck.problems(noLabelRule))
     }

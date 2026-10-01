@@ -40,8 +40,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import org.jetbrains.compose.resources.stringResource
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.TrackPointEntity
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.map_boundary_credit
 import kotlin.math.hypot
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdate
@@ -92,6 +95,8 @@ actual fun PlatformMap(
     // instead of the ones captured on the first composition.
     val currentEvents by rememberUpdatedState(events)
     val currentLabelSize by rememberUpdatedState(labelSizeSp)
+    // The Survey of India's credit in the app's language (S4b-BL-99): in the attribution dialog and the style's rules.
+    val currentCredit by rememberUpdatedState(stringResource(Res.string.map_boundary_credit))
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var style by remember { mutableStateOf<Style?>(null) }
     // Half of a 48 dp touch target: a tap anywhere within it hits the marker (whole-app audit, motor access).
@@ -100,7 +105,7 @@ actual fun PlatformMap(
     fun loadStyle(m: MapLibreMap) {
         m.setStyle(Style.Builder().fromUri(MAP_STYLE_URL)) { s ->
             // Before the house layers, on every load (the first one and each retry): India's own boundary, no LoC/LAC.
-            applyIndiaView(MapLibreStyleOps(s, context.assets))
+            applyIndiaView(MapLibreStyleOps(s, context.assets), currentCredit)
             addHouseLayers(s, currentLabelSize)
             style = s
             currentEvents.onStyleLoaded()
@@ -132,8 +137,12 @@ actual fun PlatformMap(
     // The attribution ("i") on the gutter, lifted above what the chrome draws at the bottom start, and hidden while a
     // snackbar sits in its place (MapScreen); MapLibre's logo off.
     LaunchedEffect(map, attribution) {
-        val ui = map?.uiSettings ?: return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        val ui = m.uiSettings
         ui.setLogoEnabled(false)
+        if (ui.attributionDialogManager !is SoiAttributionDialogManager) {
+            ui.setAttributionDialogManager(SoiAttributionDialogManager(context, m) { currentCredit })
+        }
         ui.setAttributionMargins(attribution.startPx, 0, 0, attribution.bottomPx)
         ui.isAttributionEnabled = attribution.shown
     }
