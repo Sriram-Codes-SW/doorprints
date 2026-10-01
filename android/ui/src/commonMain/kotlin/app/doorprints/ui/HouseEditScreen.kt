@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -99,6 +100,10 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
+import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.model.PhotoTags
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -169,6 +174,8 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 HouseRooms.encode(it.rooms),
                 // Slice 3a: the questions asked, as the JSON text Room keeps them in (null for none).
                 HouseAnswers.encode(it.answers),
+                // Slice 5: the move-in, as the JSON text Room keeps it in (null for none).
+                MoveIn.encode(it.moveIn),
             )
         }
     },
@@ -215,6 +222,8 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         rooms = HouseRooms.decode(v.getOrNull(35) as String?),
         // Absent before slice 3a: no questions.
         answers = HouseAnswers.decode(v.getOrNull(36) as String?),
+        // Absent before slice 5: no move-in.
+        moveIn = MoveIn.decode(v.getOrNull(37) as String?),
     )
 }.getOrNull()
 
@@ -323,6 +332,8 @@ fun HouseEditScreen(
     /** The Viewings card (slice 3b-1): plan a viewing of this house of a kind, and this house's viewings. */
     onPlanViewing: (houseId: String, kind: ViewingKind) -> Unit = { _, _ -> },
     onOpenViewings: (houseId: String) -> Unit = {},
+    /** *Save a copy* after *Close this hunt* (slice 5): the Export screen. */
+    onSaveCopy: () -> Unit = {},
 ) {
     val platform = LocalPlatformServices.current
     val services = LocalAppServices.current
@@ -483,6 +494,17 @@ fun HouseEditScreen(
 
     LaunchedEffect(dirty) { if (!dirty) confirmLeave = false }
 
+    // Slice 5 (docs/11 5.24): choosing Taken asks *Mark the other houses Not chosen?*; the answer is carried out when the
+    // house is saved. *Close this hunt* confirms with the number of houses, then offers *Save a copy*.
+    var askMarkOthers by rememberSaveable { mutableStateOf(false) }
+    var markOthersOnSave by rememberSaveable { mutableStateOf(false) }
+    var confirmClose by rememberSaveable { mutableStateOf<Int?>(null) }
+    var closedCount by rememberSaveable { mutableStateOf<Int?>(null) }
+    // The next photo taken is for the condition record: it gets the MOVE_IN tag (saveable across the camera hand-off).
+    var moveInPhoto by rememberSaveable { mutableStateOf(false) }
+    // The photo whose room, tags and caption are being edited (from the viewer).
+    var metaPhotoId by rememberSaveable { mutableStateOf<String?>(null) }
+
     fun update(transform: (HouseEntity) -> HouseEntity) {
         draft = draft?.let(transform)
     }
@@ -500,6 +522,8 @@ fun HouseEditScreen(
         scope.launch {
             withContext(NonCancellable) {
                 repo.saveHouse(toSave)
+                // *Mark them Not chosen* (slice 5): the other houses, once this one is saved TAKEN.
+                if (markOthersOnSave && toSave.status == HouseStatus.TAKEN) repo.markOthersNotChosen(toSave.id)
                 if (visitId != null) {
                     repo.getVisit(visitId)?.let { repo.saveVisit(it.copy(houseId = toSave.id)) }
                     // The "Are you at a house?" alert is answered: tapping it again must not open a second form.
@@ -508,6 +532,7 @@ fun HouseEditScreen(
             }
             draft = toSave
             baseline = toSave
+            markOthersOnSave = false
             exit = if (isNew) FormExit.Created(toSave.id) else FormExit.Done
         }
     }
@@ -602,7 +627,9 @@ fun HouseEditScreen(
         scope.launch {
             try {
                 // NonCancellable: a rotation while a big photo is being shrunk must not lose it.
-                val result = withContext(NonCancellable) { form.addPhoto(id, photo) }
+                val tags = if (moveInPhoto) listOf(PhotoTags.MOVE_IN) else emptyList()
+                moveInPhoto = false
+                val result = withContext(NonCancellable) { form.addPhoto(id, photo, tags) }
                 photoProblem = result.takeIf { it != Repository.AddPhotoResult.ADDED }
             } finally {
                 addingPhoto = false
@@ -852,7 +879,16 @@ fun HouseEditScreen(
                             selected = d.status == s,
                             horizontalPadding = 0.dp,
                             spokenLabel = text,
-                        ) { update { it.copy(status = s) } }
+                        ) {
+                            val was = d.status
+                            update { it.copy(status = s) }
+                            if (s != HouseStatus.TAKEN) {
+                                markOthersOnSave = false
+                            } else if (was != HouseStatus.TAKEN) {
+                                // Only when there is someone to mark: the dialog would ask about nothing otherwise.
+                                scope.launch { if (repo.closeTargetCount(id) > 0) askMarkOthers = true }
+                            }
+                        }
                     }
                 }
 
@@ -1147,6 +1183,7 @@ fun HouseEditScreen(
                                     OutlinedButton(
                                         onClick = {
                                             commitPendingDelete()
+                                            moveInPhoto = false
                                             photoSources.takePhoto()
                                         },
                                         enabled = !addingPhoto,
@@ -1157,6 +1194,7 @@ fun HouseEditScreen(
                                     OutlinedButton(
                                         onClick = {
                                             commitPendingDelete()
+                                            moveInPhoto = false
                                             photoSources.pickFromGallery()
                                         },
                                         enabled = !addingPhoto,
@@ -1200,6 +1238,7 @@ fun HouseEditScreen(
                             shownPhotos.forEachIndexed { index, p ->
                                 val deleteFocus = photoFocus.getOrPut(p.id) { FocusRequester() }
                                 val openFocus = thumbFocus.getOrPut(p.id) { FocusRequester() }
+                                Column(Modifier.width(120.dp)) {
                                 Box {
                                     // A button: opens the photo larger (the web's photo tile, docs/05 §5).
                                     AsyncImage(
@@ -1230,6 +1269,11 @@ fun HouseEditScreen(
                                                 contentDescription = stringResource(Res.string.house_delete_photo, index + 1))
                                         }
                                     }
+                                }
+                                // Its room, tags and caption (slice 5), those it has; edited from the viewer.
+                                photoMetaSummary(p, d.rooms)?.let {
+                                    Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
                                 }
                             }
                             // The photo being added, so the row shows that something is happening (decoding a 12 MP photo
@@ -1313,6 +1357,26 @@ fun HouseEditScreen(
                     HouseDistancesSection(saved)
                 }
 
+                // Moving in (docs/11 5.24, slice 5): the card of a TAKEN house, after the Viewings.
+                if (d.status == HouseStatus.TAKEN) {
+                    MovingInCard(
+                        moveIn = d.moveIn,
+                        onChange = { m -> update { it.copy(moveIn = m) } },
+                        rooms = d.rooms,
+                        photos = shownPhotos,
+                        canAddPhoto = canAddPhotos && saved != null,
+                        addingPhoto = addingPhoto,
+                        onAddPhoto = {
+                            commitPendingDelete()
+                            moveInPhoto = true
+                            photoSources.takePhoto()
+                        },
+                        onOpenPhoto = { viewerPhotoId = it },
+                        closeEnabled = !busy && saved?.status == HouseStatus.TAKEN,
+                        onCloseHunt = { scope.launch { confirmClose = repo.closeTargetCount(id) } },
+                    )
+                }
+
                 Button(onClick = { save() }, enabled = canSave, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text(saveLabel)
                 }
@@ -1330,6 +1394,8 @@ fun HouseEditScreen(
                     photos = shownPhotos,
                     start = start,
                     name = d.label.ifBlank { unnamed },
+                    rooms = d.rooms,
+                    onDetails = { metaPhotoId = it },
                     onClose = {
                         viewerPhotoId = null
                         // Back to the thumbnail it was opened from, not the top of the form.
@@ -1424,6 +1490,96 @@ fun HouseEditScreen(
                 }
             },
         )
+    }
+
+    if (askMarkOthers) {
+        AlertDialog(
+            onDismissRequest = { askMarkOthers = false },
+            title = { Text(stringResource(Res.string.taken_others_title)) },
+            text = { Text(stringResource(Res.string.taken_others_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        askMarkOthers = false
+                        markOthersOnSave = true
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { ButtonLabel(stringResource(Res.string.taken_mark_them)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        askMarkOthers = false
+                        markOthersOnSave = false
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { ButtonLabel(stringResource(Res.string.taken_keep_them)) }
+            },
+        )
+    }
+
+    confirmClose?.let { count ->
+        AlertDialog(
+            onDismissRequest = { confirmClose = null },
+            title = { Text(stringResource(Res.string.movein_close_title)) },
+            text = { Text(stringResource(Res.string.movein_close_body, count)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmClose = null
+                        scope.launch { closedCount = withContext(NonCancellable) { repo.markOthersNotChosen(id) } }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { ButtonLabel(stringResource(Res.string.movein_close)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClose = null }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    ButtonLabel(stringResource(Res.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    closedCount?.let { count ->
+        // Then the offer of a readable copy of everything (docs/11 5.24): *Save a copy* opens the Export screen.
+        AlertDialog(
+            onDismissRequest = { closedCount = null },
+            text = { Text(stringResource(Res.string.movein_closed, count)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        closedCount = null
+                        onSaveCopy()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { ButtonLabel(stringResource(Res.string.settings_export)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { closedCount = null }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    ButtonLabel(stringResource(Res.string.common_close))
+                }
+            },
+        )
+    }
+
+    metaPhotoId?.let { pid ->
+        val photo = photos.firstOrNull { it.id == pid }
+        if (photo == null) {
+            LaunchedEffect(pid) { metaPhotoId = null }
+        } else {
+            val savedText = stringResource(Res.string.photo_meta_saved)
+            PhotoMetaDialog(
+                photo = photo,
+                rooms = draft?.rooms,
+                onDismiss = { metaPhotoId = null },
+                onSave = { meta ->
+                    metaPhotoId = null
+                    scope.launch {
+                        if (withContext(NonCancellable) { repo.savePhotoMeta(pid, meta) }) snackbar.showSnackbar(savedText)
+                    }
+                },
+            )
+        }
     }
 
     if (showPaste) {
@@ -1633,7 +1789,14 @@ private suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>)
  * tells TalkBack where it is.
  */
 @Composable
-private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onClose: () -> Unit) {
+private fun PhotoViewer(
+    photos: List<PhotoEntity>,
+    start: Int,
+    name: String,
+    rooms: List<HouseRoom>?,
+    onDetails: (String) -> Unit,
+    onClose: () -> Unit,
+) {
     val title = stringResource(Res.string.house_photo_viewer)
     val form = LocalAppServices.current.houseForm
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -1653,8 +1816,23 @@ private fun PhotoViewer(photos: List<PhotoEntity>, start: Int, name: String, onC
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f).padding(start = 12.dp),
                     )
+                    // Room, tags and caption (slice 5) of the photo on screen.
+                    photos.getOrNull(pager.currentPage)?.let { p ->
+                        IconButton(onClick = { onDetails(p.id) }, modifier = Modifier.size(48.dp)) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = stringResource(Res.string.photo_details_desc, pager.currentPage + 1),
+                            )
+                        }
+                    }
                     IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.common_close))
+                    }
+                }
+                // What the photo shows (slice 5): its room, tags and caption, when it has any.
+                photos.getOrNull(pager.currentPage)?.let { p ->
+                    photoMetaSummary(p, rooms)?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                     }
                 }
                 HorizontalPager(

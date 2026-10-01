@@ -30,7 +30,8 @@ import {
   FIXTURE_EXPORTED_AT,
   FIXTURE_HOUSES,
   FIXTURE_OPTIONS,
-  FIXTURE_PHOTOS,
+  FIXTURE_PLAIN_HOUSES,
+  FIXTURE_PLAIN_PHOTOS,
   FIXTURE_PHOTO_DATA_URIS,
   FIXTURE_PHOTO_MAP,
   FIXTURE_PLACES,
@@ -42,8 +43,8 @@ import type { AreaNoteRow, AreaRow, PlaceRow } from '../shared/area';
 const en = DICTIONARIES.en;
 const MODIFIED_AT = new Date(FIXTURE_EXPORTED_AT);
 /** No rooms, answers or brokers: only what a test adds decides what the copy holds. */
-const plainHouses = FIXTURE_HOUSES.map((h) => ({ ...h, rooms: null, answers: null }));
-const base = { houses: plainHouses, visits: FIXTURE_VISITS, photos: FIXTURE_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
+const plainHouses = FIXTURE_PLAIN_HOUSES;
+const base = { houses: plainHouses, visits: FIXTURE_VISITS, photos: FIXTURE_PLAIN_PHOTOS, exportedAt: FIXTURE_EXPORTED_AT, options: FIXTURE_OPTIONS };
 const areaRow = (id: string, updatedAt = '2026-09-10T06:00:00.000Z', over: Partial<AreaRow['area']> = {}): AreaRow => ({
   id,
   updatedAt,

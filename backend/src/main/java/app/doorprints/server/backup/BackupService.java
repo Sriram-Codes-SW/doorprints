@@ -23,12 +23,15 @@ import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.HouseAnswer;
+import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.house.HouseStatus;
+import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.photo.PhotoRepository;
+import app.doorprints.server.photo.PhotoService;
 import app.doorprints.server.record.Record;
 import app.doorprints.server.record.RecordController;
 import app.doorprints.server.record.RecordDto;
@@ -127,10 +130,11 @@ public class BackupService {
     private final ApplicationEventPublisher events;
     private final RecordRepository records;
     private final ObjectMapper json;
+    private final PhotoService photoService;
 
     public BackupService(HouseRepository houses, VisitRepository visits, PhotoRepository photos,
                          SyncVersions versions, ClientClock clock, ApplicationEventPublisher events,
-                         RecordRepository records, ObjectMapper json) {
+                         RecordRepository records, ObjectMapper json, PhotoService photoService) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
@@ -139,6 +143,7 @@ public class BackupService {
         this.events = events;
         this.records = records;
         this.json = json;
+        this.photoService = photoService;
     }
 
     /** Everything live on the server, in the format's fixed order. Photo bytes are fetched separately. */
@@ -194,7 +199,7 @@ public class BackupService {
             visitTally.count(mergeVisit(row, dryRun, changedHouses));
         }
 
-        for (var ignored : data.photos()) photoTally.count(Outcome.SKIPPED);
+        for (var row : data.photos()) photoTally.count(mergePhotoMeta(row, dryRun));
         if (!data.photos().isEmpty()) {
             fileNotes.add(data.photos().size() + " photo row(s) carry no image bytes in a JSON backup; upload them "
                     + "with POST /api/houses/{id}/photos");
@@ -288,6 +293,22 @@ public class BackupService {
         for (var houseId : changedHouses) events.publishEvent(new HouseChangedEvent(houseId));
     }
 
+    /**
+     * A JSON backup carries no image bytes, so a photo row never creates a photo (SKIPPED). What the person said about
+     * one (slice 5: room, tags, caption) does merge into a photo this server already holds, last write wins on
+     * {@code metaUpdatedAt} like the sync: newer in the file is UPDATED, the same stamp UNCHANGED, older KEPT_NEWER.
+     * A row with no edit time, or for a photo that is not here (or is another house's), changes nothing.
+     */
+    private Outcome mergePhotoMeta(BackupPhoto row, boolean dryRun) {
+        if (row.metaUpdatedAt() == null || row.metaUpdatedAt() <= 0) return Outcome.SKIPPED;
+        var current = photoService.metadata(row.id());
+        if (current == null || current.deleted() || !current.houseId().equals(row.houseId())) return Outcome.SKIPPED;
+        if (current.metaUpdatedAt() > row.metaUpdatedAt()) return Outcome.KEPT_NEWER;
+        if (current.metaUpdatedAt() == row.metaUpdatedAt()) return Outcome.UNCHANGED;
+        if (!dryRun) photoService.applyMeta(current, row.roomId(), row.tags(), row.caption(), row.metaUpdatedAt());
+        return Outcome.UPDATED;
+    }
+
     private Outcome mergeHouse(BackupHouse row, boolean dryRun, List<String> problems, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "houses.updatedAt");
         var existing = houses.findById(row.id()).orElse(null);
@@ -342,6 +363,7 @@ public class BackupService {
         house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
         house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
         house.setAnswers(HouseAnswer.write(row.answers())); // an empty list reads as no answers
+        house.setMoveIn(HouseMoveIn.write(row.moveIn())); // an empty object reads as no move-in
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
@@ -690,6 +712,7 @@ public class BackupService {
             }
             for (var problem : HouseRoom.problems(row.rooms())) problems.add(at + "." + problem);
             for (var problem : HouseAnswer.problems(row.answers())) problems.add(at + "." + problem);
+            for (var problem : HouseMoveIn.problems(row.moveIn())) problems.add(at + "." + problem);
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
@@ -747,6 +770,14 @@ public class BackupService {
             requireId(at, row.id(), seen, problems);
             require(row.houseId() != null, at + ".houseId is required", problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
+            problems.addAll(PhotoMeta.problems(at, row.roomId(), row.tags(), row.caption(), row.metaUpdatedAt()));
+            if (row.metaUpdatedAt() != null && row.metaUpdatedAt() > 0) {
+                try {
+                    clock.validate(Instant.ofEpochMilli(row.metaUpdatedAt()), at + ".metaUpdatedAt");
+                } catch (DateTimeException | ArithmeticException | IllegalArgumentException e) {
+                    problems.add(at + ".metaUpdatedAt is out of range (check the device clock)"); // never the value
+                }
+            }
             var name = row.fileName();
             require(name != null && !name.isEmpty() && name.length() <= 200
                             && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && !name.contains(".."),

@@ -39,9 +39,19 @@ class ModelLabelsTest {
     @Test
     fun everyStatusHasItsLabelAndGlyph() {
         assertEquals(
-            listOf(Res.string.status_NEW, Res.string.status_SHORTLISTED, Res.string.status_REJECTED),
+            listOf(
+                Res.string.status_NEW, Res.string.status_SHORTLISTED, Res.string.status_REJECTED, Res.string.status_TAKEN,
+                Res.string.status_NOT_CHOSEN,
+            ),
             HouseStatus.entries.map { it.labelResource },
         )
-        assertEquals(listOf("●", "★", "✕"), HouseStatus.entries.map { it.glyph })
+        assertEquals(listOf("●", "★", "✕", "✓", "○"), HouseStatus.entries.map { it.glyph })
+    }
+
+    /** Slice 5: every fixed photo tag has its translated name, in [app.doorprints.shared.model.PhotoTags.FIXED]'s order. */
+    @Test
+    fun everyFixedPhotoTagHasItsLabel() {
+        assertEquals(app.doorprints.shared.model.PhotoTags.FIXED, PHOTO_TAG_LABELS.keys.toList())
+        assertEquals(Res.string.tag_MOVE_IN, PHOTO_TAG_LABELS["MOVE_IN"])
     }
 }

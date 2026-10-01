@@ -191,7 +191,7 @@
           <div class="options">
             @for (s of statuses; track s) {
               <label [class]="'option status-' + s">
-                <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s)" />
+                <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s, $event)" />
                 <span><span aria-hidden="true">{{ statusIcon[s] }}</span> {{ statusKey[s] | t }}</span>
               </label>
             }
@@ -655,6 +655,18 @@
       <!-- Viewings (slice 3b-1, docs/11 5.8): the next planned viewing, Plan a viewing, Mark viewing done. -->
       <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" />
 
+      <!-- Moving in (slice 5, docs/11 5.24): only for the house that is Taken. -->
+      @if (d.status === 'TAKEN') {
+        <app-house-move-in-card
+          [house]="d"
+          [isNew]="isNew()"
+          [saveFirst]="saveBeforeClose"
+          (moveInChange)="setMoveIn($event)"
+          (files)="onConditionFiles($event)"
+          (opened)="openConditionPhoto($event)"
+        />
+      }
+
       <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
       <app-house-area-notes-card [house]="d" />
       <app-house-distances-card [house]="d" />
@@ -919,21 +931,56 @@
         } @else {
           <ul class="gallery">
             @for (id of photoIds(); track id; let i = $index) {
-              <li class="photo">
-                <app-auth-image
-                  [photoId]="id"
-                  [alt]="'house.photoAlt' | t: { n: i + 1, name: d.label || ('common.untitled' | t) }"
-                  (opened)="openPhoto($event, i + 1)"
-                />
-                <button
-                  type="button"
-                  class="photo-del"
-                  [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
-                  [title]="'house.deletePhoto' | t: { n: i + 1 }"
-                  (click)="deletePhoto(id)"
-                >
-                  <span aria-hidden="true">✕</span>
-                </button>
+              <li class="photo-item" [class.editing]="editingPhoto() === id">
+                <div class="photo">
+                  <app-auth-image
+                    [photoId]="id"
+                    [alt]="'house.photoAlt' | t: { n: i + 1, name: d.label || ('common.untitled' | t) }"
+                    (opened)="openPhoto($event, i + 1)"
+                  />
+                  <button
+                    type="button"
+                    class="photo-del"
+                    [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
+                    [title]="'house.deletePhoto' | t: { n: i + 1 }"
+                    (click)="deletePhoto(id)"
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+                <!-- Slice 5: what the person said about the photo, under it: its room, tags and caption. -->
+                @if (photoInfo().get(id); as info) {
+                  <div class="photo-meta">
+                    @if (info.roomId) {
+                      <span class="photo-room">{{ roomNameOf(info) || ('photoMeta.untagged' | t) }}</span>
+                    }
+                    @if (info.tags.length > 0) {
+                      <span class="photo-tags">{{ tagsOf(info) }}</span>
+                    }
+                    @if (info.caption) {
+                      <span class="photo-caption">{{ info.caption }}</span>
+                    }
+                    <button
+                      type="button"
+                      class="btn btn-sm photo-edit"
+                      [id]="'photo-details-' + id"
+                      [attr.aria-expanded]="editingPhoto() === id"
+                      [attr.aria-label]="'photoMeta.edit' | t: { n: i + 1 }"
+                      (click)="editPhoto(id)"
+                    >
+                      {{ 'photoMeta.editShort' | t }}
+                    </button>
+                  </div>
+                  @if (editingPhoto() === id) {
+                    <app-photo-meta-editor
+                      [photo]="info"
+                      [n]="i + 1"
+                      [rooms]="d.rooms ?? []"
+                      (saved)="photoDetailsSaved(id)"
+                      (closed)="editPhoto(id)"
+                    />
+                  }
+                }
               </li>
             }
           </ul>

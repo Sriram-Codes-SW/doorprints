@@ -22,6 +22,7 @@ import app.doorprints.server.common.ConflictException;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.config.AppProperties;
 import app.doorprints.server.house.HouseRepository;
+import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +37,15 @@ public class PhotoService {
     private final PhotoRepository photos;
     private final HouseRepository houses;
     private final SyncVersions versions;
+    private final ClientClock clock;
     private final int maxPerHouse;
 
-    public PhotoService(PhotoRepository photos, HouseRepository houses, SyncVersions versions, AppProperties props) {
+    public PhotoService(PhotoRepository photos, HouseRepository houses, SyncVersions versions, ClientClock clock,
+                        AppProperties props) {
         this.photos = photos;
         this.houses = houses;
         this.versions = versions;
+        this.clock = clock;
         this.maxPerHouse = props.limits().maxPhotosPerHouse();
     }
 
@@ -81,6 +85,44 @@ public class PhotoService {
         var photo = photos.findById(id).orElse(null);
         if (photo == null || photo.isDeleted()) return;
         photo.markDeleted(Instant.now(), versions.next());
+    }
+
+    /**
+     * Sets the person's room, tags and caption on a live photo (slice 5, docs/11 section 5.7): last write wins on
+     * {@code metaUpdatedAt}, so an edit that is not newer than the stored one changes nothing. Either way the answer
+     * is the photo's metadata as the server now holds it. A gone or deleted photo is a 404.
+     */
+    @Transactional
+    public PhotoDto updateMeta(UUID id, PhotoMeta meta) {
+        versions.lock();
+        var current = photos.findMetadataById(id);
+        if (current == null || current.deleted()) throw new NotFoundException("Photo " + id + " not found");
+        applyMeta(current, meta.roomId(), meta.tags(), meta.caption(), meta.metaUpdatedAt());
+        return photos.findMetadataById(id);
+    }
+
+    /**
+     * Writes one edit when it is newer (the caller holds the writer lock); {@code true} when it was written. The
+     * time is checked like every client stamp (absurd values are refused, a fast clock is clamped to now), and a
+     * refusal never echoes it.
+     */
+    public boolean applyMeta(PhotoDto current, String roomId, List<String> tags, String caption, long metaUpdatedAt) {
+        if (metaUpdatedAt <= current.metaUpdatedAt()) return false;
+        var now = clock.now();
+        long stamp;
+        try {
+            stamp = clock.accept(Instant.ofEpochMilli(metaUpdatedAt), "metaUpdatedAt").toEpochMilli();
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("metaUpdatedAt is out of range (check the device clock)");
+        }
+        return photos.applyMeta(current.id(), PhotoMeta.orNull(roomId), PhotoMeta.writeTags(tags),
+                PhotoMeta.orNull(caption), Math.max(stamp, current.metaUpdatedAt() + 1), now, versions.next()) > 0;
+    }
+
+    /** Metadata of one photo (live or tombstone), or null. */
+    @Transactional(readOnly = true)
+    public PhotoDto metadata(UUID id) {
+        return photos.findMetadataById(id);
     }
 
     @Transactional(readOnly = true)

@@ -1,0 +1,21 @@
+-- Copyright 2026 Sriram (Sriram-Codes-SW)
+--
+-- This file is part of Doorprints.
+--
+-- Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+-- Public License as published by the Free Software Foundation, version 3 of the License.
+--
+-- Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+-- details.
+--
+-- You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+-- the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+--
+-- SPDX-License-Identifier: AGPL-3.0-only
+
+-- Slice 5 (docs/11 section 5.24, ADR-28): the moving-in card of a taken house (date, notes, at most 30 ticked items) as
+-- one JSON object, stored as the client sent it like cost, rooms and answers, because nothing on the server computes
+-- with it. Absent when the house has none, never '{}'. Blanked in the tombstone purge with the other house values.
+-- The two new statuses (TAKEN, NOT_CHOSEN) need no migration: the status column is plain text without a CHECK.
+ALTER TABLE house ADD COLUMN move_in jsonb;

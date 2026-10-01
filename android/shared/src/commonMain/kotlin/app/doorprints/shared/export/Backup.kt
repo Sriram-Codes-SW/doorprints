@@ -60,15 +60,16 @@ object BackupFormat {
 
     /**
      * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
-     * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), or an area, a place or an area
-     * note (slice 4a); else `/1`, byte for byte as before.
+     * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), an area, a place or an area
+     * note (slice 4a), or [slice5]: a house TAKEN or NOT_CHOSEN, a house with a move-in or a photo with meta
+     * ([ExportBundle.hasSlice5]); else `/1`, byte for byte as before.
      */
     fun idFor(
         brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0, questions: Int = 0, answers: Int = 0,
-        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0,
+        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0, slice5: Boolean = false,
     ): String =
         if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0 ||
-            areas > 0 || places > 0 || areaNotes > 0
+            areas > 0 || places > 0 || areaNotes > 0 || slice5
         ) ID_2 else ID
 
     /**
@@ -259,7 +260,7 @@ data class BackupData(
                 format = BackupFormat.idFor(
                     bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
                     bundle.preferences.size, bundle.questions.size, bundle.houses.sumOf { it.answers?.size ?: 0 },
-                    bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size,
+                    bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size, bundle.hasSlice5,
                 ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
@@ -377,6 +378,12 @@ object BackupValidation {
             BackupProblem.BROKEN_DATA
         !recordsAreValid(data.areaNoteRows, AreaNote.MAX_NOTES, { it.id }, { it.updatedAt }) { it.toAreaNote().isValid } ->
             BackupProblem.BROKEN_DATA
+        // Slice 5: a move-in with a date not > 0, notes over 2000, a 31st item, or an item with a bad or repeated id, a
+        // blank or over-long text or a negative sort refuses the whole file; so does a photo whose meta has a room id
+        // over 64 characters (or empty), more than 10 tags, a tag over 30 characters, a repeated tag (ignoring case), a
+        // custom tag equal to a fixed key (any case), a caption over 200 or a negative `metaUpdatedAt`.
+        data.houses.any { h -> h.moveIn?.isValid == false } -> BackupProblem.BROKEN_DATA
+        data.photos.any { !it.rawMeta.isValid } -> BackupProblem.BROKEN_DATA
         else -> null
     }
 

@@ -69,11 +69,21 @@ class HouseSearchTest {
         ).map { it.text },
     )
 
+    // The move-in items' texts and its notes (slice 5).
+    private val movingIn = HouseSearch.fields(
+        label = "Fern Villa", address = null, street = null, locality = null, notes = null, contactName = null,
+        moveIn = MoveIn(notes = "Electricity meter reads 4521", items = listOf(MoveInItem("mi_keys", "Keys received", true, 0))),
+    )
+
     private fun matching(query: String) =
-        listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked, "sea" to noted)
+        listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked, "sea" to noted, "fern" to movingIn)
         .filter { HouseSearch.matches(query, it.second) }.map { it.first }
 
-    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill", "palm", "sea"), matching("  "))
+    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill", "palm", "sea", "fern"), matching("  "))
+    @Test fun aQueryMatchesTheMoveInItemsAndNotes() {
+        assertEquals(listOf("fern"), matching("keys received"))
+        assertEquals(listOf("fern"), matching("4521"))
+    }
     @Test fun aQueryMatchesTheAreaNotesThatReachTheHouse() {
         assertEquals(listOf("sea"), matching("tanker"))
         assertEquals(listOf("sea"), matching("monsoon"))

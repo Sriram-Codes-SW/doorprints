@@ -19,7 +19,7 @@
 import type { Dict, TKey } from '../i18n/en';
 import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
 import { brokerLine } from '../shared/broker';
-import type { HouseCost } from '../core/models';
+import type { HouseCost, HouseStatus } from '../core/models';
 import { costSummary } from '../shared/house-cost';
 import { rupees } from './deterministic';
 import {
@@ -33,7 +33,7 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
-import { answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -262,6 +262,25 @@ function houseSection(
   const areaNotesHtml = simpleTable(stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), areaNoteCells(entry));
   const distancesHtml = simpleTable(stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), distanceCells(entry));
 
+  // Moving in (slice 5), after the distances and before the checklist: date and notes, then the items with a tick.
+  const movingIn = movingInView(entry, stringsOf(bundle));
+  const movingInHtml =
+    movingIn.facts.length || movingIn.items.length
+      ? [
+          `<h3>${escapeHtml(stringsOf(bundle).get('section.movingIn'))}</h3>`,
+          movingIn.facts.length
+            ? `<table class="fields">${movingIn.facts
+                .map(([name, value]) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td></tr>`)
+                .join('')}</table>`
+            : '',
+          movingIn.items.length
+            ? `<ul class="move-in">${movingIn.items
+                .map((item) => `<li>${item.done ? '✓' : '○'} ${escapeHtml(item.text)}</li>`)
+                .join('')}</ul>`
+            : '',
+        ].join('')
+      : '';
+
   const checklistRows = checklistEntries(house.checklist).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
@@ -277,13 +296,17 @@ function houseSection(
   );
 
   const photoTags = options.photosAsFileNames
-    ? entry.photos.map((photo) => `<li><code>${escapeHtml(photoFileName(photo.id))}</code></li>`)
+    ? entry.photos.map((photo) => {
+        const note = photoNote(entry, photo, stringsOf(bundle));
+        return `<li><code>${escapeHtml(photoFileName(photo.id))}</code>${note ? ` — ${escapeHtml(note)}` : ''}</li>`;
+      })
     : entry.photos
         .map((photo, index) => {
           const src = photos.get(photo.id);
           if (!src) return '';
           const alt = tr(dict, 'exp.photoAlt', { n: index + 1, house: label });
-          return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}"></figure>`;
+          const note = photoNote(entry, photo, stringsOf(bundle));
+          return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}">${note ? `<figcaption>${escapeHtml(note)}</figcaption>` : ''}</figure>`;
         })
         .filter((tag) => tag !== '');
 
@@ -299,6 +322,7 @@ function houseSection(
     viewingsHtml,
     areaNotesHtml,
     distancesHtml,
+    movingInHtml,
     checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',
@@ -443,7 +467,7 @@ export function checklistLabel(key: string, dict: Dict, labels: ReadonlyMap<stri
   return item ? tr(dict, item.labelKey) : (labels.get(key) ?? key);
 }
 
-export function statusText(status: 'NEW' | 'SHORTLISTED' | 'REJECTED', dict: Dict): string {
+export function statusText(status: HouseStatus, dict: Dict): string {
   // The icon repeats the status in a second channel, so the file never relies on colour (WCAG 1.4.1).
   return `${STATUS_ICON[status]} ${tr(dict, `status.${status}`)}`;
 }
@@ -480,6 +504,8 @@ thead th { background: #eef2f0; }
 .photos figure { margin: 0; width: calc(50% - 4px); }
 .photos img { width: 100%; height: auto; border: 1px solid #d9e0dd; border-radius: 6px; }
 .photo-files { margin: 0 0 8px; padding-left: 1.25rem; }
+.move-in { margin: 0 0 8px; padding-left: 0; list-style: none; }
+.photos figcaption { font-size: 0.85rem; padding-top: 2px; }
 .house { border-top: 1px solid #d9e0dd; padding-top: 8px; }
 .empty { font-style: italic; }
 footer { margin-top: 32px; border-top: 1px solid #d9e0dd; padding-top: 12px; color: #4a5551; font-size: 0.875rem; }

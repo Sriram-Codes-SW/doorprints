@@ -124,7 +124,25 @@ describe('backup fields', () => {
     expect(Object.keys(answers[1])).toEqual(Object.keys(sampleAnswers[1]));
     const keys = Object.keys(written.houses[0]);
     expect(keys.indexOf('answers')).toBe(keys.indexOf('rooms') + 1);
-    expect(keys.indexOf('brokerId')).toBe(keys.indexOf('answers') + 1);
+    expect(keys.indexOf('moveIn')).toBe(keys.indexOf('answers') + 1);
+    expect(keys.indexOf('brokerId')).toBe(keys.indexOf('moveIn') + 1);
+  });
+  it('writes exactly the format\'s moveIn keys and its item keys, for the ticked item and the open one (slice 5)', () => {
+    const moveIn = written.houses[0].moveIn;
+    const sampleMoveIn = (sample.houses[0] as unknown as { moveIn: { items: object[] } }).moveIn;
+    expect(Object.keys(moveIn ?? {})).toEqual(Object.keys(sampleMoveIn));
+    const items = moveIn?.items ?? [];
+    items.forEach((item, i) => expect(Object.keys(item)).toEqual(Object.keys(sampleMoveIn.items[i])));
+    const union = new Set(items.flatMap((item) => Object.keys(item)));
+    expect([...union].sort()).toEqual([...new Set(sampleMoveIn.items.flatMap((item) => Object.keys(item)))].sort());
+    expect(union.has('done')).toBe(true);
+    expect(Object.keys(items[1]).includes('done')).toBe(false);
+  });
+  it('writes the status TAKEN and, on the photo with meta, roomId, tags, caption and metaUpdatedAt in that order (slice 5)', () => {
+    expect(written.houses[0].status).toBe((sample.houses[0] as unknown as { status: string }).status);
+    expect(Object.keys(written.photos[0])).toEqual(['id', 'houseId', 'fileName', 'createdAt', 'roomId', 'tags', 'caption', 'metaUpdatedAt']);
+    // The photo without meta writes none of the four keys.
+    expect(Object.keys(written.photos[1])).toEqual(Object.keys(sample.photos[1]));
   });
   it('writes the sample\'s format id and top-level keys', () => {
     expect(written.format).toBe((sample as unknown as { format: string }).format);

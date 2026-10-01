@@ -27,6 +27,7 @@ import androidx.exifinterface.media.ExifInterface
 import app.doorprints.data.Repository.AddPhotoResult
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
+import app.doorprints.shared.model.PhotoMeta
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
@@ -64,8 +65,11 @@ class AndroidRepository(
      * Privacy (docs/09 L6): the photo is decoded to pixels and re-encoded with Bitmap.compress, which writes a bare
      * JPEG without any Exif block, so the camera's GPS position, time and device model are not kept. The Exif
      * orientation is applied to the pixels first. The server strips metadata again for other clients.
+     *
+     * [tags] (slice 5) are the photo's tags from the start (the Moving in card's *Add a photo*: MOVE_IN), stamped now
+     * and sent with `PUT /api/photos/{id}/meta` once the photo is uploaded.
      */
-    suspend fun addPhoto(houseId: String, source: Uri): AddPhotoResult = withContext(Dispatchers.IO) {
+    suspend fun addPhoto(houseId: String, source: Uri, tags: List<String> = emptyList()): AddPhotoResult = withContext(Dispatchers.IO) {
         if (db.photos().countLive(houseId) >= MAX_PHOTOS_PER_HOUSE) return@withContext AddPhotoResult.LIMIT_REACHED
         val id = Uuid.random().toString()
         val out = photoFile(id)
@@ -84,7 +88,11 @@ class AndroidRepository(
                 Matrix().apply { postRotate(rotation.toFloat()) }, true)
         }
         out.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }
-        db.photos().upsert(PhotoEntity(id, houseId, out.absolutePath, uploaded = false, createdAt = now()))
+        val stamp = now()
+        val row = PhotoEntity(id, houseId, out.absolutePath, uploaded = false, createdAt = stamp)
+        db.photos().upsert(
+            if (tags.isEmpty()) row else row.withMeta(PhotoMeta(tags = tags, metaUpdatedAt = stamp), dirty = true),
+        )
         SyncWorker.syncSoon(context)
         AddPhotoResult.ADDED
     }

@@ -232,8 +232,8 @@ private class AndroidHouseFormServices(
         }
     }
 
-    override suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult =
-        repository.addPhoto(houseId, Uri.parse(photo.uri))
+    override suspend fun addPhoto(houseId: String, photo: PickedPhoto, tags: List<String>): Repository.AddPhotoResult =
+        repository.addPhoto(houseId, Uri.parse(photo.uri), tags)
 
     override fun photoModel(photoId: String): Any = File(repository.photoFileOf(photoId).toString())
 }

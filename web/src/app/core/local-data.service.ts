@@ -23,7 +23,9 @@ import type { HouseDto, StatsDto, VisitDto } from './models';
 import { LocalStore } from '../data/local-store.service';
 import { SyncService } from '../data/sync.service';
 import { StorageService } from '../data/storage.service';
-import { houseToDto, visitToDto } from '../data/records';
+import { houseToDto, photoMetaOf, visitToDto } from '../data/records';
+import type { PhotoRecord } from '../data/records';
+import type { PhotoMeta } from '../shared/photo-tags';
 import { LocalDataError } from './local-error';
 import type { Broker, BrokerRow } from '../shared/broker';
 import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
@@ -383,13 +385,51 @@ export class LocalDataService {
     );
   }
 
-  photoIds(houseId: string): Observable<string[]> {
-    return defer(() => from(this.store.photosOf(houseId).then((list) => list.map((p) => p.id))));
+  /** A house's live photos with their meta (slice 5), oldest first: the photos list and the condition record. */
+  photos(houseId: string): Observable<PhotoSummary[]> {
+    return defer(() => from(this.store.photosOf(houseId).then((list) => list.map(summary))));
   }
 
-  uploadPhoto(houseId: string, file: Blob, id: string = uuid()): Observable<{ id: string }> {
+  /** The photos of a house tagged MOVE_IN, oldest first (docs/11 5.24). */
+  conditionPhotos(houseId: string): Observable<PhotoSummary[]> {
+    return defer(() => from(this.store.conditionPhotos(houseId).then((list) => list.map(summary))));
+  }
+
+  /** Saves a photo's room, tags and caption; false when nothing changed. */
+  setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Observable<boolean> {
     return defer(() =>
-      from(this.store.addPhoto(houseId, file, id)).pipe(
+      from(
+        this.store.setPhotoMeta(id, meta).then((changed) => {
+          if (changed) this.sync.syncSoon();
+          return changed;
+        }),
+      ),
+    );
+  }
+
+  /** Choosing TAKEN for a saved house: the previous TAKEN one goes back to SHORTLISTED; `markOthers` also marks the open ones Not chosen. */
+  applyTaken(takenId: string, markOthers: boolean): Observable<number> {
+    return this.saving(() => this.store.applyTaken(takenId, markOthers));
+  }
+
+  /** How many houses *Close this hunt* would mark Not chosen. */
+  closeCount(takenId: string): Observable<number> {
+    return defer(() => from(this.store.closeCount(takenId)));
+  }
+
+  /** *Close this hunt*: every other open house becomes Not chosen; nothing is deleted. Answers how many. */
+  closeHunt(takenId: string): Observable<number> {
+    return this.saving(() => this.store.closeHunt(takenId));
+  }
+
+  uploadPhoto(
+    houseId: string,
+    file: Blob,
+    id: string = uuid(),
+    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
+  ): Observable<{ id: string }> {
+    return defer(() =>
+      from(this.store.addPhoto(houseId, file, id, Date.now(), meta)).pipe(
         map((result) => {
           if (!result.ok) throw photoLimit();
           this.sync.syncSoon();
@@ -420,6 +460,16 @@ export class LocalDataService {
       ),
     );
   }
+}
+
+/** A stored photo as the screens read it: no bytes, the meta coerced. */
+export interface PhotoSummary extends PhotoMeta {
+  id: string;
+  createdAt: string | null;
+}
+
+function summary(record: PhotoRecord): PhotoSummary {
+  return { id: record.id, createdAt: record.createdAt, ...photoMetaOf(record) };
 }
 
 function notFound(): LocalDataError {

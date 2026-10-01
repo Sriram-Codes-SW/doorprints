@@ -74,7 +74,7 @@ async function open(answers: HouseAnswer[] | null, over: Partial<HouseDto> = {},
           areaNotes: () => of([]),
           places: () => of([]),
           settled: signal(0),
-          photoIds: () => of([]),
+          photos: () => of([]),
           saveHouse: (body: HouseDto) => {
             saved.push(body);
             return of(body);
