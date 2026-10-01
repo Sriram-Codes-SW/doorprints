@@ -484,6 +484,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 ### Changed
 
 - **CI runs the tests that read a changed shared file** (S4b-BL-105): the web workflow also runs on `docs/schemas/**`, the Android workflow on the two AI test-vector files, and the guide's always-report twin mirrors its workflow again; `tools/check.sh` picks its local areas from the same paths and `--print-areas` shows them for a list of changed files.
+- **The user guide matches the apps again** (all four languages; [sprint log](docs/10-sprint-log.md) §17): a new section on My areas, My places and area notes; where the website keeps Brokers, Criteria, Questions to ask and Viewings; finding a floor in the app's language; *Save a copy* on iPhone; the import choices (*Keep mine, add only what's new*, *Also bring back*), its floor note and *Undo this import* on Android; the home page's table (shared listings on Android, AI with your own Gemini key, viewings, *Share updates with…*).
 - **Readable copies show times in UTC on Android and iPhone too**, as the website's always did; the cover says so (S4b-BL-92c).
 - **With the app lock on, Hunt mode's alerts show nothing on the phone's locked screen** (S4b-BL-68).
 - **Importing keeps to the limits**: at most 100 questions and 40 criteria after a merge (S4b-BL-90b); undoing an import made as copies also removes the brokers, viewings, questions and criteria it added (S4b-BL-92e).
@@ -943,6 +944,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **Compare and Plan visits offered Not chosen houses** on the phones and the website (with your own Gemini key): they now leave out Not chosen houses as well as Rejected ones, as the server's planner already did; change a house back to Shortlisted to bring it back. One rule on the three stacks, checked by a shared test vector (S4b-BL-99 a).
+- **The website's readable copies labelled the move-in date *When***: it is now *Move-in date*, in the same words as the phones' copies (S4b-BL-99 d).
 - **The website's readable copies had no Rooms column** in the houses table (CSV, Excel): it now has the rooms' count between the cost per sq ft and the floor, as the phone's copies do (S4b-BL-104 a).
 - **A basement floor could not be typed on a number keypad without a minus key**: a **Basement** switch under Floor now holds the sign, so the level is typed as 1 to 5, on Android, iPhone and the website (S4b-BL-104 c).
 - **An import quietly blanked a floor out of range**: a backup whose house has a floor outside -5 to 200 (only an edited file has one) still imports, with that floor left blank, and the preview now says so in a warning line; the server keeps refusing such a file (S4b-BL-104 d).
