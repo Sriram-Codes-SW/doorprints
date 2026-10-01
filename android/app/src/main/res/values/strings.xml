@@ -52,13 +52,11 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">Saving and importing</string>
     <string name="notif_channel_export_desc">Shown while a copy is being saved or a backup is being read</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
-    <string name="export_share">Share the copy</string>
+    <string name="export_share">Share</string>
     <string name="export_working">Saving your copy…</string>
     <string name="export_done">Saved: %1$s</string>
     <string name="export_failed">The copy could not be saved: %1$s</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
-    <string name="export_stop">Stop this task</string>
+    <string name="export_stop">Stop</string>
     <string name="export_problem_no_space">there is not enough free space</string>
     <string name="export_problem_cannot_write">the chosen file or folder cannot be written to</string>
     <string name="export_problem_unknown">something went wrong while writing it</string>
@@ -75,8 +73,7 @@
     <string name="problem_broken">its data could not be read</string>
     <string name="problem_read_failed">it could not be read from storage</string>
     <string name="problem_write_failed">it could not be written — check free space</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b). -->
-    <string name="export_open">Open the copy</string>
+    <string name="export_open">Open</string>
     <string name="export_ready">Ready to share: %1$s</string>
     <string name="export_done_plain">Saved.</string>
     <string name="export_notif_saved">Your copy is saved</string>
@@ -141,4 +138,8 @@
     <string name="notif_channel_area_wakeup">Area wake-up</string>
     <string name="notif_channel_area_wakeup_desc">Offers Hunt mode when you arrive in one of your hunting areas</string>
     <string name="notif_area_wakeup">You\'re in %1$s. Start Hunt mode?</string>
+    <!-- Wave D (2026-10-01): the notifications' own action names, which say what they act on (S4b-BL-94b). -->
+    <string name="notif_copy_open">Open the copy</string>
+    <string name="notif_copy_share">Share the copy</string>
+    <string name="notif_task_stop">Stop this task</string>
 </resources>

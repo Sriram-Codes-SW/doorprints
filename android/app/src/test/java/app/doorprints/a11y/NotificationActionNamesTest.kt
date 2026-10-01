@@ -39,7 +39,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], application = ScreenshotTestApp::class)
 class NotificationActionNamesTest {
     private val actions = listOf(
-        R.string.notif_stop, R.string.export_stop, R.string.export_open, R.string.export_share,
+        R.string.notif_stop, R.string.notif_task_stop, R.string.notif_copy_open, R.string.notif_copy_share,
         R.string.notif_viewing_open, R.string.notif_viewing_directions, R.string.notif_viewing_questions,
         R.string.notif_hunt_reminder_start, R.string.notif_hunt_reminder_dismiss,
     )

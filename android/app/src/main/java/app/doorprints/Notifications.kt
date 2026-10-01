@@ -241,7 +241,7 @@ object Notifications {
         .setProgress(total.coerceAtLeast(1), done.coerceIn(0, total.coerceAtLeast(1)), total <= 0)
         .apply {
             if (tap != null) setContentIntent(tap)
-            if (stop != null) addAction(0, context.getString(R.string.export_stop), stop)
+            if (stop != null) addAction(0, context.getString(R.string.notif_task_stop), stop)
         }
         .build()
 
