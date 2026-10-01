@@ -117,6 +117,7 @@ export const EXPORT_STRING_KEYS = [
   'col.agreedPrice',
   'col.monthlyCost',
   'col.moveIn',
+  'col.moveInDate',
   'col.perSqFt',
   'col.rooms',
   'col.floor',
@@ -298,6 +299,7 @@ const EXPORT_EN: ExportDict = {
   'col.agreedPrice': 'Agreed price',
   'col.monthlyCost': 'Monthly cost',
   'col.moveIn': 'Money to move in',
+  'col.moveInDate': 'Move-in date',
   'col.perSqFt': 'Cost per sq ft',
   'col.rooms': 'Rooms',
   'col.floor': 'Floor',
@@ -482,6 +484,7 @@ const EXPORT_HI: ExportDict = {
   'col.agreedPrice': 'तय कीमत',
   'col.monthlyCost': 'मासिक खर्च',
   'col.moveIn': 'शिफ्ट होने का खर्च',
+  'col.moveInDate': 'शिफ़्ट होने की तारीख',
   'col.perSqFt': 'प्रति वर्ग फ़ुट खर्च',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'कमरे',
@@ -668,6 +671,7 @@ const EXPORT_TA: ExportDict = {
   'col.agreedPrice': 'ஒப்புக்கொண்ட விலை',
   'col.monthlyCost': 'மாதச் செலவு',
   'col.moveIn': 'குடியேற வேண்டிய தொகை',
+  'col.moveInDate': 'குடிபுகும் தேதி',
   'col.perSqFt': 'சதுர அடிக்கு செலவு',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'அறைகள்',
@@ -854,6 +858,7 @@ const EXPORT_TE: ExportDict = {
   'col.agreedPrice': 'అంగీకరించిన ధర',
   'col.monthlyCost': 'నెలవారీ ఖర్చు',
   'col.moveIn': 'చేరడానికి కావలసిన డబ్బు',
+  'col.moveInDate': 'మారే తేదీ',
   'col.perSqFt': 'చదరపు అడుగుకు ఖర్చు',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'గదులు',

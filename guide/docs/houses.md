@@ -59,16 +59,16 @@ Open a house from the list or the map. There you can:
 - turn on **Approximate location** when you only know the area, not the building: the house shows as a hollow ring
   on the map and Hunt mode will not alert you there until you fix the spot;
 - see or change the house's **Broker**: the person who showed it. Saving a house with a phone number adds that person to
-  **Settings > Brokers**, where each broker has an agency, fee terms, notes, a rating, a **Call** button and a list of the
+  **Settings > Brokers** (on the website, **Your data > Brokers**), where each broker has an agency, fee terms, notes, a rating, a **Call** button and a list of the
   houses they showed you;
 - add up to 30 **Rooms**: for each, its type, name, length and width, a condition from one to five stars and a note. Doorprints
   shows each room's area and the total; **Move up** and **Move down** change their order; switch between feet and metres
-  with **Length units** in **Settings**;
+  with **Length units** in **Settings** (on the website, on **Your data**);
 - keep a list of **Questions to ask** at the viewing: **Add the usual questions** brings the standard ones that fit the house (for a rent: maintenance,
   deposit, brokerage, lock-in, water, power, parking, floor) and fills in what you already noted under **Cost**; write the answer as you hear it, or
-  **Skip** one. Change the standard list, or add your own, in **Settings > Questions**;
-- **Plan a viewing** from the house's **Viewings** card: pick the day and time, how long, whether it is the first or a second visit, and whom you meet. **Add to calendar** puts it in your calendar; all of them are listed under **Viewings**, where a viewing that passed without being marked shows as **Missed?**. Choose **Reminder** in the form to be told before it starts (on the phone; on the website only while the site is open, so use **Add to calendar** there). On the phone you can also switch on **Offer Hunt mode before this viewing**; shortly before it starts Doorprints asks whether to start Hunt mode (you always decide). After a viewing, **Mark viewing done** and, if you like, book a second one;
-- see its **Distances** to the places you saved under **My places**, and the **Area notes** that cover it (write one for its street or for an area you saved under **My areas**);
+  **Skip** one. Change the standard list, or add your own, in **Settings > Questions** (on the website, **Your data > Questions to ask**);
+- **Plan a viewing** from the house's **Viewings** card: pick the day and time, how long, whether it is the first or a second visit, and whom you meet. **Add to calendar** puts it in your calendar; all of them are listed under **Viewings** (in **Settings**; on the website, on **Your data**), where a viewing that passed without being marked shows as **Missed?**. Choose **Reminder** in the form to be told before it starts (on the phone; on the website only while the site is open, so use **Add to calendar** there). On the phone you can also switch on **Offer Hunt mode before this viewing**; shortly before it starts Doorprints asks whether to start Hunt mode (you always decide). After a viewing, **Mark viewing done** and, if you like, book a second one;
+- see its **Distances** to the places you saved under **My places**, and the **Area notes** that cover it (write one for its street or for an area you saved under **My areas**; see [Your areas and places](#your-areas-and-places));
 - write **Notes**;
 - score each **Checklist** item from 0 (bad) to 5 (great);
 - note that you visited: **Mark visited now** on the website, **I am here now** on Android;
@@ -77,7 +77,7 @@ Open a house from the list or the map. There you can:
   **Crack**, **Meter** or your own words (up to ten), and a caption.
 
 Doorprints gives each house an overall **score** out of 5. It works this out from your rating and the checklist. Open **Settings > Criteria**
-to choose what matters: set each item to Ignore, Low, Medium or High, mark **must-haves** with a minimum score, add your own items and choose
+(on the website, **Your data > Criteria**) to choose what matters: set each item to Ignore, Low, Medium or High, mark **must-haves** with a minimum score, add your own items and choose
 how much your star rating counts. A house that misses a must-have is marked and listed after the others.
 Remember to choose **Save**.
 
@@ -88,6 +88,20 @@ Remember to choose **Save**.
 ![The checklist on the website: water supply, power backup, parking, sunlight, ventilation and quiet, each scored 0 to 5](images/web-house-checklist.png)
 
 **Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history.
+
+## Your areas and places
+
+On the phones these are in **Settings**; on the website, on **Your data**.
+
+- **My areas** are the neighbourhoods you are hunting in, up to 20. Choose **Add area** (on the website **Add an
+  area**), give it a name, set its middle (your location, a spot on the map, or the latitude and longitude) and a
+  **Radius**. **Wake me here** lets the phone tell you when you arrive there (see
+  [Wake me in my hunting areas](hunt-mode.md#wake-me-in-my-hunting-areas)).
+- **My places** are the places you go to often, such as work, school or family, up to 10. Choose **Add place** (on the
+  website **Add a place**). Every house then shows its **Distances** to them, in a straight line, with a walking time,
+  and **Compare** lines them up.
+- **Area notes**: on a house, under **Area notes**, choose **Add a note for this street** or **Add a note for an
+  area**. The note then shows on every house on that street or inside that area, and search finds it.
 
 ## Moving in
 
@@ -118,7 +132,7 @@ of everything. Your houses stay in Doorprints.
 
 The search looks at the name, address, street, locality, notes and contact name, and also at the broker, the rooms,
 the answers to your questions, the area notes, the move-in list and the floor (type "floor 3", "ground floor" or
-"basement 1").
+"basement 1", or the same words in the app's language).
 
 <img src="images/web-search.png" width="300" alt="The website's house list after searching for Koramangala: one house shown of four"> <img src="images/web-phone-list.png" width="300" alt="The house list on a phone with the Shortlisted filter chosen: two shortlisted houses shown of four">
 
