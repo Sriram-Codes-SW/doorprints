@@ -34,8 +34,10 @@ Selection rule (a selection aid only: no Natural Earth coordinate is ever writte
     exactly as stored, as an edge in the opposite direction (a line two states share); the rest are EXTERNAL;
   * the external edges are linked into India's outer loops (the mainland outline and the islands);
   * a vertex is NEAR LAND when it lies within LAND_KM of a land-boundary line of the repository's Natural Earth outline
-    (web/public/geo/in-boundaries.geojson, kinds world and claim: every international land boundary at 1:50m in India's
-    point of view, and India's own outline at 1:10m in the four claim areas), unless the nearest point of those lines
+    as it was for the 2026-10-01 build (web/public/geo/in-boundaries.geojson of commit 52453f7, kinds world and claim:
+    every international land boundary at 1:50m in India's point of view, and India's own outline at 1:10m in the four
+    claim areas; `git show 52453f7:web/public/geo/in-boundaries.geojson > ne-reference.geojson`; the file shipped since
+    S4b-BL-99 holds only the world lines the Survey of India data does not cover), unless the nearest point of those lines
     is a free end of one of them (where a land boundary meets the sea, as at Sir Creek and the Sundarbans) and the
     vertex is more than END_KM beyond it;
   * an external edge is LAND when both its vertices are near land, else COAST;
@@ -51,8 +53,8 @@ the gaps where the Natural Earth lines are cut (at most 15 km) are bridged; no e
 coast came out as coast. Where a land boundary meets the sea the rule stops where Natural Earth's line stops, which is
 a question for the Survey of India (docs/ops/soi-review-pack.md).
 
-Usage: build_in_boundaries_soi.py <OVSF/1M/7 ZIP or extracted folder> <out.geojson> [--report report.json]
-       [--ne web/public/geo/in-boundaries.geojson] [--decimals 7] [--encoding geojson|polyline7]
+Usage: build_in_boundaries_soi.py <OVSF/1M/7 ZIP or extracted folder> <out.geojson> --ne ne-reference.geojson
+       [--report report.json] [--decimals 7] [--encoding geojson|polyline7]
        [--states "JAMMU AND KASHMIR,LADAKH,..."]
 --encoding polyline7 writes each run as an encoded polyline (precision 1e-7 degree, lossless against the 7-decimal
 GeoJSON; decoder in tools/soi-verify.py) in properties.polyline7 with a null geometry, the compact option of the size
@@ -484,8 +486,8 @@ def main(argv=None):
     ap.add_argument('--report'); ap.add_argument('--decimals', type=int, default=7)
     ap.add_argument('--encoding', choices=('geojson', 'polyline7'), default='geojson')
     ap.add_argument('--states', help='comma-separated STATE names whose runs are kept (default: all)')
-    ap.add_argument('--ne', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'public', 'geo',
-                                                 'in-boundaries.geojson'))
+    ap.add_argument('--ne', required=True,
+                    help='the selection reference: in-boundaries.geojson of commit 52453f7 (see the selection rule)')
     a = ap.parse_args(argv)
     if a.encoding == 'polyline7' and a.decimals != 7: ap.error('polyline7 is defined at 7 decimals')
     states = [x.strip() for x in a.states.split(',')] if a.states else None
