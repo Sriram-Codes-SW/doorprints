@@ -33,7 +33,7 @@ export const hi: Dict = {
   'lang.changed': 'भाषा बदलकर हिन्दी कर दी गई',
 
   'title.app': 'Doorprints',
-  'title.map': 'मकान · Doorprints',
+  'title.map': 'Doorprints: देखा हुआ हर मकान याद रखें',
   'title.newHouse': 'नया मकान · Doorprints',
   'title.house': 'मकान का विवरण · Doorprints',
   'title.compare': 'तुलना · Doorprints',

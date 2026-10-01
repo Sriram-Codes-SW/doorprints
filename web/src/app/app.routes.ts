@@ -23,6 +23,9 @@ import type { SharePage } from './pages/share/share-page';
 
 // `title` values are translation keys (see i18n/en.ts), resolved by I18nTitleStrategy.
 //
+// `data: { index: true }` marks the routes a search engine may index (default: none; I18nTitleStrategy writes
+// `noindex` for the rest). Only the landing page is public; see seo.spec.ts.
+//
 // Since Sprint 4a the app is local-first (docs/11 D-01): no route is guarded any more. Everything works with no
 // account and no server, straight from IndexedDB; connecting a server only adds sync.
 export const routes: Routes = [
@@ -31,6 +34,7 @@ export const routes: Routes = [
     path: '',
     pathMatch: 'full',
     title: 'title.map',
+    data: { index: true },
     loadComponent: () => import('./pages/map/map-page').then((m) => m.MapPage),
   },
   {
