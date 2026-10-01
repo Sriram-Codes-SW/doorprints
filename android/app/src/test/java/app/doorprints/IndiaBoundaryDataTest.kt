@@ -19,6 +19,7 @@
 package app.doorprints
 
 import app.doorprints.ui.IndiaViewRules
+import app.doorprints.ui.SoiPolyline
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
@@ -34,14 +35,17 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * India's boundary file (owner issue P0, 2026-09-24): the phone and the web draw the same outline, so the file the
- * app bundles (android/app/src/main/assets/geo/) and the one the web serves (web/public/geo/) must be the same bytes,
- * and those bytes are the reviewed build of web/scripts/geo/build_in_boundaries.py (Natural Earth, commit ca96624;
- * since 2026-09-24 with the SHARED stretches of find_shared_stretches.py, their hand-overs tidied (S4b-BL-17), and the
- * Assam-Arunachal Pradesh state line).
- * A change to either file without the other, or a rebuild nobody reviewed, fails here. The same holds for the held
- * areas' polygon (in-held-areas.geojson, web/scripts/geo/build_in_held_areas.py, S4b-BL-12), which both apps use to
- * leave the Pakistani and Chinese admin lines out of `boundary_3`; the web spec pins the same sha256.
+ * India's boundary files (owner issue P0, 2026-09-24): the phone and the web draw the same outline, so the files the
+ * app bundles (android/app/src/main/assets/geo/) and the ones the web serves (web/public/geo/) must be the same bytes,
+ * and those bytes are the reviewed builds: the Survey of India's lines (in-boundaries-soi.json, OVSF/1M/7, built by
+ * web/scripts/geo/build_in_boundaries_soi.py and checked against the source by tools/soi-verify.py; S4b-BL-99), the
+ * corridor around them (in-soi-corridor.geojson, build_in_soi_corridor.py) and Natural Earth's world lines
+ * (in-boundaries.geojson, build_in_boundaries.py, Natural Earth commit ca96624; since S4b-BL-99 without the stretches the
+ * Survey of India draws). A change to either copy without the other, or a rebuild nobody reviewed, fails here. The same
+ * holds for the held areas' polygon (in-held-areas.geojson, web/scripts/geo/build_in_held_areas.py, S4b-BL-12), which
+ * both apps use to leave the Pakistani and Chinese admin lines out of `boundary_3`; the web spec pins the same sha256s.
+ * The decoder parity with the web (india-boundaries.spec.ts) and web/scripts/geo/test_build_in_boundaries.py: the same
+ * vertex counts and checksums from the same file.
  *
  * Like CanonicalSampleTest it walks up from the working directory to the repository root, because the web copy is
  * outside android/. The Android workflow's path filters list the web/public/geo folder for this test, so a change
@@ -59,14 +63,66 @@ class IndiaBoundaryDataTest {
     }
 
     @Test
-    fun theFileHoldsTheThreeKindsTheMapLayersFilterOn() {
+    fun theNaturalEarthFileHoldsOnlyTheWorldLines() {
         assertEquals("app/src/main/assets/" + IndiaViewRules.ASSET_PATH, APP_COPY.removePrefix("android/"))
         val root = Json.parseToJsonElement(locate(APP_COPY).readText(Charsets.UTF_8)).jsonObject
         assertEquals("FeatureCollection", root.getValue("type").jsonPrimitive.content)
         val kinds = root.getValue("features").jsonArray.map {
             it.jsonObject.getValue("properties").jsonObject.getValue("kind").jsonPrimitive.content
         }
-        assertEquals(listOf("world", "claim", "state"), kinds)
+        assertEquals(listOf("world"), kinds)
+    }
+
+    @Test
+    fun theAppAndTheWebBundleTheSameSurveyOfIndiaFileAndCorridor() {
+        for ((path, sha) in listOf(SOI_COPY to SOI_SHA256, CORRIDOR_COPY to CORRIDOR_SHA256)) {
+            val app = locate("android/app/src/main/assets/$path").readBytes()
+            val web = locate("web/public/$path").readBytes()
+            assertEquals(path, sha, sha256(app))
+            assertArrayEquals(path, app, web)
+        }
+        assertEquals(SOI_COPY, IndiaViewRules.SOI_ASSET_PATH)
+        assertEquals(CORRIDOR_COPY, IndiaViewRules.SOI_CORRIDOR_ASSET_PATH)
+    }
+
+    @Test
+    fun theSurveyOfIndiaFileDecodesToTheSameVerticesAsOnTheWeb() {
+        val runs = SoiPolyline.runs(locate("android/app/src/main/assets/$SOI_COPY").readText(Charsets.UTF_8))
+        assertNotNull("the decoder reads the bundled file", runs)
+        val claim = runs!!.filter { it.kind == "claim" }
+        val state = runs.filter { it.kind == "state" }
+        // The same counts and sums as the web spec and web/scripts/geo/test_build_in_boundaries.py.
+        assertEquals(listOf(6, 28751), listOf(claim.size, claim.sumOf { it.size }))
+        assertEquals(listOf(1, 8252), listOf(state.size, state.sumOf { it.size }))
+        assertEquals(176943357L to 571665185L, SoiPolyline.checksum(claim))
+        assertEquals(1805079313L to 1863970484L, SoiPolyline.checksum(state))
+        // The first vertex of Jammu and Kashmir's run, as tools/soi-verify.py checks it, and its text in the map's data.
+        assertEquals(753322322L to 323266830L, claim[0].lonE7(0) to claim[0].latE7(0))
+        val geoJson = SoiPolyline.geoJson(runs)
+        assertTrue(geoJson.contains("[75.3322322,32.326683]"))
+        val features = Json.parseToJsonElement(geoJson).jsonObject.getValue("features").jsonArray
+        assertEquals(37003, features.sumOf { it.jsonObject.getValue("geometry").jsonObject.getValue("coordinates").jsonArray.size })
+    }
+
+    @Test
+    fun theCorridorHoldsEverySurveyOfIndiaLandVertex() {
+        val polygons = IndiaViewRules.soiCorridorGeometries(locate("android/app/src/main/assets/$CORRIDOR_COPY").readText(Charsets.UTF_8))
+        assertNotNull("the rule reads the bundled file", polygons)
+        val rings = polygons!!.map { g ->
+            Json.parseToJsonElement(g).jsonObject.getValue("coordinates").jsonArray.map { ring ->
+                ring.jsonArray.map { p -> p.jsonArray.let { it[0].jsonPrimitive.double to it[1].jsonPrimitive.double } }
+            }
+        }
+        assertEquals(3, rings.size)
+        assertTrue(rings.sumOf { r -> r.sumOf { it.size } } <= 1300)
+        val runs = SoiPolyline.runs(locate("android/app/src/main/assets/$SOI_COPY").readText(Charsets.UTF_8))!!
+        runs.filter { it.kind == "claim" }.forEach { run ->
+            // A chain's two ends lie on its polygon's flat ends; every other vertex is inside one polygon.
+            for (i in 1 until run.size - 1) {
+                val p = run.lonE7(i) / 1e7 to run.latE7(i) / 1e7
+                assertTrue("${run.state} vertex $i", rings.any { inside(p, it) })
+            }
+        }
     }
 
     @Test
@@ -129,7 +185,11 @@ class IndiaBoundaryDataTest {
     private companion object {
         const val APP_COPY = "android/app/src/main/assets/geo/in-boundaries.geojson"
         const val WEB_COPY = "web/public/geo/in-boundaries.geojson"
-        const val EXPECTED_SHA256 = "c3cdf5fb79cf3620526b6ec9906c8c6a38999091eb5821a799f3cc1efa8bf63f"
+        const val EXPECTED_SHA256 = "f6514483e68104e22b79a9d45aa17edeafb912025af2a638d7fb95f2b4e388be"
+        const val SOI_COPY = "geo/in-boundaries-soi.json"
+        const val SOI_SHA256 = "d12d8ed85dd1847c976f62b5451f6ef47efd698858431e29d7ff00a8fc20dac6"
+        const val CORRIDOR_COPY = "geo/in-soi-corridor.geojson"
+        const val CORRIDOR_SHA256 = "aa95954874604f88201bae862f73d4047231c52b1de8293c6478ed23efb50fba"
         const val HELD_APP_COPY = "android/app/src/main/assets/geo/in-held-areas.geojson"
         const val HELD_WEB_COPY = "web/public/geo/in-held-areas.geojson"
         const val HELD_SHA256 = "8fa2db123b4c4370a88ca9b3da31b212b847205c2ba529ca43b4afbb27b780c3"

@@ -43,20 +43,23 @@ import kotlinx.serialization.json.doubleOrNull
  *  2. [COUNTRY_LAYER] from zoom [DETAILED_FROM_ZOOM] only ([countryMinZoom]), only the lines that carry an adm0 side
  *     (so a zoom 0-4 tile's Natural Earth line is never drawn, even when MapLibre shows that tile in place of a
  *     missing zoom 5+ one) and never the Pakistan-China line or India's line with China, which India's outline draws
- *     instead ([COUNTRY_LINE_EXTRA_FILTER]); and [COUNTRY_LAYER],
+ *     instead ([COUNTRY_LINE_EXTRA_FILTER]); nor one of India's lines that lies wholly inside the corridor around the
+ *     Survey of India's lines ([soiCorridorFilter], [SOI_CORRIDOR_ASSET_PATH]; S4b-BL-99), which draw it instead; and
+ *     [COUNTRY_LAYER],
  *     [STATE_LINE_LAYER] and every other `boundary` line layer that starts at zoom 5 take only the features of a
  *     zoom 5+ tile ([TILE_ZOOM_GUARD], [tileZoomGuardedLayers]), so no zoom 0-4 tile's line of any admin level is
  *     drawn in place of a loading or missing one; and [STATE_LINE_LAYER] leaves out every tile feature wholly inside
  *     the polygon around the parts of India that Pakistan and China hold ([heldAreasFilter], [HELD_AREAS_ASSET_PATH];
  *     S4b-BL-12): from tile zoom 9 the tiles carry Pakistan's district and tehsil lines across Gilgit-Baltistan and PoK
  *     and China's county lines across Aksai Chin as undisputed admin level 5-6 lines with no country code;
- *  3. the bundled outline ([SOURCE_URI], built from Natural Earth by web/scripts/geo/build_in_boundaries.py): the
- *     'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines there are Natural Earth's ISO view and
- *     cannot be filtered), which also hold the stretches of India's outline along which the tiles draw a country line
- *     of their own from zoom 5 (so the two never show side by side), and India's 'claim' outline, the rest, at every
- *     zoom, directly above [COUNTRY_LAYER] and drawn like it; and India's 'state' line that the tiles leave undrawn
+ *  3. two bundled sources: the Survey of India's lines ([SOI_SOURCE_ID], [SOI_ASSET_PATH], OVSF/1M/7, vertices
+ *     unaltered, decoded by [SoiPolyline]; credited "Boundary: Survey of India"), India's 'claim' line (the land
+ *     boundary of Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh) at every
+ *     zoom, directly above [COUNTRY_LAYER] and drawn like it, and India's 'state' line that the tiles leave undrawn
  *     (Assam-Arunachal Pradesh, marked disputed and claimed by China) from zoom 5, directly above [STATE_LINE_LAYER]
- *     and drawn like it ([STATE_OVERLAY_LAYER], [statePlacement]);
+ *     and drawn like it ([STATE_OVERLAY_LAYER], [statePlacement]); and Natural Earth's ([SOURCE_URI], built by
+ *     web/scripts/geo/build_in_boundaries.py): the 'world' lines below zoom 5 ([WORLD_MAX_ZOOM]; the tiles' own lines
+ *     there are Natural Earth's ISO view and cannot be filtered), without the stretches the Survey of India draws;
  *  4. no state label for the areas above ([STATE_LABEL_EXTRA_FILTER]);
  *  5. a missing layer is skipped with a warning, never a crash, and the outline is still added; a layer whose own
  *     filter is in the deprecated syntax gets the same rules in that syntax ([extraFilterFor]), except the tile-zoom
@@ -68,6 +71,22 @@ object IndiaViewRules {
     /** The bundled file, byte-identical to web/public/geo/in-boundaries.geojson (IndiaBoundaryDataTest). */
     const val ASSET_PATH = "geo/in-boundaries.geojson"
     const val SOURCE_URI = "asset://$ASSET_PATH"
+
+    /** The Survey of India's lines (S4b-BL-99), byte-identical to web/public/geo/in-boundaries-soi.json. */
+    const val SOI_SOURCE_ID = "in-boundaries-soi"
+    const val SOI_ASSET_PATH = "geo/in-boundaries-soi.json"
+
+    /**
+     * The Survey of India's credit on the map (its condition of use; docs/ops/soi-review-pack.md section 7), in
+     * English; the apps pass the translated `map_boundary_credit` ([applyIndiaView]).
+     */
+    const val SOI_ATTRIBUTION = "Boundary: Survey of India"
+
+    /**
+     * The corridor around the Survey of India's land-boundary lines (S4b-BL-99), built by
+     * web/scripts/geo/build_in_soi_corridor.py and byte-identical to web/public/geo/in-soi-corridor.geojson.
+     */
+    const val SOI_CORRIDOR_ASSET_PATH = "geo/in-soi-corridor.geojson"
 
     const val WORLD_LAYER = "in-boundary-world"
     const val CLAIM_LAYER = "in-boundary-claim"
@@ -151,15 +170,36 @@ object IndiaViewRules {
      * `heldAreasGeometry`.
      */
     fun heldAreasGeometry(fileText: String): String? {
+        val features = featuresOf(fileText) ?: return null
+        if (features.size != 1) return null
+        return polygonOf(features[0])
+    }
+
+    /**
+     * The polygons of [SOI_CORRIDOR_ASSET_PATH]'s text, each as compact style JSON: a FeatureCollection of one or more
+     * features, each a Polygon of closed [longitude, latitude] rings (one per chain of the Survey of India's lines).
+     * Polygons, not one MultiPolygon, for the reason [heldAreasGeometry] gives. Null (the rule is then skipped with a
+     * warning) for anything else. The web's `soiCorridorGeometries`.
+     */
+    fun soiCorridorGeometries(fileText: String): List<String>? {
+        val features = featuresOf(fileText) ?: return null
+        if (features.isEmpty()) return null
+        return features.map { polygonOf(it) ?: return null }
+    }
+
+    private fun featuresOf(fileText: String): JsonArray? {
         val root = try {
             Json.parseToJsonElement(fileText) as? JsonObject
         } catch (e: SerializationException) {
             null
         } ?: return null
         if ((root["type"] as? JsonPrimitive)?.contentOrNull != "FeatureCollection") return null
-        val features = root["features"] as? JsonArray ?: return null
-        if (features.size != 1) return null
-        val geometry = (features[0] as? JsonObject)?.get("geometry") as? JsonObject ?: return null
+        return root["features"] as? JsonArray
+    }
+
+    /** A feature's geometry as compact JSON when it is a Polygon of closed rings of finite positions, else null. */
+    private fun polygonOf(feature: JsonElement): String? {
+        val geometry = (feature as? JsonObject)?.get("geometry") as? JsonObject ?: return null
         if ((geometry["type"] as? JsonPrimitive)?.contentOrNull != "Polygon") return null
         val rings = geometry["coordinates"] as? JsonArray ?: return null
         fun position(p: JsonElement): Pair<Double, Double>? {
@@ -175,6 +215,36 @@ object IndiaViewRules {
         }
         return if (ok) JsonObject(mapOf("type" to JsonPrimitive("Polygon"), "coordinates" to rings)).toString() else null
     }
+
+    /**
+     * India's lines as the tiles carry them, in India's view (S4b-BL-99): India or no country on a side (the tiles
+     * often leave India's side empty), or Pakistan and Afghanistan, whose Wakhan line is Gilgit-Baltistan's border.
+     * `match` rather than `in`, as in [COUNTRY_LINE_EXTRA_FILTER]. The web's `INDIA_LINE`.
+     */
+    val INDIA_LINE: String =
+        "[\"any\", [\"==\", [\"coalesce\", ${get("adm0_l")}, ${quote("IND")}], ${quote("IND")}], " +
+            "[\"==\", [\"coalesce\", ${get("adm0_r")}, ${quote("IND")}], ${quote("IND")}], " +
+            "[\"all\", ${matchAny(get("adm0_l"), listOf("PAK", "AFG"))}, ${matchAny(get("adm0_r"), listOf("PAK", "AFG"))}]]"
+
+    /**
+     * ANDed with [COUNTRY_LAYER]'s filter (S4b-BL-99): not one of India's lines ([INDIA_LINE]) that lies wholly inside
+     * one of the corridor's polygons [geometriesJson] ([soiCorridorGeometries]); the Survey of India's line draws that
+     * boundary instead, so from zoom 5 it is drawn once, not twice side by side (they lie a median 20-30 m apart along
+     * Nepal and Bhutan, about 500 m in the Wakhan). `within` is all or nothing per tile feature ([heldAreasFilter]): a
+     * tile line that runs on past the end of a Survey of India line (Nepal along Uttar Pradesh, Bhutan along Assam) is
+     * drawn whole in the tiles that hold that end. Another country's line that meets India's (Nepal-China) is never
+     * hidden. Expression syntax only ([soiCorridorFilterFor]).
+     */
+    fun soiCorridorFilter(geometriesJson: List<String>): String =
+        "[\"!\", [\"all\", $INDIA_LINE, [\"any\", " +
+            geometriesJson.joinToString(", ") { "[\"within\", $it]" } + "]]]"
+
+    /**
+     * [soiCorridorFilter] when [COUNTRY_LAYER]'s own [existing] filter is missing or an expression; null when it is in
+     * the deprecated syntax, which has no `within` (the layer then keeps its lines, with a warning).
+     */
+    fun soiCorridorFilterFor(existing: Any?, geometriesJson: List<String>): String? =
+        if (existing == null || isExpressionSyntax(existing)) soiCorridorFilter(geometriesJson) else null
 
     /**
      * ANDed with [STATE_LINE_LAYER]'s filter (S4b-BL-12): not a tile feature wholly inside the held areas' polygon

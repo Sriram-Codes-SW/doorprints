@@ -763,6 +763,8 @@ fun LegalNoticeBlock(openUrl: (String) -> Boolean) {
         stringResource(Res.string.settings_licence) + " " + stringResource(Res.string.settings_warranty),
         style = MaterialTheme.typography.bodySmall,
     )
+    // The Survey of India's acknowledgement for the map's boundary lines (its condition of use; S4b-BL-99).
+    Text(stringResource(Res.string.settings_about_boundary), style = MaterialTheme.typography.bodySmall)
     val sourceDesc = stringResource(Res.string.settings_source_desc)
     val licenceDesc = stringResource(Res.string.settings_licence_link_desc)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
