@@ -82,7 +82,10 @@ object ResultActions {
             .setDataAndType(uri, format.mimeType)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    /** Notification actions for a finished export: Open (saved copies only) and Share. */
+    /**
+     * Notification actions for a finished export: *Open the copy* (saved copies only) and *Share the copy*, named for
+     * what they act on, as TalkBack reads an action apart from its notification (S4b-BL-94b).
+     */
     fun notificationActions(context: Context, target: String, format: ExportFormat): List<NotificationCompat.Action> {
         val uri = readableUri(context, target) ?: return emptyList()
         val actions = mutableListOf<NotificationCompat.Action>()
@@ -91,10 +94,10 @@ object ResultActions {
             val open = Intent.createChooser(view(uri, format), context.getString(R.string.export_open))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             open.clipData = ClipData.newRawUri(null, uri)
-            actions += NotificationCompat.Action(0, context.getString(R.string.export_open), activity(context, OPEN_REQUEST, open))
+            actions += NotificationCompat.Action(0, context.getString(R.string.notif_copy_open), activity(context, OPEN_REQUEST, open))
         }
         actions += NotificationCompat.Action(
-            0, context.getString(R.string.export_share), activity(context, SHARE_REQUEST, share(context, uri, format)),
+            0, context.getString(R.string.notif_copy_share), activity(context, SHARE_REQUEST, share(context, uri, format)),
         )
         return actions
     }

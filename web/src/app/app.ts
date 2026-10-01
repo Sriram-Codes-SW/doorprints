@@ -40,6 +40,7 @@ import { ReminderBanners } from './shared/reminder-banners';
 import { ViewingReminderService } from './core/viewing-reminder.service';
 import { PwaService } from './core/pwa.service';
 import { SyncService } from './data/sync.service';
+import { guideUrl } from './shared/help-link';
 import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
 
 /** How many pages' scroll positions are remembered for Back and Forward (older ones are dropped). */
@@ -87,6 +88,13 @@ const NAV_ICONS = {
           }
         </select>
       </div>
+      <!--
+        Help (S4b-BL-60): the user guide, in a new tab. Wider screens only; on phones it is inside Your data, where the
+        bottom bar has no room for it and the top row is the brand and the language.
+      -->
+      <a class="help-link" [href]="guideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
+        {{ 'help.link' | t }} <span aria-hidden="true">↗</span>
+      </a>
       <!--
         Local-first (docs/11 D-01): the map, compare and data pages work with no server, so they are always here.
         Up to 600px wide the same <nav> becomes a fixed bottom bar (Material 3 NavigationBar, like Root.kt on
@@ -282,6 +290,22 @@ const NAV_ICONS = {
     .lang-label {
       display: inline-flex;
     }
+    /* After the language picker on screen (its order is 1 too, and it is earlier in the DOM); a 44px target. */
+    .help-link {
+      order: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      min-height: var(--target);
+      padding: 0 var(--space-3);
+      color: var(--on-header);
+      text-decoration: none;
+      font-weight: 500;
+      border-radius: 6px;
+    }
+    .help-link:hover {
+      text-decoration: underline;
+    }
     .lang select {
       width: auto;
       min-height: 40px;
@@ -330,7 +354,7 @@ const NAV_ICONS = {
       background: var(--on-header-alert);
       box-shadow: 0 0 0 2px var(--on-header);
       color: var(--header-bg);
-      font-size: 12px;
+      font-size: 0.75rem;
       font-weight: 800;
       line-height: 16px;
       text-align: center;
@@ -378,6 +402,10 @@ const NAV_ICONS = {
         padding-right: max(var(--space-2), env(safe-area-inset-right));
       }
       .brand-name {
+        display: none;
+      }
+      /* Inside Your data on phones (the top row is the brand and the language). */
+      .help-link {
         display: none;
       }
       .nav {
@@ -542,6 +570,7 @@ export class App {
   protected readonly announcer = inject(Announcer);
   protected readonly ai = inject(AiService);
   protected readonly icons = NAV_ICONS;
+  protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
   // Constructing it registers the service worker and starts listening for install and update events (S4-05).
   private readonly pwa = inject(PwaService);
   private readonly sync = inject(SyncService);

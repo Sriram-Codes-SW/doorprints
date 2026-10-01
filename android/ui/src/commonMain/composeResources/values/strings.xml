@@ -518,6 +518,10 @@
     <string name="settings_licence_link">Licence</string>
     <string name="settings_licence_link_desc">The GNU Affero General Public License, version 3, opens in the browser</string>
     <string name="settings_link_failed">No app here can open this link. The address is %1$s</string>
+    <!-- The Help link in Settings > About, to the user guide (S4b-BL-60, 2026-10-01). -->
+    <string name="settings_help">Help</string>
+    <string name="settings_help_desc">Help: the user guide, opens in the browser</string>
+    <string name="settings_help_hint">The user guide, with pictures and every step, on the project’s website.</string>
     <string name="sync_warning">Sync has not worked since %1$s. %2$s</string>
     <plurals name="ai_plan_ready">
         <item quantity="one">Plan ready: %1$d stop</item>
@@ -1169,4 +1173,6 @@
     <string name="houses_filters_clear">Clear cost filters</string>
     <string name="import_new_brokers">New brokers</string>
     <string name="import_updated_brokers">Brokers the backup has a newer version of</string>
+    <!-- Wave D (2026-10-01): the house form's loading spinner has a name. -->
+    <string name="house_loading">Opening the house…</string>
 </resources>

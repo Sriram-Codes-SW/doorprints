@@ -30,10 +30,14 @@ on:
     branches: [main]
     paths:
       - "guide/**"
+      # The translations' Android pictures are the screenshot tests' shots in that language (guide/hooks/i18n.py).
+      - "android/app/src/test/screenshots/**"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "guide/**"
+      # The translations' Android pictures are the screenshot tests' shots in that language (guide/hooks/i18n.py).
+      - "android/app/src/test/screenshots/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -68,16 +72,20 @@ jobs:
           # --no-deps installs exactly the pinned closure; this fails if a pin ever misses a dependency.
           python -m pip check
 
-      # --strict checks Markdown links and images, not raw <img> tags (the side-by-side phone shots): check those too.
+      # --strict checks Markdown links and images, not raw <img> tags (the side-by-side phone shots): check those too,
+      # in English and in each translation (i18n/<lang>/), whose pictures are the English ones unless it has its own.
       - name: Check every <img> in the pages points at a file
-        working-directory: guide/docs
+        working-directory: guide
         run: |
           missing=0
-          for src in $(grep -oh '<img src="[^"]*"' ./*.md | sed 's/<img src="//; s/"$//' | sort -u); do
-            [ -f "$src" ] || { echo "::error::missing image: $src"; missing=1; }
+          for dir in docs i18n/*; do
+            for src in $(grep -oh '<img src="[^"]*"' "$dir"/*.md | sed 's/<img src="//; s/"$//' | sort -u); do
+              [ -f "$dir/$src" ] || [ -f "docs/$src" ] || { echo "::error::missing image in $dir: $src"; missing=1; }
+            done
           done
           exit $missing
 
+      # English, then Hindi, Tamil and Telugu into <site>/<lang>/ (guide/hooks/i18n.py), all with --strict.
       - name: Build the site
         working-directory: guide
         run: mkdocs build --strict --site-dir "$RUNNER_TEMP/site"

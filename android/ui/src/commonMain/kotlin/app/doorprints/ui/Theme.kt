@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -31,6 +32,8 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -48,7 +51,8 @@ import app.doorprints.shared.model.HouseStatus
 
 /**
  * Colours are the web design tokens (web/src/styles.css, docs/05 section 4), not Material dynamic colour, so the
- * contrast ratios documented there hold on Android too (A11Y-A07).
+ * contrast ratios documented there hold on Android too (A11Y-A07). `ContrastTest` (commonTest) checks every pair the
+ * screens draw, in both schemes: 4.5:1 for text, 3:1 for icons and borders.
  *
  * **Every role a component reads is set (Design review, 2026-09-22).** A role left out falls back to M3's baseline
  * lavender or pink, and components read more roles than the screens name: the Switch's unchecked track is
@@ -71,7 +75,7 @@ import app.doorprints.shared.model.HouseStatus
  * on it 4.91:1), `primaryContainer` = `--primary-soft` in both themes (the chosen format card; dark was
  * `--header-bg` #173F35 before and now matches the web's #1D3B33: onPrimaryContainer 10.05:1, primary 6.63:1).
  */
-private val LightScheme = lightColorScheme(
+internal val LightScheme = lightColorScheme(
     primary = Color(0xFF1F6F5C),             // --primary, 6.02:1 with white
     onPrimary = Color.White,
     primaryContainer = Color(0xFFE3F0EC),    // --primary-soft
@@ -106,7 +110,7 @@ private val LightScheme = lightColorScheme(
     surfaceBright = Color(0xFFFFFFFF),
 )
 
-private val DarkScheme = darkColorScheme(
+internal val DarkScheme = darkColorScheme(
     primary = Color(0xFF6FD1B3),
     onPrimary = Color(0xFF0B1F19),
     primaryContainer = Color(0xFF1D3B33),    // --primary-soft (dark), as the web's chosen format card
@@ -152,7 +156,7 @@ data class DoorprintsColors(
     val new: Color,
     val shortlisted: Color,
     val rejected: Color,
-    /** Slice 5: a TAKEN house (purple) and a NOT_CHOSEN one (grey), each at least 4.5:1 on its surface. */
+    /** Slice 5: a TAKEN house (amber) and a NOT_CHOSEN one (grey), each at least 4.5:1 on its surface (ContrastTest). */
     val taken: Color,
     val notChosen: Color,
     val star: Color,
@@ -165,16 +169,17 @@ data class DoorprintsColors(
     val warnBorder: Color,
 )
 
-private val LightExtra = DoorprintsColors(
+internal val LightExtra = DoorprintsColors(
     new = Color(0xFF3C5A99), shortlisted = Color(0xFF1A7A43), rejected = Color(0xFFB3261E), star = Color(0xFFA86A00),
     taken = Color(0xFF8A5A00), notChosen = Color(0xFF5F6B66), // 5.9:1 and 5.6:1 on white (as the web)
     success = Color(0xFFE7F5ED), onSuccess = Color(0xFF1A7A43), // 4.78:1
     successBorder = Color(0xFFB5DCC4), errorBorder = Color(0xFFE8B4B0),
     warn = Color(0xFFFFF4E0), onWarn = Color(0xFF8A5A00), warnBorder = Color(0xFFF0C987), // 5.44:1
 )
-private val DarkExtra = DoorprintsColors(
+internal val DarkExtra = DoorprintsColors(
     new = Color(0xFF9DB4EA), shortlisted = Color(0xFF6FD69A), rejected = Color(0xFFFF8E86), star = Color(0xFFF2B84B),
-    taken = Color(0xFFCDB4F0), notChosen = Color(0xFFB4B8BE),
+    // The web's dark --status-taken and --status-not-chosen (Wave D: the purple #CDB4F0 and #B4B8BE did not match them).
+    taken = Color(0xFFF2C265), notChosen = Color(0xFFB4BEB9),
     success = Color(0xFF15301F), onSuccess = Color(0xFF6FD69A), // 7.98:1
     successBorder = Color(0xFF2B5A3B), errorBorder = Color(0xFF6E2C27),
     warn = Color(0xFF33260F), onWarn = Color(0xFFF2B84B), warnBorder = Color(0xFF6B4F1A), // 8.23:1
@@ -240,6 +245,35 @@ fun DoorprintsTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable 
 @Composable
 fun brandSliderColors(): SliderColors =
     SliderDefaults.colors(inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer)
+
+/**
+ * The roles an enabled Switch draws with (Wave E; WCAG 1.4.11), read by [brandSwitchColors] and checked by
+ * `ContrastTest`. M3 paints the unchecked thumb in `outline`, which is 2.93:1 on the light unchecked track
+ * (#7D8985 on `surfaceContainerHighest` #E3E8E6); the thumb is the switch's state, so it takes `onSurfaceVariant`
+ * (`--muted`): light #5F6B67, 4.48:1 on the track; dark #A7B3AE, 5.87:1 (was #7F8C87, 3.63:1). The track, its
+ * `outline` border (the control against the page, 3:1 or more on every surface) and the checked pair (`onPrimary`
+ * on `primary`) stay M3's.
+ */
+internal class BrandSwitchPalette(s: ColorScheme) {
+    val checkedThumb = s.onPrimary
+    val checkedTrack = s.primary
+    val uncheckedThumb = s.onSurfaceVariant
+    val uncheckedTrack = s.surfaceContainerHighest
+    val uncheckedBorder = s.outline
+}
+
+/** A Switch whose thumb stands out from its track in both states and schemes ([BrandSwitchPalette]). */
+@Composable
+fun brandSwitchColors(): SwitchColors {
+    val p = BrandSwitchPalette(MaterialTheme.colorScheme)
+    return SwitchDefaults.colors(
+        checkedThumbColor = p.checkedThumb,
+        checkedTrackColor = p.checkedTrack,
+        uncheckedThumbColor = p.uncheckedThumb,
+        uncheckedTrackColor = p.uncheckedTrack,
+        uncheckedBorderColor = p.uncheckedBorder,
+    )
+}
 
 /**
  * A FilledTonalButton on `primaryContainer` (onPrimaryContainer on it: 10.66:1 light, 10.05:1 dark). M3's default

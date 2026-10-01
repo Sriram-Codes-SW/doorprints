@@ -140,7 +140,9 @@ describe('ViewingsPage', () => {
     const { host } = await render(fakes());
     const link = rows(host)[0].querySelector<HTMLAnchorElement>('a.row-link')!;
     expect(link.getAttribute('href')).toBe('/viewings/v_00000001');
-    expect(link.getAttribute('aria-label')).toMatch(/^Open the viewing: Green View 2BHK, /);
+    // No aria-label of its own (label in name, WCAG 2.5.3): the visible time, house, kind and status are the name.
+    expect(link.hasAttribute('aria-label')).toBe(false);
+    expect(link.textContent).toContain('Green View 2BHK');
   });
 
   it('shows the empty state, "No viewings yet. Plan one from a house.", and a Plan a viewing button', async () => {

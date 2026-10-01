@@ -16,9 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { DOCUMENT } from '@angular/common';
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
-import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
+import { ActivatedRouteSnapshot, RouterStateSnapshot, TitleStrategy } from '@angular/router';
 import { TKey, en } from './en';
 import { Msg, TranslationService } from './translation.service';
 
@@ -33,10 +34,25 @@ export class TitleOverride {
   readonly message = signal<Msg | null>(null);
 }
 
+/** The one canonical address of the public site (index.html carries the same one, and sitemap.xml lists it). */
+export const SITE_URL = 'https://doorprints.web.app/';
+
+/**
+ * A route is kept out of search results unless it says `data: { index: true }`: everything behind the landing page
+ * shows the visitor's own, local data (houses, notes, brokers) and is the same HTML shell for a crawler anyway.
+ * Default-deny, so a route added later is private until someone decides otherwise (app.routes.ts, seo.spec.ts).
+ */
+export function isIndexable(snapshot: RouterStateSnapshot): boolean {
+  let route: ActivatedRouteSnapshot | null = snapshot.root;
+  while (route?.firstChild) route = route.firstChild;
+  return route?.data?.['index'] === true;
+}
+
 /**
  * Route `title`s are translation keys; the document title follows both navigation and language changes.
  * Titles read "<page> · Doorprints" (brand last, so tabs stay distinguishable); pages without a title get
- * `title.app`. The meta description is `app.description` (the English one matches index.html) and follows
+ * `title.app`. Search tags follow the route too: `robots: noindex, nofollow` and no canonical link on routes that do
+ * not opt in with `data: { index: true }`, the canonical link on the one that does. The meta description is `app.description` (the English one matches index.html) and follows
  * the language only, in its own effect, so navigation does not rewrite it.
  */
 @Injectable({ providedIn: 'root' })
@@ -45,7 +61,9 @@ export class I18nTitleStrategy extends TitleStrategy {
   private readonly meta = inject(Meta);
   private readonly i18n = inject(TranslationService);
   private readonly pageTitle = inject(TitleOverride);
+  private readonly doc = inject(DOCUMENT);
   private readonly key = signal<string | undefined>(undefined);
+  private readonly indexable = signal(true);
 
   constructor() {
     super();
@@ -56,6 +74,21 @@ export class I18nTitleStrategy extends TitleStrategy {
       const own = this.pageTitle.message();
       this.title.setTitle(own ? this.i18n.msg(own) : this.i18n.t(isKey(key) ? key : 'title.app'));
     });
+    // Reads only the route: robots and canonical (index.html ships both for the landing page, so a crawler that
+    // does not run scripts sees them too).
+    effect(() => {
+      const indexable = this.indexable();
+      this.meta.updateTag({ name: 'robots', content: indexable ? 'index, follow' : 'noindex, nofollow' });
+      const head = this.doc.head;
+      let link = head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+      if (!indexable) link?.remove();
+      else if (!link) {
+        link = this.doc.createElement('link');
+        link.rel = 'canonical';
+        link.href = SITE_URL;
+        head.appendChild(link);
+      }
+    });
     // Reads only the language (through t()): re-runs on language change, never on navigation.
     effect(() => {
       this.meta.updateTag({ name: 'description', content: this.i18n.t('app.description') });
@@ -64,6 +97,7 @@ export class I18nTitleStrategy extends TitleStrategy {
 
   override updateTitle(snapshot: RouterStateSnapshot): void {
     this.key.set(this.buildTitle(snapshot));
+    this.indexable.set(isIndexable(snapshot));
   }
 }
 

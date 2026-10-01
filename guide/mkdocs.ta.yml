@@ -1,0 +1,75 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# The user guide in Tamil (S4b-BL-60): the English site's settings (mkdocs.yml), with this language's pages in
+# i18n/ta/. Built by hooks/i18n.py after the English site, into <site>/ta/; its images are the English ones, or the
+# Android screenshot tests' shots in this language where they exist. Marked under review on every page, as the apps'
+# Tamil strings ship.
+INHERIT: mkdocs.yml
+site_name: "Doorprints பயனர் வழிகாட்டி"
+site_description: "Doorprints-ஐ எப்படிப் பயன்படுத்துவது: இந்தியாவில் வீடு தேடும்போது நீங்கள் பார்த்த வீடுகளை நினைவில் வைக்கும் செயலி."
+site_url: https://sriram-codes-sw.github.io/doorprints/ta/
+docs_dir: i18n/ta
+edit_uri: edit/main/guide/i18n/ta/
+copyright: "Doorprints. இலவச, திறந்த மூல மென்பொருள் (AGPL-3.0-only); விளம்பரம் இல்லை."
+
+nav:
+  - "முகப்பு": index.md
+  - "திரை ஒரு பார்வையில்": screen-at-a-glance.md
+  - "உங்கள் வீடுகள்": houses.md
+  - "ஒப்பிடுதலும் திட்டமிடுதலும்": compare-and-plan.md
+  - "உங்கள் தரவு": your-data.md
+  - "சர்வரும் பகிர்வும்": server-and-sharing.md
+  - "உங்கள் சொந்த சர்வரை அமைத்தல்": set-up-a-server.md
+  - "தேடல் பயன்முறை": hunt-mode.md
+  - "மொழி, தீம், தனியுரிமை, ஆஃப்லைன் வரைபடங்கள்": settings-and-privacy.md
+  - "சிக்கல்களும் அடிக்கடி கேட்கப்படும் கேள்விகளும்": faq.md
+
+theme:
+  language: ta
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: இருண்ட தீமுக்கு மாற்று
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: வெளிர் தீமுக்கு மாற்று
+
+extra:
+  under_review:
+    title: "இந்த மொழிபெயர்ப்பு மதிப்பாய்வில் உள்ளது (under review)"
+    text: "செயலியின் தமிழ்ச் சொற்களைப் போலவே, இந்த வழிகாட்டியின் தமிழ் மொழிபெயர்ப்பும் இன்னும் மதிப்பாய்வில் உள்ளது. ஏதாவது தெளிவாக இல்லையென்றால், மேலே மொழியைத் தேர்ந்தெடுத்து இதே பக்கத்தை English-இல் பாருங்கள்."
+  alternate:
+    - name: English
+      link: "../"
+      lang: en
+    - name: हिन्दी
+      link: "../hi/"
+      lang: hi
+    - name: தமிழ்
+      link: ""
+      lang: ta
+    - name: తెలుగు
+      link: "../te/"
+      lang: te

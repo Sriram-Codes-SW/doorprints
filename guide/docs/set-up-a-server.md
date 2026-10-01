@@ -210,9 +210,11 @@ To check it works:
 1. Wait until the terminal says it is done.
 2. **On that computer**, open [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) in a
    browser.
-3. You should see `{"status":"UP"}`. The server may need one more minute. If you don't see it yet, reload the page.
+3. You should see a short line of text that includes `"status":"UP"`. The server may need one more minute. If you don't see it yet, reload the page.
 
 Docker Desktop now shows **doorprints-main** under **Containers**, with a green dot.
+
+For a fuller check, run `tools/server-smoke.sh` in **doorprints-main** (it needs `bash` and `curl`: a Mac has both; on Windows use Git Bash or WSL). It tries sync, an import and an export with made-up houses, prints PASS or FAIL for each, and then deletes them. Run it once, before you add your own houses.
 
 ## Step 7: Reach your server from your phone (Tailscale)
 
@@ -245,7 +247,7 @@ Tailscale account can open it.
    manager, next to your Doorprints API key.
 
 To test it: on your phone, switch Tailscale on. Open your address with `/actuator/health` added to the end (for
-example `https://my-pc.tail1234.ts.net/actuator/health`). You should see `{"status":"UP"}`.
+example `https://my-pc.tail1234.ts.net/actuator/health`). You should see text that includes `"status":"UP"`.
 
 `tailscale serve` keeps working after the computer restarts. To stop sharing the server, run
 `tailscale serve reset`. (On a Mac, use the longer form of `tailscale` shown above.)
@@ -262,13 +264,13 @@ them may use AI, and can paste your Gemini key. Nobody else needs it.
 3. On the server computer, open the first link (it starts with `http://localhost:8080`). On another computer, use
    the second one: put your address from step 7 in place of `<your-server-address>`.
 4. The owner page opens and your browser stays signed in to it. The link works only once, within an hour. The server
-   writes a new one every time it starts, so if it no longer works, restart the server (`docker compose up -d`) and
+   writes a new one every time it starts, so if it no longer works, restart the server (`docker compose restart api`) and
    look again.
 5. For AI: under **AI (Google Gemini)**, paste your Gemini key and choose **Save key**. It takes effect at once; you
    don't restart anything. The page then shows only the key's last four characters. **AI on this server** turns AI
    off (and on again) for every device at once.
 
-Keep the owner page's address in your password manager: `https://` your address from step 7, then `/owner/`.
+Keep the owner page's address in your password manager: `https://` your address from step 7, then `/owner`.
 
 ## Step 9: Connect the apps
 
@@ -366,7 +368,7 @@ First, see what the server says about the problem. These messages are called log
 | The phone connects but the website doesn't | Check that the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`. Then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
 | **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` (after a change, run `docker compose up -d`). Then check three things: a Gemini key is saved on the owner page (or in `AI_API_KEY`); **AI on this server** is on; and **AI** is ticked for that device under **Devices**. In the app, also turn on **Use AI features in this browser** (website, **Connect** page) or **Use AI features on this phone** (phone, **Settings**). |
 | **Get a code** says the server cannot connect by code yet | The server is older than this guide. Update it (see *Everyday use*), or open **Use an API key instead** and type your Doorprints API key. |
-| The owner page link no longer works | It works only once, within an hour. Restart the server with `docker compose up -d` and use the new link in the logs. |
+| The owner page link no longer works | It works only once, within an hour. Restart the server with `docker compose restart api` and use the new link in the logs. |
 | `tailscale` is not recognized, or `command not found` | Windows: open a new terminal after installing Tailscale. Mac: use the longer form in step 7. |
 | AI answers fail after working earlier | You have probably reached the free daily limit. Try again the next day. |
 | All your houses are gone from the server | The folder was renamed or moved (see step 2). Move it back. Or, on Android, use **Import a backup** with your latest copy, then **Sync now**. |

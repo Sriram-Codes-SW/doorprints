@@ -122,7 +122,8 @@ export class PlacesPage {
     this.nameError.set(name === '');
     this.pointError.set(f.lat === null || f.lon === null);
     if (name === '' || f.lat === null || f.lon === null) {
-      if (name === '') document.getElementById('place-name')?.focus();
+      // The first field that needs fixing: the name, else the position (its latitude field says what is missing).
+      document.getElementById(name === '' ? 'place-name' : 'place-point-lat')?.focus();
       return;
     }
     this.saving.set(true);

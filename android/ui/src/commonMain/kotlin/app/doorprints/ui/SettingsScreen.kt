@@ -745,6 +745,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         // The version, which support needs first.
         val version = remember { features.appVersion() }
         if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
+        // The user guide in the app's language (S4b-BL-60).
+        HelpLink(openUrl = platform::openUrl)
         LegalNoticeBlock(openUrl = platform::openUrl)
     }
 }

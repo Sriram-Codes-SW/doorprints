@@ -654,7 +654,7 @@
             class="btn"
             [disabled]="(d.answers ?? []).length >= maxAnswers"
             [attr.aria-expanded]="pickerOpen()"
-            aria-controls="questions-picker"
+            [attr.aria-controls]="pickerOpen() ? 'questions-picker' : null"
             (click)="pickerOpen.set(!pickerOpen())"
           >
             {{ 'questions.addOne' | t }}

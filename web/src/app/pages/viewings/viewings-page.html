@@ -108,7 +108,6 @@
               <a
                 class="row-link"
                 [routerLink]="['/viewings', v.id]"
-                [attr.aria-label]="'viewings.rowAria' | t: { name: houseName(v), when: when(v) }"
               >
                 <b class="when">{{ when(v) }}</b>
                 <span class="house" [class.gone]="!houses().has(v.houseId)">{{ houseName(v) }}</span>

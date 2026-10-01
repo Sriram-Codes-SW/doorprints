@@ -36,7 +36,8 @@
     <string name="notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు</string>
     <string name="notif_hunt_title">హంట్ మోడ్ ఆన్‌లో ఉంది</string>
     <string name="notif_hunt_text">మీరు చూసిన ఇళ్లు, వీధుల కోసం గమనిస్తోంది</string>
-    <string name="notif_stop">ఆపండి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_stop">హంట్ మోడ్ ఆపండి</string>
     <string name="notif_seen_house">దీన్ని మీరు ఇప్పటికే చూశారు: %1$s</string>
     <string name="notif_distance">%1$s · %2$d మీ దూరంలో</string>
     <string name="notif_visited_before">ఇంతకు ముందు చూసింది</string>
@@ -122,17 +123,24 @@
     <string name="notif_viewing_text">ప్రారంభం: %1$s</string>
     <string name="notif_viewing_public">Doorprints రిమైండర్</string>
     <string name="notif_viewing_open">ఇంటిని తెరవండి</string>
-    <string name="notif_viewing_directions">దారి</string>
-    <string name="notif_viewing_questions">ప్రశ్నలు</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_directions">ఇంటికి దారి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_viewing_questions">అడగాల్సిన ప్రశ్నలు</string>
     <string name="notif_viewing_house_gone">తొలగించిన ఇల్లు</string>
     <!-- Slice 3c, the Hunt mode reminder (2026-09-30): under review. -->
     <string name="notif_channel_hunt_reminders">హంట్ మోడ్ రిమైండర్‌లు</string>
     <string name="notif_channel_hunt_reminders_desc">పరిశీలనకు ముందు హంట్ మోడ్ సూచన</string>
     <string name="notif_hunt_reminder">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో. హంట్ మోడ్ ప్రారంభించాలా?</string>
     <string name="notif_hunt_reminder_start">హంట్ మోడ్ ప్రారంభించండి</string>
-    <string name="notif_hunt_reminder_dismiss">తీసివేయండి</string>
+    <!-- Wave D (2026-10-01): the notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
+    <string name="notif_hunt_reminder_dismiss">రిమైండర్ తీసివేయండి</string>
     <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
     <string name="notif_channel_area_wakeup">ప్రాంత మేల్కొలుపు</string>
     <string name="notif_channel_area_wakeup_desc">మీ వెతుకులాట ప్రాంతాల్లో ఒకదానికి చేరినప్పుడు హంట్ మోడ్ సూచన</string>
     <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
+    <!-- Wave D (2026-10-01): the notifications' own action names, which say what they act on (S4b-BL-94b): under review. -->
+    <string name="notif_copy_open">కాపీని తెరవండి</string>
+    <string name="notif_copy_share">కాపీని షేర్ చేయండి</string>
+    <string name="notif_task_stop">ఈ పనిని ఆపండి</string>
 </resources>

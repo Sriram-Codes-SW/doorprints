@@ -41,6 +41,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- The app lock (docs/11 5.19): BiometricPrompt, which asks for the phone's PIN, pattern or password, needs this
+         normal permission from API 28; without it authenticate() throws a SecurityException and the lock screen
+         cannot open its prompt (found by AppLockEmulatorTest on the API 34 and 36 emulators, S4b-BL-67). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
