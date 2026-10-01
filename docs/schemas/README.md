@@ -508,8 +508,8 @@ without a red build.
 ## 8. The canonical sample
 
 [`backup-sample.json`](backup-sample.json) is one line of JSON: exactly what the web writer produces for the
-shared fixture (section 8.1 says why that writer and not another). Three live houses — one full, one nearly empty with a `=SUM(...)` label and a Tamil name, one rejected
-with an empty label. Three visits: two on house 1, of which the second is still open, and one on house 3 that
+shared fixture (section 8.1 says why that writer and not another). Three live houses — one full (since slice 5 TAKEN, with a move-in record, floor 3), one nearly empty with a `=SUM(...)` label and a Tamil name, one rejected
+with an empty label (floor 0). Photo 1 carries room, tags (two fixed keys and an own one), a caption and `metaUpdatedAt` 1790000000000, a time in the past. Three visits: two on house 1, of which the second is still open, and one on house 3 that
 *arrives between them*. Two photos: one on house 1 and one on house 3 that was *created before it*. A deleted
 house and a deleted visit must **not** appear. The two interleaving rows are what make the ordering rule of
 section 5 testable — do not remove them. Ignore the trailing newline; the line itself is the bytes.
