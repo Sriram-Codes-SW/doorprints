@@ -120,6 +120,10 @@
         } @else if (items().length > 0 && mapUsable()) {
           <button type="button" class="btn" [title]="'map.fitTitle' | t" (click)="fitAll()">{{ 'map.fit' | t }}</button>
         }
+        @if (!addMode() && mapUsable()) {
+          <!-- Offline maps (S4b-BL-79): the box on screen, saved in this browser. -->
+          <app-offline-save [boundsOf]="currentBounds" />
+        }
       </div>
     </div>
   </section>
