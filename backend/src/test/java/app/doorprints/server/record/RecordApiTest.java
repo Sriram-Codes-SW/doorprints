@@ -18,12 +18,15 @@
 
 package app.doorprints.server.record;
 
+import app.doorprints.server.house.HouseChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -36,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +70,17 @@ class RecordApiTest {
     @Autowired
     RecordRepository repo;
 
+    /** Every {@code HouseChangedEvent} published, as the AI indexer would receive it (S4b-BL-92d). */
+    static final List<UUID> CHANGED = new CopyOnWriteArrayList<>();
+
+    @TestConfiguration
+    static class HouseEvents {
+        @EventListener
+        void on(HouseChangedEvent event) {
+            CHANGED.add(event.houseId());
+        }
+    }
+
     RestClient api;
 
     @BeforeEach
@@ -91,6 +106,27 @@ class RecordApiTest {
         assertThat(list(version(saved), null)).extracting(r -> r.get("id")).containsExactly("p1");
         assertThat(list(before, "place")).extracting(r -> r.get("id")).containsExactly("p1");
         assertThat(list(version(all.get(1)), null)).isEmpty();
+    }
+
+    @Test
+    void aViewingRefreshesTheAiDocumentOfItsHouseAndOfTheHouseItLeft() {
+        // S4b-BL-92d: a viewing is part of its house's document, so writing or deleting one re-indexes that house.
+        var a = UUID.randomUUID();
+        var b = UUID.randomUUID();
+        CHANGED.clear();
+        put("viewing", "v_00000001", "{\"houseId\":\"" + a + "\",\"startsAt\":1}", null, false);
+        assertThat(CHANGED).containsExactly(a);
+        CHANGED.clear();
+        put("viewing", "v_00000001", "{\"houseId\":\"" + b + "\",\"startsAt\":1}", null, false);
+        assertThat(CHANGED).as("moved to another house: both documents change").containsExactly(a, b);
+        CHANGED.clear();
+        api.delete().uri("/api/records/viewing/v_00000001").retrieve().toBodilessEntity();
+        assertThat(CHANGED).containsExactly(b);
+        CHANGED.clear();
+        // Other record types, and a viewing whose house is not an id, publish nothing.
+        put("broker", "b1", "{\"name\":\"Ravi\"}", null, false);
+        put("viewing", "v_00000002", "{\"houseId\":\"not-a-uuid\"}", null, false);
+        assertThat(CHANGED).isEmpty();
     }
 
     @Test

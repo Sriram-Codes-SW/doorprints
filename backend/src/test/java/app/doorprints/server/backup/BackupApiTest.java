@@ -1489,6 +1489,22 @@ class BackupApiTest {
 
     private static final String SOME_HOUSE = "11111111-1111-4111-8111-111111111111";
 
+    /**
+     * S4b-BL-92d: an imported viewing changes its house's AI document, so its house counts among the changed ones. AI is
+     * off here, so what shows is the fan-out guard's note, which counts the viewings' houses as it counts the houses.
+     */
+    @Test
+    void importedViewingsCountTheirHousesForTheAiIndex() {
+        var now = Instant.now().minus(Duration.ofMinutes(5));
+        var rows = new StringBuilder();
+        for (int i = 0; i <= BackupService.MAX_INDEX_EVENTS; i++) {
+            if (i > 0) rows.append(',');
+            rows.append(viewingRow("v_" + String.format("%08x", i), UUID.randomUUID().toString(), 1_790_000_000_000L, now));
+        }
+        assertThat(problems(postImport(backupWithViewings("", rows.toString()), true)))
+                .anyMatch(p -> p.contains("AI index not updated for " + (BackupService.MAX_INDEX_EVENTS + 1) + " house(s)"));
+    }
+
     /** A copy with no viewing is a /1 document without the key; a viewing alone makes it /2 (a dangling house is fine). */
     @Test
     void aCopyWithoutViewingsIsVersionOneAndAViewingAloneMakesItVersionTwo() throws JSONException {
