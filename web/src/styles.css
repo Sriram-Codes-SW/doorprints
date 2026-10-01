@@ -49,7 +49,7 @@
   --status-taken: #8a5a00; /* 5.93:1 on white */
   --status-not-chosen: #5f6b66; /* 5.55:1 on white */
   --on-status: #ffffff;
-  --star: #a86a00; /* 4.44:1 on white */
+  --star: #966000; /* 5.29:1 on white, 4.68:1 on --surface-2, 4.52:1 on --primary-soft (S4b-BL-110) */
   --best: #dff3e7;
   --on-best: #1a7a43; /* 4.63:1 */
   --error-bg: #fbeceb;
