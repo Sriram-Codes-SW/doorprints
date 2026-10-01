@@ -483,6 +483,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Changed
 
+- **CI runs the tests that read a changed shared file** (S4b-BL-105): the web workflow also runs on `docs/schemas/**`, the Android workflow on the two AI test-vector files, and the guide's always-report twin mirrors its workflow again; `tools/check.sh` picks its local areas from the same paths and `--print-areas` shows them for a list of changed files.
 - **The user guide matches the apps again** (all four languages; [sprint log](docs/10-sprint-log.md) §17): a new section on My areas, My places and area notes; where the website keeps Brokers, Criteria, Questions to ask and Viewings; finding a floor in the app's language; *Save a copy* on iPhone; the import choices (*Keep mine, add only what's new*, *Also bring back*), its floor note and *Undo this import* on Android; the home page's table (shared listings on Android, AI with your own Gemini key, viewings, *Share updates with…*).
 - **Readable copies show times in UTC on Android and iPhone too**, as the website's always did; the cover says so (S4b-BL-92c).
 - **With the app lock on, Hunt mode's alerts show nothing on the phone's locked screen** (S4b-BL-68).
