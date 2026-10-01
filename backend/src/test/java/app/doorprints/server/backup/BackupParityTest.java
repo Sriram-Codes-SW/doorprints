@@ -90,6 +90,20 @@ class BackupParityTest {
                 .as(typescript).isEqualTo(BackupFormat.MAX_DATA_JSON_BYTES);
     }
 
+    /**
+     * The three readers accept the same numbers (docs/schemas/README.md section 1.1; S4b-BL-82 made it three): the
+     * server's {@link BackupFormat#MAX_VERSION}, Kotlin's {@code MAX_VERSION} and the web's {@code BACKUP_FORMATS_READ},
+     * read as source text.
+     */
+    @Test
+    void theThreeReadersAcceptTheSameFormats() {
+        assertThat(BackupFormat.MAX_VERSION).isEqualTo(3);
+        assertThat(repoFile("android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"))
+                .contains("const val MAX_VERSION = " + BackupFormat.MAX_VERSION + "\n");
+        assertThat(repoFile("web/src/app/export/backup-export.ts")).contains(
+                "BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];");
+    }
+
     /** The web writer's byte golden is the canonical sample, byte for byte (docs/schemas/README.md section 8.1). */
     @Test
     void theWebGoldenIsTheCanonicalSample() {

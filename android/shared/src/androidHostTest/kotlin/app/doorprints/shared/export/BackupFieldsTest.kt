@@ -178,7 +178,23 @@ class BackupFieldsTest {
     /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers`, `questions`, then `viewings` last. */
     @Test
     fun theSamplesTopLevelKeysAreTheModelsInItsOrder() =
-        assertEquals(BackupData.serializer().descriptor.elementNames.toList(), sample.keys.toList())
+        assertEquals(BackupData.serializer().descriptor.elementNames.toList() - "deleted", sample.keys.toList())
+
+    /**
+     * S4b-BL-82: `deleted` is an update file's list, so the backup sample has none; `update-sample.json` is the `/3` update
+     * file this writer writes byte for byte (no whole-number coordinate in it), its list last.
+     */
+    @Test
+    fun theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck() {
+        val text = repoFile("docs/schemas/update-sample.json").readText().trimEnd()
+        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), text)
+        assertEquals(BackupFormat.ID_3, data.format)
+        assertEquals(null, BackupValidation.checkData(data))
+        assertEquals(text, BackupFormat.json.encodeToString(BackupData.serializer(), data))
+        assertEquals("deleted", Json.parseToJsonElement(text).jsonObject.keys.last())
+        assertEquals(ExportDeletion.serializer().descriptor.elementNames.toList(), Json.parseToJsonElement(text).jsonObject
+            .getValue("deleted").jsonArray.first().jsonObject.keys.toList())
+    }
 
     /** The sample is the golden of a `/2` copy: its `brokers` list is what makes the format `/2` (README 1.1). */
     @Test

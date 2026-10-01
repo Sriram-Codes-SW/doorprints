@@ -69,10 +69,10 @@ export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
  * The rule of S4b-BL-72 (docs/schemas/README.md): a new entity list means a new format number, a reader accepts
  * every number up to the one it knows and refuses a newer file with "update the app" rather than dropping its
- * lists in silence. The web has no reader yet (S4b-BL-75); when it lands it accepts exactly these. Kotlin:
- * `BackupFormat.READABLE`.
+ * lists in silence. `/3` adds an update file's `deleted` list (S4b-BL-82). The website's reader (`backup-reader.ts`,
+ * S4b-BL-75) accepts exactly these. Kotlin: `BackupFormat.READ_IDS`.
  */
-export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2'];
+export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];
 export const MANIFEST_ENTRY = 'manifest.json';
 export const DATA_ENTRY = 'data.json';
 
@@ -290,6 +290,15 @@ export interface BackupData {
   areas?: BackupArea[];
   places?: BackupPlace[];
   areaNotes?: BackupAreaNote[];
+  /** Only in a `/3` update file, after `areaNotes` (S4b-BL-82): the rows deleted since the last share. The web writes none yet. */
+  deleted?: BackupDeletion[];
+}
+
+/** A deletion of an update file (S4b-BL-82): the kind of row (`house` so far), its id and when it was deleted. */
+export interface BackupDeletion {
+  kind: string;
+  id: string;
+  updatedAt: number;
 }
 
 export interface BackupCounts {
@@ -305,6 +314,7 @@ export interface BackupCounts {
   areas?: number;
   places?: number;
   areaNotes?: number;
+  deleted?: number;
 }
 
 export interface BackupFile {
@@ -328,6 +338,9 @@ export interface BackupManifest {
   includeContacts: boolean;
   counts: BackupCounts;
   files: BackupFile[];
+  /** An update file's (docs/11 5.28): the rows changed after this instant only, and who it was made for. Read, not written here. */
+  sharedSince?: string;
+  sharedTo?: string;
 }
 
 export function buildBackupData(bundle: ExportBundle): BackupData {

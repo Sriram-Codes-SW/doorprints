@@ -520,6 +520,39 @@ export class LocalStore {
     this.touch();
   }
 
+  // ---- Import (S4b-BL-75) ----
+
+  /** Every record of one `type`, tombstones included: an import's last-write-wins comparison. */
+  async allRecordsOf(type: string): Promise<RecordRecord[]> {
+    const db = await this.db();
+    return db.getAllByIndex<RecordRecord>('records', 'type', type);
+  }
+
+  /**
+   * Writes the rows an import chose, as they are (the caller stamped and marked them; `ImportService`), then bumps the
+   * revision once, so a screen re-reads after the whole import rather than per row.
+   */
+  async putImported(rows: { houses?: readonly HouseRecord[]; visits?: readonly VisitRecord[]; photos?: readonly PhotoRecord[]; records?: readonly RecordRecord[] }): Promise<void> {
+    const db = await this.db();
+    for (const r of rows.records ?? []) await db.put('records', r);
+    for (const h of rows.houses ?? []) await db.put('houses', h);
+    for (const v of rows.visits ?? []) await db.put('visits', v);
+    for (const p of rows.photos ?? []) await db.put('photos', p);
+    this.touch();
+  }
+
+  /** A stored house, tombstones included. */
+  async getHouseRow(id: string): Promise<HouseRecord | undefined> {
+    const db = await this.db();
+    return db.get<HouseRecord>('houses', id);
+  }
+
+  /** A stored visit, tombstones included. */
+  async getVisitRow(id: string): Promise<VisitRecord | undefined> {
+    const db = await this.db();
+    return db.get<VisitRecord>('visits', id);
+  }
+
   // ---- Records (docs/11 5.30 item 2: every other Sprint 4b entity, in one store) ----
 
   /** The live records of one `type`, through the `type` index, oldest edit first. */

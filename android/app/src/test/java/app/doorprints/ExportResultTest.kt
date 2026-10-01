@@ -19,7 +19,7 @@
 package app.doorprints
 
 import app.doorprints.export.ResultActions
-import app.doorprints.export.backupProblemOf
+import app.doorprints.shared.export.backupProblemOf
 import app.doorprints.shared.export.BackupProblem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

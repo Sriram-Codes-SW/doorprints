@@ -43,7 +43,3 @@ internal fun BackupProblem.messageRes(): Int = when (this) {
     BackupProblem.READ_FAILED -> R.string.problem_read_failed
     BackupProblem.WRITE_FAILED -> R.string.problem_write_failed
 }
-
-/** A worker reports a backup problem by name; anything unrecognised is treated as "not a backup". */
-internal fun backupProblemOf(name: String?): BackupProblem =
-    BackupProblem.entries.firstOrNull { it.name == name } ?: BackupProblem.NOT_A_BACKUP

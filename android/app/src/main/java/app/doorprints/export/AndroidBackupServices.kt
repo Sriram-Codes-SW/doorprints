@@ -18,6 +18,7 @@
 
 package app.doorprints.export
 
+import app.doorprints.shared.export.backupProblemOf
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.net.Uri

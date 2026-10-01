@@ -20,6 +20,7 @@ package app.doorprints.export
 
 import app.doorprints.data.Repository
 import app.doorprints.shared.export.BackupArchive
+import app.doorprints.shared.export.ImportActions
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.export.ImportPlan
 
@@ -48,6 +49,7 @@ object ArchiveImports {
             localViewings = local.viewings, localAreas = local.areas, localPlaces = local.places,
             localAreaNotes = local.areaNotes, localPhotoMeta = local.photoMeta,
             liveQuestions = local.liveQuestions, liveCriteria = local.liveCriteria,
+            applyDeletions = ImportPlan.isUpdate(archive.manifest),
         )
         // Which houses a merge would replace, by name, for the Replace dialog (a merge's plan needs no new ids).
         val replaced = ImportPlan.plan(
@@ -74,18 +76,17 @@ object ArchiveImports {
     }
 
     /**
-     * Writes the confirmed import [request] from [archive] (a merge row by row, a copy all or nothing:
-     * `Repository.applyImport`). [onProgress] is the stop point, as in Android's worker.
+     * What the confirmed import [request] writes from [archive], against what is on this phone now: the same `ImportPlan`
+     * call and flags as the preview (Android's worker decides from it whether to run in the foreground).
      */
-    suspend fun apply(
+    suspend fun plan(
         repository: Repository,
         archive: BackupArchive,
         request: ImportRequest,
         newId: () -> String,
-        onProgress: (done: Int, total: Int) -> Unit,
-    ): Repository.ImportResult {
+    ): ImportActions {
         val local = repository.localVersions()
-        val actions = ImportPlan.plan(
+        return ImportPlan.plan(
             data = archive.data,
             localHouses = local.houses,
             localVisits = local.visits,
@@ -108,7 +109,20 @@ object ArchiveImports {
             localAreaNotes = local.areaNotes,
             localPhotoMeta = local.photoMeta,
             liveQuestions = local.liveQuestions, liveCriteria = local.liveCriteria,
+            applyDeletions = ImportPlan.isUpdate(archive.manifest),
         )
-        return repository.applyImport(actions, onProgress) { entry -> archive.photoBytes(entry) }
     }
+
+    /**
+     * Writes the confirmed import [request] from [archive] (a merge row by row, a copy all or nothing:
+     * `Repository.applyImport`). [onProgress] is the stop point, as in Android's worker.
+     */
+    suspend fun apply(
+        repository: Repository,
+        archive: BackupArchive,
+        request: ImportRequest,
+        newId: () -> String,
+        onProgress: (done: Int, total: Int) -> Unit,
+    ): Repository.ImportResult =
+        repository.applyImport(plan(repository, archive, request, newId), onProgress) { entry -> archive.photoBytes(entry) }
 }

@@ -74,7 +74,7 @@ class BackupTest {
         assertEquals(
             BackupProblem.UNSUPPORTED_VERSION,
             BackupValidation.checkManifest(
-                BackupManifest(format = "doorprints-backup/3", createdAt = "2026-09-22T10:15:30Z", counts = counts)
+                BackupManifest(format = "doorprints-backup/4", createdAt = "2026-09-22T10:15:30Z", counts = counts)
             ),
         )
         assertEquals(
@@ -95,9 +95,10 @@ class BackupTest {
     @Test
     fun aFormatUpToTheMaximumIsReadAndTheNextOneIsRefused() {
         assertEquals("doorprints-backup/1", BackupFormat.ID)
-        assertEquals(listOf("doorprints-backup/1", "doorprints-backup/2"), BackupFormat.READ_IDS)
+        assertEquals(listOf("doorprints-backup/1", "doorprints-backup/2", "doorprints-backup/3"), BackupFormat.READ_IDS)
         assertTrue(BackupFormat.accepts("doorprints-backup/2"))
-        assertFalse(BackupFormat.accepts("doorprints-backup/3"))
+        assertTrue(BackupFormat.accepts("doorprints-backup/3"))
+        assertFalse(BackupFormat.accepts("doorprints-backup/4"))
         assertFalse(BackupFormat.accepts("doorprints-backup/"))
         assertFalse(BackupFormat.accepts(null))
 
@@ -112,7 +113,7 @@ class BackupTest {
         )
         assertEquals(
             BackupProblem.UNSUPPORTED_VERSION,
-            BackupValidation.checkData(BackupData(format = "doorprints-backup/3", exportedAt = 1)),
+            BackupValidation.checkData(BackupData(format = "doorprints-backup/4", exportedAt = 1)),
         )
     }
 

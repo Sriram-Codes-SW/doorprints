@@ -1,0 +1,167 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card" aria-labelledby="import-heading" [attr.aria-busy]="busy() ? 'true' : null">
+  <h2 id="import-heading">{{ 'imp.heading' | t }}</h2>
+  <p id="import-intro" class="muted">{{ 'imp.intro' | t }}</p>
+
+  <!-- The picker itself stays out of sight; the button is the control (a styled, translated, 48 px target). -->
+  <input
+    #fileInput
+    class="sr-only"
+    type="file"
+    accept=".zip,.json,application/zip,application/json"
+    tabindex="-1"
+    aria-hidden="true"
+    (change)="picked($event)"
+  />
+
+  @if (fileName() || madeOn()) {
+    <p class="file">
+      @if (fileName(); as name) {
+        <span class="muted small">{{ 'imp.fileLabel' | t }}</span>
+        <strong>{{ name }}</strong>
+      }
+      @if (madeOn(); as made) {
+        <span class="muted small">{{ made.key | t: made.params }}</span>
+      }
+    </p>
+  }
+
+  <div role="status">
+    @if (phase() === 'checking') {
+      <p>{{ 'imp.checking' | t }}</p>
+    } @else if (phase() === 'importing') {
+      <p>{{ 'imp.working' | t }}</p>
+    } @else if (undoState() === 'running') {
+      <p>{{ 'imp.undoing' | t }}</p>
+    }
+  </div>
+
+  <div role="alert">
+    @if (phase() === 'refused' && problem(); as p) {
+      <p class="error">{{ 'imp.refused' | t: { reason: i18n.t(problemKey(p)) } }}</p>
+    }
+  </div>
+
+  @if (phase() === 'ready' || phase() === 'importing') {
+    @if (preview(); as p) {
+      <fieldset [disabled]="busy()">
+        <legend>{{ 'imp.mode' | t }}</legend>
+        <label class="choice">
+          <input type="radio" name="import-mode" value="MERGE" [checked]="mode() === 'MERGE'" (change)="setMode('MERGE')" />
+          <span>
+            <strong>{{ 'imp.modeMerge' | t }}</strong>
+            <span class="muted small">{{ 'imp.modeMergeHint' | t }}</span>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="import-mode" value="COPY" [checked]="mode() === 'COPY'" (change)="setMode('COPY')" />
+          <span>
+            <strong>{{ 'imp.modeCopy' | t }}</strong>
+            <span class="muted small">{{ 'imp.modeCopyHint' | t }}</span>
+          </span>
+        </label>
+        @if (mode() === 'MERGE' && deletedHere() > 0) {
+          <label class="choice">
+            <input type="checkbox" [checked]="restore()" (change)="toggle('restore', $event)" />
+            <span>
+              <strong>{{ 'imp.restore' | t: { n: deletedHere() } }}</strong>
+              <span class="muted small">{{ 'imp.restoreHint' | t }}</span>
+            </span>
+          </label>
+        }
+        @if (mode() === 'MERGE' && overwrites() > 0) {
+          <label class="choice">
+            <input type="checkbox" [checked]="keepMine()" (change)="toggle('keepMine', $event)" />
+            <span>
+              <strong>{{ 'imp.keepMine' | t }}</strong>
+              <span class="muted small">{{ 'imp.keepMineHint' | t }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+
+      @if (p.isEmpty) {
+        <p class="empty">{{ 'imp.nothing' | t }}</p>
+      } @else {
+        <h3 class="preview-heading">{{ 'imp.preview' | t }}</h3>
+        <ul class="preview">
+          @for (line of lines(); track line.key) {
+            <li [class.loss]="line.loss">
+              <span>{{ line.key | t }}</span>
+              <strong>{{ i18n.number(line.count) }}</strong>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-primary"
+          [attr.aria-disabled]="busy() || p.isEmpty ? 'true' : null"
+          (click)="run()"
+        >
+          {{ (phase() === 'importing' ? 'imp.working' : 'imp.go') | t }}
+        </button>
+        <button type="button" class="btn" [attr.aria-disabled]="busy() ? 'true' : null" (click)="cancel()">
+          {{ 'imp.cancel' | t }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (phase() === 'done') {
+    <div #result tabindex="-1" class="result">
+      @if (failure(); as f) {
+        <p class="error" role="alert">{{ f.key | t: f.params }}</p>
+      } @else if (outcome(); as o) {
+        <p class="success">{{ 'imp.done' | t: { houses: o.houses, visits: o.visits, photos: o.photos } }}</p>
+        @if (o.removedHouses > 0) {
+          <p>{{ 'imp.doneRemoved' | t: { n: o.removedHouses } }}</p>
+        }
+        @if (o.photosSkipped > 0) {
+          <p class="warn-box">{{ 'imp.doneSkipped' | t: { n: o.photosSkipped } }}</p>
+        }
+        @if (undone(); as u) {
+          <p>{{ u.key | t: u.params }}</p>
+        }
+        <div class="actions">
+          <a class="btn btn-primary" routerLink="/">{{ 'imp.seeHouses' | t }}</a>
+          @if (canUndo) {
+            <button type="button" class="btn" [attr.aria-disabled]="busy() ? 'true' : null" (click)="undoCopy()">
+              {{ 'imp.undo' | t }}
+            </button>
+          }
+        </div>
+        @if (canUndo) {
+          <p class="muted small">{{ 'imp.undoNote' | t }}</p>
+        }
+      }
+    </div>
+  }
+
+  @if (phase() !== 'checking' && phase() !== 'importing') {
+    <div class="actions">
+      <button type="button" [class]="phase() === 'idle' || phase() === 'refused' ? 'btn btn-primary' : 'btn'" [attr.aria-disabled]="busy() ? 'true' : null" aria-describedby="import-intro" (click)="pick()">
+        {{ (phase() === 'idle' ? 'imp.pick' : 'imp.pickAnother') | t }}
+      </button>
+    </div>
+  }
+</section>

@@ -433,6 +433,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         showAddTip = mapAddTip,
                         onAddTipShown = { mapAddTip = false },
                         addTipForListing = listingPending,
+                        listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
                         huntRequest = huntRequested,
                         onStartHuntHandled = { huntRequested = false },
                         huntOffer = huntOffered,
