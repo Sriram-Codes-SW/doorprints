@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.6 |
-| Date | 2026-09-24 |
+| Version | 0.7 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
 
@@ -18,6 +18,7 @@
 | 0.4 | 2026-09-24 | Claude (Code), lead | **N-06, the icon's footprints, option C** ([14](14-lead-backlog-and-handoff.md) N3): three small footprints (sole, heel, four toes) walking up beside the door, left, right, left, in place of two large gold prints (a sole with two toes; plain ovals in the favicon), on Android (`ic_launcher.xml`, and the one print of `ic_stat_doorprints.xml`) and on the web (`favicon.svg` and every app-icon PNG). Colours, the door and each icon's layout are unchanged. The favicon keeps the same prints (owner's choice; it no longer leaves the toes out). In the design review the top print moved from (79,55) to (78.5,51.5), spacing only. N-06 now names every file of the mark, says where the print's path is defined, and records the 3:1 contrast floor for gold on teal. |
 | 0.5 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). **F.1 rule 7** now says internal names follow the brand too, renamed only with a carry-over for what is stored, and names the one kept on purpose (the Android Keystore alias). F.2: the longer store listing example is "Doorprints: House Visit Diary". |
 | 0.6 | 2026-09-30 | Claude (Code), lead | New N-07: the fifth user-facing name, **Share updates with…** (S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
+| 0.7 | 2026-10-01 | Claude (Code), lead | The website reads backups (S4b-BL-75, on a branch of the finishing batch, [10](10-sprint-log.md) §13.34): G's table names the web's `imp.heading` (*Import a backup* in four languages, the same words as Android) and §D says the condition for a custom domain is met in code, once it is deployed. |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -142,7 +143,8 @@ and HTTPS only. Serving a custom domain is free on Firebase Spark.
 **Why the timing matters more than the price.** Since Sprint 4a the web app keeps a user's houses and photos in the
 browser (IndexedDB), and browsers tie that storage to the exact address. If the app moved from
 `doorprints.web.app` to `doorprints.in`, every user's houses would stay behind at the old address. The web app
-cannot read a backup back in until the Sprint 4b web import ships ([05](05-ux-accessibility-i18n.md) UX-B07).
+cannot read a backup back in until the Sprint 4b web import ships ([05](05-ux-accessibility-i18n.md) UX-B07). **2026-10-01:** it is built
+(S4b-BL-75, [10](10-sprint-log.md) §13.34), not yet merged or deployed; once it is live, rule 3 below can be met.
 
 **Policy:**
 
@@ -236,7 +238,7 @@ columns are first drafts pending native-speaker review** ([05](05-ux-accessibili
 
 | Thing | en | hi | ta | te | Where it already exists |
 |---|---|---|---|---|---|
-| Import action (button and screen title) | **Import a backup** | बैकअप आयात करें | காப்புப்பிரதியை இறக்குமதி செய் | బ్యాకప్ దిగుమతి చేయండి | Android `import_title`. The web adopts it with its import (Sprint 4b) |
+| Import action (button and screen title) | **Import a backup** | बैकअप आयात करें | காப்புப்பிரதியை இறக்குமதி செய் | బ్యాకప్ దిగుమతి చేయండి | Android `import_title`; the web's `imp.heading` since its import (S4b-BL-75, 2026-10-01) |
 | The file you import (ZIP, or a bare `data.json`) | **Full backup** | पूरा बैकअप | முழு காப்புப்பிரதி | పూర్తి బ్యాకప్ | Web `data.formatBackup` ("Full backup (ZIP)") |
 | The read-only exports (HTML, PDF, CSV, XLSX, Markdown) | **Readable copy** (plural *copies*); action *Save a copy* | पढ़ने योग्य प्रति | படிக்கக்கூடிய நகல் | చదవగలిగే కాపీ | *copy* / प्रति / நகல் / కాపీ from Android `export_title`, `import_intro` and web `data.contactsWarning` |
 | Share-in feature | **Add a shared listing** (in the system share sheet the target shows only the brand, **Doorprints**, with the icon) | शेयर की गई लिस्टिंग जोड़ें | பகிர்ந்த விளம்பரத்தைச் சேர் | షేర్ చేసిన లిస్టింగ్ జోడించండి | "listing" as in the web `listingFill.*` translations (लिस्टिंग / விளம்பரம் / లిస్టింగ్) |

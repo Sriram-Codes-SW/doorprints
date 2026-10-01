@@ -41,21 +41,28 @@ In **Settings**, under **Your data**, tap **Share updates with…**. Add the per
 (the first time, your whole list) and opens the share sheet, so you can send it on WhatsApp, by email or any other
 way. On her phone, opening the file starts Doorprints, which shows what would change and merges it with her list
 when she taps **Import**. When both of you share your updates now and then, you hunt as one from two phones. Turn
-**Include contact details** off to keep owners' and brokers' phone numbers out of the file. A house one of you
-deleted stays on the other's phone until they delete it too.
+**Include contact details** off to keep owners' and brokers' phone numbers out of the file. A house you deleted is
+deleted on her phone too when she imports your update (**Houses deleted by the sender** in the preview), unless she
+changed it after you deleted it. She can also import your update on the website or on an iPhone.
 
 ## Import a backup
 
-**Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**. Today only the Android app
-can do this. The website cannot import yet. But you can import a full backup made on the website into Android.
+**Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**, the server's backup file
+(`.json`, without photos) or an update someone shared with you. Every app can read a backup made by any other.
 
-1. On Android, open **Settings**, then **Import a backup**.
-2. Tap **Choose a backup file**.
+1. On the website, open **Your data** and find **Import a backup**. On Android or iPhone, open **Settings**, then
+   **Import a backup**.
+2. Choose **Choose a backup file**. (On a phone you can also open the file from another app, such as WhatsApp or
+   Files, and choose Doorprints.)
 3. Doorprints checks the file and shows **What this would change**. Nothing changes yet.
 4. Choose how to import:
     - **Merge with what I have:** a house already on this phone is updated only if the backup's version is newer.
     - **Add everything as new copies:** nothing on this phone is changed. Houses you already have will appear twice.
+    - **Keep mine, add only what's new:** what you already have stays as it is, even where the file is newer.
 5. Tap **Import**.
+
+On the website, **Undo this import** removes the copies an **Add everything as new copies** import made, until you
+leave the page.
 
 Readable copies (HTML, PDF, CSV, Excel, Markdown) cannot be imported.
 
