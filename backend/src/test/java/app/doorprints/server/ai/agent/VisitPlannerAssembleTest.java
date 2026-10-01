@@ -75,6 +75,20 @@ class VisitPlannerAssembleTest {
     }
 
     @Test
+    void fallsBackWithoutNotChosenHousesEitherAndThePromptSkipsThem() {
+        var notChosen = house("N", 12.9718, HouseStatus.NOT_CHOSEN);
+        var taken = house("T", 12.9750, HouseStatus.TAKEN);
+        var mixed = new LinkedHashMap<UUID, HouseSummary>();
+        mixed.put(notChosen.id(), notChosen);
+        mixed.put(rejected.id(), rejected);
+        mixed.put(taken.id(), taken);
+        var res = VisitPlannerService.assemble(null, mixed, List.of("searchHouses"), 12.9716, 77.6400, 8);
+        assertThat(res.fallback()).isTrue();
+        assertThat(res.stops()).extracting(PlanModels.PlannedStop::houseId).containsExactly(taken.id());
+        assertThat(VisitPlannerService.systemPrompt(12.9716, 77.64, 5)).contains("skip REJECTED and NOT_CHOSEN unless asked.");
+    }
+
+    @Test
     void emptyPlanStaysEmpty() {
         var res = VisitPlannerService.assemble(new AgentPlan("Nothing matches", List.of()), seen, List.of(), 0, 0, 8);
         assertThat(res.fallback()).isFalse();

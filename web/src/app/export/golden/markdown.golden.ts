@@ -132,7 +132,7 @@ Rating counts for 40%
 
 | Detail | Value |
 | --- | --- |
-| When | 2026-10-01 |
+| Move-in date | 2026-10-01 |
 | Notes | Keys handed over by Ravi. Electricity meter reads 4521. |
 
 - ✓ Rental agreement signed and registered

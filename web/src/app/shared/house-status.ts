@@ -44,8 +44,21 @@ export function choose<T extends StatusHouse>(houses: readonly T[], id: string, 
 
 /** The ids *Close this hunt* would mark NOT_CHOSEN: every house that is not the TAKEN one and not already REJECTED or NOT_CHOSEN. */
 export function closeTargets(houses: readonly StatusHouse[], takenId: string): string[] {
-  return houses.filter((h) => h.id !== takenId && h.status !== 'REJECTED' && h.status !== 'NOT_CHOSEN').map((h) => h.id);
+  return houses.filter((h) => h.id !== takenId && inTheRunning(h.status)).map((h) => h.id);
+}
+
+/**
+ * The statuses out of the running (S4b-BL-99 a): REJECTED (turned down after looking) and NOT_CHOSEN (passed over when
+ * another house was taken). Compare and the Plan's fallback route leave them out, and the Plan prompt skips them unless
+ * asked, the same on the server (`HouseStatus.inTheRunning`) and the phones (`HouseStatusRules.inTheRunning`), pinned by
+ * the parity vectors' `inTheRunning`.
+ */
+export const OUT_OF_THE_RUNNING: readonly HouseStatus[] = ['REJECTED', 'NOT_CHOSEN'];
+
+/** False for a status in `OUT_OF_THE_RUNNING`; any other value (an unknown one or none) is in the running. */
+export function inTheRunning(status: string | null | undefined): boolean {
+  return !(OUT_OF_THE_RUNNING as readonly (string | null | undefined)[]).includes(status);
 }
 
 /** The same helpers as one object, the twin of Kotlin's `HouseStatusRules`. */
-export const HouseStatusRules = { choose, closeTargets } as const;
+export const HouseStatusRules = { choose, closeTargets, inTheRunning } as const;
