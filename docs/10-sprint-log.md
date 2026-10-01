@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.111 |
+| Version | 0.112 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3; **the Sprint 4b/4c finishing batch (slice 5 to Wave E) built on stacked branches, not merged, 2026-10-01**, §13.29..§13.40) |
@@ -114,6 +114,7 @@
 | 0.100 | 2026-09-30 | Claude (Code), lead | Slice 3c **built**: new **§13.26**; new S4b-BL-94 (follow-ups of 3c). Slice 3 (questions, viewings, reminders, Hunt reminder) is complete. |
 | 0.101 | 2026-09-30 | Claude (Code), lead | Slice 4a **built**: new **§13.27**; new S4b-BL-95 (follow-ups of 4a). |
 | 0.102 | 2026-09-30 | Claude (Code), lead | Slice 4b **built**: new **§13.28**; new S4b-BL-96 (the iPhone wake-up, now in the development waves) and S4b-BL-98 (follow-ups of 4b). |
+| 0.112 | 2026-10-01 | Claude (Code), Docs team | §17 *Guide refresh of 2026-10-01* (branch `docs/guide-refresh`): the user guide, in four languages, checked against what `main` does after the finishing batch and S4b-BL-104; Compare and plan and the map credit left to PR #104 and PR #100. |
 | 0.111 | 2026-10-01 | Claude (Code), lead | S4b-BL-99 (a) and (d) done in code (branch `fix/compare-plan-not-chosen`): one rule for the houses **in the running** (not REJECTED, not NOT_CHOSEN; `HouseStatusRules.inTheRunning`, web `inTheRunning`, server `HouseStatus.inTheRunning`, parity vectors `inTheRunning`): Compare on the phones and the website and the own-key AI Plan's fallback and prompt now leave out Not chosen houses as the server's planner does; the website's copies label the move-in date *Move-in date*, as the phones' do. §13.29 and S4b-BL-99 updated. |
 | 0.110 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (c) and (d) done in code (branch `fix/floor-input-and-import`): a **Basement** switch under Floor on both apps (Android and iPhone through `:ui`, and the website), so a basement level needs no minus key; and the import of a backup on a device stays tolerant of a floor outside -5..200 (it lands blank) and the preview says so, "Houses whose floor in the file is outside -5 to 200; their floor is left blank", as a warning line under the houses (`ImportPreview.floorsLeftBlank`, web `floorsLeftBlank`); the server still refuses such a file. S4b-BL-104 is done in code. |
 | 0.109 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (a) and (b) done in code (branch `fix/floor-rooms-followups`): the website's readable copies get the houses table's **Rooms** column (the rooms' count before the floor, as Android writes it), and search finds a floor by the app language's words as well as English, on both apps; (c) and (d) stay open. |
@@ -3044,3 +3045,18 @@ help for a small cost") has its own part in step 4: Google's price list of 2026-
 US$9 per million input and output tokens, content not used to improve products), an estimate of about one US cent per
 **Ask**, and the switch: *Set up billing*, Prepay with the US$5 minimum, and a monthly spend cap. The key table says
 only the Doorprints key is needed at the start. *Server and sharing*, the FAQ and the home page's table link to the new page.
+
+**Guide refresh of 2026-10-01** (branch `docs/guide-refresh`, after `697718f`). Each user-visible change of the finishing
+batch (§13.29..§13.40) and of S4b-BL-104 was checked against the guide's pages and the apps' strings; most were already
+there (#98, #103). Fixed in English, Hindi, Tamil and Telugu (hi, ta, te *under review*): the home page's table (Android
+takes a shared listing from the share sheet; AI works with your own Gemini key, not only a server; new rows for
+viewings with a reminder and *Share updates with…*), a sentence on cost, floor, rooms, viewings, brokers and moving in,
+and the website's *About* page; a new section *Your areas and places* on *Your houses* (My areas, My places, area
+notes), and where the website keeps Brokers, Criteria, Questions to ask, Viewings and Length units (*Your data*); the
+floor found in the app's language; *Your data*: *Save a copy* on iPhone, *Share updates with…* on Android and iPhone,
+what the readable tables hold (the Rooms column), *Keep mine, add only what's new* and *Also bring back* as choices
+under *Merge with what I have* (the translations had lost *Keep mine*), the brokers and the floor note in the preview,
+*Undo this import* on Android too, and the server's `.json` read by every app; *Hunt mode*: the wake-up needs *Wake me
+here* on the area; the FAQ's blank map points to offline areas; *Add a shared listing* points to the listing flow.
+Left alone on purpose: `compare-and-plan.md` (the *Not chosen* rule is PR #104) and the map credit text (PR #100); the
+web copies' *When* label for the move-in date (S4b-BL-99 d) is not described.

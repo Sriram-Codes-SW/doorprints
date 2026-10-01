@@ -483,6 +483,7 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Changed
 
+- **The user guide matches the apps again** (all four languages; [sprint log](docs/10-sprint-log.md) §17): a new section on My areas, My places and area notes; where the website keeps Brokers, Criteria, Questions to ask and Viewings; finding a floor in the app's language; *Save a copy* on iPhone; the import choices (*Keep mine, add only what's new*, *Also bring back*), its floor note and *Undo this import* on Android; the home page's table (shared listings on Android, AI with your own Gemini key, viewings, *Share updates with…*).
 - **Readable copies show times in UTC on Android and iPhone too**, as the website's always did; the cover says so (S4b-BL-92c).
 - **With the app lock on, Hunt mode's alerts show nothing on the phone's locked screen** (S4b-BL-68).
 - **Importing keeps to the limits**: at most 100 questions and 40 criteria after a merge (S4b-BL-90b); undoing an import made as copies also removes the brokers, viewings, questions and criteria it added (S4b-BL-92e).

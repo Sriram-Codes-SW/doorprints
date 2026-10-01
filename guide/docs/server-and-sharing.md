@@ -54,7 +54,9 @@ The address must start with `https://`. (HTTPS means the connection is locked, s
 
 ## Add a shared listing
 
-Saw a good ad on WhatsApp or a website? Keep its text with a new house.
+Saw a good ad on WhatsApp or a website? Keep its text with a new house. On Android, and on the website installed as
+an app, the new house's form also fills in what the listing says (see
+[Add a house from a listing you found online](houses.md#add-a-house-from-a-listing-you-found-online)).
 
 **Website installed as an app on an Android phone:**
 
@@ -64,7 +66,7 @@ Saw a good ad on WhatsApp or a website? Keep its text with a new house.
 
 To install the website, see **Install the app** on **Your data**.
 
-**Website and Android:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing
+**Anywhere, also on iPhone:** paste the ad's text into a house's **Notes**. With AI turned on, **Fill in from listing
 text** on the form for a new house suggests the details. Check them before you save.
 
 ![Add a shared listing on the website: the shared ad text, with Add a house from this, Copy and Back to the map](images/web-share.png)
