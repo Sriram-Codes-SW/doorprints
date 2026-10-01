@@ -16,9 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Announcer } from '../../core/announcer.service';
+import { LaunchFilesService } from '../../core/launch-files.service';
 import { errorMsg } from '../../core/format';
 import type { BackupProblem } from '../../export/backup-check';
 import { openBackup } from '../../export/backup-reader';
@@ -86,7 +87,9 @@ export class ImportBackupCard {
   private readonly importer = inject(ImportService);
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
+  private readonly launch = inject(LaunchFilesService);
 
+  private readonly card = viewChild<ElementRef<HTMLElement>>('card');
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   private readonly resultEl = viewChild<ElementRef<HTMLElement>>('result');
 
@@ -106,6 +109,23 @@ export class ImportBackupCard {
   private undo: CopyUndo | null = null;
 
   protected readonly busy = computed(() => this.phase() === 'checking' || this.phase() === 'importing' || this.undoState() === 'running');
+
+  constructor() {
+    // S4b-BL-108: a backup the system opened the installed app with (LaunchFilesService) is checked as if picked here,
+    // once nothing else is running; the card is brought into view, since it sits in the middle of Your data.
+    effect(() => {
+      if (!this.launch.pending() || this.busy()) return;
+      untracked(() => {
+        const file = this.launch.take();
+        if (!file) return;
+        void this.check(file);
+        queueMicrotask(() => {
+          const el = this.card()?.nativeElement;
+          if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' });
+        });
+      });
+    });
+  }
 
   private flags(): Omit<ImportFlags, 'applyDeletions'> {
     return { mode: this.mode(), restoreDeleted: this.restore(), skipUpdates: this.keepMine() };
