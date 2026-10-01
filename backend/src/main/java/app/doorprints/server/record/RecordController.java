@@ -20,11 +20,13 @@ package app.doorprints.server.record;
 
 import app.doorprints.server.common.ConflictException;
 import app.doorprints.server.common.NotFoundException;
+import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -34,11 +36,13 @@ import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The one sync endpoint pair for every record kind (docs/11 section 5.30, ADR-28): same cursor rule and
- * last-write-wins as {@link app.doorprints.server.visit.VisitController}, no per-kind code. Records are not part of
- * the AI index, so no {@code HouseChangedEvent} is published.
+ * last-write-wins as {@link app.doorprints.server.visit.VisitController}, no per-kind code, with one exception: a
+ * viewing is part of its house's AI document, so a viewing that is written or deleted publishes a
+ * {@code HouseChangedEvent} for its house, and for the house it named before (S4b-BL-92d).
  */
 @RestController
 @RequestMapping("/api/records")
@@ -54,12 +58,35 @@ public class RecordController {
     private final SyncVersions versions;
     private final ClientClock clock;
     private final ObjectMapper json;
+    private final ApplicationEventPublisher events;
 
-    public RecordController(RecordRepository repo, SyncVersions versions, ClientClock clock, ObjectMapper json) {
+    public RecordController(RecordRepository repo, SyncVersions versions, ClientClock clock, ObjectMapper json,
+                            ApplicationEventPublisher events) {
         this.repo = repo;
         this.versions = versions;
         this.clock = clock;
         this.json = json;
+        this.events = events;
+    }
+
+    /** The record type a house's AI document reads (S4b-BL-92d). */
+    static final String VIEWING_TYPE = "viewing";
+
+    /** The house a viewing payload names, or null (another type, no house, not a UUID). */
+    private UUID viewingHouse(String type, String payload) {
+        if (!VIEWING_TYPE.equals(type) || payload == null) return null;
+        try {
+            var houseId = json.readTree(payload).path("houseId");
+            return houseId.isString() ? UUID.fromString(houseId.asString()) : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Re-indexes the houses a viewing named before and after a write; after the commit, as for a house. */
+    private void viewingChanged(UUID before, UUID after) {
+        if (before != null) events.publishEvent(new HouseChangedEvent(before));
+        if (after != null && !after.equals(before)) events.publishEvent(new HouseChangedEvent(after));
     }
 
     /** Every record changed after {@code since} (all kinds, or one with {@code type}), tombstones included. */
@@ -95,11 +122,14 @@ public class RecordController {
             throw new ConflictException("Record limit reached: at most " + MAX_LIVE_ROWS_PER_TYPE + " " + type
                     + " records");
         }
+        var houseBefore = record.isDeleted() ? null : viewingHouse(type, record.getPayload());
         record.setPayload(payload);
         record.setDeleted(dto.deleted());
         record.setUpdatedAt(incomingUpdatedAt);
         record.setSyncVersion(versions.next());
-        return RecordDto.from(repo.save(record), json);
+        var saved = repo.save(record);
+        viewingChanged(houseBefore, dto.deleted() ? null : viewingHouse(type, payload));
+        return RecordDto.from(saved, json);
     }
 
     @DeleteMapping("/{type}/{id}")
@@ -110,6 +140,7 @@ public class RecordController {
         var record = repo.findById(new RecordKey(type, id))
                 .orElseThrow(() -> new NotFoundException("Record " + type + "/" + id + " not found"));
         if (!record.isDeleted()) {
+            viewingChanged(viewingHouse(type, record.getPayload()), null);
             record.setDeleted(true);
             record.setPayload(EMPTY);
             record.setUpdatedAt(clock.now());

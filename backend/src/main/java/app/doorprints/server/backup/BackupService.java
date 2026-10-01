@@ -228,7 +228,9 @@ public class BackupService {
         // Viewings (slice 3b-1) merge after the questions; a viewing's house is not checked (it may be gone).
         var liveViewings = new long[]{records.countByKeyTypeAndDeletedFalse(BackupViewing.TYPE)};
         var viewingTally = new Tally();
-        for (var row : data.viewings()) viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems));
+        for (var row : data.viewings()) {
+            viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems, changedHouses));
+        }
 
         // Areas, places and area notes (slice 4a) merge after the viewings; the apps hold the small caps, the server the record cap.
         var areaTally = new Tally();
@@ -515,7 +517,8 @@ public class BackupService {
      * A viewing as a {@code viewing} record: payload keys in the format's order, {@code huntReminder} only when true,
      * {@code withWhom}, {@code notes} and {@code visitId} only when set. A problem line never carries the row's text.
      */
-    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems) {
+    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems,
+                                 Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "viewings.updatedAt");
         var key = new RecordKey(BackupViewing.TYPE, row.id());
         var existing = records.findById(key).orElse(null);
@@ -529,6 +532,16 @@ public class BackupService {
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
+        }
+        // A viewing is part of its house's AI document (S4b-BL-92d): that house, and the one it named before, change.
+        houseOf(row.houseId(), changedHouses);
+        if (existing != null && !existing.isDeleted()) {
+            try {
+                var before = json.readTree(existing.getPayload()).path("houseId");
+                if (before.isString()) houseOf(before.asString(), changedHouses);
+            } catch (RuntimeException e) {
+                // A stored payload that does not read names no house.
+            }
         }
         if (dryRun) return outcome;
 
@@ -550,6 +563,16 @@ public class BackupService {
         record.setSyncVersion(versions.next());
         records.save(record);
         return outcome;
+    }
+
+    /** Adds the house [id] names to [changed] when it is a UUID; a viewing may name anything. */
+    private static void houseOf(String id, Set<UUID> changed) {
+        if (id == null) return;
+        try {
+            changed.add(UUID.fromString(id));
+        } catch (IllegalArgumentException e) {
+            // Not a house id: nothing to re-index.
+        }
     }
 
     private Outcome mergeArea(BackupArea row, boolean dryRun, long[] liveCount, List<String> problems) {
