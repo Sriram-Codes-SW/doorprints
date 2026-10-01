@@ -562,6 +562,10 @@ describe('the page shell and the stylesheet (TC-U-WEB-A11Y-7)', () => {
     expect(styles).toMatch(/--target: 44px/);
     expect(styles).toMatch(/@media \(pointer: coarse\)\s*\{\s*\.btn-sm\s*\{\s*min-height: var\(--target\)/);
     expect(styles).toMatch(/@media \(pointer: coarse\)\s*\{\s*\.chip\s*\{\s*min-height: var\(--target\)/);
+    // Date and time fields get the same size and text as the other fields (the live UI test found the date field at
+    // 21px high and 13px text), and a plain link in a row of actions is a 44px target.
+    expect(styles).toMatch(/input\[type='date'\],\s*input\[type='time'\],\s*input\[type='datetime-local'\],\s*select,\s*textarea\s*\{\s*width: 100%;\s*min-height: var\(--target\)/);
+    expect(styles).toMatch(/@media \(pointer: coarse\)\s*\{\s*\.actions > a:not\(\.btn\)\s*\{[^}]*min-height: var\(--target\)/);
     expect(styles).toMatch(/\.btn\s*\{[^}]*min-height: var\(--target\)/);
   });
 
