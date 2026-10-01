@@ -79,6 +79,13 @@ class AppLockEmulatorTest {
             settings.saveAppLock(false)
             settings.saveAppLockAfter(60)
         }
+    }
+
+    /**
+     * Sets the device PIN. Called once the app is on screen, not in [setUp]: on API 26 a secure device that is not yet
+     * unlocked keeps the app behind the keyguard, and the Compose rule then finds no hierarchy.
+     */
+    private fun setDevicePin() {
         val out = shell("locksettings set-pin $PIN")
         pinSet = keyguard().isDeviceSecure
         assumeTrue("No device PIN could be set from the shell ($out): the app lock needs one", pinSet)
@@ -99,6 +106,7 @@ class AppLockEmulatorTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilAtLeastOneExists(hasText("Settings") and hasClickAction(), TIMEOUT_MS)
         compose.onAllNodes(hasText("Settings") and hasClickAction()).onFirst().performClick()
+        setDevicePin()
 
         // Turning the lock on asks for the phone's credential first (Confirm it's you).
         compose.onNode(hasText("Lock Doorprints") and isToggleable()).performScrollTo().performClick()
