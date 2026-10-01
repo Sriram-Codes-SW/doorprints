@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Draft letter from the owner to the Survey of India, and how to send it |
-| Version | 0.9 |
+| Version | 0.10 |
 | Date | 2026-10-01 |
 | Author | Claude (Code), lead |
 | Status | **Answered** on 2026-10-01 (04:44 UTC) by the Survey of India's Online Maps Portal team: no prior permission is needed for the Administrative Boundary Database, **no alteration or modification of the dataset is permitted**, and due acknowledgement is required. The plan is in *The reply and the plan* below. **Follow-up letter sent 2026-10-01 07:15 UTC; awaiting the answer** |
@@ -12,6 +12,7 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.10 | 2026-10-01 | Claude (Code), lead | The owner's `Get-FileHash` of the original ZIP equals the sha256 of the copy read here (case aside), so the findings are about the file the portal gave. |
 | 0.9 | 2026-10-01 | Claude (Code), lead | **P1 started: the downloaded file was read** (the owner shared it by link; kept outside the repository). New subsection *P1 findings*: its projected coordinate system (a re-projection to longitude/latitude is needed, which the follow-up letter does not ask about), its size (1.7 million vertices in the state layer alone), its layers and extent. |
 | 0.8 | 2026-10-01 | Claude (Code), lead | **The follow-up letter was sent** by the owner on 2026-10-01 at 07:15 UTC (12:45 IST) as a reply in the same Gmail thread to `mtr.soi@gov.in`, copied to the four officers they copied on their reply (names and addresses are in the Gmail thread, not recorded here) (checked in the owner's Gmail: third message of the thread, label SENT). It thanks the Survey of India, confirms the three conditions and asks the four questions below, with the proposed acknowledgement wording and a request for the Boundary Verification Wing contact. Awaiting the reply. |
 | 0.7 | 2026-10-01 | Claude (Code), lead | An AI search answer the owner pasted (answers to the four follow-up questions, with six references) was checked against its sources: the new subsection *What the Survey of India's own documents say (checked 2026-10-01)*. Its conclusions stay unconfirmed; the follow-up letter stays worth sending and now offers two wordings for the acknowledgement and names the Boundary Verification Wing. |
@@ -149,7 +150,7 @@ ours, not the Survey of India's; the letter asks which it prefers (and offers th
 **Provenance.** File name `File_962036_8518ee870554465ba55d2b5aadd72bc9.zip` (as downloaded by the owner; the portal shows no
 version). The copy read here came through the owner's shared Drive link: 80,777,293 bytes, **sha256
 `e2225e73e00852d81141960eea69afeb78313003123c5f2420fca9ab583206ce`** (the owner can compare it with
-`Get-FileHash` on the original). The ZIP holds `91/` with five shapefile layers (each with `.dbf`, `.prj`, `.shx`, and
+`Get-FileHash` on the original: **the owner did, and the two are identical**, 2026-10-01). The ZIP holds `91/` with five shapefile layers (each with `.dbf`, `.prj`, `.shx`, and
 mostly `.shp.xml`, `.sbn`, `.sbx`, `.cpg`); the boundary layers' files are dated 2026-09-12 and the metadata says "created
 20260912, modified 20251016"; the lineage records say the state layer was dissolved from the district layer (Esri
 ArcGIS 10.7, 2021, edited 2024-12-07). Per-file sha256 values are in the owner's session notes, not in the repository.
