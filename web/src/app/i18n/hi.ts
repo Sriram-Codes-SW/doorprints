@@ -1189,4 +1189,9 @@ export const hi: Dict = {
   'help.linkAria': 'सहायता: उपयोगकर्ता गाइड खोलें (नए टैब में खुलता है)',
   'help.hint': 'प्रोजेक्ट की वेबसाइट पर तस्वीरों और हर क़दम के साथ उपयोगकर्ता गाइड।',
   'help.open': 'उपयोगकर्ता गाइड खोलें',
+  // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).
+  'house.floorBasementToggle': 'बेसमेंट',
+  'house.floorBasementHint': 'ज़मीन के नीचे का स्तर, 1 से 5',
+  'house.floorBasementInvalid': '1 से 5 तक का बेसमेंट स्तर लिखें',
+  'imp.floorsLeftBlank': 'जिन मकानों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी',
 };

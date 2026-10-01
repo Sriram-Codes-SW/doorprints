@@ -968,6 +968,8 @@ internal fun previewGroups(preview: ImportPreview, duplicates: Int): List<List<P
             PreviewLine(Icons.Default.Add, Res.string.import_new_houses, preview.newHouses),
             PreviewLine(Icons.Default.Refresh, Res.string.import_updated_houses, preview.updatedHouses),
             PreviewLine(Icons.Default.Warning, Res.string.import_checklists_cleared, preview.checklistsCleared, loss = true),
+            // S4b-BL-104 (d): a floor outside -5..200 in the file lands blank (the server refuses such a file).
+            PreviewLine(Icons.Default.Warning, Res.string.import_floors_left_blank, preview.floorsLeftBlank, loss = true),
             // The undelete (UX review, round 11): houses deleted on this phone that come back with their own ids.
             PreviewLine(RestoreIcon, Res.string.import_restored_houses, preview.restoredHouses),
             PreviewLine(Icons.Default.Info, Res.string.import_newer_here, preview.newerHereHouses),

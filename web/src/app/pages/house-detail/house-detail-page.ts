@@ -967,9 +967,45 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   // ---- The floor and the duplicate-flat warning (S4b-BL-87, S4b-BL-85) ----
 
-  /** Something is typed in Floor that is not a floor from -5 to 200. */
+  /**
+   * The Basement switch under Floor set with no level to carry the sign (blank or 0), by house id (S4b-BL-104 c). A
+   * level other than 0 carries the sign itself, so this only matters until one is typed.
+   */
+  private readonly basementSet = signal<{ id: string; on: boolean } | null>(null);
+
+  /** The Basement switch: the floor's sign once a level is typed, else what the switch was last set to. */
+  protected floorBasement(d: HouseDto): boolean {
+    if (typeof d.floor === 'number' && d.floor !== 0) return d.floor < 0;
+    const set = this.basementSet();
+    return set !== null && set.id === d.id && set.on;
+  }
+
+  /** What Floor shows: the level without its sign, which the Basement switch holds. */
+  protected floorShown(d: HouseDto): unknown {
+    return typeof d.floor === 'number' ? Math.abs(d.floor) : d.floor;
+  }
+
+  /** A level typed in Floor: below the ground while the switch is on; a minus typed anyway turns the switch on. */
+  protected typeFloor(d: HouseDto, value: unknown): void {
+    const typed = typeof value === 'number' && Number.isFinite(value) ? value : null;
+    // Clearing the level keeps the switch as it was, so "2" can become "3" of a basement without it turning off.
+    const below = (typed !== null && typed < 0) || this.floorBasement(d);
+    this.basementSet.set({ id: d.id, on: below });
+    if (typed === null) this.patch({ floor: value as number | null });
+    else this.patch({ floor: below && typed !== 0 ? -Math.abs(typed) : typed });
+  }
+
+  /** The Basement switch: turns the typed level into a basement level or back. */
+  protected setBasement(d: HouseDto, event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    this.basementSet.set({ id: d.id, on });
+    if (typeof d.floor === 'number' && d.floor !== 0) this.patch({ floor: on ? -Math.abs(d.floor) : Math.abs(d.floor) });
+  }
+
+  /** Something is typed in Floor that is not a floor from -5 to 200, or a basement level that is not 1 to 5. */
   protected floorInvalid(d: HouseDto): boolean {
-    return d.floor != null && (d.floor as unknown) !== '' && floorOf(d.floor) === null;
+    if (d.floor == null || (d.floor as unknown) === '') return false;
+    return (d.floor === 0 && this.floorBasement(d)) || floorOf(d.floor) === null;
   }
 
   /**
@@ -1317,7 +1353,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (this.floorInvalid(d)) {
       // Not a floor from -5 to 200: saving would drop what was typed without a word, so the field's message stays and
       // focus goes to it (WCAG 3.3.1, 3.3.3), as for the name and the position above.
-      this.error.set(runResult({ key: 'house.floorInvalid' }));
+      this.error.set(runResult({ key: this.floorBasement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid' }));
       const field = document.getElementById('house-floor');
       field?.scrollIntoView({ block: 'center' });
       field?.focus({ preventScroll: true });

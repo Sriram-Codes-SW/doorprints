@@ -277,16 +277,58 @@ describe('HouseDetailPage: moving rooms and the floor (S4b-BL-87, S4b-BL-85)', (
   it('saves a typed floor, 0 and a basement level included, and leaves one out of range unknown with a message', async () => {
     const { fixture, host, saved } = await open(null);
     const floor = host.querySelector<HTMLInputElement>('#house-floor')!;
+    const basement = host.querySelector<HTMLInputElement>('#house-floor-basement')!;
     expect(host.querySelector('#house-floor-hint')?.textContent).toContain('0 is the ground floor');
+    // A minus typed anyway turns the Basement switch on, and the field keeps the level (S4b-BL-104 c).
     await type(fixture, floor, '-2');
     expect(host.querySelector('#house-floor-error')).toBeNull();
+    expect(basement.checked).toBe(true);
     await type(fixture, floor, '300');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('basement level from 1 to 5');
+    basement.click();
+    await settled(fixture);
     expect(host.querySelector('#house-floor-error')?.textContent).toContain('-5 to 200');
     expect(floor.getAttribute('aria-invalid')).toBe('true');
     await type(fixture, floor, '0');
     [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save')!.click();
     await settled(fixture);
     expect(saved.at(-1)!.floor).toBe(0);
+  });
+
+  it('enters a basement with the Basement switch, no minus key needed (S4b-BL-104 c)', async () => {
+    const { fixture, host, saved, page } = await open(null, 'FT', { floor: -3 });
+    const floor = host.querySelector<HTMLInputElement>('#house-floor')!;
+    const basement = host.querySelector<HTMLInputElement>('#house-floor-basement')!;
+    const save = () => [...host.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save')!.click();
+    // A saved basement shows its level, the switch on, and the switch's own label and role.
+    expect(floor.value).toBe('3');
+    expect(basement.checked).toBe(true);
+    expect(basement.getAttribute('role')).toBe('switch');
+    expect(host.querySelector('label[for="house-floor-basement"]')?.textContent?.trim()).toBe('Basement');
+    expect(host.querySelector('#house-floor-hint')?.textContent).toContain('1 to 5');
+    // Clearing the level keeps the switch, so a new level stays below the ground.
+    await type(fixture, floor, '');
+    expect(basement.checked).toBe(true);
+    await type(fixture, floor, '1');
+    expect(page.draft()!.floor).toBe(-1);
+    // Off, the same digits are a floor above the ground; on again, below.
+    basement.click();
+    await settled(fixture);
+    expect(page.draft()!.floor).toBe(1);
+    basement.click();
+    await settled(fixture);
+    save();
+    await settled(fixture);
+    expect(saved.at(-1)!.floor).toBe(-1);
+    // A basement 0 is not a level: the save is blocked with the message and the focus on Floor.
+    await type(fixture, floor, '0');
+    expect(host.querySelector('#house-floor-error')?.textContent).toContain('basement level from 1 to 5');
+    const count = saved.length;
+    floor.scrollIntoView = () => undefined; // jsdom has no layout
+    save();
+    await settled(fixture);
+    expect(saved.length).toBe(count);
+    expect(document.activeElement).toBe(floor);
   });
 
   it('warns, without blocking, of another house within 30 m with the same bedrooms and floor', async () => {
