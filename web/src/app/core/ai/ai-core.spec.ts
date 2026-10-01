@@ -21,8 +21,9 @@ import vectors from './parity-vectors.json';
 import {
   AiHouse, CONTACT, FALLBACK_SUMMARY, I_DONT_KNOW, Redactor, askPrompt, assemblePlan, candidateLines, citations,
   extractionPrompt, houseText, inlineIds, legsInOrder, nearestNeighbour, nonce, redactPhones, roundHalfUp,
-  sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
+  planPrompt, sanitizeDraft, scrubStoredText, selectForAsk, selectForPlan, snippet, wrap, type RawListing, type PlanCandidate,
 } from './ai-core';
+import { inTheRunning } from '../../shared/house-status';
 
 /**
  * The website's on-device AI core treats text exactly as the server does (docs/03 §13.1, ADR-26): the shared vectors
@@ -65,6 +66,12 @@ describe('AI core parity with the server', () => {
       legs.map((l) => ({ id: l.to.id, meters: roundHalfUp(l.meters), walkMinutes: l.walkMinutes }));
     expect(shape(nearestNeighbour(r.start[0], r.start[1], points))).toEqual(r.nearestNeighbour);
     expect(shape(legsInOrder(r.start[0], r.start[1], points))).toEqual(r.inOrder);
+  });
+
+  it('keeps the same statuses in the running as the server does (S4b-BL-99 a)', () => {
+    const cases = vectors.inTheRunning as { status: string; expected: boolean }[];
+    expect(cases.length).toBe(5);
+    for (const c of cases) expect(inTheRunning(c.status), c.status).toBe(c.expected);
   });
 });
 
@@ -310,6 +317,17 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(fallback.fallback).toBe(true);
     expect(fallback.summary).toBe(FALLBACK_SUMMARY);
     expect(fallback.stops.map((s) => s.houseId)).toEqual([a]);
+  });
+
+  it('leaves Not chosen houses out of the fallback route and tells the model to skip them, as the server does (S4b-BL-99 a)', () => {
+    const c = '33333333-3333-4333-8333-333333333333';
+    const cand = (id: string, status: string, lat: number): PlanCandidate =>
+      ({ id, label: id.slice(0, 4), locality: 'L', street: null, status, price: null, priceType: null, bedrooms: null, rating: null, lat, lon: 77.59, distanceMeters: 0 });
+    const seen = new Map([[a, cand(a, 'NOT_CHOSEN', 12.972)], [b, cand(b, 'TAKEN', 12.975)], [c, cand(c, 'REJECTED', 12.971)]]);
+    const fallback = assemblePlan({ stops: [{ houseId: 'made-up' }] }, seen, 12.9716, 77.5946, 8);
+    expect(fallback.fallback).toBe(true);
+    expect(fallback.stops.map((s) => s.houseId)).toEqual([b]);
+    expect(planPrompt('a walk', 12.9716, 77.5946, 5, '', 'n1').system).toContain('skip REJECTED and NOT_CHOSEN unless asked.');
   });
 
   it('sends every house up to forty, then the ones sharing most words; plan candidates nearest first', () => {

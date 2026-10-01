@@ -47,6 +47,19 @@ object HouseStatusRules {
      * TAKEN one [takenId] and not already REJECTED or NOT_CHOSEN, in [houses]' order. Nothing is deleted.
      */
     fun closeTargets(houses: List<StatusHouse>, takenId: String): List<String> =
-        houses.filter { it.id != takenId && it.status != HouseStatus.REJECTED && it.status != HouseStatus.NOT_CHOSEN }
-            .map { it.id }
+        houses.filter { it.id != takenId && inTheRunning(it.status) }.map { it.id }
+
+    /**
+     * The statuses out of the running (S4b-BL-99 a): REJECTED (turned down after looking) and NOT_CHOSEN (passed over
+     * when another house was taken). Compare and the Plan's fallback route leave them out, and the Plan prompt skips
+     * them unless asked, the same on the server (`HouseStatus.inTheRunning`), here and on the website
+     * (`house-status.ts`), pinned by the parity vectors' `inTheRunning`.
+     */
+    val OUT_OF_THE_RUNNING: Set<HouseStatus> = setOf(HouseStatus.REJECTED, HouseStatus.NOT_CHOSEN)
+
+    /** False for a status in [OUT_OF_THE_RUNNING]. */
+    fun inTheRunning(status: HouseStatus): Boolean = status !in OUT_OF_THE_RUNNING
+
+    /** [inTheRunning] for a status sent by name (the AI's `AiHouse.status`); an unknown name is in the running. */
+    fun inTheRunning(status: String?): Boolean = OUT_OF_THE_RUNNING.none { it.name == status }
 }

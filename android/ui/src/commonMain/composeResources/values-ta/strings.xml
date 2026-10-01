@@ -135,7 +135,7 @@
     <string name="house_paste_go">நிரப்பு</string>
     <string name="house_paste_busy">விளம்பரம் படிக்கப்படுகிறது…</string>
     <string name="compare_title">ஒப்பிடு</string>
-    <string name="compare_hint">4 வீடுகள் வரை தேர்ந்தெடுக்கவும் (தேர்வானவை முதலில்). நிராகரிக்கப்பட்ட வீடுகள் சேர்க்கப்படாது.</string>
+    <string name="compare_hint">4 வீடுகள் வரை தேர்ந்தெடுக்கவும் (தேர்வானவை முதலில்). நிராகரிக்கப்பட்ட, தேர்ந்தெடுக்கப்படாத வீடுகள் சேர்க்கப்படாது.</string>
     <string name="compare_pick_more">ஒப்பிட குறைந்தது இரண்டு வீடுகளைத் தேர்ந்தெடுக்கவும்.</string>
     <string name="compare_overall">மொத்த மதிப்பெண்</string>
     <string name="compare_price">விலை</string>
@@ -435,7 +435,7 @@
     <string name="compare_best_name">%1$s (சிறந்தது)</string>
     <string name="compare_choose">வீடுகளைத் தேர்ந்தெடு (%2$d இல் %1$d)</string>
     <string name="compare_empty">ஒப்பிட குறைந்தது இரண்டு வீடுகளைச் சேர்க்கவும்.</string>
-    <string name="compare_empty_body">நிராகரிக்கப்பட்ட வீடுகள் சேர்க்கப்படாது.</string>
+    <string name="compare_empty_body">நிராகரிக்கப்பட்ட, தேர்ந்தெடுக்கப்படாத வீடுகள் சேர்க்கப்படாது.</string>
     <string name="compare_max">4 வரை ஒப்பிடலாம். வேறொன்றைத் தேர்ந்தெடுக்க ஒன்றின் தேர்வை நீக்கவும்.</string>
     <string name="compare_not_scored">மதிப்பிடவில்லை</string>
     <string name="compare_not_set">அமைக்கவில்லை</string>

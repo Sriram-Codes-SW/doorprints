@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.59 |
+| Version | 0.60 |
 | Date | 2026-10-01 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -68,6 +68,7 @@
 | 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
+| 0.60 | 2026-10-01 | Claude (Code), lead | S4b-BL-99 (a) and (d) (branch `fix/compare-plan-not-chosen`): 06 v0.90 (TC-U-109), 10 v0.111 (S4b-BL-99 partly done, §13.29), 11 v0.53 (5.24: the houses in the running), [ai/ai-design.md](ai/ai-design.md) v0.23 (the Plan prompt skips NOT_CHOSEN too, the vector `inTheRunning`). |
 | 0.59 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (c) and (d) (branch `fix/floor-input-and-import`): 06 v0.89 (TC-U-113, TC-M-44), 10 v0.110 (S4b-BL-104 done in code), 11 v0.52 (5.6: the Basement switch, the import's floor note), schemas README v1.21 (a new import vector). |
 | 0.58 | 2026-10-01 | Claude (Code), lead | S4b-BL-104 (a) and (b) (branch `fix/floor-rooms-followups`): 06 v0.88 (TC-U-113), 10 v0.109 (S4b-BL-104 partly done). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | **The finishing batch** (slice 5 to Wave E, on stacked branches, not merged; branch `docs/finish-batch-notes`): 03 v0.57 (§6.1, §8.1, §9, §11.2, ADR-29..32, new §17), 06 v0.87 (TC-U-109..118, TC-U-WEB-A11Y-1..10, TC-I-43, TC-M-36..44), 10 v0.103 (§13.29..§13.40; S4b-BL-99..110), 11 v0.51 (built notes), 12 v0.7, 14 v0.67 (§1, N15, §6, §7), [schemas/README.md](schemas/README.md) 1.20 (slice 5), the CHANGELOG and the user guide in four languages. |
