@@ -188,7 +188,9 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     s.get('col.monthlyCost'),
     s.get('col.moveIn'),
     s.get('col.perSqFt'),
-    // S4b-BL-87: the floor after the cost per sq ft (Kotlin writes the rooms' count between them).
+    // Slice 1c: the number of rooms right after the cost per sq ft, as Kotlin `ExportRows` writes it (S4b-BL-104 a);
+    // S4b-BL-87: the floor after it.
+    s.get('col.rooms'),
     s.get('col.floor'),
     s.get('col.visits'),
     s.get('col.photos'),
@@ -234,6 +236,8 @@ export function housesTable(bundle: ExportBundle): ExportTable {
       maybeMoney(summary.monthlyCost),
       maybeMoney(summary.moveIn),
       summary.perSqFt === null ? BLANK : cellNum(summary.perSqFt, 1),
+      // Blank for a house with no rooms, not 0 (Kotlin: `rooms?.takeIf { it.isNotEmpty() }`).
+      entry.rooms.length ? cellCount(entry.rooms.length) : BLANK,
       maybeCount(h.floor),
       cellCount(entry.visits.length),
       cellCount(entry.photos.length),

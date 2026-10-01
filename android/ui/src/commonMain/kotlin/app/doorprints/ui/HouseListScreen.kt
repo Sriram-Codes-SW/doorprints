@@ -457,13 +457,15 @@ fun HouseListScreen(
         }
     }
 
+    // The floor is found by the app language's words as well as English (S4b-BL-104 b).
+    val language = uiLanguage()
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
         .filter { costFilter.matches(it.price, it.priceType, it.areaSqft, it.cost) }
         // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
         // linked broker since slice 1b, the rooms' names and notes since slice 1c, the questions asked and their answers
-        // since slice 3a).
+        // since slice 3a, the floor in the app's language too since S4b-BL-104).
         .filter {
             HouseSearch.matches(
                 query,
@@ -474,6 +476,7 @@ fun HouseListScreen(
                     answers = it.answers,
                     moveIn = it.moveIn,
                     floor = it.floor,
+                    language = language,
                     noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
                 ),
             )
