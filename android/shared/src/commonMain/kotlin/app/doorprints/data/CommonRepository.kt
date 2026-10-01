@@ -1163,6 +1163,10 @@ open class CommonRepository(
                 .mapNotNull { row -> row.toPlace()?.let { ExportPlace.of(it, row.updatedAt) } },
             areaNotes = db.records().listByType(AreaNoteType.name)
                 .mapNotNull { row -> row.toAreaNote()?.let { ExportAreaNote.of(it, row.updatedAt) } },
+            // The tombstones, for an update file's deletions (S4b-BL-82).
+            deletedHouses = db.houses().deletedIds().toSet().let { gone ->
+                db.houses().versions().filter { it.id in gone }.associate { it.id to it.updatedAt }
+            },
         )
     }
 
@@ -1380,6 +1384,14 @@ open class CommonRepository(
                 db.photos().upsert(local.withMeta(photo.meta, dirty = true))
             }
         }
+        // An update file's deletions (S4b-BL-82), last: each house is deleted as the person's own delete would be (a
+        // tombstone stamped now, pushed on the next sync); one already gone is skipped.
+        var removed = 0
+        for (id in actions.removedHouseIds) {
+            if (db.houses().get(id)?.deleted != false) continue
+            deleteHouse(id)
+            removed++
+        }
         val result = ImportResult(
             houses, visits, photos, skipped, updatedHouses, updatedVisits, restoredHouses,
             brokers = actions.brokers.size,
@@ -1390,6 +1402,7 @@ open class CommonRepository(
             areas = actions.areas.size,
             places = actions.places.size,
             areaNotes = actions.areaNotes.size,
+            removedHouses = removed,
         )
         if (result.rows > 0 || actions.photoMeta.isNotEmpty()) syncSoon()
         result

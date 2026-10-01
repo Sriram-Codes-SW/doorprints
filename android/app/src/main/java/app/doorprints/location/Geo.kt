@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+import app.doorprints.shared.location.PlaceLookup
 import java.util.Locale
 import kotlin.coroutines.resume
 
@@ -91,7 +92,49 @@ class ReverseGeocoder(context: Context) {
         }
     }
 
+    /**
+     * Where [query] is (S4b-BL-83: a shared listing's locality, `PlaceLookup.query`), inside India
+     * ([PlaceLookup.INDIA], the box the platform is asked for), or null when there is no geocoder, no answer, or none
+     * within [LOOKUP_TIMEOUT_MS]. Called on the person's tap only.
+     */
+    suspend fun find(query: String): PlaceLookup.Found? {
+        val g = geocoder ?: return null
+        val box = PlaceLookup.INDIA
+        val found: List<Address> = try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                withTimeoutOrNull(LOOKUP_TIMEOUT_MS) {
+                    suspendCancellableCoroutine<List<Address>> { cont ->
+                        g.getFromLocationName(query, MAX_RESULTS, box.south, box.west, box.north, box.east, object : Geocoder.GeocodeListener {
+                            override fun onGeocode(addresses: MutableList<Address>) {
+                                if (cont.isActive) cont.resume(addresses.toList())
+                            }
+
+                            override fun onError(errorMessage: String?) {
+                                if (cont.isActive) cont.resume(emptyList())
+                            }
+                        })
+                    }
+                }
+            } else {
+                // As [lookup]: the blocking call runs outside this coroutine and only the wait for it is time-limited.
+                val pending = CoroutineScope(Dispatchers.IO).async {
+                    @Suppress("DEPRECATION")
+                    g.getFromLocationName(query, MAX_RESULTS, box.south, box.west, box.north, box.east).orEmpty()
+                }
+                withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { pending.await() }
+            }.orEmpty()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+        return PlaceLookup.pick(found.filter { it.hasLatitude() && it.hasLongitude() }.map { it.latitude to it.longitude })
+    }
+
     companion object {
+        /** How many answers a name lookup asks for; the first inside India is taken. */
+        private const val MAX_RESULTS = 3
+
         /** How long a lookup may take before it counts as "no answer". */
         const val LOOKUP_TIMEOUT_MS = 10_000L
     }

@@ -774,11 +774,22 @@
           }
         </div>
         <div class="location-actions">
+          @if (placeQuery(); as place) {
+            <!-- S4b-BL-83: the listing's locality, looked up only on this tap; the pin lands there, approximate. -->
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              [attr.aria-disabled]="finding() ? 'true' : null"
+              (click)="findPlace()"
+            >
+              {{ (finding() ? 'house.findingPlace' : 'house.findPlace') | t: { place } }}
+            </button>
+          }
           @if (canLocate) {
             <!-- Filled while the pin is not set yet: standing outside the house, it is the fastest way to put it. -->
             <button
               type="button"
-              [class]="locationSet() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
+              [class]="locationSet() || placeQuery() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
               [attr.aria-disabled]="locating() ? 'true' : null"
               (click)="useMyLocation()"
             >
@@ -825,6 +836,12 @@
             ></div>
           }
         </div>
+        @if (placeMsg(); as found) {
+          @if (d.locationSource === 'APPROX') {
+            <p class="muted small">{{ found.value.key | t: found.value.params }}</p>
+          }
+        }
+        <p class="muted small">{{ 'house.lookupNote' | t }}</p>
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>
       </section>
 

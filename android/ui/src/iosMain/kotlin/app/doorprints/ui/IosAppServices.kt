@@ -34,6 +34,7 @@ import app.doorprints.location.Place
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.IosApiHttp
 import app.doorprints.shared.sync.SyncOutcome
+import app.doorprints.shared.location.PlaceLookup
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -253,6 +254,8 @@ private object IosSettingsServices : SettingsServices {
  */
 private class IosHouseFormServices(private val repository: CommonRepository) : HouseFormServices {
     override suspend fun reverseGeocode(lat: Double, lon: Double): Place? = IosGeocoder.place(lat, lon)
+
+    override suspend fun findPlace(query: String): PlaceLookup.Found? = IosGeocoder.find(query)
 
     /** The "are you at a house?" alert of [visitId] comes down once the visit is saved as a house (as on Android). */
     override fun clearVisitAlert(visitId: String) = IosNotifications.remove(IosHunt.stayAlertId(visitId))

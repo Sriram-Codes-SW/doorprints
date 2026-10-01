@@ -55,6 +55,7 @@ import app.doorprints.location.HuntService
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.location.ReverseGeocoder
+import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.AreaWakeupServices
 import app.doorprints.ui.CopyImportUndoes
@@ -203,6 +204,8 @@ private class AndroidHouseFormServices(
     private val repository: AndroidRepository,
 ) : HouseFormServices {
     override suspend fun reverseGeocode(lat: Double, lon: Double): Place? = ReverseGeocoder(app).lookup(lat, lon)
+
+    override suspend fun findPlace(query: String): PlaceLookup.Found? = ReverseGeocoder(app).find(query)
 
     /** The "Are you at a house?" alert's id is its visit id's hash (Notifications). */
     override fun clearVisitAlert(visitId: String) {

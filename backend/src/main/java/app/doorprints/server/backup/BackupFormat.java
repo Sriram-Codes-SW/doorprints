@@ -47,10 +47,15 @@ public final class BackupFormat {
     /** Written instead of {@link #ID} only when the copy holds at least one broker or one room: the lowest number that holds it. */
     public static final String ID_WITH_BROKERS = "doorprints-backup/2";
     private static final String PREFIX = "doorprints-backup/";
-    /** The newest format this reader understands ({@code /2}: the Sprint 4b lists, of which only {@code brokers} is written so far). */
-    public static final int MAX_VERSION = 2;
+    /**
+     * An update file with a {@code deleted} list (S4b-BL-82): written only by a device sharing updates. The server reads
+     * it as a restore, and a restore never deletes, so the list is ignored here (Jackson drops the unknown key).
+     */
+    public static final String ID_WITH_DELETIONS = "doorprints-backup/3";
+    /** The newest format this reader understands ({@code /3}: {@code /2}'s lists and an update file's deletions). */
+    public static final int MAX_VERSION = 3;
     /** The format ids {@code POST /api/import} accepts, oldest first. */
-    public static final List<String> READ_IDS = List.of(ID, ID_WITH_BROKERS);
+    public static final List<String> READ_IDS = List.of(ID, ID_WITH_BROKERS, ID_WITH_DELETIONS);
 
     /** ZIP entry names used by the device writers (kept here so all three copies of the format agree). */
     public static final String MANIFEST_ENTRY = "manifest.json";
