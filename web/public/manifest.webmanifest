@@ -61,6 +61,16 @@
       "url": "url"
     }
   },
+  "file_handlers": [
+    {
+      "action": "./data",
+      "accept": {
+        "application/zip": [
+          ".zip"
+        ]
+      }
+    }
+  ],
   "shortcuts": [
     {
       "name": "Your houses",

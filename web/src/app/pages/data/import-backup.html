@@ -16,7 +16,7 @@
    SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-<section class="card" aria-labelledby="import-heading" [attr.aria-busy]="busy() ? 'true' : null">
+<section #card class="card" aria-labelledby="import-heading" [attr.aria-busy]="busy() ? 'true' : null">
   <h2 id="import-heading">{{ 'imp.heading' | t }}</h2>
   <p id="import-intro" class="muted">{{ 'imp.intro' | t }}</p>
 
