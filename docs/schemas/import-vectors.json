@@ -968,6 +968,72 @@
    }
   },
   {
+   "name": "a floor out of range lands blank and is counted",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000300
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "floor": 201,
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     },
+     {
+      "id": "h2",
+      "label": "House h2",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "floor": -6,
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     },
+     {
+      "id": "h3",
+      "label": "House h3",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "floor": -5,
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "newHouses": 2,
+    "newerHereHouses": 1,
+    "floorsLeftBlank": 1
+   }
+  },
+  {
    "name": "a copy adds everything under new ids",
    "mode": "COPY",
    "update": false,

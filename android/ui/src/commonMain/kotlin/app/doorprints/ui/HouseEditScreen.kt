@@ -120,6 +120,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 import kotlin.math.roundToLong
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -977,7 +978,7 @@ fun HouseEditScreen(
                     },
                 )
 
-                // The floor (S4b-BL-87) under BHK and area: typed text, so "-" can lead to a basement level.
+                // The floor (S4b-BL-87) under BHK and area, with the Basement switch for a keyboard without a minus (S4b-BL-104 c).
                 FloorField(d.id, d.floor) { f -> update { it.copy(floor = f) } }
                 // Non-blocking: another house within about 30 m with the same bedrooms and floor (docs/11 5.25).
                 val sameFlat = remember(d.id, d.lat, d.lon, d.locationSource, d.bedrooms, d.rooms, d.floor, allHouses) {
@@ -1683,27 +1684,66 @@ internal fun PairOrStack(
 internal fun floorOf(text: String): Int? = text.trim().takeIf { Regex("-?\\d{1,3}").matches(it) }?.toIntOrNull()?.let(HouseValues::floor)
 
 /**
- * The house's **Floor** (S4b-BL-87): kept as typed while it means [floor] (so "-" can start a basement level), following
- * [floor] when it changes elsewhere; text that is not a floor from -5 to 200 says so and leaves the floor unknown.
+ * The floor from the field and the **Basement** switch (S4b-BL-104 c; the website's `typeFloor`): with the switch off, as
+ * [floorOf]; with it on, the digits are the level below the ground, 1 to 5, so "2" is -2, without typing a minus that
+ * some number keyboards do not have. Null when blank or out of range (a basement 0 included).
+ */
+internal fun floorOf(text: String, basement: Boolean): Int? {
+    if (!basement) return floorOf(text)
+    val level = text.trim().removePrefix("-").takeIf { Regex("\\d{1,3}").matches(it) }?.toIntOrNull() ?: return null
+    return if (level >= 1) HouseValues.floor(-level) else null
+}
+
+/**
+ * The house's **Floor** (S4b-BL-87) and, under it, the **Basement** switch (S4b-BL-104 c): the field holds the digits,
+ * the switch the sign, so a basement needs no minus key; a "-" typed anyway turns the switch on. Both follow [floor]
+ * when it changes elsewhere; text that is not a floor (or a basement level 1 to 5) says so and leaves the floor unknown.
  */
 @Composable
 private fun FloorField(houseId: String, floor: Int?, onChange: (Int?) -> Unit) {
-    var text by rememberSaveable(houseId) { mutableStateOf(floor?.toString() ?: "") }
-    LaunchedEffect(floor) { if (floorOf(text) != floor) text = floor?.toString() ?: "" }
-    val invalid = text.isNotBlank() && floorOf(text) == null
+    var basement by rememberSaveable(houseId) { mutableStateOf(floor != null && floor < 0) }
+    var text by rememberSaveable(houseId) { mutableStateOf(floor?.let { abs(it).toString() } ?: "") }
+    LaunchedEffect(floor) {
+        if (floorOf(text, basement) != floor) {
+            basement = floor != null && floor < 0
+            text = floor?.let { abs(it).toString() } ?: ""
+        }
+    }
+    val invalid = text.isNotBlank() && floorOf(text, basement) == null
     OutlinedTextField(
         text,
         { v ->
-            text = v.filter { it.isDigit() || it == '-' }.take(4)
-            onChange(floorOf(text))
+            if ('-' in v) basement = true
+            text = v.filter { it.isDigit() }.take(3)
+            onChange(floorOf(text, basement))
         },
         label = { Text(stringResource(Res.string.house_floor)) },
-        supportingText = { Text(stringResource(if (invalid) Res.string.house_floor_invalid else Res.string.house_floor_hint)) },
+        supportingText = {
+            Text(
+                stringResource(
+                    when {
+                        invalid && basement -> Res.string.house_floor_basement_invalid
+                        invalid -> Res.string.house_floor_invalid
+                        basement -> Res.string.house_floor_basement_hint
+                        else -> Res.string.house_floor_hint
+                    },
+                ),
+            )
+        },
         isError = invalid,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+    SwitchRow(
+        text = stringResource(Res.string.house_floor_basement),
+        hint = null,
+        checked = basement,
+        horizontalPadding = 0.dp,
+    ) { on ->
+        basement = on
+        onChange(floorOf(text, basement))
+    }
 }
 
 /**

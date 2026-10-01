@@ -165,6 +165,16 @@ describe('CSV export', () => {
     expect(tables['houses.csv']).toBe(GOLDEN_HOUSES_CSV);
   });
 
+  /** S4b-BL-104 (a): the rooms' count between the cost per sq ft and the floor, as Kotlin `ExportRows.houses` writes it. */
+  it('writes the number of rooms before the floor, blank for a house with none', () => {
+    // Read from the end: the first house's address and notes hold commas.
+    const [header, first, second] = tables['houses.csv'].split('\r\n').map((line) => line.split(','));
+    const rooms = header.indexOf('Rooms');
+    expect(header.slice(rooms - 1, rooms + 2)).toEqual(['Cost per sq ft', 'Rooms', 'Floor']);
+    expect(first.at(rooms - header.length)).toBe('2');
+    expect(second.at(rooms - header.length)).toBe('');
+  });
+
   /**
    * Only **scored** items get a row now, in the shared display order with unknown keys last, which is what
    * `ExportRows.scores` does. The old web table wrote a row for every built-in item whether or not the house had
@@ -236,8 +246,8 @@ describe('CSV export', () => {
   it('drops the contact columns entirely when contacts are excluded', () => {
     const header = buildCsvTables(fixtureBundle({ includeContacts: false }))['houses.csv'].split('\r\n')[0];
     expect(header).not.toContain(ExportStrings.of('en').get('col.contactPhone'));
-    expect(header.split(',')).toHaveLength(37);
-    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(40);
+    expect(header.split(',')).toHaveLength(38);
+    expect(buildCsvTables(fixtureBundle())['houses.csv'].split('\r\n')[0].split(',')).toHaveLength(41);
   });
 
   /**

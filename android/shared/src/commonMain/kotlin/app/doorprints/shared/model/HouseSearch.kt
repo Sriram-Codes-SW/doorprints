@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.model
 
+import app.doorprints.shared.export.ExportStrings
+
 /**
  * The house list's search, the same rule on Android and the website (owner rule, CLAUDE.md: "search grows with the
  * house values"; readiness review 2026-09-29, docs/14 §8 finding 5): a house matches when any of its text values
@@ -31,18 +33,20 @@ object HouseSearch {
      * linked broker (slice 1b), [brokerText] (`Broker.searchText`: its name, agency and fee terms), and every room's
      * name and notes (slice 1c), in the order shown, and every question asked and its answer (slice 3a), and the texts
      * of the area notes that reach the house ([noteTexts], slice 4a: `AreaNotes.reaching`), and the move-in items' texts
-     * and its notes (slice 5), and the floor as [floorText] words (S4b-BL-87). The Android list has no photos, so a
-     * photo's caption and tags are not searched here.
+     * and its notes (slice 5), and the floor as [floorText] words (S4b-BL-87) and, in a [language] other than English,
+     * as [localFloorText] words too (S4b-BL-104 b). The Android list has no photos, so a photo's caption and tags are
+     * not searched here.
      */
     fun fields(
         label: String?, address: String?, street: String?, locality: String?, notes: String?, contactName: String?,
         brokerText: String? = null, rooms: List<HouseRoom>? = null, answers: List<HouseAnswer>? = null,
-        noteTexts: List<String> = emptyList(), moveIn: MoveIn? = null, floor: Int? = null,
+        noteTexts: List<String> = emptyList(), moveIn: MoveIn? = null, floor: Int? = null, language: String = "en",
     ): List<String> =
         (listOfNotNull(label, address, street, locality, notes, contactName, brokerText) +
             rooms.orEmpty().flatMap { listOfNotNull(it.name, it.notes) } +
             answers.orEmpty().flatMap { listOfNotNull(it.text, it.answer) } + noteTexts +
-            moveIn?.items.orEmpty().map { it.text } + listOfNotNull(moveIn?.notes, floor?.let(::floorText)))
+            moveIn?.items.orEmpty().map { it.text } + listOfNotNull(moveIn?.notes, floor?.let(::floorText)) +
+            listOfNotNull(floor?.takeIf { language != "en" }?.let { localFloorText(it, language) }))
             .filter { it.isNotEmpty() }
 
     /**
@@ -53,6 +57,16 @@ object HouseSearch {
         floor == 0 -> "ground floor 0"
         floor < 0 -> "basement ${-floor}"
         else -> "floor $floor"
+    }
+
+    /**
+     * The words a floor is found by in the app's [language] as well (S4b-BL-104 b; web `floorLocalSearchText`): the
+     * readable copies' words ([ExportStrings.floor]: "भूतल", "बेसमेंट 2") and, above the ground, the word for "floor"
+     * and the number ("मंज़िल 3"). Any language outside en, hi, ta and te reads as English.
+     */
+    fun localFloorText(floor: Int, language: String): String {
+        val s = ExportStrings.of(language)
+        return if (floor > 0) "${s["col.floor"]} $floor" else s.floor(floor)
     }
 
     /** True when [query] is blank or one of [fields] contains it, ignoring case. */

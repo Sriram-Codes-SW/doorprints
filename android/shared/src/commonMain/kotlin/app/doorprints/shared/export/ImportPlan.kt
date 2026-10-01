@@ -20,6 +20,7 @@ package app.doorprints.shared.export
 
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
 
@@ -130,6 +131,13 @@ data class ImportPreview(
      * removes, because the delete is newer than this phone's row. Shown as "*d* deleted by the sender".
      */
     val removedHouses: Int = 0,
+    /**
+     * Houses the import writes whose `floor` is outside -5..200 (S4b-BL-104 d): a device reads such a floor as unknown,
+     * so the house lands with its floor blank, and the preview says so as a warning (docs/11 5.6). The server refuses the
+     * whole file instead; a device stays tolerant, as it is for an area out of range, so a backup that imported before
+     * still imports, and the note tells the user what was left out. A note only: not part of [isEmpty] or [overwrites].
+     */
+    val floorsLeftBlank: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
@@ -352,12 +360,15 @@ object ImportPlan {
                 newViewings = newVw, updatedViewings = updVw,
                 newAreas = newAr, updatedAreas = updAr, newPlaces = newPl, updatedPlaces = updPl,
                 newAreaNotes = newAn, updatedAreaNotes = updAn,
+                floorsLeftBlank = data.houses.count(::floorOutOfRange),
             )
         }
         var newH = 0; var updH = 0; var hereH = 0; var sameH = 0; var clearedH = 0; var deletedH = 0
-        var restoredH = 0; var mineH = 0
+        var restoredH = 0; var mineH = 0; var floorsH = 0
         for (h in data.houses) {
             val outcome = houseOutcome(h, localHouses, locallyDeletedHouseIds, restoreDeleted, skipUpdates)
+            // Only a house the import writes lands with its floor blank.
+            if (floorOutOfRange(h) && outcome.writes) floorsH++
             when (outcome) {
                 HouseOutcome.NEW -> newH++
                 HouseOutcome.UPDATE -> {
@@ -446,8 +457,12 @@ object ImportPlan {
             relinkedVisits = relinkV,
             updatedPhotoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates).size,
             removedHouses = removals(data, localHouses, locallyDeletedHouseIds, mode, skipUpdates, applyDeletions).size,
+            floorsLeftBlank = floorsH,
         )
     }
+
+    /** A floor in the file that a device reads as unknown (S4b-BL-104 d; [HouseValues.floor]). */
+    private fun floorOutOfRange(h: ExportHouse): Boolean = h.floor != null && HouseValues.floor(h.floor) == null
 
     /**
      * The file's photos already on this phone ([localPhotoIds]) whose meta is newer than the phone's

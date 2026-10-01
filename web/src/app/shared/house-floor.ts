@@ -22,7 +22,7 @@ import { MAX_FLOOR, MIN_FLOOR } from '../data/records';
 /**
  * The house's floor (S4b-BL-87): -5..200, 0 the ground floor and a negative one a basement level. The words a page or a
  * readable copy shows ({@link floorWords}), the words search finds ({@link floorSearchText}, Kotlin
- * `HouseSearch.floorText`) and the form's reading of typed text ({@link parseFloor}, Kotlin `floorOf`).
+ * `HouseSearch.floorText`; in the app's language too, {@link floorLocalSearchText}) and the form's reading of typed text ({@link parseFloor}, Kotlin `floorOf`).
  */
 
 /** "Ground floor", "Basement 2" or the number, through `t` (the app's translation, or `tr` over a copy's dictionary). */
@@ -37,6 +37,15 @@ export function floorSearchText(floor: number): string {
   if (floor === 0) return 'ground floor 0';
   if (floor < 0) return `basement ${-floor}`;
   return `floor ${floor}`;
+}
+
+/**
+ * The words a floor is found by in the app's language as well (S4b-BL-104 b; Kotlin `HouseSearch.localFloorText`):
+ * "भूतल", "बेसमेंट 2" (the words {@link floorWords} shows) and, above the ground, the word for "floor" and the number
+ * ("मंज़िल 3"), so a search in Hindi, Tamil or Telugu finds the floor as the page names it.
+ */
+export function floorLocalSearchText(t: (key: TKey, params?: Record<string, string | number>) => string, floor: number): string {
+  return floor > 0 ? `${t('house.floor')} ${floor}` : floorWords(t, floor);
 }
 
 /** Typed text as a floor: an optional "-" and up to three digits within -5..200, else null (blank too). */

@@ -18,6 +18,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { HouseDto, PriceType, newHouse } from '../../core/models';
+import { floorLocalSearchText } from '../../shared/house-floor';
+import type { TKey } from '../../i18n/en';
+import { hi } from '../../i18n/hi';
+import { ta } from '../../i18n/ta';
+import { te } from '../../i18n/te';
 import { comparePrice, listQueryParams, listReturnParams, parseListQuery, searchText, brokerSearchText } from './map-list';
 
 function house(label: string, price: number | null, priceType: PriceType | null): HouseDto {
@@ -179,6 +184,24 @@ describe('searchText', () => {
     expect(searchText(high, greenBroker).includes('ground floor')).toBe(false);
     expect(searchText({ ...green, floor: 0 }, greenBroker).includes('ground floor')).toBe(true);
     expect(searchText({ ...green, floor: null }, greenBroker)).toBe(searchText(green, greenBroker));
+  });
+  it('a query matches the floor in the app language as well as in English (S4b-BL-104 b)', () => {
+    const dictT = (dict: Partial<Record<TKey, string>>) => (key: TKey, params?: Record<string, string | number>) =>
+      (dict[key] ?? key).replace(/\{(\w+)\}/g, (m, name: string) => String(params?.[name] ?? m));
+    const hiFloor = (floor: number) => floorLocalSearchText(dictT(hi), floor);
+    const text = (floor: number) => searchText({ ...green, floor }, greenBroker, [], hiFloor);
+    expect(text(0).includes('भूतल')).toBe(true);
+    expect(text(0).includes('ground floor')).toBe(true);
+    expect(text(-2).includes('बेसमेंट 2')).toBe(true);
+    expect(text(-2).includes('basement 2')).toBe(true);
+    expect(text(3).includes('मंज़िल 3')).toBe(true);
+    expect(text(3).includes('floor 3')).toBe(true);
+    expect(text(3).includes('भूतल')).toBe(false);
+    // The same words as Kotlin `HouseSearch.localFloorText` (HouseSearchTest) in Tamil and Telugu.
+    expect([0, -2, 12].map((f) => floorLocalSearchText(dictT(ta), f))).toEqual(['தரைத்தளம்', 'அடித்தளம் 2', 'தளம் 12']);
+    expect([0, -2, 12].map((f) => floorLocalSearchText(dictT(te), f))).toEqual(['నేల అంతస్తు', 'బేస్‌మెంట్ 2', 'అంతస్తు 12']);
+    // Without the language words, English only, as before.
+    expect(searchText({ ...green, floor: 0 }, greenBroker).includes('भूतल')).toBe(false);
   });
   it('the contact name matches', () => expect(matching('ravi')).toEqual(['green']));
   it("a query matches the broker's agency", () => expect(matching('adyar homes')).toEqual(['green']));
