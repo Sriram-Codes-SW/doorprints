@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.68 |
+| Version | 0.69 |
 | Date | 2026-10-01 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..110); this file lists the lead-level items and points to the rest. |
@@ -77,6 +77,7 @@
 | 0.64 | 2026-09-30 | Claude (Code), lead | **Stacked pull requests** (owner decision, 2026-09-30): §2 N14 (finish the app, test by hand last) and the stacking rules in `CLAUDE.md`; every workflow now runs for pull requests of any base branch. |
 | 0.65 | 2026-09-30 | Claude (Code), lead | §1: areas, places and area notes built (slice 4a, [10](10-sprint-log.md) §13.27). |
 | 0.66 | 2026-09-30 | Claude (Code), lead | §1: the area wake-up built on Android (slice 4b, [10](10-sprint-log.md) §13.28). |
+| 0.69 | 2026-10-01 | Claude (Code), lead | §6: the follow-up letter to the Survey of India was sent (2026-10-01 07:15 UTC); waiting for the answer and your download of OVSF/1M/7. |
 | 0.68 | 2026-10-01 | Claude (Code), lead | **The Survey of India answered** ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-10): use of its Administrative Boundary Database needs no permission, but it must stay unaltered and be acknowledged; new N16 (the plan, S4b-BL-111); §6 item rewritten. |
 | 0.67 | 2026-10-01 | Claude (Code), lead | **All development of N14 built, on stacked branches** ([10](10-sprint-log.md) §13.29..§13.40): §1 rewritten for today (the stack, what each branch holds, the owner checks now open); §2 N14 marked built and new **N15**, the plan from here (draft pull requests up the stack, CI, fixes on the owning branch, bottom-up merges, the manual list, the release gate, then sign-in); §4 P6 (the web can import, in code); §6 the owner's new to-dos; §7 the lessons of the batch. |
 
@@ -302,8 +303,8 @@ section is only today's state. Earlier versions of this file (git history) carry
   2026-10-01:** no prior permission is needed for its Administrative Boundary Database; the data must **not be altered
   or modified**; the app must acknowledge the Survey of India; and the National Geospatial Policy 2022 guidelines apply.
   What you do: (1) download **OVSF/1M/7** (portal *Quick Access* → *Administrative Boundary Database*; CAPTCHA and
-  tick-box are yours), keep the ZIP out of the repository and attach it in a session when N16 starts; (2) decide whether
-  to send the optional follow-up letter in the same document (S4b-BL-112); (3) sign off the acknowledgement wording
+  tick-box are yours), keep the ZIP out of the repository and attach it in a session when N16 starts; (2) **the follow-up letter was sent on 2026-10-01 at 07:15 UTC** (S4b-BL-112): tell the next session when the answer
+  comes; (3) sign off the acknowledgement wording
   ("Boundary: Survey of India") and run TC-M-25 on the live site and a phone when P5 is built.
 - **GitHub contributor list** ([10](10-sprint-log.md) S4b-BL-53): `noreply` is listed because of 17 commits of
   2026-09-23 made as `noreply@users.noreply.github.com`. Decide whether it is worth a history rewrite (costly, see the
