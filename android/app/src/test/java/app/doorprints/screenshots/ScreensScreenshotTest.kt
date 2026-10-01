@@ -224,15 +224,16 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     /**
      * Runs the main looper, the effects that resumed since (a Room or DataStore answer, Export's count) on the main
      * thread, and Compose, until Room has no task and the coroutine workers are parked three checks in a row and for at
-     * least 10 ms: an answer that starts the next step (an effect relaunched for new rows, whose count comes back from a
+     * least 25 ms: an answer that starts the next step (an effect relaunched for new rows, whose count comes back from a
      * worker) is followed up in the same call. runCurrent, not advanceUntilIdle, so no delay is skipped and no ticking
-     * clock runs forever. The 1 ms pause between checks and the 10 ms only let a worker that was just handed a task
-     * (Dispatchers.Default and IO have no public queue to look at) start on it.
+     * clock runs forever. The 25 ms are for a worker that was just handed a task but has not started on it, which still
+     * looks parked (Dispatchers.Default and IO have no public queue to look at; DataStore reads there, and so does the
+     * houses' flow, behind the brokers move): on a loaded machine 10 ms once let Compare's houses come in too late.
      */
     private fun settle() {
         var quiet = 0
         val start = System.nanoTime()
-        while (quiet < 3 || System.nanoTime() - start < 10_000_000L) {
+        while (quiet < 3 || System.nanoTime() - start < 25_000_000L) {
             val workersIdle = workersParked()
             shadowOf(Looper.getMainLooper()).idle()
             compose.runOnIdle { effects.scheduler.runCurrent() }
