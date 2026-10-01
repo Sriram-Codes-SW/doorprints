@@ -1136,4 +1136,8 @@
     <string name="tag_GOOD_POINT">अच्छी बात</string>
     <string name="tag_PROBLEM">समस्या</string>
     <string name="tag_MOVE_IN">शिफ़्ट होते समय</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): under review. -->
+    <string name="area_wakeup_what_ios">कैसे: iOS iPhone पर ही iPhone की जगह की तुलना आपके इलाक़ों से करता है। Doorprints जगह का कोई इतिहास नहीं रखता और आपकी जगह कहीं नहीं भेजता।</string>
+    <string name="area_wakeup_pick_ios">आगे iOS जगह के बारे में पूछेगा। पहले ऐप इस्तेमाल करते समय अनुमति दें चुनें, फिर हमेशा अनुमति दें पर बदलें। अगर iOS न पूछे, तो ऐप की जगह वाली सेटिंग्स में हमेशा चुनें, फिर लौट आएँ।</string>
+    <string name="notif_area_wakeup">आप %1$s में हैं। हंट मोड शुरू करें?</string>
 </resources>

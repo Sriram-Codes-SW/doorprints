@@ -60,10 +60,14 @@
 	<string>Doorprints uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Doorprints uses your location to place the houses you save, to plan visits from where you are and, while Hunt mode is on, to tell you when you pass a house you have saved.</string>
+	<!-- The area wake-up (S4b-BL-96): "Always", asked only from its explanation screen (Settings > My areas). -->
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Doorprints uses your location to place the houses you save, to plan visits from where you are and, while Hunt mode is on, to tell you when you pass a house you have saved. With Wake me in my hunting areas on, iOS also tells Doorprints when you arrive in one of your areas, so it can offer Hunt mode. Doorprints keeps no location history.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Doorprints connects to your own Doorprints server when it is on your local network.</string>
 	<!-- Hunt mode (S4b-BL-69): Core Location keeps delivering fixes while the app is in the background, under the
-	     "When in use" permission (the blue location indicator shows it); "Always" is never asked for. -->
+	     "When in use" permission (the blue location indicator shows it). "Always" is asked only for the area wake-up
+	     (S4b-BL-96), whose region monitoring needs no background mode of its own. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

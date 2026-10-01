@@ -79,6 +79,16 @@ internal fun iosLocationAccess(): LocationAccess {
     }
 }
 
+/**
+ * True when the area wake-up can watch regions (S4b-BL-96): location *Always*, with precise location (Core Location
+ * does not monitor regions under reduced accuracy).
+ */
+internal fun iosAlwaysGranted(): Boolean {
+    val manager = managerForStatus()
+    return manager.authorizationStatus == kCLAuthorizationStatusAuthorizedAlways &&
+        manager.accuracyAuthorization == CLAccuracyAuthorization.CLAccuracyAuthorizationFullAccuracy
+}
+
 /** True while iOS will still show its location prompt: only before the first answer (it never asks twice). */
 internal fun iosCanAskLocation(): Boolean = managerForStatus().authorizationStatus == kCLAuthorizationStatusNotDetermined
 
@@ -178,7 +188,7 @@ internal class LocationPrompt(private val onAnswered: () -> Unit) {
 }
 
 /** Hears Core Location's authorization changes (iOS 14+). */
-private class AuthorizationDelegate(
+internal class AuthorizationDelegate(
     private val onChange: (CLAuthorizationStatus) -> Unit,
 ) : NSObject(), CLLocationManagerDelegateProtocol {
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
