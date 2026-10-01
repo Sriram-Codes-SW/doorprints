@@ -32,10 +32,12 @@ What each one can do ("offline" means without internet; "AI" means the computer 
 | Edit a house, rating, checklist, visits | Yes | Yes | Yes |
 | Add photos | Yes | Yes (camera or gallery) | Not yet |
 | Search, filter, sort, **Compare** | Yes | Yes | Yes |
-| **Save a copy** (HTML, PDF, CSV, Excel, Markdown, full backup) | Yes | Yes, plus a weekly automatic backup | Not yet |
-| **Import a backup** | Not yet | Yes | Not yet |
+| **Save a copy** (HTML, PDF, CSV, Excel, Markdown, full backup) | Yes | Yes, plus a weekly automatic backup | Yes, all but PDF (new) |
+| **Import a backup** | Yes | Yes | Yes (new) |
 | **Add a shared listing** (share text from another app) | Yes, when installed as an app on an Android phone | No | No |
-| **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | No |
+| **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | Yes |
+| **Wake me in my hunting areas** | No | Yes | Yes (new) |
+| **Save an area of the map for offline** | Yes | Yes | Yes |
 | Ask and Plan visits (AI) | Only with [your own server](set-up-a-server.md) with AI turned on | Same | Same |
 | Works offline | Yes, after the first visit | Yes | Yes |
 
