@@ -133,12 +133,22 @@ class AppLockEmulatorTest {
         compose.waitUntilAtLeastOneExists(hasText("Right away") and isSelected(), TIMEOUT_MS)
         leaveAndReturn()
         compose.waitUntilAtLeastOneExists(hasText("Doorprints is locked"), TIMEOUT_MS)
-        enterPin()
-        compose.waitUntil(TIMEOUT_MS) {
-            compose.onAllNodes(hasText("Doorprints is locked")).fetchSemanticsNodes().isEmpty() &&
-                compose.onAllNodes(hasText("Right away")).fetchSemanticsNodes().isNotEmpty()
+        // The PIN is typed into another app's window and can land before the field takes input (seen once on API 36:
+        // the prompt stayed up for 30 s); a second go at the prompt tells that apart from a real failure.
+        repeat(UNLOCK_TRIES) { attempt ->
+            if (compose.onAllNodes(hasText("Right away")).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodes(hasText("Doorprints is locked")).fetchSemanticsNodes().isEmpty()
+            ) return@repeat
+            if (findPinField() != null || attempt == 0) enterPin()
+            val deadline = SystemClock.uptimeMillis() + UNLOCK_WAIT_MS
+            while (SystemClock.uptimeMillis() < deadline && !isUnlocked()) SystemClock.sleep(POLL_MS)
         }
+        compose.waitUntil(TIMEOUT_MS) { isUnlocked() }
     }
+
+    private fun isUnlocked() =
+        compose.onAllNodes(hasText("Doorprints is locked")).fetchSemanticsNodes().isEmpty() &&
+            compose.onAllNodes(hasText("Right away")).fetchSemanticsNodes().isNotEmpty()
 
     /** Home, a pause, and back through the launcher's intent (the task comes to the front, as from the icon). */
     private fun leaveAndReturn() {
@@ -195,5 +205,7 @@ class AppLockEmulatorTest {
         const val TIMEOUT_MS = 30_000L
         const val AWAY_MS = 3_000L
         const val POLL_MS = 250L
+        const val UNLOCK_TRIES = 3
+        const val UNLOCK_WAIT_MS = 8_000L
     }
 }
