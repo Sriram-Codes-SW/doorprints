@@ -100,6 +100,7 @@ import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MAX_PHOTOS_PER_HOUSE
@@ -182,6 +183,8 @@ private val HouseDraftSaver = Saver<HouseEntity?, Any>(
                 HouseAnswers.encode(it.answers),
                 // Slice 5: the move-in, as the JSON text Room keeps it in (null for none).
                 MoveIn.encode(it.moveIn),
+                // S4b-BL-87: the floor (null when unknown).
+                it.floor,
             )
         }
     },
@@ -230,6 +233,8 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         answers = HouseAnswers.decode(v.getOrNull(36) as String?),
         // Absent before slice 5: no move-in.
         moveIn = MoveIn.decode(v.getOrNull(37) as String?),
+        // Absent before S4b-BL-87: no floor.
+        floor = v.getOrNull(38) as Int?,
     )
 }.getOrNull()
 
@@ -465,6 +470,8 @@ fun HouseEditScreen(
     val photos by photosFlow.collectAsStateWithLifecycle(emptyList())
     val aiEnabled by repo.aiEnabled.collectAsStateWithLifecycle()
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
+    // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
+    val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
     // The effective scoring (docs/11 5.4, slice 2): which criteria the checklist shows, the score and its coverage line.
     val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
@@ -965,6 +972,15 @@ fun HouseEditScreen(
                         )
                     },
                 )
+
+                // The floor (S4b-BL-87) under BHK and area: typed text, so "-" can lead to a basement level.
+                FloorField(d.id, d.floor) { f -> update { it.copy(floor = f) } }
+                // Non-blocking: another house within about 30 m with the same bedrooms and floor (docs/11 5.25).
+                val sameFlat = remember(d.id, d.lat, d.lon, d.locationSource, d.bedrooms, d.rooms, d.floor, allHouses) {
+                    DuplicateFlat.of(d.flatFacts(), allHouses.map { it.flatFacts() })
+                        .mapNotNull { other -> allHouses.firstOrNull { it.id == other }?.label?.ifBlank { unnamed } }
+                }
+                DuplicateFlatWarning(sameFlat)
 
                 // The real cost of the house (docs/11 5.21, slice 1a): the fields, then what they add up to.
                 SectionHeading(stringResource(Res.string.house_cost))
@@ -1651,6 +1667,33 @@ internal fun PairOrStack(
             }
         }
     }
+}
+
+/** The floor typed in the form (S4b-BL-87): an optional "-" and up to three digits, null outside -5..200 or when blank. */
+internal fun floorOf(text: String): Int? = text.trim().takeIf { Regex("-?\\d{1,3}").matches(it) }?.toIntOrNull()?.let(HouseValues::floor)
+
+/**
+ * The house's **Floor** (S4b-BL-87): kept as typed while it means [floor] (so "-" can start a basement level), following
+ * [floor] when it changes elsewhere; text that is not a floor from -5 to 200 says so and leaves the floor unknown.
+ */
+@Composable
+private fun FloorField(houseId: String, floor: Int?, onChange: (Int?) -> Unit) {
+    var text by rememberSaveable(houseId) { mutableStateOf(floor?.toString() ?: "") }
+    LaunchedEffect(floor) { if (floorOf(text) != floor) text = floor?.toString() ?: "" }
+    val invalid = text.isNotBlank() && floorOf(text) == null
+    OutlinedTextField(
+        text,
+        { v ->
+            text = v.filter { it.isDigit() || it == '-' }.take(4)
+            onChange(floorOf(text))
+        },
+        label = { Text(stringResource(Res.string.house_floor)) },
+        supportingText = { Text(stringResource(if (invalid) Res.string.house_floor_invalid else Res.string.house_floor_hint)) },
+        isError = invalid,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 /**

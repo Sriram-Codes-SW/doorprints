@@ -142,3 +142,16 @@ export function parseFeetInches(feet: string, inches: string): number | null {
   const cm = feetInchesToCm(f, i);
   return cm <= 5000 ? cm : null;
 }
+
+/**
+ * The rooms after moving room `id` one place up (`by` -1) or down (+1) in the order shown (sort, then id; S4b-BL-87),
+ * every `sort` renumbered 0..n-1 in that order; the list as it was (in the order shown) when `id` is not in it or is
+ * already first or last. Kotlin: `HouseRooms.move`, with the same vectors in `room-sizes.spec.ts` ("moveRoom").
+ */
+export function moveRoom<T extends { id: string; sort?: number | null }>(rooms: readonly T[], id: string, by: number): T[] {
+  const ordered = [...rooms].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const from = ordered.findIndex((r) => r.id === id);
+  const to = from + by;
+  if (from >= 0 && to >= 0 && to < ordered.length) ordered.splice(to, 0, ...ordered.splice(from, 1));
+  return ordered.map((r, i) => (r.sort === i ? r : { ...r, sort: i }));
+}

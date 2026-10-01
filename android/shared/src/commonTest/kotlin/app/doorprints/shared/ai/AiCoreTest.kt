@@ -98,6 +98,13 @@ class AiCoreTest {
         )
         assertFalse(roomy.contains("wall"), "room notes never go to the provider")
         assertFalse(HouseDocuments.text(house).contains("Rooms:"))
+        // S4b-BL-87: a Floor line right after the carpet area, the same words as the server and the web.
+        assertTrue(HouseDocuments.text(house.copy(areaSqft = 1150, floor = 3)).contains("Carpet area: 1150 sq ft\nFloor: 3\n"))
+        assertEquals(
+            listOf("Floor: ground floor", "Floor: basement 2"),
+            listOf(0, -2).map { f -> HouseDocuments.text(house.copy(floor = f)).lines().first { it.startsWith("Floor") } },
+        )
+        assertFalse(HouseDocuments.text(house).contains("Floor:"))
         assertEquals("1970-01-01", HouseDocuments.utcDate(0))
         assertEquals("2024-02-29", HouseDocuments.utcDate(1_709_164_800_000))
         assertEquals("1969-12-31", HouseDocuments.utcDate(-1))

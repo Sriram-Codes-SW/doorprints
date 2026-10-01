@@ -57,6 +57,8 @@ data class AiHouse(
     val answers: List<HouseAnswer>? = null,
     /** Moving in (slice 5); [HouseDocuments] writes how many items are done and the notes, redacted, never the items. */
     val moveIn: MoveIn? = null,
+    /** The floor (S4b-BL-87), 0 the ground floor; [HouseDocuments] writes it as words. */
+    val floor: Int? = null,
     val checklist: Map<String, Int> = emptyMap(),
     /** Newest last or in any order; only arrivals and departures are read. */
     val visits: List<AiVisit> = emptyList(),

@@ -42,7 +42,7 @@ fun HouseEntity.toExport() = ExportHouse(
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), brokerId = brokerId,
+    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId,
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
 )
 
@@ -58,7 +58,8 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
     cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
-    moveIn = MoveIn.coerced(moveIn), brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    moveIn = MoveIn.coerced(moveIn), floor = HouseValues.floor(floor),
+    brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )

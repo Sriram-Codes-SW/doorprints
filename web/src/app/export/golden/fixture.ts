@@ -128,6 +128,8 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
         { id: 'mi_police', text: 'Police verification done', sort: 1 },
       ],
     },
+    // S4b-BL-87: house 1 is on the third floor, house 3 on the ground floor (0, which a writer must not drop).
+    floor: 3,
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
     updatedAt: '2026-09-10T08:30:00.000Z',
@@ -181,6 +183,7 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
     areaSqft: 1450,
     locationSource: 'MAP',
     cost: { brokerage: 25000, agreedPrice: 1200000 },
+    floor: 0,
     brokerId: B2,
     checklist: { noise: 0 },
     createdAt: '2026-09-03T06:00:00.000Z',
@@ -495,11 +498,18 @@ export const FIXTURE_OPTIONS: ExportOptions = { ...DEFAULT_EXPORT_OPTIONS, lang:
 export const FIXTURE_SHORTLISTED_HOUSES: HouseRecord[] = FIXTURE_HOUSES.map((h) => (h.status === 'TAKEN' ? { ...h, status: 'SHORTLISTED' } : h));
 
 /**
- * The fixture's houses as the `/1` tests need them: no rooms, answers or moving in, and house 1 SHORTLISTED instead of
+ * The fixture's houses as the `/1` tests need them: no rooms, answers, moving in or floor, and house 1 SHORTLISTED instead of
  * TAKEN, so only what a test adds decides what the copy holds (a TAKEN house, `moveIn` or a photo's meta would make
  * it `/2`). Their photos are {@link FIXTURE_PLAIN_PHOTOS}.
  */
-export const FIXTURE_PLAIN_HOUSES: HouseRecord[] = FIXTURE_SHORTLISTED_HOUSES.map((h) => ({ ...h, rooms: null, answers: null, moveIn: null }));
+export const FIXTURE_PLAIN_HOUSES: HouseRecord[] = FIXTURE_SHORTLISTED_HOUSES.map((h) => ({
+  ...h,
+  rooms: null,
+  answers: null,
+  moveIn: null,
+  // S4b-BL-87: a floor makes a copy `/2` too.
+  floor: null,
+}));
 
 /** The fixture's photos without the meta of slice 5. */
 export const FIXTURE_PLAIN_PHOTOS: PhotoRecord[] = FIXTURE_PHOTOS.map(

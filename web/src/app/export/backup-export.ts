@@ -63,7 +63,7 @@ export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
  * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
- * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1), area, place or area note (`areas`, `places`, `areaNotes`, slice 4a), house with answers, house with status TAKEN or NOT_CHOSEN, house with `moveIn` or photo with any meta (slice 5) stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1), area, place or area note (`areas`, `places`, `areaNotes`, slice 4a), house with answers, house with status TAKEN or NOT_CHOSEN, house with `moveIn` or photo with any meta (slice 5), or house with a `floor` (S4b-BL-87) stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
@@ -123,6 +123,8 @@ export interface BackupHouse {
   answers?: BackupAnswer[];
   /** Slice 5 (docs/11 5.24): moving in, right after `answers` and before `brokerId`. */
   moveIn?: BackupMoveIn;
+  /** S4b-BL-87: the floor, -5..200 with 0 the ground floor, right after `moveIn` and before `brokerId`. */
+  floor?: number;
   /** Slice 1b: the record id of the house's broker, right after `cost`. */
   brokerId?: string;
   checklist: Record<string, number>;
@@ -336,6 +338,8 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
   const hasStatus = bundle.houses.some((h) => h.house.status === 'TAKEN' || h.house.status === 'NOT_CHOSEN');
   const hasMoveIn = bundle.houses.some((h) => cleanMoveIn(h.house.moveIn) !== null);
   const hasPhotoMeta = bundle.houses.some((h) => h.photos.some((p) => hasMeta(photoMetaOf(p))));
+  // S4b-BL-87: a house with a floor (0, the ground floor, included) makes the copy `/2`.
+  const hasFloor = bundle.houses.some((h) => h.house.floor != null);
   // Criteria and preferences are not contacts: a copy made without contact details keeps them (slice 2).
   const criteria = bundle.criteria.length > 0 ? bundle.criteria.map(backupCriterion) : undefined;
   const preferences = bundle.preferences.length > 0 ? bundle.preferences.map(backupPreference) : undefined;
@@ -349,7 +353,7 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
   const areaNotes = bundle.areaNotes.length > 0 ? bundle.areaNotes.map(backupAreaNote) : undefined;
   return {
     format:
-      brokers || hasRooms || hasAnswers || hasStatus || hasMoveIn || hasPhotoMeta || criteria || preferences || questions || viewings || areas || places || areaNotes
+      brokers || hasRooms || hasAnswers || hasStatus || hasMoveIn || hasPhotoMeta || hasFloor || criteria || preferences || questions || viewings || areas || places || areaNotes
         ? BACKUP_FORMAT_V2
         : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
@@ -461,6 +465,7 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     rooms: backupRooms(house.rooms),
     answers: backupAnswers(house.answers),
     moveIn: backupMoveIn(house.moveIn),
+    floor: house.floor ?? undefined,
     brokerId: house.brokerId ?? undefined,
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),

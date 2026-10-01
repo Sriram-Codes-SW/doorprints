@@ -168,11 +168,11 @@ final class BackupMapper {
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
         var backupPhotos = groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
                 .map(BackupMapper::photo).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers, a move-in or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers, a move-in, a floor or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
                 || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
                 || !areas.isEmpty() || !places.isEmpty() || !areaNotes.isEmpty()
-                || backupHouses.stream().anyMatch(h -> h.answers() != null || h.moveIn() != null
+                || backupHouses.stream().anyMatch(h -> h.answers() != null || h.moveIn() != null || h.floor() != null
                         || h.status() == HouseStatus.TAKEN || h.status() == HouseStatus.NOT_CHOSEN)
                 || backupPhotos.stream().anyMatch(p -> p.roomId() != null || p.tags() != null || p.caption() != null
                         || p.metaUpdatedAt() != null);
@@ -442,7 +442,7 @@ final class BackupMapper {
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
                 h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getBrokerId(),
+                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
                 sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 

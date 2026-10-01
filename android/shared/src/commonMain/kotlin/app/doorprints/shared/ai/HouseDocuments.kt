@@ -53,6 +53,8 @@ object HouseDocuments {
         if (h.bedrooms != null) line(sb, "Size", if (h.bedrooms == 0) "studio / 1RK" else "${h.bedrooms} BHK")
         // The house's own values (slice 1a), the same words as the server's; never "My offer" (docs/11 5.30 item 5).
         if (h.areaSqft != null) line(sb, "Carpet area", "${h.areaSqft} sq ft")
+        // S4b-BL-87: the floor in the server's words, 0 the ground floor and a negative one a basement level.
+        h.floor?.let { line(sb, "Floor", if (it == 0) "ground floor" else if (it < 0) "basement ${-it}" else "$it") }
         h.cost?.let { c ->
             line(sb, "Deposit", c.deposit?.let { "Rs $it" } ?: c.depositMonths?.let { months(it) })
             if (c.maintenance != null) {

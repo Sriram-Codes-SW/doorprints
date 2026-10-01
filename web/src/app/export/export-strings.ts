@@ -119,6 +119,7 @@ export const EXPORT_STRING_KEYS = [
   'col.moveIn',
   'col.perSqFt',
   'col.rooms',
+  'col.floor',
   'col.roomName',
   'col.roomType',
   'col.condition',
@@ -299,6 +300,7 @@ const EXPORT_EN: ExportDict = {
   'col.moveIn': 'Money to move in',
   'col.perSqFt': 'Cost per sq ft',
   'col.rooms': 'Rooms',
+  'col.floor': 'Floor',
   'col.roomName': 'Room',
   'col.roomType': 'Type',
   'col.condition': 'Condition',
@@ -483,6 +485,7 @@ const EXPORT_HI: ExportDict = {
   'col.perSqFt': 'प्रति वर्ग फ़ुट खर्च',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'कमरे',
+  'col.floor': 'मंज़िल',
   'col.roomName': 'कमरा',
   'col.roomType': 'प्रकार',
   'col.condition': 'हालत',
@@ -668,6 +671,7 @@ const EXPORT_TA: ExportDict = {
   'col.perSqFt': 'சதுர அடிக்கு செலவு',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'அறைகள்',
+  'col.floor': 'தளம்',
   'col.roomName': 'அறை',
   'col.roomType': 'வகை',
   'col.condition': 'நிலை',
@@ -853,6 +857,7 @@ const EXPORT_TE: ExportDict = {
   'col.perSqFt': 'చదరపు అడుగుకు ఖర్చు',
   // Slice 1c (2026-09-30): the rooms; under review.
   'col.rooms': 'గదులు',
+  'col.floor': 'అంతస్తు',
   'col.roomName': 'గది',
   'col.roomType': 'రకం',
   'col.condition': 'స్థితి',

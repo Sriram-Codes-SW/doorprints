@@ -100,6 +100,10 @@ public final class HouseDocuments {
         }
         if (h.bedrooms() != null) line(sb, "Size", h.bedrooms() == 0 ? "studio / 1RK" : h.bedrooms() + " BHK");
         if (h.areaSqft() != null) line(sb, "Carpet area", h.areaSqft() + " sq ft");
+        // S4b-BL-87: the floor in words, the same as the apps': 0 the ground floor, a negative one a basement level.
+        if (h.floor() != null) {
+            line(sb, "Floor", h.floor() == 0 ? "ground floor" : h.floor() < 0 ? "basement " + -h.floor() : h.floor().toString());
+        }
         costLines(sb, h.cost());
         line(sb, "Rooms", rooms(h.rooms(), r));
         answerLines(sb, h.answers(), r);

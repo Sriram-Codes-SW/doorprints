@@ -117,6 +117,11 @@ data class ExportHouse(
      * made without contact details, like the answers.
      */
     val moveIn: MoveIn? = null,
+    /**
+     * The floor (S4b-BL-87, format `/2`), -5..200 with 0 the ground floor, after `moveIn`; absent when unknown, and a
+     * value out of range reads as unknown (`ExportHouse.toEntity`).
+     */
+    val floor: Int? = null,
     /** The broker's record id (slice 1b, format `/2`); absent for a house without one and in a copy made without contacts. */
     val brokerId: String? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */

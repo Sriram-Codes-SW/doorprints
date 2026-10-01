@@ -168,6 +168,7 @@ object PdfExporter {
         sheet.labelled(s["col.price"], house.price?.let { ExportRows.rupees(it) } ?: s["none"], body)
         if (house.price != null) sheet.labelled(s["col.priceType"], s.priceType(house.priceType), body)
         sheet.labelled(s["col.bedrooms"], house.bedrooms?.toString() ?: s["none"], body)
+        house.floor?.let { sheet.labelled(s["col.floor"], s.floor(it), body) }
         sheet.labelled(s["col.rating"], house.rating?.toString() ?: s["none"], body)
         sheet.labelled(s["col.address"], house.address ?: s["none"], body)
         sheet.labelled(s["col.street"], house.street ?: s["none"], body)

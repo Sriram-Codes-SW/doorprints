@@ -1148,4 +1148,20 @@
     <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30). -->
     <string name="map_hunt_offer">Start Hunt mode?</string>
     <string name="map_hunt_offer_start">Start Hunt mode</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview. -->
+    <string name="house_floor">Floor</string>
+    <string name="house_floor_hint">0 is the ground floor, -1 a basement</string>
+    <string name="house_floor_invalid">Enter a floor from -5 to 200</string>
+    <string name="house_room_move_up">Move %1$s up</string>
+    <string name="house_room_move_down">Move %1$s down</string>
+    <string name="duplicate_flat_warning">Maybe the same flat as %1$s: within about 30 m, with the same bedrooms and floor.</string>
+    <string name="houses_filters">Filters</string>
+    <string name="houses_filters_count">Filters (%1$d)</string>
+    <string name="houses_filters_title">Filter by cost</string>
+    <string name="houses_filters_hint">In whole rupees. A house is left out when its number cannot be worked out (a sale has no monthly cost).</string>
+    <string name="houses_filter_min">%1$s from (₹)</string>
+    <string name="houses_filter_max">%1$s up to (₹)</string>
+    <string name="houses_filters_clear">Clear cost filters</string>
+    <string name="import_new_brokers">New brokers</string>
+    <string name="import_updated_brokers">Brokers the backup has a newer version of</string>
 </resources>

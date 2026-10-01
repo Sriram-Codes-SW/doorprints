@@ -330,7 +330,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -452,9 +452,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v10 (S4b-BL-87, 2026-10-01): `houses.floor`, the floor the flat is on, nullable with no default as Room lists
+         * it in `10.json`. A house from before has no floor.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `floor` INTEGER")
+            }
+        }
+
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-            MIGRATION_8_9,
+            MIGRATION_8_9, MIGRATION_9_10,
         )
     }
 }

@@ -195,6 +195,17 @@ class BackupMapperTest {
                 .format()).isEqualTo("doorprints-backup/1");
     }
 
+    /** S4b-BL-87: a floor, 0 included, makes the copy /2 and is written after the move-in. */
+    @Test
+    void aFloorMakesTheCopyVersionTwo() {
+        var h = house(FIRST, EXPORTED_AT, false);
+        h.setFloor(0);
+        var data = BackupMapper.toBackup(List.of(h), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        assertThat(data.houses().getFirst().floor()).isZero();
+        assertThat(JSON.writeValueAsString(data.houses().getFirst())).contains("\"floor\":0,\"checklist\"");
+    }
+
     private static Record broker(String id, String payload, Instant updatedAt, boolean deleted) {
         var record = new Record(new RecordKey("broker", id));
         record.setPayload(payload);

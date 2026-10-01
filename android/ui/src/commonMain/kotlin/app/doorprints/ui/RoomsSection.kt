@@ -21,6 +21,7 @@ package app.doorprints.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -31,10 +32,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -50,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -79,18 +84,22 @@ import kotlin.uuid.Uuid
  * name, length and width in [unit], the area under them, condition 1..5 or *Not checked*, notes, *Delete room*), then
  * the total of the areas from two sized rooms, and *Add room* (a bedroom, next in order; disabled at [HouseRooms.MAX]
  * with "At most 30 rooms"). [onChange] gets the new list, null for none; the repository's save coerces it. Sizes
- * are typed as feet and inches or as metres with up to two decimals, and stored in centimetres. No reordering yet.
+ * are typed as feet and inches or as metres with up to two decimals, and stored in centimetres. Each card moves its
+ * room up or down (S4b-BL-87, `HouseRooms.move`), the buttons named after the room for TalkBack.
  */
 @OptIn(ExperimentalUuidApi::class)
 @Composable
 fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<HouseRoom>?) -> Unit) {
-    val list = rooms.orEmpty()
+    val list = rooms.orEmpty().sortedWith(HouseRooms.ORDER)
     SectionHeading(stringResource(Res.string.house_rooms))
     if (list.isEmpty()) Text(stringResource(Res.string.house_rooms_empty), style = MaterialTheme.typography.bodySmall)
-    list.forEach { room ->
+    list.forEachIndexed { index, room ->
         key(room.id) {
             RoomCard(
                 room, unit,
+                canMoveUp = index > 0,
+                canMoveDown = index < list.lastIndex,
+                onMove = { by -> onChange(HouseRooms.move(list, room.id, by)) },
                 onChange = { updated -> onChange(list.map { if (it.id == room.id) updated else it }) },
                 onDelete = { onChange(list.filter { it.id != room.id }.takeIf { it.isNotEmpty() }) },
             )
@@ -124,16 +133,34 @@ fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<Hous
 }
 
 @Composable
-private fun RoomCard(room: HouseRoom, unit: LengthUnit, onChange: (HouseRoom) -> Unit, onDelete: () -> Unit) {
+private fun RoomCard(
+    room: HouseRoom,
+    unit: LengthUnit,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMove: (Int) -> Unit,
+    onChange: (HouseRoom) -> Unit,
+    onDelete: () -> Unit,
+) {
     val typeName = stringResource(room.roomType.labelResource)
+    val title = room.name?.takeIf { it.isNotBlank() } ?: typeName
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // The card's title: the room's own name, else its type's (what the copies write too).
-            Text(
-                room.name?.takeIf { it.isNotBlank() } ?: typeName,
-                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.semantics { heading() },
-            )
+            // Beside it, the move buttons (48 dp each, named after the room).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
+                    Icon(Icons.Default.KeyboardArrowUp, stringResource(Res.string.house_room_move_up, title))
+                }
+                IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
+                    Icon(Icons.Default.KeyboardArrowDown, stringResource(Res.string.house_room_move_down, title))
+                }
+            }
             ChoiceMenu(
                 label = stringResource(Res.string.house_room_type),
                 options = RoomType.entries,

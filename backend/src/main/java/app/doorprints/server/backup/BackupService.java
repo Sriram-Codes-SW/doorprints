@@ -368,6 +368,7 @@ public class BackupService {
         house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
         house.setAnswers(HouseAnswer.write(row.answers())); // an empty list reads as no answers
         house.setMoveIn(HouseMoveIn.write(row.moveIn())); // an empty object reads as no move-in
+        house.setFloor(row.floor());
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
@@ -740,6 +741,8 @@ public class BackupService {
             for (var problem : HouseRoom.problems(row.rooms())) problems.add(at + "." + problem);
             for (var problem : HouseAnswer.problems(row.answers())) problems.add(at + "." + problem);
             for (var problem : HouseMoveIn.problems(row.moveIn())) problems.add(at + "." + problem);
+            require(row.floor() == null || (row.floor() >= House.MIN_FLOOR && row.floor() <= House.MAX_FLOOR),
+                    at + ".floor must be -5..200", problems);
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
