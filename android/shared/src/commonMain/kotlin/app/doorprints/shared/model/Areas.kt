@@ -45,7 +45,7 @@ internal fun newRecordId(prefix: String, taken: (String) -> Boolean, random: Ran
 
 /**
  * A hunting area (5.17): a name and a circle. The payload keys are, in this order, [name], [lat], [lon], [radiusM] and
- * [enabled] (written only when false; the wake-up of slice 4b reads it).
+ * [enabled] (written only when false; the wake-up of slice 4b, `AreaWakeup`, reads it).
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
@@ -58,7 +58,7 @@ data class Area(
     val lon: Double = 0.0,
     /** [MIN_RADIUS]..[MAX_RADIUS] metres; any other value reads as [DEFAULT_RADIUS]. */
     val radiusM: Int = DEFAULT_RADIUS,
-    /** *Wake me here*: stored and shown only in slice 4a. */
+    /** *Wake me here*: only an enabled area gets a geofence while *Wake me in my hunting areas* is on (slice 4b). */
     @EncodeDefault(EncodeDefault.Mode.NEVER) val enabled: Boolean = true,
 ) {
     /**

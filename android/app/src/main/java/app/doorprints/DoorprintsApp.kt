@@ -48,6 +48,9 @@ class AppContainer(app: DoorprintsApp) {
     /** The viewing reminders' alarms (docs/11 5.8, slice 3b-2). */
     val reminders = ViewingReminderScheduler(app, repository)
 
+    /** The area wake-up's geofences (docs/11 slice 4b), with Play services' Geofencing API. */
+    val areaWakeup = AreaGeofenceManager(repository, PlayGeofenceRegistrar(app)) { hasAreaWakeupPermissions(app) }
+
     /** What the common screens in :ui need from the app (ADR-23 CMP-5), provided by ProvideAppServices. */
     val services = AndroidAppServices(app, repository)
 }
@@ -98,6 +101,15 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         }
     }
 
+    /**
+     * The area wake-up's geofences (slice 4b) are set at start (the first emission) and after every change of the areas
+     * or of *Wake me in my hunting areas*, a second after a burst, as the reminders above. Nothing without Play services.
+     */
+    private fun watchAreaWakeup() {
+        if (!hasPlayServices(this)) return
+        appScope.launch { container.areaWakeup.watch() }
+    }
+
     /** Platform services and start-up work; the data container above is all the screens need. */
     protected open fun startServices() {
         MapLibre.getInstance(this)
@@ -110,6 +122,7 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         // Settings' "Save and test" and the Assistant's "Try again" ask again; see Repository.refreshAiStatus.
         appScope.launch { runCatching { container.repository.refreshAiStatus() } }
         watchViewingReminders()
+        watchAreaWakeup()
         appScope.launch {
             runCatching {
                 // The weekly backup (S4-07) is re-registered on every start: WorkManager keeps periodic work

@@ -173,6 +173,9 @@ class SettingsStore(
     companion object {
         /** The DataStore's name: Android's file is `datastore/settings.preferences_pb`. Do not change it. */
         const val FILE_NAME = "settings"
+
+        /** The prefix of the per-area `lastNotifiedAt` keys of the area wake-up (slice 4b). */
+        const val AREA_LAST_NOTIFIED_PREFIX = "areas.lastNotified."
     }
 
     private object Keys {
@@ -226,7 +229,14 @@ class SettingsStore(
         /** The Hunt mode reminder on this device (slice 3c): *Offer Hunt mode before viewings* and its lead time, not synced. */
         val huntRemind = booleanPreferencesKey("hunt.remind")
         val huntReminderMin = intPreferencesKey("hunt.reminderMin")
+        /** *Wake me in my hunting areas* (slice 4b): this device's own choice, never synced or backed up. */
+        val areaWakeup = booleanPreferencesKey("areas.wakeup")
+        /** The one-time "Area wake-up is off because…" card of My areas (slice 4b), set when the permission is lost. */
+        val areaWakeupOffNotice = booleanPreferencesKey("areas.wakeupOffNotice")
     }
+
+    /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
+    private fun lastNotifiedKey(id: String) = longPreferencesKey(AREA_LAST_NOTIFIED_PREFIX + id)
 
     /** Throws [SecretUnavailableException] while a saved key cannot be read (see [SecretStore.get]). */
     val settings: Flow<AppSettings> = dataStore.data.map { p ->
@@ -298,6 +308,62 @@ class SettingsStore(
 
     /** Keeps [minutes] when it is one of the choices, otherwise the default. */
     suspend fun setHuntReminderMin(minutes: Int) = dataStore.edit { it[Keys.huntReminderMin] = HuntReminders.validLead(minutes) }
+
+    /**
+     * *Wake me in my hunting areas* (docs/11 "Design of slice 4b"), off unless turned on after the rationale; this
+     * device's own choice. Reads no secret; a file that cannot be read gives off.
+     */
+    fun areaWakeup(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.areaWakeup] ?: false }
+        .catch { emit(false) }
+        .distinctUntilChanged()
+
+    /** Turns the wake-up on or off; turning it on also clears the "switched off because…" card. */
+    suspend fun setAreaWakeup(on: Boolean) = dataStore.edit {
+        it[Keys.areaWakeup] = on
+        if (on) it.remove(Keys.areaWakeupOffNotice)
+    }
+
+    /**
+     * The permission the wake-up needs is gone (5.18 *Denied, downgraded or revoked*): the setting off and, when it was
+     * on, the one-time card of My areas, in one edit. Returns whether it was on.
+     */
+    suspend fun switchAreaWakeupOffForPermission(): Boolean {
+        var wasOn = false
+        dataStore.edit {
+            wasOn = it[Keys.areaWakeup] ?: false
+            if (wasOn) {
+                it[Keys.areaWakeup] = false
+                it[Keys.areaWakeupOffNotice] = true
+            }
+        }
+        return wasOn
+    }
+
+    /** Whether My areas still has to say once why the wake-up switched itself off. */
+    fun areaWakeupOffNotice(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.areaWakeupOffNotice] ?: false }
+        .catch { emit(false) }
+        .distinctUntilChanged()
+
+    /** The card has been shown: it is not shown again. */
+    suspend fun clearAreaWakeupOffNotice() = dataStore.edit { it.remove(Keys.areaWakeupOffNotice) }
+
+    /** When area [id] last notified or was dismissed (epoch ms), or null when never. */
+    suspend fun areaLastNotified(id: String): Long? = dataStore.data.first()[lastNotifiedKey(id)]
+
+    suspend fun setAreaLastNotified(id: String, at: Long) = dataStore.edit { it[lastNotifiedKey(id)] = at }
+
+    /** Forgets area [id]'s stamp (the area is deleted). */
+    suspend fun removeAreaLastNotified(id: String) = dataStore.edit { it.remove(lastNotifiedKey(id)) }
+
+    /** Forgets the stamp of every area not in [liveIds] (deleted here, by a sync or by an import). */
+    suspend fun pruneAreaLastNotified(liveIds: Set<String>) {
+        val stale = dataStore.data.first().asMap().keys.map { it.name }
+            .filter { it.startsWith(AREA_LAST_NOTIFIED_PREFIX) && it.removePrefix(AREA_LAST_NOTIFIED_PREFIX) !in liveIds }
+        if (stale.isEmpty()) return
+        dataStore.edit { p -> stale.forEach { p.remove(longPreferencesKey(it)) } }
+    }
 
     suspend fun current() = settings.first()
 

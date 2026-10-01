@@ -37,6 +37,7 @@ class PlatformFeaturesTest {
                 copiesAndImports = true,
                 weeklyBackup = true,
                 inAppLanguage = true,
+                areaWakeup = true,
             ),
             PlatformFeatures(),
         )
@@ -53,6 +54,8 @@ class PlatformFeaturesTest {
                 copiesAndImports = false,
                 weeklyBackup = false,
                 inAppLanguage = false,
+                // The area wake-up (slice 4b) is Android only: region monitoring and "Always" are S4b-BL-96.
+                areaWakeup = false,
             ),
             PlatformFeatures.Ios,
         )

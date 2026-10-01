@@ -1022,7 +1022,7 @@
     <string name="area_radius">Radius: %1$d m</string>
     <string name="area_radius_label">Radius</string>
     <string name="area_wake">Wake me here</string>
-    <string name="area_wake_hint">Takes effect in a later update.</string>
+    <string name="area_wake_hint">Used by Wake me in my hunting areas.</string>
     <string name="area_delete">Delete area</string>
     <string name="area_delete_title">Delete this area?</string>
     <string name="area_delete_body">Its notes are kept, but no house shows them any more.</string>
@@ -1066,4 +1066,16 @@
     <string name="house_distance_value">%1$s km · about %2$d min on foot</string>
     <string name="house_distances_hint">In a straight line; the time is Plan's walking estimate.</string>
     <string name="compare_km">%1$s km</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30). -->
+    <string name="area_wakeup_switch">Wake me in my hunting areas</string>
+    <string name="area_wakeup_hint">When you arrive in an area with Wake me here on, Doorprints offers Hunt mode, usually within a few minutes. Needs location allowed all the time.</string>
+    <string name="area_wakeup_why">Why: so Doorprints notices when you arrive in an area you are searching and offers Hunt mode. It never starts Hunt mode by itself.</string>
+    <string name="area_wakeup_what">How: Google Play services compares where the phone is with your areas, on the phone. Doorprints keeps no location history and sends your position nowhere.</string>
+    <string name="area_wakeup_battery">Battery: small. Doorprints asks for no location of its own.</string>
+    <string name="area_wakeup_how_off">To stop it, turn off Wake me in my hunting areas in My areas, or take the location permission away in the phone's settings.</string>
+    <string name="area_wakeup_pick">Next, Android asks about location. Choose Allow all the time. On newer Android this is on the app's location page: choose it there, then come back.</string>
+    <string name="area_wakeup_continue">Continue</string>
+    <string name="area_wakeup_not_now">Not now</string>
+    <string name="area_wakeup_still_off">Area wake-up is still off: it needs precise location allowed all the time.</string>
+    <string name="area_wakeup_off_card">Area wake-up is off because Doorprints no longer has location access all the time.</string>
 </resources>
