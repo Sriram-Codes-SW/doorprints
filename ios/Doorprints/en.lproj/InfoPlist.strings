@@ -26,3 +26,8 @@
    Keep Info.plist's English value the same. */
 "NSLocalNetworkUsageDescription" = "Doorprints connects to your own Doorprints server when it is on your local network.";
 "NSFaceIDUsageDescription" = "Doorprints uses Face ID to unlock the app when the app lock is on.";
+
+/* The "Always" purpose string (S4b-BL-96, the area wake-up), shown when Wake me in my hunting areas asks for location
+   all the time; the when-in-use uses first, in the same words, then the wake-up (area_wakeup_why, area_wakeup_what_ios).
+   Keep Info.plist's English value the same. */
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Doorprints uses your location to place the houses you save, to plan visits from where you are and, while Hunt mode is on, to tell you when you pass a house you have saved. With Wake me in my hunting areas on, iOS also tells Doorprints when you arrive in one of your areas, so it can offer Hunt mode. Doorprints keeps no location history.";

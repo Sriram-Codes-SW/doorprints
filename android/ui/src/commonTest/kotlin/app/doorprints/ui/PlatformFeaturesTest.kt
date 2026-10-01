@@ -54,8 +54,8 @@ class PlatformFeaturesTest {
                 copiesAndImports = false,
                 weeklyBackup = false,
                 inAppLanguage = false,
-                // The area wake-up (slice 4b) is Android only: region monitoring and "Always" are S4b-BL-96.
-                areaWakeup = false,
+                // The area wake-up (slice 4b): region monitoring and "Always" on iPhone since S4b-BL-96.
+                areaWakeup = true,
             ),
             PlatformFeatures.Ios,
         )

@@ -81,7 +81,10 @@ class AreaWakeupUiTest {
     private val settings = app.container.repository.settings
 
     /** Play services and the two prompts, as the test decides. */
-    private inner class FakeWakeup(override val available: Boolean = true) : AreaWakeupServices {
+    private inner class FakeWakeup(
+        override val available: Boolean = true,
+        override val iphoneWording: Boolean = false,
+    ) : AreaWakeupServices {
         var background = false
         val asked = mutableListOf<String>()
         /** What the background request does: answer at once (the Android 10 dialog) or nothing (a settings page). */
@@ -143,7 +146,7 @@ class AreaWakeupUiTest {
         compose.setContent {
             when (variant) {
                 0 -> WithWakeup(FakeWakeup(available = false)) { AreasEditor(onOpenArea = {}) }
-                1 -> WithWakeup(FakeWakeup(), PlatformFeatures.Ios) { AreasEditor(onOpenArea = {}) }
+                1 -> WithWakeup(FakeWakeup(), PlatformFeatures(areaWakeup = false)) { AreasEditor(onOpenArea = {}) }
                 else -> WithWakeup(FakeWakeup()) { AreasEditor(onOpenArea = {}) }
             }
         }
@@ -188,6 +191,17 @@ class AreaWakeupUiTest {
         val cont = compose.onNodeWithText("Continue").fetchSemanticsNode().boundsInRoot
         val notNow = compose.onNodeWithText("Not now").fetchSemanticsNode().boundsInRoot
         assertEquals(cont.height, notNow.height, 0.5f)
+    }
+
+    /** The iPhone's rationale (S4b-BL-96) names iOS and its two prompts instead of Play services and Android. */
+    @Test
+    fun theIphoneRationaleNamesIosAndItsTwoPrompts() {
+        compose.setContent { WithWakeup(FakeWakeup(iphoneWording = true)) { AreaWakeupRationale(onDone = {}) } }
+        waitFor("iOS compares where the iPhone is")
+        waitFor("Choose Allow While Using App first, then Change to Always Allow")
+        waitFor("Battery: small")
+        absent("Google Play services")
+        absent("Android")
     }
 
     @Test
@@ -350,6 +364,8 @@ class AreaWakeupUiTest {
             "area_wakeup_switch", "area_wakeup_hint", "area_wakeup_why", "area_wakeup_what", "area_wakeup_battery",
             "area_wakeup_how_off", "area_wakeup_pick", "area_wakeup_continue", "area_wakeup_not_now", "area_wakeup_still_off",
             "area_wakeup_off_card", "area_wake_hint",
+            // The iPhone's (S4b-BL-96).
+            "area_wakeup_what_ios", "area_wakeup_pick_ios", "notif_area_wakeup",
         )
         val android = listOf("notif_channel_area_wakeup", "notif_channel_area_wakeup_desc", "notif_area_wakeup")
         val english = keys(File(root, "ui/src/commonMain/composeResources/values/strings.xml"))

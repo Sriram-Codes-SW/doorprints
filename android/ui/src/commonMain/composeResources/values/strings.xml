@@ -1139,4 +1139,8 @@
     <string name="tag_GOOD_POINT">Good point</string>
     <string name="tag_PROBLEM">Problem</string>
     <string name="tag_MOVE_IN">Move-in</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): the rationale's iPhone lines and the notification. -->
+    <string name="area_wakeup_what_ios">How: iOS compares where the iPhone is with your areas, on the iPhone. Doorprints keeps no location history and sends your position nowhere.</string>
+    <string name="area_wakeup_pick_ios">Next, iOS asks about location. Choose Allow While Using App first, then Change to Always Allow. If iOS does not ask, choose Always in the app's location settings, then come back.</string>
+    <string name="notif_area_wakeup">You're in %1$s. Start Hunt mode?</string>
 </resources>
