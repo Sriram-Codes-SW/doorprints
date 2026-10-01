@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
 /**
  * The house's floor in a backup (S4b-BL-87; docs/schemas README §3.1): after `moveIn` and before `brokerId`, a `/2`
  * file when a house has one (0, the ground floor, included), kept in a copy without contact details, and a value
- * outside -5..200 read as unknown.
+ * outside -5..200 read as unknown, which the import preview reports (S4b-BL-104 d).
  */
 class BackupFloorTest {
     private fun data(houses: List<ExportHouse>, options: ExportOptions = ExportFixture.options()) =
@@ -65,5 +65,29 @@ class BackupFloorTest {
         assertEquals(-2, house.copy(floor = -2).toEntity().floor)
         assertNull(house.copy(floor = 999).toEntity().floor)
         assertNull(house.copy(floor = -6).toEntity().floor)
+    }
+
+    /**
+     * S4b-BL-104 (d): the file is not refused for a floor out of range (the server refuses it; a device stays tolerant,
+     * docs/11 5.6), but the preview counts the houses it writes that land with the floor blank.
+     */
+    @Test
+    fun thePreviewCountsTheWrittenHousesWhoseFloorIsLeftBlank() {
+        val d = data(
+            listOf(
+                ExportFixture.house1.copy(floor = 201),
+                ExportFixture.house2.copy(floor = -6),
+                ExportFixture.house2.copy(id = "h3", floor = -5),
+            ),
+        )
+        assertNull(BackupValidation.checkData(d), "not refused")
+        fun blank(local: Map<String, Long>, mode: ImportMode = ImportMode.MERGE) =
+            ImportPlan.preview(d, local, emptyMap(), emptySet(), emptySet(), mode).floorsLeftBlank
+        assertEquals(2, blank(emptyMap()), "two new houses out of range; -5 is a floor")
+        assertEquals(2, blank(emptyMap(), ImportMode.COPY))
+        val h1 = ExportFixture.house1
+        assertEquals(1, blank(mapOf(h1.id to h1.updatedAt + 1)), "house 1 is newer here, so it is not written")
+        assertEquals(0, ImportPlan.preview(data(listOf(ExportFixture.house1.copy(floor = 3))), emptyMap(), emptyMap(), emptySet(),
+            emptySet(), ImportMode.MERGE).floorsLeftBlank)
     }
 }

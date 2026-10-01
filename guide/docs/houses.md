@@ -49,7 +49,7 @@ Open a house from the list or the map. There you can:
 - set the **Status**: **New**, **Shortlisted**, **Rejected**, **Taken** (the house you chose) or **Not chosen** (see
   [Moving in](#moving-in));
 - give **Your rating**, from one to five stars;
-- fill in the price, **BHK**, **Carpet area**, the **Floor** (0 is the ground floor, -1 a basement), address, contact and
+- fill in the price, **BHK**, **Carpet area**, the **Floor** (0 is the ground floor; for a basement turn on **Basement** and type the level, 1 to 5), address, contact and
   **Listing link** (the web address of an advert for the house). If another saved house is within about 30 m with the
   same BHK and floor, Doorprints says it may be the same flat (two brokers often show the same one);
 - under **Cost**, what the advert does not say at first: the deposit (in rupees or months of rent), the maintenance

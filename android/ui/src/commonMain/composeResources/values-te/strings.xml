@@ -1174,4 +1174,9 @@
     <string name="import_updated_brokers">బ్యాకప్‌లో కొత్త వెర్షన్ ఉన్న బ్రోకర్లు</string>
     <!-- Wave D (2026-10-01): the house form's loading spinner has a name: under review. -->
     <string name="house_loading">ఇల్లు తెరుచుకుంటోంది…</string>
+    <!-- S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range: under review. -->
+    <string name="house_floor_basement">బేస్‌మెంట్</string>
+    <string name="house_floor_basement_hint">నేల కింద ఉన్న స్థాయి, 1 నుండి 5 వరకు</string>
+    <string name="house_floor_basement_invalid">1 నుండి 5 వరకు బేస్‌మెంట్ స్థాయి నమోదు చేయండి</string>
+    <string name="import_floors_left_blank">ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న ఇళ్లు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది</string>
 </resources>
