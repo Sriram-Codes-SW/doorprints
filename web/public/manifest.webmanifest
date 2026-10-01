@@ -10,6 +10,7 @@
   "theme_color": "#1f6f5c",
   "lang": "en",
   "dir": "ltr",
+  "prefer_related_applications": false,
   "categories": [
     "lifestyle",
     "productivity",
