@@ -38,12 +38,19 @@ on:
       # android/app/src/main/assets/geo/in-boundaries.geojson with the reviewed sha256, so editing the web copy
       # alone can turn this workflow red (android/shared/README.md section 9, item 35).
       - "web/public/geo/**"
+      # The AI test vectors (S4b-BL-105). Load-bearing: ParityVectorsFileTest (:shared:testAndroidHostTest) fails
+      # unless the common tests' copy and the website's copy equal docs/ai/evals/parity-vectors.json, so editing
+      # either file alone can turn this workflow red.
+      - "docs/ai/evals/parity-vectors.json"
+      - "web/src/app/core/ai/parity-vectors.json"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
       - "docs/schemas/**"
       - "web/public/geo/**"
+      - "docs/ai/evals/parity-vectors.json"
+      - "web/src/app/core/ai/parity-vectors.json"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
