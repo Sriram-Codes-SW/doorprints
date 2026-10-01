@@ -104,6 +104,35 @@ object CopyUndo {
         return Decision.REMOVE
     }
 
+    /**
+     * The record key of the undo record's `records` (S4b-BL-92e, 90c): `viewing/v_1a2b3c4d`. A copy records only the
+     * records it **created** (a broker, a viewing, a question or a criterion that was not here, or only as a tombstone):
+     * one it wrote over a record already here cannot be put back as it was, so the undo leaves that one alone.
+     */
+    fun recordKey(type: String, id: String): String = "$type/$id"
+
+    /** The type and id of a [recordKey]; null for one that does not read. */
+    fun recordOf(key: String): Pair<String, String>? {
+        val slash = key.indexOf('/')
+        if (slash <= 0 || slash == key.lastIndex) return null
+        return key.substring(0, slash) to key.substring(slash + 1)
+    }
+
+    /** A recorded record as it is on the phone now: null when the row is gone. */
+    data class RecordNow(val updatedAt: Long, val deleted: Boolean)
+
+    /**
+     * A record the copy created ([recordedAt]: the `updatedAt` it was written with), decided after the houses. It is
+     * **removed** when it is unchanged and nothing that stays still uses it ([inUse]: a viewing of a house that stays,
+     * a broker a live house names, a custom criterion a live house has a score for, a question a live house has an
+     * answer from). It is **kept** when it was edited since, or is in use; gone or already deleted, **skipped**.
+     */
+    fun decideRecord(now: RecordNow?, recordedAt: Long, inUse: Boolean): Decision = when {
+        now == null || now.deleted -> Decision.SKIP
+        now.updatedAt != recordedAt || inUse -> Decision.KEEP
+        else -> Decision.REMOVE
+    }
+
     /** A recorded photo goes, row and file, exactly when its house is removed (the server purges it with the house). */
     fun removesPhoto(photoHouseId: String, removedHouseIds: Set<String>): Boolean = photoHouseId in removedHouseIds
 

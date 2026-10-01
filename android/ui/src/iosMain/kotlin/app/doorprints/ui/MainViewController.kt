@@ -40,6 +40,7 @@ import platform.UIKit.UIViewController
 fun MainViewController(): UIViewController {
     logUncaughtExceptions()
     IosAppContainer.start()
+    installAreaWakeup()
     startSelfCheckIfRequested()
     val platform = IosPlatformServices()
     val services = IosAppContainer.services
@@ -75,12 +76,26 @@ fun installNotifications() {
 }
 
 /**
+ * The area wake-up's region monitoring (S4b-BL-96): its location manager and delegate, made before the app finishes
+ * launching, so iOS finds them when it relaunches the app in the background for an arrival in an area, and the
+ * registration at start. The Swift app calls it from its `init` after [installNotifications];
+ * `MainViewControllerKt.installAreaWakeup()`. Main thread.
+ */
+fun installAreaWakeup() {
+    if (IosAreaWakeupServices.available) IosAreaWakeup.install()
+}
+
+/**
  * The deep link a tapped alert carries, checked as `:app`'s MainActivity checks its intent (threat model F-25): a
  * well-formed UUID for a house or visit, coordinates in range; anything else is ignored.
  */
 internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
     (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
     (userInfo[IosHunt.KEY_OPEN_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null }
+    // A Hunt mode reminder (slice 3c) or an area wake-up (S4b-BL-96): the Map, which offers Hunt mode (S4b-BL-94c) and
+    // on *Start Hunt mode* asks for location if needed and starts it, as Android's notification action does.
+    (userInfo[IosHunt.KEY_OFFER_HUNT_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt else null }
+    (userInfo[IosAreaWakeup.KEY_START_HUNT_AREA] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt else null }
     val lat = (userInfo[IosHunt.KEY_NEW_LAT] as? String)?.toDoubleOrNull() ?: return null
     val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
@@ -93,11 +108,17 @@ private val UUID_PATTERN = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
 private fun isUuid(value: String): Boolean = UUID_PATTERN.matches(value)
 
 /**
- * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code): the
- * Swift app's `onOpenURL` hands it over as `MainViewControllerKt.handleOpenUrl(url:)`. Only a checked connect link is
- * acted on ([ConnectLink.parse]); the app then asks before connecting. Returns whether it was one. Main thread.
+ * A `doorprints://connect?server=…&invite=…` link opened on this iPhone (the camera on the owner page's QR code), or a
+ * backup or update file another app opened in Doorprints (S4b-BL-81: the document types in Info.plist; iOS hands over
+ * a copy in `Documents/Inbox`): the Swift app's `onOpenURL` hands it over as `MainViewControllerKt.handleOpenUrl(url:)`.
+ * Only a checked connect link is acted on ([ConnectLink.parse]); the app then asks before connecting. A file opens the
+ * Import screen with it picked, which checks it as any picked file. Returns whether it was either. Main thread.
  */
 fun handleOpenUrl(url: String): Boolean {
+    if (url.startsWith("file://")) {
+        iosDeepLinks.value = DeepLink.ImportFile(url)
+        return true
+    }
     val link = ConnectLink.parse(url) ?: return false
     iosDeepLinks.value = DeepLink.Connect(link)
     return true

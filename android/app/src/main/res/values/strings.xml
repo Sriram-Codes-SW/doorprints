@@ -28,6 +28,8 @@
     <string name="status_NEW">New</string>
     <string name="status_SHORTLISTED">Shortlisted</string>
     <string name="status_REJECTED">Rejected</string>
+    <string name="status_TAKEN">Taken</string>
+    <string name="status_NOT_CHOSEN">Not chosen</string>
     <string name="notif_channel_hunt">Hunt mode</string>
     <string name="notif_channel_hunt_desc">Shown while Doorprints is tracking your walk</string>
     <string name="notif_channel_alerts">House and street alerts</string>
@@ -128,4 +130,8 @@
     <string name="notif_hunt_reminder">Viewing at %1$s in %2$d min. Start Hunt mode?</string>
     <string name="notif_hunt_reminder_start">Start Hunt mode</string>
     <string name="notif_hunt_reminder_dismiss">Dismiss</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30). -->
+    <string name="notif_channel_area_wakeup">Area wake-up</string>
+    <string name="notif_channel_area_wakeup_desc">Offers Hunt mode when you arrive in one of your hunting areas</string>
+    <string name="notif_area_wakeup">You\'re in %1$s. Start Hunt mode?</string>
 </resources>

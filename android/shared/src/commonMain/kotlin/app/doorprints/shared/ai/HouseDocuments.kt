@@ -23,6 +23,7 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.RoomSizes
 import app.doorprints.shared.model.Distances
 
@@ -52,6 +53,8 @@ object HouseDocuments {
         if (h.bedrooms != null) line(sb, "Size", if (h.bedrooms == 0) "studio / 1RK" else "${h.bedrooms} BHK")
         // The house's own values (slice 1a), the same words as the server's; never "My offer" (docs/11 5.30 item 5).
         if (h.areaSqft != null) line(sb, "Carpet area", "${h.areaSqft} sq ft")
+        // S4b-BL-87: the floor in the server's words, 0 the ground floor and a negative one a basement level.
+        h.floor?.let { line(sb, "Floor", if (it == 0) "ground floor" else if (it < 0) "basement ${-it}" else "$it") }
         h.cost?.let { c ->
             line(sb, "Deposit", c.deposit?.let { "Rs $it" } ?: c.depositMonths?.let { months(it) })
             if (c.maintenance != null) {
@@ -73,6 +76,7 @@ object HouseDocuments {
         viewingLines(sb, h.viewings, r)
         areaNoteLines(sb, h.areaNotes, r)
         distanceLines(sb, h.distances, r)
+        moveInLines(sb, h.moveIn, r)
         line(sb, "Status", h.status)
         if (h.rating != null) line(sb, "My rating", "${h.rating}/5")
         if (h.checklist.isNotEmpty()) {
@@ -175,6 +179,18 @@ object HouseDocuments {
             val name = oneLine(r.freeText(d.name.trim()))
             if (!name.isNullOrEmpty()) sb.append("Distance to ").append(name).append(": ").append(Distances.km(d.meters)).append(" km\n")
         }
+    }
+
+    /**
+     * Moving in (slice 5), after the distances, the same words as the server's and the web's `houseText`:
+     * `Moving in: <done> of <total> done` when it has items, and `Moving in notes: <notes>` through the redactor on one
+     * line (its white space collapsed). The items' own texts are not sent.
+     */
+    internal fun moveInLines(sb: StringBuilder, moveIn: MoveIn?, r: ContactRedactor.Redactor) {
+        val m = moveIn ?: return
+        val (done, total) = m.progress
+        if (total > 0) line(sb, "Moving in", "$done of $total done")
+        line(sb, "Moving in notes", oneLine(m.notes?.trim()?.let { r.freeText(it) }))
     }
 
     private fun oneLine(text: String?): String? = text?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(" ")

@@ -202,6 +202,9 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun markVisitedNow(house: HouseEntity) = TODO()
     override suspend fun streetInfo(street: String): Repository.StreetInfo = TODO()
     override suspend fun deletePhoto(photo: PhotoEntity) = TODO()
+    override suspend fun savePhotoMeta(photoId: String, meta: app.doorprints.shared.model.PhotoMeta): Boolean = TODO()
+    override suspend fun markOthersNotChosen(takenId: String): Int = TODO()
+    override suspend fun closeTargetCount(takenId: String): Int = TODO()
     override fun <T> observeRecords(type: RecordType<T>): Flow<List<Pair<String, T>>> = TODO()
     override suspend fun <T> saveRecord(type: RecordType<T>, id: String, value: T) = TODO()
     override suspend fun deleteRecord(type: RecordType<*>, id: String) = TODO()
@@ -271,5 +274,6 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        records: Map<String, Long>,
     ): Repository.UndoResult = TODO()
 }

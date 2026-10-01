@@ -17,8 +17,10 @@
  */
 
 import { COST_FIELDS } from '../core/models';
-import type { HouseAnswer, HouseCost, HouseRoom } from '../core/models';
-import { cleanAnswers, cleanCost, cleanRooms } from '../data/records';
+import type { HouseAnswer, HouseCost, HouseRoom, MoveIn } from '../core/models';
+import { cleanAnswers, cleanCost, cleanMoveIn, cleanRooms, photoMetaOf } from '../data/records';
+import type { PhotoRecord } from '../data/records';
+import { hasMeta } from '../shared/photo-tags';
 import { sortedChecklist } from './export-model';
 import type { ExportBroker, ExportBundle, ExportHouse as BundleHouse } from './export-model';
 import { brokerToPayload } from '../shared/broker';
@@ -61,16 +63,16 @@ export const BACKUP_FORMAT = 'doorprints-backup/1';
 /**
  * The number a copy with brokers is written as (slice 1b, docs/schemas/README.md §1.1: the lowest number that holds
  * everything): a `brokers` list after `photos`, `brokerId` on the houses and `counts.brokers`. A copy with no broker, room,
- * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1), area, place or area note (`areas`, `places`, `areaNotes`, slice 4a) or house with answers stays `/1`. Kotlin: `BackupFormat.ID_V2`.
+ * criterion (`criteria` list, slice 2), preference (`preferences` list), question (`questions` list, slice 3a), viewing (`viewings` list, slice 3b-1), area, place or area note (`areas`, `places`, `areaNotes`, slice 4a), house with answers, house with status TAKEN or NOT_CHOSEN, house with `moveIn` or photo with any meta (slice 5), or house with a `floor` (S4b-BL-87) stays `/1`. Kotlin: `BackupFormat.ID_V2`.
  */
 export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
 /**
  * The rule of S4b-BL-72 (docs/schemas/README.md): a new entity list means a new format number, a reader accepts
  * every number up to the one it knows and refuses a newer file with "update the app" rather than dropping its
- * lists in silence. The web has no reader yet (S4b-BL-75); when it lands it accepts exactly these. Kotlin:
- * `BackupFormat.READABLE`.
+ * lists in silence. `/3` adds an update file's `deleted` list (S4b-BL-82). The website's reader (`backup-reader.ts`,
+ * S4b-BL-75) accepts exactly these. Kotlin: `BackupFormat.READ_IDS`.
  */
-export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2'];
+export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];
 export const MANIFEST_ENTRY = 'manifest.json';
 export const DATA_ENTRY = 'data.json';
 
@@ -119,6 +121,10 @@ export interface BackupHouse {
   rooms?: BackupRoom[];
   /** Slice 3a (docs/11 5.5): at most 60 answers, right after `rooms` and before `brokerId`. */
   answers?: BackupAnswer[];
+  /** Slice 5 (docs/11 5.24): moving in, right after `answers` and before `brokerId`. */
+  moveIn?: BackupMoveIn;
+  /** S4b-BL-87: the floor, -5..200 with 0 the ground floor, right after `moveIn` and before `brokerId`. */
+  floor?: number;
   /** Slice 1b: the record id of the house's broker, right after `cost`. */
   brokerId?: string;
   checklist: Record<string, number>;
@@ -139,6 +145,9 @@ export type BackupRoom = { [K in keyof HouseRoom]?: Exclude<HouseRoom[K], null> 
 export type BackupAnswer = { [K in keyof HouseAnswer]?: Exclude<HouseAnswer[K], null> };
 
 
+/** Moving in in the backup: `date`, `notes` and `items` (id, text, `done` only when true, sort), only what is set. */
+export type BackupMoveIn = { [K in keyof MoveIn]?: NonNullable<MoveIn[K]> };
+
 export interface BackupVisit {
   id: string;
   houseId?: string;
@@ -156,6 +165,11 @@ export interface BackupPhoto {
   houseId: string;
   fileName: string;
   createdAt: number;
+  /** Slice 5 (docs/11 5.7): the room, tags and caption, each only when set; `metaUpdatedAt` only when > 0. */
+  roomId?: string;
+  tags?: string[];
+  caption?: string;
+  metaUpdatedAt?: number;
 }
 
 /** A broker in a `/2` copy: the record id, the payload keys that are set (in this order) and the last edit. */
@@ -276,6 +290,15 @@ export interface BackupData {
   areas?: BackupArea[];
   places?: BackupPlace[];
   areaNotes?: BackupAreaNote[];
+  /** Only in a `/3` update file, after `areaNotes` (S4b-BL-82): the rows deleted since the last share. The web writes none yet. */
+  deleted?: BackupDeletion[];
+}
+
+/** A deletion of an update file (S4b-BL-82): the kind of row (`house` so far), its id and when it was deleted. */
+export interface BackupDeletion {
+  kind: string;
+  id: string;
+  updatedAt: number;
 }
 
 export interface BackupCounts {
@@ -291,6 +314,7 @@ export interface BackupCounts {
   areas?: number;
   places?: number;
   areaNotes?: number;
+  deleted?: number;
 }
 
 export interface BackupFile {
@@ -314,12 +338,21 @@ export interface BackupManifest {
   includeContacts: boolean;
   counts: BackupCounts;
   files: BackupFile[];
+  /** An update file's (docs/11 5.28): the rows changed after this instant only, and who it was made for. Read, not written here. */
+  sharedSince?: string;
+  sharedTo?: string;
 }
 
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);
   const hasAnswers = bundle.houses.some((h) => cleanAnswers(h.house.answers) !== null);
+  // Slice 5: a house that is TAKEN or NOT_CHOSEN, one with moveIn, or a photo with any meta makes the copy `/2`.
+  const hasStatus = bundle.houses.some((h) => h.house.status === 'TAKEN' || h.house.status === 'NOT_CHOSEN');
+  const hasMoveIn = bundle.houses.some((h) => cleanMoveIn(h.house.moveIn) !== null);
+  const hasPhotoMeta = bundle.houses.some((h) => h.photos.some((p) => hasMeta(photoMetaOf(p))));
+  // S4b-BL-87: a house with a floor (0, the ground floor, included) makes the copy `/2`.
+  const hasFloor = bundle.houses.some((h) => h.house.floor != null);
   // Criteria and preferences are not contacts: a copy made without contact details keeps them (slice 2).
   const criteria = bundle.criteria.length > 0 ? bundle.criteria.map(backupCriterion) : undefined;
   const preferences = bundle.preferences.length > 0 ? bundle.preferences.map(backupPreference) : undefined;
@@ -333,7 +366,7 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
   const areaNotes = bundle.areaNotes.length > 0 ? bundle.areaNotes.map(backupAreaNote) : undefined;
   return {
     format:
-      brokers || hasRooms || hasAnswers || criteria || preferences || questions || viewings || areas || places || areaNotes
+      brokers || hasRooms || hasAnswers || hasStatus || hasMoveIn || hasPhotoMeta || hasFloor || criteria || preferences || questions || viewings || areas || places || areaNotes
         ? BACKUP_FORMAT_V2
         : BACKUP_FORMAT,
     exportedAt: millisOf(bundle.exportedAt),
@@ -352,12 +385,7 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
       })),
     ),
     photos: bundle.houses.flatMap((entry) =>
-      entry.photos.map((photo) => ({
-        id: photo.id,
-        houseId: photo.houseId,
-        fileName: photoFileName(photo.id),
-        createdAt: millisOf(photo.createdAt),
-      })),
+      entry.photos.map((photo) => backupPhoto(photo)),
     ),
     ...(brokers ? { brokers } : {}),
     ...(criteria ? { criteria } : {}),
@@ -367,6 +395,21 @@ export function buildBackupData(bundle: ExportBundle): BackupData {
     ...(areas ? { areas } : {}),
     ...(places ? { places } : {}),
     ...(areaNotes ? { areaNotes } : {}),
+  };
+}
+
+/** `id, houseId, fileName, createdAt`, then the meta keys that are set: `roomId, tags, caption, metaUpdatedAt`. */
+function backupPhoto(photo: PhotoRecord): BackupPhoto {
+  const meta = photoMetaOf(photo);
+  return {
+    id: photo.id,
+    houseId: photo.houseId,
+    fileName: photoFileName(photo.id),
+    createdAt: millisOf(photo.createdAt),
+    ...(meta.roomId ? { roomId: meta.roomId } : {}),
+    ...(meta.tags.length > 0 ? { tags: meta.tags } : {}),
+    ...(meta.caption ? { caption: meta.caption } : {}),
+    ...(meta.metaUpdatedAt > 0 ? { metaUpdatedAt: meta.metaUpdatedAt } : {}),
   };
 }
 
@@ -434,6 +477,8 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     cost: backupCost(house.cost),
     rooms: backupRooms(house.rooms),
     answers: backupAnswers(house.answers),
+    moveIn: backupMoveIn(house.moveIn),
+    floor: house.floor ?? undefined,
     brokerId: house.brokerId ?? undefined,
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
@@ -482,6 +527,11 @@ function backupAnswers(answers: HouseAnswer[] | null | undefined): BackupAnswer[
     status: a.status,
     sort: a.sort,
   }));
+}
+
+/** Moving in in the backup (`cleanMoveIn`): date, notes, items; the object is left out when it has none of them. */
+function backupMoveIn(moveIn: MoveIn | null | undefined): BackupMoveIn | undefined {
+  return cleanMoveIn(moveIn) ?? undefined;
 }
 
 /**

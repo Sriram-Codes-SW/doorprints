@@ -141,6 +141,7 @@ object HtmlWriter {
         if (h.price != null) row(out, s["col.priceType"], s.priceType(h.priceType))
         row(out, s["col.bedrooms"], h.bedrooms?.toString() ?: s["none"])
         if (h.areaSqft != null) row(out, s["col.areaSqft"], h.areaSqft.toString())
+        if (h.floor != null) row(out, s["col.floor"], s.floor(h.floor))
         row(out, s["col.rating"], h.rating?.toString() ?: s["none"])
         row(out, s["col.address"], h.address ?: s["none"])
         row(out, s["col.street"], h.street ?: s["none"])
@@ -211,6 +212,23 @@ object HtmlWriter {
         table(out, s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle))
         table(out, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle))
 
+        // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
+        if (h.moveIn != null) {
+            out.append("<h3>").append(esc(s["section.movingIn"])).append("</h3>\n")
+            val lines = ExportRows.moveInLines(h, bundle)
+            if (lines.isNotEmpty()) {
+                out.append("<dl>\n")
+                for ((term, value) in lines) row(out, term, value)
+                out.append("</dl>\n")
+            }
+            val items = ExportRows.moveInItems(h)
+            if (items.isNotEmpty()) {
+                out.append("<ul class=\"move-in\">\n")
+                for (item in items) out.append("<li>").append(esc(item)).append("</li>\n")
+                out.append("</ul>\n")
+            }
+        }
+
         val keys = ExportRows.orderedChecklistKeys(h)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")
@@ -262,14 +280,16 @@ object HtmlWriter {
             out.append("<h3>").append(esc(s["section.photos"])).append("</h3>\n<div class=\"photos\">\n")
             photos.forEachIndexed { i, p ->
                 val src = photoSrc(p)
+                // Its room, tags and caption (slice 5), those it has, after the file name.
+                val meta = ExportRows.photoLine(p, bundle)?.let { " · $it" }.orEmpty()
                 if (src == null) {
-                    out.append("<p class=\"missing\">").append(esc(p.fileName)).append("</p>\n")
+                    out.append("<p class=\"missing\">").append(esc(p.fileName + meta)).append("</p>\n")
                 } else {
                     // docs/05 section 5: the house's name plus the photo's position, so a screen-reader user
                     // can tell six photos of one house apart ("Sunrise Apartments, Photos 2/6").
                     val alt = "${h.label}, ${s["section.photos"]} ${i + 1}/${photos.size}"
                     out.append("<figure><img src=\"").append(src).append("\" alt=\"")
-                        .append(esc(alt)).append("\"><figcaption>").append(esc(p.fileName))
+                        .append(esc(alt)).append("\"><figcaption>").append(esc(p.fileName + meta))
                         .append("</figcaption></figure>\n")
                 }
             }

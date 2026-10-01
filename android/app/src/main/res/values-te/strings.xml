@@ -28,6 +28,8 @@
     <string name="status_NEW">కొత్తది</string>
     <string name="status_SHORTLISTED">ఎంపికైంది</string>
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
+    <string name="status_TAKEN">తీసుకున్నాం</string>
+    <string name="status_NOT_CHOSEN">ఎంచుకోలేదు</string>
     <string name="notif_channel_hunt">హంట్ మోడ్</string>
     <string name="notif_channel_hunt_desc">Doorprints మీ నడకను ట్రాక్ చేస్తున్నప్పుడు కనిపిస్తుంది</string>
     <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>
@@ -129,4 +131,8 @@
     <string name="notif_hunt_reminder">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో. హంట్ మోడ్ ప్రారంభించాలా?</string>
     <string name="notif_hunt_reminder_start">హంట్ మోడ్ ప్రారంభించండి</string>
     <string name="notif_hunt_reminder_dismiss">తీసివేయండి</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="notif_channel_area_wakeup">ప్రాంత మేల్కొలుపు</string>
+    <string name="notif_channel_area_wakeup_desc">మీ వెతుకులాట ప్రాంతాల్లో ఒకదానికి చేరినప్పుడు హంట్ మోడ్ సూచన</string>
+    <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
 </resources>

@@ -68,7 +68,7 @@ object CopyImportUndo {
             var result = CopyUndoOutcome(record.runId, 0, 0, failed = true)
             try {
                 val repository = app.container.repository
-                val done = repository.undoCopyImport(record.houses, record.visits, record.photos)
+                val done = repository.undoCopyImport(record.houses, record.visits, record.photos, record.records)
                 if (done.keptHouses.isEmpty()) {
                     ImportUndo.delete(app, record.runId)
                 } else if (!ImportUndo.save(app, record.keptOnly(done.keptHouses))) {

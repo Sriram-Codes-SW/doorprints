@@ -20,6 +20,7 @@ package app.doorprints
 
 import android.app.Application
 import android.content.res.Configuration
+import androidx.annotation.VisibleForTesting
 import androidx.work.Configuration as WorkConfiguration
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.create
@@ -33,6 +34,7 @@ import app.doorprints.i18n.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -47,6 +49,9 @@ class AppContainer(app: DoorprintsApp) {
 
     /** The viewing reminders' alarms (docs/11 5.8, slice 3b-2). */
     val reminders = ViewingReminderScheduler(app, repository)
+
+    /** The area wake-up's geofences (docs/11 slice 4b), with Play services' Geofencing API. */
+    val areaWakeup = AreaGeofenceManager(repository, PlayGeofenceRegistrar(app)) { hasAreaWakeupPermissions(app) }
 
     /** What the common screens in :ui need from the app (ADR-23 CMP-5), provided by ProvideAppServices. */
     val services = AndroidAppServices(app, repository)
@@ -86,7 +91,8 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
      * edits, an import or a sync is one reschedule a second later. The records table tells Room about every record type's writes, so equal lists are skipped first.
      */
     @OptIn(FlowPreview::class)
-    private fun watchViewingReminders() {
+    @VisibleForTesting
+    internal fun watchViewingReminders(): Job =
         appScope.launch {
             val settings = container.settings
             combine(
@@ -96,6 +102,14 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
                 .debounce(REMINDER_DEBOUNCE_MS)
                 .collect { runCatching { container.reminders.rescheduleAll() } }
         }
+
+    /**
+     * The area wake-up's geofences (slice 4b) are set at start (the first emission) and after every change of the areas
+     * or of *Wake me in my hunting areas*, a second after a burst, as the reminders above. Nothing without Play services.
+     */
+    private fun watchAreaWakeup() {
+        if (!hasPlayServices(this)) return
+        appScope.launch { container.areaWakeup.watch() }
     }
 
     /** Platform services and start-up work; the data container above is all the screens need. */
@@ -110,6 +124,7 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         // Settings' "Save and test" and the Assistant's "Try again" ask again; see Repository.refreshAiStatus.
         appScope.launch { runCatching { container.repository.refreshAiStatus() } }
         watchViewingReminders()
+        watchAreaWakeup()
         appScope.launch {
             runCatching {
                 // The weekly backup (S4-07) is re-registered on every start: WorkManager keeps periodic work

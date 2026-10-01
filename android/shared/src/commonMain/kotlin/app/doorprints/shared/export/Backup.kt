@@ -58,17 +58,23 @@ object BackupFormat {
     /** The format that adds the `brokers` list (slice 1b). */
     const val ID_2 = "doorprints-backup/2"
 
+    /** The format that adds an update file's `deleted` list (S4b-BL-82); written only when an update carries one. */
+    const val ID_3 = "doorprints-backup/3"
+
     /**
      * The format a copy is written in: `/2` only when it holds a broker, a room (slice 1c), a criterion or a preference
-     * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), or an area, a place or an area
-     * note (slice 4a); else `/1`, byte for byte as before.
+     * (slice 2), a question or a house with answers (slice 3a), a viewing (slice 3b-1), an area, a place or an area
+     * note (slice 4a), or [slice5]: a house TAKEN or NOT_CHOSEN, a house with a move-in or a photo with meta
+     * ([ExportBundle.hasSlice5]), or a house with a floor ([floors], S4b-BL-87); else `/1`, byte for byte as before. An
+     * update file with [deletions] (S4b-BL-82) is `/3`.
      */
     fun idFor(
         brokers: Int, rooms: Int = 0, criteria: Int = 0, preferences: Int = 0, questions: Int = 0, answers: Int = 0,
-        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0,
+        viewings: Int = 0, areas: Int = 0, places: Int = 0, areaNotes: Int = 0, slice5: Boolean = false, floors: Int = 0,
+        deletions: Int = 0,
     ): String =
-        if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0 ||
-            areas > 0 || places > 0 || areaNotes > 0
+        if (deletions > 0) ID_3 else if (brokers > 0 || rooms > 0 || criteria > 0 || preferences > 0 || questions > 0 || answers > 0 || viewings > 0 ||
+            areas > 0 || places > 0 || areaNotes > 0 || slice5 || floors > 0
         ) ID_2 else ID
 
     /**
@@ -76,7 +82,7 @@ object BackupFormat {
      * app refuses a newer file with "update the app" instead of dropping its lists in silence, while a `/2` file
      * without the lists this app knows reads fine (unknown keys are ignored). One constant per stack.
      */
-    const val MAX_VERSION = 2
+    const val MAX_VERSION = 3
 
     private const val FAMILY = "doorprints-backup/"
 
@@ -137,6 +143,8 @@ data class BackupCounts(
     val areas: Int? = null,
     val places: Int? = null,
     val areaNotes: Int? = null,
+    /** S4b-BL-82, after `areaNotes`: present only when an update file has a `deleted` list. */
+    val deleted: Int? = null,
 ) {
     companion object {
         fun of(data: BackupData): BackupCounts = BackupCounts(
@@ -149,6 +157,7 @@ data class BackupCounts(
             areas = data.areas?.size,
             places = data.places?.size,
             areaNotes = data.areaNotes?.size,
+            deleted = data.deleted?.size,
         )
     }
 }
@@ -213,7 +222,12 @@ data class BackupData(
     val areas: List<ExportArea>? = null,
     val places: List<ExportPlace>? = null,
     val areaNotes: List<ExportAreaNote>? = null,
+    /** `/3` only (S4b-BL-82), after `areaNotes`: an update file's deletions, null when it has none, like [brokers]. */
+    val deleted: List<ExportDeletion>? = null,
 ) {
+    /** The deletions of the file, none when it has no list. */
+    val deletedRows: List<ExportDeletion> get() = deleted.orEmpty()
+
     /** The brokers of the file, none when it has no list. */
     val brokerRows: List<ExportBroker> get() = brokers.orEmpty()
 
@@ -259,7 +273,8 @@ data class BackupData(
                 format = BackupFormat.idFor(
                     bundle.brokers.size, bundle.houses.sumOf { it.rooms?.size ?: 0 }, bundle.criteria.size,
                     bundle.preferences.size, bundle.questions.size, bundle.houses.sumOf { it.answers?.size ?: 0 },
-                    bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size,
+                    bundle.viewings.size, bundle.areas.size, bundle.places.size, bundle.areaNotes.size, bundle.hasSlice5,
+                    bundle.houses.count { it.floor != null }, bundle.deletions.size,
                 ),
                 exportedAt = bundle.options.exportedAtMillis,
                 houses = bundle.houses.map { it.withSortedChecklist() },
@@ -274,6 +289,7 @@ data class BackupData(
                 areas = bundle.areas.takeIf { it.isNotEmpty() },
                 places = bundle.places.takeIf { it.isNotEmpty() },
                 areaNotes = bundle.areaNotes.takeIf { it.isNotEmpty() },
+                deleted = bundle.deletions.takeIf { it.isNotEmpty() },
             )
         }
 
@@ -311,6 +327,13 @@ enum class BackupProblem {
     WRITE_FAILED,
 }
 
+/**
+ * The problem a worker reported by name (Android's WorkManager output; common since S4b-BL-76); anything unrecognised is
+ * treated as "not a backup".
+ */
+fun backupProblemOf(name: String?): BackupProblem =
+    BackupProblem.entries.firstOrNull { it.name == name } ?: BackupProblem.NOT_A_BACKUP
+
 /** Structural checks that do not need the ZIP itself; the platform reader adds the size and path checks. */
 object BackupValidation {
 
@@ -320,7 +343,8 @@ object BackupValidation {
             (manifest.counts.brokers ?: 0) < 0 || (manifest.counts.criteria ?: 0) < 0 ||
             (manifest.counts.preferences ?: 0) < 0 || (manifest.counts.questions ?: 0) < 0 ||
             (manifest.counts.viewings ?: 0) < 0 || (manifest.counts.areas ?: 0) < 0 ||
-            (manifest.counts.places ?: 0) < 0 || (manifest.counts.areaNotes ?: 0) < 0 -> BackupProblem.BROKEN_DATA
+            (manifest.counts.places ?: 0) < 0 || (manifest.counts.areaNotes ?: 0) < 0 ||
+            (manifest.counts.deleted ?: 0) < 0 -> BackupProblem.BROKEN_DATA
         else -> null
     }
 
@@ -377,7 +401,26 @@ object BackupValidation {
             BackupProblem.BROKEN_DATA
         !recordsAreValid(data.areaNoteRows, AreaNote.MAX_NOTES, { it.id }, { it.updatedAt }) { it.toAreaNote().isValid } ->
             BackupProblem.BROKEN_DATA
+        // Slice 5: a move-in with a date not > 0, notes over 2000, a 31st item, or an item with a bad or repeated id, a
+        // blank or over-long text or a negative sort refuses the whole file; so does a photo whose meta has a room id
+        // over 64 characters (or empty), more than 10 tags, a tag over 30 characters, a repeated tag (ignoring case), a
+        // custom tag equal to a fixed key (any case), a caption over 200 or a negative `metaUpdatedAt`.
+        data.houses.any { h -> h.moveIn?.isValid == false } -> BackupProblem.BROKEN_DATA
+        data.photos.any { !it.rawMeta.isValid } -> BackupProblem.BROKEN_DATA
+        // S4b-BL-82: a deletion with a blank or over-long kind, a bad id, a negative time, a (kind, id) twice, a house
+        // that the same file also carries live, or more than 20,000 of them refuses the whole file.
+        !deletionsAreValid(data) -> BackupProblem.BROKEN_DATA
         else -> null
+    }
+
+    private fun deletionsAreValid(data: BackupData): Boolean {
+        val rows = data.deletedRows
+        if (rows.isEmpty()) return true
+        val live = data.houses.mapTo(HashSet()) { it.id }
+        return rows.size <= ExportDeletion.MAX &&
+            rows.all { it.kind.isNotBlank() && it.kind.length <= 32 && isValidId(it.id) && it.updatedAt >= 0 } &&
+            rows.map { it.kind to it.id }.toSet().size == rows.size &&
+            rows.none { it.kind == ExportDeletion.HOUSE && it.id in live }
     }
 
     private fun <T> recordsAreValid(

@@ -72,6 +72,12 @@ public class House {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String answers;
+    /** Slice 5 (V11): the {@link HouseMoveIn} object as compact JSON text, null for none; stored as sent. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String moveIn;
+    /** S4b-BL-87 (V13): the floor the flat is on, {@link #MIN_FLOOR}..{@link #MAX_FLOOR} with 0 the ground floor. */
+    private Integer floor;
     /** Slice 1b (V8): the id of the house's broker, a record of type {@code broker}. No foreign key: it may dangle. */
     private String brokerId;
 
@@ -90,6 +96,10 @@ public class House {
     @Column(nullable = false)
     private long syncVersion;
 
+    /** The floor's range (S4b-BL-87), the clients' {@code HouseValues.floor}: a basement level down to -5. */
+    public static final int MIN_FLOOR = -5;
+    public static final int MAX_FLOOR = 200;
+
     protected House() {
     }
 
@@ -99,7 +109,7 @@ public class House {
 
     /**
      * Keeps only what a tombstone needs (id, deleted, timestamps, sync version) and drops the content: notes, contact
-     * details, prices, the slice 1a values (area, location source, cost, broker), the rooms, the answers and the checklist (threat model F-16,
+     * details, prices, the slice 1a values (area, location source, cost, broker), the rooms, the answers, the move-in, the floor and the checklist (threat model F-16,
      * PRV-005). The location stays because the columns are NOT NULL, but it is reset to 0,0.
      */
     public void purgeContent() {
@@ -122,6 +132,8 @@ public class House {
         cost = null;
         rooms = null;
         answers = null;
+        moveIn = null;
+        floor = null;
         brokerId = null;
         checklist.clear();
     }
@@ -167,6 +179,10 @@ public class House {
     public void setRooms(String rooms) { this.rooms = rooms; }
     public String getAnswers() { return answers; }
     public void setAnswers(String answers) { this.answers = answers; }
+    public String getMoveIn() { return moveIn; }
+    public void setMoveIn(String moveIn) { this.moveIn = moveIn; }
+    public Integer getFloor() { return floor; }
+    public void setFloor(Integer floor) { this.floor = floor; }
     public String getBrokerId() { return brokerId; }
     public void setBrokerId(String brokerId) { this.brokerId = brokerId; }
     public Map<String, Integer> getChecklist() { return checklist; }

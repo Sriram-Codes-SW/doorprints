@@ -28,6 +28,8 @@
     <string name="status_NEW">नया</string>
     <string name="status_SHORTLISTED">चुना गया</string>
     <string name="status_REJECTED">अस्वीकृत</string>
+    <string name="status_TAKEN">ले लिया</string>
+    <string name="status_NOT_CHOSEN">नहीं चुना</string>
     <string name="notif_channel_hunt">हंट मोड</string>
     <string name="notif_channel_hunt_desc">जब Doorprints आपकी सैर पर नज़र रखता है तब दिखता है</string>
     <string name="notif_channel_alerts">मकान और सड़क की सूचनाएँ</string>
@@ -129,4 +131,8 @@
     <string name="notif_hunt_reminder">%1$s में मकान देखना %2$d मिनट में। हंट मोड शुरू करें?</string>
     <string name="notif_hunt_reminder_start">हंट मोड शुरू करें</string>
     <string name="notif_hunt_reminder_dismiss">हटाएँ</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="notif_channel_area_wakeup">इलाक़े में जगाना</string>
+    <string name="notif_channel_area_wakeup_desc">जब आप अपने किसी खोज वाले इलाक़े में पहुँचें, हंट मोड का सुझाव</string>
+    <string name="notif_area_wakeup">आप %1$s में हैं। हंट मोड शुरू करें?</string>
 </resources>

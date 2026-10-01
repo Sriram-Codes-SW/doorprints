@@ -86,4 +86,24 @@ class HouseRoomsTest {
             HouseRoom(".."), HouseRoom("a/b"), HouseRoom(""),
         )) assertFalse(bad.isValid, bad.toString())
     }
+
+    /**
+     * Moving a room (S4b-BL-87): the same vectors as `room-sizes.spec.ts` ("moveRoom"), as (rooms, id, by) to the ids
+     * in the new order; every result is renumbered 0..n-1.
+     */
+    @Test fun movingARoomSwapsItWithItsNeighbourAndRenumbers() {
+        val rooms = listOf(HouseRoom("c", sort = 5), HouseRoom("a", sort = 0), HouseRoom("b", sort = 1))
+        val vectors = listOf(
+            Triple("b", -1, "b,a,c"), Triple("b", 1, "a,c,b"), Triple("a", -1, "a,b,c"),
+            Triple("c", 1, "a,b,c"), Triple("x", 1, "a,b,c"), Triple("c", -2, "c,a,b"),
+        )
+        for ((id, by, expected) in vectors) {
+            val moved = HouseRooms.move(rooms, id, by)
+            assertEquals(expected, moved.joinToString(",") { it.id }, "$id by $by")
+            assertEquals(listOf(0, 1, 2), moved.map { it.sort })
+        }
+        // A tie on sort is broken by the id, as the order shown is.
+        assertEquals(listOf("y", "x"), HouseRooms.move(listOf(HouseRoom("y"), HouseRoom("x")), "y", -1).map { it.id })
+        assertEquals(emptyList(), HouseRooms.move(emptyList(), "a", 1))
+    }
 }

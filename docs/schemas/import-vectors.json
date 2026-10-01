@@ -1,0 +1,1404 @@
+{
+ "format": "doorprints-import-vectors/1",
+ "note": "Shared by android/shared ImportVectorsTest, android/app BackupReaderParityTest and web backup-import.spec.ts (docs/schemas/README.md section 6.1). Stamps are in the past (2026-05-28).",
+ "checks": [
+  {
+   "name": "a /1 file with one house",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
+  },
+  {
+   "name": "a /2 file with a broker",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000,
+      "brokerId": "b1"
+     }
+    ],
+    "visits": [],
+    "photos": [],
+    "brokers": [
+     {
+      "id": "b1",
+      "name": "Ravi",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": null
+  },
+  {
+   "name": "a /3 update file with a deletion",
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h9",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": null
+  },
+  {
+   "name": "a deletion of an unknown kind is read and ignored",
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "visit",
+      "id": "v9",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": null
+  },
+  {
+   "name": "a newer format asks to update the app",
+   "data": {
+    "format": "doorprints-backup/4",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "UNSUPPORTED_VERSION"
+  },
+  {
+   "name": "the same house id twice",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     },
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a house id that is a path",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "../h1",
+      "label": "House ../h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a house without lat",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a house with a null status",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": null,
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a null checklist reads as no scores",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": null,
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": null
+  },
+  {
+   "name": "a photo without a house",
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [
+     {
+      "id": "p1",
+      "houseId": "",
+      "fileName": "p1.jpg",
+      "createdAt": 1779999999900
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a broker with a blank name",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "brokers": [
+     {
+      "id": "b1",
+      "name": " ",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a room longer than 50 m",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000,
+      "rooms": [
+       {
+        "id": "r1",
+        "type": "HALL",
+        "lengthCm": 9999,
+        "sort": 0
+       }
+      ]
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a built-in criterion with a label",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "criteria": [
+     {
+      "key": "water",
+      "label": "Water",
+      "weight": 2,
+      "mustHave": false,
+      "minScore": 3,
+      "sort": 0,
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a viewing of two minutes",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "viewings": [
+     {
+      "id": "v_1",
+      "houseId": "h1",
+      "startsAt": 1780000000000,
+      "durationMin": 2,
+      "kind": "FIRST",
+      "status": "PLANNED",
+      "remindMin": 60,
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "an area of 100 m",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "areas": [
+     {
+      "id": "a_1",
+      "name": "Koramangala",
+      "lat": 12.93,
+      "lon": 77.62,
+      "radiusM": 100,
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "an area note with two targets",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "areaNotes": [
+     {
+      "id": "n_1",
+      "areaId": "a_1",
+      "street": "MG Road",
+      "text": "Busy",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a photo with eleven tags",
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": [
+     {
+      "id": "p1",
+      "houseId": "h1",
+      "fileName": "p1.jpg",
+      "createdAt": 1779999999900,
+      "tags": [
+       "t0",
+       "t1",
+       "t2",
+       "t3",
+       "t4",
+       "t5",
+       "t6",
+       "t7",
+       "t8",
+       "t9",
+       "t10"
+      ]
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a deletion of a house the file also has",
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h1",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "the same deletion twice",
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h9",
+      "updatedAt": 1780000000000
+     },
+     {
+      "kind": "house",
+      "id": "h9",
+      "updatedAt": 1780000000001
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  },
+  {
+   "name": "a deletion with a bad id",
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "a/b",
+      "updatedAt": 1780000000000
+     }
+    ]
+   },
+   "problem": "BROKEN_DATA"
+  }
+ ],
+ "merges": [
+  {
+   "name": "new, newer in the file and newer here",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000100,
+     "h3": 1780000000300
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000200
+     },
+     {
+      "id": "h2",
+      "label": "House h2",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     },
+     {
+      "id": "h3",
+      "label": "House h3",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "newHouses": 1,
+    "updatedHouses": 1,
+    "newerHereHouses": 1,
+    "unchangedHouses": 0
+   }
+  },
+  {
+   "name": "the same file twice changes nothing",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "newHouses": 0,
+    "updatedHouses": 0,
+    "unchangedHouses": 1,
+    "isEmpty": true
+   }
+  },
+  {
+   "name": "a house deleted here stays deleted",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000200
+    },
+    "deletedHouses": [
+     "h1"
+    ],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "deletedHereHouses": 1,
+    "restoredHouses": 0,
+    "isEmpty": true
+   }
+  },
+  {
+   "name": "a house deleted here comes back when asked",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": true,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000200
+    },
+    "deletedHouses": [
+     "h1"
+    ],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000100
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "deletedHereHouses": 0,
+    "restoredHouses": 1
+   }
+  },
+  {
+   "name": "visits and photos land with their house",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [
+    "photos/p1.jpg"
+   ],
+   "local": {
+    "houses": {},
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [
+     {
+      "id": "v1",
+      "houseId": "h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "arrivedAt": 1779999999500,
+      "source": "MANUAL",
+      "updatedAt": 1780000000000
+     },
+     {
+      "id": "v2",
+      "houseId": "hx",
+      "lat": 12.97,
+      "lon": 77.59,
+      "arrivedAt": 1779999999500,
+      "source": "MANUAL",
+      "updatedAt": 1780000000000
+     },
+     {
+      "id": "v3",
+      "lat": 12.97,
+      "lon": 77.59,
+      "arrivedAt": 1779999999500,
+      "source": "MANUAL",
+      "updatedAt": 1780000000000
+     }
+    ],
+    "photos": [
+     {
+      "id": "p1",
+      "houseId": "h1",
+      "fileName": "p1.jpg",
+      "createdAt": 1779999999900
+     },
+     {
+      "id": "p2",
+      "houseId": "h1",
+      "fileName": "p2.jpg",
+      "createdAt": 1779999999900
+     }
+    ]
+   },
+   "expect": {
+    "newHouses": 1,
+    "newVisits": 2,
+    "newPhotos": 1,
+    "photosMissingFromFile": 1,
+    "skippedPhotos": 0
+   }
+  },
+  {
+   "name": "keep mine leaves a newer row alone",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": true,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000200
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "updatedHouses": 0,
+    "keptMineHouses": 1,
+    "isEmpty": true
+   }
+  },
+  {
+   "name": "a newer row without scores clears them",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [
+     "h1"
+    ],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000200
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "updatedHouses": 1,
+    "checklistsCleared": 1
+   }
+  },
+  {
+   "name": "brokers merge by id",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {},
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {
+     "b1": 1780000000100
+    },
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "brokers": [
+     {
+      "id": "b1",
+      "name": "Ravi",
+      "updatedAt": 1780000000200
+     },
+     {
+      "id": "b2",
+      "name": "Meena",
+      "updatedAt": 1780000000100
+     }
+    ]
+   },
+   "expect": {
+    "newBrokers": 1,
+    "updatedBrokers": 1
+   }
+  },
+  {
+   "name": "viewings merge by id",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000000
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {
+     "v_1": 1780000000100
+    }
+   },
+   "data": {
+    "format": "doorprints-backup/2",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": [],
+    "viewings": [
+     {
+      "id": "v_1",
+      "houseId": "h1",
+      "startsAt": 1780000000000,
+      "durationMin": 30,
+      "kind": "FIRST",
+      "status": "PLANNED",
+      "remindMin": 60,
+      "updatedAt": 1780000000200
+     }
+    ]
+   },
+   "expect": {
+    "unchangedHouses": 1,
+    "updatedViewings": 1,
+    "newViewings": 0
+   }
+  },
+  {
+   "name": "a copy adds everything under new ids",
+   "mode": "COPY",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h1": 1780000000000
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/1",
+    "exportedAt": 1780000000000,
+    "houses": [
+     {
+      "id": "h1",
+      "label": "House h1",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     },
+     {
+      "id": "h2",
+      "label": "House h2",
+      "lat": 12.97,
+      "lon": 77.59,
+      "status": "NEW",
+      "checklist": {},
+      "createdAt": 1779999999000,
+      "updatedAt": 1780000000000
+     }
+    ],
+    "visits": [],
+    "photos": []
+   },
+   "expect": {
+    "newHouses": 2,
+    "updatedHouses": 0
+   },
+   "duplicates": 1
+  },
+  {
+   "name": "an update deletes a house that is older here",
+   "mode": "MERGE",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 1,
+    "isEmpty": false
+   }
+  },
+  {
+   "name": "an update keeps a house edited here after the delete",
+   "mode": "MERGE",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000400
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0,
+    "isEmpty": true
+   }
+  },
+  {
+   "name": "a restore ignores the deletions",
+   "mode": "MERGE",
+   "update": false,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0,
+    "isEmpty": true
+   }
+  },
+  {
+   "name": "keep mine ignores the deletions",
+   "mode": "MERGE",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": true,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0
+   }
+  },
+  {
+   "name": "a copy ignores the deletions",
+   "mode": "COPY",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000100
+    },
+    "deletedHouses": [],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0
+   }
+  },
+  {
+   "name": "a house already deleted here is not deleted again",
+   "mode": "MERGE",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {
+     "h5": 1780000000100
+    },
+    "deletedHouses": [
+     "h5"
+    ],
+    "visits": {},
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "house",
+      "id": "h5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0
+   }
+  },
+  {
+   "name": "a deletion of another kind is ignored",
+   "mode": "MERGE",
+   "update": true,
+   "restoreDeleted": false,
+   "skipUpdates": false,
+   "photoEntries": [],
+   "local": {
+    "houses": {},
+    "deletedHouses": [],
+    "visits": {
+     "v5": 1780000000100
+    },
+    "photoIds": [],
+    "scoredHouses": [],
+    "unlinkedVisits": [],
+    "brokers": {},
+    "viewings": {}
+   },
+   "data": {
+    "format": "doorprints-backup/3",
+    "exportedAt": 1780000000000,
+    "houses": [],
+    "visits": [],
+    "photos": [],
+    "deleted": [
+     {
+      "kind": "visit",
+      "id": "v5",
+      "updatedAt": 1780000000300
+     }
+    ]
+   },
+   "expect": {
+    "removedHouses": 0,
+    "isEmpty": true
+   }
+  }
+ ],
+ "archives": [
+  {
+   "name": "a stored backup",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [
+    "photos/p1.jpg"
+   ],
+   "photoOk": true,
+   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxgDcQdLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XGANxB0sAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAAC+BAAAAAA="
+  },
+  {
+   "name": "a deflated backup",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [
+    "photos/p1.jpg"
+   ],
+   "photoOk": true,
+   "base64": "UEsDBBQAAAAIAABQvFz3L0pwuAAAAC8BAAAJAAAAZGF0YS5qc29udY67DoJAEEV/xUyNKCZmhc7CRBtaC2OxwCIrC7PZhzEh/LuzaIiFTjWPO/eeAWo0HXeQQYVotJG9s8uCl63XqwQiEE+NxolqT5KE7dZzRdCgt8JCdhlAVmTQBL3ihVA0HMNx8VmF302cMuqxh4yxeJtGYB13nv4hP5xJVjaibJW0JB5GGo3gcy5L3zXlel3xX0TjNYKHtNIFJup1gw6/+HSAmaBPM24tlch5J6ZzfNc3+JOcBv/xBVBLAwQUAAAACAAAULxcYA3EHRMBAAAsAQAADQAAAHBob3Rvcy9wMS5qcGdjkLeLrZm96+YPcbPQksmbLn7g1/PN6V518gW7mmtK86KDD/7L2cZUz9p547uYaUjxpI0X3vPp+mR3rTzxnE3VJblp4YH7/2Rtoqtm7rj+TdQkuGjihvPveHW8szpXHH/GquKc1Lhg/72/MtZRlTO2X/sqYhxUOGH9ubc82l6ZHcuPPWVRdkpsmL/v7h9pq8iK6duufhE2CizoX3f2DbeWZ0b7sqNPmJUcE+rn7b3zW8oyonza1iufhQwD8vvWnnnNpemR3rb0yGMmRYf4url7bv+StAgvm7rl8idBA/+83jWnX3FquKe1Ljn8iFHBPq52zu5bPyXMw0qnbL70UUDfL7dn9amXHOpuqS2LDz1kIMH/AFBLAwQUAAAACAAAULxczYYUozgBAADmAQAADQAAAG1hbmlmZXN0Lmpzb25tj8FOwzAQRP/F5zRd203i5Fbg2BMgDiAOG3vdpJTYShwkqPLv2LSqEELywTP7tDN7YtaN7xhYw4xzox/7IUyrFvXb7NecZQy9j7O76+xsPdE49W6IE55DDtHUI2Egs02bBIhyBcVKqEcODaT3HJEjDvsZ9xQJGqKetPNJbHe7qPpBH2dD93QgHRexJowzZcx3LriH/8hbNwTUsdGF1G5O/ZoT69w8UfzxjH30U59MuGxK7pIx2x8T8HJiHkOXjseA+WFyP736L7r5DAmQIKPuUBRlggTnldHSqErKTclrqrWSLSireG1aS9KWhaBWGxAKOZXacsQWlRWqMFayJbsGntusPc8Pfv83FH6FKiGEogpK0yIYYyvBZYyHjYl5osRaVyAQFZREdS1alBBpLXStC4ka2fK6fANQSwECFAMUAAAACAAAULxc9y9KcLgAAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAgAAFC8XGANxB0TAQAALAEAAA0AAAAAAAAAAAAAAIAB3wAAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAACAAAULxczYYUozgBAADmAQAADQAAAAAAAAAAAAAAgAEdAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAACAAwAAAAA="
+  },
+  {
+   "name": "an update file says who it is for",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [],
+   "sharedTo": "Priya",
+   "update": true,
+   "base64": "UEsDBBQAAAAIAABQvFyrQo8FswAAACgBAAAJAAAAZGF0YS5qc29ufY4/D8IgEMW/irkZq9UYpJuDiZOrg3GgBQMpFsIfY9L0u3u0TSfjTe/gvXu/Hp7Wv3iECoS13nndxbCuedMmt9kDAflx1kcpTmgp6XG7DAFlU5ABqnsPWuABVaLf8FoaXC75czU/5eyuYBS17aCitDgwAiHymDAP1/MNbY2STWt0QHM/4OolX3opm2bsTU7wX0TDg8BbBx0zE2qnbLSzFtJIzIywre5G3EyIvRM7g3+Hhy9QSwMEFAAAAAgAAFC8XCtdfrgeAQAAtQEAAA0AAABtYW5pZmVzdC5qc29ubZDLTsMwEEX/xeu0+EGcx67AsgtEKxYgFhNn0riE2HIcpFL13xm3FeoCyYu5d47ujOfIOhe+ILKatc4FH+wYp0UD5nP2d4plDLyn3tNf72K9YpisG6kjlnzJyTQBIWK7SkmSS73g+UKWW8Frnt4bIQOMuxl2SASOpCfjfBKr9ZqUHc0wt/iCezQUxOoYZsyY7110m//IRzdGMLTRlTRuTvvVR9a7eUKqRMa+7WSTya9Jl7LFAc8zxCljnR0S/H5kHmKfDgERlvvJnXe0P/hwiAmQlSbdg8w1QbnUGqARFXKQBeRClc19UyI3usgVz7FSFVeIBZAuVKW7RnIsSiMaJUpVsNPHOS1gu6EP4e3Z+JbfnO0CbR0Rz8EegJ1+AVBLAQIUAxQAAAAIAABQvFyrQo8FswAAACgBAAAJAAAAAAAAAAAAAACAAQAAAABkYXRhLmpzb25QSwECFAMUAAAACAAAULxcK11+uB4BAAC1AQAADQAAAAAAAAAAAAAAgAHaAAAAbWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHIAAAAjAgAAAAA="
+  },
+  {
+   "name": "a photo whose bytes do not match is skipped",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [
+    "photos/p1.jpg"
+   ],
+   "photoOk": false,
+   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxNMKkVLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWeFBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XE0wqRUsAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLBQYAAAAAAwADAK0AAAC+BAAAAAA="
+  },
+  {
+   "name": "data.json that does not match the manifest",
+   "problem": "CHECKSUM_MISMATCH",
+   "base64": "UEsDBBQAAAAAAABQvFzV4sXKMAEAADABAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19IFBLAwQUAAAAAAAAULxchtWkz3EBAABxAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9XX1QSwECFAMUAAAAAAAAULxc1eLFyjABAAAwAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XIbVpM9xAQAAcQEAAA0AAAAAAAAAAAAAAIABVwEAAG1hbmlmZXN0Lmpzb25QSwUGAAAAAAIAAgByAAAA8wIAAAAA"
+  },
+  {
+   "name": "an entry outside the archive",
+   "problem": "SUSPICIOUS_PATH",
+   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsDBBQAAAAAAABQvFxgDcQdLAEAACwBAAANAAAAcGhvdG9zL3AxLmpwZwAfPl18m7rZ+Bc2VXSTstHwDy5NbIuqyegHJkVkg6LB4P8ePVx7mrnY9xY1VHOSsdDvDi1Ma4qpyOcGJURjgqHA3/4dPFt6mbjX9hU0U3KRsM/uDSxLaomox+YFJENigaC/3v0cO1p5mLfW9RQzUnGQr87tDCtKaYinxuUEI0JhgJ++3fwbOll4l7bV9BMyUXCPrs3sCypJaIemxeQDIkFgf5693PsaOVh3lrXU8xIxUG+OrczrCilIZ4alxOMCIUBffp282/oZOFd2lbTT8hEwT26NrMvqCShHZoWkw+IBID9efZy72vkYN1Z1lLPS8RAvTm2Mq8rpCCdGZYSjwuEAHz5dfJu62fgXNlV0k7LR8A8uTWyLqsnoByZFZIOiweD/Hj1ce5q52PcWNVBLAwQUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAG1hbmlmZXN0Lmpzb257ImZvcm1hdCI6ImRvb3JwcmludHMtYmFja3VwLzEiLCJhcHAiOiJEb29ycHJpbnRzIiwiYXBwVmVyc2lvbiI6IjEuMC4wIiwiY3JlYXRlZEF0IjoiMjAyNi0wNS0yOFQxMDowMDowMFoiLCJsYW5ndWFnZSI6ImVuIiwic2NvcGUiOiJBTEwiLCJpbmNsdWRlUmVqZWN0ZWQiOnRydWUsInBob3RvU2NvcGUiOiJBTEwiLCJpbmNsdWRlQ29udGFjdHMiOnRydWUsImNvdW50cyI6eyJob3VzZXMiOjEsInZpc2l0cyI6MCwicGhvdG9zIjoxfSwiZmlsZXMiOlt7InBhdGgiOiJkYXRhLmpzb24iLCJzaXplQnl0ZXMiOjMwMywic2hhMjU2IjoiZDIxMTdkYzNkODczMzQ2MTllOWM4M2IwOGY4MTlkYmZlM2Y2NTJlYmNkMDI4YTFlNmNmMWFhYmE4ZjI4NWRmMyJ9LHsicGF0aCI6InBob3Rvcy9wMS5qcGciLCJzaXplQnl0ZXMiOjMwMCwic2hhMjU2IjoiODIyMjhlNzA2ZGJhMGRkZjcyMTM3MzMwNGRmZTMyNmE5YzcwMmFhODA2ZWU5OTJiYTMwZTcwYzJjOWM1M2FjYSJ9XX1QSwMEFAAAAAAAAFC8XIMW3IwBAAAAAQAAAAsAAAAuLi9ldmlsLnR4dHhQSwECFAMUAAAAAAAAULxc9y9KcC8BAAAvAQAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XGANxB0sAQAALAEAAA0AAAAAAAAAAAAAAIABVgEAAHBob3Rvcy9wMS5qcGdQSwECFAMUAAAAAAAAULxczYYUo+YBAADmAQAADQAAAAAAAAAAAAAAgAGtAgAAbWFuaWZlc3QuanNvblBLAQIUAxQAAAAAAABQvFyDFtyMAQAAAAEAAAALAAAAAAAAAAAAAACAAb4EAAAuLi9ldmlsLnR4dFBLBQYAAAAABAAEAOYAAADoBAAAAAA="
+  },
+  {
+   "name": "a backslash in a name",
+   "problem": "SUSPICIOUS_PATH",
+   "base64": "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"
+  },
+  {
+   "name": "a ZIP without a manifest",
+   "problem": "NOT_A_BACKUP",
+   "base64": "UEsDBBQAAAAAAABQvFz3L0pwLwEAAC8BAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19UEsBAhQDFAAAAAAAAFC8XPcvSnAvAQAALwEAAAkAAAAAAAAAAAAAAIABAAAAAGRhdGEuanNvblBLBQYAAAAAAQABADcAAABWAQAAAAA="
+  },
+  {
+   "name": "a ZIP without data.json",
+   "problem": "NOT_A_BACKUP",
+   "base64": "UEsDBBQAAAAAAABQvFyG1aTPcQEAAHEBAAANAAAAbWFuaWZlc3QuanNvbnsiZm9ybWF0IjoiZG9vcnByaW50cy1iYWNrdXAvMSIsImFwcCI6IkRvb3JwcmludHMiLCJhcHBWZXJzaW9uIjoiMS4wLjAiLCJjcmVhdGVkQXQiOiIyMDI2LTA1LTI4VDEwOjAwOjAwWiIsImxhbmd1YWdlIjoiZW4iLCJzY29wZSI6IkFMTCIsImluY2x1ZGVSZWplY3RlZCI6dHJ1ZSwicGhvdG9TY29wZSI6IkFMTCIsImluY2x1ZGVDb250YWN0cyI6dHJ1ZSwiY291bnRzIjp7ImhvdXNlcyI6MSwidmlzaXRzIjowLCJwaG90b3MiOjF9LCJmaWxlcyI6W3sicGF0aCI6ImRhdGEuanNvbiIsInNpemVCeXRlcyI6MzAzLCJzaGEyNTYiOiJkMjExN2RjM2Q4NzMzNDYxOWU5YzgzYjA4ZjgxOWRiZmUzZjY1MmViY2QwMjhhMWU2Y2YxYWFiYThmMjg1ZGYzIn1dfVBLAQIUAxQAAAAAAABQvFyG1aTPcQEAAHEBAAANAAAAAAAAAAAAAACAAQAAAABtYW5pZmVzdC5qc29uUEsFBgAAAAABAAEAOwAAAJwBAAAAAA=="
+  },
+  {
+   "name": "a newer format in a ZIP",
+   "problem": "UNSUPPORTED_VERSION",
+   "base64": "UEsDBBQAAAAAAABQvFyFbaTiXwAAAF8AAAAJAAAAZGF0YS5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX1QSwMEFAAAAAAAAFC8XMxXd45wAQAAcAEAAA0AAABtYW5pZmVzdC5qc29ueyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiYXBwIjoiRG9vcnByaW50cyIsImFwcFZlcnNpb24iOiIxLjAuMCIsImNyZWF0ZWRBdCI6IjIwMjYtMDUtMjhUMTA6MDA6MDBaIiwibGFuZ3VhZ2UiOiJlbiIsInNjb3BlIjoiQUxMIiwiaW5jbHVkZVJlamVjdGVkIjp0cnVlLCJwaG90b1Njb3BlIjoiQUxMIiwiaW5jbHVkZUNvbnRhY3RzIjp0cnVlLCJjb3VudHMiOnsiaG91c2VzIjowLCJ2aXNpdHMiOjAsInBob3RvcyI6MH0sImZpbGVzIjpbeyJwYXRoIjoiZGF0YS5qc29uIiwic2l6ZUJ5dGVzIjo5NSwic2hhMjU2IjoiOTNlODQ5YjY4ZTU5ODE0NmEzMGY4NmE0NTZlOTUyMDIxZDIzZTU4NDk0NDBlNmQ3OTkwYzgwMjY0OTJmMmI1YyJ9XX1QSwECFAMUAAAAAAAAULxchW2k4l8AAABfAAAACQAAAAAAAAAAAAAAgAEAAAAAZGF0YS5qc29uUEsBAhQDFAAAAAAAAFC8XMxXd45wAQAAcAEAAA0AAAAAAAAAAAAAAIABhgAAAG1hbmlmZXN0Lmpzb25QSwUGAAAAAAIAAgByAAAAIQIAAAAA"
+  },
+  {
+   "name": "an entry that expands more than 100 times",
+   "problem": "TOO_LARGE",
+   "base64": "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"
+  },
+  {
+   "name": "a bare data.json",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [],
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19"
+  },
+  {
+   "name": "a bare data.json with a byte-order mark",
+   "problem": null,
+   "houses": 1,
+   "photoEntries": [],
+   "base64": "77u/eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbeyJpZCI6ImgxIiwibGFiZWwiOiJIb3VzZSBoMSIsImxhdCI6MTIuOTcsImxvbiI6NzcuNTksInN0YXR1cyI6Ik5FVyIsImNoZWNrbGlzdCI6e30sImNyZWF0ZWRBdCI6MTc3OTk5OTk5OTAwMCwidXBkYXRlZEF0IjoxNzgwMDAwMDAwMDAwfV0sInZpc2l0cyI6W10sInBob3RvcyI6W3siaWQiOiJwMSIsImhvdXNlSWQiOiJoMSIsImZpbGVOYW1lIjoicDEuanBnIiwiY3JlYXRlZEF0IjoxNzc5OTk5OTk5OTAwfV19"
+  },
+  {
+   "name": "a bare data.json from a newer app",
+   "problem": "UNSUPPORTED_VERSION",
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC80IiwiZXhwb3J0ZWRBdCI6MTc4MDAwMDAwMDAwMCwiaG91c2VzIjpbXSwidmlzaXRzIjpbXSwicGhvdG9zIjpbXX0="
+  },
+  {
+   "name": "a bare JSON file that is not ours",
+   "problem": "NOT_A_BACKUP",
+   "base64": "eyJmb3JtYXQiOiJob3VzZS1odW50LWV4cG9ydC8xIiwiaG91c2VzIjpbXX0="
+  },
+  {
+   "name": "a bare data.json with a broken row",
+   "problem": "BROKEN_DATA",
+   "base64": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWJhY2t1cC8xIiwiZXhwb3J0ZWRBdCI6MSwiaG91c2VzIjpbeyJpZCI6ImgxIn1dfQ=="
+  },
+  {
+   "name": "a PDF",
+   "problem": "NOT_A_BACKUP",
+   "base64": "JVBERi0xLjcKJeLjz9MK"
+  },
+  {
+   "name": "an empty file",
+   "problem": "NOT_A_BACKUP",
+   "base64": ""
+  }
+ ]
+}

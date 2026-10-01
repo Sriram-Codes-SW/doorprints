@@ -185,6 +185,9 @@ val LEGEND_DOTS = listOf(
     LegendDot("NEW", diameterDp = 12f, ringDp = MARKER_STROKE_DP, alpha = 1f),
     LegendDot("SHORTLISTED", diameterDp = 16f, ringDp = MARKER_STROKE_SHORTLISTED_DP, alpha = 1f),
     LegendDot("REJECTED", diameterDp = 9f, ringDp = MARKER_STROKE_DP, alpha = MARKER_OPACITY_REJECTED),
+    // Slice 5: Taken drawn like Shortlisted, Not chosen like Rejected, each in its own colour (MarkerColors).
+    LegendDot("TAKEN", diameterDp = 16f, ringDp = MARKER_STROKE_SHORTLISTED_DP, alpha = 1f),
+    LegendDot("NOT_CHOSEN", diameterDp = 9f, ringDp = MARKER_STROKE_DP, alpha = MARKER_OPACITY_REJECTED),
     LegendDot("APPROX", diameterDp = 12f, ringDp = MARKER_STROKE_DP, alpha = 1f, hollow = true),
 )
 

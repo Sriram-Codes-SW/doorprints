@@ -43,6 +43,8 @@ data class PlatformFeatures(
     val addPhotos: Boolean = true,
     /** *Save a copy* and *Import a backup*: the Settings rows and the empty house list's import button. */
     val copiesAndImports: Boolean = true,
+    /** The PDF among the copies (Android draws it on `android.graphics.pdf`; the common writer has none, S4b-BL-81). */
+    val pdfCopies: Boolean = true,
     /** The weekly backup to a folder, in Settings. */
     val weeklyBackup: Boolean = true,
     /**
@@ -50,16 +52,23 @@ data class PlatformFeatures(
      * the app and opens them ([PlatformServices.openAppSettings]).
      */
     val inAppLanguage: Boolean = true,
+    /**
+     * *Wake me in my hunting areas* in Settings > My areas (docs/11 "Design of slice 4b"). Android also hides it where
+     * Google Play services are missing ([AreaWakeupServices.available]), the iPhone where Core Location cannot monitor
+     * regions (since S4b-BL-96).
+     */
+    val areaWakeup: Boolean = true,
 ) {
     companion object {
         /**
          * The iPhone app: since CMP-8c the map (with India's boundary rules, adding a house on it), since S4b-BL-69 Hunt
-         * mode (`IosHunt`, the adapter around the common `HuntEngine`), and since CMP-8b the list, the house form without
-         * new photos, Compare, the Assistant and Settings.
+         * mode (`IosHunt`, the adapter around the common `HuntEngine`), since S4b-BL-96 the area wake-up
+         * (`IosAreaWakeup`), since S4b-BL-81 *Save a copy* (every copy but the PDF) and *Import a backup* (`IosCopies`),
+         * and since CMP-8b the list, the house form without new photos, Compare, the Assistant and Settings.
          */
         val Ios = PlatformFeatures(
             addPhotos = false,
-            copiesAndImports = false,
+            pdfCopies = false,
             weeklyBackup = false,
             inAppLanguage = false,
         )

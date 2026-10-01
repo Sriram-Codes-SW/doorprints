@@ -34,4 +34,6 @@ val HouseStatus.labelRes: Int
         HouseStatus.NEW -> R.string.status_NEW
         HouseStatus.SHORTLISTED -> R.string.status_SHORTLISTED
         HouseStatus.REJECTED -> R.string.status_REJECTED
+        HouseStatus.TAKEN -> R.string.status_TAKEN
+        HouseStatus.NOT_CHOSEN -> R.string.status_NOT_CHOSEN
     }

@@ -24,8 +24,6 @@ import android.provider.OpenableColumns
 import app.doorprints.data.Repository
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.BackupProblem
-import app.doorprints.shared.export.ImportMode
-import app.doorprints.shared.export.ImportPlan
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -122,39 +120,9 @@ object Imports {
                 ImportCheck.Refused(opened.problem)
             }
 
+            // The same preview the iPhone makes (ArchiveImports, common): both modes, the opt-ins, an update's deletions.
             is BackupOpen.Ok -> opened.reader.use { reader ->
-                val local = repository.localVersions()
-                fun preview(mode: ImportMode, restore: Boolean = false, skip: Boolean = false) = ImportPlan.preview(
-                    reader.data, local.houses, local.visits, local.photoIds, reader.photoEntries, mode,
-                    local.deletedHouseIds, local.scoredHouseIds, restoreDeleted = restore, skipUpdates = skip,
-                    localUnlinkedVisitIds = local.unlinkedVisitIds, localBrokers = local.brokers,
-                    localCriteria = local.criteria, localPreferences = local.preferences, localQuestions = local.questions,
-                    localViewings = local.viewings, localAreas = local.areas, localPlaces = local.places,
-                    localAreaNotes = local.areaNotes,
-                )
-                // Which houses a merge would replace, by name, for the Replace dialog. The plan is pure and a
-                // merge's needs no new ids; its updatedHouseIds are exactly the preview's updatedHouses.
-                val replaced = ImportPlan.plan(
-                    reader.data, local.houses, local.visits, local.photoIds, reader.photoEntries, ImportMode.MERGE,
-                    newId = { UUID.randomUUID().toString() }, locallyDeletedHouseIds = local.deletedHouseIds,
-                ).updatedHouseIds
-                val labels = reader.data.houses.asSequence()
-                    .filter { it.id in replaced }
-                    .take(REPLACED_LABELS)
-                    .map { h -> h.label.ifBlank { h.street ?: h.address ?: "" } }
-                    .toList()
-                ImportCheck.Ready(
-                    stagedPath = staged.absolutePath,
-                    manifest = reader.manifest,
-                    merge = preview(ImportMode.MERGE),
-                    copy = preview(ImportMode.COPY),
-                    duplicateHouses = ImportPlan.copyDuplicates(reader.data, local.houses, local.deletedHouseIds),
-                    displayName = displayName,
-                    mergeRestored = preview(ImportMode.MERGE, restore = true),
-                    keepMine = preview(ImportMode.MERGE, skip = true),
-                    keepMineRestored = preview(ImportMode.MERGE, restore = true, skip = true),
-                    replacedHouseLabels = labels,
-                )
+                ArchiveImports.preview(repository, reader.archive, staged.absolutePath, displayName) { UUID.randomUUID().toString() }
             }
         }
     }

@@ -26,7 +26,8 @@ class ModelTest {
 
     @Test
     fun statusNamesAreStable() {
-        assertEquals(listOf("NEW", "SHORTLISTED", "REJECTED"), HouseStatus.entries.map { it.name })
+        // TAKEN and NOT_CHOSEN since slice 5 (docs/11 5.24).
+        assertEquals(listOf("NEW", "SHORTLISTED", "REJECTED", "TAKEN", "NOT_CHOSEN"), HouseStatus.entries.map { it.name })
         assertEquals(listOf("AUTO", "MANUAL"), VisitSource.entries.map { it.name })
     }
 

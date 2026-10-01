@@ -17,8 +17,10 @@
  */
 
 import { LocalDataError } from '../core/local-error';
-import { ANSWER_STATUSES, COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES } from '../core/models';
-import type { AnswerStatus, HouseAnswer, HouseCost, HouseDto, HouseRoom, HouseStatus, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
+import { cleanMeta } from '../shared/photo-tags';
+import type { PhotoMeta } from '../shared/photo-tags';
+import { ANSWER_STATUSES, COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES, STATUSES } from '../core/models';
+import type { AnswerStatus, HouseAnswer, HouseCost, HouseDto, HouseRoom, HouseStatus, MoveIn, MoveInItem, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
 
 /**
  * What the browser stores locally (IndexedDB). Doorprints is local-first (docs/11 §5.1, D-01): every record below
@@ -59,6 +61,36 @@ export interface PhotoRecord {
   syncVersion: number;
   /** True once the server has these bytes (Android: PhotoEntity.uploaded). */
   uploaded: boolean;
+  /** Photo meta (slice 5, docs/11 5.7): the room, tags and caption, written only when set. */
+  roomId?: string | null;
+  tags?: string[] | null;
+  caption?: string | null;
+  /** Epoch ms of the last meta edit; 0 or absent = never edited. Last write wins on it, in sync and in import. */
+  metaUpdatedAt?: number;
+  /** True while the meta has a local edit the server has not seen yet (Android: PhotoEntity.metaDirty). */
+  metaDirty?: boolean;
+}
+
+/** The meta a stored photo carries, coerced (docs/11 5.7): empty and `metaUpdatedAt` 0 for a photo never edited. */
+export function photoMetaOf(record: { roomId?: string | null; tags?: string[] | null; caption?: string | null; metaUpdatedAt?: number | null }): PhotoMeta {
+  return cleanMeta(record);
+}
+
+/**
+ * The photo with `meta` written into it: the room, tags and caption only when set, `metaUpdatedAt` only when > 0, and
+ * `metaDirty` only when `dirty` (a local edit the server has not seen).
+ */
+export function withPhotoMeta(record: PhotoRecord, meta: PhotoMeta, dirty: boolean): PhotoRecord {
+  const { roomId: _r, tags: _t, caption: _c, metaUpdatedAt: _m, metaDirty: _d, ...rest } = record;
+  const clean = cleanMeta(meta);
+  return {
+    ...rest,
+    ...(clean.roomId ? { roomId: clean.roomId } : {}),
+    ...(clean.tags.length > 0 ? { tags: clean.tags } : {}),
+    ...(clean.caption ? { caption: clean.caption } : {}),
+    ...(clean.metaUpdatedAt > 0 ? { metaUpdatedAt: clean.metaUpdatedAt } : {}),
+    ...(dirty ? { metaDirty: true } : {}),
+  };
 }
 
 /**
@@ -121,7 +153,6 @@ export function isoNow(now: number = Date.now()): string {
   return new Date(now).toISOString();
 }
 
-const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED'];
 const PRICE_TYPES: readonly PriceType[] = ['RENT', 'SALE'];
 const SOURCES: readonly VisitSource[] = ['AUTO', 'MANUAL'];
 
@@ -175,6 +206,8 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     cost: cleanCost(dto.cost),
     rooms: cleanRooms(dto.rooms),
     answers: cleanAnswers(dto.answers),
+    moveIn: cleanMoveIn(dto.moveIn),
+    floor: whole(dto.floor, MIN_FLOOR, MAX_FLOOR),
     brokerId: cleanBrokerId(dto.brokerId),
     checklist: cleanChecklist(dto.checklist),
     createdAt: nullable(dto.createdAt),
@@ -275,6 +308,9 @@ export function recordToDto(record: RecordRecord): RecordDto {
 
 /** The ranges of the house values (slice 1a): the same numbers the server's `HouseDto` refuses with 400. */
 export const MAX_AREA_SQFT = 100_000;
+/** The floor's range (S4b-BL-87; Kotlin `HouseValues.floor`): 0 the ground floor, down to basement level 5. */
+export const MIN_FLOOR = -5;
+export const MAX_FLOOR = 200;
 export const MAX_RUPEES = 1_000_000_000_000;
 export const MAX_MONTHS = 120;
 /** A room's constraints (slice 1c): at most 30 rooms per house. */
@@ -414,6 +450,43 @@ export function cleanAnswers(raw: HouseAnswer[] | null | undefined): HouseAnswer
   if (out.length === 0) return null;
   out.sort((a, b) => a.sort - b.sort || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return out.slice(0, MAX_ANSWERS);
+}
+
+/** Moving in (slice 5): at most 30 items of 1..200 characters, notes of at most 2000. */
+export const MAX_MOVE_IN_ITEMS = 30;
+export const MAX_MOVE_IN_TEXT = 200;
+export const MAX_MOVE_IN_NOTES = 2000;
+
+/**
+ * Moving in as the store keeps it: the date when it is a whole number > 0, the notes cut at 2000 characters (absent
+ * when blank), the items with a bad id skipped, a repeated id keeping the first, a blank or over-long text skipped,
+ * `done` only when true and a bad `sort` 0; sorted by sort then id and only then capped at 30. Null when it has no
+ * date, no notes and no items. Kotlin: `MoveIn.coerced`.
+ */
+export function cleanMoveIn(raw: MoveIn | null | undefined): MoveIn | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const date = whole(raw.date, 1, Number.MAX_SAFE_INTEGER);
+  const notes = typeof raw.notes === 'string' && raw.notes.trim() !== '' ? raw.notes.slice(0, MAX_MOVE_IN_NOTES) : null;
+  const items: MoveInItem[] = [];
+  const seen = new Set<string>();
+  for (const item of Array.isArray(raw.items) ? raw.items : []) {
+    if (!item || typeof item !== 'object') continue;
+    const id = roomId(item.id);
+    if (!id || seen.has(id)) continue;
+    const itemText = text(item.text, MAX_MOVE_IN_TEXT);
+    if (itemText === null) continue;
+    seen.add(id);
+    // Keys in the contract's order: id, text, done (only when true), sort.
+    items.push({ id, text: itemText, ...(item.done === true ? { done: true } : {}), sort: whole(item.sort, 0, 1_000_000) ?? 0 });
+  }
+  items.sort((a, b) => a.sort - b.sort || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const kept = items.slice(0, MAX_MOVE_IN_ITEMS);
+  if (date === null && notes === null && kept.length === 0) return null;
+  return {
+    ...(date !== null ? { date } : {}),
+    ...(notes !== null ? { notes } : {}),
+    ...(kept.length > 0 ? { items: kept } : {}),
+  };
 }
 
 /** A room id: matches the pattern and is not `.`/`..`, or null. */

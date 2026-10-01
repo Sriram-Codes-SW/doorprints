@@ -152,6 +152,9 @@ data class DoorprintsColors(
     val new: Color,
     val shortlisted: Color,
     val rejected: Color,
+    /** Slice 5: a TAKEN house (purple) and a NOT_CHOSEN one (grey), each at least 4.5:1 on its surface. */
+    val taken: Color,
+    val notChosen: Color,
     val star: Color,
     val success: Color,
     val onSuccess: Color,
@@ -164,12 +167,14 @@ data class DoorprintsColors(
 
 private val LightExtra = DoorprintsColors(
     new = Color(0xFF3C5A99), shortlisted = Color(0xFF1A7A43), rejected = Color(0xFFB3261E), star = Color(0xFFA86A00),
+    taken = Color(0xFF8A5A00), notChosen = Color(0xFF5F6B66), // 5.9:1 and 5.6:1 on white (as the web)
     success = Color(0xFFE7F5ED), onSuccess = Color(0xFF1A7A43), // 4.78:1
     successBorder = Color(0xFFB5DCC4), errorBorder = Color(0xFFE8B4B0),
     warn = Color(0xFFFFF4E0), onWarn = Color(0xFF8A5A00), warnBorder = Color(0xFFF0C987), // 5.44:1
 )
 private val DarkExtra = DoorprintsColors(
     new = Color(0xFF9DB4EA), shortlisted = Color(0xFF6FD69A), rejected = Color(0xFFFF8E86), star = Color(0xFFF2B84B),
+    taken = Color(0xFFCDB4F0), notChosen = Color(0xFFB4B8BE),
     success = Color(0xFF15301F), onSuccess = Color(0xFF6FD69A), // 7.98:1
     successBorder = Color(0xFF2B5A3B), errorBorder = Color(0xFF6E2C27),
     warn = Color(0xFF33260F), onWarn = Color(0xFFF2B84B), warnBorder = Color(0xFF6B4F1A), // 8.23:1
@@ -292,6 +297,8 @@ fun HouseStatus.color(): Color {
         HouseStatus.NEW -> c.new
         HouseStatus.SHORTLISTED -> c.shortlisted
         HouseStatus.REJECTED -> c.rejected
+        HouseStatus.TAKEN -> c.taken
+        HouseStatus.NOT_CHOSEN -> c.notChosen
     }
 }
 
@@ -300,4 +307,17 @@ object MarkerColors {
     const val NEW = 0xFF3C5A99.toInt()
     const val SHORTLISTED = 0xFF1A7A43.toInt()
     const val REJECTED = 0xFFB3261E.toInt()
+
+    /** Slice 5: TAKEN amber and NOT_CHOSEN grey (the web's colours), apart from the three others in hue and, with size, in shape. */
+    const val TAKEN = 0xFF8A5A00.toInt()
+    const val NOT_CHOSEN = 0xFF5F6B66.toInt()
+
+    /** The marker colour of a status name (`HouseStatus.name`); anything unknown is NEW's. */
+    fun of(status: String): Int = when (status) {
+        "SHORTLISTED" -> SHORTLISTED
+        "REJECTED" -> REJECTED
+        "TAKEN" -> TAKEN
+        "NOT_CHOSEN" -> NOT_CHOSEN
+        else -> NEW
+    }
 }

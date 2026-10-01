@@ -30,7 +30,10 @@ import { brokerLine } from '../shared/broker';
 import { isBuiltInKey } from '../shared/scoring';
 import { costSummary } from '../shared/house-cost';
 import { ordered } from '../shared/house-answers';
+import { photoMetaOf } from '../data/records';
 import type { PhotoRecord, VisitRecord } from '../data/records';
+import { orderedItems } from '../shared/move-in';
+import type { HouseRoom } from '../core/models';
 
 /**
  * **The format-independent model → rows logic.** The TypeScript half of
@@ -185,6 +188,8 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     s.get('col.monthlyCost'),
     s.get('col.moveIn'),
     s.get('col.perSqFt'),
+    // S4b-BL-87: the floor after the cost per sq ft (Kotlin writes the rooms' count between them).
+    s.get('col.floor'),
     s.get('col.visits'),
     s.get('col.photos'),
     s.get('col.createdAt'),
@@ -229,6 +234,7 @@ export function housesTable(bundle: ExportBundle): ExportTable {
       maybeMoney(summary.monthlyCost),
       maybeMoney(summary.moveIn),
       summary.perSqFt === null ? BLANK : cellNum(summary.perSqFt, 1),
+      maybeCount(h.floor),
       cellCount(entry.visits.length),
       cellCount(entry.photos.length),
       maybeStamp(h.createdAt),
@@ -373,14 +379,29 @@ export function visitsTable(bundle: ExportBundle): ExportTable {
 
 export function photosTable(bundle: ExportBundle): ExportTable {
   const s = stringsOf(bundle);
-  const columns = [s.get('col.house'), s.get('col.fileName'), s.get('col.createdAt'), s.get('col.houseId'), s.get('col.id')];
-  const rows = allPhotos(bundle).map(({ label, photo }) => [
-    cellText(label),
-    cellText(photoFileName(photo.id)),
-    maybeStamp(photo.createdAt),
-    cellText(photo.houseId),
-    cellText(photo.id),
-  ]);
+  const columns = [
+    s.get('col.house'),
+    s.get('col.fileName'),
+    s.get('col.createdAt'),
+    s.get('col.houseId'),
+    s.get('col.id'),
+    s.get('col.room'),
+    s.get('col.tags'),
+    s.get('col.caption'),
+  ];
+  const rows = allPhotos(bundle).map(({ label, photo, rooms }) => {
+    const meta = photoMetaOf(photo);
+    return [
+      cellText(label),
+      cellText(photoFileName(photo.id)),
+      maybeStamp(photo.createdAt),
+      cellText(photo.houseId),
+      cellText(photo.id),
+      maybeText(photoRoomName(rooms, meta.roomId, s)),
+      maybeText(meta.tags.join('; ')),
+      maybeText(meta.caption),
+    ];
+  });
   return { name: 'photos', title: s.get('table.photos'), columns, rows };
 }
 
@@ -397,11 +418,44 @@ export function allVisits(bundle: ExportBundle): { label: string; visit: VisitRe
 }
 
 /** Every photo in the copy, flattened and ordered `createdAt` then `id`; see {@link allVisits}. */
-export function allPhotos(bundle: ExportBundle): { label: string; photo: PhotoRecord }[] {
-  const out = bundle.houses.flatMap((entry) => entry.photos.map((photo) => ({ label: entry.house.label, photo })));
+export function allPhotos(bundle: ExportBundle): { label: string; photo: PhotoRecord; rooms: readonly HouseRoom[] }[] {
+  const out = bundle.houses.flatMap((entry) => entry.photos.map((photo) => ({ label: entry.house.label, photo, rooms: entry.rooms })));
   return out.sort(
     (a, b) => compare(a.photo.createdAt ?? '', b.photo.createdAt ?? '') || compare(a.photo.id, b.photo.id),
   );
+}
+
+/**
+ * The name of a photo's room in the copy: the room's own name, else its type's translated name, else empty (no room, or a
+ * room id that names no room of the house any more: shown as untagged, i.e. nothing).
+ */
+export function photoRoomName(rooms: readonly HouseRoom[], roomId: string | null, strings: ExportStrings): string {
+  const room = roomId ? rooms.find((r) => r.id === roomId) : undefined;
+  return room ? room.name?.trim() || strings.get(`roomType.${room.type}`) : '';
+}
+
+/**
+ * What a readable copy says under a photo: its room, its tags (stored values, joined with `, `) and its caption, the parts
+ * that exist joined with ` · `; empty when the photo has no meta.
+ */
+export function photoNote(entry: ExportHouse, photo: PhotoRecord, strings: ExportStrings): string {
+  const meta = photoMetaOf(photo);
+  return [photoRoomName(entry.rooms, meta.roomId, strings), meta.tags.join(', '), meta.caption ?? '']
+    .filter((part) => part !== '')
+    .join(' · ');
+}
+
+/**
+ * The Moving in section of a house page (docs/11 5.24, slice 5): the move-in date and the notes as label/value rows, then the
+ * checklist items in order with a tick (`✓`, done) or an open circle (`○`). Empty when the house has no `moveIn`.
+ */
+export function movingInView(house: ExportHouse, strings: ExportStrings): { facts: [string, string][]; items: { done: boolean; text: string }[] } {
+  const moveIn = house.house.moveIn;
+  const facts: [string, string][] = [];
+  if (moveIn?.date) facts.push([strings.get('col.when'), utcDate(moveIn.date)]);
+  if (moveIn?.notes) facts.push([strings.get('col.notes'), moveIn.notes]);
+  const items = orderedItems(moveIn?.items).map((i) => ({ done: i.done === true, text: i.text }));
+  return { facts, items };
 }
 
 /** Built-in checklist keys the house has scored, in display order, then anything else it has, alphabetically. */

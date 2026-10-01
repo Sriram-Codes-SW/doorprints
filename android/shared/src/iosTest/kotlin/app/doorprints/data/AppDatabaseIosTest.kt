@@ -166,18 +166,24 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (8 since docs/11 5.5 slice 3a: houses.answers; 7 added houses.rooms; 6 houses.brokerId;
-            // 5 the house's values; 4 records; track_points and records empty after the migration, and a house from
-            // before has no area, source, cost, broker, rooms or answers).
-            assertEquals(listOf("8"), connection.rows("PRAGMA user_version"))
+            // The current version (10 since S4b-BL-87: houses.floor; 9 the photos' meta and houses.moveIn; 8 houses.answers;
+            // 7 houses.rooms; 6 houses.brokerId; 5 the house's values; 4 records; track_points and records empty after the
+            // migration, and a house from before has no area, source, cost, broker, rooms, answers, move-in or floor).
+            assertEquals(listOf("10"), connection.rows("PRAGMA user_version"))
             assertEquals(
-                listOf("h1|||||"),
+                listOf("h1|||||||"),
                 connection.rows(
                     "SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, ''), IFNULL(brokerId, ''), IFNULL(rooms, ''), " +
-                        "IFNULL(answers, '') FROM houses",
+                        "IFNULL(answers, ''), IFNULL(moveIn, ''), IFNULL(floor, '') FROM houses",
                 ),
             )
-            assertEquals(listOf("p1|0"), connection.rows("SELECT id, deleted FROM photos"))
+            // A photo from before has no meta: no room, tags or caption, never edited, nothing to send (slice 5).
+            assertEquals(
+                listOf("p1|0||||0|0"),
+                connection.rows(
+                    "SELECT id, deleted, IFNULL(roomId, ''), IFNULL(tags, ''), IFNULL(caption, ''), metaUpdatedAt, metaDirty FROM photos",
+                ),
+            )
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM track_points"))
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM records"))
         } finally {

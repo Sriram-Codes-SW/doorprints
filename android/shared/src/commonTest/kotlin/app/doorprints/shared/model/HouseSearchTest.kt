@@ -69,11 +69,35 @@ class HouseSearchTest {
         ).map { it.text },
     )
 
+    // The move-in items' texts and its notes (slice 5).
+    private val movingIn = HouseSearch.fields(
+        label = "Fern Villa", address = null, street = null, locality = null, notes = null, contactName = null,
+        moveIn = MoveIn(notes = "Electricity meter reads 4521", items = listOf(MoveInItem("mi_keys", "Keys received", true, 0))),
+    )
+
+    // The floor (S4b-BL-87), as `HouseSearch.floorText` words it.
+    private val high = HouseSearch.fields(
+        label = "Oak Tower", address = null, street = null, locality = null, notes = null, contactName = null, floor = 3,
+    )
+
     private fun matching(query: String) =
-        listOf("green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked, "sea" to noted)
+        listOf(
+            "green" to green, "lake" to lake, "beach" to brokered, "hill" to roomy, "palm" to asked, "sea" to noted,
+            "fern" to movingIn, "oak" to high,
+        )
         .filter { HouseSearch.matches(query, it.second) }.map { it.first }
 
-    @Test fun aBlankQueryMatchesEveryHouse() = assertEquals(listOf("green", "lake", "beach", "hill", "palm", "sea"), matching("  "))
+    @Test fun aBlankQueryMatchesEveryHouse() =
+        assertEquals(listOf("green", "lake", "beach", "hill", "palm", "sea", "fern", "oak"), matching("  "))
+    @Test fun aQueryMatchesTheFloor() {
+        assertEquals(listOf("oak"), matching("floor 3"))
+        assertEquals(emptyList(), matching("ground floor"))
+        assertEquals(listOf("ground floor 0", "basement 2", "floor 12"), listOf(0, -2, 12).map(HouseSearch::floorText))
+    }
+    @Test fun aQueryMatchesTheMoveInItemsAndNotes() {
+        assertEquals(listOf("fern"), matching("keys received"))
+        assertEquals(listOf("fern"), matching("4521"))
+    }
     @Test fun aQueryMatchesTheAreaNotesThatReachTheHouse() {
         assertEquals(listOf("sea"), matching("tanker"))
         assertEquals(listOf("sea"), matching("monsoon"))

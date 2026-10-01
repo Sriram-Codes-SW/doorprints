@@ -213,7 +213,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     val marks: ResultMarks? by repo.settings.resultMarks.collectAsStateWithLifecycle(initialValue = null)
     /** A run whose result this visit of the screen has shown; it stays up until the user moves on. */
     var shownRunId by remember { mutableStateOf<String?>(null) }
-    val askNotifications = rememberNotificationAsk()
+    val askNotifications = rememberNotificationAsk(enabled = exports.postsResults)
     /** A problem with a follow-up (no app to share or open with); cleared by the next action. */
     var message by remember { mutableStateOf<String?>(null) }
     /** True from the Save to… tap until the file picker returns, so a double tap cannot open a second picker. */
@@ -595,8 +595,10 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 SectionHeading(stringResource(Res.string.export_format), heading)
                 // One column on a phone, two from 600 dp (see RadioCardGroup).
                 // 4 dp on top: the cards have no row padding of their own, and heading to content is 8 dp.
+                // Without the PDF where the platform draws none (the iPhone, S4b-BL-81; PlatformFeatures.pdfCopies).
+                val pdf = LocalPlatformFeatures.current.pdfCopies
                 RadioCardGroup(
-                    formatChoices,
+                    formatChoices.filter { pdf || it.format != ExportFormat.PDF },
                     Modifier.selectableGroup().padding(start = 16.dp, end = 16.dp, top = 4.dp),
                 ) { choice, card ->
                     RadioCard(

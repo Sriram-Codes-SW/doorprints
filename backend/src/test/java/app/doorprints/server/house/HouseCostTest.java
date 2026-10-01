@@ -76,7 +76,7 @@ class HouseCostTest {
             var validator = factory.getValidator();
             var bad = new HouseCost(-1L, null, null, null, null, 121, null, null, "2026-02-30", null, null);
             var house = new HouseDto(UUID.randomUUID(), "Bad", null, null, null, 12.9, 77.6, HouseStatus.NEW, null,
-                    null, null, null, null, null, null, null, 0, "GUESS", bad, null, null, null, Map.of(), null, null, false, 0, null);
+                    null, null, null, null, null, null, null, 0, "GUESS", bad, null, null, null, null, null, Map.of(), null, null, false, 0, null);
             assertThat(validator.validate(house)).extracting(v -> v.getPropertyPath().toString())
                     .containsExactlyInAnyOrder("areaSqft", "locationSource", "cost.deposit", "cost.brokerageMonths",
                             "cost.availableFromADate");

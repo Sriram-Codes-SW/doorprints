@@ -23,10 +23,13 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.doorprints.shared.model.FlatFacts
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseScore
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.RankedHouse
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
@@ -69,6 +72,11 @@ data class HouseEntity(
     // The questions asked (slice 3a, Room version 8) as JSON text in `answers` ([Converters]), like the rooms; null for
     // none. The repository's save coerces them (`HouseAnswers.coerced`).
     val answers: List<HouseAnswer>? = null,
+    // Moving in (docs/11 5.24, slice 5, Room version 9) as JSON text in `moveIn` ([Converters]); null when it has no
+    // date, notes or items. The repository's save coerces it (`MoveIn.coerced`).
+    val moveIn: MoveIn? = null,
+    // The floor the flat is on (S4b-BL-87, Room version 10): -5..200, 0 the ground floor; null when unknown.
+    val floor: Int? = null,
     // The broker's record id (slice 1b, Room version 6): no foreign key, a dangling id reads as no broker. The
     // contact fields stay as copies of the broker's name and phone (`CommonRepository.saveHouse`).
     val brokerId: String? = null,
@@ -87,6 +95,9 @@ data class HouseEntity(
 
     /** What [Ranking] orders this house by. */
     fun ranked(scoring: Scoring): RankedHouse = RankedHouse(id, scoreResult(scoring), price, updatedAt)
+
+    /** What the duplicate-flat warning compares ([DuplicateFlat], S4b-BL-85). */
+    fun flatFacts(): FlatFacts = FlatFacts(id, lat, lon, locationSource, bedrooms, rooms, floor)
 }
 
 @Entity(tableName = "visits", indices = [Index("houseId"), Index("street")])
@@ -116,7 +127,27 @@ data class PhotoEntity(
      * the row is removed once the server confirms the delete.
      */
     @ColumnInfo(defaultValue = "0") val deleted: Boolean = false,
-)
+    /**
+     * The photo's metadata (docs/11 5.7, slice 5, Room version 9): a room of its house (may dangle), its tags (JSON text,
+     * null for none) and its caption; [metaUpdatedAt] is the last edit (epoch ms, 0 = never), on which the last write
+     * wins, and [metaDirty] is set while an edit has not reached the server (`PUT /api/photos/{id}/meta`).
+     */
+    val roomId: String? = null,
+    val tags: List<String>? = null,
+    val caption: String? = null,
+    @ColumnInfo(defaultValue = "0") val metaUpdatedAt: Long = 0L,
+    @ColumnInfo(defaultValue = "0") val metaDirty: Boolean = false,
+) {
+    /** The metadata as the rules read it. */
+    val meta: PhotoMeta get() = PhotoMeta(roomId, tags.orEmpty(), caption, metaUpdatedAt)
+
+    /** This row with [meta]'s values (coerced) written in; [dirty] marks it for the next sync. */
+    fun withMeta(meta: PhotoMeta, dirty: Boolean): PhotoEntity {
+        val m = PhotoMeta.coerced(meta.roomId, meta.tags, meta.caption, meta.metaUpdatedAt)
+        return copy(roomId = m.roomId, tags = m.tags.takeIf { it.isNotEmpty() }, caption = m.caption,
+            metaUpdatedAt = m.metaUpdatedAt, metaDirty = dirty)
+    }
+}
 
 data class HouseVisitCount(val houseId: String, val visits: Int, val lastVisit: Long)
 

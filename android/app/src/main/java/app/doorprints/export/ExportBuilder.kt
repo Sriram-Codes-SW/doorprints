@@ -24,7 +24,6 @@ import app.doorprints.data.toBundle
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportOptions
-import java.util.TimeZone
 
 /**
  * Reads Room once and hands the platform-neutral [ExportBundle] to the exporters.
@@ -51,15 +50,15 @@ object ExportBuilder {
     }.getOrDefault("")
 
     /**
-     * The options the export screen opens with: this phone's current UTC offset, the app's language, everything
-     * included. The offset is taken once, at the moment of export, so a copy made in India always reads in IST
-     * even if it is opened later from another country.
+     * The options the export screen opens with: the app's language, everything included, and the times in UTC
+     * ([ExportOptions.utcOffsetMinutes] 0; S4b-BL-92c): the website writes every copy in UTC, so a copy of the same
+     * data reads the same from either, and the cover says so ("Times shown for UTC +00:00").
      */
     fun defaults(context: Context, now: Long = System.currentTimeMillis()) = ExportOptions(
         language = AppLocale.current(context)
             ?: context.resources.configuration.locales[0]?.language?.takeIf { it in AppLocale.SUPPORTED }
             ?: "en",
-        utcOffsetMinutes = TimeZone.getDefault().getOffset(now) / 60_000,
+        utcOffsetMinutes = 0,
         exportedAtMillis = now,
     )
 }

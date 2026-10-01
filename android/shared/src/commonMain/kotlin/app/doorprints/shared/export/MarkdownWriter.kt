@@ -81,6 +81,7 @@ object MarkdownWriter {
                 if (h.price != null) add(s["col.priceType"] to s.priceType(h.priceType))
                 add(s["col.bedrooms"] to (h.bedrooms?.toString() ?: s["none"]))
                 if (h.areaSqft != null) add(s["col.areaSqft"] to h.areaSqft.toString())
+                if (h.floor != null) add(s["col.floor"] to s.floor(h.floor))
                 add(s["col.rating"] to (h.rating?.toString() ?: s["none"]))
                 add(s["col.address"] to (h.address ?: s["none"]))
                 add(s["col.street"] to (h.street ?: s["none"]))
@@ -131,6 +132,18 @@ object MarkdownWriter {
                 table(out, columns, rows)
             }
 
+            // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
+            if (h.moveIn != null) {
+                out.append("\n### ").append(text(s["section.movingIn"])).append("\n\n")
+                val lines = ExportRows.moveInLines(h, bundle)
+                if (lines.isNotEmpty()) table(out, listOf("", ""), lines.map { listOf(it.first, it.second) })
+                val items = ExportRows.moveInItems(h)
+                if (items.isNotEmpty()) {
+                    if (lines.isNotEmpty()) out.append('\n')
+                    for (item in items) out.append("- ").append(text(item).replace("\n", " ")).append('\n')
+                }
+            }
+
             val keys = ExportRows.orderedChecklistKeys(h)
             if (keys.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")
@@ -178,7 +191,12 @@ object MarkdownWriter {
             val photos = bundle.photosOf(h)
             if (photos.isNotEmpty()) {
                 out.append("\n### ").append(text(s["section.photos"])).append("\n\n")
-                for (p in photos) out.append("- `").append(p.fileName.replace('`', '\'')).append("`\n")
+                for (p in photos) {
+                    out.append("- `").append(p.fileName.replace('`', '\'')).append('`')
+                    // Its room, tags and caption (slice 5), those it has.
+                    ExportRows.photoLine(p, bundle)?.let { out.append(": ").append(text(it).replace('\n', ' ')) }
+                    out.append('\n')
+                }
                 out.append('\n').append(text(s["photos.inBackup"])).append('\n')
             }
         }

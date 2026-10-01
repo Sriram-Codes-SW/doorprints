@@ -79,7 +79,7 @@ interface PlatformServices {
     /** Opens the web link [url] in the browser; false when no app can open it. */
     fun openUrl(url: String): Boolean
 
-    /** True where [addToCalendar] can hand an event to the phone's calendar app (Android; the iPhone shares a `.ics` in 3b-2). */
+    /** True where [addToCalendar] can hand an event to the phone's calendar app (Android; the iPhone shares a `.ics`). */
     val canAddToCalendar: Boolean get() = false
 
     /**
@@ -87,6 +87,15 @@ interface PlatformServices {
      * `CalendarContract.Events`, no permission: the person saves it there); false when no app can take it.
      */
     fun addToCalendar(event: CalendarEvent): Boolean = false
+
+    /**
+     * True where [shareCalendarFile] hands a viewing's `.ics` to the share sheet, from which the person adds it to a
+     * calendar (the iPhone, S4b-BL-92a; docs/11 5.8). Android has [addToCalendar] instead.
+     */
+    val canShareCalendarFile: Boolean get() = false
+
+    /** Shares [ics] as a file named [fileName] through the share sheet; false when it could not be written or shown. */
+    fun shareCalendarFile(fileName: String, ics: String): Boolean = false
 
     /**
      * This phone's name on the server's owner page when it connects by code or QR code (docs/03 §12.1), such as

@@ -62,6 +62,9 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** The fixture of the last `render`, for a test that changes something on the page and reads it again. */
+let lastFixture: ReturnType<typeof TestBed.createComponent<MapPage>> | null = null;
+
 async function render(query: Record<string, string>, extra: Record<string, unknown> = {}) {
   vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
   TestBed.configureTestingModule({
@@ -87,6 +90,7 @@ async function render(query: Record<string, string>, extra: Record<string, unkno
   });
   TestBed.inject(TranslationService).setLang('en');
   const fixture = TestBed.createComponent(MapPage);
+  lastFixture = fixture;
   fixture.detectChanges();
   await fixture.whenStable();
   // The page reads its data in effects and promise chains; let them run before the list is read.
@@ -143,5 +147,36 @@ describe('MapPage: searching the text of area notes (slice 4a)', () => {
 
   it('finds nothing by those words when there are no notes', async () => {
     expect(rows(await render({ q: 'tanker' }, { houses: stub.houses }))).toHaveLength(0);
+  });
+});
+
+/** S4b-BL-84: the filters over the cost numbers, on top of the status and the search, read from and kept in the URL. */
+describe('MapPage: the cost filters', () => {
+  it('keeps only the houses whose monthly cost is in the range, and says how many ranges are set', async () => {
+    const host = await render({ monthlyMax: '25000' });
+    const list = rows(host);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toContain('Cheap');
+    expect(host.querySelector('.cost-filters summary')?.textContent?.trim()).toBe('Filter by cost (1)');
+    expect(host.querySelector<HTMLInputElement>('#cost-monthly-max')!.value).toBe('25000');
+  });
+
+  it('narrows the list as an end is typed, names every field after its range, and clears', async () => {
+    const host = await render({});
+    expect(rows(host)).toHaveLength(3);
+    expect(host.querySelector('label[for="cost-monthly-min"]')?.textContent?.trim()).toBe('Monthly cost from (₹)');
+    expect(host.querySelector('label[for="cost-perSqFt-max"]')?.textContent?.trim()).toBe('Cost per sq ft up to (₹)');
+    const min = host.querySelector<HTMLInputElement>('#cost-monthly-min')!;
+    min.value = '25000';
+    min.dispatchEvent(new Event('change'));
+    lastFixture!.detectChanges();
+    // Only Plain (₹30,000 a month): Cheap is below, and Missed it has no price, so no monthly cost.
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]).toContain('Plain');
+    const clear = [...host.querySelectorAll<HTMLButtonElement>('.cost-filters button')].find((b) => b.textContent?.trim() === 'Clear cost filters')!;
+    clear.click();
+    lastFixture!.detectChanges();
+    expect(rows(host)).toHaveLength(3);
+    expect(clear.disabled).toBe(true);
   });
 });

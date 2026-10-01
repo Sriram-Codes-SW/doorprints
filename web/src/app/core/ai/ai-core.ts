@@ -211,6 +211,10 @@ export interface AiHouse {
   areaNotes?: AiAreaNote[] | null;
   /** The straight-line distance from this house to each of my places (slice 4a); never the place's coordinates. */
   distances?: AiDistance[] | null;
+  /** Moving in (slice 5): only the progress and the notes are read; the item texts and the date are not sent. */
+  moveIn?: { notes?: string | null; items?: { done?: boolean | null }[] | null } | null;
+  /** The floor (S4b-BL-87), 0 the ground floor; written as words. */
+  floor?: number | null;
   checklist?: Record<string, number>;
   visits?: AiVisit[];
 }
@@ -262,6 +266,8 @@ export function houseText(h: AiHouse): string {
   if (h.bedrooms != null) line('Size', h.bedrooms === 0 ? 'studio / 1RK' : `${h.bedrooms} BHK`);
   // The same words as the server's HouseDocuments and the phones' AiHouse (slice 1a); never the person's own offer.
   if (h.areaSqft != null) line('Carpet area', `${h.areaSqft} sq ft`);
+  // S4b-BL-87: the floor in the server's words, 0 the ground floor and a negative one a basement level.
+  if (h.floor != null) line('Floor', h.floor === 0 ? 'ground floor' : h.floor < 0 ? `basement ${-h.floor}` : String(h.floor));
   const c = h.cost ?? {};
   if (c.deposit != null) line('Deposit', `Rs ${c.deposit}`);
   else if (c.depositMonths != null) line('Deposit', months(c.depositMonths));
@@ -280,6 +286,7 @@ export function houseText(h: AiHouse): string {
   viewingLines(h.viewings, r).forEach((l) => lines.push(l));
   areaNoteLines(h.areaNotes, r).forEach((l) => lines.push(l));
   distanceLines(h.distances, r).forEach((l) => lines.push(l));
+  moveInLines(h.moveIn, r).forEach((l) => lines.push(l));
   line('Status', h.status);
   if (h.rating != null) line('My rating', `${h.rating}/5`);
   const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -404,6 +411,21 @@ function distanceLines(distances: AiDistance[] | null | undefined, r: Redactor):
     const name = ((r.freeText(d.name) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim();
     return `Distance to ${name}: ${km1(d.meters)} km`;
   });
+}
+
+/**
+ * Moving in (slice 5), the same words as the server's HouseDocuments and the phones' AiHouse: `Moving in: <done> of <total> done`
+ * (only when there are items) and `Moving in notes: <text>` (through the contact redactor, on one line, only when there are
+ * notes). Never the item texts or the date.
+ */
+function moveInLines(moveIn: AiHouse['moveIn'], r: Redactor): string[] {
+  if (!moveIn) return [];
+  const out: string[] = [];
+  const items = moveIn.items ?? [];
+  if (items.length > 0) out.push(`Moving in: ${items.filter((i) => i.done === true).length} of ${items.length} done`);
+  const notes = ((r.freeText(moveIn.notes) as string | null | undefined) ?? '').replace(/\s+/g, ' ').trim();
+  if (notes !== '') out.push(`Moving in notes: ${notes}`);
+  return out;
 }
 
 function months(n: number): string {

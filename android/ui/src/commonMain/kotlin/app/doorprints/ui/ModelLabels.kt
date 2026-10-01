@@ -27,6 +27,7 @@ import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.ViewingGroup
+import app.doorprints.shared.model.PhotoTags
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.ViewingStatus
 import app.doorprints.ui.res.*
@@ -45,6 +46,8 @@ val HouseStatus.labelResource: StringResource
         HouseStatus.NEW -> Res.string.status_NEW
         HouseStatus.SHORTLISTED -> Res.string.status_SHORTLISTED
         HouseStatus.REJECTED -> Res.string.status_REJECTED
+        HouseStatus.TAKEN -> Res.string.status_TAKEN
+        HouseStatus.NOT_CHOSEN -> Res.string.status_NOT_CHOSEN
     }
 
 /** Translated name of a room type (`room_type_*`, slice 1c): a room's name when it has none of its own. */
@@ -90,7 +93,8 @@ val AnswerStatus.labelResource: StringResource
     }
 
 /**
- * The status glyph shown before the status text (UX-002): ● New, ★ Shortlisted, ✕ Rejected, so the status never rests
+ * The status glyph shown before the status text (UX-002): ● New, ★ Shortlisted, ✕ Rejected, ✓ Taken, ○ Not chosen
+ * (slice 5), so the status never rests
  * on colour alone. Decorative: every place that draws it keeps it out of TalkBack's speech, which reads the text.
  * Common since CMP-4 P4c (was `:app`'s `data/ModelLabels.kt`).
  */
@@ -99,7 +103,34 @@ val HouseStatus.glyph: String
         HouseStatus.NEW -> "●"
         HouseStatus.SHORTLISTED -> "★"
         HouseStatus.REJECTED -> "✕"
+        HouseStatus.TAKEN -> "✓"
+        HouseStatus.NOT_CHOSEN -> "○"
     }
+
+/**
+ * The translated name of a photo tag (docs/11 5.7, slice 5): a fixed key's `tag_*` string, or a custom tag as typed.
+ */
+@Composable
+fun photoTagLabel(tag: String): String = PHOTO_TAG_LABELS[tag]?.let { stringResource(it) } ?: tag
+
+/** The fixed tags' names, in [PhotoTags.FIXED]'s order (`ModelLabelsTest` checks that every key has one). */
+val PHOTO_TAG_LABELS: Map<String, StringResource> = mapOf(
+    "EXTERIOR" to Res.string.tag_EXTERIOR,
+    "ENTRANCE" to Res.string.tag_ENTRANCE,
+    "KITCHEN_FITTINGS" to Res.string.tag_KITCHEN_FITTINGS,
+    "BATHROOM_FITTINGS" to Res.string.tag_BATHROOM_FITTINGS,
+    "DAMP" to Res.string.tag_DAMP,
+    "CRACK" to Res.string.tag_CRACK,
+    "LEAK" to Res.string.tag_LEAK,
+    "VIEW" to Res.string.tag_VIEW,
+    "WATER_TANK" to Res.string.tag_WATER_TANK,
+    "METER" to Res.string.tag_METER,
+    "PARKING" to Res.string.tag_PARKING,
+    "LIFT" to Res.string.tag_LIFT,
+    "GOOD_POINT" to Res.string.tag_GOOD_POINT,
+    "PROBLEM" to Res.string.tag_PROBLEM,
+    "MOVE_IN" to Res.string.tag_MOVE_IN,
+)
 
 /**
  * Translated labels (`check_*`) for the shared [Checklist] keys, in display order. Keys are language-neutral and shared

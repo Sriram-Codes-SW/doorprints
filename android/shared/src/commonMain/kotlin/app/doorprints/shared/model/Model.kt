@@ -20,12 +20,16 @@ package app.doorprints.shared.model
 
 /**
  * House status. Stored and sent by [name] (shared with the API, the web app and the Room database), so the constant
- * names must never change. The label is translated by each app (Android: HouseStatus.labelRes in :app).
+ * names must never change. The label is translated by each app (Android: HouseStatus.labelRes in :app). [TAKEN] and
+ * [NOT_CHOSEN] (docs/11 5.24, slice 5) are the end of a hunt: at most one house is TAKEN ([HouseStatusRules]), and a
+ * file with either is `doorprints-backup/2`. REJECTED keeps its meaning (rejected after looking).
  */
 enum class HouseStatus {
     NEW,
     SHORTLISTED,
     REJECTED,
+    TAKEN,
+    NOT_CHOSEN,
     ;
 
     companion object {

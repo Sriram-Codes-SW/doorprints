@@ -28,6 +28,8 @@
     <string name="status_NEW">புதியது</string>
     <string name="status_SHORTLISTED">தேர்வானது</string>
     <string name="status_REJECTED">நிராகரிக்கப்பட்டது</string>
+    <string name="status_TAKEN">எடுக்கப்பட்டது</string>
+    <string name="status_NOT_CHOSEN">தேர்ந்தெடுக்கப்படவில்லை</string>
     <string name="notif_channel_hunt">தேடல் பயன்முறை</string>
     <string name="notif_channel_hunt_desc">Doorprints உங்கள் நடையைக் கண்காணிக்கும்போது காட்டப்படும்</string>
     <string name="notif_channel_alerts">வீடு, தெரு அறிவிப்புகள்</string>
@@ -129,4 +131,8 @@
     <string name="notif_hunt_reminder">%1$s இல் பார்வையிடல் %2$d நிமிடத்தில். தேடல் பயன்முறையைத் தொடங்கவா?</string>
     <string name="notif_hunt_reminder_start">தேடல் பயன்முறையைத் தொடங்கு</string>
     <string name="notif_hunt_reminder_dismiss">மூடு</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="notif_channel_area_wakeup">பகுதி எழுப்புதல்</string>
+    <string name="notif_channel_area_wakeup_desc">உங்கள் தேடல் பகுதிகளில் ஒன்றுக்கு வந்ததும் தேடல் பயன்முறையைப் பரிந்துரைக்கிறது</string>
+    <string name="notif_area_wakeup">நீங்கள் %1$s இல் இருக்கிறீர்கள். தேடல் பயன்முறையைத் தொடங்கவா?</string>
 </resources>

@@ -226,7 +226,10 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             // two buttons side by side: each title keeps its own hint (TalkBack reads them as one item), long Tamil
             // and Telugu labels wrap instead of squeezing each other, and they do not compete with "Save and test".
             NavRow(
-                stringResource(Res.string.settings_export), stringResource(Res.string.settings_export_hint), onOpenExport,
+                stringResource(Res.string.settings_export),
+                // Without the PDF where the platform makes none (the iPhone, PlatformFeatures.pdfCopies).
+                stringResource(if (platformFeatures.pdfCopies) Res.string.settings_export_hint else Res.string.settings_export_hint_no_pdf),
+                onOpenExport,
             )
             NavRow(
                 stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport,

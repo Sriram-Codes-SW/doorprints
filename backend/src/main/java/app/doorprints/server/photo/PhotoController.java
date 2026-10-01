@@ -18,6 +18,7 @@
 
 package app.doorprints.server.photo;
 
+import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -70,6 +71,16 @@ public class PhotoController {
                 .contentType(MediaType.parseMediaType(photo.getContentType()))
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePrivate())
                 .body(photo.getData());
+    }
+
+    /**
+     * The person's room, tags and caption for a photo (slice 5). Last write wins on {@code metaUpdatedAt}: an edit
+     * that is not newer than the stored one changes nothing. The answer is the photo's metadata as the server now
+     * holds it, so the client can tell whether its edit won.
+     */
+    @PutMapping("/photos/{id}/meta")
+    public PhotoDto meta(@PathVariable UUID id, @Valid @RequestBody PhotoMeta body) {
+        return service.updateMeta(id, body);
     }
 
     @DeleteMapping("/photos/{id}")

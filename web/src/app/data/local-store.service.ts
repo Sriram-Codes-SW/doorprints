@@ -24,7 +24,7 @@ import { openLocalDb } from './local-db';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
 import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
 import type { Broker, BrokerRow } from '../shared/broker';
-import { SETTING_KEYS, houseFromDto, isoNow, millis, recordFromDto, visitFromDto } from './records';
+import { SETTING_KEYS, houseFromDto, isoNow, millis, photoMetaOf, recordFromDto, visitFromDto, withPhotoMeta } from './records';
 import {
   BUILT_IN_KEYS,
   CRITERION_TYPE,
@@ -45,6 +45,7 @@ import {
 import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
 import {
   DEFAULT_QUESTIONS,
+  DEFAULT_QUESTIONS_SEEDED_AT,
   MAX_QUESTIONS,
   MAX_QUESTION_TEXT,
   QUESTION_TYPE,
@@ -106,6 +107,9 @@ import {
 } from '../shared/area';
 import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
 import type { LengthUnit } from '../shared/room-sizes';
+import { MOVE_IN_TAG, cleanMeta, hasMeta, incomingWins } from '../shared/photo-tags';
+import type { PhotoMeta } from '../shared/photo-tags';
+import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
 /** Quiet period after the last write before {@link LocalStore.settled} follows `revision`. */
@@ -370,8 +374,18 @@ export class LocalStore {
     return db.get<PhotoRecord>('photos', id);
   }
 
-  /** Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. */
-  async addPhoto(houseId: string, blob: Blob, id: string = uuid(), now: number = Date.now()): Promise<AddPhotoResult> {
+  /**
+   * Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. `meta` is the photo's
+   * room, tags and caption when they are known at once (the condition record's *Add a photo* chooses MOVE_IN), stamped
+   * `metaUpdatedAt = now` and waiting to be pushed.
+   */
+  async addPhoto(
+    houseId: string,
+    blob: Blob,
+    id: string = uuid(),
+    now: number = Date.now(),
+    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
+  ): Promise<AddPhotoResult> {
     if ((await this.photosOf(houseId)).length >= MAX_PHOTOS_PER_HOUSE) return { ok: false, reason: 'limit' };
     const db = await this.db();
     const record: PhotoRecord = {
@@ -386,9 +400,95 @@ export class LocalStore {
       syncVersion: 0,
       uploaded: false,
     };
-    await db.put('photos', record);
+    const clean = meta ? cleanMeta({ ...meta, metaUpdatedAt: now }) : null;
+    await db.put('photos', clean && hasMeta({ ...clean, metaUpdatedAt: 0 }) ? withPhotoMeta(record, clean, true) : record);
     this.touch();
     return { ok: true, id };
+  }
+
+  /**
+   * Saves a photo's room, tags and caption (docs/11 5.7): coerced, stamped `metaUpdatedAt = now` and marked for the next
+   * sync. Nothing is written, and `false` comes back, when the photo is gone or the meta is what it already is.
+   */
+  async setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>, now: number = Date.now()): Promise<boolean> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (!existing || existing.deleted) return false;
+    const clean = cleanMeta({ ...meta, metaUpdatedAt: 1 });
+    const before = photoMetaOf(existing);
+    if (before.roomId === clean.roomId && before.caption === clean.caption && before.tags.join('\n') === clean.tags.join('\n')) return false;
+    // Strictly newer than what is stored, so two edits inside one millisecond still order.
+    const stamp = Math.max(now, before.metaUpdatedAt + 1);
+    await db.put('photos', withPhotoMeta(existing, { ...clean, metaUpdatedAt: stamp }, true));
+    this.touch();
+    return true;
+  }
+
+  /** Applies the meta a server row carries when it is strictly newer than the stored one (last write wins). */
+  async applyPhotoMetaFromServer(id: string, incoming: PhotoMeta): Promise<boolean> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (!existing || existing.deleted) return false;
+    if (!incomingWins(photoMetaOf(existing).metaUpdatedAt, incoming.metaUpdatedAt)) return false;
+    await db.put('photos', withPhotoMeta(existing, incoming, false));
+    this.touch();
+    return true;
+  }
+
+  /** The push of a photo's meta went through: the flag clears only when the meta was not edited again meanwhile. */
+  async markPhotoMetaClean(id: string, pushedAt: number): Promise<void> {
+    const db = await this.db();
+    const existing = await db.get<PhotoRecord>('photos', id);
+    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) {
+      const { metaDirty: _dirty, ...clean } = existing;
+      await db.put('photos', clean);
+    }
+  }
+
+  /** The photos of one house tagged MOVE_IN, oldest first: the condition record (docs/11 5.24). */
+  async conditionPhotos(houseId: string): Promise<PhotoRecord[]> {
+    return (await this.photosOf(houseId)).filter((p) => photoMetaOf(p).tags.some((t) => t === MOVE_IN_TAG));
+  }
+
+  /**
+   * Choosing TAKEN, after the chosen house itself is saved: the house that was TAKEN goes back to SHORTLISTED (M1) and,
+   * when `markOthers`, every other house still open becomes NOT_CHOSEN (`closeTargets`). Returns how many houses
+   * were changed. Each changed house is saved like an edit (dirty, `updatedAt` now).
+   */
+  async applyTaken(takenId: string, markOthers: boolean, now: number = Date.now()): Promise<number> {
+    const live = await this.liveHouses();
+    let next = chooseStatus(live, takenId, 'TAKEN');
+    if (markOthers) {
+      const targets = new Set(closeTargets(next, takenId));
+      next = next.map((h) => (targets.has(h.id) ? { ...h, status: 'NOT_CHOSEN' as const } : h));
+    }
+    return this.saveStatusChanges(live, next, takenId, now);
+  }
+
+  /** How many houses *Close this hunt* would mark NOT_CHOSEN for the TAKEN house. */
+  async closeCount(takenId: string): Promise<number> {
+    return closeTargets(await this.liveHouses(), takenId).length;
+  }
+
+  /** *Close this hunt*: every `closeTargets` house becomes NOT_CHOSEN in one step; nothing is deleted. Returns how many. */
+  async closeHunt(takenId: string, now: number = Date.now()): Promise<number> {
+    const live = await this.liveHouses();
+    const targets = new Set(closeTargets(live, takenId));
+    const next = live.map((h) => (targets.has(h.id) ? { ...h, status: 'NOT_CHOSEN' as const } : h));
+    return this.saveStatusChanges(live, next, takenId, now);
+  }
+
+  private async saveStatusChanges(before: readonly HouseRecord[], after: readonly HouseRecord[], exceptId: string, now: number): Promise<number> {
+    const db = await this.db();
+    const was = new Map(before.map((h) => [h.id, h.status]));
+    let changed = 0;
+    for (const house of after) {
+      if (house.id === exceptId || was.get(house.id) === house.status) continue;
+      await db.put('houses', { ...house, dirty: true, updatedAt: isoNow(now) });
+      changed++;
+    }
+    if (changed > 0) this.touch();
+    return changed;
   }
 
   /**
@@ -418,6 +518,39 @@ export class LocalStore {
     const db = await this.db();
     await db.put('photos', record);
     this.touch();
+  }
+
+  // ---- Import (S4b-BL-75) ----
+
+  /** Every record of one `type`, tombstones included: an import's last-write-wins comparison. */
+  async allRecordsOf(type: string): Promise<RecordRecord[]> {
+    const db = await this.db();
+    return db.getAllByIndex<RecordRecord>('records', 'type', type);
+  }
+
+  /**
+   * Writes the rows an import chose, as they are (the caller stamped and marked them; `ImportService`), then bumps the
+   * revision once, so a screen re-reads after the whole import rather than per row.
+   */
+  async putImported(rows: { houses?: readonly HouseRecord[]; visits?: readonly VisitRecord[]; photos?: readonly PhotoRecord[]; records?: readonly RecordRecord[] }): Promise<void> {
+    const db = await this.db();
+    for (const r of rows.records ?? []) await db.put('records', r);
+    for (const h of rows.houses ?? []) await db.put('houses', h);
+    for (const v of rows.visits ?? []) await db.put('visits', v);
+    for (const p of rows.photos ?? []) await db.put('photos', p);
+    this.touch();
+  }
+
+  /** A stored house, tombstones included. */
+  async getHouseRow(id: string): Promise<HouseRecord | undefined> {
+    const db = await this.db();
+    return db.get<HouseRecord>('houses', id);
+  }
+
+  /** A stored visit, tombstones included. */
+  async getVisitRow(id: string): Promise<VisitRecord | undefined> {
+    const db = await this.db();
+    return db.get<VisitRecord>('visits', id);
   }
 
   // ---- Records (docs/11 5.30 item 2: every other Sprint 4b entity, in one store) ----
@@ -504,7 +637,12 @@ export class LocalStore {
       if (!record.dirty) await db.put('records', { ...record, dirty: true });
     }
     for (const photo of await db.getAll<PhotoRecord>('photos')) {
-      if (!photo.deleted && photo.blob && photo.uploaded) await db.put('photos', { ...photo, uploaded: false });
+      if (photo.deleted) continue;
+      const resendBytes = !!photo.blob && photo.uploaded;
+      const resendMeta = (photo.metaUpdatedAt ?? 0) > 0 && photo.metaDirty !== true;
+      if (resendBytes || resendMeta) {
+        await db.put('photos', { ...photo, ...(resendBytes ? { uploaded: false } : {}), ...(resendMeta ? { metaDirty: true } : {}) });
+      }
     }
     this.touch();
   }
@@ -761,8 +899,9 @@ export class LocalStore {
   }
 
   /**
-   * Seeds the bank: for each default whose id has NO record a dirty record with the text in [language] (hi, ta or te;
-   * anything else English). A tombstone counts as a record, so a default the person deleted is not brought back.
+   * Seeds the bank: for each default whose id has NO record a clean record stamped {@link DEFAULT_QUESTIONS_SEEDED_AT}
+   * with the text in [language] (hi, ta or te; anything else English; S4b-BL-90a). A tombstone counts as a record, so
+   * a default the person deleted is not brought back.
    * Returns how many were written.
    */
   async seedQuestions(language: string, now: number = Date.now()): Promise<number> {
@@ -808,11 +947,13 @@ export class LocalStore {
           type: QUESTION_TYPE,
           id: def.id,
           payload: questionToPayload(defaultQuestion(def, language)),
-          updatedAt: isoNow(now),
+          // A seed is clean and stamped DEFAULT_QUESTIONS_SEEDED_AT (S4b-BL-90a): never pushed, and whatever another
+          // device did to it wins when pulled. *Reset to defaults* is the person's own edit: now, dirty.
+          updatedAt: isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT),
           deleted: false,
           syncVersion: existing?.syncVersion ?? 0,
         },
-        true,
+        overwrite,
       );
       await db.put('records', record);
       written += 1;

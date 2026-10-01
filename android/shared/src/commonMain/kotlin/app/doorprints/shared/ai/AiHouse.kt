@@ -21,6 +21,7 @@ package app.doorprints.shared.ai
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.MoveIn
 
 /**
  * A saved house as on-device AI sees it (docs/03 §13.1): the fields the server's `HouseDto` gives its AI code, from
@@ -35,7 +36,7 @@ data class AiHouse(
     val locality: String? = null,
     val lat: Double,
     val lon: Double,
-    /** NEW, SHORTLISTED or REJECTED. */
+    /** NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN. */
     val status: String? = "NEW",
     val price: Long? = null,
     /** RENT or SALE. */
@@ -54,6 +55,10 @@ data class AiHouse(
     val rooms: List<HouseRoom>? = null,
     /** The questions asked (slice 3a); [HouseDocuments] writes the answered and the open ones, redacted like notes. */
     val answers: List<HouseAnswer>? = null,
+    /** Moving in (slice 5); [HouseDocuments] writes how many items are done and the notes, redacted, never the items. */
+    val moveIn: MoveIn? = null,
+    /** The floor (S4b-BL-87), 0 the ground floor; [HouseDocuments] writes it as words. */
+    val floor: Int? = null,
     val checklist: Map<String, Int> = emptyMap(),
     /** Newest last or in any order; only arrivals and departures are read. */
     val visits: List<AiVisit> = emptyList(),

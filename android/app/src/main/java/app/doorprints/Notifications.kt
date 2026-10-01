@@ -29,6 +29,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.HuntService
+import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
@@ -45,6 +46,8 @@ object Notifications {
     const val CHANNEL_VIEWINGS = "viewings"
     /** Hunt mode reminders (docs/11 5.16, slice 3c): default importance, private on the lock screen, no DND bypass. */
     const val CHANNEL_HUNT_REMINDERS = "hunt_reminders"
+    /** The area wake-up (docs/11 5.17, slice 4b): default importance, private on the lock screen, no DND bypass. */
+    const val CHANNEL_AREA_WAKEUP = "area_wakeup"
     // Every fixed notification id the app uses lives here, so two features cannot pick the same number. (The
     // per-house, per-street and per-visit alerts use hash codes and cannot be reserved; they are rare and
     // short-lived.)
@@ -105,12 +108,24 @@ object Notifications {
     fun huntTag(viewingId: String) = "hunt:$viewingId"
 
     /**
+     * Every area wake-up notification (slice 4b) is posted under this id with the tag [areaTag] of its area, as
+     * [VIEWING_ID] with [viewingTag]: a second one for the same area (after the 6-hour cooldown) replaces the first.
+     */
+    const val AREA_WAKEUP_ID = 11
+
+    /** The tag of area [areaId]'s wake-up notification, posted under [AREA_WAKEUP_ID]. */
+    fun areaTag(areaId: String) = "area:$areaId"
+
+    /**
      * The status-bar icon for every notification: a single-colour silhouette. The launcher icon is a full-bleed
      * square, and small icons are drawn as an alpha mask, so it showed as a solid white block.
      */
     val SMALL_ICON = R.drawable.ic_stat_doorprints
 
     const val EXTRA_OPEN_HOUSE = "openHouse"
+
+    /** With [EXTRA_OPEN_HOUSE], true: the house opens scrolled to its questions (a reminder's *Questions*, S4b-BL-93b). */
+    const val EXTRA_OPEN_QUESTIONS = "openQuestions"
 
     /**
      * Which screen a notification opens; only the values in [SCREENS] are accepted (threat model F-25). They are the
@@ -133,6 +148,12 @@ object Notifications {
      * reminder; to MainActivity while location is not granted, which removes it and opens the Map, asking first (5.18).
      */
     const val EXTRA_START_HUNT = "startHunt"
+
+    /**
+     * *Start Hunt mode* from area (the value) [areaTag]'s wake-up notification (slice 4b): to `HuntService`, which then
+     * removes it; to MainActivity while location is not granted, which removes it and opens the Map, asking first.
+     */
+    const val EXTRA_START_HUNT_AREA = "startHuntArea"
 
     /** Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language. */
     fun createChannels(context: Context) {
@@ -159,6 +180,14 @@ object Notifications {
             NotificationChannel(CHANNEL_HUNT_REMINDERS, context.getString(R.string.notif_channel_hunt_reminders), NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = context.getString(R.string.notif_channel_hunt_reminders_desc)
                 // As the viewing reminders: "Doorprints reminder" on a locked screen; Do Not Disturb applies as set.
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                setBypassDnd(false)
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_AREA_WAKEUP, context.getString(R.string.notif_channel_area_wakeup), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_channel_area_wakeup_desc)
+                // The area's name says where the person is: "Doorprints reminder" on a locked screen; DND as set.
                 lockscreenVisibility = Notification.VISIBILITY_PRIVATE
                 setBypassDnd(false)
             }
@@ -271,7 +300,7 @@ object Notifications {
      * viewing and [house] (null: a house that is gone): "Viewing at Green View in 25 min" (or, more than two hours
      * ahead, "Viewing at Green View" with the start below). Never `withWhom`, which is contact data. Actions: *Open
      * house*, *Directions* (a `geo:` link, only for a house whose position is not approximate) and *Questions* (the
-     * house too: the house screen does not scroll to its questions yet). Private on a locked screen. Every
+     * house, scrolled to its questions; [EXTRA_OPEN_QUESTIONS]). Private on a locked screen. Every
      * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
      */
     fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
@@ -308,7 +337,10 @@ object Notifications {
                     }
                     addAction(
                         0, context.getString(R.string.notif_viewing_questions),
-                        openAppIntent(context, ("questions:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, house.id) },
+                        openAppIntent(context, ("questions:" + viewing.id).hashCode()) {
+                            putExtra(EXTRA_OPEN_HOUSE, house.id)
+                            putExtra(EXTRA_OPEN_QUESTIONS, true)
+                        },
                     )
                 }
             }
@@ -372,15 +404,54 @@ object Notifications {
      * if the permission went away since), else MainActivity at the Map's location question ([EXTRA_START_HUNT]).
      */
     fun startHuntIntent(context: Context, viewingId: String, fineLocation: Boolean): PendingIntent =
+        startHunt(context, EXTRA_START_HUNT, viewingId, "hunt", fineLocation)
+
+    /** *Start Hunt mode* of area [areaId]'s wake-up notification (slice 4b): as [startHuntIntent], the same 3c path. */
+    fun startHuntFromAreaIntent(context: Context, areaId: String, fineLocation: Boolean): PendingIntent =
+        startHunt(context, EXTRA_START_HUNT_AREA, areaId, "area", fineLocation)
+
+    private fun startHunt(context: Context, extra: String, id: String, kind: String, fineLocation: Boolean): PendingIntent =
         if (fineLocation) {
             PendingIntent.getForegroundService(
-                context, ("hunt-start:$viewingId").hashCode(),
-                Intent(context, HuntService::class.java).putExtra(EXTRA_START_HUNT, viewingId),
+                context, ("$kind-start:$id").hashCode(),
+                Intent(context, HuntService::class.java).putExtra(extra, id),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         } else {
-            openAppIntent(context, ("hunt-ask:$viewingId").hashCode()) { putExtra(EXTRA_START_HUNT, viewingId) }
+            openAppIntent(context, ("$kind-ask:$id").hashCode()) { putExtra(extra, id) }
         }
+
+    /**
+     * The area wake-up's notification for [area] (docs/11 5.17, slice 4b): "You're in Adyar. Start Hunt mode?" on
+     * [CHANNEL_AREA_WAKEUP], private on a locked screen with the public version "Doorprints reminder", no full-screen
+     * intent. Actions: **Start Hunt mode** ([startHuntFromAreaIntent]; left out while [huntRunning]) and **Dismiss**
+     * ([AreaGeofenceReceiver.dismissIntent], which counts as notified); tapping the body opens the app. Every
+     * PendingIntent is immutable; nothing starts without a tap.
+     */
+    fun areaWakeup(context: Context, area: Area, fineLocation: Boolean, huntRunning: Boolean): Notification {
+        val title = context.getString(R.string.notif_area_wakeup, area.name)
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_AREA_WAKEUP)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_viewing_public))
+            .build()
+        return NotificationCompat.Builder(context, CHANNEL_AREA_WAKEUP)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(title)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(title))
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setContentIntent(openAppIntent(context, ("area-open:" + area.id).hashCode()))
+            .apply {
+                if (!huntRunning) {
+                    addAction(0, context.getString(R.string.notif_hunt_reminder_start), startHuntFromAreaIntent(context, area.id, fineLocation))
+                }
+                addAction(0, context.getString(R.string.notif_hunt_reminder_dismiss), AreaGeofenceReceiver.dismissIntent(context, area.id))
+            }
+            .build()
+    }
 
     /** Up to this many minutes ahead the reminder says "in 25 min"; further ahead (2 hours, 1 day) it gives the start. */
     private const val SOON_MINUTES = 90
@@ -401,7 +472,13 @@ object Notifications {
     /** True when this app may post notifications at all: below API 33 always, from 33 with `POST_NOTIFICATIONS`. */
     fun canPost(context: Context): Boolean = canPostNotifications(context)
 
-    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?) {
+    /**
+     * A Hunt mode alert: private on a locked screen, which shows the public version "Doorprints alert" (F-14, SEC-022).
+     * [hideOnLockScreen] (the app lock is on, S4b-BL-68, T-I29) makes it secret: a locked screen shows nothing of it
+     * even where the phone is set to show all notification content, which would show a private one whole and name the
+     * house; it still sounds and shows once the phone is unlocked.
+     */
+    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false) {
         if (!canPost(context)) return
         // What a locked screen shows instead of the house details (threat model F-14, SEC-022).
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
@@ -415,7 +492,7 @@ object Notifications {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(if (hideOnLockScreen) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .apply { if (tap != null) setContentIntent(tap) }
             .build()

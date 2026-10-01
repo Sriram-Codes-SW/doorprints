@@ -168,6 +168,7 @@ object PdfExporter {
         sheet.labelled(s["col.price"], house.price?.let { ExportRows.rupees(it) } ?: s["none"], body)
         if (house.price != null) sheet.labelled(s["col.priceType"], s.priceType(house.priceType), body)
         sheet.labelled(s["col.bedrooms"], house.bedrooms?.toString() ?: s["none"], body)
+        house.floor?.let { sheet.labelled(s["col.floor"], s.floor(it), body) }
         sheet.labelled(s["col.rating"], house.rating?.toString() ?: s["none"], body)
         sheet.labelled(s["col.address"], house.address ?: s["none"], body)
         sheet.labelled(s["col.street"], house.street ?: s["none"], body)
@@ -205,6 +206,13 @@ object PdfExporter {
         if (distances.isNotEmpty()) {
             sheet.section(s["section.distances"], heading)
             for ((place, km) in distances) sheet.labelled(place, "${s["col.km"]}: $km", body, 2f)
+        }
+
+        // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
+        if (house.moveIn != null) {
+            sheet.section(s["section.movingIn"], heading)
+            for ((term, value) in ExportRows.moveInLines(house, bundle)) sheet.labelled(term, value, body, 2f)
+            for (item in ExportRows.moveInItems(house)) sheet.paragraph(item, body, spaceAfter = 2f)
         }
 
         val keys = ExportRows.orderedChecklistKeys(house)
@@ -263,6 +271,8 @@ object PdfExporter {
                 } finally {
                     bitmap.recycle()
                 }
+                // Its room, tags and caption (slice 5), those it has, under the photo.
+                ExportRows.photoLine(photo, bundle)?.let { sheet.paragraph(it, body, spaceAfter = 6f) }
             }
         }
     }

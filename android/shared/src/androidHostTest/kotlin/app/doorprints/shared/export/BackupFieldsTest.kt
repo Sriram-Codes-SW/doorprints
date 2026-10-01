@@ -145,6 +145,32 @@ class BackupFieldsTest {
         }
     }
 
+    /**
+     * Slice 5: house 1 is TAKEN with a `moveIn` carrying every key of [app.doorprints.shared.model.MoveIn], and its two
+     * items together carry every key of `MoveInItem` (`done` only on the ticked one), each in the model's order; photo 1
+     * carries the four meta keys (checked with the photo's fields above).
+     */
+    @Test
+    fun theSampleMoveInAndItsItemsTogetherHaveExactlyTheModelsFieldsInItsOrder() {
+        val house = sample.getValue("houses").jsonArray.first().jsonObject
+        assertEquals("\"TAKEN\"", house.getValue("status").toString())
+        val moveIn = house.getValue("moveIn").jsonObject
+        assertEquals(app.doorprints.shared.model.MoveIn.serializer().descriptor.elementNames.toList(), moveIn.keys.toList())
+        val model = app.doorprints.shared.model.MoveInItem.serializer().descriptor.elementNames.toList()
+        val rows = moveIn.getValue("items").jsonArray.map { it.jsonObject.keys.toList() }
+        assertEquals(2, rows.size)
+        for (row in rows) assertEquals(model.filter { it in row }, row)
+        assertEquals(model, model.filter { key -> rows.any { key in it } })
+        // The key order of a house: `moveIn` right after `answers`.
+        val keys = house.keys.toList()
+        assertEquals(keys.indexOf("answers") + 1, keys.indexOf("moveIn"))
+        // The sample reads back and passes the check: its move-in and photo meta are valid, and it is `/2` because of them too.
+        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), sample.toString())
+        assertEquals(null, BackupValidation.checkData(data))
+        assertEquals(BackupFormat.ID_2, BackupFormat.idFor(0, slice5 = data.houses.any { it.moveIn != null }))
+        assertEquals(listOf("KITCHEN_FITTINGS", "MOVE_IN", "damp corner"), data.photos.first().tags)
+    }
+
     @Test
     fun theSamplePreferenceHasExactlyTheModelsFields() =
         assertEquals(ExportPreference.serializer().descriptor.elementNames.toList(), keysOf("preferences"))
@@ -152,7 +178,23 @@ class BackupFieldsTest {
     /** `data.json`'s lists in the model's order: `criteria` and `preferences` after `brokers`, `questions`, then `viewings` last. */
     @Test
     fun theSamplesTopLevelKeysAreTheModelsInItsOrder() =
-        assertEquals(BackupData.serializer().descriptor.elementNames.toList(), sample.keys.toList())
+        assertEquals(BackupData.serializer().descriptor.elementNames.toList() - "deleted", sample.keys.toList())
+
+    /**
+     * S4b-BL-82: `deleted` is an update file's list, so the backup sample has none; `update-sample.json` is the `/3` update
+     * file this writer writes byte for byte (no whole-number coordinate in it), its list last.
+     */
+    @Test
+    fun theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck() {
+        val text = repoFile("docs/schemas/update-sample.json").readText().trimEnd()
+        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), text)
+        assertEquals(BackupFormat.ID_3, data.format)
+        assertEquals(null, BackupValidation.checkData(data))
+        assertEquals(text, BackupFormat.json.encodeToString(BackupData.serializer(), data))
+        assertEquals("deleted", Json.parseToJsonElement(text).jsonObject.keys.last())
+        assertEquals(ExportDeletion.serializer().descriptor.elementNames.toList(), Json.parseToJsonElement(text).jsonObject
+            .getValue("deleted").jsonArray.first().jsonObject.keys.toList())
+    }
 
     /** The sample is the golden of a `/2` copy: its `brokers` list is what makes the format `/2` (README 1.1). */
     @Test

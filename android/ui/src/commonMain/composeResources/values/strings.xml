@@ -41,6 +41,8 @@
     <string name="status_NEW">New</string>
     <string name="status_SHORTLISTED">Shortlisted</string>
     <string name="status_REJECTED">Rejected</string>
+    <string name="status_TAKEN">Taken</string>
+    <string name="status_NOT_CHOSEN">Not chosen</string>
     <string name="status_ALL">All</string>
     <string name="status_filter">%1$s (%2$d)</string>
     <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
@@ -169,7 +171,7 @@
     <string name="settings_min_stay">Count it as a visit after staying %1$d min</string>
     <string name="settings_gps_note">GPS is usually accurate to 5–20 m, so neighbouring houses can be confused. Alerts pause when the signal is weak (indoors), and hunt mode stops by itself when the battery is low.</string>
     <string name="settings_privacy">Privacy</string>
-    <string name="settings_privacy_note">Your houses and visits stay on this phone and your own server. Map tiles come from OpenFreeMap, and street names from the phone’s built-in geocoder (Google). Photos are saved without location data.</string>
+    <string name="settings_privacy_note">Your houses and visits stay on this phone and your own server. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from the phone’s built-in geocoder (Google). Photos are saved without location data.</string>
     <string name="settings_about">About</string>
     <string name="sync_ok">Synced: sent %1$d, received %2$d</string>
     <string name="sync_ok_photos_waiting">Synced: sent %1$d, received %2$d. Photos waiting for Wi-Fi: %3$d</string>
@@ -324,6 +326,7 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">Deleted on this phone; they stay deleted</string>
+    <string name="import_removed_houses">Houses deleted by the sender</string>
     <string name="import_bring_back">Bring them back</string>
     <string name="import_show_copies">Show as copies</string>
     <string name="import_stop_other">Stop the other import</string>
@@ -564,7 +567,7 @@
     <string name="map_not_on_this_phone">The map isn’t on iPhone yet. All your houses are in the ‘Houses’ tab.</string>
     <string name="settings_language_phone">Doorprints uses your iPhone’s language. To use another language just for Doorprints, add it under General › Language &amp; Region in the Settings app, then choose it on the Doorprints page there.</string>
     <string name="settings_language_open_settings">Open iPhone Settings</string>
-    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap, and street names from Apple’s geocoder.</string>
+    <string name="settings_privacy_note_ios">Your houses and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from Apple’s geocoder.</string>
     <string name="houses_empty_ios">No houses yet. You can’t add houses on iPhone yet. If you have a Doorprints server, connect it in Settings and your houses will show up here.</string>
     <!-- The Map's location note where Hunt mode is not on the platform (iOS, CMP-8c): it names only what is on the screen. -->
     <string name="map_location_off_no_hunt">Location is off for Doorprints. ‘Save house here’ needs it.</string>
@@ -688,6 +691,10 @@
     <!-- S4b-FR-4, a shared listing (2026-09-30). -->
     <string name="map_add_tip_listing">Where is this house? Tap ‘Save house here’ if you are there, or long-press the map on it; the listing then fills in the form.</string>
     <string name="map_add_tip_listing_a11y">Where is this house? Tap ‘Save house here’ while you are at it; the listing then fills in the form.</string>
+    <string name="map_find_place">Find “%1$s” on the map</string>
+    <string name="map_finding_place">Finding “%1$s”…</string>
+    <string name="map_place_found">The map shows “%1$s”. Long-press the house’s spot to add it there.</string>
+    <string name="map_place_not_found">No place called “%1$s” was found in India. Move the map to the house yourself.</string>
     <string name="house_dup_title">You saved this listing on %1$s</string>
     <string name="house_dup_text">‘%1$s’ has the same link. Open it, or add the listing again as a new house?</string>
     <string name="house_dup_open">Open</string>
@@ -1022,7 +1029,7 @@
     <string name="area_radius">Radius: %1$d m</string>
     <string name="area_radius_label">Radius</string>
     <string name="area_wake">Wake me here</string>
-    <string name="area_wake_hint">Takes effect in a later update.</string>
+    <string name="area_wake_hint">Used by Wake me in my hunting areas.</string>
     <string name="area_delete">Delete area</string>
     <string name="area_delete_title">Delete this area?</string>
     <string name="area_delete_body">Its notes are kept, but no house shows them any more.</string>
@@ -1066,4 +1073,100 @@
     <string name="house_distance_value">%1$s km · about %2$d min on foot</string>
     <string name="house_distances_hint">In a straight line; the time is Plan's walking estimate.</string>
     <string name="compare_km">%1$s km</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30). -->
+    <string name="area_wakeup_switch">Wake me in my hunting areas</string>
+    <string name="area_wakeup_hint">When you arrive in an area with Wake me here on, Doorprints offers Hunt mode, usually within a few minutes. Needs location allowed all the time.</string>
+    <string name="area_wakeup_why">Why: so Doorprints notices when you arrive in an area you are searching and offers Hunt mode. It never starts Hunt mode by itself.</string>
+    <string name="area_wakeup_what">How: Google Play services compares where the phone is with your areas, on the phone. Doorprints keeps no location history and sends your position nowhere.</string>
+    <string name="area_wakeup_battery">Battery: small. Doorprints asks for no location of its own.</string>
+    <string name="area_wakeup_how_off">To stop it, turn off Wake me in my hunting areas in My areas, or take the location permission away in the phone's settings.</string>
+    <string name="area_wakeup_pick">Next, Android asks about location. Choose Allow all the time. On newer Android this is on the app's location page: choose it there, then come back.</string>
+    <string name="area_wakeup_continue">Continue</string>
+    <string name="area_wakeup_not_now">Not now</string>
+    <string name="area_wakeup_still_off">Area wake-up is still off: it needs precise location allowed all the time.</string>
+    <string name="area_wakeup_off_card">Area wake-up is off because Doorprints no longer has location access all the time.</string>
+    <!-- Slice 5, photo tags and moving in (2026-09-30). -->
+    <string name="taken_others_title">Mark the other houses Not chosen?</string>
+    <string name="taken_others_body">When you save, the other houses you have not rejected are marked Not chosen. Nothing is deleted.</string>
+    <string name="taken_mark_them">Mark them Not chosen</string>
+    <string name="taken_keep_them">Keep them</string>
+    <string name="taken_marked">Marked %1$d houses Not chosen</string>
+    <string name="movein_title">Moving in</string>
+    <string name="movein_intro">A checklist for moving in, and dated photos of each room to keep for when the deposit is returned.</string>
+    <string name="movein_start">Start moving in</string>
+    <string name="movein_progress">%1$d of %2$d done</string>
+    <string name="movein_edit_desc">Edit “%1$s”</string>
+    <string name="movein_remove_desc">Remove “%1$s”</string>
+    <string name="movein_item_text">Item</string>
+    <string name="movein_add_label">Add your own</string>
+    <string name="movein_add">Add</string>
+    <string name="movein_max">At most 30 items</string>
+    <string name="movein_empty">No items yet. Start moving in adds the usual ones, or add your own.</string>
+    <string name="movein_date">Move-in date</string>
+    <string name="movein_date_none">No date yet</string>
+    <string name="movein_date_pick">Pick the move-in date</string>
+    <string name="movein_date_clear">Clear the date</string>
+    <string name="movein_notes">Move-in notes</string>
+    <string name="movein_record_title">Condition record</string>
+    <string name="movein_record_hint">Photos tagged Move-in, by room, with their date and caption.</string>
+    <string name="movein_record_empty">No move-in photos yet.</string>
+    <string name="movein_add_photo">Add a photo</string>
+    <string name="movein_close">Close this hunt</string>
+    <string name="movein_close_title">Close this hunt?</string>
+    <string name="movein_close_body">%1$d houses will be marked Not chosen. Nothing is deleted.</string>
+    <string name="movein_close_save_first">Save this house as Taken to close the hunt.</string>
+    <string name="movein_closed">Hunt closed: %1$d houses marked Not chosen. Save a copy of everything?</string>
+    <string name="photo_details">Room, tags and caption</string>
+    <string name="photo_details_desc">Room, tags and caption of photo %1$d</string>
+    <string name="photo_meta_title">Photo details</string>
+    <string name="photo_room">Room</string>
+    <string name="photo_no_room">No room</string>
+    <string name="photo_untagged">Untagged</string>
+    <string name="photo_tags">Tags</string>
+    <string name="photo_tag_custom">Your own tag</string>
+    <string name="photo_tag_add">Add tag</string>
+    <string name="photo_tags_max">At most 10 tags, each up to 30 characters</string>
+    <string name="photo_tag_remove_desc">Remove tag %1$s</string>
+    <string name="photo_caption">Caption</string>
+    <string name="photo_meta_saved">Photo details saved</string>
+    <string name="tag_EXTERIOR">Outside</string>
+    <string name="tag_ENTRANCE">Entrance</string>
+    <string name="tag_KITCHEN_FITTINGS">Kitchen fittings</string>
+    <string name="tag_BATHROOM_FITTINGS">Bathroom fittings</string>
+    <string name="tag_DAMP">Damp</string>
+    <string name="tag_CRACK">Crack</string>
+    <string name="tag_LEAK">Leak</string>
+    <string name="tag_VIEW">View</string>
+    <string name="tag_WATER_TANK">Water tank</string>
+    <string name="tag_METER">Meter</string>
+    <string name="tag_PARKING">Parking</string>
+    <string name="tag_LIFT">Lift</string>
+    <string name="tag_GOOD_POINT">Good point</string>
+    <string name="tag_PROBLEM">Problem</string>
+    <string name="tag_MOVE_IN">Move-in</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): the rationale's iPhone lines and the notification. -->
+    <string name="area_wakeup_what_ios">How: iOS compares where the iPhone is with your areas, on the iPhone. Doorprints keeps no location history and sends your position nowhere.</string>
+    <string name="area_wakeup_pick_ios">Next, iOS asks about location. Choose Allow While Using App first, then Change to Always Allow. If iOS does not ask, choose Always in the app's location settings, then come back.</string>
+    <string name="notif_area_wakeup">You're in %1$s. Start Hunt mode?</string>
+    <!-- S4b-BL-81, copies on iPhone (2026-09-30): the Save a copy hint without the PDF, which the iPhone does not make. -->
+    <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown or a full backup</string>
+    <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30). -->
+    <string name="map_hunt_offer">Start Hunt mode?</string>
+    <string name="map_hunt_offer_start">Start Hunt mode</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview. -->
+    <string name="house_floor">Floor</string>
+    <string name="house_floor_hint">0 is the ground floor, -1 a basement</string>
+    <string name="house_floor_invalid">Enter a floor from -5 to 200</string>
+    <string name="house_room_move_up">Move %1$s up</string>
+    <string name="house_room_move_down">Move %1$s down</string>
+    <string name="duplicate_flat_warning">Maybe the same flat as %1$s: within about 30 m, with the same bedrooms and floor.</string>
+    <string name="houses_filters">Filters</string>
+    <string name="houses_filters_count">Filters (%1$d)</string>
+    <string name="houses_filters_title">Filter by cost</string>
+    <string name="houses_filters_hint">In whole rupees. A house is left out when its number cannot be worked out (a sale has no monthly cost).</string>
+    <string name="houses_filter_min">%1$s from (₹)</string>
+    <string name="houses_filter_max">%1$s up to (₹)</string>
+    <string name="houses_filters_clear">Clear cost filters</string>
+    <string name="import_new_brokers">New brokers</string>
+    <string name="import_updated_brokers">Brokers the backup has a newer version of</string>
 </resources>

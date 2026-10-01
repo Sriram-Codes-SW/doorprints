@@ -21,6 +21,7 @@ package app.doorprints.server.backup;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -31,6 +32,9 @@ import java.util.UUID;
  * are fetched from {@code GET /api/photos/{id}} and uploaded with {@code POST /api/houses/{id}/photos}.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"id", "houseId", "fileName", "createdAt"})
-public record BackupPhoto(UUID id, UUID houseId, String fileName, Long createdAt) {
+@JsonPropertyOrder({"id", "houseId", "fileName", "createdAt", "roomId", "tags", "caption", "metaUpdatedAt"})
+public record BackupPhoto(UUID id, UUID houseId, String fileName, Long createdAt,
+                          /* Slice 5 (docs/11 section 5.7), each written only when set and absent otherwise: a room id of
+                             the house (may dangle), at most 10 tags, a caption, and when they were last edited. */
+                          String roomId, List<String> tags, String caption, Long metaUpdatedAt) {
 }

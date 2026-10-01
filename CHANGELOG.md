@@ -127,6 +127,8 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
   Android SDK, a Maven Central mirror for Gradle, the web dependencies and MkDocs on a fresh cloud container; the
   screenshot tests run Robolectric offline (the android-all image is a Gradle dependency, no download at test time);
   the local check list gains the iOS klib compile on Linux (`docs/14` §7).
+- **Wake me in my hunting areas** ([spec](docs/11-feature-parity-and-export-spec.md) 5.17, 5.18, slice 4b of 5.30; Android): turn it on under **Settings > My areas**. Doorprints explains what it does, then asks for your precise location and "Allow all the time". When you arrive in one of your areas
+  you get "You're in <area>. Start Hunt mode?" (once every six hours per area); it never starts tracking by itself. If the permission is withdrawn the switch turns itself off and says why.
 - **Areas, places and area notes** ([spec](docs/11-feature-parity-and-export-spec.md) 5.17, 5.22, 5.23, slice 4a of 5.30): **Settings > My areas** (Your data on the website) saves the neighbourhoods you are searching in; **My places** saves up to ten places that matter (work, school, family)
   and every house shows its distance to each (and the walking time) in its details and in Compare. Write a note for a street or an area ("water tanker every morning") and it shows on every house it covers, in search, in readable copies and in backups.
   Areas can be marked "Wake me here"; that takes effect in a later update.
