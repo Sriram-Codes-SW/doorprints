@@ -75,6 +75,7 @@ import {
   timeOf,
 } from './map-list';
 import { ListReturn } from './list-return';
+import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
 import { listPeek } from './list-peek';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
@@ -152,6 +153,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly search = signal('');
   protected readonly statusFilter = signal<StatusFilter>('ALL');
   protected readonly sort = signal<SortKey>('recent');
+  /** The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search; in the URL too. */
+  protected readonly costFilter = signal<CostFilter>(NO_COST_FILTER);
+  protected readonly costFiltersOn = computed(() => activeCostFilters(this.costFilter()));
+  protected readonly costRanges: readonly { key: keyof CostFilter; labelKey: TKey }[] = [
+    { key: 'monthly', labelKey: 'cost.monthlyCost' },
+    { key: 'moveIn', labelKey: 'cost.moveIn' },
+    { key: 'perSqFt', labelKey: 'cost.perSqFt' },
+  ];
   protected readonly addMode = signal(false);
   /**
    * False while the map style could not be loaded (offline: the tiles are never cached). The page then says so over
@@ -188,7 +197,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly statusKey = STATUS_KEY;
   protected readonly statusIcon = STATUS_ICON;
   protected readonly filterIcon: Readonly<Record<StatusFilter, string>> = { ALL: '', ...STATUS_ICON };
-  protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED'];
+  protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
   protected readonly sorts: readonly { key: SortKey; labelKey: TKey }[] = [
     { key: 'recent', labelKey: 'map.sort.recent' },
     { key: 'score', labelKey: 'map.sort.score' },
@@ -206,6 +215,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const status = this.statusFilter();
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
+      .filter((h) => costFilterMatches(this.costFilter(), h))
       .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id)).includes(q))
       .map((house) => {
         const result = evaluateScore(house.checklist, house.rating, this.scoring());
@@ -259,6 +269,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.search.set(query.q);
     this.statusFilter.set(query.status);
     this.sort.set(query.sort);
+    this.costFilter.set(query.cost ?? NO_COST_FILTER);
     // Also for the ways back that are not the browser's Back (a house opened from a bookmark, Delete, Discard).
     this.listReturn.remember(query);
     const handover = sharedHandover(this.router);
@@ -526,6 +537,24 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announceCount();
   }
 
+  /** One end of a cost range typed (whole rupees; blank or not a number is no end), applied at once and into the URL. */
+  protected setCostEnd(range: keyof CostFilter, end: 'min' | 'max', event: Event): void {
+    const raw = (event.target as HTMLInputElement).value.trim();
+    const n = raw === '' ? null : Number(raw);
+    const value = n !== null && Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+    const f = this.costFilter();
+    this.costFilter.set({ ...f, [range]: { ...f[range], [end]: value } });
+    this.writeQuery();
+    this.announceCount();
+  }
+
+  protected clearCostFilters(): void {
+    this.costFilter.set(NO_COST_FILTER);
+    this.writeQuery();
+    this.announceCount();
+    document.getElementById('cost-monthly-min')?.focus();
+  }
+
   protected onSort(event: Event): void {
     this.sort.set((event.target as HTMLSelectElement).value as SortKey);
     this.writeQuery();
@@ -561,6 +590,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     clearTimeout(this.searchTimer);
     this.search.set('');
     this.statusFilter.set('ALL');
+    this.costFilter.set(NO_COST_FILTER);
     this.writeQuery();
     this.announceCount();
   }
@@ -660,7 +690,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   /** Search, filter and sort into the URL, replacing the entry: Back goes to the previous page, not the last filter. */
   private writeQuery(): void {
-    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort() };
+    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort(), cost: this.costFilter() };
     this.listReturn.remember(query);
     void this.router.navigate([], {
       relativeTo: this.route,

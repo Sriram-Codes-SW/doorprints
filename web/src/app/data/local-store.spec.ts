@@ -20,6 +20,7 @@ import { computed } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CACHE_NAME_PREFIX, LocalStore, MAX_PHOTOS_PER_HOUSE, SETTLE_MS } from './local-store.service';
 import { SETTING_KEYS } from './records';
+import { keepLocalRecord } from './sync-rules';
 import { LocalDataError } from '../core/local-error';
 import type { HouseAnswer, HouseDto, HouseRoom, VisitDto } from '../core/models';
 import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
@@ -720,11 +721,16 @@ describe('LocalStore questions', () => {
 
   const ids = async () => (await store.questions()).map((q) => q.id);
 
-  it('seeds every default once: fixed ids, the text of the current language, dirty', async () => {
+  it('seeds every default once: fixed ids, the text of the current language, clean and stamped 2000-01-01', async () => {
     expect(await store.seedQuestions('ta', T1)).toBe(DEFAULT_QUESTIONS.length);
     const rows = await store.recordsOf('question');
     expect(rows.map((r) => r.id).sort()).toEqual(DEFAULT_QUESTIONS.map((d) => d.id).sort());
-    expect(rows.every((r) => r.dirty)).toBe(true);
+    // S4b-BL-90a: never pushed, and older than any real edit, so another device's edit or deletion always wins.
+    expect(rows.every((r) => !r.dirty)).toBe(true);
+    expect(rows.every((r) => r.updatedAt === '2000-01-01T00:00:00.000Z')).toBe(true);
+    expect(await store.dirtyRecords()).toEqual([]);
+    const pulledEdit = { ...rows[0], updatedAt: new Date(T1).toISOString() };
+    expect(keepLocalRecord(rows[0], pulledEdit)).toBe(false);
     const water = (await store.questions()).find((q) => q.id === 'qd_water')!;
     expect(water.text).toBe(DEFAULT_QUESTIONS.find((d) => d.id === 'qd_water')!.text.ta);
     // A second run writes nothing: every default already has a record.

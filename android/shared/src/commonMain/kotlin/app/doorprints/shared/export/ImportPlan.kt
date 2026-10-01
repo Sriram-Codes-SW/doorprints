@@ -18,6 +18,11 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.Checklist
+import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.model.Question
+
 /** How an import treats rows that already exist (docs/11 section 5.2, "Import (exact round trip)"). */
 enum class ImportMode {
     /** Merge by id, last edit wins: a row that is newer in the file replaces the local one, otherwise nothing. */
@@ -115,6 +120,16 @@ data class ImportPreview(
     val updatedPlaces: Int = 0,
     val newAreaNotes: Int = 0,
     val updatedAreaNotes: Int = 0,
+    /**
+     * MERGE only (slice 5): photos already on this phone whose meta (room, tags, caption) is newer in the file, by
+     * `metaUpdatedAt`; the import writes the file's meta onto them. An older or equal one changes nothing.
+     */
+    val updatedPhotoMeta: Int = 0,
+    /**
+     * MERGE of an update file only (S4b-BL-82, `applyDeletions`): live houses here that the file's `deleted` list
+     * removes, because the delete is newer than this phone's row. Shown as "*d* deleted by the sender".
+     */
+    val removedHouses: Int = 0,
 ) {
     /** True when the import would change nothing; the screen then says so instead of offering "Import". */
     val isEmpty: Boolean
@@ -122,7 +137,7 @@ data class ImportPreview(
             restoredHouses == 0 && newBrokers == 0 && updatedBrokers == 0 && newCriteria == 0 && updatedCriteria == 0 &&
             newPreferences == 0 && updatedPreferences == 0 && newQuestions == 0 && updatedQuestions == 0 &&
             newViewings == 0 && updatedViewings == 0 && newAreas == 0 && updatedAreas == 0 && newPlaces == 0 &&
-            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0
+            updatedPlaces == 0 && newAreaNotes == 0 && updatedAreaNotes == 0 && updatedPhotoMeta == 0 && removedHouses == 0
 
     /** Rows that would be replaced. The confirmation dialog only appears when this is above zero. */
     val overwrites: Int
@@ -184,6 +199,13 @@ data class ImportActions(
     val areas: List<ExportArea> = emptyList(),
     val places: List<ExportPlace> = emptyList(),
     val areaNotes: List<ExportAreaNote> = emptyList(),
+    /**
+     * MERGE only (slice 5): the file's rows of photos already on this phone whose meta is newer in the file
+     * ([ImportPreview.updatedPhotoMeta]); the writer puts only their meta on the local row, never a new file.
+     */
+    val photoMeta: List<ExportPhoto> = emptyList(),
+    /** MERGE of an update file only (S4b-BL-82): the live houses here the file deletes ([ImportPreview.removedHouses]). */
+    val removedHouseIds: List<String> = emptyList(),
 )
 
 /**
@@ -199,6 +221,33 @@ data class ImportActions(
  * their data.
  */
 object ImportPlan {
+
+    /**
+     * Whether [manifest] is an update file's (docs/11 5.28): only then are its deletions applied (S4b-BL-82). A backup,
+     * a full share (no `sharedSince`) and a bare `data.json` (no manifest) are restores, which never delete.
+     */
+    fun isUpdate(manifest: BackupManifest?): Boolean = manifest?.sharedSince != null
+
+    /**
+     * The live houses here that an update import deletes (S4b-BL-82): a `house` of the file's `deleted` list whose row
+     * here is live and older than the delete (last write wins; an equal or newer row here stays). Nothing in a COPY,
+     * with [skipUpdates] ("Keep mine"), or when [applyDeletions] is off (a restore).
+     */
+    private fun removals(
+        data: BackupData,
+        localHouses: Map<String, Long>,
+        locallyDeletedHouseIds: Set<String>,
+        mode: ImportMode,
+        skipUpdates: Boolean,
+        applyDeletions: Boolean,
+    ): List<String> {
+        if (!applyDeletions || mode == ImportMode.COPY || skipUpdates) return emptyList()
+        return data.deletedRows.asSequence()
+            .filter { it.kind == ExportDeletion.HOUSE && it.id !in locallyDeletedHouseIds }
+            .filter { d -> localHouses[d.id]?.let { it < d.updatedAt } ?: false }
+            .map { it.id }
+            .toList()
+    }
 
     /**
      * [locallyDeletedHouseIds] are houses this phone holds a tombstone for. They are in [localHouses] on
@@ -254,12 +303,18 @@ object ImportPlan {
         localAreas: Map<String, Long> = emptyMap(),
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
+        localPhotoMeta: Map<String, Long> = emptyMap(),
+        /** The live questions and custom criteria here, by id: a merge stays within the caps (S4b-BL-90b). */
+        liveQuestions: Set<String> = emptySet(),
+        liveCriteria: Set<String> = emptySet(),
+        /** An update import ([isUpdate]): the file's `deleted` list applies (S4b-BL-82). */
+        applyDeletions: Boolean = false,
     ): ImportPreview {
         // Criteria and preferences merge by key in both modes (slice 2), [skipUpdates] leaving a newer one alone in a merge.
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
-        val (newC, updC) = settingsCounts(data.criterionRows.map { it.key to it.updatedAt }, localCriteria, skipSettings)
+        val (newC, updC) = counts(criteriaWrites(data, localCriteria, skipSettings, liveCriteria).map { it.key }, localCriteria)
         val (newPr, updPr) = settingsCounts(data.preferenceRows.map { it.key to it.updatedAt }, localPreferences, skipSettings)
-        val (newQ, updQ) = settingsCounts(data.questionRows.map { it.id to it.updatedAt }, localQuestions, skipSettings)
+        val (newQ, updQ) = counts(questionWrites(data, localQuestions, skipSettings, liveQuestions).map { it.id }, localQuestions)
         // Viewings merge by id like the questions; a copy adds every one of them under a new id.
         val (newVw, updVw) = if (mode == ImportMode.COPY) data.viewingRows.size to 0 else
             settingsCounts(data.viewingRows.map { it.id to it.updatedAt }, localViewings, skipSettings)
@@ -389,8 +444,22 @@ object ImportPlan {
             keptMineHouses = mineH,
             keptMineVisits = mineV,
             relinkedVisits = relinkV,
+            updatedPhotoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates).size,
+            removedHouses = removals(data, localHouses, locallyDeletedHouseIds, mode, skipUpdates, applyDeletions).size,
         )
     }
+
+    /**
+     * The file's photos already on this phone ([localPhotoIds]) whose meta is newer than the phone's
+     * ([localPhotoMeta], `metaUpdatedAt` by id; last write wins, slice 5): the same list for [preview] and [plan].
+     * [skipUpdates] leaves them all as they are.
+     */
+    private fun photoMetaUpdates(
+        data: BackupData, localPhotoIds: Set<String>, localPhotoMeta: Map<String, Long>, skipUpdates: Boolean,
+    ): List<ExportPhoto> =
+        if (skipUpdates) emptyList() else data.photos.filter { p ->
+            p.id in localPhotoIds && PhotoMeta.incomingWins(localPhotoMeta[p.id] ?: 0L, p.meta.metaUpdatedAt)
+        }
 
     /**
      * How many houses a [ImportMode.COPY] import would put on this phone a second time: houses in the file whose id
@@ -444,11 +513,15 @@ object ImportPlan {
         localAreas: Map<String, Long> = emptyMap(),
         localPlaces: Map<String, Long> = emptyMap(),
         localAreaNotes: Map<String, Long> = emptyMap(),
+        localPhotoMeta: Map<String, Long> = emptyMap(),
+        liveQuestions: Set<String> = emptySet(),
+        liveCriteria: Set<String> = emptySet(),
+        applyDeletions: Boolean = false,
     ): ImportActions {
         val skipSettings = skipUpdates && mode == ImportMode.MERGE
-        val criteria = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, localCriteria, skipSettings) }
+        val criteria = criteriaWrites(data, localCriteria, skipSettings, liveCriteria)
         val preferences = data.preferenceRows.filter { settingWrites(it.key, it.updatedAt, localPreferences, skipSettings) }
-        val questions = data.questionRows.filter { settingWrites(it.id, it.updatedAt, localQuestions, skipSettings) }
+        val questions = questionWrites(data, localQuestions, skipSettings, liveQuestions)
         val mergedViewings = data.viewingRows.filter { settingWrites(it.id, it.updatedAt, localViewings, skipSettings) }
         val areas = data.areaRows.filter { settingWrites(it.id, it.updatedAt, localAreas, skipSettings) }
         val places = data.placeRows.filter { settingWrites(it.id, it.updatedAt, localPlaces, skipSettings) }
@@ -564,6 +637,8 @@ object ImportPlan {
             areas = areas,
             places = places,
             areaNotes = areaNotes,
+            photoMeta = photoMetaUpdates(data, localPhotoIds, localPhotoMeta, skipUpdates),
+            removedHouseIds = removals(data, localHouses, locallyDeletedHouseIds, mode, skipUpdates, applyDeletions),
         )
     }
 
@@ -574,6 +649,51 @@ object ImportPlan {
             Verdict.INCOMING_NEWER -> !skipUpdates
             else -> false
         }
+
+    /**
+     * The file's questions an import writes (new here or newer), within [Question.MAX_QUESTIONS] live ones (S4b-BL-90b):
+     * a row that replaces a live question here always goes; one that adds a question (new here, or over a tombstone)
+     * goes while the bank, [live] here plus those added before it in file order, has room, and is left out after.
+     */
+    private fun questionWrites(data: BackupData, local: Map<String, Long>, skip: Boolean, live: Set<String>) =
+        withinCap(data.questionRows.filter { settingWrites(it.id, it.updatedAt, local, skip) }, { it.id }, live, Question.MAX_QUESTIONS)
+
+    /**
+     * The file's criteria an import writes, within [Criterion.MAX_CRITERIA] (built-in ones included, S4b-BL-90b): a
+     * built-in key or one live here never adds one; a new custom key goes while there is room, as for the questions.
+     */
+    private fun criteriaWrites(data: BackupData, local: Map<String, Long>, skip: Boolean, live: Set<String>): List<ExportCriterion> {
+        val rows = data.criterionRows.filter { settingWrites(it.key, it.updatedAt, local, skip) }
+        val custom = live.filterTo(HashSet()) { it !in Checklist.keys }
+        return withinCap(rows, { it.key }, custom + Checklist.keys, Criterion.MAX_CRITERIA, start = Checklist.keys.size + custom.size)
+    }
+
+    /**
+     * [rows] in file order, less each one that would add a live row once [max] are live: [live] (ids here) count, and
+     * every kept row whose id is not in [live] adds one. [start] is how many count at the outset (default [live]'s size).
+     */
+    private fun <T> withinCap(rows: List<T>, id: (T) -> String, live: Set<String>, max: Int, start: Int = live.size): List<T> {
+        var count = start
+        val added = HashSet<String>()
+        return rows.filter { r ->
+            val k = id(r)
+            when {
+                k in live || k in added -> true
+                count < max -> {
+                    count++
+                    added += k
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** How many of [keys] are new here and how many replace a row here. */
+    private fun counts(keys: List<String>, local: Map<String, Long>): Pair<Int, Int> {
+        val updated = keys.count { it in local }
+        return (keys.size - updated) to updated
+    }
 
     /** How many of [rows] (key, updatedAt) are new here and how many replace a row here: the preview of [settingWrites]. */
     private fun settingsCounts(rows: List<Pair<String, Long>>, local: Map<String, Long>, skipUpdates: Boolean): Pair<Int, Int> {

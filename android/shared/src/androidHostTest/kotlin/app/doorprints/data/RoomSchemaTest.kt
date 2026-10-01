@@ -62,6 +62,11 @@ class RoomSchemaTest {
             7 to "0f1bb1e926eca4448414d4c3f66907ba",
             // v8 (docs/11 5.5 slice 3a, 2026-09-30): houses.answers, the questions asked as JSON text.
             8 to "1ef29df83d30a6f86a9b88986f715705",
+            // v9 (docs/11 5.7 and 5.24, slice 5, 2026-09-30): the photos' roomId, tags, caption, metaUpdatedAt and
+            // metaDirty, and houses.moveIn.
+            9 to "680c57fd1f6c668e1169c9014a9b2a66",
+            // v10 (S4b-BL-87, 2026-10-01): houses.floor.
+            10 to "0365b6bdbbacce16395d044cf2c0100c",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

@@ -33,6 +33,9 @@ struct DoorprintsApp: App {
         // Hunt mode's alerts (S4b-BL-69): the notification centre's delegate, set before the app finishes launching so
         // a tapped alert that starts the app opens its house.
         MainViewControllerKt.installNotifications()
+        // The area wake-up (S4b-BL-96): the region monitor's delegate, in place before the app finishes launching, so
+        // an arrival in an area that relaunches the app in the background reaches it.
+        MainViewControllerKt.installAreaWakeup()
     }
 
     var body: some Scene {

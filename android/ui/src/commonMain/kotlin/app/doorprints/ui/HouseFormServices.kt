@@ -21,6 +21,7 @@ package app.doorprints.ui
 import androidx.compose.runtime.Composable
 import app.doorprints.data.Repository
 import app.doorprints.location.Place
+import app.doorprints.shared.location.PlaceLookup
 
 /**
  * The app features the house form ([HouseEditScreen]) needs that are still Android code in `:app` (ADR-23 CMP-6 P6a):
@@ -31,6 +32,13 @@ import app.doorprints.location.Place
 interface HouseFormServices {
     /** The street, locality and address at a point, or null when there is no geocoder or it has no answer. */
     suspend fun reverseGeocode(lat: Double, lon: Double): Place?
+
+    /**
+     * Where [query] (`PlaceLookup.query`: a shared listing's locality) is in India, or null when there is no geocoder or
+     * no answer (S4b-BL-83). Only on the person's tap. Android: `Geocoder.getFromLocationName`; iOS:
+     * `CLGeocoder.geocodeAddressString`.
+     */
+    suspend fun findPlace(query: String): PlaceLookup.Found? = null
 
     /** Removes the "Are you at a house?" alert of [visitId]: the form has just saved a house for that visit. */
     fun clearVisitAlert(visitId: String)
@@ -44,9 +52,10 @@ interface HouseFormServices {
 
     /**
      * Shrinks [photo] and stores it as a photo of house [houseId] (Android: `AndroidRepository.addPhoto`, which drops
-     * the Exif block). Runs off the main thread.
+     * the Exif block), with [tags] already chosen (slice 5: the Moving in card's *Add a photo* passes MOVE_IN). Runs
+     * off the main thread.
      */
-    suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult
+    suspend fun addPhoto(houseId: String, photo: PickedPhoto, tags: List<String> = emptyList()): Repository.AddPhotoResult
 
     /**
      * What the image loader (Coil) is given for the stored photo [photoId] (Android: the file). By id, not by the row's

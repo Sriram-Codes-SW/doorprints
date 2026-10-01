@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.17 |
-| Date | 2026-09-30 |
+| Version | 1.19 |
+| Date | 2026-10-01 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
 
@@ -24,6 +24,8 @@
 | 1.15 | 2026-09-30 | Claude (Code), lead | **Viewing questions** (slice 3a of [11](../11-feature-parity-and-export-spec.md) 5.5 and 5.30): a `questions` list after `preferences` (§3.7) and an optional `answers` array on the house after `rooms` (§3.8); a writer writes `/2` when a copy holds a question or a house with answers (with the earlier reasons). New `default-questions.json` (format `doorprints-default-questions/1`), the seed of the question bank in four languages, not part of the backup format. `backup-sample.json` grew to 4 569 bytes (3 questions, two answers on house 1). |
 | 1.16 | 2026-09-30 | Claude (Code), lead | **Viewings** (slice 3b-1 of [11](../11-feature-parity-and-export-spec.md) 5.8 and 5.30): a `viewings` list after `questions` (§3.10); a writer writes `/2` when a copy holds a viewing. New `viewing-sample.ics`, the byte-exact calendar file of the sample's second viewing (§3.11; its line ends are CRLF, kept by `.gitattributes`). `backup-sample.json` grew to 5 121 bytes (2 viewings). |
 | 1.17 | 2026-09-30 | Claude (Code), lead | **Areas, places and area notes** (slice 4a of [11](../11-feature-parity-and-export-spec.md) 5.17, 5.22, 5.23): the lists `areas`, `places`, `areaNotes` after `viewings` (§3.12); a writer writes `/2` when a copy holds any of them. `backup-sample.json` grew to 5 847 bytes (2 areas, 2 places, 2 area notes). |
+| 1.18 | 2026-10-01 | Claude (Code), engineer | **The house's floor** (S4b-BL-87, which the duplicate-flat warning S4b-BL-85 needs): an optional `floor` on the house (§3.1), a whole number -5..200 with 0 the ground floor and a negative one a basement level, after `moveIn` and before `brokerId` in every writer; a writer writes `/2` when a house has a floor (0 included). A reader on a device takes a value out of range as unknown; the server refuses the file (`houses[i].floor must be -5..200`) and a sync `PUT` (400). `backup-sample.json` carries `floor` 3 on house 1 and 0 on house 3 (6 304 bytes with the trailing newline; the web byte golden regenerated, 6 303). |
+| 1.19 | 2026-10-01 | Claude (Code), engineer | **Deletions in an update file, `doorprints-backup/3`** (S4b-BL-82, [11](../11-feature-parity-and-export-spec.md) 5.28 item 3): a top-level `deleted` list after `areaNotes` (new §3.13), written only into an update file and applied only by an update import (§6 rule 5); a new list, so a new number by the rule of §1.1, and every reader accepts `1..3` (Kotlin and Java `MAX_VERSION` 3, web `BACKUP_FORMATS_READ`); `counts.deleted` in the manifest. The server reads `/3` as a restore and ignores the list. **The website reads backups** (S4b-BL-75): `web/src/app/export/backup-reader.ts`, `backup-check.ts`, `import-plan.ts`. New **`import-vectors.json`** (format `doorprints-import-vectors/1`, §6.1): the data checks, merge previews and archives every reader must answer alike, and **`update-sample.json`** (§8.3), the `/3` golden. `backup-sample.json` is unchanged (a backup has no `deleted` list). |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
 | 1.3 | 2026-09-22 | Claude (Cowork) – Backend team | **Three review items closed, and the handover table brought up to date.** (1) **`checklist` is the one lenient always-present field** (sections 3.1 and 4.4). Section 4.4 said an omitted always-present field is refused, while the server's `BackupHouse` and the Android reader both read a missing checklist as `{}` — so an import could clear a house's scores in silence. The format now says what the readers do (absent or `null` → no scores), because "no scores" is a true statement about a house where a defaulted `0, 0` is not; and the server no longer does it silently: `BackupHouse` keeps the `null` (its compact-constructor default is gone), and when a written row has no checklist but the server's copy has scores, the report names the house and the number of scores cleared, in the preview too. Server test `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. The Android reader still refuses an explicit `null` there — new ticket **S4-00/g**. (2) **One `data.json` cap: 16 MiB** (section 7, closing [10](../10-sprint-log.md) §11.3 row 7). It was 64 MiB here and in `BackupFormat`, 16 MiB in `:shared` and the web mirror, and 8 MiB effective on the server. 16 MiB is what [01](../01-requirements.md) SEC-041, [02](../02-threat-model.md) T-T8, `:shared` and the web mirror already say, so the server moved: `BackupFormat.MAX_DATA_JSON_BYTES` is 16 MiB and `app.limits.max-import-bytes` defaults to it (`AppProperties`, `application.yml`, `docker-compose.yml`), so any backup a device accepts restores to a server. New backend test `BackupParityTest` pins all six copies, reading the two client constants as source text, and also checks that the web byte golden is still an exact copy of `backup-sample.json`. (3) New ticket **S4-00/f** (AI): `GoldenSetEvalTest` writes to the shared test database without `@ResourceLock("database")`. Section 9 gains a *State* column: S4-00/a and /b are done in the working tree (Android `CanonicalSampleTest` and a grouping `BackupData.of`; the web golden regenerated and byte-identical), so the "known divergence" of section 5 is closed and S4-00/e is reworded — the client coverage it asked Docs to stop claiming now exists. New ticket **S4-00/h** (Docs) carries the cap change into 01/02/10, and S4-00/d gains the extra paths the new test reads. |
@@ -104,9 +106,10 @@ One format, three implementations, no converters:
 |---|---|
 | Server | `backend/src/main/java/app/doorprints/server/backup/` (`BackupFormat`, `BackupData`, `BackupHouse`, `BackupVisit`, `BackupPhoto`) |
 | Android | `android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt` and `ExportModel.kt` |
-| Web / PWA | `web/src/app/export/backup-export.ts` |
+| Web / PWA | `web/src/app/export/backup-export.ts` (writer); `backup-reader.ts`, `backup-check.ts`, `import-plan.ts` and `import.service.ts` (reader, S4b-BL-75) |
 | The numbers a reader accepts | Kotlin `BackupFormat.READ_IDS`, Java `BackupFormat.READ_IDS`, web `BACKUP_FORMATS_READ` (one constant per stack, section 1.1) |
-| Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder |
+| Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder; [`update-sample.json`](update-sample.json) for an update file's `/3` |
+| Shared import vectors | [`import-vectors.json`](import-vectors.json) (section 6.1): Kotlin `ImportVectorsTest` and `BackupReaderParityTest`, web `backup-import.spec.ts` |
 
 A backup written on a phone must import in a browser and on a server, and the other way round. **Nothing below may
 be renamed, reordered or given a new meaning on one side only.** A new field is added to all three at once, always
@@ -123,7 +126,9 @@ with the sentence "made by a newer version of Doorprints; update Doorprints to i
 the file. A writer writes the lowest number that holds everything it writes, so an app whose data fits `/1` keeps
 writing `/1` and an older reader can still take its files. `MAX` is 2 since 2026-09-30 (the lists of
 [11](../11-feature-parity-and-export-spec.md) 5.30, written from slice 1 of that design on); a `/2` document with none of
-the new lists is the same document as `/1`. The path trace is never in a backup.
+the new lists is the same document as `/1`. `MAX` is 3 since 2026-10-01: an update file's `deleted` list (section 3.13,
+S4b-BL-82) is a new list, and its loss would keep a house the sender deleted, so an older app refuses such a file with
+"update the app" instead; only an update file that carries a deletion is `/3`. The path trace is never in a backup.
 
 ## 2. The container
 
@@ -145,7 +150,7 @@ Doorprints-backup-<UTC date>.zip
 
 `manifest.json` (device only) carries `format`, `app`, `appVersion`, `createdAt` (ISO-8601), `language`, `scope`,
 `includeRejected`, `photoScope`, `includeContacts`, `counts {houses, visits, photos}` (and `brokers` in a `/2` file) and
-`files[] {path, sizeBytes, sha256}`. The server has no options and no ZIP, so it writes no manifest; an importer
+`files[] {path, sizeBytes, sha256}` (and `deleted` in a `/3` update file, section 3.13). The server has no options and no ZIP, so it writes no manifest; an importer
 must not require one when it is handed a bare `data.json`. Since 1.7 an **update file** (sharing updates,
 [11](../11-feature-parity-and-export-spec.md) 5.28) may add `sharedSince` (ISO-8601: only rows changed after it are
 in the file) and `sharedTo` (the name it was made for), and is named `Doorprints-updates-<UTC date>.zip`; the rows
@@ -159,7 +164,7 @@ and the import are exactly a backup's, and a reader uses the two fields for its 
 
 | Field | Type | Meaning |
 |---|---|---|
-| `format` | string | `doorprints-backup/1` today; a reader accepts `/1` and `/2` (section 1.1) and refuses a higher number (`UNSUPPORTED_VERSION`, "update the app") or anything that is not `doorprints-backup/<n>` (`NOT_A_BACKUP`). |
+| `format` | string | `doorprints-backup/1` today; a reader accepts `/1`, `/2` and `/3` (section 1.1) and refuses a higher number (`UNSUPPORTED_VERSION`, "update the app") or anything that is not `doorprints-backup/<n>` (`NOT_A_BACKUP`). |
 | `exportedAt` | number | When the copy was made, epoch milliseconds UTC. The only value in the file that is not user data. |
 | `houses`, `visits`, `photos` | arrays | The rows, in the order of section 5. Always present, possibly empty. |
 
@@ -185,6 +190,7 @@ and the import are exactly a backup's, and a reader uses the two fields for its 
 | `areaSqft` | number | no | Carpet area in sq ft as the person wrote it, 1..100000 (slice 1a, 2026-09-30). |
 | `locationSource` | string | no | `GPS`, `MAP` or `APPROX`: how the location was set; `APPROX` is drawn hollow and never alerts. Absent on a house saved before this. |
 | `cost` | object | no | `{deposit, depositMonths, maintenance, maintenanceIncluded, brokerage, brokerageMonths, lockInMonths, noticeMonths, availableFrom, myOffer, agreedPrice}`, each optional (rupees as whole numbers 0..10¹², months 0..120, `availableFrom` a `YYYY-MM-DD` date, `maintenanceIncluded` a boolean). Written only when at least one field is set; an empty object reads as absent. |
+| `floor` | number | no | `/2` only (S4b-BL-87): the floor the flat is on, a whole number -5..200, 0 the ground floor, below 0 a basement level; after `moveIn` and before `brokerId`. Written whenever it is known, 0 included. A device reader takes a value out of range as unknown; the server refuses it. |
 | `rooms` | array | no | `/2` only (slice 1c): the house's rooms, at most 30, after `cost` and before `brokerId`; section 3.5. Absent when there are none. |
 | `checklist` | object | yes (written) | `{item: score}`, score 0..5, item ≤ 100 characters. **Keys sorted alphabetically.** May be `{}`. Unknown keys from a newer app are kept as they are (NFR-025). Every writer emits it, `{}` when there are no scores. **The one lenient field on read:** a reader takes an absent or `null` checklist as `{}` ("no scores") instead of refusing the file — section 4.4 says why this field and no other, and what the server reports when that clears scores. |
 | `createdAt`, `updatedAt` | number | yes | Epoch milliseconds UTC. |
@@ -278,6 +284,20 @@ Three lists after `viewings`, each ordered by `updatedAt` then `id`, each left o
 text, a note with neither or both targets, or more than the cap is refused whole. Merge by `id`, newest `updatedAt` wins, an import never deletes, a newer row revives a deleted one. A place is the person's own data, not a contact:
 it stays in a copy made without contact details. Which houses a note reaches and the distances are derived, never stored (docs/11 5.8 and the design of slice 4a).
 
+### 3.13 Deletions (`/3`, update files only; S4b-BL-82)
+
+An update file ([11](../11-feature-parity-and-export-spec.md) 5.28) carries the houses deleted on the sender's phone after
+`sharedSince` in a top-level **`deleted`** list, the last list of `data.json` (after `areaNotes`), ordered by `updatedAt` then
+`id`, left out when empty. Keys in this order: `kind` (`house` so far; a reader ignores a kind it does not know), `id` (a row
+id, `[A-Za-z0-9_-]{1,64}`), `updatedAt` (the delete's time, epoch milliseconds). At most 20 000; a blank or over-long kind
+(32), a bad id, a negative time, a (kind, id) twice, or a `house` the same file also carries live refuses the file whole. A
+writer writes the list only into an update file (`sharedSince` set) and then writes `/3`; a backup, a copy and a full share
+never carry one. **Only an update import applies it** (the manifest has `sharedSince`; section 6 rule 5): a MERGE deletes a
+live house here whose `updatedAt` is older than the delete, as the person's own delete would (a tombstone stamped now, pushed
+on the next sync); a house edited here after the delete, one already deleted here, a COPY and *Keep mine* leave it. The
+preview says how many: "Houses deleted by the sender". A bare `data.json` has no manifest and is a restore; the server's
+`POST /api/import` is a restore too and ignores the list. The sender's name is not in the file (only `sharedTo`, who it is for).
+
 ## 4. Null semantics (NFR-025)
 
 1. **A field with no value is left out.** Writers never emit `null` (Kotlin `explicitNulls = false`, TypeScript
@@ -312,8 +332,9 @@ it stays in a copy made without contact details. Which houses a note reaches and
    `BackupApiTest.aMissingChecklistReadsAsNoScoresAndTheReportSaysWhatItClears`. Device importers should show the
    same line in their preview. **Open on Android** (S4-00/g): `:shared` reads an *absent* checklist as `{}` but
    refuses an explicit `null`, which rule 1 says means the same thing.
-5. **`deleted` and `syncVersion` are not in the format.** Tombstones are never exported, and sync state belongs to
-   the store that holds it. An imported row is live and, on a device, dirty.
+5. **`deleted` and `syncVersion` are not in the format** as row fields. Tombstones are never exported, and sync state
+   belongs to the store that holds it. An imported row is live and, on a device, dirty. (An update file's top-level
+   `deleted` list of section 3.13 names deleted rows by id; it is not a row field.)
 6. **The sync API is the other way round.** `HouseDto`, `VisitDto` and `PhotoDto` (`GET/PUT /api/houses/{id}` …)
    write every field, `null` included, and a `PUT` is a full replacement: an absent field there also means "no
    value", so it clears the column. See the class comment on `HouseDto`.
@@ -361,7 +382,9 @@ only photo belonged to house 1 — agrees with both rules by accident and pins n
    fields (section 4.2: the row wins or loses together). Keeping the store's own `createdAt` would be a partial
    restore, and because the export is ordered by `createdAt` it would let a restore re-order the very file it was
    made from. Server test: `BackupApiTest.anUpdateTakesTheFilesCreatedAt`.
-5. **Never deletes.** A row this store has and the file does not is left alone.
+5. **Never deletes.** A row this store has and the file does not is left alone. The one exception is an **update
+   import's deletions** (section 3.13): a device importing an update file deletes the live houses its `deleted` list names
+   that are older here than the delete. A restore (a backup, a full share, a bare `data.json`, the server) never does.
 6. **Restoring a deleted row brings back an almost empty one.** A delete *purges* the content (F-16): the house's
    photos are tombstoned with their bytes dropped and its visits are unlinked (`houseId` cleared). An import makes
    the house live again, and the photo bytes are gone for good — but a visit *can* come back, because the unlink
@@ -416,6 +439,16 @@ only photo belonged to house 1 — agrees with both rules by accident and pins n
     present; a client must not treat the row lines as a complete list, and must not parse them — they are text for
     a human. Server test: `BackupApiTest.aLargeRestoreReportsATailLineInsteadOfOneLinePerHouse` (25 restored houses
     → 20 lines and the tail, in the preview and in the applied import).
+
+### 6.1 The shared import vectors
+
+[`import-vectors.json`](import-vectors.json) (format `doorprints-import-vectors/1`) holds what every device reader must answer
+alike: `checks` (a `data.json` and the problem it gets, or none), `merges` (a file, what is here, the mode and flags, and the
+preview's counts, deletions of an update file included) and `archives` (a whole file as base64, stored and deflated ZIPs, a
+bare `data.json`, and the refusals of sections 6 and 7). `android/shared`'s `ImportVectorsTest` runs them through the common
+reader and `ImportPlan`, `android/app`'s `BackupReaderParityTest` through Android's `java.util.zip` reader, and the website's
+`backup-import.spec.ts` through its reader and `import-plan.ts`. A new rule is a new case here first. The stamps are in the
+past (2026-05-28); the photo is 300 bytes whose byte *i* is *i* × 31 mod 256.
 
 ## 7. Limits
 
@@ -495,6 +528,13 @@ numbers and links are made up), with what the no-AI listing parser must read fro
 ([11](../11-feature-parity-and-export-spec.md) 5.29). `android/shared`'s `ListingFixturesTest` and the web's
 `listing-text.spec.ts` run every case, so a change to one parser that the other does not make fails a test. A new
 portal shape is a new case here first.
+
+## 8.3 The update sample
+
+[`update-sample.json`](update-sample.json) is the `data.json` of a `/3` update file: one changed house and one deletion
+(section 3.13). Kotlin's writer writes it byte for byte (`BackupFieldsTest.theUpdateSampleIsWhatThisWriterWritesAndPassesTheCheck`;
+no whole-number coordinate in it, section 8.1) and the website reads it (`backup-import.spec.ts`). The web writer writes no
+update file yet.
 
 ## 9. Open items (handovers)
 

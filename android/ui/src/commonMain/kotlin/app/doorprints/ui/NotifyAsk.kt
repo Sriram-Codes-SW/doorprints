@@ -58,15 +58,26 @@ import org.jetbrains.compose.resources.stringResource
  *
  * [rationale] is the one line of why (UX review, whole-app audit): Hunt mode asks with its own, "Hunt mode tells you
  * with a notification when you pass a house you have seen.", when it is turned on, instead of the Map asking for
- * notifications with no context at first launch. The stored flag is shared, so the question is asked once in all.
+ * notifications with no context at first launch. The stored flag is shared, so the question is asked once in all,
+ * except the viewing reminders' ([forViewings]), which has its own.
  *
  * Common code since CMP-5; the prompt itself is [rememberNotificationPermissionRequest].
  */
 @Composable
-fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_rationale): (action: () -> Unit) -> Unit {
+fun rememberNotificationAsk(
+    rationale: StringResource = Res.string.notify_rationale,
+    /** False where nothing would be posted (the iPhone's copies and imports, S4b-BL-81): the action simply runs. */
+    enabled: Boolean = true,
+    /**
+     * The viewing reminders' question (S4b-BL-93f): kept apart from the one of copies, imports and Hunt mode, so a
+     * *Not now* to either does not silence the other (`SettingsStore.viewingsNotificationsAsked`).
+     */
+    forViewings: Boolean = false,
+): (action: () -> Unit) -> Unit {
     val platform = LocalPlatformServices.current
     val settings = LocalAppServices.current.repository.settings
-    val asked by settings.notificationsAsked.collectAsStateWithLifecycle(initialValue = true)
+    val askedFlow = remember(settings, forViewings) { if (forViewings) settings.viewingsNotificationsAsked else settings.notificationsAsked }
+    val asked by askedFlow.collectAsStateWithLifecycle(initialValue = true)
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
     /** The one-line question is on screen; hidden before the system prompt so the two never stack. */
@@ -79,7 +90,7 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
     }
 
     fun markAsked() {
-        scope.launch { settings.setNotificationsAsked() }
+        scope.launch { if (forViewings) settings.setViewingsNotificationsAsked() else settings.setNotificationsAsked() }
     }
 
     // The system prompt where there is one (API 33+); either way the action goes ahead once it is answered.
@@ -117,7 +128,7 @@ fun rememberNotificationAsk(rationale: StringResource = Res.string.notify_ration
     }
 
     return { action ->
-        if (!asked && !platform.canPostNotifications()) {
+        if (enabled && !asked && !platform.canPostNotifications()) {
             pending = action
             showing = true
         } else {

@@ -30,7 +30,6 @@ import app.doorprints.R
 import app.doorprints.i18n.AppLocale
 import app.doorprints.shared.export.BackupProblem
 import app.doorprints.shared.export.ImportMode
-import app.doorprints.shared.export.ImportPlan
 import app.doorprints.ui.joinList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -76,30 +75,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 }
 
                 is BackupOpen.Ok -> opened.reader.use { reader ->
-                    val local = repository.localVersions()
-                    val actions = ImportPlan.plan(
-                        data = reader.data,
-                        localHouses = local.houses,
-                        localVisits = local.visits,
-                        localPhotoIds = local.photoIds,
-                        photoEntriesInZip = reader.photoEntries,
-                        mode = request.mode,
-                        newId = { UUID.randomUUID().toString() },
-                        locallyDeletedHouseIds = local.deletedHouseIds,
-                        // The same flags the preview the user confirmed was made with (Imports.preview).
-                        restoreDeleted = request.restoreDeleted,
-                        skipUpdates = request.skipUpdates,
-                        localUnlinkedVisitIds = local.unlinkedVisitIds,
-                        syncedDeletedHouseIds = local.syncedDeletedHouseIds,
-                        localBrokers = local.brokers,
-                        localCriteria = local.criteria,
-                        localPreferences = local.preferences,
-                        localQuestions = local.questions,
-                        localViewings = local.viewings,
-                        localAreas = local.areas,
-                        localPlaces = local.places,
-                        localAreaNotes = local.areaNotes,
-                    )
+                    // The same plan, with the same flags, as the preview the user confirmed (ArchiveImports, common).
+                    val actions = ArchiveImports.plan(repository, reader.archive, request) { UUID.randomUUID().toString() }
                     val heavy = actions.photos.size >= FOREGROUND_PHOTO_THRESHOLD
                     if (heavy) runCatching { setForeground(foregroundInfo(localised, 0, 0)) }
 
@@ -133,7 +110,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     // not to the output Data, which is capped at 10 KB. If the file cannot be written the import
                     // still stands; the screen then simply offers no undo.
                     val undoable = request.mode == ImportMode.COPY &&
-                        (result.copiedHouses.isNotEmpty() || result.copiedVisits.isNotEmpty()) &&
+                        (result.copiedHouses.isNotEmpty() || result.copiedVisits.isNotEmpty() ||
+                            result.copiedRecords.isNotEmpty()) &&
                         ImportUndo.save(
                             applicationContext,
                             CopyRecord(
@@ -142,6 +120,7 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                                 houses = result.copiedHouses,
                                 visits = result.copiedVisits,
                                 photos = result.copiedPhotos,
+                                records = result.copiedRecords,
                             ),
                         )
                     // Told = seen on the Import screen, or a notification that was really posted.

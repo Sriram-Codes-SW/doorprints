@@ -41,6 +41,8 @@
     <string name="status_NEW">కొత్తది</string>
     <string name="status_SHORTLISTED">ఎంపికైంది</string>
     <string name="status_REJECTED">తిరస్కరించబడింది</string>
+    <string name="status_TAKEN">తీసుకున్నాం</string>
+    <string name="status_NOT_CHOSEN">ఎంచుకోలేదు</string>
     <string name="status_ALL">అన్నీ</string>
     <string name="status_filter">%1$s (%2$d)</string>
     <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
@@ -169,7 +171,7 @@
     <string name="settings_min_stay">%1$d నిమిషాలు ఉంటే సందర్శనగా లెక్కించండి</string>
     <string name="settings_gps_note">GPS సాధారణంగా 5–20 మీ వరకు ఖచ్చితంగా ఉంటుంది, కాబట్టి పక్కపక్క ఇళ్లు గందరగోళం కావచ్చు. సిగ్నల్ బలహీనంగా ఉంటే (లోపల) హెచ్చరికలు ఆగుతాయి, బ్యాటరీ తక్కువైతే హంట్ మోడ్ దానంతట అదే ఆగుతుంది.</string>
     <string name="settings_privacy">గోప్యత</string>
-    <string name="settings_privacy_note">మీ ఇళ్లు, సందర్శనలు ఈ ఫోన్‌లో, మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు ఫోన్ జియోకోడర్ (Google) నుండి వస్తాయి. ఫోటోలు స్థాన సమాచారం లేకుండా సేవ్ అవుతాయి.</string>
+    <string name="settings_privacy_note">మీ ఇళ్లు, సందర్శనలు ఈ ఫోన్‌లో, మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు, “కనుగొనండి” నొక్కినప్పుడు పంచుకున్న లిస్టింగ్ చెప్పే స్థలం ఫోన్ జియోకోడర్ (Google) నుండి వస్తాయి. ఫోటోలు స్థాన సమాచారం లేకుండా సేవ్ అవుతాయి.</string>
     <string name="settings_about">యాప్ గురించి</string>
     <string name="sync_ok">సింక్ అయింది: పంపినవి %1$d, అందినవి %2$d</string>
     <string name="sync_ok_photos_waiting">సింక్ అయింది: పంపినవి %1$d, అందినవి %2$d. Wi-Fi కోసం వేచి ఉన్న ఫోటోలు: %3$d</string>
@@ -324,6 +326,8 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">ఈ ఫోన్‌లో తొలగించినవి; అవి తొలగించినట్లే ఉంటాయి</string>
+    <!-- S4b-BL-82 (2026-10-01): under review. -->
+    <string name="import_removed_houses">పంపినవారు తొలగించిన ఇళ్లు</string>
     <string name="import_bring_back">వాటిని తిరిగి తీసుకురండి</string>
     <string name="import_show_copies">కాపీలుగా చూపించండి</string>
     <string name="import_stop_other">మరో దిగుమతిని ఆపండి</string>
@@ -564,7 +568,7 @@
     <string name="map_not_on_this_phone">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ ఇళ్లన్నీ ‘ఇళ్లు’ ట్యాబ్‌లో ఉన్నాయి.</string>
     <string name="settings_language_phone">Doorprints మీ iPhone భాషనే ఉపయోగిస్తుంది. Doorprints కోసం మాత్రమే వేరే భాష కావాలంటే, సెట్టింగ్‌ల యాప్‌లో సాధారణం › భాష &amp; ప్రాంతంలో దాన్ని జోడించి, ఆపై అదే యాప్‌లోని Doorprints పేజీలో దాన్ని ఎంచుకోండి.</string>
     <string name="settings_language_open_settings">iPhone సెట్టింగ్‌లు తెరవండి</string>
-    <string name="settings_privacy_note_ios">మీ ఇళ్లు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు Apple జియోకోడర్ నుండి వస్తాయి.</string>
+    <string name="settings_privacy_note_ios">మీ ఇళ్లు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు, “కనుగొనండి” నొక్కినప్పుడు పంచుకున్న లిస్టింగ్ చెప్పే స్థలం Apple జియోకోడర్ నుండి వస్తాయి.</string>
     <string name="houses_empty_ios">ఇంకా ఇళ్లు లేవు. iPhoneలో ఇంకా ఇళ్లు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ ఇళ్లు ఇక్కడ కనిపిస్తాయి.</string>
     <string name="map_location_off_no_hunt">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఇది అవసరం.</string>
     <string name="map_needs_precise_no_hunt">‘ఇక్కడ ఇల్లు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
@@ -685,6 +689,11 @@
     <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
     <string name="map_add_tip_listing">ఈ ఇల్లు ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
     <string name="map_add_tip_listing_a11y">ఈ ఇల్లు ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ ఇల్లు సేవ్ చేయి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <!-- S4b-BL-83 (2026-10-01): under review. -->
+    <string name="map_find_place">“%1$s” మ్యాప్‌లో కనుగొనండి</string>
+    <string name="map_finding_place">“%1$s” కనుగొంటోంది…</string>
+    <string name="map_place_found">మ్యాప్ “%1$s”ను చూపుతోంది. ఇంటిని అక్కడ చేర్చడానికి దాని స్థలాన్ని ఎక్కువసేపు నొక్కండి.</string>
+    <string name="map_place_not_found">భారతదేశంలో “%1$s” అనే స్థలం దొరకలేదు. మ్యాప్‌ను మీరే ఇంటి వరకు జరపండి.</string>
     <string name="house_dup_title">ఈ లిస్టింగ్‌ను మీరు %1$s న సేవ్ చేశారు</string>
     <string name="house_dup_text">‘%1$s’కి ఇదే లింక్ ఉంది. దాన్ని తెరవాలా, లేదా లిస్టింగ్‌ను కొత్త ఇల్లుగా మళ్లీ జోడించాలా?</string>
     <string name="house_dup_open">తెరువు</string>
@@ -1019,7 +1028,7 @@
     <string name="area_radius">వ్యాసార్ధం: %1$d మీ.</string>
     <string name="area_radius_label">వ్యాసార్ధం</string>
     <string name="area_wake">ఇక్కడ నన్ను మేల్కొలుపు</string>
-    <string name="area_wake_hint">ఇది తర్వాతి అప్‌డేట్‌లో పని చేస్తుంది.</string>
+    <string name="area_wake_hint">నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు దీన్ని ఉపయోగిస్తుంది.</string>
     <string name="area_delete">ప్రాంతం తొలగించు</string>
     <string name="area_delete_title">ఈ ప్రాంతాన్ని తొలగించాలా?</string>
     <string name="area_delete_body">దీని గమనికలు ఉంటాయి, కానీ ఇకపై ఏ ఇంటిపైనా కనిపించవు.</string>
@@ -1063,4 +1072,100 @@
     <string name="house_distance_value">%1$s కి.మీ. · నడకన సుమారు %2$d నిమిషాలు</string>
     <string name="house_distances_hint">సరళ రేఖలో; సమయం ప్లాన్ నడక అంచనా.</string>
     <string name="compare_km">%1$s కి.మీ.</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="area_wakeup_switch">నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు</string>
+    <string name="area_wakeup_hint">ఇక్కడ నన్ను మేల్కొలుపు ఆన్‌లో ఉన్న ప్రాంతానికి మీరు చేరినప్పుడు, Doorprints హంట్ మోడ్ సూచిస్తుంది, సాధారణంగా కొన్ని నిమిషాల్లో. దీనికి ఎల్లప్పుడూ లొకేషన్ అనుమతి కావాలి.</string>
+    <string name="area_wakeup_why">ఎందుకు: మీరు వెతుకుతున్న ప్రాంతానికి చేరినప్పుడు Doorprints గమనించి హంట్ మోడ్ సూచించడానికి. ఇది హంట్ మోడ్‌ను తనంతట తాను ఎప్పుడూ ప్రారంభించదు.</string>
+    <string name="area_wakeup_what">ఎలా: Google Play services ఫోన్‌లోనే ఫోన్ స్థానాన్ని మీ ప్రాంతాలతో పోలుస్తుంది. Doorprints లొకేషన్ చరిత్ర ఏదీ ఉంచదు, మీ స్థానాన్ని ఎక్కడికీ పంపదు.</string>
+    <string name="area_wakeup_battery">బ్యాటరీ: కొద్దిగా. Doorprints తన కోసం లొకేషన్ అడగదు.</string>
+    <string name="area_wakeup_how_off">ఆపడానికి, నా ప్రాంతాలులో నా వెతుకులాట ప్రాంతాల్లో నన్ను మేల్కొలుపు ఆఫ్ చేయండి, లేదా ఫోన్ సెట్టింగ్‌లలో లొకేషన్ అనుమతిని తీసేయండి.</string>
+    <string name="area_wakeup_pick">తర్వాత Android లొకేషన్ గురించి అడుగుతుంది. ఎల్లప్పుడూ అనుమతించు ఎంచుకోండి. కొత్త Android లో ఇది యాప్ లొకేషన్ పేజీలో ఉంటుంది: అక్కడ ఎంచుకుని, తిరిగి రండి.</string>
+    <string name="area_wakeup_continue">కొనసాగించు</string>
+    <string name="area_wakeup_not_now">ఇప్పుడు కాదు</string>
+    <string name="area_wakeup_still_off">ప్రాంత మేల్కొలుపు ఇంకా ఆఫ్‌లో ఉంది: దీనికి ఖచ్చితమైన లొకేషన్‌కు ఎల్లప్పుడూ అనుమతి కావాలి.</string>
+    <string name="area_wakeup_off_card">Doorprints కు ఇకపై ఎల్లప్పుడూ లొకేషన్ అనుమతి లేనందున ప్రాంత మేల్కొలుపు ఆఫ్ అయింది.</string>
+    <!-- Slice 5, photo tags and moving in (2026-09-30): under review. -->
+    <string name="taken_others_title">మిగతా ఇళ్లను ఎంచుకోలేదు అని గుర్తించాలా?</string>
+    <string name="taken_others_body">సేవ్ చేసినప్పుడు, మీరు తిరస్కరించని మిగతా ఇళ్లు ఎంచుకోలేదు అని గుర్తించబడతాయి. ఏదీ తొలగించబడదు.</string>
+    <string name="taken_mark_them">వాటిని ఎంచుకోలేదు అని గుర్తించండి</string>
+    <string name="taken_keep_them">అలాగే ఉంచండి</string>
+    <string name="taken_marked">%1$d ఇళ్లు ఎంచుకోలేదు అని గుర్తించబడ్డాయి</string>
+    <string name="movein_title">ఇంట్లోకి మారడం</string>
+    <string name="movein_intro">ఇంట్లోకి మారే జాబితా, డిపాజిట్ తిరిగి వచ్చే వరకు ఉంచుకోవడానికి ప్రతి గది తేదీతో ఉన్న ఫోటోలు.</string>
+    <string name="movein_start">ఇంట్లోకి మారడం ప్రారంభించండి</string>
+    <string name="movein_progress">%2$dలో %1$d పూర్తయ్యాయి</string>
+    <string name="movein_edit_desc">“%1$s” మార్చండి</string>
+    <string name="movein_remove_desc">“%1$s” తీసివేయండి</string>
+    <string name="movein_item_text">అంశం</string>
+    <string name="movein_add_label">మీది జోడించండి</string>
+    <string name="movein_add">జోడించు</string>
+    <string name="movein_max">గరిష్ఠంగా 30 అంశాలు</string>
+    <string name="movein_empty">ఇంకా అంశాలు లేవు. ఇంట్లోకి మారడం ప్రారంభించండి సాధారణ అంశాలను జోడిస్తుంది, లేదా మీది జోడించండి.</string>
+    <string name="movein_date">మారే తేదీ</string>
+    <string name="movein_date_none">ఇంకా తేదీ లేదు</string>
+    <string name="movein_date_pick">మారే తేదీని ఎంచుకోండి</string>
+    <string name="movein_date_clear">తేదీని తీసివేయండి</string>
+    <string name="movein_notes">మారడం గమనికలు</string>
+    <string name="movein_record_title">స్థితి రికార్డు</string>
+    <string name="movein_record_hint">మారేటప్పుడు అని ట్యాగ్ చేసిన ఫోటోలు, గది వారీగా, తేదీ మరియు శీర్షికతో.</string>
+    <string name="movein_record_empty">ఇంకా మారడం ఫోటోలు లేవు.</string>
+    <string name="movein_add_photo">ఫోటో జోడించండి</string>
+    <string name="movein_close">ఈ వెతుకులాటను ముగించండి</string>
+    <string name="movein_close_title">ఈ వెతుకులాటను ముగించాలా?</string>
+    <string name="movein_close_body">%1$d ఇళ్లు ఎంచుకోలేదు అని గుర్తించబడతాయి. ఏదీ తొలగించబడదు.</string>
+    <string name="movein_close_save_first">వెతుకులాటను ముగించడానికి ఈ ఇంటిని తీసుకున్నాం అని సేవ్ చేయండి.</string>
+    <string name="movein_closed">వెతుకులాట ముగిసింది: %1$d ఇళ్లు ఎంచుకోలేదు అని గుర్తించబడ్డాయి. అన్నింటి కాపీని సేవ్ చేయాలా?</string>
+    <string name="photo_details">గది, ట్యాగ్‌లు, శీర్షిక</string>
+    <string name="photo_details_desc">ఫోటో %1$d గది, ట్యాగ్‌లు, శీర్షిక</string>
+    <string name="photo_meta_title">ఫోటో వివరాలు</string>
+    <string name="photo_room">గది</string>
+    <string name="photo_no_room">గది లేదు</string>
+    <string name="photo_untagged">ట్యాగ్ లేదు</string>
+    <string name="photo_tags">ట్యాగ్‌లు</string>
+    <string name="photo_tag_custom">మీ ట్యాగ్</string>
+    <string name="photo_tag_add">ట్యాగ్ జోడించు</string>
+    <string name="photo_tags_max">గరిష్ఠంగా 10 ట్యాగ్‌లు, ఒక్కొక్కటి 30 అక్షరాల వరకు</string>
+    <string name="photo_tag_remove_desc">%1$s ట్యాగ్ తీసివేయండి</string>
+    <string name="photo_caption">శీర్షిక</string>
+    <string name="photo_meta_saved">ఫోటో వివరాలు సేవ్ అయ్యాయి</string>
+    <string name="tag_EXTERIOR">బయటి భాగం</string>
+    <string name="tag_ENTRANCE">ప్రవేశం</string>
+    <string name="tag_KITCHEN_FITTINGS">వంటగది ఫిట్టింగ్‌లు</string>
+    <string name="tag_BATHROOM_FITTINGS">బాత్రూమ్ ఫిట్టింగ్‌లు</string>
+    <string name="tag_DAMP">తేమ</string>
+    <string name="tag_CRACK">పగులు</string>
+    <string name="tag_LEAK">లీకేజీ</string>
+    <string name="tag_VIEW">దృశ్యం</string>
+    <string name="tag_WATER_TANK">నీటి ట్యాంక్</string>
+    <string name="tag_METER">మీటర్</string>
+    <string name="tag_PARKING">పార్కింగ్</string>
+    <string name="tag_LIFT">లిఫ్ట్</string>
+    <string name="tag_GOOD_POINT">మంచి విషయం</string>
+    <string name="tag_PROBLEM">సమస్య</string>
+    <string name="tag_MOVE_IN">మారేటప్పుడు</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): under review. -->
+    <string name="area_wakeup_what_ios">ఎలా: iOS iPhone లోనే iPhone స్థానాన్ని మీ ప్రాంతాలతో పోలుస్తుంది. Doorprints లొకేషన్ చరిత్ర ఏదీ ఉంచదు, మీ స్థానాన్ని ఎక్కడికీ పంపదు.</string>
+    <string name="area_wakeup_pick_ios">తర్వాత iOS లొకేషన్ గురించి అడుగుతుంది. ముందుగా యాప్ వాడుతున్నప్పుడు అనుమతించు ఎంచుకోండి, తర్వాత ఎల్లప్పుడూ అనుమతించుకు మార్చండి. iOS అడగకపోతే, యాప్ లొకేషన్ సెట్టింగ్‌లలో ఎల్లప్పుడూ ఎంచుకుని, తిరిగి రండి.</string>
+    <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
+    <!-- S4b-BL-81, copies on iPhone (2026-09-30): under review. -->
+    <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown లేదా పూర్తి బ్యాకప్</string>
+    <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
+    <string name="map_hunt_offer">హంట్ మోడ్ ప్రారంభించాలా?</string>
+    <string name="map_hunt_offer_start">హంట్ మోడ్ ప్రారంభించండి</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview: under review. -->
+    <string name="house_floor">అంతస్తు</string>
+    <string name="house_floor_hint">0 అంటే నేల అంతస్తు, -1 బేస్‌మెంట్</string>
+    <string name="house_floor_invalid">-5 నుండి 200 వరకు అంతస్తు నమోదు చేయండి</string>
+    <string name="house_room_move_up">%1$sను పైకి జరపండి</string>
+    <string name="house_room_move_down">%1$sను కిందికి జరపండి</string>
+    <string name="duplicate_flat_warning">ఇది %1$s లాంటి అదే ఫ్లాట్ కావచ్చు: సుమారు 30 మీటర్లలోపు, అవే పడకగదులు, అదే అంతస్తు.</string>
+    <string name="houses_filters">ఫిల్టర్లు</string>
+    <string name="houses_filters_count">ఫిల్టర్లు (%1$d)</string>
+    <string name="houses_filters_title">ఖర్చు ప్రకారం ఫిల్టర్ చేయండి</string>
+    <string name="houses_filters_hint">పూర్తి రూపాయల్లో. ఈ మొత్తం లెక్కించలేని ఇల్లు వదిలేయబడుతుంది (అమ్మకానికి నెలవారీ ఖర్చు ఉండదు).</string>
+    <string name="houses_filter_min">%1$s, కనీసం (₹)</string>
+    <string name="houses_filter_max">%1$s, గరిష్ఠం (₹)</string>
+    <string name="houses_filters_clear">ఖర్చు ఫిల్టర్లను తీసివేయండి</string>
+    <string name="import_new_brokers">కొత్త బ్రోకర్లు</string>
+    <string name="import_updated_brokers">బ్యాకప్‌లో కొత్త వెర్షన్ ఉన్న బ్రోకర్లు</string>
 </resources>

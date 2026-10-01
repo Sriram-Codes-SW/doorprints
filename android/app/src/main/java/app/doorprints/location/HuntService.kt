@@ -36,6 +36,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.*
 import app.doorprints.DoorprintsApp
 import app.doorprints.Notifications
+import app.doorprints.shared.records.RecordRules
 import app.doorprints.R
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.labelRes
@@ -44,6 +45,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.Scoring
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -136,6 +138,10 @@ class HuntService : LifecycleService(), HuntEffects {
         intent?.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
         }
+        // Or from an area wake-up's (slice 4b).
+        intent?.getStringExtra(Notifications.EXTRA_START_HUNT_AREA)?.takeIf(RecordRules::isValidId)?.let {
+            NotificationManagerCompat.from(this).cancel(Notifications.areaTag(it), Notifications.AREA_WAKEUP_ID)
+        }
         return START_STICKY
     }
 
@@ -181,21 +187,30 @@ class HuntService : LifecycleService(), HuntEffects {
                 Notifications.openAppIntent(this@HuntService, house.id.hashCode()) {
                     putExtra(Notifications.EXTRA_OPEN_HOUSE, house.id)
                 },
+                hideOnLockScreen = appLockOn(),
             )
         }
     }
+
+    /** Whether the app lock is on (S4b-BL-68): its alerts then name nothing on a locked screen. Unreadable: on. */
+    private suspend fun appLockOn(): Boolean =
+        runCatching { repo.settings.appLockSetting.first().on }.getOrDefault(true)
 
     override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
         val key = StreetAlerts.key(street)
         val text = firstVisit?.let {
             getString(R.string.notif_street_text_since, houses, visits, Formats.date(it))
         } ?: getString(R.string.notif_street_text, houses, visits)
-        Notifications.alert(
-            this, key.hashCode(),
-            getString(R.string.notif_street_title, street),
-            text,
-            Notifications.openAppIntent(this, key.hashCode()),
-        )
+        // The street's name is where the person is, as private as a house's (S4b-BL-68).
+        lifecycleScope.launch {
+            Notifications.alert(
+                this@HuntService, key.hashCode(),
+                getString(R.string.notif_street_title, street),
+                text,
+                Notifications.openAppIntent(this@HuntService, key.hashCode()),
+                hideOnLockScreen = appLockOn(),
+            )
+        }
     }
 
     override fun alertStay(visitId: String, lat: Double, lon: Double) {

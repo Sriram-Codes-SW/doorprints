@@ -41,6 +41,8 @@
     <string name="status_NEW">नया</string>
     <string name="status_SHORTLISTED">चुना गया</string>
     <string name="status_REJECTED">अस्वीकृत</string>
+    <string name="status_TAKEN">ले लिया</string>
+    <string name="status_NOT_CHOSEN">नहीं चुना</string>
     <string name="status_ALL">सभी</string>
     <string name="status_filter">%1$s (%2$d)</string>
     <!-- Checklist labels: Compare's rows since CMP-4 P4c, the house form's since CMP-6 P6a (the Android copies are gone). -->
@@ -169,7 +171,7 @@
     <string name="settings_min_stay">%1$d मिनट रुकने पर दौरा मानें</string>
     <string name="settings_gps_note">GPS आमतौर पर 5–20 मी तक सटीक होता है, इसलिए पास-पास के मकान गड़बड़ा सकते हैं। सिग्नल कमज़ोर हो (अंदर) तो सूचनाएँ रुक जाती हैं, और बैटरी कम होने पर हंट मोड अपने-आप बंद हो जाता है।</string>
     <string name="settings_privacy">गोपनीयता</string>
-    <string name="settings_privacy_note">आपके मकान और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
+    <string name="settings_privacy_note">आपके मकान और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
     <string name="settings_about">ऐप के बारे में</string>
     <string name="sync_ok">सिंक हुआ: भेजे %1$d, मिले %2$d</string>
     <string name="sync_ok_photos_waiting">सिंक हुआ: भेजे %1$d, मिले %2$d। Wi-Fi का इंतज़ार कर रही तस्वीरें: %3$d</string>
@@ -324,6 +326,8 @@
     </plurals>
     <!-- Design and UX review, round 10 (2026-09-22) -->
     <string name="import_deleted_here">इस फ़ोन पर हटाए गए; ये हटे ही रहेंगे</string>
+    <!-- S4b-BL-82 (2026-10-01): under review. -->
+    <string name="import_removed_houses">भेजने वाले के हटाए मकान</string>
     <string name="import_bring_back">इन्हें वापस लाएँ</string>
     <string name="import_show_copies">कॉपी के रूप में दिखाएँ</string>
     <string name="import_stop_other">दूसरा आयात रोकें</string>
@@ -564,7 +568,7 @@
     <string name="map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी मकान ‘मकान’ टैब में हैं।</string>
     <string name="settings_language_phone">Doorprints आपके iPhone की भाषा इस्तेमाल करता है। सिर्फ़ Doorprints के लिए कोई दूसरी भाषा चाहिए, तो सेटिंग्स ऐप में सामान्य › भाषा और क्षेत्र में उसे जोड़ें, फिर सेटिंग्स ऐप के Doorprints पेज पर उसे चुनें।</string>
     <string name="settings_language_open_settings">iPhone सेटिंग्स खोलें</string>
-    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम Apple के जियोकोडर से।</string>
+    <string name="settings_privacy_note_ios">आपके मकान और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, Apple के जियोकोडर से।</string>
     <string name="houses_empty_ios">अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।</string>
     <string name="map_location_off_no_hunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ मकान सहेजें’ को इसकी ज़रूरत है।</string>
     <string name="map_needs_precise_no_hunt">‘यहाँ मकान सहेजें’ को सटीक जगह चाहिए।</string>
@@ -685,6 +689,11 @@
     <!-- S4b-FR-4, a shared listing (2026-09-30): under review. -->
     <string name="map_add_tip_listing">यह मकान कहाँ है? वहाँ हों तो ‘यहाँ मकान सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
     <string name="map_add_tip_listing_a11y">यह मकान कहाँ है? वहाँ पहुँचकर ‘यहाँ मकान सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <!-- S4b-BL-83 (2026-10-01): under review. -->
+    <string name="map_find_place">“%1$s” नक्शे पर खोजें</string>
+    <string name="map_finding_place">“%1$s” खोजा जा रहा है…</string>
+    <string name="map_place_found">नक्शा “%1$s” दिखा रहा है। मकान वहाँ जोड़ने के लिए उसकी जगह को देर तक दबाएँ।</string>
+    <string name="map_place_not_found">भारत में “%1$s” नाम की कोई जगह नहीं मिली। नक्शे को ख़ुद मकान तक ले जाएँ।</string>
     <string name="house_dup_title">यह लिस्टिंग आपने %1$s को सहेजी थी</string>
     <string name="house_dup_text">‘%1$s’ का लिंक यही है। उसे खोलें, या लिस्टिंग को नए मकान के रूप में फिर जोड़ें?</string>
     <string name="house_dup_open">खोलें</string>
@@ -1019,7 +1028,7 @@
     <string name="area_radius">दायरा: %1$d मी.</string>
     <string name="area_radius_label">दायरा</string>
     <string name="area_wake">यहाँ मुझे जगाएँ</string>
-    <string name="area_wake_hint">यह बाद के किसी अपडेट में काम करेगा।</string>
+    <string name="area_wake_hint">मेरे खोज वाले इलाक़ों में मुझे जगाएँ इसका उपयोग करता है।</string>
     <string name="area_delete">इलाक़ा हटाएँ</string>
     <string name="area_delete_title">यह इलाक़ा हटाएँ?</string>
     <string name="area_delete_body">इसके नोट रहेंगे, पर अब किसी मकान पर नहीं दिखेंगे।</string>
@@ -1063,4 +1072,100 @@
     <string name="house_distance_value">%1$s कि.मी. · पैदल लगभग %2$d मिनट</string>
     <string name="house_distances_hint">सीधी रेखा में; समय योजना का पैदल अनुमान है।</string>
     <string name="compare_km">%1$s कि.मी.</string>
+    <!-- Slice 4b, the area wake-up (2026-09-30): under review. -->
+    <string name="area_wakeup_switch">मेरे खोज वाले इलाक़ों में मुझे जगाएँ</string>
+    <string name="area_wakeup_hint">जब आप ऐसे इलाक़े में पहुँचें जिस पर यहाँ मुझे जगाएँ चालू है, Doorprints हंट मोड का सुझाव देता है, आम तौर पर कुछ मिनटों में। इसके लिए जगह की अनुमति हर समय चाहिए।</string>
+    <string name="area_wakeup_why">क्यों: ताकि Doorprints जान सके कि आप अपने खोज वाले किसी इलाक़े में पहुँचे हैं और हंट मोड का सुझाव दे। यह हंट मोड अपने आप कभी शुरू नहीं करता।</string>
+    <string name="area_wakeup_what">कैसे: Google Play services फ़ोन पर ही फ़ोन की जगह की तुलना आपके इलाक़ों से करता है। Doorprints जगह का कोई इतिहास नहीं रखता और आपकी जगह कहीं नहीं भेजता।</string>
+    <string name="area_wakeup_battery">बैटरी: थोड़ी। Doorprints अपनी तरफ़ से जगह नहीं माँगता।</string>
+    <string name="area_wakeup_how_off">बंद करने के लिए मेरे इलाक़े में मेरे खोज वाले इलाक़ों में मुझे जगाएँ बंद करें, या फ़ोन की सेटिंग्स में जगह की अनुमति हटा दें।</string>
+    <string name="area_wakeup_pick">आगे Android जगह के बारे में पूछेगा। हर समय अनुमति दें चुनें। नए Android में यह ऐप के जगह वाले पेज पर होता है: वहाँ चुनें, फिर लौट आएँ।</string>
+    <string name="area_wakeup_continue">आगे बढ़ें</string>
+    <string name="area_wakeup_not_now">अभी नहीं</string>
+    <string name="area_wakeup_still_off">इलाक़े में जगाना अभी भी बंद है: इसके लिए सटीक जगह की अनुमति हर समय चाहिए।</string>
+    <string name="area_wakeup_off_card">इलाक़े में जगाना बंद है क्योंकि Doorprints के पास अब हर समय जगह की अनुमति नहीं है।</string>
+    <!-- Slice 5, photo tags and moving in (2026-09-30): under review. -->
+    <string name="taken_others_title">बाकी मकानों को नहीं चुना मार्क करें?</string>
+    <string name="taken_others_body">सहेजने पर, बाकी मकान जिन्हें आपने अस्वीकार नहीं किया, नहीं चुना मार्क होंगे। कुछ भी हटाया नहीं जाता।</string>
+    <string name="taken_mark_them">उन्हें नहीं चुना मार्क करें</string>
+    <string name="taken_keep_them">जैसे हैं रहने दें</string>
+    <string name="taken_marked">%1$d मकान नहीं चुना मार्क किए</string>
+    <string name="movein_title">घर में शिफ़्ट होना</string>
+    <string name="movein_intro">शिफ़्ट होने की चेकलिस्ट, और हर कमरे की तारीख वाली तस्वीरें, जमा राशि वापस मिलने तक रखने के लिए।</string>
+    <string name="movein_start">शिफ़्ट होना शुरू करें</string>
+    <string name="movein_progress">%2$d में से %1$d हो गए</string>
+    <string name="movein_edit_desc">“%1$s” बदलें</string>
+    <string name="movein_remove_desc">“%1$s” हटाएँ</string>
+    <string name="movein_item_text">चीज़</string>
+    <string name="movein_add_label">अपना जोड़ें</string>
+    <string name="movein_add">जोड़ें</string>
+    <string name="movein_max">ज़्यादा से ज़्यादा 30 चीज़ें</string>
+    <string name="movein_empty">अभी कोई चीज़ नहीं। शिफ़्ट होना शुरू करें से आम चीज़ें जुड़ती हैं, या अपनी जोड़ें।</string>
+    <string name="movein_date">शिफ़्ट होने की तारीख</string>
+    <string name="movein_date_none">अभी कोई तारीख नहीं</string>
+    <string name="movein_date_pick">शिफ़्ट होने की तारीख चुनें</string>
+    <string name="movein_date_clear">तारीख हटाएँ</string>
+    <string name="movein_notes">शिफ़्ट होने के नोट</string>
+    <string name="movein_record_title">हालत का रिकॉर्ड</string>
+    <string name="movein_record_hint">शिफ़्ट होते समय टैग वाली तस्वीरें, कमरे के हिसाब से, तारीख और कैप्शन के साथ।</string>
+    <string name="movein_record_empty">अभी शिफ़्ट होने की कोई तस्वीर नहीं।</string>
+    <string name="movein_add_photo">तस्वीर जोड़ें</string>
+    <string name="movein_close">यह खोज बंद करें</string>
+    <string name="movein_close_title">यह खोज बंद करें?</string>
+    <string name="movein_close_body">%1$d मकान नहीं चुना मार्क होंगे। कुछ भी हटाया नहीं जाता।</string>
+    <string name="movein_close_save_first">खोज बंद करने के लिए इस मकान को ले लिया के रूप में सहेजें।</string>
+    <string name="movein_closed">खोज बंद हुई: %1$d मकान नहीं चुना मार्क किए। सबकी एक कॉपी सहेजें?</string>
+    <string name="photo_details">कमरा, टैग और कैप्शन</string>
+    <string name="photo_details_desc">तस्वीर %1$d का कमरा, टैग और कैप्शन</string>
+    <string name="photo_meta_title">तस्वीर का विवरण</string>
+    <string name="photo_room">कमरा</string>
+    <string name="photo_no_room">कोई कमरा नहीं</string>
+    <string name="photo_untagged">बिना टैग</string>
+    <string name="photo_tags">टैग</string>
+    <string name="photo_tag_custom">अपना टैग</string>
+    <string name="photo_tag_add">टैग जोड़ें</string>
+    <string name="photo_tags_max">ज़्यादा से ज़्यादा 10 टैग, हर एक 30 अक्षर तक</string>
+    <string name="photo_tag_remove_desc">टैग %1$s हटाएँ</string>
+    <string name="photo_caption">कैप्शन</string>
+    <string name="photo_meta_saved">तस्वीर का विवरण सहेजा गया</string>
+    <string name="tag_EXTERIOR">बाहर से</string>
+    <string name="tag_ENTRANCE">प्रवेश</string>
+    <string name="tag_KITCHEN_FITTINGS">रसोई की फिटिंग</string>
+    <string name="tag_BATHROOM_FITTINGS">बाथरूम की फिटिंग</string>
+    <string name="tag_DAMP">सीलन</string>
+    <string name="tag_CRACK">दरार</string>
+    <string name="tag_LEAK">रिसाव</string>
+    <string name="tag_VIEW">नज़ारा</string>
+    <string name="tag_WATER_TANK">पानी की टंकी</string>
+    <string name="tag_METER">मीटर</string>
+    <string name="tag_PARKING">पार्किंग</string>
+    <string name="tag_LIFT">लिफ़्ट</string>
+    <string name="tag_GOOD_POINT">अच्छी बात</string>
+    <string name="tag_PROBLEM">समस्या</string>
+    <string name="tag_MOVE_IN">शिफ़्ट होते समय</string>
+    <!-- S4b-BL-96, the area wake-up on iPhone (2026-09-30): under review. -->
+    <string name="area_wakeup_what_ios">कैसे: iOS iPhone पर ही iPhone की जगह की तुलना आपके इलाक़ों से करता है। Doorprints जगह का कोई इतिहास नहीं रखता और आपकी जगह कहीं नहीं भेजता।</string>
+    <string name="area_wakeup_pick_ios">आगे iOS जगह के बारे में पूछेगा। पहले ऐप इस्तेमाल करते समय अनुमति दें चुनें, फिर हमेशा अनुमति दें पर बदलें। अगर iOS न पूछे, तो ऐप की जगह वाली सेटिंग्स में हमेशा चुनें, फिर लौट आएँ।</string>
+    <string name="notif_area_wakeup">आप %1$s में हैं। हंट मोड शुरू करें?</string>
+    <!-- S4b-BL-81, copies on iPhone (2026-09-30): under review. -->
+    <string name="settings_export_hint_no_pdf">HTML, CSV, Excel, Markdown या पूरा बैकअप</string>
+    <!-- S4b-BL-94c, the Map's offer after an iPhone reminder or area tap (2026-09-30): under review. -->
+    <string name="map_hunt_offer">हंट मोड शुरू करें?</string>
+    <string name="map_hunt_offer_start">हंट मोड शुरू करें</string>
+    <!-- S4b-BL-84..87 (2026-10-01): the floor, moving rooms, the duplicate-flat warning, the cost filters and the brokers in the import preview: under review. -->
+    <string name="house_floor">मंज़िल</string>
+    <string name="house_floor_hint">0 भूतल है, -1 बेसमेंट</string>
+    <string name="house_floor_invalid">-5 से 200 तक की मंज़िल लिखें</string>
+    <string name="house_room_move_up">%1$s को ऊपर ले जाएँ</string>
+    <string name="house_room_move_down">%1$s को नीचे ले जाएँ</string>
+    <string name="duplicate_flat_warning">शायद यह %1$s वाला ही फ़्लैट है: लगभग 30 मीटर के भीतर, उतने ही बेडरूम और वही मंज़िल।</string>
+    <string name="houses_filters">फ़िल्टर</string>
+    <string name="houses_filters_count">फ़िल्टर (%1$d)</string>
+    <string name="houses_filters_title">लागत से छाँटें</string>
+    <string name="houses_filters_hint">पूरे रुपयों में। जिस मकान की यह रकम नहीं निकल सकती, वह छोड़ दिया जाता है (बिक्री की कोई मासिक लागत नहीं होती)।</string>
+    <string name="houses_filter_min">%1$s, कम से कम (₹)</string>
+    <string name="houses_filter_max">%1$s, अधिक से अधिक (₹)</string>
+    <string name="houses_filters_clear">लागत के फ़िल्टर हटाएँ</string>
+    <string name="import_new_brokers">नए ब्रोकर</string>
+    <string name="import_updated_brokers">जिन ब्रोकरों का बैकअप में नया रूप है</string>
 </resources>

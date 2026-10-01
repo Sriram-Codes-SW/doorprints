@@ -19,6 +19,8 @@
 package app.doorprints.server.photo;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -45,6 +47,14 @@ public class Photo {
     private boolean deleted;
     @Column(nullable = false)
     private long syncVersion;
+    /* Slice 5 (V12): what the person says about the photo; all blank on a tombstone. */
+    private String roomId;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String tags;
+    private String caption;
+    @Column(nullable = false)
+    private long metaUpdatedAt;
 
     protected Photo() {
     }
@@ -60,10 +70,14 @@ public class Photo {
         this.syncVersion = syncVersion;
     }
 
-    /** Turns this photo into a tombstone: bytes are dropped, the id stays so other devices can delete their copy. */
+    /** Turns this photo into a tombstone: bytes and the person's room, tags and caption are dropped, the id stays so other devices can delete their copy. */
     public void markDeleted(Instant now, long syncVersion) {
         this.deleted = true;
         this.data = null;
+        this.roomId = null;
+        this.tags = null;
+        this.caption = null;
+        this.metaUpdatedAt = 0;
         this.updatedAt = now;
         this.syncVersion = syncVersion;
     }
@@ -77,4 +91,8 @@ public class Photo {
     public Instant getUpdatedAt() { return updatedAt; }
     public boolean isDeleted() { return deleted; }
     public long getSyncVersion() { return syncVersion; }
+    public String getRoomId() { return roomId; }
+    public String getTags() { return tags; }
+    public String getCaption() { return caption; }
+    public long getMetaUpdatedAt() { return metaUpdatedAt; }
 }

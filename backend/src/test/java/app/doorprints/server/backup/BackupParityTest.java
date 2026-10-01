@@ -90,6 +90,20 @@ class BackupParityTest {
                 .as(typescript).isEqualTo(BackupFormat.MAX_DATA_JSON_BYTES);
     }
 
+    /**
+     * The three readers accept the same numbers (docs/schemas/README.md section 1.1; S4b-BL-82 made it three): the
+     * server's {@link BackupFormat#MAX_VERSION}, Kotlin's {@code MAX_VERSION} and the web's {@code BACKUP_FORMATS_READ},
+     * read as source text.
+     */
+    @Test
+    void theThreeReadersAcceptTheSameFormats() {
+        assertThat(BackupFormat.MAX_VERSION).isEqualTo(3);
+        assertThat(repoFile("android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt"))
+                .contains("const val MAX_VERSION = " + BackupFormat.MAX_VERSION + "\n");
+        assertThat(repoFile("web/src/app/export/backup-export.ts")).contains(
+                "BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];");
+    }
+
     /** The web writer's byte golden is the canonical sample, byte for byte (docs/schemas/README.md section 8.1). */
     @Test
     void theWebGoldenIsTheCanonicalSample() {
@@ -132,6 +146,20 @@ class BackupParityTest {
             });
         }
         assertThat(answers).isEqualTo(components(app.doorprints.server.house.HouseAnswer.class));
+        // Slice 5: the fullest move-in carries exactly the components of HouseMoveIn, and the union of the items' keys
+        // (done only when true) exactly those of its Item, in order.
+        var moveIn = new java.util.ArrayList<String>();
+        var itemKeys = new java.util.LinkedHashSet<String>();
+        for (var house : root.get("houses")) {
+            if (house.has("moveIn")) {
+                var keys = new java.util.ArrayList<String>(house.get("moveIn").propertyNames());
+                if (keys.size() > moveIn.size()) { moveIn.clear(); moveIn.addAll(keys); }
+                house.get("moveIn").get("items").forEach(item -> item.propertyNames().forEach(itemKeys::add));
+            }
+        }
+        assertThat(moveIn).isEqualTo(components(app.doorprints.server.house.HouseMoveIn.class));
+        assertThat(components(app.doorprints.server.house.HouseMoveIn.Item.class).stream().filter(itemKeys::contains).toList())
+                .isEqualTo(components(app.doorprints.server.house.HouseMoveIn.Item.class));
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
         assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));

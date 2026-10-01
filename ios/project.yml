@@ -90,6 +90,9 @@ targets:
           - "$(inherited)"
           - "-framework"
           - "DoorprintsKit"
+          # The system zlib, for reading deflated backups (S4b-BL-81, IosArchive.kt): a static framework does not bring
+          # the C library's link option along.
+          - "-lz"
         # No team, no certificate: simulator builds are signed ad hoc (identity "-"), which needs no Apple account
         # and gives the app a real signature, so the simulator gives it its own Keychain (owner-approved; CI passes
         # the same identity, with CODE_SIGNING_REQUIRED=NO). Manual, not Automatic: automatic signing with no team

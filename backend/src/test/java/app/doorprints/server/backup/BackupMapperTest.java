@@ -78,7 +78,7 @@ class BackupMapperTest {
     }
 
     private static PhotoDto photo(UUID id, UUID houseId, Instant createdAt, boolean deleted) {
-        return new PhotoDto(id, houseId, "image/jpeg", 3, createdAt, createdAt, deleted, 1);
+        return new PhotoDto(id, houseId, "image/jpeg", 3, createdAt, createdAt, deleted, 1, null, (java.util.List<String>) null, null, 0);
     }
 
     @Test
@@ -142,6 +142,68 @@ class BackupMapperTest {
             assertThat(p.houseId()).isEqualTo(SECOND);
             assertThat(p.fileName()).isEqualTo(photoId + ".jpg");
         });
+    }
+
+    private static PhotoDto photoWithMeta(UUID id, UUID houseId, String roomId, List<String> tags, String caption,
+                                          long metaUpdatedAt) {
+        return new PhotoDto(id, houseId, "image/jpeg", 3, EXPORTED_AT, EXPORTED_AT, false, 1, roomId, tags, caption,
+                metaUpdatedAt);
+    }
+
+    /** Slice 5: the photo meta keys are written only when set, in the format's order, and any of them makes the copy /2. */
+    @Test
+    void photoMetaIsWrittenOnlyWhenSetAndMakesTheCopyVersionTwo() {
+        var bare = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(),
+                List.of(photoWithMeta(UUID.randomUUID(), FIRST, "", List.of(), "", 0)), EXPORTED_AT);
+        assertThat(bare.format()).isEqualTo("doorprints-backup/1");
+        assertThat(JSON.writeValueAsString(bare.photos().getFirst())).doesNotContain("roomId").doesNotContain("tags")
+                .doesNotContain("caption").doesNotContain("metaUpdatedAt");
+
+        for (var meta : List.of(photoWithMeta(UUID.randomUUID(), FIRST, "c1", null, null, 0),
+                photoWithMeta(UUID.randomUUID(), FIRST, null, List.of("MOVE_IN"), null, 0),
+                photoWithMeta(UUID.randomUUID(), FIRST, null, null, "words", 0),
+                photoWithMeta(UUID.randomUUID(), FIRST, null, null, null, 5))) {
+            var data = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(meta), EXPORTED_AT);
+            assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        }
+
+        var id = UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1");
+        var full = BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(),
+                List.of(photoWithMeta(id, FIRST, "c1", List.of("KITCHEN_FITTINGS", "damp corner"), "Tap drips", 1790000000000L)),
+                EXPORTED_AT);
+        assertThat(JSON.writeValueAsString(full.photos().getFirst())).isEqualTo("{\"id\":\"" + id + "\",\"houseId\":\""
+                + FIRST + "\",\"fileName\":\"" + id + ".jpg\",\"createdAt\":" + EXPORTED_AT.toEpochMilli()
+                + ",\"roomId\":\"c1\",\"tags\":[\"KITCHEN_FITTINGS\",\"damp corner\"],\"caption\":\"Tap drips\","
+                + "\"metaUpdatedAt\":1790000000000}");
+    }
+
+    /** Slice 5: the status TAKEN or NOT_CHOSEN, or a move-in, makes the copy /2 even with nothing else in it. */
+    @Test
+    void theNewStatusesAndAMoveInMakeTheCopyVersionTwo() {
+        for (var status : List.of(HouseStatus.TAKEN, HouseStatus.NOT_CHOSEN)) {
+            var h = house(FIRST, EXPORTED_AT, false);
+            h.setStatus(status);
+            assertThat(BackupMapper.toBackup(List.of(h), List.of(), List.of(), EXPORTED_AT).format())
+                    .as(status.name()).isEqualTo("doorprints-backup/2");
+        }
+        var withMoveIn = house(FIRST, EXPORTED_AT, false);
+        withMoveIn.setMoveIn("{\"notes\":\"Keys\"}");
+        var data = BackupMapper.toBackup(List.of(withMoveIn), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        assertThat(data.houses().getFirst().moveIn().notes()).isEqualTo("Keys");
+        assertThat(BackupMapper.toBackup(List.of(house(FIRST, EXPORTED_AT, false)), List.of(), List.of(), EXPORTED_AT)
+                .format()).isEqualTo("doorprints-backup/1");
+    }
+
+    /** S4b-BL-87: a floor, 0 included, makes the copy /2 and is written after the move-in. */
+    @Test
+    void aFloorMakesTheCopyVersionTwo() {
+        var h = house(FIRST, EXPORTED_AT, false);
+        h.setFloor(0);
+        var data = BackupMapper.toBackup(List.of(h), List.of(), List.of(), EXPORTED_AT);
+        assertThat(data.format()).isEqualTo("doorprints-backup/2");
+        assertThat(data.houses().getFirst().floor()).isZero();
+        assertThat(JSON.writeValueAsString(data.houses().getFirst())).contains("\"floor\":0,\"checklist\"");
     }
 
     private static Record broker(String id, String payload, Instant updatedAt, boolean deleted) {

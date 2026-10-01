@@ -64,7 +64,8 @@ import org.jetbrains.compose.resources.stringResource
  * and the screens in [Routes.NOTIFICATION_SCREENS]; threat model F-25) and hands [DoorprintsRoot] one of these.
  */
 sealed interface DeepLink {
-    data class OpenHouse(val id: String) : DeepLink
+    /** A house's form; [questions]: scrolled to its questions (a viewing reminder's *Questions*, S4b-BL-93b). */
+    data class OpenHouse(val id: String, val questions: Boolean = false) : DeepLink
     data class NewHouse(val lat: Double, val lon: Double, val visitId: String?) : DeepLink
 
     /** Export, Import or Settings, from an export/import/backup notification. Always one of the notification screens. */
@@ -94,6 +95,13 @@ sealed interface DeepLink {
      * as its own Hunt switch does (the person tapped to start it) and then starts Hunt mode.
      */
     data object StartHunt : DeepLink
+
+    /**
+     * A tapped Hunt mode reminder or area wake-up on iPhone (S4b-BL-94c), where a notification has no *Start Hunt mode*
+     * action (an iPhone app cannot start location tracking from one): the Map, which offers Hunt mode in a snackbar
+     * with *Start Hunt mode*; the action takes the Hunt switch's path, as [StartHunt] does.
+     */
+    data object OfferHunt : DeepLink
 }
 
 private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
@@ -136,6 +144,8 @@ object Routes {
     const val PLACES = "places"
     const val PLACE = "place/{id}"
     const val NEW_RECORD = "new"
+    /** The rationale before *Wake me in my hunting areas* is turned on (docs/11 slice 4b, 5.18). */
+    const val AREA_WAKEUP = "area-wakeup"
 
     fun area(id: String) = "area/$id"
     fun place(id: String) = "place/$id"
@@ -211,6 +221,9 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         // change or an edit made while the app was away is picked up.
         LifecycleResumeEffect(services) {
             services.rescheduleReminders()
+            // The area wake-up (slice 4b): a location permission lost in the system settings switches it off (My
+            // areas says once why); otherwise its geofences are registered again.
+            services.areaWakeup.resumed()
             onPauseOrDispose {}
         }
 
@@ -256,6 +269,16 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
         var pendingConnect by remember { mutableStateOf<ConnectLink?>(null) }
         // *Start Hunt mode* from a reminder, waiting for the Map to ask for location and start it (slice 3c).
         var huntRequested by remember { mutableStateOf(false) }
+        // An iPhone reminder or area tap, waiting for the Map to offer Hunt mode (S4b-BL-94c).
+        var huntOffered by remember { mutableStateOf(false) }
+        // A reminder's *Questions*: the house whose form scrolls to its questions once it is open (S4b-BL-93b).
+        var questionsFor by remember { mutableStateOf<String?>(null) }
+        // A deep link to the Map shows the Map itself (S4b-BL-94a): whatever was open over it is closed, where
+        // openTab would bring back the sub-screen the Map's stack had.
+        fun NavController.openMapFresh() = navigate("map") {
+            popUpTo(home)
+            launchSingleTop = true
+        }
         LaunchedEffect(deepLink) {
             if (deepLink == null) return@LaunchedEffect
             // On a cold start from a notification this runs before the NavHost (inside the Scaffold's subcomposition)
@@ -270,7 +293,10 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 if (!onTop(Routes.HOUSE, "id", id)) nav.navigate(Routes.house(id))
             }
             when (val d = deepLink) {
-                is DeepLink.OpenHouse -> openHouse(d.id)
+                is DeepLink.OpenHouse -> {
+                    if (d.questions) questionsFor = d.id
+                    openHouse(d.id)
+                }
                 is DeepLink.NewHouse -> {
                     // A "stay here?" alert whose visit was already saved as a house opens that house, not a second
                     // new-house form that would save a duplicate (whole-app audit).
@@ -300,7 +326,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     } else {
                         pendingListing = d.text
                         if (features.map) mapAddTip = true
-                        nav.openTab("map")
+                        nav.openMapFresh()
                     }
                 }
                 is DeepLink.OpenViewing -> {
@@ -308,7 +334,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 }
                 DeepLink.StartHunt -> {
                     huntRequested = true
-                    nav.openTab("map")
+                    nav.openMapFresh()
+                }
+                DeepLink.OfferHunt -> {
+                    huntOffered = true
+                    nav.openMapFresh()
                 }
                 is DeepLink.OpenScreen -> when (d.route) {
                     // Settings is a tab: its own stack, never pushed over a form with unsaved edits.
@@ -341,7 +371,7 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         listingDuplicate = null
                         pendingListing = text
                         if (features.map) mapAddTip = true
-                        nav.openTab("map")
+                        nav.openMapFresh()
                     }) { Text(stringResource(Res.string.house_dup_add)) }
                 },
             )
@@ -403,8 +433,11 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         showAddTip = mapAddTip,
                         onAddTipShown = { mapAddTip = false },
                         addTipForListing = listingPending,
+                        listingPlace = remember(pendingListing) { pendingListing?.let { ListingText.parse(it).locality } },
                         huntRequest = huntRequested,
                         onStartHuntHandled = { huntRequested = false },
+                        huntOffer = huntOffered,
+                        onHuntOfferHandled = { huntOffered = false },
                         deletedHouse = deleted,
                         onDeletedShown = { entry.savedStateHandle[DELETED_HOUSE_KEY] = null },
                     )
@@ -476,7 +509,12 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                     AreasScreen(
                         onBack = dropUnlessResumed { nav.popBackStack() },
                         onOpenArea = { if (resumed(entry)) nav.navigate(Routes.area(it)) },
+                        onTurnOnWakeup = { if (resumed(entry)) nav.navigate(Routes.AREA_WAKEUP) },
                     )
+                }
+                composable(Routes.AREA_WAKEUP) { entry ->
+                    // Not dropUnlessResumed: the permission answer can arrive while the entry is only started.
+                    AreaWakeupRationaleScreen(onDone = { if (nav.currentBackStackEntry == entry) nav.popBackStack() })
                 }
                 composable(Routes.AREA, arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                     AreaFormScreen(
@@ -590,13 +628,18 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                 ) { entry ->
                     val justSaved by entry.savedStateHandle.getStateFlow(JUST_SAVED_KEY, false)
                         .collectAsStateWithLifecycle()
+                    val houseId = entry.arguments?.read { getStringOrNull("id") }
                     HouseEditScreen(
-                        houseId = entry.arguments?.read { getStringOrNull("id") },
+                        houseId = houseId,
                         newLat = null, newLon = null, visitId = null,
+                        showQuestions = houseId != null && questionsFor == houseId,
+                        onQuestionsShown = { questionsFor = null },
                         onDone = dropUnlessResumed { nav.popBackStack() },
                         // The house's Viewings card (slice 3b-1): plan one here, or see this house's history.
                         onPlanViewing = { house, kind -> if (resumed(entry)) nav.navigate(Routes.viewing(null, house, kind.name)) },
                         onOpenViewings = { house -> if (resumed(entry)) nav.navigate(Routes.viewings(house)) },
+                        // *Save a copy* after *Close this hunt* (slice 5).
+                        onSaveCopy = { if (resumed(entry)) nav.navigate("export") },
                         // "Save as a new house" after this one was removed elsewhere: continue on the copy.
                         onCreated = { id ->
                             if (resumed(entry)) {

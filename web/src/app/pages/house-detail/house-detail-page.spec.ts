@@ -54,6 +54,7 @@ interface Fakes {
   houses?: () => Observable<HouseDto[]>;
   saveHouse?: () => Observable<HouseDto>;
   reverse?: () => Observable<unknown>;
+  search?: (place: string, language: string) => Observable<unknown>;
   extractListing?: () => Observable<HouseDraft>;
   aiEnabled?: boolean;
   brokers?: () => Observable<BrokerRow[]>;
@@ -83,7 +84,7 @@ function create(
     areaNotes: () => of([]),
     places: () => of([]),
     settled: signal(0),
-    photoIds: () => of([]),
+    photos: () => of([]),
     saveHouse: fakes.saveHouse ?? (() => of(HOUSE)),
   };
   TestBed.configureTestingModule({
@@ -95,7 +96,7 @@ function create(
         provide: ActivatedRoute,
         useValue: { snapshot: { paramMap: convertToParamMap(params), queryParamMap: convertToParamMap(query) } },
       },
-      { provide: GeocodeService, useValue: { reverse: fakes.reverse ?? (() => of({})) } },
+      { provide: GeocodeService, useValue: { reverse: fakes.reverse ?? (() => of({})), search: fakes.search ?? (() => of(null)) } },
       {
         provide: AiService,
         useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(false), extractListing: fakes.extractListing ?? (() => of()) },
@@ -510,5 +511,59 @@ describe('HouseDetailPage: area notes and distances (slice 4a)', () => {
       'Add a note for this street',
       'Add a note for an area',
     ]);
+  });
+});
+
+/**
+ * S4b-BL-83: a new house with no position offers *Find “<locality>” on the map*; the lookup runs only on the tap, puts
+ * the pin at the place marked approximate for the person to move, and a name it does not know says so.
+ */
+describe('HouseDetailPage: finding the locality on the map', () => {
+  function button(host: HTMLElement, label: string): HTMLButtonElement {
+    const found = [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === label);
+    if (!found) throw new Error(`no button "${label}"`);
+    return found;
+  }
+
+  function t(msg: Msg): string {
+    return TestBed.inject(TranslationService).t(msg.key, msg.params);
+  }
+
+  async function newHouseWithLocality(search: (place: string, language: string) => Observable<unknown>) {
+    const { fixture } = create({}, {}, { search });
+    fixture.detectChanges();
+    await settle();
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    const locality = host.querySelector<HTMLInputElement>('#house-locality')!;
+    locality.value = 'Indiranagar';
+    locality.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page = fixture.componentInstance as unknown as { draft: () => HouseDto };
+    return { fixture, host, draft: () => page.draft() };
+  }
+
+  it('looks the place up only on the tap and puts an approximate pin there', async () => {
+    const search = vi.fn((place: string, language: string) => of({ lat: 12.9784, lon: 77.6408, label: `${place} (${language})` }));
+    const { fixture, host, draft } = await newHouseWithLocality(search);
+    expect(search).not.toHaveBeenCalled();
+    button(host, t({ key: 'house.findPlace', params: { place: 'Indiranagar' } })).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(search).toHaveBeenCalledWith('Indiranagar', 'en');
+    expect([draft().lat, draft().lon, draft().locationSource]).toEqual([12.9784, 77.6408, 'APPROX']);
+    expect(host.textContent).toContain(t({ key: 'house.placeFound', params: { place: 'Indiranagar' } }));
+    expect(host.textContent).toContain(t({ key: 'house.lookupNote' }));
+  });
+
+  it('says so when the place is not found, and leaves the pin unset', async () => {
+    const { fixture, host, draft } = await newHouseWithLocality(() => of(null));
+    const before = [draft().lat, draft().lon];
+    button(host, t({ key: 'house.findPlace', params: { place: 'Indiranagar' } })).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect([draft().lat, draft().lon]).toEqual(before);
+    expect(host.textContent).toContain(t({ key: 'house.placeNotFound', params: { place: 'Indiranagar' } }));
   });
 });

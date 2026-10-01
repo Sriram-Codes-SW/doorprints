@@ -78,6 +78,7 @@ import app.doorprints.data.VisitEntity
 import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Viewing
+import app.doorprints.shared.model.ViewingIcs
 import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.ViewingStatus
@@ -453,6 +454,37 @@ private data class ViewingDraft(
     val huntReminder: Boolean = false,
 )
 
+/**
+ * The draft as the viewing record [id] of [houseId] (on top of [stored], so what the form does not show is kept).
+ * Without Hunt mode on this phone ([huntMode] off) the switch is hidden and the stored value is kept as it is.
+ */
+private fun ViewingDraft.toViewing(stored: Viewing?, id: String, houseId: String, status: ViewingStatus, huntMode: Boolean) =
+    (stored ?: Viewing(id = id)).copy(
+        id = id, houseId = houseId, startsAt = startsAt, durationMin = durationMin,
+        kind = kind.name, status = status.name, remindMin = remindMin,
+        withWhom = withWhom, notes = notes,
+        huntReminder = if (huntMode) huntReminder else stored?.huntReminder ?: false,
+    )
+
+/**
+ * The name and text of the `.ics` the iPhone shares for [viewing] (S4b-BL-92a; [ViewingIcs], docs/11 5.8):
+ * `<id>.ics` as the website names it, the house's label (or [untitled]) in the summary after [word], its address or
+ * else its street as the location, the notes and never `withWhom`; stamped [stampMs].
+ */
+internal fun viewingCalendarFile(
+    viewing: Viewing,
+    house: HouseEntity?,
+    untitled: String,
+    word: String,
+    stampMs: Long,
+): Pair<String, String> = "${viewing.id}.ics" to ViewingIcs.build(
+    viewing.copy(notes = viewing.notes?.trim()?.ifEmpty { null }),
+    house?.label?.ifBlank { null } ?: untitled,
+    house?.address?.ifBlank { null } ?: house?.street?.ifBlank { null },
+    word,
+    stampMs,
+)
+
 /** [ViewingDraft] in the saved-state bundle: plain values only. */
 private val ViewingDraftSaver = listSaver<ViewingDraft, Any?>(
     save = { listOf(it.houseId, it.startsAt, it.durationMin, it.kind.name, it.remindMin, it.withWhom, it.notes, it.status.name, it.huntReminder) },
@@ -517,6 +549,8 @@ fun ViewingFormScreen(
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    /** A new viewing's id, made when its calendar file is shared before it is saved (the iPhone's `.ics`). */
+    var newId by rememberSaveable { mutableStateOf<String?>(null) }
     val saveFailed = stringResource(Res.string.viewings_save_failed)
     val maxText = stringResource(Res.string.viewings_max)
     val calendarNone = stringResource(Res.string.viewings_calendar_none)
@@ -524,7 +558,7 @@ fun ViewingFormScreen(
     val word = stringResource(Res.string.viewings_icsWord)
     // Slice 3b-2: the first save of a viewing with a reminder ahead asks for notifications (Android 13+, iOS), once
     // and never at start-up; whatever the answer, the viewing is already saved.
-    val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale)
+    val askNotifications = rememberNotificationAsk(Res.string.viewings_notify_rationale, forViewings = true)
     val remindOn by remember(repo) { repo.settings.viewingsRemind() }.collectAsStateWithLifecycle(initialValue = true)
     val huntRemindOn by remember(repo) { repo.settings.huntRemind() }.collectAsStateWithLifecycle(initialValue = true)
     val huntLead by remember(repo) { repo.settings.huntReminderMin() }.collectAsStateWithLifecycle(initialValue = HuntReminders.DEFAULT_LEAD)
@@ -538,14 +572,9 @@ fun ViewingFormScreen(
         scope.launch {
             error = try {
                 val saved = withContext(NonCancellable) {
-                    val id = stored?.id ?: repo.newViewingId()
-                    (stored ?: Viewing(id = id)).copy(
-                        id = id, houseId = house, startsAt = draft.startsAt, durationMin = draft.durationMin,
-                        kind = draft.kind.name, status = status.name, remindMin = draft.remindMin,
-                        withWhom = draft.withWhom, notes = draft.notes,
-                        // Without Hunt mode on this phone the switch is hidden and the stored value is kept as it is.
-                        huntReminder = if (huntMode) draft.huntReminder else stored?.huntReminder ?: false,
-                    ).also { repo.saveViewing(it) }
+                    // The id a shared calendar file already carries, so its event and this viewing stay one.
+                    val id = stored?.id ?: newId ?: repo.newViewingId()
+                    draft.toViewing(stored, id, house, status, huntMode).also { repo.saveViewing(it) }
                 }
                 val t = nowMillis()
                 val ahead = HuntReminders.merged(listOf(saved), huntLead, t, viewingReminders = remindOn, huntReminders = huntRemindOn)
@@ -669,6 +698,27 @@ fun ViewingFormScreen(
                                 ),
                             )
                             if (!ok) error = calendarNone
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) { ButtonLabel(stringResource(Res.string.viewings_addToCalendar)) }
+                } else if (platform.canShareCalendarFile) {
+                    // The iPhone (S4b-BL-92a): the form as it stands, as a `.ics` through the share sheet, as the website
+                    // downloads it; the house must be chosen first.
+                    OutlinedButton(
+                        onClick = {
+                            val houseId = d.houseId
+                            if (houseId == null) {
+                                tried = true
+                                return@OutlinedButton
+                            }
+                            scope.launch {
+                                val id = stored?.id ?: newId ?: repo.newViewingId().also { newId = it }
+                                val house = byId[houseId]
+                                val (name, ics) = viewingCalendarFile(
+                                    d.toViewing(stored, id, houseId, d.status, huntMode), house, gone, word, nowMillis(),
+                                )
+                                if (!platform.shareCalendarFile(name, ics)) error = calendarNone
+                            }
                         },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     ) { ButtonLabel(stringResource(Res.string.viewings_addToCalendar)) }

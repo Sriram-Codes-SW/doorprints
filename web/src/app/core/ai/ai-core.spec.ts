@@ -104,6 +104,13 @@ describe('AI core (what the vectors do not cover)', () => {
       .toContain('Deposit: 2 months\nMaintenance: Rs 1000 per month (included in the rent)');
   });
 
+  it('writes a Floor line right after the carpet area, in the words of the server and the phones (S4b-BL-87)', () => {
+    expect(houseText({ ...house, areaSqft: 1150, floor: 3 })).toContain('Carpet area: 1150 sq ft\nFloor: 3\n');
+    expect(houseText({ ...house, floor: 0 })).toContain('\nFloor: ground floor\n');
+    expect(houseText({ ...house, floor: -2 })).toContain('\nFloor: basement 2\n');
+    expect(houseText(house)).not.toContain('Floor:');
+  });
+
   it('writes the questions after the Rooms line: answered as Asked/Answer, open as Still to ask, skipped not at all', () => {
     const text = houseText({
       ...house,
@@ -249,6 +256,28 @@ describe('AI core (what the vectors do not cover)', () => {
     expect(text.split('\n').filter((l) => l.startsWith('Area note: '))).toHaveLength(1);
     expect(text).toContain('Distance to [contact] home: 1.2 km');
     expect(text).not.toMatch(/lat|lon/i);
+  });
+
+  it('writes the Moving in progress and notes after the distance lines, and nothing for the item texts or the date (slice 5)', () => {
+    const text = houseText({
+      ...house,
+      distances: [{ name: 'Office', meters: 1000 }],
+      moveIn: {
+        notes: 'Call Ramesh on 98450 12345\nmeter 4521',
+        items: [{ done: true }, { done: false }, {}, { done: true }],
+      },
+    } as never);
+    expect(text).toContain(['Distance to Office: 1.0 km', 'Moving in: 2 of 4 done', 'Moving in notes: Call [contact] on [phone] meter 4521', 'Status: SHORTLISTED'].join('\n'));
+    expect(text.split('\n').filter((l) => l.startsWith('Moving in notes: '))).toHaveLength(1);
+    expect(text).not.toContain('98450');
+  });
+
+  it('writes no Moving in line when there are no items and no notes, and no progress line without items', () => {
+    expect(houseText({ ...house, moveIn: null } as never)).toBe(houseText(house));
+    expect(houseText({ ...house, moveIn: { items: [], notes: '  ' } } as never)).toBe(houseText(house));
+    const onlyNotes = houseText({ ...house, moveIn: { notes: 'Keys with the owner' } } as never);
+    expect(onlyNotes).toContain('Moving in notes: Keys with the owner');
+    expect(onlyNotes).not.toContain('Moving in: ');
   });
 
   it('writes at most 5 area notes (newest first, ties by id) and 10 distances (nearest first)', () => {

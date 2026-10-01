@@ -27,6 +27,9 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoTags
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -56,6 +59,26 @@ class Converters {
     /** Coerced on the way out, like the rooms: text that does not decode reads as no answers, not a crash. */
     @TypeConverter
     fun jsonToAnswers(json: String?): List<HouseAnswer>? = HouseAnswers.coerced(HouseAnswers.decode(json))
+
+    /** Moving in (slice 5) as compact JSON in the format's key order; null for none. */
+    @TypeConverter
+    fun moveInToJson(moveIn: MoveIn?): String? = MoveIn.encode(MoveIn.coerced(moveIn))
+
+    /** Coerced on the way out, like the rooms: text that does not decode reads as no move-in, not a crash. */
+    @TypeConverter
+    fun jsonToMoveIn(json: String?): MoveIn? = MoveIn.coerced(MoveIn.decode(json))
+
+    private val tagsSerializer = ListSerializer(String.serializer())
+
+    /** A photo's tags (slice 5) as a JSON array; null for none, never `[]`. */
+    @TypeConverter
+    fun tagsToJson(tags: List<String>?): String? = tags?.takeIf { it.isNotEmpty() }?.let { Json.encodeToString(tagsSerializer, it) }
+
+    /** Coerced on the way out: text that does not decode reads as no tags. */
+    @TypeConverter
+    fun jsonToTags(json: String?): List<String>? =
+        json?.takeIf { it.isNotBlank() }?.let { runCatching { Json.decodeFromString(tagsSerializer, it) }.getOrNull() }
+            ?.let { PhotoTags.coerced(it) }?.takeIf { it.isNotEmpty() }
 }
 
 @Dao
@@ -212,6 +235,22 @@ interface PhotoDao {
     /** A house's live photos, for the undo of a copy import (a query only; the schema does not change). */
     @Query("SELECT * FROM photos WHERE houseId = :houseId AND deleted = 0")
     suspend fun liveForHouse(houseId: String): List<PhotoEntity>
+
+    /** Live photos the server has whose metadata changed here since the last sync (slice 5). */
+    @Query("SELECT * FROM photos WHERE metaDirty = 1 AND uploaded = 1 AND deleted = 0")
+    suspend fun pendingMeta(): List<PhotoEntity>
+
+    /** Clears the flag only when the meta sent is still the stored one: an edit made during the sync stays dirty. */
+    @Query("UPDATE photos SET metaDirty = 0 WHERE id = :id AND metaUpdatedAt = :metaUpdatedAt")
+    suspend fun markMetaClean(id: String, metaUpdatedAt: Long)
+
+    /** Every photo's metadata edit time, for an import's last-write-wins (slice 5). */
+    @Query("SELECT id, metaUpdatedAt AS updatedAt FROM photos")
+    suspend fun metaVersions(): List<RowVersion>
+
+    /** Every live photo with metadata to be sent again (S4b-BL-20, slice 5). */
+    @Query("UPDATE photos SET metaDirty = 1 WHERE deleted = 0 AND metaUpdatedAt > 0")
+    suspend fun markAllMetaDirty()
 }
 
 @Dao
@@ -291,7 +330,7 @@ interface RecordDao {
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
     ],
-    version = 8,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -397,8 +436,35 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v9 (docs/11 5.7 and 5.24, slice 5, 2026-09-30): the photo's metadata (`roomId`, `tags` as JSON text, `caption`,
+         * `metaUpdatedAt` and `metaDirty`, the last two 0 for a photo from before) and `houses.moveIn`, the move-in as
+         * JSON text, as Room lists them in `9.json`. A row from before has no meta and no move-in.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE photos ADD COLUMN `roomId` TEXT")
+                connection.execSQL("ALTER TABLE photos ADD COLUMN `tags` TEXT")
+                connection.execSQL("ALTER TABLE photos ADD COLUMN `caption` TEXT")
+                connection.execSQL("ALTER TABLE photos ADD COLUMN `metaUpdatedAt` INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE photos ADD COLUMN `metaDirty` INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `moveIn` TEXT")
+            }
+        }
+
+        /**
+         * v10 (S4b-BL-87, 2026-10-01): `houses.floor`, the floor the flat is on, nullable with no default as Room lists
+         * it in `10.json`. A house from before has no floor.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE houses ADD COLUMN `floor` INTEGER")
+            }
+        }
+
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+            MIGRATION_8_9, MIGRATION_9_10,
         )
     }
 }

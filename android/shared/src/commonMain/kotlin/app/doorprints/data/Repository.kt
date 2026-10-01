@@ -38,6 +38,7 @@ import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
@@ -83,7 +84,10 @@ interface Repository {
     suspend fun houseSnapshot(): List<HouseEntity>
     suspend fun getHouse(id: String): HouseEntity?
 
-    /** Writes [house] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. */
+    /**
+     * Writes [house] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. A house saved TAKEN returns the
+     * house that was TAKEN before to SHORTLISTED (`HouseStatusRules.choose`, slice 5): at most one house is TAKEN.
+     */
     suspend fun saveHouse(house: HouseEntity)
 
     /** Turns a house into a tombstone (see [saveHouse]); nothing when there is no such house. */
@@ -108,6 +112,22 @@ interface Repository {
 
     /** Deletes the photo's local file now; a photo the server has is queued for deletion on the next sync. */
     suspend fun deletePhoto(photo: PhotoEntity)
+
+    /**
+     * Writes photo [photoId]'s metadata (docs/11 5.7, slice 5): coerced, stamped `metaUpdatedAt = now` and marked for the
+     * next sync (`PUT /api/photos/{id}/meta`). Nothing is written when the room, tags and caption are the ones stored
+     * already, or for a photo that is not here. Returns true when it wrote.
+     */
+    suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean
+
+    /**
+     * *Mark them Not chosen* and *Close this hunt* (docs/11 5.24, slice 5): every house of `HouseStatusRules.closeTargets`
+     * for the TAKEN house [takenId] becomes NOT_CHOSEN in one transaction (nothing is deleted). Returns how many.
+     */
+    suspend fun markOthersNotChosen(takenId: String): Int
+
+    /** How many houses [markOthersNotChosen] would change now, for the confirmation that names the number. */
+    suspend fun closeTargetCount(takenId: String): Int
 
     // The record envelope (docs/11 5.30 item 2, ADR-28): every new kind of data of Sprint 4b, typed by a RecordType.
 
@@ -393,6 +413,8 @@ interface Repository {
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        /** The records the copy created (`CopyRecord.records`, S4b-BL-92e). */
+        records: Map<String, Long> = emptyMap(),
     ): UndoResult
 
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
@@ -428,6 +450,8 @@ interface Repository {
         val areas: List<ExportArea> = emptyList(),
         val places: List<ExportPlace> = emptyList(),
         val areaNotes: List<ExportAreaNote> = emptyList(),
+        /** The houses deleted here, id to the `updatedAt` of the delete: an update file's deletions (S4b-BL-82). */
+        val deletedHouses: Map<String, Long> = emptyMap(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -471,6 +495,11 @@ interface Repository {
         val areas: Map<String, Long> = emptyMap(),
         val places: Map<String, Long> = emptyMap(),
         val areaNotes: Map<String, Long> = emptyMap(),
+        /** Every photo's `metaUpdatedAt` by id (slice 5), 0 for one never edited: an import's meta merge, last write wins. */
+        val photoMeta: Map<String, Long> = emptyMap(),
+        /** The live question and criterion records' ids, for the caps an import keeps (S4b-BL-90b). */
+        val liveQuestions: Set<String> = emptySet(),
+        val liveCriteria: Set<String> = emptySet(),
     )
 
     /** What an import actually managed to write. */
@@ -500,6 +529,8 @@ interface Repository {
         val copiedHouses: Map<String, Long> = emptyMap(),
         val copiedVisits: Map<String, Long> = emptyMap(),
         val copiedPhotos: List<String> = emptyList(),
+        /** COPY only: the brokers, viewings, questions and criteria it created, by `CopyUndo.recordKey` (S4b-BL-92e). */
+        val copiedRecords: Map<String, Long> = emptyMap(),
         /** Brokers written (slice 1b), new and updated together. */
         val brokers: Int = 0,
         /** Criteria and preferences written (slice 2), new and updated together. */
@@ -513,11 +544,13 @@ interface Repository {
         val areas: Int = 0,
         val places: Int = 0,
         val areaNotes: Int = 0,
+        /** Houses an update file deleted here (S4b-BL-82, `ImportActions.removedHouseIds`). */
+        val removedHouses: Int = 0,
     ) {
         /** Everything written, of every type. */
         val rows: Int
             get() = houses + visits + photos + brokers + criteria + preferences + questions + viewings + areas + places +
-                areaNotes
+                areaNotes + removedHouses
     }
 
     /**

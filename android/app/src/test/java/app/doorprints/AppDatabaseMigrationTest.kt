@@ -35,6 +35,9 @@ import app.doorprints.data.create
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.MoveInItem
+import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.VisitSource
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -275,6 +278,90 @@ class AppDatabaseMigrationTest {
             )
         } finally {
             db.close()
+        }
+    }
+
+    /**
+     * v9 (docs/11 slice 5): the whole chain from version 1 ends in the committed `9.json`; a photo from before has no
+     * meta (never edited, nothing to send) and a house no move-in, and both are kept as JSON text through the DAOs.
+     */
+    @Test
+    fun migrations1To9MatchTheExportedSchemaAndAPhotoFromBeforeHasNoMeta() = runBlocking {
+        writeVersion1(helperFile)
+
+        val db = helper.runMigrationsAndValidate(9, AppDatabase.MIGRATIONS.toList().take(8))
+        try {
+            assertEquals(listOf("h1|"), db.rows("SELECT id, IFNULL(moveIn, '') FROM houses"))
+            assertEquals(
+                listOf("p1||||0|0"),
+                db.rows("SELECT id, IFNULL(roomId, ''), IFNULL(tags, ''), IFNULL(caption, ''), metaUpdatedAt, metaDirty FROM photos"),
+            )
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.moveIn)
+            val moveIn = MoveIn(1_790_812_800_000L, "Keys from Ravi", listOf(MoveInItem("mi_keys", "Keys received", true, 0)))
+            opened.houses().upsert(house.copy(moveIn = moveIn))
+            assertEquals(moveIn, opened.houses().get("h1")!!.moveIn)
+            val photo = opened.photos().get("p1")!!
+            assertEquals(PhotoMeta(), photo.meta)
+            assertFalse(photo.metaDirty)
+            opened.photos().upsert(photo.withMeta(PhotoMeta("r1", listOf("MOVE_IN", "damp corner"), "Tap drips", 5L), dirty = true))
+            val again = opened.photos().get("p1")!!
+            assertEquals(PhotoMeta("r1", listOf("MOVE_IN", "damp corner"), "Tap drips", 5L), again.meta)
+            assertTrue(again.metaDirty)
+        } finally {
+            opened.close()
+        }
+    }
+
+    /** `MIGRATION_8_9` alone: a version-8 house keeps its answers and a version-8 photo its row, with no meta. */
+    @Test
+    fun migration8To9AddsThePhotoMetaAndMoveInColumns() {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(8, AppDatabase.MIGRATIONS.toList().take(7)).use { v8 ->
+            v8.execSQL("UPDATE houses SET answers = '[{\"id\":\"a1\",\"text\":\"Water?\",\"sort\":0}]'")
+        }
+        val db = helper.runMigrationsAndValidate(9, listOf(AppDatabase.MIGRATION_8_9))
+        try {
+            assertEquals(
+                listOf("h1|[{\"id\":\"a1\",\"text\":\"Water?\",\"sort\":0}]|"),
+                db.rows("SELECT id, answers, IFNULL(moveIn, '') FROM houses"),
+            )
+            assertEquals(listOf("p1|0|0|0"), db.rows("SELECT id, deleted, metaUpdatedAt, metaDirty FROM photos"))
+        } finally {
+            db.close()
+        }
+    }
+
+    /** `MIGRATION_9_10` alone (S4b-BL-87): a version-9 house keeps its move-in and has no floor, and a floor round-trips. */
+    @Test
+    fun migration9To10AddsTheFloorColumn() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(9, AppDatabase.MIGRATIONS.toList().take(8)).use { v9 ->
+            v9.execSQL("UPDATE houses SET moveIn = '{\"notes\":\"Keys\"}'")
+        }
+        val db = helper.runMigrationsAndValidate(10, listOf(AppDatabase.MIGRATION_9_10))
+        try {
+            assertEquals(listOf("h1|{\"notes\":\"Keys\"}|"), db.rows("SELECT id, moveIn, IFNULL(floor, '') FROM houses"))
+        } finally {
+            db.close()
+        }
+        val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)
+        writeVersion1(legacy)
+        val opened = AppDatabase.create(context)
+        try {
+            val house = opened.houses().get("h1")!!
+            assertEquals(null, house.floor)
+            opened.houses().upsert(house.copy(floor = -1))
+            assertEquals(-1, opened.houses().get("h1")!!.floor)
+        } finally {
+            opened.close()
         }
     }
 

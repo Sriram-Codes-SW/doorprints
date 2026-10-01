@@ -208,7 +208,7 @@ fun ImportScreen(
     val marks: ResultMarks? by repo.settings.resultMarks.collectAsStateWithLifecycle(initialValue = null)
     /** A run whose result this visit of the screen has shown; it stays up until the user moves on. */
     var shownRunId by remember { mutableStateOf<String?>(null) }
-    val askNotifications = rememberNotificationAsk()
+    val askNotifications = rememberNotificationAsk(enabled = imports.postsResults)
 
     // While this is true a finished import is shown here; while it is false the worker posts a notification.
     LifecycleStartEffect(Unit) {
@@ -922,10 +922,10 @@ private fun ImportResult(info: ImportRun, onDismiss: () -> Unit) {
 }
 
 /** One preview line: its sign, its label, and its number. */
-private data class PreviewLine(val icon: ImageVector, val label: StringResource, val count: Int, val loss: Boolean = false)
+internal data class PreviewLine(val icon: ImageVector, val label: StringResource, val count: Int, val loss: Boolean = false)
 
 /**
- * The preview (docs/05 section 14.3, "the safety mechanism"), grouped as houses / visits / photos with a thin
+ * The preview (docs/05 section 14.3, "the safety mechanism"), grouped as houses / visits / photos / brokers with a thin
  * divider between groups. Lines that are zero are hidden. Each line is a sign, a label and the number in its own
  * right-aligned column with tabular figures, so the numbers can be scanned down one edge instead of sitting at
  * the ragged end of a wrapped Tamil or Telugu sentence: + for something new, a refresh sign for something the
@@ -941,27 +941,7 @@ private data class PreviewLine(val icon: ImageVector, val label: StringResource,
  */
 @Composable
 private fun PreviewCard(preview: ImportPreview, duplicates: Int, modifier: Modifier) {
-    val groups = listOf(
-        listOf(
-            PreviewLine(Icons.Default.Warning, Res.string.import_copy_duplicates, duplicates, loss = true),
-            PreviewLine(Icons.Default.Add, Res.string.import_new_houses, preview.newHouses),
-            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_houses, preview.updatedHouses),
-            PreviewLine(Icons.Default.Warning, Res.string.import_checklists_cleared, preview.checklistsCleared, loss = true),
-            // The undelete (UX review, round 11): houses deleted on this phone that come back with their own ids.
-            PreviewLine(RestoreIcon, Res.string.import_restored_houses, preview.restoredHouses),
-            PreviewLine(Icons.Default.Info, Res.string.import_newer_here, preview.newerHereHouses),
-            // Not "kept": these houses are not on the phone, and a merge leaves them deleted (UX review, round 10).
-            PreviewLine(Icons.Default.Info, Res.string.import_deleted_here, preview.deletedHereHouses),
-        ),
-        listOf(
-            PreviewLine(Icons.Default.Add, Res.string.import_new_visits, preview.newVisits),
-            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_visits, preview.updatedVisits),
-        ),
-        listOf(
-            PreviewLine(Icons.Default.Add, Res.string.import_new_photos, preview.newPhotos),
-            PreviewLine(Icons.Default.Warning, Res.string.import_photos_missing, preview.photosMissingFromFile, loss = true),
-        ),
-    ).map { group -> group.filter { it.count > 0 } }.filter { it.isNotEmpty() }
+    val groups = previewGroups(preview, duplicates)
     if (groups.isEmpty()) return
     OutlinedCard(modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -979,6 +959,37 @@ private fun PreviewCard(preview: ImportPreview, duplicates: Int, modifier: Modif
         }
     }
 }
+
+/** [PreviewCard]'s groups of lines, in order, without the lines that are zero and the groups left empty. */
+internal fun previewGroups(preview: ImportPreview, duplicates: Int): List<List<PreviewLine>> =
+    listOf(
+        listOf(
+            PreviewLine(Icons.Default.Warning, Res.string.import_copy_duplicates, duplicates, loss = true),
+            PreviewLine(Icons.Default.Add, Res.string.import_new_houses, preview.newHouses),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_houses, preview.updatedHouses),
+            PreviewLine(Icons.Default.Warning, Res.string.import_checklists_cleared, preview.checklistsCleared, loss = true),
+            // The undelete (UX review, round 11): houses deleted on this phone that come back with their own ids.
+            PreviewLine(RestoreIcon, Res.string.import_restored_houses, preview.restoredHouses),
+            PreviewLine(Icons.Default.Info, Res.string.import_newer_here, preview.newerHereHouses),
+            // Not "kept": these houses are not on the phone, and a merge leaves them deleted (UX review, round 10).
+            PreviewLine(Icons.Default.Info, Res.string.import_deleted_here, preview.deletedHereHouses),
+            // An update file's deletions (S4b-BL-82): houses here the sender deleted after editing them last.
+            PreviewLine(Icons.Default.Warning, Res.string.import_removed_houses, preview.removedHouses, loss = true),
+        ),
+        listOf(
+            PreviewLine(Icons.Default.Add, Res.string.import_new_visits, preview.newVisits),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_visits, preview.updatedVisits),
+        ),
+        listOf(
+            PreviewLine(Icons.Default.Add, Res.string.import_new_photos, preview.newPhotos),
+            PreviewLine(Icons.Default.Warning, Res.string.import_photos_missing, preview.photosMissingFromFile, loss = true),
+        ),
+        // Brokers of a `/2` file (S4b-BL-86): new here, and newer in the file (a merge only; a copy adds them all as new).
+        listOf(
+            PreviewLine(Icons.Default.Add, Res.string.import_new_brokers, preview.newBrokers),
+            PreviewLine(Icons.Default.Refresh, Res.string.import_updated_brokers, preview.updatedBrokers),
+        ),
+    ).map { group -> group.filter { it.count > 0 } }.filter { it.isNotEmpty() }
 
 /**
  * Read by TalkBack as one item, "New houses 3". Label and number share one baseline (they are different sizes,

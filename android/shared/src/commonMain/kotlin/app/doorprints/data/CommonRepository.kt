@@ -61,6 +61,12 @@ import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
+import app.doorprints.shared.model.HouseValues
+import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.HouseStatusRules
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.model.StatusHouse
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
@@ -200,15 +206,57 @@ open class CommonRepository(
     }
 
     override suspend fun saveHouse(house: HouseEntity) {
-        // The rooms and answers as every reader keeps them (slices 1c, 3a): the form's blank names and notes go, a typed
-        // answer reads ANSWERED, the order is the one shown.
-        db.houses().upsert(
-            withBroker(house).copy(
-                rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers), updatedAt = now(),
-                dirty = true,
-            ),
+        // The rooms, answers and move-in as every reader keeps them (slices 1c, 3a, 5): the form's blank names and notes
+        // go, a typed answer reads ANSWERED, the order is the one shown; a floor outside -5..200 is unknown (S4b-BL-87).
+        val row = withBroker(house).copy(
+            rooms = HouseRooms.coerced(house.rooms), answers = HouseAnswers.coerced(house.answers),
+            moveIn = MoveIn.coerced(house.moveIn), floor = HouseValues.floor(house.floor), updatedAt = now(), dirty = true,
         )
+        if (row.status == HouseStatus.TAKEN && !row.deleted) {
+            // At most one house is TAKEN (slice 5, M1): the one that was returns to SHORTLISTED, in the same transaction.
+            db.withImmediateTransaction {
+                val others = db.houses().all().filter { it.id != row.id }
+                val chosen = HouseStatusRules.choose(
+                    others.map { StatusHouse(it.id, it.status) } + StatusHouse(row.id, row.status), row.id, HouseStatus.TAKEN,
+                ).associate { it.id to it.status }
+                val stamp = row.updatedAt
+                for (h in others) {
+                    if (chosen[h.id] != h.status) {
+                        db.houses().upsert(h.copy(status = chosen.getValue(h.id), updatedAt = stamp, dirty = true))
+                    }
+                }
+                db.houses().upsert(row)
+            }
+        } else {
+            db.houses().upsert(row)
+        }
         syncSoon()
+    }
+
+    override suspend fun markOthersNotChosen(takenId: String): Int {
+        val count = db.withImmediateTransaction {
+            val all = db.houses().all()
+            val targets = HouseStatusRules.closeTargets(all.map { StatusHouse(it.id, it.status) }, takenId).toHashSet()
+            val stamp = now()
+            for (h in all) if (h.id in targets) db.houses().upsert(h.copy(status = HouseStatus.NOT_CHOSEN, updatedAt = stamp, dirty = true))
+            targets.size
+        }
+        if (count > 0) syncSoon()
+        return count
+    }
+
+    override suspend fun closeTargetCount(takenId: String): Int =
+        HouseStatusRules.closeTargets(db.houses().all().map { StatusHouse(it.id, it.status) }, takenId).size
+
+    override suspend fun savePhotoMeta(photoId: String, meta: PhotoMeta): Boolean {
+        val photo = db.photos().get(photoId)?.takeUnless { it.deleted } ?: return false
+        val clean = PhotoMeta.coerced(meta.roomId, meta.tags, meta.caption, null)
+        if (clean.sameValues(photo.meta)) return false
+        // Past the stored time, whatever the clock says, so the edit wins against the one it replaces.
+        val stamp = maxOf(now(), photo.metaUpdatedAt + 1)
+        db.photos().upsert(photo.withMeta(clean.copy(metaUpdatedAt = stamp), dirty = true))
+        syncSoon()
+        return true
     }
 
     // ---- Brokers (docs/11 5.25, slice 1b) ----
@@ -396,7 +444,12 @@ open class CommonRepository(
             for (d in DefaultQuestions.ALL) {
                 // A tombstone is a record too: a default the person deleted stays deleted (Reset brings it back).
                 if (db.records().get(QuestionType.name, d.id) != null) continue
-                saveRecord(QuestionType, d.id, d.question(language))
+                // Clean and stamped SEEDED_AT (S4b-BL-90a): an untouched default is never pushed, and whatever another
+                // device did to it wins when it is pulled. An edit here makes it dirty with a real time.
+                val payload = QuestionType.encode(d.question(language))
+                db.records().upsert(
+                    RecordEntity(QuestionType.name, d.id, payload, updatedAt = DefaultQuestions.SEEDED_AT, dirty = false),
+                )
                 written++
             }
         }
@@ -579,7 +632,11 @@ open class CommonRepository(
     override suspend fun newPlaceId(): String = usedIds(PlaceType).let { used -> Place.newId({ it in used }) }
     override suspend fun newAreaNoteId(): String = usedIds(AreaNoteType).let { used -> AreaNote.newId({ it in used }) }
 
-    override suspend fun deleteArea(id: String) = deleteRecord(AreaType, id)
+    override suspend fun deleteArea(id: String) {
+        deleteRecord(AreaType, id)
+        // The wake-up's per-area stamp (slice 4b) goes with it; a delete by a sync is pruned when the geofences are set.
+        settings.removeAreaLastNotified(id)
+    }
     override suspend fun deletePlace(id: String) = deleteRecord(PlaceType, id)
     override suspend fun deleteAreaNote(id: String) = deleteRecord(AreaNoteType, id)
 
@@ -803,7 +860,7 @@ open class CommonRepository(
                 lat = h.lat, lon = h.lon, status = h.status.name, price = h.price, priceType = h.priceType,
                 bedrooms = h.bedrooms, rating = h.rating, contactName = h.contactName, contactPhone = h.contactPhone,
                 listingUrl = h.listingUrl, notes = h.notes, areaSqft = h.areaSqft, cost = h.cost, rooms = h.rooms,
-                answers = h.answers, checklist = h.checklist,
+                answers = h.answers, moveIn = h.moveIn, floor = h.floor, checklist = h.checklist,
                 visits = visits[h.id].orEmpty().map { AiVisit(it.arrivedAt, it.leftAt) },
                 viewings = viewings[h.id].orEmpty().map { AiViewing(it.id, it.startsAt, it.kind, it.status, it.notes) },
                 areaNotes = AreaNotes.reaching(point, areas, notes).map { AiAreaNote(it.id, it.text, it.updatedAt) },
@@ -936,7 +993,14 @@ open class CommonRepository(
                 if (local != null) {
                     deleteFile(photoFileOf(local.id)); db.photos().delete(change.id); pulled++
                 }
-            } else if (local == null && BackupValidation.isValidId(change.id)) {
+            } else if (local != null) {
+                // A meta change from another device (slice 5): the newer `metaUpdatedAt` wins; an edit here that is
+                // newer stays, and is pushed.
+                val incoming = change.meta()
+                if (!local.deleted && PhotoMeta.incomingWins(local.metaUpdatedAt, incoming.metaUpdatedAt)) {
+                    db.photos().upsert(local.withMeta(incoming, dirty = false)); pulled++
+                }
+            } else if (BackupValidation.isValidId(change.id)) {
                 // The id becomes a file name: a server id outside the backup id rule is not downloaded (defence in
                 // depth; the server issues UUIDs), and the cursor moves past it like any handled row.
                 val house = db.houses().get(change.houseId)
@@ -946,7 +1010,9 @@ open class CommonRepository(
                     }
                     val out = photoPath(change.id)
                     writeFile(out, api.downloadPhoto(change.id))
-                    db.photos().upsert(PhotoEntity(change.id, change.houseId, out.toString(), true, now()))
+                    db.photos().upsert(
+                        PhotoEntity(change.id, change.houseId, out.toString(), true, now()).withMeta(change.meta(), dirty = false),
+                    )
                     pulled++
                 }
             }
@@ -974,6 +1040,7 @@ open class CommonRepository(
         db.visits().markAllDirty()
         db.records().markAllDirty()
         db.photos().markAllForUpload()
+        db.photos().markAllMetaDirty()
         settings.resetCursors()
     }
 
@@ -1042,6 +1109,26 @@ open class CommonRepository(
             }
             db.photos().upsert(p.copy(uploaded = true)); pushed++
         }
+        // Photo meta (slice 5) after the uploads, so a photo taken with a tag reaches the server first. The answer is the
+        // server's current meta: a newer one from another device replaces the edit here (last write wins). A photo the
+        // server does not have (404) or refuses (400) would fail on every sync, so its flag is cleared and the meta
+        // stays on this phone.
+        for (p in db.photos().pendingMeta()) {
+            try {
+                val answer = api.putPhotoMeta(p.id, p.toMetaDto())
+                val current = answer.meta()
+                if (PhotoMeta.incomingWins(p.metaUpdatedAt, current.metaUpdatedAt)) {
+                    db.photos().get(p.id)?.takeIf { it.metaUpdatedAt == p.metaUpdatedAt }
+                        ?.let { db.photos().upsert(it.withMeta(current, dirty = false)) }
+                } else {
+                    db.photos().markMetaClean(p.id, p.metaUpdatedAt)
+                }
+                pushed++
+            } catch (e: ApiException) {
+                if (e.kind != ApiException.Kind.CLIENT && e.kind != ApiException.Kind.NOT_FOUND) throw e
+                db.photos().markMetaClean(p.id, p.metaUpdatedAt)
+            }
+        }
         return pushed to photosWaiting
     }
 
@@ -1076,6 +1163,10 @@ open class CommonRepository(
                 .mapNotNull { row -> row.toPlace()?.let { ExportPlace.of(it, row.updatedAt) } },
             areaNotes = db.records().listByType(AreaNoteType.name)
                 .mapNotNull { row -> row.toAreaNote()?.let { ExportAreaNote.of(it, row.updatedAt) } },
+            // The tombstones, for an update file's deletions (S4b-BL-82).
+            deletedHouses = db.houses().deletedIds().toSet().let { gone ->
+                db.houses().versions().filter { it.id in gone }.associate { it.id to it.updatedAt }
+            },
         )
     }
 
@@ -1109,6 +1200,9 @@ open class CommonRepository(
             db.records().versions(AreaType.name).associate { it.id to it.updatedAt },
             db.records().versions(PlaceType.name).associate { it.id to it.updatedAt },
             db.records().versions(AreaNoteType.name).associate { it.id to it.updatedAt },
+            photoMeta = db.photos().metaVersions().associate { it.id to it.updatedAt },
+            liveQuestions = db.records().listByType(QuestionType.name).mapTo(HashSet()) { it.id },
+            liveCriteria = db.records().listByType(CriterionType.name).mapTo(HashSet()) { it.id },
         )
     }
 
@@ -1270,9 +1364,7 @@ open class CommonRepository(
             val out = importedPhotoPath(photo.id)
             if (bytes != null && out != null && db.houses().get(photo.houseId)?.deleted == false) {
                 writeFile(out, bytes)
-                db.photos().upsert(
-                    PhotoEntity(photo.id, photo.houseId, out.toString(), uploaded = false, createdAt = photo.createdAt)
-                )
+                db.photos().upsert(photo.toEntity(out.toString()))
                 photos++
             } else {
                 // Not written, so counted: bytes we could not read or verify, or — the narrow race — a house
@@ -1284,6 +1376,22 @@ open class CommonRepository(
             }
             onProgress(++done, total)
         }
+        // Photos already here whose meta is newer in the file (slice 5): only the meta, stamped as the file has it, so
+        // the last write wins on the server too; marked for the next sync.
+        for (photo in actions.photoMeta) {
+            val local = db.photos().get(photo.id)?.takeUnless { it.deleted } ?: continue
+            if (PhotoMeta.incomingWins(local.metaUpdatedAt, photo.meta.metaUpdatedAt)) {
+                db.photos().upsert(local.withMeta(photo.meta, dirty = true))
+            }
+        }
+        // An update file's deletions (S4b-BL-82), last: each house is deleted as the person's own delete would be (a
+        // tombstone stamped now, pushed on the next sync); one already gone is skipped.
+        var removed = 0
+        for (id in actions.removedHouseIds) {
+            if (db.houses().get(id)?.deleted != false) continue
+            deleteHouse(id)
+            removed++
+        }
         val result = ImportResult(
             houses, visits, photos, skipped, updatedHouses, updatedVisits, restoredHouses,
             brokers = actions.brokers.size,
@@ -1294,8 +1402,9 @@ open class CommonRepository(
             areas = actions.areas.size,
             places = actions.places.size,
             areaNotes = actions.areaNotes.size,
+            removedHouses = removed,
         )
-        if (result.rows > 0) syncSoon()
+        if (result.rows > 0 || actions.photoMeta.isNotEmpty()) syncSoon()
         result
     }
 
@@ -1386,6 +1495,14 @@ open class CommonRepository(
         // The id and the updatedAt each row was written with, for the undo record (ImportUndo).
         val copiedHouses = LinkedHashMap<String, Long>()
         val copiedVisits = LinkedHashMap<String, Long>()
+        // The records this copy creates (S4b-BL-92e, 90c): one that was not here, or only as a tombstone. One written
+        // over a live record here is a merge's update, which the undo cannot put back, so it is not recorded.
+        val copiedRecords = LinkedHashMap<String, Long>()
+        suspend fun writeRecord(row: RecordEntity) {
+            val before = db.records().get(row.type, row.id)
+            db.records().upsert(row)
+            if (before == null || before.deleted) copiedRecords[CopyUndo.recordKey(row.type, row.id)] = row.updatedAt
+        }
         try {
             for (photo in actions.photos) {
                 val entry = actions.photoSources[photo.id]
@@ -1394,9 +1511,7 @@ open class CommonRepository(
                 if (bytes != null && out != null && photo.houseId in newHouseIds) {
                     written[out] = photo.id
                     writeFile(out, bytes)
-                    photoRows += PhotoEntity(
-                        photo.id, photo.houseId, out.toString(), uploaded = false, createdAt = photo.createdAt,
-                    )
+                    photoRows += photo.toEntity(out.toString())
                 } else {
                     skipped++
                 }
@@ -1407,12 +1522,12 @@ open class CommonRepository(
             val now = now()
             db.withImmediateTransaction {
                 for (broker in actions.brokers) {
-                    db.records().upsert(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
+                    writeRecord(importedBroker(broker, CopyUndo.copyStamp(broker.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 // A copy keeps the criteria's keys (the copied houses' scores name them) and merges them like a merge.
                 for (c in actions.criteria) {
-                    db.records().upsert(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
+                    writeRecord(importedCriterion(c, CopyUndo.copyStamp(c.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (p in actions.preferences) {
@@ -1420,7 +1535,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (q in actions.questions) {
-                    db.records().upsert(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
+                    writeRecord(importedQuestion(q, CopyUndo.copyStamp(q.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 for (house in actions.houses) {
@@ -1436,7 +1551,7 @@ open class CommonRepository(
                     onProgress(++done, total)
                 }
                 for (v in actions.viewings) {
-                    db.records().upsert(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
+                    writeRecord(importedViewing(v, CopyUndo.copyStamp(v.updatedAt, now)))
                     onProgress(++done, total)
                 }
                 // A copy keeps the ids of areas, places and notes (a note names its area) and merges them like a merge.
@@ -1466,6 +1581,7 @@ open class CommonRepository(
             copiedHouses = copiedHouses,
             copiedVisits = copiedVisits,
             copiedPhotos = photoRows.map { it.id },
+            copiedRecords = copiedRecords,
         )
         if (result.rows > 0) syncSoon()
         return result
@@ -1506,10 +1622,12 @@ open class CommonRepository(
         houses: Map<String, Long>,
         visits: Map<String, Long>,
         photos: Collection<String>,
+        records: Map<String, Long>,
     ): UndoResult = withContext(Dispatchers.IO) {
         val photoIds = photos.toHashSet()
         val files = ArrayList<Path>()
         var removed = 0
+        var changedRecords = false
         val keptHouses = HashSet<String>()
         db.withImmediateTransaction {
             val now = now()
@@ -1547,10 +1665,36 @@ open class CommonRepository(
                 db.photos().delete(id)
                 files += photoFileOf(photo.id)
             }
+            // The brokers, viewings, questions and criteria it created (S4b-BL-92e, 90c), once the houses are decided:
+            // what a house that stays still uses stays with it.
+            if (records.isNotEmpty()) {
+                val live = db.houses().all().filter { !it.deleted }
+                for ((key, writtenAt) in records) {
+                    val (type, id) = CopyUndo.recordOf(key) ?: continue
+                    val row = db.records().get(type, id)
+                    val inUse = row != null && !row.deleted && when (type) {
+                        ViewingType.name -> row.toViewing()?.houseId?.let { h -> live.any { it.id == h } } == true
+                        BrokerType.name -> live.any { it.brokerId == id }
+                        CriterionType.name -> id !in Checklist.keys && live.any { it.checklist.containsKey(id) }
+                        QuestionType.name -> live.any { h -> h.answers.orEmpty().any { it.questionId == id } }
+                        else -> true
+                    }
+                    val state = row?.let { CopyUndo.RecordNow(it.updatedAt, it.deleted) }
+                    if (CopyUndo.decideRecord(state, writtenAt, inUse) == CopyUndo.Decision.REMOVE) {
+                        db.records().upsert(
+                            checkNotNull(row).copy(
+                                payload = "{}", deleted = true, dirty = true,
+                                updatedAt = CopyUndo.tombstoneStamp(row.updatedAt, now),
+                            ),
+                        )
+                        changedRecords = true
+                    }
+                }
+            }
         }
         // After the commit: a rolled-back undo must not have deleted a single photo file.
         files.forEach { deleteFile(it) }
-        if (removed > 0) syncSoon()
+        if (removed > 0 || changedRecords) syncSoon()
         UndoResult(removed, keptHouses.size, keptHouses)
     }
 

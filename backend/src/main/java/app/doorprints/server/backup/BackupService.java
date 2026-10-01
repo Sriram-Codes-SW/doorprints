@@ -23,12 +23,15 @@ import app.doorprints.server.backup.ImportReport.Tally;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.HouseAnswer;
+import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseRepository;
 import app.doorprints.server.house.HouseStatus;
+import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.photo.PhotoRepository;
+import app.doorprints.server.photo.PhotoService;
 import app.doorprints.server.record.Record;
 import app.doorprints.server.record.RecordController;
 import app.doorprints.server.record.RecordDto;
@@ -127,10 +130,11 @@ public class BackupService {
     private final ApplicationEventPublisher events;
     private final RecordRepository records;
     private final ObjectMapper json;
+    private final PhotoService photoService;
 
     public BackupService(HouseRepository houses, VisitRepository visits, PhotoRepository photos,
                          SyncVersions versions, ClientClock clock, ApplicationEventPublisher events,
-                         RecordRepository records, ObjectMapper json) {
+                         RecordRepository records, ObjectMapper json, PhotoService photoService) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
@@ -139,6 +143,7 @@ public class BackupService {
         this.events = events;
         this.records = records;
         this.json = json;
+        this.photoService = photoService;
     }
 
     /** Everything live on the server, in the format's fixed order. Photo bytes are fetched separately. */
@@ -194,7 +199,7 @@ public class BackupService {
             visitTally.count(mergeVisit(row, dryRun, changedHouses));
         }
 
-        for (var ignored : data.photos()) photoTally.count(Outcome.SKIPPED);
+        for (var row : data.photos()) photoTally.count(mergePhotoMeta(row, dryRun));
         if (!data.photos().isEmpty()) {
             fileNotes.add(data.photos().size() + " photo row(s) carry no image bytes in a JSON backup; upload them "
                     + "with POST /api/houses/{id}/photos");
@@ -205,7 +210,9 @@ public class BackupService {
         for (var row : data.brokers()) brokerTally.count(mergeBroker(row, dryRun, liveBrokers, rowProblems));
 
         // Criteria and preferences (slice 2) merge after brokers.
-        var liveCriteria = new long[]{records.countByKeyTypeAndDeletedFalse(BackupCriterion.TYPE)};
+        // Counted as the apps count them (S4b-BL-90b): the ten built-ins always, plus the live custom ones.
+        var liveCriteria = new long[]{BackupCriterion.BUILT_IN_KEYS.size() + records.findByKeyTypeAndDeletedFalse(
+                BackupCriterion.TYPE).stream().filter(r -> !BackupCriterion.BUILT_IN_KEYS.contains(r.getKey().id())).count()};
         var criterionTally = new Tally();
         for (var row : data.criteria()) criterionTally.count(mergeCriterion(row, dryRun, liveCriteria, rowProblems));
 
@@ -221,7 +228,9 @@ public class BackupService {
         // Viewings (slice 3b-1) merge after the questions; a viewing's house is not checked (it may be gone).
         var liveViewings = new long[]{records.countByKeyTypeAndDeletedFalse(BackupViewing.TYPE)};
         var viewingTally = new Tally();
-        for (var row : data.viewings()) viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems));
+        for (var row : data.viewings()) {
+            viewingTally.count(mergeViewing(row, dryRun, liveViewings, rowProblems, changedHouses));
+        }
 
         // Areas, places and area notes (slice 4a) merge after the viewings; the apps hold the small caps, the server the record cap.
         var areaTally = new Tally();
@@ -288,6 +297,22 @@ public class BackupService {
         for (var houseId : changedHouses) events.publishEvent(new HouseChangedEvent(houseId));
     }
 
+    /**
+     * A JSON backup carries no image bytes, so a photo row never creates a photo (SKIPPED). What the person said about
+     * one (slice 5: room, tags, caption) does merge into a photo this server already holds, last write wins on
+     * {@code metaUpdatedAt} like the sync: newer in the file is UPDATED, the same stamp UNCHANGED, older KEPT_NEWER.
+     * A row with no edit time, or for a photo that is not here (or is another house's), changes nothing.
+     */
+    private Outcome mergePhotoMeta(BackupPhoto row, boolean dryRun) {
+        if (row.metaUpdatedAt() == null || row.metaUpdatedAt() <= 0) return Outcome.SKIPPED;
+        var current = photoService.metadata(row.id());
+        if (current == null || current.deleted() || !current.houseId().equals(row.houseId())) return Outcome.SKIPPED;
+        if (current.metaUpdatedAt() > row.metaUpdatedAt()) return Outcome.KEPT_NEWER;
+        if (current.metaUpdatedAt() == row.metaUpdatedAt()) return Outcome.UNCHANGED;
+        if (!dryRun) photoService.applyMeta(current, row.roomId(), row.tags(), row.caption(), row.metaUpdatedAt());
+        return Outcome.UPDATED;
+    }
+
     private Outcome mergeHouse(BackupHouse row, boolean dryRun, List<String> problems, Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "houses.updatedAt");
         var existing = houses.findById(row.id()).orElse(null);
@@ -342,6 +367,8 @@ public class BackupService {
         house.setCost(HouseCost.write(row.cost())); // an empty object reads as no cost
         house.setRooms(HouseRoom.write(row.rooms())); // an empty list reads as no rooms
         house.setAnswers(HouseAnswer.write(row.answers())); // an empty list reads as no answers
+        house.setMoveIn(HouseMoveIn.write(row.moveIn())); // an empty object reads as no move-in
+        house.setFloor(row.floor());
         house.setBrokerId(row.brokerId()); // as given: the broker may arrive later, or be read as none
         house.setChecklist(row.checklist() == null ? Map.of() : row.checklist());
         house.setDeleted(false);
@@ -396,11 +423,12 @@ public class BackupService {
         var existing = records.findById(key).orElse(null);
         var outcome = ImportReport.decide(existing == null ? null : existing.getUpdatedAt(), inFile);
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
-        var becomesLive = existing == null || existing.isDeleted();
+        // A built-in key never adds one; a custom key that becomes live stays within the apps' 40 (S4b-BL-90b).
+        var becomesLive = (existing == null || existing.isDeleted()) && !BackupCriterion.BUILT_IN_KEYS.contains(row.key());
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("criterion " + row.key() + ": skipped, this server holds the most criteria it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            if (liveCount[0] >= BackupCriterion.MAX) {
+                problems.add("criterion " + row.key() + ": skipped, there are already " + BackupCriterion.MAX
+                        + " criteria, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -460,9 +488,10 @@ public class BackupService {
         if (outcome == Outcome.KEPT_NEWER || outcome == Outcome.UNCHANGED) return outcome;
         var becomesLive = existing == null || existing.isDeleted();
         if (becomesLive) {
-            if (liveCount[0] >= RecordController.MAX_LIVE_ROWS_PER_TYPE) {
-                problems.add("question " + row.id() + ": skipped, this server holds the most questions it keeps ("
-                        + RecordController.MAX_LIVE_ROWS_PER_TYPE + ")");
+            // The bank's 100 (the apps' cap, S4b-BL-90b), counting what is here and what this file added before.
+            if (liveCount[0] >= BackupQuestion.MAX) {
+                problems.add("question " + row.id() + ": skipped, the question bank already holds " + BackupQuestion.MAX
+                        + " questions, the most the apps keep");
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
@@ -489,7 +518,8 @@ public class BackupService {
      * A viewing as a {@code viewing} record: payload keys in the format's order, {@code huntReminder} only when true,
      * {@code withWhom}, {@code notes} and {@code visitId} only when set. A problem line never carries the row's text.
      */
-    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems) {
+    private Outcome mergeViewing(BackupViewing row, boolean dryRun, long[] liveCount, List<String> problems,
+                                 Set<UUID> changedHouses) {
         var inFile = clock.accept(Instant.ofEpochMilli(row.updatedAt()), "viewings.updatedAt");
         var key = new RecordKey(BackupViewing.TYPE, row.id());
         var existing = records.findById(key).orElse(null);
@@ -503,6 +533,16 @@ public class BackupService {
                 return Outcome.SKIPPED;
             }
             liveCount[0]++;
+        }
+        // A viewing is part of its house's AI document (S4b-BL-92d): that house, and the one it named before, change.
+        houseOf(row.houseId(), changedHouses);
+        if (existing != null && !existing.isDeleted()) {
+            try {
+                var before = json.readTree(existing.getPayload()).path("houseId");
+                if (before.isString()) houseOf(before.asString(), changedHouses);
+            } catch (RuntimeException e) {
+                // A stored payload that does not read names no house.
+            }
         }
         if (dryRun) return outcome;
 
@@ -524,6 +564,16 @@ public class BackupService {
         record.setSyncVersion(versions.next());
         records.save(record);
         return outcome;
+    }
+
+    /** Adds the house [id] names to [changed] when it is a UUID; a viewing may name anything. */
+    private static void houseOf(String id, Set<UUID> changed) {
+        if (id == null) return;
+        try {
+            changed.add(UUID.fromString(id));
+        } catch (IllegalArgumentException e) {
+            // Not a house id: nothing to re-index.
+        }
     }
 
     private Outcome mergeArea(BackupArea row, boolean dryRun, long[] liveCount, List<String> problems) {
@@ -690,6 +740,9 @@ public class BackupService {
             }
             for (var problem : HouseRoom.problems(row.rooms())) problems.add(at + "." + problem);
             for (var problem : HouseAnswer.problems(row.answers())) problems.add(at + "." + problem);
+            for (var problem : HouseMoveIn.problems(row.moveIn())) problems.add(at + "." + problem);
+            require(row.floor() == null || (row.floor() >= House.MIN_FLOOR && row.floor() <= House.MAX_FLOOR),
+                    at + ".floor must be -5..200", problems);
             validateChecklist(at, row.checklist(), problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
             requireTime(at + ".updatedAt", row.updatedAt(), problems);
@@ -747,6 +800,14 @@ public class BackupService {
             requireId(at, row.id(), seen, problems);
             require(row.houseId() != null, at + ".houseId is required", problems);
             requireTime(at + ".createdAt", row.createdAt(), problems);
+            problems.addAll(PhotoMeta.problems(at, row.roomId(), row.tags(), row.caption(), row.metaUpdatedAt()));
+            if (row.metaUpdatedAt() != null && row.metaUpdatedAt() > 0) {
+                try {
+                    clock.validate(Instant.ofEpochMilli(row.metaUpdatedAt()), at + ".metaUpdatedAt");
+                } catch (DateTimeException | ArithmeticException | IllegalArgumentException e) {
+                    problems.add(at + ".metaUpdatedAt is out of range (check the device clock)"); // never the value
+                }
+            }
             var name = row.fileName();
             require(name != null && !name.isEmpty() && name.length() <= 200
                             && name.indexOf('/') < 0 && name.indexOf('\\') < 0 && !name.contains(".."),
@@ -784,8 +845,7 @@ public class BackupService {
 
     private void validateCriteria(List<BackupCriterion> rows, List<String> problems) {
         var seen = new HashSet<String>();
-        var builtInKeys = Set.of("water", "power", "parking", "sunlight", "ventilation", "noise", "security",
-                "maintenance", "neighbourhood", "commute");
+        var builtInKeys = BackupCriterion.BUILT_IN_KEYS;
         for (int i = 0; i < rows.size(); i++) {
             var row = rows.get(i);
             var at = "criteria[" + i + "]";

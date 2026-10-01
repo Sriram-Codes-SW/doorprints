@@ -29,18 +29,12 @@ import app.doorprints.data.iosDataDirectory
 import app.doorprints.data.iosSettingsStore
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
-import app.doorprints.export.ImportCheck
-import app.doorprints.export.ImportRequest
-import app.doorprints.export.ImportStaging
-import app.doorprints.export.ImportStart
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.IosApiHttp
-import app.doorprints.shared.export.BackupProblem
-import app.doorprints.shared.export.ExportFormat
-import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.sync.SyncOutcome
+import app.doorprints.shared.location.PlaceLookup
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,8 +53,6 @@ import kotlinx.coroutines.launch
 import platform.Foundation.NSBundle
 import platform.UIKit.UIAccessibilityIsReduceMotionEnabled
 import platform.UIKit.UIFontMetrics
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * The iOS app's data and services, one per process (ADR-23 CMP-8b), as Android's `AppContainer` in `DoorprintsApp`:
@@ -174,10 +166,11 @@ internal inline fun catchFailures(block: () -> Unit) {
 }
 
 /**
- * The common screens' [AppServices] on iOS (CMP-8b). The data ([repository]) and the location fix
- * ([IosLocationSource]) are real; the members for features [PlatformFeatures.Ios] hides (Hunt mode, adding photos,
- * copies and imports, the weekly backup, the in-app language) are inert: they do nothing, report nothing running, and
- * any picker they return says there is none. No screen reaches them while the feature is hidden.
+ * The common screens' [AppServices] on iOS (CMP-8b). The data ([repository]), the location fix ([IosLocationSource])
+ * and, since S4b-BL-81, the copies and imports ([IosExportServices], [IosImportServices]) are real; the members for
+ * features [PlatformFeatures.Ios] hides (adding photos, the weekly backup, the in-app language) are inert: they do
+ * nothing, report nothing running, and any picker they return says there is none. No screen reaches them while the
+ * feature is hidden.
  */
 internal class IosAppServices(
     override val repository: CommonRepository,
@@ -191,13 +184,17 @@ internal class IosAppServices(
 
     override val houseForm: HouseFormServices = IosHouseFormServices(repository)
 
-    override val exportScreen: ExportServices = NoExportServices
+    /** *Save a copy* and *Import a backup* (S4b-BL-81): the common ZIP code with the Files app and the share sheet. */
+    override val exportScreen: ExportServices = IosExportServices(repository, appScope)
 
-    override val importScreen: ImportServices = NoImportServices
+    override val importScreen: ImportServices = IosImportServices(repository, appScope)
 
     override val mapScreen: MapServices = IosMapServices
 
     override val offlineMaps: OfflineMapsServices = IosOfflineMapsServices
+
+    /** Region monitoring and the "Always" permission (S4b-BL-96). */
+    override val areaWakeup: AreaWakeupServices = IosAreaWakeupServices
 
     /** On every resume (the common root): a clock change or an authorization granted in the Settings app. */
     override fun rescheduleReminders() {
@@ -208,7 +205,7 @@ internal class IosAppServices(
     override fun consumeLanguageChange(): LanguageChange? = null
 }
 
-/** No copy imports on iOS yet (hidden), so nothing to undo. */
+/** A copy import cannot be undone on iOS yet: its runs write no undo record ([ImportRun.undoable] false). */
 private object NoCopyImportUndoes : CopyImportUndoes {
     override val undoingRun: String? get() = null
     override val outcome: CopyUndoOutcome? get() = null
@@ -258,13 +255,15 @@ private object IosSettingsServices : SettingsServices {
 private class IosHouseFormServices(private val repository: CommonRepository) : HouseFormServices {
     override suspend fun reverseGeocode(lat: Double, lon: Double): Place? = IosGeocoder.place(lat, lon)
 
+    override suspend fun findPlace(query: String): PlaceLookup.Found? = IosGeocoder.find(query)
+
     /** The "are you at a house?" alert of [visitId] comes down once the visit is saved as a house (as on Android). */
     override fun clearVisitAlert(visitId: String) = IosNotifications.remove(IosHunt.stayAlertId(visitId))
 
     @Composable
     override fun rememberPhotoSources(onPicked: (PickedPhoto) -> Unit): PhotoSources = NoPhotoSources
 
-    override suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult =
+    override suspend fun addPhoto(houseId: String, photo: PickedPhoto, tags: List<String>): Repository.AddPhotoResult =
         Repository.AddPhotoResult.UNREADABLE
 
     /**
@@ -310,56 +309,6 @@ private object IosMapServices : MapServices {
     override fun fontScale(): Float = (UIFontMetrics.defaultMetrics.scaledValueForValue(BODY_POINTS) / BODY_POINTS).toFloat()
 
     private const val BODY_POINTS = 17.0
-}
-
-/** No *Save a copy* on iOS yet (hidden): no runs, and no picker. */
-@OptIn(ExperimentalUuidApi::class)
-private object NoExportServices : ExportServices {
-    override fun runs(): Flow<List<ExportRun>> = flowOf(emptyList())
-    override fun start(format: ExportFormat, target: String, options: ExportOptions): String = Uuid.random().toString()
-    override fun stop(run: ExportRun?) = Unit
-    override fun shareCopyTarget(fileName: String): String = fileName
-    override fun cleanShareCopies() = Unit
-    override fun clearDoneNotification() = Unit
-    override fun screenVisible(visible: Boolean) = Unit
-
-    @Composable
-    override fun rememberDefaultOptions(): () -> ExportOptions = remember { { ExportOptions(language = appLanguage()) } }
-
-    @Composable
-    override fun rememberSaveToPicker(onPicked: (target: String?) -> Unit): (String, String) -> Boolean =
-        remember { { _, _ -> false } }
-
-    @Composable
-    override fun rememberFileActions(): ExportFileActions = NoFileActions
-}
-
-private object NoFileActions : ExportFileActions {
-    override fun open(target: String, format: ExportFormat): Boolean = false
-    override fun share(target: String, format: ExportFormat): Boolean = false
-}
-
-/** No *Import a backup* on iOS yet (hidden): no runs, no picker, and any file is refused. */
-@OptIn(ExperimentalUuidApi::class)
-private object NoImportServices : ImportServices {
-    override fun runs(): Flow<List<ImportRun>> = flowOf(emptyList())
-    override fun stop() = Unit
-    override fun clearDoneNotification() = Unit
-    override fun screenVisible(visible: Boolean) = Unit
-
-    @Composable
-    override fun rememberBackupPicker(onPicked: (file: String?) -> Unit): (String?) -> Boolean = remember { { false } }
-
-    override suspend fun displayName(file: String): String? = null
-    override suspend fun stage(file: String): ImportStaging = ImportStaging.Refused(BackupProblem.NOT_A_BACKUP)
-    override suspend fun preview(stagedPath: String, displayName: String?): ImportCheck =
-        ImportCheck.Refused(BackupProblem.NOT_A_BACKUP)
-
-    override fun isStaged(path: String): Boolean = false
-    override fun discard(path: String?) = Unit
-
-    /** Never queued, so no screen waits for a run ([ImportStart.queued]). */
-    override fun start(request: ImportRequest): ImportStart = ImportStart(Uuid.random().toString()) { false }
 }
 
 /** One `DOORPRINTS-STARTUP <step>` line in the unified log as the app's data opens; names a step only. */

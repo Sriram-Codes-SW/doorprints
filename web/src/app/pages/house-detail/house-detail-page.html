@@ -191,7 +191,7 @@
           <div class="options">
             @for (s of statuses; track s) {
               <label [class]="'option status-' + s">
-                <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s)" />
+                <input type="radio" name="status" [value]="s" [checked]="d.status === s" (change)="setStatus(s, $event)" />
                 <span><span aria-hidden="true">{{ statusIcon[s] }}</span> {{ statusKey[s] | t }}</span>
               </label>
             }
@@ -248,6 +248,31 @@
             <label for="house-area">{{ 'house.areaSqft' | t }}</label>
             <input id="house-area" type="number" min="1" max="100000" step="1" inputmode="numeric" [(ngModel)]="d.areaSqft" />
           </div>
+          <!-- S4b-BL-87: the floor; a number input takes the minus of a basement level. -->
+          <div class="field narrow">
+            <label for="house-floor">{{ 'house.floor' | t }}</label>
+            <input
+              id="house-floor"
+              type="number"
+              min="-5"
+              max="200"
+              step="1"
+              [(ngModel)]="d.floor"
+              [attr.aria-invalid]="floorInvalid(d) ? 'true' : null"
+              [attr.aria-describedby]="floorInvalid(d) ? 'house-floor-error' : 'house-floor-hint'"
+            />
+            @if (floorInvalid(d)) {
+              <span id="house-floor-error" class="field-error" role="alert">{{ 'house.floorInvalid' | t }}</span>
+            } @else {
+              <span id="house-floor-hint" class="field-hint">{{ 'house.floorHint' | t }}</span>
+            }
+          </div>
+        </div>
+        <!-- S4b-BL-85: another house within about 30 m with the same bedrooms and floor; a warning, never a block. -->
+        <div role="status">
+          @if (sameFlatLine(d); as same) {
+            <p id="house-same-flat" class="warn-box small">{{ same }}</p>
+          }
         </div>
 
         <div class="field">
@@ -405,7 +430,30 @@
         @for (r of rooms(d); track r.id; let i = $index) {
           @let title = roomTitle(r, i);
           <div class="room" role="group" [attr.aria-label]="title">
-            <h3 class="room-title">{{ title }}</h3>
+            <div class="room-head">
+              <h3 class="room-title">{{ title }}</h3>
+              <!-- S4b-BL-87: move the room up or down; each button is named after the room, 44 px at least. -->
+              <button
+                type="button"
+                class="btn btn-sm room-move"
+                [id]="'room-up-' + r.id"
+                [disabled]="i === 0"
+                [attr.aria-label]="'rooms.moveUp' | t: { name: title }"
+                (click)="moveRoom(r.id, -1)"
+              >
+                <span aria-hidden="true">↑</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm room-move"
+                [id]="'room-down-' + r.id"
+                [disabled]="i === rooms(d).length - 1"
+                [attr.aria-label]="'rooms.moveDown' | t: { name: title }"
+                (click)="moveRoom(r.id, 1)"
+              >
+                <span aria-hidden="true">↓</span>
+              </button>
+            </div>
             <div class="row">
               <div class="field">
                 <label [for]="'room-type-' + r.id">{{ 'rooms.type' | t }}</label>
@@ -655,6 +703,18 @@
       <!-- Viewings (slice 3b-1, docs/11 5.8): the next planned viewing, Plan a viewing, Mark viewing done. -->
       <app-house-viewings-card [houseId]="draft()?.id ?? ''" [houseName]="draft()?.label ?? ''" [isNew]="isNew()" />
 
+      <!-- Moving in (slice 5, docs/11 5.24): only for the house that is Taken. -->
+      @if (d.status === 'TAKEN') {
+        <app-house-move-in-card
+          [house]="d"
+          [isNew]="isNew()"
+          [saveFirst]="saveBeforeClose"
+          (moveInChange)="setMoveIn($event)"
+          (files)="onConditionFiles($event)"
+          (opened)="openConditionPhoto($event)"
+        />
+      }
+
       <!-- Area notes and Distances (slice 4a, docs/11 5.22, 5.23): the notes that reach the house and its distance to my places. -->
       <app-house-area-notes-card [house]="d" />
       <app-house-distances-card [house]="d" />
@@ -714,11 +774,22 @@
           }
         </div>
         <div class="location-actions">
+          @if (placeQuery(); as place) {
+            <!-- S4b-BL-83: the listing's locality, looked up only on this tap; the pin lands there, approximate. -->
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              [attr.aria-disabled]="finding() ? 'true' : null"
+              (click)="findPlace()"
+            >
+              {{ (finding() ? 'house.findingPlace' : 'house.findPlace') | t: { place } }}
+            </button>
+          }
           @if (canLocate) {
             <!-- Filled while the pin is not set yet: standing outside the house, it is the fastest way to put it. -->
             <button
               type="button"
-              [class]="locationSet() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
+              [class]="locationSet() || placeQuery() ? 'btn btn-sm' : 'btn btn-primary btn-sm'"
               [attr.aria-disabled]="locating() ? 'true' : null"
               (click)="useMyLocation()"
             >
@@ -765,6 +836,12 @@
             ></div>
           }
         </div>
+        @if (placeMsg(); as found) {
+          @if (d.locationSource === 'APPROX') {
+            <p class="muted small">{{ found.value.key | t: found.value.params }}</p>
+          }
+        }
+        <p class="muted small">{{ 'house.lookupNote' | t }}</p>
         <span class="muted small attribution">{{ 'house.osm' | t }}</span>
       </section>
 
@@ -919,21 +996,56 @@
         } @else {
           <ul class="gallery">
             @for (id of photoIds(); track id; let i = $index) {
-              <li class="photo">
-                <app-auth-image
-                  [photoId]="id"
-                  [alt]="'house.photoAlt' | t: { n: i + 1, name: d.label || ('common.untitled' | t) }"
-                  (opened)="openPhoto($event, i + 1)"
-                />
-                <button
-                  type="button"
-                  class="photo-del"
-                  [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
-                  [title]="'house.deletePhoto' | t: { n: i + 1 }"
-                  (click)="deletePhoto(id)"
-                >
-                  <span aria-hidden="true">✕</span>
-                </button>
+              <li class="photo-item" [class.editing]="editingPhoto() === id">
+                <div class="photo">
+                  <app-auth-image
+                    [photoId]="id"
+                    [alt]="'house.photoAlt' | t: { n: i + 1, name: d.label || ('common.untitled' | t) }"
+                    (opened)="openPhoto($event, i + 1)"
+                  />
+                  <button
+                    type="button"
+                    class="photo-del"
+                    [attr.aria-label]="'house.deletePhoto' | t: { n: i + 1 }"
+                    [title]="'house.deletePhoto' | t: { n: i + 1 }"
+                    (click)="deletePhoto(id)"
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+                <!-- Slice 5: what the person said about the photo, under it: its room, tags and caption. -->
+                @if (photoInfo().get(id); as info) {
+                  <div class="photo-meta">
+                    @if (info.roomId) {
+                      <span class="photo-room">{{ roomNameOf(info) || ('photoMeta.untagged' | t) }}</span>
+                    }
+                    @if (info.tags.length > 0) {
+                      <span class="photo-tags">{{ tagsOf(info) }}</span>
+                    }
+                    @if (info.caption) {
+                      <span class="photo-caption">{{ info.caption }}</span>
+                    }
+                    <button
+                      type="button"
+                      class="btn btn-sm photo-edit"
+                      [id]="'photo-details-' + id"
+                      [attr.aria-expanded]="editingPhoto() === id"
+                      [attr.aria-label]="'photoMeta.edit' | t: { n: i + 1 }"
+                      (click)="editPhoto(id)"
+                    >
+                      {{ 'photoMeta.editShort' | t }}
+                    </button>
+                  </div>
+                  @if (editingPhoto() === id) {
+                    <app-photo-meta-editor
+                      [photo]="info"
+                      [n]="i + 1"
+                      [rooms]="d.rooms ?? []"
+                      (saved)="photoDetailsSaved(id)"
+                      (closed)="editPhoto(id)"
+                    />
+                  }
+                }
               </li>
             }
           </ul>

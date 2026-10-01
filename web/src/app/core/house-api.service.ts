@@ -20,6 +20,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { HouseDto, PhotoChangeDto, RecordDto, StatsDto, VisitDto, uuid } from './models';
+import type { PhotoMeta } from '../shared/photo-tags';
 
 @Injectable({ providedIn: 'root' })
 export class HouseApiService {
@@ -139,6 +140,15 @@ export class HouseApiService {
 
   photo(id: string): Observable<Blob> {
     return this.http.get(`/api/photos/${encodeURIComponent(id)}`, { responseType: 'blob' });
+  }
+
+  /**
+   * Sends a photo's room, tags and caption (slice 5). The server keeps the newer `metaUpdatedAt`: an older one changes
+   * nothing and the answer is the meta it holds, which the sync engine applies when it is newer than ours.
+   */
+  putPhotoMeta(id: string, meta: PhotoMeta): Observable<PhotoChangeDto> {
+    const body = { roomId: meta.roomId, tags: meta.tags, caption: meta.caption, metaUpdatedAt: meta.metaUpdatedAt };
+    return this.http.put<PhotoChangeDto>(`/api/photos/${encodeURIComponent(id)}/meta`, body);
   }
 
   deletePhoto(id: string): Observable<unknown> {

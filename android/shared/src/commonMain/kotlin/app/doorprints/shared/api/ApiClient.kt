@@ -193,6 +193,13 @@ class ApiClient(
 
     suspend fun photoChangesSince(version: Long): List<PhotoChangeDto> = get("/api/photos?since=$version")
 
+    /**
+     * A photo's metadata (docs/11 5.7, slice 5): last write wins on `metaUpdatedAt`, and the answer is the photo's current
+     * meta (the server's own when it is newer). An unknown photo is a 404 ([ApiException.Kind.NOT_FOUND]).
+     */
+    suspend fun putPhotoMeta(photoId: String, meta: PhotoMetaDto): PhotoChangeDto =
+        send(HttpMethod.Put, "/api/photos/$photoId/meta", meta)
+
     /** The record envelope (docs/11 5.30): one endpoint pair for every record type, the same cursor rule as houses. */
     suspend fun recordsSince(version: Long): List<RecordDto> = get("/api/records?since=$version")
     suspend fun putRecord(r: RecordDto): RecordDto = send(HttpMethod.Put, "/api/records/${r.type}/${r.id}", r)

@@ -26,6 +26,7 @@ import app.doorprints.location.HuntEngine
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
 import app.doorprints.shared.location.Geo
+import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.shared.location.StreetAlerts
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.ui.res.Res
@@ -90,8 +91,10 @@ internal object IosHunt : HuntEffects {
     const val KEY_NEW_LAT = "newLat"
     const val KEY_NEW_LON = "newLon"
     const val KEY_VISIT_ID = "visitId"
-    /** A Hunt mode reminder's viewing (slice 3c, [IosViewingReminders]); its tap opens the viewing. */
+    /** A viewing to open (slice 3c); a reminder queued before S4b-BL-94c still carries it. */
     const val KEY_OPEN_VIEWING = "openViewing"
+    /** A Hunt mode reminder's viewing ([IosViewingReminders], S4b-BL-94c): its tap opens the Map, which offers Hunt mode. */
+    const val KEY_OFFER_HUNT_VIEWING = "offerHuntViewing"
 
     private val alerts = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val throttle = HuntFixThrottle()
@@ -120,7 +123,7 @@ internal object IosHunt : HuntEffects {
             activityType = CLActivityTypeFitness
             // iOS would otherwise stop the updates for good after a long stay and not resume them on its own.
             pausesLocationUpdatesAutomatically = false
-            // Needs UIBackgroundModes "location" in Info.plist; "When in use" is enough, "Always" is never asked.
+            // Needs UIBackgroundModes "location" in Info.plist; "When in use" is enough ("Always" is the area wake-up's).
             allowsBackgroundLocationUpdates = true
             showsBackgroundLocationIndicator = true
         }
@@ -347,6 +350,26 @@ internal object IosGeocoder {
         geocoder.reverseGeocodeLocation(CLLocation(latitude = lat, longitude = lon)) { placemarks, _ ->
             val mark = placemarks?.firstOrNull() as? CLPlacemark
             if (continuation.isActive) continuation.resume(mark?.toPlace())
+        }
+        continuation.invokeOnCancellation { geocoder.cancelGeocode() }
+    }
+
+    /**
+     * Where [query] is (S4b-BL-83: a shared listing's locality, `PlaceLookup.query`): the first placemark inside India
+     * ([PlaceLookup.pick]), or null when offline, when Apple has no answer, or after [LOOKUP_TIMEOUT_MS]. On the tap only.
+     */
+    suspend fun find(query: String): PlaceLookup.Found? = withContext(Dispatchers.Main) {
+        withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { search(query) }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private suspend fun search(query: String): PlaceLookup.Found? = suspendCancellableCoroutine { continuation ->
+        val geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(query) { placemarks, _ ->
+            val points = placemarks.orEmpty().mapNotNull { mark ->
+                (mark as? CLPlacemark)?.location?.coordinate?.useContents { latitude to longitude }
+            }
+            if (continuation.isActive) continuation.resume(PlaceLookup.pick(points))
         }
         continuation.invokeOnCancellation { geocoder.cancelGeocode() }
     }

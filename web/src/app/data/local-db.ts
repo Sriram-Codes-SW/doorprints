@@ -62,7 +62,8 @@ export type StoreKey = string | readonly string[];
 
 // Bumped when the stores change; every bump adds a step to `upgradeLocalDb` (S4b-BL-71). Version 1 is Sprint 4a;
 // version 2 is slice 0 of the Sprint 4b data model (docs/11 5.30, ADR-28): the `records` store and the `houseId`
-// indexes (S4b-BL-66); version 3 (slice 1) will hold the house's own new values.
+// indexes (S4b-BL-66); version 3 (slice 1) will hold the house's own new values. Slice 5 (photo meta, `moveIn`) changes
+// no store and no index: a photo and a house only gain fields, so the version stays 2.
 export const DB_NAME = 'doorprints';
 export const DB_VERSION = 2;
 

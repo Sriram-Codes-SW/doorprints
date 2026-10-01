@@ -23,6 +23,7 @@ import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.LengthUnit
+import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.RoomSizes
 import kotlin.math.floor
 
@@ -100,8 +101,8 @@ object ExportRows {
             }
             add(s["col.listingUrl"]); add(s["col.notes"])
             addAll(COST_COLUMN_KEYS.map { s[it] })
-            // Slice 1c: the number of rooms, right after the cost per sq ft.
-            add(s["col.rooms"])
+            // Slice 1c: the number of rooms, right after the cost per sq ft; S4b-BL-87: the floor after it.
+            add(s["col.rooms"]); add(s["col.floor"])
             add(s["col.visits"]); add(s["col.photos"])
             add(s["col.createdAt"]); add(s["col.updatedAt"]); add(s["col.id"])
         }
@@ -123,6 +124,7 @@ object ExportRows {
                 add(text(h.listingUrl)); add(text(h.notes))
                 addAll(costCells(h, s))
                 add(h.rooms?.takeIf { it.isNotEmpty() }?.let { Cell.Count(it.size.toLong()) } ?: Cell.Blank)
+                add(h.floor?.let { Cell.Count(it.toLong()) } ?: Cell.Blank)
                 add(Cell.Count(bundle.visitsOf(h).size.toLong()))
                 add(Cell.Count(bundle.photosOf(h).size.toLong()))
                 add(Cell.Stamp(h.createdAt)); add(Cell.Stamp(h.updatedAt))
@@ -450,9 +452,16 @@ object ExportRows {
     fun distanceRows(h: ExportHouse, bundle: ExportBundle): List<List<String>> =
         bundle.distancesOf(h).map { listOf(it.place.name, it.km) }
 
+    /**
+     * One row per photo; since slice 5 the last three columns are its room (the room's name, empty when it names none or
+     * one that is gone), its tags (the stored keys and texts joined with `; `) and its caption.
+     */
     fun photos(bundle: ExportBundle): ExportTable {
         val s = bundle.strings
-        val columns = listOf(s["col.house"], s["col.fileName"], s["col.createdAt"], s["col.houseId"], s["col.id"])
+        val columns = listOf(
+            s["col.house"], s["col.fileName"], s["col.createdAt"], s["col.houseId"], s["col.id"],
+            s["col.room"], s["col.tags"], s["col.caption"],
+        )
         val labels = bundle.houses.associate { it.id to it.label }
         val rows = bundle.photos.map { p ->
             listOf(
@@ -461,10 +470,47 @@ object ExportRows {
                 Cell.Stamp(p.createdAt),
                 Cell.Text(p.houseId),
                 Cell.Text(p.id),
+                text(photoRoomName(p, bundle)),
+                text(photoTagsText(p)),
+                text(p.meta.caption),
             )
         }
         return ExportTable("photos", s["table.photos"], columns, rows)
     }
+
+    /** The name of the room a photo names (slice 5): its own name or its type's; null for none or one that is gone. */
+    fun photoRoomName(p: ExportPhoto, bundle: ExportBundle): String? = bundle.roomOf(p)?.let { roomName(it, bundle.strings) }
+
+    /** A photo's tags as a copy writes them: the stored keys and texts, joined with `; `; null for none. */
+    fun photoTagsText(p: ExportPhoto): String? = p.meta.tags.takeIf { it.isNotEmpty() }?.joinToString("; ")
+
+    /**
+     * The line under a photo on a house page (slice 5): its room, its tags and its caption, those it has, joined with
+     * ` · `; null when it has none.
+     */
+    fun photoLine(p: ExportPhoto, bundle: ExportBundle): String? =
+        listOfNotNull(photoRoomName(p, bundle), photoTagsText(p), p.meta.caption).takeIf { it.isNotEmpty() }?.joinToString(" · ")
+
+    /** Before a ticked move-in item and an open one, on a house page (slice 5). */
+    const val TICK = "✓"
+    const val OPEN = "○"
+
+    /**
+     * A house page's **Moving in** section (slice 5): the date and the notes as label and value, those it has. Empty
+     * for a house without a move-in; see [moveInItems] for the list.
+     */
+    fun moveInLines(h: ExportHouse, bundle: ExportBundle): List<Pair<String, String>> {
+        val m = h.moveIn ?: return emptyList()
+        val s = bundle.strings
+        return listOfNotNull(
+            m.date?.let { s["col.moveInDate"] to ExportTime.date(it, bundle.options.utcOffsetMinutes) },
+            m.notes?.let { s["col.notes"] to it },
+        )
+    }
+
+    /** The move-in items in the order shown, each `✓ <text>` when done or `○ <text>` when not. */
+    fun moveInItems(h: ExportHouse): List<String> =
+        MoveIn.ordered(h.moveIn?.items).map { (if (it.isDone) TICK else OPEN) + " " + it.text }
 
     /**
      * The house's own values (docs/11 5.30 item 1, slice 1a) as columns of the houses table, in this order: the

@@ -245,10 +245,10 @@ class ViewingReminderScheduler(
     }
 }
 
-/** The reminders' own short-lived scope for a receiver's `goAsync` work (the app's scope is the process's). */
-private val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+/** The reminders' (and the area wake-up's) short-lived scope for a receiver's `goAsync` work (the app's scope is the process's). */
+internal val receiverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-private fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
+internal fun BroadcastReceiver.runAsync(block: suspend () -> Unit) {
     val pending = goAsync()
     receiverScope.launch {
         try {

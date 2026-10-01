@@ -117,6 +117,9 @@
             @for (h of houses(); track h.id) {
               <li>
                 <a [routerLink]="['/houses', h.id]">{{ h.label || ('common.untitled' | t) }}</a>
+                @if (sameFlatLine(h); as same) {
+                  <p class="warn-box small">{{ same }}</p>
+                }
               </li>
             }
           </ul>

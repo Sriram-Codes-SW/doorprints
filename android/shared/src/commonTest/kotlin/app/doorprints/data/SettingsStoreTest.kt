@@ -82,6 +82,16 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun theViewingRemindersQuestionHasItsOwnAskedFlag() = runTest {
+        // S4b-BL-93f: asking from Export or Import does not count as asking for the reminders, nor the reverse.
+        store.setNotificationsAsked()
+        assertFalse(store.viewingsNotificationsAsked.first())
+        store.setViewingsNotificationsAsked()
+        assertTrue(store.viewingsNotificationsAsked.first())
+        assertEquals(true, raw()["viewings.notificationsAsked"])
+    }
+
+    @Test
     fun viewingRemindersStartOnAndAreKeptUnderTheWebKey() = runTest {
         // docs/11 5.8, slice 3b-2: on until the person turns them off; `viewings.remind`, the web's SETTING_KEYS key.
         assertTrue(store.viewingsRemind().first())
@@ -284,6 +294,52 @@ class SettingsStoreTest {
             raw().keys,
         )
         assertEquals("settings", SettingsStore.FILE_NAME)
+    }
+
+    @Test
+    fun theAreaWakeupIsOffUntilTurnedOnUnderItsStoredName() = runTest {
+        assertFalse(store.areaWakeup().first())
+        assertFalse(store.areaWakeupOffNotice().first())
+        store.setAreaWakeup(true)
+        assertTrue(store.areaWakeup().first())
+        assertEquals(true, raw()["areas.wakeup"])
+        store.setAreaWakeup(false)
+        assertFalse(store.areaWakeup().first())
+    }
+
+    @Test
+    fun losingThePermissionSwitchesTheWakeupOffAndSetsTheOneTimeNotice() = runTest {
+        // Off already: nothing to say.
+        assertFalse(store.switchAreaWakeupOffForPermission())
+        assertFalse(store.areaWakeupOffNotice().first())
+        store.setAreaWakeup(true)
+        assertTrue(store.switchAreaWakeupOffForPermission())
+        assertFalse(store.areaWakeup().first())
+        assertTrue(store.areaWakeupOffNotice().first())
+        assertEquals(true, raw()["areas.wakeupOffNotice"])
+        store.clearAreaWakeupOffNotice()
+        assertFalse(store.areaWakeupOffNotice().first())
+        // Turning it on again clears a notice not yet shown.
+        store.setAreaWakeup(true)
+        store.switchAreaWakeupOffForPermission()
+        store.setAreaWakeup(true)
+        assertFalse(store.areaWakeupOffNotice().first())
+    }
+
+    @Test
+    fun eachAreaHasItsOwnLastNotifiedKeyRemovedWithTheArea() = runTest {
+        assertNull(store.areaLastNotified("a_00000001"))
+        store.setAreaLastNotified("a_00000001", 111)
+        store.setAreaLastNotified("a_00000002", 222)
+        assertEquals(111L, store.areaLastNotified("a_00000001"))
+        assertEquals(222L, raw()["areas.lastNotified.a_00000002"])
+        store.removeAreaLastNotified("a_00000001")
+        assertNull(store.areaLastNotified("a_00000001"))
+        store.setAreaLastNotified("a_00000003", 333)
+        store.pruneAreaLastNotified(setOf("a_00000003"))
+        assertNull(store.areaLastNotified("a_00000002"))
+        assertEquals(333L, store.areaLastNotified("a_00000003"))
+        assertEquals(setOf("areas.lastNotified.a_00000003"), raw().keys)
     }
 
     @Test

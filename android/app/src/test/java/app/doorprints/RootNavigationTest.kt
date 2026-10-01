@@ -21,6 +21,9 @@ package app.doorprints
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -127,6 +130,25 @@ class RootNavigationTest {
     }
 
     @Test
+    fun aRemindersQuestionsActionOpensTheHouseAtItsQuestions() {
+        // S4b-BL-93b: the house form opens scrolled to "Questions to ask"; a plain house link opens it at the top.
+        val id = "0b8f6a52-3c1e-4d7a-9f4e-2a6c5d1b7e91"
+        runBlocking {
+            val at = 1_760_000_000_000
+            ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+                .saveHouse(HouseEntity(id = id, label = "Green View", lat = 12.97, lon = 77.59, createdAt = at, updatedAt = at))
+        }
+        start(DeepLink.OpenHouse(id))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("House details").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Questions to ask").assertIsNotDisplayed()
+        back()
+        links.value = DeepLink.OpenHouse(id, questions = true)
+        compose.waitForIdle()
+        compose.waitUntil(5_000) { runCatching { compose.onNodeWithText("Questions to ask").assertIsDisplayed() }.isSuccess }
+        assertEquals(2, handled)
+    }
+
+    @Test
     fun theFormsDoneClosesIt() {
         start(null)
         shows(MAP)
@@ -174,6 +196,32 @@ class RootNavigationTest {
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
+    }
+
+    @Test
+    fun aDeepLinkToTheMapClosesWhatWasOpenOverIt() {
+        // S4b-BL-94a: a form open over the Map is closed, not brought back by the tab's restored stack.
+        start(DeepLink.NewHouse(12.9716, 77.5946, null))
+        shows("Save a house")
+        links.value = DeepLink.StartHunt
+        compose.waitForIdle()
+        assertEquals(2, handled)
+        shows(MAP)
+        compose.onNodeWithText("Save a house").assertDoesNotExist()
+        // Back from the Map leaves the app; no form waits under it.
+        compose.onAllNodesWithText("12.971600").assertCountEquals(0)
+    }
+
+    @Test
+    fun anIphoneReminderTapOffersHuntModeOnTheMap() {
+        // S4b-BL-94c: the tap opened only the app, so the Map asks with *Start Hunt mode*; nothing is started yet.
+        start(DeepLink.OpenScreen(Routes.SETTINGS))
+        links.value = DeepLink.OfferHunt
+        compose.waitForIdle()
+        assertEquals(2, handled)
+        shows(MAP)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Start Hunt mode?").fetchSemanticsNodes().isNotEmpty() }
+        shows("Start Hunt mode")
     }
 
     @Test

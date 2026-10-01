@@ -21,7 +21,23 @@ package app.doorprints.ui
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.KeychainSecretStore
+import app.doorprints.export.ArchiveImports
 import app.doorprints.location.HuntState
+import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.AreaRegions
+import app.doorprints.shared.export.ArchiveOpen
+import app.doorprints.shared.export.BackupArchive
+import app.doorprints.shared.export.BackupData
+import app.doorprints.shared.export.CopyPhotos
+import app.doorprints.shared.export.CopyWriter
+import app.doorprints.shared.export.ExportBundle
+import app.doorprints.shared.export.ExportFormat
+import app.doorprints.shared.export.ExportHouse
+import app.doorprints.shared.export.ExportOptions
+import app.doorprints.shared.export.ExportPhoto
+import app.doorprints.shared.export.PosixFileSink
+import app.doorprints.shared.export.PosixFileSource
+import app.doorprints.shared.export.iosArchiveTools
 import app.doorprints.shared.model.Viewing
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.app_name
@@ -34,6 +50,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlin.time.Clock
 import org.jetbrains.compose.resources.getString
+import platform.CoreLocation.CLLocationManager
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSUUID
 import kotlin.experimental.ExperimentalNativeApi
@@ -48,7 +65,10 @@ import kotlin.native.Platform
  * Since CMP-8c also the map: `indiaView` (the style the map is given keeps India's boundary rules) and `map` (the map on
  * screen loaded all of it), the in-app boundary check that makes the iOS map's India view a CI gate. Since S4b-BL-69
  * also `hunt`: with the simulator's location set next to a house saved for the check (ios/ci/launch-smoke.sh), Hunt
- * mode starts and the engine reports that house as the nearest; SKIP without the location permission.
+ * mode starts and the engine reports that house as the nearest; SKIP without the location permission. Since S4b-BL-96
+ * also `areaWakeup`: the region registration on a fake location manager, then the real one with the stored settings.
+ * Since S4b-BL-81 also `copies`: a backup into a file and back through the import preview, with CommonCrypto, zlib and
+ * POSIX; since S4b-BL-92a `calendar`: a viewing's `.ics` written where the share sheet reads it.
  *
  * Each check prints exactly one line, `DOORPRINTS-SELFCHECK <name> PASS`, `… FAIL <short reason>` or
  * `… SKIP <reason>`, then `DOORPRINTS-SELFCHECK done PASS` (every check passed or was skipped) or `done FAIL`. The
@@ -148,6 +168,12 @@ private suspend fun runSelfCheck() {
         // Viewing reminders (slice 3b-2): an earlier version crashed now and then inside UserNotifications, so the
         // reschedule runs many times, for two viewings, where one run could pass by luck.
         check("reminders") { remindersCheck() },
+        // The area wake-up on iPhone (S4b-BL-96): the registration against a fake location manager, then once for real.
+        check("areaWakeup") { areaWakeupCheck() },
+        // Copies and imports on iPhone (S4b-BL-81): a backup into a file and back through the import preview.
+        check("copies") { copiesCheck() },
+        // A viewing's calendar file (S4b-BL-92a): the .ics written where the share sheet reads it, byte for byte.
+        check("calendar") { calendarCheck() },
     )
     report("done", if (results.any { it is Result.Fail }) "FAIL" else "PASS")
 }
@@ -259,6 +285,129 @@ private suspend fun remindersCheck(): Result {
     }
     IosViewingReminders.reschedule(emptyList(), emptyList(), now)
     return Result.Pass
+}
+
+/**
+ * The area wake-up's registration ([AreaRegionSync]) on a [RecordingRegionMonitor] holding another app region and a
+ * stale one of ours: 25 areas give the 19 nearest (the other region keeps its place), the stale one stops, a second
+ * run changes nothing and switching off stops only ours. Then the real registration runs once ([IosAreaWakeup], the
+ * stored areas and setting; the simulator has no "Always", so it registers nothing) and the real manager is read.
+ */
+private suspend fun areaWakeupCheck(): Result = withContext(Dispatchers.Main) {
+    val other = AreaRegions.Region("somebody.else", 12.0, 77.0, 300.0)
+    val stale = AreaRegions.Region(AreaRegions.identifier("a_0000ffff"), 12.0, 77.0, 500.0)
+    val fake = RecordingRegionMonitor(listOf(other, stale), near = HUNT_HOUSE_LAT to HUNT_HOUSE_LON)
+    // Area i lies i * 100 m north of the fake's position.
+    val areas = (0 until 25).map { i ->
+        Area("a_" + i.toString(16).padStart(8, '0'), "Area $i", HUNT_HOUSE_LAT + i * 0.0009, HUNT_HOUSE_LON, 500)
+    }
+    val sync = AreaRegionSync(fake)
+    sync.apply(areas.reversed(), wakeupOn = true, alwaysGranted = true)
+    val ours = fake.monitored().filter { AreaRegions.areaId(it.identifier) != null }
+    if (ours.map { AreaRegions.areaId(it.identifier) } != areas.take(19).map { it.id }) {
+        return@withContext Result.Fail("not the 19 nearest areas (${ours.size})")
+    }
+    if (fake.monitored().none { it == other }) return@withContext Result.Fail("another region was stopped")
+    val calls = fake.calls
+    sync.apply(areas, wakeupOn = true, alwaysGranted = true)
+    if (fake.calls != calls) return@withContext Result.Fail("a second run changed the regions")
+    sync.apply(areas, wakeupOn = false, alwaysGranted = true)
+    if (fake.monitored() != listOf(other)) return@withContext Result.Fail("switching off left ${fake.monitored().size - 1} regions")
+    // The real path: the stored areas and setting, Core Location's own manager.
+    if (IosAreaWakeupServices.available) {
+        IosAreaWakeup.install()
+        withContext(Dispatchers.Default) { IosAreaWakeup.reregisterAll() }
+        CoreLocationRegions(CLLocationManager()).monitored()
+    }
+    Result.Pass
+}
+
+/**
+ * Writes a backup of one house and one photo into `tmp/` with the common writer and the iPhone's tools (CommonCrypto,
+ * POSIX), inflates a known DEFLATE stream with the system zlib, then reads the backup back ([BackupArchive]) and
+ * previews it against the real database ([ArchiveImports.preview]; nothing is written): the house is new there and
+ * the photo's bytes come back. The file is deleted.
+ */
+private suspend fun copiesCheck(): Result {
+    // "Doorprints " 50 times, raw DEFLATE, as a deflated backup from Android is read.
+    val packed = byteArrayOf(115, -55, -49, 47, 42, 40, -54, -52, 43, 41, 86, 112, 25, 101, -114, 50, -79, 51, 1)
+    if (iosArchiveTools.inflate(packed, 1024)?.decodeToString() != "Doorprints ".repeat(50)) return Result.Fail("zlib inflate")
+    val houseId = NSUUID().UUIDString.lowercase()
+    val photo = ByteArray(40_000) { (it % 251).toByte() }
+    val bundle = ExportBundle.build(
+        ExportOptions(exportedAtMillis = Clock.System.now().toEpochMilliseconds()),
+        listOf(ExportHouse(id = houseId, label = "Self-check house", lat = HUNT_HOUSE_LAT, lon = HUNT_HOUSE_LON, createdAt = 1, updatedAt = 1)),
+        emptyList(),
+        listOf(ExportPhoto(id = "p_selfcheck", houseId = houseId, fileName = "p_selfcheck.jpg", createdAt = 1)),
+    )
+    val path = IosCopyFolders.imports + "/selfcheck-" + NSUUID().UUIDString + ".staged"
+    try {
+        PosixFileSink(path).use { sink ->
+            CopyWriter.write(bundle, ExportFormat.BACKUP, sink, object : CopyPhotos {
+                override fun original(photoId: String) = photo
+                override fun dataUri(photoId: String): String? = null
+            }, iosArchiveTools)
+        }
+        PosixFileSource(path).use { source ->
+            val opened = BackupArchive.open(source, iosArchiveTools)
+            if (opened !is ArchiveOpen.Ok) return Result.Fail("the backup did not open (${(opened as ArchiveOpen.Failed).problem})")
+            val archive = opened.archive
+            if (archive.data != BackupData.of(bundle)) return Result.Fail("the rows read back differ")
+            if (!archive.photoBytes("photos/p_selfcheck.jpg").contentEquals(photo)) return Result.Fail("the photo read back differs")
+            val check = ArchiveImports.preview(IosAppContainer.repository, archive, path, null) { NSUUID().UUIDString.lowercase() }
+            if (check.copy.newHouses != 1) return Result.Fail("the preview has ${check.copy.newHouses} new houses, not 1")
+        }
+    } finally {
+        IosCopyFolders.remove(path)
+    }
+    return Result.Pass
+}
+
+/** The `.ics` of a viewing ([viewingCalendarFile]) written as the share sheet gets it, and read back unchanged. */
+private fun calendarCheck(): Result {
+    val viewing = Viewing(id = "v_0000beef", houseId = "self-check", startsAt = 1_790_501_400_000, remindMin = 30, notes = "Gate 2")
+    val (name, ics) = viewingCalendarFile(viewing, null, "Self-check house", "Viewing", 1_790_072_130_000)
+    val path = writeTextFile(IosCopyFolders.calendar, name, ics) ?: return Result.Fail("the file was not written")
+    try {
+        val back = PosixFileSource(path).use { source ->
+            ByteArray(source.size.toInt()).also { source.readAt(0, it, 0, it.size) }
+        }
+        if (!back.contentEquals(ics.encodeToByteArray())) return Result.Fail("the file read back differs")
+        if (!ics.startsWith("BEGIN:VCALENDAR\r\n") || "UID:v_0000beef@doorprints" !in ics) return Result.Fail("not the viewing's event")
+    } finally {
+        IosCopyFolders.remove(path)
+    }
+    return Result.Pass
+}
+
+/**
+ * A [RegionMonitor] that keeps its regions in a list (the self-check's fake Core Location): what it was given, the
+ * position [near] and no radius limit; [calls] counts the starts and stops.
+ */
+internal class RecordingRegionMonitor(
+    initial: List<AreaRegions.Region> = emptyList(),
+    private val near: Pair<Double, Double>? = null,
+    override val maxRadiusM: Double = 0.0,
+    override val available: Boolean = true,
+) : RegionMonitor {
+    private val regions = initial.toMutableList()
+    var calls = 0
+        private set
+
+    override fun monitored(): List<AreaRegions.Region> = regions.toList()
+
+    override fun start(region: AreaRegions.Region) {
+        calls++
+        regions.removeAll { it.identifier == region.identifier }
+        regions += region
+    }
+
+    override fun stop(identifier: String) {
+        calls++
+        regions.removeAll { it.identifier == identifier }
+    }
+
+    override fun lastPosition(): Pair<Double, Double>? = near
 }
 
 /** The Keychain status in a [KeychainSecretStore] error ("… (status -34018)"), or null. */

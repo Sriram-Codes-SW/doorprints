@@ -63,6 +63,13 @@ class ExportStrings internal constructor(
     /** "{n} months" in the export language, for the Cost block of a readable copy. */
     fun months(n: Int): String = values.getValue("months").replace("{n}", n.toString())
 
+    /** A house's floor in words (S4b-BL-87): 0 the ground floor, -n basement n, else the number. */
+    fun floor(n: Int): String = when {
+        n == 0 -> values.getValue("floor.ground")
+        n < 0 -> values.getValue("floor.basement").replace("{n}", (-n).toString())
+        else -> n.toString()
+    }
+
     internal val keys: Set<String> get() = values.keys
 
     companion object {
@@ -210,6 +217,9 @@ class ExportStrings internal constructor(
                 "col.moveIn" to "Money to move in",
                 "col.perSqFt" to "Cost per sq ft",
                 "col.rooms" to "Rooms",
+                "col.floor" to "Floor",
+                "floor.ground" to "Ground floor",
+                "floor.basement" to "Basement {n}",
                 "col.roomName" to "Room",
                 "col.roomType" to "Type",
                 "col.condition" to "Condition",
@@ -245,6 +255,14 @@ class ExportStrings internal constructor(
                 "status.NEW" to "New",
                 "status.SHORTLISTED" to "Shortlisted",
                 "status.REJECTED" to "Rejected",
+                "status.TAKEN" to "Taken",
+                "status.NOT_CHOSEN" to "Not chosen",
+                // Slice 5: the Moving in section of a house page and the photo columns room, tags, caption.
+                "section.movingIn" to "Moving in",
+                "col.moveInDate" to "Move-in date",
+                "col.room" to "Room",
+                "col.tags" to "Tags",
+                "col.caption" to "Caption",
                 "priceType.RENT" to "Rent per month",
                 "priceType.SALE" to "Sale price",
                 "source.AUTO" to "Automatic",
@@ -400,6 +418,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "प्रति वर्ग फ़ुट खर्च",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "कमरे",
+                "col.floor" to "मंज़िल",
+                "floor.ground" to "भूतल",
+                "floor.basement" to "बेसमेंट {n}",
                 "col.roomName" to "कमरा",
                 "col.roomType" to "प्रकार",
                 "col.condition" to "हालत",
@@ -435,6 +456,14 @@ class ExportStrings internal constructor(
                 "status.NEW" to "नया",
                 "status.SHORTLISTED" to "चुना गया",
                 "status.REJECTED" to "अस्वीकृत",
+                "status.TAKEN" to "ले लिया",
+                "status.NOT_CHOSEN" to "नहीं चुना",
+                // Slice 5: the Moving in section of a house page and the photo columns room, tags, caption.
+                "section.movingIn" to "घर में शिफ़्ट होना",
+                "col.moveInDate" to "शिफ़्ट होने की तारीख",
+                "col.room" to "कमरा",
+                "col.tags" to "टैग",
+                "col.caption" to "कैप्शन",
                 "priceType.RENT" to "किराया प्रति माह",
                 "priceType.SALE" to "बिक्री कीमत",
                 "source.AUTO" to "अपने आप",
@@ -590,6 +619,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "சதுர அடிக்கு செலவு",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "அறைகள்",
+                "col.floor" to "தளம்",
+                "floor.ground" to "தரைத்தளம்",
+                "floor.basement" to "அடித்தளம் {n}",
                 "col.roomName" to "அறை",
                 "col.roomType" to "வகை",
                 "col.condition" to "நிலை",
@@ -625,6 +657,14 @@ class ExportStrings internal constructor(
                 "status.NEW" to "புதியது",
                 "status.SHORTLISTED" to "தேர்வானது",
                 "status.REJECTED" to "நிராகரிக்கப்பட்டது",
+                "status.TAKEN" to "எடுக்கப்பட்டது",
+                "status.NOT_CHOSEN" to "தேர்ந்தெடுக்கப்படவில்லை",
+                // Slice 5: the Moving in section of a house page and the photo columns room, tags, caption.
+                "section.movingIn" to "குடிபுகுதல்",
+                "col.moveInDate" to "குடிபுகும் தேதி",
+                "col.room" to "அறை",
+                "col.tags" to "குறிச்சொற்கள்",
+                "col.caption" to "தலைப்பு",
                 "priceType.RENT" to "மாத வாடகை",
                 "priceType.SALE" to "விற்பனை விலை",
                 "source.AUTO" to "தானாக",
@@ -780,6 +820,9 @@ class ExportStrings internal constructor(
                 "col.perSqFt" to "చదరపు అడుగుకు ఖర్చు",
                 // Slice 1c (2026-09-30): the rooms; under review.
                 "col.rooms" to "గదులు",
+                "col.floor" to "అంతస్తు",
+                "floor.ground" to "నేల అంతస్తు",
+                "floor.basement" to "బేస్‌మెంట్ {n}",
                 "col.roomName" to "గది",
                 "col.roomType" to "రకం",
                 "col.condition" to "స్థితి",
@@ -815,6 +858,14 @@ class ExportStrings internal constructor(
                 "status.NEW" to "కొత్తది",
                 "status.SHORTLISTED" to "ఎంపికైంది",
                 "status.REJECTED" to "తిరస్కరించబడింది",
+                "status.TAKEN" to "తీసుకున్నాం",
+                "status.NOT_CHOSEN" to "ఎంచుకోలేదు",
+                // Slice 5: the Moving in section of a house page and the photo columns room, tags, caption.
+                "section.movingIn" to "ఇంట్లోకి మారడం",
+                "col.moveInDate" to "మారే తేదీ",
+                "col.room" to "గది",
+                "col.tags" to "ట్యాగ్‌లు",
+                "col.caption" to "శీర్షిక",
                 "priceType.RENT" to "నెలవారీ అద్దె",
                 "priceType.SALE" to "అమ్మకం ధర",
                 "source.AUTO" to "ఆటోమేటిక్",

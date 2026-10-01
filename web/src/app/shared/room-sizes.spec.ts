@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { areaSqFt, areaSqM, cmToFeetInches, feetInchesToCm } from './room-sizes';
+import { areaSqFt, areaSqM, cmToFeetInches, feetInchesToCm, moveRoom } from './room-sizes';
 
 describe('room sizes', () => {
   describe('cmToFeetInches', () => {
@@ -51,5 +51,33 @@ describe('room sizes', () => {
       // 396 cm = 3.96 m, 366 cm = 3.66 m, 3.96 × 3.66 = 14.4936 ≈ 14.5 m²
       expect(areaSqM(396, 366)).toBe(14.5);
     });
+  });
+});
+
+// Moving a room (S4b-BL-87): the same vectors as Kotlin's `HouseRoomsTest.movingARoomSwapsItWithItsNeighbourAndRenumbers`.
+describe('moveRoom', () => {
+  const rooms = [
+    { id: 'c', sort: 5 },
+    { id: 'a', sort: 0 },
+    { id: 'b', sort: 1 },
+  ];
+  const vectors: [string, number, string][] = [
+    ['b', -1, 'b,a,c'],
+    ['b', 1, 'a,c,b'],
+    ['a', -1, 'a,b,c'],
+    ['c', 1, 'a,b,c'],
+    ['x', 1, 'a,b,c'],
+    ['c', -2, 'c,a,b'],
+  ];
+  for (const [id, by, expected] of vectors) {
+    it(`moves ${id} by ${by}`, () => {
+      const moved = moveRoom(rooms, id, by);
+      expect(moved.map((r) => r.id).join(',')).toBe(expected);
+      expect(moved.map((r) => r.sort)).toEqual([0, 1, 2]);
+    });
+  }
+  it('breaks a tie on sort by the id, and an empty list stays empty', () => {
+    expect(moveRoom([{ id: 'y', sort: 0 }, { id: 'x', sort: 0 }], 'y', -1).map((r) => r.id)).toEqual(['y', 'x']);
+    expect(moveRoom([], 'a', 1)).toEqual([]);
   });
 });

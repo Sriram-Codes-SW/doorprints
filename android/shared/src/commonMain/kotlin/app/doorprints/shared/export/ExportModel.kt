@@ -26,6 +26,9 @@ import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.LengthUnit
@@ -80,7 +83,7 @@ data class ExportHouse(
     val locality: String? = null,
     val lat: Double,
     val lon: Double,
-    /** [app.doorprints.shared.model.HouseStatus] name: NEW, SHORTLISTED or REJECTED. Required in a file. */
+    /** [app.doorprints.shared.model.HouseStatus] name: NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN. Required in a file. */
     @Required val status: String = "NEW",
     val price: Long? = null,
     val priceType: String? = null,
@@ -109,6 +112,16 @@ data class ExportHouse(
      * without contact details: a question is not a contact, and a copy is the person's own data, kept whole.
      */
     val answers: List<HouseAnswer>? = null,
+    /**
+     * Moving in (slice 5, format `/2`), after `answers`: absent when it has no date, notes or items. Kept in a copy
+     * made without contact details, like the answers.
+     */
+    val moveIn: MoveIn? = null,
+    /**
+     * The floor (S4b-BL-87, format `/2`), -5..200 with 0 the ground floor, after `moveIn`; absent when unknown, and a
+     * value out of range reads as unknown (`ExportHouse.toEntity`).
+     */
+    val floor: Int? = null,
     /** The broker's record id (slice 1b, format `/2`); absent for a house without one and in a copy made without contacts. */
     val brokerId: String? = null,
     /** Absent or `null` in a file reads as `{}` (docs/schemas/README.md section 4.4); always written. */
@@ -294,6 +307,21 @@ data class ExportAreaNote(
     }
 }
 
+/**
+ * A deletion an update file carries (S4b-BL-82, docs/schemas §3.13): the `kind` of row (only [HOUSE] so far), its
+ * `id` and the `updatedAt` of the delete. Written only into an update file (`/3`), applied only by an update import,
+ * when the row here is live and older; a backup restore and a copy ignore it. An unknown kind is ignored.
+ */
+@Serializable
+data class ExportDeletion(val kind: String, val id: String, val updatedAt: Long) {
+    companion object {
+        const val HOUSE = "house"
+
+        /** At most this many deletions in one file; more refuses it. */
+        const val MAX = 20_000
+    }
+}
+
 /** A preference in a `/2` backup (slice 2): its key, its value (≤ 500) and `updatedAt`; merged by key. */
 @Serializable
 data class ExportPreference(val key: String, val value: String, val updatedAt: Long)
@@ -347,7 +375,25 @@ data class ExportPhoto(
     val houseId: String,
     val fileName: String,
     val createdAt: Long,
-)
+    /**
+     * The photo's metadata (slice 5, format `/2`), each written only when set: a room id of the house (may dangle),
+     * the tags (never `[]`), the caption and when they were last edited (epoch ms, > 0), on which an import's last
+     * write wins.
+     */
+    val roomId: String? = null,
+    val tags: List<String>? = null,
+    val caption: String? = null,
+    val metaUpdatedAt: Long? = null,
+) {
+    /** The meta as the rules read it (coerced: an import writes only what a reader keeps). */
+    val meta: PhotoMeta get() = PhotoMeta.coerced(roomId, tags, caption, metaUpdatedAt)
+
+    /** The meta exactly as the file has it, for the check that refuses a bad file ([PhotoMeta.isValid]). */
+    val rawMeta: PhotoMeta get() = PhotoMeta(roomId, tags.orEmpty(), caption, metaUpdatedAt ?: 0L)
+
+    /** True when the file row carries any meta key: such a photo makes the file `/2`. */
+    val hasMeta: Boolean get() = roomId != null || !tags.isNullOrEmpty() || caption != null || (metaUpdatedAt ?: 0L) > 0
+}
 
 /** Which houses go into the copy. */
 enum class ExportScope { ALL, SHORTLISTED, SELECTED }
@@ -376,7 +422,8 @@ data class ExportOptions(
     val exportedAtMillis: Long = 0L,
     /**
      * Sharing updates (docs/11 5.28, S4b-FR-3): only the rows changed after this instant (epoch ms; `updatedAt` for
-     * houses and visits, `createdAt` for photos, plus every photo of a changed house). Null: everything, a copy.
+     * houses and visits, `createdAt` or, since slice 5, `metaUpdatedAt` for photos, plus every photo of a changed
+     * house). Null: everything, a copy.
      */
     val since: Long? = null,
     /** Who the update is for (a name the person typed), written into the manifest; null for a copy. */
@@ -442,6 +489,11 @@ data class ExportBundle(
     val areas: List<ExportArea> = emptyList(),
     val places: List<ExportPlace> = emptyList(),
     val areaNotes: List<ExportAreaNote> = emptyList(),
+    /**
+     * An update file's deletions (S4b-BL-82): the houses deleted after [ExportOptions.since], ordered by `updatedAt`
+     * then id. Empty for a copy or a full share; only `data.json` carries them (a readable copy has nothing to show).
+     */
+    val deletions: List<ExportDeletion> = emptyList(),
 ) {
     val strings: ExportStrings = ExportStrings.of(options.language)
 
@@ -510,6 +562,20 @@ data class ExportBundle(
     /** True when a house of the copy has an answer (slice 3a): the copy then has `answers.csv`, an Answers sheet and is `/2`. */
     val hasAnswers: Boolean get() = houses.any { !it.answers.isNullOrEmpty() }
 
+    /**
+     * True when the copy holds something of slice 5 (docs/11 5.7, 5.24): a house TAKEN or NOT_CHOSEN, a house with a
+     * move-in, or a photo with meta. The file is then `/2`.
+     */
+    val hasSlice5: Boolean
+        get() = houses.any { it.status == HouseStatus.TAKEN.name || it.status == HouseStatus.NOT_CHOSEN.name || it.moveIn != null } ||
+            photos.any { it.hasMeta }
+
+    private val roomNames: Map<String, Map<String, HouseRoom>> =
+        houses.associate { h -> h.id to h.rooms.orEmpty().associateBy { it.id } }
+
+    /** The room of [house] a photo names, or null when it names none or one that is gone (shown as untagged). */
+    fun roomOf(photo: ExportPhoto): HouseRoom? = photo.roomId?.let { roomNames[photo.houseId]?.get(it) }
+
     /** The houses of the copy that name [broker], in the copy's order. */
     fun housesOf(broker: ExportBroker): List<ExportHouse> = housesByBroker[broker.id].orEmpty()
 
@@ -548,6 +614,8 @@ data class ExportBundle(
             areas: List<ExportArea> = emptyList(),
             places: List<ExportPlace> = emptyList(),
             areaNotes: List<ExportAreaNote> = emptyList(),
+            /** The houses deleted on this device, id to the `updatedAt` of the delete (tombstones; S4b-BL-82). */
+            deletedHouses: Map<String, Long> = emptyMap(),
         ): ExportBundle {
             val since = options.since
             val inScope = houses.filter { house ->
@@ -582,7 +650,8 @@ data class ExportBundle(
             }
             val keptPhotos = photos
                 .filter { it.houseId in photoHouses }
-                .filter { since == null || it.createdAt > since || it.houseId in changedIds }
+                // A photo whose meta was edited since (slice 5) is a change too.
+                .filter { since == null || it.createdAt > since || (it.metaUpdatedAt ?: 0L) > since || it.houseId in changedIds }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
             val unlinked = if (options.scope == ExportScope.ALL) {
                 visits.filter { it.houseId == null && (since == null || it.updatedAt > since) }
@@ -621,9 +690,16 @@ data class ExportBundle(
             val keptAreas = areas.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             val keptPlaces = places.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             val keptNotes = areaNotes.filter { since == null || it.updatedAt > since }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
+            // An update's deletions (S4b-BL-82): the houses deleted since, whatever the scope (a house that is gone has
+            // no status worth filtering on); a copy or a full share has none. A row that is live again is not one.
+            val liveIds = houses.mapTo(HashSet()) { it.id }
+            val deletions = if (since == null) emptyList() else deletedHouses
+                .filter { (id, at) -> at > since && id !in liveIds }
+                .map { (id, at) -> ExportDeletion(ExportDeletion.HOUSE, id, at) }
+                .sortedWith(compareBy({ it.updatedAt }, { it.id }))
             return ExportBundle(
                 options, kept, keptVisits, keptPhotos, unlinked, keptBrokers, keptCriteria, keptPreferences, scoring,
-                keptQuestions, keptViewings, keptAreas, keptPlaces, keptNotes,
+                keptQuestions, keptViewings, keptAreas, keptPlaces, keptNotes, deletions,
             )
         }
     }

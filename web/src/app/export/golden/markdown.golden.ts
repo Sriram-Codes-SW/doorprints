@@ -49,7 +49,7 @@ Rating counts for 40%
 
 | No. | House | Score | Price | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Green View 2BHK | 4.1 | ₹32,000/month | ★ Shortlisted |
+| 1 | Green View 2BHK | 4.1 | ₹32,000/month | ⌂ Taken |
 | 2 | Untitled | 1.0 | ₹12,50,000 | ✕ Rejected |
 | 3 | =SUM(A1:A9) சென்னை flat | Not scored | – | ● New |
 
@@ -57,12 +57,13 @@ Rating counts for 40%
 
 | Detail | Value |
 | --- | --- |
-| Status | ★ Shortlisted |
+| Status | ⌂ Taken |
 | Overall score | 4.1 |
 | Coverage | Scored 3 of 10 that matter |
 | Price | ₹32,000/month |
 | BHK | 2 BHK |
 | Carpet area | 1150 sq ft |
+| Floor | 3 |
 | Your rating | 4 out of 5 stars |
 | Address | 12, MG Road |
 | Street | MG Road |
@@ -127,6 +128,16 @@ Rating counts for 40%
 | Office | 8.6 |
 | Amma's home | 288.5 |
 
+### Moving in
+
+| Detail | Value |
+| --- | --- |
+| When | 2026-10-01 |
+| Notes | Keys handed over by Ravi. Electricity meter reads 4521. |
+
+- ✓ Rental agreement signed and registered
+- ○ Police verification done
+
 ### Checklist
 
 | Criterion | Score |
@@ -150,7 +161,7 @@ Ask about water in summer.
 
 ### Photos
 
-- \`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1.jpg\`
+- \`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1.jpg\` — Master bedroom · KITCHEN\\_FITTINGS, MOVE\\_IN, damp corner · Kitchen at move-in: tap drips slightly.
 
 ## 2. =SUM(A1:A9) சென்னை flat
 
@@ -170,6 +181,7 @@ Ask about water in summer.
 | Price | ₹12,50,000 |
 | BHK | 3 BHK |
 | Carpet area | 1450 sq ft |
+| Floor | Ground floor |
 | Your rating | 1 out of 5 stars |
 | Street | Beach Road |
 | Location | 13.050000, 80.280000 |

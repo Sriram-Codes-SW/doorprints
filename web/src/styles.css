@@ -46,6 +46,8 @@
   --status-new: #3c5a99;
   --status-shortlisted: #1a7a43;
   --status-rejected: #b3261e;
+  --status-taken: #8a5a00; /* 5.93:1 on white */
+  --status-not-chosen: #5f6b66; /* 5.55:1 on white */
   --on-status: #ffffff;
   --star: #a86a00; /* 4.44:1 on white */
   --best: #dff3e7;
@@ -133,6 +135,8 @@
     --status-new: #9db4ea;
     --status-shortlisted: #6fd69a;
     --status-rejected: #ff8e86;
+    --status-taken: #f2c265;
+    --status-not-chosen: #b4beb9;
     --on-status: #0e1412; /* >= 8.4:1 on each status colour */
     --star: #f2b84b;
     --best: #173524;
@@ -667,6 +671,14 @@ textarea[aria-invalid='true'] {
   background: var(--status-rejected);
 }
 
+.pill-TAKEN {
+  background: var(--status-taken);
+}
+
+.pill-NOT_CHOSEN {
+  background: var(--status-not-chosen);
+}
+
 /* ---------- Radio-based segmented controls (status, checklist) ---------- */
 .options {
   display: flex;
@@ -735,6 +747,18 @@ textarea[aria-invalid='true'] {
 .option.status-REJECTED input:checked + span {
   background: var(--status-rejected);
   border-color: var(--status-rejected);
+  color: var(--on-status);
+}
+
+.option.status-TAKEN input:checked + span {
+  background: var(--status-taken);
+  border-color: var(--status-taken);
+  color: var(--on-status);
+}
+
+.option.status-NOT_CHOSEN input:checked + span {
+  background: var(--status-not-chosen);
+  border-color: var(--status-not-chosen);
   color: var(--on-status);
 }
 

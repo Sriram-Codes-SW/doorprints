@@ -104,7 +104,7 @@ class AreasScreenTest {
         compose.onNodeWithContentDescription("Radius").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(1234f) }
         waitFor("Radius: 1200 m")
-        compose.onNodeWithText("Takes effect in a later update.").assertExists()
+        compose.onNodeWithText("Used by Wake me in my hunting areas.").assertExists()
         compose.onNodeWithText("Wake me here").performScrollTo().performClick()
         compose.onNodeWithText("Save").performScrollTo().performClick()
         compose.waitUntil(5_000) { done }
