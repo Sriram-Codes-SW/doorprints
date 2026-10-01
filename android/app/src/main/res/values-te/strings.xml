@@ -52,13 +52,11 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">సేవ్ చేయడం, దిగుమతి</string>
     <string name="notif_channel_export_desc">కాపీ సేవ్ అవుతున్నప్పుడు లేదా బ్యాకప్ చదువుతున్నప్పుడు కనిపిస్తుంది</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_share">కాపీని షేర్ చేయండి</string>
+    <string name="export_share">షేర్ చేయండి</string>
     <string name="export_working">మీ కాపీ సేవ్ అవుతోంది…</string>
     <string name="export_done">సేవ్ అయింది: %1$s</string>
     <string name="export_failed">కాపీ సేవ్ చేయలేకపోయాం: %1$s</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_stop">ఈ పనిని ఆపండి</string>
+    <string name="export_stop">ఆపండి</string>
     <string name="export_problem_no_space">తగినంత ఖాళీ స్థలం లేదు</string>
     <string name="export_problem_cannot_write">ఎంచుకున్న ఫైల్ లేదా ఫోల్డర్‌లో రాయలేకపోయాం</string>
     <string name="export_problem_unknown">రాస్తున్నప్పుడు ఏదో తప్పు జరిగింది</string>
@@ -76,8 +74,7 @@
     <string name="problem_broken">దీని డేటాను చదవలేకపోయాం</string>
     <string name="problem_read_failed">దీన్ని స్టోరేజ్ నుండి చదవలేకపోయాం</string>
     <string name="problem_write_failed">రాయలేకపోయాం — ఖాళీ స్థలం చూడండి</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_open">కాపీని తెరవండి</string>
+    <string name="export_open">తెరవండి</string>
     <string name="export_ready">పంచుకోవడానికి సిద్ధం: %1$s</string>
     <string name="export_done_plain">సేవ్ అయింది.</string>
     <string name="export_notif_saved">మీ కాపీ సేవ్ అయింది</string>
@@ -142,4 +139,8 @@
     <string name="notif_channel_area_wakeup">ప్రాంత మేల్కొలుపు</string>
     <string name="notif_channel_area_wakeup_desc">మీ వెతుకులాట ప్రాంతాల్లో ఒకదానికి చేరినప్పుడు హంట్ మోడ్ సూచన</string>
     <string name="notif_area_wakeup">మీరు %1$s లో ఉన్నారు. హంట్ మోడ్ ప్రారంభించాలా?</string>
+    <!-- Wave D (2026-10-01): the notifications' own action names, which say what they act on (S4b-BL-94b): under review. -->
+    <string name="notif_copy_open">కాపీని తెరవండి</string>
+    <string name="notif_copy_share">కాపీని షేర్ చేయండి</string>
+    <string name="notif_task_stop">ఈ పనిని ఆపండి</string>
 </resources>

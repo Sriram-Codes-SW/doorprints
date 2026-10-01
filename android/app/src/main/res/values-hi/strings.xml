@@ -52,13 +52,11 @@
     <!-- Offline copy: export, import and automatic backup (Sprint 4a, S4-02/S4-04/S4-07) -->
     <string name="notif_channel_export">सहेजना और आयात</string>
     <string name="notif_channel_export_desc">जब प्रति सहेजी जा रही हो या बैकअप पढ़ा जा रहा हो तब दिखता है</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_share">प्रति साझा करें</string>
+    <string name="export_share">साझा करें</string>
     <string name="export_working">आपकी प्रति सहेजी जा रही है…</string>
     <string name="export_done">सहेजा गया: %1$s</string>
     <string name="export_failed">प्रति सहेजी नहीं जा सकी: %1$s</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_stop">यह काम रोकें</string>
+    <string name="export_stop">रोकें</string>
     <string name="export_problem_no_space">पर्याप्त खाली जगह नहीं है</string>
     <string name="export_problem_cannot_write">चुनी गई फ़ाइल या फ़ोल्डर में लिखा नहीं जा सकता</string>
     <string name="export_problem_unknown">लिखते समय कुछ गड़बड़ हो गई</string>
@@ -76,8 +74,7 @@
     <string name="problem_broken">इसका डेटा पढ़ा नहीं जा सका</string>
     <string name="problem_read_failed">इसे स्टोरेज से पढ़ा नहीं जा सका</string>
     <string name="problem_write_failed">इसे लिखा नहीं जा सका — खाली जगह देखें</string>
-    <!-- Wave D (2026-10-01): a notification action names what it does, as TalkBack reads it alone (S4b-BL-94b): under review. -->
-    <string name="export_open">प्रति खोलें</string>
+    <string name="export_open">खोलें</string>
     <string name="export_ready">साझा करने के लिए तैयार: %1$s</string>
     <string name="export_done_plain">सहेजा गया।</string>
     <string name="export_notif_saved">आपकी प्रति सहेज ली गई</string>
@@ -142,4 +139,8 @@
     <string name="notif_channel_area_wakeup">इलाक़े में जगाना</string>
     <string name="notif_channel_area_wakeup_desc">जब आप अपने किसी खोज वाले इलाक़े में पहुँचें, हंट मोड का सुझाव</string>
     <string name="notif_area_wakeup">आप %1$s में हैं। हंट मोड शुरू करें?</string>
+    <!-- Wave D (2026-10-01): the notifications' own action names, which say what they act on (S4b-BL-94b): under review. -->
+    <string name="notif_copy_open">प्रति खोलें</string>
+    <string name="notif_copy_share">प्रति साझा करें</string>
+    <string name="notif_task_stop">यह काम रोकें</string>
 </resources>
