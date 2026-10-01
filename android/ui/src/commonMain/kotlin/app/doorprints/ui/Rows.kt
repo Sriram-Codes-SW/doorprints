@@ -396,7 +396,7 @@ fun SwitchRow(
                 hintColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f).padding(end = 12.dp),
             )
-            Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+            Switch(checked = checked, onCheckedChange = null, enabled = enabled, colors = brandSwitchColors())
         }
         AnimatedVisibility(
             visible = warning != null,
