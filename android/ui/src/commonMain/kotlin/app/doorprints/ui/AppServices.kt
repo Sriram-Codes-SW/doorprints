@@ -80,6 +80,9 @@ interface AppServices {
      */
     fun rescheduleReminders() {}
 
+    /** The area wake-up (docs/11 "Design of slice 4b"): Android's geofencing; none elsewhere ([NoAreaWakeup]). */
+    val areaWakeup: AreaWakeupServices get() = NoAreaWakeup
+
     /**
      * The area wake-up (docs/11 "Design of slice 4b"): Android's geofencing, the iPhone's region monitoring
      * (`IosAreaWakeup`, S4b-BL-96); none elsewhere ([NoAreaWakeup]).
