@@ -40,7 +40,7 @@ import { ReminderBanners } from './shared/reminder-banners';
 import { ViewingReminderService } from './core/viewing-reminder.service';
 import { PwaService } from './core/pwa.service';
 import { SyncService } from './data/sync.service';
-import { GUIDE_URL } from './shared/help-link';
+import { guideUrl } from './shared/help-link';
 import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
 
 /** How many pages' scroll positions are remembered for Back and Forward (older ones are dropped). */
@@ -92,7 +92,7 @@ const NAV_ICONS = {
         Help (S4b-BL-60): the user guide, in a new tab. Wider screens only; on phones it is inside Your data, where the
         bottom bar has no room for it and the top row is the brand and the language.
       -->
-      <a class="help-link" [href]="guideUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
+      <a class="help-link" [href]="guideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
         {{ 'help.link' | t }} <span aria-hidden="true">↗</span>
       </a>
       <!--
@@ -570,7 +570,7 @@ export class App {
   protected readonly announcer = inject(Announcer);
   protected readonly ai = inject(AiService);
   protected readonly icons = NAV_ICONS;
-  protected readonly guideUrl = GUIDE_URL;
+  protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
   // Constructing it registers the service worker and starts listening for install and update events (S4-05).
   private readonly pwa = inject(PwaService);
   private readonly sync = inject(SyncService);

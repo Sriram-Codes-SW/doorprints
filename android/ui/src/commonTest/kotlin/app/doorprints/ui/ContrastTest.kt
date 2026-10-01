@@ -50,6 +50,7 @@ class ContrastTest {
     private fun pairs(s: ColorScheme, x: DoorprintsColors): List<Check> {
         val text = 4.5
         val ui = 3.0
+        val sw = BrandSwitchPalette(s)
         val list = mutableListOf(
             Check("onPrimary on primary", s.onPrimary, s.primary, text),
             Check("onPrimaryContainer on primaryContainer", s.onPrimaryContainer, s.primaryContainer, text),
@@ -74,7 +75,13 @@ class ContrastTest {
             // unchecked switch's track.
             list += Check("star on $bgName", x.star, bg, ui)
             list += Check("outline on $bgName", s.outline, bg, ui)
+            // The switch against the page: the checked track, the unchecked track's border.
+            list += Check("switch checked track on $bgName", sw.checkedTrack, bg, ui)
+            list += Check("switch unchecked border on $bgName", sw.uncheckedBorder, bg, ui)
         }
+        // The thumb against its track, which is what shows the state (Wave E: the unchecked one was 2.93:1 in light).
+        list += Check("switch checked thumb on track", sw.checkedThumb, sw.checkedTrack, ui)
+        list += Check("switch unchecked thumb on track", sw.uncheckedThumb, sw.uncheckedTrack, ui)
         return list
     }
 
