@@ -188,7 +188,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly statusKey = STATUS_KEY;
   protected readonly statusIcon = STATUS_ICON;
   protected readonly filterIcon: Readonly<Record<StatusFilter, string>> = { ALL: '', ...STATUS_ICON };
-  protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED'];
+  protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
   protected readonly sorts: readonly { key: SortKey; labelKey: TKey }[] = [
     { key: 'recent', labelKey: 'map.sort.recent' },
     { key: 'score', labelKey: 'map.sort.score' },

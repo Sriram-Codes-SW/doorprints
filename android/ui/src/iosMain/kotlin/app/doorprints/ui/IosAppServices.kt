@@ -264,7 +264,7 @@ private class IosHouseFormServices(private val repository: CommonRepository) : H
     @Composable
     override fun rememberPhotoSources(onPicked: (PickedPhoto) -> Unit): PhotoSources = NoPhotoSources
 
-    override suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult =
+    override suspend fun addPhoto(houseId: String, photo: PickedPhoto, tags: List<String>): Repository.AddPhotoResult =
         Repository.AddPhotoResult.UNREADABLE
 
     /**

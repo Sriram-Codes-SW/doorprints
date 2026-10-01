@@ -26,6 +26,12 @@ import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.MoveInItem
+import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.api.PhotoChangeDto
+import app.doorprints.shared.api.PhotoMetaDto
+import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRules
 import kotlin.test.Test
@@ -112,6 +118,54 @@ class MappersTest {
         assertEquals(answers, converters.jsonToAnswers(text))
         assertNull(converters.answersToJson(emptyList()))
         assertNull(converters.jsonToAnswers("not json"))
+    }
+
+    @Test
+    fun theMoveInAndThePhotoMetaSurviveEveryMappingAndAreCoercedOnTheWayIn() {
+        // Slice 5: the move-in after the answers on the wire, in a copy and back; a bad item is dropped on the way in.
+        val moveIn = MoveIn(1_790_812_800_000L, "Keys", listOf(MoveInItem("mi_keys", "Keys received", true, 0)))
+        val h = house.copy(status = HouseStatus.TAKEN, moveIn = moveIn)
+        assertEquals(moveIn, h.toDto().moveIn)
+        assertEquals("TAKEN", h.toDto().status)
+        assertEquals(moveIn, h.toExport().moveIn)
+        assertEquals(h.copy(dirty = false), h.toDto().toEntity())
+        assertEquals(moveIn, h.toExport().toEntity().moveIn)
+        val odd = moveIn.copy(items = moveIn.items!! + MoveInItem("a/b", "Bad id"), date = 0)
+        assertEquals(MoveIn(notes = "Keys", items = moveIn.items), h.toDto().copy(moveIn = odd).toEntity().moveIn)
+        assertNull(h.toDto().copy(moveIn = MoveIn()).toEntity().moveIn)
+        assertEquals(HouseStatus.NOT_CHOSEN, h.toDto().copy(status = "NOT_CHOSEN").toEntity().status)
+        // Room's column: the move-in as JSON text, and back.
+        val converters = Converters()
+        assertEquals(moveIn, converters.jsonToMoveIn(converters.moveInToJson(moveIn)))
+        assertNull(converters.moveInToJson(MoveIn()))
+        assertEquals(listOf("MOVE_IN", "damp corner"), converters.jsonToTags(converters.tagsToJson(listOf("MOVE_IN", "damp corner"))))
+        assertNull(converters.tagsToJson(emptyList()))
+        assertNull(converters.jsonToTags("not json"))
+        // A photo's meta: pulled coerced, written into the row, sent as the PUT body, and exported only when set.
+        val change = PhotoChangeDto(id = "p1", houseId = "h1", roomId = "r1", tags = listOf("leak", "LEAK", "corner"), caption = "Tap", metaUpdatedAt = 9)
+        assertEquals(PhotoMeta("r1", listOf("LEAK", "corner"), "Tap", 9), change.meta())
+        val photo = PhotoEntity("p1", "h1", "/p/p1.jpg", uploaded = true, createdAt = 1).withMeta(change.meta(), dirty = true)
+        assertEquals(PhotoMetaDto("r1", listOf("LEAK", "corner"), "Tap", 9), photo.toMetaDto())
+        assertTrue(photo.metaDirty)
+        assertEquals(ExportPhoto("p1", "h1", "p1.jpg", 1, "r1", listOf("LEAK", "corner"), "Tap", 9), photo.toExport())
+        assertEquals(ExportPhoto("p1", "h1", "p1.jpg", 1), PhotoEntity("p1", "h1", "/p/p1.jpg", createdAt = 1).toExport())
+        // A file's photo with meta is written with it, marked to be sent once uploaded.
+        val imported = photo.toExport().toEntity("/p/p1.jpg")
+        assertEquals(photo.meta, imported.meta)
+        assertTrue(imported.metaDirty)
+        assertFalse(imported.uploaded)
+    }
+
+    @Test
+    fun aServerThatWritesMetaUpdatedAtAsAnInstantStillSyncs() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val iso = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":\"2026-09-21T14:13:20Z\"}")
+        assertEquals(1_790_000_000_000L, iso.metaUpdatedAt)
+        val number = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":5}")
+        assertEquals(5L, number.metaUpdatedAt)
+        val absent = json.decodeFromString(PhotoChangeDto.serializer(), "{\"id\":\"p1\",\"houseId\":\"h1\",\"metaUpdatedAt\":null}")
+        assertNull(absent.metaUpdatedAt)
+        assertEquals(0L, absent.meta().metaUpdatedAt)
     }
 
     @Test

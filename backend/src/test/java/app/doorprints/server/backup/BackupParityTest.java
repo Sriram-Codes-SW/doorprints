@@ -132,6 +132,20 @@ class BackupParityTest {
             });
         }
         assertThat(answers).isEqualTo(components(app.doorprints.server.house.HouseAnswer.class));
+        // Slice 5: the fullest move-in carries exactly the components of HouseMoveIn, and the union of the items' keys
+        // (done only when true) exactly those of its Item, in order.
+        var moveIn = new java.util.ArrayList<String>();
+        var itemKeys = new java.util.LinkedHashSet<String>();
+        for (var house : root.get("houses")) {
+            if (house.has("moveIn")) {
+                var keys = new java.util.ArrayList<String>(house.get("moveIn").propertyNames());
+                if (keys.size() > moveIn.size()) { moveIn.clear(); moveIn.addAll(keys); }
+                house.get("moveIn").get("items").forEach(item -> item.propertyNames().forEach(itemKeys::add));
+            }
+        }
+        assertThat(moveIn).isEqualTo(components(app.doorprints.server.house.HouseMoveIn.class));
+        assertThat(components(app.doorprints.server.house.HouseMoveIn.Item.class).stream().filter(itemKeys::contains).toList())
+                .isEqualTo(components(app.doorprints.server.house.HouseMoveIn.Item.class));
         assertThat(keysOf(root, "visits")).isEqualTo(components(BackupVisit.class));
         assertThat(keysOf(root, "photos")).isEqualTo(components(BackupPhoto.class));
         assertThat(keysOf(root, "brokers")).isEqualTo(components(BackupBroker.class));

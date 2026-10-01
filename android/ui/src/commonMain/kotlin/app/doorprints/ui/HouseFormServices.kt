@@ -44,9 +44,10 @@ interface HouseFormServices {
 
     /**
      * Shrinks [photo] and stores it as a photo of house [houseId] (Android: `AndroidRepository.addPhoto`, which drops
-     * the Exif block). Runs off the main thread.
+     * the Exif block), with [tags] already chosen (slice 5: the Moving in card's *Add a photo* passes MOVE_IN). Runs
+     * off the main thread.
      */
-    suspend fun addPhoto(houseId: String, photo: PickedPhoto): Repository.AddPhotoResult
+    suspend fun addPhoto(houseId: String, photo: PickedPhoto, tags: List<String> = emptyList()): Repository.AddPhotoResult
 
     /**
      * What the image loader (Coil) is given for the stored photo [photoId] (Android: the file). By id, not by the row's

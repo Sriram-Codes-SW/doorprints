@@ -20,9 +20,12 @@ package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseAnswer;
+import app.doorprints.server.house.HouseMoveIn;
+import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.photo.PhotoDto;
+import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.record.Record;
 import app.doorprints.server.visit.Visit;
 
@@ -163,11 +166,16 @@ final class BackupMapper {
                 .filter(java.util.Objects::nonNull).sorted(AREA_NOTE_ORDER).toList();
 
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers; else /1.
+        var backupPhotos = groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
+                .map(BackupMapper::photo).toList();
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers, a move-in or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
                 || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
                 || !areas.isEmpty() || !places.isEmpty() || !areaNotes.isEmpty()
-                || backupHouses.stream().anyMatch(h -> h.answers() != null);
+                || backupHouses.stream().anyMatch(h -> h.answers() != null || h.moveIn() != null
+                        || h.status() == HouseStatus.TAKEN || h.status() == HouseStatus.NOT_CHOSEN)
+                || backupPhotos.stream().anyMatch(p -> p.roomId() != null || p.tags() != null || p.caption() != null
+                        || p.metaUpdatedAt() != null);
 
         return new BackupData(
                 needsV2 ? BackupFormat.ID_WITH_BROKERS : BackupFormat.ID,
@@ -175,8 +183,7 @@ final class BackupMapper {
                 backupHouses,
                 groupByHouse(liveVisits, Visit::getHouseId, VISIT_ORDER, houseOrder).stream()
                         .map(BackupMapper::visit).toList(),
-                groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
-                        .map(BackupMapper::photo).toList(),
+                backupPhotos,
                 brokers,
                 criteria,
                 preferences,
@@ -436,7 +443,7 @@ final class BackupMapper {
                 h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
                 h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), h.getBrokerId(),
+                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getBrokerId(),
                 sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
     }
 
@@ -446,7 +453,10 @@ final class BackupMapper {
     }
 
     private static BackupPhoto photo(PhotoDto p) {
-        return new BackupPhoto(p.id(), p.houseId(), BackupFormat.photoFileName(p.id()), millis(p.createdAt()));
+        // The meta keys are written only when set, so a photo nobody described is the row it always was.
+        return new BackupPhoto(p.id(), p.houseId(), BackupFormat.photoFileName(p.id()), millis(p.createdAt()),
+                PhotoMeta.orNull(p.roomId()), p.tags() == null || p.tags().isEmpty() ? null : p.tags(),
+                PhotoMeta.orNull(p.caption()), p.metaUpdatedAt() > 0 ? p.metaUpdatedAt() : null);
     }
 
     /** Checklist scores with the keys in alphabetical order, so the JSON is byte-stable. */

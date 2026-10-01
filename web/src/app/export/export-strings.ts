@@ -192,6 +192,12 @@ export const EXPORT_STRING_KEYS = [
   'col.place',
   'col.km',
   'col.noteSource',
+  'section.movingIn',
+  'col.room',
+  'col.tags',
+  'col.caption',
+  'houseStatus.TAKEN',
+  'houseStatus.NOT_CHOSEN',
   'status.NEW',
   'status.SHORTLISTED',
   'status.REJECTED',
@@ -370,6 +376,12 @@ const EXPORT_EN: ExportDict = {
   'col.place': 'Place',
   'col.km': 'Distance (km)',
   'col.noteSource': 'From',
+  'section.movingIn': 'Moving in',
+  'col.room': 'Room',
+  'col.tags': 'Tags',
+  'col.caption': 'Caption',
+  'houseStatus.TAKEN': 'Taken',
+  'houseStatus.NOT_CHOSEN': 'Not chosen',
   'status.NEW': 'New',
   'status.SHORTLISTED': 'Shortlisted',
   'status.REJECTED': 'Rejected',
@@ -549,6 +561,12 @@ const EXPORT_HI: ExportDict = {
   'col.place': 'जगह',
   'col.km': 'दूरी (किमी)',
   'col.noteSource': 'स्रोत',
+  'section.movingIn': 'रहने आना',
+  'col.room': 'कमरा',
+  'col.tags': 'टैग',
+  'col.caption': 'कैप्शन',
+  'houseStatus.TAKEN': 'ले लिया',
+  'houseStatus.NOT_CHOSEN': 'नहीं चुना',
   'status.NEW': 'नया',
   'status.SHORTLISTED': 'चुना गया',
   'status.REJECTED': 'अस्वीकृत',
@@ -728,6 +746,12 @@ const EXPORT_TA: ExportDict = {
   'col.place': 'இடம்',
   'col.km': 'தூரம் (கி.மீ.)',
   'col.noteSource': 'மூலம்',
+  'section.movingIn': 'குடிபுகுதல்',
+  'col.room': 'அறை',
+  'col.tags': 'குறிச்சொற்கள்',
+  'col.caption': 'தலைப்பு',
+  'houseStatus.TAKEN': 'எடுத்தது',
+  'houseStatus.NOT_CHOSEN': 'தேர்ந்தெடுக்கவில்லை',
   'status.NEW': 'புதியது',
   'status.SHORTLISTED': 'தேர்வானது',
   'status.REJECTED': 'நிராகரிக்கப்பட்டது',
@@ -907,6 +931,12 @@ const EXPORT_TE: ExportDict = {
   'col.place': 'స్థలం',
   'col.km': 'దూరం (కి.మీ.)',
   'col.noteSource': 'మూలం',
+  'section.movingIn': 'చేరడం',
+  'col.room': 'గది',
+  'col.tags': 'ట్యాగ్‌లు',
+  'col.caption': 'క్యాప్షన్',
+  'houseStatus.TAKEN': 'తీసుకున్నది',
+  'houseStatus.NOT_CHOSEN': 'ఎంచుకోలేదు',
   'status.NEW': 'కొత్తది',
   'status.SHORTLISTED': 'ఎంపికైంది',
   'status.REJECTED': 'తిరస్కరించబడింది',
@@ -962,8 +992,9 @@ export class ExportStrings {
     return this.lookup(`check.${key}`) ?? key;
   }
 
+  /** Translated status of a house; slice 5's TAKEN and NOT_CHOSEN are `houseStatus.*` words, the older three `status.*`. */
   status(name: string): string {
-    return this.lookup(`status.${name}`) ?? name;
+    return this.lookup(`status.${name}`) ?? this.lookup(`houseStatus.${name}`) ?? name;
   }
 
   source(name: string): string {

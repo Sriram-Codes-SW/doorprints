@@ -119,7 +119,7 @@ public class HouseQueries {
         try {
             return HouseStatus.valueOf(s.strip().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("status must be NEW, SHORTLISTED or REJECTED");
+            throw new IllegalArgumentException("status must be NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN");
         }
     }
 

@@ -20,7 +20,11 @@ import type { TKey } from '../i18n/en';
 import { evaluateScore } from '../shared/scoring';
 import type { Scoring } from '../shared/scoring';
 
-export type HouseStatus = 'NEW' | 'SHORTLISTED' | 'REJECTED';
+/**
+ * `TAKEN` (the house the person chose; at most one, `HouseStatusRules`) and `NOT_CHOSEN` (the others once one is
+ * taken) came with slice 5 (docs/11 5.24); `REJECTED` keeps its meaning, rejected after looking.
+ */
+export type HouseStatus = 'NEW' | 'SHORTLISTED' | 'REJECTED' | 'TAKEN' | 'NOT_CHOSEN';
 export type PriceType = 'RENT' | 'SALE';
 export type VisitSource = 'AUTO' | 'MANUAL';
 /**
@@ -123,6 +127,34 @@ export const ROOM_TYPE_KEY: Readonly<Record<RoomType, TKey>> = {
 export type AnswerStatus = 'OPEN' | 'ANSWERED' | 'SKIPPED';
 
 /**
+ * One item of a house's move-in checklist (docs/11 5.24, slice 5). Keys in order: id, text, done, sort. `done` is
+ * written only when true.
+ */
+export interface MoveInItem {
+  /** 1..64 characters, matching [A-Za-z0-9._-]{1,64}, unique within the house. */
+  id: string;
+  /** 1..200 characters. */
+  text: string;
+  /** Written only when true. */
+  done?: boolean;
+  /** Integer >= 0, the order on the card. */
+  sort: number;
+}
+
+/**
+ * Moving in (docs/11 5.24, slice 5): stored nested in the house after `answers`. Keys in order: date, notes, items.
+ * Absent (null) when it has no date, no notes and no items, never an empty object in a file.
+ */
+export interface MoveIn {
+  /** Epoch milliseconds (> 0) of the move-in date; absent when not set. */
+  date?: number;
+  /** At most 2000 characters; absent when empty. */
+  notes?: string;
+  /** At most 30 items. */
+  items?: MoveInItem[];
+}
+
+/**
  * A question asked about one house (docs/11 5.5, slice 3a). Keys in order: id, questionId, text, answer, status, sort.
  * `text` is the question as asked (a snapshot), so the copy reads even when the bank question is edited or deleted.
  * A non-blank `answer` with status OPEN reads as ANSWERED, and ANSWERED with no answer reads as OPEN.
@@ -169,6 +201,8 @@ export interface HouseDto {
   rooms?: HouseRoom[] | null;
   /** At most 60 questions asked about this house (slice 3a); absent when empty, never an empty array in a file. */
   answers?: HouseAnswer[] | null;
+  /** Moving in (slice 5), right after `answers`; absent when it has no date, no notes and no items. */
+  moveIn?: MoveIn | null;
   /**
    * The record id of the broker this house is linked to (slice 1b); no foreign key, so an id that names no broker
    * reads as "no broker". The house keeps copies of the broker's name and phone in `contactName`/`contactPhone`.
@@ -209,6 +243,11 @@ export interface PhotoChangeDto {
   updatedAt?: string | null;
   deleted: boolean;
   syncVersion: number;
+  /** Photo meta (slice 5, docs/11 5.7): the room, tags and caption, with `metaUpdatedAt` (epoch ms, 0 = never edited). */
+  roomId?: string | null;
+  tags?: string[] | null;
+  caption?: string | null;
+  metaUpdatedAt?: number | null;
 }
 
 /**
@@ -259,7 +298,7 @@ export const CHECKLIST: readonly ChecklistItem[] = [
   { key: 'commute', labelKey: 'check.commute' },
 ];
 
-export const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED'];
+export const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
 export const LOCATION_SOURCES: readonly LocationSource[] = ['GPS', 'MAP', 'APPROX'];
 
 /** Translation key for each status label. */
@@ -267,6 +306,8 @@ export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = {
   NEW: 'status.NEW',
   SHORTLISTED: 'status.SHORTLISTED',
   REJECTED: 'status.REJECTED',
+  TAKEN: 'status.TAKEN',
+  NOT_CHOSEN: 'status.NOT_CHOSEN',
 };
 
 /** Icon shown next to the status text, so status is never conveyed by colour alone (WCAG 1.4.1). */
@@ -274,16 +315,21 @@ export const STATUS_ICON: Readonly<Record<HouseStatus, string>> = {
   NEW: '●',
   SHORTLISTED: '★',
   REJECTED: '✕',
+  TAKEN: '⌂',
+  NOT_CHOSEN: '–',
 };
 
 /**
  * Marker colours on the (light) map tiles. All reach at least 5:1 against white; SHORTLISTED was
- * darkened from #1F8A4C (4.38:1) to #1A7A43 (5.37:1). Keep in sync with --status-* in styles.css.
+ * darkened from #1F8A4C (4.38:1) to #1A7A43 (5.37:1). TAKEN (amber, 5.93:1) and NOT_CHOSEN (grey, 5.55:1) came with
+ * slice 5; neither is the path trace's purple. Keep in sync with --status-* in styles.css.
  */
 export const STATUS_COLOR: Readonly<Record<HouseStatus, string>> = {
   NEW: '#3C5A99',
   SHORTLISTED: '#1A7A43',
   REJECTED: '#B3261E',
+  TAKEN: '#8A5A00',
+  NOT_CHOSEN: '#5F6B66',
 };
 
 /**
@@ -318,6 +364,7 @@ export function newHouse(lat: number, lon: number, locationSource: LocationSourc
     cost: null,
     rooms: null,
     answers: null,
+    moveIn: null,
     brokerId: null,
     checklist: {},
     deleted: false,

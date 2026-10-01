@@ -18,4 +18,9 @@
 
 package app.doorprints.server.house;
 
-public enum HouseStatus { NEW, SHORTLISTED, REJECTED }
+/**
+ * {@code TAKEN} (the house the person moves into) and {@code NOT_CHOSEN} (a house left when another was taken) arrive
+ * with slice 5 (docs/11 section 5.24); {@code REJECTED} keeps its meaning, rejected after looking. A backup with
+ * either new status is {@code doorprints-backup/2}.
+ */
+public enum HouseStatus { NEW, SHORTLISTED, REJECTED, TAKEN, NOT_CHOSEN }

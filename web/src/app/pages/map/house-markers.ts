@@ -38,29 +38,33 @@ const STATUS_COLOUR: Expression = [
   STATUS_COLOR.SHORTLISTED,
   'REJECTED',
   STATUS_COLOR.REJECTED,
+  'TAKEN',
+  STATUS_COLOR.TAKEN,
+  'NOT_CHOSEN',
+  STATUS_COLOR.NOT_CHOSEN,
   '#888888',
 ];
 
 const IS_APPROX: Expression = ['==', ['get', 'approx'], true];
 
 export const HOUSE_PAINT = {
-  // Size also encodes status (shortlisted larger, rejected smaller), so colour is not the only cue.
+  // Size also encodes status (shortlisted and taken larger, rejected and not chosen smaller), so colour is not the only cue.
   'circle-radius': [
     'interpolate',
     ['linear'],
     ['zoom'],
     8,
-    ['match', ['get', 'status'], 'SHORTLISTED', 7, 'REJECTED', 4, 5],
+    ['match', ['get', 'status'], 'SHORTLISTED', 7, 'TAKEN', 7, 'REJECTED', 4, 'NOT_CHOSEN', 5, 5],
     14,
-    ['match', ['get', 'status'], 'SHORTLISTED', 11, 'REJECTED', 6, 8],
+    ['match', ['get', 'status'], 'SHORTLISTED', 11, 'TAKEN', 11, 'REJECTED', 6, 'NOT_CHOSEN', 7, 8],
     18,
-    ['match', ['get', 'status'], 'SHORTLISTED', 15, 'REJECTED', 9, 12],
+    ['match', ['get', 'status'], 'SHORTLISTED', 15, 'TAKEN', 15, 'REJECTED', 9, 'NOT_CHOSEN', 10, 12],
   ],
   'circle-color': STATUS_COLOUR,
   // A hollow ring for an approximate spot: no fill, the stroke takes the status colour instead of white.
   'circle-stroke-color': ['case', IS_APPROX, STATUS_COLOUR, '#ffffff'],
-  'circle-stroke-width': ['match', ['get', 'status'], 'SHORTLISTED', 3, 2],
-  'circle-opacity': ['case', IS_APPROX, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 1]],
+  'circle-stroke-width': ['match', ['get', 'status'], 'SHORTLISTED', 3, 'TAKEN', 3, 2],
+  'circle-opacity': ['case', IS_APPROX, 0, ['match', ['get', 'status'], 'REJECTED', 0.75, 'NOT_CHOSEN', 0.6, 1]],
 } as const;
 
 export interface HouseFeature {

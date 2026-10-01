@@ -19,6 +19,7 @@
 package app.doorprints.server.photo;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -26,8 +27,19 @@ import java.util.UUID;
  *
  * <p>Null semantics as in {@link app.doorprints.server.house.HouseDto}: every field is written. {@code sizeBytes} is
  * {@code null} for a tombstone, whose bytes are gone; {@code contentType} keeps its value so a client can tell
- * what the photo was. Read-only: photos are created by the multipart upload, not by sending this record.
+ * what the photo was. Slice 5 adds the person's {@code roomId}, {@code tags}, {@code caption} and
+ * {@code metaUpdatedAt} (0 = never edited), written like the rest (null, not absent; the tags {@code null} when none), so
+ * the change feed carries an edit. Read-only: photos are created by the multipart upload, not by sending this record.
  */
 public record PhotoDto(UUID id, UUID houseId, String contentType, Integer sizeBytes, Instant createdAt,
-                       Instant updatedAt, boolean deleted, long syncVersion) {
+                       Instant updatedAt, boolean deleted, long syncVersion,
+                       String roomId, List<String> tags, String caption, long metaUpdatedAt) {
+
+    /** For the JPQL constructor expressions: {@code tags} arrives as the column's JSON text. */
+    public PhotoDto(UUID id, UUID houseId, String contentType, Integer sizeBytes, Instant createdAt,
+                    Instant updatedAt, boolean deleted, long syncVersion,
+                    String roomId, String tagsJson, String caption, long metaUpdatedAt) {
+        this(id, houseId, contentType, sizeBytes, createdAt, updatedAt, deleted, syncVersion, roomId,
+                PhotoMeta.parseTags(tagsJson), caption, metaUpdatedAt);
+    }
 }

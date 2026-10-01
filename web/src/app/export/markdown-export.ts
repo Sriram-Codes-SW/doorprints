@@ -30,7 +30,7 @@ import {
 import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
 import { brokerLine } from '../shared/broker';
-import { answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -199,6 +199,20 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push('');
   }
 
+  // Moving in (slice 5), after the distances and before the checklist: date, notes, then the items with a tick.
+  const movingIn = movingInView(entry, stringsOf(bundle));
+  if (movingIn.facts.length || movingIn.items.length) {
+    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.movingIn'))}`, '');
+    if (movingIn.facts.length) {
+      out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
+      out.push(separator(2));
+      for (const [name, value] of movingIn.facts) out.push(row([name, value]));
+      out.push('');
+    }
+    for (const item of movingIn.items) out.push(`- ${item.done ? '✓' : '○'} ${escapeMarkdown(item.text)}`);
+    if (movingIn.items.length) out.push('');
+  }
+
   const checklist = checklistEntries(house.checklist);
   if (checklist.length) {
     out.push(`### ${escapeMarkdown(tr(dict, 'house.checklist'))}`, '');
@@ -228,7 +242,10 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
 
   if (photos.length) {
     out.push(`### ${escapeMarkdown(tr(dict, 'house.photos'))}`, '');
-    for (const photo of photos) out.push(`- \`${photoFileName(photo.id)}\``);
+    for (const photo of photos) {
+      const note = photoNote(entry, photo, stringsOf(bundle));
+      out.push(`- \`${photoFileName(photo.id)}\`${note ? ` — ${escapeMarkdown(note)}` : ''}`);
+    }
     out.push('');
   }
 

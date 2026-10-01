@@ -60,7 +60,7 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
     locality: 'Adyar',
     lat: 13.006,
     lon: 80.2574,
-    status: 'SHORTLISTED',
+    status: 'TAKEN',
     price: 32000,
     priceType: 'RENT',
     bedrooms: 2,
@@ -119,6 +119,15 @@ export const FIXTURE_HOUSES: HouseRecord[] = [
       },
       { id: 'a2222222-2222-4222-8222-222222222222', text: 'Is the terrace open to tenants?', status: 'OPEN', sort: 1 },
     ],
+    // Slice 5: house 1 is the one taken; the move-in date is 2026-10-01 (00:00 UTC), one item ticked and one not.
+    moveIn: {
+      date: 1790812800000,
+      notes: 'Keys handed over by Ravi. Electricity meter reads 4521.',
+      items: [
+        { id: 'mi_agreement', text: 'Rental agreement signed and registered', done: true, sort: 0 },
+        { id: 'mi_police', text: 'Police verification done', sort: 1 },
+      ],
+    },
     checklist: { water: 5, power: 3, parking: 4, newItemFromNewerApp: 2 },
     createdAt: '2026-09-01T06:00:00.000Z',
     updatedAt: '2026-09-10T08:30:00.000Z',
@@ -376,6 +385,11 @@ export const FIXTURE_PHOTOS: PhotoRecord[] = [
     deleted: false,
     syncVersion: 2,
     uploaded: true,
+    // Slice 5: the room, tags (two fixed, one custom), caption and meta stamp `docs/schemas/backup-sample.json` carries.
+    roomId: 'c1111111-1111-4111-8111-111111111111',
+    tags: ['KITCHEN_FITTINGS', 'MOVE_IN', 'damp corner'],
+    caption: 'Kitchen at move-in: tap drips slightly.',
+    metaUpdatedAt: 1790000000000,
   },
   {
     // House 3's photo, created two days *before* house 1's: the second half of the interleaving pair.
@@ -474,9 +488,27 @@ export const FIXTURE_PHOTO_DATA_URIS: ReadonlyMap<string, string> = new Map(
 
 export const FIXTURE_OPTIONS: ExportOptions = { ...DEFAULT_EXPORT_OPTIONS, lang: 'en' };
 
-export function fixtureBundle(options: Partial<ExportOptions> = {}): ExportBundle {
+/**
+ * The fixture's houses with house 1 back to SHORTLISTED (the sample has it TAKEN, slice 5): for the tests of the
+ * "shortlisted only" scope and photo option, which need a shortlisted house.
+ */
+export const FIXTURE_SHORTLISTED_HOUSES: HouseRecord[] = FIXTURE_HOUSES.map((h) => (h.status === 'TAKEN' ? { ...h, status: 'SHORTLISTED' } : h));
+
+/**
+ * The fixture's houses as the `/1` tests need them: no rooms, answers or moving in, and house 1 SHORTLISTED instead of
+ * TAKEN, so only what a test adds decides what the copy holds (a TAKEN house, `moveIn` or a photo's meta would make
+ * it `/2`). Their photos are {@link FIXTURE_PLAIN_PHOTOS}.
+ */
+export const FIXTURE_PLAIN_HOUSES: HouseRecord[] = FIXTURE_SHORTLISTED_HOUSES.map((h) => ({ ...h, rooms: null, answers: null, moveIn: null }));
+
+/** The fixture's photos without the meta of slice 5. */
+export const FIXTURE_PLAIN_PHOTOS: PhotoRecord[] = FIXTURE_PHOTOS.map(
+  ({ roomId: _r, tags: _t, caption: _c, metaUpdatedAt: _m, metaDirty: _d, ...photo }) => photo,
+);
+
+export function fixtureBundle(options: Partial<ExportOptions> = {}, houses: readonly HouseRecord[] = FIXTURE_HOUSES): ExportBundle {
   return collect({
-    houses: FIXTURE_HOUSES,
+    houses,
     visits: FIXTURE_VISITS,
     photos: FIXTURE_PHOTOS,
     brokers: FIXTURE_BROKERS,

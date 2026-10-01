@@ -37,8 +37,10 @@ import {
   recordToDto,
   tryHouseFromDto,
   tryRecordFromDto,
+  photoMetaOf,
   tryVisitFromDto,
   visitToDto,
+  withPhotoMeta,
 } from './records';
 import { keepLocalRecord } from './sync-rules';
 import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from './records';
@@ -322,7 +324,7 @@ export class SyncService {
     const visits = (await this.store.dirtyVisits()).length;
     const records = (await this.store.dirtyRecords()).length;
     const photos = (await this.store.allPhotos()).filter(
-      (p) => (p.deleted && p.uploaded) || (!p.deleted && !p.uploaded && !!p.blob),
+      (p) => (p.deleted && p.uploaded) || (!p.deleted && ((!p.uploaded && !!p.blob) || p.metaDirty === true)),
     ).length;
     return houses + visits + records + photos;
   }
@@ -500,7 +502,10 @@ export class SyncService {
     // Deletes first, so a house that lost a photo does not re-upload it.
     const photoDeletes = photos.filter((p) => p.deleted && p.uploaded);
     const photoUploads = photos.filter((p) => !p.deleted && !p.uploaded && p.blob);
-    const total = houses.length + visits.length + records.length + photoDeletes.length + photoUploads.length;
+    // Photo meta (slice 5): edits the server has not seen, sent after the bytes so the photo is there to describe.
+    const uploading = new Set(photoUploads.map((p) => p.id));
+    const metaPushes = photos.filter((p) => !p.deleted && p.metaDirty === true && (p.uploaded || uploading.has(p.id)));
+    const total = houses.length + visits.length + records.length + photoDeletes.length + photoUploads.length + metaPushes.length;
     let pushed = 0;
     const step = () => {
       pushed++;
@@ -544,7 +549,22 @@ export class SyncService {
       if (!bytes) continue;
       await this.call(gen, () => this.api.uploadPhoto(photo.houseId, bytes, photo.id));
       this.live(gen);
-      await this.store.putPhotoRecord({ ...photo, uploaded: true });
+      // The stored row, not the one read before the upload: a meta edit made meanwhile stays.
+      await this.store.putPhotoRecord({ ...((await this.store.getPhoto(photo.id)) ?? photo), uploaded: true });
+      this.live(gen);
+      step();
+    }
+    for (const listed of metaPushes) {
+      const photo = await this.store.getPhoto(listed.id);
+      this.live(gen);
+      if (!photo || photo.deleted || photo.metaDirty !== true) continue;
+      const meta = photoMetaOf(photo);
+      const saved = await this.call(gen, () => this.api.putPhotoMeta(photo.id, meta));
+      this.live(gen);
+      // The server keeps the newer meta and answers it: an older one of ours changes nothing there (last write wins).
+      await this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {}));
+      this.live(gen);
+      await this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt);
       this.live(gen);
       step();
     }
@@ -709,7 +729,12 @@ export class SyncService {
         }
         continue;
       }
-      if (local) continue;
+      if (local) {
+        // A photo already here: only its meta can differ, and the newer `metaUpdatedAt` wins (slice 5).
+        if (!local.deleted && (await this.store.applyPhotoMetaFromServer(change.id, photoMetaOf(change)))) pulled++;
+        this.live(gen);
+        continue;
+      }
       const house = houses.get(change.houseId);
       if (!house || house.deleted) continue; // the house is gone or deleted here: nothing to attach the photo to
       const photoId = change.id;
@@ -726,7 +751,7 @@ export class SyncService {
       }
       // The download may have taken a while: "Remove all data" during it must not see this blob arrive afterwards.
       this.live(gen);
-      const record: PhotoRecord = {
+      const record: PhotoRecord = withPhotoMeta({
         id: change.id,
         houseId: change.houseId,
         blob,
@@ -737,7 +762,7 @@ export class SyncService {
         deleted: false,
         syncVersion: version,
         uploaded: true,
-      };
+      }, photoMetaOf(change), false);
       try {
         await this.store.putPhotoRecord(record);
       } catch (err: unknown) {

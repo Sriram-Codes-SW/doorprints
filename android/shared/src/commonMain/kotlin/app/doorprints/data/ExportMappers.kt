@@ -28,6 +28,7 @@ import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
+import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordRules
 
@@ -41,8 +42,8 @@ fun HouseEntity.toExport() = ExportHouse(
     status = status.name, price = price, priceType = priceType, bedrooms = bedrooms, rating = rating,
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
-    answers = answers?.takeIf { it.isNotEmpty() }, brokerId = brokerId, checklist = checklist, createdAt = createdAt,
-    updatedAt = updatedAt,
+    answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), brokerId = brokerId,
+    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
 )
 
 /**
@@ -57,7 +58,7 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     // A value outside its range reads as unknown, an empty `cost` as none (slice 1a; the web's reader agrees).
     areaSqft = HouseValues.areaSqft(areaSqft), locationSource = LocationSource.orNull(locationSource),
     cost = cost?.coerced(), rooms = HouseRooms.coerced(rooms), answers = HouseAnswers.coerced(answers),
-    brokerId = brokerId?.takeIf(RecordRules::isValidId),
+    moveIn = MoveIn.coerced(moveIn), brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
 )
@@ -76,7 +77,19 @@ fun ExportVisit.toEntity(dirty: Boolean = true) = VisitEntity(
  * The file name a photo gets inside a copy. The row id is a UUID, so `<id>.jpg` is unique, is safe on every file
  * system and needs no escaping — and it is what an import looks for in the ZIP.
  */
-fun PhotoEntity.toExport() = ExportPhoto(id = id, houseId = houseId, fileName = "$id.jpg", createdAt = createdAt)
+fun PhotoEntity.toExport() = ExportPhoto(
+    id = id, houseId = houseId, fileName = "$id.jpg", createdAt = createdAt,
+    // The meta (slice 5), each key only when set, as the format writes them.
+    roomId = roomId, tags = tags?.takeIf { it.isNotEmpty() }, caption = caption,
+    metaUpdatedAt = metaUpdatedAt.takeIf { it > 0 },
+)
+
+/**
+ * A backup's photo as the row an import writes (the file is written beside it): not uploaded, its meta coerced and
+ * clean (a file row is not an edit made here; the meta is pushed once the photo is uploaded, see `CommonRepository`).
+ */
+fun ExportPhoto.toEntity(path: String, id: String = this.id, houseId: String = this.houseId): PhotoEntity =
+    PhotoEntity(id, houseId, path, uploaded = false, createdAt = createdAt).withMeta(meta, dirty = (metaUpdatedAt ?: 0L) > 0)
 
 /**
  * What a copy made with [options] holds, from rows already read (`Repository.localRows`). Pure CPU work (mapping and

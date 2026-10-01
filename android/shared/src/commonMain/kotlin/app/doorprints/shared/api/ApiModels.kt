@@ -21,7 +21,17 @@ package app.doorprints.shared.api
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
+import app.doorprints.shared.model.MoveIn
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.JsonObject
 
 // Wire types of the Spring Boot API (backend app.doorprints.server.*). Moved unchanged from :app's data/Api.kt in
@@ -55,6 +65,8 @@ data class HouseDto(
     val rooms: List<HouseRoom>? = null,
     /** The questions asked (slice 3a), at most 60, after `rooms`; absent for none (never `[]`), and `[]` read is none too. */
     val answers: List<HouseAnswer>? = null,
+    /** Moving in (slice 5), after `answers`; absent when it has no date, notes or items. */
+    val moveIn: MoveIn? = null,
     /** The broker's record id (slice 1b); the server keeps no foreign key, a dangling id reads as no broker. */
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
@@ -79,7 +91,11 @@ data class VisitDto(
     val syncVersion: Long = 0,
 )
 
-/** One row of `GET /api/photos?since=`: a new photo or a delete tombstone (no bytes). */
+/**
+ * One row of `GET /api/photos?since=`: a new photo, a delete tombstone (no bytes) or, since slice 5, a change of a
+ * photo's metadata (docs/11 5.7): its room, tags and caption and when they were last edited ([metaUpdatedAt], epoch ms,
+ * 0 or absent = never). Also the answer of `PUT /api/photos/{id}/meta`, which is the photo's current meta.
+ */
 @Serializable
 data class PhotoChangeDto(
     val id: String,
@@ -90,7 +106,37 @@ data class PhotoChangeDto(
     val updatedAt: String? = null,
     val deleted: Boolean = false,
     val syncVersion: Long = 0,
+    val roomId: String? = null,
+    val tags: List<String>? = null,
+    val caption: String? = null,
+    @Serializable(with = LenientEpochMillisSerializer::class)
+    val metaUpdatedAt: Long? = null,
 )
+
+/** The body of `PUT /api/photos/{id}/meta` (slice 5): the meta and when it was edited (epoch ms); last write wins. */
+@Serializable
+data class PhotoMetaDto(
+    val roomId: String? = null,
+    val tags: List<String> = emptyList(),
+    val caption: String? = null,
+    val metaUpdatedAt: Long,
+)
+
+/**
+ * An epoch-millisecond instant read from a number or, from a server that writes instants as text, an ISO-8601 string
+ * ([IsoTime.parseMillis]); anything else reads as 0 (never edited), so one odd value never stops a sync. Written as a
+ * number.
+ */
+object LenientEpochMillisSerializer : KSerializer<Long> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("EpochMillis", PrimitiveKind.LONG)
+
+    override fun serialize(encoder: Encoder, value: Long) = encoder.encodeLong(value)
+
+    override fun deserialize(decoder: Decoder): Long {
+        val p = (decoder as? JsonDecoder)?.decodeJsonElement() as? JsonPrimitive ?: return 0L
+        return (if (p.isString) runCatching { IsoTime.parseMillis(p.content) }.getOrNull() else p.longOrNull) ?: 0L
+    }
+}
 
 /**
  * One row of the record envelope (docs/11 5.30 item 2, ADR-28; `GET /api/records?since=`, `PUT /api/records/{type}/{id}`):
