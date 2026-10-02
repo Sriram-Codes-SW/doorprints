@@ -66,7 +66,7 @@ describe('DriveDeletionAdapter', () => {
           id: 1,
           action: action,
           requirements: {
-            level: 'L1',
+            level: action.type === 'allBackups' || action.type === 'olderBackups' ? 'L2' : action.type === 'everything' ? 'L3' : 'L1',
             factor: 'NONE',
             tickBox: false,
             delaySeconds: 0,
@@ -362,6 +362,37 @@ describe('DriveDeletionAdapter', () => {
         }
       }
     }
+  });
+
+
+  it('refuses a grant that is weaker than the plan (a level 1 grant cannot delete all backups)', async () => {
+    const backups = server.putByHand({
+      name: 'Backups',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [rootId],
+      appProperties: { [DRIVE_LAYOUT.role]: 'backups' },
+    }, new Uint8Array());
+    server.putByHand({
+      name: 'backup-1.zip',
+      mimeType: 'application/octet-stream',
+      parents: [backups.id],
+      appProperties: { [DRIVE_LAYOUT.kind]: 'backup', [DRIVE_LAYOUT.state]: 'complete' },
+    }, new Uint8Array(1024));
+    const pre = await adapter.preflight({ type: 'allBackups' });
+    if (pre.kind !== 'ready') throw new Error('preflight');
+    const before = server.allFiles().length;
+    const weak: WebGrant = {
+      id: 7,
+      action: 'DELETE_ONE_BACKUP',
+      requirements: { level: 'L1', factor: 'NONE', tickBox: false, delaySeconds: 0, pairing: 'NONE', authValidMs: 0 },
+      grantedAtMs: server.clock.now(),
+    };
+    gate.markGenuine('7');
+    gate.markStillValid('7');
+    const out = await adapter.execute(pre.plan, weak);
+    expect(out.kind).toBe('refused');
+    if (out.kind === 'refused') expect(out.reason).toBe('AUTHORIZATION_TOO_WEAK');
+    expect(server.allFiles().length).toBe(before);
   });
 
   it('should handle 404 as success (file already deleted)', async () => {
