@@ -1316,6 +1316,7 @@ export const ta: Dict = {
   'driveDelete.confirmHeading': 'நீக்கலைக் குறிப்பிடவும்',
   'driveDelete.confirmWarning': 'இதைச் செய்ய முடியாது. அனைத்து சாதனங்களுக்கு Google Drive இலிருந்து நீக்கவும்.',
   'driveDelete.confirmCheckbox': 'நான் புரிந்துகொண்டேன்: இதைச் செய்ய முடியாது',
+  'driveDelete.tickRequired': 'நீக்கலை உறுதிப்படுத்த பெட்டியைத் தேர்வு செய்யவும்.',
   'driveDelete.countdown': 'தயவு செய்து {seconds} வினாடிகள் காத்திருக்கவும்…',
   'driveDelete.passkeyRequired': 'தவணை தேவை',
   'driveDelete.setupPasskey': 'தவணைஐ அமைக்கவும்',

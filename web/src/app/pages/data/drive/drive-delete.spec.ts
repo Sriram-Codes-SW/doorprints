@@ -95,4 +95,45 @@ describe('DriveDeleteCard', () => {
     fixture.detectChanges();
     expect(svc.executeDelete).toHaveBeenCalled();
   });
+
+  it('disables the tick box while busy or while the delete is running', async () => {
+    const { component, fixture, host } = await render();
+    await component['startDeletion']({ type: 'everything' });
+    await component['proceedToConfirm']();
+    fixture.detectChanges();
+    const box = () => host.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    expect(box()?.disabled).toBe(false);
+    component['busy'].set(true);
+    fixture.detectChanges();
+    expect(box()?.disabled).toBe(true);
+    component['busy'].set(false);
+    component['phase'].set('running');
+    fixture.detectChanges();
+    expect(box()).toBeNull();
+  });
+
+  it('does not execute if the tick box is cleared during the passkey prompt', async () => {
+    let resolveAuth!: (value: { ok: true; grant: { id: number; requirements: { level: string } } }) => void;
+    const authPromise = new Promise<{ ok: true; grant: { id: number; requirements: { level: string } } }>((resolve) => {
+      resolveAuth = resolve;
+    });
+    const svc = fakeService({
+      authorizeDelete: vi.fn().mockReturnValue(authPromise),
+    });
+    const { component, fixture } = await render(svc);
+    await component['startDeletion']({ type: 'everything' });
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    const done = component['confirmDelete']();
+    await flush();
+    expect(component['busy']()).toBe(true);
+    expect(svc.authorizeDelete).toHaveBeenCalled();
+    component['ticked'].set(false);
+    resolveAuth({ ok: true, grant: { id: 1, requirements: { level: 'L3' } } });
+    await done;
+    fixture.detectChanges();
+    expect(svc.executeDelete).not.toHaveBeenCalled();
+    expect(component['error']()).toBe('driveDelete.tickRequired');
+    expect(component['phase']()).toBe('error');
+  });
 });
