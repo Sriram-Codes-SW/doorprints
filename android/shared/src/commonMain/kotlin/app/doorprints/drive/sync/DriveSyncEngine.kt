@@ -129,7 +129,7 @@ class DriveSyncEngine(
             val cur = state.load()
             val failures = cur.failures + 1
             val wait = e.retryAfterMs ?: drive.retry.backoffMs(failures.coerceAtMost(30))
-            state.save(cur.copy(failures = failures, notBefore = now + wait))
+            state.save(cur.copy(failures = failures, notBefore = clock() + wait))
             throw e
         }
     }
