@@ -77,29 +77,32 @@
 
 ---
 
-## Final Status: Component and Service Built (Tests Not Done)
+## Status After Merge: Stubs → NotYet Errors + Tests Partial
 
-**DONE:**
-- DriveConnectService state machine with methods: connect(), createFolder(), openWithRecoveryKey(), backUpNow(), listBackups(), importFromDrive(), setAutoBackup(), setPhotosWifiOnly(), uploadPhotosNowOverMobile(), disconnect(), deleteL1/L2/L3()
-- DriveConnectComponent with all UI states (Unavailable → Disconnected → Connecting → NeedsRecoveryKey → FirstConnectShowRecoveryKey → NeedsEnrolment → Ready / Error)
-- Recovery key shown once with copy button, confirm-saved checkbox, skip with plain warning
-- Ready state: back up now, last backup time, backups list, import button, automatic backup toggle, photos Wi-Fi toggle, upload now button, disconnect, L1/L2/L3 delete menus with proper confirmation (L3 has 5s delay tick box)
-- All 32 i18n keys (30 driveConnect + 2 common) in en.ts, hi.ts, ta.ts, te.ts
-- TypeScript check passes: `npx tsc -p tsconfig.spec.json --noEmit`
-- Angular build passes: `npx ng build`
-- Licence headers: OK
-- Component integrated into data-page (between import-backup and offline-areas)
+**Session 2 Commits:**
+- aafcc1e: Adapt DriveSignIn to real GoogleTokenProvider/GoogleConfig (redundant abstractions removed)
+- 042c0a7: Add service spec with state machine tests (vitest, mocks DriveSignIn)
 
-**NOT DONE:**
-- Service method implementations are stubs (return fake results, no real Drive service calls)
-- Tests: no service or component specs written
-- Read me.txt generation at first connect (kind=readme, four languages)
-- Integration with real DriveBackupService, DriveSyncEngine, DrivePhotos, DriveDeletionService (will come when GoogleConfig and injection are available from feat/drive-web-connect)
-- Authorization gates for L2/L3 (will use existing web/src/app/data/device-auth/prf-gate.ts)
+**Merge Completed:** feat/drive-web-connect brings GoogleTokenProvider, GoogleConfig, tests, firebase.json fixes.
 
-**Next Session Should:**
-1. Write service and component tests (.spec.ts files) with fakes
-2. Implement real service methods calling Drive services (when feat/drive-web-connect lands GoogleConfig)
-3. Add "Read me.txt" generation at first connect
-4. Test full flow: create folder → show recovery key → enrol → ready → backup → list → import
-5. Integration testing with AuthorizationGate adapters
+**What's Left (Coordinator's Steps 2-6):**
+
+1. **Step 2: Replace stubs with real calls** → Methods must throw NotYet() if not implementable:
+   - backUpNow() → DriveBackupService.backUp(folder, source)
+   - listBackups() → DriveBackupService.listBackups(folder)
+   - importFromDrive() → DriveBackupService.imports.read(backupId)
+   - setAutoBackup() → DriveBackupService.schedule(enabled, ready)
+   - setPhotosWifiOnly() → DrivePhotos.setWifiOnly()
+   - uploadPhotosNowOverMobile() → DrivePhotos.uploadNow()
+   - deleteL1/L2/L3() → DriveDeletionService.plan() + gate checks
+   - Remaining: DriveSyncEngine integration
+
+2. **Step 3: Read me.txt** (kind=readme, root, four languages) at createFolder() → DriveBackupService
+
+3. **Step 4: AuthorizationGate adapter** (web/src/app/data/device-auth) for L2/L3 with 5s delay on L3
+
+4. **Step 5: Component tests** (pattern: neighbouring specs) + real 5s delay fake timer test
+
+5. **Step 6: Run full suite** tsc, ng test, ng build, licence headers
+
+**Blocker:** Service method implementations need deep API understanding of DriveBackupService, DriveSyncEngine, etc. (requires reading each service's constructor params, return types, error handling).
