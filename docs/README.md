@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.75 |
+| Version | 0.76 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -76,6 +76,7 @@
 | 0.73 | 2026-10-02 | Claude (Code), lead | 15 v0.3 (an authenticator app as an option): 02 v0.50, 06 v0.99 (TC-M-55), 10 v0.123 (S4b-BL-129), 13 v0.4 (I15), 14 v0.75. |
 | 0.74 | 2026-10-02 | Claude (Code), lead | 15 v0.4 (fixes from an adversarial review; six open questions in §6.1): 02 v0.51, 06 v0.100, 10 v0.124 (S4b-BL-130), 11 v0.55 (D-28 and 5.28 marked amended), 13 v0.5 (I16, I17), 14 v0.76. |
 | 0.75 | 2026-10-02 | Claude (Code), lead | **The owner decided the Drive design** (15 v0.5): 02 v0.52, 03 v0.61 (ADR-33), 06 v0.101, 10 v0.125, 13 v0.6, 14 v0.77 (N17: version 1, the final order). |
+| 0.76 | 2026-10-02 | Claude (Code), lead | S4b-BL-70, the `SyncBackend` seam (no behaviour change): 03 v0.62 (§4.2, §4.3, §10.1, §10.2), 06 v0.102 (TC-U-123), 10 v0.126, 14 v0.78. |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |
 | 0.63 | 2026-10-01 | Claude (Code), Docs team | The guide's *Compare and plan* page, in four languages, names Not chosen as well as Rejected houses as left out of Compare and Plan visits, and how to bring one back (10 v0.113). |

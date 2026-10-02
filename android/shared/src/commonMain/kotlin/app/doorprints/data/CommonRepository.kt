@@ -29,7 +29,6 @@ import app.doorprints.shared.ai.AiVisit
 import app.doorprints.shared.ai.GeminiClient
 import app.doorprints.shared.ai.OnDeviceAi
 import app.doorprints.shared.api.ApiClient
-import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.IsoTime
@@ -132,6 +131,8 @@ import kotlin.uuid.Uuid
  *   read and written with kotlinx-io's [SystemFileSystem].
  * - [syncSoon]: asks for a sync shortly (Android: `SyncWorker.syncSoon`, a WorkManager job).
  * - [apiFor]: the API client for a server address and key (Android: the app-wide HTTP stack; a test's fake engine).
+ * - `syncBackendFor`: where [sync] goes for the current settings, or null when nothing is set up (S4b-BL-70); left
+ *   out, the configured server ([ServerSyncBackend] over [apiFor]); a test's fake.
  *
  * A platform subclass adds what has no common form yet: on Android, adding a photo from a `Uri` (`AndroidRepository`).
  */
@@ -144,7 +145,11 @@ open class CommonRepository(
     private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiFor: ((apiKey: String) -> GeminiClient)? = null,
+    syncBackendFor: ((AppSettings) -> SyncBackend?)? = null,
 ) : Repository {
+    private val syncBackendFor: (AppSettings) -> SyncBackend? = syncBackendFor
+        ?: { s -> if (s.serverConfigured) ServerSyncBackend(apiFor(s.serverUrl, s.apiKey)) else null }
+
     protected val fs: FileSystem = SystemFileSystem
 
     /** The clock every local edit is stamped with. */
@@ -908,48 +913,40 @@ open class CommonRepository(
 
 
     /**
-     * Two-way sync: push local changes, then pull everything the server has changed since last time.
-     * Conflicts are "last edit wins" (by updatedAt), on both sides. Houses and visits always sync; photo transfers
-     * only when [photosAllowed] (the caller checks for an unmetered network when the user asked for Wi-Fi only).
-     * A server found behind this phone (S4b-BL-20: its highest version below a stored cursor, or a push answered
-     * with a version at or below one) gets everything again and is pulled from 0, and the outcome says so
-     * ([SyncOutcome.serverReset]). Throws on failure; see [SyncOutcome.fromError].
+     * Two-way sync: push local changes, then pull everything the remote has changed since last time, through the
+     * [SyncBackend] for the current settings (S4b-BL-70; the server's is [ServerSyncBackend]). A pulled row meets the
+     * local one by the backend's [SyncBackend.mergeRule] (the server's: "last edit wins" by updatedAt, a clean local
+     * row always takes the server's). Houses and visits always sync; photo transfers only when [photosAllowed] (the
+     * caller checks for an unmetered network when the user asked for Wi-Fi only). A remote found behind this phone
+     * (S4b-BL-20: [SyncBackend.isBehind], or a push answered with a version at or below a stored cursor) gets
+     * everything again and is pulled from 0, and the outcome says so ([SyncOutcome.serverReset]). Throws on failure;
+     * see [SyncOutcome.fromError].
      */
     override suspend fun sync(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
         val s = settings.current()
-        if (!s.serverConfigured) return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
-        val api = apiFor(s.serverUrl, s.apiKey)
+        val backend = syncBackendFor(s) ?: return@withContext SyncOutcome(SyncOutcome.Kind.NOT_CONFIGURED)
+        val merge = backend.mergeRule
 
-        // S4b-BL-20: a server whose database was replaced (a new, empty one; a restore from an older dump) is behind
-        // the stored cursors. Its highest version (GET /api/stats, maxSyncVersion; null from an older server, which
-        // is unknown) below a cursor means it lost what this phone sent and hides changes below the cursors, so
-        // everything goes again and the pull starts from 0. A push answer can show the same ([pushAll]).
+        // S4b-BL-20: a remote that lost what this phone sent (a server whose database was replaced) is behind the
+        // stored cursors and hides changes below them, so everything goes again and the pull starts from 0. A push
+        // answer can show the same ([pushAll]).
         val stored = settings.cursors()
         val storedCursors = listOf(stored.house, stored.visit, stored.photo, stored.record)
         var serverReset = false
-        if (storedCursors.any { it > 0 }) {
-            val highest = try {
-                api.stats().maxSyncVersion
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null // Unknown; a real failure shows in the push that follows.
-            }
-            if (SyncRules.serverBehind(highest, storedCursors)) {
-                resetForServer()
-                serverReset = true
-            }
+        if (storedCursors.any { it > 0 } && backend.isBehind(storedCursors)) {
+            resetForServer()
+            serverReset = true
         }
         var pushed: Int
         var photosWaiting: Int
         try {
-            val first = pushAll(api, photosAllowed, if (serverReset) 0L else storedCursors.max())
+            val first = pushAll(backend, photosAllowed, if (serverReset) 0L else storedCursors.max())
             pushed = first.first
             photosWaiting = first.second
         } catch (e: ServerWasReset) {
             resetForServer()
             serverReset = true
-            val again = pushAll(api, photosAllowed, highestCursor = 0L)
+            val again = pushAll(backend, photosAllowed, highestCursor = 0L)
             pushed = e.pushed + again.first
             photosWaiting = again.second
         }
@@ -958,28 +955,28 @@ open class CommonRepository(
         var houseCursor = cursors.house
         var visitCursor = cursors.visit
         var pulled = 0
-        for (dto in api.housesSince(houseCursor)) {
+        for (dto in backend.housesSince(houseCursor)) {
             houseCursor = maxOf(houseCursor, dto.syncVersion)
             val local = db.houses().get(dto.id)
             val incoming = dto.toEntity()
-            if (SyncRules.keepLocal(local, incoming)) continue
+            if (merge.keepLocal(local, incoming)) continue
             db.houses().upsert(incoming); pulled++
         }
-        for (dto in api.visitsSince(visitCursor)) {
+        for (dto in backend.visitsSince(visitCursor)) {
             visitCursor = maxOf(visitCursor, dto.syncVersion)
             val local = db.visits().get(dto.id)
             val incoming = dto.toEntity()
-            if (SyncRules.keepLocal(local, incoming)) continue
+            if (merge.keepLocal(local, incoming)) continue
             db.visits().upsert(incoming); pulled++
         }
         // Records (docs/11 5.30): a row this phone cannot use (toEntity null) is skipped and the cursor still moves
         // past it, as the web does; the next app version that can read it pulls it again from a fresh cursor.
         var recordCursor = cursors.record
-        for (dto in api.recordsSince(recordCursor)) {
+        for (dto in backend.recordsSince(recordCursor)) {
             recordCursor = maxOf(recordCursor, dto.syncVersion)
             val incoming = dto.toEntity() ?: continue
             val local = db.records().get(incoming.type, incoming.id)
-            if (SyncRules.keepLocal(local, incoming)) continue
+            if (merge.keepLocal(local, incoming)) continue
             db.records().upsert(incoming); pulled++
         }
         settings.saveCursors(houseCursor, visitCursor, recordCursor)
@@ -987,7 +984,7 @@ open class CommonRepository(
         // Photos: apply delete tombstones from other devices, download new photos of live houses.
         var photoCursor = cursors.photo
         var photosComplete = true
-        for (change in api.photoChangesSince(cursors.photo)) {
+        for (change in backend.photoChangesSince(cursors.photo)) {
             val local = db.photos().get(change.id)
             if (change.deleted) {
                 if (local != null) {
@@ -1009,7 +1006,7 @@ open class CommonRepository(
                         photosWaiting++; photosComplete = false; continue
                     }
                     val out = photoPath(change.id)
-                    writeFile(out, api.downloadPhoto(change.id))
+                    writeFile(out, backend.downloadPhoto(change.id))
                     db.photos().upsert(
                         PhotoEntity(change.id, change.houseId, out.toString(), true, now()).withMeta(change.meta(), dirty = false),
                     )
@@ -1050,7 +1047,7 @@ open class CommonRepository(
      * accepted house, visit or record write answered with a version at or below it ([SyncRules.pushShowsReset])
      * stops the push with [ServerWasReset].
      */
-    private suspend fun pushAll(api: ApiClient, photosAllowed: Boolean, highestCursor: Long): Pair<Int, Int> {
+    private suspend fun pushAll(backend: SyncBackend, photosAllowed: Boolean, highestCursor: Long): Pair<Int, Int> {
         var pushed = 0
         fun check(sentUpdatedAt: Long, answerUpdatedAt: String?, answerVersion: Long) {
             val at = answerUpdatedAt?.let { runCatching { IsoTime.parseMillis(it) }.getOrNull() }
@@ -1064,30 +1061,30 @@ open class CommonRepository(
         val (visitsFirst, visitsAfter) =
             SyncRules.visitsByPushOrder(db.visits().dirty(), { it.deleted }, { it.houseId })
         for (v in visitsFirst) {
-            val answer = api.putVisit(v.toDto())
+            val answer = backend.pushVisit(v.toDto())
             check(v.updatedAt, answer.updatedAt, answer.syncVersion)
             db.visits().markClean(v.id, v.updatedAt); pushed++
         }
         for (h in dirtyHouses) {
-            val answer = api.putHouse(h.toDto())
+            val answer = backend.pushHouse(h.toDto())
             check(h.updatedAt, answer.updatedAt, answer.syncVersion)
             db.houses().markClean(h.id, h.updatedAt); pushed++
         }
         for (v in visitsAfter) {
-            val answer = api.putVisit(v.toDto())
+            val answer = backend.pushVisit(v.toDto())
             check(v.updatedAt, answer.updatedAt, answer.syncVersion)
             db.visits().markClean(v.id, v.updatedAt); pushed++
         }
         // Records after the houses and visits: a record may name a house (a viewing, slice 3), so the house is on
         // the server first.
         for (r in db.records().dirty()) {
-            val answer = api.putRecord(r.toDto())
+            val answer = backend.pushRecord(r.toDto())
             check(r.updatedAt, answer.updatedAt, answer.syncVersion)
             db.records().markClean(r.type, r.id, r.updatedAt); pushed++
         }
         // Deletes are tiny, so they go out on any network.
         for (p in db.photos().pendingDelete()) {
-            api.deletePhoto(p.id); db.photos().delete(p.id); pushed++
+            backend.deletePhoto(p.id); db.photos().delete(p.id); pushed++
         }
         var photosWaiting = 0
         for (p in db.photos().pendingUpload()) {
@@ -1097,37 +1094,29 @@ open class CommonRepository(
             if (!photosAllowed) {
                 photosWaiting++; continue
             }
-            try {
-                // Streamed from the file, not read into memory; each (re)try opens the file again.
-                api.uploadPhoto(p.houseId, p.id, file.name, size) { fs.source(file).buffered() }
-            } catch (e: ApiException) {
-                // Permanent rejections (not an image, too big, over the per-house limit) would fail on every sync;
-                // keep the photo on this phone only and move on. Anything else (5xx, auth) aborts the sync.
-                if (e.kind != ApiException.Kind.CLIENT && e.kind != ApiException.Kind.CONFLICT &&
-                    e.kind != ApiException.Kind.NOT_FOUND
-                ) throw e
-            }
+            // Streamed from the file, not read into memory; each (re)try opens the file again. A permanent refusal
+            // keeps the photo on this phone only ([SyncBackend.uploadPhoto]); anything else aborts the sync.
+            backend.uploadPhoto(p.houseId, p.id, file.name, size) { fs.source(file).buffered() }
             db.photos().upsert(p.copy(uploaded = true)); pushed++
         }
         // Photo meta (slice 5) after the uploads, so a photo taken with a tag reaches the server first. The answer is the
         // server's current meta: a newer one from another device replaces the edit here (last write wins). A photo the
-        // server does not have (404) or refuses (400) would fail on every sync, so its flag is cleared and the meta
-        // stays on this phone.
+        // server does not have (404) or refuses (400) would fail on every sync ([SyncBackend.pushPhotoMeta] answers
+        // null), so its flag is cleared and the meta stays on this phone.
         for (p in db.photos().pendingMeta()) {
-            try {
-                val answer = api.putPhotoMeta(p.id, p.toMetaDto())
-                val current = answer.meta()
-                if (PhotoMeta.incomingWins(p.metaUpdatedAt, current.metaUpdatedAt)) {
-                    db.photos().get(p.id)?.takeIf { it.metaUpdatedAt == p.metaUpdatedAt }
-                        ?.let { db.photos().upsert(it.withMeta(current, dirty = false)) }
-                } else {
-                    db.photos().markMetaClean(p.id, p.metaUpdatedAt)
-                }
-                pushed++
-            } catch (e: ApiException) {
-                if (e.kind != ApiException.Kind.CLIENT && e.kind != ApiException.Kind.NOT_FOUND) throw e
+            val answer = backend.pushPhotoMeta(p.id, p.toMetaDto())
+            if (answer == null) {
+                db.photos().markMetaClean(p.id, p.metaUpdatedAt)
+                continue
+            }
+            val current = answer.meta()
+            if (PhotoMeta.incomingWins(p.metaUpdatedAt, current.metaUpdatedAt)) {
+                db.photos().get(p.id)?.takeIf { it.metaUpdatedAt == p.metaUpdatedAt }
+                    ?.let { db.photos().upsert(it.withMeta(current, dirty = false)) }
+            } else {
                 db.photos().markMetaClean(p.id, p.metaUpdatedAt)
             }
+            pushed++
         }
         return pushed to photosWaiting
     }

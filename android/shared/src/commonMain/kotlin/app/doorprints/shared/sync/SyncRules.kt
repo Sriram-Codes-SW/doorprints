@@ -31,6 +31,16 @@ interface SyncRecord {
 }
 
 /**
+ * How a pulled row meets the local copy of it (S4b-BL-70): true keeps the local row and drops the incoming one. Each
+ * [app.doorprints.data.SyncBackend] supplies its own: the server's is [SyncRules.serverMerge]; Drive's per-device
+ * files will use last-write-wins on `updatedAt` with ties broken by the writing device (docs/15 §5.1, S4b-BL-130),
+ * because an older device snapshot must not overwrite a clean, newer local row.
+ */
+fun interface MergeRule {
+    fun keepLocal(local: SyncRecord?, incoming: SyncRecord): Boolean
+}
+
+/**
  * Pure conflict rules for the sync loop (Repository.sync in :app), free of platform and database types.
  *
  * "Last edit wins": when the server sends a row this device also changed and has not pushed yet (dirty), the local
@@ -43,6 +53,12 @@ object SyncRules {
 
     fun keepLocal(local: SyncRecord?, incoming: SyncRecord): Boolean =
         local != null && keepLocal(local.dirty, local.updatedAt, incoming.updatedAt)
+
+    /**
+     * The server sync's merge rule (S4b-BL-70): [keepLocal]. Right for a server that has already merged every device's
+     * writes, so any row it sends is at least as new as a clean local one.
+     */
+    val serverMerge: MergeRule = MergeRule { local, incoming -> keepLocal(local, incoming) }
 
     /**
      * Push order (Android review, round 17): a dirty visit that is a tombstone **with no house** is pushed before
