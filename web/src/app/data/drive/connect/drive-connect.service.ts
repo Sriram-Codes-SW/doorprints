@@ -16,8 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable, Inject, InjectionToken, signal } from '@angular/core';
+import { Injectable, Inject, InjectionToken, Optional, signal } from '@angular/core';
+import type { BackupSource } from '../backup/drive-backup-seams';
 import type { RecoveryKey } from '../../crypto/recovery-key';
+import { RecoveryKey as RecoveryKeyClass } from '../../crypto/recovery-key';
 import type { DriveBackupAdapter } from './backup-adapter';
 import type { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
@@ -74,6 +76,26 @@ export interface PhotoPendingInfo {
  * Provides a single, typed API delegating to adapters with proper error handling and state management.
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
+const AUTO_BACKUP_KEY = 'doorprints.drive.autoBackup';
+
+/** The few per-device preferences of the Drive card (a plain on/off, nothing secret). */
+export interface DrivePrefs {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+export const DRIVE_PREFS = new InjectionToken<DrivePrefs>('DRIVE_PREFS');
+
+function browserPrefs(): DrivePrefs {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return { getItem: () => null, setItem: () => undefined };
+  }
+}
+
+/** Makes the Full backup ZIP of the app's data for one Drive backup run. */
+export const DRIVE_BACKUP_SOURCE = new InjectionToken<BackupSource>('DRIVE_BACKUP_SOURCE');
+
 @Injectable()
 export class DriveConnectService {
   private readonly state = signal<ConnectState>('Unavailable');
@@ -82,12 +104,17 @@ export class DriveConnectService {
   private readyFolder: ReadyFolder | null = null;
   private lastSyncResult: SyncAdapterStatus | null = null;
   private lastBackupId: string | null = null;
+  private memoryPref = false;
 
   constructor(
     @Inject(DRIVE_BACKUP_ADAPTER) private readonly backupAdapter: DriveBackupAdapter,
     @Inject(DRIVE_SYNC_ADAPTER) private readonly syncAdapter: DriveSyncAdapter,
     @Inject(DRIVE_DELETION_ADAPTER) private readonly deletionAdapter: DriveDeletionAdapter,
     @Inject(GOOGLE_CONFIG) private readonly googleConfig: GoogleConfig,
+    /** Produces the Full backup ZIP for one run (the same one 'Save a copy' makes); without it Back up now is refused. */
+    @Optional() @Inject(DRIVE_BACKUP_SOURCE) private readonly backupSource: BackupSource | null = null,
+    /** Where the *Automatic backup* preference lives (tests pass an in-memory one). */
+    @Optional() @Inject(DRIVE_PREFS) private readonly prefs: DrivePrefs = browserPrefs(),
   ) {
     this.isConfigured = !!googleConfig.clientId;
   }
@@ -142,7 +169,13 @@ export class DriveConnectService {
 
   async openWithRecoveryKey(recoveryKeyText: string): Promise<ConnectResult> {
     try {
-      const recoveryKey = { display: recoveryKeyText } as unknown as RecoveryKey;
+      // The typed text is parsed strictly (check character, confusable letters, case, hyphens): a typo is refused here.
+      let recoveryKey: RecoveryKey;
+      try {
+        recoveryKey = RecoveryKeyClass.parse(recoveryKeyText);
+      } catch {
+        return { state: this.getState(), error: 'The recovery key is not valid: check it letter by letter.' };
+      }
       const connection = await this.backupAdapter.openWithRecoveryKey(recoveryKey);
       this.updateReadyFolderFromConnection(connection);
       return this.handleConnection(connection);
@@ -281,16 +314,22 @@ export class DriveConnectService {
   // ==================== Backup Operations ====================
 
   async backUpNow(): Promise<
-    | { readonly ok: true; readonly backup?: any; readonly needsShrinkConfirmation?: string }
+    | { readonly ok: true; readonly backup: BackupSummary; readonly needsShrinkConfirmation: boolean; readonly missingNewer: boolean }
     | { readonly ok: false; readonly reason: string }
   > {
+    if (!this.readyFolder) return { ok: false, reason: 'Not connected to folder' };
+    if (!this.backupSource) return { ok: false, reason: 'No backup source' };
     try {
-      // backUpNow is managed through sync adapter in the current implementation
-      const status = await this.syncAdapter.syncNow();
-      if (status.state === 'synced' || status.state === 'skipped-files') {
-        return { ok: true };
-      }
-      return { ok: false, reason: status.error || 'Backup failed' };
+      const out = await this.backupAdapter.backUpNow(this.readyFolder, this.backupSource);
+      if (out.kind === 'failed') return { ok: false, reason: out.problem.kind };
+      this.lastBackupId = out.backup.fileId;
+      return {
+        ok: true,
+        backup: { id: out.backup.fileId, createdAt: out.backup.createdAt, houses: out.backup.houses, bytes: out.backup.size, name: out.backup.name },
+        // Retention held its pruning because the new backup is much smaller: the person is asked before older ones go.
+        needsShrinkConfirmation: out.tidy.hold !== null,
+        missingNewer: out.missingNewer,
+      };
     } catch (err) {
       return { ok: false, reason: String(err) };
     }
@@ -494,9 +533,40 @@ export class DriveConnectService {
 
   // ==================== Backward Compatibility ====================
 
+  /** *Automatic backup and sync* (a per-device preference, kept in the browser; off until the person turns it on). */
+  autoBackupEnabled(): boolean {
+    try {
+      return this.prefs.getItem(AUTO_BACKUP_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
   async setAutoBackup(enabled: boolean): Promise<void> {
-    // Auto-backup is handled by the schedule logic in the backup service
-    // This is a no-op at the service level
+    try {
+      this.prefs.setItem(AUTO_BACKUP_KEY, enabled ? '1' : '0');
+    } catch {
+      // Storage refused (private window): the choice lasts until the page closes, through the in-memory fallback below.
+      this.memoryPref = enabled;
+    }
+  }
+
+  /**
+   * Makes a backup if the schedule says one is due (daily after the last success, with back-off after a failure), when
+   * *Automatic backup* is on. The screen calls it when the card opens and now and then while it is open: the website
+   * cannot run in the background, so "automatic" means "whenever Doorprints is open and a backup is due".
+   */
+  async runDueBackup(): Promise<{ readonly ran: boolean; readonly reason: string }> {
+    if (!this.readyFolder) return { ran: false, reason: 'NOT_READY' };
+    if (!(this.autoBackupEnabled() || this.memoryPref)) return { ran: false, reason: 'DISABLED' };
+    try {
+      const decision = await this.backupAdapter.schedule(true, true);
+      if (!decision.backup) return { ran: false, reason: decision.reason };
+      const out = await this.backUpNow();
+      return { ran: out.ok, reason: out.ok ? decision.reason : out.reason };
+    } catch (err) {
+      return { ran: false, reason: String(err) };
+    }
   }
 
   async deleteL1(): Promise<{ success: boolean; error?: string }> {

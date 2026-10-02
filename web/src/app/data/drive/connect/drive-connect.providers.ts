@@ -17,7 +17,7 @@
  */
 
 import { InjectionToken, Provider, inject } from '@angular/core';
-import { DriveConnectService, DRIVE_BACKUP_ADAPTER, DRIVE_DELETION_ADAPTER, DRIVE_SYNC_ADAPTER } from './drive-connect.service';
+import { DriveConnectService, DRIVE_BACKUP_SOURCE, DRIVE_BACKUP_ADAPTER, DRIVE_DELETION_ADAPTER, DRIVE_SYNC_ADAPTER } from './drive-connect.service';
 import { DriveBackupAdapter } from './backup-adapter';
 import { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
@@ -30,6 +30,9 @@ import { createLazyDeletionAdapterProxy } from './factories/deletion-factory';
 import { createLazySyncAdapterProxy } from './factories/sync-factory';
 import { createDriveRuntime, getRuntime } from './factories/runtime';
 import { LocalStore } from '../../local-store.service';
+import { ExportService } from '../../../export/export.service';
+import { DEFAULT_EXPORT_OPTIONS } from '../../../export/export-model';
+import { createDriveBackupSource } from './local/backup-source';
 
 /**
  * GoogleConfig provider: reads window.__DOORPRINTS__.googleClientId (empty by default, set via index.html).
@@ -135,6 +138,14 @@ export function provideDriveConnect(): Provider[] {
       },
     },
 
+    // The Full backup ZIP for a Drive backup run: the same builder as 'Save a copy'; built when a backup runs, not before.
+    {
+      provide: DRIVE_BACKUP_SOURCE,
+      useFactory: () => {
+        const exporter = inject(ExportService);
+        return createDriveBackupSource(exporter, { ...DEFAULT_EXPORT_OPTIONS });
+      },
+    },
     // DriveConnectService: orchestrates backup, sync, and deletion
     {
       provide: DriveConnectService,
@@ -143,7 +154,7 @@ export function provideDriveConnect(): Provider[] {
         const backupAdapter = inject(DRIVE_BACKUP_ADAPTER);
         const syncAdapter = inject(DRIVE_SYNC_ADAPTER);
         const deletionAdapter = inject(DRIVE_DELETION_ADAPTER);
-        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter, googleConfig);
+        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter, googleConfig, inject(DRIVE_BACKUP_SOURCE));
       },
     },
   ];
