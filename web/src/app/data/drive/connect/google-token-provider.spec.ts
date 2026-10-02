@@ -99,13 +99,13 @@ describe('GoogleTokenProvider', () => {
 
   it('should throw when script load fails', async () => {
     scriptLoader.failLoad = true;
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     await expect(provider.accessToken()).rejects.toThrow('unavailable');
   });
 
   it('should successfully request a token', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
@@ -116,7 +116,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should cache token within 1 hour', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise1 = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
@@ -130,7 +130,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should load GIS script only once', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise1 = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
@@ -143,7 +143,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should handle denied error', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ error: 'access_denied' }), 0);
@@ -152,7 +152,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should handle popup closed error', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ error: 'popup_closed' }), 0);
@@ -161,7 +161,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should handle popup blocked error', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ error: 'popup_blocked' }), 0);
@@ -170,7 +170,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should clear token on onRejected', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise1 = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
@@ -187,7 +187,7 @@ describe('GoogleTokenProvider', () => {
   });
 
   it('should not clear token on onRejected with different token', async () => {
-    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config, () => true);
 
     const tokenPromise1 = provider.accessToken();
     setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
@@ -199,6 +199,13 @@ describe('GoogleTokenProvider', () => {
 
     expect(token2).toBe('test-token-123');
     expect(provider.requestAccessTokenCalls).toHaveLength(1);
+  });
+
+  it('refuses a token when GIS cannot say the Drive scope was granted', async () => {
+    const provider = new TestableGoogleTokenProvider(scriptLoader, config);
+    const tokenPromise = provider.accessToken();
+    setTimeout(() => provider.triggerCallback({ access_token: 'test-token-123' }), 0);
+    await expect(tokenPromise).rejects.toMatchObject({ kind: 'denied' });
   });
 });
 

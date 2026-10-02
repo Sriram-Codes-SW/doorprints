@@ -134,6 +134,13 @@ describe('the Drive merge rule', () => {
     }
   });
 
+  it('a later stamp on the same key wins (last-write-wins)', () => {
+    const earlier: SyncStamp = { updatedAt: now, by: a, deleted: false };
+    const later: SyncStamp = { updatedAt: now + 1, by: b, deleted: false };
+    expect(takesIncoming(earlier, later)).toBe(true);
+    expect(takesIncoming(later, earlier)).toBe(false);
+  });
+
   it('settles a delete and an edit race', () => {
     const deleted: SyncStamp = { updatedAt: now, by: a, deleted: true };
     expect(takesIncoming({ updatedAt: now - 1, by: b, deleted: false }, deleted)).toBe(true);

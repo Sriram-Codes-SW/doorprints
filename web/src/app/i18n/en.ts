@@ -1226,6 +1226,7 @@ export const en = {
   'driveConnect.recoveryKeyNote': 'Only shown once. Save it in a safe place (email, Note app, or print it).',
   'driveConnect.recoveryKeyCopy': 'Copy recovery key',
   'driveConnect.recoveryKeyCopied': 'Copied to clipboard',
+  'driveConnect.copyFailed': 'Could not copy the recovery key',
   'driveConnect.confirmSavedRecoveryKey': 'I have saved my recovery key in a safe place',
   'driveConnect.recoveryKeyWarning': 'You cannot recover your houses without this key. If you lose it, all backups stay on Google Drive, but you cannot read them on another device.',
   'driveConnect.nextSteps': 'What\'s next',

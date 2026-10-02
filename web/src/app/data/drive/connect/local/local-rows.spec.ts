@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../../../local-store.service';
 import type { HouseDto, VisitDto } from '../../../../core/models';
 import type { HouseRecord } from '../../../records';
@@ -85,5 +85,24 @@ describe('LocalRowsAdapter', () => {
     const cleaned = await store.allHouses();
     const h = cleaned.find((house: HouseRecord) => house.id === 'h1');
     expect(h?.dirty).toBe(false);
+  });
+
+  it('changedRows reads dirty ids only, and photo() is a keyed get', async () => {
+    const house = (id: string, label: string): HouseDto => ({
+      id, label, lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1,
+    });
+    await store.saveHouse(house('h1', 'Dirty'), Date.now());
+    await store.putHouseFromServer(house('h2', 'Clean'));
+    const allHouses = vi.spyOn(store, 'allHouses');
+    const dirtyHouses = vi.spyOn(store, 'dirtyHouses');
+    const allPhotos = vi.spyOn(store, 'allPhotos');
+    const getPhoto = vi.spyOn(store, 'getPhoto');
+    const changed = await adapter.changedRows();
+    expect(changed.map((r) => r.key)).toEqual(['h1']);
+    expect(dirtyHouses).toHaveBeenCalled();
+    expect(allHouses).not.toHaveBeenCalled();
+    await adapter.photo('missing-photo');
+    expect(getPhoto).toHaveBeenCalledWith('missing-photo');
+    expect(allPhotos).not.toHaveBeenCalled();
   });
 });

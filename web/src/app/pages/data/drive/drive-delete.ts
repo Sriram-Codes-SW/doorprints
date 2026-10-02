@@ -19,6 +19,7 @@
 import { Component, Input, OnInit, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { DeletionAction } from '../../../data/drive/drive-deletion-rules';
+import type { DeletionPlan } from '../../../data/drive/drive-deletion';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TPipe } from '../../../i18n/t.pipe';
 
@@ -50,7 +51,7 @@ export class DriveDeleteCard implements OnInit {
   protected readonly result = signal<string | null>(null);
 
   private currentAction: DeletionAction | null = null;
-  private currentPlan: unknown = null;
+  private currentPlan: DeletionPlan | null = null;
 
   async ngOnInit(): Promise<void> {
     try {
@@ -138,6 +139,11 @@ export class DriveDeleteCard implements OnInit {
           return;
         }
         grant = auth.grant;
+      }
+      if (!this.currentPlan) {
+        this.error.set('Failed to plan deletion');
+        this.phase.set('error');
+        return;
       }
       const result = await this.service.executeDelete(this.currentPlan, grant);
       if (!result.ok) {

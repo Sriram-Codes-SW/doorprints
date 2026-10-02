@@ -1200,7 +1200,7 @@ export const hi: Dict = {
   'house.floorBasementHint': 'ज़मीन के नीचे का स्तर, 1 से 5',
   'house.floorBasementInvalid': '1 से 5 तक का बेसमेंट स्तर लिखें',
   'imp.floorsLeftBlank': 'जिन मकानों की मंज़िल फ़ाइल में -5 से 200 के बाहर है; उनकी मंज़िल खाली छोड़ी जाएगी',
-  // Google Drive connect page (S4b-BL-117) - Under review
+  // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'गूगल ड्राइव को बैकअप करें',
   'driveConnect.unavailable': 'इस ब्राउज़र पर गूगल ड्राइव कनेक्ट उपलब्ध नहीं है।',
   'driveConnect.connect': 'गूगल ड्राइव से कनेक्ट करें',
@@ -1209,6 +1209,7 @@ export const hi: Dict = {
   'driveConnect.recoveryKeyNote': 'केवल एक बार दिखाया गया। इसे एक सुरक्षित जगह पर सहेजें (ईमेल, नोट ऐप, या इसे प्रिंट करें)।',
   'driveConnect.recoveryKeyCopy': 'रिकवरी कुंजी की नक़ल करें',
   'driveConnect.recoveryKeyCopied': 'क्लिपबोर्ड पर कॉपी किया गया',
+  'driveConnect.copyFailed': 'रिकवरी कुंजी कॉपी नहीं हो सकी',
   'driveConnect.confirmSavedRecoveryKey': 'मैंने अपनी रिकवरी कुंजी को एक सुरक्षित जगह पर सहेज लिया है',
   'driveConnect.recoveryKeyWarning': 'इस कुंजी के बिना आप अपने मकान वापस नहीं पा सकते। अगर आप इसे खो देते हैं, तो सभी बैकअप गूगल ड्राइव पर रहते हैं, लेकिन आप उन्हें दूसरी डिवाइस पर नहीं पढ़ सकते।',
   'driveConnect.nextSteps': 'आगे क्या है',

@@ -57,21 +57,21 @@ export class LocalRowsAdapter implements LocalRows {
   }
 
   async changedRows(): Promise<readonly SyncRow[]> {
-    const houses = new Set((await this.store.dirtyHouses()).map((h) => h.id));
-    const visits = new Set((await this.store.dirtyVisits()).map((v) => v.id));
-    const records = new Set((await this.store.dirtyRecords()).map((r) => `${r.type}/${r.id}`));
-    const all = await this.all();
-    return all.filter(
-      (r) =>
-        (r.kind === 'houses' && houses.has(r.key)) ||
-        (r.kind === 'visits' && visits.has(r.key)) ||
-        (r.kind === 'records' && records.has(r.key)),
-    );
+    const rows: SyncRow[] = [];
+    for (const house of await this.store.dirtyHouses()) {
+      rows.push(this.toSyncRow('houses', house.id, house.updatedAt, house.deleted, { ...house }));
+    }
+    for (const visit of await this.store.dirtyVisits()) {
+      rows.push(this.toSyncRow('visits', visit.id, visit.updatedAt, visit.deleted, { ...visit }));
+    }
+    for (const rec of await this.store.dirtyRecords()) {
+      rows.push(this.toSyncRow('records', `${rec.type}/${rec.id}`, rec.updatedAt, rec.deleted, { ...rec }));
+    }
+    return rows;
   }
 
   async photo(photoId: string): Promise<PhotoChangeDto | null> {
-    const photos = await this.store.allPhotos();
-    const found = photos.find((p: PhotoRecord) => p.id === photoId);
+    const found = await this.store.getPhoto(photoId);
     if (!found) return null;
     return {
       id: found.id,

@@ -141,4 +141,20 @@ describe('createDriveBackupSource', () => {
 
     expect(mockExporter.build).toHaveBeenCalledWith('backup', DEFAULT_EXPORT_OPTIONS, expect.any(Date));
   });
+
+  it('reads the ZIP in slices and never buffers the whole blob', async () => {
+    const zipBytes = new Uint8Array([1, 2, 3, 4, 5, 6]);
+    const blob = new Blob([zipBytes], { type: 'application/zip' });
+    const whole = vi.spyOn(blob, 'arrayBuffer');
+    vi.mocked(mockExporter.build!).mockResolvedValue({
+      blob,
+      format: 'backup',
+      fileName: 'test.zip',
+      counts: { houses: 1, visits: 0, photos: 0 },
+    });
+    const payload = await createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS)();
+    expect(await payload.source.read(3)).toEqual(new Uint8Array([1, 2, 3]));
+    expect(await payload.source.read(3)).toEqual(new Uint8Array([4, 5, 6]));
+    expect(whole).not.toHaveBeenCalled();
+  });
 });

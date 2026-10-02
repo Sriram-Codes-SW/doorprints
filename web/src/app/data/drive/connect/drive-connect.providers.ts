@@ -72,7 +72,7 @@ export function provideDriveConnect(): Provider[] {
     // WebCryptoProvider for encryption/decryption operations
     {
       provide: WebCryptoProvider,
-      useClass: WebCryptoProvider,
+      useFactory: () => new WebCryptoProvider(),
     },
 
     // FetchDriveClient for Google Drive API calls
