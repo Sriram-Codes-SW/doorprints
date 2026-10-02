@@ -21,8 +21,8 @@ import { CommonModule } from '@angular/common';
 import type { DeletionAction } from '../../../data/drive/drive-deletion-rules';
 import type { DeletionPlan } from '../../../data/drive/drive-deletion';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
-import { TranslationService } from '../../../i18n/translation.service';
 import { TPipe } from '../../../i18n/t.pipe';
+import type { TKey } from '../../../i18n/en';
 
 type Phase = 'menu' | 'plan' | 'confirm' | 'passkey-error' | 'running' | 'done' | 'error';
 
@@ -42,13 +42,12 @@ export class DriveDeleteCard implements OnInit {
   @Input() oneBackupId?: string;
 
   private readonly service = inject(DriveConnectService);
-  private readonly i18n = inject(TranslationService);
 
   protected readonly busy = signal(false);
   protected readonly phase = signal<Phase>('menu');
   protected readonly tickBoxRequired = signal(false);
   protected readonly ticked = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly error = signal<TKey | null>(null);
   protected readonly passkeyStatus = signal<'none' | 'registered' | 'unsupported'>('none');
   protected readonly result = signal<string | null>(null);
 
@@ -70,14 +69,13 @@ export class DriveDeleteCard implements OnInit {
     try {
       const preflight = await this.service.deletePlan(action);
       if (!preflight.ok) {
-        this.error.set(preflight.reason);
-        this.phase.set(preflight.reason === 'USE_PHONE' ? 'passkey-error' : 'error');
+        this.showRefused(preflight.reason);
         return;
       }
       this.currentPlan = preflight.plan;
       this.phase.set('plan');
     } catch {
-      this.error.set('Failed to plan deletion');
+      this.error.set('driveConnect.failed');
       this.phase.set('error');
     } finally {
       this.busy.set(false);
@@ -90,15 +88,14 @@ export class DriveDeleteCard implements OnInit {
     try {
       const info = await this.service.deleteConfirmInfo(this.currentAction);
       if (!info.ok) {
-        this.error.set(info.reason);
-        this.phase.set(info.reason === 'USE_PHONE' ? 'passkey-error' : 'error');
+        this.showRefused(info.reason);
         return;
       }
       this.tickBoxRequired.set(info.tickBoxRequired);
       this.ticked.set(!info.tickBoxRequired);
       this.phase.set('confirm');
     } catch {
-      this.error.set('Failed to get confirmation info');
+      this.error.set('driveConnect.failed');
       this.phase.set('error');
     } finally {
       this.busy.set(false);
@@ -119,7 +116,7 @@ export class DriveDeleteCard implements OnInit {
         this.phase.set('menu');
       }
     } catch {
-      this.error.set('Failed to register passkey');
+      this.error.set('driveConnect.failed');
     } finally {
       this.busy.set(false);
     }
@@ -135,33 +132,31 @@ export class DriveDeleteCard implements OnInit {
       if (info.ok) {
         const auth = await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
         if (!auth.ok) {
-          this.error.set(auth.reason);
-          this.phase.set(auth.reason === 'USE_PHONE' ? 'passkey-error' : 'error');
+          this.showRefused(auth.reason);
           return;
         }
         grant = auth.grant;
       }
       if (this.tickBoxRequired() && !this.ticked()) {
-        this.error.set(this.i18n.t('driveDelete.tickRequired'));
+        this.error.set('driveDelete.tickRequired');
         this.phase.set('error');
         return;
       }
       if (!this.currentPlan) {
-        this.error.set('Failed to plan deletion');
+        this.error.set('driveConnect.failed');
         this.phase.set('error');
         return;
       }
       this.phase.set('running');
       const result = await this.service.executeDelete(this.currentPlan, grant);
       if (!result.ok) {
-        this.error.set(result.reason);
-        this.phase.set(result.reason === 'USE_PHONE' ? 'passkey-error' : 'error');
+        this.showRefused(result.reason);
         return;
       }
       this.result.set('ok');
       this.phase.set('done');
     } catch {
-      this.error.set('Deletion failed');
+      this.error.set('driveConnect.failed');
       this.phase.set('error');
     } finally {
       this.busy.set(false);
@@ -175,5 +170,15 @@ export class DriveDeleteCard implements OnInit {
     this.result.set(null);
     this.currentAction = null;
     this.currentPlan = null;
+  }
+
+  /** Adapter codes stay off the screen; USE_PHONE has its own phase; TKeys (drive…) are translated. */
+  private showRefused(reason: string): void {
+    if (reason === 'USE_PHONE') {
+      this.phase.set('passkey-error');
+      return;
+    }
+    this.error.set(reason.startsWith('drive') ? (reason as TKey) : 'driveConnect.failed');
+    this.phase.set('error');
   }
 }

@@ -58,16 +58,16 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
   // State signals
   protected readonly backups = signal<BackupSummary[]>([]);
   protected readonly listState = signal<ListState>('loading');
-  protected readonly listError = signal<string | null>(null);
+  protected readonly listError = signal<TKey | null>(null);
 
   protected readonly backupBusy = signal(false);
   protected readonly backupMessage = signal<Msg | null>(null);
-  protected readonly backupError = signal<string | null>(null);
+  protected readonly backupError = signal<TKey | null>(null);
   protected readonly shrinkBackupId = signal<string | null>(null);
 
   protected readonly autoBackupEnabled = signal(false);
   protected readonly importBusy = signal<string | null>(null);
-  protected readonly importError = signal<string | null>(null);
+  protected readonly importError = signal<TKey | null>(null);
 
   private autoBackupInterval: number | null = null;
   private visibilityListener: (() => void) | null = null;
@@ -95,7 +95,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     const result = await this.service.backUpNow();
 
     if (!result.ok) {
-      this.backupError.set(this.mapErrorReason(result.reason));
+      this.backupError.set(result.reason);
       this.backupBusy.set(false);
       return;
     }
@@ -131,7 +131,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
       this.announcer.announce({ key: 'driveBackups.shrinkConfirmed' as const });
       await this.loadBackups();
     } catch (err) {
-      this.backupError.set(String(err));
+      this.backupError.set('driveConnect.failed');
     } finally {
       this.backupBusy.set(false);
     }
@@ -151,7 +151,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     const result = await this.service.importFromDrive(backupId);
 
     if (!result.ok) {
-      this.importError.set(this.mapErrorReason(result.reason));
+      this.importError.set(result.reason);
       this.importBusy.set(null);
       return;
     }
@@ -177,7 +177,7 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     const result = await this.service.listBackups();
 
     if (!result.ok) {
-      this.listError.set(this.mapErrorReason(result.reason));
+      this.listError.set(result.reason);
       this.listState.set('error');
       return;
     }
@@ -232,23 +232,6 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
     if (result.ran) {
       await this.loadBackups();
     }
-  }
-
-  private mapErrorReason(reason: string): string {
-    const reasonMap: Record<string, TKey> = {
-      'Not connected to folder': 'driveBackups.error.notConnected',
-      'Backup not found': 'driveBackups.error.backupNotFound',
-      'Failed to retrieve backup data': 'driveBackups.error.retrieveFailed',
-      'This backup did not pass its safety checks and was not imported.':
-        'driveBackups.error.safetyCheckFailed',
-    };
-
-    const key = reasonMap[reason];
-    if (key) {
-      return this.i18n.t(key);
-    }
-
-    return reason;
   }
 
   protected formatSize(bytes: number | null): string {

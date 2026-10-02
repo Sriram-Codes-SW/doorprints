@@ -44,7 +44,7 @@
 
     <div aria-live="polite" aria-atomic="true" class="error-region">
       @if (errorMessage(); as error) {
-        <p class="error-message">{{ error }}</p>
+        <p class="error-message">{{ error | t }}</p>
       }
     </div>
 

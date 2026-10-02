@@ -28,7 +28,9 @@ import { GOOGLE_CONFIG } from './drive-connect.providers';
 import type { DeletionAction } from '../drive-deletion-rules';
 import type { DeletionPlan } from '../drive-deletion';
 import type { WebGrant } from '../../device-auth/web-authorizer';
-import type { ReadyFolder, DriveProblem, DriveBackup, DriveConnection } from '../backup/drive-backup-results';
+import type { ReadyFolder, DriveBackup, DriveConnection } from '../backup/drive-backup-results';
+import { msgOfThrown, problemToMsg } from '../backup/drive-backup-results';
+import type { TKey } from '../../../i18n/en';
 import type { SyncAdapterStatus } from './sync-adapter';
 import type { PhotoSettings, OneOffGrant } from '../photo-network-policy';
 import type { DeletionContext } from '../../device-auth/delete-policy';
@@ -49,7 +51,8 @@ export type ConnectState = 'Unavailable' | 'Disconnected' | 'Connecting' | 'Need
 export interface ConnectResult {
   readonly state: ConnectState;
   readonly recoveryKey?: string;
-  readonly error?: string;
+  /** A dictionary key; the card translates it. Never English, never String(err). */
+  readonly error?: TKey;
 }
 
 export interface BackupSummary {
@@ -130,7 +133,7 @@ export class DriveConnectService {
 
   async connect(): Promise<ConnectResult> {
     if (!this.isConfigured) {
-      return { state: 'Unavailable', error: 'Google Drive not configured' };
+      return { state: 'Unavailable', error: 'driveConnect.notConfigured' };
     }
 
     this.state.set('Connecting');
@@ -138,8 +141,7 @@ export class DriveConnectService {
       const connection = await this.backupAdapter.connect();
       return this.handleConnection(connection);
     } catch (err) {
-      this.state.set('Error');
-      return { state: 'Error', error: String(err) };
+      return this.fail(err);
     }
   }
 
@@ -161,12 +163,9 @@ export class DriveConnectService {
         };
       }
 
-      const result = this.handleConnection(outcome.connection);
-      this.updateReadyFolderFromConnection(outcome.connection);
-      return result;
+      return this.handleConnection(outcome.connection);
     } catch (err) {
-      this.state.set('Error');
-      return { state: 'Error', error: String(err) };
+      return this.fail(err);
     }
   }
 
@@ -177,14 +176,12 @@ export class DriveConnectService {
       try {
         recoveryKey = RecoveryKeyClass.parse(recoveryKeyText);
       } catch {
-        return { state: this.getState(), error: 'The recovery key is not valid: check it letter by letter.' };
+        return { state: this.getState(), error: 'driveJoin.errorInvalidFormat' };
       }
       const connection = await this.backupAdapter.openWithRecoveryKey(recoveryKey);
-      this.updateReadyFolderFromConnection(connection);
       return this.handleConnection(connection);
     } catch (err) {
-      this.state.set('Error');
-      return { state: 'Error', error: String(err) };
+      return this.fail(err);
     }
   }
 
@@ -204,7 +201,13 @@ export class DriveConnectService {
 
   // ==================== State Management ====================
 
+  private fail(err: unknown): ConnectResult {
+    this.state.set('Error');
+    return { state: 'Error', error: msgOfThrown(err) };
+  }
+
   private handleConnection(connection: DriveConnection): ConnectResult {
+    this.updateReadyFolderFromConnection(connection);
     switch (connection.kind) {
       case 'READY':
         this.state.set('Ready');
@@ -217,22 +220,16 @@ export class DriveConnectService {
         return { state: 'NeedsEnrolment' };
       case 'FOLDER_GONE':
         this.state.set('Disconnected');
-        return {
-          state: 'Disconnected',
-          error: 'Folder was deleted; connect again to create a new one',
-        };
+        return { state: 'Disconnected', error: 'driveConnect.folderGone' };
       case 'NO_FOLDER':
         this.state.set('Disconnected');
         return { state: 'Disconnected' };
       case 'ERROR':
         this.state.set('Error');
-        return {
-          state: 'Error',
-          error: connection.problem?.kind || 'Unknown error',
-        };
+        return { state: 'Error', error: problemToMsg(connection.problem.kind) };
       default:
         this.state.set('Error');
-        return { state: 'Error', error: 'Unknown connection state' };
+        return { state: 'Error', error: 'driveConnect.failed' };
     }
   }
 
@@ -248,10 +245,10 @@ export class DriveConnectService {
 
   async listBackups(): Promise<
     | { readonly ok: true; readonly backups: BackupSummary[]; readonly missingNewer: boolean }
-    | { readonly ok: false; readonly reason: string }
+    | { readonly ok: false; readonly reason: TKey }
   > {
     if (!this.readyFolder) {
-      return { ok: false, reason: 'Not connected to folder' };
+      return { ok: false, reason: 'driveBackups.error.notConnected' };
     }
 
     try {
@@ -265,7 +262,7 @@ export class DriveConnectService {
       }));
       return { ok: true, backups, missingNewer: listing.missingNewer };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -275,10 +272,10 @@ export class DriveConnectService {
     backupId: string,
   ): Promise<
     | { readonly ok: true; readonly file: Blob }
-    | { readonly ok: false; readonly reason: string }
+    | { readonly ok: false; readonly reason: TKey }
   > {
     if (!this.readyFolder) {
-      return { ok: false, reason: 'Not connected to folder' };
+      return { ok: false, reason: 'driveBackups.error.notConnected' };
     }
 
     try {
@@ -286,7 +283,7 @@ export class DriveConnectService {
       const backup = listing.backups.find((b) => b.fileId === backupId);
 
       if (!backup) {
-        return { ok: false, reason: 'Backup not found' };
+        return { ok: false, reason: 'driveBackups.error.backupNotFound' };
       }
 
       const sink = new MemoryStagingSink();
@@ -299,18 +296,18 @@ export class DriveConnectService {
 
       if (result.kind === 'refused') {
         await sink.discard();
-        return { ok: false, reason: result.problem.kind };
+        return { ok: false, reason: problemToMsg(result.problem.kind) };
       }
 
       const blob = sink.blob;
       if (!blob) {
         await sink.discard();
-        return { ok: false, reason: 'Failed to retrieve backup data' };
+        return { ok: false, reason: 'driveBackups.error.retrieveFailed' };
       }
 
       return { ok: true, file: blob };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -318,13 +315,13 @@ export class DriveConnectService {
 
   async backUpNow(): Promise<
     | { readonly ok: true; readonly backup: BackupSummary; readonly needsShrinkConfirmation: boolean; readonly missingNewer: boolean }
-    | { readonly ok: false; readonly reason: string }
+    | { readonly ok: false; readonly reason: TKey }
   > {
-    if (!this.readyFolder) return { ok: false, reason: 'Not connected to folder' };
-    if (!this.backupSource) return { ok: false, reason: 'No backup source' };
+    if (!this.readyFolder) return { ok: false, reason: 'driveBackups.error.notConnected' };
+    if (!this.backupSource) return { ok: false, reason: 'driveConnect.noBackupSource' };
     try {
       const out = await this.backupAdapter.backUpNow(this.readyFolder, this.backupSource);
-      if (out.kind === 'failed') return { ok: false, reason: out.problem.kind };
+      if (out.kind === 'failed') return { ok: false, reason: problemToMsg(out.problem.kind) };
       this.lastBackupId = out.backup.fileId;
       return {
         ok: true,
@@ -334,7 +331,7 @@ export class DriveConnectService {
         missingNewer: out.missingNewer,
       };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -344,14 +341,14 @@ export class DriveConnectService {
 
   async lastBackup(): Promise<
     | { readonly ok: true; readonly backup: BackupSummary }
-    | { readonly ok: false; readonly reason: string }
+    | { readonly ok: false; readonly reason: TKey }
   > {
     const result = await this.listBackups();
     if (!result.ok) {
       return result;
     }
     if (result.backups.length === 0) {
-      return { ok: false, reason: 'No backups found' };
+      return { ok: false, reason: 'driveConnect.noBackups' };
     }
     return { ok: true, backup: result.backups[0] };
   }
@@ -428,7 +425,7 @@ export class DriveConnectService {
       }
       return { ok: true, plan: result.plan };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -455,7 +452,7 @@ export class DriveConnectService {
         delayMs: gate.delayMs,
       };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -474,7 +471,7 @@ export class DriveConnectService {
       }
       return { ok: true, grant: result.grant };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -492,7 +489,7 @@ export class DriveConnectService {
       }
       return { ok: false, reason: outcome.reason };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -509,7 +506,7 @@ export class DriveConnectService {
       }
       return { ok: false, reason: outcome.reason };
     } catch (err) {
-      return { ok: false, reason: String(err) };
+      return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
@@ -560,7 +557,7 @@ export class DriveConnectService {
       const out = await this.backUpNow();
       return { ran: out.ok, reason: out.ok ? decision.reason : out.reason };
     } catch (err) {
-      return { ran: false, reason: String(err) };
+      return { ran: false, reason: msgOfThrown(err) };
     }
   }
 

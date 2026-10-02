@@ -20,6 +20,7 @@ import { Component, computed, inject, signal, ChangeDetectionStrategy, output, O
 import { CommonModule } from '@angular/common';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
+import type { TKey } from '../../i18n/en';
 import { DriveConnectService } from '../../data/drive/connect/drive-connect.service';
 import { DriveJoinComponent } from './drive/drive-join';
 import { DriveEnrolCard } from './drive/drive-enrol';
@@ -65,7 +66,7 @@ export class DriveConnectComponent implements OnDestroy {
   protected readonly recoveryKey = signal<string | null>(null);
   protected readonly recoveryKeySaved = signal(false);
   protected readonly keyCopied = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly error = signal<TKey | null>(null);
 
   ngOnDestroy(): void {
     if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
@@ -91,8 +92,8 @@ export class DriveConnectComponent implements OnDestroy {
       } else if (result.error) {
         this.error.set(result.error);
       }
-    } catch (err) {
-      this.error.set(String(err));
+    } catch {
+      this.error.set('driveConnect.failed');
     } finally {
       this.busy.set(false);
     }
