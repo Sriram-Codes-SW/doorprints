@@ -1332,6 +1332,7 @@ export const en = {
   'driveDelete.confirmHeading': 'Confirm deletion',
   'driveDelete.confirmWarning': 'This cannot be undone. Deletes from Google Drive for all devices.',
   'driveDelete.confirmCheckbox': 'I understand this cannot be undone',
+  'driveDelete.tickRequired': 'Tick the box to confirm this deletion.',
   'driveDelete.countdown': 'Please wait {seconds} seconds…',
   'driveDelete.passkeyRequired': 'Passkey required',
   'driveDelete.setupPasskey': 'Set up a passkey',

@@ -21,6 +21,7 @@ import { CommonModule } from '@angular/common';
 import type { DeletionAction } from '../../../data/drive/drive-deletion-rules';
 import type { DeletionPlan } from '../../../data/drive/drive-deletion';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
+import { TranslationService } from '../../../i18n/translation.service';
 import { TPipe } from '../../../i18n/t.pipe';
 
 type Phase = 'menu' | 'plan' | 'confirm' | 'passkey-error' | 'running' | 'done' | 'error';
@@ -41,6 +42,7 @@ export class DriveDeleteCard implements OnInit {
   @Input() oneBackupId?: string;
 
   private readonly service = inject(DriveConnectService);
+  private readonly i18n = inject(TranslationService);
 
   protected readonly busy = signal(false);
   protected readonly phase = signal<Phase>('menu');
@@ -104,7 +106,7 @@ export class DriveDeleteCard implements OnInit {
   }
 
   protected toggleTickBox(): void {
-    if (!this.tickBoxRequired()) return;
+    if (!this.tickBoxRequired() || this.busy()) return;
     this.ticked.set(!this.ticked());
   }
 
@@ -127,12 +129,11 @@ export class DriveDeleteCard implements OnInit {
     if (!this.currentAction || !this.currentPlan) return;
     if (this.tickBoxRequired() && !this.ticked()) return;
     this.busy.set(true);
-    this.phase.set('running');
     try {
       const info = await this.service.deleteConfirmInfo(this.currentAction);
       let grant = null;
       if (info.ok) {
-        const auth = await this.service.authorizeDelete(this.currentAction);
+        const auth = await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
         if (!auth.ok) {
           this.error.set(auth.reason);
           this.phase.set(auth.reason === 'USE_PHONE' ? 'passkey-error' : 'error');
@@ -140,11 +141,17 @@ export class DriveDeleteCard implements OnInit {
         }
         grant = auth.grant;
       }
+      if (this.tickBoxRequired() && !this.ticked()) {
+        this.error.set(this.i18n.t('driveDelete.tickRequired'));
+        this.phase.set('error');
+        return;
+      }
       if (!this.currentPlan) {
         this.error.set('Failed to plan deletion');
         this.phase.set('error');
         return;
       }
+      this.phase.set('running');
       const result = await this.service.executeDelete(this.currentPlan, grant);
       if (!result.ok) {
         this.error.set(result.reason);

@@ -63,7 +63,7 @@
       <p>{{ 'driveDelete.confirmWarning' | t }}</p>
       @if (tickBoxRequired()) {
         <label class="checkbox">
-          <input type="checkbox" [checked]="ticked()" (change)="toggleTickBox()" [disabled]="busy()" />
+          <input type="checkbox" [checked]="ticked()" (change)="toggleTickBox()" [disabled]="busy() || phase() === 'running'" />
           <span>{{ 'driveDelete.confirmCheckbox' | t }}</span>
         </label>
       }

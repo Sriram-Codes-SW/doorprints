@@ -1316,6 +1316,7 @@ export const te: Dict = {
   'driveDelete.confirmHeading': 'తొలగింపును నిర్ధారించండి',
   'driveDelete.confirmWarning': 'దీన్ని చేయలేము. అన్ని సాధనాల కోసం Google Drive నుండి తొలగించండి.',
   'driveDelete.confirmCheckbox': 'నేను అర్థం చేసుకున్నాను: దీన్ని చేయలేము',
+  'driveDelete.tickRequired': 'తొలగింపును నిర్ధారించడానికి బాక్స్‌ను టిక్ చేయండి.',
   'driveDelete.countdown': 'దయచేసి {seconds} సెకన్ల కోసం ఆగండి…',
   'driveDelete.passkeyRequired': 'పాస్‌కీ అవసరం',
   'driveDelete.setupPasskey': 'పాస్‌కీని సెటప్ చేయండి',

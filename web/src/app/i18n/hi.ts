@@ -1316,6 +1316,7 @@ export const hi: Dict = {
   'driveDelete.confirmHeading': 'हटाने की पुष्टि करें',
   'driveDelete.confirmWarning': 'यह पूर्ववत नहीं हो सकता। सभी डिवाइस के लिए गूगल ड्राइव से हटाएँ।',
   'driveDelete.confirmCheckbox': 'मैं समझता हूँ कि यह पूर्ववत नहीं हो सकता',
+  'driveDelete.tickRequired': 'हटाने की पुष्टि के लिए बॉक्स पर निशान लगाएँ।',
   'driveDelete.countdown': 'कृपया {seconds} सेकंड प्रतीक्षा करें…',
   'driveDelete.passkeyRequired': 'पासकी आवश्यक है',
   'driveDelete.setupPasskey': 'एक पासकी सेट अप करें',
