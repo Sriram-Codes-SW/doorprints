@@ -919,7 +919,7 @@ open class CommonRepository(
      * row always takes the server's). Houses and visits always sync; photo transfers only when [photosAllowed] (the
      * caller checks for an unmetered network when the user asked for Wi-Fi only). A remote found behind this phone
      * (S4b-BL-20: [SyncBackend.isBehind], or a push answered with a version at or below a stored cursor) gets
-     * everything again and is pulled from 0, and the outcome says so ([SyncOutcome.serverReset]). Throws on failure;
+     * everything again and is pulled from 0, and the outcome says so ([SyncOutcome.remoteReset]). Throws on failure;
      * see [SyncOutcome.fromError].
      */
     override suspend fun sync(photosAllowed: Boolean): SyncOutcome = withContext(Dispatchers.IO) {
@@ -932,20 +932,20 @@ open class CommonRepository(
         // answer can show the same ([pushAll]).
         val stored = settings.cursors()
         val storedCursors = listOf(stored.house, stored.visit, stored.photo, stored.record)
-        var serverReset = false
+        var remoteReset = false
         if (storedCursors.any { it > 0 } && backend.isBehind(storedCursors)) {
             resetForServer()
-            serverReset = true
+            remoteReset = true
         }
         var pushed: Int
         var photosWaiting: Int
         try {
-            val first = pushAll(backend, photosAllowed, if (serverReset) 0L else storedCursors.max())
+            val first = pushAll(backend, photosAllowed, if (remoteReset) 0L else storedCursors.max())
             pushed = first.first
             photosWaiting = first.second
         } catch (e: ServerWasReset) {
             resetForServer()
-            serverReset = true
+            remoteReset = true
             val again = pushAll(backend, photosAllowed, highestCursor = 0L)
             pushed = e.pushed + again.first
             photosWaiting = again.second
@@ -1020,7 +1020,7 @@ open class CommonRepository(
 
         SyncOutcome(
             SyncOutcome.Kind.OK, pushed = pushed, pulled = pulled, photosWaiting = photosWaiting,
-            serverReset = serverReset,
+            remoteReset = remoteReset,
         )
     }
 
