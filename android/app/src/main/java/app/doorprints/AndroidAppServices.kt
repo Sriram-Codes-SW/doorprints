@@ -41,6 +41,7 @@ import androidx.core.content.FileProvider
 import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Repository
+import app.doorprints.drive.AndroidDriveServices
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
 import app.doorprints.export.AutoBackupWorker
@@ -131,7 +132,9 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
     override val offlineMaps: OfflineMapsServices = AndroidOfflineMaps(app)
 
     /** Google Drive (S4b-BL-117): present only on a build with a Google OAuth client id. */
-    override val drive: app.doorprints.ui.DriveServices = app.doorprints.drive.AndroidDriveServices(app, repository)
+    override val drive: app.doorprints.ui.DriveServices by lazy {
+        AndroidDriveServices(app, repository)
+    }
 
     override val areaWakeup: AreaWakeupServices = AndroidAreaWakeup(app)
 
