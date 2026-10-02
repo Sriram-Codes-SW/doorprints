@@ -1253,6 +1253,23 @@ export const en = {
   'driveConnect.backupError': 'Could not back up: {reason}',
   'driveConnect.noAuth': 'Authentication required',
   'driveConnect.noAuthHint': 'A passkey or fingerprint is needed to proceed.',
+  // Drive Join and Passkey components (S4b-BL-117, S4b-BL-73)
+  'driveJoin.heading': 'Join this folder',
+  'driveJoin.description': 'This Google Drive already holds a Doorprints folder from another device. To join, type the recovery key that was shown when the folder was created.',
+  'driveJoin.label': 'Recovery key',
+  'driveJoin.helpText': '26 characters in groups of 4, separated by hyphens',
+  'driveJoin.joinButton': 'Join this folder',
+  'driveJoin.errorEmpty': 'Enter the recovery key',
+  'driveJoin.errorInvalidFormat': 'The recovery key is not valid: check it letter by letter.',
+  'driveJoin.errorWrongKey': 'This recovery key does not open this folder.',
+  'driveJoin.lostKeyMessage': 'Without the recovery key a new device cannot join yet. Open Doorprints on a device that is already connected.',
+  'driveJoin.disconnect': 'Disconnect',
+  'driveJoin.disconnectAriaLabel': 'Disconnect this Google Drive',
+  'drivePasskey.heading': 'Passkey for this device',
+  'drivePasskey.noneDescription': 'Deleting all backups or everything Doorprints keeps in Google Drive needs a passkey on this device (fingerprint, face or screen lock). Set one up now.',
+  'drivePasskey.registerButton': 'Set up a passkey',
+  'drivePasskey.registeredDescription': 'A passkey is set up on this device.',
+  'drivePasskey.unsupportedDescription': 'This browser cannot make the kind of passkey needed. Deleting everything from here is not available; you can still delete single backups.',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */
