@@ -23,6 +23,7 @@ import { kidOf } from '../../../crypto/folder-key';
 import type { TokenProvider } from '../../drive-client';
 import type { LocalStore } from '../../../local-store.service';
 import type { DriveDb, OpenedDriveDb } from '../stores/drive-db';
+import type { KeyValueStore } from '../deletion-adapter';
 import { openDriveDb } from '../stores/drive-db';
 import { DeviceKeyStore, MemoryDeviceKeyStore } from '../stores/device-key-store';
 import { FetchDriveClient } from '../../fetch-drive-client';
@@ -55,6 +56,8 @@ export interface DriveRuntime {
   local: LocalStore;
   driveStateStore: DriveStateStore;
   folderTrustStores: FolderTrustStores;
+  /** Small device-side records that must survive a reload (the deletion list, the passkey's sealed blob). */
+  kv: KeyValueStore;
   syncStateStore: SyncStateStore;
   photoStateStore: PhotoStateStore;
   session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync and deletion
@@ -181,6 +184,7 @@ export async function createDriveRuntime(deps: {
     local: deps.local,
     driveStateStore: opened.driveStateStore,
     folderTrustStores,
+    kv: opened.keyValueStore,
     syncStateStore: opened.syncStateStore,
     photoStateStore: opened.photoStateStore,
   };

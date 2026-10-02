@@ -17,18 +17,49 @@
  */
 
 import type { DriveDeletionAdapter, DeletionPreflightResult, AuthorizationResult, ConfirmGateState, KeyValueStore } from '../deletion-adapter';
-import {
-  DriveDeletionAdapterImpl, PersistentDeletionStore, InMemoryKeyValueStore,
-} from '../deletion-adapter';
+import { DriveDeletionAdapterImpl, PersistentDeletionStore, confirmGateOf, decideDeletion } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
 import { RealAuthorizationGate } from './deletion-gate';
 import { WebAuthorizer } from '../../../device-auth/web-authorizer';
 import { WebAuthnPrfAuthenticator } from '../../../device-auth/web-authn-prf-authenticator';
 import type { PrfAuthenticator, SealedBlob } from '../../../device-auth/prf-seal';
-import { sealWithPrf } from '../../../device-auth/prf-seal';
+import { SEALED_BLOB_KEY, sealedBlobFromJson } from '../../../device-auth/prf-seal';
 import type { DriveRuntime } from './runtime';
 import type { DeletionAction } from '../../drive-deletion-rules';
 import type { DeletionContext } from '../../../device-auth/delete-policy';
+
+/** What the lazy proxy may be given instead of the browser's own (tests pass a scripted passkey and a clock). */
+export interface DeletionFactoryDeps {
+  readonly prf?: PrfAuthenticator;
+  readonly clock?: () => number;
+}
+
+const REFUSING: DriveDeletionAdapter = {
+  async preflight() {
+    return { kind: 'refused', reason: 'Not connected to Drive folder' };
+  },
+  decide() {
+    return { outcome: 'REFUSED', reason: 'OFFLINE' };
+  },
+  async authorize() {
+    return { kind: 'refused', reason: 'Not connected' };
+  },
+  async execute() {
+    return { kind: 'refused', reason: 'OFFLINE', error: null };
+  },
+  async resume() {
+    return { kind: 'refused', reason: 'OFFLINE', error: null };
+  },
+  confirmGate() {
+    return { tickBoxRequired: false, delayMs: 0, enabled: () => false };
+  },
+  async registerPasskey() {
+    return 'unsupported';
+  },
+  async passkeyStatus() {
+    return 'unsupported';
+  },
+};
 
 /**
  * Creates a real deletion adapter from the Drive runtime.
@@ -36,6 +67,8 @@ import type { DeletionContext } from '../../../device-auth/delete-policy';
  * Constructs DriveDeletionService with the runtime's drive client and an authorization gate,
  * WebAuthorizer with the PRF authenticator, and DriveDeletionAdapterImpl to bridge to the UI.
  * Requires runtime.session to be set; if missing, the adapter returns 'not connected' refusals.
+ * The deletion list and the passkey's sealed blob live in the runtime's key-value store (IndexedDB), so a half-done
+ * deletion and the passkey survive a reload.
  *
  * S4b-BL-73, S4b-BL-127, docs/15 §9.4, §10.4.
  */
@@ -46,45 +79,11 @@ export function createDeletionAdapter(
   clock?: () => number,
 ): DriveDeletionAdapter {
   const clockFn = clock || (() => Date.now());
-  // Create a key-value store for deletion state persistence (backed by IndexedDB or in-memory)
-  const kv = keyValueStore || new InMemoryKeyValueStore();
+  const kv = keyValueStore ?? rt.kv;
   const deletionStore = new PersistentDeletionStore(kv);
 
-  // If no session, return an adapter that always refuses
-  if (!rt.session) {
-    return {
-      async preflight() {
-        return { kind: 'refused', reason: 'Not connected to Drive folder' };
-      },
-      decide() {
-        return { outcome: 'REFUSED', reason: 'OFFLINE' };
-      },
-      async authorize() {
-        return { kind: 'refused', reason: 'Not connected' };
-      },
-      async execute() {
-        return { kind: 'refused', reason: 'OFFLINE', error: null };
-      },
-      async resume() {
-        return { kind: 'refused', reason: 'OFFLINE', error: null };
-      },
-      confirmGate() {
-        return {
-          tickBoxRequired: false,
-          delayMs: 0,
-          enabled: () => false,
-        };
-      },
-      async registerPasskey() {
-        return 'unsupported';
-      },
-      async passkeyStatus() {
-        return 'unsupported';
-      },
-    };
-  }
+  if (!rt.session) return REFUSING;
 
-  // Create the PRF authenticator (real browser-based WebAuthn or provided fake)
   const authenticator = prfAuthenticator || new WebAuthnPrfAuthenticator(
     async (key: string) => {
       try {
@@ -102,41 +101,18 @@ export function createDeletionAdapter(
     },
   );
 
-  // Load or initialize the sealed blob from persistent storage
-  const loadSealedBlob = async (): Promise<SealedBlob | null> => {
+  const sealedBlob = async (): Promise<SealedBlob | null> => {
     try {
-      const stored = await kv.get('doorprints-deletion-sealed-blob');
-      if (!stored) return null;
-      return JSON.parse(stored) as SealedBlob;
+      const stored = await kv.get(SEALED_BLOB_KEY);
+      return stored ? sealedBlobFromJson(stored) : null;
     } catch {
       return null;
     }
   };
 
-  let cachedSealedBlob: SealedBlob | null | undefined;
-  const getSealedBlob = async (): Promise<SealedBlob | null> => {
-    if (cachedSealedBlob !== undefined) return cachedSealedBlob;
-    cachedSealedBlob = await loadSealedBlob();
-    return cachedSealedBlob;
-  };
-
-  const sealedBlob = (): SealedBlob | null => {
-    // Return cached value synchronously; will be populated on first async call
-    return cachedSealedBlob ?? null;
-  };
-
-  // Create the web authorizer with the PRF authenticator
-  const webAuthorizer = new WebAuthorizer(
-    rt.crypto,
-    authenticator,
-    sealedBlob,
-    clockFn,
-  );
-
-  // Create the real authorization gate
+  const webAuthorizer = new WebAuthorizer(rt.crypto, authenticator, sealedBlob, clockFn);
   const authorizationGate = new RealAuthorizationGate(webAuthorizer, clockFn);
 
-  // Create the deletion service with the runtime's drive client
   const deletionService = new DriveDeletionService({
     drive: rt.drive,
     gate: authorizationGate,
@@ -145,18 +121,13 @@ export function createDeletionAdapter(
     now: clockFn,
   });
 
-  // Get the root folder ID from the runtime session
-  // FolderSession has rootId field set by backup adapter after successful connect
-  const rootId = rt.session.rootId;
-
-  // Create and return the adapter with passkey registration support
   return new DriveDeletionAdapterImpl(
     deletionService,
     webAuthorizer,
     deletionStore,
-    rootId,
-    null, // backupsLeft not tracked in FolderSession; will be updated by UI
-    authorizationGate, // Pass the gate for grant registration
+    rt.session.rootId,
+    null, // how many backups are left is the screen's to say, per call (the policy fails closed on null)
+    authorizationGate,
     rt.crypto,
     authenticator,
     kv,
@@ -165,82 +136,54 @@ export function createDeletionAdapter(
 
 /**
  * A lazy proxy that wraps the deletion adapter interface, deferring construction until first use.
- * This ensures nothing is built at app startup; the adapter is only created when actually needed.
- *
- * The adapter instance is memoized, so all methods use the same instance per proxy.
+ * Nothing is built at app startup. The adapter is rebuilt whenever the runtime's folder session changes (a reconnect, a
+ * new folder after a deletion), so it never works on a folder the device has left.
  *
  * S4b-BL-73, S4b-BL-127, docs/15 §9.4.
  */
-export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRuntime>): DriveDeletionAdapter {
-  let cachedAdapter: DriveDeletionAdapter | null = null;
-  let adapterPromise: Promise<DriveDeletionAdapter> | null = null;
+export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRuntime>, deps: DeletionFactoryDeps = {}): DriveDeletionAdapter {
+  let current: { readonly session: unknown; readonly adapter: DriveDeletionAdapter } | null = null;
 
   const getAdapter = async (): Promise<DriveDeletionAdapter> => {
-    if (cachedAdapter) return cachedAdapter;
-    if (adapterPromise) return adapterPromise;
-
-    adapterPromise = (async () => {
-      const rt = await getRuntime();
-      // Note: keyValueStore will be available from rt.db in the opened database
-      cachedAdapter = createDeletionAdapter(rt, undefined);
-      return cachedAdapter;
-    })();
-
-    return adapterPromise;
+    const rt = await getRuntime();
+    if (!current || current.session !== (rt.session ?? null)) {
+      current = { session: rt.session ?? null, adapter: createDeletionAdapter(rt, undefined, deps.prf, deps.clock) };
+    }
+    return current.adapter;
   };
 
   return {
     async preflight(action: DeletionAction): Promise<DeletionPreflightResult> {
-      const adapter = await getAdapter();
-      return adapter.preflight(action);
+      return (await getAdapter()).preflight(action);
     },
 
     decide(action: DeletionAction, context: DeletionContext) {
-      // This is synchronous. If the adapter hasn't been created yet, return a conservative default.
-      // In practice, the UI will call preflight() first (which is async), so this should be called
-      // after the adapter is ready.
-      if (!cachedAdapter) {
-        return { outcome: 'REFUSED', reason: 'NO_DEVICE_LOCK' };
-      }
-      return cachedAdapter.decide(action, context);
+      // The policy needs no folder: the same answer before and after the first call.
+      return decideDeletion(action, context);
     },
 
     async authorize(action: DeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
-      const adapter = await getAdapter();
-      return adapter.authorize(action, context);
+      return (await getAdapter()).authorize(action, context);
     },
 
     async execute(plan, grant) {
-      const adapter = await getAdapter();
-      return adapter.execute(plan, grant);
+      return (await getAdapter()).execute(plan, grant);
     },
 
     async resume(grant) {
-      const adapter = await getAdapter();
-      return adapter.resume(grant);
+      return (await getAdapter()).resume(grant);
     },
 
     confirmGate(action: DeletionAction, context: DeletionContext): ConfirmGateState {
-      // This is synchronous. If the adapter hasn't been created yet, return a default.
-      if (!cachedAdapter) {
-        return {
-          tickBoxRequired: false,
-          delayMs: 0,
-          enabled: () => false,
-        };
-      }
-      return cachedAdapter.confirmGate(action, context);
+      return confirmGateOf(decideDeletion(action, context));
     },
 
     async registerPasskey() {
-      const adapter = await getAdapter();
-      return adapter.registerPasskey();
+      return (await getAdapter()).registerPasskey();
     },
 
     async passkeyStatus() {
-      const adapter = await getAdapter();
-      return adapter.passkeyStatus();
+      return (await getAdapter()).passkeyStatus();
     },
   };
 }
-

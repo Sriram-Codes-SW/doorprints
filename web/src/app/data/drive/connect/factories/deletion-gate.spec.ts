@@ -106,7 +106,7 @@ describe('RealAuthorizationGate', () => {
   });
 
   it('(b) Real token used twice is rejected on second use', async () => {
-    gate.registerGrant(42, { type: 'allBackups' }, 'del-test0000000000000000000');
+    gate.registerGrant(42, { type: 'allBackups' }, 'del-test0000000000000000000', clock());
 
     const token: AuthorizationToken = {
       level: 'L2',
@@ -127,7 +127,7 @@ describe('RealAuthorizationGate', () => {
   it('(c) Token older than 60s is refused by stillHolds', async () => {
     // Register grant 61s ago
     server.clock.advance(-61_000);
-    gate.registerGrant(43, { type: 'allBackups' }, 'del-test0000000000000000000');
+    gate.registerGrant(43, { type: 'allBackups' }, 'del-test0000000000000000000', clock());
     server.clock.advance(61_000);
 
     const token: AuthorizationToken = {
@@ -142,7 +142,7 @@ describe('RealAuthorizationGate', () => {
   });
 
   it('(d) Token for different operationId is rejected', async () => {
-    gate.registerGrant(44, { type: 'allBackups' }, 'del-correct000000000000000');
+    gate.registerGrant(44, { type: 'allBackups' }, 'del-correct000000000000000', clock());
 
     const token: AuthorizationToken = {
       level: 'L2',
@@ -156,7 +156,7 @@ describe('RealAuthorizationGate', () => {
   });
 
   it('(e) L1 token valid for its operation', async () => {
-    gate.registerGrant(45, { type: 'oneBackup', fileId: 'test' }, 'del-test0000000000000000000');
+    gate.registerGrant(45, { type: 'oneBackup', fileId: 'test' }, 'del-test0000000000000000000', clock());
 
     const token: AuthorizationToken = {
       level: 'L1',
@@ -172,7 +172,7 @@ describe('RealAuthorizationGate', () => {
 
   it('(f) Long run crossing 60s stops and is resumable with fresh grant', async () => {
     // Register initial grant
-    gate.registerGrant(46, { type: 'allBackups' }, 'del-test0000000000000000000');
+    gate.registerGrant(46, { type: 'allBackups' }, 'del-test0000000000000000000', clock());
 
     const token: AuthorizationToken = {
       level: 'L2',
@@ -193,7 +193,7 @@ describe('RealAuthorizationGate', () => {
     expect(holds).toBe(false);
 
     // Register a fresh grant for resume
-    gate.registerGrant(47, { type: 'allBackups' }, 'del-test0000000000000000000');
+    gate.registerGrant(47, { type: 'allBackups' }, 'del-test0000000000000000000', clock());
 
     const freshToken: AuthorizationToken = {
       level: 'L2',

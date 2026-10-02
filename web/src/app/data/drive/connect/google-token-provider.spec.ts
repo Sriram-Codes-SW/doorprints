@@ -101,7 +101,7 @@ describe('GoogleTokenProvider', () => {
     scriptLoader.failLoad = true;
     const provider = new TestableGoogleTokenProvider(scriptLoader, config);
 
-    await expect(provider.accessToken()).rejects.toThrow('Script load failed');
+    await expect(provider.accessToken()).rejects.toThrow('unavailable');
   });
 
   it('should successfully request a token', async () => {
@@ -199,5 +199,84 @@ describe('GoogleTokenProvider', () => {
 
     expect(token2).toBe('test-token-123');
     expect(provider.requestAccessTokenCalls).toHaveLength(1);
+  });
+});
+
+
+describe('GoogleTokenProvider with the real token client wiring', () => {
+  interface Captured {
+    config: { callback: (r: unknown) => void; error_callback: (e: unknown) => void; scope: string };
+    requests: Array<{ prompt?: string }>;
+  }
+
+  function install(granted: boolean): Captured {
+    const captured: Captured = { config: null as never, requests: [] };
+    (window as unknown as Record<string, unknown>).google = {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: Captured['config']) => {
+            captured.config = config;
+            return { requestAccessToken: (o: { prompt?: string }) => captured.requests.push(o) };
+          },
+          hasGrantedAllScopes: () => granted,
+        },
+      },
+    };
+    return captured;
+  }
+
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>).google;
+  });
+
+  const loader: ScriptLoader = { load: async () => undefined };
+  const cfg: GoogleConfig = { clientId: 'client.apps.example' };
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  it('asks only for the drive.file scope', async () => {
+    const g = install(true);
+    const p = new GoogleTokenProvider(loader, cfg).accessToken();
+    await tick();
+    expect(g.config.scope).toBe('https://www.googleapis.com/auth/drive.file');
+    g.config.callback({ access_token: 't' });
+    await expect(p).resolves.toBe('t');
+  });
+
+  it('a popup the person closes ends the sign-in instead of waiting forever', async () => {
+    const g = install(true);
+    const p = new GoogleTokenProvider(loader, cfg).accessToken();
+    await tick();
+    g.config.error_callback({ type: 'popup_closed' });
+    await expect(p).rejects.toMatchObject({ kind: 'popup_closed' });
+  });
+
+  it('a popup that could not open is a blocked popup', async () => {
+    const g = install(true);
+    const p = new GoogleTokenProvider(loader, cfg).accessToken();
+    await tick();
+    g.config.error_callback({ type: 'popup_failed_to_open' });
+    await expect(p).rejects.toMatchObject({ kind: 'popup_blocked' });
+  });
+
+  it('a token without the Drive permission (ticked off on the consent page) is refused', async () => {
+    const g = install(false);
+    const p = new GoogleTokenProvider(loader, cfg).accessToken();
+    await tick();
+    g.config.callback({ access_token: 'no-drive' });
+    await expect(p).rejects.toMatchObject({ kind: 'denied' });
+  });
+
+  it('a refused token is not kept: the next call asks again', async () => {
+    const g = install(false);
+    const provider = new GoogleTokenProvider(loader, cfg);
+    const first = provider.accessToken();
+    await tick();
+    g.config.callback({ access_token: 'no-drive' });
+    await expect(first).rejects.toBeTruthy();
+    const second = provider.accessToken();
+    await tick();
+    expect(g.requests).toHaveLength(2);
+    g.config.error_callback({ type: 'popup_closed' });
+    await expect(second).rejects.toBeTruthy();
   });
 });

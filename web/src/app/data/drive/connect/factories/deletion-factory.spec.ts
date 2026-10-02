@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { InMemoryKeyValueStore } from '../deletion-adapter';
 import { WebCryptoProvider } from '../../../crypto/crypto-provider';
 import { createDeletionAdapter, createLazyDeletionAdapterProxy } from './deletion-factory';
 import { createTestDeletionAdapter } from './deletion-factory.test-support';
@@ -66,6 +67,7 @@ describe('deletion factories', () => {
       local: null as any,
       driveStateStore: null as any,
       folderTrustStores: null as any,
+      kv: new InMemoryKeyValueStore(),
       syncStateStore: null as any,
       photoStateStore: null as any,
       session: mockSession,

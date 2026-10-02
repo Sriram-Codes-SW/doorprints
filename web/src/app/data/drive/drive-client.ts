@@ -241,6 +241,17 @@ export class DriveError extends Error {
   }
 }
 
+/** Why Google sign-in did not give a token: the popup was blocked or closed, the person said no, no network, or Google's script is not there. */
+export type SignInErrorKind = 'popup_blocked' | 'popup_closed' | 'denied' | 'offline' | 'unavailable';
+
+/** A failed Google sign-in (never carries a token). Its message is the kind. */
+export class SignInError extends Error {
+  constructor(readonly kind: SignInErrorKind) {
+    super(kind);
+    this.name = 'SignInError';
+  }
+}
+
 export function corrupt(reason = 'badAnswer'): DriveError {
   return new DriveError('CORRUPT', 0, null, reason);
 }

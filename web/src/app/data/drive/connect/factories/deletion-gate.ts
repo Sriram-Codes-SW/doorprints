@@ -36,8 +36,9 @@ export class RealAuthorizationGate implements AuthorizationGate {
     private readonly clock: () => number,
   ) {}
 
-  registerGrant(grantId: number, action: DeletionAction, operationId: string): void {
-    this.issuedGrants.set(grantId, { action, operationId, issuedAtMs: this.clock() });
+  /** `issuedAtMs` is when the person passed the check (the grant's own time), not when the delete starts. */
+  registerGrant(grantId: number, action: DeletionAction, operationId: string, issuedAtMs: number): void {
+    this.issuedGrants.set(grantId, { action, operationId, issuedAtMs });
   }
 
   async isGenuine(token: AuthorizationToken): Promise<boolean> {

@@ -25,7 +25,7 @@ import { KeysError } from '../../crypto/keys-file';
 import type { KeysErrorKind } from '../../crypto/keys-file';
 import { RecoveryKeyError } from '../../crypto/recovery-key';
 import type { RecoveryKey } from '../../crypto/recovery-key';
-import { DriveError } from '../drive-client';
+import { DriveError, SignInError } from '../drive-client';
 import type { DriveErrorKind, DriveFile } from '../drive-client';
 import type { ShrinkHold } from './backup-retention';
 import type { ScheduleFailure } from './backup-schedule';
@@ -58,7 +58,11 @@ export type DriveProblemKind =
   | 'BACKUP_REFUSED'
   | 'BACKUP_GONE'
   | 'SOURCE_FAILED'
-  | 'CRYPTO_UNAVAILABLE';
+  | 'CRYPTO_UNAVAILABLE'
+  | 'SIGNIN_POPUP_BLOCKED'
+  | 'SIGNIN_CLOSED'
+  | 'SIGNIN_DENIED'
+  | 'SIGNIN_UNAVAILABLE';
 
 /** Why something did not happen, in the words a screen needs; the underlying kind is kept for support. */
 export class DriveProblem {
@@ -90,6 +94,16 @@ export class DriveProblem {
   }
 
   static of(e: unknown): DriveProblem {
+    if (e instanceof SignInError) {
+      const kinds: Record<SignInError['kind'], DriveProblemKind> = {
+        popup_blocked: 'SIGNIN_POPUP_BLOCKED',
+        popup_closed: 'SIGNIN_CLOSED',
+        denied: 'SIGNIN_DENIED',
+        offline: 'OFFLINE',
+        unavailable: 'SIGNIN_UNAVAILABLE',
+      };
+      return new DriveProblem(kinds[e.kind]);
+    }
     if (e instanceof DriveError) {
       const known: Partial<Record<DriveErrorKind, DriveProblemKind>> = {
         OFFLINE: 'OFFLINE',

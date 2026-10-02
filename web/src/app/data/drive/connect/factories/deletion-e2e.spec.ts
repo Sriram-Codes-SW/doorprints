@@ -298,6 +298,7 @@ class TestRigBuilder {
       local: {} as any,
       driveStateStore: {} as any,
       folderTrustStores: {} as any,
+      kv: {} as any,
       syncStateStore: {} as any,
       photoStateStore: {} as any,
       session: this.session,
