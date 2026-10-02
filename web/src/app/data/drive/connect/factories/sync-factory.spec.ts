@@ -25,10 +25,11 @@ import type { TestDevice } from '../../drive-sync-test-world';
 
 describe('sync factories', () => {
   describe('createSyncAdapter', () => {
-    it('returns null when runtime has no session', () => {
+    it('creates an adapter even when runtime has no session', () => {
       const mockRuntime = { session: null } as any;
       const adapter = createSyncAdapter(mockRuntime);
-      expect(adapter).toBeNull();
+      expect(adapter).not.toBeNull();
+      expect(typeof adapter.syncNow).toBe('function');
     });
 
     it('creates an adapter when runtime has a session', async () => {
@@ -174,6 +175,52 @@ describe('sync factories', () => {
       await deviceB.sync();
 
       expect(deviceB.local.label('house-1')).toBe('<deleted>');
+    });
+  });
+
+  describe('real factories end-to-end', () => {
+    it('sync before connect returns typed "not connected" status', async () => {
+      const world = new SyncWorld();
+      const deviceA = await world.add('device-a');
+
+      // Create adapter with no session (before backup connects)
+      const adapter = new DriveSyncAdapter(null, deviceA.drive, () => world.now(), deviceA.photoStore);
+
+      // Sync before connect should return error status, not throw
+      const status = await adapter.syncNow();
+      expect(status.state).toBe('error');
+      expect(status.error).toBe('not connected');
+    });
+
+    it('isBehind before connect returns false', async () => {
+      const world = new SyncWorld();
+      const deviceA = await world.add('device-a');
+
+      const adapter = new DriveSyncAdapter(null, deviceA.drive, () => world.now(), deviceA.photoStore);
+      const behind = await adapter.isBehind();
+      expect(behind).toBe(false);
+    });
+
+    it('sync with real session after connect', async () => {
+      // This test verifies that when a FolderSession is provided, sync works
+      const world = new SyncWorld();
+      const deviceA = await world.add('device-a');
+
+      // Create adapter WITH a valid session
+      const adapter = new DriveSyncAdapter(
+        deviceA.session(),
+        deviceA.drive,
+        () => world.now(),
+        deviceA.photoStore,
+      );
+
+      // Edit a house locally
+      deviceA.edit('house-1', 'Test Home');
+
+      // Sync should work
+      const status = await adapter.syncNow();
+      expect(status.state).not.toBe('error');
+      expect(status.error).toBeUndefined();
     });
   });
 

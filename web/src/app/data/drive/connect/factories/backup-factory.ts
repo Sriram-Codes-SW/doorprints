@@ -22,6 +22,9 @@ import { DriveBackupService as BackupServiceClass } from '../../backup/drive-bac
 import { DriveImportService as ImportServiceClass } from '../../backup/drive-import.service';
 import { DriveBackupAdapter, type BackupAdapterInterface } from '../backup-adapter';
 import type { DriveRuntime } from './runtime';
+import type { DriveConnection, ReadyFolder } from '../../backup/drive-backup-results';
+import { FolderSession } from '../../drive-sync-seams';
+import { kidOf } from '../../../crypto/folder-key';
 
 /**
  * Creates a real backup adapter from the Drive runtime.
@@ -63,27 +66,68 @@ export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
 }
 
 /**
+ * Updates the runtime's session when backup connects to a Ready folder.
+ * Called after connect, createFolder, or openWithRecoveryKey returns Ready.
+ * The session holds the opened folder for sync to use; sync reads folder.keys and folder.rootId.
+ */
+function updateSessionFromReady(rt: DriveRuntime, folder: ReadyFolder): void {
+  const deviceKid = kidOf(rt.crypto, rt.deviceKey.publicKey);
+  // Create session from opened keys, guard, and folder ids
+  // reopen is null for now; enhanced refresh on key changes is a future improvement (S4b-BL-????).
+  rt.session = new FolderSession(
+    folder.rootId,
+    deviceKid,
+    folder.keys,
+    rt.guard,
+    null, // reopen: can refresh keys on next pass if implemented
+  );
+}
+
+/**
  * A lazy proxy that wraps the backup adapter interface, deferring construction until first use.
  * This ensures nothing is built at app startup; the adapter is only created when actually needed.
+ * When backup reaches Ready, sets runtime.session so sync can use it.
  */
 export function createLazyBackupAdapterProxy(getRuntime: () => Promise<DriveRuntime>): BackupAdapterInterface {
   return {
     async connect() {
       const rt = await getRuntime();
       const adapter = createBackupAdapter(rt);
-      return adapter.connect();
+      const result = await adapter.connect();
+      // When ready, set the session so sync can use it
+      if (result.kind === 'READY') {
+        updateSessionFromReady(rt, result.folder);
+      } else {
+        // Not ready or error: clear any stale session
+        rt.session = undefined;
+      }
+      return result;
     },
 
     async createFolder() {
       const rt = await getRuntime();
       const adapter = createBackupAdapter(rt);
-      return adapter.createFolder();
+      const result = await adapter.createFolder();
+      // When ready, set the session so sync can use it
+      if (result.connection.kind === 'READY') {
+        updateSessionFromReady(rt, result.connection.folder);
+      } else {
+        rt.session = undefined;
+      }
+      return result;
     },
 
     async openWithRecoveryKey(recoveryKey) {
       const rt = await getRuntime();
       const adapter = createBackupAdapter(rt);
-      return adapter.openWithRecoveryKey(recoveryKey);
+      const result = await adapter.openWithRecoveryKey(recoveryKey);
+      // When ready, set the session so sync can use it
+      if (result.kind === 'READY') {
+        updateSessionFromReady(rt, result.folder);
+      } else {
+        rt.session = undefined;
+      }
+      return result;
     },
 
     async backUpNow(folder, source) {
