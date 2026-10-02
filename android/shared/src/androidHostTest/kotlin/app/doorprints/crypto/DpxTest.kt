@@ -32,7 +32,7 @@ class DpxTest {
     private val folderKey = p.randomBytes(32)
     private val epoch = 4
     private val kid = p.randomBytes(16)
-    private val keys = FolderKeys { if (it == epoch) folderKey else null }
+    private val keys = FolderKeys { if (it == epoch) folderKey.copyOf() else null }
     private val c = Dpx.CHUNK_SIZE
     private val full = c + Dpx.TAG
 
@@ -116,7 +116,7 @@ class DpxTest {
         val kidField = Regex("\"kid\":\"[^\"]+\"")
         expect(DpxException.Kind.KEY_UNWRAP_FAILED) { dec(with(json.replace(kidField, "\"kid\":\"$otherKid\""))) }
         // Another epoch the reader holds: the wrap's AAD names epoch 4, so it does not open.
-        val both = FolderKeys { if (it == epoch || it == 5) folderKey else null }
+        val both = FolderKeys { if (it == epoch || it == 5) folderKey.copyOf() else null }
         expect(DpxException.Kind.KEY_UNWRAP_FAILED) { dec(with(json.replace("\"epoch\":4", "\"epoch\":5")), both) }
         expect(DpxException.Kind.UNKNOWN_EPOCH) { dec(with(json.replace("\"epoch\":4", "\"epoch\":6"))) }
         expect(DpxException.Kind.INNER_MISMATCH) { dec(with(json.replace("sync/1", "photo/1"))) }
@@ -252,5 +252,25 @@ class DpxTest {
         val first = p.aesGcmSeal(k, Dpx.nonce(prefix, 0, false), Dpx.aad(header.bytes, 0, false), ByteArray(c))
         val last = p.aesGcmSeal(k, Dpx.nonce(prefix, 1, true), Dpx.aad(header.bytes, 1, true), ByteArray(0))
         expect(DpxException.Kind.NON_CANONICAL_CHUNKS) { dec(header.bytes + first + last) }
+    }
+
+    @Test
+    fun aPhotoOpensOnlyAgainstItsRowsHash() {
+        val a = p.randomBytes(5000)
+        val b = p.randomBytes(5000)
+        val fileA = enc(a, "photo/1")
+        val fileB = enc(b, "photo/1")
+        expect(DpxException.Kind.CHECKSUM_REQUIRED) { dec(fileA, inner = "photo/1") }
+        assertArrayEquals(a, dpx.decryptBytes(keys, "photo/1", fileA, expectedPlaintextSha256 = sha256(p, a)).first)
+        // Photo B's file put where photo A's row points: a valid file under the same folder key, refused by the hash.
+        expect(DpxException.Kind.CHECKSUM_MISMATCH) { dpx.decryptBytes(keys, "photo/1", fileB, expectedPlaintextSha256 = sha256(p, a)) }
+    }
+
+    @Test
+    fun theReaderWipesTheFolderKeyItWasGiven() {
+        val handed = ArrayList<ByteArray>()
+        val k = FolderKeys { if (it == epoch) folderKey.copyOf().also { c -> handed += c } else null }
+        dec(enc(ByteArray(10)), k)
+        assertTrue(handed.single().all { it == 0.toByte() })
     }
 }

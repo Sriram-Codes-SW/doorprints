@@ -58,7 +58,9 @@ object JvmCryptoProvider : CryptoProvider {
         }
     }
     private val fieldP: BigInteger by lazy { (params.curve.field as ECFieldFp).p }
-    private val keyFactory: KeyFactory get() = KeyFactory.getInstance("EC")
+    // KeyFactory is not thread-safe: one per thread, made once.
+    private val keyFactories = ThreadLocal.withInitial { KeyFactory.getInstance("EC") }
+    private val keyFactory: KeyFactory get() = keyFactories.get()
 
     private class JvmAesKey(val spec: SecretKeySpec, override val sizeBytes: Int) : AesKey
 

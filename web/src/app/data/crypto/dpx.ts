@@ -36,7 +36,8 @@ export type DpxErrorKind =
   | 'TRAILING_DATA'
   | 'NON_CANONICAL_CHUNKS'
   | 'TOO_LARGE'
-  | 'CHECKSUM_MISMATCH';
+  | 'CHECKSUM_MISMATCH'
+  | 'CHECKSUM_REQUIRED';
 
 /** Why a `dpx/1` file was refused (the kinds of Kotlin's `DpxException`). */
 export class DpxError extends Error {
@@ -68,6 +69,8 @@ const MAX_INDEX = 0xffffffff;
 /** 4 GiB, as Kotlin. */
 export const DEFAULT_MAX_PLAINTEXT = 4 * 1024 * 1024 * 1024;
 export const MAGIC = new Uint8Array([0x44, 0x50, 0x58, 0x31]);
+/** Decrypting a photo needs its row's SHA-256. */
+export const PHOTO = 'photo/1';
 const INNER = /^[a-z][a-z0-9-]{0,39}\/[1-9][0-9]{0,3}$/;
 
 export interface DpxHeader {
@@ -166,6 +169,10 @@ export function sourceOf(bytes: Uint8Array, step = Number.MAX_SAFE_INTEGER): Byt
 export class Dpx {
   constructor(private readonly p: CryptoProvider) {}
 
+  /**
+   * The length is not known in advance, so a `TOO_LARGE` (or any failure of the source or sink) can leave a partial
+   * file on the sink: write to a temporary place and discard it on any rejection.
+   */
   async encrypt(
     folderKey: Uint8Array,
     epoch: number,
@@ -175,11 +182,16 @@ export class Dpx {
     sink: ByteSink,
     maxPlaintext = DEFAULT_MAX_PLAINTEXT,
   ): Promise<DpxResult> {
-    return this.encryptWith(folderKey, epoch, writerKid, inner, source, sink, maxPlaintext, {
-      contentKey: this.p.randomBytes(32),
-      wrapNonce: this.p.randomBytes(12),
-      noncePrefix: this.p.randomBytes(NONCE_PREFIX),
-    });
+    const contentKey = this.p.randomBytes(32);
+    try {
+      return await this.encryptWith(folderKey, epoch, writerKid, inner, source, sink, maxPlaintext, {
+        contentKey,
+        wrapNonce: this.p.randomBytes(12),
+        noncePrefix: this.p.randomBytes(NONCE_PREFIX),
+      });
+    } finally {
+      contentKey.fill(0);
+    }
   }
 
   /** @internal The deterministic mode of the vectors. Never call it with reused values. */
@@ -253,6 +265,8 @@ export class Dpx {
     };
     const header = await this.readHeader(counted);
     if (header.inner !== expectedInner) throw new DpxError('INNER_MISMATCH', 'inner format');
+    // Every photo is a valid file under the same folder key: only the row's hash binds the file to the row.
+    if (header.inner === PHOTO && !opts.expectedPlaintextSha256) throw new DpxError('CHECKSUM_REQUIRED', "a photo needs its row's SHA-256");
     opts.headerCheck?.(header);
     const folderKey = await keys.folderKey(header.epoch);
     if (!folderKey) throw new DpxError('UNKNOWN_EPOCH', `epoch ${header.epoch}`);
@@ -267,8 +281,11 @@ export class Dpx {
     } catch (e) {
       if (e instanceof CryptoError) throw new DpxError('KEY_UNWRAP_FAILED', 'content key');
       throw e;
+    } finally {
+      folderKey.fill(0);
     }
     const key = await this.p.aesKey(contentKey);
+    contentKey.fill(0);
     const ptHash = this.p.sha256();
     const full = CHUNK_SIZE + TAG;
     let total = 0;
@@ -328,7 +345,7 @@ export class Dpx {
     keys: FolderKeys,
     expectedInner: string,
     file: Uint8Array,
-    opts: { maxPlaintext?: number; headerCheck?: (h: DpxHeader) => void } = {},
+    opts: { maxPlaintext?: number; expectedPlaintextSha256?: Uint8Array; headerCheck?: (h: DpxHeader) => void } = {},
   ): Promise<{ plaintext: Uint8Array; result: DpxResult }> {
     const parts: Uint8Array[] = [];
     const result = await this.decrypt(keys, expectedInner, sourceOf(file), (b) => void parts.push(b), opts);

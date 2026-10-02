@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.56 |
+| Version | 1.57 |
 | Date | 2026-10-02 |
 | Sprint | 4a "offline copy" (was 3.5 "KMP foundation") |
 | Owner | Android team |
@@ -11,6 +11,7 @@
 
 | Version | Date | Change |
 |---|---|---|
+| 1.57 | 2026-10-02 | **S4b-BL-125 after its independent review** ([docs/15](../../docs/15-google-drive-backup-and-sharing.md) §9.9, [docs/10](../../docs/10-sprint-log.md) v0.129): `KeysGuard(provider, store)` pins each folder's key (`KeysWatermark` with `keyId` and `bodyHash`, `KeysWatermarkStore.compareAndSet`); `KeysFile.openFirstPin`, the recovery anchor, `createFirstDevice`/`newEpoch` take a `RecoveryKey`; new kinds `NOT_PINNED`, `PIN_MISMATCH`, `FORK_DETECTED`, `CONCURRENT_UPDATE`, `RECOVERY_ANCHOR_INVALID`, `REVISION_LIMIT` and `DpxException.CHECKSUM_REQUIRED`; HPKE's ephemeral key from `p256Generate`. |
 | 1.56 | 2026-10-02 | **The encryption core (S4b-BL-125; [docs/15](../../docs/15-google-drive-backup-and-sharing.md) §9.9, [docs/10](../../docs/10-sprint-log.md) v0.128).** New package `app.doorprints.crypto`: `CryptoProvider` (`expect platformCryptoProvider()`; `JvmCryptoProvider` in androidMain on `javax.crypto`/`java.security` software keys; iosMain fails closed until S4b-BL-131), `Hkdf`, `Hpke` (RFC 9180 base mode), `RecoveryKey`, `Dpx` (`dpx/1`), `KeysFile`/`OpenedKeys`, `KeysGuard`, `RevokedEpochRule`, `P256Scalar`, `CanonicalJson`. Tests in androidHostTest (they need the JVM provider) and the pure rules in commonTest. |
 | 1.55 | 2026-10-02 | **The Drive client and the fake Drive (S4b-BL-115; [docs/15](../../docs/15-google-drive-backup-and-sharing.md) §7.1, [docs/10](../../docs/10-sprint-log.md) v0.127).** New package `app.doorprints.drive`: `DriveClient` (Drive v3 under `drive.file`), `HttpDriveClient` over Ktor (the token only to `https://www.googleapis.com`, retries by `DriveRetry`, a 401 asked once more of the `TokenProvider`), the operations written once over the interface (`DriveOps.kt`: `listAll`, `ensureFolder`, `uploadResumable`, `markComplete`, `downloadVerified`, `deleteAll`, …), `DriveException` and its kinds (read by `SyncOutcome.fromError`), and, in commonTest (test code, not shipped), the test double `InMemoryFakeDrive` over a `FakeDriveServer` with a `FaultScript`. `driveSha256()` is `expect`/`actual` over the backup code's hashers. New tests `DriveClientContract`, `InMemoryFakeDriveTest` (commonTest, with the fake and `FakeDriveHttp`, the fake behind Drive's HTTP surface for `MockEngine`) and `DriveVectorsTest` (host test, `docs/schemas/drive-vectors.json`); sections 2 and 5. |
 | 1.54 | 2026-10-02 | **The `SyncBackend` seam (S4b-BL-70; [docs/03](../../docs/03-design.md) §10.1, [docs/10](../../docs/10-sprint-log.md) v0.126).** `SyncBackend` and `ServerSyncBackend` in `app.doorprints.data`: `CommonRepository.sync` keeps the loop and reaches the remote only through the backend (`syncBackendFor`, by default the configured server over `apiFor`); the server calls, the stats check and the permanent photo and meta refusals moved unchanged into `ServerSyncBackend`. `MergeRule` and `SyncRules.serverMerge` (`keepLocal`) in `sync`: the backend supplies how a pulled row meets the local one. No behaviour change. New `ServerSyncBackendTest` (commonTest, 8) and `:app` `SyncBackendSeamTest` (9); sections 2 and 5. |

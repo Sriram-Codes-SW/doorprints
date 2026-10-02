@@ -18,6 +18,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { b64, concat } from './bytes';
+import { sha256Of } from './crypto-provider';
 import { WebCryptoProvider } from './crypto-provider';
 import { CHUNK_SIZE, chunkAad, chunkNonce, Dpx, DpxError, frame, MAGIC, sourceOf } from './dpx';
 import type { DpxErrorKind } from './dpx';
@@ -29,7 +30,7 @@ const dpx = new Dpx(p);
 const folderKey = p.randomBytes(32);
 const epoch = 4;
 const kid = p.randomBytes(16);
-const keys: FolderKeys = { folderKey: async (e) => (e === epoch ? folderKey : null) };
+const keys: FolderKeys = { folderKey: async (e) => (e === epoch ? folderKey.slice() : null) };
 const full = CHUNK_SIZE + 16;
 
 const enc = async (pt: Uint8Array, inner = 'sync/1') => (await dpx.encryptBytes(folderKey, epoch, kid, inner, pt)).file;
@@ -84,7 +85,7 @@ describe('dpx/1', () => {
     const json = new TextDecoder().decode(file.subarray(6, h));
     const withJson = (j: string) => concat(frame(new TextEncoder().encode(j)), file.subarray(h));
     await expectKind('KEY_UNWRAP_FAILED', () => dec(withJson(json.replace(/"kid":"[^"]+"/, `"kid":"${b64(p.randomBytes(16))}"`))));
-    const both: FolderKeys = { folderKey: async (e) => (e === 4 || e === 5 ? folderKey : null) };
+    const both: FolderKeys = { folderKey: async (e) => (e === 4 || e === 5 ? folderKey.slice() : null) };
     await expectKind('KEY_UNWRAP_FAILED', () => dec(withJson(json.replace('"epoch":4', '"epoch":5')), both));
     await expectKind('UNKNOWN_EPOCH', () => dec(withJson(json.replace('"epoch":4', '"epoch":6'))));
     await expectKind('INNER_MISMATCH', () => dec(file, keys, 'photo/1'));
@@ -147,5 +148,19 @@ describe('dpx/1', () => {
     const first = await p.aesGcmSeal(k, chunkNonce(r.noncePrefix, 0, false), chunkAad(header.bytes, 0, false), new Uint8Array(CHUNK_SIZE));
     const last = await p.aesGcmSeal(k, chunkNonce(r.noncePrefix, 1, true), chunkAad(header.bytes, 1, true), new Uint8Array(0));
     await expectKind('NON_CANONICAL_CHUNKS', () => dec(concat(header.bytes, first, last)));
+  });
+
+  it('opens a photo only against its row\'s hash, and wipes the folder key it was given', async () => {
+    const a = p.randomBytes(3000);
+    const b = p.randomBytes(3000);
+    const fileA = await enc(a, 'photo/1');
+    const fileB = await enc(b, 'photo/1');
+    await expectKind('CHECKSUM_REQUIRED', () => dec(fileA, keys, 'photo/1'));
+    const ok = await dpx.decryptBytes(keys, 'photo/1', fileA, { expectedPlaintextSha256: sha256Of(p, a) });
+    expect(b64(ok.plaintext)).toBe(b64(a));
+    await expectKind('CHECKSUM_MISMATCH', () => dpx.decryptBytes(keys, 'photo/1', fileB, { expectedPlaintextSha256: sha256Of(p, a) }));
+    const handed: Uint8Array[] = [];
+    await dec(await enc(new Uint8Array(4)), { folderKey: async () => { const k = folderKey.slice(); handed.push(k); return k; } });
+    expect(handed[0].every((x) => x === 0)).toBe(true);
   });
 });

@@ -59,6 +59,9 @@ class DpxException(val kind: Kind, message: String, val chunkIndex: Long = -1) :
 
         /** The decrypted bytes or the file's bytes are not the SHA-256 the caller expected. */
         CHECKSUM_MISMATCH,
+
+        /** A `photo/1` file opened without the SHA-256 its photo row records (a swapped photo would go unnoticed). */
+        CHECKSUM_REQUIRED,
     }
 }
 
@@ -131,7 +134,12 @@ class DpxRead(val header: DpxHeader, val plaintextSize: Long, val fileSize: Long
  */
 class Dpx(private val p: CryptoProvider) {
 
-    /** Encrypts [source] for the folder key of [epoch]; fresh content key, wrap nonce and nonce prefix. */
+    /**
+     * Encrypts [source] for the folder key of [epoch]; fresh content key, wrap nonce and nonce prefix. The length is
+     * not known in advance, so a [DpxException.Kind.TOO_LARGE] (or any failure of [source] or [sink]) can leave a
+     * partial file on [sink]: the caller writes to a temporary place (Drive's `partial-` name, a resumable session)
+     * and discards it on any exception.
+     */
     fun encrypt(
         folderKey: ByteArray,
         epoch: Int,
@@ -140,10 +148,17 @@ class Dpx(private val p: CryptoProvider) {
         source: ByteSource,
         sink: ByteSink,
         maxPlaintext: Long = DEFAULT_MAX_PLAINTEXT,
-    ): DpxWritten = encryptWith(
-        folderKey, epoch, writerKid, inner, source, sink, maxPlaintext,
-        contentKey = p.randomBytes(32), wrapNonce = p.randomBytes(12), noncePrefix = p.randomBytes(NONCE_PREFIX),
-    )
+    ): DpxWritten {
+        val contentKey = p.randomBytes(32)
+        try {
+            return encryptWith(
+                folderKey, epoch, writerKid, inner, source, sink, maxPlaintext,
+                contentKey = contentKey, wrapNonce = p.randomBytes(12), noncePrefix = p.randomBytes(NONCE_PREFIX),
+            )
+        } finally {
+            contentKey.fill(0)
+        }
+    }
 
     /** [encrypt] with the random values given: the vectors' deterministic mode. Never call it with reused values. */
     internal fun encryptWith(
@@ -195,9 +210,12 @@ class Dpx(private val p: CryptoProvider) {
     }
 
     /**
-     * Decrypts a `dpx/1` file. [headerCheck] sees the authenticated-later header before any key is used (the
-     * [RevokedEpochRule] goes there) and may throw to refuse it. [expectedPlaintextSha256] and
-     * [expectedCiphertextSha256], when given, are checked at the end ([DpxException.Kind.CHECKSUM_MISMATCH]).
+     * Decrypts a `dpx/1` file. [headerCheck] sees the header (not yet authenticated) before any key is used (the
+     * [RevokedEpochRule] and the sync file's writer check go there) and may throw to refuse it.
+     * [expectedPlaintextSha256] and [expectedCiphertextSha256], when given, are checked at the end
+     * ([DpxException.Kind.CHECKSUM_MISMATCH]). **A `photo/1` file needs [expectedPlaintextSha256]** (the photo row's
+     * SHA-256, [DpxException.Kind.CHECKSUM_REQUIRED] otherwise): every photo is a valid file under the same folder key,
+     * so only the row's hash binds the file to the row (a photo file swapped for another is refused).
      */
     fun decrypt(
         keys: FolderKeys,
@@ -221,14 +239,18 @@ class Dpx(private val p: CryptoProvider) {
         }
         val header = readHeader(counted)
         if (header.inner != expectedInner) throw DpxException(DpxException.Kind.INNER_MISMATCH, "inner format")
+        if (header.inner == PHOTO && expectedPlaintextSha256 == null) throw DpxException(DpxException.Kind.CHECKSUM_REQUIRED, "a photo needs its row's SHA-256")
         headerCheck(header)
         val folderKey = keys.folderKey(header.epoch) ?: throw DpxException(DpxException.Kind.UNKNOWN_EPOCH, "epoch ${header.epoch}")
         val contentKey = try {
             p.aesGcmOpen(FolderKey.contentWrapKey(p, folderKey), header.wrapNonce, WrapAad.contentKey(header.epoch, header.kid, header.inner), header.wrappedKey)
         } catch (_: CryptoException) {
             throw DpxException(DpxException.Kind.KEY_UNWRAP_FAILED, "content key")
+        } finally {
+            folderKey.fill(0)
         }
         val key = p.aesKey(contentKey)
+        contentKey.fill(0)
         val headerBytes = header.bytes
         val ptHash = p.sha256()
         val full = CHUNK_SIZE + TAG
@@ -298,10 +320,11 @@ class Dpx(private val p: CryptoProvider) {
         expectedInner: String,
         file: ByteArray,
         maxPlaintext: Long = DEFAULT_MAX_PLAINTEXT,
+        expectedPlaintextSha256: ByteArray? = null,
         headerCheck: (DpxHeader) -> Unit = {},
     ): Pair<ByteArray, DpxRead> {
         val out = Buffer()
-        val r = decrypt(keys, expectedInner, sourceOf(file), out, maxPlaintext, headerCheck = headerCheck)
+        val r = decrypt(keys, expectedInner, sourceOf(file), out, maxPlaintext, expectedPlaintextSha256, headerCheck = headerCheck)
         return out.toByteArray() to r
     }
 
@@ -377,6 +400,9 @@ class Dpx(private val p: CryptoProvider) {
         const val DEFAULT_MAX_PLAINTEXT = 4L * 1024 * 1024 * 1024
         internal const val MAX_INDEX = 0xFFFFFFFFL
         internal val MAGIC = byteArrayOf(0x44, 0x50, 0x58, 0x31)
+
+        /** The photo format: decrypting it needs the photo row's SHA-256. */
+        const val PHOTO = "photo/1"
 
         /** `inner`: a format name and number (`doorprints-backup/2`, `sync/1`, `photo/1`). */
         internal val INNER = Regex("^[a-z][a-z0-9-]{0,39}/[1-9][0-9]{0,3}$")

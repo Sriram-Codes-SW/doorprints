@@ -58,11 +58,24 @@ class RecoveryKey private constructor(private val raw: ByteArray) {
      * salt = "doorprints/dpx1/recovery", info = "p256", L = 48)`, `d = (seed mod (n − 1)) + 1`, the public key from
      * the platform ([CryptoProvider.p256FromScalar]).
      */
-    fun keyPair(p: CryptoProvider): P256PrivateKey = p.p256FromScalar(scalar(p))
+    fun keyPair(p: CryptoProvider): P256PrivateKey {
+        val d = scalar(p)
+        return try {
+            p.p256FromScalar(d)
+        } finally {
+            d.fill(0)
+        }
+    }
+
+    /** The key of the recovery anchor: `HKDF-SHA-256(ikm = the 16 key bytes, salt = "", info = "doorprints/dpx1/recovery-anchor")`. */
+    internal fun anchorKey(p: CryptoProvider): AesKey {
+        val k = Hkdf(p).derive(ByteArray(0), raw, Bytes.utf8(ANCHOR_INFO), 32)
+        return p.aesKey(k).also { k.fill(0) }
+    }
 
     internal fun scalar(p: CryptoProvider): ByteArray {
         val seed = Hkdf(p).derive(Bytes.utf8(SALT), raw, Bytes.utf8(INFO), SEED_LEN)
-        return P256Scalar.reduceToScalar(seed)
+        return P256Scalar.reduceToScalar(seed).also { seed.fill(0) }
     }
 
     companion object {
@@ -70,6 +83,7 @@ class RecoveryKey private constructor(private val raw: ByteArray) {
         const val SYMBOLS = 27
         private const val SALT = "doorprints/dpx1/recovery"
         private const val INFO = "p256"
+        private const val ANCHOR_INFO = "doorprints/dpx1/recovery-anchor"
         private const val SEED_LEN = 48
         private const val ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
         private const val CHECK_ALPHABET = ALPHABET + "*~$=U"
@@ -86,20 +100,33 @@ class RecoveryKey private constructor(private val raw: ByteArray) {
          * defines them (O as 0, I and L as 1); the check symbol must match.
          */
         fun parse(text: String): RecoveryKey {
-            val symbols = StringBuilder()
-            for (c in text) {
-                when (c) {
-                    ' ', '-', '\t', '\n', '\r', ' ' -> continue
-                    else -> symbols.append(c)
+            // Symbols are counted by code point, as the website counts them (a character outside the BMP is one).
+            val symbols = ArrayList<Int>()
+            var i = 0
+            while (i < text.length) {
+                val c = text[i]
+                val cp = if (c.isHighSurrogate() && i + 1 < text.length && text[i + 1].isLowSurrogate()) {
+                    i++
+                    0x10000 + ((c.code - 0xD800) shl 10) + (text[i].code - 0xDC00)
+                } else {
+                    c.code
+                }
+                i++
+                when (cp) {
+                    ' '.code, '-'.code, '\t'.code, '\n'.code, '\r'.code, 0xA0 -> continue
+                    else -> symbols += cp
                 }
             }
-            if (symbols.length != SYMBOLS) throw RecoveryKeyException(RecoveryKeyException.Reason.WRONG_LENGTH, "expected $SYMBOLS symbols")
+            if (symbols.size != SYMBOLS) throw RecoveryKeyException(RecoveryKeyException.Reason.WRONG_LENGTH, "expected $SYMBOLS symbols")
             val values = IntArray(SYMBOLS)
-            for (i in 0 until SYMBOLS) {
-                val c = normalise(symbols[i])
-                val v = if (i < SYMBOLS - 1) ALPHABET.indexOf(c) else CHECK_ALPHABET.indexOf(c)
-                if (v < 0) throw RecoveryKeyException(RecoveryKeyException.Reason.INVALID_CHARACTER, "symbol ${i + 1}")
-                values[i] = v
+            for (k in 0 until SYMBOLS) {
+                val cp = symbols[k]
+                val v = if (cp > 0x7F) -1 else {
+                    val c = normalise(cp.toChar())
+                    if (k < SYMBOLS - 1) ALPHABET.indexOf(c) else CHECK_ALPHABET.indexOf(c)
+                }
+                if (v < 0) throw RecoveryKeyException(RecoveryKeyException.Reason.INVALID_CHARACTER, "symbol ${k + 1}")
+                values[k] = v
             }
             if (values[0] > 7) throw RecoveryKeyException(RecoveryKeyException.Reason.OUT_OF_RANGE, "more than 128 bits")
             val data = values.copyOfRange(0, SYMBOLS - 1)

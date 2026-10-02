@@ -18,41 +18,123 @@
 
 package app.doorprints.crypto
 
-/** The highest `keys.json` epoch and revision a device has accepted for one Drive folder. */
-data class KeysWatermark(val epoch: Int, val revision: Long)
+/**
+ * What a device has accepted of one Drive folder's `keys.json`: the highest (epoch, revision), the **pin** of that
+ * epoch's folder key ([keyId], `HKDF(folder key, "doorprints/dpx1/key-id")`, never the key itself) and the SHA-256 of
+ * the canonical body at that revision (to tell two different lists of one revision apart).
+ */
+class KeysWatermark(val epoch: Int, val revision: Long, keyId: ByteArray, bodyHash: ByteArray) {
+    private val id = keyId.copyOf()
+    private val hash = bodyHash.copyOf()
+    val keyId: ByteArray get() = id.copyOf()
+    val bodyHash: ByteArray get() = hash.copyOf()
 
-/** Where a device keeps its [KeysWatermark] (sealed on the device; injected, so the rule has no I/O). */
-interface KeysWatermarkStore {
-    fun load(): KeysWatermark?
-    fun save(watermark: KeysWatermark)
+    override fun equals(other: Any?) = other is KeysWatermark && other.epoch == epoch && other.revision == revision &&
+        other.id.contentEquals(id) && other.hash.contentEquals(hash)
+
+    override fun hashCode() = 31 * (31 * epoch + revision.hashCode()) + id.contentHashCode()
+    override fun toString() = "KeysWatermark(epoch=$epoch, revision=$revision)"
 }
 
 /**
- * The rollback rule (docs/15 §9.3, docs/02 T-T19): a device refuses a `keys.json` older than one it has already
- * accepted, for example a revision brought back with Drive's *Manage versions* to undo a revoke. Called only for a
- * list whose MAC verified, so only authentic lists move the watermark; [KeysFile.open] calls [accept] itself, and a
- * device that wrote a new list calls [accept] once Drive confirmed the upload (not before: a failed upload would
- * leave the device ahead of Drive and refusing the real list).
+ * Where a device keeps its [KeysWatermark] for one folder (sealed on the device; injected, so the rules have no I/O).
+ * [compareAndSet] must be atomic: it stores [next] only if the stored value still equals [expected] (null: nothing
+ * stored), and says whether it did.
  */
-class KeysGuard(private val store: KeysWatermarkStore) {
+interface KeysWatermarkStore {
+    fun load(): KeysWatermark?
+    fun compareAndSet(expected: KeysWatermark?, next: KeysWatermark): Boolean
+}
 
-    /** Throws [KeysException.Kind.ROLLED_BACK] or [KeysException.Kind.WATERMARK_CONFLICT]; changes nothing. */
-    fun check(epoch: Int, revision: Long) {
-        val seen = store.load() ?: return
-        if (revision < seen.revision || epoch < seen.epoch) {
-            throw KeysException(KeysException.Kind.ROLLED_BACK, "revision $revision epoch $epoch is older than revision ${seen.revision} epoch ${seen.epoch}")
+/**
+ * The trust anchor of a device in one folder (docs/15 §9.3, §9.9; docs/02 T-S13, T-T19). The MAC of `keys.json`
+ * proves only that its writer knew *some* folder key, and HPKE base mode does not say who wrapped it, so anyone in
+ * the Google account could re-wrap a folder key of their own to every listed public key. What makes a list
+ * acceptable is that it leads to the key this device already trusts:
+ *
+ * - **the same epoch**: its folder key's id equals the pin, and its revision is not lower; the same revision with
+ *   another body is a fork ([KeysException.Kind.FORK_DETECTED]);
+ * - **a higher epoch**: the whole chain from it down to the pinned epoch opens and ends at the pinned key
+ *   ([KeysException.Kind.PIN_MISMATCH] otherwise), whatever the revision (the order is (epoch, revision), so an old
+ *   epoch's holder cannot block a new epoch with a huge revision);
+ * - **a lower epoch**: [KeysException.Kind.ROLLED_BACK].
+ *
+ * With no pin yet, [KeysFile.open] refuses ([KeysException.Kind.NOT_PINNED]): the first pin comes only from a path
+ * that has its own proof: [KeysFile.openFirstPin] (the folder key received over S4b-BL-126's QR/PSK enrolment),
+ * [KeysFile.openWithRecovery] (the recovery anchor) and [pinCreated] (this device created the folder).
+ */
+class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkStore) {
+
+    internal enum class Trust { PINNED, FIRST_PIN, RECOVERY_ANCHOR, CREATED }
+
+    /** The current pin, if any. */
+    fun watermark(): KeysWatermark? = store.load()
+
+    /** After this device's own write was confirmed by Drive: the new list must lead to the pin like any other. */
+    fun acceptWritten(written: KeysFile.Written) = accept(written.opened, Trust.PINNED)
+
+    /** After [KeysFile.createFirstDevice]'s list was confirmed by Drive: the first pin, only if there is none. */
+    fun pinCreated(written: KeysFile.Written) = accept(written.opened, Trust.CREATED)
+
+    internal fun accept(opened: OpenedKeys, trust: Trust) {
+        val next = watermarkOf(p, opened)
+        repeat(MAX_TRIES) {
+            val seen = store.load()
+            if (seen == null) {
+                if (trust == Trust.PINNED) throw KeysException(KeysException.Kind.NOT_PINNED, "no pin for this folder yet")
+            } else {
+                verify(seen, opened, next)
+                if (!higher(next, seen)) return
+            }
+            if (store.compareAndSet(seen, next)) return
         }
-        // Every write raises the revision, so one revision has one epoch.
-        if (revision == seen.revision && epoch != seen.epoch) {
-            throw KeysException(KeysException.Kind.WATERMARK_CONFLICT, "revision $revision with another epoch")
+        throw KeysException(KeysException.Kind.CONCURRENT_UPDATE, "the watermark kept changing")
+    }
+
+    private fun verify(seen: KeysWatermark, opened: OpenedKeys, next: KeysWatermark) {
+        when (order(seen.epoch, seen.revision, next.epoch, next.revision)) {
+            Order.LOWER -> throw KeysException(KeysException.Kind.ROLLED_BACK, "epoch ${next.epoch} revision ${next.revision} is older than epoch ${seen.epoch} revision ${seen.revision}")
+            Order.SAME_EPOCH -> {
+                if (!constantTimeEquals(next.keyId, seen.keyId)) throw KeysException(KeysException.Kind.FORK_DETECTED, "another folder key for epoch ${next.epoch}")
+                if (next.revision == seen.revision && !next.bodyHash.contentEquals(seen.bodyHash)) {
+                    throw KeysException(KeysException.Kind.FORK_DETECTED, "another list at revision ${next.revision}")
+                }
+            }
+            Order.HIGHER_EPOCH -> {
+                val pinned = try {
+                    opened.folderKey(seen.epoch)
+                } catch (_: KeysException) {
+                    null
+                } ?: throw KeysException(KeysException.Kind.PIN_MISMATCH, "the chain does not reach epoch ${seen.epoch}")
+                val id = FolderKey.keyId(p, pinned)
+                pinned.fill(0)
+                if (!constantTimeEquals(id, seen.keyId)) throw KeysException(KeysException.Kind.PIN_MISMATCH, "the chain does not end at the pinned key")
+            }
         }
     }
 
-    /** [check], then keep the new watermark if it is higher. */
-    fun accept(epoch: Int, revision: Long) {
-        check(epoch, revision)
-        val seen = store.load()
-        if (seen == null || revision > seen.revision || epoch > seen.epoch) store.save(KeysWatermark(epoch, revision))
+    internal enum class Order { LOWER, SAME_EPOCH, HIGHER_EPOCH }
+
+    internal companion object {
+        const val MAX_TRIES = 4
+
+        /** (epoch, revision) ordered lexicographically: a higher epoch always wins, a lower one never does. */
+        fun order(seenEpoch: Int, seenRevision: Long, epoch: Int, revision: Long): Order = when {
+            epoch < seenEpoch -> Order.LOWER
+            epoch > seenEpoch -> Order.HIGHER_EPOCH
+            revision < seenRevision -> Order.LOWER
+            else -> Order.SAME_EPOCH
+        }
+
+        fun higher(next: KeysWatermark, seen: KeysWatermark) =
+            next.epoch > seen.epoch || (next.epoch == seen.epoch && next.revision > seen.revision)
+
+        fun watermarkOf(p: CryptoProvider, opened: OpenedKeys): KeysWatermark {
+            val key = opened.currentFolderKey()
+            val w = KeysWatermark(opened.epoch, opened.revision, FolderKey.keyId(p, key), p.sha256Of(opened.body.json()))
+            key.fill(0)
+            return w
+        }
     }
 }
 
@@ -62,7 +144,8 @@ class KeysGuard(private val store: KeysWatermarkStore) {
  *
  * [writtenAt] is the best time the caller has (Drive's `modifiedTime` for now). It is not authenticated: a revoked
  * device that still has Drive access could backdate a file it writes under its old epoch, and nothing in this rule
- * can tell that file from a real old one (docs/02 T-T19, residual risk).
+ * can tell that file from a real old one (docs/02 RR-26). The recovery key's kid is not a writer: a file naming it is
+ * [Verdict.SKIP_UNKNOWN_WRITER] (a device that opened the folder with the recovery key joins as a device first).
  */
 object RevokedEpochRule {
     enum class Verdict {

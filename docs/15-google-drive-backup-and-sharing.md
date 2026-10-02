@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.7 |
+| Version | 0.8 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70 (the `SyncBackend` seam), S4b-BL-115 (the Drive client and the fake Drive, §7.1) and S4b-BL-125 (the encryption core, §9.9). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -19,6 +19,7 @@
 | 0.5 | 2026-10-02 | Claude (Code), lead | **The owner decided** (2026-10-02): the eight decisions of §6 as written and the reviewer's answer to all six questions of §6.1 (the authenticator app cut from v1; website L2/L3 only with a PRF-sealed passkey; sharing deferred until the spike; no monthly mobile-data cap; *Lock old backups again* deferred; Android sign-in by Custom Tab and PKCE unless the spike shows it fails). New §1.6, version 1 and later; §4, §5.5, §5.7, §7, §9.5, §10.1, §10.4, §10.5 and §11 follow; [03](03-design.md) ADR-33. |
 | 0.6 | 2026-10-02 | Claude (Code), lead | **S4b-BL-115 built** (the Drive client and the fake Drive, both stacks): new §7.1, the contract details the build had to decide (names, retries and duplicate creates, the listing's consistency, resumable chunks, the late checksum, the error kinds, the token rule, where the token may go, what waits); §7's phase 2 row; S4b-BL-122 gains the website's CORS question. |
 | 0.7 | 2026-10-02 | Claude (Code), lead | **S4b-BL-125 built** (the encryption core, both stacks, no screen and no Drive wiring): new §9.9, what it built and the details this design did not decide (key separation under the folder key, the AAD layouts, canonical JSON, the `keys.json` layout and MAC input, the recovery key's text and check symbol, HPKE's ephemeral key from DeriveKeyPair, the error kinds, the limits); §9.4 now says how each platform computes the recovery public key (the platform's own operations, no point multiplication in common code); §7's phase 2c row; the iPhone's provider is S4b-BL-131. |
+| 0.8 | 2026-10-02 | Claude (Code), lead | **Fixes from the independent adversarial review of S4b-BL-125** (§9.9): a list is trusted by each device's **pin** of its folder key, not by the MAC (anyone in the Google account could re-wrap a key of their own to every listed public key); the recovery key's **anchor** in `keys.json` (the recovery entry gains `anchorEpoch` and `anchor`); the watermark ordered by (epoch, revision); forks detected; HPKE's ephemeral key from the platform's key generation; a photo opens only against its row's SHA-256; a new recovery key revokes the old kid. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -852,7 +853,27 @@ because WebCrypto is asynchronous). Tests: TC-U-125..TC-U-131 ([06](06-test-plan
 `{"v":1,"alg":"A256GCM-STREAM-64K","epoch":E,"kid":…,"wrappedKey":{"nonce":…,"ct":…},"noncePrefix":…,"chunkSize":65536,"inner":"…"}`
 (base64 with padding, RFC 4648 §4), then chunks of 65536 plaintext bytes plus a 16-byte tag, the last 0..65536 + 16; nonce
 `noncePrefix(7) ‖ u32 index ‖ u8 last`, AAD `header bytes ‖ u32 index ‖ u8 last`. `keys.json`:
-`{"format":"doorprints-keys/1","body":{"revision","epoch","chain":[{"epoch","nonce","ct"}],"devices":[{"kid","name","platform","publicKey","enrolledAt","enrolledBy","wrap":{"enc","ct"}}],"recovery":{"kid","publicKey","wrap"}|null,"revoked":[{"kid","revokedAt","revokedAtEpoch"}]},"mac":…}`.
+`{"format":"doorprints-keys/1","body":{"revision","epoch","chain":[{"epoch","nonce","ct"}],"devices":[{"kid","name","platform","publicKey","enrolledAt","enrolledBy","wrap":{"enc","ct"}}],"recovery":{"kid","publicKey","anchorEpoch","anchor":{"nonce","ct"},"wrap"}|null,"revoked":[{"kid","revokedAt","revokedAtEpoch"}]},"mac":…}`.
+
+**What makes a list trusted (after the review of 2026-10-02).** The MAC proves only that its writer knew *some*
+folder key, and HPKE base mode does not say who wrapped a key: anyone in the Google account can pick a folder key,
+wrap it to every public key in the list (they are in plain sight), add a device and MAC the result. So each device
+keeps a **pin** beside its watermark (`KeysGuard`, an injected store with an atomic compare-and-set): the highest
+(epoch, revision) it accepted, `keyId = HKDF(that epoch's folder key, "doorprints/dpx1/key-id")` and the SHA-256 of
+that body. A list of the pinned epoch must have the pinned key id (else `FORK_DETECTED`), and of the pinned revision
+the same body (else `FORK_DETECTED`); a list of a higher epoch must open its whole chain down to the pinned epoch and
+end at the pinned key (else `PIN_MISMATCH`), whatever its revision; a lower epoch or revision is `ROLLED_BACK`. A
+device with no pin opens nothing from Drive (`NOT_PINNED`) except by three named paths, each with its own proof:
+`openFirstPin` (the folder key received over S4b-BL-126's QR/PSK enrolment, compared in constant time),
+`openWithRecovery` (the anchor, below) and `KeysGuard.pinCreated` (this device made the folder). **The recovery
+anchor**: when a recovery key is made at epoch E0, the recovery entry stores the folder key of E0 under
+`HKDF(recovery key bytes, "doorprints/dpx1/recovery-anchor")` with the AAD `u8 len ‖ "dpx1/recovery-anchor" ‖ u32 E0
+‖ recovery kid`; opening with the recovery key walks the chain from the current epoch down to E0 and requires the
+anchored key at the end, so a re-wrapped list is refused there too (`RECOVERY_ANCHOR_INVALID`). An enrolled device that
+knows an old epoch's key (a thief before the revoke) can still extend that epoch for a device that has not yet seen the
+revoke; once that device sees the genuine list it reports `FORK_DETECTED` ([02](02-threat-model.md) RR-29). **Writing**
+(S4b-BL-126, -118): re-read and open the head of `keys.json` just before a change, upload, read it back, and only then
+`KeysGuard.acceptWritten`; two writers at once make two lists of one revision, which every device refuses as a fork.
 
 What this design did not say, and the build chose (the default unless the owner or the review objects):
 
@@ -869,8 +890,9 @@ What this design did not say, and the build chose (the default unless the owner 
   or a new `doorprints-keys/2`.
 - **The MAC input** is `"doorprints-keys/1" ‖ 0x00 ‖ canonical body`; it is checked after the device's wrap opened (only
   then is the key known) and before anything from the list is used; the watermark moves only after it.
-- **HPKE's ephemeral key** is DeriveKeyPair over 32 fresh random bytes (RFC 9180 §7.1.3 allows it), so the random
-  source is the only randomness and a whole `keys.json` can be a byte-exact vector.
+- **HPKE's ephemeral key** comes from the platform's own key generation (`p256Generate`: WebCrypto `generateKey`,
+  Android `KeyPairGenerator`), so a wrap never depends on importing a raw scalar; the vectors inject DeriveKeyPair
+  keys (`FakeRandomProvider`), so a whole `keys.json` is still a byte-exact vector.
 - **The recovery key's text**: the 16 bytes as a big-endian number after two zero bits (so the first symbol is 0..7),
   26 symbols, then Crockford's own check symbol (the value mod 37, which can be `*`, `~`, `$`, `=` or `U`; it catches
   every single wrong symbol and every swap of two neighbours), shown `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXX`. Reading
@@ -881,10 +903,12 @@ What this design did not say, and the build chose (the default unless the owner 
   the scalar again as non-extractable (Chromium and Node checked; Firefox and Safari wait for TC-M-53, [02](02-threat-model.md)
   RR-27); the iPhone will use CryptoKit (S4b-BL-131). The reduction `(seed mod (n − 1)) + 1` is common code with fixed
   limbs and no secret-dependent branch.
-- **A new recovery key starts a new epoch** (the old one may have been seen), and a revoked device moves from
-  `devices` to `revoked` and cannot be listed again; the last device cannot be revoked when there is no recovery key.
-- **The rollback rule**: refuse a lower revision or a lower epoch, and the same revision with another epoch; the caller
-  raises the watermark after a write only once Drive confirmed the upload. **`RevokedEpochRule`**: a revoked writer's
+- **A new recovery key starts a new epoch** (the old one may have been seen) with a new anchor, and the old recovery kid
+  joins the revoked list; a revoked device moves from `devices` to `revoked` and cannot be listed again; `enrolledBy`
+  must name a listed, recovery or revoked kid; the last device cannot be revoked when there is no recovery key.
+- **The rollback rule** orders (epoch, revision) lexicographically: a higher epoch always wins, so a holder of an old
+  epoch's key cannot block a revoke by writing revision 2⁵³ − 1 (and a list at that revision cannot be written on:
+  `REVISION_LIMIT`). **`RevokedEpochRule`**: a revoked writer's
   file is skipped if written after its revoke or under an epoch it never had; any file under an epoch older than a
   revoke and written after it is skipped; an unknown writer is skipped; the time is the caller's (Drive's
   `modifiedTime`), not authenticated ([02](02-threat-model.md) RR-26).
@@ -896,9 +920,20 @@ What this design did not say, and the build chose (the default unless the owner 
   `keys.json` 256 KiB, 64 devices, 1024 revoked entries, names 1..64 characters without control characters.
 - **Checksums**: no checksum inside the format (GCM covers it); `encrypt` returns the SHA-256 of the whole file (what
   Drive's `sha256Checksum` must equal) and of the plaintext (the photo row's), and `decrypt` checks either if asked.
+- **A file is bound to its row** (review, 2026-10-02): every photo is a valid file under the same folder key, so one
+  photo file could be swapped for another. Of the two sound fixes (a random file id in the header compared with the
+  row, or the row's SHA-256) the smaller is chosen: `decrypt` refuses a `photo/1` file without
+  `expectedPlaintextSha256` (`CHECKSUM_REQUIRED`), and the photo rows already carry that SHA-256 (§5.1). A sync file is
+  bound by its writer (the caller compares the header's `kid` in `headerCheck`), a backup by the date in its manifest.
+- **Partial output and keys in memory**: `encrypt` does not know the length in advance, so a failure (`TOO_LARGE`, a
+  failing source or sink) can leave a partial file on the sink, which the caller discards; `decrypt` writes each chunk
+  only once it authenticated, but the whole file is proven only when it returns. Content keys, folder-key copies,
+  derived keys and the recovery scalar are overwritten after use where the code holds them; the platforms' own key
+  objects and JavaScript strings are out of reach ([02](02-threat-model.md) RR-28, S4b-BL-132).
 - **Not in this ticket**: the local copies that rebuild `keys.json` and the first-connect rule (S4b-BL-126), the MACed
   `doorprints.json` (S4b-BL-116, with `KeysGuard` and a MAC of its own label), Keystore, Secure Enclave and IndexedDB key
-  storage (S4b-BL-127, -131, -126), PSK mode and its RFC 9180 A.3.2 vectors (S4b-BL-126).
+  storage (S4b-BL-127, -131, -126), PSK mode and its RFC 9180 A.3.2 vectors (S4b-BL-126), the vectors on the Android
+  runtime's own provider (Conscrypt, S4b-BL-133).
 
 ## 10. Device authentication and the device lock (owner addition, 2026-10-02)
 
