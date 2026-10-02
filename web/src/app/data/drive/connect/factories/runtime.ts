@@ -64,7 +64,7 @@ export interface DriveRuntime {
  * Production FolderTrustStores backed by IndexedDB via a key-value store.
  * Stores per-folder watermarks using compound keys like "keys:<rootId>" and "control:<rootId>".
  */
-class DbFolderTrustStores implements FolderTrustStores {
+export class DbFolderTrustStores implements FolderTrustStores {
   constructor(
     private readonly keyValueStore: { get(k: string): Promise<string | undefined>; set(k: string, v: string): Promise<void> },
   ) {}
