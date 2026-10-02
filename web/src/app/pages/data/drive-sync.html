@@ -1,0 +1,77 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="drive-sync">
+  <button type="button" class="btn btn-primary" (click)="performSync()" [disabled]="busy()">
+    {{ 'driveSync.syncNow' | t }}
+  </button>
+
+  <p class="status-line" role="status" aria-live="polite" aria-atomic="true">
+    {{ statusMessage() }}
+  </p>
+
+  @if (skippedCount() > 0) {
+    <p class="notice" role="alert" aria-live="assertive">
+      {{ 'driveSync.skippedFiles' | t: { count: skippedCount() } }}
+    </p>
+  }
+
+  @if (needsShrinkConfirmation()) {
+    <div class="confirm-box">
+      <h3>{{ 'driveSync.shrinkConfirm' | t }}</h3>
+      <p>{{ shrinkMessage() }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="confirmShrinkDeletion()" [disabled]="busy()">
+          {{ 'driveSync.applyShrink' | t }}
+        </button>
+        <button type="button" class="btn" (click)="cancelShrinkConfirmation()" [disabled]="busy()">
+          {{ 'driveSync.notNow' | t }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="photo-settings">
+    <label class="checkbox">
+      <input
+        type="checkbox"
+        [checked]="photosWifiOnly()"
+        (change)="togglePhotosWifiOnly($event.target.checked)"
+        [disabled]="busy()"
+      />
+      <span>{{ 'driveSync.wifiOnly' | t }}</span>
+    </label>
+
+    @if (photoLabel() !== null) {
+      <button
+        type="button"
+        class="btn btn-sm"
+        (click)="uploadPhotosNowOverMobile()"
+        [disabled]="busy()"
+      >
+        {{ 'driveSync.uploadNow' | t: { size: photoLabel() } }}
+      </button>
+    }
+  </div>
+
+  @if (showPhotoError()) {
+    <p class="error-message" role="alert" aria-live="assertive">
+      {{ 'driveSync.photoError' | t }}
+    </p>
+  }
+</div>

@@ -1280,4 +1280,32 @@ export const te: Dict = {
   'drivePasskey.registerButton': 'పాస్‌కీని సెట్ చేయండి',
   'drivePasskey.registeredDescription': 'ఈ సాధనం పై పాస్‌కీ సెట్ చేయబడింది.',
   'drivePasskey.unsupportedDescription': 'ఈ బ్రౌజర్ అవసరమైన పాస్‌కీ రకాన్ని చేయలేకపోయింది. ఇక్కడ నుండి ప్రతిదీ తొలగించడం అందుబాటులో లేదు; మీరు ఇప్పటికీ వ్యక్తిగత బ్యాకప్‌లను తొలగించవచ్చు.',
+
+  // Google Drive sync component (S4b-BL-117) - Under review
+  'driveSync.syncNow': 'ఇప్పుడు సమకాలీకరణ చేయండి',
+  'driveSync.skippedFiles': 'ఇతర సాధనాల నుండి కొన్ని ఫైలులు దాటవేయబడ్డాయి ({count}). అవి సురక్షత తనిఖీలను ఉత్తీర్ణత చేయలేకపోయాయి.',
+  'driveSync.shrinkConfirm': 'ఇతర సాధనం నుండి తొలగించిన బ్యాకప్‌లను నిర్ధారించండి',
+  'driveSync.shrinkConfirmDetails': 'ఇతర సాధనం బ్యాకప్‌లను తొలగించింది. ఈ సాధనంపై ఈ తొలగింపులను వర్తింపజేయాలా?',
+  'driveSync.applyShrink': 'తొలగింపులను వర్తింపజేయండి',
+  'driveSync.notNow': 'ఇప్పుడు కాదు',
+  'driveSync.wifiOnly': 'Wi-Fi పై మాత్రమే ఫోటోలను అప్‌లోడ్ చేయండి',
+  'driveSync.uploadNow': 'మొబైల్ డేటా ఉపయోగించి ఇప్పుడు ఫోటోలను అప్‌లోడ్ చేయండి ({size})',
+  'driveSync.photoError': 'ఫోటో సెట్టింగ్‌లను నవీకరించలేకపోయాం',
+
+  // Google Drive deletion component (S4b-BL-117) - Under review
+  'driveDelete.heading': 'Google Drive నుండి డేటాను తొలగించండి',
+  'driveDelete.olderBackups': 'పాత బ్యాకప్‌లను తొలగించండి',
+  'driveDelete.allBackups': 'అన్ని బ్యాకప్‌లను తొలగించండి',
+  'driveDelete.everything': 'Google Drive నుండి Doorprints ఉంచే ప్రతిదీ తొలగించండి',
+  'driveDelete.oneBackup': 'ఈ బ్యాకప్‌ను తొలగించండి',
+  'driveDelete.planHeading': 'ఏమి తొలగించబడుతుంది',
+  'driveDelete.planWarning': 'అన్ని సాధనాల కోసం Google Drive నుండి తొలగించండి.',
+  'driveDelete.proceed': 'ముందుకు సాగండి',
+  'driveDelete.confirmHeading': 'తొలగింపును నిర్ధారించండి',
+  'driveDelete.confirmWarning': 'దీన్ని చేయలేము. అన్ని సాధనాల కోసం Google Drive నుండి తొలగించండి.',
+  'driveDelete.confirmCheckbox': 'నేను అర్థం చేసుకున్నాను: దీన్ని చేయలేము',
+  'driveDelete.countdown': 'దయచేసి {seconds} సెకన్ల కోసం ఆగండి…',
+  'driveDelete.passkeyRequired': 'పాస్‌కీ అవసరం',
+  'driveDelete.setupPasskey': 'పాస్‌కీని సెటప్ చేయండి',
+  'driveDelete.deleting': 'తొలగిస్తున్నారు…',
 };
