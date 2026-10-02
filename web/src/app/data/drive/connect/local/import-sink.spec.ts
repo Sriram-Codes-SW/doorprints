@@ -30,8 +30,8 @@ describe('MemoryStagingSink', () => {
     const chunk1 = new Uint8Array([1, 2, 3, 4]);
     const chunk2 = new Uint8Array([5, 6, 7, 8]);
 
-    await sink.write.write(chunk1);
-    await sink.write.write(chunk2);
+    await sink.write(chunk1);
+    await sink.write(chunk2);
 
     const blob = sink.blob;
     expect(blob).not.toBeNull();
@@ -44,7 +44,7 @@ describe('MemoryStagingSink', () => {
 
   it('returns null blob when discarded', async () => {
     const chunk = new Uint8Array([1, 2, 3]);
-    await sink.write.write(chunk);
+    await sink.write(chunk);
     await sink.discard();
 
     expect(sink.blob).toBeNull();
@@ -53,24 +53,30 @@ describe('MemoryStagingSink', () => {
   it('enforces 200 MB capacity limit', async () => {
     const largeChunk = new Uint8Array(150 * 1024 * 1024); // 150 MB
 
-    await sink.write.write(largeChunk);
+    await sink.write(largeChunk);
     expect(sink.size).toBe(150 * 1024 * 1024);
 
     // Writing another 50 MB should succeed (total 200 MB).
     const chunk2 = new Uint8Array(50 * 1024 * 1024);
-    await sink.write.write(chunk2);
+    await sink.write(chunk2);
     expect(sink.size).toBe(200 * 1024 * 1024);
 
     // Writing 1 more byte should fail.
     const overLimit = new Uint8Array([1]);
-    await expect(sink.write.write(overLimit)).rejects.toThrow('CAPACITY_EXCEEDED');
+    try {
+      await sink.write(overLimit);
+      expect.fail('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(StagingSinkError);
+      expect((e as StagingSinkError).kind).toBe('CAPACITY_EXCEEDED');
+    }
   });
 
   it('throws CAPACITY_EXCEEDED error with correct kind', async () => {
     const largeChunk = new Uint8Array(200 * 1024 * 1024 + 1); // Over the limit
 
     try {
-      await sink.write.write(largeChunk);
+      await sink.write(largeChunk);
       expect.fail('Should have thrown');
     } catch (e) {
       expect(e).toBeInstanceOf(StagingSinkError);
@@ -84,7 +90,7 @@ describe('MemoryStagingSink', () => {
     const chunk = new Uint8Array([1, 2, 3]);
 
     try {
-      await sink.write.write(chunk);
+      await sink.write(chunk);
       expect.fail('Should have thrown');
     } catch (e) {
       expect(e).toBeInstanceOf(StagingSinkError);
@@ -95,10 +101,10 @@ describe('MemoryStagingSink', () => {
   it('tracks size correctly', async () => {
     expect(sink.size).toBe(0);
 
-    await sink.write.write(new Uint8Array(1000));
+    await sink.write(new Uint8Array(1000));
     expect(sink.size).toBe(1000);
 
-    await sink.write.write(new Uint8Array(500));
+    await sink.write(new Uint8Array(500));
     expect(sink.size).toBe(1500);
 
     await sink.discard();
@@ -115,7 +121,7 @@ describe('MemoryStagingSink', () => {
   it('grows buffer as needed', async () => {
     // Write multiple small chunks that exceed the initial 1 MB buffer.
     for (let i = 0; i < 5; i++) {
-      await sink.write.write(new Uint8Array(512 * 1024)); // 512 KB each
+      await sink.write(new Uint8Array(512 * 1024)); // 512 KB each
     }
 
     expect(sink.size).toBe(5 * 512 * 1024);
@@ -126,7 +132,7 @@ describe('MemoryStagingSink', () => {
   it('returns ZIP-like blob for valid backup', async () => {
     // Write a minimal ZIP file header (PK\x03\x04).
     const zipHeader = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
-    await sink.write.write(zipHeader);
+    await sink.write(zipHeader);
 
     const blob = sink.blob;
     expect(blob).not.toBeNull();
@@ -139,7 +145,7 @@ describe('MemoryStagingSink', () => {
 
   it('clears buffer on discard to free memory', async () => {
     const chunk = new Uint8Array(10 * 1024 * 1024); // 10 MB
-    await sink.write.write(chunk);
+    await sink.write(chunk);
 
     const sizeBeforeDiscard = sink.size;
     await sink.discard();

@@ -17,7 +17,7 @@
  */
 
 import type { ByteSink } from '../../../crypto/dpx';
-import type { StagingSink } from '../backup/drive-backup-seams';
+import type { StagingSink } from '../../backup/drive-backup-seams';
 
 /** Error thrown when the staging sink's size cap is exceeded. */
 export class StagingSinkError extends Error {
@@ -40,23 +40,21 @@ export class MemoryStagingSink implements StagingSink {
   private readonly capacity = 200 * 1024 * 1024; // 200 MB limit
   private discarded = false;
 
-  readonly write: ByteSink = {
-    write: async (bytes: Uint8Array) => {
-      if (this.discarded) {
-        throw new StagingSinkError('WRITE_FAILED', 'StagingSink has been discarded');
-      }
-      if (this.filled + bytes.length > this.capacity) {
-        throw new StagingSinkError('CAPACITY_EXCEEDED', `Staged backup would exceed ${this.capacity} bytes`);
-      }
-      if (this.buffer.length < this.filled + bytes.length) {
-        const newSize = Math.max(this.buffer.length * 2, this.filled + bytes.length);
-        const grown = new Uint8Array(newSize);
-        grown.set(this.buffer.subarray(0, this.filled));
-        this.buffer = grown;
-      }
-      this.buffer.set(bytes, this.filled);
-      this.filled += bytes.length;
-    },
+  readonly write: ByteSink = async (bytes: Uint8Array) => {
+    if (this.discarded) {
+      throw new StagingSinkError('WRITE_FAILED', 'StagingSink has been discarded');
+    }
+    if (this.filled + bytes.length > this.capacity) {
+      throw new StagingSinkError('CAPACITY_EXCEEDED', `Staged backup would exceed ${this.capacity} bytes`);
+    }
+    if (this.buffer.length < this.filled + bytes.length) {
+      const newSize = Math.max(this.buffer.length * 2, this.filled + bytes.length);
+      const grown = new Uint8Array(newSize);
+      grown.set(this.buffer.subarray(0, this.filled));
+      this.buffer = grown;
+    }
+    this.buffer.set(bytes, this.filled);
+    this.filled += bytes.length;
   };
 
   constructor() {

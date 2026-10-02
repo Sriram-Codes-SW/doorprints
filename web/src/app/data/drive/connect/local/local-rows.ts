@@ -24,8 +24,9 @@ import { QUESTION_TYPE } from '../../../../shared/question';
 import { VIEWING_TYPE } from '../../../../shared/viewing';
 import type { LocalStore } from '../../../local-store.service';
 import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../../records';
-import type { LocalRows } from '../drive-sync-seams';
-import type { SyncKind, SyncRow } from '../sync-file';
+import { houseFromDto, recordFromDto, visitFromDto } from '../../../records';
+import type { LocalRows } from '../../drive-sync-seams';
+import type { SyncKind, SyncRow } from '../../sync-file';
 
 export class LocalRowsAdapter implements LocalRows {
   constructor(private readonly store: LocalStore, private readonly deviceId: string) {}
@@ -87,22 +88,26 @@ export class LocalRowsAdapter implements LocalRows {
   }
 
   async applyRemote(rows: readonly SyncRow[]): Promise<void> {
-    const imported = { houses: [] as any[], visits: [] as any[], records: [] as any[], photos: [] as any[] };
+    const imported = { houses: [] as HouseRecord[], visits: [] as VisitRecord[], records: [] as RecordRecord[], photos: [] as PhotoRecord[] };
     for (const row of rows) {
       const json = row.json as Record<string, unknown>;
       switch (row.kind) {
-        case 'houses':
-          imported.houses.push(await this.store.putHouseFromServer({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as any));
+        case 'houses': {
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          imported.houses.push(houseFromDto(dto, false));
           break;
-        case 'visits':
-          imported.visits.push(await this.store.putVisitFromServer({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as any));
+        }
+        case 'visits': {
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          imported.visits.push(visitFromDto(dto, false));
           break;
+        }
         case 'photos':
           imported.photos.push({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as PhotoRecord);
           break;
         case 'records': {
-          const type = json.type as string;
-          imported.records.push({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as RecordRecord);
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          imported.records.push(recordFromDto(dto, false));
           break;
         }
       }
