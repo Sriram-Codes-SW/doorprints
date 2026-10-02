@@ -88,6 +88,17 @@ describe('DriveJoinComponent', () => {
     expect(svc.openWithRecoveryKey).toHaveBeenCalledWith('XXXX-XXXX-XXXX-XXXX-XXXX-XXXX');
   });
 
+  it('calls openWithRecoveryKey with lowercase text preserves case', async () => {
+    const service = createFakeDriveService();
+    const { component, service: svc } = await render(service);
+
+    component['recoveryKeyText'].set('xxxx-xxxx-xxxx-xxxx-xxxx-xxxx');
+
+    await component.onJoin();
+
+    expect(svc.openWithRecoveryKey).toHaveBeenCalledWith('xxxx-xxxx-xxxx-xxxx-xxxx-xxxx');
+  });
+
   it('clears the input field and emits joined on successful connection', async () => {
     const service = createFakeDriveService();
     const { component, detect } = await render(service);
@@ -191,5 +202,48 @@ describe('DriveJoinComponent', () => {
     await component.onDisconnect();
 
     expect(svc.disconnect).toHaveBeenCalled();
+  });
+
+  it('has proper accessibility: input with label and aria-describedby', async () => {
+    const service = createFakeDriveService();
+    const { host } = await render(service);
+
+    const input = host.querySelector<HTMLInputElement>('input#recovery-key-input')!;
+    const label = host.querySelector<HTMLLabelElement>('label[for="recovery-key-input"]');
+    const helpText = host.querySelector('#recovery-key-help');
+
+    expect(input).toBeTruthy();
+    expect(input.getAttribute('aria-describedby')).toBe('recovery-key-help');
+    expect(label).toBeTruthy();
+    expect(helpText).toBeTruthy();
+  });
+
+  it('has aria-live region for error messages', async () => {
+    const service = createFakeDriveService();
+    const { host } = await render(service);
+
+    const errorRegion = host.querySelector('[aria-live="polite"]');
+    expect(errorRegion).toBeTruthy();
+    expect(errorRegion?.getAttribute('aria-atomic')).toBe('true');
+  });
+
+  it('displays error message after operation completes', async () => {
+    const errorMsg = 'Test error';
+    const service = createFakeDriveService({
+      openWithRecoveryKey: vi.fn(async () => ({
+        state: 'NeedsRecoveryKey',
+        error: errorMsg,
+      }) as ConnectResult),
+    });
+    const { component, host, detect } = await render(service);
+
+    component['recoveryKeyText'].set('test-key');
+    detect();
+
+    await component.onJoin();
+    detect();
+
+    const errorRegion = host.querySelector('[aria-live="polite"]');
+    expect(errorRegion?.textContent).toContain(errorMsg);
   });
 });

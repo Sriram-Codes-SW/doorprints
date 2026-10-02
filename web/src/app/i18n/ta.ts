@@ -1249,8 +1249,8 @@ export const ta: Dict = {
   'driveJoin.disconnect': 'நீக்கவும்',
   'driveJoin.disconnectAriaLabel': 'இந்த Google Drive ஐ நீக்கவும்',
   'drivePasskey.heading': 'இந்த சாதனத்திற்கான தவணை',
-  'drivePasskey.noneDescription': 'இந்த சாதனத்தில் Google Drive பர விசை அல்லது Doorprints ஆல் பராமரிக்கப்படும் எல்லாவற்றையும் நீக்குவதற்கு தவணை தேவை (கைரேகை, முகம் அல்லது திரை பூட்டு). இப்போது சेட அப் செய்யவும்.',
-  'drivePasskey.registerButton': 'தவணையைச் சেட அப் செய்யவும்',
-  'drivePasskey.registeredDescription': 'இந்த சாதனத்தில் தவணை சேट அப் செய்யப்பட்டுள்ளது.',
+  'drivePasskey.noneDescription': 'இந்த சாதனத்தில் Google Drive அல்லது Doorprints இல் உள்ள அனைத்தையும் நீக்க தவணை தேவை (விரல் ரேகை, முகம் அல்லது திரை பூட்டு). இப்போது அமைக்கவும்.',
+  'drivePasskey.registerButton': 'தவணை அமைக்கவும்',
+  'drivePasskey.registeredDescription': 'இந்த சாதனத்தில் தவணை அமைக்கப்பட்டுள்ளது.',
   'drivePasskey.unsupportedDescription': 'இந்த உலாவி தேவைப்படும் தவணை வகையை உருவாக்க முடியாது. இங்கிருந்து எல்லாவற்றையும் நீக்க முடியாது; நீங்கள் இன்னும் தனிப்பு பேக்கப்களை நீக்க முடியும்.',
 };

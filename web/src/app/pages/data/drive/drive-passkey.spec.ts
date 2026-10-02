@@ -188,4 +188,13 @@ describe('DrivePasskeyComponent', () => {
 
     expect(component['status']()).toBe('unsupported');
   });
+
+  it('has aria-live region for error messages', async () => {
+    const service = createFakeDriveService();
+    const { host } = await render(service);
+
+    const errorRegion = host.querySelector('[aria-live="polite"]');
+    expect(errorRegion).toBeTruthy();
+    expect(errorRegion?.getAttribute('aria-atomic')).toBe('true');
+  });
 });
