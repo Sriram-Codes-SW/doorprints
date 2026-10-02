@@ -32,6 +32,8 @@ import { DriveSyncNotYet } from '../drive-sync-seams';
 import type { DriveSyncState, FolderSession, LocalRows, SkipReason, SyncPassResult, SyncStateStore } from '../drive-sync-seams';
 import { EMPTY_SYNC_STATE, syncDeviceId } from '../drive-sync-seams';
 import type { DriveClient } from '../drive-client';
+import { DRIVE_SYNC_LOCK, WebLockRunner } from '../backup/lock-runner';
+import type { LockRunner } from '../backup/lock-runner';
 
 /**
  * UI-friendly status returned by syncNow; maps the low-level SyncPassResult to user-facing states
@@ -83,6 +85,8 @@ export class DriveSyncAdapter {
     local?: LocalRows,
     /** Where the device's sync bookkeeping persists across reloads; without it, memory only (tests only). */
     syncStateStore?: SyncStateStore,
+    /** One sync pass at a time across tabs. Tests pass a fake; the browser uses Web Locks. */
+    private readonly locks: LockRunner = new WebLockRunner(),
   ) {
     this.sessionOf = typeof session === 'function' ? session : () => session;
     // Store settings as mutable object (updated by setters)
@@ -160,6 +164,19 @@ export class DriveSyncAdapter {
    */
   async syncNow(opts: { confirmShrink?: boolean } = {}): Promise<SyncAdapterStatus> {
     // Sync before backup connects: no session available
+    if (!this.session) {
+      return {
+        state: 'error',
+        skipped: [],
+        lastSyncAt: this.lastSyncAt,
+        error: 'not connected',
+      };
+    }
+    // Two tabs of one browser are one device (docs/15 §5.1). The lock is held for the whole pass.
+    return this.locks.request(DRIVE_SYNC_LOCK, () => this.syncPass(opts));
+  }
+
+  private async syncPass(opts: { confirmShrink?: boolean }): Promise<SyncAdapterStatus> {
     if (!this.session) {
       return {
         state: 'error',
