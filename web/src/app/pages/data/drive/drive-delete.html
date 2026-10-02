@@ -1,0 +1,114 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card-section" aria-labelledby="drive-delete-heading">
+  @if (phase() === 'menu') {
+    <div>
+      <h3 id="drive-delete-heading">{{ 'driveDelete.heading' | t }}</h3>
+      <div class="actions">
+        <button type="button" class="btn" (click)="startDeletion({ type: 'olderBackups' })" [disabled]="busy()">
+          {{ 'driveDelete.olderBackups' | t }}
+        </button>
+        <button type="button" class="btn" (click)="startDeletion({ type: 'allBackups' })" [disabled]="busy()">
+          {{ 'driveDelete.allBackups' | t }}
+        </button>
+        <button type="button" class="btn btn-danger" (click)="startDeletion({ type: 'everything' })" [disabled]="busy()">
+          {{ 'driveDelete.everything' | t }}
+        </button>
+        @if (oneBackupId) {
+          <button
+            type="button"
+            class="btn"
+            (click)="startDeletion({ type: 'oneBackup', fileId: oneBackupId })"
+            [disabled]="busy()"
+          >
+            {{ 'driveDelete.oneBackup' | t }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (phase() === 'plan') {
+    <div>
+      <h3>{{ 'driveDelete.planHeading' | t }}</h3>
+      <p>{{ 'driveDelete.planWarning' | t }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="proceedToConfirm()" [disabled]="busy()">
+          {{ 'driveDelete.proceed' | t }}
+        </button>
+        <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (phase() === 'confirm') {
+    <div class="confirm-box" role="dialog" aria-labelledby="delete-confirm-title">
+      <h3 id="delete-confirm-title">{{ 'driveDelete.confirmHeading' | t }}</h3>
+      <p>{{ 'driveDelete.confirmWarning' | t }}</p>
+      @if (tickBoxRequired()) {
+        <label class="checkbox">
+          <input type="checkbox" [checked]="ticked()" (change)="toggleTickBox()" [disabled]="busy()" />
+          <span>{{ 'driveDelete.confirmCheckbox' | t }}</span>
+        </label>
+      }
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="confirmDelete()"
+          [disabled]="busy() || (tickBoxRequired() && !ticked())"
+        >
+          {{ 'common.delete' | t }}
+        </button>
+        <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
+      </div>
+    </div>
+  }
+
+  @if (phase() === 'passkey-error') {
+    <div>
+      <h3>{{ 'driveDelete.passkeyRequired' | t }}</h3>
+      <p>{{ 'driveDelete.usePhone' | t }}</p>
+      @if (passkeyStatus() === 'none') {
+        <button type="button" class="btn btn-primary" (click)="registerPasskey()" [disabled]="busy()">
+          {{ 'driveDelete.setupPasskey' | t }}
+        </button>
+      }
+      <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
+    </div>
+  }
+
+  @if (phase() === 'running') {
+    <p role="status" aria-live="polite">{{ 'driveDelete.deleting' | t }}</p>
+  }
+
+  @if (phase() === 'done') {
+    <div>
+      <p role="status">{{ 'driveDelete.done' | t }}</p>
+      <button type="button" class="btn" (click)="cancel()">{{ 'common.cancel' | t }}</button>
+    </div>
+  }
+
+  @if (phase() === 'error') {
+    <div>
+      <p role="alert">{{ error() }}</p>
+      <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
+    </div>
+  }
+</section>
