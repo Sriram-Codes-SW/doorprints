@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.11 |
+| Version | 0.12 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; HMAC-over-operationId proof S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -23,6 +23,7 @@
 | 0.9 | 2026-10-02 | Cursor Agent, lead | **Website Drive UI composed** (draft PR #118): connect, recovery key shown once, backups, sync, L1/L2/L3 deletion (website L1; L2/L3 only with a PRF-sealed passkey; tick box; no delay), 8-digit pairing (S4b-BL-126 web; QR deferred as S4b-BL-134), `web/public/config.js` empty in the tree and written at deploy from `vars.GOOGLE_OAUTH_WEB_CLIENT_ID`, privacy link, user-guide pages. Android/iOS Drive UI paused. Real Google sign-in waits on the owner's Web client id. |
 | 0.10 | 2026-10-02 | Cursor Agent, lead | **§10.4:** the website's L3 confirm is a tick box and **no countdown** (owner: no delay on the website). The shared delete-policy vectors keep **5 s for L3 on the phones** (Kotlin stays in step with decision 8). The website binds a delete grant to a passkey PRF open; HMAC of the operation id is S4b-BL-135. |
 | 0.11 | 2026-10-02 | Cursor Agent, lead | **§10.4:** an L2/L3 grant is registered at **authorize** with that preflight plan's `operationId`. Execute of another plan of the same action (a different `operationId`) is refused. The in-memory grant is gone after a reload; the sealed passkey remains and a new PRF open is required. HMAC of the operation id as the proof is still S4b-BL-135. |
+| 0.12 | 2026-10-02 | Cursor Agent, lead | Website Drive cards (draft PR #118): connect, join, backups, delete and sync show **translated reasons** (`TKey`, `problemToMsg` / `msgOfThrown`), never `String(err)` or a raw English sentence from the service. Empty `GOOGLE_CONFIG` is Unavailable with no Connect button. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
