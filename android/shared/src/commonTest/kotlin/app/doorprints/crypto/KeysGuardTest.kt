@@ -57,7 +57,7 @@ class KeysGuardTest {
             chain = emptyList(),
             devices = listOf(DeviceEntry(kid(1), "Phone", DevicePlatform.ANDROID, ByteArray(65), 0, null, w)),
             recovery = null,
-            revoked = listOf(RevokedEntry(kid(2), 1000, 2), RevokedEntry(kid(3), 5000, 3)),
+            revoked = listOf(RevokedEntry(kid(2), false, 1000, 2), RevokedEntry(kid(3), false, 5000, 3), RevokedEntry(kid(4), true, 6000, 3)),
         )
     }
 
@@ -76,6 +76,9 @@ class KeysGuardTest {
         assertEquals(RevokedEpochRule.Verdict.ACCEPT, v.check(b, 3, kid(1), 9999))
         assertEquals(RevokedEpochRule.Verdict.SKIP_UNKNOWN_WRITER, v.check(b, 3, kid(9), 0))
         assertEquals(RevokedEpochRule.Verdict.NEWER_EPOCH, v.check(b, 4, kid(1), 0))
+        // A replaced recovery key never wrote anything, and its replacement does not skip old-epoch device files.
+        assertEquals(RevokedEpochRule.Verdict.SKIP_UNKNOWN_WRITER, v.check(b, 1, kid(4), 0))
+        assertEquals(RevokedEpochRule.Verdict.ACCEPT, v.check(b, 3, kid(1), 9999))
     }
 
     @Test

@@ -65,7 +65,7 @@ interface KeysWatermarkStore {
  */
 class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkStore) {
 
-    internal enum class Trust { PINNED, FIRST_PIN, RECOVERY_ANCHOR, CREATED }
+    internal enum class Trust { PINNED, FIRST_PIN, RECOVERY_ANCHOR, CREATED, REPIN }
 
     /** The current pin, if any. */
     fun watermark(): KeysWatermark? = store.load()
@@ -80,6 +80,12 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
         val next = watermarkOf(p, opened)
         repeat(MAX_TRIES) {
             val seen = store.load()
+            if (trust == Trust.REPIN) {
+                // A stronger proof than the pin (the enrolment key or the recovery anchor) replaces it, whatever its order.
+                if (seen == next) return
+                if (store.compareAndSet(seen, next)) return
+                return@repeat
+            }
             if (seen == null) {
                 if (trust == Trust.PINNED) throw KeysException(KeysException.Kind.NOT_PINNED, "no pin for this folder yet")
             } else {
@@ -96,6 +102,9 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
             Order.LOWER -> throw KeysException(KeysException.Kind.ROLLED_BACK, "epoch ${next.epoch} revision ${next.revision} is older than epoch ${seen.epoch} revision ${seen.revision}")
             Order.SAME_EPOCH -> {
                 if (!constantTimeEquals(next.keyId, seen.keyId)) throw KeysException(KeysException.Kind.FORK_DETECTED, "another folder key for epoch ${next.epoch}")
+                if (next.revision - seen.revision > MAX_REVISION_STEP) {
+                    throw KeysException(KeysException.Kind.REVISION_JUMP, "revision ${next.revision} is far above ${seen.revision}")
+                }
                 if (next.revision == seen.revision && !next.bodyHash.contentEquals(seen.bodyHash)) {
                     throw KeysException(KeysException.Kind.FORK_DETECTED, "another list at revision ${next.revision}")
                 }
@@ -117,6 +126,12 @@ class KeysGuard(private val p: CryptoProvider, private val store: KeysWatermarkS
 
     internal companion object {
         const val MAX_TRIES = 4
+
+        /**
+         * The largest step of revision within one epoch a device accepts. Every write adds one and an epoch holds at most
+         * 64 devices, so no genuine gap comes near it.
+         */
+        const val MAX_REVISION_STEP = 1024L
 
         /** (epoch, revision) ordered lexicographically: a higher epoch always wins, a lower one never does. */
         fun order(seenEpoch: Int, seenRevision: Long, epoch: Int, revision: Long): Order = when {
@@ -167,13 +182,14 @@ object RevokedEpochRule {
     fun check(body: KeysBody, fileEpoch: Int, writerKid: ByteArray, writtenAt: Long): Verdict {
         if (fileEpoch > body.epoch) return Verdict.NEWER_EPOCH
         val revokedWriter = body.revokedEntry(writerKid)
+        if (revokedWriter != null && revokedWriter.isRecovery) return Verdict.SKIP_UNKNOWN_WRITER
         if (revokedWriter != null) {
             if (fileEpoch >= revokedWriter.revokedAtEpoch || writtenAt > revokedWriter.revokedAt) return Verdict.SKIP_REVOKED_WRITER
         } else if (body.device(writerKid) == null) {
             return Verdict.SKIP_UNKNOWN_WRITER
         }
         for (r in body.revoked) {
-            if (fileEpoch < r.revokedAtEpoch && writtenAt > r.revokedAt) return Verdict.SKIP_OLD_EPOCH_AFTER_REVOKE
+            if (!r.isRecovery && fileEpoch < r.revokedAtEpoch && writtenAt > r.revokedAt) return Verdict.SKIP_OLD_EPOCH_AFTER_REVOKE
         }
         return Verdict.ACCEPT
     }

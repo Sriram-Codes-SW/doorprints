@@ -63,6 +63,7 @@ interface Step {
   approver?: number;
   device?: number;
   revoke?: number;
+  newRecoveryBytes?: string;
   file: string;
   openers: number[];
   folderKeys: Record<string, string>;
@@ -154,13 +155,16 @@ describe('dpx-vectors.json (Kotlin parity)', () => {
     const files = new KeysFile(rp);
     const keys = await Promise.all(k.devices.map((d) => new Hpke(p).deriveKeyPair(unhex(d.ikm))));
     const devices = k.devices.map((d, i) => ({ publicKey: keys[i].publicKey, name: d.name, platform: d.platform }));
-    const recovery = RecoveryKey.fromBytes(unhex(k.recoveryBytes));
+    let recovery = RecoveryKey.fromBytes(unhex(k.recoveryBytes));
     let opened: OpenedKeys | null = null;
     for (const step of k.steps) {
       let w: WrittenKeys;
       if (step.op === 'create') w = await files.createFirstDevice(devices[0], recovery, step.now);
       else if (step.op === 'addDevice') w = await files.addDevice(opened!, kidOf(p, devices[step.approver!].publicKey), devices[step.device!], step.now);
-      else if (step.op === 'newEpoch') w = await files.newEpoch(opened!, step.now, { revokeKid: kidOf(p, devices[step.revoke!].publicKey) });
+      else if (step.op === 'newEpoch') {
+        recovery = RecoveryKey.fromBytes(unhex(step.newRecoveryBytes!));
+        w = await files.newEpoch(opened!, step.now, { revokeKid: kidOf(p, devices[step.revoke!].publicKey), newRecovery: recovery });
+      }
       else throw new Error(step.op);
       expect(b64(w.bytes), step.op).toBe(step.file);
       opened = w.opened;

@@ -22,9 +22,9 @@ import { CanonicalJson } from './canonical-json';
 import { WebCryptoProvider } from './crypto-provider';
 import type { P256PrivateKey } from './crypto-provider';
 import { Dpx } from './dpx';
-import { HPKE_INFO, kidOf, macKey, WrapAad } from './folder-key';
+import { chainWrapKey, HPKE_INFO, kidOf, macKey, WrapAad } from './folder-key';
 import { Hpke } from './hpke';
-import { bodyJson, KeysError, KeysFile } from './keys-file';
+import { bodyJson, KeysError, KeysFile, OpenedKeys } from './keys-file';
 import type { KeysBody, KeysErrorKind, WrittenKeys } from './keys-file';
 import { KeysGuard, revokedEpochRule, sameWatermark } from './keys-guard';
 import type { KeysWatermark, KeysWatermarkStore } from './keys-guard';
@@ -106,7 +106,11 @@ describe('keys.json', () => {
     expect(hex((await files.openFirstPin(w2.bytes, tablet, fresh(), w1.opened.currentFolderKey())).currentFolderKey())).toBe(hex(w1.opened.currentFolderKey()));
     await expectKind('ALREADY_ENROLLED', () => files.addDevice(w2.opened, kid(phone), nd(tablet, 'again'), t0 + 2));
     await expectKind('NOT_LISTED', () => files.addDevice(w2.opened, kid(laptop), nd(laptop, 'x'), t0 + 2));
-    const w3 = await files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet) });
+    await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet) }));
+    await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet), newRecovery: recovery }));
+    const r2 = RecoveryKey.generate(p);
+    const w3 = await files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet), newRecovery: r2 });
+    expect(w3.opened.revision).toBe(1);
     await expectKind('REVOKED', async () => files.open(w3.bytes, tablet, await pinnedTo(w1)));
     await expectKind('NOT_ENROLLED', () => files.open(w3.bytes, laptop, fresh()));
     const w4 = await files.addDevice(w3.opened, kid(phone), nd(laptop, 'Laptop'), t0 + 200);
@@ -114,9 +118,9 @@ describe('keys.json', () => {
     expect(byLaptop.epoch).toBe(2);
     expect(new TextDecoder().decode((await new Dpx(p).decryptBytes(byLaptop, 'doorprints-backup/2', old)).plaintext)).toBe('old');
     await files.open(w4.bytes, phone, await pinnedTo(w1));
-    const byRecovery = await files.openWithRecovery(w4.bytes, RecoveryKey.parse(recovery.display.toLowerCase()), fresh());
+    const byRecovery = await files.openWithRecovery(w4.bytes, RecoveryKey.parse(r2.display.toLowerCase()), fresh());
     expect(hex(byRecovery.currentFolderKey())).toBe(hex(byLaptop.currentFolderKey()));
-    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w4.bytes, RecoveryKey.generate(p), fresh()));
+    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w4.bytes, recovery, fresh()));
     const body = byLaptop.body;
     expect(revokedEpochRule(body, 1, kid(tablet), t0 + 50)).toBe('ACCEPT');
     expect(revokedEpochRule(body, 1, kid(tablet), t0 + 150)).toBe('SKIP_REVOKED_WRITER');
@@ -125,10 +129,11 @@ describe('keys.json', () => {
     expect(revokedEpochRule(body, 2, p.randomBytes(16), t0)).toBe('SKIP_UNKNOWN_WRITER');
     expect(revokedEpochRule(body, 2, body.recovery!.kid, t0)).toBe('SKIP_UNKNOWN_WRITER');
     expect(revokedEpochRule(body, 3, kid(phone), t0)).toBe('NEWER_EPOCH');
+    expect(revokedEpochRule(body, 1, w1.opened.body.recovery!.kid, t0 + 50)).toBe('SKIP_UNKNOWN_WRITER');
     // A new recovery key: a new anchor, the old kid revoked, the old key refused.
     const next = RecoveryKey.generate(p);
     const w5 = await files.newEpoch(w4.opened, t0 + 300, { newRecovery: next });
-    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w5.bytes, recovery, fresh()));
+    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w5.bytes, r2, fresh()));
     expect((await files.openWithRecovery(w5.bytes, next, fresh())).body.recovery!.anchorEpoch).toBe(3);
   });
 
@@ -169,8 +174,10 @@ describe('keys.json', () => {
     const revoke = await files.newEpoch(w3.opened, 4, { revokeKid: kid(T) });
     const poisoned: KeysBody = { ...thief.body, revision: Number.MAX_SAFE_INTEGER };
     const mac = await p.hmacSha256(await macKey(p, thief.currentFolderKey()), concat(utf8('doorprints-keys/1'), new Uint8Array([0]), bodyJson(poisoned)));
-    const o = await files.open(fileOf(poisoned, mac), B, gB);
+    await expectKind('REVISION_JUMP', () => files.open(fileOf(poisoned, mac), B, gB));
+    const o = await files.openFirstPin(fileOf(poisoned, mac), B, fresh(), w1.opened.currentFolderKey());
     await expectKind('REVISION_LIMIT', async () => files.addDevice(o, kid(B), nd(await p.p256Generate(), 'x'), 5));
+    expect((await files.newEpoch(o, 5, { revokeKid: kid(T) })).opened.revision).toBe(1);
     await files.open(revoke.bytes, B, gB);
     expect((await gB.watermark())!.epoch).toBe(2);
     await expectKind('ROLLED_BACK', () => files.open(fileOf(poisoned, mac), B, gB));
@@ -214,11 +221,97 @@ describe('keys.json', () => {
     const w3 = await files.newEpoch(w2.opened, t0 + 2, { revokeKid: kid(tablet) });
     const g = await pinnedTo(w1);
     await files.open(w3.bytes, phone, g);
-    expect((await g.watermark())!.revision).toBe(3);
+    expect((await g.watermark())!.revision).toBe(1);
     await expectKind('ROLLED_BACK', () => files.open(w2.bytes, phone, g));
     await expectKind('ROLLED_BACK', () => files.open(w1.bytes, phone, g));
     await files.open(w3.bytes, phone, g);
     await expectKind('LAST_RECIPIENT', () => files.newEpoch(w3.opened, t0 + 3, { revokeKid: kid(phone) }));
+  });
+});
+
+async function link(epoch: number, key: Uint8Array, prev: Uint8Array) {
+  const nonce = p.randomBytes(12);
+  return { epoch, nonce, ct: await p.aesGcmSeal(await chainWrapKey(p, key), nonce, WrapAad.chain(epoch), prev) };
+}
+async function signed(body: KeysBody, key: Uint8Array): Promise<Uint8Array> {
+  return fileOf(body, await p.hmacSha256(await macKey(p, key), concat(utf8('doorprints-keys/1'), new Uint8Array([0]), bodyJson(body))));
+}
+
+describe('keys.json after the second review (poc2)', () => {
+  it('a revoked device cannot forge for the recovery key (t2, t4)', async () => {
+    const [A, T] = [await p.p256Generate(), await p.p256Generate()];
+    const r1 = RecoveryKey.generate(p);
+    let w = await files.createFirstDevice(nd(A, 'A'), r1, 1);
+    const oldBody = files.parse(w.bytes).body;
+    w = await files.newEpoch(w.opened, 2);
+    w = await files.addDevice(w.opened, kid(A), nd(T, 'T'), 3);
+    const k1 = (await (await files.openFirstPin(w.bytes, T, fresh(), w.opened.currentFolderKey())).folderKey(1))!;
+    const r2 = RecoveryKey.generate(p);
+    w = await files.newEpoch(w.opened, 4, { revokeKid: kid(T), newRecovery: r2 });
+    w = await files.newEpoch(w.opened, 5);
+    const genuine = files.parse(w.bytes).body;
+    const F = [k1];
+    for (let i = 0; i < 9; i++) F.push(p.randomBytes(32));
+    const chain = [];
+    for (let e = 2; e <= 10; e++) chain.push(await link(e, F[e - 1], F[e - 2]));
+    const hpke = new Hpke(p);
+    const rewrap = async (r: NonNullable<KeysBody['recovery']>) => {
+      const s2 = await hpke.seal(r.publicKey, HPKE_INFO, WrapAad.folderKey(10, r.kid), F[9]);
+      return { ...r, wrap: { enc: s2.enc, ct: s2.ciphertext } };
+    };
+    const withOld = await signed({ revision: 1, epoch: 10, chain, devices: [], recovery: await rewrap(oldBody.recovery!), revoked: [] }, F[9]);
+    const withNew = await signed({ revision: 1, epoch: 10, chain, devices: [], recovery: await rewrap(genuine.recovery!), revoked: [] }, F[9]);
+    await expectKind('RECOVERY_ANCHOR_INVALID', () => files.openWithRecovery(withNew, r2, fresh()));
+    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(withOld, r2, fresh()));
+    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w.bytes, r1, fresh()));
+    await files.openWithRecovery(w.bytes, r2, fresh());
+    await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w.opened, 6, { newRecovery: r2 }));
+    const r3 = RecoveryKey.generate(p);
+    await files.newEpoch(w.opened, 6, { newRecovery: r3 });
+    await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(withNew, r3, fresh()));
+  });
+
+  it('a poisoned revision at the current epoch never blocks the revoke (t3)', async () => {
+    const [A, T] = [await p.p256Generate(), await p.p256Generate()];
+    const w1 = await files.createFirstDevice(nd(A, 'A'), RecoveryKey.generate(p), 1);
+    const gA = await pinnedTo(w1);
+    const w2 = await files.addDevice(w1.opened, kid(A), nd(T, 'Thief'), 2);
+    await gA.acceptWritten(w2);
+    const t = await files.openFirstPin(w2.bytes, T, fresh(), w1.opened.currentFolderKey());
+    const poisoned = await signed({ ...t.body, revision: Number.MAX_SAFE_INTEGER }, t.currentFolderKey());
+    await expectKind('REVISION_JUMP', () => files.open(poisoned, A, gA));
+    const o = await files.openFirstPin(poisoned, A, fresh(), w1.opened.currentFolderKey());
+    const revoke = await files.newEpoch(o, 3, { revokeKid: kid(T), newRecovery: RecoveryKey.generate(p) });
+    await gA.acceptWritten(revoke);
+    expect((await gA.watermark())!.epoch).toBe(2);
+  });
+
+  it('repins only on the enrolment key or the recovery anchor', async () => {
+    const [phone, a, b] = [await p.p256Generate(), await p.p256Generate(), await p.p256Generate()];
+    const recovery = RecoveryKey.generate(p);
+    const w1 = await files.createFirstDevice(nd(phone, 'P'), recovery, t0);
+    const wa = await files.addDevice(w1.opened, kid(phone), nd(a, 'A'), t0 + 1);
+    const wb = await files.addDevice(w1.opened, kid(phone), nd(b, 'B'), t0 + 1);
+    const g = await pinnedTo(w1);
+    await files.open(wa.bytes, phone, g);
+    await expectKind('FORK_DETECTED', () => files.open(wb.bytes, phone, g));
+    await expectKind('PIN_MISMATCH', () => files.repinFirstPin(wb.bytes, phone, g, p.randomBytes(32)));
+    await files.repinFirstPin(wb.bytes, phone, g, w1.opened.currentFolderKey());
+    await files.open(wb.bytes, phone, g);
+    const h = await pinnedTo(w1);
+    await files.open((await files.newEpoch(w1.opened, t0 + 2)).bytes, phone, h);
+    await expectKind('ROLLED_BACK', () => files.open(wb.bytes, phone, h));
+    await files.repinWithRecovery(wb.bytes, recovery, h);
+    expect((await h.watermark())!.epoch).toBe(1);
+  });
+
+  it('keeps the pin out of reach of app code', async () => {
+    const g = fresh();
+    const w = await files.createFirstDevice(nd(await p.p256Generate(), 'P'), null, t0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expectKind('INVALID_ENTRY', () => (g as any).accept(Symbol('keys-file'), w.opened, 'CREATED'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => new (OpenedKeys as any)(Symbol('keys-file'), p, w.opened.body, new Uint8Array(32))).toThrow(KeysError);
   });
 });
 
