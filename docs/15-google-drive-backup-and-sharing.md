@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.8 |
+| Version | 0.9 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
-| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70 (the `SyncBackend` seam), S4b-BL-115 (the Drive client and the fake Drive, §7.1) and S4b-BL-125 (the encryption core, §9.9). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
+| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
 ## Change log
 
@@ -20,6 +20,7 @@
 | 0.6 | 2026-10-02 | Claude (Code), lead | **S4b-BL-115 built** (the Drive client and the fake Drive, both stacks): new §7.1, the contract details the build had to decide (names, retries and duplicate creates, the listing's consistency, resumable chunks, the late checksum, the error kinds, the token rule, where the token may go, what waits); §7's phase 2 row; S4b-BL-122 gains the website's CORS question. |
 | 0.7 | 2026-10-02 | Claude (Code), lead | **S4b-BL-125 built** (the encryption core, both stacks, no screen and no Drive wiring): new §9.9, what it built and the details this design did not decide (key separation under the folder key, the AAD layouts, canonical JSON, the `keys.json` layout and MAC input, the recovery key's text and check symbol, HPKE's ephemeral key from DeriveKeyPair, the error kinds, the limits); §9.4 now says how each platform computes the recovery public key (the platform's own operations, no point multiplication in common code); §7's phase 2c row; the iPhone's provider is S4b-BL-131. |
 | 0.8 | 2026-10-02 | Claude (Code), lead | **Fixes from the independent adversarial review of S4b-BL-125** (§9.9): a list is trusted by each device's **pin** of its folder key, not by the MAC (anyone in the Google account could re-wrap a key of their own to every listed public key); the recovery key's **anchor** in `keys.json` (the recovery entry gains `anchorEpoch` and `anchor`); the watermark ordered by (epoch, revision); forks detected; HPKE's ephemeral key from the platform's key generation; a photo opens only against its row's SHA-256; a new recovery key revokes the old kid. |
+| 0.9 | 2026-10-02 | Cursor Agent, lead | **Website Drive UI composed** (draft PR #118): connect, recovery key shown once, backups, sync, L1/L2/L3 deletion (website L1; L2/L3 only with a PRF-sealed passkey; tick box; no delay), 8-digit pairing (S4b-BL-126 web; QR deferred as S4b-BL-134), `web/public/config.js` empty in the tree and written at deploy from `vars.GOOGLE_OAUTH_WEB_CLIENT_ID`, privacy link, user-guide pages. Android/iOS Drive UI paused. Real Google sign-in waits on the owner's Web client id. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.53 |
+| Version | 0.55 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -66,6 +66,7 @@
 | 0.52 | 2026-10-01 | Claude (Code), lead | S4b-BL-105: §1 `web.yml` runs on `docs/schemas/**` too, `android.yml` on the two AI test-vector files; §3 `pages-required.yml` mirrors `pages.yml` again, and `tools/check.sh` picks its areas from the workflows' paths. |
 | 0.53 | 2026-10-02 | Cursor Agent | gitleaks: reviewed `.gitleaksignore` fingerprints for the Drive branch (the type name after `key:` / `privateKey:`, and known-answer hex/base64 in `docs/schemas/hpke-vectors.json` and `dpx-vectors.json`). No path allowlist. |
 | 0.54 | 2026-10-02 | Cursor Agent | §1 `security.yml` job `commit-identity`: the allowlist gains `cursoragent@cursor.com`, the Cursor cloud agent's non-personal commit identity (exact match, no wildcard; a bare `NAME@users.noreply.github.com` stays refused). |
+| 0.55 | 2026-10-02 | Cursor Agent, lead | `web.yml` deploy writes `config.js` from the repository variable **`GOOGLE_OAUTH_WEB_CLIENT_ID`** (the Google Cloud OAuth *Web* client, `drive.file` only). Empty leaves Drive unavailable. Validated as `^[0-9]+-[a-z0-9]+\.apps.googleusercontent.com$` when set; never logged. Tracked `web/public/config.js` stays empty. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -306,6 +307,7 @@ After the merge, check the `main` run as well.
 | `FIREBASE_WIF_PROVIDER`, `FIREBASE_SA_EMAIL` (web deploy, since 2026-09-23) | **Repository secrets** of `Sriram-Codes-SW/doorprints` (set by the owner on 2026-09-23, 6.3 step 8): the full Workload Identity provider name `projects/<number>/locations/global/workloadIdentityPools/github/providers/github-web-deploy` and the service-account e-mail `firebase-hosting-deploy@doorprints.iam.gserviceaccount.com`. **Neither is a credential**: they are kept as secrets only to match the Vertex setup. The credential is the short-lived token Google issues, and only to a GitHub OIDC token of `web.yml` on `main` of this repository, on push or a manual run (the provider's attribute condition); forks and pull requests get none. **No JSON key exists** for this service account, and none may be created (never open its *Keys* tab, never run `firebase init hosting:github`). The existing `GCP_*` secrets of `doorprints-ai` are not used for the web | `web.yml` jobs `firebase-setup` (presence only) and `deploy-firebase` | Nothing to rotate (tokens live about an hour). On suspicion: remove the *Workload Identity User* binding on the service account or disable it (Cloud console), then investigate ([08](08-operations-runbook.md) §5.2) |
 | `FTL_WIF_PROVIDER`, `FTL_SA_EMAIL`, and the variable `FTL_RESULTS_BUCKET` (Firebase Test Lab, since 2026-09-24; not set yet) | **Repository secrets**: the full name of the Test Lab's own Workload Identity provider `github-test-lab` and the service-account e-mail `ftl-runner@doorprints.iam.gserviceaccount.com` (§7.2). **Neither is a credential**, as for the web deploy: Google issues a short-lived token only to a GitHub OIDC token of `android-emulator.yml` on `main` of this repository, on push or a manual run. `ftl-runner` can run Test Lab, write to the owner's results bucket (repository **variable** `FTL_RESULTS_BUCKET`, not a secret: a bucket name) and read Firebase Analytics (this project has none); Firebase notes that the Test Lab roles can reach the project's Cloud Storage buckets (§7.2) | `android-emulator.yml` (`ftl-check`, `firebase-test-lab`) | Never (identifiers); revoke by removing the principal from `ftl-runner` or deleting the provider |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_SITE_ID` | **Repository variables** (not secrets): `doorprints` and `doorprints`. Validated against `^[a-z0-9][a-z0-9-]{0,29}$` before use; the site must equal `"site"` in `web/firebase.json` | `web.yml` | Never (the project ID and the default site ID can never change) |
+| `GOOGLE_OAUTH_WEB_CLIENT_ID` | **Repository variable** (not a secret): the Google Cloud OAuth **Web** client id (`1234567890-xxxx.apps.googleusercontent.com`). Empty is allowed and leaves Drive unavailable. When set, `web.yml`'s deploy job overwrites the built `config.js`. Do not invent an id. | `web.yml` deploy-firebase | Never (it is a public client id) |
 | GitHub PAT | **Avoid**: use `GITHUB_TOKEN`. If you need one, use a fine-grained PAT, a single repo, minimal scopes, expiry ≤ 90 days. | Local tooling only | At expiry, **and immediately if it was ever pasted into chat, logs or a file** |
 
 Rules: never commit keys (`.gitignore` already covers `.env`, `*.keystore`, `*.jks`, `local.properties`); never put secrets in Docker build args or the APK; never echo secrets in workflow logs; generate keys with `openssl rand -base64 32`; the `docker-compose.yml` defaults are **dev-only** (F-17).
@@ -656,6 +658,7 @@ On the **Variables** tab, click **New repository variable** for each:
 |---|---|
 | `FIREBASE_PROJECT_ID` | the project **ID** (not the number), e.g. `doorprints` |
 | `FIREBASE_SITE_ID` | your site ID from step 2.5, e.g. `doorprints` |
+| `GOOGLE_OAUTH_WEB_CLIENT_ID` | the Google Cloud OAuth **Web** client id (15 §2.4). Leave empty until that client exists; Drive stays unavailable |
 
 Rules:
 
