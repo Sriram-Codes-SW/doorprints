@@ -1,0 +1,82 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<div class="drive-join-container">
+  <div class="card-section">
+    <h3>{{ 'driveJoin.heading' | t }}</h3>
+    <p class="muted">{{ 'driveJoin.description' | t }}</p>
+
+    <label for="recovery-key-input">{{ 'driveJoin.label' | t }}</label>
+    <input
+      #keyInput
+      id="recovery-key-input"
+      type="text"
+      class="input-monospace"
+      [value]="recoveryKeyText()"
+      (input)="recoveryKeyText.set($any($event.target).value)"
+      (keydown)="onKeyDown($event)"
+      [disabled]="busy()"
+      autocomplete="off"
+      spellcheck="false"
+      autocapitalize="off"
+      inputmode="text"
+      aria-describedby="recovery-key-help"
+      placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+    />
+    <small id="recovery-key-help" class="help-text">
+      {{ 'driveJoin.helpText' | t }}
+    </small>
+
+    <div aria-live="polite" aria-atomic="true" class="error-region">
+      @if (errorMessage(); as error) {
+        <p class="error-message">{{ error }}</p>
+      }
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="onJoin()"
+        [disabled]="busy() || !recoveryKeyText().trim()"
+      >
+        @if (busy()) {
+          {{ 'common.loading' | t }}
+        } @else {
+          {{ 'driveJoin.joinButton' | t }}
+        }
+      </button>
+    </div>
+
+    <p class="muted secondary-text">
+      {{ 'driveJoin.lostKeyMessage' | t }}
+    </p>
+
+    <p class="disconnect-link">
+      <button
+        type="button"
+        class="link-button"
+        (click)="onDisconnect()"
+        [disabled]="busy()"
+        aria-label="{{ 'driveJoin.disconnectAriaLabel' | t }}"
+      >
+        {{ 'driveJoin.disconnect' | t }}
+      </button>
+    </p>
+  </div>
+</div>
