@@ -130,10 +130,11 @@ export function provideDriveConnect(): Provider[] {
     {
       provide: DriveConnectService,
       useFactory: () => {
+        const googleConfig = inject(GOOGLE_CONFIG);
         const backupAdapter = inject(DRIVE_BACKUP_ADAPTER);
         const syncAdapter = inject(DRIVE_SYNC_ADAPTER);
         const deletionAdapter = inject(DRIVE_DELETION_ADAPTER);
-        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter);
+        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter, googleConfig);
       },
     },
   ];
