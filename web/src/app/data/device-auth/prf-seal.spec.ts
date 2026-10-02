@@ -149,6 +149,25 @@ describe("WebAuthorizer", () => {
     expect(auth.redeem(b.grant, "DELETE_EVERYTHING")).toBe("EXPIRED");
   });
 
+  it("a forged grant id that was never issued cannot be redeemed", async () => {
+    const { holder, prf, auth } = make();
+    holder.blob = await sealed(prf);
+    const real = await auth.authorize("DELETE_ALL_BACKUPS", web);
+    if (real.kind !== "GRANTED") throw new Error("not granted");
+    expect(
+      auth.redeem(
+        {
+          id: 99,
+          action: "DELETE_ALL_BACKUPS",
+          requirements: real.grant.requirements,
+          grantedAtMs: now,
+        },
+        "DELETE_ALL_BACKUPS",
+      ),
+    ).toBe("NOT_ISSUED");
+    expect(auth.redeem(real.grant, "DELETE_ALL_BACKUPS")).toBe("VALID");
+  });
+
   it("cancelled, wrong key and a missing sealed key deny", async () => {
     const { prf, holder, auth } = make();
     expect(await auth.authorize("DELETE_ALL_BACKUPS", web)).toEqual({
