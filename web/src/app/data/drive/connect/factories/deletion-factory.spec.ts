@@ -17,13 +17,14 @@
  */
 
 import { WebCryptoProvider } from '../../../crypto/crypto-provider';
-import { createDeletionAdapter, createLazyDeletionAdapterProxy, createTestDeletionAdapter } from './deletion-factory';
+import { createDeletionAdapter, createLazyDeletionAdapterProxy } from './deletion-factory';
+import { createTestDeletionAdapter } from './deletion-factory.test-support';
 import { InMemoryFakeDrive, FakeDriveServer } from '../../in-memory-fake-drive';
 import { FakePrfAuthenticator } from '../../../device-auth/prf-seal';
 import { FakeTokenProvider } from '../../fake-drive-faults';
 import type { DriveRuntime } from './runtime';
-import { InMemoryKeyValueStore } from '../deletion-adapter';
 import type { DeletionDecision } from '../../../device-auth/delete-policy';
+import type { FolderSession } from '../../drive-sync-seams';
 
 describe('deletion factories', () => {
   let crypto: WebCryptoProvider;
@@ -35,6 +36,17 @@ describe('deletion factories', () => {
     const server = new FakeDriveServer();
     const tokens = new FakeTokenProvider();
     fakeDrive = new InMemoryFakeDrive(server, tokens);
+
+    // Create a minimal mock FolderSession for testing
+    const mockSession = {
+      rootId: 'root-id',
+      deviceId: 'test-device-id',
+      keys: {} as any,
+      deviceKid: new Uint8Array(16),
+      guard: {} as any,
+      refresh: async () => ({} as any),
+      reopen: null,
+    } as unknown as FolderSession;
 
     // Create a mock runtime with minimal setup for testing
     mockRuntime = {
@@ -54,10 +66,9 @@ describe('deletion factories', () => {
       local: null as any,
       driveStateStore: null as any,
       folderTrustStores: null as any,
-      session: {
-        rootFolderId: 'root-id',
-        backupsCount: 5,
-      },
+      syncStateStore: null as any,
+      photoStateStore: null as any,
+      session: mockSession,
     };
   });
 
