@@ -24,5 +24,5 @@ web/scripts/geo/.tilecache/
 tools/live-ui/node_modules/
 tools/live-ui/out/
 
-# Per-deploy site configuration (Google client id), never committed
-web/public/config.js
+# Per-deploy site configuration: CI overwrites web/public/config.js from env (googleClientId, googleRedirectUri)
+# Default config.js is tracked; CI updates it at build/deploy time
