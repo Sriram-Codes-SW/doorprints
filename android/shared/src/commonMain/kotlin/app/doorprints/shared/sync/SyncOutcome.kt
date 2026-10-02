@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.sync
 
+import app.doorprints.drive.DriveException
 import app.doorprints.shared.api.ApiException
 import kotlinx.io.IOException
 
@@ -66,6 +67,13 @@ data class SyncOutcome(
                 ApiException.Kind.CAPTIVE_PORTAL -> SyncOutcome(Kind.CAPTIVE_PORTAL, httpCode = e.code)
                 ApiException.Kind.RATE_LIMITED -> SyncOutcome(Kind.RATE_LIMITED, httpCode = e.code)
                 else -> SyncOutcome(Kind.SERVER, httpCode = e.code)
+            }
+            // Google Drive (S4b-BL-115): mapped to the same kinds as the server; a full Drive is SERVER until S4b-BL-118 words it.
+            is DriveException -> when (e.kind) {
+                DriveException.Kind.UNAUTHORIZED, DriveException.Kind.FORBIDDEN -> SyncOutcome(Kind.AUTH, httpCode = e.httpStatus)
+                DriveException.Kind.RATE_LIMITED -> SyncOutcome(Kind.RATE_LIMITED, httpCode = e.httpStatus)
+                DriveException.Kind.OFFLINE -> SyncOutcome(Kind.NETWORK)
+                else -> SyncOutcome(Kind.SERVER, httpCode = e.httpStatus)
             }
             is IOException -> SyncOutcome(Kind.NETWORK)
             else -> SyncOutcome(Kind.UNKNOWN)

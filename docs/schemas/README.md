@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.21 |
-| Date | 2026-10-01 |
+| Version | 1.22 |
+| Date | 2026-10-02 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
 
@@ -27,6 +27,7 @@
 | 1.18 | 2026-10-01 | Claude (Code), engineer | **The house's floor** (S4b-BL-87, which the duplicate-flat warning S4b-BL-85 needs): an optional `floor` on the house (§3.1), a whole number -5..200 with 0 the ground floor and a negative one a basement level, after `moveIn` and before `brokerId` in every writer; a writer writes `/2` when a house has a floor (0 included). A reader on a device takes a value out of range as unknown; the server refuses the file (`houses[i].floor must be -5..200`) and a sync `PUT` (400). `backup-sample.json` carries `floor` 3 on house 1 and 0 on house 3 (6 304 bytes with the trailing newline; the web byte golden regenerated, 6 303). |
 | 1.19 | 2026-10-01 | Claude (Code), engineer | **Deletions in an update file, `doorprints-backup/3`** (S4b-BL-82, [11](../11-feature-parity-and-export-spec.md) 5.28 item 3): a top-level `deleted` list after `areaNotes` (new §3.13), written only into an update file and applied only by an update import (§6 rule 5); a new list, so a new number by the rule of §1.1, and every reader accepts `1..3` (Kotlin and Java `MAX_VERSION` 3, web `BACKUP_FORMATS_READ`); `counts.deleted` in the manifest. The server reads `/3` as a restore and ignores the list. **The website reads backups** (S4b-BL-75): `web/src/app/export/backup-reader.ts`, `backup-check.ts`, `import-plan.ts`. New **`import-vectors.json`** (format `doorprints-import-vectors/1`, §6.1): the data checks, merge previews and archives every reader must answer alike, and **`update-sample.json`** (§8.3), the `/3` golden. `backup-sample.json` is unchanged (a backup has no `deleted` list). |
 | 1.21 | 2026-10-01 | Claude (Code), lead | **A floor out of range on import** (S4b-BL-104 d): unchanged rule (a device reads it as unknown, the server refuses the file), now reported: the preview counts the houses it writes with such a floor (`floorsLeftBlank`, Kotlin `ImportPreview` and web `import-plan.ts`) and shows a warning line. New merge case in `import-vectors.json`, "a floor out of range lands blank and is counted". Nothing in the format changed. |
+| 1.22 | 2026-10-02 | Claude (Code), lead | **`drive-vectors.json`** (format `doorprints-drive-vectors/1`, new §6.2, S4b-BL-115): Drive v3's `q` strings, the requests and answers of seven exchanges, the error mapping and the backoff rule, the same for Kotlin's `HttpDriveClient` and the website's `FetchDriveClient`; not part of the backup format. |
 | 1.20 | 2026-10-01 | Claude (Code), lead | **Slice 5 written down here** (photo tags and moving in, [11](../11-feature-parity-and-export-spec.md) 5.7, 5.24; the code, the sample and `default-movein.json` came with the slice, this file had not caught up): the statuses `TAKEN` and `NOT_CHOSEN` (§3.1), the house's `moveIn` after `answers` and before `floor` (§3.1, new §3.14), the photo's `roomId`, `tags`, `caption` and `metaUpdatedAt` (§3.3), the `/2` rule for them, and `default-movein.json` (new §3.15). `backup-sample.json` (6,304 bytes) has house 1 TAKEN with a move-in and photo 1 with meta. Nothing in the format changed. |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
@@ -112,6 +113,7 @@ One format, three implementations, no converters:
 | The numbers a reader accepts | Kotlin `BackupFormat.READ_IDS`, Java `BackupFormat.READ_IDS`, web `BACKUP_FORMATS_READ` (one constant per stack, section 1.1) |
 | Canonical sample | [`backup-sample.json`](backup-sample.json) in this folder; [`update-sample.json`](update-sample.json) for an update file's `/3` |
 | Shared import vectors | [`import-vectors.json`](import-vectors.json) (section 6.1): Kotlin `ImportVectorsTest` and `BackupReaderParityTest`, web `backup-import.spec.ts` |
+| Shared Drive vectors | [`drive-vectors.json`](drive-vectors.json) (section 6.2): Kotlin `DriveVectorsTest`, web `drive-vectors.spec.ts` |
 
 A backup written on a phone must import in a browser and on a server, and the other way round. **Nothing below may
 be renamed, reordered or given a new meaning on one side only.** A new field is added to all three at once, always
@@ -479,6 +481,19 @@ bare `data.json`, and the refusals of sections 6 and 7). `android/shared`'s `Imp
 reader and `ImportPlan`, `android/app`'s `BackupReaderParityTest` through Android's `java.util.zip` reader, and the website's
 `backup-import.spec.ts` through its reader and `import-plan.ts`. A new rule is a new case here first. The stamps are in the
 past (2026-05-28); the photo is 300 bytes whose byte *i* is *i* × 31 mod 256.
+
+### 6.2 The shared Drive vectors
+
+[`drive-vectors.json`](drive-vectors.json) (format `doorprints-drive-vectors/1`, S4b-BL-115; not part of the backup format)
+pins what the two Drive clients say to Google Drive v3 and how they read its answers
+([15](../15-google-drive-backup-and-sharing.md) §7.1): `queries` (a query and the exact `q` text), `exchanges` (a call, every
+request it must make, by method, URL, query parameters, the headers named, the JSON or multipart body or the bytes of an upload
+chunk, the answer to give or a dropped connection, and the result: ids, waits, rejected tokens or the error kind), `errors` (a
+status, headers and body, and the kind, `Retry-After` in milliseconds, Drive's reason and whether it is retried) and `backoff`
+(the rule's defaults and the wait for an attempt, a random value, a kind and a `Retry-After`). `android/shared`'s
+`DriveVectorsTest` runs them through `HttpDriveClient` over Ktor's `MockEngine`, the website's `drive-vectors.spec.ts` through
+`FetchDriveClient` over a scripted `fetch`. An upload's byte *i* is (*i* × 31 + seed) mod 251; tokens are `token-1`, then
+`token-2` after a rejection; waits use the random value 0.5.
 
 ## 7. Limits
 
