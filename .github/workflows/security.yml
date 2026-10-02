@@ -129,12 +129,13 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           # The owner's ID no-reply address and gmail (not linked to the account until verified in GitHub's email
-          # settings), Claude sessions, GitHub's web-flow committer, Dependabot. Extend here, never with a bare
-          # NAME@users.noreply.github.com address.
+          # settings), Claude sessions, the Cursor cloud agent (its own non-personal identity), GitHub's web-flow
+          # committer, Dependabot. Extend here, never with a bare NAME@users.noreply.github.com address.
           ALLOWED: >-
             329133251+Sriram-Codes-SW@users.noreply.github.com
             owner-email-removed
             noreply@anthropic.com
+            cursoragent@cursor.com
             noreply@github.com
             49699333+dependabot[bot]@users.noreply.github.com
         run: |
