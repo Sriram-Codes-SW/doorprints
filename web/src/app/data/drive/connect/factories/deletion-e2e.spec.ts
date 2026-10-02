@@ -358,7 +358,7 @@ describe('Deletion Factory E2E', () => {
       const plan = preflightResult.plan;
 
       // Authorize
-      const authResult = await adapter1.authorize({ type: 'everything' }, context);
+      const authResult = await adapter1.authorize({ type: 'everything' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
       if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
@@ -380,7 +380,7 @@ describe('Deletion Factory E2E', () => {
         .build();
 
       // Resume should complete the deletion
-      const authResult2 = await adapter2.authorize({ type: 'everything' }, context);
+      const authResult2 = await adapter2.authorize({ type: 'everything' }, context, plan.operationId);
       expect(authResult2.kind).toBe('granted');
       if (authResult2.kind !== 'granted') throw new Error('Authorization failed on resume');
 
@@ -428,7 +428,7 @@ describe('Deletion Factory E2E', () => {
       if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
 
       const plan = preflightResult.plan;
-      const authResult = await adapter.authorize({ type: 'everything' }, context);
+      const authResult = await adapter.authorize({ type: 'everything' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
       if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
@@ -501,11 +501,11 @@ describe('Deletion Factory E2E', () => {
       };
 
       // Authorize for allBackups
-      const authResult1 = await adapter.authorize({ type: 'allBackups' }, context);
+      const authResult1 = await adapter.authorize({ type: 'allBackups' }, context, 'op');
       expect(authResult1.kind).toBe('granted');
 
       // Authorize for the same action gets a different grant (new id)
-      const authResult2 = await adapter.authorize({ type: 'allBackups' }, context);
+      const authResult2 = await adapter.authorize({ type: 'allBackups' }, context, 'op');
       expect(authResult2.kind).toBe('granted');
 
       // The two grants should have different IDs
@@ -532,7 +532,7 @@ describe('Deletion Factory E2E', () => {
       expect(preflightResult.kind).toBe('ready');
 
       const plan = (preflightResult as any).plan;
-      const authResult = await adapter.authorize({ type: 'allBackups' }, context);
+      const authResult = await adapter.authorize({ type: 'allBackups' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
 
       const grant = (authResult as any).grant;
@@ -563,11 +563,11 @@ describe('Deletion Factory E2E', () => {
       };
 
       // Get grant for 'allBackups' (L2)
-      const auth1 = await adapter.authorize({ type: 'allBackups' }, context);
+      const auth1 = await adapter.authorize({ type: 'allBackups' }, context, 'op');
       expect(auth1.kind).toBe('granted');
 
       // Get grant for 'everything' (L3)
-      const auth2 = await adapter.authorize({ type: 'everything' }, context);
+      const auth2 = await adapter.authorize({ type: 'everything' }, context, 'op');
       expect(auth2.kind).toBe('granted');
 
       // Grants are different objects for different actions
@@ -853,7 +853,7 @@ describe('Deletion Factory E2E', () => {
       // Foreign files should be counted as kept
       expect(plan.foreignKept).toBeGreaterThan(0);
 
-      const authResult = await adapter.authorize({ type: 'everything' }, context);
+      const authResult = await adapter.authorize({ type: 'everything' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
 
       const executeResult = await adapter.execute(plan, (authResult as any).grant);
@@ -886,7 +886,7 @@ describe('Deletion Factory E2E', () => {
       const plan = (preflightResult as any).plan;
       expect(plan).toBeDefined();
 
-      const authResult = await adapter.authorize({ type: 'everything' }, context);
+      const authResult = await adapter.authorize({ type: 'everything' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
 
       const executeResult = await adapter.execute(plan, (authResult as any).grant);
