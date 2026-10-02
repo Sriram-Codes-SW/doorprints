@@ -23,343 +23,104 @@ import { CRITERION_TYPE, PREFERENCE_TYPE } from '../../../../shared/scoring';
 import { QUESTION_TYPE } from '../../../../shared/question';
 import { VIEWING_TYPE } from '../../../../shared/viewing';
 import type { LocalStore } from '../../../local-store.service';
-import { isoNow } from '../../../records';
 import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../../records';
 import type { LocalRows } from '../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../sync-file';
 
-/**
- * Production implementation of {@link LocalRows} (S4b-BL-118, docs/15 §5.1): reads all rows from the app's
- * {@link LocalStore} and maps them to {@link SyncRow} for the Drive sync engine, and applies remote rows back
- * through the store's merge logic.
- *
- * The LocalStore holds houses, visits, records, and photos with `dirty` and `syncVersion` flags. This adapter
- * marshals them to/from the sync file's row schema, preserving the `by` (device id) and `deleted` fields that
- * the merge protocol needs.
- */
 export class LocalRowsAdapter implements LocalRows {
-  constructor(private readonly store: LocalStore) {}
+  constructor(private readonly store: LocalStore, private readonly deviceId: string) {}
 
-  /** All rows from the store (houses, visits, records, photos incl. tombstones), ready for sync push. */
   async all(): Promise<readonly SyncRow[]> {
     const rows: SyncRow[] = [];
-
-    // Houses: map to sync rows, preserving all fields needed for merge.
     const houses = await this.store.allHouses();
     for (const house of houses) {
-      rows.push(this.houseToSyncRow(house));
+      rows.push(this.toSyncRow('houses', house.id, house.updatedAt, house.deleted, { ...house }));
     }
-
-    // Visits: same, with nullable houseId.
     const visits = await this.store.allVisits();
     for (const visit of visits) {
-      rows.push(this.visitToSyncRow(visit));
+      rows.push(this.toSyncRow('visits', visit.id, visit.updatedAt, visit.deleted, { ...visit }));
     }
-
-    // Records: by type (criteria, preferences, questions, viewings, areas, places, area notes, brokers, etc.).
     const recordTypes = this.collectRecordTypes();
     for (const type of recordTypes) {
       const records = await this.store.allRecordsOf(type);
-      for (const record of records) {
-        rows.push(this.recordToSyncRow(record));
+      for (const rec of records) {
+        rows.push(this.toSyncRow('records', `${rec.type}/${rec.id}`, rec.updatedAt, rec.deleted, { ...rec }));
       }
     }
-
-    // Photos: marshalled to sync rows, with houseId and optional driveFileId/sha256.
     const photos = await this.store.allPhotos();
     for (const photo of photos) {
-      rows.push(this.photoToSyncRow(photo));
+      rows.push(this.toSyncRow('photos', photo.id, photo.updatedAt, photo.deleted, { ...photo } as any));
     }
-
     return rows;
   }
 
-  /** One photo by id for incremental metadata upload (S4b-BL-128). */
   async photo(photoId: string): Promise<PhotoChangeDto | null> {
     const photos = await this.store.allPhotos();
     const found = photos.find((p: PhotoRecord) => p.id === photoId);
     if (!found) return null;
-    return this.syncRowToPhotoDto(this.photoToSyncRow(found));
-  }
-
-  /**
-   * Mark rows as clean (dirty=false, syncVersion set) only after the engine confirms they were pushed.
-   * Called after a successful sync push; the `by` field of each row is this device's id.
-   */
-  async markClean(rows: readonly SyncRow[]): Promise<void> {
-    const byKind = new Map<SyncKind, SyncRow[]>();
-    for (const row of rows) {
-      const list = byKind.get(row.kind) ?? [];
-      list.push(row);
-      byKind.set(row.kind, list);
-    }
-
-    // Mark houses clean.
-    for (const row of byKind.get('houses') ?? []) {
-      const stamp = row.stamp;
-      await this.store.markHouseClean(row.key, stamp.updatedAt > 0 ? new Date(stamp.updatedAt).toISOString() : null);
-    }
-
-    // Mark visits clean.
-    for (const row of byKind.get('visits') ?? []) {
-      const stamp = row.stamp;
-      await this.store.markVisitClean(row.key, stamp.updatedAt > 0 ? new Date(stamp.updatedAt).toISOString() : null);
-    }
-
-    // Mark records clean (no specific method; they are kept in `dirty` via putImported).
-    // Records are marked clean by being re-written with dirty=false via putImported.
-
-    // Mark photos clean.
-    for (const row of byKind.get('photos') ?? []) {
-      const stamp = row.stamp;
-      await this.store.markPhotoMetaClean(row.key, stamp.updatedAt);
-    }
-  }
-
-  /**
-   * Apply remote rows from another device's sync file (or from the server). Uses the LocalStore's last-write-wins
-   * merge logic to integrate them, which compares timestamps and device ids.
-   */
-  async applyRemote(rows: readonly SyncRow[]): Promise<void> {
-    const imported = {
-      houses: [] as HouseRecord[],
-      visits: [] as VisitRecord[],
-      records: [] as RecordRecord[],
-      photos: [] as PhotoRecord[],
+    return {
+      id: found.id,
+      houseId: found.houseId,
+      contentType: found.contentType,
+      sizeBytes: found.sizeBytes,
+      createdAt: found.createdAt,
+      updatedAt: found.updatedAt,
+      deleted: found.deleted,
+      syncVersion: found.syncVersion,
     };
+  }
 
+  async markClean(rows: readonly SyncRow[]): Promise<void> {
     for (const row of rows) {
       switch (row.kind) {
-        case 'houses': {
-          const dto = this.syncRowToHouseDto(row);
-          imported.houses.push(await this.store.putHouseFromServer(dto));
+        case 'houses':
+          await this.store.markHouseClean(row.key, row.stamp.updatedAt > 0 ? new Date(row.stamp.updatedAt).toISOString() : null);
           break;
-        }
-        case 'visits': {
-          const dto = this.syncRowToVisitDto(row);
-          imported.visits.push(await this.store.putVisitFromServer(dto));
+        case 'visits':
+          await this.store.markVisitClean(row.key, row.stamp.updatedAt > 0 ? new Date(row.stamp.updatedAt).toISOString() : null);
           break;
-        }
+        case 'photos':
+          await this.store.markPhotoMetaClean(row.key, row.stamp.updatedAt);
+          break;
+      }
+    }
+  }
+
+  async applyRemote(rows: readonly SyncRow[]): Promise<void> {
+    const imported = { houses: [] as any[], visits: [] as any[], records: [] as any[], photos: [] as any[] };
+    for (const row of rows) {
+      const json = row.json as Record<string, unknown>;
+      switch (row.kind) {
+        case 'houses':
+          imported.houses.push(await this.store.putHouseFromServer({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as any));
+          break;
+        case 'visits':
+          imported.visits.push(await this.store.putVisitFromServer({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as any));
+          break;
+        case 'photos':
+          imported.photos.push({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as PhotoRecord);
+          break;
         case 'records': {
-          const dto = this.syncRowToRecordDto(row);
-          const records = await this.store.allRecordsOf(dto.type);
-          const existing = records.find((rec: RecordRecord) => rec.id === dto.id);
-          if (existing) {
-            // putImported will apply the merge; we're collecting for batch import.
-            imported.records.push({ ...existing, ...dto });
-          } else {
-            imported.records.push({ ...this.emptyRecord(dto.type, dto.id), ...dto });
-          }
-          break;
-        }
-        case 'photos': {
-          const dto = this.syncRowToPhotoDto(row);
-          // putImported will apply photo merge.
-          imported.photos.push(await this.photoFromSync(row, dto));
+          const type = json.type as string;
+          imported.records.push({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as RecordRecord);
           break;
         }
       }
     }
-
-    // Batch import all rows via putImported, which applies merge logic.
     await this.store.putImported(imported);
   }
 
-  // ---- Conversion helpers: SyncRow ↔ LocalStore ----
-
-  private houseToSyncRow(house: HouseRecord): SyncRow {
-    const json: Record<string, unknown> = {
-      id: house.id,
-      updatedAt: house.updatedAt ? new Date(house.updatedAt).toISOString() : isoNow(),
-      by: house.syncedBy ?? 'unknown',
-      deleted: house.deleted,
-      name: house.name,
-    };
-    if (house.lat !== null) json.lat = house.lat;
-    if (house.lon !== null) json.lon = house.lon;
-    if (house.status !== null) json.status = house.status;
-    if (house.cost !== null && typeof house.cost === 'object') json.cost = house.cost;
-    if (house.locationSource !== null) json.locationSource = house.locationSource;
-    if (house.rooms !== null && typeof house.rooms === 'object') json.rooms = house.rooms;
-    if (house.brokerId !== null) json.brokerId = house.brokerId;
-    if (house.answers !== null && typeof house.answers === 'object') json.answers = house.answers;
-    if (house.areaSqft !== null) json.areaSqft = house.areaSqft;
-    if (house.moveIn !== null && typeof house.moveIn === 'object') json.moveIn = house.moveIn;
+  private toSyncRow(kind: SyncKind, key: string, updatedAt: string | null | undefined, deleted: boolean, json: Record<string, unknown>): SyncRow {
+    const updatedAtMs = updatedAt ? new Date(updatedAt).getTime() : Date.now();
     return {
-      kind: 'houses',
-      key: house.id,
-      stamp: { updatedAt: house.updatedAt ? new Date(house.updatedAt).getTime() : Date.now(), by: house.syncedBy ?? 'unknown', deleted: house.deleted },
+      kind,
+      key,
+      stamp: { updatedAt: updatedAtMs, by: this.deviceId, deleted },
       json,
-    };
-  }
-
-  private visitToSyncRow(visit: VisitRecord): SyncRow {
-    const json: Record<string, unknown> = {
-      id: visit.id,
-      updatedAt: visit.updatedAt ? new Date(visit.updatedAt).toISOString() : isoNow(),
-      by: visit.syncedBy ?? 'unknown',
-      deleted: visit.deleted,
-      when: visit.when,
-    };
-    if (visit.houseId !== null) json.houseId = visit.houseId;
-    if (visit.where !== null) json.where = visit.where;
-    if (visit.notes !== null) json.notes = visit.notes;
-    return {
-      kind: 'visits',
-      key: visit.id,
-      stamp: { updatedAt: visit.updatedAt ? new Date(visit.updatedAt).getTime() : Date.now(), by: visit.syncedBy ?? 'unknown', deleted: visit.deleted },
-      json,
-    };
-  }
-
-  private recordToSyncRow(record: RecordRecord): SyncRow {
-    const json: Record<string, unknown> = {
-      id: record.id,
-      type: record.type,
-      updatedAt: record.updatedAt ? new Date(record.updatedAt).toISOString() : isoNow(),
-      by: record.syncedBy ?? 'unknown',
-      deleted: record.deleted,
-      payload: record.payload,
-    };
-    return {
-      kind: 'records',
-      key: `${record.type}/${record.id}`,
-      stamp: { updatedAt: record.updatedAt ? new Date(record.updatedAt).getTime() : Date.now(), by: record.syncedBy ?? 'unknown', deleted: record.deleted },
-      json,
-    };
-  }
-
-  private photoToSyncRow(photo: PhotoRecord): SyncRow {
-    const json: Record<string, unknown> = {
-      id: photo.id,
-      houseId: photo.houseId,
-      updatedAt: photo.updatedAt ? new Date(photo.updatedAt).toISOString() : isoNow(),
-      by: photo.syncedBy ?? 'unknown',
-      deleted: photo.deleted,
-    };
-    if (photo.contentType) json.contentType = photo.contentType;
-    if (photo.sizeBytes !== null) json.sizeBytes = photo.sizeBytes;
-    if (photo.createdAt) json.createdAt = photo.createdAt;
-    if (photo.driveFileId) json.driveFileId = photo.driveFileId;
-    if (photo.sha256) json.sha256 = photo.sha256;
-    if (photo.meta) {
-      const meta = photo.meta;
-      if (meta.roomId) json.roomId = meta.roomId;
-      if (meta.tags && meta.tags.length > 0) json.tags = meta.tags;
-      if (meta.caption) json.caption = meta.caption;
-      if (meta.metaUpdatedAt) json.metaUpdatedAt = meta.metaUpdatedAt;
-    }
-    return {
-      kind: 'photos',
-      key: photo.id,
-      stamp: { updatedAt: photo.updatedAt ? new Date(photo.updatedAt).getTime() : Date.now(), by: photo.syncedBy ?? 'unknown', deleted: photo.deleted },
-      json,
-    };
-  }
-
-  private syncRowToHouseDto(row: SyncRow): any {
-    const json = row.json as Record<string, unknown>;
-    return {
-      id: json.id,
-      updatedAt: json.updatedAt,
-      deleted: row.stamp.deleted,
-      syncVersion: 1,
-      name: json.name ?? '',
-      lat: json.lat ?? null,
-      lon: json.lon ?? null,
-      status: json.status ?? null,
-      cost: json.cost ?? null,
-      locationSource: json.locationSource ?? null,
-      rooms: json.rooms ?? null,
-      brokerId: json.brokerId ?? null,
-      answers: json.answers ?? null,
-      areaSqft: json.areaSqft ?? null,
-      moveIn: json.moveIn ?? null,
-    };
-  }
-
-  private syncRowToVisitDto(row: SyncRow): any {
-    const json = row.json as Record<string, unknown>;
-    return {
-      id: json.id,
-      updatedAt: json.updatedAt,
-      deleted: row.stamp.deleted,
-      syncVersion: 1,
-      houseId: json.houseId ?? null,
-      when: json.when ?? '',
-      where: json.where ?? null,
-      notes: json.notes ?? null,
-    };
-  }
-
-  private syncRowToRecordDto(row: SyncRow): any {
-    const json = row.json as Record<string, unknown>;
-    return {
-      type: json.type,
-      id: json.id,
-      updatedAt: json.updatedAt,
-      deleted: row.stamp.deleted,
-      syncVersion: 1,
-      payload: json.payload ?? {},
-    };
-  }
-
-  private syncRowToPhotoDto(row: SyncRow): PhotoChangeDto {
-    const json = row.json as Record<string, unknown>;
-    return {
-      id: json.id as string,
-      houseId: json.houseId as string,
-      updatedAt: json.updatedAt as string,
-      deleted: row.stamp.deleted,
-      syncVersion: 1,
-      contentType: (json.contentType as string) ?? null,
-      sizeBytes: (json.sizeBytes as number) ?? null,
-      createdAt: (json.createdAt as string) ?? null,
-      roomId: (json.roomId as string) ?? null,
-      tags: (json.tags as string[]) ?? null,
-      caption: (json.caption as string) ?? null,
-      metaUpdatedAt: (json.metaUpdatedAt as number) ?? null,
-    };
-  }
-
-  private emptyRecord(type: string, id: string): RecordRecord {
-    return { type, id, payload: {}, updatedAt: isoNow(), deleted: false, syncVersion: 1, syncedBy: 'unknown' };
-  }
-
-  private async photoFromSync(row: SyncRow, dto: PhotoChangeDto): Promise<PhotoRecord> {
-    const json = row.json as Record<string, unknown>;
-    return {
-      id: dto.id,
-      houseId: dto.houseId,
-      blob: null,
-      contentType: dto.contentType ?? 'application/octet-stream',
-      sizeBytes: dto.sizeBytes ?? 0,
-      createdAt: dto.createdAt ?? null,
-      updatedAt: dto.updatedAt ?? null,
-      deleted: dto.deleted,
-      syncVersion: dto.syncVersion,
-      uploaded: true,
-      driveFileId: (json.driveFileId as string) ?? null,
-      sha256: (json.sha256 as string) ?? null,
-      roomId: dto.roomId ?? null,
-      tags: dto.tags ?? null,
-      caption: dto.caption ?? null,
-      metaUpdatedAt: dto.metaUpdatedAt ?? null,
-      syncedBy: row.stamp.by,
     };
   }
 
   private collectRecordTypes(): string[] {
-    // All record types used in the app (from shared model types).
-    return [
-      CRITERION_TYPE, // criterion
-      PREFERENCE_TYPE, // preference
-      QUESTION_TYPE, // question
-      VIEWING_TYPE, // viewing
-      AREA_TYPE, // area
-      PLACE_TYPE, // place
-      AREA_NOTE_TYPE, // areanote
-      BROKER_TYPE, // broker
-    ];
+    return [CRITERION_TYPE, PREFERENCE_TYPE, QUESTION_TYPE, VIEWING_TYPE, AREA_TYPE, PLACE_TYPE, AREA_NOTE_TYPE, BROKER_TYPE];
   }
 }
