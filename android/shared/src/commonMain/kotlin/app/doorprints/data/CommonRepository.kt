@@ -1006,11 +1006,15 @@ open class CommonRepository(
                         photosWaiting++; photosComplete = false; continue
                     }
                     val out = photoPath(change.id)
-                    writeFile(out, backend.downloadPhoto(change.id))
-                    db.photos().upsert(
-                        PhotoEntity(change.id, change.houseId, out.toString(), true, now()).withMeta(change.meta(), dirty = false),
-                    )
-                    pulled++
+                    // Null: this photo cannot be had (Drive: tampered, planted, a revoked writer); skipped, the backend reports it.
+                    val bytes = backend.downloadPhotoIfAvailable(change.id)
+                    if (bytes != null) {
+                        writeFile(out, bytes)
+                        db.photos().upsert(
+                            PhotoEntity(change.id, change.houseId, out.toString(), true, now()).withMeta(change.meta(), dirty = false),
+                        )
+                        pulled++
+                    }
                 }
             }
             // Only move the cursor past rows that are fully handled, so skipped downloads are retried on Wi-Fi.

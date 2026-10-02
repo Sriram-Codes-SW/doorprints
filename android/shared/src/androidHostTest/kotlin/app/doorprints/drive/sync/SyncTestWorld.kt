@@ -32,6 +32,10 @@ import app.doorprints.drive.FOLDER_MIME
 import app.doorprints.drive.FakeDriveServer
 import app.doorprints.drive.InMemoryFakeDrive
 import app.doorprints.drive.NewFile
+import app.doorprints.drive.photo.DrivePhotos
+import app.doorprints.drive.photo.PhotoConfig
+import app.doorprints.drive.photo.PhotoState
+import app.doorprints.drive.photo.PhotoStateStore
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.PhotoChangeDto
 import app.doorprints.shared.sync.DriveMerge
@@ -74,6 +78,19 @@ fun houseRow(id: String, label: String, updatedAt: Long, by: String, deleted: Bo
         put("label", label)
         put("lat", 12.9)
         put("lon", 77.5)
+        put("updatedAt", IsoTime.format(updatedAt))
+        put("deleted", deleted)
+        put("by", by)
+    },
+)
+
+fun photoRow(id: String, houseId: String, updatedAt: Long, by: String, deleted: Boolean = false): SyncRow = SyncRow.of(
+    SyncKind.PHOTOS,
+    buildJsonObject {
+        put("id", id)
+        put("houseId", houseId)
+        put("contentType", "image/jpeg")
+        put("sizeBytes", 1234)
         put("updatedAt", IsoTime.format(updatedAt))
         put("deleted", deleted)
         put("by", by)
@@ -125,6 +142,10 @@ class SyncWorld(val server: FakeDriveServer = FakeDriveServer()) {
 
     fun syncFolderId(): String = server.allFiles().first { it.appProperties[DriveLayout.ROLE] == "sync" }.id
 
+    fun photosFolderId(): String = server.allFiles().first { it.appProperties[DriveLayout.ROLE] == "photos" }.id
+
+    fun photoFiles(): List<DriveFile> = server.allFiles().filter { it.appProperties[DriveLayout.KIND] == "photo" }
+
     fun syncFiles(): List<DriveFile> = server.allFiles().filter { it.appProperties[DriveLayout.KIND] == KIND_SYNC }
 }
 
@@ -145,12 +166,30 @@ class TestDevice(val world: SyncWorld, val name: String, val key: P256PrivateKey
 
     fun now() = world.now() + skewMs
 
-    private fun session(stale: Boolean) = FolderSession(
+    fun session(stale: Boolean) = FolderSession(
         world.rootId, kid, opened, guard,
         if (stale) null else ({ world.keysFile.open(world.keysBytes, key, guard).also { opened = it } }),
     )
 
     fun engine(stale: Boolean = false) = DriveSyncEngine(drive, p, session(stale), store, local, ::now)
+
+    // ---- Photos (S4b-BL-128) ----
+    var photoState = PhotoState()
+    val photoStore = object : PhotoStateStore {
+        override suspend fun load() = photoState
+        override suspend fun save(state: PhotoState) {
+            photoState = state
+        }
+    }
+
+    fun photos(stale: Boolean = false, config: PhotoConfig = PhotoConfig()) = DrivePhotos(drive, p, session(stale), photoStore, ::now, config)
+
+    /** The backend the sync loop talks to, with the engine and the photo service sharing one session. */
+    fun backend(stale: Boolean = false, config: PhotoConfig = PhotoConfig()): DriveSyncBackend {
+        val s = session(stale)
+        val ph = DrivePhotos(drive, p, s, photoStore, ::now, config)
+        return DriveSyncBackend(DriveSyncEngine(drive, p, s, store, local, ::now, photos = ph), local, ::now, id, ph)
+    }
 
     fun edit(houseId: String, label: String) {
         val prev = local.stamp(houseId)?.updatedAt

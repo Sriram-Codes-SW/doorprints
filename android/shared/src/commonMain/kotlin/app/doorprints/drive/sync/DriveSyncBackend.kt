@@ -20,6 +20,9 @@ package app.doorprints.drive.sync
 
 import app.doorprints.data.SyncBackend
 import app.doorprints.drive.DriveException
+import app.doorprints.drive.photo.DrivePhotos
+import app.doorprints.drive.photo.PhotoRef
+import app.doorprints.drive.photo.SkippedPhoto
 import app.doorprints.shared.api.HouseDto
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.PhotoChangeDto
@@ -50,8 +53,11 @@ import kotlinx.serialization.json.put
  *   sent, with no position (`syncVersion` 0), so it never shows a "reset".
  * - What the other devices' files changed is found in [commitPushes] too; `*Since` hand it out. A row's position is the
  *   pass counter (`syncVersion`), only compared by the loop.
- * - Photos are the next ticket (S4b-BL-128): metadata and tombstones flow, [uploadPhoto] and [downloadPhoto] throw
- *   [DriveSyncNotYet], so the caller passes `photosAllowed = false` until then.
+ * - Photos (S4b-BL-128): metadata and tombstones flow in the sync file; the bytes go as one `photo/1` file each through
+ *   [DrivePhotos]. A photo's row carries the Drive file and the plaintext SHA-256 once uploaded; a photo another device
+ *   has not uploaded yet, or one that cannot be read (tampered, planted, revoked writer), is **not** handed to the loop
+ *   ([photoChangesSince] leaves it out until its bytes can be fetched; [downloadPhotoIfAvailable] answers null and the
+ *   skip is in [photoSkips]). Without [photos] the photo calls throw [DriveSyncNotYet].
  *
  * The shrink guard's question is not an error: the outcome of the last pass is in [lastResult] (a
  * [SyncPassResult.NeedsConfirmation] after which [confirmShrink] and the next sync apply the held deletions).
@@ -61,6 +67,8 @@ class DriveSyncBackend(
     private val local: LocalRows,
     private val clock: () -> Long,
     private val deviceId: String,
+    /** Photo bytes over Drive (S4b-BL-128); null: the photo calls throw [DriveSyncNotYet] and the caller keeps `photosAllowed` false. */
+    private val photos: DrivePhotos? = null,
 ) : SyncBackend {
     override val mergeRule: MergeRule = DriveMerge.rule
     override val stagesPushes: Boolean = true
@@ -108,11 +116,17 @@ class DriveSyncBackend(
         val photo = local.photo(photoId) ?: return
         val previous = photo.updatedAt?.let(SyncTime::parse)
         val at = DriveMerge.nextStamp(clock(), previous)
-        engine.stage(SyncRows.photo(photo.copy(deleted = true, updatedAt = IsoTime.format(at)), deviceId))
+        // The tombstone keeps the Drive file of the bytes, so a later clean-up (docs/15 §5.1: 30 days, no kept backup) finds it.
+        engine.stage(SyncRows.photo(photo.copy(deleted = true, updatedAt = IsoTime.format(at)), deviceId, photos?.refs()?.get(photoId)))
     }
 
+    /** The photos skipped since the last call (reported, never thrown): too large, tampered, planted, revoked writer, not uploaded yet. */
+    fun photoSkips(): List<SkippedPhoto> = photos?.drainSkipped().orEmpty()
+
+    /** One `photo/1` file per photo; a photo that can never go (too large, empty) stays on this device and counts as sent. */
     override suspend fun uploadPhoto(houseId: String, photoId: String, fileName: String, size: Long, open: () -> Source) {
-        throw DriveSyncNotYet("photo upload", "S4b-BL-128")
+        val service = photos ?: throw DriveSyncNotYet("photo upload", "S4b-BL-128")
+        service.upload(photoId, size, open)
     }
 
     override suspend fun pushPhotoMeta(photoId: String, meta: PhotoMetaDto): PhotoChangeDto? {
@@ -126,10 +140,22 @@ class DriveSyncBackend(
 
     override suspend fun recordsSince(cursor: Long): List<RecordDto> = decode(SyncKind.RECORDS, cursor, RecordDto.serializer()) { it.copy(syncVersion = generation) }
 
-    override suspend fun photoChangesSince(cursor: Long): List<PhotoChangeDto> =
-        decode(SyncKind.PHOTOS, cursor, PhotoChangeDto.serializer()) { it.copy(syncVersion = generation) }
+    override suspend fun photoChangesSince(cursor: Long): List<PhotoChangeDto> {
+        val all = decode(SyncKind.PHOTOS, cursor, PhotoChangeDto.serializer()) { it.copy(syncVersion = generation) }
+        val service = photos ?: return all
+        // A live photo this device does not have and whose bytes are not in Drive yet (the other device waits for Wi-Fi)
+        // is left out; its row comes again in a later pass, once the other device's file names the Drive file.
+        val refs = service.refs()
+        return all.filter { it.deleted || it.id in refs || local.photo(it.id) != null }
+    }
 
-    override suspend fun downloadPhoto(photoId: String): ByteArray = throw DriveSyncNotYet("photo download", "S4b-BL-128")
+    override suspend fun downloadPhoto(photoId: String): ByteArray =
+        downloadPhotoIfAvailable(photoId) ?: throw DriveException(DriveException.Kind.NOT_FOUND, reason = "photoUnavailable")
+
+    override suspend fun downloadPhotoIfAvailable(photoId: String): ByteArray? {
+        val service = photos ?: throw DriveSyncNotYet("photo download", "S4b-BL-128")
+        return service.download(photoId)
+    }
 
     private fun <T> decode(kind: SyncKind, cursor: Long, serializer: kotlinx.serialization.KSerializer<T>, withVersion: (T) -> T): List<T> {
         if (generation <= cursor) return emptyList()
@@ -163,6 +189,24 @@ object SyncRows {
         return SyncRow.of(kind, json)
     }
 
+    /** The Drive file of a photo's bytes that [row] names (S4b-BL-128), or null when it names none. */
+    fun refOf(row: SyncRow): PhotoRef? {
+        if (row.kind != SyncKind.PHOTOS) return null
+        val file = (row.json["driveFileId"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+        val sha = (row.json["sha256"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
+        return PhotoRef(file, sha)
+    }
+
+    /** [row] with the Drive file of its bytes written in (the row's stamp does not change). */
+    fun withRef(row: SyncRow, ref: PhotoRef): SyncRow = SyncRow.of(
+        row.kind,
+        buildJsonObject {
+            for ((k, v) in row.json) put(k, v)
+            put("driveFileId", JsonPrimitive(ref.driveFileId))
+            put("sha256", JsonPrimitive(ref.sha256))
+        },
+    )
+
     /** [by]: the device that made this version of the row (the local device for a row whose writer is not kept). */
     fun house(dto: HouseDto, by: String): SyncRow = row(SyncKind.HOUSES, HouseDto.serializer(), dto, by)
 
@@ -170,5 +214,8 @@ object SyncRows {
 
     fun record(dto: RecordDto, by: String): SyncRow = row(SyncKind.RECORDS, RecordDto.serializer(), dto, by)
 
-    fun photo(dto: PhotoChangeDto, by: String): SyncRow = row(SyncKind.PHOTOS, PhotoChangeDto.serializer(), dto, by)
+    fun photo(dto: PhotoChangeDto, by: String, ref: PhotoRef? = null): SyncRow {
+        val base = row(SyncKind.PHOTOS, PhotoChangeDto.serializer(), dto, by)
+        return if (ref == null) base else withRef(base, ref)
+    }
 }
