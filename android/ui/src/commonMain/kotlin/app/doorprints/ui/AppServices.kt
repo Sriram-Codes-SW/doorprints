@@ -70,6 +70,9 @@ interface AppServices {
     /** The Map's Hunt mode, its notification check and the system's motion and font settings (CMP-7). */
     val mapScreen: MapServices
 
+    /** Google Drive backup (S4b-BL-117): its state holder and platform pieces; [NoDrive] hides it. */
+    val drive: DriveServices get() = NoDrive
+
     /** The phone's offline map store (docs/11 5.20): the Map's *Save this area for offline* and Settings' list. */
     val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
 

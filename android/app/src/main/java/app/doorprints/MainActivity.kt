@@ -84,6 +84,12 @@ class MainActivity : ComponentActivity() {
      */
     private fun handle(intent: Intent?) {
         intent ?: return
+        // Google's answer to the Drive sign-in (S4b-BL-117): handed to the waiting sign-in, never a deep link.
+        if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme == "app.doorprints") {
+            app.doorprints.drive.DriveRedirects.deliver(intent.dataString)
+            intent.data = null
+            return
+        }
         // Reopened from Recents (after process death the system replays the task's last intent, which may be an old
         // notification's): that notification was already acted on, so its extras must not run a second time.
         if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0) {

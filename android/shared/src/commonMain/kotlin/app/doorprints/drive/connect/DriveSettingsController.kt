@@ -108,7 +108,7 @@ class DriveDeps(
     val isOnline: () -> Boolean,
     val clock: () -> Long,
     /** The title of the phone's own check, in the app's language, for the action being confirmed. */
-    val authReason: (DriveDeleteChoice) -> String,
+    val authReason: suspend (DriveDeleteChoice) -> String,
     /** Random bytes for choosing which recovery-key groups to ask back. */
     val randomBytes: (Int) -> ByteArray,
 )

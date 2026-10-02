@@ -130,6 +130,9 @@ class AndroidAppServices(private val app: DoorprintsApp, override val repository
 
     override val offlineMaps: OfflineMapsServices = AndroidOfflineMaps(app)
 
+    /** Google Drive (S4b-BL-117): present only on a build with a Google OAuth client id. */
+    override val drive: app.doorprints.ui.DriveServices = app.doorprints.drive.AndroidDriveServices(app, repository)
+
     override val areaWakeup: AreaWakeupServices = AndroidAreaWakeup(app)
 
     /** Resume: an exact-alarm grant, a time change or an edit elsewhere is picked up (docs/11 5.16). */

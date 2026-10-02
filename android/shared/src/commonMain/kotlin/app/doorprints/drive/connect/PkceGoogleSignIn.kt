@@ -145,10 +145,11 @@ class PkceGoogleSignIn(
     override suspend fun accessToken(): String = lock.withLock {
         val now = clock()
         cachedToken?.let { if (now < cachedUntil - EARLY_MS) return it }
+        // A store that cannot be read right now (a locked phone) is "try later", not "disconnected": nothing is cleared.
         val refresh = try {
             store.load()
         } catch (_: Exception) {
-            null
+            throw DriveException(DriveException.Kind.OFFLINE)
         } ?: throw DriveException(DriveException.Kind.UNAUTHORIZED)
         val answer = try {
             post(OAuthFlow.refreshForm(config, refresh))

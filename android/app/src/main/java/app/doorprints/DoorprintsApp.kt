@@ -76,6 +76,8 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         // The UI strings' language (Compose resources read the default locale): see AppLocale.applyDefault.
         AppLocale.wrap(this)
         container = AppContainer(this)
+        // The activity on screen, for Drive's browser sign-in and the phone's own check (S4b-BL-117).
+        app.doorprints.drive.ForegroundActivity.register(this)
         startServices()
     }
 

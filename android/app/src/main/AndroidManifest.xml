@@ -73,6 +73,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="doorprints" android:host="connect" />
             </intent-filter>
+            <!-- Google's answer to the Drive sign-in (S4b-BL-117): app.doorprints:/oauth2redirect?code=…&state=…. Any app can send
+                 one; the sign-in accepts it only with the state of the attempt that is waiting, and drops the rest. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app.doorprints" android:path="/oauth2redirect" />
+            </intent-filter>
             <!-- A backup or update file opened in Doorprints (docs/11 5.28, S4b-FR-3): "open with" from a file app or
                  a chat's attachment (VIEW), or "share to Doorprints" (SEND). ZIP and JSON, the two forms a backup
                  takes; the Import screen validates the file as any picked one and refuses anything else. -->

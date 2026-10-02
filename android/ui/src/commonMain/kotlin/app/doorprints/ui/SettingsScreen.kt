@@ -116,7 +116,7 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
     onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {}, onOpenCriteria: () -> Unit = {},
     onOpenQuestions: () -> Unit = {}, onOpenViewings: () -> Unit = {},
-    onOpenAreas: () -> Unit = {}, onOpenPlaces: () -> Unit = {},
+    onOpenAreas: () -> Unit = {}, onOpenPlaces: () -> Unit = {}, onOpenDrive: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -715,6 +715,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         NavRow(stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings)
         // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.
         ViewingRemindersSection()
+        // Google Drive backup (docs/15, S4b-BL-117): only on a build that has a Google OAuth client id.
+        if (services.drive.controller != null) {
+            HorizontalDivider()
+            NavRow(stringResource(Res.string.drive_title), stringResource(Res.string.drive_row_hint), onOpenDrive)
+        }
         // Hunting areas with their notes, and the places that matter (docs/11 slice 4a).
         HorizontalDivider()
         NavRow(stringResource(Res.string.settings_areas), stringResource(Res.string.settings_areas_hint), onOpenAreas)

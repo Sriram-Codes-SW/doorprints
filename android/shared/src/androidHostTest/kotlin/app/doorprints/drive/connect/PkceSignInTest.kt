@@ -239,9 +239,10 @@ class PkceSignInTest {
     }
 
     @Test
-    fun noTokenAtAllIsUnauthorizedAndAStoreThatCannotReadFailsClosed() = runTest {
+    fun noTokenAtAllIsUnauthorizedAndAStoreThatCannotReadIsTryLaterWithNothingClearedOrSent() = runTest {
         assertEquals(DriveException.Kind.UNAUTHORIZED, assertFailsWith<DriveException> { signIn(FakeBrowser { BrowserResult.Cancelled }).accessToken() }.kind)
-        assertEquals(DriveException.Kind.UNAUTHORIZED, assertFailsWith<DriveException> { signIn(FakeBrowser { BrowserResult.Cancelled }, BrokenStore()).accessToken() }.kind)
+        assertEquals(DriveException.Kind.OFFLINE, assertFailsWith<DriveException> { signIn(FakeBrowser { BrowserResult.Cancelled }, BrokenStore()).accessToken() }.kind)
+        assertTrue(google.posts.isEmpty())
     }
 
     @Test

@@ -127,6 +127,9 @@ object Routes {
     const val BROKER = "broker/{id}"
     const val NEW_BROKER = "new"
 
+    /** Settings > Google Drive (docs/15, S4b-BL-117). */
+    const val DRIVE = "google-drive"
+
     /** Settings > Criteria (docs/11 5.4, slice 2). */
     const val CRITERIA = "criteria"
 
@@ -502,6 +505,20 @@ fun DoorprintsRoot(deepLinks: StateFlow<DeepLink?>, onDeepLinkHandled: () -> Uni
                         onOpenViewings = { nav.navigate(Routes.viewings()) },
                         onOpenAreas = { nav.navigate(Routes.AREAS) },
                         onOpenPlaces = { nav.navigate(Routes.PLACES) },
+                        onOpenDrive = { nav.navigate(Routes.DRIVE) },
+                    )
+                }
+                // Google Drive (docs/15, S4b-BL-117): a sub-screen of Settings. *Save a copy first* opens Export; a backup
+                // imported from Drive goes to the existing Import screen as a picked file.
+                composable(Routes.DRIVE) {
+                    DriveScreen(
+                        onBack = dropUnlessResumed { nav.popBackStack() },
+                        onOpenExport = { nav.navigate("export") },
+                        onOpenImport = { file ->
+                            importedRun = null
+                            pendingImportFile = file
+                            nav.navigate("import")
+                        },
                     )
                 }
                 // My areas and My places (docs/11 slice 4a): sub-screens of Settings with a back arrow, like Brokers.

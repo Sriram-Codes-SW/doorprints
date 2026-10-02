@@ -36,6 +36,18 @@ val releaseSigning = listOf("HH_KEYSTORE_FILE", "HH_KEYSTORE_PASSWORD", "HH_KEY_
     }
 val hasReleaseSigning = releaseSigning.values.all { it != null }
 
+// Google Drive (S4b-BL-117, docs/15 §2.4): the OAuth client id of the Android client is build-time configuration, never in
+// the repository. The owner supplies it as a Gradle property or an environment variable (CI: a repository variable, not a
+// secret: the id is public by nature). Empty by default: then the Connect feature is hidden. Only an id's characters are
+// accepted, so a stray quote cannot break the generated BuildConfig.
+fun driveConfig(property: String, env: String, default: String = ""): String =
+    (providers.gradleProperty(property).orElse(providers.environmentVariable(env)).orNull ?: default).trim()
+        .also { require(Regex("[A-Za-z0-9._:/-]*").matches(it)) { "$property may hold only letters, digits and . _ : / -" } }
+val googleAndroidClientId = driveConfig("doorprints.google.androidClientId", "DOORPRINTS_GOOGLE_ANDROID_CLIENT_ID")
+// Where Google sends the browser back: a custom scheme on this package (the spike S4b-BL-122 confirms Google accepts it
+// for the Android client; the manifest's intent filter in AndroidManifest.xml must match).
+val googleRedirectUri = driveConfig("doorprints.google.redirectUri", "DOORPRINTS_GOOGLE_REDIRECT_URI", "app.doorprints:/oauth2redirect")
+
 android {
     // The product is called Doorprints (renamed from "House Hunt" on 2026-09-22). The applicationId changed that
     // day; the namespace (R class, BuildConfig) and the Kotlin package followed on 2026-09-24 (were com.househunt.app).
@@ -58,6 +70,8 @@ android {
         // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"$googleAndroidClientId\"")
+        buildConfigField("String", "GOOGLE_REDIRECT_URI", "\"$googleRedirectUri\"")
     }
 
     signingConfigs {
@@ -90,6 +104,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The Google OAuth client id above (empty by default).
+        buildConfig = true
     }
 
     packaging {
