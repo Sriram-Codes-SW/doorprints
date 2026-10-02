@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.52 |
-| Date | 2026-10-01 |
+| Version | 0.53 |
+| Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -64,6 +64,7 @@
 | 0.50 | 2026-09-29 | Claude (Code), lead | **One CI run per push** (delivery-speed review, owner permission of 2026-09-29): the `push` trigger of the eight branch workflows is `main` only; the `pull_request` run is the pre-merge signal (its path filters compare the whole pull request). `codeql.yml` gains a `pull_request` trigger for same-repository pull requests; `backend.yml`'s `image` job (the release gate's Trivy and ZAP checks) runs on same-repository pull requests too. §1 *Branch runs* and §3 updated. |
 | 0.51 | 2026-09-29 | Claude (Code), lead | **Required status checks are on** (the owner's ruleset on `main`, 2026-09-29, with auto-merge allowed): every workflow check of §1 is required, so the six path-filtered workflows get an "always report" twin (`*-required.yml`: the same workflow and job names, `paths-ignore` mirroring the real `paths`, success at once). §3 updated. |
 | 0.52 | 2026-10-01 | Claude (Code), lead | S4b-BL-105: §1 `web.yml` runs on `docs/schemas/**` too, `android.yml` on the two AI test-vector files; §3 `pages-required.yml` mirrors `pages.yml` again, and `tools/check.sh` picks its areas from the workflows' paths. |
+| 0.53 | 2026-10-02 | Cursor Agent | gitleaks: reviewed `.gitleaksignore` fingerprints for the Drive branch (the type name after `key:` / `privateKey:`, and known-answer hex/base64 in `docs/schemas/hpke-vectors.json` and `dpx-vectors.json`). No path allowlist. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -193,7 +194,7 @@ The containers run as the runner's user (`--user $(id -u):$(id -g)`) with `--cac
 
 **Version overrides for security fixes.** When Trivy reports a Critical/High in a library whose version the Spring Boot BOM manages, and Boot has not shipped a patch yet, override only that version property in `backend/pom.xml` with a comment naming the CVEs and when to remove it. Sprint 2: `<tomcat.version>11.0.25</tomcat.version>` for tomcat-embed-core 11.0.24 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525 (F-28). Remove the property when the Spring Boot parent manages 11.0.25 or later (Dependabot's grouped Boot patch PR is the trigger to check). 2026-09-29: `<jackson-bom.version>3.1.7</jackson-bom.version>` and `<jackson-2-bom.version>2.21.7</jackson-2-bom.version>` for jackson-databind 3.1.5 and 2.21.5, CVE-2026-68497 (HIGH, fixed in 3.1.6 and 2.21.6; found by the `trivy sbom` gate on PR #30); remove them when the parent manages those versions or later. Never override across a major or minor line without the framework's support.
 
-**gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). A third entry (reviewed 2026-09-29) is a made-up key in the CMP-8a iOS test `KeychainSettingsTest` (commit `353d05c`); the test now uses low-entropy values (`"test-key-one"`), which is how test keys are written from now on. No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
+**gitleaks** scans the whole git history (`fetch-depth: 0`). The test API keys it flagged in the first commit (`4b034d3`) were throwaway values; the tests now generate their keys at runtime (`"it-" + UUID.randomUUID()`), so nothing key-like is in the current tree. Because the old commit stays in history, the two findings are listed by exact fingerprint (`<commit>:<file>:<rule>:<line>`) in a reviewed, commented `.gitleaksignore` (reviewed 2026-09-22). A third entry (reviewed 2026-09-29) is a made-up key in the CMP-8a iOS test `KeychainSettingsTest` (commit `353d05c`); the test now uses low-entropy values (`"test-key-one"`), which is how test keys are written from now on. Reviewed 2026-10-02 (Drive website branch): seven findings are the type name after `key:` or `privateKey:` in Drive seams and device-key stores, and twenty-seven are known-answer vectors in `docs/schemas/hpke-vectors.json` (published HPKE/GCM hex) and `docs/schemas/dpx-vectors.json` (regression base64 folder and content keys). Those commits stay in history, so each finding is listed by fingerprint. No `.gitleaks.toml` allowlist and no path-wide rule: any new key in the same file would still fail the scan. Every new entry needs a review note with a date; real secrets are rotated (08 §5), never ignored.
 
 **Dependabot** (`.github/dependabot.yml`). The first push opened many PRs at once, so it is tuned:
 
