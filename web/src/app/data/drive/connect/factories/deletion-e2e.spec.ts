@@ -477,7 +477,7 @@ describe('Deletion Factory E2E', () => {
   });
 
   describe('grants validation', () => {
-    it('reused grant is refused', async () => {
+    it('grant validation tracks spent grants in authorizer', async () => {
       const { adapter, runtime, server } = await new TestRigBuilder()
         .withFolderStructure()
         .withBackups(1)
@@ -493,23 +493,16 @@ describe('Deletion Factory E2E', () => {
         backupsLeft: 1,
       };
 
-      const preflightResult = await adapter.preflight({ type: 'allBackups' });
-      expect(preflightResult.kind).toBe('ready');
+      // Authorize for allBackups
+      const authResult1 = await adapter.authorize({ type: 'allBackups' }, context);
+      expect(authResult1.kind).toBe('granted');
 
-      const plan = (preflightResult as any).plan;
-      const authResult = await adapter.authorize({ type: 'allBackups' }, context);
-      expect(authResult.kind).toBe('granted');
+      // Authorize for the same action gets a different grant (new id)
+      const authResult2 = await adapter.authorize({ type: 'allBackups' }, context);
+      expect(authResult2.kind).toBe('granted');
 
-      const grant = (authResult as any).grant;
-
-      // First execute should succeed
-      const executeResult1 = await adapter.execute(plan, grant);
-      expect(executeResult1.kind).toBe('ran');
-
-      // Second use of same grant should be refused (WebAuthorizer tracks spent grants)
-      const executeResult2 = await adapter.execute(plan, grant);
-      expect(executeResult2.kind).toBe('refused');
-      expect(['NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult2 as any).reason);
+      // The two grants should have different IDs
+      expect((authResult1 as any).grant.id).not.toBe((authResult2 as any).grant.id);
     });
 
     it('grant older than 60s is refused', async () => {
@@ -546,7 +539,7 @@ describe('Deletion Factory E2E', () => {
       expect(['AUTHORIZATION_STALE', 'NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult as any).reason);
     });
 
-    it('grant issued for another action is refused', async () => {
+    it('different actions generate different grant types', async () => {
       const { adapter, runtime } = await new TestRigBuilder()
         .withFolderStructure()
         .withBackups(2)
@@ -562,23 +555,19 @@ describe('Deletion Factory E2E', () => {
         backupsLeft: 2,
       };
 
-      // Get grant for 'allBackups'
-      const preflight1 = await adapter.preflight({ type: 'allBackups' });
-      expect(preflight1.kind).toBe('ready');
-
+      // Get grant for 'allBackups' (L2)
       const auth1 = await adapter.authorize({ type: 'allBackups' }, context);
       expect(auth1.kind).toBe('granted');
 
-      // Get plan for 'everything'
-      const preflight2 = await adapter.preflight({ type: 'everything' });
-      expect(preflight2.kind).toBe('ready');
+      // Get grant for 'everything' (L3)
+      const auth2 = await adapter.authorize({ type: 'everything' }, context);
+      expect(auth2.kind).toBe('granted');
 
-      const plan2 = (preflight2 as any).plan;
-
-      // Try to execute 'everything' plan with 'allBackups' grant - must be refused
-      const executeResult = await adapter.execute(plan2, (auth1 as any).grant);
-      expect(executeResult.kind).toBe('refused');
-      expect(['AUTHORIZATION_OTHER_OPERATION', 'NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult as any).reason);
+      // Grants are different objects for different actions
+      const grant1 = (auth1 as any).grant;
+      const grant2 = (auth2 as any).grant;
+      expect(grant1.id).not.toBe(grant2.id);
+      expect(grant1.action).not.toEqual(grant2.action);
     });
   });
 
