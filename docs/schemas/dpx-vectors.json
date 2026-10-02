@@ -1,0 +1,274 @@
+{
+ "format": "doorprints-dpx-vectors/1",
+ "about": "Cross-platform parity vectors for the Drive encryption (docs/15 §9.4, §9.6, §9.3; S4b-BL-125), run by Kotlin (CryptoVectorsTest) and TypeScript (crypto-vectors.spec.ts). Regression vectors produced by the Kotlin implementation in deterministic mode and checked against an independent implementation (docs/schemas/README.md section 6.3); not official. Hex for keys and digests in 'recovery', base64 (RFC 4648 section 4) elsewhere, as the formats write them.",
+ "plaintextPattern": "byte i of every envelope plaintext is (31 * i + 7) mod 256",
+ "fakeRandom": "keys.steps draw every random byte from one stream: block i = SHA-256('doorprints-fake-random' || utf8(seed) || u32be(i)); device keys are HPKE DeriveKeyPair(devices[j].ikm)",
+ "recovery": [
+  {
+   "bytes": "00000000000000000000000000000000",
+   "symbols": "000000000000000000000000000",
+   "display": "0000-0000-0000-0000-0000-0000-000",
+   "scalar": "f867a9e6262c088edff62d928e1f231836886f3110109874ca64aedf0026613d",
+   "publicKey": "04eedcc0517c42771924ab926aea7f254e81df87bf4d4b8a088f54216a7a4f8a0817f399c823721846b748763f15473b8a0f366027918bd332058efe2152ec6265",
+   "kid": "6ddc4d767e69f0211c851dacee057b75"
+  },
+  {
+   "bytes": "ffffffffffffffffffffffffffffffff",
+   "symbols": "7ZZZZZZZZZZZZZZZZZZZZZZZZZ*",
+   "display": "7ZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZ*",
+   "scalar": "cd4879b78dc0cc765c598fb0d004ff704a67e0747aa720c01cca3e351bf795fa",
+   "publicKey": "04995a4cdab8fee7ff3007c7ebf921fb43a06ef1aef347940308b1eedabb2edf55a03a13d077de0af52c873468651a81484111dc05ba33e8cf43ff132f9f1e6d12",
+   "kid": "56b330749acc3fc19106081e21fc2c21"
+  },
+  {
+   "bytes": "00112233445566778899aabbccddeeff",
+   "symbols": "0024H36H2NCSVRH6DAQF6DVVQZW",
+   "display": "0024-H36H-2NCS-VRH6-DAQF-6DVV-QZW",
+   "scalar": "2ae4c45d796ee16a7f5d75f4185c2215ce3a967c711461a8f2208c0eb80e4969",
+   "publicKey": "04f37b5bde23d888c94403d84da0c3faf6ac3f195ad53c1aa6684400cc6ea5ef65dd1ca085b704536b6b08e1c5698c7489428dd060f42f46ea5b06ba9868db8ff8",
+   "kid": "12139eda25872c0174d509bda2d80831"
+  },
+  {
+   "bytes": "12190e07409695532d99f919e03b6d21",
+   "symbols": "0J3470EG4PJN9JV6FS37G3PV91D",
+   "display": "0J34-70EG-4PJN-9JV6-FS37-G3PV-91D",
+   "scalar": "b401671870fcb4e41ef2ae49643c720c999ee4a02f146cf7f55d5f356f8bcfbd",
+   "publicKey": "04faef5763635b6e1eb0ef9a1e0485ee676dc9f8ed6f992690d9f88fe74da1b8d47c6e0b6d747c4604f20bd60911f413a48a98a737023b9b82d0f266e1c959ab86",
+   "kid": "22318a292495e9ef4d62aead745a32c7"
+  }
+ ],
+ "recoveryParse": [
+  {
+   "input": "0024-H36H-2NCS-VRH6-DAQF-6DVV-QZW",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": "0024H36H2NCSVRH6DAQF6DVVQZW",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": "0024-h36h-2ncs-vrh6-daqf-6dvv-qzw",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": " 0024 H36H 2NCS VRH6 DAQF 6DVV QZW ",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": "OO24-H36H-2NCS-VRH6-DAQF-6DVV-QZW",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": "oo24-h36h-2ncs-vrh6-daqf-6dvv-qzw",
+   "bytes": "00112233445566778899aabbccddeeff"
+  },
+  {
+   "input": "0024H36H2NCSVRH6DAQF6DVVQZ",
+   "error": "WRONG_LENGTH"
+  },
+  {
+   "input": "0024H36H2NCSVRH6DAQF6DVVQZW0",
+   "error": "WRONG_LENGTH"
+  },
+  {
+   "input": "0024H46H2NCSVRH6DAQF6DVVQZW",
+   "error": "CHECK_MISMATCH"
+  },
+  {
+   "input": "0024H3H62NCSVRH6DAQF6DVVQZW",
+   "error": "CHECK_MISMATCH"
+  },
+  {
+   "input": "U024H36H2NCSVRH6DAQF6DVVQZW",
+   "error": "INVALID_CHARACTER"
+  },
+  {
+   "input": "0024H36H2N*SVRH6DAQF6DVVQZW",
+   "error": "INVALID_CHARACTER"
+  },
+  {
+   "input": "8024H36H2NCSVRH6DAQF6DVVQZW",
+   "error": "OUT_OF_RANGE"
+  }
+ ],
+ "envelope": [
+  {
+   "name": "empty",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "sync/1",
+   "contentKey": "0IgLAl3FNZKi/NNC9ZpRJQVesSrzsc9nfUdoKNafrY4=",
+   "wrapNonce": "EVv3mNU4iME8wMYg",
+   "noncePrefix": "/pxJufa6ag==",
+   "plaintextSize": 0,
+   "plaintextSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "fileSize": 277,
+   "fileSha256": "18a3a08eeb1edbb71c720406875701a09f2afe17335617933e712c67ce13e69d",
+   "file": "RFBYMQD/eyJ2IjoxLCJhbGciOiJBMjU2R0NNLVNUUkVBTS02NEsiLCJlcG9jaCI6Mywia2lkIjoib0tHaW82U2xwcWVvcWFxcnJLMnVydz09Iiwid3JhcHBlZEtleSI6eyJub25jZSI6IkVWdjNtTlU0aU1FOHdNWWciLCJjdCI6IkdQL2VXeWR2QTQ1bDZzaHQxenk0R0g4eE5xeUJzVzZSKy9SMFYyN1ZWTkVKeTBIcC9YRDNCdEVEYSt0cmVsZEgifSwibm9uY2VQcmVmaXgiOiIvcHhKdWZhNmFnPT0iLCJjaHVua1NpemUiOjY1NTM2LCJpbm5lciI6InN5bmMvMSJ9bBfiSAy5fc3RxmW6+FWXFw=="
+  },
+  {
+   "name": "one byte",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "sync/1",
+   "contentKey": "Opxq+9FG1JUsxDMPF/RDiz/NBTbQB8g29r21ScqsLtQ=",
+   "wrapNonce": "owspBpeDkJJhKgzK",
+   "noncePrefix": "eR1sPJjWZg==",
+   "plaintextSize": 1,
+   "plaintextSha256": "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879",
+   "fileSize": 278,
+   "fileSha256": "940c4f11f1d9acd143dd454430c4821ffde954bf887417694895dac821922f81",
+   "file": "RFBYMQD/eyJ2IjoxLCJhbGciOiJBMjU2R0NNLVNUUkVBTS02NEsiLCJlcG9jaCI6Mywia2lkIjoib0tHaW82U2xwcWVvcWFxcnJLMnVydz09Iiwid3JhcHBlZEtleSI6eyJub25jZSI6Im93c3BCcGVEa0pKaEtneksiLCJjdCI6IlJlUWRWSG5TY0RINmN4U1ZKd0RJN25sM05aZVliRGcxRzcvRDVvaXpkUHE3K2FDcmpRTk5PY3c2YkoybDdXcUwifSwibm9uY2VQcmVmaXgiOiJlUjFzUEpqV1pnPT0iLCJjaHVua1NpemUiOjY1NTM2LCJpbm5lciI6InN5bmMvMSJ9rzyNVY0FsmnRK78CrA1cFJQ="
+  },
+  {
+   "name": "small photo",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "photo/1",
+   "contentKey": "XfQQ14MF9ztjkFfOYK9mUoKD3gszigYwcPDaXmW5Pow=",
+   "wrapNonce": "/XD7Qoy/9qywgd6T",
+   "noncePrefix": "9staIlmOAw==",
+   "plaintextSize": 33,
+   "plaintextSha256": "93462e85c42aa037bc727a8c283497594aa5c844f0e5bccaa52fec34dee9f44e",
+   "fileSize": 311,
+   "fileSha256": "79a2cc3af7e4ef2199d415b1c43e62a4292cbb6a5320b360f4f49947aa55f52c",
+   "file": "RFBYMQEAeyJ2IjoxLCJhbGciOiJBMjU2R0NNLVNUUkVBTS02NEsiLCJlcG9jaCI6Mywia2lkIjoib0tHaW82U2xwcWVvcWFxcnJLMnVydz09Iiwid3JhcHBlZEtleSI6eyJub25jZSI6Ii9YRDdRb3kvOXF5d2dkNlQiLCJjdCI6IlRHM1A5OFBSL2VvN0FMMUxlN1ZUN2laQm03MXdReGlmOUxBR3ZZVHBzZEJ3dDZjczkrcWkxR2cxSHVMdkJXZUQifSwibm9uY2VQcmVmaXgiOiI5c3RhSWxtT0F3PT0iLCJjaHVua1NpemUiOjY1NTM2LCJpbm5lciI6InBob3RvLzEiffdt1WFUHi8ciB8ej+7tmQpFcz5z2jHBnKM9WNFCVaAy0SHADTv67w9S/Snzqg3rOBY="
+  },
+  {
+   "name": "chunk - 1",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "doorprints-backup/2",
+   "contentKey": "4gPMHfyrO/+ltTzsh4Cyw2BwfsJPSY1jnL8LEDb20Kc=",
+   "wrapNonce": "n/Ot8K+YYzAwF6GU",
+   "noncePrefix": "/0VwJXzVvw==",
+   "plaintextSize": 65535,
+   "plaintextSha256": "91d0a03af0efeeb5568bbdcf2bd7fe1c9d932c4d22db3643c7586c1bd1afbeb1",
+   "fileSize": 65825,
+   "fileSha256": "88a1aacc5e541a9650cd49ca1486db263a3ce5e02644e97f708eacbccc58103f"
+  },
+  {
+   "name": "one chunk",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "doorprints-backup/2",
+   "contentKey": "UJ1T0WgjqLiOnwDfrlLmCs16vBz7FzCyBnr/q8cysp8=",
+   "wrapNonce": "qXOZeOe5RfCO0vTy",
+   "noncePrefix": "QZ4bIN9sJg==",
+   "plaintextSize": 65536,
+   "plaintextSha256": "ef4636928161808e87035fa51983821677527ccd9661991c5d0126a778b2268a",
+   "fileSize": 65826,
+   "fileSha256": "a667543f48bcd9892b061d24754b27d07cd07ff0a51b3a40c4d4971da870f68d"
+  },
+  {
+   "name": "chunk + 1",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "doorprints-backup/2",
+   "contentKey": "KyCSu3veeYGlCgtXnbbwrcEUflEgt9qj4tQluQ8dGfQ=",
+   "wrapNonce": "7ftktomPUfdfr/mE",
+   "noncePrefix": "mSWrjBcM/g==",
+   "plaintextSize": 65537,
+   "plaintextSha256": "74f3260f4a9adaf7271c910ba2d111dbae7a176afb487e1b7f655897eadf1093",
+   "fileSize": 65843,
+   "fileSha256": "85dad80cb8d3d8d9f44226c1eb4e369dad20fd3a07ed14b81cdc9ad3fce6f938"
+  },
+  {
+   "name": "three chunks + 100",
+   "folderKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "epoch": 3,
+   "kid": "oKGio6SlpqeoqaqrrK2urw==",
+   "inner": "doorprints-backup/3",
+   "contentKey": "sqaajc5rCjxLjZbg45iEAJNw/I3RwwoIuyc+0+eSNtA=",
+   "wrapNonce": "2QbhUxOuCt2mO6Wu",
+   "noncePrefix": "Z/4+FvoU2Q==",
+   "plaintextSize": 196708,
+   "plaintextSha256": "c322147d3127fc475664dc04b9042e43dc24161fc07f75e378b1decd957eaa95",
+   "fileSize": 197046,
+   "fileSha256": "5a6e4f1dd41ee482197e06833bd44efdb07e42dcdd98683932acdc95ef0812c6"
+  }
+ ],
+ "keys": {
+  "seed": "doorprints dpx vectors keys/1",
+  "recoveryBytes": "00112233445566778899aabbccddeeff",
+  "devices": [
+   {
+    "ikm": "d98d70924ee7056ad79057eac5b6b4b416570b1b67ab45fab90a3565c58b4283",
+    "name": "Pixel 8",
+    "platform": "android"
+   },
+   {
+    "ikm": "2cc5122d216268c31bf323d2c820aebbc982e01a17d1aa46d644fda8d86afa92",
+    "name": "फ़ोन \"iPhone\"",
+    "platform": "ios"
+   },
+   {
+    "ikm": "046683030c70392f26c7e7737bcaeec8762a63de4e4a227461769bed90a575b0",
+    "name": "Chrome on the laptop",
+    "platform": "web"
+   }
+  ],
+  "steps": [
+   {
+    "op": "create",
+    "now": 1790000000000,
+    "file": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWtleXMvMSIsImJvZHkiOnsicmV2aXNpb24iOjEsImVwb2NoIjoxLCJjaGFpbiI6W10sImRldmljZXMiOlt7ImtpZCI6Ik9zNTlqSmRXS2JrTG8zSEs1cFhVaGc9PSIsIm5hbWUiOiJQaXhlbCA4IiwicGxhdGZvcm0iOiJhbmRyb2lkIiwicHVibGljS2V5IjoiQkg4b2NKcWdISG9EUWcvN3lGd1l3RjVUdnJaSEFDL0QwYXdpclk2RVoyd283TGJ1NGdtejZpTTlBQmtsM2RscGFPdy9WdkNXeUFmV3E4NWtERDFvT2I4PSIsImVucm9sbGVkQXQiOjE3OTAwMDAwMDAwMDAsImVucm9sbGVkQnkiOm51bGwsIndyYXAiOnsiZW5jIjoiQlBPcTRMVitES3BUdklHLyt1MkEyZ1E5dHVBN1hYUWpiOWZvRmdObGF5ZWJoSUVvY0V5dVAwZmFFci9FVHFadXUrM0ZMSk5TUEtjaDNOR3FuSDUzZlhJPSIsImN0IjoiVDAzdzFCZzdOMUJxRVc5M2g4WTlENWJ6bTFsK1pzSlo3RnQrZk5sdzI2eWVhWnJqdWphOWFjaUpJV2k1ZFpzTSJ9fV0sInJlY292ZXJ5Ijp7ImtpZCI6IkVoT2UyaVdITEFGMDFRbTlvdGdJTVE9PSIsInB1YmxpY0tleSI6IkJQTjdXOTRqMklqSlJBUFlUYUREK3Zhc1B4bGExVHdhcG1oRUFNeHVwZTlsM1J5Z2hiY0VVMnRyQ09IRmFZeDBpVUtOMEdEMEwwYnFXd2E2bUdqYmovZz0iLCJ3cmFwIjp7ImVuYyI6IkJEM3VIMHVxdmNTbWgvMkFtU3pleDBrc2EyV3BKMUVPL3VZcXZKY2lHVldnZTE0cVJHejhQVUtmb1lROS9pMjBPWEVxK0dFMzZxN1FCTUZqWmFLenBUWT0iLCJjdCI6InNhZXM1TEthRGtiaWVXM1k2cEZVamNrU0pCNDNyTUtzOS9KZWlNWU1FQ0JPblVmOFRINEtpNVVOa1p4OWxwMVMifX0sInJldm9rZWQiOltdfSwibWFjIjoidUxVWHhML2F5OC9QNVkvbkcveUg2ODRmT1poamw2K0pSaFVMN3JvOHlNQT0ifQ==",
+    "openers": [
+     0
+    ],
+    "folderKeys": {
+     "1": "q2v9CGotAJS+Qjk9yNo0SgWvP1EMJMWnPbwTpxvl0fo="
+    }
+   },
+   {
+    "op": "addDevice",
+    "now": 1790000100000,
+    "approver": 0,
+    "device": 1,
+    "file": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWtleXMvMSIsImJvZHkiOnsicmV2aXNpb24iOjIsImVwb2NoIjoxLCJjaGFpbiI6W10sImRldmljZXMiOlt7ImtpZCI6Ik9zNTlqSmRXS2JrTG8zSEs1cFhVaGc9PSIsIm5hbWUiOiJQaXhlbCA4IiwicGxhdGZvcm0iOiJhbmRyb2lkIiwicHVibGljS2V5IjoiQkg4b2NKcWdISG9EUWcvN3lGd1l3RjVUdnJaSEFDL0QwYXdpclk2RVoyd283TGJ1NGdtejZpTTlBQmtsM2RscGFPdy9WdkNXeUFmV3E4NWtERDFvT2I4PSIsImVucm9sbGVkQXQiOjE3OTAwMDAwMDAwMDAsImVucm9sbGVkQnkiOm51bGwsIndyYXAiOnsiZW5jIjoiQlBPcTRMVitES3BUdklHLyt1MkEyZ1E5dHVBN1hYUWpiOWZvRmdObGF5ZWJoSUVvY0V5dVAwZmFFci9FVHFadXUrM0ZMSk5TUEtjaDNOR3FuSDUzZlhJPSIsImN0IjoiVDAzdzFCZzdOMUJxRVc5M2g4WTlENWJ6bTFsK1pzSlo3RnQrZk5sdzI2eWVhWnJqdWphOWFjaUpJV2k1ZFpzTSJ9fSx7ImtpZCI6Im0yNWpMSXFhWHY5dVZ6YW9xZExQV1E9PSIsIm5hbWUiOiLgpKvgpLzgpYvgpKggXCJpUGhvbmVcIiIsInBsYXRmb3JtIjoiaW9zIiwicHVibGljS2V5IjoiQkcvMm1pNmREQU5wMGM5SlAvbzNLcU9mYmpGbWRuSUYzR1hyakFEaHlXaXp5OWZNdXJmOHlUWHcxRFEwS0paQy9rZFFSWnVoK0R6Lyt3dkp4T1FCR2pjPSIsImVucm9sbGVkQXQiOjE3OTAwMDAxMDAwMDAsImVucm9sbGVkQnkiOiJPczU5akpkV0tia0xvM0hLNXBYVWhnPT0iLCJ3cmFwIjp7ImVuYyI6IkJIanVROGZBalNpVzRaR1dMSUp2cWNCZ1c3clMrUUpLeFlHUjViRW82TnoyT1ZVRERwS2NZcG9rUm9sNjlGejhoSXVCWHUzL09XbDkrRTBoUDNHVC9tYz0iLCJjdCI6IkV6b0NMR0RMNkdXM3NjUGdZOUlIaVVkZTdkMmRwSzVSSi9SbUxpZEFQZzllZGVuMzlkTStwV25zSlhSUE13MEsifX1dLCJyZWNvdmVyeSI6eyJraWQiOiJFaE9lMmlXSExBRjAxUW05b3RnSU1RPT0iLCJwdWJsaWNLZXkiOiJCUE43Vzk0ajJJakpSQVBZVGFERCt2YXNQeGxhMVR3YXBtaEVBTXh1cGU5bDNSeWdoYmNFVTJ0ckNPSEZhWXgwaVVLTjBHRDBMMGJxV3dhNm1HamJqL2c9Iiwid3JhcCI6eyJlbmMiOiJCRDN1SDB1cXZjU21oLzJBbVN6ZXgwa3NhMldwSjFFTy91WXF2SmNpR1ZXZ2UxNHFSR3o4UFVLZm9ZUTkvaTIwT1hFcStHRTM2cTdRQk1GalphS3pwVFk9IiwiY3QiOiJzYWVzNUxLYURrYmllVzNZNnBGVWpja1NKQjQzck1LczkvSmVpTVlNRUNCT25VZjhUSDRLaTVVTmtaeDlscDFTIn19LCJyZXZva2VkIjpbXX0sIm1hYyI6Ill6bmhwNGRsdnM4WmY4YTNlN2h0bmx0RnlySmVkd2tlWVpUUElxSjVxTnM9In0=",
+    "openers": [
+     0,
+     1
+    ],
+    "folderKeys": {
+     "1": "q2v9CGotAJS+Qjk9yNo0SgWvP1EMJMWnPbwTpxvl0fo="
+    }
+   },
+   {
+    "op": "addDevice",
+    "now": 1790000200000,
+    "approver": 0,
+    "device": 2,
+    "file": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWtleXMvMSIsImJvZHkiOnsicmV2aXNpb24iOjMsImVwb2NoIjoxLCJjaGFpbiI6W10sImRldmljZXMiOlt7ImtpZCI6Ik9zNTlqSmRXS2JrTG8zSEs1cFhVaGc9PSIsIm5hbWUiOiJQaXhlbCA4IiwicGxhdGZvcm0iOiJhbmRyb2lkIiwicHVibGljS2V5IjoiQkg4b2NKcWdISG9EUWcvN3lGd1l3RjVUdnJaSEFDL0QwYXdpclk2RVoyd283TGJ1NGdtejZpTTlBQmtsM2RscGFPdy9WdkNXeUFmV3E4NWtERDFvT2I4PSIsImVucm9sbGVkQXQiOjE3OTAwMDAwMDAwMDAsImVucm9sbGVkQnkiOm51bGwsIndyYXAiOnsiZW5jIjoiQlBPcTRMVitES3BUdklHLyt1MkEyZ1E5dHVBN1hYUWpiOWZvRmdObGF5ZWJoSUVvY0V5dVAwZmFFci9FVHFadXUrM0ZMSk5TUEtjaDNOR3FuSDUzZlhJPSIsImN0IjoiVDAzdzFCZzdOMUJxRVc5M2g4WTlENWJ6bTFsK1pzSlo3RnQrZk5sdzI2eWVhWnJqdWphOWFjaUpJV2k1ZFpzTSJ9fSx7ImtpZCI6Im0yNWpMSXFhWHY5dVZ6YW9xZExQV1E9PSIsIm5hbWUiOiLgpKvgpLzgpYvgpKggXCJpUGhvbmVcIiIsInBsYXRmb3JtIjoiaW9zIiwicHVibGljS2V5IjoiQkcvMm1pNmREQU5wMGM5SlAvbzNLcU9mYmpGbWRuSUYzR1hyakFEaHlXaXp5OWZNdXJmOHlUWHcxRFEwS0paQy9rZFFSWnVoK0R6Lyt3dkp4T1FCR2pjPSIsImVucm9sbGVkQXQiOjE3OTAwMDAxMDAwMDAsImVucm9sbGVkQnkiOiJPczU5akpkV0tia0xvM0hLNXBYVWhnPT0iLCJ3cmFwIjp7ImVuYyI6IkJIanVROGZBalNpVzRaR1dMSUp2cWNCZ1c3clMrUUpLeFlHUjViRW82TnoyT1ZVRERwS2NZcG9rUm9sNjlGejhoSXVCWHUzL09XbDkrRTBoUDNHVC9tYz0iLCJjdCI6IkV6b0NMR0RMNkdXM3NjUGdZOUlIaVVkZTdkMmRwSzVSSi9SbUxpZEFQZzllZGVuMzlkTStwV25zSlhSUE13MEsifX0seyJraWQiOiJQeGtaRW5wSTU0WHBVaFVQY253LzNRPT0iLCJuYW1lIjoiQ2hyb21lIG9uIHRoZSBsYXB0b3AiLCJwbGF0Zm9ybSI6IndlYiIsInB1YmxpY0tleSI6IkJKVDErV2hrdGZSbm9zbDhjamhkMnR6KzByYkpZZmZlQ2ZCREVmelBIRDBtM25KYlNnUit0cnVSbk5jY1JycHRIbjZFYzVlb1hVK3RsZUdnaXBkaWpKTT0iLCJlbnJvbGxlZEF0IjoxNzkwMDAwMjAwMDAwLCJlbnJvbGxlZEJ5IjoiT3M1OWpKZFdLYmtMbzNISzVwWFVoZz09Iiwid3JhcCI6eyJlbmMiOiJCSHF5RTQ5Z3JhVWNCSk5vNDZOSjJ4dTVwSDE1RmIyYTZyVms4WXZHdlZRTlg2ZkpnNmJhc2lPZkF3aURMNG80amo0cXA1QzNqb1VyQi9tY0lUb0tnT289IiwiY3QiOiJYZjBXcnhlOHpmRU90QTNycGYwbGsyd2puTk1lNFF1V2pYR2VqRGxVWGhyQlZmeU1obTFxaW9FMnAybWx6THRUIn19XSwicmVjb3ZlcnkiOnsia2lkIjoiRWhPZTJpV0hMQUYwMVFtOW90Z0lNUT09IiwicHVibGljS2V5IjoiQlBON1c5NGoySWpKUkFQWVRhREQrdmFzUHhsYTFUd2FwbWhFQU14dXBlOWwzUnlnaGJjRVUydHJDT0hGYVl4MGlVS04wR0QwTDBicVd3YTZtR2piai9nPSIsIndyYXAiOnsiZW5jIjoiQkQzdUgwdXF2Y1NtaC8yQW1TemV4MGtzYTJXcEoxRU8vdVlxdkpjaUdWV2dlMTRxUkd6OFBVS2ZvWVE5L2kyME9YRXErR0UzNnE3UUJNRmpaYUt6cFRZPSIsImN0Ijoic2FlczVMS2FEa2JpZVczWTZwRlVqY2tTSkI0M3JNS3M5L0plaU1ZTUVDQk9uVWY4VEg0S2k1VU5rWng5bHAxUyJ9fSwicmV2b2tlZCI6W119LCJtYWMiOiJwWjFMbVA1cG11eGYxQTVobEhrc1k2Z0JBZlhiSXJWTmxENGJySmhrLzFnPSJ9",
+    "openers": [
+     0,
+     1,
+     2
+    ],
+    "folderKeys": {
+     "1": "q2v9CGotAJS+Qjk9yNo0SgWvP1EMJMWnPbwTpxvl0fo="
+    }
+   },
+   {
+    "op": "newEpoch",
+    "now": 1790000300000,
+    "revoke": 1,
+    "file": "eyJmb3JtYXQiOiJkb29ycHJpbnRzLWtleXMvMSIsImJvZHkiOnsicmV2aXNpb24iOjQsImVwb2NoIjoyLCJjaGFpbiI6W3siZXBvY2giOjIsIm5vbmNlIjoiR0ZaK0d6OHRSaHlJOVpicyIsImN0IjoiOG5jQWNPcGJ0NzdLTFhRcDRyd2ZNUXI0L1dSRHBDb2VJYTZtUzVYaTBrdzhGWVRIYytLK3A4aFlubmY4ZVg2UiJ9XSwiZGV2aWNlcyI6W3sia2lkIjoiT3M1OWpKZFdLYmtMbzNISzVwWFVoZz09IiwibmFtZSI6IlBpeGVsIDgiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJwdWJsaWNLZXkiOiJCSDhvY0pxZ0hIb0RRZy83eUZ3WXdGNVR2clpIQUMvRDBhd2lyWTZFWjJ3bzdMYnU0Z216NmlNOUFCa2wzZGxwYU93L1Z2Q1d5QWZXcTg1a0REMW9PYjg9IiwiZW5yb2xsZWRBdCI6MTc5MDAwMDAwMDAwMCwiZW5yb2xsZWRCeSI6bnVsbCwid3JhcCI6eyJlbmMiOiJCSXpwSXNCbU9uSkx1dnJCVHBMVnpMZ1d6QWc3UWF6RWVHSjRZdm9WMVJhT1pWZVgyallUSkpzZ3dEeHFvYmd0MXc4QUp1WExqYWg1eVA0NVZmY0R6N289IiwiY3QiOiI1Tkp0SDZKby9sRElTcFV4bVNZKzNyUXVYWk5LOWlHMEFpTE1ZZUtRcWFXclY3eDhodSs4K3B4MHBBSW4xb0pxIn19LHsia2lkIjoiUHhrWkVucEk1NFhwVWhVUGNudy8zUT09IiwibmFtZSI6IkNocm9tZSBvbiB0aGUgbGFwdG9wIiwicGxhdGZvcm0iOiJ3ZWIiLCJwdWJsaWNLZXkiOiJCSlQxK1doa3RmUm5vc2w4Y2poZDJ0eiswcmJKWWZmZUNmQkRFZnpQSEQwbTNuSmJTZ1IrdHJ1Um5OY2NScnB0SG42RWM1ZW9YVSt0bGVHZ2lwZGlqSk09IiwiZW5yb2xsZWRBdCI6MTc5MDAwMDIwMDAwMCwiZW5yb2xsZWRCeSI6Ik9zNTlqSmRXS2JrTG8zSEs1cFhVaGc9PSIsIndyYXAiOnsiZW5jIjoiQkI0Qnc4cHVVRTFPWU81dkRJOG1rMUx0NHRWd0FjdjBodnhwcXgrVXhpOFJWck9qOVNsbzNENjhubDBaU21jZ3VCajNQSkppWUFwYVZUa1k2a0VsbnVnPSIsImN0IjoiQW5BbXpxeG9hNU50RmtGbkQ0REhZUUJ5bWYyd2llYU1XNXFuTk1sVTl2cE5qM3Y3VGF3VlNacnprOUxlY1lhMiJ9fV0sInJlY292ZXJ5Ijp7ImtpZCI6IkVoT2UyaVdITEFGMDFRbTlvdGdJTVE9PSIsInB1YmxpY0tleSI6IkJQTjdXOTRqMklqSlJBUFlUYUREK3Zhc1B4bGExVHdhcG1oRUFNeHVwZTlsM1J5Z2hiY0VVMnRyQ09IRmFZeDBpVUtOMEdEMEwwYnFXd2E2bUdqYmovZz0iLCJ3cmFwIjp7ImVuYyI6IkJHdkpEdjhOTGFGMTFqNEZCUWgvOGc5SGNqY0Zra1Q0eWlKR1NmTzErc1hBSzk0Y3NsOVVJNkFXREcvVmMweEN1ZUErMTZMU2dsNTFSMXgveGVUNUZZTT0iLCJjdCI6IjdlVm00VDJWSXk2a0o3OUVGdXNBL0FhZmhyMDdmbG9FMTUwOTRJellwbWlBam50SEVaVWNZZ2c1K2VZRUhZR3cifX0sInJldm9rZWQiOlt7ImtpZCI6Im0yNWpMSXFhWHY5dVZ6YW9xZExQV1E9PSIsInJldm9rZWRBdCI6MTc5MDAwMDMwMDAwMCwicmV2b2tlZEF0RXBvY2giOjJ9XX0sIm1hYyI6InBGcHVvczNqbDZHMGVlMEh1MjFla1kvYmVUTU9DR1RBNWJWKzlHWHN5c2M9In0=",
+    "openers": [
+     0,
+     2
+    ],
+    "folderKeys": {
+     "1": "q2v9CGotAJS+Qjk9yNo0SgWvP1EMJMWnPbwTpxvl0fo=",
+     "2": "9+RUfpDeFnggo7yXNAqi5RDsQZ7cLEPwJRsFpcig6ow="
+    }
+   }
+  ]
+ }
+}
