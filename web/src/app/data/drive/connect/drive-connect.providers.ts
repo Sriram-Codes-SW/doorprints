@@ -26,6 +26,7 @@ import type { GoogleConfig } from './google-token-provider';
 import { FetchDriveClient } from '../fetch-drive-client';
 import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { createLazyBackupAdapterProxy, createBackupAdapter } from './factories/backup-factory';
+import { createLazyDeletionAdapterProxy } from './factories/deletion-factory';
 import { createDriveRuntime, getRuntime } from './factories/runtime';
 import { LocalStore } from '../../local-store.service';
 
@@ -111,20 +112,22 @@ export function provideDriveConnect(): Provider[] {
       },
     },
 
-    // Deletion adapter (TODO: wire DriveDeletionService and authorization gates)
+    // Deletion adapter (lazy-loaded: nothing created until first use)
     {
       provide: DRIVE_DELETION_ADAPTER,
-      useFactory: (): DriveDeletionAdapter => {
-        // TODO: Wire DriveDeletionService and web authorizer
-        // Stub implementation for now
-        return {
-          preflight: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
-          decide: () => ({ outcome: 'REFUSED', reason: 'Not implemented' } as any),
-          authorize: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
-          execute: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
-          resume: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
-          confirmGate: () => ({ tickBoxRequired: false, delayMs: 0, enabled: () => false } as any),
-        } as unknown as DriveDeletionAdapter;
+      useFactory: () => {
+        const tokenProvider = inject(GoogleTokenProvider);
+        const localStore = inject(LocalStore);
+        const crypto = inject(WebCryptoProvider);
+
+        // Lazy proxy that defers getRuntime() until first adapter method is called
+        return createLazyDeletionAdapterProxy(() =>
+          getRuntime({
+            tokens: tokenProvider,
+            local: localStore,
+            crypto,
+          })
+        );
       },
     },
 
