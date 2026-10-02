@@ -43,7 +43,7 @@ export type WebAuthorization =
       reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" | "WRONG_KEY";
     };
 
-export type WebRedeemed = GrantCheck | "WRONG_ACTION" | "ALREADY_USED";
+export type WebRedeemed = GrantCheck | "WRONG_ACTION" | "ALREADY_USED" | "NOT_ISSUED";
 
 /**
  * The website's twin of Kotlin's `DriveGate.authorize`/`redeem` for L2 and L3: the passkey factor is opening the
@@ -53,6 +53,8 @@ export type WebRedeemed = GrantCheck | "WRONG_ACTION" | "ALREADY_USED";
 export class WebAuthorizer {
   private nextId = 1;
   private readonly spent = new Set<number>();
+  /** Grants this authorizer issued after a policy pass (and a PRF open for L2/L3). Looked up by id on redeem. */
+  private readonly issued = new Map<number, WebGrant>();
 
   constructor(
     private readonly p: CryptoProvider,
@@ -85,19 +87,23 @@ export class WebAuthorizer {
   }
 
   redeem(grant: WebGrant, action: DeletionAction): WebRedeemed {
-    if (grant.action !== action) return "WRONG_ACTION";
-    if (this.spent.has(grant.id)) return "ALREADY_USED";
-    const c = grantCheck(grant.requirements, grant.grantedAtMs, this.clock());
-    if (c === "VALID") this.spent.add(grant.id);
+    const issued = this.issued.get(grant.id);
+    if (!issued) return "NOT_ISSUED";
+    if (issued.action !== action) return "WRONG_ACTION";
+    if (this.spent.has(issued.id)) return "ALREADY_USED";
+    const c = grantCheck(issued.requirements, issued.grantedAtMs, this.clock());
+    if (c === "VALID") this.spent.add(issued.id);
     return c;
   }
 
   private issue(action: DeletionAction, requirements: Requirements): WebGrant {
-    return {
+    const grant: WebGrant = {
       id: this.nextId++,
       action,
       requirements,
       grantedAtMs: this.clock(),
     };
+    this.issued.set(grant.id, grant);
+    return grant;
   }
 }

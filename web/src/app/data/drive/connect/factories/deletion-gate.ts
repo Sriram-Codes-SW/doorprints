@@ -19,7 +19,8 @@
 import type { AuthorizationGate } from '../../drive-deletion';
 import type { AuthorizationToken, DeletionAction } from '../../drive-deletion-rules';
 import { AUTHORIZATION_MAX_AGE_MS } from '../../drive-deletion-rules';
-import type { WebAuthorizer } from '../../../device-auth/web-authorizer';
+import type { WebAuthorizer, WebGrant } from '../../../device-auth/web-authorizer';
+import { toPolicyAction } from '../deletion-adapter';
 
 /**
  * Real authorization gate that validates tokens through WebAuthorizer.
@@ -57,6 +58,24 @@ export class RealAuthorizationGate implements AuthorizationGate {
 
     // Check operation binding
     if (grant.operationId !== token.operationId) return false;
+
+    // The proof is still a grant id (HMAC-over-operationId is S4b-BL-135). Redeem looks up what WebAuthorizer
+    // issued after the PRF open, so a forged id registered in-page without that open fails.
+    const policyAction = toPolicyAction(grant.action);
+    const stub: WebGrant = {
+      id: grantId,
+      action: policyAction,
+      requirements: {
+        level: token.level,
+        factor: 'NONE',
+        tickBox: false,
+        delaySeconds: 0,
+        pairing: 'NONE',
+        authValidMs: 0,
+      },
+      grantedAtMs: grant.issuedAtMs,
+    };
+    if (this.webAuthorizer.redeem(stub, policyAction) !== 'VALID') return false;
 
     // Mark as spent (one-use)
     this.spent.add(grantId);

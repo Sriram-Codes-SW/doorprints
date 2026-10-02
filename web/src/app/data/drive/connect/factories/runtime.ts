@@ -143,6 +143,8 @@ export async function createDriveRuntime(deps: {
   crypto?: CryptoProvider;
   /** Tests (and a future emulator) pass their own Drive client; production uses FetchDriveClient. */
   drive?: DriveClient;
+  /** Tests pass a shared store so a simulated reload keeps the passkey blob; production uses IndexedDB. */
+  kv?: KeyValueStore;
 }): Promise<DriveRuntime> {
   const crypto = deps.crypto || new WebCryptoProvider();
 
@@ -172,7 +174,8 @@ export async function createDriveRuntime(deps: {
   const drive = deps.drive ?? new FetchDriveClient(deps.tokens);
 
   // Create folder trust stores backed by the opened DB's key-value store
-  const folderTrustStores = new DbFolderTrustStores(opened.keyValueStore);
+  const kv = deps.kv ?? opened.keyValueStore;
+  const folderTrustStores = new DbFolderTrustStores(kv);
 
   return {
     db,
@@ -184,7 +187,7 @@ export async function createDriveRuntime(deps: {
     local: deps.local,
     driveStateStore: opened.driveStateStore,
     folderTrustStores,
-    kv: opened.keyValueStore,
+    kv,
     syncStateStore: opened.syncStateStore,
     photoStateStore: opened.photoStateStore,
   };
