@@ -255,7 +255,7 @@ class SyncBackendSeamTest {
         settings.savePhotoCursor(230)
         val backend = FakeSyncBackend().apply { behind = true }
         val outcome = repoWith(backend).sync(photosAllowed = true)
-        assertTrue(outcome.serverReset)
+        assertTrue(outcome.remoteReset)
         assertTrue(backend.calls.contains("pushHouse $h1"))
         assertEquals(
             listOf("housesSince 0", "visitsSince 0", "recordsSince 0", "photoChangesSince 0"),

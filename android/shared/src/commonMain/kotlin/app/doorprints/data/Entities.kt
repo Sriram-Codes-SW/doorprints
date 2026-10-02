@@ -83,7 +83,7 @@ data class HouseEntity(
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     /** True while this row has local changes the server hasn't seen yet. */
     override val dirty: Boolean = true,
 ) : SyncRecord {
@@ -111,7 +111,7 @@ data class VisitEntity(
     val leftAt: Long? = null,
     val source: VisitSource = VisitSource.MANUAL,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     override val dirty: Boolean = true,
 ) : SyncRecord
 
@@ -190,6 +190,6 @@ data class RecordEntity(
     /** The record as JSON object text, at most `RecordRules.MAX_PAYLOAD_BYTES` of UTF-8. */
     val payload: String,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     override val dirty: Boolean = true,
 ) : SyncRecord

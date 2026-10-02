@@ -614,6 +614,12 @@ export class LocalStore {
     }
   }
 
+  /** Every record of every type, tombstones included (the pull's merge rule needs the clean ones too, S4b-BL-130). */
+  async allRecords(): Promise<RecordRecord[]> {
+    const db = await this.db();
+    return sortRecords(await db.getAll<RecordRecord>('records'));
+  }
+
   async dirtyRecords(): Promise<RecordRecord[]> {
     const db = await this.db();
     return sortRecords((await db.getAll<RecordRecord>('records')).filter((r) => r.dirty));

@@ -292,7 +292,7 @@ class RecordsTest {
         db.records().upsert(RecordEntity("pin", "p1", "{\"name\":\"Synced\"}", updatedAt = at, dirty = false))
         settings.saveCursors(house = 0, visit = 0, record = 2000) // Above the server's maxSyncVersion of 1000.
         val outcome = repo.sync(photosAllowed = true)
-        assertTrue(outcome.serverReset)
+        assertTrue(outcome.remoteReset)
         assertTrue(server.seen.contains("PUT /api/records/pin/p1"))
         assertTrue(server.seen.contains("GET /api/records?since=0"))
         assertEquals(0L, settings.cursors().record)

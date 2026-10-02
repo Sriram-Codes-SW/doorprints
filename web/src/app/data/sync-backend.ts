@@ -42,7 +42,7 @@ import type { MergeRule } from './sync-rules';
  *    its position and the loop asks for rows after the highest it has handled. The server's is its change-log counter;
  *    a backend without one gives a number that only grows within its own log (a time or a revision) and keeps whatever
  *    else it needs (Drive: the map of device id to file checksum) itself. A pushed row answered with no usable
- *    `syncVersion` says nothing about the remote being behind (`serverWasReset`).
+ *    `syncVersion` says nothing about the remote being behind (`pushShowsReset`).
  *  * **"Complete" means handled**: the loop moves a cursor only past rows it has handled, and a stopped download
  *    stores where it got to; a backend never lists a row it has only half written (Drive's `partial-` files).
  *  * **Photos**: deletes and metadata go on any network; on the web every photo moves today, and Drive's network
