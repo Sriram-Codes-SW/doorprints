@@ -33,6 +33,7 @@ export function createTestDeletionAdapter(
   options: {
     prfAuthenticator?: PrfAuthenticator;
     rootId?: string;
+    backupsLeft?: number | null;
   } = {},
 ): DriveDeletionAdapter {
   const kv = new InMemoryKeyValueStore();
@@ -66,12 +67,13 @@ export function createTestDeletionAdapter(
   );
 
   const rootId = options.rootId || rt.session?.rootId || '';
+  const backupsLeft = options.backupsLeft !== undefined ? options.backupsLeft : 5; // Default to 5 for testing
 
   return new DriveDeletionAdapterImpl(
     deletionService,
     webAuthorizer,
     deletionStore,
     rootId,
-    null,
+    backupsLeft,
   );
 }
