@@ -72,9 +72,13 @@ async function main() {
   try {
     browser = await chromium.launch({ headless: true });
   } catch (e) {
-    console.log('skip: Chromium is not available (' + e.message + ')');
-    server.close();
-    process.exit(0);
+    try {
+      browser = await chromium.launch({ channel: 'chrome', headless: true });
+    } catch (e2) {
+      console.log('skip: Chromium is not available (' + e.message + ')');
+      server.close();
+      process.exit(0);
+    }
   }
 
   const page = await browser.newPage();
@@ -88,6 +92,54 @@ async function main() {
   const privacy = page.getByRole('link', { name: /Privacy page/i });
   if ((await privacy.count()) < 1) throw new Error('privacy link missing');
   console.log('ok: built Drive card with empty Google client id');
+
+  // Real IndexedDB in Chromium: a house written on this origin is still there after reload.
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('doorprints', 2);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('houses')) {
+        db.close();
+        reject(new Error('houses store missing'));
+        return;
+      }
+      const tx = db.transaction('houses', 'readwrite');
+      tx.oncomplete = () => {
+        db.close();
+        resolve(true);
+      };
+      tx.onerror = () => reject(tx.error);
+      tx.objectStore('houses').put({
+        id: 'h-reload',
+        label: 'Reload house',
+        lat: 13,
+        lon: 80,
+        status: 'NEW',
+        checklist: {},
+        deleted: false,
+        syncVersion: 1,
+      });
+    };
+  }));
+  await page.reload({ waitUntil: 'networkidle' });
+  const kept = await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open('doorprints', 2);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction('houses', 'readonly');
+      const get = tx.objectStore('houses').get('h-reload');
+      get.onerror = () => reject(get.error);
+      get.onsuccess = () => {
+        const v = get.result;
+        db.close();
+        resolve(!!(v && v.label === 'Reload house'));
+      };
+    };
+  }));
+  if (!kept) throw new Error('IndexedDB did not keep the house after reload');
+  console.log('ok: IndexedDB kept a house after reload');
   await browser.close();
   server.close();
 }
