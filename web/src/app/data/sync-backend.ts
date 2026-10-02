@@ -18,7 +18,7 @@
 
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { map } from 'rxjs';
+import { map, of } from 'rxjs';
 import { HouseApiService } from '../core/house-api.service';
 import type { HouseDto, PhotoChangeDto, RecordDto, VisitDto } from '../core/models';
 import type { PhotoMeta } from '../shared/photo-tags';
@@ -61,6 +61,17 @@ export interface SyncBackend {
    */
   isBehind(cursors: readonly number[]): Observable<boolean>;
 
+  /**
+   * True for a backend that keeps whole snapshots (Drive): its `push*` calls only note the row, and the rows are sent
+   * together in {@link commitPushes}. The loop then marks pushed rows clean (and forgets pushed photo deletions) **only
+   * after {@link commitPushes} returned**: the snapshot is complete and confirmed by read-back (docs/15 §1.4). The
+   * server's is false: each push is confirmed by its answer.
+   */
+  readonly stagesPushes?: boolean;
+
+  /** Sends what the pushes noted and takes in what the others changed (only when {@link stagesPushes}); failures are thrown. */
+  commitPushes?(): Observable<void>;
+
   /** Sends one changed house and answers with the row the remote keeps (last write wins there, or the one sent). */
   pushHouse(house: HouseDto): Observable<HouseDto>;
   /** Sends one changed visit; see {@link pushHouse}. */
@@ -100,6 +111,12 @@ export class ServerSyncBackend implements SyncBackend {
   /** `GET /api/stats`' `maxSyncVersion` below a stored cursor ({@link serverBehind}); an older server's none: false. */
   isBehind(cursors: readonly number[]): Observable<boolean> {
     return this.api.stats().pipe(map((stats) => serverBehind(stats?.maxSyncVersion, cursors)));
+  }
+
+  readonly stagesPushes = false;
+
+  commitPushes(): Observable<void> {
+    return of(undefined);
   }
 
   pushHouse(house: HouseDto): Observable<HouseDto> {
