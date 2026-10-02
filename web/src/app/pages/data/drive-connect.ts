@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, computed, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, ChangeDetectionStrategy, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
@@ -35,10 +35,10 @@ import { DriveConnectService, type ConnectState } from '../../data/drive/connect
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DriveConnectComponent implements OnInit {
-  private readonly service = inject(DriveConnectService);
+  private readonly service = inject(DriveConnectService, { optional: true });
   protected readonly i18n = inject(TranslationService);
 
-  protected readonly state = computed(() => this.service.getState());
+  protected readonly state = computed(() => this.service?.getState() ?? 'Unavailable');
   protected readonly busy = signal(false);
   protected readonly recoveryKey = signal<string | null>(null);
   protected readonly recoveryKeySaved = signal(false);
@@ -56,6 +56,7 @@ export class DriveConnectComponent implements OnInit {
   }
 
   async onConnect(): Promise<void> {
+    if (!this.service) return;
     this.busy.set(true);
     try {
       const result = await this.service.connect();
@@ -86,16 +87,19 @@ export class DriveConnectComponent implements OnInit {
   }
 
   async continueFromRecoveryKey(): Promise<void> {
+    if (!this.service) return;
     this.service.confirmRecoveryKeySaved();
   }
 
   async skipRecoveryKey(): Promise<void> {
+    if (!this.service) return;
     if (confirm(this.i18n.t('driveConnect.recoveryKeyWarning'))) {
       this.service.skipRecoveryKeyWithWarning();
     }
   }
 
   async onBackupNow(): Promise<void> {
+    if (!this.service) return;
     this.busy.set(true);
     try {
       await this.service.backUpNow();
@@ -111,18 +115,21 @@ export class DriveConnectComponent implements OnInit {
   }
 
   toggleAutoBackup(event: Event): void {
+    if (!this.service) return;
     const checked = (event.target as HTMLInputElement).checked;
     this.autoBackupEnabled.set(checked);
     void this.service.setAutoBackup(checked);
   }
 
   togglePhotosWifiOnly(event: Event): void {
+    if (!this.service) return;
     const checked = (event.target as HTMLInputElement).checked;
     this.photosWifiOnly.set(checked);
     void this.service.setPhotosWifiOnly(checked);
   }
 
   async onUploadPhotosNow(): Promise<void> {
+    if (!this.service) return;
     this.busy.set(true);
     try {
       await this.service.uploadPhotosNowOverMobile();
@@ -134,6 +141,7 @@ export class DriveConnectComponent implements OnInit {
   }
 
   async onDisconnect(): Promise<void> {
+    if (!this.service) return;
     if (confirm(this.i18n.t('driveConnect.disconnect'))) {
       this.busy.set(true);
       try {
@@ -154,6 +162,7 @@ export class DriveConnectComponent implements OnInit {
   }
 
   async confirmDelete(): Promise<void> {
+    if (!this.service) return;
     const level = this.deleteConfirmLevel();
     if (!level) return;
 
