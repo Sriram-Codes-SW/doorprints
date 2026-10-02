@@ -40,8 +40,8 @@ import type { PhotoStateStore } from '../../drive-photo-seams';
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
  * and Drive client. All components are opened lazily and memoized per page load.
  *
- * The session field is set by the backup adapter after successful connect and read by the sync adapter.
- * Sync before backup connect will have a null session and should return 'not connected' status.
+ * The session field is set by the backup adapter after successful connect and read by sync and deletion.
+ * Sync/deletion before backup connect will have a null session and should return 'not connected' status.
  *
  * S4b-BL-117, S4b-BL-73, S4b-BL-131, docs/15 §9.4.
  */
@@ -57,7 +57,7 @@ export interface DriveRuntime {
   folderTrustStores: FolderTrustStores;
   syncStateStore: SyncStateStore;
   photoStateStore: PhotoStateStore;
-  session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync
+  session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync and deletion
 }
 
 /**
