@@ -75,6 +75,12 @@ export class FolderSession {
  */
 export interface LocalRows {
   all(): Promise<readonly SyncRow[]>;
+  /** Rows changed on this device and not yet confirmed written to Drive (optional: the adapter marks them clean after read-back). */
+  changedRows?(): Promise<readonly SyncRow[]>;
+  /** Clears the changed flag of rows whose version was written and read back; never of a row edited meanwhile. */
+  markSynced?(rows: readonly SyncRow[]): Promise<void>;
+  /** Stores the rows other devices wrote that won the merge (`SyncReport.take`); never marks them changed here. */
+  applyRemote?(rows: readonly SyncRow[]): Promise<void>;
   /** One photo row (live or not) by id, for the tombstone of a photo deleted here and for a metadata push. */
   photo(photoId: string): Promise<PhotoChangeDto | null>;
 }

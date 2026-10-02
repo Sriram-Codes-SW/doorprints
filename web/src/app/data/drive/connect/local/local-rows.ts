@@ -27,6 +27,7 @@ import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../
 import { houseFromDto, recordFromDto, visitFromDto } from '../../../records';
 import type { LocalRows } from '../../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../../sync-file';
+import { SYNC_EARLIEST_MS, syncRow } from '../../sync-file';
 
 export class LocalRowsAdapter implements LocalRows {
   constructor(private readonly store: LocalStore, private readonly deviceId: string) {}
@@ -55,6 +56,19 @@ export class LocalRowsAdapter implements LocalRows {
     return rows;
   }
 
+  async changedRows(): Promise<readonly SyncRow[]> {
+    const houses = new Set((await this.store.dirtyHouses()).map((h) => h.id));
+    const visits = new Set((await this.store.dirtyVisits()).map((v) => v.id));
+    const records = new Set((await this.store.dirtyRecords()).map((r) => `${r.type}/${r.id}`));
+    const all = await this.all();
+    return all.filter(
+      (r) =>
+        (r.kind === 'houses' && houses.has(r.key)) ||
+        (r.kind === 'visits' && visits.has(r.key)) ||
+        (r.kind === 'records' && records.has(r.key)),
+    );
+  }
+
   async photo(photoId: string): Promise<PhotoChangeDto | null> {
     const photos = await this.store.allPhotos();
     const found = photos.find((p: PhotoRecord) => p.id === photoId);
@@ -71,7 +85,7 @@ export class LocalRowsAdapter implements LocalRows {
     };
   }
 
-  async markClean(rows: readonly SyncRow[]): Promise<void> {
+  async markSynced(rows: readonly SyncRow[]): Promise<void> {
     for (const row of rows) {
       switch (row.kind) {
         case 'houses':
@@ -115,14 +129,17 @@ export class LocalRowsAdapter implements LocalRows {
     await this.store.putImported(imported);
   }
 
-  private toSyncRow(kind: SyncKind, key: string, updatedAt: string | null | undefined, deleted: boolean, json: Record<string, unknown>): SyncRow {
-    const updatedAtMs = updatedAt ? new Date(updatedAt).getTime() : Date.now();
-    return {
-      kind,
-      key,
-      stamp: { updatedAt: updatedAtMs, by: this.deviceId, deleted },
-      json,
-    };
+  /**
+   * One row as the sync file holds it: the record's own fields plus `by` and `deleted`, built by the schema's row
+   * builder so what we write is what `parseSyncFile` accepts. Local-only bookkeeping (`dirty`) never leaves the device.
+   */
+  private toSyncRow(kind: SyncKind, _key: string, _updatedAt: string | null | undefined, deleted: boolean, json: Record<string, unknown>): SyncRow {
+    const { dirty: _dirty, ...shared } = json;
+    // One record without a usable updatedAt must not make the whole file unwritable: fall back to its creation time,
+    // then to the earliest time the schema allows (it then loses every merge, which is the safe side).
+    const usable = (v: unknown): v is string => typeof v === 'string' && Date.parse(v) >= SYNC_EARLIEST_MS;
+    const updatedAt = usable(shared['updatedAt']) ? shared['updatedAt'] : usable(shared['createdAt']) ? shared['createdAt'] : new Date(SYNC_EARLIEST_MS).toISOString();
+    return syncRow(kind, { ...shared, updatedAt, by: this.deviceId, deleted });
   }
 
   private collectRecordTypes(): string[] {

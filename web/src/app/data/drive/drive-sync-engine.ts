@@ -225,9 +225,26 @@ export class DriveSyncEngine {
     }
 
     // The other devices' files.
-    const known = new Set<string>();
-    for (const d of ctx.keys.body.devices) known.add(syncDeviceId(d.kid));
-    for (const r of ctx.keys.body.revoked) if (!r.isRecovery) known.add(syncDeviceId(r.kid));
+    const knownDevices = (): Set<string> => {
+      const k = new Set<string>();
+      for (const d of ctx.keys.body.devices) k.add(syncDeviceId(d.kid));
+      for (const r of ctx.keys.body.revoked) if (!r.isRecovery) k.add(syncDeviceId(r.kid));
+      return k;
+    };
+    let known = knownDevices();
+    // A device that joined after this one opened `keys.json` is unlisted only in our stale copy: re-read the list once
+    // (through the pin, so a forged list is still refused) before calling its file unlisted.
+    if (!ctx.refreshed) {
+      const unknownWriter = [...files.values()].some((f) => {
+        const dev = f.appProperties[DRIVE_LAYOUT.device];
+        return f.appProperties[DRIVE_LAYOUT.state] === DRIVE_LAYOUT.stateComplete && !f.trashed && dev !== me && isDeviceId(dev) && !known.has(dev);
+      });
+      if (unknownWriter) {
+        ctx.refreshed = true;
+        ctx.keys = await this.session.refresh();
+        known = knownDevices();
+      }
+    }
     const groups = new Map<string, DriveFile[]>();
     for (const f of files.values()) {
       if (f.appProperties[DRIVE_LAYOUT.state] !== DRIVE_LAYOUT.stateComplete || f.trashed) continue;

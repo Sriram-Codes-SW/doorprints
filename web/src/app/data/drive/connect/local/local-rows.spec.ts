@@ -76,12 +76,12 @@ describe('LocalRowsAdapter', () => {
     expect(imported?.dirty).toBe(false);
   });
 
-  it('markClean() marks rows clean', async () => {
+  it('markSynced() marks rows clean', async () => {
     const house: HouseDto = { id: 'h1', label: 'Clean', lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };
     await store.putHouseFromServer(house);
     const rows = await adapter.all();
     const houseRow = rows.find((r) => r.kind === 'houses')!;
-    await adapter.markClean([houseRow]);
+    await adapter.markSynced([houseRow]);
     const cleaned = await store.allHouses();
     const h = cleaned.find((house: HouseRecord) => house.id === 'h1');
     expect(h?.dirty).toBe(false);

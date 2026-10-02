@@ -16,9 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { LocalRowsAdapter } from '../local/local-rows';
 import { DriveSyncAdapter, type IDriveSyncAdapter, type SyncAdapterStatus } from '../sync-adapter';
 import type { DriveRuntime } from './runtime';
+import { LocalRowsAdapter } from '../local/local-rows';
 
 /**
  * Creates a real sync adapter from the Drive runtime.
@@ -38,12 +38,14 @@ export function createSyncAdapter(rt: DriveRuntime): DriveSyncAdapter {
   // Wrap in sync adapter with production dependencies from runtime
   // Session is optional and may be set later by backup adapter; adapter handles null gracefully
   return new DriveSyncAdapter(
-    rt.session ?? null,
+    () => rt.session ?? null, // read at every call: the session appears when the backup adapter reaches Ready
     rt.drive,
     () => Date.now(),
     rt.photoStateStore, // Photo state store from opened DB
     undefined, // Use default photo settings
     undefined, // Use default photo config
+    new LocalRowsAdapter(rt.local, rt.deviceId), // the app's real rows
+    rt.syncStateStore, // sync bookkeeping persisted in the Drive database
   );
 }
 

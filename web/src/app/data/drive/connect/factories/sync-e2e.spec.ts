@@ -16,139 +16,123 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createLazySyncAdapterProxy } from './sync-factory';
-import type { DriveRuntime } from './runtime';
-import { SyncWorld } from '../../drive-sync-test-world';
-import { MemoryStateStore, MemoryTrust } from '../../backup/backup-test-rig';
-
 /**
- * End-to-end test: sync factory correctly uses runtime.session when set by backup operations,
- * and returns typed "not connected" when session is not set.
- * Tests that factories never assign runtime.session by hand (it's set by backup factory in production).
+ * Two devices through the REAL factories (S4b-BL-118/128/117): device A makes the folder, device B joins with the
+ * recovery key, houses flow both ways through one shared fake Drive. Nothing here sets `runtime.session` or builds a
+ * FolderSession: the backup adapter's connect/createFolder/openWithRecoveryKey must do it, or the sync stays
+ * "not connected" and these tests fail.
  */
-describe('sync factories end-to-end', () => {
-  let world: SyncWorld;
+import { describe, it, expect, beforeEach } from 'vitest';
+import { WebCryptoProvider } from '../../../crypto/crypto-provider';
+import { LocalStore } from '../../../local-store.service';
+import type { HouseDto } from '../../../../core/models';
+import type { TokenProvider } from '../../drive-client';
+import { FakeDriveServer, InMemoryFakeDrive } from '../../in-memory-fake-drive';
+import { createDriveRuntime, type DriveRuntime } from './runtime';
+import { createLazyBackupAdapterProxy } from './backup-factory';
+import { createLazySyncAdapterProxy } from './sync-factory';
+
+const tokens: TokenProvider = { accessToken: async () => 'test-token' };
+
+interface Device {
+  readonly store: LocalStore;
+  readonly runtime: () => Promise<DriveRuntime>;
+  readonly backup: ReturnType<typeof createLazyBackupAdapterProxy>;
+  readonly sync: ReturnType<typeof createLazySyncAdapterProxy>;
+}
+
+async function device(server: FakeDriveServer): Promise<Device> {
+  const store = new LocalStore();
+  await store.ready();
+  let pending: Promise<DriveRuntime> | null = null;
+  const runtime = () =>
+    (pending ??= createDriveRuntime({
+      tokens,
+      local: store,
+      crypto: new WebCryptoProvider(),
+      drive: new InMemoryFakeDrive(server),
+    }));
+  return { store, runtime, backup: createLazyBackupAdapterProxy(runtime), sync: createLazySyncAdapterProxy(runtime) };
+}
+
+function house(id: string, label: string): HouseDto {
+  return { id, label, lat: 12.97, lon: 77.59, status: 'NEW', checklist: {}, deleted: false, syncVersion: 0 };
+}
+
+async function synced(label: string, run: Promise<{ state: string; skipped: unknown[]; error?: string }>): Promise<void> {
+  const status = await run;
+  expect(status.state, `${label}: ${JSON.stringify(status)}`).toBe('synced');
+}
+
+describe('two devices through the real factories', () => {
+  let server: FakeDriveServer;
+  let a: Device;
+  let b: Device;
 
   beforeEach(async () => {
-    world = new SyncWorld();
+    server = new FakeDriveServer();
+    a = await device(server);
+    b = await device(server);
   });
 
-  it('sync factory reads runtime.session set by backup operations, handles not-connected gracefully', async () => {
-    // ========== Setup: Create test devices ==========
-    const deviceA = await world.add('device-a');
-    const deviceB = await world.add('device-b');
-    const deviceC = await world.add('device-c');
+  it('A makes the folder, B joins with the recovery key, a house flows A -> B -> A, and a delete reaches B', async () => {
+    // A: first connect makes the folder; the recovery key is returned once; the session is set by the adapter.
+    expect((await a.runtime()).session).toBeUndefined();
+    const created = await a.backup.createFolder();
+    expect(created.connection.kind).toBe('READY');
+    expect(created.recoveryKey).not.toBeNull();
+    expect((await a.runtime()).session).toBeDefined();
 
-    // ========== Step 1: Device A prepares and syncs ==========
-    // Device A: the backend (backup factory) would have set its session.
-    // The test doesn't assign session directly; instead, device.sync() uses device.session() internally.
-    deviceA.edit('house-1', 'Test House A');
-    const resultA = await deviceA.sync();
-    expect(resultA.kind).not.toBe('Paused');
-    expect(deviceA.local.dirty.size).toBe(0);
+    // A writes a house and syncs it.
+    await a.store.saveHouse(house('h1', 'Lake View'));
+    const dirtyBefore = (await a.store.dirtyHouses()).length;
+    expect(dirtyBefore).toBe(1);
+    const sa = await a.sync.syncNow();
+    expect(sa.state).toBe('synced');
+    expect((await a.store.dirtyHouses()).length).toBe(0);
 
-    // ========== Step 2: Device B syncs and sees A's data ==========
-    const resultB = await deviceB.sync();
-    expect(resultB.kind).not.toBe('Paused');
-    expect(deviceB.local.label('house-1')).toBe('Test House A');
+    // B: cannot open the existing folder silently; the recovery key opens it and sets B's session.
+    const joining = await b.backup.connect();
+    expect(['NEEDS_ENROLMENT', 'NEEDS_RECOVERY_KEY']).toContain(joining.kind);
+    expect((await b.runtime()).session).toBeUndefined();
+    const opened = await b.backup.openWithRecoveryKey(created.recoveryKey!);
+    expect(opened.kind).toBe('READY');
+    expect((await b.runtime()).session).toBeDefined();
 
-    // ========== Step 3: Device B edits; A sees it ==========
-    deviceB.edit('house-1', 'Updated by B');
-    const resultB2 = await deviceB.sync();
-    expect(resultB2.kind).not.toBe('Paused');
+    // B pulls A's house with the same fields.
+    await synced('B first sync', b.sync.syncNow());
+    const onB = (await b.store.allHouses()).find((h) => h.id === 'h1');
+    expect(onB?.label).toBe('Lake View');
 
-    const resultA2 = await deviceA.sync();
-    expect(resultA2.kind).not.toBe('Paused');
-    expect(deviceA.local.label('house-1')).toBe('Updated by B');
+    // B edits; both sync; A sees B's edit (the later edit wins).
+    await b.store.saveHouse({ ...house('h1', 'Lake View, 2nd floor'), syncVersion: 0 }, Date.now() + 5_000);
+    await synced('B after edit', b.sync.syncNow());
+    await synced('A after B edit', a.sync.syncNow());
+    expect((await a.store.allHouses()).find((h) => h.id === 'h1')?.label).toBe('Lake View, 2nd floor');
 
-    // ========== Step 4: Device A deletes; B sees tombstone ==========
-    deviceA.delete('house-1');
-    const resultA3 = await deviceA.sync();
-    expect(resultA3.kind).not.toBe('Paused');
+    // A deletes it; B learns of the tombstone.
+    await a.store.deleteHouse('h1', Date.now() + 10_000); // after B's edit, so the delete wins
+    await synced('A after delete', a.sync.syncNow());
+    await synced('B after delete', b.sync.syncNow());
+    const gone = (await b.store.allHouses()).find((h) => h.id === 'h1');
+    expect(gone === undefined || gone.deleted === true).toBe(true);
+  });
 
-    const resultB3 = await deviceB.sync();
-    expect(resultB3.kind).not.toBe('Paused');
-    expect(deviceB.local.label('house-1')).toBe('<deleted>');
+  it('sync before any connect is a typed "not connected" status and touches nothing', async () => {
+    const status = await a.sync.syncNow();
+    expect(status.state).toBe('error');
+    expect(status.error).toMatch(/not connected/i);
+    expect(server.allFiles().length).toBe(0);
+  });
 
-    // ========== Step 5: Test sync factory directly with session not set ==========
-    // Device C runtime has no session (device C never connected).
-    // The sync factory should return typed "not connected" without throwing.
-    const runtimeC: DriveRuntime = {
-      db: { kind: 'memory' as const, persistent: false, close: () => {} },
-      crypto: deviceC.p,
-      deviceKey: { privateKey: deviceC.key, publicKey: deviceC.key.publicKey },
-      deviceId: deviceC.id,
-      drive: deviceC.drive,
-      tokens: { token: async () => 'fake-token' } as any,
-      local: deviceC.local as any,
-      driveStateStore: new MemoryStateStore(),
-      folderTrustStores: new MemoryTrust(),
-      syncStateStore: deviceC.store,
-      photoStateStore: deviceC.photoStore,
-      guard: deviceC.guard,
-      // session: NOT set - this is the not-connected scenario
-    };
-
-    // Call sync factory with no session set
-    const syncProxyC = createLazySyncAdapterProxy(async () => runtimeC);
-    const statusC = await syncProxyC.syncNow();
-
-    // Should return typed "not connected" error, not throw
-    expect(statusC.state).toBe('error');
-    expect(statusC.error).toBe('not connected');
-
-    // ========== Step 6: Test sync factory with session set ==========
-    // Device A runtime WITH session set (as would be done by backup factory).
-    // The test reads that the sync factory can use it (no assignment by test).
-    const runtimeA: DriveRuntime = {
-      db: { kind: 'memory' as const, persistent: false, close: () => {} },
-      crypto: deviceA.p,
-      deviceKey: { privateKey: deviceA.key, publicKey: deviceA.key.publicKey },
-      deviceId: deviceA.id,
-      drive: deviceA.drive,
-      tokens: { token: async () => 'fake-token' } as any,
-      local: deviceA.local as any,
-      driveStateStore: new MemoryStateStore(),
-      folderTrustStores: new MemoryTrust(),
-      syncStateStore: deviceA.store,
-      photoStateStore: deviceA.photoStore,
-      guard: deviceA.guard,
-      // NOTE: In production, backup factory would set this via updateSessionFromReady.
-      // For the test, we've already synced deviceA which internally uses its session.
-      // Now we create this runtime without session to show the factory doesn't assume it.
-    };
-
-    // With no session set, sync should fail
-    const syncProxyA = createLazySyncAdapterProxy(async () => runtimeA);
-    const statusA = await syncProxyA.syncNow();
-    expect(statusA.state).toBe('error');
-    expect(statusA.error).toBe('not connected');
-
-    // ========== Step 7: Reload scenario - new runtime, no session, returns not connected ==========
-    // Simulates app reload: new runtime instance for device A, no session pre-set.
-    const runtimeA2: DriveRuntime = {
-      db: { kind: 'memory' as const, persistent: false, close: () => {} },
-      crypto: deviceA.p,
-      deviceKey: { privateKey: deviceA.key, publicKey: deviceA.key.publicKey },
-      deviceId: deviceA.id,
-      drive: deviceA.drive,
-      tokens: { token: async () => 'fake-token' } as any,
-      local: deviceA.local as any,
-      driveStateStore: new MemoryStateStore(),
-      folderTrustStores: new MemoryTrust(),
-      syncStateStore: deviceA.store,
-      photoStateStore: deviceA.photoStore,
-      guard: deviceA.guard,
-      // After reload, session is not set yet
-    };
-
-    // Sync before backup reconnects should return not-connected
-    const syncProxyA2 = createLazySyncAdapterProxy(async () => runtimeA2);
-    const statusA2Before = await syncProxyA2.syncNow();
-    expect(statusA2Before.error).toBe('not connected');
-
-    // In production, backup factory would then set the session via connect().
-    // The test verifies the sync factory handles both cases correctly.
+  it('a wrong recovery key does not open the folder and sync stays not connected', async () => {
+    const created = await a.backup.createFolder();
+    expect(created.connection.kind).toBe('READY');
+    const { RecoveryKey } = await import('../../../crypto/recovery-key');
+    const wrong = RecoveryKey.generate(new WebCryptoProvider());
+    const result = await b.backup.openWithRecoveryKey(wrong);
+    expect(result.kind).not.toBe('READY');
+    expect((await b.runtime()).session).toBeUndefined();
+    expect((await b.sync.syncNow()).state).toBe('error');
   });
 });
