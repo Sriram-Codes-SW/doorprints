@@ -18,7 +18,7 @@
 
 import type { RecoveryKey } from '../../crypto/recovery-key';
 import { DriveBackupService } from '../backup/drive-backup.service';
-import type { BackupSource, StagingSink } from '../backup/drive-backup-seams';
+import type { BackupSource, StagingSink, DriveStateStore } from '../backup/drive-backup-seams';
 import {
   type BackupListing,
   type BackupOutcome,
@@ -29,6 +29,8 @@ import {
 } from '../backup/drive-backup-results';
 import { DriveImportService } from '../backup/drive-import.service';
 import type { ScheduleDecision } from '../backup/backup-schedule';
+import { DriveBackupService as BackupServiceClass } from '../backup/drive-backup.service';
+import { DRIVE_LAYOUT, type DriveClient } from '../drive-client';
 
 /**
  * The web app's backup adapter: wires `DriveBackupService`, `DriveImportService`, and the schedule functions to
@@ -42,6 +44,8 @@ export class DriveBackupAdapter {
   constructor(
     private readonly backupService: DriveBackupService,
     private readonly importService: DriveImportService,
+    private readonly drive: DriveClient,
+    private readonly state: DriveStateStore,
   ) {}
 
   /**
@@ -115,15 +119,59 @@ export class DriveBackupAdapter {
   /**
    * Writes `Read me.txt` in the root folder with `appProperties kind=readme`, plain text in the chosen language,
    * explaining that this folder is Doorprints' own and should not be edited by hand. The text names the settings
-   * path and the website.
+   * path and the website. Idempotent: replaces if present. No personal data; plain text only.
    *
-   * Texts: en, hi (*under review*), ta (*under review*), te (*under review*). Strings managed by `web/messages.json`.
-   * Async to match the service's pattern (network I/O for real Drive write; memory for testing). Here not yet wired
-   * (D11 of the service notes: hi/ta/te strings needed first; S4b-BL-117).
+   * Texts: en, hi (*under review*), ta (*under review*), te (*under review*). Marked `kind=readme` in root per
+   * deletion rules (docs/15 §10, drive-deletion-rules.ts `classifyFile`).
    */
   async writeReadMe(lang: 'en' | 'hi' | 'ta' | 'te'): Promise<void> {
-    // TODO: implement when strings are ready (S4b-BL-117, D11)
-    // For now: this call exists so screens can wire it; it succeeds silently.
+    const content = this.readMeContent(lang);
+    const st = await this.state.load();
+    const rootId = st.rootId;
+    if (!rootId) {
+      throw new Error('No Doorprints folder; call connect() or createFolder() first');
+    }
+
+    // List existing Read me.txt in root
+    const existing = await this.drive.list({
+      parentId: rootId,
+      name: 'Read me.txt',
+    });
+
+    const readMeFile = existing.files[0];
+    const readMeBytes = new TextEncoder().encode(content);
+
+    if (readMeFile) {
+      // Replace existing content (idempotent)
+      await this.drive.upload(
+        { kind: 'existing', fileId: readMeFile.id, mimeType: 'text/plain' },
+        readMeBytes,
+      );
+    } else {
+      // Create new file
+      await this.drive.upload(
+        {
+          kind: 'new',
+          file: {
+            name: 'Read me.txt',
+            mimeType: 'text/plain',
+            parents: [rootId],
+            appProperties: { [DRIVE_LAYOUT.kind]: 'readme' },
+          },
+        },
+        readMeBytes,
+      );
+    }
+  }
+
+  private readMeContent(lang: 'en' | 'hi' | 'ta' | 'te'): string {
+    const contents: Readonly<Record<string, string>> = {
+      en: 'Doorprints backup folder\n\nDo not delete or edit files here by hand; use Settings > Google Drive in Doorprints.\n\nhttps://doorprints.web.app\n\nYour data here is encrypted; Google cannot read it.',
+      hi: '*Under review*\n\nDoorprints बैकअप फ़ोल्डर\n\nइन फ़ाइलों को हाथ से न हटाएं या संपादित न करें; Doorprints में Settings > Google Drive का उपयोग करें।\n\nhttps://doorprints.web.app\n\nयहां आपका डेटा एन्क्रिप्ट है; Google इसे नहीं पढ़ सकता।',
+      ta: '*Under review*\n\nDoorprints காப்பீட் ஃபோல்டர்\n\nஇந்த ஃபைல்களை கையால் நீக்க வேண்டாம் அல்லது திருத்த வேண்டாம்; Doorprints இல் Settings > Google Drive ஐ பயன்படுத்தவும்.\n\nhttps://doorprints.web.app\n\nআপনার ডেটা এখানে এনক্রিপ্ট করা হয়েছে; Google এটি পড়তে পারে না।',
+      te: '*Under review*\n\nDoorprints బ్యాకప్ ఫోల్డర్\n\nఈ ఫైల్‌లను చేతితో తొలగించవద్దు లేదా సవరించవద్దు; Doorprints లో Settings > Google Drive ను ఉపయోగించండి.\n\nhttps://doorprints.web.app\n\nమీ డేటా ఇక్కడ ఎన్‌క్రిప్ట్ చేయబడింది; Google దీన్ని చదవలేము.',
+    };
+    return contents[lang];
   }
 
   /**
