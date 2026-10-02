@@ -33,6 +33,17 @@ import type { ControlWatermarkStore, ControlWatermark } from '../../backup/contr
 import { sameControlWatermark } from '../../backup/control-file';
 
 /**
+ * Session holder for connection state: root folder ID and backup count.
+ * Set by the backup adapter when a connection is Ready.
+ *
+ * S4b-BL-73, docs/15 §9.4.
+ */
+export interface SessionHolder {
+  readonly rootFolderId: string;
+  readonly backupsCount: number | null;
+}
+
+/**
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
  * and Drive client. All components are opened lazily and memoized per page load.
  *
@@ -48,6 +59,7 @@ export interface DriveRuntime {
   local: LocalStore;
   driveStateStore: DriveStateStore;
   folderTrustStores: FolderTrustStores;
+  session?: SessionHolder; // Set by backup adapter on Ready
 }
 
 /**
