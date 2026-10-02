@@ -18,9 +18,11 @@
 
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../../i18n/all-dictionaries';
 import { DriveConnectComponent } from './drive-connect';
 import { DriveConnectService, type ConnectState } from '../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../i18n/translation.service';
+import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 
@@ -72,7 +74,6 @@ async function render(svc: ReturnType<typeof fakeService>) {
       { provide: DriveConnectService, useValue: svc },
       { provide: Announcer, useValue: { announce: vi.fn() } },
       { provide: ConfirmService, useValue: { ask: vi.fn(async () => true) } },
-      { provide: TranslationService, useValue: { t: (k: string) => k, dateTime: (s: string) => s, lang: () => 'en' } },
     ],
   });
   const fixture = TestBed.createComponent(DriveConnectComponent);
@@ -80,7 +81,20 @@ async function render(svc: ReturnType<typeof fakeService>) {
   await fixture.whenStable();
   await flush();
   fixture.detectChanges();
-  return { host: fixture.nativeElement as HTMLElement, fixture, svc, component: fixture.componentInstance };
+  return {
+    host: fixture.nativeElement as HTMLElement,
+    fixture,
+    svc,
+    component: fixture.componentInstance,
+    i18n: TestBed.inject(TranslationService),
+  };
+}
+
+function shown(host: HTMLElement, i18n: TranslationService, key: TKey): void {
+  const translated = i18n.t(key);
+  expect(translated).not.toBe(key);
+  expect(host.textContent).toContain(translated);
+  expect(host.textContent).not.toContain(key);
 }
 
 afterEach(() => TestBed.resetTestingModule());
@@ -90,16 +104,16 @@ describe('DriveConnectComponent', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [DriveConnectComponent],
-      providers: [{ provide: TranslationService, useValue: { t: (k: string) => k, lang: () => 'en' } }],
     });
+    const i18n = TestBed.inject(TranslationService);
     const fixture = TestBed.createComponent(DriveConnectComponent);
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('driveConnect.unavailable');
+    shown(fixture.nativeElement as HTMLElement, i18n, 'driveConnect.unavailable');
   });
 
   it('shows Connect when disconnected', async () => {
-    const { host } = await render(fakeService('Disconnected'));
-    expect(host.textContent).toContain('driveConnect.connect');
+    const { host, i18n } = await render(fakeService('Disconnected'));
+    shown(host, i18n, 'driveConnect.connect');
   });
 
   it('clears the recovery key after confirm', async () => {
@@ -140,7 +154,6 @@ describe('DriveConnectComponent', () => {
         { provide: DriveConnectService, useValue: fakeService('FirstConnectShowRecoveryKey') },
         { provide: Announcer, useValue: announcer },
         { provide: ConfirmService, useValue: { ask: vi.fn(async () => true) } },
-        { provide: TranslationService, useValue: { t: (k: string) => k, dateTime: (s: string) => s, lang: () => 'en' } },
       ],
     });
     const fixture = TestBed.createComponent(DriveConnectComponent);

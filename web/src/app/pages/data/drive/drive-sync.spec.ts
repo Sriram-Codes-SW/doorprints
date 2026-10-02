@@ -18,9 +18,12 @@
 
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../../../i18n/all-dictionaries';
 import { DriveSyncCard } from './drive-sync';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
+import type { Params } from '../../../i18n/translation.service';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -39,30 +42,37 @@ async function render(svc = fakeService()) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [DriveSyncCard],
-    providers: [
-      { provide: DriveConnectService, useValue: svc },
-      {
-        provide: TranslationService,
-        useValue: { t: (k: string) => k, dateTime: (s: string) => s, lang: () => 'en' },
-      },
-    ],
+    providers: [{ provide: DriveConnectService, useValue: svc }],
   });
   const fixture = TestBed.createComponent(DriveSyncCard);
   fixture.detectChanges();
   await fixture.whenStable();
   await flush();
   fixture.detectChanges();
-  return { host: fixture.nativeElement as HTMLElement, fixture, svc, component: fixture.componentInstance };
+  return {
+    host: fixture.nativeElement as HTMLElement,
+    fixture,
+    svc,
+    component: fixture.componentInstance,
+    i18n: TestBed.inject(TranslationService),
+  };
+}
+
+function shown(host: HTMLElement, i18n: TranslationService, key: TKey, params?: Params): void {
+  const translated = i18n.t(key, params);
+  expect(translated).not.toBe(key);
+  expect(host.textContent).toContain(translated);
+  expect(host.textContent).not.toContain(key);
 }
 
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DriveSyncCard', () => {
   it('syncs on init and shows a live status line', async () => {
-    const { host, svc } = await render();
+    const { host, svc, i18n } = await render();
     expect(svc.syncNow).toHaveBeenCalled();
     expect(host.querySelector('[role="status"]')).toBeTruthy();
-    expect(host.textContent).toContain('driveSync.syncNow');
+    shown(host, i18n, 'driveSync.syncNow');
   });
 
   it('shows confirmation questions when sync asks for them', async () => {
@@ -74,9 +84,9 @@ describe('DriveSyncCard', () => {
         needsConfirmation: true,
       }),
     });
-    const { host } = await render(svc);
+    const { host, i18n } = await render(svc);
     expect(host.querySelector('[role="dialog"]')).toBeTruthy();
-    expect(host.textContent).toContain('driveSync.shrinkConfirm');
+    shown(host, i18n, 'driveSync.shrinkConfirm');
   });
 
   it('shows skipped-file notice', async () => {
@@ -88,8 +98,8 @@ describe('DriveSyncCard', () => {
         needsConfirmation: false,
       }),
     });
-    const { host } = await render(svc);
-    expect(host.textContent).toContain('driveSync.skippedFiles');
+    const { host, i18n } = await render(svc);
+    shown(host, i18n, 'driveSync.skippedFiles', { count: 2 });
   });
 
   it('toggles Wi-Fi-only photos', async () => {
@@ -103,7 +113,10 @@ describe('DriveSyncCard', () => {
     const svc = fakeService({
       syncNow: vi.fn().mockRejectedValue(new Error('offline')),
     });
-    const { host } = await render(svc);
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('driveSync.statusError');
+    const { host, i18n } = await render(svc);
+    const status = host.querySelector('[role="status"]')?.textContent ?? '';
+    expect(status).toContain(i18n.t('driveSync.statusError'));
+    expect(status).not.toContain('driveSync.statusError');
+    expect(status).not.toContain('offline');
   });
 });
