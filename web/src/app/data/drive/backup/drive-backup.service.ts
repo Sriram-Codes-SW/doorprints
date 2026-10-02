@@ -41,6 +41,8 @@ import type { BackupSource, DeviceIdentity, DriveDeviceState, DriveStateStore, F
 import { DriveProblem } from './drive-backup-results';
 import type { BackupListing, BackupOutcome, CreateOutcome, DriveBackup, DriveConnection, ReadyFolder, TidyReport } from './drive-backup-results';
 import { DriveImportService } from './drive-import.service';
+import type { LockRunner } from './lock-runner';
+import { WebLockRunner } from './lock-runner';
 
 export const KIND_KEYS = 'keys';
 export const KIND_CONTROL = 'control';
@@ -86,6 +88,7 @@ export class DriveBackupService {
     /** The device's offset from UTC now, in minutes (file names and retention's days). */
     private readonly utcOffsetMinutes: () => number,
     private readonly scratch: ScratchSpace = memoryScratchSpace,
+    private readonly locks: LockRunner = new WebLockRunner(),
   ) {
     this.keysFile = new KeysFile(p);
     this.controlFile = new ControlFile(p);
@@ -131,38 +134,61 @@ export class DriveBackupService {
    * the key set, `doorprints.json` and `Backups/`, then pins this device to it. `withRecoveryKey` false is the
    * person's *Skip* after the warning. The recovery key comes back to be shown **once**; it is never stored. The pin is
    * the last step, so a run that stops half way leaves nothing this device trusts, and the next run starts again.
+   *
+   * Wraps folder creation in an exclusive Web Lock to prevent two tabs from creating duplicate root folders.
+   * The second tab, after acquiring the lock, re-reads Drive state and finds the folder the first tab created.
    */
   async createFolder(withRecoveryKey: boolean): Promise<CreateOutcome> {
     let recovery = null as RecoveryKey | null;
-    const connection = await this.connection(async () => {
-      const st = await this.state.load();
-      const existing = await ensureFolder(this.drive, DRIVE_LAYOUT.root, null, false, st.rootId);
-      if (existing && st.creatingRootId !== existing.id) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
-      const root = existing ?? (await this.drive.createFile({ name: DRIVE_LAYOUT.root.name, mimeType: FOLDER_MIME, parents: [], appProperties: DRIVE_LAYOUT.root.appProperties }));
-      await this.state.save({ ...st, rootId: root.id, creatingRootId: root.id, keysId: null, controlId: null, backupsId: null });
-      const guard = new KeysGuard(this.p, this.trust.keys(root.id));
-      if ((await guard.watermark()) != null) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
-      for (const f of await listAll(this.drive, { parentId: root.id })) {
-        const kind = f.appProperties[DRIVE_LAYOUT.kind];
-        if (kind === KIND_KEYS || kind === KIND_CONTROL) await this.trashQuietly(f.id);
-      }
-      const now = this.clock();
-      const key = withRecoveryKey ? RecoveryKey.generate(this.p) : null;
-      const written = await this.keysFile.createFirstDevice({ publicKey: this.device.key.publicKey, name: this.device.name, platform: this.device.platform }, key, now);
-      const keysId = await this.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
-      const control = await this.controlFile.create(written.opened, now);
-      const controlId = await this.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
-      const backups = (await ensureFolder(this.drive, DRIVE_LAYOUT.backups, root.id, true))!;
-      await this.controlFile.accept(control.body, this.trust.control(root.id));
-      await guard.pinCreated(written);
-      await this.state.save({
-        ...(await this.state.load()),
-        rootId: root.id, keysId, controlId, backupsId: backups.id, creatingRootId: null,
-        deviceId: st.deviceId ?? this.newDeviceId(), newestSeenAt: null, lastBackupId: null,
-      });
-      recovery = key;
-      return { kind: 'READY', folder: { rootId: root.id, keysId, controlId, backupsId: backups.id, keys: written.opened, control: control.body } };
-    });
+    const connection = await this.locks.request('doorprints-drive-create', async () =>
+      this.connection(async () => {
+        // Re-read state after lock acquire: the first tab may have created the folder while we waited.
+        const st = await this.state.load();
+        const existing = await ensureFolder(this.drive, DRIVE_LAYOUT.root, null, false, st.rootId);
+
+        // If a folder exists and it's not one we're currently creating, check if it's already pinned by us.
+        // This can happen when a second tab calls createFolder while the first tab is creating;
+        // after the first tab finishes, the second tab (holding the lock) will find the folder pinned.
+        if (existing && st.creatingRootId !== existing.id) {
+          const guard = new KeysGuard(this.p, this.trust.keys(existing.id));
+          if ((await guard.watermark()) != null) {
+            // We're already pinned to this folder (created in this tab or another).
+            // Use the connect() method to properly open and return the ready state.
+            const keys = await this.findKind(existing.id, KIND_KEYS, st.keysId);
+            if (!keys) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
+            const bytes = await downloadVerified(this.drive, keys.id);
+            const opened = await this.keysFile.open(bytes, this.device.key, guard);
+            return this.ready(existing.id, keys.id, opened);
+          }
+          // Folder exists but we're not pinned to it; reject
+          return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
+        }
+
+        const root = existing ?? (await this.drive.createFile({ name: DRIVE_LAYOUT.root.name, mimeType: FOLDER_MIME, parents: [], appProperties: DRIVE_LAYOUT.root.appProperties }));
+        await this.state.save({ ...st, rootId: root.id, creatingRootId: root.id, keysId: null, controlId: null, backupsId: null });
+        const guard = new KeysGuard(this.p, this.trust.keys(root.id));
+        if ((await guard.watermark()) != null) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
+        for (const f of await listAll(this.drive, { parentId: root.id })) {
+          const kind = f.appProperties[DRIVE_LAYOUT.kind];
+          if (kind === KIND_KEYS || kind === KIND_CONTROL) await this.trashQuietly(f.id);
+        }
+        const now = this.clock();
+        const key = withRecoveryKey ? RecoveryKey.generate(this.p) : null;
+        const written = await this.keysFile.createFirstDevice({ publicKey: this.device.key.publicKey, name: this.device.name, platform: this.device.platform }, key, now);
+        const keysId = await this.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
+        const control = await this.controlFile.create(written.opened, now);
+        const controlId = await this.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
+        const backups = (await ensureFolder(this.drive, DRIVE_LAYOUT.backups, root.id, true))!;
+        await this.controlFile.accept(control.body, this.trust.control(root.id));
+        await guard.pinCreated(written);
+        await this.state.save({
+          ...(await this.state.load()),
+          rootId: root.id, keysId, controlId, backupsId: backups.id, creatingRootId: null,
+          deviceId: st.deviceId ?? this.newDeviceId(), newestSeenAt: null, lastBackupId: null,
+        });
+        recovery = key;
+        return { kind: 'READY', folder: { rootId: root.id, keysId, controlId, backupsId: backups.id, keys: written.opened, control: control.body } };
+      }));
     return { connection, recoveryKey: connection.kind === 'READY' ? recovery : null };
   }
 
