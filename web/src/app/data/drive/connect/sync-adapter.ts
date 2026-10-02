@@ -126,10 +126,12 @@ export class DriveSyncAdapter {
     );
 
     // Initialize photo upload gate with web network state
+    // Web treats UNKNOWN network (no type on desktop) as ALLOWED (S4b-BL-131, docs/15 §11)
     this.photoGate = new PhotoUploadGate(
       webNetworkState,
       () => this.photoSettings,
       this.clock,
+      true, // webUnknownAllowed: on web, UNKNOWN is treated as unmetered
     );
   }
 
@@ -254,12 +256,27 @@ export class DriveSyncAdapter {
 
   /**
    * Get the number of bytes waiting to be uploaded (for the "Upload now" button label).
+   * Sums sizeBytes of all photos known locally but not yet uploaded to Drive.
    */
   async pendingPhotoBytes(): Promise<number> {
-    if (!this.photos) return 0;
     try {
-      // In a real implementation, this would sum the sizes of unsynced photos
-      return 0; // Stub: to be integrated with photo tracking
+      if (!this.photos) return 0;
+      // Get all local rows (photos and other data)
+      const allRows = await this.local.all();
+      // Get all uploaded photo refs
+      const refs = await this.photos.refs();
+      // Sum sizeBytes of photos not yet uploaded (live photos without a ref)
+      let pending = 0;
+      for (const row of allRows) {
+        if (row.kind === 'photos' && !row.stamp.deleted) {
+          const photoId = row.key;
+          const sizeBytes = (row.json['sizeBytes'] as number) ?? 0;
+          if (!(photoId in refs)) {
+            pending += sizeBytes;
+          }
+        }
+      }
+      return pending;
     } catch {
       return 0;
     }

@@ -20,9 +20,10 @@
  * When photos may use the network (S4b-BL-128, docs/15 §11): pure logic, no I/O. Kotlin twin: `PhotoNetworkPolicy.kt`,
  * the same names; `docs/schemas/photo-policy-vectors.json` pins the table on both stacks. Text and the backups are not
  * photos: they go on any network. Battery and charging are NOT conditions (owner, 2026-10-02).
+ * Web treats UNKNOWN as ALLOWED (no type on desktop); Android/iOS report real state (keep UNKNOWN as METERED).
  */
 
-/** What the network is, as far as the platform can tell. The website usually cannot: 'UNKNOWN' is treated as metered. */
+/** What the network is, as far as the platform can tell. UNKNOWN on web is allowed (no type on desktop), on phones it's metered. */
 export type Metering = 'UNMETERED' | 'METERED' | 'UNKNOWN';
 
 /** `roaming`: Android only; `dataSaver`: Android Data Saver, iPhone Low Data Mode, the website's `saveData`. */
@@ -71,13 +72,20 @@ export interface PhotoNetworkDecision {
 
 /**
  * May photo bytes move now? In order: no network, no; an active one-off grant, yes (it also overrides roaming and Data
- * Saver); an unmetered network, yes; a metered or unknown network only with the setting on and neither roaming nor
- * Data Saver/Low Data Mode.
+ * Saver); an unmetered network, yes; on web (webUnknownAllowed=true), UNKNOWN is also yes; a metered network only with
+ * the setting on and neither roaming nor Data Saver/Low Data Mode.
  */
-export function decidePhotoNetwork(c: NetworkConditions, s: PhotoSettings, grant: OneOffGrant | null, now: number): PhotoNetworkDecision {
+export function decidePhotoNetwork(
+  c: NetworkConditions,
+  s: PhotoSettings,
+  grant: OneOffGrant | null,
+  now: number,
+  webUnknownAllowed: boolean = false,
+): PhotoNetworkDecision {
   if (!c.online) return { allowed: false, reason: 'OFFLINE' };
   if (grant && grantActive(grant, now)) return { allowed: true, reason: 'ONE_OFF' };
   if (c.metering === 'UNMETERED') return { allowed: true, reason: 'UNMETERED' };
+  if (c.metering === 'UNKNOWN' && webUnknownAllowed) return { allowed: true, reason: 'UNMETERED' };
   if (!s.uploadOnMobileData) return { allowed: false, reason: 'WAITING_METERED' };
   if (c.roaming) return { allowed: false, reason: 'WAITING_ROAMING' };
   if (c.dataSaver) return { allowed: false, reason: 'WAITING_DATA_SAVER' };
@@ -126,6 +134,7 @@ export const webNetworkState: NetworkState = () =>
 /**
  * The gate the sync loop's "photos allowed" comes from: the network, the setting and the one-off grant, read at the
  * moment of the call. A grant lives in memory (a one-off: it is gone with the page).
+ * webUnknownAllowed: on web, UNKNOWN network (no type on desktop) is treated as allowed (S4b-BL-131).
  */
 export class PhotoUploadGate {
   grant: OneOffGrant | null = null;
@@ -134,6 +143,7 @@ export class PhotoUploadGate {
     private readonly network: NetworkState,
     private readonly settings: () => PhotoSettings,
     private readonly clock: () => number,
+    private readonly webUnknownAllowed: boolean = false,
   ) {}
 
   grantOneOff(): OneOffGrant {
@@ -148,7 +158,7 @@ export class PhotoUploadGate {
   decision(): PhotoNetworkDecision {
     const now = this.clock();
     if (this.grant && !grantActive(this.grant, now)) this.grant = null;
-    return decidePhotoNetwork(this.network(), this.settings(), this.grant, now);
+    return decidePhotoNetwork(this.network(), this.settings(), this.grant, now, this.webUnknownAllowed);
   }
 
   photosAllowed(): boolean {
