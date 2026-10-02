@@ -17,7 +17,7 @@
  */
 
 import type { AuthorizationGate } from '../drive-deletion';
-import type { AuthorizationToken } from '../drive-deletion-rules';
+import type { AuthorizationToken, DeletionAction } from '../drive-deletion-rules';
 
 /**
  * Fake AuthorizationGate for testing.
@@ -25,9 +25,14 @@ import type { AuthorizationToken } from '../drive-deletion-rules';
 export class FakeAuthorizationGate implements AuthorizationGate {
   private genuine = new Set<number>();
   private stillValid = new Set<number>();
+  issuedGrants = new Map<number, { action: DeletionAction; operationId: string }>();
 
   constructor() {
     this.resetAll();
+  }
+
+  registerGrant(grantId: number, action: DeletionAction, operationId: string): void {
+    this.issuedGrants.set(grantId, { action, operationId });
   }
 
   markGenuine(proof: string): void {
@@ -47,7 +52,7 @@ export class FakeAuthorizationGate implements AuthorizationGate {
     return this.genuine.has(Number(token.proof));
   }
 
-  async stillHolds(token: AuthorizationToken): Promise<boolean> {
+  async stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean> {
     return this.stillValid.has(Number(token.proof));
   }
 }
