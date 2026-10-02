@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.9 |
+| Version | 0.10 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
-| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
+| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; HMAC-over-operationId proof S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
 ## Change log
 
@@ -21,6 +21,7 @@
 | 0.7 | 2026-10-02 | Claude (Code), lead | **S4b-BL-125 built** (the encryption core, both stacks, no screen and no Drive wiring): new §9.9, what it built and the details this design did not decide (key separation under the folder key, the AAD layouts, canonical JSON, the `keys.json` layout and MAC input, the recovery key's text and check symbol, HPKE's ephemeral key from DeriveKeyPair, the error kinds, the limits); §9.4 now says how each platform computes the recovery public key (the platform's own operations, no point multiplication in common code); §7's phase 2c row; the iPhone's provider is S4b-BL-131. |
 | 0.8 | 2026-10-02 | Claude (Code), lead | **Fixes from the independent adversarial review of S4b-BL-125** (§9.9): a list is trusted by each device's **pin** of its folder key, not by the MAC (anyone in the Google account could re-wrap a key of their own to every listed public key); the recovery key's **anchor** in `keys.json` (the recovery entry gains `anchorEpoch` and `anchor`); the watermark ordered by (epoch, revision); forks detected; HPKE's ephemeral key from the platform's key generation; a photo opens only against its row's SHA-256; a new recovery key revokes the old kid. |
 | 0.9 | 2026-10-02 | Cursor Agent, lead | **Website Drive UI composed** (draft PR #118): connect, recovery key shown once, backups, sync, L1/L2/L3 deletion (website L1; L2/L3 only with a PRF-sealed passkey; tick box; no delay), 8-digit pairing (S4b-BL-126 web; QR deferred as S4b-BL-134), `web/public/config.js` empty in the tree and written at deploy from `vars.GOOGLE_OAUTH_WEB_CLIENT_ID`, privacy link, user-guide pages. Android/iOS Drive UI paused. Real Google sign-in waits on the owner's Web client id. |
+| 0.10 | 2026-10-02 | Cursor Agent, lead | **§10.4:** the website's L3 confirm is a tick box and **no countdown** (owner: no delay on the website). The shared delete-policy vectors keep **5 s for L3 on the phones** (Kotlin stays in step with decision 8). The website binds a delete grant to a passkey PRF open; HMAC of the operation id is S4b-BL-135. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -264,9 +265,9 @@ largest one:
 > (then the phone's own check: "Confirm it's you to delete", §10)
 
 - *Save a copy first* opens *Save a copy* with a Full backup to the device, then comes back to the dialog.
-- *Delete for good* is enabled only once the box is ticked and 5 seconds have passed since the dialog opened (it
-  counts down in its label for screen readers too). No typed word: typing a word is hard on Indic keyboards and for
-  some people (decision 8).
+- *Delete for good* is enabled only once the box is ticked and, **on the phones**, 5 seconds have passed since the
+  dialog opened (it counts down in its label for screen readers too). **On the website there is no countdown** (owner:
+  a tick box only; §10.4). No typed word: typing a word is hard on Indic keyboards and for some people (decision 8).
 - *Delete this backup* has the same dialog without the box (one file, and the other backups stay).
 - **Device authentication** after *Delete for good* for every L2 and L3 action (§10.1): *Delete all backups*, the
   last backup, *Stop sharing*, *Delete everything*. Cancelled or failed: "Nothing was deleted."
@@ -1033,6 +1034,13 @@ select_account), so it is not a check of who is at the keyboard and is not used 
   whether your computer is locked. Anyone who can use this browser profile can open your houses and your Drive backups
   here. Use your own computer, and *Disconnect Google Drive* on a shared one." The website check runs in the page, so
   it guards against someone at an unlocked computer, not against a changed page (nothing can, without a server).
+- **L3 confirm on the website: tick box, no delay.** Decision 8 and the shared delete-policy vectors still say a
+  5-second delay for L3 so the phones stay in step (owner-approved phone behaviour; Kotlin `DELAY_SECONDS_L3`). The
+  owner decided the **website** skips that countdown and uses a tick box only. That is deliberate, not a silent
+  divergence: the website UI ignores `delayMs` from the policy; `drive-delete.spec.ts` asserts the countdown is
+  absent. A grant is issued only after a WebAuthn PRF open and is redeemed once (`WebAuthorizer.redeem` inside
+  `RealAuthorizationGate.isGenuine`). Binding the proof bytes themselves to an HMAC of the operation id is
+  S4b-BL-135.
 
 ### 10.5 An authenticator app as an option (owner addition, 2026-10-02; **deferred, not in v1**)
 

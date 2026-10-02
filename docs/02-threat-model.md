@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.54 |
+| Version | 0.55 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -65,6 +65,7 @@
 | 0.52 | 2026-10-02 | Claude (Code), lead | The owner decided [15](15-google-drive-backup-and-sharing.md) (v0.5, [03](03-design.md) ADR-33): T-S14, T-S15 and T-I41 (the authenticator app) and the sharing rows T-T16, T-I34, T-E10, AB-12, AB-14, RR-19 apply only when their deferred features are built; T-I39 with the website's PRF-only rule. |
 | 0.53 | 2026-10-02 | Claude (Code), lead | **The encryption core is built** (S4b-BL-125, [15](15-google-drive-backup-and-sharing.md) v0.7 §9.9): T-S13, T-T18, T-T19, T-D12 and T-I37 say what the code now does and what still waits (the control file, Keystore and Secure Enclave keys, enrolment); new RR-26 (the time a file was written is not authenticated, so a revoked device with Drive access can backdate a file under its old epoch) and RR-27 (the website's recovery-key path needs a browser that imports a P-256 key without its public key). |
 | 0.54 | 2026-10-02 | Claude (Code), lead | After the independent adversarial review of S4b-BL-125 ([15](15-google-drive-backup-and-sharing.md) v0.8 §9.9): **T-S13 was open** (a list re-wrapped under the attacker's own folder key passed the MAC); now refused by each device's pin and the recovery anchor; AB-16, T-T19 (the watermark ordered by epoch first, forks detected), RR-27 (only the recovery key depends on the PKCS #8 import) follow; new RR-28 (keys in memory) and RR-29 (an old epoch's holder can extend it for a device that missed the revoke, until that device sees the fork). |
+| 0.55 | 2026-10-02 | Cursor Agent, lead | **RR-30:** CSP `connect-src https:` on Firebase Hosting is kept (Z1, [14](14-lead-backlog-and-handoff.md)): the user's own self-hosted server URL is typed at runtime, unknown at build time, so the Drive Google API hosts and the tile/geocode hosts cannot be an exclusive allow-list without breaking that path. Accepted; [07](07-secure-build-and-deploy.md) §6.3. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -519,3 +520,4 @@ edit it, a shared file belongs to someone else, and a stolen Google session coul
 | RR-29 | (1) An enrolled device that knew an epoch's folder key (a thief before the revoke) can write a valid list of that epoch, or chain higher epochs to it, for a device that has not yet seen the revoke; that device accepts it, and when it then sees the genuine list it reads `ROLLED_BACK` (the thief chained higher) or `FORK_DETECTED` (the same epoch). (2) An old recovery key the person kept after a revoke still opens lists the revoked device forges from the old anchor. (3) After a new epoch *without* a revoke the anchor stays, so the recovery key does not protect against devices enrolled before it | Medium | Neither kind is benign in the UI: the app stops writing, reports, and recovers only by a repin on a stronger proof (`repinFirstPin` over the QR enrolment, `repinWithRecovery` with the **current** recovery key); every revoke issues and shows a new recovery key and says to destroy the old one (15 §9.9); no error kind triggers anything destructive; revoking also means *Disconnect on all devices* (15 §9.5 iv); per-entry signatures are the later option (15 §9.3) |
 | RR-19 | What someone imported from a share stays with them after *Stop sharing* | Medium | It cannot be otherwise without a server; the consent text and the stop dialog say so |
 | RR-20 | Google keeps deleted data in its own systems for a while after a deletion | Low | Outside Doorprints' reach; the guide says so (15 §3.3) |
+| RR-30 | CSP `connect-src https:` lets any HTTPS origin receive a fetch from the page (including Google Drive API hosts once signed in) | Low | **Accepted** (Z1, owner 2026-09-23; re-checked 2026-10-02 for Drive). The self-hosted server URL is typed at runtime and unknown at build time, so narrowing to Google, tiles and geocode would break that path. Tokens stay in memory only (15 §5.5). Script-src is still `'self'` plus the GIS client. [07](07-secure-build-and-deploy.md) §6.3. |
