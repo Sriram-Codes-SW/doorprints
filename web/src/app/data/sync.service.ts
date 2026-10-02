@@ -490,7 +490,36 @@ export class SyncService {
     if (gen !== this.generation) throw new SyncCancelled();
   }
 
+  /**
+   * Pushes local changes ({@link pushRows}). A backend that keeps whole snapshots (Drive, S4b-BL-118, `stagesPushes`)
+   * sends them together in `commitPushes`: the marks that say "sent" wait and run only once that returned (the file
+   * complete and read back), also when a later step failed, so what went is not sent again for nothing.
+   */
   private async push(gen: number): Promise<number> {
+    const afterCommit: Array<() => Promise<unknown>> = [];
+    const sent = async (mark: () => Promise<unknown>): Promise<void> => {
+      if (this.backend.stagesPushes) afterCommit.push(mark);
+      else await mark();
+    };
+    let failed = false;
+    try {
+      return await this.pushRows(gen, sent);
+    } catch (err) {
+      failed = true;
+      throw err;
+    } finally {
+      if (this.backend.stagesPushes && this.backend.commitPushes) {
+        try {
+          await firstValueFrom(this.backend.commitPushes());
+          for (const mark of afterCommit) await mark();
+        } catch (err) {
+          if (!failed) throw err;
+        }
+      }
+    }
+  }
+
+  private async pushRows(gen: number, sent: (mark: () => Promise<unknown>) => Promise<void>): Promise<number> {
     // The highest position this browser has reached in the server's change log. The server hands every accepted
     // write the next number of one sequence shared by houses, visits, photos and records, so an accepted push that
     // comes back at or below it means the log went backwards: the server was reset (pushShowsReset).
@@ -523,7 +552,7 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushHouse(houseToDto(house)));
       this.live(gen);
       if (pushShowsReset(house.updatedAt, saved, highest)) throw new RemoteReset();
-      await this.store.markHouseClean(house.id, house.updatedAt);
+      await sent(() => this.store.markHouseClean(house.id, house.updatedAt));
       this.live(gen);
       step();
     }
@@ -531,7 +560,7 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushVisit(visitToDto(visit)));
       this.live(gen);
       if (pushShowsReset(visit.updatedAt, saved, highest)) throw new RemoteReset();
-      await this.store.markVisitClean(visit.id, visit.updatedAt);
+      await sent(() => this.store.markVisitClean(visit.id, visit.updatedAt));
       this.live(gen);
       step();
     }
@@ -539,14 +568,14 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushRecord(recordToDto(record)));
       this.live(gen);
       if (pushShowsReset(record.updatedAt, saved, highest)) throw new RemoteReset();
-      await this.store.markRecordClean(record.type, record.id, record.updatedAt);
+      await sent(() => this.store.markRecordClean(record.type, record.id, record.updatedAt));
       this.live(gen);
       step();
     }
     for (const photo of photoDeletes) {
       await this.call(gen, () => this.backend.deletePhoto(photo.id));
       this.live(gen);
-      await this.store.forgetPhoto(photo.id);
+      await sent(() => this.store.forgetPhoto(photo.id));
       this.live(gen);
       step();
     }
@@ -568,9 +597,9 @@ export class SyncService {
       const saved = await this.call(gen, () => this.backend.pushPhotoMeta(photo.id, meta));
       this.live(gen);
       // The server keeps the newer meta and answers it: an older one of ours changes nothing there (last write wins).
-      await this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {}));
+      await sent(() => this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {})));
       this.live(gen);
-      await this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt);
+      await sent(() => this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt));
       this.live(gen);
       step();
     }

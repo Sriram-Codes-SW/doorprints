@@ -47,6 +47,15 @@ function house(id: string, over: Partial<HouseDto> = {}): HouseDto {
 class FakeSyncBackend implements SyncBackend {
   readonly calls: string[] = [];
   mergeRule: MergeRule = serverMerge;
+  /** A snapshot backend (Drive): pushes are noted, `commitPushes` sends them (S4b-BL-118). */
+  stagesPushes = false;
+  commitFails = false;
+  commitPushes(): Observable<void> {
+    return defer(() => {
+      this.calls.push('commitPushes');
+      return this.commitFails ? throwError(() => new Error('no connection')) : of(undefined);
+    });
+  }
   behind: () => Observable<boolean> = () => of(false);
   houses: HouseDto[] = [];
   visits: VisitDto[] = [];
@@ -174,6 +183,27 @@ describe('SyncService through the SyncBackend seam', () => {
     expect(await store.dirtyHouses()).toEqual([]);
     expect((await store.getHouse(H2))?.label).toBe('From elsewhere');
     expect((await store.cursors()).house).toBe(15);
+  });
+
+  it('a snapshot backend: rows are marked clean only after its commit (S4b-BL-118)', async () => {
+    await store.saveHouse(house(H1, { label: 'Mine' }), Date.parse(AT));
+    await store.saveVisit({ id: V1, houseId: H1, lat: 1, lon: 2, arrivedAt: AT, source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse(AT));
+    backend.stagesPushes = true;
+    backend.commitFails = true;
+    await sync.syncNow(true);
+    expect(sync.lastError()).not.toBeNull();
+    // Pushed, but the snapshot was not confirmed: nothing may be marked clean.
+    expect((await store.dirtyHouses()).map((h) => h.id)).toEqual([H1]);
+    expect((await store.dirtyVisits()).map((v) => v.id)).toEqual([V1]);
+
+    backend.commitFails = false;
+    backend.calls.length = 0;
+    await sync.syncNow(true);
+    expect(sync.lastError()).toBeNull();
+    expect(await store.dirtyHouses()).toEqual([]);
+    expect(await store.dirtyVisits()).toEqual([]);
+    expect(backend.calls.indexOf('commitPushes')).toBeGreaterThan(backend.calls.indexOf(`pushVisit ${V1}`));
+    expect(backend.calls.indexOf('commitPushes')).toBeLessThan(backend.calls.indexOf('housesSince 0'));
   });
 
   it('does not ask whether the backend is behind before anything was pulled', async () => {

@@ -100,6 +100,15 @@ class SyncBackendSeamTest {
     /** An in-memory remote: records every call in order and answers with what a test set up. */
     private class FakeSyncBackend(override val mergeRule: MergeRule = SyncRules.serverMerge) : SyncBackend {
         val calls = mutableListOf<String>()
+
+        /** A snapshot backend (Drive): pushes are noted, [commitPushes] sends them (S4b-BL-118). */
+        override var stagesPushes = false
+        var commitFails = false
+        override suspend fun commitPushes() {
+            calls += "commitPushes"
+            if (commitFails) throw IOException("no connection")
+        }
+
         var behind = false
         var houses: List<HouseDto> = emptyList()
         var visits: List<VisitDto> = emptyList()
@@ -216,6 +225,31 @@ class SyncBackendSeamTest {
         assertEquals("From elsewhere", db.houses().get("99999999-9999-4999-8999-999999999999")?.label)
         assertTrue(db.records().get("broker", b2)!!.deleted) // the tombstone is stored, not dropped
         assertEquals(SettingsStore.Cursors(house = 15, visit = 25, photo = 40, record = 35), settings.cursors())
+    }
+
+    @Test
+    fun aSnapshotBackendMarksRowsCleanOnlyAfterItsCommit() = runBlocking {
+        db.houses().upsert(house(h1, at, dirty = true))
+        db.visits().upsert(VisitEntity(id = v1, houseId = h1, lat = 12.97, lon = 77.59, arrivedAt = at, updatedAt = at, dirty = true))
+        val backend = FakeSyncBackend().apply { stagesPushes = true; commitFails = true }
+        try {
+            repoWith(backend).sync(photosAllowed = true)
+            fail("the commit failed, the sync must too")
+        } catch (e: IOException) {
+            assertEquals("no connection", e.message)
+        }
+        // Pushed, but the snapshot was not confirmed: nothing may be marked clean.
+        assertEquals(listOf(h1), db.houses().dirty().map { it.id })
+        assertEquals(listOf(v1), db.visits().dirty().map { it.id })
+
+        backend.commitFails = false
+        backend.calls.clear()
+        val outcome = repoWith(backend).sync(photosAllowed = true)
+        assertEquals(SyncOutcome.Kind.OK, outcome.kind)
+        assertTrue(db.houses().dirty().isEmpty())
+        assertTrue(db.visits().dirty().isEmpty())
+        assertTrue(backend.calls.indexOf("commitPushes") > backend.calls.indexOf("pushVisit $v1"))
+        assertTrue(backend.calls.indexOf("commitPushes") < backend.calls.indexOf("housesSince 0"))
     }
 
     @Test
