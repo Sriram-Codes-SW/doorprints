@@ -245,19 +245,6 @@ describe('DriveConnectService', () => {
     });
   });
 
-  describe('backward compatibility methods', () => {
-    it('deleteL1/L2/L3 return error structures', async () => {
-      const l1 = await a.service.deleteL1();
-      expect(typeof l1.success === 'boolean').toBe(true);
-
-      const l2 = await a.service.deleteL2();
-      expect(typeof l2.success === 'boolean').toBe(true);
-
-      const l3 = await a.service.deleteL3(true);
-      expect(typeof l3.success === 'boolean').toBe(true);
-    });
-  });
-
   describe('refresh method', () => {
     it('refresh calls connect', async () => {
       const result = await a.service.refresh();
@@ -379,7 +366,7 @@ describe('DriveConnectService', () => {
       const before = server.allFiles().length;
       const info = await a.service.deleteConfirmInfo({ type: 'everything' });
       expect(info.ok).toBe(false);
-      const auth = await a.service.authorizeDelete({ type: 'everything' });
+      const auth = await a.service.authorizeDelete({ type: 'everything' }, 'op');
       expect(auth.ok).toBe(false);
       expect(server.allFiles().length).toBe(before);
     });

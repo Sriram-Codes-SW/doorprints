@@ -461,13 +461,14 @@ export class DriveConnectService {
 
   async authorizeDelete(
     action: DeletionAction,
+    operationId: string,
   ): Promise<
     | { readonly ok: true; readonly grant: WebGrant }
     | { readonly ok: false; readonly reason: string }
   > {
     try {
       const context = await this.deletionContext();
-      const result = await this.deletionAdapter.authorize(action, context);
+      const result = await this.deletionAdapter.authorize(action, context, operationId);
       if (result.kind === 'refused') {
         return { ok: false, reason: result.reason };
       }
@@ -560,58 +561,6 @@ export class DriveConnectService {
       return { ran: out.ok, reason: out.ok ? decision.reason : out.reason };
     } catch (err) {
       return { ran: false, reason: String(err) };
-    }
-  }
-
-  async deleteL1(): Promise<{ success: boolean; error?: string }> {
-    try {
-      const action: DeletionAction = { type: 'olderBackups' };
-      const preflight = await this.deletionAdapter.preflight(action);
-      if (preflight.kind === 'refused') {
-        return { success: false, error: preflight.reason };
-      }
-      const outcome = await this.deletionAdapter.execute(preflight.plan, null);
-      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
-    } catch (err) {
-      return { success: false, error: String(err) };
-    }
-  }
-
-  async deleteL2(): Promise<{ success: boolean; error?: string }> {
-    try {
-      const action: DeletionAction = { type: 'allBackups' };
-      const preflight = await this.deletionAdapter.preflight(action);
-      if (preflight.kind === 'refused') {
-        return { success: false, error: preflight.reason };
-      }
-      const context = await this.deletionContext();
-      const auth = await this.deletionAdapter.authorize(action, context);
-      if (auth.kind === 'refused') {
-        return { success: false, error: auth.reason };
-      }
-      const outcome = await this.deletionAdapter.execute(preflight.plan, auth.grant);
-      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
-    } catch (err) {
-      return { success: false, error: String(err) };
-    }
-  }
-
-  async deleteL3(deleteAllCheckbox: boolean): Promise<{ success: boolean; error?: string }> {
-    try {
-      const action: DeletionAction = { type: 'everything' };
-      const preflight = await this.deletionAdapter.preflight(action);
-      if (preflight.kind === 'refused') {
-        return { success: false, error: preflight.reason };
-      }
-      const context = await this.deletionContext();
-      const auth = await this.deletionAdapter.authorize(action, context);
-      if (auth.kind === 'refused') {
-        return { success: false, error: auth.reason };
-      }
-      const outcome = await this.deletionAdapter.execute(preflight.plan, auth.grant);
-      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
-    } catch (err) {
-      return { success: false, error: String(err) };
     }
   }
 

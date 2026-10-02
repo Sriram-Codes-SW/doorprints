@@ -162,8 +162,8 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
       return decideDeletion(action, context);
     },
 
-    async authorize(action: DeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
-      return (await getAdapter()).authorize(action, context);
+    async authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult> {
+      return (await getAdapter()).authorize(action, context, operationId);
     },
 
     async execute(plan, grant) {

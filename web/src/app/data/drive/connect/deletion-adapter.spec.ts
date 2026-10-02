@@ -199,7 +199,7 @@ describe('DriveDeletionAdapter', () => {
       backupsLeft: 5,
     };
 
-    const result = await adapter.authorize({ type: 'allBackups' }, context);
+    const result = await adapter.authorize({ type: 'allBackups' }, context, 'op');
 
     expect(result.kind).toBe('granted');
   });
@@ -213,7 +213,7 @@ describe('DriveDeletionAdapter', () => {
       backupsLeft: 5,
     };
 
-    const result = await adapter.authorize({ type: 'everything' }, context);
+    const result = await adapter.authorize({ type: 'everything' }, context, 'op');
 
     expect(result.kind).toBe('refused');
   });
@@ -353,7 +353,7 @@ describe('DriveDeletionAdapter', () => {
       };
 
       // Issue a grant
-      const authResult = await adapter.authorize({ type: 'allBackups' }, context);
+      const authResult = await adapter.authorize({ type: 'allBackups' }, context, plan.operationId);
       expect(authResult.kind).toBe('granted');
 
       if (authResult.kind === 'granted') {
@@ -445,7 +445,7 @@ describe('DriveDeletionAdapter', () => {
         backupsLeft: 5,
       };
 
-      const authResult = await adapter.authorize({ type: 'allBackups' }, context);
+      const authResult = await adapter.authorize({ type: 'allBackups' }, context, plan.operationId);
       if (authResult.kind === 'granted') {
         const grant = authResult.grant;
         // Mark grant as genuine and still valid for L1 (no auth needed for L1)

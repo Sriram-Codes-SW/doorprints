@@ -43,8 +43,11 @@ export interface DriveDeletionAdapter {
   /** Whether the action is allowed given the current context (device lock, online, etc.). */
   decide(action: DeletionAction, context: DeletionContext): DeletionDecision;
 
-  /** Issues a one-use 60-second authorization token for the action; policy must have said ALLOWED. */
-  authorize(action: DeletionAction, context: DeletionContext): Promise<AuthorizationResult>;
+  /**
+   * Issues a one-use 60-second grant for `action` bound to `operationId` (the preflight plan's id).
+   * Policy must have said ALLOWED. HMAC of the operation id as the proof is S4b-BL-135.
+   */
+  authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult>;
 
   /** Executes the plan; requires a valid authorization token for L2/L3. */
   execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome>;
@@ -136,6 +139,9 @@ export function confirmGateOf(decision: DeletionDecision): ConfirmGateState {
  * All methods are real, no stubs.
  */
 export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
+  /** Grant id → operationId registered at authorize; in-memory only (gone after a reload). */
+  private readonly boundOp = new Map<number, string>();
+
   constructor(
     private readonly deletionService: DriveDeletionService,
     private readonly webAuthorizer: WebAuthorizer,
@@ -160,7 +166,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     return decideDeletion(action, context, this.backupsLeft);
   }
 
-  async authorize(action: DeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
+  async authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult> {
     const decision = this.decide(action, context);
     if (decision.outcome === 'REFUSED') {
       return { kind: 'refused', reason: decision.reason };
@@ -170,6 +176,8 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     const result = await this.webAuthorizer.authorize(policyAction, context);
 
     if (result.kind === 'GRANTED' && result.grant) {
+      this.boundOp.set(result.grant.id, operationId);
+      this.gate?.registerGrant(result.grant.id, action, operationId, result.grant.grantedAtMs);
       return { kind: 'granted', grant: result.grant };
     }
     if (result.kind === 'REFUSED') {
@@ -179,7 +187,8 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   }
 
   async execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome> {
-    if (grant) this.gate?.registerGrant(grant.id, plan.action, plan.operationId, grant.grantedAtMs);
+    const mismatch = this.grantOperationMismatch(grant, plan.operationId);
+    if (mismatch) return mismatch;
     const token = this.grantToToken(plan, grant);
     return this.deletionService.delete(plan, token);
   }
@@ -193,9 +202,21 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
         error: null,
       };
     }
-    if (grant) this.gate?.registerGrant(grant.id, pending.action, pending.operationId, grant.grantedAtMs);
+    const mismatch = this.grantOperationMismatch(grant, pending.operationId);
+    if (mismatch) return mismatch;
     const token = this.grantToTokenWithOperationId(grant, pending.operationId);
     return this.deletionService.resume(token);
+  }
+
+  /**
+   * A grant registered at authorize for another operationId cannot run this plan. A grant that was
+   * never registered here (forged, or left over from a previous page load) is left for the gate.
+   */
+  private grantOperationMismatch(grant: WebGrant | null, operationId: string): DeletionOutcome | null {
+    if (!grant) return null;
+    const bound = this.boundOp.get(grant.id);
+    if (bound === undefined || bound === operationId) return null;
+    return { kind: 'refused', reason: 'AUTHORIZATION_OTHER_OPERATION', error: null };
   }
 
   confirmGate(action: DeletionAction, context: DeletionContext): ConfirmGateState {
