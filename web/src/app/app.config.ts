@@ -24,6 +24,7 @@ import { apiInterceptor } from './core/api.interceptor';
 import { LocalStore } from './data/local-store.service';
 import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
 import { initialLang } from './i18n/translation.service';
+import { provideDriveConnect } from './data/drive/connect/drive-connect.providers';
 
 // Angular 21+ is zoneless by default, so no zone.js / provideZoneChangeDetection here.
 export const appConfig: ApplicationConfig = {
@@ -48,5 +49,7 @@ export const appConfig: ApplicationConfig = {
         .seedQuestionsOnce(initialLang)
         .catch(() => undefined),
     ),
+    // Drive Connect feature (S4b-BL-117, S4b-BL-73, docs/15 §9.4)
+    ...provideDriveConnect(),
   ],
 };
