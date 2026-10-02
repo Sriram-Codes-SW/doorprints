@@ -16,9 +16,71 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { hex } from '../crypto/bytes';
 import type { PrfAuthenticator, PrfResult } from './prf-seal';
 import { prfInput } from './prf-seal';
+
+/** Decode a base64url string to Uint8Array. */
+function base64urlToBytes(base64url: string): Uint8Array {
+  // Pad the string if needed
+  let padded = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  padded = padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '=');
+  const binaryString = atob(padded);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** WebAuthn PRF extension input shape. */
+interface PrfExtensionInput {
+  prf?: {
+    eval?: {
+      first: BufferSource;
+    };
+  };
+}
+
+/** WebAuthn PRF extension output shape from getClientExtensionResults(). */
+interface PrfExtensionOutput {
+  prf?: {
+    enabled?: boolean;
+    results?: {
+      first?: ArrayBuffer;
+    };
+  };
+}
+
+/** PublicKeyCredentialCreationOptions with PRF extension. */
+interface CreationOptionsWithPrf {
+  publicKey: PublicKeyCredentialCreationOptions & {
+    extensions?: {
+      prf?: Record<string, never>;
+    };
+  };
+}
+
+/** PublicKeyCredentialRequestOptions with PRF extension. */
+interface RequestOptionsWithPrf {
+  publicKey: PublicKeyCredentialRequestOptions & PrfExtensionInput;
+}
+
+/** Type guard to check if extension output has PRF results. */
+function isPrfExtensionOutput(ext: unknown): ext is PrfExtensionOutput {
+  return ext !== null && typeof ext === 'object' && 'prf' in ext;
+}
+
+/** Type guard to check if credential has getClientExtensionResults method. */
+function hasGetClientExtensionResults(
+  cred: unknown
+): cred is { getClientExtensionResults: () => unknown } {
+  return (
+    cred !== null &&
+    typeof cred === 'object' &&
+    'getClientExtensionResults' in cred &&
+    typeof (cred as Record<string, unknown>).getClientExtensionResults === 'function'
+  );
+}
 
 /**
  * The real WebAuthn PRF authenticator for the browser (S4b-BL-127). Uses navigator.credentials
@@ -78,10 +140,10 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       }
 
       // Prepare the assertion with PRF extension
-      const assertion = await (navigator.credentials as any).get({
+      const options: CredentialRequestOptions = {
         publicKey: {
           challenge: new Uint8Array(32), // Random challenge (in real usage would be generated server-side)
-          userVerification: 'required' as const,
+          userVerification: 'required',
           allowCredentials: [
             {
               type: 'public-key',
@@ -91,24 +153,35 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
           extensions: {
             prf: {
               eval: {
-                salt: prfInput(salt),
+                first: prfInput(salt),
               },
             },
           },
-        },
-      });
+        } as PublicKeyCredentialRequestOptions & PrfExtensionInput,
+      };
+
+      const assertion = await navigator.credentials.get(options);
 
       if (!assertion) {
         return { kind: 'CANCELLED' };
       }
 
       // Extract PRF output from extension result
-      const authExt = (assertion as any).getClientExtensionResults?.();
-      if (!authExt || !authExt.prf || !authExt.prf.results || !authExt.prf.results.first) {
+      if (!hasGetClientExtensionResults(assertion)) {
         return { kind: 'FAILED' };
       }
 
-      const prfOutput = new Uint8Array(authExt.prf.results.first);
+      const extensionResults = assertion.getClientExtensionResults();
+      if (!extensionResults || !isPrfExtensionOutput(extensionResults)) {
+        return { kind: 'NOT_SUPPORTED' };
+      }
+
+      const prfExt = extensionResults.prf;
+      if (!prfExt || !prfExt.results || !prfExt.results.first) {
+        return { kind: 'NOT_SUPPORTED' };
+      }
+
+      const prfOutput = new Uint8Array(prfExt.results.first);
       if (prfOutput.length !== 32) {
         return { kind: 'FAILED' };
       }
@@ -122,7 +195,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
 
       return { kind: 'OK', output: prfOutput };
     } catch (e) {
-      const error = e as Error;
+      const error = e instanceof Error ? e : new Error(String(e));
       // Check for specific cancellation or unsupported errors
       if (error.name === 'NotAllowedError') {
         return { kind: 'CANCELLED' };
@@ -144,7 +217,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     }
 
     try {
-      const credential = await (navigator.credentials as any).create({
+      const options: CredentialCreationOptions = {
         publicKey: {
           challenge: new Uint8Array(32),
           rp: {
@@ -156,26 +229,36 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             displayName: displayName || 'Doorprints User',
           },
           pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-          userVerification: 'required' as const,
+          userVerification: 'required',
           extensions: {
             prf: {},
           },
+        } as PublicKeyCredentialCreationOptions & {
+          extensions?: {
+            prf?: Record<string, never>;
+          };
         },
-      });
+      };
+
+      const credential = await navigator.credentials.create(options);
 
       if (!credential) {
         return null;
       }
 
       // Extract and store the credential ID
-      const credId = new Uint8Array((credential as any).id);
-      const idStr = Array.from(credId).join(',');
+      if (!('id' in credential) || typeof credential.id !== 'string') {
+        return null;
+      }
+      // The credential.id from WebAuthn is a base64url string; decode it to bytes
+      const credIdBuffer = base64urlToBytes(credential.id);
+      const idStr = Array.from(credIdBuffer).join(',');
       await this.storageSet('doorprints-webauthn-credential-id', idStr);
-      this.credentialId = credId;
+      this.credentialId = credIdBuffer;
 
-      return credId;
+      return credIdBuffer;
     } catch (e) {
-      const error = e as Error;
+      const error = e instanceof Error ? e : new Error(String(e));
       if (error.name === 'NotAllowedError') {
         return null;
       }
