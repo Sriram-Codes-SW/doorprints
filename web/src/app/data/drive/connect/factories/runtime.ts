@@ -18,23 +18,23 @@
 
 import type { P256PrivateKey, CryptoProvider } from '../../../crypto/crypto-provider';
 import { WebCryptoProvider } from '../../../crypto/crypto-provider';
-import { hex } from '../../../crypto/bytes';
+import { hex, unhex } from '../../../crypto/bytes';
 import { kidOf } from '../../../crypto/folder-key';
 import type { TokenProvider } from '../../drive-client';
 import type { LocalStore } from '../../../local-store.service';
 import type { DriveDb, OpenedDriveDb } from '../stores/drive-db';
 import { openDriveDb } from '../stores/drive-db';
-import { DeviceKeyStore } from '../stores/device-key-store';
+import { DeviceKeyStore, MemoryDeviceKeyStore } from '../stores/device-key-store';
 import { FetchDriveClient } from '../../fetch-drive-client';
 import type { DriveClient } from '../../drive-client';
 import type { FolderTrustStores, DriveStateStore } from '../../backup/drive-backup-seams';
-import type { KeysWatermarkStore } from '../../../crypto/keys-file';
+import type { KeysWatermark, KeysWatermarkStore } from '../../../crypto/keys-file';
+import { sameWatermark } from '../../../crypto/keys-file';
 import type { ControlWatermarkStore, ControlWatermark } from '../../backup/control-file';
 import { sameControlWatermark } from '../../backup/control-file';
 import type { FolderSession } from '../../drive-sync-seams';
 import type { SyncStateStore } from '../../drive-sync-seams';
 import type { PhotoStateStore } from '../../drive-photo-seams';
-import { KeysGuard } from '../../../crypto/keys-guard';
 
 /**
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
@@ -57,7 +57,6 @@ export interface DriveRuntime {
   folderTrustStores: FolderTrustStores;
   syncStateStore: SyncStateStore;
   photoStateStore: PhotoStateStore;
-  guard: KeysGuard; // Needed to build FolderSession for sync
   session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync
 }
 
@@ -73,18 +72,16 @@ class DbFolderTrustStores implements FolderTrustStores {
   keys(rootId: string): KeysWatermarkStore {
     const keyValueStore = this.keyValueStore;
     const key = `keys:${rootId}`;
+    const read = async (): Promise<KeysWatermark | null> => {
+      const json = await keyValueStore.get(key);
+      return json ? decodeKeysWatermark(json) : null;
+    };
     return {
-      async load() {
-        const json = await keyValueStore.get(key);
-        return json ? JSON.parse(json) : null;
-      },
+      load: read,
       async compareAndSet(expected, next) {
-        const json = await keyValueStore.get(key);
-        const current = json ? JSON.parse(json) : null;
-        if (JSON.stringify(current) !== JSON.stringify(expected)) {
-          return false;
-        }
-        await keyValueStore.set(key, JSON.stringify(next));
+        // `expected` is what the caller loaded: both sides are real byte arrays here (JSON would turn them into objects).
+        if (!sameWatermark(await read(), expected)) return false;
+        await keyValueStore.set(key, encodeKeysWatermark(next));
         return true;
       },
     };
@@ -93,22 +90,39 @@ class DbFolderTrustStores implements FolderTrustStores {
   control(rootId: string): ControlWatermarkStore {
     const keyValueStore = this.keyValueStore;
     const key = `control:${rootId}`;
+    const read = async (): Promise<ControlWatermark | null> => {
+      const json = await keyValueStore.get(key);
+      return json ? decodeControlWatermark(json) : null;
+    };
     return {
-      async load() {
-        const json = await keyValueStore.get(key);
-        return json ? JSON.parse(json) : null;
-      },
+      load: read,
       async compareAndSet(expected, next) {
-        const json = await keyValueStore.get(key);
-        const current = json ? JSON.parse(json) : null;
-        if (!sameControlWatermark(current, expected)) {
-          return false;
-        }
-        await keyValueStore.set(key, JSON.stringify(next));
+        if (!sameControlWatermark(await read(), expected)) return false;
+        await keyValueStore.set(key, encodeControlWatermark(next));
         return true;
       },
     };
   }
+}
+
+// Watermarks hold byte arrays; JSON.stringify would turn them into plain objects and a reloaded pin would never equal
+// the real key id again (every later check would read as a FORK). Bytes are stored as hex.
+function encodeKeysWatermark(w: KeysWatermark): string {
+  return JSON.stringify({ epoch: w.epoch, revision: w.revision, keyId: hex(w.keyId), bodyHash: hex(w.bodyHash) });
+}
+
+function decodeKeysWatermark(json: string): KeysWatermark {
+  const o = JSON.parse(json) as { epoch: number; revision: number; keyId: string; bodyHash: string };
+  return { epoch: o.epoch, revision: o.revision, keyId: unhex(o.keyId), bodyHash: unhex(o.bodyHash) };
+}
+
+function encodeControlWatermark(w: ControlWatermark): string {
+  return JSON.stringify({ revision: w.revision, bodyHash: hex(w.bodyHash), backupsDeletedAt: w.backupsDeletedAt });
+}
+
+function decodeControlWatermark(json: string): ControlWatermark {
+  const o = JSON.parse(json) as { revision: number; bodyHash: string; backupsDeletedAt: number | null };
+  return { revision: o.revision, bodyHash: unhex(o.bodyHash), backupsDeletedAt: o.backupsDeletedAt };
 }
 
 /**
@@ -124,6 +138,8 @@ export async function createDriveRuntime(deps: {
   tokens: TokenProvider;
   local: LocalStore;
   crypto?: CryptoProvider;
+  /** Tests (and a future emulator) pass their own Drive client; production uses FetchDriveClient. */
+  drive?: DriveClient;
 }): Promise<DriveRuntime> {
   const crypto = deps.crypto || new WebCryptoProvider();
 
@@ -131,25 +147,18 @@ export async function createDriveRuntime(deps: {
   const opened = await openDriveDb();
   const db = opened.db;
 
-  // For device key store, we need a Promise<IDBDatabase>
-  // The opened database may be either indexedDB or in-memory; we need to handle both
-  let idbPromise: Promise<IDBDatabase>;
-
+  // The device key lives in IndexedDB (non-extractable); without IndexedDB it lives in memory for this page load.
+  let keyStore: Pick<DeviceKeyStore, 'loadOrCreateDeviceKey'>;
   if (db.kind === 'indexeddb') {
-    // If we have a real IndexedDB, reopen it for device-key-store
-    // (device-key-store manages its own lifecycle)
-    idbPromise = new Promise((resolve, reject) => {
+    const idbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open('doorprints-drive');
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
+    keyStore = new DeviceKeyStore(idbPromise, crypto);
   } else {
-    // For in-memory fallback, reject so device-key-store falls back gracefully
-    idbPromise = Promise.reject(new Error('IndexedDB not available'));
+    keyStore = new MemoryDeviceKeyStore(crypto);
   }
-
-  // Load or create device key pair
-  const keyStore = new DeviceKeyStore(idbPromise, crypto);
   const deviceKey = await keyStore.loadOrCreateDeviceKey();
 
   // Compute device ID as hex of the key ID (same as kidOf but as a string)
@@ -157,13 +166,10 @@ export async function createDriveRuntime(deps: {
   const deviceId = hex(keyId);
 
   // Build Drive client
-  const drive = new FetchDriveClient(deps.tokens);
+  const drive = deps.drive ?? new FetchDriveClient(deps.tokens);
 
   // Create folder trust stores backed by the opened DB's key-value store
   const folderTrustStores = new DbFolderTrustStores(opened.keyValueStore);
-
-  // Create guard for key operations (opens keys with user's pin or recovery anchor)
-  const guard = new KeysGuard(crypto, opened.keysWatermarkStore);
 
   return {
     db,
@@ -177,7 +183,6 @@ export async function createDriveRuntime(deps: {
     folderTrustStores,
     syncStateStore: opened.syncStateStore,
     photoStateStore: opened.photoStateStore,
-    guard,
   };
 }
 

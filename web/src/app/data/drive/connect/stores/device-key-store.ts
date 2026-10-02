@@ -164,3 +164,26 @@ export class DeviceKeyStore {
     });
   }
 }
+
+/**
+ * The device key when IndexedDB is unavailable (private windows): held in memory for this page load only, so the
+ * Drive feature still works but the device must be pinned again after a reload. The caller learns this from
+ * `OpenedDriveDb.db.persistent === false`.
+ */
+export class MemoryDeviceKeyStore {
+  private pair: DeviceKeyPair | null = null;
+
+  constructor(private readonly crypto: CryptoProvider) {}
+
+  async loadOrCreateDeviceKey(): Promise<DeviceKeyPair> {
+    if (!this.pair) {
+      const privateKey = await this.crypto.p256Generate();
+      this.pair = { privateKey, publicKey: privateKey.publicKey };
+    }
+    return this.pair;
+  }
+
+  async deleteDeviceKey(): Promise<void> {
+    this.pair = null;
+  }
+}

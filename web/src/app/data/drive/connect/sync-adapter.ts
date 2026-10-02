@@ -29,7 +29,7 @@ import type { PhotoSettings } from '../photo-network-policy';
 import { DEFAULT_PHOTO_SETTINGS, PhotoUploadGate, webNetworkState } from '../photo-network-policy';
 import type { OneOffGrant } from '../photo-network-policy';
 import { DriveSyncNotYet } from '../drive-sync-seams';
-import type { DriveSyncState, FolderSession, LocalRows, SkipReason, SyncPassResult } from '../drive-sync-seams';
+import type { DriveSyncState, FolderSession, LocalRows, SkipReason, SyncPassResult, SyncStateStore } from '../drive-sync-seams';
 import { EMPTY_SYNC_STATE, syncDeviceId } from '../drive-sync-seams';
 import type { DriveClient } from '../drive-client';
 
@@ -64,14 +64,27 @@ export class DriveSyncAdapter {
   private readonly photoStore: PhotoStateStore;
   private readonly syncStateStore: { load(): Promise<DriveSyncState>; save(s: DriveSyncState): Promise<void> };
 
+  /** The folder session, read at every call: it appears when the backup adapter reaches Ready and changes on reconnect. */
+  private readonly sessionOf: () => FolderSession | null;
+  private engineSession: FolderSession | null = null;
+
+  private get session(): FolderSession | null {
+    return this.sessionOf();
+  }
+
   constructor(
-    private readonly session: FolderSession | null,
+    session: FolderSession | null | (() => FolderSession | null),
     private readonly drive: DriveClient,
     private readonly clock: () => number = () => Date.now(),
     photoStateStore?: PhotoStateStore,
     photoSettings?: PhotoSettings,
     private readonly photoConfig: PhotoConfig = DEFAULT_PHOTO_CONFIG,
+    /** The app's real rows (houses, visits, records, photos); without it the adapter syncs nothing (tests only). */
+    local?: LocalRows,
+    /** Where the device's sync bookkeeping persists across reloads; without it, memory only (tests only). */
+    syncStateStore?: SyncStateStore,
   ) {
+    this.sessionOf = typeof session === 'function' ? session : () => session;
     // Store settings as mutable object (updated by setters)
     this.photoSettings = { ...DEFAULT_PHOTO_SETTINGS, ...photoSettings };
     this.photoState = { ...EMPTY_PHOTO_STATE };
@@ -84,15 +97,14 @@ export class DriveSyncAdapter {
       },
     };
 
-    this.syncStateStore = {
+    this.syncStateStore = syncStateStore ?? {
       load: async () => this.syncState,
       save: async (s: DriveSyncState) => {
         Object.assign(this.syncState, s);
       },
     };
 
-    // Minimal local rows implementation; in real app this comes from IndexedDB
-    this.local = {
+    this.local = local ?? {
       all: async () => [],
       photo: async () => null,
     };
@@ -109,12 +121,15 @@ export class DriveSyncAdapter {
 
   /** Lazy initialize engine, backend and photos (deferred until session is available). */
   private ensureInitialized(): void {
-    if (this.engine || !this.session) return;
+    const session = this.session;
+    if (!session) return;
+    if (this.engine && this.engineSession === session) return;
+    this.engineSession = session;
 
     this.engine = new DriveSyncEngine(
       this.drive,
       new WebCryptoProvider(),
-      this.session,
+      session,
       this.syncStateStore,
       this.local,
       this.clock,
@@ -123,7 +138,7 @@ export class DriveSyncAdapter {
     this.photos = new DrivePhotos(
       this.drive,
       new WebCryptoProvider(),
-      this.session,
+      session,
       this.photoStore,
       this.clock,
       this.photoConfig,
@@ -133,7 +148,7 @@ export class DriveSyncAdapter {
       this.engine,
       this.local,
       this.clock,
-      this.session.deviceId,
+      session.deviceId,
       this.photos,
     );
   }
@@ -169,8 +184,16 @@ export class DriveSyncAdapter {
     }
 
     try {
-      const result = await this.backend.commitPushes().toPromise();
+      // Rows changed here that this pass will write; they are marked clean only after the file is read back.
+      const dirtyBefore = this.local.changedRows ? await this.local.changedRows() : [];
+      await this.backend.commitPushes().toPromise();
       this.lastResult = this.backend.lastResult;
+      if (this.lastResult?.kind === 'Done') {
+        if (this.local.markSynced && dirtyBefore.length > 0) await this.local.markSynced(dirtyBefore);
+        // What the other devices wrote and won the merge: stored here (the engine only reports it).
+        const take = this.lastResult.report.take;
+        if (take.length > 0 && this.local.applyRemote) await this.local.applyRemote(take);
+      }
 
       if (!this.lastResult) {
         return { state: 'error', skipped: [], lastSyncAt: this.lastSyncAt, error: 'No result from sync' };

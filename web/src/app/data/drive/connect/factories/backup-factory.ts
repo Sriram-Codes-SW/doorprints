@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { KeysGuard } from '../../../crypto/keys-guard';
 import type { DriveBackupService } from '../../backup/drive-backup.service';
 import type { DriveImportService } from '../../backup/drive-import.service';
 import { DriveBackupService as BackupServiceClass } from '../../backup/drive-backup.service';
@@ -73,13 +74,18 @@ export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
 function updateSessionFromReady(rt: DriveRuntime, folder: ReadyFolder): void {
   const deviceKid = kidOf(rt.crypto, rt.deviceKey.publicKey);
   // Create session from opened keys, guard, and folder ids
-  // reopen is null for now; enhanced refresh on key changes is a future improvement (S4b-BL-????).
   rt.session = new FolderSession(
     folder.rootId,
     deviceKid,
     folder.keys,
-    rt.guard,
-    null, // reopen: can refresh keys on next pass if implemented
+    // The SAME per-folder pin store the backup service pinned into, so sync sees the pin (not a second, empty store).
+    new KeysGuard(rt.crypto, rt.folderTrustStores.keys(folder.rootId)),
+    // Re-reads keys.json through this device's key and the pin (devices that joined, or a new epoch, since we opened it).
+    async () => {
+      const again = await createBackupAdapter(rt).connect();
+      if (again.kind !== 'READY') throw new Error(`keys.json no longer opens: ${again.kind}`);
+      return again.folder.keys;
+    },
   );
 }
 
