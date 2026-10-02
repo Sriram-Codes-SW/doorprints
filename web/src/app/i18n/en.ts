@@ -1253,8 +1253,35 @@ export const en = {
   'driveConnect.backupError': 'Could not back up: {reason}',
   'driveConnect.noAuth': 'Authentication required',
   'driveConnect.noAuthHint': 'A passkey or fingerprint is needed to proceed.',
+  'driveBackups.backUpNow': 'Back up now',
+  'driveBackups.housesBackedUp': '{n} houses backed up at {time}',
+  'driveBackups.backups': 'Backups',
+  'driveBackups.date': 'Date',
+  'driveBackups.time': 'Time',
+  'driveBackups.houses': 'Houses',
+  'driveBackups.size': 'Size',
+  'driveBackups.import': 'Import a backup',
+  'driveBackups.importBackup': 'Import backup',
+  'driveBackups.emptyState': 'No backups in Google Drive yet.',
+  'driveBackups.loadingState': 'Loading backups…',
+  'driveBackups.errorState': 'Could not load backups',
+  'driveBackups.retry': 'Retry',
+  'driveBackups.autoBackup': 'Automatic backup',
+  'driveBackups.autoBackupHelp': 'While Doorprints is open, a backup is made about once a day.',
+  'driveBackups.shrinkConfirmQuestion': 'This backup is much smaller than your earlier ones. Doorprints keeps the older backups until you confirm.',
+  'driveBackups.keepOlderBackupsNote': 'Keep older backups',
+  'driveBackups.keepOlderBackups': 'Keep older backups',
+  'driveBackups.confirmShrink': 'Confirm, the smaller backup is right',
+  'driveBackups.shrinkConfirmed': 'Backup confirmed, older ones deleted',
+  'driveBackups.missingNewer': 'A newer backup that this device knew about is missing from Google Drive.',
+  'driveBackups.sizeUnknown': 'Unknown',
+  'driveBackups.error.notConnected': 'Not connected to Google Drive',
+  'driveBackups.error.backupNotFound': 'Backup not found',
+  'driveBackups.error.retrieveFailed': 'Could not retrieve backup data',
+  'driveBackups.error.safetyCheckFailed': 'This backup did not pass its safety checks and was not imported',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */
 export type Dict = { readonly [K in keyof typeof en]: string };
 export type TKey = keyof typeof en;
+
