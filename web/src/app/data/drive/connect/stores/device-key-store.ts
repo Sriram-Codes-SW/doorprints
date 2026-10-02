@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { P256PrivateKey } from '../../../crypto/crypto-provider';
+import type { P256PrivateKey, CryptoProvider } from '../../../crypto/crypto-provider';
 
 export interface DeviceKeyPair {
   privateKey: P256PrivateKey;
@@ -30,7 +30,7 @@ export interface DeviceKeyPair {
 export class DeviceKeyStore {
   private db: IDBDatabase | null = null;
 
-  constructor(private dbPromise: Promise<IDBDatabase>) {}
+  constructor(private dbPromise: Promise<IDBDatabase>, private crypto: CryptoProvider) {}
 
   private async getDb(): Promise<IDBDatabase> {
     if (!this.db) {
@@ -42,7 +42,8 @@ export class DeviceKeyStore {
   /**
    * Load or create the device's key pair.
    * On first load, generates a new key pair using WebCrypto with extractable:false for the private key.
-   * On subsequent loads, retrieves the stored CryptoKey and raw public key from IndexedDB.
+   * On subsequent loads, retrieves the stored CryptoKey and raw public key from IndexedDB,
+   * validates them through the CryptoProvider, and returns the wrapped P256PrivateKey.
    */
   async loadOrCreateDeviceKey(): Promise<DeviceKeyPair> {
     const db = await this.getDb();
@@ -54,16 +55,20 @@ export class DeviceKeyStore {
 
       req.onsuccess = async () => {
         if (req.result) {
-          // Key exists: deserialize the stored CryptoKey
+          // Key exists: validate and rewrap through the CryptoProvider
           const storedKey = req.result as {
             cryptoKey: CryptoKey;
             publicKeyRaw: Uint8Array;
           };
-          const privateKey = this.wrapCryptoKey(storedKey.cryptoKey);
-          resolve({
-            privateKey,
-            publicKey: storedKey.publicKeyRaw,
-          });
+          try {
+            const privateKey = await this.crypto.p256FromStoredKey(storedKey.cryptoKey, storedKey.publicKeyRaw);
+            resolve({
+              privateKey,
+              publicKey: storedKey.publicKeyRaw,
+            });
+          } catch (err) {
+            reject(err);
+          }
         } else {
           // Key doesn't exist: generate new one
           try {
@@ -91,8 +96,11 @@ export class DeviceKeyStore {
     const publicKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
     const publicKeyRaw = this.publicKeyFromJwk(publicKeyJwk);
 
+    // Validate and wrap through CryptoProvider
+    const privateKey = await this.crypto.p256FromStoredKey(keyPair.privateKey, publicKeyRaw);
+
     return {
-      privateKey: this.wrapCryptoKey(keyPair.privateKey),
+      privateKey,
       publicKey: publicKeyRaw,
     };
   }
@@ -124,7 +132,7 @@ export class DeviceKeyStore {
       const tx = db.transaction(['device-key'], 'readwrite');
       const store = tx.objectStore('device-key');
 
-      // Extract the CryptoKey from the wrapper
+      // Extract the CryptoKey from the provider's wrapper
       const cryptoKey = (keyPair.privateKey as any).key;
 
       const req = store.put(
@@ -138,16 +146,6 @@ export class DeviceKeyStore {
       req.onerror = () => reject(req.error);
       tx.oncomplete = () => resolve();
     });
-  }
-
-  private wrapCryptoKey(cryptoKey: CryptoKey): P256PrivateKey {
-    return new WebP256Key(cryptoKey, this.publicKeyFromCryptoKey(cryptoKey));
-  }
-
-  private publicKeyFromCryptoKey(cryptoKey: CryptoKey): Uint8Array {
-    // Note: this is a placeholder; the actual public key is stored separately
-    // We rely on the stored publicKeyRaw, not re-deriving it here
-    throw new Error('publicKeyFromCryptoKey should not be called; use stored public key');
   }
 
   /**
@@ -164,23 +162,5 @@ export class DeviceKeyStore {
       req.onerror = () => reject(req.error);
       tx.oncomplete = () => resolve();
     });
-  }
-}
-
-/**
- * Wrapper for a WebCrypto CryptoKey that implements the P256PrivateKey interface.
- */
-class WebP256Key implements P256PrivateKey {
-  constructor(
-    readonly key: CryptoKey,
-    private readonly pub: Uint8Array
-  ) {}
-
-  get publicKey(): Uint8Array {
-    return this.pub.slice();
-  }
-
-  toString(): string {
-    return 'WebP256Key';
   }
 }

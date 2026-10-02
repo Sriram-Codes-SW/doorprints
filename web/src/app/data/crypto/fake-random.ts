@@ -78,6 +78,9 @@ export class FakeRandomProvider implements CryptoProvider {
   p256Agree(k: P256PrivateKey, peer: Uint8Array) {
     return this.real.p256Agree(k, peer);
   }
+  p256FromStoredKey(privateKey: CryptoKey, publicKeyRaw: Uint8Array) {
+    return this.real.p256FromStoredKey(privateKey, publicKeyRaw);
+  }
 }
 
 /** Byte i = (31 · i + 7) mod 256, the vectors' plaintext. */
