@@ -45,9 +45,14 @@ class PhotoPolicyTest {
     @Test
     fun everyVectorCase() {
         val cases = root.getValue("cases").jsonArray
-        assertEquals(26, cases.size)
+        // The file also has the website-only UNKNOWN case (`platform` = web). This stack is Android and iOS.
+        assertEquals(27, cases.size)
+        var ran = 0
         for (c in cases) {
             val v = c.jsonObject
+            val platform = v["platform"]?.jsonPrimitive?.content
+            if (platform != null && platform != "android" && platform != "ios") continue
+            ran++
             val name = v.s("name")
             val cond = v.getValue("conditions").jsonObject
             val conditions = NetworkConditions(
@@ -65,6 +70,7 @@ class PhotoPolicyTest {
             assertEquals(name, PhotoAllowReason.valueOf(expect.s("reason")), d.reason)
             assertEquals(name, PhotoNetworkStatus.valueOf(expect.s("status")), PhotoNetworkPolicy.status(d, v.getValue("pending").jsonPrimitive.int))
         }
+        assertEquals(26, ran)
     }
 
     @Test
