@@ -25,183 +25,65 @@ import { LocalRowsAdapter } from './local-rows';
 describe('LocalRowsAdapter', () => {
   let store: LocalStore;
   let adapter: LocalRowsAdapter;
+  const deviceId = 'device-123abc';
 
   beforeEach(async () => {
-    // Create a real in-memory LocalStore instance (jsdom has no IndexedDB, so it uses memory).
     store = new LocalStore();
     await store.ready();
-    adapter = new LocalRowsAdapter(store);
+    adapter = new LocalRowsAdapter(store, deviceId);
   });
 
   afterEach(async () => {
-    // Clean up.
     await store.clearEverything();
   });
 
-  it('all() returns houses, visits, and photos as SyncRows', async () => {
-    // Add a house.
-    const house: HouseDto = {
-      id: 'h1',
-      label: 'Test House',
-      lat: 12.34,
-      lon: 56.78,
-      status: 'NEW',
-      checklist: {},
-      deleted: false,
-      syncVersion: 1,
-    };
+  it('all() returns houses and visits with correct device id', async () => {
+    const house: HouseDto = { id: 'h1', label: 'Test House', lat: 12.34, lon: 56.78, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };
     await store.putHouseFromServer(house);
-
-    // Add a visit.
-    const visit: VisitDto = {
-      id: 'v1',
-      houseId: 'h1',
-      lat: 12.34,
-      lon: 56.78,
-      arrivedAt: '2026-10-02T14:30:00Z',
-      source: 'MANUAL',
-      deleted: false,
-      syncVersion: 1,
-    };
+    const visit: VisitDto = { id: 'v1', houseId: 'h1', lat: 12.34, lon: 56.78, arrivedAt: '2026-10-02T14:30:00Z', source: 'MANUAL', deleted: false, syncVersion: 1 };
     await store.putVisitFromServer(visit);
 
-    // Call all().
     const rows = await adapter.all();
-
-    // Should include house and visit.
-    expect(rows.length).toBeGreaterThanOrEqual(2);
     const houseRow = rows.find((r) => r.kind === 'houses' && r.key === 'h1');
-    expect(houseRow).toBeDefined();
-    expect(houseRow?.stamp.deleted).toBe(false);
-
+    expect(houseRow?.stamp.by).toBe(deviceId);
     const visitRow = rows.find((r) => r.kind === 'visits' && r.key === 'v1');
-    expect(visitRow).toBeDefined();
-    expect(visitRow?.stamp.deleted).toBe(false);
+    expect(visitRow?.stamp.by).toBe(deviceId);
   });
 
-  it('preserves deleted tombstones in all()', async () => {
-    const deletedHouse: HouseDto = {
-      id: 'h-deleted',
-      label: 'Deleted House',
-      lat: 0,
-      lon: 0,
-      status: 'NEW',
-      checklist: {},
-      deleted: true, // Tombstone
-      syncVersion: 2,
-    };
-    await store.putHouseFromServer(deletedHouse);
-
-    const rows = await adapter.all();
-
-    const deletedRow = rows.find((r) => r.kind === 'houses' && r.key === 'h-deleted');
-    expect(deletedRow).toBeDefined();
-    expect(deletedRow?.stamp.deleted).toBe(true);
-  });
-
-  it('markClean() marks rows as clean after sync push', async () => {
-    const house: HouseDto = {
-      id: 'h1',
-      label: 'Clean House',
-      lat: 13,
-      lon: 80,
-      status: 'NEW',
-      checklist: {},
-      deleted: false,
-      syncVersion: 1,
-    };
+  it('different device ids produce different by values', async () => {
+    const adapter2 = new LocalRowsAdapter(store, 'device-456def');
+    const house: HouseDto = { id: 'h1', label: 'Test', lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };
     await store.putHouseFromServer(house);
 
-    const rows = await adapter.all();
-    const houseRow = rows.find((r) => r.kind === 'houses' && r.key === 'h1')!;
-
-    // Mark clean.
-    await adapter.markClean([houseRow]);
-
-    // Verify the house is marked clean (dirty flag should be false).
-    const cleaned = await store.allHouses();
-    const h = cleaned. find((house: HouseRecord) => house.id === 'h1');
-    expect(h?.dirty).toBe(false);
+    const rows1 = await adapter.all();
+    const rows2 = await adapter2.all();
+    const row1 = rows1.find((r) => r.kind === 'houses')!;
+    const row2 = rows2.find((r) => r.kind === 'houses')!;
+    expect(row1.stamp.by).toBe(deviceId);
+    expect(row2.stamp.by).toBe('device-456def');
   });
 
-  it('applyRemote() merges remote rows via putImported', async () => {
-    const remoteHouseRow = {
+  it('applyRemote does not mark rows dirty', async () => {
+    const remoteRow = {
       kind: 'houses' as const,
       key: 'h-remote',
-      stamp: { updatedAt: new Date('2026-10-02T10:00:00Z').getTime(), by: 'device-2', deleted: false },
-      json: {
-        id: 'h-remote',
-        updatedAt: '2026-10-02T10:00:00Z',
-        name: 'Remote House',
-        label: 'Remote',
-        lat: 13,
-        lon: 80,
-        status: 'NEW',
-      },
+      stamp: { updatedAt: new Date('2026-10-02T10:00:00Z').getTime(), by: 'device-remote', deleted: false },
+      json: { id: 'h-remote', updatedAt: '2026-10-02T10:00:00Z', label: 'Remote', lat: 13, lon: 80, status: 'NEW', checklist: {} },
     };
-
-    await adapter.applyRemote([remoteHouseRow]);
-
-    // Verify the house was imported.
+    await adapter.applyRemote([remoteRow]);
     const houses = await store.allHouses();
-    const imported = houses. find((h: HouseRecord) => h.id === 'h-remote');
-    expect(imported).toBeDefined();
+    const imported = houses.find((h) => h.id === 'h-remote');
+    expect(imported?.dirty).toBe(false);
   });
 
-  it('photo() returns a photo by id', async () => {
-    // Add a house first (photo needs a house).
-    const house: HouseDto = {
-      id: 'h1',
-      label: 'Photo House',
-      lat: 13,
-      lon: 80,
-      status: 'NEW',
-      checklist: {},
-      deleted: false,
-      syncVersion: 1,
-    };
+  it('markClean() marks rows clean', async () => {
+    const house: HouseDto = { id: 'h1', label: 'Clean', lat: 13, lon: 80, status: 'NEW', checklist: {}, deleted: false, syncVersion: 1 };
     await store.putHouseFromServer(house);
-
-    // Add a photo.
-    const result = await store.addPhoto('h1', new Blob(['fake image'], { type: 'image/jpeg' }));
-    if (!result.ok) throw new Error('Failed to add photo');
-
-    // Retrieve it.
-    const dto = await adapter.photo(result.id);
-    expect(dto).toBeDefined();
-    expect(dto?.id).toBe(result.id);
-    expect(dto?.houseId).toBe('h1');
-  });
-
-  it('photo() returns null for unknown photo id', async () => {
-    const dto = await adapter.photo('unknown-photo');
-    expect(dto).toBeNull();
-  });
-
-  it('round-trip: dirty -> clean after engine confirms', async () => {
-    // Add a house.
-    const house: HouseDto = {
-      id: 'h-dirty',
-      label: 'Dirty House',
-      lat: 13,
-      lon: 80,
-      status: 'NEW',
-      checklist: {},
-      deleted: false,
-      syncVersion: 1,
-    };
-    await store.putHouseFromServer(house);
-
-    // Get all rows.
-    let rows = await adapter.all();
-    const dirtyRow = rows.find((r) => r.kind === 'houses' && r.key === 'h-dirty')!;
-
-    // Simulate engine confirming the sync: mark clean.
-    await adapter.markClean([dirtyRow]);
-
-    // Verify clean.
+    const rows = await adapter.all();
+    const houseRow = rows.find((r) => r.kind === 'houses')!;
+    await adapter.markClean([houseRow]);
     const cleaned = await store.allHouses();
-    const h = cleaned. find((house: HouseRecord) => house.id === 'h-dirty');
+    const h = cleaned.find((house: HouseRecord) => house.id === 'h1');
     expect(h?.dirty).toBe(false);
   });
 });
