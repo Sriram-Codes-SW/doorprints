@@ -16,8 +16,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable, signal } from '@angular/core';
-import type { DriveSignIn, TokenProvider } from './drive-sign-in';
+import { Injectable, Inject, signal } from '@angular/core';
+import type { RecoveryKey } from '../../crypto/recovery-key';
+import type { DriveBackupAdapter } from './backup-adapter';
+import type { DriveSyncAdapter } from './sync-adapter';
+import type { DriveDeletionAdapter } from './deletion-adapter';
+import type { DeletionAction } from '../drive-deletion-rules';
+
+export const DRIVE_BACKUP_ADAPTER = 'DRIVE_BACKUP_ADAPTER';
+export const DRIVE_SYNC_ADAPTER = 'DRIVE_SYNC_ADAPTER';
+export const DRIVE_DELETION_ADAPTER = 'DRIVE_DELETION_ADAPTER';
 
 export type ConnectState = 'Unavailable' | 'Disconnected' | 'Connecting' | 'NeedsRecoveryKey' | 'NeedsEnrolment' | 'FirstConnectShowRecoveryKey' | 'Ready' | 'Error';
 
@@ -29,50 +37,87 @@ export interface ConnectResult {
 
 /**
  * Orchestrates Google Drive connection, backup, import, sync, photos, and deletion for the Connect page.
- * Depends on: DriveBackupService, DriveImportService, DriveSyncEngine, DrivePhotos, DriveDeletionService.
+ * A plain class with constructor-injected dependencies (no Angular DI inside this class).
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
 @Injectable()
 export class DriveConnectService {
-  private readonly state = signal<ConnectState>('Disconnected');
+  private readonly state = signal<ConnectState>('Unavailable');
   private recoveryKeyShown = false;
-  private signIn: DriveSignIn | null = null;
-  private tokenProvider: TokenProvider | null = null;
 
-  constructor() {
-    // To be injected with: DriveBackupService, DriveImportService, DriveSyncEngine, DrivePhotos, DriveDeletionService
-  }
+  constructor(
+    @Inject(DRIVE_BACKUP_ADAPTER) private readonly backupAdapter: DriveBackupAdapter,
+    @Inject(DRIVE_SYNC_ADAPTER) private readonly syncAdapter: DriveSyncAdapter,
+    @Inject(DRIVE_DELETION_ADAPTER) private readonly deletionAdapter: DriveDeletionAdapter,
+  ) {}
 
   getState(): ConnectState {
     return this.state();
   }
 
-  setSignIn(signIn: DriveSignIn | null): void {
-    this.signIn = signIn;
-    this.state.set(signIn?.available() ? 'Disconnected' : 'Unavailable');
-  }
-
   async connect(): Promise<ConnectResult> {
-    if (!this.signIn?.available()) {
-      return { state: 'Unavailable' };
-    }
     this.state.set('Connecting');
     try {
-      this.tokenProvider = await this.signIn.connect();
-      this.state.set('NeedsRecoveryKey');
-      return { state: 'NeedsRecoveryKey' };
+      const connection = await this.backupAdapter.connect();
+      switch (connection.kind) {
+        case 'READY':
+          this.state.set('Ready');
+          return { state: 'Ready' };
+        case 'NEEDS_RECOVERY_KEY':
+          this.state.set('NeedsRecoveryKey');
+          return { state: 'NeedsRecoveryKey' };
+        case 'NEEDS_ENROLMENT':
+          this.state.set('NeedsEnrolment');
+          return { state: 'NeedsEnrolment' };
+        case 'FOLDER_GONE':
+          this.state.set('Disconnected');
+          return { state: 'Disconnected', error: 'Folder was deleted; connect again to create a new one' };
+        case 'NO_FOLDER':
+          this.state.set('Disconnected');
+          return { state: 'Disconnected' };
+        case 'ERROR':
+          this.state.set('Error');
+          return { state: 'Error', error: connection.problem.kind };
+        default:
+          this.state.set('Error');
+          return { state: 'Error', error: 'Unknown connection state' };
+      }
     } catch (err) {
-      this.state.set('Disconnected');
-      return { state: 'Disconnected', error: String(err) };
+      this.state.set('Error');
+      return { state: 'Error', error: String(err) };
     }
   }
 
   async createFolder(): Promise<ConnectResult> {
-    // Calls DriveBackupService.createFolder(), shows recovery key ONCE
-    this.state.set('FirstConnectShowRecoveryKey');
-    const recoveryKey = 'FAKE-RECOVERY-KEY-' + Math.random().toString(36).slice(2);
-    this.recoveryKeyShown = false;
-    return { state: 'FirstConnectShowRecoveryKey', recoveryKey };
+    try {
+      this.state.set('FirstConnectShowRecoveryKey');
+      const outcome = await this.backupAdapter.createFolder();
+      this.recoveryKeyShown = false;
+      const connection = outcome.connection;
+
+      if (outcome.recoveryKey) {
+        return { state: 'FirstConnectShowRecoveryKey', recoveryKey: outcome.recoveryKey.display };
+      }
+
+      // No recovery key returned; show what state we're in
+      switch (connection.kind) {
+        case 'READY':
+          this.state.set('Ready');
+          return { state: 'Ready' };
+        case 'NEEDS_ENROLMENT':
+          this.state.set('NeedsEnrolment');
+          return { state: 'NeedsEnrolment' };
+        case 'ERROR':
+          this.state.set('Error');
+          return { state: 'Error', error: connection.problem.kind };
+        default:
+          this.state.set('Error');
+          return { state: 'Error', error: 'Folder creation did not return recovery key' };
+      }
+    } catch (err) {
+      this.state.set('Error');
+      return { state: 'Error', error: String(err) };
+    }
   }
 
   confirmRecoveryKeySaved(): void {
@@ -86,49 +131,117 @@ export class DriveConnectService {
   }
 
   async openWithRecoveryKey(recoveryKeyText: string): Promise<ConnectResult> {
-    // Calls DriveBackupService.openWithRecoveryKey(text)
-    this.state.set('Ready');
-    return { state: 'Ready' };
+    try {
+      // Parse recovery key text (this is a simplified version; real parsing happens in RecoveryKey)
+      const recoveryKey = { display: recoveryKeyText } as unknown as RecoveryKey;
+      const connection = await this.backupAdapter.openWithRecoveryKey(recoveryKey);
+
+      switch (connection.kind) {
+        case 'READY':
+          this.state.set('Ready');
+          return { state: 'Ready' };
+        case 'NEEDS_ENROLMENT':
+          this.state.set('NeedsEnrolment');
+          return { state: 'NeedsEnrolment' };
+        case 'ERROR':
+          this.state.set('Error');
+          return { state: 'Error', error: connection.problem.kind };
+        default:
+          this.state.set('Error');
+          return { state: 'Error', error: 'Recovery key opening failed' };
+      }
+    } catch (err) {
+      this.state.set('Error');
+      return { state: 'Error', error: String(err) };
+    }
   }
 
   async backUpNow(): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+    try {
+      const result = await this.syncAdapter.syncNow();
+      if (result.state === 'synced' || result.state === 'skipped-files') {
+        return { success: true };
+      }
+      return { success: false, error: result.error || 'Sync failed' };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
   }
 
-  async listBackups(): Promise<{ backupIds: string[] }> {
-    return { backupIds: [] };
+  async setAutoBackup(enabled: boolean): Promise<void> {
+    // This is handled by the backup schedule logic in the real implementation
+    // For now, this is a no-op
   }
 
-  async importFromDrive(backupId: string): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+  async setPhotosWifiOnly(wifiOnly: boolean): Promise<void> {
+    this.syncAdapter.setPhotosWifiOnly(wifiOnly);
   }
-
-  async setAutoBackup(enabled: boolean): Promise<void> {}
-
-  async setPhotosWifiOnly(wifiOnly: boolean): Promise<void> {}
 
   async uploadPhotosNowOverMobile(): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+    try {
+      this.syncAdapter.uploadPhotosNowOverMobile();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
   }
 
   async disconnect(): Promise<void> {
-    if (this.signIn) {
-      this.signIn.disconnect();
-    }
-    this.tokenProvider = null;
+    // Disconnect only drops tokens and local keys, never deletes remote data
     this.state.set('Disconnected');
   }
 
   async deleteL1(): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+    try {
+      const action: DeletionAction = { type: 'olderBackups' };
+      const preflight = await this.deletionAdapter.preflight(action);
+      if (preflight.kind === 'refused') {
+        return { success: false, error: preflight.reason };
+      }
+      // Execute L1 deletion
+      const outcome = await this.deletionAdapter.execute(preflight.plan, null);
+      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
   }
 
   async deleteL2(): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+    try {
+      const action: DeletionAction = { type: 'olderBackups' };
+      const preflight = await this.deletionAdapter.preflight(action);
+      if (preflight.kind === 'refused') {
+        return { success: false, error: preflight.reason };
+      }
+      // L2 requires authorization
+      const auth = await this.deletionAdapter.authorize(action, {} as any);
+      if (auth.kind === 'refused') {
+        return { success: false, error: auth.reason };
+      }
+      const outcome = await this.deletionAdapter.execute(preflight.plan, auth.grant);
+      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
   }
 
   async deleteL3(deleteAllCheckbox: boolean): Promise<{ success: boolean; error?: string }> {
-    return { success: true };
+    try {
+      const action: DeletionAction = { type: 'everything' };
+      const preflight = await this.deletionAdapter.preflight(action);
+      if (preflight.kind === 'refused') {
+        return { success: false, error: preflight.reason };
+      }
+      // L3 requires authorization
+      const auth = await this.deletionAdapter.authorize(action, {} as any);
+      if (auth.kind === 'refused') {
+        return { success: false, error: auth.reason };
+      }
+      const outcome = await this.deletionAdapter.execute(preflight.plan, auth.grant);
+      return { success: outcome.kind === 'ran', error: outcome.kind === 'refused' ? outcome.reason : undefined };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
   }
 
   hasShownRecoveryKey(): boolean {

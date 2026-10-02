@@ -18,82 +18,118 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DriveConnectService } from './drive-connect.service';
-import type { DriveSignIn } from './drive-sign-in';
-import type { TokenProvider } from '../drive-client';
+import type { DriveBackupAdapter } from './backup-adapter';
+import type { DriveSyncAdapter } from './sync-adapter';
+import type { DriveDeletionAdapter } from './deletion-adapter';
+import type { DeletionAction } from '../drive-deletion-rules';
 
 describe('DriveConnectService', () => {
   let service: DriveConnectService;
-  let mockDriveSignIn: DriveSignIn;
-  let mockTokenProvider: TokenProvider;
+  let mockBackupAdapter: Partial<DriveBackupAdapter>;
+  let mockSyncAdapter: Partial<DriveSyncAdapter>;
+  let mockDeletionAdapter: Partial<DriveDeletionAdapter>;
 
   beforeEach(() => {
-    mockTokenProvider = {
-      accessToken: vi.fn().mockResolvedValue('fake-token'),
+    mockBackupAdapter = {
+      connect: vi.fn(),
+      createFolder: vi.fn(),
+      openWithRecoveryKey: vi.fn(),
     };
 
-    mockDriveSignIn = {
-      available: vi.fn().mockReturnValue(true),
-      connect: vi.fn().mockResolvedValue(mockTokenProvider),
-      disconnect: vi.fn(),
-      isConnected: vi.fn().mockReturnValue(false),
-    } as unknown as DriveSignIn;
+    mockSyncAdapter = {
+      syncNow: vi.fn(),
+      setPhotosWifiOnly: vi.fn(),
+      uploadPhotosNowOverMobile: vi.fn(),
+    };
 
-    service = new DriveConnectService();
-    service.setSignIn(mockDriveSignIn);
+    mockDeletionAdapter = {
+      preflight: vi.fn(),
+      authorize: vi.fn(),
+      execute: vi.fn(),
+    };
+
+    service = new DriveConnectService(
+      mockBackupAdapter as DriveBackupAdapter,
+      mockSyncAdapter as DriveSyncAdapter,
+      mockDeletionAdapter as DriveDeletionAdapter,
+    );
   });
 
   describe('state machine', () => {
-    it('starts Disconnected when sign-in available', () => {
+    it('starts Unavailable', () => {
+      expect(service.getState()).toBe('Unavailable');
+    });
+
+    it('transitions Unavailable → Connecting → Disconnected on connect() with NO_FOLDER', async () => {
+      (mockBackupAdapter.connect as any).mockResolvedValue({ kind: 'NO_FOLDER' });
+
+      const result = await service.connect();
+      expect(result.state).toBe('Disconnected');
       expect(service.getState()).toBe('Disconnected');
     });
 
-    it('is Unavailable when sign-in not available', () => {
-      const unavailableService = new DriveConnectService();
-      const unavailableSignIn = { available: () => false } as DriveSignIn;
-      unavailableService.setSignIn(unavailableSignIn);
-      expect(unavailableService.getState()).toBe('Unavailable');
-    });
+    it('transitions Unavailable → Connecting → NeedsRecoveryKey on connect()', async () => {
+      (mockBackupAdapter.connect as any).mockResolvedValue({
+        kind: 'NEEDS_RECOVERY_KEY',
+        recoveryAvailable: true,
+        reason: 'RECOVERY_MISMATCH',
+      });
 
-    it('transitions Disconnected → Connecting → NeedsRecoveryKey on connect()', async () => {
-      expect(service.getState()).toBe('Disconnected');
-      const result = service.connect();
-      // Should be Connecting immediately
-      expect(service.getState()).toBe('Connecting');
-      const outcome = await result;
-      expect(outcome.state).toBe('NeedsRecoveryKey');
+      const result = await service.connect();
+      expect(result.state).toBe('NeedsRecoveryKey');
       expect(service.getState()).toBe('NeedsRecoveryKey');
     });
 
+    it('transitions Unavailable → Connecting → NeedsEnrolment on connect()', async () => {
+      (mockBackupAdapter.connect as any).mockResolvedValue({
+        kind: 'NEEDS_ENROLMENT',
+        recoveryAvailable: true,
+      });
+
+      const result = await service.connect();
+      expect(result.state).toBe('NeedsEnrolment');
+      expect(service.getState()).toBe('NeedsEnrolment');
+    });
+
+    it('transitions Unavailable → Connecting → Ready on connect()', async () => {
+      (mockBackupAdapter.connect as any).mockResolvedValue({
+        kind: 'READY',
+        folder: { rootId: 'root' },
+      });
+
+      const result = await service.connect();
+      expect(result.state).toBe('Ready');
+      expect(service.getState()).toBe('Ready');
+    });
+
     it('shows recovery key once on createFolder()', async () => {
-      await service.connect();
+      const fakeRecoveryKey = { display: 'fake-key-123' } as any;
+      (mockBackupAdapter.createFolder as any).mockResolvedValue({
+        connection: { kind: 'NEEDS_ENROLMENT', recoveryAvailable: true },
+        recoveryKey: fakeRecoveryKey,
+      });
+
       const result = await service.createFolder();
       expect(result.state).toBe('FirstConnectShowRecoveryKey');
-      expect(result.recoveryKey).toBeDefined();
-      expect(result.recoveryKey?.length).toBeGreaterThan(0);
+      expect(result.recoveryKey).toBe('fake-key-123');
     });
 
     it('transitions to NeedsEnrolment after confirming recovery key saved', async () => {
-      await service.connect();
-      await service.createFolder();
       service.confirmRecoveryKeySaved();
       expect(service.getState()).toBe('NeedsEnrolment');
-    });
-
-    it('transitions to Ready after enrolment', async () => {
-      await service.connect();
-      await service.createFolder();
-      service.confirmRecoveryKeySaved();
-      expect(service.getState()).toBe('NeedsEnrolment');
-      // In real flow, QR enrolment would happen, then Ready
-      // For now this is incomplete
     });
   });
 
   describe('recovery key', () => {
     it('is shown once and never again', async () => {
-      await service.connect();
-      const result1 = await service.createFolder();
-      expect(result1.recoveryKey).toBeDefined();
+      const fakeRecoveryKey = { display: 'fake-key-456' } as any;
+      (mockBackupAdapter.createFolder as any).mockResolvedValue({
+        connection: { kind: 'NEEDS_ENROLMENT', recoveryAvailable: true },
+        recoveryKey: fakeRecoveryKey,
+      });
+
+      const result = await service.createFolder();
+      expect(result.recoveryKey).toBe('fake-key-456');
       expect(service.hasShownRecoveryKey()).toBe(false);
 
       service.confirmRecoveryKeySaved();
@@ -101,7 +137,12 @@ describe('DriveConnectService', () => {
     });
 
     it('can be skipped with warning', async () => {
-      await service.connect();
+      const fakeRecoveryKey = { display: 'fake-key-789' } as any;
+      (mockBackupAdapter.createFolder as any).mockResolvedValue({
+        connection: { kind: 'NEEDS_ENROLMENT', recoveryAvailable: true },
+        recoveryKey: fakeRecoveryKey,
+      });
+
       await service.createFolder();
       service.skipRecoveryKeyWithWarning();
       expect(service.hasShownRecoveryKey()).toBe(true);
@@ -110,33 +151,58 @@ describe('DriveConnectService', () => {
   });
 
   describe('disconnect', () => {
-    it('calls signIn.disconnect() and returns to Disconnected', async () => {
-      await service.connect();
+    it('returns to Disconnected', async () => {
       await service.disconnect();
-      expect(mockDriveSignIn.disconnect).toHaveBeenCalled();
       expect(service.getState()).toBe('Disconnected');
     });
   });
 
-  describe('unimplemented methods (NotYet)', () => {
-    it('backUpNow throws NotYet', async () => {
-      // Currently returns fake success; should throw NotYet when real wiring is done
-      // const result = await service.backUpNow();
-      // expect(result).toEqual({ success: false, error: expect.stringContaining('NotYet') });
+  describe('backup operations', () => {
+    it('backUpNow returns success when sync succeeds', async () => {
+      (mockSyncAdapter.syncNow as any).mockResolvedValue({
+        state: 'synced',
+      });
+
+      const result = await service.backUpNow();
+      expect(result.success).toBe(true);
     });
 
-    it('listBackups throws NotYet', async () => {
-      // Should integrate with DriveBackupService.listBackups()
+    it('backUpNow returns error when sync fails', async () => {
+      (mockSyncAdapter.syncNow as any).mockResolvedValue({
+        state: 'error',
+        error: 'Offline',
+      });
+
+      const result = await service.backUpNow();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Offline');
+    });
+  });
+
+  describe('deletion operations', () => {
+    it('deleteL1 returns success when deletion succeeds', async () => {
+      (mockDeletionAdapter.preflight as any).mockResolvedValue({
+        kind: 'ready',
+        plan: { rootId: 'root', items: [], totals: {}, operationId: 'op1' },
+      });
+      (mockDeletionAdapter.execute as any).mockResolvedValue({
+        kind: 'ran',
+        report: {},
+      });
+
+      const result = await service.deleteL1();
+      expect(result.success).toBe(true);
     });
 
-    it('deleteL3 5-second delay is real', async () => {
-      // Should use fake timers to verify 5s delay
-      // vi.useFakeTimers();
-      // const promise = service.deleteL3(true);
-      // vi.advanceTimersByTime(4000);
-      // expect(promise).not.toResolve();
-      // vi.advanceTimersByTime(1000);
-      // await expect(promise).resolves.toBeDefined();
+    it('deleteL1 returns error when preflight refused', async () => {
+      (mockDeletionAdapter.preflight as any).mockResolvedValue({
+        kind: 'refused',
+        reason: 'OFFLINE',
+      });
+
+      const result = await service.deleteL1();
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('OFFLINE');
     });
   });
 });
