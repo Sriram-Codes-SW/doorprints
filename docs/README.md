@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.68 |
-| Date | 2026-10-01 |
+| Version | 0.71 |
+| Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -71,6 +71,7 @@
 | 0.66 | 2026-10-01 | Claude (Code), lead | S4b-BL-103 (branch `test/followup-gaps`): 06 v0.93 (TC-U-119, TC-U-120, TC-U-121), 10 v0.117 (S4b-BL-103 done; S4b-BL-90d, -92f, -93e tested). |
 | 0.67 | 2026-10-01 | Claude (Code), lead | S4b-BL-108 (branch `feat/web-open-backup-file-handler`): 06 v0.94 (TC-U-122, TC-M-45), 10 v0.118 (S4b-BL-108 done in code), 11 v0.54 (5.2, 5.28: the website's file handler). |
 | 0.68 | 2026-10-01 | Claude (Code), lead | S4b-BL-106 (branch `refactor/app-to-shared-s4b-bl-106`): 06 v0.95 (TC-U-47, TC-U-52, TC-U-59), 10 v0.119 (S4b-BL-106 and S4b-BL-76 done in code, S4b-BL-41 nearer). |
+| 0.71 | 2026-10-02 | Claude (Code), lead | New **15**, Google Drive backup, sync, deletion and sharing (design for the owner's requests of 2026-10-02; branch `docs/google-drive-backup-design`): 02 v0.48 (§10 the Drive channel), 06 v0.97 (TC-M-46..49 planned), 10 v0.121 (S4b-BL-74 done, S4b-BL-115..124), 13 v0.2 (re-scoped for D-28, part I), 14 v0.73 (N17). (0.69 and 0.70 are taken by the Survey of India branch.) |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |
 | 0.63 | 2026-10-01 | Claude (Code), Docs team | The guide's *Compare and plan* page, in four languages, names Not chosen as well as Rejected houses as left out of Compare and Plan visits, and how to bring one back (10 v0.113). |
@@ -110,6 +111,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [User guide](../guide/docs/index.md) (site: https://sriram-codes-sw.github.io/doorprints/) | For people using Doorprints, not engineers: what it is, the screen at a glance on the website, Android and iPhone, and task by task how to add, find, compare and plan visits to houses, save a copy, import a backup, connect a server, add a shared listing, Hunt mode, language and theme, privacy and FAQ; screenshots in [guide/docs/images](../guide/docs/images/) | Docs team |
 | 13 | [Release security checklist](13-release-security-checklist.md) | The manual part of the release security gate: the one-hour list per release (web WSTG-lite, Android MASTG-lite, MobSF dynamic, the server, the OWASP Top 10 for LLM applications, the DPDP Act and Play data safety, India's boundaries), the deep self-run pentest's scope, and a release record to copy; the automated checks are in [06](06-test-plan.md) §11.1 | Lead, with DevSecOps |
 | 14 | [Lead backlog and handoff](14-lead-backlog-and-handoff.md) | Where things stand, open pull requests, the ordered next steps, parked items and owner rules still in force, for a new session to continue from | Lead |
+| 15 | [Google Drive backup and sharing](15-google-drive-backup-and-sharing.md) | Design (draft, for the owner's decisions): backup and *Import a backup* through the person's own Google Drive, automatic sync and what "no data loss" can honestly mean, deleting the data in Drive, sharing with someone who uses Doorprints, the `drive.file` scope and the owner's Google Cloud setup checklist, the phased plan (S4b-BL-115..124) | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json`: the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |

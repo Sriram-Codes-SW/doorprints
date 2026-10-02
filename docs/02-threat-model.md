@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.46 |
-| Date | 2026-09-29 |
+| Version | 0.48 |
+| Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -58,6 +58,7 @@
 | 0.44 | 2026-09-29 | Claude (Code), lead | New T-I30 (the path trace is location history) with S4b-FR-2 ([11](11-feature-parity-and-export-spec.md) 5.27). |
 | 0.45 | 2026-09-29 | Claude (Code), lead | F-14 on iPhone (S4b-BL-69): the lock screen's preview is iOS's *Show Previews* setting; Hunt mode's alerts are the iPhone app's only notifications. |
 | 0.46 | 2026-09-30 | Claude (Code), lead | New T-I31: a file another app opens in Doorprints (sharing updates, S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
+| 0.48 | 2026-10-02 | Claude (Code), lead | New **§10, the Google Drive channel** (design, [15](15-google-drive-backup-and-sharing.md)): the trust boundary to Google, threats T-S12, T-T15..T-T17, T-R4, T-I32..T-I36, T-D10, T-D11, T-E10 (deletion and sharing included), abuse cases AB-12..AB-14, residual risks RR-18..RR-20. (0.47 is taken by the Survey of India branch.) |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -446,3 +447,43 @@ Totals (32 findings, F-01 counted as F-01a and F-01b since v0.6): 27 Fixed, 3 Pa
 ## 9. Review triggers
 
 Re-run this threat model when any of these happens: a change of basemap, map style or OpenFreeMap planet (re-check India's boundaries, RR-16, TC-M-25), a new endpoint, auth change, new third-party service, AI feature enabled, storage change (for example photos to object storage), multi-user support, Play Store release, a change of repository visibility (done for going public on 2026-09-22: T-I11, T-I21), a change of AI provider or tier (done for Vertex AI: T-I20 data use, T-I22 credential; the DFD in [04](04-data-flow-diagrams.md) (E6, DF-21, DF-32: endpoint `aiplatform.googleapis.com`, OAuth tokens instead of `x-goog-api-key`) is synced when the AI team's code lands, [10](10-sprint-log.md) C-24), or a security incident (see 08).
+
+## 10. The Google Drive channel (design, 2026-10-02)
+
+Designed in [15](15-google-drive-backup-and-sharing.md), not built (tickets S4b-BL-115..124). Re-run this section when
+it is built and when the owner's decisions of 15 §6 change it.
+
+**The new trust boundary.** Each device talks to Google directly (`accounts.google.com`, `oauth2.googleapis.com`,
+`www.googleapis.com/drive/v3` and `/upload/drive/v3`, and on the website `apis.google.com` and `docs.google.com` for
+the Picker). There is no server of ours on the path (D-28). Google is trusted with what the person puts in their own
+Drive, as it is with the rest of their account. **Everything read back from Drive is untrusted input**: the person can
+edit it, a shared file belongs to someone else, and a stolen Google session could write it. Scope: `drive.file` only
+(15 §2.2).
+
+| ID | STRIDE | Element | Threat | L | I | Risk | Mitigation |
+|---|---|---|---|---|---|---|---|
+| T-S12 | Spoofing | The OAuth flow on the phones | Another app catches the redirect (custom scheme on iOS) and swaps in its own code | 1 | 3 | 3 Medium | PKCE (RFC 7636) on the iPhone; Android's grant comes from Play services, no redirect; the website's popup is checked by GIS's origin rule; the state parameter checked |
+| T-T15 | Tampering | Files read from Drive | A hand-edited or hostile file (a sync file, a backup, someone's shared file) carries a zip bomb, bad paths, wrong types or huge counts | 2 | 2 | 4 Medium | Every file goes through the import checks (docs/schemas §6, `ImportPlan`, the website's reader) before anything is written; caps as for an import; a failing file is skipped with a message |
+| T-T16 | Tampering | A shared file | The sharer deletes houses or rewrites them to change the other person's list | 2 | 1 | 2 Low | Only an update import applies deletions, through the preview the first time; a house edited here after the delete stays (ADR-29); imported houses are the person's own and in their backups |
+| T-T17 | Tampering | Retention | A wiped or broken device writes an almost empty backup and retention prunes the good history | 2 | 3 | **6 High** | The shrink guard (15 §1.4 item 4); automatic pruning to Drive's bin; never the newest good backup |
+| T-R4 | Repudiation | Sync | "I never deleted that house" across devices | 1 | 1 | 1 Low | Tombstones carry the device id and time; the daily backups keep the earlier state |
+| T-I32 | Information disclosure | Tokens | An access or refresh token is read from storage or a log | 2 | 3 | **6 High** | Website: memory only; Android: none stored (Play services); iPhone: Keychain, this device only; no token in `toString()`, logs or crash reports (S4b-BL-29's rule); release checklist part I |
+| T-I33 | Information disclosure | Scope | The app asks for more of Drive than it needs, or a bug reads unrelated files | 1 | 3 | 3 Medium | `drive.file` only: Google lets the app see only files it created or was handed through the Picker |
+| T-I34 | Information disclosure | Sharing | The person shares more than meant (contacts, photos) or with the wrong email | 2 | 2 | 4 Medium | Contacts and photos off by default, the consent text names the account and what it sees, viewer rights only, *Stop sharing* (15 §4.4); RR-19 |
+| T-I35 | Information disclosure | Deletion | A deletion the person asked for leaves data behind (Drive's bin, a half-finished run, a shared file) | 2 | 2 | 4 Medium | Permanent `files.delete`, permissions removed first, a resumable list that reports what is left, offline refused (15 §3.3); TC-M-48 |
+| T-I36 | Information disclosure | The website's XSS surface | Google's scripts (GIS, Picker) on the page widen what an XSS could reach | 1 | 3 | 3 Medium | CSP allows only `accounts.google.com/gsi/`, `apis.google.com` and `docs.google.com` for the Picker; COOP `same-origin-allow-popups` (S4b-BL-73); the token in memory for an hour at most |
+| T-D10 | Denial of service | Quota | The person's Drive fills up, or Google rate-limits | 2 | 1 | 2 Low | Photos pause, small backups go on, one notice, backoff with `Retry-After` (15 §5.2) |
+| T-D11 | Denial of service | Deletion by mistake | One tap deletes every backup | 2 | 3 | **6 High** | The tick box and a 5-second delay, *Save a copy first*, plain words of what goes and what stays (15 §3.2) |
+| T-E10 | Elevation | Sharing | The other person writes into the sharer's Drive | 1 | 2 | 2 Low | Viewer permission only; each side writes only its own files |
+
+| ID | Actor | Abuse / misuse case | Threats | Countermeasure |
+|---|---|---|---|---|
+| AB-12 | A former partner with a past share | Keeps reading the hunt after a break-up | T-I34 | *Stop sharing* removes the permission and deletes the shared file; the app lists who can see what |
+| AB-13 | Someone with the person's Google session (shared computer) | Downloads the backups or deletes them | T-I32, T-D11 | Google's own sign-in protections (2-Step Verification recommended in the guide); the app lock on the phones; on a shared computer *Disconnect Google Drive* and *Remove all data* |
+| AB-14 | A hostile sharer | Shares a crafted file to crash or poison the other person's app | T-T15, T-T16 | The import checks and the preview; nothing is written before them |
+
+| ID | Residual risk | Rating | Acceptance rationale |
+|---|---|---|---|
+| RR-18 | Google can read the files in the person's Drive (no passphrase in version 1) | Low | The person's own Drive under their own account, encrypted at rest by Google; a passphrase option is S4b-BL-123 (15 §5.4) |
+| RR-19 | What someone imported from a share stays with them after *Stop sharing* | Medium | It cannot be otherwise without a server; the consent text and the stop dialog say so |
+| RR-20 | Google keeps deleted data in its own systems for a while after a deletion | Low | Outside Doorprints' reach; the guide says so (15 §3.3) |
