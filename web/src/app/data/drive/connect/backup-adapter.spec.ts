@@ -100,7 +100,7 @@ class FakeDriveStateStore implements DriveStateStore {
 /**
  * Fake Drive client for testing. Tracks uploaded files and metadata.
  */
-class FakeDriveClient implements DriveClient {
+class FakeDriveClient {
   uploadedFiles: Array<{ name: string; mimeType: string; parents: string[]; appProperties: Record<string, string>; content: Uint8Array }> = [];
 
   async upload(target: any, content: Uint8Array): Promise<any> {
@@ -145,50 +145,6 @@ class FakeDriveClient implements DriveClient {
         headRevisionId: null,
       }));
     return { files, nextPageToken: null, incompleteSearch: false };
-  }
-
-  async getFile(_id: string): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async createFile(_file: any): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async updateMetadata(_id: string, _change: any): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async trash(_id: string): Promise<void> {
-    throw new Error('Not implemented');
-  }
-
-  async downloadBytes(_id: string): Promise<Uint8Array> {
-    throw new Error('Not implemented');
-  }
-
-  async about(): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async beginSession(_target: any): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async querySession(_uri: string): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async appendSession(_session: any, _bytes: Uint8Array): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async finishSession(_session: any): Promise<any> {
-    throw new Error('Not implemented');
-  }
-
-  async listRevisions(_id: string): Promise<any> {
-    throw new Error('Not implemented');
   }
 }
 
@@ -710,6 +666,108 @@ describe('DriveBackupAdapter', () => {
 
       expect(result.reason).toBe('WAIT_QUOTA');
       expect(result.backup).toBe(false);
+    });
+  });
+
+  describe('writeReadMe()', () => {
+    it('creates Read me.txt in root with kind=readme', async () => {
+      await adapter.writeReadMe('en');
+
+      expect(fakeDriveClient.uploadedFiles.length).toBe(1);
+      const file = fakeDriveClient.uploadedFiles[0];
+      expect(file.name).toBe('Read me.txt');
+      expect(file.mimeType).toBe('text/plain');
+      expect(file.parents[0]).toBe('root123');
+      expect(file.appProperties.kind).toBe('readme');
+    });
+
+    it('is idempotent: replaces existing content', async () => {
+      await adapter.writeReadMe('en');
+      expect(fakeDriveClient.uploadedFiles.length).toBe(1);
+
+      await adapter.writeReadMe('en');
+      expect(fakeDriveClient.uploadedFiles.length).toBe(1);
+
+      const content = new TextDecoder().decode(fakeDriveClient.uploadedFiles[0].content);
+      expect(content).toContain('Doorprints backup folder');
+    });
+
+    it('supports all four languages', async () => {
+      const langs: ('en' | 'hi' | 'ta' | 'te')[] = ['en', 'hi', 'ta', 'te'];
+
+      for (const lang of langs) {
+        fakeDriveClient.uploadedFiles = [];
+        await adapter.writeReadMe(lang);
+        expect(fakeDriveClient.uploadedFiles.length).toBe(1);
+      }
+    });
+
+    it('all languages differ and contain website address', async () => {
+      const contents: Record<string, string> = {};
+
+      for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+        fakeDriveClient.uploadedFiles = [];
+        await adapter.writeReadMe(lang);
+        const text = new TextDecoder().decode(fakeDriveClient.uploadedFiles[0].content);
+        contents[lang] = text;
+        expect(text).toContain('https://doorprints.web.app');
+      }
+
+      // Verify all languages are different
+      const texts = Object.values(contents);
+      const uniqueTexts = new Set(texts);
+      expect(uniqueTexts.size).toBe(4);
+    });
+
+    it('contains under review marker for hi/ta/te', async () => {
+      for (const lang of ['hi', 'ta', 'te'] as const) {
+        fakeDriveClient.uploadedFiles = [];
+        await adapter.writeReadMe(lang);
+        const text = new TextDecoder().decode(fakeDriveClient.uploadedFiles[0].content);
+        expect(text).toContain('*Under review*');
+      }
+    });
+
+    it('contains settings path and do-not-edit warning', async () => {
+      await adapter.writeReadMe('en');
+      const text = new TextDecoder().decode(fakeDriveClient.uploadedFiles[0].content);
+      expect(text).toContain('Settings > Google Drive in Doorprints');
+      expect(text).toContain('Do not delete or edit files here by hand');
+    });
+
+    it('is classified as ours by deletion rules (kind=readme in root)', async () => {
+      await adapter.writeReadMe('en');
+      const file = fakeDriveClient.uploadedFiles[0];
+
+      // Simulate classifyFile check: kind must be 'readme' and container must be 'root'
+      const kind = file.appProperties[DRIVE_LAYOUT.kind];
+      expect(kind).toBe('readme');
+      expect(file.parents[0]).toBe('root123'); // root folder
+    });
+
+    it('contains no personal email or house data', async () => {
+      await adapter.writeReadMe('en');
+      const text = new TextDecoder().decode(fakeDriveClient.uploadedFiles[0].content);
+
+      // Should not contain email address or house-related data
+      expect(text).not.toContain('@');
+      expect(text).not.toContain('house');
+      expect(text).not.toContain('property');
+    });
+
+    it('throws if no folder is ready', async () => {
+      fakeStateStore = new FakeDriveStateStore();
+      (fakeStateStore as any).value = { ...EMPTY_DEVICE_STATE, rootId: null };
+      adapter = new DriveBackupAdapter(fakeBackupService as any, fakeImportService as any, fakeDriveClient as any, fakeStateStore);
+
+      let thrown = false;
+      try {
+        await adapter.writeReadMe('en');
+      } catch (e: any) {
+        thrown = true;
+        expect(e.message).toContain('No Doorprints folder');
+      }
+      expect(thrown).toBe(true);
     });
   });
 });

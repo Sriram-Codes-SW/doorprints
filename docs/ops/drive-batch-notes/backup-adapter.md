@@ -1,4 +1,6 @@
-# S4b-BL-73 notes: web backup adapter (S4b-BL-73)
+# S4b-BL-116/117 notes: web backup adapter
+
+S4b-BL-116 (backups to Drive, Kotlin), S4b-BL-117 (connect ticket). This notes: web adapter design, threat model, decisions, and test coverage.
 
 Branch `feat/drive-web-backup-adapter`, from `origin/feat/drive-web-page`.
 
