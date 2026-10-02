@@ -22,23 +22,18 @@ import { DriveBackupService as BackupServiceClass } from '../../backup/drive-bac
 import { DriveImportService as ImportServiceClass } from '../../backup/drive-import.service';
 import { DriveBackupAdapter, type BackupAdapterInterface } from '../backup-adapter';
 import type { DriveRuntime } from './runtime';
-import { MemoryTrust } from '../../backup/backup-test-rig';
 
 /**
  * Creates a real backup adapter from the Drive runtime.
  *
  * Constructs DriveBackupService with the runtime's crypto, device identity, state store,
- * and folder trust stores, then DriveImportService with the same, and finally wraps both
- * in DriveBackupAdapter for the screens to use.
+ * and folder trust stores (DB-backed via the runtime), then DriveImportService with the same,
+ * and finally wraps both in DriveBackupAdapter for the screens to use.
  *
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
 export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
-  // For now, use MemoryTrust until we have proper DB-backed trust stores
-  // TODO: Wire proper KeysWatermarkStore and ControlWatermarkStore from drive-db
-  const trust = new MemoryTrust();
-
-  // Create the backup service with production dependencies
+  // Create the backup service with production dependencies from runtime
   const backupService: DriveBackupService = new BackupServiceClass(
     rt.drive,
     rt.crypto,
@@ -47,8 +42,8 @@ export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
       name: 'Doorprints Browser',
       platform: 'web',
     },
-    rt.driveStateStore, // Use the state store from the runtime
-    trust,
+    rt.driveStateStore, // Device state store from opened DB
+    rt.folderTrustStores, // Folder key watermarks and control watermarks from opened DB
     () => Date.now(),
     () => {
       // Get UTC offset in minutes (e.g., -300 for EST, 330 for IST)
