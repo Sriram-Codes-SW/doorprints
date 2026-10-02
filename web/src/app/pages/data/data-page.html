@@ -341,7 +341,7 @@
           </div>
         }
       }
-      @if (sync.serverResetAt()) {
+      @if (sync.remoteResetAt()) {
         <!-- Not a live region: SyncService said it through the app's announcer when it happened, on whatever page was
              open. Here it stays for the rest of the visit, so the reason for a long sync is on the sync card. -->
         <p class="small">{{ 'data.serverReset' | t }}</p>
