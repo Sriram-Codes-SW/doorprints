@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { DriveError } from '../data/drive/drive-client';
 import type { Msg } from '../i18n/translation.service';
 import { ImageResizeError } from './image-resize';
 import { LocalDataError } from './local-error';
@@ -36,6 +37,7 @@ export function errorMsg(err: unknown): Msg {
   if (err instanceof ImageResizeError) {
     return { key: err.reason === 'canvas' ? 'error.imageCanvas' : err.reason === 'encode' ? 'error.imageEncode' : 'error.imageRead' };
   }
+  if (err instanceof DriveError) return driveErrorMsg(err);
   if (err && typeof err === 'object') {
     const e = err as { status?: number; error?: unknown; message?: string };
     // Status 0 is "no response at all". When the device says it is offline, that is the whole story: say so plainly,
@@ -61,6 +63,22 @@ export function errorMsg(err: unknown): Msg {
     if (typeof e.message === 'string' && e.message) return { key: 'error.detail', params: { detail: e.message } };
   }
   return { key: 'error.unknown' };
+}
+
+/**
+ * A Google Drive failure (S4b-BL-115) in the words the server's failures already have (Kotlin: the `DriveException`
+ * branch of `SyncOutcome.fromError`); a full Drive reads as a server problem until S4b-BL-118 gives it its own words.
+ */
+function driveErrorMsg(e: DriveError): Msg {
+  switch (e.kind) {
+    case 'OFFLINE': return { key: isOffline() ? 'error.offline' : 'error.network' };
+    case 'UNAUTHORIZED':
+    case 'FORBIDDEN': return { key: 'error.auth' };
+    case 'RATE_LIMITED': return { key: 'error.rateLimited', params: { s: e.retryAfterMs != null ? Math.ceil(e.retryAfterMs / 1000) : 60 } };
+    case 'NOT_FOUND': return { key: 'error.notFound' };
+    case 'BAD_REQUEST': return { key: 'error.httpStatus', params: { status: String(e.httpStatus) } };
+    default: return { key: 'error.server' };
+  }
 }
 
 /**

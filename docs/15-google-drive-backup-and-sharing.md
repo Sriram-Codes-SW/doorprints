@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.5 |
+| Version | 0.6 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
-| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Docs only so far: nothing here is built. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
+| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70 (the `SyncBackend` seam) and S4b-BL-115 (the Drive client and the fake Drive, §7.1). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
 ## Change log
 
@@ -17,6 +17,7 @@
 | 0.3 | 2026-10-02 | Claude (Code), lead | Owner addition of the same day, *an authenticator app*: new §10.5 (TOTP, RFC 6238, as an option for the authentication steps only, never for encryption or recovery; the website's second way to L2/L3 next to a passkey; a second check at device approval; an optional extra factor for L3 on the phones); §10.1's table by factor and platform; §10.6, the limit of every gate inside the app; decision 8; S4b-BL-129 and TC-M-55 in §7; R13. |
 | 0.4 | 2026-10-02 | Claude (Code), lead | Fixes from an adversarial review: the recovery key as a P-256 key pair whose public key receives every epoch (§9.4); enrolment out of band by QR code with HPKE PSK mode, the commit-then-reveal code fallback, a 10-minute expiry, and no silent adoption of an existing folder (§9.3, §9.5 i); rollback refused by a `revision` counter and the highest epoch kept on each device, files written after a revoke skipped (§9.3, §9.5 iv); a revoke does not revoke Google's grant; *Delete everything* ends the recovery key; local copies rebuild `keys.json`; chained epochs (§9.1); HPKE (RFC 9180) for the wraps, fresh nonces, no content-key reuse, key commitment discussed (§9.2, §9.6); `sync/1` as a new schema (S4b-BL-130); 64-bit key-card fingerprints and the sender from Drive's metadata; every enrolled device fully trusted, with "New device enrolled" notices; the Drive merge rule as last-write-wins on `updatedAt`, not `SyncRules.keepLocal` (§5.1); `state=complete` as the backup marker (§1.4); tombstones vs import; the shrink guard's L1 confirmation and the 7-month photo note; the Android Custom Tab alternative (§5.5); the website's storage eviction; the GIS popup's user gesture and the CSP entries; the overlay-not-root note and §10.6 on the screen; TOTP no longer approves devices; the privacy page's contents and Limited Use; the spike first (§7). New §6.1: six open questions of scope. |
 | 0.5 | 2026-10-02 | Claude (Code), lead | **The owner decided** (2026-10-02): the eight decisions of §6 as written and the reviewer's answer to all six questions of §6.1 (the authenticator app cut from v1; website L2/L3 only with a PRF-sealed passkey; sharing deferred until the spike; no monthly mobile-data cap; *Lock old backups again* deferred; Android sign-in by Custom Tab and PKCE unless the spike shows it fails). New §1.6, version 1 and later; §4, §5.5, §5.7, §7, §9.5, §10.1, §10.4, §10.5 and §11 follow; [03](03-design.md) ADR-33. |
+| 0.6 | 2026-10-02 | Claude (Code), lead | **S4b-BL-115 built** (the Drive client and the fake Drive, both stacks): new §7.1, the contract details the build had to decide (names, retries and duplicate creates, the listing's consistency, resumable chunks, the late checksum, the error kinds, the token rule, where the token may go, what waits); §7's phase 2 row; S4b-BL-122 gains the website's CORS question. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -528,7 +529,7 @@ PKCE by default, Play services only if the spike shows that fails.
 
 ## 7. The plan: phases, tickets, checks
 
-Each phase is one pull request (or a few), tested on Linux CI against **a fake Drive** (`FakeDriveApi`: an in-memory
+Each phase is one pull request (or a few), tested on Linux CI against **a fake Drive** (`InMemoryFakeDrive`, built in S4b-BL-115, §7.1: an in-memory
 Drive with files, folders, `appProperties`, checksums, permissions, quota, and injected 401, 403 rate-limit, 404,
 429 and 5xx answers, and a "stop after N calls" switch), in Kotlin common code and TypeScript, with shared vectors
 where the rules are shared. Nothing in CI talks to Google. The device and real-Drive checks for version 1 are TC-M-46..TC-M-48 and TC-M-50..TC-M-54 ([06](06-test-plan.md)),
@@ -538,9 +539,9 @@ order is final** (owner, 2026-10-02); the rows below are in that order, the defe
 | Phase | Ticket | What | Tests on Linux | Owner or device |
 |---|---|---|---|---|
 | 0 | this change, S4b-BL-74 | This design; docs/13 re-scoped for client OAuth and Drive; docs/02 §10; ADR-33 | `licence-headers --check` | Decided 2026-10-02 |
-| 0s | **S4b-BL-122** | **The spike, first after the owner's §2.4 checklist and before the crypto phase**, with the owner's clients in Testing: is a `drive.file` grant visible across the Android, iOS and web clients of one project? Does Google's Picker for mobile apps return to the Android and iOS apps, and does a picked folder give its files? Does revoking one client revoke all? Are `sha256Checksum`, `appProperties` and `files.list` consistent right after a write? Does the 7-day testing expiry also hit the Play-services grant? Does Google accept the browser-and-PKCE redirect for Android (the default of open question 6; if not, Play services)? | — | Owner's client ids (§2.4) |
+| 0s | **S4b-BL-122** | **The spike, first after the owner's §2.4 checklist and before the crypto phase**, with the owner's clients in Testing: is a `drive.file` grant visible across the Android, iOS and web clients of one project? Does Google's Picker for mobile apps return to the Android and iOS apps, and does a picked folder give its files? Does revoking one client revoke all? Are `sha256Checksum`, `appProperties` and `files.list` consistent right after a write? Does Google's CORS expose `Location` and `Range` to the website for a resumable upload (§7.1)? Does the 7-day testing expiry also hit the Play-services grant? Does Google accept the browser-and-PKCE redirect for Android (the default of open question 6; if not, Play services)? | — | Owner's client ids (§2.4) |
 | 1 | **S4b-BL-70** | The `SyncBackend` seam on both stacks: push, pull since an opaque cursor, photos, "is it behind"; today's code becomes `ServerSyncBackend`, no behaviour change | Existing sync tests through the seam; a `FakeSyncBackend` | — |
-| 2 | **S4b-BL-115** | `DriveApi` (Ktor in `:shared`, `fetch` on the website: list, create multipart and resumable, get, update, delete, permissions, about), error mapping, backoff; `FakeDriveApi` | Contract tests run against the fake on both stacks; backoff vectors | — |
+| 2 | **S4b-BL-115** (**built**, §7.1) | `DriveClient` (Ktor `HttpDriveClient` in `:shared`, `FetchDriveClient` on the website: list, create multipart and resumable, get, update, download, delete and the bin, revisions, about), error mapping, backoff; `InMemoryFakeDrive` with a fault script. Permissions wait for sharing (S4b-BL-120) | The contract run on both clients of each stack (the HTTP one over the fake behind Drive's HTTP surface); `docs/schemas/drive-vectors.json` (queries, exchanges, errors, backoff) on both | — |
 | 2c | **S4b-BL-125**, **S4b-BL-126** | Encryption (§9): the `dpx/1` envelope, HPKE and the primitives per platform, the device keys, `keys.json` with its MAC, `revision` and rollback check, chained epochs, the local copies that rebuild it; then the first-connect rule, enrolment by QR (HPKE PSK mode) and by the code fallback, the recovery key and its public key, revocation (files after a revoke skipped) and revocation without *Lock old backups again* (deferred); the share key and key cards wait with sharing. Before any file is written to Drive | Known-answer and RFC 9180 vectors, shared Kotlin/TypeScript envelope vectors, tamper, downgrade and rollback tests, enrolment, revocation and epoch-chaining tests on the fake, the Android 26-30 software-key row | TC-M-52, TC-M-53 |
 | 3 | **S4b-BL-116** | Backups in Drive: the folder and control file, the backup writer without photo bytes, `partial-` and rename, the checksum check, retention with the shrink guard, *Back up to Google Drive now*, *Import a backup* > *From Google Drive* through the existing preview | Fake: partial never listed, retention keeps 17, shrink guard, a corrupted file refused, import vectors | — |
 | 4 | **S4b-BL-117**, **S4b-BL-73** | Connecting per platform: the website's GIS token client with the CSP and COOP change and the self-hosted Noto subsets (one live UI run), Android's AuthorizationClient, the iPhone's PKCE flow and Keychain; Settings > Google Drive (connect, account, disconnect, disconnect on all devices) | Token handling against fakes; CSP and header tests; the iOS klib compile | TC-M-46 |
@@ -594,6 +595,53 @@ part I, and the deep self-run pentest's Drive scope (13 §5).
   without a passkey, *Delete all backups* with a code; the same code a second time is refused; five wrong codes lock
   the check for 5 minutes; on a phone with *Also ask for my authenticator code* on, *Delete everything* asks for both;
   *Set up again* after "losing" the app needs the phone's own check or the recovery key.
+
+### 7.1 What S4b-BL-115 built, and what it decided
+
+The Drive access layer, with no screen, sign-in, encryption or sync logic: `app.doorprints.drive` in `android/shared`
+(`DriveClient`, `HttpDriveClient`, `InMemoryFakeDrive` over a `FakeDriveServer`, `DriveOps.kt`) and `web/src/app/data/drive/`
+(the same names; Promises, which the Drive sync backend wraps). The phase 2 row named them `DriveApi` and `FakeDriveApi`; the
+build uses `DriveClient` and `InMemoryFakeDrive`. What this design did not say, and the build chose (the default unless the
+owner objects, or the spike S4b-BL-122 shows Drive differs):
+
+- **One call, one request, its own retries.** Every call but a resumable chunk and a status query retries by the rule of
+  §5.2: five tries, `Retry-After` honoured up to 60 s (longer goes back to the caller, so a worker is not held), else full
+  jitter `floor(random * (min(32 s, 1 s * 2^(n-1)) + 1))`, for 429, 403 `userRateLimitExceeded`/`rateLimitExceeded`, 5xx and no
+  answer. A 401 reports the token to the `TokenProvider` and asks once more, then fails (`UNAUTHORIZED`: "Connect again").
+- **Creates are retried, so a lost answer can leave two files** (Drive has no idempotent create). Callers find files by
+  `appProperties` and take the oldest (`ensureFolder`; listings are in `createdTime` order); a duplicate `partial` backup is
+  pruned after a day (§1.4 item 2).
+- **Listings are eventually consistent; `getFile` by id is not.** A device keeps the ids it wrote and asks by id;
+  absence from one listing right after a write proves nothing. `ensureFolder(spec, parent, create, knownId)` reads the
+  known id first and **never re-creates a folder without `create`** (§3.4): a folder deleted or in the bin is null.
+- **Resumable uploads** go in chunks of a multiple of 256 KiB (1 MiB by default); after a dropped connection, a 5xx or
+  a rate limit the upload waits, asks Drive how far it got (`Content-Range: bytes */size`) and goes on from Drive's
+  `Range`; a session Drive forgot (404) starts again once. The session URI is a capability: never logged or printed. Up to
+  5 MB, one multipart request (§5.2).
+- **The checksum**: `markComplete` reads Drive's `sha256Checksum` and sets `state=complete` (and the real name) only
+  when it matches; a checksum Drive has not computed yet is asked again by the backoff, up to five reads, then `CORRUPT`.
+  `downloadVerified` checks the bytes against Drive's checksum and the expected one.
+- **The error kinds** are `UNAUTHORIZED`, `FORBIDDEN`, `QUOTA_EXCEEDED` (403 `storageQuotaExceeded`), `RATE_LIMITED`,
+  `NOT_FOUND` (404, 410), `CONFLICT` (409, 412), `BAD_REQUEST` (400, 416, other 4xx; added to the planned list), `SERVER`,
+  `OFFLINE` (no answer, and a redirect: a captive portal), `CANCELLED` (499, or stopped between chunks) and `CORRUPT` (an
+  answer Drive does not send, a wrong checksum). Kotlin's `SyncOutcome.fromError` and the website's `errorMsg` read them in
+  the words the server's failures have; a full Drive reads as a server problem until S4b-BL-118 gives it its own words.
+- **Where the token goes**: only to `https://www.googleapis.com` (port 443), checked before every request, session URIs
+  included; file ids are checked before they enter a path; the website sends no cookies and does not follow redirects,
+  except on a session PUT, where the fetch standard returns Google's `308 Resume Incomplete` as it is only with
+  `redirect: 'follow'` (it has no `Location`). **The spike S4b-BL-122 checks that Google's CORS exposes `Location` and
+  `Range` to the website.**
+- **Deletes go file by file**, a 404 counting as done, and `deleteAll` stops at the first failure and reports what is
+  left (§3.3); Drive's batch endpoint is not used. **Permissions** (`permissions.delete` before a shared file is deleted,
+  §3.3) come with sharing (S4b-BL-120).
+- **The fake** (`InMemoryFakeDrive`, test code, never shipped: `:shared`'s commonTest and the website's specs; a later ticket whose `:ui` or `:app` tests need it moves it to a small test-fixtures module): files
+  and folders with `appProperties` (124 bytes per key and value), content with `sha256Checksum`, revisions and a roll-back,
+  the bin inherited from a folder and a permanent delete that takes a folder's contents, a quota that counts the bin,
+  resumable sessions with Drive's chunk rule, `modifiedTime` from a `FakeClock` (content changes only), a listing lag,
+  hand edits by "the person", and a deterministic `FaultScript` (by call number, by request kind and number, the next
+  N, always, stop after N; offline, an expired token, 403 quota and rate limits, 429 with `Retry-After`, 5xx, 404, 409,
+  499, a lost answer, a dropped chunk, corrupt content, a late checksum, another writer in between). The contract runs the
+  same cases on the fake and on the HTTP client over the fake behind Drive's HTTP surface.
 
 ## 8. Risks
 

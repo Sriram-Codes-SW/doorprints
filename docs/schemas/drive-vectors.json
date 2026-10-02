@@ -1,0 +1,1157 @@
+{
+ "format": "doorprints-drive-vectors/1",
+ "note": "Shared by android/shared DriveVectorsTest and web drive-vectors.spec.ts (docs/schemas/README.md section 6.2, S4b-BL-115): Drive v3's q strings, request and answer shapes, the error mapping and the backoff rule must be the same on both stacks. Content byte i of an upload is (i * 31 + seed) mod 251. Tokens come from a provider that gives token-1, then token-2 after a rejection. Waits use random 0.5.",
+ "queries": [
+  {
+   "name": "the root folder anywhere",
+   "query": {
+    "appProperties": {
+     "doorprints": "root"
+    },
+    "mimeType": "application/vnd.google-apps.folder"
+   },
+   "q": "mimeType = 'application/vnd.google-apps.folder' and appProperties has { key='doorprints' and value='root' } and trashed = false"
+  },
+  {
+   "name": "finished backups in the Backups folder",
+   "query": {
+    "parentId": "fBackups",
+    "appProperties": {
+     "state": "complete",
+     "kind": "backup"
+    }
+   },
+   "q": "'fBackups' in parents and appProperties has { key='kind' and value='backup' } and appProperties has { key='state' and value='complete' } and trashed = false"
+  },
+  {
+   "name": "app properties go in key order",
+   "query": {
+    "parentId": "fSync",
+    "appProperties": {
+     "state": "partial",
+     "kind": "sync",
+     "device": "d1"
+    },
+    "trashed": true
+   },
+   "q": "'fSync' in parents and appProperties has { key='device' and value='d1' } and appProperties has { key='kind' and value='sync' } and appProperties has { key='state' and value='partial' } and trashed = true"
+  },
+  {
+   "name": "quotes and backslashes are escaped",
+   "query": {
+    "name": "it's a \\ test",
+    "trashed": false
+   },
+   "q": "name = 'it\\'s a \\\\ test' and trashed = false"
+  },
+  {
+   "name": "the bin too when trashed is null",
+   "query": {
+    "parentId": "p1",
+    "trashed": null
+   },
+   "q": "'p1' in parents"
+  },
+  {
+   "name": "nothing but the bin rule",
+   "query": {},
+   "q": "trashed = false"
+  }
+ ],
+ "exchanges": [
+  {
+   "name": "list finished backups by appProperties, two pages",
+   "call": {
+    "op": "listAll",
+    "query": {
+     "parentId": "fBackups",
+     "appProperties": {
+      "kind": "backup",
+      "state": "complete"
+     }
+    },
+    "pageSize": 2
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/files",
+      "params": {
+       "q": "'fBackups' in parents and appProperties has { key='kind' and value='backup' } and appProperties has { key='state' and value='complete' } and trashed = false",
+       "fields": "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId)",
+       "pageSize": "2",
+       "orderBy": "createdTime",
+       "spaces": "drive"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "files": [
+        {
+         "id": "fA",
+         "name": "Doorprints-backup-a.dpx",
+         "mimeType": "application/octet-stream",
+         "parents": [
+          "fBackups"
+         ],
+         "appProperties": {
+          "kind": "backup",
+          "state": "complete"
+         },
+         "size": "123",
+         "sha256Checksum": "CA978112CA1BBDCAFAC231B39A23DC4DA786EFF8147C4E72B9807785AFEE48BB",
+         "createdTime": "2026-10-02T09:30:00.120Z",
+         "modifiedTime": "2026-10-02T09:30:00.120Z",
+         "trashed": false,
+         "headRevisionId": "r1"
+        },
+        {
+         "id": "fB",
+         "name": "Doorprints-backup-b.dpx",
+         "mimeType": "application/octet-stream",
+         "parents": [
+          "fBackups"
+         ],
+         "appProperties": {
+          "kind": "backup",
+          "state": "complete"
+         },
+         "size": "456",
+         "sha256Checksum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+         "createdTime": "2026-10-02T09:31:00Z",
+         "modifiedTime": "2026-10-02T09:31:00Z",
+         "trashed": false,
+         "headRevisionId": "r1"
+        }
+       ],
+       "nextPageToken": "t2",
+       "incompleteSearch": false
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/files",
+      "params": {
+       "q": "'fBackups' in parents and appProperties has { key='kind' and value='backup' } and appProperties has { key='state' and value='complete' } and trashed = false",
+       "fields": "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId)",
+       "pageSize": "2",
+       "orderBy": "createdTime",
+       "spaces": "drive",
+       "pageToken": "t2"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "files": [
+        {
+         "id": "fC",
+         "name": "Doorprints-backup-c.dpx",
+         "mimeType": "application/octet-stream",
+         "parents": [
+          "fBackups"
+         ],
+         "appProperties": {
+          "kind": "backup",
+          "state": "complete"
+         },
+         "size": "789",
+         "sha256Checksum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+         "createdTime": "2026-10-02T09:32:00Z",
+         "modifiedTime": "2026-10-02T09:32:00Z",
+         "trashed": false,
+         "headRevisionId": "r1"
+        }
+       ]
+      }
+     }
+    }
+   ],
+   "result": {
+    "ids": [
+     "fA",
+     "fB",
+     "fC"
+    ],
+    "sleeps": [],
+    "first": {
+     "size": 123,
+     "sha256Checksum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+     "createdTime": 1790933400120,
+     "appProperties": {
+      "kind": "backup",
+      "state": "complete"
+     },
+     "parents": [
+      "fBackups"
+     ]
+    }
+   }
+  },
+  {
+   "name": "an expired token is asked for once more",
+   "call": {
+    "op": "getFile",
+    "fileId": "fA"
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/files/fA",
+      "params": {
+       "fields": "id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 401,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "error": {
+        "code": 401,
+        "message": "Invalid Credentials",
+        "errors": [
+         {
+          "domain": "global",
+          "reason": "authError"
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/files/fA",
+      "params": {
+       "fields": "id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId"
+      },
+      "headers": {
+       "Authorization": "Bearer token-2"
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "id": "fA",
+       "name": "a",
+       "mimeType": "application/octet-stream",
+       "parents": [
+        "fBackups"
+       ],
+       "appProperties": {},
+       "size": "1",
+       "sha256Checksum": "CA978112CA1BBDCAFAC231B39A23DC4DA786EFF8147C4E72B9807785AFEE48BB",
+       "createdTime": "2026-10-02T09:30:00.120Z",
+       "modifiedTime": "2026-10-02T09:30:00.120Z",
+       "trashed": false,
+       "headRevisionId": "r1"
+      }
+     }
+    }
+   ],
+   "result": {
+    "id": "fA",
+    "rejected": [
+     "token-1"
+    ],
+    "sleeps": []
+   }
+  },
+  {
+   "name": "a 503 and a 429 with Retry-After are waited out",
+   "call": {
+    "op": "about"
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/about",
+      "params": {
+       "fields": "user(emailAddress,displayName),storageQuota(limit,usage,usageInDrive)"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 503,
+      "headers": {},
+      "body": null
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/about",
+      "params": {
+       "fields": "user(emailAddress,displayName),storageQuota(limit,usage,usageInDrive)"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 429,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8",
+       "Retry-After": "2"
+      },
+      "body": {
+       "error": {
+        "code": 429,
+        "message": "x",
+        "errors": [
+         {
+          "reason": "rateLimitExceeded"
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "url": "https://www.googleapis.com/drive/v3/about",
+      "params": {
+       "fields": "user(emailAddress,displayName),storageQuota(limit,usage,usageInDrive)"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "user": {
+        "emailAddress": "person@example.com",
+        "displayName": "Test Person"
+       },
+       "storageQuota": {
+        "limit": "16106127360",
+        "usage": "1500",
+        "usageInDrive": "1000"
+       }
+      }
+     }
+    }
+   ],
+   "result": {
+    "email": "person@example.com",
+    "quotaLimit": 16106127360,
+    "quotaUsage": 1500,
+    "sleeps": [
+     500,
+     2000
+    ]
+   }
+  },
+  {
+   "name": "a resumable upload resumes after a dropped connection",
+   "call": {
+    "op": "uploadResumable",
+    "file": {
+     "name": "partial-b.dpx",
+     "mimeType": "application/octet-stream",
+     "parents": [
+      "fBackups"
+     ],
+     "appProperties": {
+      "state": "partial",
+      "kind": "backup"
+     }
+    },
+    "size": 600000,
+    "seed": 7,
+    "chunkSize": 262144
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "resumable",
+       "fields": "id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1",
+       "X-Upload-Content-Type": "application/octet-stream",
+       "X-Upload-Content-Length": "600000"
+      },
+      "json": {
+       "name": "partial-b.dpx",
+       "mimeType": "application/octet-stream",
+       "parents": [
+        "fBackups"
+       ],
+       "appProperties": {
+        "kind": "backup",
+        "state": "partial"
+       }
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Location": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=XYZ"
+      },
+      "body": null
+     }
+    },
+    {
+     "request": {
+      "method": "PUT",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "resumable",
+       "upload_id": "XYZ"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1",
+       "Content-Range": "bytes 0-262143/600000"
+      },
+      "bodyFrom": 0,
+      "bodyLength": 262144
+     },
+     "response": {
+      "status": 308,
+      "headers": {
+       "Range": "bytes=0-262143"
+      },
+      "body": null
+     }
+    },
+    {
+     "request": {
+      "method": "PUT",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "resumable",
+       "upload_id": "XYZ"
+      },
+      "headers": {
+       "Content-Range": "bytes 262144-524287/600000"
+      },
+      "bodyFrom": 262144,
+      "bodyLength": 262144
+     },
+     "drop": true
+    },
+    {
+     "request": {
+      "method": "PUT",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "resumable",
+       "upload_id": "XYZ"
+      },
+      "headers": {
+       "Content-Range": "bytes */600000"
+      },
+      "bodyFrom": 0,
+      "bodyLength": 0
+     },
+     "response": {
+      "status": 308,
+      "headers": {
+       "Range": "bytes=0-399999"
+      },
+      "body": null
+     }
+    },
+    {
+     "request": {
+      "method": "PUT",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "resumable",
+       "upload_id": "XYZ"
+      },
+      "headers": {
+       "Content-Range": "bytes 400000-599999/600000"
+      },
+      "bodyFrom": 400000,
+      "bodyLength": 200000
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "id": "fNew",
+       "name": "partial-b.dpx",
+       "mimeType": "application/octet-stream",
+       "parents": [
+        "fBackups"
+       ],
+       "appProperties": {
+        "kind": "backup",
+        "state": "partial"
+       },
+       "size": "600000",
+       "sha256Checksum": "eb3322e4a6c82a949e39e25e1cc761f8425eece268501985c67dd86255f45990",
+       "createdTime": "2026-10-02T09:30:00.120Z",
+       "modifiedTime": "2026-10-02T09:30:00.120Z",
+       "trashed": false,
+       "headRevisionId": "r1"
+      }
+     }
+    }
+   ],
+   "result": {
+    "id": "fNew",
+    "sha256Checksum": "eb3322e4a6c82a949e39e25e1cc761f8425eece268501985c67dd86255f45990",
+    "sleeps": [
+     500
+    ]
+   }
+  },
+  {
+   "name": "the complete marker is one update with a removed property",
+   "call": {
+    "op": "updateMetadata",
+    "fileId": "fNew",
+    "change": {
+     "name": "Doorprints-backup-b.dpx",
+     "appProperties": {
+      "state": "complete",
+      "device": null
+     }
+    }
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "PATCH",
+      "url": "https://www.googleapis.com/drive/v3/files/fNew",
+      "params": {
+       "fields": "id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      },
+      "json": {
+       "name": "Doorprints-backup-b.dpx",
+       "appProperties": {
+        "device": null,
+        "state": "complete"
+       }
+      }
+     },
+     "response": {
+      "status": 200,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "id": "fNew",
+       "name": "Doorprints-backup-b.dpx",
+       "mimeType": "application/octet-stream",
+       "parents": [
+        "fBackups"
+       ],
+       "appProperties": {
+        "kind": "backup",
+        "state": "complete"
+       },
+       "size": "600000",
+       "sha256Checksum": "eb3322e4a6c82a949e39e25e1cc761f8425eece268501985c67dd86255f45990",
+       "createdTime": "2026-10-02T09:30:00.120Z",
+       "modifiedTime": "2026-10-02T09:30:00.120Z",
+       "trashed": false,
+       "headRevisionId": "r1"
+      }
+     }
+    }
+   ],
+   "result": {
+    "id": "fNew",
+    "sleeps": []
+   }
+  },
+  {
+   "name": "a delete of a file already gone counts as done",
+   "call": {
+    "op": "delete",
+    "fileId": "gone"
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "DELETE",
+      "url": "https://www.googleapis.com/drive/v3/files/gone",
+      "params": {},
+      "headers": {
+       "Authorization": "Bearer token-1"
+      }
+     },
+     "response": {
+      "status": 404,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "error": {
+        "code": 404,
+        "message": "File not found: gone.",
+        "errors": [
+         {
+          "reason": "notFound"
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "result": {
+    "sleeps": []
+   }
+  },
+  {
+   "name": "a full Drive is not asked again",
+   "call": {
+    "op": "upload",
+    "file": {
+     "name": "p-1.dpx",
+     "mimeType": "image/jpeg",
+     "parents": [
+      "fPhotos"
+     ],
+     "appProperties": {}
+    },
+    "size": 10,
+    "seed": 1
+   },
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "url": "https://www.googleapis.com/upload/drive/v3/files",
+      "params": {
+       "uploadType": "multipart",
+       "fields": "id,name,mimeType,parents,appProperties,size,sha256Checksum,createdTime,modifiedTime,trashed,headRevisionId"
+      },
+      "headers": {
+       "Authorization": "Bearer token-1"
+      },
+      "multipart": {
+       "json": {
+        "name": "p-1.dpx",
+        "mimeType": "image/jpeg",
+        "parents": [
+         "fPhotos"
+        ]
+       },
+       "mimeType": "image/jpeg",
+       "bodyLength": 10
+      }
+     },
+     "response": {
+      "status": 403,
+      "headers": {
+       "Content-Type": "application/json; charset=UTF-8"
+      },
+      "body": {
+       "error": {
+        "code": 403,
+        "message": "The user's Drive storage quota has been exceeded.",
+        "errors": [
+         {
+          "domain": "usageLimits",
+          "reason": "storageQuotaExceeded"
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "result": {
+    "error": "QUOTA_EXCEEDED",
+    "sleeps": []
+   }
+  }
+ ],
+ "errors": [
+  {
+   "name": "401 is unauthorized",
+   "status": 401,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 401,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "authError",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "UNAUTHORIZED",
+   "retryAfterMs": null,
+   "reason": "authError",
+   "retryable": false
+  },
+  {
+   "name": "403 storageQuotaExceeded is a full Drive",
+   "status": 403,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "storageQuotaExceeded",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "QUOTA_EXCEEDED",
+   "retryAfterMs": null,
+   "reason": "storageQuotaExceeded",
+   "retryable": false
+  },
+  {
+   "name": "403 userRateLimitExceeded is a rate limit",
+   "status": 403,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "userRateLimitExceeded",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "RATE_LIMITED",
+   "retryAfterMs": null,
+   "reason": "userRateLimitExceeded",
+   "retryable": true
+  },
+  {
+   "name": "403 rateLimitExceeded in details (ErrorInfo)",
+   "status": 403,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "x",
+     "details": [
+      {
+       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+       "reason": "rateLimitExceeded"
+      }
+     ]
+    }
+   },
+   "kind": "RATE_LIMITED",
+   "retryAfterMs": null,
+   "reason": "rateLimitExceeded",
+   "retryable": true
+  },
+  {
+   "name": "403 insufficientPermissions is forbidden",
+   "status": 403,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 403,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "insufficientPermissions",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "FORBIDDEN",
+   "retryAfterMs": null,
+   "reason": "insufficientPermissions",
+   "retryable": false
+  },
+  {
+   "name": "403 with an HTML body is forbidden, no reason",
+   "status": 403,
+   "headers": {
+    "Content-Type": "text/html"
+   },
+   "body": "<html>no</html>",
+   "kind": "FORBIDDEN",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "404 is not found",
+   "status": 404,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 404,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "notFound",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "NOT_FOUND",
+   "retryAfterMs": null,
+   "reason": "notFound",
+   "retryable": false
+  },
+  {
+   "name": "410 is not found",
+   "status": 410,
+   "headers": {},
+   "body": null,
+   "kind": "NOT_FOUND",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "409 is a conflict",
+   "status": 409,
+   "headers": {},
+   "body": null,
+   "kind": "CONFLICT",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "412 is a conflict",
+   "status": 412,
+   "headers": {},
+   "body": null,
+   "kind": "CONFLICT",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "429 with delay-seconds",
+   "status": 429,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8",
+    "Retry-After": "7"
+   },
+   "body": {
+    "error": {
+     "code": 429,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "rateLimitExceeded",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "RATE_LIMITED",
+   "retryAfterMs": 7000,
+   "reason": "rateLimitExceeded",
+   "retryable": true
+  },
+  {
+   "name": "429 with an HTTP-date",
+   "status": 429,
+   "headers": {
+    "Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"
+   },
+   "body": null,
+   "kind": "RATE_LIMITED",
+   "retryAfterMs": 5000,
+   "reason": null,
+   "retryable": true,
+   "nowMs": 1792567675000
+  },
+  {
+   "name": "429 with a Retry-After that is neither",
+   "status": 429,
+   "headers": {
+    "Retry-After": "soon"
+   },
+   "body": null,
+   "kind": "RATE_LIMITED",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": true
+  },
+  {
+   "name": "400 is a bad request",
+   "status": 400,
+   "headers": {
+    "Content-Type": "application/json; charset=UTF-8"
+   },
+   "body": {
+    "error": {
+     "code": 400,
+     "message": "x",
+     "errors": [
+      {
+       "domain": "global",
+       "reason": "invalid",
+       "message": "x"
+      }
+     ]
+    }
+   },
+   "kind": "BAD_REQUEST",
+   "retryAfterMs": null,
+   "reason": "invalid",
+   "retryable": false
+  },
+  {
+   "name": "416 is a bad request",
+   "status": 416,
+   "headers": {},
+   "body": null,
+   "kind": "BAD_REQUEST",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "499 is cancelled",
+   "status": 499,
+   "headers": {},
+   "body": null,
+   "kind": "CANCELLED",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": false
+  },
+  {
+   "name": "500 is a server error",
+   "status": 500,
+   "headers": {},
+   "body": null,
+   "kind": "SERVER",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": true
+  },
+  {
+   "name": "502 is a server error",
+   "status": 502,
+   "headers": {},
+   "body": null,
+   "kind": "SERVER",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": true
+  },
+  {
+   "name": "503 with Retry-After",
+   "status": 503,
+   "headers": {
+    "Retry-After": "3"
+   },
+   "body": null,
+   "kind": "SERVER",
+   "retryAfterMs": 3000,
+   "reason": null,
+   "retryable": true
+  },
+  {
+   "name": "302 is a captive portal: offline",
+   "status": 302,
+   "headers": {
+    "Location": "http://portal.example/"
+   },
+   "body": null,
+   "kind": "OFFLINE",
+   "retryAfterMs": null,
+   "reason": null,
+   "retryable": true
+  }
+ ],
+ "backoff": {
+  "config": {
+   "maxAttempts": 5,
+   "baseMs": 1000,
+   "capMs": 32000,
+   "maxRetryAfterMs": 60000
+  },
+  "cases": [
+   {
+    "attempt": 1,
+    "random": 0.0,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 0
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 500
+   },
+   {
+    "attempt": 1,
+    "random": 0.999999,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 1000
+   },
+   {
+    "attempt": 2,
+    "random": 0.5,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 1000
+   },
+   {
+    "attempt": 3,
+    "random": 0.25,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 1000
+   },
+   {
+    "attempt": 4,
+    "random": 0.5,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 4000
+   },
+   {
+    "attempt": 5,
+    "random": 0.5,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": null
+   },
+   {
+    "attempt": 4,
+    "random": 0.5,
+    "kind": "RATE_LIMITED",
+    "retryAfterMs": 2500,
+    "waitMs": 2500
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "RATE_LIMITED",
+    "retryAfterMs": 60000,
+    "waitMs": 60000
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "RATE_LIMITED",
+    "retryAfterMs": 60001,
+    "waitMs": null
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "OFFLINE",
+    "retryAfterMs": null,
+    "waitMs": 500
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "FORBIDDEN",
+    "retryAfterMs": null,
+    "waitMs": null
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "QUOTA_EXCEEDED",
+    "retryAfterMs": null,
+    "waitMs": null
+   },
+   {
+    "attempt": 1,
+    "random": 0.5,
+    "kind": "UNAUTHORIZED",
+    "retryAfterMs": null,
+    "waitMs": null
+   },
+   {
+    "attempt": 7,
+    "random": 0.5,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 16000,
+    "maxAttempts": 10
+   },
+   {
+    "attempt": 9,
+    "random": 0.99,
+    "kind": "SERVER",
+    "retryAfterMs": null,
+    "waitMs": 31680,
+    "maxAttempts": 10
+   }
+  ]
+ }
+}
