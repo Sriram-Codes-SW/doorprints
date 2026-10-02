@@ -4,17 +4,22 @@ Written because the owner asked to save state (usage limit). Nothing here is mer
 test with unit tests first; local CI, GitHub CI, pull requests and doc updates come later in one pass, fixing what they find.
 Never merge a pull request before its checks are green; after each squash merge read `main`'s push CI before the next merge.
 
-## Branches (all pushed, none merged; PR #116 is the only pull request, a draft)
+## Branches (all pushed, none merged; PR #116 is the only pull request, a draft). Updated 2026-10-02, weekly limit reached.
 
 | Branch | Base | State |
 |---|---|---|
-| `feat/drive-crypto-core` (PR #116, draft) | `main` | S4b-BL-125 built; two adversarial review rounds fixed (head `e81c6e1`). The last commit (revoke issues a new recovery key, revision reset per epoch, repin) has NOT been re-reviewed. Full Android sequence and iOS compile not run for the last two commits. |
-| `feat/privacy-page` | `main` | S4b-BL-121 built (`web/public/privacy.html`, 46 SEO tests pass). No PR. |
-| `feat/drive-sync-schema` | `main` | S4b-BL-130 WIP (`ddf6e7f`): Kotlin done, 39 tests pass; web half written, never compiled or tested. |
-| `feat/drive-backups` | `feat/drive-crypto-core` | S4b-BL-116 WIP (`6ebfa24`): Kotlin core compiles; NO tests, no web. |
+| `feat/drive-crypto-core` (PR #116, draft) | `main` | S4b-BL-125 built; two adversarial reviews fixed (head `e81c6e1`). Last commit not re-reviewed; full Android/iOS checks not run on it. |
+| `feat/privacy-page` | `main` | S4b-BL-121 built, 46 SEO tests pass. No PR. |
+| `feat/drive-sync-schema` | `main` | S4b-BL-130 built (Kotlin 39 tests, web vectors match). |
+| `feat/drive-backups` | crypto-core | S4b-BL-116 built (Kotlin 44 + web 44 tests). |
+| `feat/drive-device-auth` | crypto-core | S4b-BL-127 built (pure logic + Android/iOS auth, no real prompts). |
+| `feat/drive-deletion` | crypto-core | S4b-BL-119 built (Kotlin 31 + web 90 tests). |
+| `feat/drive-sync` | sync-schema + crypto-core | S4b-BL-118 built (backups NOT merged in; depends on an injected FolderSession). |
+| `feat/drive-connect` | backups + device-auth + deletion + sync-schema | S4b-BL-117 PARTLY: `:shared` connect core with tests done; Android screens/strings in `:ui` and `:app` are a WIP commit, NEVER compiled or tested; web page, S4b-BL-73 headers and the web sign-in not started. |
+| `feat/drive-photos` | sync + backups | S4b-BL-128 PARTLY: Kotlin done with tests; the web half is a WIP commit, never compiled or tested. |
 
-Per-ticket notes (decisions, adversarial passes, doc rows to add, exact next steps): `docs/ops/drive-batch-notes/`.
-Delete this directory when the batch is merged and its decisions are in the docs.
+Not started: S4b-BL-122 spike (needs the owner's real account), S4b-BL-124 runbook, a final integration branch that merges
+all of the above (sync and backups use different device ids: key-id hex vs random id; settle in integration).
 
 ## Next steps, in order
 
