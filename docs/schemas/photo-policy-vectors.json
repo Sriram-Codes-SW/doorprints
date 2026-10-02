@@ -1,6 +1,6 @@
 {
  "version": 1,
- "about": "S4b-BL-128 photo network policy (docs/15 section 11): may photo bytes move now, and what the status line says. Conditions: online, metering (UNMETERED|METERED|UNKNOWN; unknown is treated as metered), roaming, dataSaver (Android Data Saver, iPhone Low Data Mode, web saveData). Times are epoch ms; grantedAt is the one-off 'Upload photos now over mobile data' (null: none). Read by PhotoPolicyVectorsTest (Kotlin) and photo-policy-vectors.spec.ts (TypeScript); the expectations were written by an independent Python table.",
+ "about": "S4b-BL-128 photo network policy (docs/15 section 11): may photo bytes move now, and what the status line says. Conditions: online, metering (UNMETERED|METERED|UNKNOWN; unknown is metered on Android/iOS, allowed on web), roaming, dataSaver (Android Data Saver, iPhone Low Data Mode, web saveData). Times are epoch ms; grantedAt is the one-off 'Upload photos now over mobile data' (null: none). Read by PhotoPolicyVectorsTest (Kotlin) and photo-policy-vectors.spec.ts (TypeScript); the expectations were written by an independent Python table. Platform: each case applies to 'web', 'android', 'ios' (or omitted for all).",
  "constants": {
   "oneOffTtlMs": 1800000
  },
@@ -166,7 +166,29 @@
    }
   },
   {
-   "name": "unknown network (web), default: treated as metered, waits",
+   "name": "unknown network (web), default: treated as unmetered, uploads",
+   "platform": "web",
+   "conditions": {
+    "online": true,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "unknown network (phone), default: treated as metered, waits",
+   "platform": "android",
    "conditions": {
     "online": true,
     "metering": "UNKNOWN",
@@ -186,7 +208,7 @@
    }
   },
   {
-   "name": "unknown network (web), setting on: uploads",
+   "name": "unknown network, setting on: uploads (both web and phone)",
    "conditions": {
     "online": true,
     "metering": "UNKNOWN",
