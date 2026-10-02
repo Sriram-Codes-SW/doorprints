@@ -231,8 +231,8 @@
   <!-- S4b-BL-75: read a Full backup or an update file back into this browser. -->
   <app-import-backup />
 
-  <!-- S4b-BL-117: Google Drive connect page. -->
-  <app-drive-connect />
+  <!-- S4b-BL-117: Google Drive connect, backups, sync and deletion. -->
+  <app-drive-connect (importFile)="onDriveImport($event)" />
 
   <section class="card" aria-labelledby="storage-heading">
     <h2 id="storage-heading" tabindex="-1">{{ 'data.storageHeading' | t }}</h2>
@@ -501,6 +501,16 @@
 
   <!-- The AGPL's legal notices and the source offer (FSF, "How to Use GNU Licenses"; docs/10 S4b-BL-65). "Copyright"
        stays English in every language, as the FSF asks. -->
+  <section class="card" aria-labelledby="privacy-heading">
+    <h2 id="privacy-heading">{{ 'data.privacyHeading' | t }}</h2>
+    <p class="muted">{{ 'data.privacyBody' | t }}</p>
+    <div class="actions">
+      <a class="btn" href="/privacy.html" [attr.aria-label]="'data.privacyAria' | t">
+        {{ 'data.privacyLink' | t }}
+      </a>
+    </div>
+  </section>
+
   <section class="card" aria-labelledby="about-heading">
     <h2 id="about-heading">{{ 'data.aboutHeading' | t }}</h2>
     <p lang="en" translate="no">{{ legal.copyright }}</p>

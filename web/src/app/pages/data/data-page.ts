@@ -214,6 +214,12 @@ export class DataPage implements OnInit, OnDestroy {
    */
   protected stopFocused = false;
   private readonly installHeading = viewChild<ElementRef<HTMLElement>>('installHeading');
+  private readonly importCard = viewChild(ImportBackupCard);
+
+  /** A Full backup ZIP fetched from Google Drive is checked by *Import a backup*, nothing written yet. */
+  protected onDriveImport(file: Blob): void {
+    void this.importCard()?.check(file);
+  }
 
   /**
    * Nothing to export with these options, and why: `none` (no house in this browser: Android's export_empty),

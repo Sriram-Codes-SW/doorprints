@@ -84,4 +84,97 @@ describe('DriveBackupsCard', () => {
     expect(rows[1].textContent).toContain('3');
     expect(rows[1].textContent).toContain('256');
   });
+
+  it('backs up now and shows how many houses', async () => {
+    const fakes = fakeDriveService();
+    fakes.backUpNow.mockResolvedValue({
+      ok: true,
+      backup: { id: 'n1', createdAt: Date.parse('2026-10-02T12:00:00Z'), houses: 4, bytes: 2048, name: 'n1' },
+      needsShrinkConfirmation: false,
+      missingNewer: false,
+    });
+    const { host, fixture } = await render(fakes);
+    const btn = host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!;
+    btn.click();
+    await flush();
+    fixture.detectChanges();
+    expect(fakes.backUpNow).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain('driveBackups.housesBackedUp');
+  });
+
+  it('shows a backup error from the service', async () => {
+    const fakes = fakeDriveService();
+    fakes.backUpNow.mockResolvedValue({ ok: false, reason: 'Not connected to folder' });
+    const { host, fixture } = await render(fakes);
+    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!.click();
+    await flush();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('driveBackups.error.notConnected');
+  });
+
+  it('asks before shrinking older backups, and confirm calls the service', async () => {
+    const fakes = fakeDriveService();
+    fakes.backUpNow.mockResolvedValue({
+      ok: true,
+      backup: { id: 'small', createdAt: Date.now(), houses: 1, bytes: 100, name: 'small' },
+      needsShrinkConfirmation: true,
+      missingNewer: false,
+    });
+    fakes.confirmShrink.mockResolvedValue(undefined);
+    const { host, fixture } = await render(fakes);
+    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!.click();
+    await flush();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="dialog"]')?.textContent).toContain('driveBackups.shrinkConfirmQuestion');
+    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.confirmShrink"]')!.click();
+    await flush();
+    expect(fakes.confirmShrink).toHaveBeenCalledWith('small');
+  });
+
+  it('emits the imported Blob to the parent', async () => {
+    const blob = new Blob(['zip']);
+    const backups: BackupSummary[] = [
+      { id: 'b1', createdAt: Date.now(), houses: 2, bytes: 1024, name: 'b1' },
+    ];
+    const fakes = fakeDriveService();
+    fakes.listBackups.mockResolvedValue({ ok: true, backups, missingNewer: false });
+    fakes.importFromDrive.mockResolvedValue({ ok: true, file: blob });
+    const { host, fixture } = await render(fakes);
+    const seen: Blob[] = [];
+    fixture.componentInstance.importFile.subscribe((f) => seen.push(f));
+    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.importBackup"]')!.click();
+    await flush();
+    expect(fakes.importFromDrive).toHaveBeenCalledWith('b1');
+    expect(seen).toEqual([blob]);
+  });
+
+  it('toggles automatic backup', async () => {
+    const fakes = fakeDriveService();
+    const { host } = await render(fakes);
+    const box = host.querySelector<HTMLInputElement>('input[type="checkbox"][aria-label="driveBackups.autoBackup"]')!;
+    box.checked = true;
+    box.dispatchEvent(new Event('change'));
+    expect(fakes.setAutoBackup).toHaveBeenCalledWith(true);
+  });
+
+  it('retries a failed list', async () => {
+    const fakes = fakeDriveService();
+    fakes.listBackups.mockResolvedValueOnce({ ok: false, reason: 'offline' });
+    const { host, fixture } = await render(fakes);
+    expect(host.querySelector('[role="alert"]')).toBeTruthy();
+    fakes.listBackups.mockResolvedValue({ ok: true, backups: [], missingNewer: false });
+    const retry = Array.from(host.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('driveBackups.retry'),
+    );
+    retry!.click();
+    await flush();
+    fixture.detectChanges();
+    expect(fakes.listBackups.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows a live region for the empty list', async () => {
+    const { host } = await render(fakeDriveService());
+    const empty = host.querySelector('.empty');
+    expect(empty?.getAttribute('role')).toBe('status');
+  });
 });
