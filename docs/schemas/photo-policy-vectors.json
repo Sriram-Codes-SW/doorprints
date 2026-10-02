@@ -1,0 +1,529 @@
+{
+ "version": 1,
+ "about": "S4b-BL-128 photo network policy (docs/15 section 11): may photo bytes move now, and what the status line says. Conditions: online, metering (UNMETERED|METERED|UNKNOWN; unknown is treated as metered), roaming, dataSaver (Android Data Saver, iPhone Low Data Mode, web saveData). Times are epoch ms; grantedAt is the one-off 'Upload photos now over mobile data' (null: none). Read by PhotoPolicyVectorsTest (Kotlin) and photo-policy-vectors.spec.ts (TypeScript); the expectations were written by an independent Python table.",
+ "constants": {
+  "oneOffTtlMs": 1800000
+ },
+ "cases": [
+  {
+   "name": "wi-fi, default setting: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "UNMETERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "wi-fi, setting on: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "UNMETERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "wi-fi with Data Saver on: unmetered wins",
+   "conditions": {
+    "online": true,
+    "metering": "UNMETERED",
+    "roaming": false,
+    "dataSaver": true
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "mobile data, default: waits for Wi-Fi",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "mobile data, setting on: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "MOBILE_DATA_SETTING",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "mobile data, setting on, roaming: waits",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": true,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_ROAMING",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "mobile data, setting on, Data Saver: waits",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": true
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_DATA_SAVER",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "mobile data, setting on, roaming and Data Saver: waits (roaming first)",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": true,
+    "dataSaver": true
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_ROAMING",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "unknown network (web), default: treated as metered, waits",
+   "conditions": {
+    "online": true,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "unknown network (web), setting on: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "MOBILE_DATA_SETTING",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "offline, default: paused offline",
+   "conditions": {
+    "online": false,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "OFFLINE",
+    "status": "PAUSED_OFFLINE"
+   }
+  },
+  {
+   "name": "offline, setting on: paused offline",
+   "conditions": {
+    "online": false,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": true
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "OFFLINE",
+    "status": "PAUSED_OFFLINE"
+   }
+  },
+  {
+   "name": "offline with an active grant: still paused offline",
+   "conditions": {
+    "online": false,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789999999000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "OFFLINE",
+    "status": "PAUSED_OFFLINE"
+   }
+  },
+  {
+   "name": "mobile data, active grant: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789999999000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "mobile data, grant given just now: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1790000000000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "mobile data, grant one ms before expiry: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789998200001,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "mobile data, grant exactly expired: waits",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789998200000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "mobile data, grant long expired: waits",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789982000000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "grant in the future (clock moved back): inactive, waits",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1790000060000,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "WAITING_FOR_WIFI"
+   }
+  },
+  {
+   "name": "grant overrides roaming",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": true,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789999999995,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "grant overrides Data Saver",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": true
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789999999995,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "grant on an unknown network: uploads",
+   "conditions": {
+    "online": true,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": 1789999999995,
+   "now": 1790000000000,
+   "pending": 3,
+   "expect": {
+    "allowed": true,
+    "reason": "ONE_OFF",
+    "status": "UPLOADING"
+   }
+  },
+  {
+   "name": "nothing pending on Wi-Fi: done",
+   "conditions": {
+    "online": true,
+    "metering": "UNMETERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 0,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "DONE"
+   }
+  },
+  {
+   "name": "nothing pending on mobile data: done",
+   "conditions": {
+    "online": true,
+    "metering": "METERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 0,
+   "expect": {
+    "allowed": false,
+    "reason": "WAITING_METERED",
+    "status": "DONE"
+   }
+  },
+  {
+   "name": "nothing pending offline: done",
+   "conditions": {
+    "online": false,
+    "metering": "UNKNOWN",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": 0,
+   "expect": {
+    "allowed": false,
+    "reason": "OFFLINE",
+    "status": "DONE"
+   }
+  },
+  {
+   "name": "negative pending counts as done",
+   "conditions": {
+    "online": true,
+    "metering": "UNMETERED",
+    "roaming": false,
+    "dataSaver": false
+   },
+   "settings": {
+    "uploadOnMobileData": false
+   },
+   "grantedAt": null,
+   "now": 1790000000000,
+   "pending": -1,
+   "expect": {
+    "allowed": true,
+    "reason": "UNMETERED",
+    "status": "DONE"
+   }
+  }
+ ]
+}
