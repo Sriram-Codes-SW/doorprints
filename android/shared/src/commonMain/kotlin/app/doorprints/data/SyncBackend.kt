@@ -115,4 +115,11 @@ interface SyncBackend {
 
     /** One photo's bytes. */
     suspend fun downloadPhoto(photoId: String): ByteArray
+
+    /**
+     * Like [downloadPhoto], but null when this one photo cannot be had and will not be by trying again now (Drive: the file
+     * was altered, swapped, planted, written by a revoked device, or is gone). The loop skips it and goes on; the backend
+     * reports why. A failure that may pass (offline, rate limit) is still thrown. The server's is [downloadPhoto].
+     */
+    suspend fun downloadPhotoIfAvailable(photoId: String): ByteArray? = downloadPhoto(photoId)
 }

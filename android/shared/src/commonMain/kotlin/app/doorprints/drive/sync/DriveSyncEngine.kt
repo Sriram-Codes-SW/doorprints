@@ -39,6 +39,8 @@ import app.doorprints.drive.ensureFolder
 import app.doorprints.drive.listAll
 import app.doorprints.drive.markComplete
 import app.doorprints.drive.sha256HexOf
+import app.doorprints.drive.photo.PhotoRef
+import app.doorprints.drive.photo.PhotoRefs
 import app.doorprints.drive.uploadBytes
 import app.doorprints.shared.sync.DriveMerge
 import app.doorprints.shared.sync.SyncFile
@@ -89,6 +91,8 @@ class DriveSyncEngine(
     private val clock: () -> Long,
     /** True while a deletion is pending or the folder was deleted: no pass then (docs/15 §3.3, §3.4). */
     private val paused: suspend () -> Boolean = { false },
+    /** Where the photos' Drive files are remembered (S4b-BL-128): written into the photo rows, learned from the others' files. */
+    private val photos: PhotoRefs? = null,
 ) {
     private val dpx = Dpx(p)
     private val staged = LinkedHashMap<RowId, SyncRow>()
@@ -255,6 +259,7 @@ class DriveSyncEngine(
         var held = 0
         var peersRead = 0
         val peers = HashMap(st.peers)
+        val learned = HashMap<String, PhotoRef>()
         for ((dev, group) in groups) {
             val peer = peers[dev] ?: SyncPeer()
             val candidates = group
@@ -277,6 +282,8 @@ class DriveSyncEngine(
             }
             if (best == null) continue
             peersRead++
+            // The Drive file of each live photo the authenticated file names, for downloads (and for our own next file).
+            for (row in best.file.rows(SyncKind.PHOTOS)) if (!row.stamp.deleted) SyncRows.refOf(row)?.let { if (row.key !in learned) learned[row.key] = it }
             val plan = DriveMerge.plan(best.file, now, peer.highestSeq.takeIf { it > 0 }, liveHouses, confirmShrink, stamps)
             if (plan.stale) {
                 skipped += SkippedFile(dev, bestFile!!.id, SkipReason.ROLLED_BACK)
@@ -296,6 +303,17 @@ class DriveSyncEngine(
             peers[dev] = SyncPeer(maxOf(peer.highestSeq, best.file.seq), if (settled) best.checksum else peer.mergedChecksum)
         }
         for (r in take.values) putIfNewer(current, r)
+        if (photos != null) {
+            photos.learn(learned)
+            // Every photo row of our file carries the Drive file of its bytes, once there is one.
+            val refs = photos.refs()
+            if (refs.isNotEmpty()) {
+                for ((id, row) in current.entries.toList()) {
+                    if (id.kind != SyncKind.PHOTOS || SyncRows.refOf(row) != null) continue
+                    current[id] = SyncRows.withRef(row, refs[id.key] ?: continue)
+                }
+            }
+        }
 
         // This device's own file.
         var wrote = false
