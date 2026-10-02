@@ -41,9 +41,11 @@ describe('photo-policy-vectors.json', () => {
   });
 
   it('every case', () => {
-    expect(vectors.cases.length).toBe(26);
+    expect(vectors.cases.length).toBe(27);
     for (const c of vectors.cases) {
-      const d = decidePhotoNetwork(c.conditions, c.settings, c.grantedAt === null ? null : { grantedAt: c.grantedAt }, c.now);
+      // Web platform uses webUnknownAllowed=true (UNKNOWN is treated as ALLOWED)
+      const isWeb = (c as any).platform === 'web';
+      const d = decidePhotoNetwork(c.conditions, c.settings, c.grantedAt === null ? null : { grantedAt: c.grantedAt }, c.now, isWeb);
       expect(d.allowed, c.name).toBe(c.expect.allowed);
       expect(d.reason, c.name).toBe(c.expect.reason);
       expect(photoNetworkStatus(d, c.pending), c.name).toBe(c.expect.status);
@@ -101,11 +103,14 @@ describe('PhotoUploadGate and the platform mappings', () => {
     expect(fromApple(false, false, false)).toEqual({ online: false, metering: 'UNMETERED', roaming: false, dataSaver: false });
   });
 
-  it('the website treats an unknown network as metered, and reads navigator.connection when it is there', () => {
+  it('the website treats an unknown network as allowed (web=true), phones as metered (web=false), and reads navigator.connection when it is there', () => {
     expect(webNetworkConditions(undefined)).toEqual(OFFLINE);
     const unknown = webNetworkConditions({ onLine: true });
     expect(unknown.metering).toBe('UNKNOWN');
-    expect(decidePhotoNetwork(unknown, { uploadOnMobileData: false }, null, 0).allowed).toBe(false);
+    // On phones (webUnknownAllowed=false), UNKNOWN is treated as metered and waits
+    expect(decidePhotoNetwork(unknown, { uploadOnMobileData: false }, null, 0, false).allowed).toBe(false);
+    // On web (webUnknownAllowed=true), UNKNOWN is treated as unmetered and uploads
+    expect(decidePhotoNetwork(unknown, { uploadOnMobileData: false }, null, 0, true).allowed).toBe(true);
     expect(webNetworkConditions({ onLine: true, connection: { type: 'wifi' } }).metering).toBe('UNMETERED');
     expect(webNetworkConditions({ onLine: true, connection: { type: 'ethernet' } }).metering).toBe('UNMETERED');
     expect(webNetworkConditions({ onLine: true, connection: { type: 'cellular', saveData: true } })).toEqual({ online: true, metering: 'METERED', roaming: false, dataSaver: true });
