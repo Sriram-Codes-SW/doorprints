@@ -75,4 +75,8 @@ Doorprints తయారుచేస్తుంది (మొదటిసార�
 
 చదవగలిగే కాపీలను (HTML, PDF, CSV, Excel, Markdown) దిగుమతి చేయలేరు.
 
+## Google Drive {#google-drive}
+
+వెబ్‌సైట్‌లో **మీ డేటా**లో **Google Drive బ్యాకప్** కూడా ఉంది. చూడండి: [Google Drive బ్యాకప్](google-drive.md). Android మరియు iPhone Drive పని నిలిపివేయబడింది.
+
 <img src="images/android-import.png" width="300" alt="Androidలో బ్యాకప్ దిగుమతి చేయండి: Doorprints బ్యాకప్ నుండి ఇళ్లు, సందర్శనలు, ఫోటోలను తిరిగి తెస్తుంది, బ్యాకప్ ఫైల్ ఎంచుకోండి బటన్">
