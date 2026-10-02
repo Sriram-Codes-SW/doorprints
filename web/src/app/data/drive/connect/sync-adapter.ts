@@ -190,9 +190,7 @@ export class DriveSyncAdapter {
       this.lastResult = this.backend.lastResult;
       if (this.lastResult?.kind === 'Done') {
         if (this.local.markSynced && dirtyBefore.length > 0) await this.local.markSynced(dirtyBefore);
-        // What the other devices wrote and won the merge: stored here (the engine only reports it).
-        const take = this.lastResult.report.take;
-        if (take.length > 0 && this.local.applyRemote) await this.local.applyRemote(take);
+        // Rows from the merge are applied by the engine inside the pass, before saving peer cursors.
       }
 
       if (!this.lastResult) {

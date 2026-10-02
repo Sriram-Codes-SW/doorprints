@@ -25,6 +25,7 @@ import { DriveSyncNotYet, FolderSession, KIND_SYNC, reportOf, skippedReasons } f
 import type { SyncPassResult } from './drive-sync-seams';
 import { DriveFaults } from './fake-drive-faults';
 import { houseRow, newGuard, SyncWorld } from './drive-sync-test-world';
+import type { SyncRow } from './sync-file';
 import type { TestDevice } from './drive-sync-test-world';
 
 /** TC-U: the Drive sync engine over the fake Drive and the real encryption core (S4b-BL-118; Kotlin `DriveSyncEngineTest`). */
@@ -356,6 +357,51 @@ describe('DriveSyncEngine', () => {
     // Without a photo service the photo calls keep their old answer (S4b-BL-128 wires it).
     await expect(new Promise((res, rej) => backend.downloadPhoto('p').subscribe({ next: res, error: rej }))).rejects.toBeInstanceOf(DriveSyncNotYet);
     expect(() => backend.uploadPhoto('h', new Blob(['x']), 'p')).toThrow(DriveSyncNotYet);
+  });
+
+  it('if applyRemote throws, the next pass retries the rows and cursor is not advanced', async () => {
+    const w = new SyncWorld();
+    const a = await w.add('A'); const b = await w.add('B');
+    a.edit('h1', 'one'); await a.sync();
+    w.server.clock.advance(1000);
+
+    // Create a custom LocalRows that can throw on applyRemote
+    class ThrowingLocal extends (b.local.constructor as any) {
+      applyCount = 0;
+      throwOnce = false;
+      async applyRemote(rows: readonly SyncRow[]): Promise<void> {
+        this.applyCount++;
+        if (this.throwOnce) {
+          this.throwOnce = false;
+          throw new Error('apply failed');
+        }
+        for (const r of rows) this.put(r, false);
+      }
+    }
+    const throwingLocal = Object.assign(new ThrowingLocal(), b.local);
+
+    // First sync attempt with throwing applyRemote
+    const engine1 = new DriveSyncEngine(b.drive, b.p, b.session(), b.store, throwingLocal, () => b.now());
+    throwingLocal.throwOnce = true;
+    const result1 = await fails(engine1.run());
+    expect(result1).toBeInstanceOf(Error);
+    expect((result1 as Error).message).toBe('apply failed');
+
+    // Verify peer cursor was NOT advanced: peer entry not saved when applyRemote failed
+    const peerAAfterFail = b.state.peers[a.id];
+    expect(peerAAfterFail).toBeUndefined();
+
+    // Verify rows were NOT applied after failure (rows still in throwingLocal, but through put it would be marked dirty)
+    expect(throwingLocal.rows.has('houses\u0000h1')).toBe(false);
+
+    // Second sync attempt should apply the rows
+    const engine2 = new DriveSyncEngine(b.drive, b.p, b.session(), b.store, throwingLocal, () => b.now());
+    const result2 = await engine2.run();
+    expect(result2.kind).toBe('Done');
+    expect(throwingLocal.applyCount).toBe(2); // Called twice: once threw, once succeeded
+
+    // Verify rows were applied on second attempt
+    expect(throwingLocal.label('h1')).toBe('one');
   });
 });
 
