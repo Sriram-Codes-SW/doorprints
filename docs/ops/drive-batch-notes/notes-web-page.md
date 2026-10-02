@@ -133,3 +133,27 @@
 3. Fix i18n strings with mixed scripts
 4. Add component tests (page states, recovery key UI, delete confirm dialog)
 5. Test with real Google Drive connection
+
+---
+
+## Status 2026-10-02 (draft PR #118, website cards composed)
+
+**Done on `cursor/drive-web-integration-144b`:**
+
+- DriveConnectComponent composes join, enrol, backups, sync, passkey, delete.
+- First-connect confirm/skip → Ready when the folder exists; recovery key cleared from the component.
+- Import Blob → ImportBackupCard.check on Your data.
+- 8-digit pairing (`pairing-code.ts`, `pairing-flow.ts`); finishing join still uses the recovery key.
+- QR camera enrolment deferred as S4b-BL-134.
+- `web.yml` writes `config.js` from `vars.GOOGLE_OAUTH_WEB_CLIENT_ID`.
+- Privacy link on Your data; guide pages in four languages.
+- Tests: card specs, `keys-reload.spec.ts`, `tools/live-ui/drive-connect-built.js`.
+
+**Not done / not claimed:**
+
+- Real Google sign-in, real Drive, real passkey hardware, live Firebase after this PR.
+- Android/iOS Drive UI (paused).
+- HPKE PSK wrap of `keys.json` over the 8-digit channel (join is recovery key).
+- Noto self-hosting (S4b-BL-73 remainder).
+- `sync/1` schema (S4b-BL-130).
+- Two- and three-device fake convergence tests.
