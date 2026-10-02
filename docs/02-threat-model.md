@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.49 |
+| Version | 0.50 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -60,6 +60,7 @@
 | 0.46 | 2026-09-30 | Claude (Code), lead | New T-I31: a file another app opens in Doorprints (sharing updates, S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
 | 0.48 | 2026-10-02 | Claude (Code), lead | New **§10, the Google Drive channel** (design, [15](15-google-drive-backup-and-sharing.md)): the trust boundary to Google, threats T-S12, T-T15..T-T17, T-R4, T-I32..T-I36, T-D10, T-D11, T-E10 (deletion and sharing included), abuse cases AB-12..AB-14, residual risks RR-18..RR-20. (0.47 is taken by the Survey of India branch.) |
 | 0.49 | 2026-10-02 | Claude (Code), lead | §10 after the owner's three additions to [15](15-google-drive-backup-and-sharing.md) (v0.2): encryption with device keys and a recovery key (T-S13, T-T18, T-I37, T-I38, T-I40, T-D12), device authentication for deletes and the required device lock (T-E11, T-I39), photos on mobile data (T-D13); AB-15, AB-16; RR-18 reworded, RR-21..RR-24. |
+| 0.50 | 2026-10-02 | Claude (Code), lead | §10 after [15](15-google-drive-backup-and-sharing.md) v0.3 (an authenticator app as an option): T-S14, T-S15, T-I41, T-E12 (the limit of every check inside the app), RR-25. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -484,6 +485,10 @@ edit it, a shared file belongs to someone else, and a stolen Google session coul
 | T-I40 | Information disclosure | Drive metadata | Google sees file names, sizes, times, counts and share recipients even with encryption | 3 | 1 | 3 Medium | Names and `appProperties` carry no house data (random ids); accepted (RR-18) |
 | T-D12 | Denial of service | Keys | The person loses every key (all devices gone, the screen lock removed on the only phone, no recovery key) and the encrypted backups can never be opened | 2 | 3 | **6 High** | The mandatory recovery-key step (skip only after a warning), enrolment by approval, Settings showing "No recovery key", the lock-removal message (15 §9.4, §10.3); RR-24 |
 | T-D13 | Denial of service / cost | Photo uploads | Photos on mobile data use the person's data allowance | 2 | 1 | 2 Low | Wi-Fi only by default, a monthly limit when switched off, Data Saver, Low Data Mode and roaming respected (15 §11) |
+| T-S14 | Spoofing | Authenticator codes | A code is read over a shoulder, phished or relayed | 2 | 2 | 4 Medium | Each 30-second step accepted once per device, good for one operation within 60 s; never accepted alone for an unattended device approval (15 §10.5) |
+| T-S15 | Spoofing | Authenticator codes | Guessing the 6 digits | 1 | 2 | 2 Low | ±1 step only; 5 wrong codes lock the check for 5, then 15, then 60 minutes |
+| T-I41 | Information disclosure | The TOTP secret | The secret is copied from Drive or the device | 1 | 2 | 2 Low | Shown once at setup; in Drive only wrapped under the folder key inside the MACed `keys.json`; unwrapped in memory for a check alone; it opens no file (it is not a key) |
+| T-E12 | Elevation | Every check inside the app | Someone who holds the person's Google account deletes or downloads the files with Drive's own pages or API, past device authentication, passkeys and authenticator codes, which Drive cannot enforce | 2 | 3 | **6 High** | Out of the app's reach: the contents stay encrypted (§9 of 15), every device keeps its own copy, the guide recommends Google's 2-Step Verification; RR-25 |
 | T-E11 | Elevation | Deletion and enrolment | Someone holding an unlocked phone deletes all backups, stops a share or approves their own device | 2 | 3 | **6 High** | Device authentication for L2 and L3, valid for one operation and at most 60 s, bound to the operation by a Keystore signature on Android 11+; the device lock required for the feature at all (15 §10) |
 
 | ID | Actor | Abuse / misuse case | Threats | Countermeasure |
@@ -500,6 +505,7 @@ edit it, a shared file belongs to someone else, and a stolen Google session coul
 | RR-21 | On Android 8-11 the device's private key is a software key sealed by the Keystore, open in memory while used | Low | The Keystore has no P-256 key agreement before API 31; the sealing key is bound to the screen lock |
 | RR-22 | The website is weaker than the phones: no device lock, a key in the browser profile | Medium | Said at connect; L2/L3 need a passkey; the phones are the recommended place for Drive |
 | RR-23 | A revoked device's old key still opens the files made before the revocation, if its holder also reaches the Google account | Low | New files use a new epoch; *Lock old backups again* rewrites the kept backups and sync files |
+| RR-25 | The app's checks (device authentication, passkey, authenticator code) do not bind Drive itself: whoever holds the Google account can delete the files there | Medium | No server exists to enforce anything (D-28); the files are encrypted and the devices keep their copies; said in the guide (15 §10.6) |
 | RR-24 | With no recovery key, losing every device loses the encrypted backups for good | Medium | The person's informed choice after the warning; the default path saves a recovery key |
 | RR-19 | What someone imported from a share stays with them after *Stop sharing* | Medium | It cannot be otherwise without a server; the consent text and the stop dialog say so |
 | RR-20 | Google keeps deleted data in its own systems for a while after a deletion | Low | Outside Doorprints' reach; the guide says so (15 §3.3) |
