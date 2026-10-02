@@ -16,16 +16,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable, Inject, signal } from '@angular/core';
+import { Injectable, Inject, InjectionToken, signal } from '@angular/core';
 import type { RecoveryKey } from '../../crypto/recovery-key';
 import type { DriveBackupAdapter } from './backup-adapter';
 import type { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
 import type { DeletionAction } from '../drive-deletion-rules';
 
-export const DRIVE_BACKUP_ADAPTER = 'DRIVE_BACKUP_ADAPTER';
-export const DRIVE_SYNC_ADAPTER = 'DRIVE_SYNC_ADAPTER';
-export const DRIVE_DELETION_ADAPTER = 'DRIVE_DELETION_ADAPTER';
+export const DRIVE_BACKUP_ADAPTER = new InjectionToken<DriveBackupAdapter>('DRIVE_BACKUP_ADAPTER');
+export const DRIVE_SYNC_ADAPTER = new InjectionToken<DriveSyncAdapter>('DRIVE_SYNC_ADAPTER');
+export const DRIVE_DELETION_ADAPTER = new InjectionToken<DriveDeletionAdapter>('DRIVE_DELETION_ADAPTER');
 
 export type ConnectState = 'Unavailable' | 'Disconnected' | 'Connecting' | 'NeedsRecoveryKey' | 'NeedsEnrolment' | 'FirstConnectShowRecoveryKey' | 'Ready' | 'Error';
 
