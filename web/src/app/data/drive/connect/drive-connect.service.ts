@@ -64,6 +64,11 @@ export class DriveConnectService {
   }
 
   async connect(): Promise<ConnectResult> {
+    // If Google Drive is not configured, stay Unavailable
+    if (!this.isConfigured) {
+      return { state: 'Unavailable', error: 'Google Drive not configured' };
+    }
+
     this.state.set('Connecting');
     try {
       const connection = await this.backupAdapter.connect();
