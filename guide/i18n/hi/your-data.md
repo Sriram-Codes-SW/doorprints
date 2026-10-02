@@ -73,4 +73,8 @@ iPhone पर भी आयात कर सकती है।
 
 पढ़ने योग्य प्रतियाँ (HTML, PDF, CSV, Excel, Markdown) आयात नहीं की जा सकतीं।
 
+## गूगल ड्राइव {#google-drive}
+
+वेबसाइट पर **आपका डेटा** में **गूगल ड्राइव को बैकअप करें** भी है। विवरण: [गूगल ड्राइव पर बैकअप](google-drive.md)। Android और iPhone का Drive काम रुका हुआ है।
+
 <img src="images/android-import.png" width="300" alt="Android पर बैकअप आयात करें: Doorprints बैकअप से मकान, दौरे और तस्वीरें वापस लाएँ, और बैकअप फ़ाइल चुनें बटन">

@@ -61,6 +61,9 @@
 #
 # 2026-10-01 (Web), branch feat/web-open-backup-file-handler: pwa-files also checks the manifest's file_handlers
 #   (S4b-BL-108): a relative action and at least one ".ext" accepted per handler.
+#
+# 2026-10-02 (Web), draft PR #118: deploy-firebase writes config.js from vars.GOOGLE_OAUTH_WEB_CLIENT_ID
+#   (empty allowed; Drive then stays unavailable). Do not invent a client id.
 name: Web
 
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
@@ -541,6 +544,32 @@ jobs:
             exit 1
           fi
           echo "$(find . -type f | wc -l) files to publish."
+
+      # The built site ships web/public/config.js with an empty client id. Overwrite it from the repository
+      # variable GOOGLE_OAUTH_WEB_CLIENT_ID (the Google Cloud OAuth *Web* client, drive.file only). Do not invent
+      # an id here: an empty variable leaves Drive unavailable (S4b-BL-117, docs/15 §2.4).
+      - name: Write Google OAuth web client id into config.js
+        env:
+          GOOGLE_OAUTH_WEB_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_WEB_CLIENT_ID }}
+        working-directory: web/dist/web/browser
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          client = os.environ.get("GOOGLE_OAUTH_WEB_CLIENT_ID", "").strip()
+          if client:
+              import re
+              if not re.fullmatch(r"[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com", client):
+                  raise SystemExit("GOOGLE_OAUTH_WEB_CLIENT_ID is set but is not a Google OAuth web client id")
+          path = pathlib.Path("config.js")
+          path.write_text(
+              "window.__DOORPRINTS__ = window.__DOORPRINTS__ || {};\n"
+              f"window.__DOORPRINTS__.googleClientId = {json.dumps(client)};\n"
+              "window.__DOORPRINTS__.googleRedirectUri = window.__DOORPRINTS__.googleRedirectUri || '';\n",
+              encoding="utf-8",
+          )
+          print("config.js googleClientId is", "set" if client else "empty")
+          PY
 
       - uses: actions/setup-node@v7
         with:

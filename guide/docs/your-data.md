@@ -74,4 +74,10 @@ made (on the website, until you leave the page).
 
 Readable copies (HTML, PDF, CSV, Excel, Markdown) cannot be imported.
 
+## Google Drive
+
+On the website, **Your data** also has **Back up to Google Drive**: encrypted backups in your own Drive, an 8-digit
+code or the recovery key to enrol another browser, and deletion at three levels. See [Back up to Google Drive](google-drive.md).
+Android and iPhone Drive work is paused.
+
 <img src="images/android-import.png" width="300" alt="Import a backup on Android: Bring back houses, visits and photos from a Doorprints backup, and a Choose a backup file button">
