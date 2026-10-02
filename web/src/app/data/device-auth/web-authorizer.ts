@@ -57,7 +57,8 @@ export class WebAuthorizer {
   constructor(
     private readonly p: CryptoProvider,
     private readonly prf: PrfAuthenticator,
-    private readonly sealed: () => SealedBlob | null,
+    /** The passkey's sealed blob, read when asked (it may sit in storage, and the person may have just made it). */
+    private readonly sealed: () => SealedBlob | null | Promise<SealedBlob | null>,
     private readonly clock: () => number,
   ) {}
 
@@ -72,7 +73,7 @@ export class WebAuthorizer {
       return { kind: "GRANTED", grant: this.issue(action, req) };
     if (req.factor !== "PASSKEY")
       return { kind: "DENIED", reason: "NOT_SUPPORTED" };
-    const blob = this.sealed();
+    const blob = await this.sealed();
     if (!blob) return { kind: "DENIED", reason: "NOT_SUPPORTED" };
     const r = await openWithPrf(this.p, this.prf, blob).catch(() => ({
       ok: false as const,

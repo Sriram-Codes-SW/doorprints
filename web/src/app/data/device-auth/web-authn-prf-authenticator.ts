@@ -32,6 +32,10 @@ function base64urlToBytes(base64url: string): Uint8Array {
   return bytes;
 }
 
+function randomBytes(n: number): Uint8Array<ArrayBuffer> {
+  return crypto.getRandomValues(new Uint8Array(n));
+}
+
 /** WebAuthn PRF extension input shape. */
 interface PrfExtensionInput {
   prf?: {
@@ -142,7 +146,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
       // Prepare the assertion with PRF extension
       const options: CredentialRequestOptions = {
         publicKey: {
-          challenge: new Uint8Array(32), // Random challenge (in real usage would be generated server-side)
+          challenge: randomBytes(32), // nothing verifies a signature (no server): fresh anyway, so no assertion is replayable
           userVerification: 'required',
           allowCredentials: [
             {
@@ -219,17 +223,19 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     try {
       const options: CredentialCreationOptions = {
         publicKey: {
-          challenge: new Uint8Array(32),
+          challenge: randomBytes(32),
           rp: {
             name: 'Doorprints',
           },
           user: {
-            id: new Uint8Array(16),
+            // Random per passkey: the same id would make some authenticators replace the earlier passkey.
+            id: randomBytes(16),
             name: 'doorprints-user',
             displayName: displayName || 'Doorprints User',
           },
           pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
           authenticatorSelection: {
+            authenticatorAttachment: 'platform',
             userVerification: 'required',
           },
           extensions: {
@@ -237,6 +243,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
           },
         } as PublicKeyCredentialCreationOptions & {
           authenticatorSelection?: {
+            authenticatorAttachment?: string;
             userVerification?: string;
           };
           extensions?: {

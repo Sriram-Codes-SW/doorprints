@@ -24,7 +24,7 @@ import type { DeletionContext, DeletionDecision } from '../../device-auth/delete
 import { decide } from '../../device-auth/delete-policy';
 import type { WebGrant, WebAuthorizer } from '../../device-auth/web-authorizer';
 import type { PrfAuthenticator } from '../../device-auth/prf-seal';
-import { sealWithPrf } from '../../device-auth/prf-seal';
+import { SEALED_BLOB_KEY, sealWithPrf, sealedBlobFromJson, sealedBlobToJson } from '../../device-auth/prf-seal';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
 
 /**
@@ -112,6 +112,25 @@ export function toPolicyAction(action: DeletionAction): PolicyDeletionAction {
   }
 }
 
+/** The policy's answer for `action`; the context's own count of backups left wins over the adapter's fallback. */
+export function decideDeletion(action: DeletionAction, context: DeletionContext, fallbackBackupsLeft: number | null = null): DeletionDecision {
+  return decide(toPolicyAction(action), { ...context, backupsLeft: context.backupsLeft ?? fallbackBackupsLeft });
+}
+
+/** What the confirmation dialog must ask for, from the policy's decision (nothing is enabled when it refused). */
+export function confirmGateOf(decision: DeletionDecision): ConfirmGateState {
+  if (decision.outcome === 'REFUSED') return { tickBoxRequired: false, delayMs: 0, enabled: () => false };
+  const req = decision.requirements;
+  return {
+    tickBoxRequired: req.tickBox,
+    delayMs: req.delaySeconds * 1000,
+    enabled: (tickedAt: number | null, nowMs: number): boolean => {
+      if (req.tickBox && !tickedAt) return false;
+      return nowMs - (tickedAt ?? nowMs) >= req.delaySeconds * 1000;
+    },
+  };
+}
+
 /**
  * In-memory adapter implementation with full delegation to DriveDeletionService, DeletionPolicy, and WebAuthorizer.
  * All methods are real, no stubs.
@@ -123,7 +142,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     private readonly store: DeletionStore,
     private readonly rootId: string,
     private readonly backupsLeft: number | null,
-    private readonly gate?: { registerGrant(grantId: number, action: DeletionAction, operationId: string): void },
+    private readonly gate?: { registerGrant(grantId: number, action: DeletionAction, operationId: string, issuedAtMs: number): void },
     private readonly crypto?: CryptoProvider,
     private readonly prf?: PrfAuthenticator,
     private readonly kv?: KeyValueStore,
@@ -138,12 +157,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   }
 
   decide(action: DeletionAction, context: DeletionContext): DeletionDecision {
-    const policyAction = toPolicyAction(action);
-    const ctx: DeletionContext = {
-      ...context,
-      backupsLeft: this.backupsLeft,
-    };
-    return decide(policyAction, ctx);
+    return decideDeletion(action, context, this.backupsLeft);
   }
 
   async authorize(action: DeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
@@ -156,13 +170,6 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     const result = await this.webAuthorizer.authorize(policyAction, context);
 
     if (result.kind === 'GRANTED' && result.grant) {
-      // Register the grant with the authorization gate if available
-      if (this.gate && decision.requirements?.level) {
-        const pending = await this.store.pending();
-        if (pending) {
-          this.gate.registerGrant(result.grant.id, action, pending.operationId);
-        }
-      }
       return { kind: 'granted', grant: result.grant };
     }
     if (result.kind === 'REFUSED') {
@@ -172,6 +179,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   }
 
   async execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome> {
+    if (grant) this.gate?.registerGrant(grant.id, plan.action, plan.operationId, grant.grantedAtMs);
     const token = this.grantToToken(plan, grant);
     return this.deletionService.delete(plan, token);
   }
@@ -185,30 +193,13 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
         error: null,
       };
     }
+    if (grant) this.gate?.registerGrant(grant.id, pending.action, pending.operationId, grant.grantedAtMs);
     const token = this.grantToTokenWithOperationId(grant, pending.operationId, pending.level);
     return this.deletionService.resume(token);
   }
 
   confirmGate(action: DeletionAction, context: DeletionContext): ConfirmGateState {
-    const decision = this.decide(action, context);
-    if (decision.outcome === 'REFUSED') {
-      return {
-        tickBoxRequired: false,
-        delayMs: 0,
-        enabled: () => false,
-      };
-    }
-
-    const req = decision.requirements;
-    return {
-      tickBoxRequired: req.tickBox,
-      delayMs: req.delaySeconds * 1000,
-      enabled: (tickedAt: number | null, nowMs: number): boolean => {
-        if (req.tickBox && !tickedAt) return false;
-        if (tickedAt === null) tickedAt = nowMs;
-        return nowMs - tickedAt >= req.delaySeconds * 1000;
-      },
-    };
+    return confirmGateOf(this.decide(action, context));
   }
 
   private grantToToken(plan: DeletionPlan, grant: WebGrant | null): AuthorizationToken | null {
@@ -232,35 +223,18 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   }
 
   async registerPasskey(): Promise<'registered' | 'unsupported' | null> {
-    if (!this.prf || !this.crypto || !this.kv) {
-      return 'unsupported';
-    }
-
+    if (!this.prf || !this.crypto || !this.kv) return 'unsupported';
     try {
-      // Check if PRF is supported
-      const supported = await this.prf.isSupported();
-      if (!supported) {
-        return 'unsupported';
-      }
-
-      // Register a new passkey with PRF support
-      const credentialId = await (this.prf as any).registerPasskey?.('Doorprints User');
-      if (!credentialId) {
-        return null; // User cancelled
-      }
-
-      // Generate a random 32-byte secret
+      if (!(await this.prf.isSupported())) return 'unsupported';
+      const credentialId = await this.prf.registerPasskey('Doorprints');
+      if (!credentialId) return null;
+      // What is sealed is a random value nobody needs: opening it again takes the person's verification and the
+      // passkey's PRF, which is what the website's L2 and L3 deletes ask for (docs/15 §10.4).
       const secret = this.crypto.randomBytes(32);
-
-      // Seal the secret under PRF output
-      const result = await sealWithPrf(this.crypto, this.prf, credentialId, secret);
-      if ('ok' in result && !result.ok) {
-        return result.reason === 'NOT_SUPPORTED' ? 'unsupported' : null;
-      }
-
-      // Store the sealed blob
-      await this.kv.set('doorprints-deletion-sealed-blob', JSON.stringify(result));
-
+      const sealed = await sealWithPrf(this.crypto, this.prf, credentialId, secret);
+      secret.fill(0);
+      if (!('v' in sealed)) return sealed.reason === 'NOT_SUPPORTED' ? 'unsupported' : null;
+      await this.kv.set(SEALED_BLOB_KEY, sealedBlobToJson(sealed));
       return 'registered';
     } catch {
       return null;
@@ -268,20 +242,11 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   }
 
   async passkeyStatus(): Promise<'none' | 'registered' | 'unsupported'> {
-    if (!this.prf || !this.crypto || !this.kv) {
-      return 'unsupported';
-    }
-
+    if (!this.prf || !this.crypto || !this.kv) return 'unsupported';
     try {
-      // Check if PRF is supported
-      const supported = await this.prf.isSupported();
-      if (!supported) {
-        return 'unsupported';
-      }
-
-      // Check if a sealed blob already exists
-      const stored = await this.kv.get('doorprints-deletion-sealed-blob');
-      return stored ? 'registered' : 'none';
+      if (!(await this.prf.isSupported())) return 'unsupported';
+      const stored = await this.kv.get(SEALED_BLOB_KEY);
+      return stored && sealedBlobFromJson(stored) ? 'registered' : 'none';
     } catch {
       return 'unsupported';
     }

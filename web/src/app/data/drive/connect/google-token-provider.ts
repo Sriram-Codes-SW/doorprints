@@ -16,7 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { SignInError } from '../drive-client';
 import type { TokenProvider } from '../drive-client';
+
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 /** The possible outcomes of a token request. */
 export type GoogleTokenResult =
@@ -45,7 +48,7 @@ export class DefaultScriptLoader implements ScriptLoader {
       script.async = true;
       script.defer = true;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      script.onerror = () => reject(new SignInError('unavailable'));
       document.head.appendChild(script);
     });
   }
@@ -74,6 +77,8 @@ export class GoogleTokenProvider implements TokenProvider {
   private tokenExpiresAtMs: number | null = null;
   private scriptLoaded = false;
   private loadingScript: Promise<void> | null = null;
+  private onResponse: ((response: unknown) => void) | null = null;
+  private onClientError: ((error: unknown) => void) | null = null;
 
   constructor(
     private readonly scriptLoader: ScriptLoader,
@@ -129,6 +134,9 @@ export class GoogleTokenProvider implements TokenProvider {
       .load('https://accounts.google.com/gsi/client')
       .then(() => {
         this.scriptLoaded = true;
+      })
+      .catch(() => {
+        throw new SignInError(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'unavailable');
       });
 
     try {
@@ -141,22 +149,22 @@ export class GoogleTokenProvider implements TokenProvider {
   protected async requestToken(clientId: string): Promise<string> {
     const gis = (window as unknown as { google?: unknown })?.google;
     if (!gis || typeof gis !== 'object') {
-      throw new Error('Google Identity Services not loaded');
+      throw new SignInError('unavailable');
     }
 
     const accounts = (gis as Record<string, unknown>).accounts;
     if (!accounts || typeof accounts !== 'object') {
-      throw new Error('Google Identity Services not available');
+      throw new SignInError('unavailable');
     }
 
     const oauth2 = (accounts as Record<string, unknown>).oauth2;
     if (!oauth2 || typeof oauth2 !== 'object') {
-      throw new Error('Google OAuth2 not available');
+      throw new SignInError('unavailable');
     }
 
     const initTokenClient = (oauth2 as Record<string, unknown>).initTokenClient;
     if (typeof initTokenClient !== 'function') {
-      throw new Error('initTokenClient not available');
+      throw new SignInError('unavailable');
     }
 
     // Initialize token client if not done yet
@@ -174,8 +182,11 @@ export class GoogleTokenProvider implements TokenProvider {
   ): unknown {
     return (initTokenClient as Function)({
       client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: () => {}, // Callback will be set per request
+      scope: DRIVE_SCOPE,
+      callback: (response: unknown) => this.onResponse?.(response),
+      // The popup failing to open or being closed is reported here, not through `callback`: without it a closed
+      // popup would leave the sign-in waiting forever.
+      error_callback: (error: unknown) => this.onClientError?.(error),
     });
   }
 
@@ -183,37 +194,40 @@ export class GoogleTokenProvider implements TokenProvider {
     return new Promise((resolve, reject) => {
       const client = this.tokenClient as Record<string, unknown>;
       if (typeof client.requestAccessToken !== 'function') {
-        reject(new Error('requestAccessToken not available'));
+        reject(new SignInError('unavailable'));
         return;
       }
 
+      const settle = () => {
+        this.onResponse = null;
+        this.onClientError = null;
+      };
+
       const handler = (response: unknown) => {
-        const resp = response as {
-          access_token?: string;
-          error?: string;
-        } | null;
+        settle();
+        const resp = response as { access_token?: string; error?: string } | null;
 
         if (!resp) {
-          reject(new Error('No response from Google'));
+          reject(new SignInError('unavailable'));
           return;
         }
 
         if (resp.error) {
           const error = resp.error.toLowerCase();
-          if (error.includes('popup_blocked')) {
-            reject(new Error('popup_blocked'));
+          if (error.includes('popup_blocked') || error.includes('popup_failed_to_open')) {
+            reject(new SignInError('popup_blocked'));
           } else if (error.includes('popup_closed')) {
-            reject(new Error('popup_closed'));
-          } else if (error.includes('access_denied') || error.includes('denied')) {
-            reject(new Error('denied'));
+            reject(new SignInError('popup_closed'));
           } else {
-            reject(new Error(`Google error: ${resp.error}`));
+            // access_denied, and any other refusal: nothing was granted.
+            reject(new SignInError('denied'));
           }
           return;
         }
 
-        if (!resp.access_token) {
-          reject(new Error('No access token in response'));
+        if (!resp.access_token || !this.grantsDrive(resp)) {
+          // No token, or the person ticked off the Drive permission on Google's page (granular consent).
+          reject(new SignInError('denied'));
           return;
         }
 
@@ -223,19 +237,27 @@ export class GoogleTokenProvider implements TokenProvider {
         resolve(resp.access_token);
       };
 
+      this.onResponse = handler;
+      this.onClientError = (error: unknown) => {
+        const type = String((error as { type?: unknown } | null)?.type ?? '');
+        handler({ error: type || 'access_denied' });
+      };
       client.callback = handler;
 
       try {
-        (client.requestAccessToken as Function)({
-          prompt: this.currentToken ? '' : 'consent',
-        });
+        (client.requestAccessToken as Function)({ prompt: '' });
       } catch (e) {
-        if ((e as Error).message.includes('offline')) {
-          reject(new Error('offline'));
-        } else {
-          reject(e);
-        }
+        settle();
+        reject(e instanceof Error && e.message.includes('offline') ? new SignInError('offline') : new SignInError('unavailable'));
       }
     });
+  }
+
+  /** Whether Google says the Drive permission was granted (when its script can tell; the fake in tests cannot). */
+  private grantsDrive(response: unknown): boolean {
+    const oauth2 = (window as unknown as { google?: { accounts?: { oauth2?: { hasGrantedAllScopes?: unknown } } } }).google?.accounts?.oauth2;
+    return typeof oauth2?.hasGrantedAllScopes === 'function'
+      ? Boolean((oauth2.hasGrantedAllScopes as (r: unknown, s: string) => boolean)(response, DRIVE_SCOPE))
+      : true;
   }
 }

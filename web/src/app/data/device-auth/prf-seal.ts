@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { concat, utf8 } from "../crypto/bytes";
+import { concat, hex, unhex, utf8 } from "../crypto/bytes";
 import { CryptoError } from "../crypto/crypto-provider";
 import type { CryptoProvider } from "../crypto/crypto-provider";
 import { Hkdf } from "../crypto/hpke";
@@ -39,6 +39,8 @@ export interface PrfAuthenticator {
   isSupported(): Promise<boolean>;
   /** One user-verified assertion for [credentialId]; the PRF output for [salt] (32 bytes). */
   evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
+  /** Makes a new passkey for this site; its credential id, or null when the person cancelled or the browser refused. */
+  registerPasskey(displayName: string): Promise<Uint8Array | null>;
 }
 
 export interface SealedBlob {
@@ -56,6 +58,33 @@ export type SealOpen =
       ok: false;
       reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" | "WRONG_KEY";
     };
+
+/** Where the sealed blob is kept (the Drive database's key-value store). */
+export const SEALED_BLOB_KEY = "doorprints-deletion-sealed-blob";
+
+/** The blob as text, for storage: the byte fields as hex (JSON.stringify would turn a Uint8Array into an object). */
+export function sealedBlobToJson(b: SealedBlob): string {
+  return JSON.stringify({ v: b.v, credentialId: hex(b.credentialId), salt: hex(b.salt), nonce: hex(b.nonce), ciphertext: hex(b.ciphertext) });
+}
+
+/** The blob from {@link sealedBlobToJson}'s text, or null when the text is not one (a damaged or foreign value). */
+export function sealedBlobFromJson(text: string): SealedBlob | null {
+  try {
+    const o = JSON.parse(text) as Record<string, unknown>;
+    if (o['v'] !== 1) return null;
+    const field = (name: string): Uint8Array | null => {
+      const v = o[name];
+      return typeof v === 'string' && /^(?:[0-9a-f]{2})+$/.test(v) ? unhex(v) : null;
+    };
+    const credentialId = field('credentialId');
+    const salt = field('salt');
+    const nonce = field('nonce');
+    const ciphertext = field('ciphertext');
+    return credentialId && salt && nonce && ciphertext ? { v: 1, credentialId, salt, nonce, ciphertext } : null;
+  } catch {
+    return null;
+  }
+}
 
 const INFO = utf8("doorprints/device-seal/1");
 const SALT_PREFIX = utf8("doorprints/device-seal/1/prf-salt");
@@ -160,6 +189,11 @@ export class FakePrfAuthenticator implements PrfAuthenticator {
   ) {}
   async isSupported() {
     return this.supported;
+  }
+  /** Scripted like `next`: null while `registerNext` says the person cancels. */
+  registerNext: "OK" | "CANCELLED" = "OK";
+  async registerPasskey(): Promise<Uint8Array | null> {
+    return this.registerNext === "OK" ? utf8("fake-credential-id") : null;
   }
   async evaluate(
     credentialId: Uint8Array,
