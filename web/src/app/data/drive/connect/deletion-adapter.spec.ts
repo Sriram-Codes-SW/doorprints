@@ -35,10 +35,14 @@ describe('DriveDeletionAdapter', () => {
   let deletionService: DriveDeletionService;
   let store: DeletionStore;
   let gate: FakeAuthorizationGate;
-  let fakeAuthorizer: { authorize: (a: any, c: DeletionContext) => Promise<any> };
+  let fakeAuthorizer: {
+    authorize: (a: any, c: DeletionContext) => Promise<any>;
+    redeem?: (grant: any, action: any) => any;
+  };
   let adapter: DriveDeletionAdapterImpl;
   let rootId: string;
   let isOnline: boolean;
+  let kv: InMemoryKeyValueStore;
 
   beforeEach(() => {
     // Set up the fake drive server
@@ -49,7 +53,7 @@ describe('DriveDeletionAdapter', () => {
     isOnline = true;
 
     // Set up stores
-    const kv = new InMemoryKeyValueStore();
+    kv = new InMemoryKeyValueStore();
     store = new PersistentDeletionStore(kv);
 
     // Set up gate
@@ -94,7 +98,7 @@ describe('DriveDeletionAdapter', () => {
     deletionService = new DriveDeletionService(deps);
 
     // Set up adapter
-    adapter = new DriveDeletionAdapterImpl(deletionService, fakeAuthorizer, store, rootId, 5);
+    adapter = new DriveDeletionAdapterImpl(deletionService, fakeAuthorizer as any, store, rootId, 5, gate);
   });
 
   it('should preflight a deletion', async () => {
@@ -441,7 +445,7 @@ describe('DriveDeletionAdapter', () => {
 
     if (preflightResult.kind === 'ready') {
       // Create a new adapter with the same store (simulating page reload)
-      const adapter2 = new DriveDeletionAdapterImpl(deletionService, fakeAuthorizer, store, rootId, 5);
+      const adapter2 = new DriveDeletionAdapterImpl(deletionService, fakeAuthorizer as any, store, rootId, 5, gate);
 
       // Check if it can see pending deletions from the first adapter
       // (We haven't actually executed, so nothing should be pending yet)

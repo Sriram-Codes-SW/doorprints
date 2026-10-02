@@ -21,9 +21,11 @@ import {
   DriveDeletionAdapterImpl, PersistentDeletionStore, InMemoryKeyValueStore,
 } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
+import { RealAuthorizationGate } from './deletion-gate';
 import { WebAuthorizer } from '../../../device-auth/web-authorizer';
 import { WebAuthnPrfAuthenticator } from '../../../device-auth/web-authn-prf-authenticator';
-import type { PrfAuthenticator } from '../../../device-auth/prf-seal';
+import type { PrfAuthenticator, SealedBlob } from '../../../device-auth/prf-seal';
+import { sealWithPrf } from '../../../device-auth/prf-seal';
 import type { DriveRuntime } from './runtime';
 import type { DeletionAction } from '../../drive-deletion-rules';
 import type { DeletionContext } from '../../../device-auth/delete-policy';
@@ -41,7 +43,9 @@ export function createDeletionAdapter(
   rt: DriveRuntime,
   keyValueStore?: KeyValueStore,
   prfAuthenticator?: PrfAuthenticator,
+  clock?: () => number,
 ): DriveDeletionAdapter {
+  const clockFn = clock || (() => Date.now());
   // Create a key-value store for deletion state persistence (backed by IndexedDB or in-memory)
   const kv = keyValueStore || new InMemoryKeyValueStore();
   const deletionStore = new PersistentDeletionStore(kv);
@@ -71,30 +75,14 @@ export function createDeletionAdapter(
           enabled: () => false,
         };
       },
+      async registerPasskey() {
+        return 'unsupported';
+      },
+      async passkeyStatus() {
+        return 'unsupported';
+      },
     };
   }
-
-  // Create the authorization gate that validates tokens
-  const authorizationGate = {
-    async isGenuine(): Promise<boolean> {
-      // In a real implementation, this would verify the token's proof against
-      // the passkey that issued it. For now, trust the WebAuthorizer.
-      return true;
-    },
-    async stillHolds(): Promise<boolean> {
-      // Verify the token hasn't expired and is still valid
-      return true;
-    },
-  };
-
-  // Create the deletion service with the runtime's drive client
-  const deletionService = new DriveDeletionService({
-    drive: rt.drive,
-    gate: authorizationGate,
-    store: deletionStore,
-    isOnline: () => typeof navigator !== 'undefined' ? navigator.onLine : true,
-    now: () => Date.now(),
-  });
 
   // Create the PRF authenticator (real browser-based WebAuthn or provided fake)
   const authenticator = prfAuthenticator || new WebAuthnPrfAuthenticator(
@@ -114,29 +102,64 @@ export function createDeletionAdapter(
     },
   );
 
-  // Create the sealed blob (device key sealed under PRF)
-  // For now, return null - this would be set when the device key is sealed
-  const sealedBlob = () => null;
+  // Load or initialize the sealed blob from persistent storage
+  const loadSealedBlob = async (): Promise<SealedBlob | null> => {
+    try {
+      const stored = await kv.get('doorprints-deletion-sealed-blob');
+      if (!stored) return null;
+      return JSON.parse(stored) as SealedBlob;
+    } catch {
+      return null;
+    }
+  };
+
+  let cachedSealedBlob: SealedBlob | null | undefined;
+  const getSealedBlob = async (): Promise<SealedBlob | null> => {
+    if (cachedSealedBlob !== undefined) return cachedSealedBlob;
+    cachedSealedBlob = await loadSealedBlob();
+    return cachedSealedBlob;
+  };
+
+  const sealedBlob = (): SealedBlob | null => {
+    // Return cached value synchronously; will be populated on first async call
+    return cachedSealedBlob ?? null;
+  };
 
   // Create the web authorizer with the PRF authenticator
   const webAuthorizer = new WebAuthorizer(
     rt.crypto,
     authenticator,
     sealedBlob,
-    () => Date.now(),
+    clockFn,
   );
+
+  // Create the real authorization gate
+  const authorizationGate = new RealAuthorizationGate(webAuthorizer, clockFn);
+
+  // Create the deletion service with the runtime's drive client
+  const deletionService = new DriveDeletionService({
+    drive: rt.drive,
+    gate: authorizationGate,
+    store: deletionStore,
+    isOnline: () => typeof navigator !== 'undefined' ? navigator.onLine : true,
+    now: clockFn,
+  });
 
   // Get the root folder ID from the runtime session
   // FolderSession has rootId field set by backup adapter after successful connect
   const rootId = rt.session.rootId;
 
-  // Create and return the adapter
+  // Create and return the adapter with passkey registration support
   return new DriveDeletionAdapterImpl(
     deletionService,
     webAuthorizer,
     deletionStore,
     rootId,
     null, // backupsLeft not tracked in FolderSession; will be updated by UI
+    authorizationGate, // Pass the gate for grant registration
+    rt.crypto,
+    authenticator,
+    kv,
   );
 }
 
@@ -207,6 +230,16 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
         };
       }
       return cachedAdapter.confirmGate(action, context);
+    },
+
+    async registerPasskey() {
+      const adapter = await getAdapter();
+      return adapter.registerPasskey();
+    },
+
+    async passkeyStatus() {
+      const adapter = await getAdapter();
+      return adapter.passkeyStatus();
     },
   };
 }
