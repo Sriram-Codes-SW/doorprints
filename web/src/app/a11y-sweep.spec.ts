@@ -315,6 +315,14 @@ const CASES: Case[] = [
   { name: 'Drive card (recovery key, dark)', render: driveCard('FirstConnectShowRecoveryKey', 'dark', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },
   { name: 'Drive card (ready, light)', render: driveCard('Ready', 'light') },
   { name: 'Drive card (ready, dark)', render: driveCard('Ready', 'dark') },
+  { name: 'Drive card (unavailable, light)', render: driveCard('Unavailable', 'light') },
+  { name: 'Drive card (unavailable, dark)', render: driveCard('Unavailable', 'dark') },
+  { name: 'Drive card (connecting, light)', render: driveCard('Connecting', 'light') },
+  { name: 'Drive card (connecting, dark)', render: driveCard('Connecting', 'dark') },
+  { name: 'Drive card (needs enrolment, light)', render: driveCard('NeedsEnrolment', 'light') },
+  { name: 'Drive card (needs enrolment, dark)', render: driveCard('NeedsEnrolment', 'dark') },
+  { name: 'Drive card (error, light)', render: driveCard('Error', 'light', (c) => c['error'].set('driveConnect.failed')) },
+  { name: 'Drive card (error, dark)', render: driveCard('Error', 'dark', (c) => c['error'].set('driveConnect.failed')) },
   { name: 'Import a backup card', render: plain(ImportBackupCard, false) },
   { name: 'Offline maps card (areas saved)', render: offline(OfflineAreasCard, false) },
   { name: 'Offline maps dialog (open)', render: offline(OfflineSave, true) },
@@ -373,6 +381,15 @@ afterEach(() => {
 
 const fmt = (v: Violation[]) => v.map((x) => `[${x.rule}] ${x.message}`);
 
+describe('Drive a11y sweep coverage', () => {
+  it('includes Unavailable, Connecting, NeedsEnrolment and Error', () => {
+    const names = CASES.map((c) => c.name).join('\n').toLowerCase();
+    for (const state of ['unavailable', 'connecting', 'needs enrolment', 'error']) {
+      expect(names, state).toContain(`drive card (${state}`);
+    }
+  });
+});
+
 describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
   for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
     for (const c of CASES) {
@@ -386,7 +403,9 @@ describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
           mouseOnly = watch.stop();
           const root = fixture.nativeElement as HTMLElement;
           found = audit(root, { page: isPage });
-          controls = root.querySelectorAll('button, a[href], input, select, textarea, dialog').length;
+          controls = root.querySelectorAll(
+            'button, a[href], input, select, textarea, dialog, [aria-labelledby], [role="status"]',
+          ).length;
         } catch (e) {
           watch.stop();
           throw e;
