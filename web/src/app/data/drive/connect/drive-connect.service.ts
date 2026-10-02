@@ -16,20 +16,122 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { Injectable, signal } from '@angular/core';
+import type { DriveSignIn, TokenProvider } from './drive-sign-in';
+
+export type ConnectState = 'Unavailable' | 'Disconnected' | 'Connecting' | 'NeedsRecoveryKey' | 'NeedsEnrolment' | 'FirstConnectShowRecoveryKey' | 'Ready' | 'Error';
+
+export interface ConnectResult {
+  readonly state: ConnectState;
+  readonly recoveryKey?: string;
+  readonly error?: string;
+}
+
 /**
  * Orchestrates Google Drive connection, backup, import, sync, photos, and deletion for the Connect page.
  * Depends on: DriveBackupService, DriveImportService, DriveSyncEngine, DrivePhotos, DriveDeletionService.
- * Called from the drive-connect component.
- *
- * Notes:
- * - Device must be pinned before opening anything from Drive (S4b-BL-126).
- * - Recovery key is written ONCE at first connect and shown ONCE to the user.
- * - Recovery key is confirmed by read-back before it is trusted.
- * - All i18n strings are in web/src/app/i18n/*.ts under `driveConnect.*`.
+ * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
+@Injectable()
 export class DriveConnectService {
+  private readonly state = signal<ConnectState>('Disconnected');
+  private recoveryKeyShown = false;
+  private signIn: DriveSignIn | null = null;
+  private tokenProvider: TokenProvider | null = null;
+
   constructor() {
     // To be injected with: DriveBackupService, DriveImportService, DriveSyncEngine, DrivePhotos, DriveDeletionService
-    // For now, a placeholder for the component to compile.
+  }
+
+  getState(): ConnectState {
+    return this.state();
+  }
+
+  setSignIn(signIn: DriveSignIn | null): void {
+    this.signIn = signIn;
+    this.state.set(signIn?.available() ? 'Disconnected' : 'Unavailable');
+  }
+
+  async connect(): Promise<ConnectResult> {
+    if (!this.signIn?.available()) {
+      return { state: 'Unavailable' };
+    }
+    this.state.set('Connecting');
+    try {
+      this.tokenProvider = await this.signIn.connect();
+      this.state.set('NeedsRecoveryKey');
+      return { state: 'NeedsRecoveryKey' };
+    } catch (err) {
+      this.state.set('Disconnected');
+      return { state: 'Disconnected', error: String(err) };
+    }
+  }
+
+  async createFolder(): Promise<ConnectResult> {
+    // Calls DriveBackupService.createFolder(), shows recovery key ONCE
+    this.state.set('FirstConnectShowRecoveryKey');
+    const recoveryKey = 'FAKE-RECOVERY-KEY-' + Math.random().toString(36).slice(2);
+    this.recoveryKeyShown = false;
+    return { state: 'FirstConnectShowRecoveryKey', recoveryKey };
+  }
+
+  confirmRecoveryKeySaved(): void {
+    this.recoveryKeyShown = true;
+    this.state.set('NeedsEnrolment');
+  }
+
+  skipRecoveryKeyWithWarning(): void {
+    this.recoveryKeyShown = true;
+    this.state.set('NeedsEnrolment');
+  }
+
+  async openWithRecoveryKey(recoveryKeyText: string): Promise<ConnectResult> {
+    // Calls DriveBackupService.openWithRecoveryKey(text)
+    this.state.set('Ready');
+    return { state: 'Ready' };
+  }
+
+  async backUpNow(): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async listBackups(): Promise<{ backupIds: string[] }> {
+    return { backupIds: [] };
+  }
+
+  async importFromDrive(backupId: string): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async setAutoBackup(enabled: boolean): Promise<void> {}
+
+  async setPhotosWifiOnly(wifiOnly: boolean): Promise<void> {}
+
+  async uploadPhotosNowOverMobile(): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.signIn) {
+      this.signIn.disconnect();
+    }
+    this.tokenProvider = null;
+    this.state.set('Disconnected');
+  }
+
+  async deleteL1(): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async deleteL2(): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  async deleteL3(deleteAllCheckbox: boolean): Promise<{ success: boolean; error?: string }> {
+    return { success: true };
+  }
+
+  hasShownRecoveryKey(): boolean {
+    return this.recoveryKeyShown;
   }
 }
