@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
@@ -32,7 +32,7 @@ import { DriveConnectService, type ConnectState } from '../../data/drive/connect
   imports: [CommonModule, TPipe],
   templateUrl: './drive-connect.html',
   styleUrl: './drive-connect.css',
-  changeDetection: 'OnPush',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DriveConnectComponent implements OnInit {
   private readonly service = inject(DriveConnectService);

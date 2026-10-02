@@ -18,8 +18,8 @@
 
 /** The token provider that gives DriveConnectService access to the Drive folder. */
 export interface TokenProvider {
-  readonly token(): string;
-  readonly expiresIn(): number;
+  token(): string;
+  expiresIn(): number;
 }
 
 /**
