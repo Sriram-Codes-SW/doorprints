@@ -331,15 +331,20 @@ export class LocalRowsAdapter implements LocalRows {
     return {
       id: dto.id,
       houseId: dto.houseId,
-      contentType: dto.contentType ?? null,
-      sizeBytes: dto.sizeBytes ?? null,
+      blob: null,
+      contentType: dto.contentType ?? 'application/octet-stream',
+      sizeBytes: dto.sizeBytes ?? 0,
       createdAt: dto.createdAt ?? null,
       updatedAt: dto.updatedAt ?? null,
       deleted: dto.deleted,
       syncVersion: dto.syncVersion,
+      uploaded: true,
       driveFileId: (json.driveFileId as string) ?? null,
       sha256: (json.sha256 as string) ?? null,
-      meta: dto.roomId || dto.tags || dto.caption || dto.metaUpdatedAt ? { roomId: dto.roomId ?? null, tags: dto.tags ?? null, caption: dto.caption ?? null, metaUpdatedAt: dto.metaUpdatedAt ?? 0 } : null,
+      roomId: dto.roomId ?? null,
+      tags: dto.tags ?? null,
+      caption: dto.caption ?? null,
+      metaUpdatedAt: dto.metaUpdatedAt ?? null,
       syncedBy: row.stamp.by,
     };
   }
