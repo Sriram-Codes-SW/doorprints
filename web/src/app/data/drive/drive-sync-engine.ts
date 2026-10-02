@@ -338,6 +338,12 @@ export class DriveSyncEngine {
     }
 
     const delivered = [...take.values()].sort((a, b) => SYNC_KINDS.indexOf(a.kind) - SYNC_KINDS.indexOf(b.kind) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+
+    // Apply remote rows BEFORE saving state: if this throws, peer cursors are not advanced and the next pass retries.
+    if (delivered.length > 0 && this.local.applyRemote) {
+      await this.local.applyRemote(delivered);
+    }
+
     st = { ...st, peers, generation: delivered.length === 0 ? st.generation : st.generation + 1, failures: 0, notBefore: 0 };
     await this.state.save(st);
     this.staged.clear();
