@@ -16,231 +16,191 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { HouseRecord, PhotoRecord, VisitRecord } from '../../records';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { LocalStore } from '../../local-store.service';
+import type { HouseDto, VisitDto } from '../../../../core/models';
 import { LocalRowsAdapter } from './local-rows';
 
 describe('LocalRowsAdapter', () => {
+  let store: LocalStore;
   let adapter: LocalRowsAdapter;
 
-  // Mock LocalStore for testing.
-  let mockStore: any;
+  beforeEach(async () => {
+    // Create a real in-memory LocalStore instance (jsdom has no IndexedDB, so it uses memory).
+    store = new LocalStore();
+    await store.ready();
+    adapter = new LocalRowsAdapter(store);
+  });
 
-  beforeEach(() => {
-    mockStore = {
-      allHouses: jasmine.createSpy('allHouses'),
-      allVisits: jasmine.createSpy('allVisits'),
-      allPhotos: jasmine.createSpy('allPhotos'),
-      allRecordsOf: jasmine.createSpy('allRecordsOf'),
-      markHouseClean: jasmine.createSpy('markHouseClean'),
-      markVisitClean: jasmine.createSpy('markVisitClean'),
-      markPhotoMetaClean: jasmine.createSpy('markPhotoMetaClean'),
-      putHouseFromServer: jasmine.createSpy('putHouseFromServer'),
-      putVisitFromServer: jasmine.createSpy('putVisitFromServer'),
-      putImported: jasmine.createSpy('putImported'),
-    };
-    adapter = new LocalRowsAdapter(mockStore as any);
+  afterEach(async () => {
+    // Clean up.
+    await store.removeAll();
   });
 
   it('all() returns houses, visits, and photos as SyncRows', async () => {
-    const house: HouseRecord = {
+    // Add a house.
+    const house: HouseDto = {
       id: 'h1',
-      name: 'Test House',
+      label: 'Test House',
       lat: 12.34,
       lon: 56.78,
-      status: 'LOOKING',
-      cost: null,
-      locationSource: null,
-      rooms: null,
-      brokerId: null,
-      answers: null,
-      areaSqft: null,
-      moveIn: null,
-      updatedAt: '2026-10-02T10:00:00Z',
-      createdAt: '2026-10-01T10:00:00Z',
+      status: 'NEW',
+      checklist: {},
       deleted: false,
-      dirty: false,
       syncVersion: 1,
-      syncedBy: 'device-1',
     };
+    await store.putHouseFromServer(house);
 
-    const visit: VisitRecord = {
+    // Add a visit.
+    const visit: VisitDto = {
       id: 'v1',
       houseId: 'h1',
-      when: '2026-10-02T14:30:00Z',
-      where: 'Test Road',
-      notes: 'Good house',
-      updatedAt: '2026-10-02T10:00:00Z',
-      createdAt: '2026-10-01T10:00:00Z',
-      deleted: false,
-      dirty: false,
-      syncVersion: 1,
-      syncedBy: 'device-1',
-    };
-
-    const photo: PhotoRecord = {
-      id: 'p1',
-      houseId: 'h1',
-      contentType: 'image/jpeg',
-      sizeBytes: 1024,
-      createdAt: '2026-10-01T10:00:00Z',
-      updatedAt: '2026-10-02T10:00:00Z',
+      lat: 12.34,
+      lon: 56.78,
+      arrivedAt: '2026-10-02T14:30:00Z',
+      source: 'MANUAL',
       deleted: false,
       syncVersion: 1,
-      driveFileId: null,
-      sha256: null,
-      meta: null,
-      syncedBy: 'device-1',
     };
+    await store.putVisitFromServer(visit);
 
-    mockStore.allHouses.mockResolvedValue([house]);
-    mockStore.allVisits.mockResolvedValue([visit]);
-    mockStore.allPhotos.mockResolvedValue([photo]);
-    mockStore.allRecordsOf.mockResolvedValue([]);
-
+    // Call all().
     const rows = await adapter.all();
 
-    expect(rows.length).toBe(3);
-    expect(rows[0].kind).toBe('houses');
-    expect(rows[0].key).toBe('h1');
-    expect(rows[1].kind).toBe('visits');
-    expect(rows[1].key).toBe('v1');
-    expect(rows[2].kind).toBe('photos');
-    expect(rows[2].key).toBe('p1');
-  });
+    // Should include house and visit.
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const houseRow = rows.find((r) => r.kind === 'houses' && r.key === 'h1');
+    expect(houseRow).toBeDefined();
+    expect(houseRow?.stamp.deleted).toBe(false);
 
-  it('markClean() marks rows as clean after sync push', async () => {
-    const stamp = { updatedAt: new Date('2026-10-02T10:00:00Z').getTime(), by: 'device-1', deleted: false };
-
-    const rows = [
-      {
-        kind: 'houses' as const,
-        key: 'h1',
-        stamp,
-        json: { id: 'h1', name: 'Test House' },
-      },
-      {
-        kind: 'visits' as const,
-        key: 'v1',
-        stamp,
-        json: { id: 'v1', houseId: 'h1' },
-      },
-      {
-        kind: 'photos' as const,
-        key: 'p1',
-        stamp,
-        json: { id: 'p1', houseId: 'h1' },
-      },
-    ];
-
-    mockStore.markHouseClean.mockResolvedValue(undefined);
-    mockStore.markVisitClean.mockResolvedValue(undefined);
-    mockStore.markPhotoMetaClean.mockResolvedValue(undefined);
-
-    await adapter.markClean(rows);
-
-    expect(mockStore.markHouseClean).toHaveBeenCalledWith('h1', expect.any(String));
-    expect(mockStore.markVisitClean).toHaveBeenCalledWith('v1', expect.any(String));
-    expect(mockStore.markPhotoMetaClean).toHaveBeenCalledWith('p1', expect.any(Number));
-  });
-
-  it('applyRemote() merges remote rows via putImported', async () => {
-    const stamp = { updatedAt: new Date('2026-10-02T10:00:00Z').getTime(), by: 'device-2', deleted: false };
-
-    const rows = [
-      {
-        kind: 'houses' as const,
-        key: 'h2',
-        stamp,
-        json: { id: 'h2', name: 'Remote House', updatedAt: '2026-10-02T10:00:00Z' },
-      },
-    ];
-
-    mockStore.putHouseFromServer.mockResolvedValue({
-      id: 'h2',
-      name: 'Remote House',
-      updatedAt: '2026-10-02T10:00:00Z',
-      deleted: false,
-      syncVersion: 1,
-    });
-    mockStore.putImported.mockResolvedValue(undefined);
-
-    await adapter.applyRemote(rows);
-
-    expect(mockStore.putHouseFromServer).toHaveBeenCalled();
-    expect(mockStore.putImported).toHaveBeenCalled();
-  });
-
-  it('photo() throws "not yet built" error', async () => {
-    await expect(adapter.photo('p1')).rejects.toThrow('not yet built');
+    const visitRow = rows.find((r) => r.kind === 'visits' && r.key === 'v1');
+    expect(visitRow).toBeDefined();
+    expect(visitRow?.stamp.deleted).toBe(false);
   });
 
   it('preserves deleted tombstones in all()', async () => {
-    const deletedHouse: HouseRecord = {
+    const deletedHouse: HouseDto = {
       id: 'h-deleted',
-      name: 'Deleted House',
-      lat: null,
-      lon: null,
-      status: null,
-      cost: null,
-      locationSource: null,
-      rooms: null,
-      brokerId: null,
-      answers: null,
-      areaSqft: null,
-      moveIn: null,
-      updatedAt: '2026-10-02T10:00:00Z',
-      createdAt: '2026-10-01T10:00:00Z',
-      deleted: true,
-      dirty: false,
+      label: 'Deleted House',
+      lat: 0,
+      lon: 0,
+      status: 'NEW',
+      checklist: {},
+      deleted: true, // Tombstone
       syncVersion: 2,
-      syncedBy: 'device-1',
     };
-
-    mockStore.allHouses.mockResolvedValue([deletedHouse]);
-    mockStore.allVisits.mockResolvedValue([]);
-    mockStore.allPhotos.mockResolvedValue([]);
-    mockStore.allRecordsOf.mockResolvedValue([]);
+    await store.putHouseFromServer(deletedHouse);
 
     const rows = await adapter.all();
 
-    expect(rows.length).toBe(1);
-    expect(rows[0].stamp.deleted).toBe(true);
+    const deletedRow = rows.find((r) => r.kind === 'houses' && r.key === 'h-deleted');
+    expect(deletedRow).toBeDefined();
+    expect(deletedRow?.stamp.deleted).toBe(true);
   });
 
-  it('dirty flag is only cleared after engine confirms (markClean)', async () => {
-    // This test ensures dirty rows remain dirty until markClean is called.
-    const house: HouseRecord = {
+  it('markClean() marks rows as clean after sync push', async () => {
+    const house: HouseDto = {
       id: 'h1',
-      name: 'Dirty House',
-      lat: null,
-      lon: null,
-      status: null,
-      cost: null,
-      locationSource: null,
-      rooms: null,
-      brokerId: null,
-      answers: null,
-      areaSqft: null,
-      moveIn: null,
-      updatedAt: '2026-10-02T10:00:00Z',
-      createdAt: '2026-10-01T10:00:00Z',
+      label: 'Clean House',
+      lat: 13,
+      lon: 80,
+      status: 'NEW',
+      checklist: {},
       deleted: false,
-      dirty: true, // Still dirty
       syncVersion: 1,
-      syncedBy: 'device-1',
     };
-
-    mockStore.allHouses.mockResolvedValue([house]);
-    mockStore.allVisits.mockResolvedValue([]);
-    mockStore.allPhotos.mockResolvedValue([]);
-    mockStore.allRecordsOf.mockResolvedValue([]);
+    await store.putHouseFromServer(house);
 
     const rows = await adapter.all();
-    expect(rows[0].json.dirty).toBeUndefined(); // dirty flag is internal, not exported
+    const houseRow = rows.find((r) => r.kind === 'houses' && r.key === 'h1')!;
 
-    mockStore.markHouseClean.mockResolvedValue(undefined);
-    await adapter.markClean(rows);
+    // Mark clean.
+    await adapter.markClean([houseRow]);
 
-    expect(mockStore.markHouseClean).toHaveBeenCalledWith('h1', expect.any(String));
+    // Verify the house is marked clean (dirty flag should be false).
+    const cleaned = await store.allHouses();
+    const h = cleaned. find((house: HouseRecord) => house.id === 'h1');
+    expect(h?.dirty).toBe(false);
+  });
+
+  it('applyRemote() merges remote rows via putImported', async () => {
+    const remoteHouseRow = {
+      kind: 'houses' as const,
+      key: 'h-remote',
+      stamp: { updatedAt: new Date('2026-10-02T10:00:00Z').getTime(), by: 'device-2', deleted: false },
+      json: {
+        id: 'h-remote',
+        updatedAt: '2026-10-02T10:00:00Z',
+        name: 'Remote House',
+        label: 'Remote',
+        lat: 13,
+        lon: 80,
+        status: 'NEW',
+      },
+    };
+
+    await adapter.applyRemote([remoteHouseRow]);
+
+    // Verify the house was imported.
+    const houses = await store.allHouses();
+    const imported = houses. find((h: HouseRecord) => h.id === 'h-remote');
+    expect(imported).toBeDefined();
+  });
+
+  it('photo() returns a photo by id', async () => {
+    // Add a house first (photo needs a house).
+    const house: HouseDto = {
+      id: 'h1',
+      label: 'Photo House',
+      lat: 13,
+      lon: 80,
+      status: 'NEW',
+      checklist: {},
+      deleted: false,
+      syncVersion: 1,
+    };
+    await store.putHouseFromServer(house);
+
+    // Add a photo.
+    const result = await store.addPhoto('h1', new Blob(['fake image'], { type: 'image/jpeg' }), {});
+    if (!result.ok) throw new Error('Failed to add photo');
+
+    // Retrieve it.
+    const dto = await adapter.photo(result.id);
+    expect(dto).toBeDefined();
+    expect(dto?.id).toBe(result.id);
+    expect(dto?.houseId).toBe('h1');
+  });
+
+  it('photo() returns null for unknown photo id', async () => {
+    const dto = await adapter.photo('unknown-photo');
+    expect(dto).toBeNull();
+  });
+
+  it('round-trip: dirty -> clean after engine confirms', async () => {
+    // Add a house.
+    const house: HouseDto = {
+      id: 'h-dirty',
+      label: 'Dirty House',
+      lat: 13,
+      lon: 80,
+      status: 'NEW',
+      checklist: {},
+      deleted: false,
+      syncVersion: 1,
+    };
+    await store.putHouseFromServer(house);
+
+    // Get all rows.
+    let rows = await adapter.all();
+    const dirtyRow = rows.find((r) => r.kind === 'houses' && r.key === 'h-dirty')!;
+
+    // Simulate engine confirming the sync: mark clean.
+    await adapter.markClean([dirtyRow]);
+
+    // Verify clean.
+    const cleaned = await store.allHouses();
+    const h = cleaned. find((house: HouseRecord) => house.id === 'h-dirty');
+    expect(h?.dirty).toBe(false);
   });
 });

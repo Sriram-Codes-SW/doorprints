@@ -66,7 +66,8 @@ export class MemoryStagingSink implements StagingSink {
   /** The staged ZIP as a Blob, ready for import validation. Returns null if discarded. */
   get blob(): Blob | null {
     if (this.discarded || this.filled === 0) return null;
-    return new Blob([this.buffer.subarray(0, this.filled)], { type: 'application/zip' });
+    const data = new Uint8Array(this.buffer.buffer, this.buffer.byteOffset, this.filled);
+    return new Blob([data as BlobPart], { type: 'application/zip' });
   }
 
   /** Clear the buffer and mark as discarded (no more writes allowed). */

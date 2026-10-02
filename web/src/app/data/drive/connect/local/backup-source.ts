@@ -20,7 +20,6 @@ import type { ByteSource } from '../../crypto/dpx';
 import { BACKUP_FORMAT } from '../../../../export/backup-export';
 import type { ExportOptions } from '../../../../export/export-model';
 import { ExportService } from '../../../../export/export.service';
-import { Sha256 } from '../../../../export/sha256';
 import type { BackupPayload, BackupSource } from '../backup/drive-backup-seams';
 
 /**
@@ -39,13 +38,6 @@ export function createDriveBackupSource(exporter: ExportService, options: Export
     // Read the ZIP into a byte array.
     const arrayBuffer = await result.blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-
-    // Compute SHA-256 of the ZIP for integrity checking.
-    const sha = new Sha256();
-    sha.update(bytes);
-    const digest = sha.digest();
-    let sha256 = '';
-    for (const b of digest) sha256 += b.toString(16).padStart(2, '0');
 
     // Return a ByteSource that reads the ZIP sequentially.
     const payload: BackupPayload = {
