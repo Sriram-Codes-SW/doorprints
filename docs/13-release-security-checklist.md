@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -14,6 +14,7 @@
 |---|---|---|---|
 | 0.1 | 2026-09-29 | Claude (Code), lead | First version (S4b-SEC-3, owner decision 1 of 2026-09-23, [10](10-sprint-log.md) §12.5): what the list is for and when it runs (1), what must be true before it starts (2), the list itself, about one hour, in eight parts (3), how a result is judged and recorded (4), the deep self-run pentest's scope (5), and a record to copy for each release (6). [06](06-test-plan.md) §11.1 gives each automated check its owner and threshold. |
 | 0.2 | 2026-10-02 | Claude (Code), lead | **Re-scoped for D-28** (S4b-BL-74; design [15](15-google-drive-backup-and-sharing.md)): there is no hosted server, so no server-side OAuth, OIDC, sessions or data-fiduciary case; new part I, Google sign-in and Drive (client OAuth with PKCE on the iPhone, Play services on Android, the GIS token model on the website; token storage; the one scope `drive.file`; what sits in the person's Drive; deleting it); G3 rewritten (the right to erasure is the in-app deletion); §1 and §5 name Drive's go-live instead of Sprint 5's sign-in. |
+| 0.3 | 2026-10-02 | Claude (Code), lead | Part I gains I10..I14 for the owner's additions to [15](15-google-drive-backup-and-sharing.md) v0.2: encryption with device keys and the recovery key, device authentication for deletes, the required screen lock, photos on mobile data. |
 
 ## 1. What this is, and when it runs
 
@@ -155,6 +156,11 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | I7 | Deleting | *Delete this backup*, *Delete all backups*, *Delete everything …* on the test account (TC-M-48) | The files are gone and not in Drive's bin; sharing removed first; automatic backup stays off; another device asks before backing up again |
 | I8 | Disconnect and revoke | *Disconnect Google Drive*, then *Disconnect on all devices*, then Google's *third-party connections* page | Each does what 15 §3.5 says; no local data deleted; the app shows *Google Drive disconnected* |
 | I9 | Untrusted files | Put the TC-S-17 files (zip slip, bomb, hash mismatch) into the test account's *Doorprints/Sync* and *Backups* and share one from a second account | Each refused with a message; nothing written |
+| I10 | Encryption | Download a backup, a sync file and a photo from the test account's Drive; open Drive's preview | Each starts with `DPX1` and shows no house text, name or JPEG header; Drive's preview shows nothing; file names and `appProperties` carry no house data |
+| I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored |
+| I12 | Device authentication (TC-M-50) | *Delete all backups* and *Delete everything* on each phone; cancel once; wait over a minute once | The phone's own check every time, nothing deleted on cancel, asked again after the minute; the website without a passkey offers L1 only |
+| I13 | The screen lock (TC-M-51) | Connect on a phone with no lock; then with a lock, connect and remove the lock | Refused without a lock; paused with its message after removal, no upload or delete; re-enrolment needed afterwards |
+| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; open the backups on a fresh browser with it; enrol a phone by approval; revoke it | As 15 §9.4, §9.5; the recovery key appears nowhere in the app's storage, logs or Drive |
 
 ### H. India's boundaries (5 minutes)
 
