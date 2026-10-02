@@ -17,8 +17,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_EXPORT_OPTIONS } from '../../../../export/export-model';
-import type { ExportService } from '../../../../export/export.service';
+import { DEFAULT_EXPORT_OPTIONS } from '../../../export/export-model';
+import type { ExportService } from '../../../export/export.service';
 import { createDriveBackupSource } from './backup-source';
 
 describe('createDriveBackupSource', () => {

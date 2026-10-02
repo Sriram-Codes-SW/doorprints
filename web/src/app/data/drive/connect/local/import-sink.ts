@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { ByteSink } from '../../crypto/dpx';
+import type { ByteSink } from '../../../crypto/dpx';
 import type { StagingSink } from '../backup/drive-backup-seams';
 
 /** Error thrown when the staging sink's size cap is exceeded. */

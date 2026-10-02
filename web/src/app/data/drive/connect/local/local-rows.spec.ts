@@ -17,7 +17,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LocalStore } from '../../local-store.service';
+import { LocalStore } from '../../../local-store.service';
 import type { HouseDto, VisitDto } from '../../../../core/models';
 import { LocalRowsAdapter } from './local-rows';
 
