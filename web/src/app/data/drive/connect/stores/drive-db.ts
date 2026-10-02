@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { KeysWatermarkStore } from '../../../crypto/keys-file';
+import type { KeysWatermark, KeysWatermarkStore } from '../../../crypto/keys-file';
 import type { DeletionStore, DeletedMarker, PendingDeletion } from '../../drive-deletion';
 import type { DriveSyncState, SyncStateStore } from '../../drive-sync-seams';
 import type { PhotoState, PhotoStateStore } from '../../drive-photo-seams';
@@ -69,13 +69,13 @@ class MemoryKeyValueStore implements KeyValueStore {
 }
 
 class MemoryKeysWatermarkStore implements KeysWatermarkStore {
-  private value: any = null;
+  private value: KeysWatermark | null = null;
 
-  async load(): Promise<any> {
+  async load(): Promise<KeysWatermark | null> {
     return this.value;
   }
 
-  async compareAndSet(expected: any, next: any): Promise<boolean> {
+  async compareAndSet(expected: KeysWatermark | null, next: KeysWatermark): Promise<boolean> {
     if (JSON.stringify(this.value) === JSON.stringify(expected)) {
       this.value = next;
       return true;
@@ -214,24 +214,24 @@ class IndexedDbKeyValueStore implements KeyValueStore {
 class IndexedDbKeysWatermarkStore implements KeysWatermarkStore {
   constructor(private db: IDBDatabase) {}
 
-  async load(): Promise<any> {
+  async load(): Promise<KeysWatermark | null> {
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([STORE_NAMES.keysWatermark], 'readonly');
       const store = tx.objectStore(STORE_NAMES.keysWatermark);
       const req = store.get('watermark');
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => resolve((req.result as KeysWatermark | undefined) ?? null);
       req.onerror = () => reject(req.error);
     });
   }
 
-  async compareAndSet(expected: any, next: any): Promise<boolean> {
+  async compareAndSet(expected: KeysWatermark | null, next: KeysWatermark): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([STORE_NAMES.keysWatermark], 'readwrite');
       const store = tx.objectStore(STORE_NAMES.keysWatermark);
       const getReq = store.get('watermark');
 
       getReq.onsuccess = () => {
-        const current = getReq.result;
+        const current = (getReq.result as KeysWatermark | undefined) ?? null;
         const currentStr = JSON.stringify(current);
         const expectedStr = JSON.stringify(expected);
 

@@ -89,6 +89,11 @@ export class DriveJoinComponent implements AfterViewInit {
     }
   }
 
+  protected onKeyInput(event: Event): void {
+    const el = event.target;
+    this.recoveryKeyText.set(el instanceof HTMLInputElement ? el.value : '');
+  }
+
   async onDisconnect(): Promise<void> {
     this.busy.set(true);
     try {

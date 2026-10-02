@@ -69,6 +69,16 @@ export class DriveEnrolCard {
     this.role.set('approver');
   }
 
+  protected setReply(event: Event): void {
+    const el = event.target;
+    this.replyText.set(el instanceof HTMLTextAreaElement ? el.value : '');
+  }
+
+  protected setRequest(event: Event): void {
+    const el = event.target;
+    this.requestText.set(el instanceof HTMLTextAreaElement ? el.value : '');
+  }
+
   protected async copyRequest(): Promise<void> {
     try {
       await navigator.clipboard.writeText(this.requestText());
