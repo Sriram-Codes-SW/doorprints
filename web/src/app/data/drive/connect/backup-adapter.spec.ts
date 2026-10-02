@@ -19,11 +19,13 @@
 import { sourceOf } from '../../crypto/dpx';
 import type { ByteSource } from '../../crypto/dpx';
 import { DriveBackupAdapter } from './backup-adapter';
-import type { BackupSource, StagingSink } from '../backup/drive-backup-seams';
+import type { BackupSource, StagingSink, DriveStateStore, DriveDeviceState } from '../backup/drive-backup-seams';
+import { EMPTY_DEVICE_STATE } from '../backup/drive-backup-seams';
 import type { DriveConnection, CreateOutcome, BackupOutcome, BackupListing, ImportDownload } from '../backup/drive-backup-results';
 import { DriveProblem } from '../backup/drive-backup-results';
 import type { ScheduleDecision } from '../backup/backup-schedule';
 import type { RecoveryKey } from '../../crypto/recovery-key';
+import { DRIVE_LAYOUT, type DriveClient, type DriveQuery, type DrivePage } from '../drive-client';
 
 /**
  * Fake backup service for testing the adapter. Implements the subset of DriveBackupService
@@ -80,15 +82,129 @@ class FakeDriveImportService {
   }
 }
 
+/**
+ * Fake state store for testing. Stores device state in memory.
+ */
+class FakeDriveStateStore implements DriveStateStore {
+  private value: DriveDeviceState = { ...EMPTY_DEVICE_STATE, rootId: 'root123' };
+
+  async load(): Promise<DriveDeviceState> {
+    return this.value;
+  }
+
+  async save(state: DriveDeviceState): Promise<void> {
+    this.value = state;
+  }
+}
+
+/**
+ * Fake Drive client for testing. Tracks uploaded files and metadata.
+ */
+class FakeDriveClient implements DriveClient {
+  uploadedFiles: Array<{ name: string; mimeType: string; parents: string[]; appProperties: Record<string, string>; content: Uint8Array }> = [];
+
+  async upload(target: any, content: Uint8Array): Promise<any> {
+    if (target.kind === 'new') {
+      this.uploadedFiles.push({
+        name: target.file.name,
+        mimeType: target.file.mimeType,
+        parents: target.file.parents || [],
+        appProperties: target.file.appProperties || {},
+        content,
+      });
+      return { id: `file-${this.uploadedFiles.length}`, name: target.file.name, ...target.file };
+    } else if (target.kind === 'existing') {
+      const idx = this.uploadedFiles.findIndex((f) => f.name === 'Read me.txt');
+      if (idx >= 0) {
+        this.uploadedFiles[idx].content = content;
+      }
+      return { id: target.fileId, name: 'Read me.txt', mimeType: target.mimeType };
+    }
+    return null;
+  }
+
+  async list(query: DriveQuery): Promise<DrivePage> {
+    const files = this.uploadedFiles
+      .filter(
+        (f) =>
+          (!query.parentId || f.parents.includes(query.parentId)) &&
+          (!query.name || f.name === query.name) &&
+          (!query.mimeType || f.mimeType === query.mimeType),
+      )
+      .map((f, idx) => ({
+        id: `file-${idx}`,
+        name: f.name,
+        mimeType: f.mimeType,
+        parents: f.parents,
+        appProperties: f.appProperties,
+        size: f.content.byteLength,
+        sha256Checksum: null,
+        createdTime: 0,
+        modifiedTime: 0,
+        trashed: false,
+        headRevisionId: null,
+      }));
+    return { files, nextPageToken: null, incompleteSearch: false };
+  }
+
+  async getFile(_id: string): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async createFile(_file: any): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async updateMetadata(_id: string, _change: any): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async trash(_id: string): Promise<void> {
+    throw new Error('Not implemented');
+  }
+
+  async downloadBytes(_id: string): Promise<Uint8Array> {
+    throw new Error('Not implemented');
+  }
+
+  async about(): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async beginSession(_target: any): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async querySession(_uri: string): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async appendSession(_session: any, _bytes: Uint8Array): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async finishSession(_session: any): Promise<any> {
+    throw new Error('Not implemented');
+  }
+
+  async listRevisions(_id: string): Promise<any> {
+    throw new Error('Not implemented');
+  }
+}
+
 describe('DriveBackupAdapter', () => {
   let adapter: DriveBackupAdapter;
   let fakeBackupService: FakeDriveBackupService;
   let fakeImportService: FakeDriveImportService;
+  let fakeStateStore: FakeDriveStateStore;
+  let fakeDriveClient: FakeDriveClient;
 
   beforeEach(() => {
     fakeBackupService = new FakeDriveBackupService();
     fakeImportService = new FakeDriveImportService();
-    adapter = new DriveBackupAdapter(fakeBackupService as any, fakeImportService as any);
+    fakeStateStore = new FakeDriveStateStore();
+    fakeDriveClient = new FakeDriveClient();
+    adapter = new DriveBackupAdapter(fakeBackupService as any, fakeImportService as any, fakeDriveClient as any, fakeStateStore);
   });
 
   describe('connect()', () => {
