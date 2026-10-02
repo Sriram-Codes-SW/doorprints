@@ -22,9 +22,9 @@ import { BROKER_TYPE } from '../../../../shared/broker';
 import { CRITERION_TYPE, PREFERENCE_TYPE } from '../../../../shared/scoring';
 import { QUESTION_TYPE } from '../../../../shared/question';
 import { VIEWING_TYPE } from '../../../../shared/viewing';
-import type { LocalStore } from '../../local-store.service';
-import { isoNow } from '../../records';
-import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../records';
+import type { LocalStore } from '../../../local-store.service';
+import { isoNow } from '../../../records';
+import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../../records';
 import type { LocalRows } from '../drive-sync-seams';
 import type { SyncKind, SyncRow } from '../sync-file';
 

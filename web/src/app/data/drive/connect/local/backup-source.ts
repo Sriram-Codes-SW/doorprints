@@ -16,10 +16,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { ByteSource } from '../../crypto/dpx';
-import { BACKUP_FORMAT } from '../../../../export/backup-export';
-import type { ExportOptions } from '../../../../export/export-model';
-import { ExportService } from '../../../../export/export.service';
+import type { ByteSource } from '../../../crypto/dpx';
+import { BACKUP_FORMAT } from '../../../export/backup-export';
+import type { ExportOptions } from '../../../export/export-model';
+import { ExportService } from '../../../export/export.service';
 import type { BackupPayload, BackupSource } from '../backup/drive-backup-seams';
 
 /**
