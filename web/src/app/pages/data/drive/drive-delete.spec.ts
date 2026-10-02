@@ -18,9 +18,11 @@
 
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import '../../../i18n/all-dictionaries';
 import { DriveDeleteCard } from './drive-delete';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -40,39 +42,51 @@ async function render(svc = fakeService()) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [DriveDeleteCard],
-    providers: [
-      { provide: DriveConnectService, useValue: svc },
-      { provide: TranslationService, useValue: { t: (k: string) => k, lang: () => 'en' } },
-    ],
+    providers: [{ provide: DriveConnectService, useValue: svc }],
   });
   const fixture = TestBed.createComponent(DriveDeleteCard);
   fixture.detectChanges();
   await fixture.whenStable();
   await flush();
   fixture.detectChanges();
-  return { host: fixture.nativeElement as HTMLElement, fixture, svc, component: fixture.componentInstance };
+  return {
+    host: fixture.nativeElement as HTMLElement,
+    fixture,
+    svc,
+    component: fixture.componentInstance,
+    i18n: TestBed.inject(TranslationService),
+  };
+}
+
+function shown(host: HTMLElement, i18n: TranslationService, key: TKey): void {
+  const translated = i18n.t(key);
+  expect(translated).not.toBe(key);
+  expect(host.textContent).toContain(translated);
+  expect(host.textContent).not.toContain(key);
 }
 
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DriveDeleteCard', () => {
   it('shows the three deletion levels', async () => {
-    const { host } = await render();
-    expect(host.textContent).toContain('driveDelete.olderBackups');
-    expect(host.textContent).toContain('driveDelete.allBackups');
-    expect(host.textContent).toContain('driveDelete.everything');
+    const { host, i18n } = await render();
+    shown(host, i18n, 'driveDelete.olderBackups');
+    shown(host, i18n, 'driveDelete.allBackups');
+    shown(host, i18n, 'driveDelete.everything');
   });
 
   it('asks for a tick box on confirm and does not wait', async () => {
-    const { component, fixture, host } = await render();
+    const { component, fixture, host, i18n } = await render();
     await component['startDeletion']({ type: 'everything' });
     fixture.detectChanges();
     await component['proceedToConfirm']();
     fixture.detectChanges();
     expect(host.querySelector('input[type="checkbox"]')).toBeTruthy();
+    const countdown = i18n.t('driveDelete.countdown', { seconds: 5 });
     expect(host.textContent).not.toContain('driveDelete.countdown');
+    expect(host.textContent).not.toContain(countdown);
     const del = host.querySelectorAll('button');
-    const deleteBtn = Array.from(del).find((b) => b.textContent?.includes('common.delete'));
+    const deleteBtn = Array.from(del).find((b) => b.textContent?.includes(i18n.t('common.delete')));
     expect(deleteBtn?.disabled).toBe(true);
   });
 
@@ -80,10 +94,10 @@ describe('DriveDeleteCard', () => {
     const svc = fakeService({
       deletePlan: vi.fn().mockResolvedValue({ ok: false, reason: 'USE_PHONE' }),
     });
-    const { component, fixture, host } = await render(svc);
+    const { component, fixture, host, i18n } = await render(svc);
     await component['startDeletion']({ type: 'allBackups' });
     fixture.detectChanges();
-    expect(host.textContent).toContain('driveDelete.usePhone');
+    shown(host, i18n, 'driveDelete.usePhone');
   });
 
   it('executes after the tick box is checked', async () => {

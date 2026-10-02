@@ -18,29 +18,42 @@
 
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
+import '../../../i18n/all-dictionaries';
 import { DriveEnrolCard } from './drive-enrol';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
 import { type PairingMessage } from '../../../data/drive/connect/pairing-flow';
 
 async function render() {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [DriveEnrolCard],
-    providers: [{ provide: TranslationService, useValue: { t: (k: string) => k, lang: () => 'en' } }],
   });
   const fixture = TestBed.createComponent(DriveEnrolCard);
   fixture.detectChanges();
-  return { host: fixture.nativeElement as HTMLElement, fixture, component: fixture.componentInstance };
+  return {
+    host: fixture.nativeElement as HTMLElement,
+    fixture,
+    component: fixture.componentInstance,
+    i18n: TestBed.inject(TranslationService),
+  };
+}
+
+function shown(host: HTMLElement, i18n: TranslationService, key: TKey): void {
+  const translated = i18n.t(key);
+  expect(translated).not.toBe(key);
+  expect(host.textContent).toContain(translated);
+  expect(host.textContent).not.toContain(key);
 }
 
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DriveEnrolCard', () => {
   it('offers newcomer and approver paths', async () => {
-    const { host } = await render();
-    expect(host.textContent).toContain('driveEnrol.newcomer');
-    expect(host.textContent).toContain('driveEnrol.approver');
-    expect(host.textContent).toContain('driveEnrol.qrDeferred');
+    const { host, i18n } = await render();
+    shown(host, i18n, 'driveEnrol.newcomer');
+    shown(host, i18n, 'driveEnrol.approver');
+    shown(host, i18n, 'driveEnrol.qrDeferred');
   });
 
   it('newcomer and approver compute the same 8-digit code', async () => {
@@ -68,10 +81,12 @@ describe('DriveEnrolCard', () => {
   });
 
   it('refuses a garbled reply', async () => {
-    const { component } = await render();
+    const { component, fixture, host, i18n } = await render();
     component['becomeNewcomer']();
     component['replyText'].set('not-json');
     component['revealCode']();
-    expect(component['error']()).toBe('driveEnrol.badMessage');
+    fixture.detectChanges();
+    expect(component['error']()).toBe(i18n.t('driveEnrol.badMessage'));
+    shown(host, i18n, 'driveEnrol.badMessage');
   });
 });
