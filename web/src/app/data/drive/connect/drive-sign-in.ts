@@ -16,21 +16,56 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-/** The token provider that gives DriveConnectService access to the Drive folder. */
-export interface TokenProvider {
-  token(): string;
-  expiresIn(): number;
-}
+import { Injectable } from '@angular/core';
+import type { TokenProvider } from '../drive-client';
+import { GoogleConfig, GoogleTokenProvider } from './google-token-provider';
 
 /**
- * Boundary for Google Drive sign-in. The real implementation adapts GoogleConfig from feat/drive-web-connect;
- * tests use a fake. Injected into DriveConnectService.
+ * Seam for Google Drive OAuth sign-in (tests inject a fake; production uses GoogleTokenProvider).
+ * S4b-BL-117, S4b-BL-73.
  */
-export interface DriveSignIn {
-  /** True if this browser can reach Google's OAuth and the app has the Google config. */
-  available(): boolean;
-  /** Opens Google's sign-in, returns a token provider, or throws if cancelled. Never rejects a user's cancellation. */
-  connect(): Promise<TokenProvider>;
-  /** Forgets the OAuth token and revokes the grant. */
-  disconnect(): void;
+@Injectable()
+export class DriveSignIn {
+  private tokenProvider: TokenProvider | null = null;
+  private connected = false;
+
+  constructor(private readonly config: GoogleConfig) {}
+
+  available(): boolean {
+    return this.config.clientId?.length > 0;
+  }
+
+  async connect(): Promise<TokenProvider> {
+    if (!this.available()) {
+      throw new Error('Google OAuth not configured');
+    }
+    this.tokenProvider = new GoogleTokenProvider(new DefaultScriptLoader(), this.config);
+    // Test the token by requesting one
+    await this.tokenProvider.accessToken();
+    this.connected = true;
+    return this.tokenProvider;
+  }
+
+  disconnect(): void {
+    this.tokenProvider = null;
+    this.connected = false;
+  }
+
+  isConnected(): boolean {
+    return this.connected;
+  }
+}
+
+/** Minimal script loader for production. */
+class DefaultScriptLoader {
+  async load(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.head.appendChild(script);
+    });
+  }
 }
