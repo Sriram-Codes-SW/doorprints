@@ -65,6 +65,17 @@ interface SyncBackend {
      */
     suspend fun isBehind(cursors: List<Long>): Boolean
 
+    /**
+     * True for a backend that keeps whole snapshots (Drive): its `push*` calls only note the row, and the rows are sent
+     * together in [commitPushes]. The loop then marks pushed rows clean (and removes pushed photo deletions) **only
+     * after [commitPushes] returned**: the snapshot is complete and confirmed by read-back (docs/15 §1.4). The server's
+     * is false: each push is confirmed by its answer.
+     */
+    val stagesPushes: Boolean get() = false
+
+    /** Sends what the pushes noted and takes in what the others changed ([stagesPushes] only); a failure is thrown. */
+    suspend fun commitPushes() {}
+
     /** Sends one changed house and returns the row the remote keeps (last write wins there, or the one sent). */
     suspend fun pushHouse(house: HouseDto): HouseDto
 
