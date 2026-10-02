@@ -17,11 +17,16 @@
  */
 
 import type { PhotoChangeDto } from '../../../../core/models';
+import { AREA_NOTE_TYPE, AREA_TYPE, PLACE_TYPE } from '../../../../shared/area';
+import { BROKER_TYPE } from '../../../../shared/broker';
+import { CRITERION_TYPE, PREFERENCE_TYPE } from '../../../../shared/scoring';
+import { QUESTION_TYPE } from '../../../../shared/question';
+import { VIEWING_TYPE } from '../../../../shared/viewing';
 import type { LocalStore } from '../../local-store.service';
 import { isoNow } from '../../records';
 import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from '../../records';
 import type { LocalRows } from '../drive-sync-seams';
-import { SYNC_KINDS, type SyncKind, type SyncRow } from '../sync-file';
+import type { SyncKind, SyncRow } from '../sync-file';
 
 /**
  * Production implementation of {@link LocalRows} (S4b-BL-118, docs/15 §5.1): reads all rows from the app's
@@ -52,7 +57,7 @@ export class LocalRowsAdapter implements LocalRows {
     }
 
     // Records: by type (criteria, preferences, questions, viewings, areas, places, area notes, brokers, etc.).
-    const recordTypes = await this.collectRecordTypes();
+    const recordTypes = this.collectRecordTypes();
     for (const type of recordTypes) {
       const records = await this.store.allRecordsOf(type);
       for (const record of records) {
@@ -69,9 +74,12 @@ export class LocalRowsAdapter implements LocalRows {
     return rows;
   }
 
-  /** One photo by id for incremental metadata upload (S4b-BL-128: not yet built). */
+  /** One photo by id for incremental metadata upload (S4b-BL-128). */
   async photo(photoId: string): Promise<PhotoChangeDto | null> {
-    throw new Error('Drive sync photos (S4b-BL-128) not yet built');
+    const photos = await this.store.allPhotos();
+    const found = photos.find((p: PhotoRecord) => p.id === photoId);
+    if (!found) return null;
+    return this.syncRowToPhotoDto(this.photoToSyncRow(found));
   }
 
   /**
@@ -336,11 +344,17 @@ export class LocalRowsAdapter implements LocalRows {
     };
   }
 
-  private async collectRecordTypes(): Promise<string[]> {
-    const types = new Set<string>();
-    // This is not efficient, but we must discover all record types in the store.
-    // In production, the store should track this. For now, assume known types from the model.
-    // TODO: add a method to LocalStore to list all record types.
-    return Array.from(types);
+  private collectRecordTypes(): string[] {
+    // All record types used in the app (from shared model types).
+    return [
+      CRITERION_TYPE, // criterion
+      PREFERENCE_TYPE, // preference
+      QUESTION_TYPE, // question
+      VIEWING_TYPE, // viewing
+      AREA_TYPE, // area
+      PLACE_TYPE, // place
+      AREA_NOTE_TYPE, // areanote
+      BROKER_TYPE, // broker
+    ];
   }
 }

@@ -16,34 +16,37 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { ExportOptions } from '../../../../export/export-model';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_EXPORT_OPTIONS } from '../../../../export/export-model';
+import type { ExportService } from '../../../../export/export.service';
 import { createDriveBackupSource } from './backup-source';
 
 describe('createDriveBackupSource', () => {
-  let mockExporter: any;
+  let mockExporter: Partial<ExportService>;
 
   beforeEach(() => {
     mockExporter = {
-      build: jasmine.createSpy('build'),
+      build: vi.fn(),
     };
   });
 
   it('returns a BackupSource function', () => {
-    const source = createDriveBackupSource(mockExporter, {});
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
     expect(typeof source).toBe('function');
   });
 
   it('builds a backup and returns BackupPayload with correct format', async () => {
-    const zipBytes = new TextEncoder().encode('PK\x03\x04'); // ZIP magic bytes
+    const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic
     const blob = new Blob([zipBytes], { type: 'application/zip' });
 
-    mockExporter.build.mockResolvedValue({
+    vi.mocked(mockExporter.build!).mockResolvedValue({
       blob,
-      counts: { houses: 5, visits: 10, photos: 3 },
+      format: 'backup',
       fileName: 'test-backup.zip',
+      counts: { houses: 5, visits: 10, photos: 3 },
     });
 
-    const source = createDriveBackupSource(mockExporter, { lang: 'en' });
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
     const payload = await source();
 
     expect(payload.format).toBe('doorprints-backup/1');
@@ -55,13 +58,14 @@ describe('createDriveBackupSource', () => {
     const zipBytes = new Uint8Array([1, 2, 3, 4, 5]);
     const blob = new Blob([zipBytes], { type: 'application/zip' });
 
-    mockExporter.build.mockResolvedValue({
+    vi.mocked(mockExporter.build).mockResolvedValue({
       blob,
-      counts: { houses: 1 },
+      format: 'backup',
       fileName: 'test.zip',
+      counts: { houses: 1, visits: 0, photos: 0 },
     });
 
-    const source = createDriveBackupSource(mockExporter, {});
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
     const payload = await source();
 
     // Read the first 2 bytes.
@@ -82,32 +86,16 @@ describe('createDriveBackupSource', () => {
   });
 
   it('throws when ExportService returns no blob', async () => {
-    mockExporter.build.mockResolvedValue({
-      counts: { houses: 0 },
+    vi.mocked(mockExporter.build).mockResolvedValue({
+      format: 'backup',
       fileName: 'test.zip',
+      counts: { houses: 0, visits: 0, photos: 0 },
       // No blob
     });
 
-    const source = createDriveBackupSource(mockExporter, {});
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
 
     await expect(source()).rejects.toThrow('no blob');
-  });
-
-  it('computes SHA-256 of the ZIP', async () => {
-    const zipBytes = new Uint8Array([1, 2, 3, 4]);
-    const blob = new Blob([zipBytes], { type: 'application/zip' });
-
-    mockExporter.build.mockResolvedValue({
-      blob,
-      counts: { houses: 1 },
-      fileName: 'test.zip',
-    });
-
-    const source = createDriveBackupSource(mockExporter, {});
-    const payload = await source();
-
-    // SHA-256 should be computed (not null or empty).
-    expect(payload).toBeDefined();
   });
 
   it('handles large backup files', async () => {
@@ -115,13 +103,14 @@ describe('createDriveBackupSource', () => {
     const largeArray = new Uint8Array(5 * 1024 * 1024);
     const blob = new Blob([largeArray], { type: 'application/zip' });
 
-    mockExporter.build.mockResolvedValue({
+    vi.mocked(mockExporter.build).mockResolvedValue({
       blob,
-      counts: { houses: 100 },
+      format: 'backup',
       fileName: 'large-backup.zip',
+      counts: { houses: 100, visits: 0, photos: 0 },
     });
 
-    const source = createDriveBackupSource(mockExporter, {});
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
     const payload = await source();
 
     expect(payload.houses).toBe(100);
@@ -138,19 +127,18 @@ describe('createDriveBackupSource', () => {
   });
 
   it('calls ExportService.build with correct arguments', async () => {
-    const options: ExportOptions = { lang: 'hi' };
-    const now = new Date('2026-10-02T10:00:00Z');
     const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'application/zip' });
 
-    mockExporter.build.mockResolvedValue({
+    vi.mocked(mockExporter.build).mockResolvedValue({
       blob,
-      counts: { houses: 2 },
+      format: 'backup',
       fileName: 'test.zip',
+      counts: { houses: 2, visits: 0, photos: 0 },
     });
 
-    const source = createDriveBackupSource(mockExporter, options);
+    const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
     await source();
 
-    expect(mockExporter.build).toHaveBeenCalledWith('backup', options, expect.any(Date));
+    expect(mockExporter.build).toHaveBeenCalledWith('backup', DEFAULT_EXPORT_OPTIONS, expect.any(Date));
   });
 });
