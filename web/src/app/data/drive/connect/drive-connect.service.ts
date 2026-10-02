@@ -26,7 +26,9 @@ import type { DriveDeletionAdapter } from './deletion-adapter';
 import type { GoogleConfig } from './google-token-provider';
 import { GOOGLE_CONFIG } from './drive-connect.providers';
 import type { DeletionAction } from '../drive-deletion-rules';
-import type { ReadyFolder, DriveProblem, DriveBackup } from '../backup/drive-backup-results';
+import type { DeletionPlan } from '../drive-deletion';
+import type { WebGrant } from '../../device-auth/web-authorizer';
+import type { ReadyFolder, DriveProblem, DriveBackup, DriveConnection } from '../backup/drive-backup-results';
 import type { SyncAdapterStatus } from './sync-adapter';
 import type { PhotoSettings, OneOffGrant } from '../photo-network-policy';
 import type { DeletionContext } from '../../device-auth/delete-policy';
@@ -202,7 +204,7 @@ export class DriveConnectService {
 
   // ==================== State Management ====================
 
-  private handleConnection(connection: any): ConnectResult {
+  private handleConnection(connection: DriveConnection): ConnectResult {
     switch (connection.kind) {
       case 'READY':
         this.state.set('Ready');
@@ -234,7 +236,7 @@ export class DriveConnectService {
     }
   }
 
-  private updateReadyFolderFromConnection(connection: any): void {
+  private updateReadyFolderFromConnection(connection: DriveConnection): void {
     if (connection.kind === 'READY' && connection.folder) {
       this.readyFolder = connection.folder;
     } else {
@@ -416,7 +418,7 @@ export class DriveConnectService {
   async deletePlan(
     action: DeletionAction,
   ): Promise<
-    | { readonly ok: true; readonly plan: any }
+    | { readonly ok: true; readonly plan: DeletionPlan }
     | { readonly ok: false; readonly reason: string }
   > {
     try {
@@ -460,7 +462,7 @@ export class DriveConnectService {
   async authorizeDelete(
     action: DeletionAction,
   ): Promise<
-    | { readonly ok: true; readonly grant: any }
+    | { readonly ok: true; readonly grant: WebGrant }
     | { readonly ok: false; readonly reason: string }
   > {
     try {
@@ -476,8 +478,8 @@ export class DriveConnectService {
   }
 
   async executeDelete(
-    plan: any,
-    grant: any,
+    plan: DeletionPlan,
+    grant: WebGrant | null,
   ): Promise<
     | { readonly ok: true }
     | { readonly ok: false; readonly reason: string }
@@ -494,7 +496,7 @@ export class DriveConnectService {
   }
 
   async resumeDelete(
-    grant: any,
+    grant: WebGrant | null,
   ): Promise<
     | { readonly ok: true }
     | { readonly ok: false; readonly reason: string }

@@ -61,6 +61,7 @@ import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { OfflineAreasCard } from './offline-areas';
 import { DriveConnectComponent } from './drive-connect';
+import { provideDriveConnect } from '../../data/drive/connect/drive-connect.providers';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { guideUrl } from '../../shared/help-link';
 
@@ -107,6 +108,7 @@ const ICONS = {
   imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
+  providers: provideDriveConnect(),
 })
 export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);

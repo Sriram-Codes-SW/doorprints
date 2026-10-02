@@ -22,6 +22,7 @@ import { DriveConnectComponent } from './drive-connect';
 import { DriveConnectService, type ConnectState } from '../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { Announcer } from '../../core/announcer.service';
+import { ConfirmService } from '../../core/confirm.service';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -70,6 +71,7 @@ async function render(svc: ReturnType<typeof fakeService>) {
     providers: [
       { provide: DriveConnectService, useValue: svc },
       { provide: Announcer, useValue: { announce: vi.fn() } },
+      { provide: ConfirmService, useValue: { ask: vi.fn(async () => true) } },
       { provide: TranslationService, useValue: { t: (k: string) => k, dateTime: (s: string) => s, lang: () => 'en' } },
     ],
   });
@@ -102,14 +104,49 @@ describe('DriveConnectComponent', () => {
 
   it('clears the recovery key after confirm', async () => {
     const svc = fakeService('FirstConnectShowRecoveryKey');
-    const { component, fixture } = await render(svc);
-    component['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF');
+    const { component, fixture, host } = await render(svc);
+    const key = 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF';
+    component['recoveryKey'].set(key);
     component['recoveryKeySaved'].set(true);
     fixture.detectChanges();
+    expect(host.textContent).toContain(key);
     component.continueFromRecoveryKey();
     fixture.detectChanges();
     expect(svc.confirmRecoveryKeySaved).toHaveBeenCalled();
     expect(component['recoveryKey']()).toBeNull();
+    expect(host.textContent).not.toContain(key);
+  });
+
+  it('clears the recovery key from the signal and the DOM after skip', async () => {
+    const svc = fakeService('FirstConnectShowRecoveryKey');
+    const { component, fixture, host } = await render(svc);
+    const key = 'SKIP-KEY1-KEY2-KEY3-KEY4-KEY5';
+    component['recoveryKey'].set(key);
+    fixture.detectChanges();
+    expect(host.textContent).toContain(key);
+    await component.skipRecoveryKey();
+    fixture.detectChanges();
+    expect(svc.skipRecoveryKeyWithWarning).toHaveBeenCalled();
+    expect(component['recoveryKey']()).toBeNull();
+    expect(host.textContent).not.toContain(key);
+  });
+
+  it('announces when copying the recovery key fails', async () => {
+    const announcer = { announce: vi.fn() };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [DriveConnectComponent],
+      providers: [
+        { provide: DriveConnectService, useValue: fakeService('FirstConnectShowRecoveryKey') },
+        { provide: Announcer, useValue: announcer },
+        { provide: ConfirmService, useValue: { ask: vi.fn(async () => true) } },
+        { provide: TranslationService, useValue: { t: (k: string) => k, dateTime: (s: string) => s, lang: () => 'en' } },
+      ],
+    });
+    const fixture = TestBed.createComponent(DriveConnectComponent);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => { throw new Error('denied'); }) } });
+    await fixture.componentInstance.copyRecoveryKey('AAAA-BBBB');
+    expect(announcer.announce).toHaveBeenCalledWith({ key: 'driveConnect.copyFailed' });
   });
 
   it('hands an imported Blob out', async () => {

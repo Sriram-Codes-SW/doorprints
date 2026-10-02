@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, computed, inject, signal, ChangeDetectionStrategy, output } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy, output, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
@@ -27,6 +27,8 @@ import { DriveBackupsCard } from './drive/drive-backups';
 import { DriveSyncCard } from './drive/drive-sync';
 import { DrivePasskeyComponent } from './drive/drive-passkey';
 import { DriveDeleteCard } from './drive/drive-delete';
+import { Announcer } from '../../core/announcer.service';
+import { ConfirmService } from '../../core/confirm.service';
 
 /**
  * Google Drive on Your data: Unavailable / Connect / NeedsRecoveryKey (shown once) / NeedsEnrolment / Ready.
@@ -49,9 +51,12 @@ import { DriveDeleteCard } from './drive/drive-delete';
   styleUrl: './drive-connect.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DriveConnectComponent {
+export class DriveConnectComponent implements OnDestroy {
   private readonly service = inject(DriveConnectService, { optional: true });
   protected readonly i18n = inject(TranslationService);
+  private readonly announcer = inject(Announcer);
+  private readonly confirm = inject(ConfirmService);
+  private copyTimer: ReturnType<typeof setTimeout> | undefined;
 
   readonly importFile = output<Blob>();
 
@@ -61,6 +66,10 @@ export class DriveConnectComponent {
   protected readonly recoveryKeySaved = signal(false);
   protected readonly keyCopied = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  ngOnDestroy(): void {
+    if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
+  }
 
   protected onImportFromDrive(file: Blob): void {
     this.importFile.emit(file);
@@ -93,9 +102,13 @@ export class DriveConnectComponent {
     try {
       await navigator.clipboard.writeText(key);
       this.keyCopied.set(true);
-      setTimeout(() => this.keyCopied.set(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy recovery key:', err);
+      if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
+      this.copyTimer = setTimeout(() => {
+        this.keyCopied.set(false);
+        this.copyTimer = undefined;
+      }, 2000);
+    } catch {
+      this.announcer.announce({ key: 'driveConnect.copyFailed' });
     }
   }
 
@@ -110,24 +123,30 @@ export class DriveConnectComponent {
     this.recoveryKeySaved.set(false);
   }
 
-  skipRecoveryKey(): void {
+  async skipRecoveryKey(): Promise<void> {
     if (!this.service) return;
-    if (confirm(this.i18n.t('driveConnect.recoveryKeyWarning'))) {
-      this.service.skipRecoveryKeyWithWarning();
-      this.recoveryKey.set(null);
-      this.recoveryKeySaved.set(false);
-    }
+    const ok = await this.confirm.ask(
+      { key: 'driveConnect.recoveryKeyWarning' },
+      { confirmKey: 'common.skip', danger: true },
+    );
+    if (!ok) return;
+    this.service.skipRecoveryKeyWithWarning();
+    this.recoveryKey.set(null);
+    this.recoveryKeySaved.set(false);
   }
 
   async onDisconnect(): Promise<void> {
     if (!this.service) return;
-    if (confirm(this.i18n.t('driveConnect.disconnect'))) {
-      this.busy.set(true);
-      try {
-        await this.service.disconnect();
-      } finally {
-        this.busy.set(false);
-      }
+    const ok = await this.confirm.ask(
+      { key: 'driveConnect.disconnect' },
+      { confirmKey: 'driveConnect.disconnect', danger: true },
+    );
+    if (!ok) return;
+    this.busy.set(true);
+    try {
+      await this.service.disconnect();
+    } finally {
+      this.busy.set(false);
     }
   }
 }

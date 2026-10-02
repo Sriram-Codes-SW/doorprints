@@ -39,6 +39,16 @@ export interface GoogleConfig {
   readonly clientId: string;
 }
 
+/** Whether GIS granted the Drive scope for this token response. Tests inject a stub; production fails closed. */
+export type DriveScopeChecker = (response: unknown, scope: string) => boolean;
+
+/** Production checker: if GIS cannot say the Drive scope was granted, refuse the token. */
+export function productionDriveScopeChecker(response: unknown, scope: string): boolean {
+  const oauth2 = (window as unknown as { google?: { accounts?: { oauth2?: { hasGrantedAllScopes?: unknown } } } }).google?.accounts?.oauth2;
+  if (typeof oauth2?.hasGrantedAllScopes !== 'function') return false;
+  return Boolean((oauth2.hasGrantedAllScopes as (r: unknown, s: string) => boolean)(response, scope));
+}
+
 /** Default implementation: loads script tag into the document. */
 export class DefaultScriptLoader implements ScriptLoader {
   async load(src: string): Promise<void> {
@@ -83,6 +93,7 @@ export class GoogleTokenProvider implements TokenProvider {
   constructor(
     private readonly scriptLoader: ScriptLoader,
     private readonly config: GoogleConfig,
+    private readonly scopeGranted: DriveScopeChecker = productionDriveScopeChecker,
   ) {}
 
   /**
@@ -253,11 +264,8 @@ export class GoogleTokenProvider implements TokenProvider {
     });
   }
 
-  /** Whether Google says the Drive permission was granted (when its script can tell; the fake in tests cannot). */
+  /** Whether Google says the Drive permission was granted. Fails closed when GIS cannot tell. */
   private grantsDrive(response: unknown): boolean {
-    const oauth2 = (window as unknown as { google?: { accounts?: { oauth2?: { hasGrantedAllScopes?: unknown } } } }).google?.accounts?.oauth2;
-    return typeof oauth2?.hasGrantedAllScopes === 'function'
-      ? Boolean((oauth2.hasGrantedAllScopes as (r: unknown, s: string) => boolean)(response, DRIVE_SCOPE))
-      : true;
+    return this.scopeGranted(response, DRIVE_SCOPE);
   }
 }

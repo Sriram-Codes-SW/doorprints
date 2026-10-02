@@ -18,10 +18,11 @@
 
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../../data/local-store.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { DataPage } from './data-page';
+import { ImportBackupCard } from './import-backup';
 
 /** Slice 1c: the *Length units* switch on Your data reads and writes the local setting (never synced). */
 describe('DataPage: Length units', () => {
@@ -68,5 +69,24 @@ describe('DataPage: Length units', () => {
     radio(again.nativeElement as HTMLElement, 'FT').click();
     await again.whenStable();
     expect(await store.lengthUnit()).toBe('FT');
+  });
+});
+
+describe('DataPage: Import from Drive', () => {
+  it('hands a Drive backup Blob to Import a backup', async () => {
+    TestBed.configureTestingModule({ imports: [DataPage], providers: [provideRouter([])] });
+    TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(DataPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    const card = page['importCard']();
+    expect(card).toBeTruthy();
+    const check = vi.spyOn(card as ImportBackupCard, 'check').mockResolvedValue(undefined);
+    const blob = new Blob(['zip-bytes'], { type: 'application/zip' });
+    page['onDriveImport'](blob);
+    expect(check).toHaveBeenCalledWith(blob);
   });
 });

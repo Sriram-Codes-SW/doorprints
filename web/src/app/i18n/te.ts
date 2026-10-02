@@ -1200,7 +1200,7 @@ export const te: Dict = {
   'house.floorBasementHint': 'నేల కింద ఉన్న స్థాయి, 1 నుండి 5 వరకు',
   'house.floorBasementInvalid': '1 నుండి 5 వరకు బేస్‌మెంట్ స్థాయి నమోదు చేయండి',
   'imp.floorsLeftBlank': 'ఫైల్‌లో అంతస్తు -5 నుండి 200 పరిధి బయట ఉన్న ఇళ్లు; వాటి అంతస్తు ఖాళీగా వదిలివేయబడుతుంది',
-  // Google Drive connect page (S4b-BL-117) - Under review
+  // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'Google Drive కి బ్యాకప్ చేయండి',
   'driveConnect.unavailable': 'ఈ బ్రౌజర్‌లో Google Drive కనెక్ట్ అందుబాటులో లేదు.',
   'driveConnect.connect': 'Google Drive కు కనెక్ట్ చేయండి',
@@ -1209,6 +1209,7 @@ export const te: Dict = {
   'driveConnect.recoveryKeyNote': 'కేవలం ఒకసారి చూపబడుతుంది. దీన్ని సురక్షితమైన చోట సేవ్ చేయండి (ఈమెయిల్, నోట్ అ్యాప్, లేదా ఇది ముద్రించండి).',
   'driveConnect.recoveryKeyCopy': 'రికవరీ కీని కాపీ చేయండి',
   'driveConnect.recoveryKeyCopied': 'క్లిప్‌బోర్డుకు కాపీ చేయబడింది',
+  'driveConnect.copyFailed': 'రికవరీ కీని కాపీ చేయలేకపోయాం',
   'driveConnect.confirmSavedRecoveryKey': 'నా రికవరీ కీని సురక్షితమైన చోట సేవ్ చేసాను',
   'driveConnect.recoveryKeyWarning': 'ఈ కీ లేకుండా మీ ఇళ్లను తిరిగి పొందలేరు. మీరు దీన్ని కోల్పోతే, అన్ని బ్యాకప్‌లు Google Drive పై ఉంటాయి, కానీ మీరు వాటిని మరే సాధనం నుండి చదవలేరు.',
   'driveConnect.nextSteps': 'ఆ తర్వాత ఏమిటి',

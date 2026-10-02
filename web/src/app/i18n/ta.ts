@@ -1200,7 +1200,7 @@ export const ta: Dict = {
   'house.floorBasementHint': 'தரைக்குக் கீழே உள்ள நிலை, 1 முதல் 5 வரை',
   'house.floorBasementInvalid': '1 முதல் 5 வரை ஒரு அடித்தள நிலையை உள்ளிடவும்',
   'imp.floorsLeftBlank': 'கோப்பில் தளம் -5 முதல் 200 வரம்பிற்கு வெளியே உள்ள வீடுகள்; அவற்றின் தளம் காலியாக விடப்படும்',
-  // Google Drive connect page (S4b-BL-117) - Under review
+  // Google Drive on the website (S4b-BL-117, S4b-BL-73). Under review (owner rule: hi/ta/te ship marked under review).
   'driveConnect.heading': 'Google Drive இல் பேக்கப் செய்யவும்',
   'driveConnect.unavailable': 'இந்த உலாவியில் Google Drive இணைக்க கிடைக்கவில்லை.',
   'driveConnect.connect': 'Google Drive இல் இணைக்கவும்',
@@ -1209,6 +1209,7 @@ export const ta: Dict = {
   'driveConnect.recoveryKeyNote': 'ஒருமுறை மட்டுமே காட்டப்படுகிறது. இதைப் பாதுகாப்பான இடத்தில் சேமிக்கவும் (மின்னஞ்சல், குறிப்பு பயன்பாடு, அல்லது அதை அச்சிடுங்கள்).',
   'driveConnect.recoveryKeyCopy': 'மீட்டெடுக்க விசையைக் கபி செய்யவும்',
   'driveConnect.recoveryKeyCopied': 'கிளிப்போர்டுக்குக் கபி செய்யப்பட்டது',
+  'driveConnect.copyFailed': 'மீட்டெடுக்க விசையைக் கபி செய்ய முடியவில்லை',
   'driveConnect.confirmSavedRecoveryKey': 'நான் என் மீட்டெடுக்க விசையைப் பாதுகாப்பான இடத்தில் சேமிந்துவிட்டேன்',
   'driveConnect.recoveryKeyWarning': 'இந்த விசை இல்லாமல் நீங்கள் உங்கள் வீடுகளைத் திரும்பப் பெற முடியாது. நீங்கள் இதை இழந்துவிட்டால், அனைத்து பேக்கப்கள் Google Drive இல் இருக்கும், ஆனால் நீங்கள் அவற்றை வேறு சாதனத்தில் படிக்க முடியாது.',
   'driveConnect.nextSteps': 'அடுத்தது என்ன',

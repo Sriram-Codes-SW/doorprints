@@ -22,6 +22,13 @@ import { DriveBackupsCard } from './drive-backups';
 import { DriveConnectService, type BackupSummary } from '../../../data/drive/connect/drive-connect.service';
 import { Announcer } from '../../../core/announcer.service';
 import { TranslationService } from '../../../i18n/translation.service';
+import { en } from '../../../i18n/en';
+
+const t = (k: string, p?: Record<string, unknown>) => {
+  let s = (en as Record<string, string>)[k] ?? k;
+  if (p) for (const [name, value] of Object.entries(p)) s = s.replaceAll(`{${name}}`, String(value));
+  return s;
+};
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -44,7 +51,7 @@ async function render(fakes: ReturnType<typeof fakeDriveService>) {
     providers: [
       { provide: DriveConnectService, useValue: fakes },
       { provide: Announcer, useValue: { announce: vi.fn() } },
-      { provide: TranslationService, useValue: { t: (k: string, p?: any) => k, dateTime: (s: string) => new Date(s).toLocaleString(), lang: () => 'en' } },
+      { provide: TranslationService, useValue: { t, dateTime: (s: string) => new Date(s).toLocaleString(), lang: () => 'en' } },
     ],
   });
   const fixture = TestBed.createComponent(DriveBackupsCard);
@@ -65,7 +72,7 @@ describe('DriveBackupsCard', () => {
     const { host, fakes: f } = await render(fakes);
 
     expect(f.listBackups).toHaveBeenCalledOnce();
-    expect(host.textContent).toContain('driveBackups.emptyState');
+    expect(host.textContent).toContain(t('driveBackups.emptyState'));
   });
 
   it('shows two backup rows with houses and size text', async () => {
@@ -94,22 +101,22 @@ describe('DriveBackupsCard', () => {
       missingNewer: false,
     });
     const { host, fixture } = await render(fakes);
-    const btn = host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!;
+    const btn = host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.backUpNow')}"]`)!;
     btn.click();
     await flush();
     fixture.detectChanges();
     expect(fakes.backUpNow).toHaveBeenCalledOnce();
-    expect(host.textContent).toContain('driveBackups.housesBackedUp');
+    expect(host.textContent).toMatch(/4 houses backed up at/);
   });
 
   it('shows a backup error from the service', async () => {
     const fakes = fakeDriveService();
     fakes.backUpNow.mockResolvedValue({ ok: false, reason: 'Not connected to folder' });
     const { host, fixture } = await render(fakes);
-    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!.click();
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.backUpNow')}"]`)!.click();
     await flush();
     fixture.detectChanges();
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('driveBackups.error.notConnected');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(t('driveBackups.error.notConnected'));
   });
 
   it('asks before shrinking older backups, and confirm calls the service', async () => {
@@ -122,11 +129,11 @@ describe('DriveBackupsCard', () => {
     });
     fakes.confirmShrink.mockResolvedValue(undefined);
     const { host, fixture } = await render(fakes);
-    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.backUpNow"]')!.click();
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.backUpNow')}"]`)!.click();
     await flush();
     fixture.detectChanges();
-    expect(host.querySelector('[role="dialog"]')?.textContent).toContain('driveBackups.shrinkConfirmQuestion');
-    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.confirmShrink"]')!.click();
+    expect(host.querySelector('[role="dialog"]')?.textContent).toContain(t('driveBackups.shrinkConfirmQuestion'));
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.confirmShrink')}"]`)!.click();
     await flush();
     expect(fakes.confirmShrink).toHaveBeenCalledWith('small');
   });
@@ -142,7 +149,7 @@ describe('DriveBackupsCard', () => {
     const { host, fixture } = await render(fakes);
     const seen: Blob[] = [];
     fixture.componentInstance.importFile.subscribe((f) => seen.push(f));
-    host.querySelector<HTMLButtonElement>('button[aria-label="driveBackups.importBackup"]')!.click();
+    host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.importBackup')}"]`)!.click();
     await flush();
     expect(fakes.importFromDrive).toHaveBeenCalledWith('b1');
     expect(seen).toEqual([blob]);
@@ -151,7 +158,7 @@ describe('DriveBackupsCard', () => {
   it('toggles automatic backup', async () => {
     const fakes = fakeDriveService();
     const { host } = await render(fakes);
-    const box = host.querySelector<HTMLInputElement>('input[type="checkbox"][aria-label="driveBackups.autoBackup"]')!;
+    const box = host.querySelector<HTMLInputElement>(`input[type="checkbox"][aria-label="${t('driveBackups.autoBackup')}"]`)!;
     box.checked = true;
     box.dispatchEvent(new Event('change'));
     expect(fakes.setAutoBackup).toHaveBeenCalledWith(true);
@@ -164,7 +171,7 @@ describe('DriveBackupsCard', () => {
     expect(host.querySelector('[role="alert"]')).toBeTruthy();
     fakes.listBackups.mockResolvedValue({ ok: true, backups: [], missingNewer: false });
     const retry = Array.from(host.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('driveBackups.retry'),
+      b.textContent?.includes(t('driveBackups.retry')),
     );
     retry!.click();
     await flush();

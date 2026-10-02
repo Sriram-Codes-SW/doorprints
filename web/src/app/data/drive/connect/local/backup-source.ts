@@ -35,13 +35,8 @@ export function createDriveBackupSource(exporter: ExportService, options: Export
       throw new Error('Backup build returned no blob');
     }
 
-    // Read the ZIP into a byte array.
-    const arrayBuffer = await result.blob.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    // Return a ByteSource that reads the ZIP sequentially.
     const payload: BackupPayload = {
-      source: bytesSource(bytes),
+      source: blobSource(result.blob),
       format: BACKUP_FORMAT,
       houses: result.counts.houses,
       close: undefined,
@@ -51,17 +46,17 @@ export function createDriveBackupSource(exporter: ExportService, options: Export
 }
 
 /**
- * A {@link ByteSource} that reads a fixed byte array sequentially from the start.
+ * A {@link ByteSource} that reads the ZIP in slices so the whole backup is not copied into a second ArrayBuffer.
  */
-function bytesSource(bytes: Uint8Array): ByteSource {
+function blobSource(blob: Blob): ByteSource {
   let at = 0;
   return {
     async read(max: number) {
-      if (at >= bytes.length) return null;
-      const end = Math.min(at + max, bytes.length);
-      const chunk = bytes.slice(at, end);
+      if (at >= blob.size) return null;
+      const end = Math.min(at + max, blob.size);
+      const buf = await blob.slice(at, end).arrayBuffer();
       at = end;
-      return chunk;
+      return new Uint8Array(buf);
     },
   };
 }
