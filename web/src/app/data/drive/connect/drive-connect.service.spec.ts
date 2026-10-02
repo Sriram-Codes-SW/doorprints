@@ -212,4 +212,30 @@ describe('DriveConnectService', () => {
       expect(result.error).toBe('OFFLINE');
     });
   });
+
+  describe('Google config handling', () => {
+    it('starts Unavailable when Google client ID is empty', () => {
+      const serviceWithoutConfig = new DriveConnectService(
+        mockBackupAdapter as DriveBackupAdapter,
+        mockSyncAdapter as DriveSyncAdapter,
+        mockDeletionAdapter as DriveDeletionAdapter,
+        { clientId: '' },
+      );
+
+      expect(serviceWithoutConfig.getState()).toBe('Unavailable');
+    });
+
+    it('remains Unavailable when connect is called without config', async () => {
+      const serviceWithoutConfig = new DriveConnectService(
+        mockBackupAdapter as DriveBackupAdapter,
+        mockSyncAdapter as DriveSyncAdapter,
+        mockDeletionAdapter as DriveDeletionAdapter,
+        { clientId: '' },
+      );
+
+      // Service should stay Unavailable even if backup adapter is called
+      const result = await serviceWithoutConfig.connect();
+      expect(serviceWithoutConfig.getState()).toBe('Unavailable');
+    });
+  });
 });
