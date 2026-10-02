@@ -84,6 +84,7 @@ means nothing is downloaded and sync stays paused in that browser (both directio
 | Repository | `src/app/data/local-store.service.ts` | Houses, visits, photos (as `Blob`s) and settings; fixed ordering; tombstones and `dirty` flags. |
 | Screens | `src/app/core/local-data.service.ts` | The Observable API the pages use. Same method names the old `HouseApiService` had, so the screens did not change. |
 | Sync | `src/app/data/sync.service.ts` | Optional. Push dirty rows, pull with `since` cursors, last-write-wins, photo metadata + bytes. |
+| Sync backend | `src/app/data/sync-backend.ts` | The seam between the sync loop and one remote (S4b-BL-70): `SyncBackend`, `ServerSyncBackend` over `HouseApiService` (the default of the `SYNC_BACKEND` token) and the backend's merge rule; a Drive backend comes later. |
 | Durability | `src/app/data/storage.service.ts` | `navigator.storage.persist()`, usage estimate, and the warning when the browser will not promise to keep the data. |
 
 ## Your data: save a copy (readable copies and the full backup)
