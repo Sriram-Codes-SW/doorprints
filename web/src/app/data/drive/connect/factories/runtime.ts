@@ -22,11 +22,15 @@ import { hex } from '../../../crypto/bytes';
 import { kidOf } from '../../../crypto/folder-key';
 import type { TokenProvider } from '../../drive-client';
 import type { LocalStore } from '../../../local-store.service';
-import type { DriveDb } from '../stores/drive-db';
+import type { DriveDb, OpenedDriveDb } from '../stores/drive-db';
 import { openDriveDb } from '../stores/drive-db';
 import { DeviceKeyStore } from '../stores/device-key-store';
 import { FetchDriveClient } from '../../fetch-drive-client';
 import type { DriveClient } from '../../drive-client';
+import type { FolderTrustStores, DriveStateStore } from '../../backup/drive-backup-seams';
+import type { KeysWatermarkStore } from '../../../crypto/keys-file';
+import type { ControlWatermarkStore, ControlWatermark } from '../../backup/control-file';
+import { sameControlWatermark } from '../../backup/control-file';
 
 /**
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
@@ -42,7 +46,58 @@ export interface DriveRuntime {
   drive: DriveClient;
   tokens: TokenProvider;
   local: LocalStore;
-  driveStateStore: any; // TODO: Use proper DriveStateStore type from drive-backup-seams
+  driveStateStore: DriveStateStore;
+  folderTrustStores: FolderTrustStores;
+}
+
+/**
+ * Production FolderTrustStores backed by IndexedDB via a key-value store.
+ * Stores per-folder watermarks using compound keys like "keys:<rootId>" and "control:<rootId>".
+ */
+class DbFolderTrustStores implements FolderTrustStores {
+  constructor(
+    private readonly keyValueStore: { get(k: string): Promise<string | undefined>; set(k: string, v: string): Promise<void> },
+  ) {}
+
+  keys(rootId: string): KeysWatermarkStore {
+    const keyValueStore = this.keyValueStore;
+    const key = `keys:${rootId}`;
+    return {
+      async load() {
+        const json = await keyValueStore.get(key);
+        return json ? JSON.parse(json) : null;
+      },
+      async compareAndSet(expected, next) {
+        const json = await keyValueStore.get(key);
+        const current = json ? JSON.parse(json) : null;
+        if (JSON.stringify(current) !== JSON.stringify(expected)) {
+          return false;
+        }
+        await keyValueStore.set(key, JSON.stringify(next));
+        return true;
+      },
+    };
+  }
+
+  control(rootId: string): ControlWatermarkStore {
+    const keyValueStore = this.keyValueStore;
+    const key = `control:${rootId}`;
+    return {
+      async load() {
+        const json = await keyValueStore.get(key);
+        return json ? JSON.parse(json) : null;
+      },
+      async compareAndSet(expected, next) {
+        const json = await keyValueStore.get(key);
+        const current = json ? JSON.parse(json) : null;
+        if (!sameControlWatermark(current, expected)) {
+          return false;
+        }
+        await keyValueStore.set(key, JSON.stringify(next));
+        return true;
+      },
+    };
+  }
 }
 
 /**
@@ -93,6 +148,9 @@ export async function createDriveRuntime(deps: {
   // Build Drive client
   const drive = new FetchDriveClient(deps.tokens);
 
+  // Create folder trust stores backed by the opened DB's key-value store
+  const folderTrustStores = new DbFolderTrustStores(opened.keyValueStore);
+
   return {
     db,
     crypto,
@@ -102,6 +160,7 @@ export async function createDriveRuntime(deps: {
     tokens: deps.tokens,
     local: deps.local,
     driveStateStore: opened.driveStateStore,
+    folderTrustStores,
   };
 }
 
