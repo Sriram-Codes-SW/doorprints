@@ -21,44 +21,30 @@ package app.doorprints.crypto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 /**
- * The pure rules with no primitive under them, so they also run on the iPhone simulator (TC-U-131): the rollback
- * watermark, the revoked-epoch rule and the recovery key's text.
+ * The pure rules with no primitive under them, so they also run on the iPhone simulator (TC-U-131): the watermark's
+ * order, the revoked-epoch rule and the recovery key's text. The pin itself needs HKDF, so it is tested on the host
+ * (`KeysFileTest`).
  */
 class KeysGuardTest {
-    private class Store(var value: KeysWatermark? = null) : KeysWatermarkStore {
-        var saves = 0
-        override fun load() = value
-        override fun save(watermark: KeysWatermark) {
-            value = watermark
-            saves++
-        }
-    }
-
     @Test
-    fun theWatermarkOnlyMovesUp() {
-        val store = Store()
-        val g = KeysGuard(store)
-        g.accept(1, 1)
-        g.accept(1, 3)
-        g.accept(2, 4)
-        assertEquals(KeysWatermark(2, 4), store.value)
-        assertEquals(KeysException.Kind.ROLLED_BACK, assertFailsWith<KeysException> { g.accept(2, 3) }.kind)
-        assertEquals(KeysException.Kind.ROLLED_BACK, assertFailsWith<KeysException> { g.accept(1, 9) }.kind)
-        assertEquals(KeysException.Kind.WATERMARK_CONFLICT, assertFailsWith<KeysException> { g.accept(3, 4) }.kind)
-        val before = store.saves
-        g.accept(2, 4)
-        assertEquals(before, store.saves)
-        assertEquals(KeysWatermark(2, 4), store.value)
-    }
-
-    @Test
-    fun checkChangesNothing() {
-        val store = Store()
-        KeysGuard(store).check(5, 5)
-        assertNull(store.value)
+    fun theWatermarkIsOrderedByEpochThenRevision() {
+        val o = KeysGuard.Companion
+        assertEquals(KeysGuard.Order.LOWER, o.order(2, 4, 1, 9_007_199_254_740_991))
+        assertEquals(KeysGuard.Order.HIGHER_EPOCH, o.order(1, 9_007_199_254_740_991, 2, 4))
+        assertEquals(KeysGuard.Order.LOWER, o.order(2, 4, 2, 3))
+        assertEquals(KeysGuard.Order.SAME_EPOCH, o.order(2, 4, 2, 4))
+        assertEquals(KeysGuard.Order.SAME_EPOCH, o.order(2, 4, 2, 5))
+        val a = KeysWatermark(2, 4, ByteArray(32), ByteArray(32))
+        assertTrue(o.higher(KeysWatermark(3, 1, ByteArray(32), ByteArray(32)), a))
+        assertTrue(o.higher(KeysWatermark(2, 5, ByteArray(32), ByteArray(32)), a))
+        assertFalse(o.higher(KeysWatermark(2, 4, ByteArray(32), ByteArray(32) { 1 }), a))
+        assertEquals(a, KeysWatermark(2, 4, ByteArray(32), ByteArray(32)))
+        assertNotEquals(a, KeysWatermark(2, 4, ByteArray(32) { 1 }, ByteArray(32)))
     }
 
     private fun kid(b: Int) = ByteArray(16) { b.toByte() }
@@ -101,6 +87,8 @@ class KeysGuardTest {
         assertEquals(RecoveryKeyException.Reason.CHECK_MISMATCH, e.reason)
         assertEquals(RecoveryKeyException.Reason.WRONG_LENGTH, assertFailsWith<RecoveryKeyException> { RecoveryKey.parse("ABCD") }.reason)
         assertEquals(RecoveryKeyException.Reason.INVALID_CHARACTER, assertFailsWith<RecoveryKeyException> { RecoveryKey.parse("é" + key.symbols.drop(1)) }.reason)
+        // A character outside the BMP is one symbol, as on the website.
+        assertEquals(RecoveryKeyException.Reason.INVALID_CHARACTER, assertFailsWith<RecoveryKeyException> { RecoveryKey.parse("\uD83D\uDE00" + key.symbols.drop(1)) }.reason)
         assertEquals(RecoveryKeyException.Reason.OUT_OF_RANGE, assertFailsWith<RecoveryKeyException> { RecoveryKey.parse("Z" + key.symbols.drop(1)) }.reason)
     }
 }

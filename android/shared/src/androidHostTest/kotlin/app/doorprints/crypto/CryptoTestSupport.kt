@@ -71,11 +71,17 @@ internal object Vectors {
 internal fun JsonObject.s(key: String): String = getValue(key).jsonPrimitive.content
 internal fun JsonObject.h(key: String): ByteArray = hex(s(key))
 
-/** An in-memory watermark store. */
+/** An in-memory watermark store with an atomic compare-and-set. */
 class MemoryWatermarkStore(var value: KeysWatermark? = null) : KeysWatermarkStore {
+    var saves = 0
     override fun load() = value
-    override fun save(watermark: KeysWatermark) {
-        value = watermark
+
+    @Synchronized
+    override fun compareAndSet(expected: KeysWatermark?, next: KeysWatermark): Boolean {
+        if (value != expected) return false
+        value = next
+        saves++
+        return true
     }
 }
 

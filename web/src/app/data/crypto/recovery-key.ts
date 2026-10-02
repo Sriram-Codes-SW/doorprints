@@ -17,7 +17,7 @@
  */
 
 import { utf8 } from './bytes';
-import type { CryptoProvider, P256PrivateKey } from './crypto-provider';
+import type { AesKey, CryptoProvider, P256PrivateKey } from './crypto-provider';
 import { CryptoError } from './crypto-provider';
 import { Hkdf } from './hpke';
 import { reduceToScalar } from './p256-scalar';
@@ -44,7 +44,11 @@ const CHECK_ALPHABET = ALPHABET + '*~$=U';
  * zero bits in front, so the first is 0..7) plus Crockford's mod-37 check symbol, shown in groups of four.
  */
 export class RecoveryKey {
-  private constructor(private readonly raw: Uint8Array) {}
+  readonly #raw: Uint8Array;
+
+  private constructor(raw: Uint8Array) {
+    this.#raw = raw;
+  }
 
   static generate(p: CryptoProvider): RecoveryKey {
     return new RecoveryKey(p.randomBytes(SIZE));
@@ -77,11 +81,11 @@ export class RecoveryKey {
   }
 
   get bytes(): Uint8Array {
-    return this.raw.slice();
+    return this.#raw.slice();
   }
 
   get symbols(): string {
-    const digits = digitsOf(this.raw);
+    const digits = digitsOf(this.#raw);
     return digits.map((d) => ALPHABET[d]).join('') + CHECK_ALPHABET[checkOf(digits)];
   }
 
@@ -95,12 +99,29 @@ export class RecoveryKey {
 
   /** @internal FIPS 186-5 A.2.1 over HKDF-SHA-256(ikm = key, salt "doorprints/dpx1/recovery", info "p256", 48). */
   async scalar(p: CryptoProvider): Promise<Uint8Array> {
-    const seed = await new Hkdf(p).derive(utf8('doorprints/dpx1/recovery'), this.raw, utf8('p256'), 48);
-    return reduceToScalar(seed);
+    const seed = await new Hkdf(p).derive(utf8('doorprints/dpx1/recovery'), this.#raw, utf8('p256'), 48);
+    const d = reduceToScalar(seed);
+    seed.fill(0);
+    return d;
   }
 
   async keyPair(p: CryptoProvider): Promise<P256PrivateKey> {
-    return p.p256FromScalar(await this.scalar(p));
+    const d = await this.scalar(p);
+    try {
+      return await p.p256FromScalar(d);
+    } finally {
+      d.fill(0);
+    }
+  }
+
+  /** @internal The key of the recovery anchor: HKDF(ikm = the key bytes, salt "", info "doorprints/dpx1/recovery-anchor"). */
+  async anchorKey(p: CryptoProvider): Promise<AesKey> {
+    const k = await new Hkdf(p).derive(new Uint8Array(0), this.#raw, utf8('doorprints/dpx1/recovery-anchor'), 32);
+    try {
+      return await p.aesKey(k);
+    } finally {
+      k.fill(0);
+    }
   }
 }
 

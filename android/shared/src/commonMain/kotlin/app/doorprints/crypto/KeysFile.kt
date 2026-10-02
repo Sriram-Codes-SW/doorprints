@@ -23,6 +23,12 @@ import kotlinx.serialization.json.JsonObject
 
 /** Why `keys.json` was refused or a change to it was not made. */
 class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.name}: $message") {
+    /**
+     * Every kind before the MAC and the pin are checked ([MALFORMED], [NOT_CANONICAL], [UNSUPPORTED_FORMAT],
+     * [INVALID_ENTRY], [NOT_ENROLLED], [REVOKED], [UNWRAP_FAILED], [NO_RECOVERY], [RECOVERY_MISMATCH]) comes from
+     * bytes anyone in the Google account can write: a caller reports it and stops, and **never acts destructively on it**
+     * (no deleting keys, no re-enrolling, no "this device was revoked" clean-up) without a list that passed the pin.
+     */
     enum class Kind {
         /** Not JSON, or not the `doorprints-keys/1` structure. */
         MALFORMED,
@@ -36,29 +42,41 @@ class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.na
         /** An entry breaks a rule: a kid that is not its key's, a point not on the curve, a duplicate, a bad name. */
         INVALID_ENTRY,
 
-        /** This device's key is not in the list (it has not joined, or the list is someone else's). */
+        /** This device's key is not in the list (unauthenticated: it may be a forged list; see the note above). */
         NOT_ENROLLED,
 
-        /** This device's key was revoked. */
+        /** This device's key is in the revoked list (unauthenticated: it may be a forged list; see the note above). */
         REVOKED,
 
         /** This device's (or the recovery key's) wrap did not open. */
         UNWRAP_FAILED,
 
-        /** The MAC does not verify: the list was changed by someone without the folder key (docs/02 T-S13). */
+        /** The MAC does not verify under the folder key the wrap gave. */
         MAC_INVALID,
 
-        /** An older revision or epoch than this device has already seen (docs/15 §9.3, docs/02 T-T19). */
+        /** No pin for this folder on this device: only [KeysFile.openFirstPin], the recovery key or a create may make one. */
+        NOT_PINNED,
+
+        /** A lower (epoch, revision) than this device already accepted (docs/15 §9.3, docs/02 T-T19). */
         ROLLED_BACK,
 
-        /** The same revision as one already seen, but with another epoch. */
-        WATERMARK_CONFLICT,
+        /** A higher epoch whose chain does not end at the folder key this device pinned (a forged list, T-S13). */
+        PIN_MISMATCH,
+
+        /** The pinned epoch with another folder key, or the pinned revision with another body: two lists exist. */
+        FORK_DETECTED,
+
+        /** The watermark store changed under every try of its compare-and-set. */
+        CONCURRENT_UPDATE,
 
         /** The list has no recovery public key (the person skipped the step). */
         NO_RECOVERY,
 
         /** The typed recovery key is not the one this list holds. */
         RECOVERY_MISMATCH,
+
+        /** The recovery anchor does not open, or the chain does not lead to the folder key it holds (a forged list). */
+        RECOVERY_ANCHOR_INVALID,
 
         /** A link of the epoch chain did not open. */
         CHAIN_BROKEN,
@@ -71,6 +89,9 @@ class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.na
 
         /** The change would leave no device and no recovery key that can open the folder. */
         LAST_RECIPIENT,
+
+        /** The revision (2⁵³ − 1) or the epoch (2³¹ − 1) cannot go higher. */
+        REVISION_LIMIT,
     }
 }
 
@@ -97,7 +118,17 @@ class DeviceEntry internal constructor(
     val wrap: HpkeWrap,
 )
 
-class RecoveryEntry internal constructor(val kid: ByteArray, val publicKey: ByteArray, val wrap: HpkeWrap)
+/**
+ * The recovery key's entry. [anchor] is the folder key of [anchorEpoch] (the epoch the recovery key was made in) under
+ * a key derived from the recovery key itself, so only its holder could have written it ([KeysFile.openWithRecovery]).
+ */
+class RecoveryEntry internal constructor(
+    val kid: ByteArray,
+    val publicKey: ByteArray,
+    val anchorEpoch: Int,
+    val anchor: AeadWrap,
+    val wrap: HpkeWrap,
+)
 
 class RevokedEntry internal constructor(val kid: ByteArray, val revokedAt: Long, val revokedAtEpoch: Int)
 
@@ -145,6 +176,9 @@ class KeysBody internal constructor(
         } else {
             j.raw("{\"kid\":").string(Bytes.b64(recovery.kid))
                 .raw(",\"publicKey\":").string(Bytes.b64(recovery.publicKey))
+                .raw(",\"anchorEpoch\":").number(recovery.anchorEpoch.toLong())
+                .raw(",\"anchor\":{\"nonce\":").string(Bytes.b64(recovery.anchor.nonce))
+                .raw(",\"ct\":").string(Bytes.b64(recovery.anchor.ct)).raw("}")
                 .raw(",\"wrap\":")
             wrapJson(j, recovery.wrap)
             j.raw("}")
@@ -175,7 +209,7 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
     val epoch: Int get() = body.epoch
     val revision: Long get() = body.revision
 
-    /** The current epoch's folder key, for writing new files. */
+    /** The current epoch's folder key, for writing new files (a copy; the caller may zero it after use). */
     fun currentFolderKey(): ByteArray = keys.getValue(body.epoch).copyOf()
 
     override fun folderKey(epoch: Int): ByteArray? {
@@ -196,12 +230,26 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
         }
         return keys.getValue(epoch).copyOf()
     }
+
+    /** Best-effort: overwrites the folder keys held by this object. */
+    fun wipe() {
+        for (k in keys.values) k.fill(0)
+        keys.clear()
+    }
 }
 
 /**
- * `keys.json` (docs/15 §9.3..§9.5): its canonical form, its MAC, and the changes a device makes to it. No I/O: the
- * caller reads and writes the file through Drive, and after a write is confirmed calls [KeysGuard.accept] with the
- * new revision, so the device never takes back an older copy later.
+ * `keys.json` (docs/15 §9.3..§9.5, §9.9): its canonical form, its MAC, and the changes a device makes to it. No I/O:
+ * the caller reads and writes the file through Drive.
+ *
+ * **What makes a list trusted is the device's pin, not the MAC** ([KeysGuard]): HPKE base mode does not say who
+ * wrapped a key, so anyone in the Google account can wrap a folder key of their own to every listed public key and
+ * MAC the result. [open] accepts a list only if it leads to the pinned key; the first pin comes from [openFirstPin]
+ * (S4b-BL-126's enrolment), [openWithRecovery] (the recovery anchor) or [KeysGuard.pinCreated].
+ *
+ * **Writing** (S4b-BL-126/-118): re-read the head of `keys.json` and open it just before writing, build the change on
+ * it, upload, read it back, and call [KeysGuard.acceptWritten] only when what Drive returns is the list written; two
+ * writers at once make two lists of one revision, which every device then refuses as [KeysException.Kind.FORK_DETECTED].
  *
  * ```
  * {"format":"doorprints-keys/1","body":{…},"mac":B64(32)}
@@ -209,11 +257,14 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
  *         "chain":[{"epoch":2,"nonce":B64(12),"ct":B64(48)},…,{"epoch":E,…}],
  *         "devices":[{"kid":B64(16),"name":"…","platform":"android|ios|web","publicKey":B64(65),
  *                     "enrolledAt":ms,"enrolledBy":B64(16)|null,"wrap":{"enc":B64(65),"ct":B64(48)}},…],
- *         "recovery":{"kid":B64(16),"publicKey":B64(65),"wrap":{…}}|null,
+ *         "recovery":{"kid":B64(16),"publicKey":B64(65),"anchorEpoch":E0,"anchor":{"nonce":B64(12),"ct":B64(48)},
+ *                     "wrap":{…}}|null,
  *         "revoked":[{"kid":B64(16),"revokedAt":ms,"revokedAtEpoch":N},…]}
- * mac  = HMAC-SHA-256(FolderKey.macKey(folder key of epoch E), "doorprints-keys/1" ‖ 0x00 ‖ canonical body)
- * wrap = HPKE base (RFC 9180, DHKEM(P-256), HKDF-SHA256, AES-256-GCM) to the entry's public key,
- *        info "doorprints/dpx1/wrap", aad WrapAad.folderKey(E, entry kid), plaintext the 32-byte folder key
+ * mac    = HMAC-SHA-256(FolderKey.macKey(folder key of epoch E), "doorprints-keys/1" ‖ 0x00 ‖ canonical body)
+ * wrap   = HPKE base (RFC 9180, DHKEM(P-256), HKDF-SHA256, AES-256-GCM) to the entry's public key,
+ *          info "doorprints/dpx1/wrap", aad WrapAad.folderKey(E, entry kid), plaintext the 32-byte folder key
+ * anchor = AES-256-GCM(HKDF(recovery key bytes, "doorprints/dpx1/recovery-anchor"), random nonce,
+ *          aad WrapAad.recoveryAnchor(E0, recovery kid), plaintext the folder key of epoch E0)
  * ```
  */
 class KeysFile(private val p: CryptoProvider) {
@@ -227,40 +278,89 @@ class KeysFile(private val p: CryptoProvider) {
 
     /**
      * The first connect to an empty folder: a new random folder key (epoch 1, revision 1) wrapped to [device] and, if
-     * the person saved one, to the recovery public key.
+     * the person saved one, to [recovery] (whose anchor it writes). After the upload: [KeysGuard.pinCreated].
      */
-    fun createFirstDevice(device: NewDevice, recoveryPublicKey: ByteArray?, now: Long): Written {
+    fun createFirstDevice(device: NewDevice, recovery: RecoveryKey?, now: Long): Written {
         checkTime(now)
         val folderKey = p.randomBytes(FolderKey.SIZE)
-        val pub = validPublic(device.publicKey)
-        val kid = kidOf(p, pub)
-        val entry = DeviceEntry(kid, validName(device.name), device.platform, pub, now, null, wrap(pub, kid, 1, folderKey))
-        val recovery = recoveryPublicKey?.let { recoveryEntry(it, 1, folderKey) }
-        if (recovery != null && recovery.kid.contentEquals(kid)) throw KeysException(KeysException.Kind.INVALID_ENTRY, "recovery key equals the device key")
-        return write(KeysBody(1, 1, emptyList(), listOf(entry), recovery, emptyList()), folderKey)
+        try {
+            val pub = validPublic(device.publicKey)
+            val kid = kidOf(p, pub)
+            val entry = DeviceEntry(kid, validName(device.name), device.platform, pub, now, null, wrap(pub, kid, 1, folderKey))
+            val rec = recovery?.let { newRecoveryEntry(it, 1, folderKey) }
+            if (rec != null && rec.kid.contentEquals(kid)) throw KeysException(KeysException.Kind.INVALID_ENTRY, "recovery key equals the device key")
+            return write(KeysBody(1, 1, emptyList(), listOf(entry), rec, emptyList()), folderKey)
+        } finally {
+            folderKey.fill(0)
+        }
     }
 
-    /** Opens [file] with this device's key; the MAC and [guard] are checked before anything is returned. */
-    fun open(file: ByteArray, device: P256PrivateKey, guard: KeysGuard): OpenedKeys {
+    /** Opens [file] with this device's key: MAC, then the pin ([KeysGuard]); no pin is [KeysException.Kind.NOT_PINNED]. */
+    fun open(file: ByteArray, device: P256PrivateKey, guard: KeysGuard): OpenedKeys =
+        openDevice(file, device, guard, KeysGuard.Trust.PINNED, null)
+
+    /**
+     * The **first pin** (S4b-BL-126): opens [file] with this device's key only if its folder key equals
+     * [trustedFolderKey], the key this device received over an authenticated channel (the QR code's HPKE PSK wrap),
+     * then pins it. Never call it with a key read from Drive.
+     */
+    fun openFirstPin(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: ByteArray): OpenedKeys =
+        openDevice(file, device, guard, KeysGuard.Trust.FIRST_PIN, trustedFolderKey)
+
+    private fun openDevice(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trust: KeysGuard.Trust, trusted: ByteArray?): OpenedKeys {
         val (body, mac) = parse(file)
         val pub = device.publicKey
         val kid = kidOf(p, pub)
-        if (body.revokedEntry(kid) != null) throw KeysException(KeysException.Kind.REVOKED, "this device was revoked")
+        if (body.revokedEntry(kid) != null) throw KeysException(KeysException.Kind.REVOKED, "this device is in the revoked list")
         val entry = body.device(kid)?.takeIf { it.publicKey.contentEquals(pub) }
             ?: throw KeysException(KeysException.Kind.NOT_ENROLLED, "this device is not in the list")
         val folderKey = unwrap(entry.wrap, device, body.epoch, kid)
-        return finishOpen(body, mac, folderKey, guard)
+        try {
+            checkMac(body, mac, folderKey)
+            if (trusted != null && !constantTimeEquals(folderKey, trusted)) {
+                throw KeysException(KeysException.Kind.PIN_MISMATCH, "not the folder key received at enrolment")
+            }
+            val opened = OpenedKeys(p, body, folderKey)
+            guard.accept(opened, trust)
+            return opened
+        } finally {
+            folderKey.fill(0)
+        }
     }
 
-    /** Opens [file] with the typed recovery key (docs/15 §9.4); the private key lives only during this call. */
+    /**
+     * Opens [file] with the typed recovery key (docs/15 §9.4): the wrap, the MAC, then the **anchor**: the chain from the
+     * current epoch down to the anchor's epoch must end at the folder key the anchor holds, which only the recovery
+     * key's holder could have written. A device with a pin also checks it; one without is pinned by this.
+     */
     fun openWithRecovery(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard): OpenedKeys {
         val (body, mac) = parse(file)
         val listed = body.recovery ?: throw KeysException(KeysException.Kind.NO_RECOVERY, "no recovery key in the list")
         val pair = recovery.keyPair(p)
-        val pub = pair.publicKey
-        if (!listed.publicKey.contentEquals(pub)) throw KeysException(KeysException.Kind.RECOVERY_MISMATCH, "another recovery key")
+        if (!listed.publicKey.contentEquals(pair.publicKey)) throw KeysException(KeysException.Kind.RECOVERY_MISMATCH, "another recovery key")
         val folderKey = unwrap(listed.wrap, pair, body.epoch, listed.kid)
-        return finishOpen(body, mac, folderKey, guard)
+        try {
+            checkMac(body, mac, folderKey)
+            val opened = OpenedKeys(p, body, folderKey)
+            val bottom = try {
+                opened.folderKey(listed.anchorEpoch)
+            } catch (_: KeysException) {
+                null
+            } ?: throw KeysException(KeysException.Kind.RECOVERY_ANCHOR_INVALID, "the chain does not reach the anchor")
+            val anchored = try {
+                p.aesGcmOpen(recovery.anchorKey(p), listed.anchor.nonce, WrapAad.recoveryAnchor(listed.anchorEpoch, listed.kid), listed.anchor.ct)
+            } catch (_: CryptoException) {
+                throw KeysException(KeysException.Kind.RECOVERY_ANCHOR_INVALID, "the anchor does not open")
+            }
+            val same = constantTimeEquals(anchored, bottom)
+            anchored.fill(0)
+            bottom.fill(0)
+            if (!same) throw KeysException(KeysException.Kind.RECOVERY_ANCHOR_INVALID, "the chain does not end at the anchored key")
+            guard.accept(opened, KeysGuard.Trust.RECOVERY_ANCHOR)
+            return opened
+        } finally {
+            folderKey.fill(0)
+        }
     }
 
     /**
@@ -280,47 +380,67 @@ class KeysFile(private val p: CryptoProvider) {
             throw KeysException(KeysException.Kind.ALREADY_ENROLLED, "already listed")
         }
         val folderKey = opened.currentFolderKey()
-        val entry = DeviceEntry(kid, validName(device.name), device.platform, pub, now, approverKid.copyOf(), wrap(pub, kid, body.epoch, folderKey))
-        return write(KeysBody(nextRevision(body), body.epoch, body.chain, body.devices + entry, body.recovery, body.revoked), folderKey)
+        try {
+            val entry = DeviceEntry(kid, validName(device.name), device.platform, pub, now, approverKid.copyOf(), wrap(pub, kid, body.epoch, folderKey))
+            return write(KeysBody(nextRevision(body), body.epoch, body.chain, body.devices + entry, body.recovery, body.revoked), folderKey)
+        } finally {
+            folderKey.fill(0)
+        }
     }
 
     /**
      * A new epoch (docs/15 §9.5 iv): a new random folder key, chained to the current one, wrapped to every remaining
-     * device and to the recovery public key (nobody types it). [revokeKid] moves that device to the revoked list
-     * (`revokedAt` = [now], `revokedAtEpoch` = the new epoch). [newRecoveryPublicKey] replaces the recovery public key
-     * (*Make a recovery key*): a new epoch, so the old recovery key opens nothing written afterwards.
+     * device and to the recovery public key (nobody types it; its anchor stays). [revokeKid] moves that device to the
+     * revoked list (`revokedAt` = [now], `revokedAtEpoch` = the new epoch). [newRecovery] replaces the recovery key
+     * (*Make a recovery key*): a new anchor at the new epoch, and the old recovery kid joins the revoked list, so the old
+     * key opens nothing written afterwards.
      */
-    fun newEpoch(opened: OpenedKeys, now: Long, revokeKid: ByteArray? = null, newRecoveryPublicKey: ByteArray? = null): Written {
+    fun newEpoch(opened: OpenedKeys, now: Long, revokeKid: ByteArray? = null, newRecovery: RecoveryKey? = null): Written {
         checkTime(now)
         val body = opened.body
-        if (body.epoch == Dpx.MAX_EPOCH) throw KeysException(KeysException.Kind.INVALID_ENTRY, "epoch limit")
+        if (body.epoch == Dpx.MAX_EPOCH) throw KeysException(KeysException.Kind.REVISION_LIMIT, "epoch limit")
         if (revokeKid != null && body.device(revokeKid) == null) throw KeysException(KeysException.Kind.NOT_LISTED, "no such device")
+        val revision = nextRevision(body)
         val remaining = body.devices.filter { revokeKid == null || !it.kid.contentEquals(revokeKid) }
         val epoch = body.epoch + 1
         val oldKey = opened.currentFolderKey()
         val newKey = p.randomBytes(FolderKey.SIZE)
-        val chainNonce = p.randomBytes(12)
-        val link = ChainLink(epoch, AeadWrap(chainNonce, p.aesGcmSeal(FolderKey.chainWrapKey(p, newKey), chainNonce, WrapAad.chain(epoch), oldKey)))
-        val devices = remaining.map { DeviceEntry(it.kid, it.name, it.platform, it.publicKey, it.enrolledAt, it.enrolledBy, wrap(it.publicKey, it.kid, epoch, newKey)) }
-        val recoveryPub = newRecoveryPublicKey ?: body.recovery?.publicKey
-        val recovery = recoveryPub?.let { recoveryEntry(it, epoch, newKey) }
-        if (recovery != null && (devices.any { it.kid.contentEquals(recovery.kid) } || body.revokedEntry(recovery.kid) != null)) {
-            throw KeysException(KeysException.Kind.INVALID_ENTRY, "recovery key equals a device key")
+        try {
+            val chainNonce = p.randomBytes(12)
+            val link = ChainLink(epoch, AeadWrap(chainNonce, p.aesGcmSeal(FolderKey.chainWrapKey(p, newKey), chainNonce, WrapAad.chain(epoch), oldKey)))
+            val devices = remaining.map { DeviceEntry(it.kid, it.name, it.platform, it.publicKey, it.enrolledAt, it.enrolledBy, wrap(it.publicKey, it.kid, epoch, newKey)) }
+            val old = body.recovery
+            val recovery = when {
+                newRecovery != null -> newRecoveryEntry(newRecovery, epoch, newKey)
+                old != null -> RecoveryEntry(old.kid, old.publicKey, old.anchorEpoch, old.anchor, wrap(old.publicKey, old.kid, epoch, newKey))
+                else -> null
+            }
+            if (recovery != null && (devices.any { it.kid.contentEquals(recovery.kid) } || body.revokedEntry(recovery.kid) != null)) {
+                throw KeysException(KeysException.Kind.INVALID_ENTRY, "recovery key equals a device key or a revoked one")
+            }
+            if (devices.isEmpty() && recovery == null) throw KeysException(KeysException.Kind.LAST_RECIPIENT, "nobody could open the folder")
+            var revoked = body.revoked
+            if (revokeKid != null) revoked = revoked + RevokedEntry(revokeKid.copyOf(), now, epoch)
+            if (newRecovery != null && old != null && !old.kid.contentEquals(recovery!!.kid)) revoked = revoked + RevokedEntry(old.kid, now, epoch)
+            return write(KeysBody(revision, epoch, body.chain + link, devices, recovery, revoked), newKey)
+        } finally {
+            oldKey.fill(0)
+            newKey.fill(0)
         }
-        if (devices.isEmpty() && recovery == null) throw KeysException(KeysException.Kind.LAST_RECIPIENT, "nobody could open the folder")
-        val revoked = if (revokeKid == null) body.revoked else body.revoked + RevokedEntry(revokeKid.copyOf(), now, epoch)
-        return write(KeysBody(nextRevision(body), epoch, body.chain + link, devices, recovery, revoked), newKey)
     }
 
     private fun nextRevision(body: KeysBody): Long {
-        if (body.revision >= CanonicalJson.MAX_SAFE) throw KeysException(KeysException.Kind.INVALID_ENTRY, "revision limit")
+        if (body.revision >= CanonicalJson.MAX_SAFE) throw KeysException(KeysException.Kind.REVISION_LIMIT, "revision limit")
         return body.revision + 1
     }
 
-    private fun recoveryEntry(publicKey: ByteArray, epoch: Int, folderKey: ByteArray): RecoveryEntry {
-        val pub = validPublic(publicKey)
+    /** The recovery entry of a new recovery key at [epoch]: the anchor first, then the wrap (the order of random draws). */
+    private fun newRecoveryEntry(recovery: RecoveryKey, epoch: Int, folderKey: ByteArray): RecoveryEntry {
+        val pub = validPublic(recovery.keyPair(p).publicKey)
         val kid = kidOf(p, pub)
-        return RecoveryEntry(kid, pub, wrap(pub, kid, epoch, folderKey))
+        val nonce = p.randomBytes(12)
+        val anchor = AeadWrap(nonce, p.aesGcmSeal(recovery.anchorKey(p), nonce, WrapAad.recoveryAnchor(epoch, kid), folderKey))
+        return RecoveryEntry(kid, pub, epoch, anchor, wrap(pub, kid, epoch, folderKey))
     }
 
     private fun wrap(pub: ByteArray, kid: ByteArray, epoch: Int, folderKey: ByteArray): HpkeWrap {
@@ -338,16 +458,17 @@ class KeysFile(private val p: CryptoProvider) {
         return folderKey
     }
 
-    private fun finishOpen(body: KeysBody, mac: ByteArray, folderKey: ByteArray, guard: KeysGuard): OpenedKeys {
+    private fun checkMac(body: KeysBody, mac: ByteArray, folderKey: ByteArray) {
         if (!constantTimeEquals(mac(folderKey, body), mac)) throw KeysException(KeysException.Kind.MAC_INVALID, "MAC")
-        guard.accept(body.epoch, body.revision)
-        return OpenedKeys(p, body, folderKey)
     }
 
-    private fun mac(folderKey: ByteArray, body: KeysBody): ByteArray =
-        p.hmacSha256(FolderKey.macKey(p, folderKey), Bytes.concat(Bytes.utf8(FORMAT), byteArrayOf(0), body.json()))
+    private fun mac(folderKey: ByteArray, body: KeysBody): ByteArray {
+        val k = FolderKey.macKey(p, folderKey)
+        return p.hmacSha256(k, Bytes.concat(Bytes.utf8(FORMAT), byteArrayOf(0), body.json())).also { k.fill(0) }
+    }
 
     private fun write(body: KeysBody, folderKey: ByteArray): Written {
+        checkRules(body)
         val bytes = encode(body, mac(folderKey, body))
         return Written(bytes, OpenedKeys(p, body, folderKey))
     }
@@ -409,8 +530,15 @@ class KeysFile(private val p: CryptoProvider) {
         val recovery = if (JsonRead.isNull(o["recovery"])) {
             null
         } else {
-            val r = JsonRead.obj(o["recovery"], "kid", "publicKey", "wrap") ?: malformed("recovery")
-            RecoveryEntry(b64(r["kid"], 16, "recovery.kid"), b64(r["publicKey"], 65, "recovery.publicKey"), hpkeWrap(r["wrap"]))
+            val r = JsonRead.obj(o["recovery"], "kid", "publicKey", "anchorEpoch", "anchor", "wrap") ?: malformed("recovery")
+            val a = JsonRead.obj(r["anchor"], "nonce", "ct") ?: malformed("recovery.anchor")
+            RecoveryEntry(
+                b64(r["kid"], 16, "recovery.kid"),
+                b64(r["publicKey"], 65, "recovery.publicKey"),
+                JsonRead.long(r["anchorEpoch"], 1, Dpx.MAX_EPOCH.toLong())?.toInt() ?: malformed("recovery.anchorEpoch"),
+                AeadWrap(b64(a["nonce"], 12, "recovery.anchor.nonce"), b64(a["ct"], 48, "recovery.anchor.ct")),
+                hpkeWrap(r["wrap"]),
+            )
         }
         val revoked = (JsonRead.array(o["revoked"]) ?: malformed("revoked")).map {
             val r = JsonRead.obj(it, "kid", "revokedAt", "revokedAtEpoch") ?: malformed("revoked entry")
@@ -438,6 +566,7 @@ class KeysFile(private val p: CryptoProvider) {
         }
         b.recovery?.let { r ->
             if (!r.kid.contentEquals(kidOf(p, validPublic(r.publicKey)))) bad("recovery kid")
+            if (r.anchorEpoch > b.epoch) bad("recovery anchor in a future epoch")
             kids += r.kid
         }
         for (r in b.revoked) {
@@ -445,6 +574,11 @@ class KeysFile(private val p: CryptoProvider) {
             kids += r.kid
         }
         for (i in kids.indices) for (j in i + 1 until kids.size) if (kids[i].contentEquals(kids[j])) bad("duplicate kid")
+        // enrolledBy names a listed device, the recovery key or a revoked kid (an old device or an old recovery key).
+        for (d in b.devices) {
+            val by = d.enrolledBy ?: continue
+            if (kids.none { it.contentEquals(by) }) bad("enrolled by an unknown kid")
+        }
     }
 
     private fun validPublic(pub: ByteArray): ByteArray = try {

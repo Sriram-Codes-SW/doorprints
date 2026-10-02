@@ -70,7 +70,7 @@ export interface HpkeAead {
   readonly id: number;
   readonly keySize: number;
 }
-/** For RFC 9180's A.3 test vectors only. */
+/** @internal For RFC 9180's A.3.1 test vector only; nothing in the app may pick it. */
 export const AES_128_GCM: HpkeAead = { id: 0x0001, keySize: 16 };
 export const AES_256_GCM: HpkeAead = { id: 0x0002, keySize: 32 };
 
@@ -151,9 +151,12 @@ export class Hpke {
     throw new CryptoError('INVALID_KEY', 'DeriveKeyPair found no scalar');
   }
 
-  /** GenerateKeyPair as DeriveKeyPair over Nsk fresh random bytes (RFC 9180 §7.1.3). */
+  /**
+   * GenerateKeyPair: the platform's own key generation (`p256Generate`), so a wrap never depends on importing a raw
+   * scalar. The vectors inject their ephemeral key; `FakeRandomProvider` makes `p256Generate` a DeriveKeyPair.
+   */
   generateKeyPair(): Promise<P256PrivateKey> {
-    return this.deriveKeyPair(this.p.randomBytes(N_SK));
+    return this.p.p256Generate();
   }
 
   private async extractAndExpand(dh: Uint8Array, kemContext: Uint8Array): Promise<Uint8Array> {

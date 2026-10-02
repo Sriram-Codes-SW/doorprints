@@ -102,7 +102,7 @@ class CryptoVectorsTest {
             assertEquals(name, v.s("plaintextSha256"), w.plaintextSha256.hex())
             if (v.containsKey("file")) assertArrayEquals(name, v.b("file"), file)
             val keys = FolderKeys { e -> if (e == v.getValue("epoch").jsonPrimitive.int) v.b("folderKey") else null }
-            assertArrayEquals(name, plaintext, Dpx(p).decryptBytes(keys, v.s("inner"), file).first)
+            assertArrayEquals(name, plaintext, Dpx(p).decryptBytes(keys, v.s("inner"), file, expectedPlaintextSha256 = hex(v.s("plaintextSha256"))).first)
         }
     }
 
@@ -117,7 +117,7 @@ class CryptoVectorsTest {
         for (step in k.arr("steps")) {
             val now = step.getValue("now").jsonPrimitive.long
             val written = when (val op = step.s("op")) {
-                "create" -> files.createFirstDevice(devices[0].second, recovery.keyPair(p).publicKey, now)
+                "create" -> files.createFirstDevice(devices[0].second, recovery, now)
                 "addDevice" -> files.addDevice(opened!!, kidOf(p, devices[step.getValue("approver").jsonPrimitive.int].second.publicKey), devices[step.getValue("device").jsonPrimitive.int].second, now)
                 "newEpoch" -> files.newEpoch(opened!!, now, revokeKid = kidOf(p, devices[step.getValue("revoke").jsonPrimitive.int].second.publicKey))
                 else -> error(op)
@@ -126,10 +126,11 @@ class CryptoVectorsTest {
             opened = written.opened
             // Every listed device and the recovery key open it, and see the same folder keys.
             for (d in step.getValue("openers").jsonArray.map { it.jsonPrimitive.int }) {
-                val o = KeysFile(p).open(written.bytes, devices[d].first, KeysGuard(MemoryWatermarkStore()))
+                val current = checkNotNull(Bytes.unb64(step.getValue("folderKeys").jsonObject.getValue(written.opened.epoch.toString()).jsonPrimitive.content))
+                val o = KeysFile(p).openFirstPin(written.bytes, devices[d].first, KeysGuard(p, MemoryWatermarkStore()), current)
                 for ((epoch, key) in step.getValue("folderKeys").jsonObject) assertEquals(Bytes.b64(o.folderKey(epoch.toInt())!!), key.jsonPrimitive.content)
             }
-            val r = KeysFile(p).openWithRecovery(written.bytes, recovery, KeysGuard(MemoryWatermarkStore()))
+            val r = KeysFile(p).openWithRecovery(written.bytes, recovery, KeysGuard(p, MemoryWatermarkStore()))
             for ((epoch, key) in step.getValue("folderKeys").jsonObject) assertEquals(Bytes.b64(r.folderKey(epoch.toInt())!!), key.jsonPrimitive.content)
         }
     }
@@ -262,7 +263,7 @@ class CryptoVectorsTest {
                 put("folderKeys", buildJsonObject { for (e in 1..w.opened.epoch) put(e.toString(), Bytes.b64(w.opened.folderKey(e)!!)) })
             }
         }
-        var w = files.createFirstDevice(news[0], recovery.keyPair(p).publicKey, 1790000000000)
+        var w = files.createFirstDevice(news[0], recovery, 1790000000000)
         record("create", 1790000000000, w, listOf(0), emptyMap())
         w = files.addDevice(w.opened, kidOf(p, news[0].publicKey), news[1], 1790000100000)
         record("addDevice", 1790000100000, w, listOf(0, 1), mapOf("approver" to 0, "device" to 1))

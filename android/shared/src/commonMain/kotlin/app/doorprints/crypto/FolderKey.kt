@@ -25,17 +25,22 @@ package app.doorprints.crypto
  *
  * - `doorprints/dpx1/dir`: the MAC of `keys.json` (docs/15 §9.3);
  * - `doorprints/dpx1/content-wrap`: the AES-256-GCM wrap of a file's content key (§9.6);
- * - `doorprints/dpx1/chain-wrap`: the AES-256-GCM wrap of epoch N − 1's folder key under epoch N's (§9.1).
+ * - `doorprints/dpx1/chain-wrap`: the AES-256-GCM wrap of epoch N − 1's folder key under epoch N's (§9.1);
+ * - `doorprints/dpx1/key-id`: the folder key's public name in a device's pin ([KeysGuard]); not a key.
  */
 internal object FolderKey {
     const val SIZE = 32
     private const val DIR = "doorprints/dpx1/dir"
     private const val CONTENT_WRAP = "doorprints/dpx1/content-wrap"
     private const val CHAIN_WRAP = "doorprints/dpx1/chain-wrap"
+    private const val KEY_ID = "doorprints/dpx1/key-id"
 
     fun macKey(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, DIR)
-    fun contentWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = p.aesKey(derive(p, folderKey, CONTENT_WRAP))
-    fun chainWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = p.aesKey(derive(p, folderKey, CHAIN_WRAP))
+    fun contentWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = aes(p, derive(p, folderKey, CONTENT_WRAP))
+    fun chainWrapKey(p: CryptoProvider, folderKey: ByteArray): AesKey = aes(p, derive(p, folderKey, CHAIN_WRAP))
+
+    private fun aes(p: CryptoProvider, raw: ByteArray): AesKey = p.aesKey(raw).also { raw.fill(0) }
+    fun keyId(p: CryptoProvider, folderKey: ByteArray): ByteArray = derive(p, folderKey, KEY_ID)
 
     private fun derive(p: CryptoProvider, folderKey: ByteArray, info: String): ByteArray {
         require(folderKey.size == SIZE) { "a folder key is 32 bytes" }
@@ -64,6 +69,15 @@ internal object WrapAad {
     fun chain(epoch: Int): ByteArray =
         Bytes.concat(Bytes.label("dpx1/epoch-chain"), Bytes.u32(epoch.toLong()), Bytes.u32(epoch.toLong() - 1))
 
+    /**
+     * The recovery anchor (docs/15 §9.9): the folder key of epoch [epoch] (when the recovery key was made) under a key
+     * only the recovery key's holder can derive, bound to that epoch and the recovery kid.
+     */
+    fun recoveryAnchor(epoch: Int, recoveryKid: ByteArray): ByteArray {
+        require(recoveryKid.size == KID_SIZE)
+        return Bytes.concat(Bytes.label("dpx1/recovery-anchor"), Bytes.u32(epoch.toLong()), recoveryKid)
+    }
+
     const val KID_SIZE = 16
 
     /** HPKE's `info` for every folder-key wrap (docs/15 §9.2). */
@@ -73,7 +87,10 @@ internal object WrapAad {
 /** `kid` = the first 16 bytes of the SHA-256 of an uncompressed public key (docs/15 §9.3). */
 fun kidOf(p: CryptoProvider, publicKey: ByteArray): ByteArray = p.sha256Of(publicKey).copyOfRange(0, WrapAad.KID_SIZE)
 
-/** The folder keys a reader holds, by epoch; null for an epoch it does not have. */
+/**
+ * The folder keys a reader holds, by epoch; null for an epoch it does not have. Each call returns a **new array**,
+ * which the reader overwrites once it has used it.
+ */
 fun interface FolderKeys {
     fun folderKey(epoch: Int): ByteArray?
 }

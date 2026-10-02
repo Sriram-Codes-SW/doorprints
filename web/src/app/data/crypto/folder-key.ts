@@ -24,7 +24,8 @@ import { Hkdf } from './hpke';
 /**
  * The uses of a folder key, each its own HKDF-SHA-256 key (empty salt): the twin of Kotlin's `FolderKey`.
  * `doorprints/dpx1/dir` MACs `keys.json`; `doorprints/dpx1/content-wrap` wraps content keys;
- * `doorprints/dpx1/chain-wrap` wraps the previous epoch's folder key.
+ * `doorprints/dpx1/chain-wrap` wraps the previous epoch's folder key; `doorprints/dpx1/key-id` names a key in a
+ * device's pin (not a key).
  */
 export const FOLDER_KEY_SIZE = 32;
 
@@ -36,11 +37,21 @@ async function derive(p: CryptoProvider, folderKey: Uint8Array, info: string): P
 export function macKey(p: CryptoProvider, folderKey: Uint8Array): Promise<Uint8Array> {
   return derive(p, folderKey, 'doorprints/dpx1/dir');
 }
+async function aes(p: CryptoProvider, raw: Uint8Array): Promise<AesKey> {
+  try {
+    return await p.aesKey(raw);
+  } finally {
+    raw.fill(0);
+  }
+}
 export async function contentWrapKey(p: CryptoProvider, folderKey: Uint8Array): Promise<AesKey> {
-  return p.aesKey(await derive(p, folderKey, 'doorprints/dpx1/content-wrap'));
+  return aes(p, await derive(p, folderKey, 'doorprints/dpx1/content-wrap'));
 }
 export async function chainWrapKey(p: CryptoProvider, folderKey: Uint8Array): Promise<AesKey> {
-  return p.aesKey(await derive(p, folderKey, 'doorprints/dpx1/chain-wrap'));
+  return aes(p, await derive(p, folderKey, 'doorprints/dpx1/chain-wrap'));
+}
+export function keyId(p: CryptoProvider, folderKey: Uint8Array): Promise<Uint8Array> {
+  return derive(p, folderKey, 'doorprints/dpx1/key-id');
 }
 
 export const KID_SIZE = 16;
@@ -57,6 +68,11 @@ export const WrapAad = {
     if (recipientKid.length !== KID_SIZE) throw new RangeError('kid');
     return concat(label('dpx1/folder-key'), u32(epoch), recipientKid);
   },
+  /** The recovery anchor: the folder key of the epoch the recovery key was made in, under the recovery key. */
+  recoveryAnchor(epoch: number, recoveryKid: Uint8Array): Uint8Array {
+    if (recoveryKid.length !== KID_SIZE) throw new RangeError('kid');
+    return concat(label('dpx1/recovery-anchor'), u32(epoch), recoveryKid);
+  },
   chain(epoch: number): Uint8Array {
     return concat(label('dpx1/epoch-chain'), u32(epoch), u32(epoch - 1));
   },
@@ -67,7 +83,7 @@ export function kidOf(p: CryptoProvider, publicKey: Uint8Array): Uint8Array {
   return sha256Of(p, publicKey).slice(0, KID_SIZE);
 }
 
-/** The folder keys a reader holds, by epoch. */
+/** The folder keys a reader holds, by epoch; each call returns a new array, which the reader overwrites after use. */
 export interface FolderKeys {
   folderKey(epoch: number): Promise<Uint8Array | null>;
 }

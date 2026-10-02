@@ -26,7 +26,7 @@ import { kidOf } from './folder-key';
 import { Hpke } from './hpke';
 import { KeysFile } from './keys-file';
 import type { DevicePlatform, OpenedKeys, WrittenKeys } from './keys-file';
-import { KeysGuard } from './keys-guard';
+import { KeysGuard, sameWatermark } from './keys-guard';
 import type { KeysWatermark } from './keys-guard';
 import { RecoveryKey, RecoveryKeyError } from './recovery-key';
 
@@ -82,7 +82,14 @@ const B = (s: string) => {
 };
 const memoryGuard = () => {
   let w: KeysWatermark | null = null;
-  return new KeysGuard({ load: async () => w, save: async (x) => void (w = x) });
+  return new KeysGuard(p, {
+    load: async () => w,
+    compareAndSet: async (expected, next) => {
+      if (!sameWatermark(w, expected)) return false;
+      w = next;
+      return true;
+    },
+  });
 };
 
 describe('dpx-vectors.json (Kotlin parity)', () => {
@@ -136,7 +143,7 @@ describe('dpx-vectors.json (Kotlin parity)', () => {
       expect(hex(r.plaintextSha256), v.name).toBe(v.plaintextSha256);
       if (v.file) expect(b64(file), v.name).toBe(v.file);
       const keys = { folderKey: async (e: number) => (e === v.epoch ? B(v.folderKey) : null) };
-      const back = await new Dpx(p).decryptBytes(keys, v.inner, file);
+      const back = await new Dpx(p).decryptBytes(keys, v.inner, file, { expectedPlaintextSha256: unhex(v.plaintextSha256) });
       expect(hex(back.plaintext) === hex(pt), v.name).toBe(true);
     }
   });
@@ -151,14 +158,14 @@ describe('dpx-vectors.json (Kotlin parity)', () => {
     let opened: OpenedKeys | null = null;
     for (const step of k.steps) {
       let w: WrittenKeys;
-      if (step.op === 'create') w = await files.createFirstDevice(devices[0], (await recovery.keyPair(p)).publicKey, step.now);
+      if (step.op === 'create') w = await files.createFirstDevice(devices[0], recovery, step.now);
       else if (step.op === 'addDevice') w = await files.addDevice(opened!, kidOf(p, devices[step.approver!].publicKey), devices[step.device!], step.now);
       else if (step.op === 'newEpoch') w = await files.newEpoch(opened!, step.now, { revokeKid: kidOf(p, devices[step.revoke!].publicKey) });
       else throw new Error(step.op);
       expect(b64(w.bytes), step.op).toBe(step.file);
       opened = w.opened;
       for (const d of step.openers) {
-        const o = await new KeysFile(p).open(w.bytes, keys[d], memoryGuard());
+        const o = await new KeysFile(p).openFirstPin(w.bytes, keys[d], memoryGuard(), B(step.folderKeys[String(w.opened.epoch)]));
         for (const [epoch, key] of Object.entries(step.folderKeys)) expect(b64((await o.folderKey(Number(epoch)))!)).toBe(key);
       }
       const r = await new KeysFile(p).openWithRecovery(w.bytes, recovery, memoryGuard());

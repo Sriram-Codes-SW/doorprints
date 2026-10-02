@@ -27,9 +27,13 @@ package app.doorprints.crypto
  * `psk` and `psk_id` (RFC 9180 §5.1), so the PSK mode of the QR enrolment (S4b-BL-126, docs/15 §9.5 i) is a new
  * public pair of functions over [keySchedule], with no change to it.
  */
-class Hpke(private val p: CryptoProvider, val aead: Aead = Aead.AES_256_GCM) {
+class Hpke internal constructor(private val p: CryptoProvider, internal val aead: Aead) {
 
-    enum class Aead(val id: Int, val keySize: Int) {
+    /** HPKE for Doorprints' suite (AES-256-GCM). */
+    constructor(p: CryptoProvider) : this(p, Aead.AES_256_GCM)
+
+    /** AES-128-GCM exists only for the RFC 9180 A.3.1 vector; nothing outside the tests can pick it. */
+    internal enum class Aead(val id: Int, val keySize: Int) {
         /** For RFC 9180's A.3 test vectors only. */
         AES_128_GCM(0x0001, 16),
         AES_256_GCM(0x0002, 32),
@@ -103,8 +107,12 @@ class Hpke(private val p: CryptoProvider, val aead: Aead = Aead.AES_256_GCM) {
         throw CryptoException(CryptoException.Kind.INVALID_KEY, "DeriveKeyPair found no scalar")
     }
 
-    /** GenerateKeyPair as RFC 9180 §7.1.3 allows it: DeriveKeyPair over Nsk fresh random bytes. */
-    fun generateKeyPair(): P256PrivateKey = deriveKeyPair(p.randomBytes(N_SK))
+    /**
+     * GenerateKeyPair: the platform's own key generation ([CryptoProvider.p256Generate]), so a wrap never depends on
+     * importing a raw scalar. The vectors inject their ephemeral key instead (the `internal` overloads), and
+     * `FakeRandomProvider` makes `p256Generate` a DeriveKeyPair over its stream.
+     */
+    fun generateKeyPair(): P256PrivateKey = p.p256Generate()
 
     private fun extractAndExpand(dh: ByteArray, kemContext: ByteArray): ByteArray {
         val eaePrk = labeledExtract(kemSuiteId, ByteArray(0), "eae_prk", dh)

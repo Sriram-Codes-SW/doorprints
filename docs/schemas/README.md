@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.23 |
+| Version | 1.24 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -29,6 +29,7 @@
 | 1.21 | 2026-10-01 | Claude (Code), lead | **A floor out of range on import** (S4b-BL-104 d): unchanged rule (a device reads it as unknown, the server refuses the file), now reported: the preview counts the houses it writes with such a floor (`floorsLeftBlank`, Kotlin `ImportPreview` and web `import-plan.ts`) and shows a warning line. New merge case in `import-vectors.json`, "a floor out of range lands blank and is counted". Nothing in the format changed. |
 | 1.22 | 2026-10-02 | Claude (Code), lead | **`drive-vectors.json`** (format `doorprints-drive-vectors/1`, new §6.2, S4b-BL-115): Drive v3's `q` strings, the requests and answers of seven exchanges, the error mapping and the backoff rule, the same for Kotlin's `HttpDriveClient` and the website's `FetchDriveClient`; not part of the backup format. |
 | 1.23 | 2026-10-02 | Claude (Code), lead | **`hpke-vectors.json` and `dpx-vectors.json`** (formats `doorprints-hpke-vectors/1` and `doorprints-dpx-vectors/1`, new §6.3, S4b-BL-125): the crypto primitives' and HPKE's known answers (official ones named by source, regression ones marked), and the parity vectors of the recovery key, the `dpx/1` envelope and a `keys.json` life. Not part of the backup format. |
+| 1.24 | 2026-10-02 | Claude (Code), lead | `dpx-vectors.json`'s `keys` regenerated after the review of S4b-BL-125: the recovery entry carries its anchor (`anchorEpoch`, `anchor`); every other vector is unchanged; checked again by the independent decoder, which now also opens the anchor. |
 | 1.20 | 2026-10-01 | Claude (Code), lead | **Slice 5 written down here** (photo tags and moving in, [11](../11-feature-parity-and-export-spec.md) 5.7, 5.24; the code, the sample and `default-movein.json` came with the slice, this file had not caught up): the statuses `TAKEN` and `NOT_CHOSEN` (§3.1), the house's `moveIn` after `answers` and before `floor` (§3.1, new §3.14), the photo's `roomId`, `tags`, `caption` and `metaUpdatedAt` (§3.3), the `/2` rule for them, and `default-movein.json` (new §3.15). `backup-sample.json` (6,304 bytes) has house 1 TAKEN with a move-in and photo 1 with meta. Nothing in the format changed. |
 | 1.5 | 2026-09-23 | Claude (Cowork), Docs team | **Device note under section 6 rule 6** (Android handover item 19, `android/shared/README.md` §9; it was addressed to Backend, and the Docs team, which owns `docs/**`, applied it so that it lands before the first deploy; [10](../10-sprint-log.md) §11.5 row 19). Rule 6 describes the server import. The note records where the Android device import goes further when it writes a house over a tombstone that has reached the server: it relinks the visits the purge unlinked and re-adds the photos from the backup's bytes under fresh ids, so a device import says the photos **come back**. It also records the one exception (a tombstone not yet pushed was never purged) and that the web importer (S4b-00a) follows the same rule. Nothing else in this file changed; the server's behaviour and wording are unchanged. |
 | 1.4 | 2026-09-23 | Claude (Cowork), Docs team | **New section 0, "What an import is"** (Docs team; nothing else in this file changed): the import product definition the owner approved on 2026-09-23 for Sprint 4b story S4b-00 — what an import is, the only two accepted files, what a backup can contain, what an import never contains or changes, the behaviour (with pointers to sections 6 and 7 here), and what is out of scope. Requirements [01](../01-requirements.md) FR-089..FR-097; vocabulary [12](../12-brand-and-naming.md) section G. Sections 1–9 are unchanged and remain the Backend team's. |
@@ -518,7 +519,7 @@ Not part of the backup format; the Drive encryption of [15](../15-google-drive-b
   SHA-256(`doorprints-fake-random` ‖ seed ‖ u32 *i*), device keys from HPKE's DeriveKeyPair; the `keys.json` bytes after
   create, two adds and a revoke, with the folder keys each step opens to). All are **regression vectors** for parity: made
   by `CryptoVectorsTest` with `DPX_VECTORS_OUT` set, checked by an independent decoder (python `cryptography`: every
-  wrap, MAC, chain link, chunk and the canonical JSON), run by `CryptoVectorsTest` and `crypto-vectors.spec.ts`.
+  wrap, MAC, chain link, recovery anchor, chunk and the canonical JSON), run by `CryptoVectorsTest` and `crypto-vectors.spec.ts`.
   Regenerate only for a deliberate format change, which is a new format number (§1.1).
 
 ## 7. Limits
