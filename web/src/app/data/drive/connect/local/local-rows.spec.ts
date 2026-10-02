@@ -19,6 +19,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LocalStore } from '../../../local-store.service';
 import type { HouseDto, VisitDto } from '../../../../core/models';
+import type { HouseRecord } from '../../../records';
 import { LocalRowsAdapter } from './local-rows';
 
 describe('LocalRowsAdapter', () => {
@@ -34,7 +35,7 @@ describe('LocalRowsAdapter', () => {
 
   afterEach(async () => {
     // Clean up.
-    await store.removeAll();
+    await store.clearEverything();
   });
 
   it('all() returns houses, visits, and photos as SyncRows', async () => {
@@ -162,7 +163,7 @@ describe('LocalRowsAdapter', () => {
     await store.putHouseFromServer(house);
 
     // Add a photo.
-    const result = await store.addPhoto('h1', new Blob(['fake image'], { type: 'image/jpeg' }), {});
+    const result = await store.addPhoto('h1', new Blob(['fake image'], { type: 'image/jpeg' }));
     if (!result.ok) throw new Error('Failed to add photo');
 
     // Retrieve it.
