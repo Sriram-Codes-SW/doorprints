@@ -194,7 +194,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       };
     }
     if (grant) this.gate?.registerGrant(grant.id, pending.action, pending.operationId, grant.grantedAtMs);
-    const token = this.grantToTokenWithOperationId(grant, pending.operationId, pending.level);
+    const token = this.grantToTokenWithOperationId(grant, pending.operationId);
     return this.deletionService.resume(token);
   }
 
@@ -205,17 +205,17 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   private grantToToken(plan: DeletionPlan, grant: WebGrant | null): AuthorizationToken | null {
     if (!grant) return null;
     return {
-      level: plan.level,
+      level: grant.requirements.level,
       issuedAtMs: grant.grantedAtMs,
       operationId: plan.operationId,
       proof: String(grant.id),
     };
   }
 
-  private grantToTokenWithOperationId(grant: WebGrant | null, operationId: string, level: 'L1' | 'L2' | 'L3'): AuthorizationToken | null {
+  private grantToTokenWithOperationId(grant: WebGrant | null, operationId: string): AuthorizationToken | null {
     if (!grant) return null;
     return {
-      level,
+      level: grant.requirements.level,
       issuedAtMs: grant.grantedAtMs,
       operationId,
       proof: String(grant.id),
