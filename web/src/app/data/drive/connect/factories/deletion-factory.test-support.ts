@@ -47,19 +47,6 @@ class FakeAuthorizationGate implements AuthorizationGate {
 }
 
 /**
- * Test-only helper to extract gate and service from an adapter for mutation testing.
- * DO NOT USE IN PRODUCTION.
- */
-export function getGateAndServiceForTesting(adapter: DriveDeletionAdapter): { gate: any & { applyTestMutation?: (m: string) => void; resetTestMutations?: () => void }; service: any } {
-  // Cast to access private fields for testing only
-  const impl = adapter as any;
-  return {
-    gate: impl.deletionService?.d?.gate || {},
-    service: impl.deletionService || {},
-  };
-}
-
-/**
  * Test helper: creates a deletion adapter with a fake PRF authenticator and in-memory stores.
  * Used in specs to avoid requiring real WebAuthn or IndexedDB.
  */
