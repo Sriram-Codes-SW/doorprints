@@ -107,11 +107,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap">
   <!--
-    Optional per-deployment Google API config: sets window.__DOORPRINTS__.googleClientId.
-    S4b-BL-117: If absent (404), the app gracefully disables the Drive feature.
-    The service worker (ngsw-config.json) does not cache this file, so stale config is never served.
+    Per-deployment Google API config: sets window.__DOORPRINTS__.googleClientId.
+    S4b-BL-117: CI populates web/public/config.js from env. If missing, loads default empty config.
+    Service worker does not cache this, so each load gets current config.
   -->
-  <script src="config.js" onerror="window.__DOORPRINTS__=window.__DOORPRINTS__||{};"></script>
+  <script src="config.js"></script>
 </head>
 <body>
   <!--
