@@ -1,0 +1,86 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card-section" aria-labelledby="drive-enrol-heading">
+  <h3 id="drive-enrol-heading">{{ 'driveEnrol.heading' | t }}</h3>
+  <p>{{ 'driveEnrol.qrDeferred' | t }}</p>
+
+  @if (role() === 'choose') {
+    <div class="actions">
+      <button type="button" class="btn btn-primary" (click)="becomeNewcomer()">{{ 'driveEnrol.newcomer' | t }}</button>
+      <button type="button" class="btn" (click)="becomeApprover()">{{ 'driveEnrol.approver' | t }}</button>
+    </div>
+  }
+
+  @if (role() === 'newcomer') {
+    <p>{{ 'driveEnrol.newcomerHelp' | t }}</p>
+    <label for="enrol-request">{{ 'driveEnrol.requestLabel' | t }}</label>
+    <textarea id="enrol-request" class="mono" rows="4" [value]="requestText()" readonly></textarea>
+    <button type="button" class="btn" (click)="copyRequest()">
+      {{ copied() ? ('driveEnrol.copied' | t) : ('driveEnrol.copyRequest' | t) }}
+    </button>
+    <label for="enrol-reply">{{ 'driveEnrol.replyLabel' | t }}</label>
+    <textarea
+      id="enrol-reply"
+      class="mono"
+      rows="4"
+      [value]="replyText()"
+      (input)="replyText.set($any($event.target).value)"
+    ></textarea>
+    <button type="button" class="btn btn-primary" (click)="revealCode()">{{ 'driveEnrol.showCode' | t }}</button>
+  }
+
+  @if (role() === 'approver') {
+    <p>{{ 'driveEnrol.approverHelp' | t }}</p>
+    <label for="enrol-paste">{{ 'driveEnrol.requestLabel' | t }}</label>
+    <textarea
+      id="enrol-paste"
+      class="mono"
+      rows="4"
+      [value]="requestText()"
+      (input)="requestText.set($any($event.target).value)"
+    ></textarea>
+    <button type="button" class="btn" (click)="approvePasted()">{{ 'driveEnrol.makeReply' | t }}</button>
+    @if (replyText()) {
+      <label for="enrol-reply-out">{{ 'driveEnrol.replyLabel' | t }}</label>
+      <textarea id="enrol-reply-out" class="mono" rows="4" [value]="replyText()" readonly></textarea>
+      <label for="enrol-revealed">{{ 'driveEnrol.revealedLabel' | t }}</label>
+      <textarea
+        id="enrol-revealed"
+        class="mono"
+        rows="4"
+        (input)="replyText.set($any($event.target).value)"
+      ></textarea>
+      <button type="button" class="btn btn-primary" (click)="showApproverCode()">{{ 'driveEnrol.showCode' | t }}</button>
+    }
+  }
+
+  @if (code(); as digits) {
+    <p class="code" role="status" aria-live="polite">
+      <span class="code-label">{{ 'driveEnrol.codeLabel' | t }}</span>
+      <code>{{ digits }}</code>
+    </p>
+    <p>{{ 'driveEnrol.confirmMatch' | t }}</p>
+  }
+
+  <div aria-live="polite" class="error-region">
+    @if (error(); as err) {
+      <p class="error-message">{{ err }}</p>
+    }
+  </div>
+</section>
