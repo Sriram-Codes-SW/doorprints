@@ -31,23 +31,18 @@ import type { FolderTrustStores, DriveStateStore } from '../../backup/drive-back
 import type { KeysWatermarkStore } from '../../../crypto/keys-file';
 import type { ControlWatermarkStore, ControlWatermark } from '../../backup/control-file';
 import { sameControlWatermark } from '../../backup/control-file';
-
-/**
- * Session holder for connection state: root folder ID and backup count.
- * Set by the backup adapter when a connection is Ready.
- *
- * S4b-BL-73, docs/15 §9.4.
- */
-export interface SessionHolder {
-  readonly rootFolderId: string;
-  readonly backupsCount: number | null;
-}
+import type { FolderSession } from '../../drive-sync-seams';
+import type { SyncStateStore } from '../../drive-sync-seams';
+import type { PhotoStateStore } from '../../drive-photo-seams';
 
 /**
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
  * and Drive client. All components are opened lazily and memoized per page load.
  *
- * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
+ * The session field is set by the backup adapter after successful connect and read by sync and deletion.
+ * Sync/deletion before backup connect will have a null session and should return 'not connected' status.
+ *
+ * S4b-BL-117, S4b-BL-73, S4b-BL-131, docs/15 §9.4.
  */
 export interface DriveRuntime {
   db: DriveDb;
@@ -59,7 +54,9 @@ export interface DriveRuntime {
   local: LocalStore;
   driveStateStore: DriveStateStore;
   folderTrustStores: FolderTrustStores;
-  session?: SessionHolder; // Set by backup adapter on Ready
+  syncStateStore: SyncStateStore;
+  photoStateStore: PhotoStateStore;
+  session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync and deletion
 }
 
 /**
@@ -173,6 +170,8 @@ export async function createDriveRuntime(deps: {
     local: deps.local,
     driveStateStore: opened.driveStateStore,
     folderTrustStores,
+    syncStateStore: opened.syncStateStore,
+    photoStateStore: opened.photoStateStore,
   };
 }
 
