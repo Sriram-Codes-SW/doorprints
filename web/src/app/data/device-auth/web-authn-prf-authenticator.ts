@@ -229,11 +229,16 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             displayName: displayName || 'Doorprints User',
           },
           pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-          userVerification: 'required',
+          authenticatorSelection: {
+            userVerification: 'required',
+          },
           extensions: {
             prf: {},
           },
         } as PublicKeyCredentialCreationOptions & {
+          authenticatorSelection?: {
+            userVerification?: string;
+          };
           extensions?: {
             prf?: Record<string, never>;
           };

@@ -36,6 +36,8 @@ class FakeCredentialsContainer {
   private registeredCredentials: Map<string, Uint8Array> = new Map(); // Maps base64url ID to raw bytes
   private prfSecret: Uint8Array;
   private scriptError: Error | null = null;
+  recordedCreateOptions: CredentialCreationOptions | null = null;
+  recordedGetOptions: CredentialRequestOptions | null = null;
 
   constructor(prfSecret: Uint8Array = utf8("fake-prf-secret")) {
     this.prfSecret = prfSecret;
@@ -51,6 +53,9 @@ class FakeCredentialsContainer {
    * The credential ID is stored for later retrieval.
    */
   async create(options: CredentialCreationOptions): Promise<Credential | null> {
+    // Record the options for assertions
+    this.recordedCreateOptions = options;
+
     if (this.scriptError) {
       const err = this.scriptError;
       this.scriptError = null;
@@ -103,6 +108,9 @@ class FakeCredentialsContainer {
    * credential ID and the salt provided in the PRF extension input.
    */
   async get(options: CredentialRequestOptions): Promise<Credential | null> {
+    // Record the options for assertions
+    this.recordedGetOptions = options;
+
     if (this.scriptError) {
       const err = this.scriptError;
       this.scriptError = null;
@@ -259,10 +267,14 @@ describe("WebAuthnPrfAuthenticator", () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
 
-      // We verify this indirectly by checking the credential was created
-      // (The fake creates credentials regardless, but in real usage it enforces userVerification)
       const credId = await auth.registerPasskey("Test User");
       expect(credId).not.toBeNull();
+
+      // Assert the recorded options
+      expect(fakeCredentials.recordedCreateOptions).not.toBeNull();
+      const opts = fakeCredentials.recordedCreateOptions!.publicKey as any;
+      expect(opts.authenticatorSelection?.userVerification).toBe("required");
+      expect(opts.extensions?.prf).toBeDefined();
     });
   });
 
@@ -281,9 +293,7 @@ describe("WebAuthnPrfAuthenticator", () => {
 
       const result = await auth.evaluate(credId!, salt);
       expect(result.kind).toBe("OK");
-      if (result.kind === "OK") {
-        expect(result.output).toHaveLength(32);
-      }
+      expect((result as { kind: "OK"; output: Uint8Array }).output).toHaveLength(32);
     });
 
     it("returns NOT_SUPPORTED when navigator is undefined", async () => {
@@ -400,13 +410,21 @@ describe("WebAuthnPrfAuthenticator", () => {
 
       // Evaluate (verification is part of the get call)
       const salt = new Uint8Array(32);
+      crypto.getRandomValues(salt);
       const result = await auth.evaluate(credId!, salt);
 
-      // If it succeeds, it means the options were correct
       expect(result.kind).toBe("OK");
+
+      // Assert the recorded get options
+      expect(fakeCredentials.recordedGetOptions).not.toBeNull();
+      const opts = fakeCredentials.recordedGetOptions!.publicKey as any;
+      expect(opts.userVerification).toBe("required");
+      expect(opts.allowCredentials).toHaveLength(1);
+      expect(new Uint8Array(opts.allowCredentials[0].id)).toEqual(credId);
+      expect(opts.extensions?.prf?.eval?.first).toEqual(prfInput(salt));
     });
 
-    it("derives different outputs for different salts", async () => {
+    it("derives different outputs for different salts, sends different prfInput", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
 
@@ -419,17 +437,24 @@ describe("WebAuthnPrfAuthenticator", () => {
       crypto.getRandomValues(salt2);
 
       const result1 = await auth.evaluate(credId!, salt1);
-      const result2 = await auth.evaluate(credId!, salt2);
-
       expect(result1.kind).toBe("OK");
+
+      const prfInput1 = (fakeCredentials.recordedGetOptions!.publicKey as any).extensions?.prf?.eval?.first;
+
+      const result2 = await auth.evaluate(credId!, salt2);
       expect(result2.kind).toBe("OK");
 
-      if (result1.kind === "OK" && result2.kind === "OK") {
-        expect(Array.from(result1.output)).not.toEqual(Array.from(result2.output));
-      }
+      const prfInput2 = (fakeCredentials.recordedGetOptions!.publicKey as any).extensions?.prf?.eval?.first;
+
+      // Different salts should produce different PRF inputs
+      expect(new Uint8Array(prfInput1)).not.toEqual(new Uint8Array(prfInput2));
+
+      // And different PRF outputs
+      expect(Array.from((result1 as { kind: "OK"; output: Uint8Array }).output))
+        .not.toEqual(Array.from((result2 as { kind: "OK"; output: Uint8Array }).output));
     });
 
-    it("returns the same output for the same salt", async () => {
+    it("returns the same output for the same salt, sends same prfInput", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
 
@@ -440,14 +465,21 @@ describe("WebAuthnPrfAuthenticator", () => {
       crypto.getRandomValues(salt);
 
       const result1 = await auth.evaluate(credId!, salt);
-      const result2 = await auth.evaluate(credId!, salt);
-
       expect(result1.kind).toBe("OK");
+
+      const prfInput1 = (fakeCredentials.recordedGetOptions!.publicKey as any).extensions?.prf?.eval?.first;
+
+      const result2 = await auth.evaluate(credId!, salt);
       expect(result2.kind).toBe("OK");
 
-      if (result1.kind === "OK" && result2.kind === "OK") {
-        expect(Array.from(result1.output)).toEqual(Array.from(result2.output));
-      }
+      const prfInput2 = (fakeCredentials.recordedGetOptions!.publicKey as any).extensions?.prf?.eval?.first;
+
+      // Same salt should produce same PRF input
+      expect(new Uint8Array(prfInput1)).toEqual(new Uint8Array(prfInput2));
+
+      // And same PRF output
+      expect(Array.from((result1 as { kind: "OK"; output: Uint8Array }).output))
+        .toEqual(Array.from((result2 as { kind: "OK"; output: Uint8Array }).output));
     });
   });
 
