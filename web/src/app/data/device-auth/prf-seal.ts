@@ -1,0 +1,176 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+import { concat, utf8 } from "../crypto/bytes";
+import { CryptoError } from "../crypto/crypto-provider";
+import type { CryptoProvider } from "../crypto/crypto-provider";
+import { Hkdf } from "../crypto/hpke";
+
+/**
+ * The website's passkey seam (docs/15 10.4, S4b-BL-127). The website's device key is sealed under a key derived from
+ * the passkey's WebAuthn PRF output, so the key itself needs the person's user verification (once per page load):
+ * no passkey, no key. This file holds the pure pieces; the browser part (`navigator.credentials` with the `prf`
+ * extension, `userVerification: "required"`) implements [PrfAuthenticator] and is NOT wired here: it needs a real
+ * browser and authenticator (TC-M-50).
+ */
+export type PrfResult =
+  | { kind: "OK"; output: Uint8Array }
+  | { kind: "CANCELLED" }
+  | { kind: "NOT_SUPPORTED" }
+  | { kind: "FAILED" };
+
+export interface PrfAuthenticator {
+  /** A platform authenticator with the PRF extension is usable in this browser. */
+  isSupported(): Promise<boolean>;
+  /** One user-verified assertion for [credentialId]; the PRF output for [salt] (32 bytes). */
+  evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
+}
+
+export interface SealedBlob {
+  v: 1;
+  credentialId: Uint8Array;
+  /** Per-blob random salt, given to the PRF as its input. */
+  salt: Uint8Array;
+  nonce: Uint8Array;
+  ciphertext: Uint8Array;
+}
+
+export type SealOpen =
+  | { ok: true; plaintext: Uint8Array }
+  | {
+      ok: false;
+      reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" | "WRONG_KEY";
+    };
+
+const INFO = utf8("doorprints/device-seal/1");
+const SALT_PREFIX = utf8("doorprints/device-seal/1/prf-salt");
+
+async function sealKey(
+  p: CryptoProvider,
+  prfOutput: Uint8Array,
+  salt: Uint8Array,
+) {
+  if (prfOutput.length !== 32)
+    throw new CryptoError("INVALID_KEY", "PRF output must be 32 bytes");
+  const raw = await new Hkdf(p).derive(salt, prfOutput, INFO, 32);
+  const key = await p.aesKey(raw);
+  raw.fill(0);
+  return key;
+}
+
+function aad(credentialId: Uint8Array): Uint8Array {
+  return concat(INFO, credentialId);
+}
+
+/** The PRF input is the salt prefixed with a label, so it cannot be mistaken for another use of the same passkey. */
+export function prfInput(salt: Uint8Array): Uint8Array {
+  return concat(SALT_PREFIX, salt);
+}
+
+export async function sealWithPrf(
+  p: CryptoProvider,
+  prf: PrfAuthenticator,
+  credentialId: Uint8Array,
+  plaintext: Uint8Array,
+): Promise<
+  SealedBlob | { ok: false; reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" }
+> {
+  const salt = p.randomBytes(32);
+  const r = await prf.evaluate(credentialId, prfInput(salt));
+  if (r.kind !== "OK") return { ok: false, reason: r.kind };
+  try {
+    const key = await sealKey(p, r.output, salt);
+    const nonce = p.randomBytes(12);
+    const ciphertext = await p.aesGcmSeal(
+      key,
+      nonce,
+      aad(credentialId),
+      plaintext,
+    );
+    return {
+      v: 1,
+      credentialId: credentialId.slice(),
+      salt,
+      nonce,
+      ciphertext,
+    };
+  } catch {
+    return { ok: false, reason: "FAILED" };
+  } finally {
+    r.output.fill(0);
+  }
+}
+
+/** Opens only with the person's verification; any other outcome is a typed failure and no plaintext. */
+export async function openWithPrf(
+  p: CryptoProvider,
+  prf: PrfAuthenticator,
+  blob: SealedBlob,
+): Promise<SealOpen> {
+  if (blob.v !== 1) return { ok: false, reason: "FAILED" };
+  const r = await prf.evaluate(blob.credentialId, prfInput(blob.salt));
+  if (r.kind !== "OK") return { ok: false, reason: r.kind };
+  try {
+    const key = await sealKey(p, r.output, blob.salt);
+    return {
+      ok: true,
+      plaintext: await p.aesGcmOpen(
+        key,
+        blob.nonce,
+        aad(blob.credentialId),
+        blob.ciphertext,
+      ),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      reason:
+        e instanceof CryptoError && e.kind === "AUTH_FAILED"
+          ? "WRONG_KEY"
+          : "FAILED",
+    };
+  } finally {
+    r.output.fill(0);
+  }
+}
+
+/** A deterministic fake for tests: the output depends on the credential id and the input, or a scripted result. */
+export class FakePrfAuthenticator implements PrfAuthenticator {
+  supported = true;
+  next: PrfResult["kind"] | null = null;
+  asks = 0;
+  constructor(
+    private readonly p: CryptoProvider,
+    private readonly secret: Uint8Array = utf8("fake-authenticator-secret"),
+  ) {}
+  async isSupported() {
+    return this.supported;
+  }
+  async evaluate(
+    credentialId: Uint8Array,
+    salt: Uint8Array,
+  ): Promise<PrfResult> {
+    this.asks++;
+    if (!this.supported) return { kind: "NOT_SUPPORTED" };
+    if (this.next && this.next !== "OK") return { kind: this.next };
+    return {
+      kind: "OK",
+      output: await this.p.hmacSha256(this.secret, concat(credentialId, salt)),
+    };
+  }
+}
