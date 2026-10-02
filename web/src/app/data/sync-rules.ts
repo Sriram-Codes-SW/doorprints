@@ -55,8 +55,8 @@ export function keepLocalRecord(
  * older device snapshot must not overwrite a clean, newer local row.
  */
 export type MergeRule = (
-  local: { updatedAt?: string | null; dirty: boolean } | undefined | null,
-  incoming: { updatedAt?: string | null },
+  local: { updatedAt?: string | null; dirty: boolean; deleted?: boolean; by?: string | null } | undefined | null,
+  incoming: { updatedAt?: string | null; deleted?: boolean; by?: string | null },
 ) => boolean;
 
 /**

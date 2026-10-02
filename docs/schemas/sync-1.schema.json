@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://doorprints.web.app/schemas/sync-1.schema.json",
+  "title": "Doorprints sync file, doorprints-sync/1",
+  "description": "The inner format of a device's sync file in Google Drive (S4b-BL-130, docs/15 §5.1), inside the dpx/1 envelope and gzipped. One file per device holds that device's whole state, tombstones included and kept for ever. The readers are SyncFiles.parse (android/shared, app.doorprints.shared.sync) and parseSyncFile (web/src/app/data/drive/sync-file.ts); they also check what a schema cannot: the whole file is at most 16 MiB of UTF-8, all four lists together hold at most 100000 rows, a key appears once per list, deviceId is the writer the envelope authenticated, and times are real calendar instants from 2000-01-01T00:00:00Z on. Unknown properties are ignored (a newer writer within /1). Rows carry the sync DTOs' other fields, which the sync loop validates like a server row.",
+  "type": "object",
+  "required": ["format", "deviceId", "seq", "writtenAt", "houses", "visits", "records", "photos"],
+  "properties": {
+    "format": { "const": "doorprints-sync/1" },
+    "deviceId": { "$ref": "#/$defs/deviceId" },
+    "seq": {
+      "description": "The writer's counter, raised by every write: a lower seq than one already merged from that device is a file rolled back by a Drive revision, and is not merged.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "writtenAt": { "$ref": "#/$defs/time" },
+    "houses": { "type": "array", "maxItems": 20000, "items": { "$ref": "#/$defs/house" } },
+    "visits": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/visit" } },
+    "records": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/record" } },
+    "photos": { "type": "array", "maxItems": 50000, "items": { "$ref": "#/$defs/photo" } }
+  },
+  "$defs": {
+    "deviceId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,64}$" },
+    "id": {
+      "description": "RecordRules.isValidId: not '.' or '..'.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,64}$",
+      "not": { "enum": [".", ".."] }
+    },
+    "time": {
+      "description": "ISO-8601 UTC, 1 to 9 fraction digits (read to the millisecond), no offset, no leap second.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "version": {
+      "description": "What the Drive merge compares: last write wins on updatedAt, then by (code units), then a tombstone above a live row; a row stamped more than 24 hours after the reader's clock is held until it is not.",
+      "type": "object",
+      "required": ["updatedAt", "deleted", "by"],
+      "properties": {
+        "updatedAt": { "$ref": "#/$defs/time" },
+        "deleted": { "type": "boolean" },
+        "by": { "$ref": "#/$defs/deviceId" }
+      }
+    },
+    "house": {
+      "description": "HouseDto plus by.",
+      "allOf": [{ "$ref": "#/$defs/version" }],
+      "required": ["id"],
+      "properties": { "id": { "$ref": "#/$defs/id" } }
+    },
+    "visit": {
+      "description": "VisitDto plus by.",
+      "allOf": [{ "$ref": "#/$defs/version" }],
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "houseId": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] }
+      }
+    },
+    "record": {
+      "description": "RecordDto plus by; keyed by type and id.",
+      "allOf": [{ "$ref": "#/$defs/version" }],
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,39}$" },
+        "id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "photo": {
+      "description": "PhotoChangeDto plus by, and the Drive file of its bytes with their SHA-256.",
+      "allOf": [{ "$ref": "#/$defs/version" }],
+      "required": ["id", "houseId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "houseId": { "$ref": "#/$defs/id" },
+        "driveFileId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}
