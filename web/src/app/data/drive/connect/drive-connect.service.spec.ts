@@ -21,6 +21,7 @@ import { DriveConnectService } from './drive-connect.service';
 import type { DriveBackupAdapter } from './backup-adapter';
 import type { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
+import type { GoogleConfig } from './google-token-provider';
 import type { DeletionAction } from '../drive-deletion-rules';
 
 describe('DriveConnectService', () => {
@@ -28,6 +29,7 @@ describe('DriveConnectService', () => {
   let mockBackupAdapter: Partial<DriveBackupAdapter>;
   let mockSyncAdapter: Partial<DriveSyncAdapter>;
   let mockDeletionAdapter: Partial<DriveDeletionAdapter>;
+  let mockGoogleConfig: GoogleConfig;
 
   beforeEach(() => {
     mockBackupAdapter = {
@@ -48,10 +50,15 @@ describe('DriveConnectService', () => {
       execute: vi.fn(),
     };
 
+    mockGoogleConfig = {
+      clientId: 'test-client-id',
+    };
+
     service = new DriveConnectService(
       mockBackupAdapter as DriveBackupAdapter,
       mockSyncAdapter as DriveSyncAdapter,
       mockDeletionAdapter as DriveDeletionAdapter,
+      mockGoogleConfig,
     );
   });
 

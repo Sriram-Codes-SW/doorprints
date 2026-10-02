@@ -21,6 +21,8 @@ import type { RecoveryKey } from '../../crypto/recovery-key';
 import type { DriveBackupAdapter } from './backup-adapter';
 import type { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
+import type { GoogleConfig } from './google-token-provider';
+import { GOOGLE_CONFIG } from './drive-connect.providers';
 import type { DeletionAction } from '../drive-deletion-rules';
 
 export const DRIVE_BACKUP_ADAPTER = new InjectionToken<DriveBackupAdapter>('DRIVE_BACKUP_ADAPTER');
@@ -44,12 +46,18 @@ export interface ConnectResult {
 export class DriveConnectService {
   private readonly state = signal<ConnectState>('Unavailable');
   private recoveryKeyShown = false;
+  private readonly isConfigured: boolean;
 
   constructor(
     @Inject(DRIVE_BACKUP_ADAPTER) private readonly backupAdapter: DriveBackupAdapter,
     @Inject(DRIVE_SYNC_ADAPTER) private readonly syncAdapter: DriveSyncAdapter,
     @Inject(DRIVE_DELETION_ADAPTER) private readonly deletionAdapter: DriveDeletionAdapter,
-  ) {}
+    @Inject(GOOGLE_CONFIG) private readonly googleConfig: GoogleConfig,
+  ) {
+    // Check if Google Drive is configured
+    this.isConfigured = !!googleConfig.clientId;
+    // If not configured, state remains 'Unavailable'
+  }
 
   getState(): ConnectState {
     return this.state();
