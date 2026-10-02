@@ -67,9 +67,9 @@ name: Web
 # merge result; also covers fork PRs) and manual runs. The two path lists are identical and must stay that way.
 # Only a push or manual run on main can deploy.
 # docs/schemas/** (S4b-BL-105 a): load-bearing, the unit tests import the shared contract files (import-vectors.json,
-# update-sample.json, default-questions.json, default-movein.json, listing-fixtures.json, viewing-sample.ics), so
-# editing one alone can turn this workflow red; android.yml and backend.yml have the same path. A schema-only merge
-# to main also redeploys (the built site is unchanged).
+# update-sample.json, default-questions.json, default-movein.json, listing-fixtures.json, viewing-sample.ics,
+# drive-vectors.json), so editing one alone can turn this workflow red; android.yml and backend.yml have the same
+# path. A schema-only merge to main also redeploys (the built site is unchanged).
 on:
   push:
     branches: [main]
