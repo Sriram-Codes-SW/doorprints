@@ -18,8 +18,13 @@
 
 import { InjectionToken, Provider, inject } from '@angular/core';
 import { DriveConnectService, DRIVE_BACKUP_ADAPTER, DRIVE_DELETION_ADAPTER, DRIVE_SYNC_ADAPTER } from './drive-connect.service';
-import { GoogleTokenProvider, WindowGoogleConfig } from './google-token-provider';
+import { DriveBackupAdapter } from './backup-adapter';
+import { DriveSyncAdapter } from './sync-adapter';
+import type { DriveDeletionAdapter } from './deletion-adapter';
+import { GoogleTokenProvider, WindowGoogleConfig, DefaultScriptLoader } from './google-token-provider';
 import type { GoogleConfig } from './google-token-provider';
+import { FetchDriveClient } from '../fetch-drive-client';
+import { WebCryptoProvider } from '../../crypto/crypto-provider';
 
 /**
  * GoogleConfig provider: reads window.__DOORPRINTS__.googleClientId (empty by default, set via index.html).
@@ -32,13 +37,12 @@ export const GOOGLE_CONFIG: InjectionToken<GoogleConfig> = new InjectionToken('G
 
 /**
  * Provides DriveConnectService with its dependencies (backup, sync, deletion adapters).
- * Also provides GoogleConfig for Google authentication.
+ * All dependencies are lazy: nothing touches Google, IndexedDB, or WebCrypto until actual use.
  *
  * Usage:
  * ```
  * providers: [
  *   ...provideDriveConnect(),
- *   // Then provide the adapters from their own modules
  * ]
  * ```
  *
@@ -47,6 +51,82 @@ export const GOOGLE_CONFIG: InjectionToken<GoogleConfig> = new InjectionToken('G
 export function provideDriveConnect(): Provider[] {
   return [
     { provide: GOOGLE_CONFIG, useClass: WindowGoogleConfig },
+
+    // Google token provider (lazy-loads GIS script only when needed)
+    {
+      provide: GoogleTokenProvider,
+      useFactory: () => {
+        const config = inject(GOOGLE_CONFIG);
+        return new GoogleTokenProvider(new DefaultScriptLoader(), config);
+      },
+    },
+
+    // WebCryptoProvider for encryption/decryption operations
+    {
+      provide: WebCryptoProvider,
+      useClass: WebCryptoProvider,
+    },
+
+    // FetchDriveClient for Google Drive API calls
+    {
+      provide: FetchDriveClient,
+      useFactory: () => {
+        const tokenProvider = inject(GoogleTokenProvider);
+        return new FetchDriveClient(tokenProvider);
+      },
+    },
+
+    // Backup adapter (TODO: wire real DriveBackupService with all dependencies)
+    {
+      provide: DRIVE_BACKUP_ADAPTER,
+      useFactory: () => {
+        const drive = inject(FetchDriveClient);
+        // TODO: Initialize DriveBackupService with:
+        // - crypto provider
+        // - device identity (from device-key-store)
+        // - state store (from drive-db)
+        // - folder trust stores (from crypto layer)
+        // For now, stub with minimal initialization
+        return new DriveBackupAdapter(
+          null as any, // TODO: DriveBackupService
+          null as any, // TODO: DriveImportService
+          drive,
+          null as any, // TODO: DriveStateStore
+        );
+      },
+    },
+
+    // Sync adapter (TODO: wire FolderSession, LocalRows, and DriveSyncEngine)
+    {
+      provide: DRIVE_SYNC_ADAPTER,
+      useFactory: () => {
+        const drive = inject(FetchDriveClient);
+        // TODO: Wire FolderSession from connection state and LocalRows from LocalStore
+        return new DriveSyncAdapter(
+          null as any, // TODO: FolderSession
+          drive,
+        );
+      },
+    },
+
+    // Deletion adapter (TODO: wire DriveDeletionService and authorization gates)
+    {
+      provide: DRIVE_DELETION_ADAPTER,
+      useFactory: (): DriveDeletionAdapter => {
+        // TODO: Wire DriveDeletionService and web authorizer
+        // Stub implementation for now
+        return {
+          preflight: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
+          decide: () => ({ outcome: 'REFUSED', reason: 'Not implemented' } as any),
+          authorize: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
+          execute: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
+          resume: async () => ({ kind: 'refused', reason: 'Not implemented' } as any),
+          confirmGate: () => ({ tickBoxRequired: false, delayMs: 0, enabled: () => false } as any),
+        } as unknown as DriveDeletionAdapter;
+      },
+    },
+
+    // DriveConnectService: orchestrates backup, sync, and deletion
     {
       provide: DriveConnectService,
       useFactory: () => {

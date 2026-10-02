@@ -108,27 +108,27 @@ class MemorySyncStateStore implements SyncStateStore {
 }
 
 class MemoryDeletionStore implements DeletionStore {
-  private pending: PendingDeletion | null = null;
-  private marker: DeletedMarker | null = null;
+  private pendingValue: PendingDeletion | null = null;
+  private markerValue: DeletedMarker | null = null;
 
   async pending(): Promise<PendingDeletion | null> {
-    return this.pending;
+    return this.pendingValue;
   }
 
   async savePending(p: PendingDeletion): Promise<void> {
-    this.pending = p;
+    this.pendingValue = p;
   }
 
   async clearPending(): Promise<void> {
-    this.pending = null;
+    this.pendingValue = null;
   }
 
   async marker(): Promise<DeletedMarker | null> {
-    return this.marker;
+    return this.markerValue;
   }
 
   async recordFinished(m: DeletedMarker, forgetFolder: boolean): Promise<void> {
-    this.marker = m;
+    this.markerValue = m;
   }
 }
 
