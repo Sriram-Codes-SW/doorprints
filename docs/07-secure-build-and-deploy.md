@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.55 |
+| Version | 0.56 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -67,6 +67,7 @@
 | 0.53 | 2026-10-02 | Cursor Agent | gitleaks: reviewed `.gitleaksignore` fingerprints for the Drive branch (the type name after `key:` / `privateKey:`, and known-answer hex/base64 in `docs/schemas/hpke-vectors.json` and `dpx-vectors.json`). No path allowlist. |
 | 0.54 | 2026-10-02 | Cursor Agent | §1 `security.yml` job `commit-identity`: the allowlist gains `cursoragent@cursor.com`, the Cursor cloud agent's non-personal commit identity (exact match, no wildcard; a bare `NAME@users.noreply.github.com` stays refused). |
 | 0.55 | 2026-10-02 | Cursor Agent, lead | `web.yml` deploy writes `config.js` from the repository variable **`GOOGLE_OAUTH_WEB_CLIENT_ID`** (the Google Cloud OAuth *Web* client, `drive.file` only). Empty leaves Drive unavailable. Validated as `^[0-9]+-[a-z0-9]+\.apps.googleusercontent.com$` when set; never logged. Tracked `web/public/config.js` stays empty. |
+| 0.56 | 2026-10-02 | Cursor Agent, lead | §6.3: CSP `connect-src https:` kept after the Drive review (Z1 + Google Drive API hosts + tiles/geocode + the user-typed server). [02](02-threat-model.md) RR-30. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -720,7 +721,9 @@ rules in CI before any credential exists):
    document which value wins when rules overlap. The CSP has one source, this rule: the build copies it into
    `index.html` as a `<meta>` (minus `frame-ancestors`) and fails if it is missing, set twice or set by another rule
    (`cspFromFirebaseConfig`). `web/public/_headers` and `_redirects` (Cloudflare-era) are deleted.
-   `connect-src` allows `https:` because the API address is typed by the user at runtime; `worker-src 'self'`:
+   `connect-src` allows `https:` because the API address is typed by the user at runtime (Z1, accepted; the Drive
+   Google API hosts and the tile/geocode hosts sit on HTTPS too, but they cannot be an exclusive list without
+   breaking a self-hosted server the person types; [02](02-threat-model.md) RR-30); `worker-src 'self'`:
    MapLibre GL 6 loads its ES-module worker from `/maplibre/maplibre-gl-worker.mjs` (F-27); `angular.json` sets
    `inlineCritical: false` so `script-src 'self'` holds.
 3. **Caching: `no-cache` on every path.** Firebase's default for a static file is `max-age=3600`, and a rule for
