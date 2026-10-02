@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { LocalStore } from '../../local-store.service';
 import type { TokenProvider } from '../drive-client';
@@ -26,8 +26,14 @@ import { createLazyBackupAdapterProxy } from './factories/backup-factory';
 import { createLazySyncAdapterProxy } from './factories/sync-factory';
 import { createLazyDeletionAdapterProxy } from './factories/deletion-factory';
 import { DriveConnectService } from './drive-connect.service';
+import { Payload } from '../backup/backup-test-rig';
 
 const tokens: TokenProvider = { accessToken: async () => 'test-token' };
+
+function memoryPrefs() {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+}
 
 async function createDevice(server: FakeDriveServer) {
   const store = new LocalStore();
@@ -44,9 +50,10 @@ async function createDevice(server: FakeDriveServer) {
   const backup = createLazyBackupAdapterProxy(runtime) as any;
   const sync = createLazySyncAdapterProxy(runtime) as any;
   const deletion = createLazyDeletionAdapterProxy(runtime) as any;
-  const service = new DriveConnectService(backup, sync, deletion, { clientId: 'test-client-id' });
+  const payload = Payload.of(70_000, 3);
+  const service = new DriveConnectService(backup, sync, deletion, { clientId: 'test-client-id' }, payload.source(), memoryPrefs());
 
-  return { store, runtime, backup, sync, deletion, service };
+  return { store, runtime, backup, sync, deletion, service, payload };
 }
 
 describe('DriveConnectService', () => {
@@ -123,7 +130,7 @@ describe('DriveConnectService', () => {
 
       // B: try with wrong key string (not a valid RecoveryKey)
       const opened = await b.service.openWithRecoveryKey('wrong-key-string-12345');
-      expect(['NeedsRecoveryKey', 'Error', 'NeedsEnrolment']).toContain(opened.state);
+      expect(opened.error).toMatch(/not valid/i);
       expect(opened.state).not.toBe('Ready');
     });
   });
@@ -239,11 +246,6 @@ describe('DriveConnectService', () => {
   });
 
   describe('backward compatibility methods', () => {
-    it('setAutoBackup is a no-op', async () => {
-      await a.service.setAutoBackup(true);
-      // No error should be thrown
-    });
-
     it('deleteL1/L2/L3 return error structures', async () => {
       const l1 = await a.service.deleteL1();
       expect(typeof l1.success === 'boolean').toBe(true);
@@ -260,6 +262,166 @@ describe('DriveConnectService', () => {
     it('refresh calls connect', async () => {
       const result = await a.service.refresh();
       expect(result.state).toBeDefined();
+    });
+  });
+
+  describe('real flows through the service (success paths)', () => {
+    const house = (id: string, label: string) =>
+      ({ id, label, lat: 12.97, lon: 77.59, status: 'NEW', checklist: {}, deleted: false, syncVersion: 0 }) as const;
+
+    it('Back up now makes a real backup that lists and imports back with the same bytes', async () => {
+      const created = await a.service.createFolder();
+      expect(created.recoveryKey).toBeTruthy();
+      const done = await a.service.backUpNow();
+      expect(done.ok).toBe(true);
+      if (!done.ok) throw new Error(done.reason);
+      expect(done.backup.houses).toBe(3);
+
+      const listing = await a.service.listBackups();
+      if (!listing.ok) throw new Error(listing.reason);
+      expect(listing.backups.length).toBe(1);
+      expect(listing.backups[0].id).toBe(done.backup.id);
+
+      const imported = await a.service.importFromDrive(done.backup.id);
+      if (!imported.ok) throw new Error(imported.reason);
+      const bytes = new Uint8Array(await imported.file.arrayBuffer());
+      expect(bytes.length).toBe(a.payload.bytes.length);
+      expect(Array.from(bytes)).toEqual(Array.from(a.payload.bytes));
+    });
+
+    it('Back up now without a connection is refused and makes nothing in Drive', async () => {
+      const before = server.allFiles().length;
+      const out = await a.service.backUpNow();
+      expect(out.ok).toBe(false);
+      expect(server.allFiles().length).toBe(before);
+    });
+
+    it('a second browser joins by TYPING the recovery key and receives the first one\'s house', async () => {
+      const created = await a.service.createFolder();
+      await a.store.saveHouse(house('h1', 'Lake View'));
+      const syncA = await a.service.syncNow();
+      expect(syncA.state).toBe('synced');
+
+      // The key as the person types it: lower case, spaces instead of the hyphens.
+      const typed = created.recoveryKey!.toLowerCase().replace(/-/g, ' ');
+      const joined = await b.service.openWithRecoveryKey(typed);
+      expect(joined.state).toBe('Ready');
+      const syncB = await b.service.syncNow();
+      expect(syncB.state).toBe('synced');
+      expect((await b.store.allHouses()).find((h) => h.id === 'h1')?.label).toBe('Lake View');
+    });
+
+    it('a mistyped recovery key is refused with a message and nothing changes', async () => {
+      const created = await a.service.createFolder();
+      const key = created.recoveryKey!;
+      const flipped = key.slice(0, 2) + (key[2] === '2' ? '3' : '2') + key.slice(3);
+      const out = await b.service.openWithRecoveryKey(flipped);
+      expect(out.error).toMatch(/not valid/i);
+      expect(b.service.getState()).not.toBe('Ready');
+      expect((await b.runtime()).session).toBeUndefined();
+    });
+
+    it('a well-formed but wrong recovery key does not open the folder', async () => {
+      await a.service.createFolder();
+      const { RecoveryKey } = await import('../../crypto/recovery-key');
+      const other = RecoveryKey.generate(new WebCryptoProvider()).display;
+      const out = await b.service.openWithRecoveryKey(other);
+      expect(out.state).not.toBe('Ready');
+      expect((await b.runtime()).session).toBeUndefined();
+    });
+
+    it('deleting ONE of two backups (level 1, no passkey) removes exactly that backup and keeps the other', async () => {
+      await a.service.createFolder();
+      expect((await a.service.backUpNow()).ok).toBe(true);
+      // Retention keeps one backup per day, so the second backup is made two days later.
+      const realNow = Date.now.bind(Date);
+      const spy = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 2 * 86_400_000);
+      try {
+        expect((await a.service.backUpNow()).ok).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+      const listing = await a.service.listBackups();
+      if (!listing.ok) throw new Error(listing.reason);
+      expect(listing.backups.length).toBe(2);
+      const victim = listing.backups[1].id;
+      const keep = listing.backups[0].id;
+
+      const plan = await a.service.deletePlan({ type: 'oneBackup', fileId: victim });
+      if (!plan.ok) throw new Error(plan.reason);
+      const ran = await a.service.executeDelete(plan.plan, null);
+      expect(ran).toEqual({ ok: true });
+
+      const after = await a.service.listBackups();
+      if (!after.ok) throw new Error(after.reason);
+      expect(after.backups.map((x) => x.id)).toEqual([keep]);
+      expect(server.allFiles().some((f) => f.appProperties.kind === 'keys')).toBe(true);
+    });
+
+    it('deleting the ONLY backup is refused without a passkey (it is the last one: level 2) and nothing is deleted', async () => {
+      await a.service.createFolder();
+      expect((await a.service.backUpNow()).ok).toBe(true);
+      const listing = await a.service.listBackups();
+      if (!listing.ok) throw new Error(listing.reason);
+      const before = server.allFiles().length;
+
+      const plan = await a.service.deletePlan({ type: 'oneBackup', fileId: listing.backups[0].id });
+      if (!plan.ok) throw new Error(plan.reason);
+      const ran = await a.service.executeDelete(plan.plan, null);
+      expect(ran.ok).toBe(false);
+      expect(server.allFiles().length).toBe(before);
+      expect((await a.service.listBackups()).ok).toBe(true);
+    });
+
+    it('delete everything is refused without a passkey and nothing is deleted', async () => {
+      await a.service.createFolder();
+      await a.service.backUpNow();
+      const before = server.allFiles().length;
+      const info = await a.service.deleteConfirmInfo({ type: 'everything' });
+      expect(info.ok).toBe(false);
+      const auth = await a.service.authorizeDelete({ type: 'everything' });
+      expect(auth.ok).toBe(false);
+      expect(server.allFiles().length).toBe(before);
+    });
+
+    it('disconnect keeps every Drive file and a later Back up now is refused', async () => {
+      await a.service.createFolder();
+      await a.service.backUpNow();
+      const before = server.allFiles().length;
+      await a.service.disconnect();
+      expect(server.allFiles().length).toBe(before);
+      expect((await a.service.backUpNow()).ok).toBe(false);
+    });
+  });
+
+  describe('automatic backup', () => {
+    it('is off until turned on and the preference is remembered', async () => {
+      expect(a.service.autoBackupEnabled()).toBe(false);
+      await a.service.setAutoBackup(true);
+      expect(a.service.autoBackupEnabled()).toBe(true);
+      await a.service.setAutoBackup(false);
+      expect(a.service.autoBackupEnabled()).toBe(false);
+    });
+
+    it('does nothing while it is off or before the folder is open', async () => {
+      expect((await a.service.runDueBackup()).ran).toBe(false);
+      await a.service.createFolder();
+      const off = await a.service.runDueBackup();
+      expect(off).toEqual({ ran: false, reason: 'DISABLED' });
+      expect(server.allFiles().some((f) => f.appProperties.kind === 'backup')).toBe(false);
+    });
+
+    it('makes the first backup when it is on, and not a second one right after', async () => {
+      await a.service.createFolder();
+      await a.service.setAutoBackup(true);
+      const first = await a.service.runDueBackup();
+      expect(first.ran).toBe(true);
+      const count = () => server.allFiles().filter((f) => f.appProperties.kind === 'backup' && !f.trashed).length;
+      expect(count()).toBe(1);
+      const second = await a.service.runDueBackup();
+      expect(second.ran).toBe(false);
+      expect(second.reason).toBe('NOT_DUE');
+      expect(count()).toBe(1);
     });
   });
 });
