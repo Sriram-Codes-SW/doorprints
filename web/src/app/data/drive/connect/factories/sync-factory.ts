@@ -114,7 +114,7 @@ export function createLazySyncAdapterProxy(getRuntime: () => Promise<DriveRuntim
       return { grantedAt: Date.now() };
     },
 
-    async pendingPhotoBytes(): Promise<number> {
+    async pendingPhotoBytes(): Promise<number | null> {
       try {
         const adapter = await ensureAdapter();
         return adapter.pendingPhotoBytes();

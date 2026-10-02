@@ -310,8 +310,9 @@ export class DriveSyncAdapter {
   /**
    * Get the number of bytes waiting to be uploaded (for the "Upload now" button label).
    * Sums sizeBytes of all photos known locally but not yet uploaded to Drive.
+   * Returns null if the store fails (unknown because of error), 0 if no photos are pending.
    */
-  async pendingPhotoBytes(): Promise<number> {
+  async pendingPhotoBytes(): Promise<number | null> {
     try {
       if (!this.photos) return 0;
       // Get all local rows (photos and other data)
@@ -331,7 +332,7 @@ export class DriveSyncAdapter {
       }
       return pending;
     } catch {
-      return 0;
+      return null;
     }
   }
 
@@ -358,6 +359,6 @@ export interface IDriveSyncAdapter {
   setPhotosWifiOnly(wifiOnly: boolean): void;
   setUploadOnMobile(allowed: boolean): void;
   uploadPhotosNowOverMobile(): OneOffGrant;
-  pendingPhotoBytes(): Promise<number>;
+  pendingPhotoBytes(): Promise<number | null>;
   decideBackup(force?: boolean): boolean;
 }

@@ -90,6 +90,36 @@ describe('DriveSyncAdapter', () => {
     expect(typeof behind).toBe('boolean');
   });
 
+  it('should return null when photos.refs() throws instead of 0', async () => {
+    // Create adapter with a failing local rows
+    const failingLocal = {
+      all: async () => [],
+      photo: async () => null,
+      applyRemote: async () => {},
+    };
+
+    const failingAdapter = new DriveSyncAdapter(
+      null,
+      world.devices.get('test-device')!.drive,
+      () => world.now(),
+      undefined,
+      undefined,
+      undefined,
+      failingLocal,
+    );
+
+    // Mock photos with refs() that throws
+    (failingAdapter as any).photos = {
+      refs: async () => {
+        throw new Error('refs() failed');
+      },
+    };
+
+    const bytes = await failingAdapter.pendingPhotoBytes();
+    // After fix, should return null instead of 0
+    expect(bytes).toBe(null);
+  });
+
   it('should handle sync without crash on confirm shrink', async () => {
     const status = await adapter.syncNow({ confirmShrink: true });
     expect(status.state).toBeDefined();
