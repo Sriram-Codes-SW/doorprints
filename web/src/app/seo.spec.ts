@@ -251,3 +251,24 @@ describe('which routes search engines may index', () => {
     }
   });
 });
+
+describe('security headers for Google sign-in (S4b-BL-73)', () => {
+  const headers = () =>
+    Object.fromEntries(
+      (firebaseJson.hosting.headers.find((h) => h.source === '**')?.headers ?? []).map(
+        (h: { key: string; value: string }) => [h.key, h.value],
+      ),
+    );
+
+  it('lets the Google sign-in popup talk back (COOP same-origin-allow-popups)', () => {
+    expect(headers()['Cross-Origin-Opener-Policy']).toBe('same-origin-allow-popups');
+  });
+
+  it('allows only the Google sign-in script and frame, and keeps connect-src open to https', () => {
+    const csp = headers()['Content-Security-Policy'];
+    expect(csp).toContain("script-src 'self' https://accounts.google.com/gsi/client;");
+    expect(csp).toContain('frame-src \'self\' blob: https://accounts.google.com/gsi/;');
+    // Map tiles, address search and a self-hosted server need any https host.
+    expect(csp).toMatch(/connect-src 'self' https: /);
+  });
+});
