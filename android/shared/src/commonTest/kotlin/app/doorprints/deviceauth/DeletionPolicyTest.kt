@@ -53,7 +53,9 @@ class DeletionPolicyTest {
     fun onlyL3AsksTheBoxAndTheDelay() {
         val l2 = (DeletionPolicy.decide(DeletionAction.DELETE_ALL_BACKUPS, phone) as DeletionDecision.Allowed).requirements
         val l3 = (DeletionPolicy.decide(DeletionAction.DELETE_EVERYTHING, phone) as DeletionDecision.Allowed).requirements
-        assertTrue(!l2.tickBox && l2.delaySeconds == 0)
+        assertTrue(l2.tickBox && l2.delaySeconds == 0) // owner 2026-10-02: delete all backups has the box, no delay
+        val revoke = (DeletionPolicy.decide(DeletionAction.REVOKE_DEVICE, phone) as DeletionDecision.Allowed).requirements
+        assertTrue(!revoke.tickBox && revoke.delaySeconds == 0)
         assertTrue(l3.tickBox && l3.delaySeconds == 5)
         assertEquals(60_000L, l3.authValidMs)
         assertEquals(Factor.DEVICE_AUTH, l3.factor)

@@ -116,7 +116,7 @@ object DeletionPolicy {
         }
         val l3 = level == DeleteLevel.L3
         return DeletionDecision.Allowed(
-            Requirements(level, factor, tickBox = l3, delaySeconds = if (l3) DELAY_SECONDS_L3 else 0, pairing = pairing,
+            Requirements(level, factor, tickBox = l3 || action == DeletionAction.DELETE_ALL_BACKUPS, delaySeconds = if (l3) DELAY_SECONDS_L3 else 0, pairing = pairing,
                 authValidMs = if (factor == Factor.NONE) 0 else AUTH_VALID_MS),
         )
     }

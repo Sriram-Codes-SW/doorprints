@@ -29,7 +29,7 @@ Web, `web/src/app/data/device-auth/`: `delete-policy.ts` (twin), `prf-seal.ts` (
 ## Decisions
 - androidx.biometric is NOT a dependency: used platform `android.hardware.biometrics.BiometricPrompt` (as the app lock does). BIOMETRIC_STRONG|DEVICE_CREDENTIAL from API 30; API 29 device-credential flag; API 26-28 needs a `ConfirmCredentialLauncher` (UI seam), absent -> NOT_AVAILABLE (fail closed).
 - Actions not in docs/15 10.1 table were classed: `REMOVE_SHARED_HUNT`, `DISCONNECT_THIS_DEVICE`, `TURN_AUTO_BACKUP_OFF` L1 and local (work offline); the last two also work with no lock and no PRF (they only stop Drive use). Everything else needs the lock on phones.
-- Tick box and 5 s delay: L3 only (decision 8). 3.2's "the same dialog" for L2 is read as dialog + factor, no box. Open question for the owner if L2 "Delete all backups" should also carry the box.
+- Tick box and 5 s delay: L3 (decision 8); the box alone also for Delete all backups (below). **Owner decision, 2026-10-02:** "Delete all backups" (L2) also carries the tick box: device authentication + box, NO 5-second delay (delay stays L3 only). Built in both stacks and the vectors.
 - Unknown backup count = last backup (L2). Order of refusals: no lock, website w/o PRF, offline.
 - Unknown lock state pauses but never drops keys. Timeout of the prompt maps to CANCELLED (no TIMED_OUT result in the spec'd enum).
 - `BiometricConstants.ERROR_NEGATIVE_BUTTON` (13) is not public in the platform class; literal constant used.
