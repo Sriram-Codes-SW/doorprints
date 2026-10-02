@@ -27,7 +27,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 function fakeService(overrides: Record<string, unknown> = {}) {
   return {
     syncNow: vi.fn().mockResolvedValue({ state: 'synced', lastSyncAt: Date.now(), skipped: [], needsConfirmation: false }),
-    photoSettings: vi.fn().mockResolvedValue({ wifiOnly: true }),
+    photoSettings: vi.fn().mockResolvedValue({ uploadOnMobileData: false }),
     pendingPhotoBytes: vi.fn().mockResolvedValue(0),
     setPhotosWifiOnly: vi.fn().mockResolvedValue(undefined),
     uploadPhotosNowOverMobile: vi.fn().mockResolvedValue({ granted: true }),

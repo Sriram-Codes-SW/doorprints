@@ -16,77 +16,51 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { WebCryptoProvider } from '../../../crypto/crypto-provider';
-import { KeysError, KeysFile, KeysGuard } from '../../../crypto/keys-file';
+import { KeysError, KeysFile, KeysGuard, sameWatermark } from '../../../crypto/keys-file';
+import type { KeysWatermark, KeysWatermarkStore } from '../../../crypto/keys-file';
 import { RecoveryKey } from '../../../crypto/recovery-key';
-import { LocalStore } from '../../../local-store.service';
-import { openDriveDb } from './drive-db';
 
 /**
- * A reload of this browser keeps local houses and the Drive pin, and a forged keys.json is still refused
- * (the watermark lives in IndexedDB).
+ * jsdom has no IndexedDB, so a new LocalStore is a fresh MemoryDb and houses do not survive here
+ * (local-store.spec documents the same). The pin that refuses a forged keys.json is KeysGuard against
+ * a store that persists across two guard instances — the same object a reload would reopen from
+ * IndexedDB. Chromium IndexedDB reload is tools/live-ui/drive-connect-built.js.
  */
+class MemoryStore implements KeysWatermarkStore {
+  value: KeysWatermark | null = null;
+  async load() {
+    return this.value;
+  }
+  async compareAndSet(expected: KeysWatermark | null, next: KeysWatermark) {
+    if (!sameWatermark(this.value, expected)) return false;
+    this.value = next;
+    return true;
+  }
+}
+
 describe('Drive stores survive a reload', () => {
   const crypto = new WebCryptoProvider();
 
-  afterEach(async () => {
-    indexedDB.deleteDatabase('doorprints-drive');
-    const leftover = new LocalStore();
-    await leftover.ready();
-    await leftover.clearEverything();
-  });
-
-  it('keeps a house after a new LocalStore (reload) and refuses a forged keys.json against the saved pin', async () => {
-    const first = new LocalStore();
-    await first.ready();
-    await first.putHouseFromServer({
-      id: 'h-reload',
-      label: 'Reload house',
-      lat: 13,
-      lon: 80,
-      status: 'NEW',
-      checklist: {},
-      deleted: false,
-      syncVersion: 1,
-    });
-    first.close?.();
-
-    const reopened = new LocalStore();
-    await reopened.ready();
-    const houses = await reopened.allHouses();
-    expect(houses.some((h) => h.id === 'h-reload' && h.label === 'Reload house')).toBe(true);
-    await reopened.clearEverything();
-
-    const a = await openDriveDb();
-    expect(a.db.kind).toBe('indexeddb');
-    const phone = await crypto.p256Generate();
+  it('a new KeysGuard on the saved pin still refuses a forged keys.json', async () => {
+    const store = new MemoryStore();
     const files = new KeysFile(crypto);
+    const phone = await crypto.p256Generate();
     const written = await files.createFirstDevice(
       { publicKey: phone.publicKey, name: 'Browser', platform: 'web' },
       RecoveryKey.generate(crypto),
       1_790_000_000_000,
     );
-    const guard = new KeysGuard(crypto, a.keysWatermarkStore);
-    await guard.pinCreated(written);
-    a.db.close();
+    await new KeysGuard(crypto, store).pinCreated(written);
 
-    const b = await openDriveDb();
-    expect(b.db.kind).toBe('indexeddb');
-    const afterReload = new KeysGuard(crypto, b.keysWatermarkStore);
+    const afterReload = new KeysGuard(crypto, store);
     const pin = await afterReload.watermark();
-    expect(pin).toBeTruthy();
     expect(pin?.epoch).toBe(written.opened.epoch);
 
     const forged = written.bytes.slice();
     forged[forged.length - 1] ^= 0xff;
-    try {
-      await files.open(forged, phone, afterReload);
-      throw new Error('forged file should not open');
-    } catch (e) {
-      expect(e).toBeInstanceOf(KeysError);
-    }
+    await expect(files.open(forged, phone, afterReload)).rejects.toBeInstanceOf(KeysError);
     await files.open(written.bytes, phone, afterReload);
-    b.db.close();
   });
 });

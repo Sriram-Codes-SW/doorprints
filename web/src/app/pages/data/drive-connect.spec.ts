@@ -48,7 +48,7 @@ function fakeService(state: ConnectState, extra: Record<string, unknown> = {}) {
     confirmShrink: vi.fn(),
     importFromDrive: vi.fn(),
     syncNow: vi.fn().mockResolvedValue({ state: 'synced', lastSyncAt: Date.now(), skipped: [], needsConfirmation: false }),
-    photoSettings: vi.fn().mockResolvedValue({ wifiOnly: true }),
+    photoSettings: vi.fn().mockResolvedValue({ uploadOnMobileData: false }),
     pendingPhotoBytes: vi.fn().mockResolvedValue(0),
     setPhotosWifiOnly: vi.fn(),
     uploadPhotosNowOverMobile: vi.fn(),
@@ -118,7 +118,7 @@ describe('DriveConnectComponent', () => {
     const seen: Blob[] = [];
     component.importFile.subscribe((b) => seen.push(b));
     const blob = new Blob(['x']);
-    component.onImportFromDrive(blob);
+    component['onImportFromDrive'](blob);
     expect(seen).toEqual([blob]);
   });
 });

@@ -113,9 +113,9 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
 
     if (result.needsShrinkConfirmation) {
       this.shrinkBackupId.set(backup.id);
-    } else {
-      this.backupBusy.set(false);
     }
+    // Clear busy so the shrink confirm button is enabled; confirmShrink sets it again.
+    this.backupBusy.set(false);
 
     await this.loadBackups();
   }

@@ -78,7 +78,7 @@ describe('DriveConnectService', () => {
     });
 
     it('connect and createFolder transition states correctly', async () => {
-      expect(a.service.getState()).toBe('Unavailable');
+      expect(a.service.getState()).toBe('Disconnected');
 
       const created = await a.service.createFolder();
       expect(created.state).toBe('FirstConnectShowRecoveryKey');
