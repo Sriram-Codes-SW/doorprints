@@ -17,7 +17,7 @@
  */
 
 import { Sha256 } from '../../export/sha256';
-import { ab, concat } from './bytes';
+import { ab, concat, constantTimeEquals } from './bytes';
 import { isValidScalar } from './p256-scalar';
 
 /**
@@ -231,8 +231,8 @@ export class WebCryptoProvider implements CryptoProvider {
 
   /**
    * Wrap a stored P-256 private key (from IndexedDB or similar persistent storage).
-   * Validates the CryptoKey (type 'private', ECDH/P-256, deriveBits usage, non-extractable)
-   * and the public key bytes before returning the provider's own WebP256Key wrapper.
+   * Validates the CryptoKey (type 'private', ECDH/P-256, deriveBits usage, non-extractable),
+   * the public key bytes, and that the public key matches the private key.
    */
   async p256FromStoredKey(privateKey: CryptoKey, publicKeyRaw: Uint8Array): Promise<P256PrivateKey> {
     try {
@@ -259,6 +259,23 @@ export class WebCryptoProvider implements CryptoProvider {
 
       // Validate public key bytes
       const pub = this.p256ValidatePublic(publicKeyRaw);
+
+      // Verify the public key belongs to the private key: both sides of ECDH should produce the same secret.
+      // Generate a temporary throwaway key pair for the test
+      const testPair = (await this.subtle.generateKey(EC, false, ['deriveBits'])) as CryptoKeyPair;
+      const testPublicRaw = new Uint8Array(await this.subtle.exportKey('raw', testPair.publicKey));
+
+      // Compute s1 = deriveBits(ECDH, storedPrivate, testPublic)
+      const s1 = new Uint8Array(await this.subtle.deriveBits({ name: 'ECDH', public: testPair.publicKey }, privateKey, 256));
+
+      // Compute s2 = deriveBits(ECDH, testPrivate, storedPublic)
+      const storedPublicCryptoKey = await this.subtle.importKey('raw', ab(pub), EC, false, []);
+      const s2 = new Uint8Array(await this.subtle.deriveBits({ name: 'ECDH', public: storedPublicCryptoKey }, testPair.privateKey, 256));
+
+      // Verify the secrets match
+      if (!constantTimeEquals(s1, s2)) {
+        throw new CryptoError('INVALID_KEY', 'public key does not match the private key');
+      }
 
       return new WebP256Key(privateKey, pub);
     } catch (err) {

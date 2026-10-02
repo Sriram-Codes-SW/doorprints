@@ -152,4 +152,22 @@ describe('CryptoProvider.p256FromStoredKey', () => {
     expect(secret1).toEqual(peerSecret1);
     expect(secret2).toEqual(peerSecret2);
   });
+
+  it('rejects stored private key with mismatched public key', async () => {
+    // Generate two independent key pairs
+    const keyPair1 = await crypto.p256Generate();
+    const keyPair2 = await crypto.p256Generate();
+
+    const storedPrivateKey1 = (keyPair1 as any).key;
+    const wrongPublicKey = keyPair2.publicKey; // Public key from a different pair
+
+    try {
+      // Try to create a key with private key from keyPair1 but public key from keyPair2
+      await crypto.p256FromStoredKey(storedPrivateKey1, wrongPublicKey);
+      throw new Error('Should have thrown INVALID_KEY for mismatched key pair');
+    } catch (err: any) {
+      expect(err.message).toContain('INVALID_KEY');
+      expect(err.message).toContain('public key does not match');
+    }
+  });
 });
