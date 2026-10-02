@@ -42,3 +42,18 @@ all of the above (sync and backups use different device ids: key-id hex vs rando
 TC-M-25 (boundaries), TC-M-45, Survey of India reply (tell the session), Search Console sitemap recheck, sign off the privacy
 text, set the privacy policy URL, Play data-safety answers, open question: does Drive data going to Gemini (opt-in) count as a
 Limited Use "transfer"?
+
+## Scope decision, 2026-10-02 (owner): Android and iOS are PAUSED
+No new Android or iOS development or testing, no phone checklists, no iOS guide for now. The website must be fully
+functional. `feat/drive-connect` (Android screens) is parked, no pull request. Android and iOS code that already sits in the
+shared branches (`android/shared`) is merged as built, unverified on devices, and marked so in the docs.
+
+Website work still needed for "fully functional" (after the web page branch is done):
+1. Wire the web sync for real: `LocalRows` over IndexedDB, triggers, one-tab lock, status line, confirmation questions.
+2. S4b-BL-126, web side: enrolling a second browser (QR shown on one, camera or 8-digit code on the other; no new library).
+3. The real WebAuthn PRF authenticator for L2/L3 on the web (today only the seam and a fake exist; without it deletion is L1-only).
+4. Deploy configuration: the Google client id via the untracked `config.js`, written by the deploy workflow from a CI variable.
+5. Real-Drive checks with `tools/drive-spike` (run by the owner with a test account; report has no tokens).
+6. Link the privacy page from the website's settings; the user guide pages with screenshots for the Drive features.
+7. Then the postponed steps for the web scope: reviews (Haiku, narrow prompts), fixes, local checks, docs pass, stacked
+   pull requests bottom-up, merges with green CI and `main` push CI checked after each.
