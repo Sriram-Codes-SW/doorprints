@@ -1,0 +1,259 @@
+{
+ "format": "doorprints-hpke-vectors/1",
+ "about": "Known-answer vectors for the Drive encryption (docs/15 §9.8, S4b-BL-125), run by Kotlin (PrimitivesTest, HpkeVectorsTest) and TypeScript (hpke-vectors.spec.ts). Hex throughout. Entries under 'primitives' and 'hpke.official' are published values (each 'source' names where); 'hpke.regression' entries were produced by this implementation and checked against an independent one (docs/schemas/README.md section 6.3): they are regression vectors, not official ones.",
+ "primitives": {
+  "hmacSha256": [
+   {
+    "source": "RFC 4231 test case 1",
+    "key": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+    "data": "4869205468657265",
+    "mac": "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+   },
+   {
+    "source": "RFC 4231 test case 2",
+    "key": "4a656665",
+    "data": "7768617420646f2079612077616e7420666f72206e6f7468696e673f",
+    "mac": "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+   }
+  ],
+  "hkdfSha256": [
+   {
+    "source": "RFC 5869 A.1",
+    "ikm": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+    "salt": "000102030405060708090a0b0c",
+    "info": "f0f1f2f3f4f5f6f7f8f9",
+    "length": 42,
+    "prk": "077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5",
+    "okm": "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+   },
+   {
+    "source": "RFC 5869 A.3",
+    "ikm": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+    "salt": "",
+    "info": "",
+    "length": 42,
+    "prk": "19ef24a32c717b167f33a91d6f648bdf96596776afdb6377ac434c1c293ccb04",
+    "okm": "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"
+   }
+  ],
+  "aesGcm": [
+   {
+    "source": "GCM spec (McGrew-Viega) test case 13",
+    "key": "0000000000000000000000000000000000000000000000000000000000000000",
+    "nonce": "000000000000000000000000",
+    "aad": "",
+    "pt": "",
+    "ct": "",
+    "tag": "530f8afbc74536b9a963b4f1c4cb738b"
+   },
+   {
+    "source": "GCM spec (McGrew-Viega) test case 14",
+    "key": "0000000000000000000000000000000000000000000000000000000000000000",
+    "nonce": "000000000000000000000000",
+    "aad": "",
+    "pt": "00000000000000000000000000000000",
+    "ct": "cea7403d4d606b6e074ec5d3baf39d18",
+    "tag": "d0d1c8a799996bf0265b98b5d48ab919"
+   },
+   {
+    "source": "GCM spec (McGrew-Viega) test case 15",
+    "key": "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308",
+    "nonce": "cafebabefacedbaddecaf888",
+    "aad": "",
+    "pt": "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255",
+    "ct": "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662898015ad",
+    "tag": "b094dac5d93471bdec1a502270e3cc6c"
+   },
+   {
+    "source": "GCM spec (McGrew-Viega) test case 16",
+    "key": "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308",
+    "nonce": "cafebabefacedbaddecaf888",
+    "aad": "feedfacedeadbeeffeedfacedeadbeefabaddad2",
+    "pt": "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39",
+    "ct": "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662",
+    "tag": "76fc6ece0f4e1768cddf8853bb2d551b"
+   }
+  ],
+  "ecdhP256": [
+   {
+    "source": "RFC 5903 section 8.1 (256-bit random ECP group)",
+    "i": "c88f01f510d9ac3f70a292daa2316de544e9aab8afe84049c62a9c57862d1433",
+    "gi": "04dad0b65394221cf9b051e1feca5787d098dfe637fc90b9ef945d0c37725811805271a0461cdb8252d61f1c456fa3e59ab1f45b33accf5f58389e0577b8990bb3",
+    "r": "c6ef9c5d78ae012a011164acb397ce2088685d8f06bf9be0b283ab46476bee53",
+    "gr": "04d12dfb5289c8d4f81208b70270398c342296970a0bccb74c736fc7554494bf6356fbf3ca366cc23e8157854c13c58d6aac23f046ada30f8353e74f33039872ab",
+    "girx": "d6840f6b42f6edafd13116e0e12565202fef8e9ece7dce03812464d04b9442de"
+   }
+  ],
+  "p256ScalarMult": [
+   {
+    "source": "P-256 base point (FIPS 186-5 / SEC 2), k = 1",
+    "k": "0000000000000000000000000000000000000000000000000000000000000001",
+    "point": "046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5"
+   },
+   {
+    "source": "well-known P-256 multiples, k = 2",
+    "k": "0000000000000000000000000000000000000000000000000000000000000002",
+    "point": "047cf27b188d034f7e8a52380304b51ac3c08969e277f21b35a60b48fc4766997807775510db8ed040293d9ac69f7430dbba7dade63ce982299e04b79d227873d1"
+   },
+   {
+    "source": "well-known P-256 multiples, k = 3",
+    "k": "0000000000000000000000000000000000000000000000000000000000000003",
+    "point": "045ecbe4d1a6330a44c8f7ef951d4bf165e6c6b721efada985fb41661bc6e7fd6c8734640c4998ff7e374b06ce1a64a2ecd82ab036384fb83d9a79b127a27d5032"
+   },
+   {
+    "source": "n - 1 gives -G = (Gx, p - Gy)",
+    "k": "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632550",
+    "point": "046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296b01cbd1c01e58065711814b583f061e9d431cca994cea1313449bf97c840ae0a"
+   }
+  ]
+ },
+ "hpke": {
+  "official": [
+   {
+    "source": "RFC 9180 Appendix A.3.1 (DHKEM(P-256, HKDF-SHA256), HKDF-SHA256, AES-128-GCM, base mode)",
+    "mode": 0,
+    "kem_id": 16,
+    "kdf_id": 1,
+    "aead_id": 1,
+    "info": "4f6465206f6e2061204772656369616e2055726e",
+    "ikmE": "4270e54ffd08d79d5928020af4686d8f6b7d35dbe470265f1f5aa22816ce860e",
+    "pkEm": "04a92719c6195d5085104f469a8b9814d5838ff72b60501e2c4466e5e67b325ac98536d7b61a1af4b78e5b7f951c0900be863c403ce65c9bfcb9382657222d18c4",
+    "skEm": "4995788ef4b9d6132b249ce59a77281493eb39af373d236a1fe415cb0c2d7beb",
+    "ikmR": "668b37171f1072f3cf12ea8a236a45df23fc13b82af3609ad1e354f6ef817550",
+    "pkRm": "04fe8c19ce0905191ebc298a9245792531f26f0cece2460639e8bc39cb7f706a826a779b4cf969b8a0e539c7f62fb3d30ad6aa8f80e30f1d128aafd68a2ce72ea0",
+    "skRm": "f3ce7fdae57e1a310d87f1ebbde6f328be0a99cdbcadf4d6589cf29de4b8ffd2",
+    "enc": "04a92719c6195d5085104f469a8b9814d5838ff72b60501e2c4466e5e67b325ac98536d7b61a1af4b78e5b7f951c0900be863c403ce65c9bfcb9382657222d18c4",
+    "shared_secret": "c0d26aeab536609a572b07695d933b589dcf363ff9d93c93adea537aeabb8cb8",
+    "key": "868c066ef58aae6dc589b6cfdd18f97e",
+    "base_nonce": "4e0bc5018beba4bf004cca59",
+    "exporter_secret": "14ad94af484a7ad3ef40e9f3be99ecc6fa9036df9d4920548424df127ee0d99f",
+    "encryptions": [
+     {
+      "seq": 0,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d30",
+      "nonce": "4e0bc5018beba4bf004cca59",
+      "ct": "5ad590bb8baa577f8619db35a36311226a896e7342a6d836d8b7bcd2f20b6c7f9076ac232e3ab2523f39513434"
+     },
+     {
+      "seq": 1,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d31",
+      "nonce": "4e0bc5018beba4bf004cca58",
+      "ct": "fa6f037b47fc21826b610172ca9637e82d6e5801eb31cbd3748271affd4ecb06646e0329cbdf3c3cd655b28e82"
+     },
+     {
+      "seq": 2,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d32",
+      "nonce": "4e0bc5018beba4bf004cca5b",
+      "ct": "895cabfac50ce6c6eb02ffe6c048bf53b7f7be9a91fc559402cbc5b8dcaeb52b2ccc93e466c28fb55fed7a7fec"
+     },
+     {
+      "seq": 4,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d34",
+      "nonce": "4e0bc5018beba4bf004cca5d",
+      "ct": "8787491ee8df99bc99a246c4b3216d3d57ab5076e18fa27133f520703bc70ec999dd36ce042e44f0c3169a6a8f"
+     },
+     {
+      "seq": 255,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d323535",
+      "nonce": "4e0bc5018beba4bf004ccaa6",
+      "ct": "2ad71c85bf3f45c6eca301426289854b31448bcf8a8ccb1deef3ebd87f60848aa53c538c30a4dac71d619ee2cd"
+     }
+    ]
+   }
+  ],
+  "regression": [
+   {
+    "source": "regression 1: produced by this implementation (Kotlin), checked against python 'cryptography' (not an official vector)",
+    "mode": 0,
+    "kem_id": 16,
+    "kdf_id": 1,
+    "aead_id": 2,
+    "info": "4f6465206f6e2061204772656369616e2055726e",
+    "ikmE": "4270e54ffd08d79d5928020af4686d8f6b7d35dbe470265f1f5aa22816ce860e",
+    "pkEm": "04a92719c6195d5085104f469a8b9814d5838ff72b60501e2c4466e5e67b325ac98536d7b61a1af4b78e5b7f951c0900be863c403ce65c9bfcb9382657222d18c4",
+    "ikmR": "668b37171f1072f3cf12ea8a236a45df23fc13b82af3609ad1e354f6ef817550",
+    "pkRm": "04fe8c19ce0905191ebc298a9245792531f26f0cece2460639e8bc39cb7f706a826a779b4cf969b8a0e539c7f62fb3d30ad6aa8f80e30f1d128aafd68a2ce72ea0",
+    "enc": "04a92719c6195d5085104f469a8b9814d5838ff72b60501e2c4466e5e67b325ac98536d7b61a1af4b78e5b7f951c0900be863c403ce65c9bfcb9382657222d18c4",
+    "shared_secret": "c0d26aeab536609a572b07695d933b589dcf363ff9d93c93adea537aeabb8cb8",
+    "key": "642ebea3c09bfa219629599a318e0b88aa0a0996148df927dc5a981e22dabb86",
+    "base_nonce": "883881320125125689d28047",
+    "exporter_secret": "e54868e8e8aaaeb4f9c1d152240a1506a2f8d9db8743037f8ac3e58b44ea789c",
+    "encryptions": [
+     {
+      "seq": 0,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d30",
+      "ct": "518c46e6810fbc55362f7d5995b0f54339d93664ca44e5c74d0f289c4f7983b4781b193de04ad3319f177244de"
+     },
+     {
+      "seq": 1,
+      "pt": "4265617574792069732074727574682c20747275746820626561757479",
+      "aad": "436f756e742d31",
+      "ct": "0ade75da0a9487cc383b9e8a5205efdfd1ccb998d97870aa334aa3c5ba4afe9d55e21fecec131510e5e91ddd4d"
+     }
+    ]
+   },
+   {
+    "source": "regression 2: produced by this implementation (Kotlin), checked against python 'cryptography' (not an official vector)",
+    "mode": 0,
+    "kem_id": 16,
+    "kdf_id": 1,
+    "aead_id": 2,
+    "info": "646f6f727072696e74732f647078312f77726170",
+    "ikmE": "f93955c043eaea51353281f6c24058053099fa337610fe8fcab61d65fd11dfcf",
+    "pkEm": "0466ff69c082cf3890e29ee5401dc161f48b106f8a11e1a9e3edba2dcc9d3a2971c1f66d48fe04a64afbbb9d400b14e60c0cd972e37e88ad1d3c11b97f2f685e73",
+    "ikmR": "936c6903b7d91874a248b04cdb5c2e953579a1c4c08287de54e65354da61818c",
+    "pkRm": "04153d73cb9eb1d8dd0363f783946d7c0e4a5d0b013ee22c9873a7502e515dd0a3d84e44c69b8583ade59d722b9d194e974bedd6917afd1419f32a9bf3498c04c0",
+    "enc": "0466ff69c082cf3890e29ee5401dc161f48b106f8a11e1a9e3edba2dcc9d3a2971c1f66d48fe04a64afbbb9d400b14e60c0cd972e37e88ad1d3c11b97f2f685e73",
+    "shared_secret": "dff227f47e489678a465cca18b0623f4dcae29de350e736ef2bb2c2a99ff612d",
+    "key": "e4ca78839b3225651364be7d07187e7d07e1bd8d347f16de80c054d6ea3e9065",
+    "base_nonce": "a2ca500b8e3a5653ccafc8d1",
+    "exporter_secret": "7eaba94a31093be95b9eec8d202526b45a583e3352f1070b5301f25e019cb120",
+    "encryptions": [
+     {
+      "seq": 0,
+      "pt": "000306090c0f1215181b1e2124272a2d303336393c3f4245484b4e5154575a5d",
+      "aad": "0f647078312f666f6c6465722d6b65790000000107070707070707070707070707070707",
+      "ct": "35f71144bde49f25795a0ae70e0d037e5fcbcd65c9ef53bfc8bcd641f17c4809bd1cd9112153d2fbd8eadccee8c1c427"
+     }
+    ]
+   },
+   {
+    "source": "regression 3: produced by this implementation (Kotlin), checked against python 'cryptography' (not an official vector)",
+    "mode": 0,
+    "kem_id": 16,
+    "kdf_id": 1,
+    "aead_id": 2,
+    "info": "",
+    "ikmE": "cec187304794620e1945e58255bd85e868bba7da76b38b8cffcfd580722ffbbd",
+    "pkEm": "045bbb07545e44047bcf01c42177984e5a3ff2028305e72fe0421bf3fc4875ba7b114e275f1fb5e77c26de5867b96943e8ab850fa43f8885fa73650e94c8d40cf3",
+    "ikmR": "2192ff991f7838efe586579e2751755108185653f9b62bf37e5d76d79c28382b",
+    "pkRm": "04a2ca61c41c822a835c707a587841987f096cbbcb1cc7b48ff984ad5b25c243ec467a9ae897b0e8aff84b01df5d47657fb6ba2e4fece772b69160c4c48d7b30cb",
+    "enc": "045bbb07545e44047bcf01c42177984e5a3ff2028305e72fe0421bf3fc4875ba7b114e275f1fb5e77c26de5867b96943e8ab850fa43f8885fa73650e94c8d40cf3",
+    "shared_secret": "0f033b06a7f5aaeed94d4c73d5c2b226ed43eda0b07f8b522c08af388e7ab720",
+    "key": "f7c435daea4b180aa53c3b5e78e39f732ebf0842ec772c3eeeaed72637181a76",
+    "base_nonce": "d98791bdd8e9711395c76a2a",
+    "exporter_secret": "9b40ce90483066607ecd3372bfd30838c312bc9c58f78e8e837d0497dbc91a93",
+    "encryptions": [
+     {
+      "seq": 0,
+      "pt": "",
+      "aad": "",
+      "ct": "c56493fabcb27e6213872ddf05e9a2a2"
+     },
+     {
+      "seq": 1,
+      "pt": "78",
+      "aad": "",
+      "ct": "87c9d2755af16591cfe26500da0b6ff7fd"
+     }
+    ]
+   }
+  ]
+ }
+}
