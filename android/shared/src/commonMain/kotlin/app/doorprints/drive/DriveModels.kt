@@ -149,7 +149,12 @@ data class DeleteReport(
     val deleted: List<String>,
     val left: List<String>,
     val error: DriveException? = null,
+    /** Per file: which ones failed and why (S4b-BL-119); [error] is the first failure that stopped the run. */
+    val failed: List<DeleteFailure> = emptyList(),
 )
+
+/** One file a deletion could not remove: the Drive error kind and status only, never a name. */
+data class DeleteFailure(val fileId: String, val kind: DriveException.Kind, val httpStatus: Int = 0)
 
 /** The folders of docs/15 §5.1, found by their `doorprints` app property. */
 data class FolderSpec(val name: String, val appProperties: Map<String, String>)
