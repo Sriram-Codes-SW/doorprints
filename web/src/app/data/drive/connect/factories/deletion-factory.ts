@@ -21,93 +21,14 @@ import {
   DriveDeletionAdapterImpl, PersistentDeletionStore, InMemoryKeyValueStore,
 } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
-import type { AuthorizationGate } from '../../drive-deletion';
-import type { AuthorizationToken } from '../../drive-deletion-rules';
+import { RealAuthorizationGate } from './deletion-gate';
 import { WebAuthorizer } from '../../../device-auth/web-authorizer';
 import { WebAuthnPrfAuthenticator } from '../../../device-auth/web-authn-prf-authenticator';
 import type { PrfAuthenticator, SealedBlob } from '../../../device-auth/prf-seal';
 import { sealWithPrf } from '../../../device-auth/prf-seal';
 import type { DriveRuntime } from './runtime';
 import type { DeletionAction } from '../../drive-deletion-rules';
-import { AUTHORIZATION_MAX_AGE_MS } from '../../drive-deletion-rules';
 import type { DeletionContext } from '../../../device-auth/delete-policy';
-
-/**
- * Real authorization gate that validates tokens through WebAuthorizer.
- * Tracks issued grants and enforces one-time use, freshness, and operation binding.
- */
-class RealAuthorizationGate implements AuthorizationGate {
-  private readonly issuedGrants = new Map<number, { action: DeletionAction; operationId: string; issuedAtMs: number }>();
-  private readonly spent = new Set<number>();
-  private testMutations = { skipGrantCheck: false, skipSpentCheck: false, skipFreshnessCheck: false };
-
-  constructor(
-    private readonly webAuthorizer: WebAuthorizer,
-    private readonly clock: () => number,
-  ) {}
-
-  /**
-   * Test-only: Apply a mutation for testing.
-   */
-  applyTestMutation(mutation: 'skipGrantCheck' | 'skipSpentCheck' | 'skipFreshnessCheck'): void {
-    if (mutation === 'skipGrantCheck') this.testMutations.skipGrantCheck = true;
-    if (mutation === 'skipSpentCheck') this.testMutations.skipSpentCheck = true;
-    if (mutation === 'skipFreshnessCheck') this.testMutations.skipFreshnessCheck = true;
-  }
-
-  /**
-   * Test-only: Reset mutations.
-   */
-  resetTestMutations(): void {
-    this.testMutations = { skipGrantCheck: false, skipSpentCheck: false, skipFreshnessCheck: false };
-  }
-
-  registerGrant(grantId: number, action: DeletionAction, operationId: string): void {
-    this.issuedGrants.set(grantId, { action, operationId, issuedAtMs: this.clock() });
-  }
-
-  async isGenuine(token: AuthorizationToken): Promise<boolean> {
-    // Parse grant ID from proof
-    const grantId = Number(token.proof);
-    if (!Number.isInteger(grantId)) return false;
-
-    const grant = this.issuedGrants.get(grantId);
-    if (!this.testMutations.skipGrantCheck && !grant) return false; // Grant never issued
-
-    if (!this.testMutations.skipSpentCheck && this.spent.has(grantId)) return false; // Grant already used
-
-    // Check freshness
-    if (grant) {
-      const age = this.clock() - grant.issuedAtMs;
-      if (!this.testMutations.skipFreshnessCheck && (age < 0 || age > AUTHORIZATION_MAX_AGE_MS)) return false;
-
-      // Check operation binding
-      if (grant.operationId !== token.operationId) return false;
-    }
-
-    // Mark as spent (one-use)
-    this.spent.add(grantId);
-    return true;
-  }
-
-  async stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean> {
-    // Check freshness and that the grant hasn't been revoked
-    const grantId = Number(token.proof);
-    if (!Number.isInteger(grantId)) return false;
-
-    const grant = this.issuedGrants.get(grantId);
-    if (!grant) return false;
-
-    // Check freshness window (60 seconds)
-    const age = this.clock() - grant.issuedAtMs;
-    if (!this.testMutations.skipFreshnessCheck && (age < 0 || age > AUTHORIZATION_MAX_AGE_MS)) return false;
-
-    // Check operation binding
-    if (grant.operationId !== token.operationId) return false;
-
-    return true;
-  }
-}
 
 /**
  * Creates a real deletion adapter from the Drive runtime.
