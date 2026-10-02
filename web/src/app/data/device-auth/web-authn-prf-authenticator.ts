@@ -74,6 +74,18 @@ function isPrfExtensionOutput(ext: unknown): ext is PrfExtensionOutput {
   return ext !== null && typeof ext === 'object' && 'prf' in ext;
 }
 
+/** Hostname used as WebAuthn `rp.id`. IPs and an empty host map to `localhost`. */
+export function relyingPartyIdOf(hostname: string): string {
+  const host = hostname.trim().toLowerCase();
+  if (!host || host === '127.0.0.1' || host === '[::1]' || host === '::1') return 'localhost';
+  return host;
+}
+
+function defaultRelyingPartyId(): string {
+  if (typeof location === 'undefined' || !location.hostname) return 'localhost';
+  return relyingPartyIdOf(location.hostname);
+}
+
 /** Type guard to check if credential has getClientExtensionResults method. */
 function hasGetClientExtensionResults(
   cred: unknown
@@ -99,6 +111,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   constructor(
     private readonly storageKey: (key: string) => Promise<string | undefined>,
     private readonly storageSet: (key: string, value: string) => Promise<void>,
+    private readonly relyingPartyId: () => string = defaultRelyingPartyId,
   ) {}
 
   /**
@@ -226,6 +239,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
           challenge: randomBytes(32),
           rp: {
             name: 'Doorprints',
+            id: relyingPartyIdOf(this.relyingPartyId()),
           },
           user: {
             // Random per passkey: the same id would make some authenticators replace the earlier passkey.

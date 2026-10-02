@@ -230,6 +230,31 @@ describe("WebAuthnPrfAuthenticator", () => {
       );
     });
 
+    it("puts the injected hostname on credentials.create as rp.id", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(
+        store.get,
+        store.set,
+        () => "doorprints.web.app",
+      );
+
+      await auth.registerPasskey("Test User");
+
+      expect(fakeCredentials.recordedCreateOptions?.publicKey?.rp).toEqual({
+        name: "Doorprints",
+        id: "doorprints.web.app",
+      });
+    });
+
+    it("maps 127.0.0.1 to localhost as rp.id", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(store.get, store.set, () => "127.0.0.1");
+
+      await auth.registerPasskey("Test User");
+
+      expect(fakeCredentials.recordedCreateOptions?.publicKey?.rp?.id).toBe("localhost");
+    });
+
     it("can be called on a second authenticator instance that reads the stored credential ID", async () => {
       const store = createStore();
       const auth1 = new WebAuthnPrfAuthenticator(store.get, store.set);
