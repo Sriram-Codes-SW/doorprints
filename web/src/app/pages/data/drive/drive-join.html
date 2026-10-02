@@ -28,7 +28,7 @@
       type="text"
       class="input-monospace"
       [value]="recoveryKeyText()"
-      (input)="recoveryKeyText.set($any($event.target).value)"
+      (input)="onKeyInput($event)"
       (keydown)="onKeyDown($event)"
       [disabled]="busy()"
       autocomplete="off"

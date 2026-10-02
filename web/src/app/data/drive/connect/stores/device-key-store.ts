@@ -18,6 +18,13 @@
 
 import type { P256PrivateKey, CryptoProvider } from '../../../crypto/crypto-provider';
 
+function webCryptoKey(privateKey: P256PrivateKey): CryptoKey {
+  if (!('key' in privateKey) || !(privateKey.key instanceof CryptoKey)) {
+    throw new Error('device key is not a WebCrypto key');
+  }
+  return privateKey.key;
+}
+
 export interface DeviceKeyPair {
   privateKey: P256PrivateKey;
   publicKey: Uint8Array;
@@ -133,7 +140,7 @@ export class DeviceKeyStore {
       const store = tx.objectStore('device-key');
 
       // Extract the CryptoKey from the provider's wrapper
-      const cryptoKey = (keyPair.privateKey as any).key;
+      const cryptoKey = webCryptoKey(keyPair.privateKey);
 
       const req = store.put(
         {

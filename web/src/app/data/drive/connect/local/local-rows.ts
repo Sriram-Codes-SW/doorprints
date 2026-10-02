@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { PhotoChangeDto } from '../../../../core/models';
+import type { HouseDto, PhotoChangeDto, RecordDto, VisitDto } from '../../../../core/models';
 import { AREA_NOTE_TYPE, AREA_TYPE, PLACE_TYPE } from '../../../../shared/area';
 import { BROKER_TYPE } from '../../../../shared/broker';
 import { CRITERION_TYPE, PREFERENCE_TYPE } from '../../../../shared/scoring';
@@ -51,7 +51,7 @@ export class LocalRowsAdapter implements LocalRows {
     }
     const photos = await this.store.allPhotos();
     for (const photo of photos) {
-      rows.push(this.toSyncRow('photos', photo.id, photo.updatedAt, photo.deleted, { ...photo } as any));
+      rows.push(this.toSyncRow('photos', photo.id, photo.updatedAt, photo.deleted, { ...photo } as Record<string, unknown>));
     }
     return rows;
   }
@@ -107,12 +107,12 @@ export class LocalRowsAdapter implements LocalRows {
       const json = row.json as Record<string, unknown>;
       switch (row.kind) {
         case 'houses': {
-          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as HouseDto;
           imported.houses.push(houseFromDto(dto, false));
           break;
         }
         case 'visits': {
-          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as VisitDto;
           imported.visits.push(visitFromDto(dto, false));
           break;
         }
@@ -120,7 +120,7 @@ export class LocalRowsAdapter implements LocalRows {
           imported.photos.push({ ...json, syncVersion: 1, deleted: row.stamp.deleted } as PhotoRecord);
           break;
         case 'records': {
-          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as any;
+          const dto = { ...json, syncVersion: 1, deleted: row.stamp.deleted } as RecordDto;
           imported.records.push(recordFromDto(dto, false));
           break;
         }

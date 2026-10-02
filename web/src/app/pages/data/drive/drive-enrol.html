@@ -40,7 +40,7 @@
       class="mono"
       rows="4"
       [value]="replyText()"
-      (input)="replyText.set($any($event.target).value)"
+      (input)="setReply($event)"
     ></textarea>
     <button type="button" class="btn btn-primary" (click)="revealCode()">{{ 'driveEnrol.showCode' | t }}</button>
   }
@@ -53,7 +53,7 @@
       class="mono"
       rows="4"
       [value]="requestText()"
-      (input)="requestText.set($any($event.target).value)"
+      (input)="setRequest($event)"
     ></textarea>
     <button type="button" class="btn" (click)="approvePasted()">{{ 'driveEnrol.makeReply' | t }}</button>
     @if (replyText()) {
@@ -64,7 +64,7 @@
         id="enrol-revealed"
         class="mono"
         rows="4"
-        (input)="replyText.set($any($event.target).value)"
+        (input)="setReply($event)"
       ></textarea>
       <button type="button" class="btn btn-primary" (click)="showApproverCode()">{{ 'driveEnrol.showCode' | t }}</button>
     }

@@ -23,9 +23,10 @@ import {
   type BackupListing,
   type BackupOutcome,
   type CreateOutcome,
-  type DriveProblem,
   type DriveConnection,
+  type DriveBackup,
   type ImportDownload,
+  type ReadyFolder,
 } from '../backup/drive-backup-results';
 import { DriveImportService } from '../backup/drive-import.service';
 import type { ScheduleDecision } from '../backup/backup-schedule';
@@ -90,7 +91,7 @@ export class DriveBackupAdapter {
    * asks the person to confirm the drop (to avoid accidental loss of large backups). The adapter shows the hold and
    * a *Confirm* button that calls `confirmShrink(backupId)` before the next run.
    */
-  async backUpNow(folder: { rootId: string; keysId: string; controlId: string; backupsId: string | null; keys: any; control: any }, source: BackupSource): Promise<BackupOutcome> {
+  async backUpNow(folder: ReadyFolder, source: BackupSource): Promise<BackupOutcome> {
     return this.backupService.backUp(folder, source);
   }
 
@@ -100,7 +101,7 @@ export class DriveBackupAdapter {
   }
 
   /** The backups in the folder, newest first by authenticated `createdAt`. Each passed every check of the listing. */
-  async listBackups(folder: { rootId: string; keysId: string; controlId: string; backupsId: string | null; keys: any; control: any }): Promise<BackupListing> {
+  async listBackups(folder: ReadyFolder): Promise<BackupListing> {
     return this.backupService.listBackups(folder);
   }
 
@@ -112,7 +113,7 @@ export class DriveBackupAdapter {
    * checksum the metadata's MAC covers, the `dpx/1` header must match the metadata's epoch and writer, and every chunk
    * must authenticate. On any refusal the staging sink is discarded: nothing reaches the import.
    */
-  async importFromDrive(folder: { rootId: string; keysId: string; controlId: string; backupsId: string | null; keys: any; control: any }, backupId: string, backupItem: any, staging: StagingSink): Promise<ImportDownload> {
+  async importFromDrive(folder: ReadyFolder, backupId: string, backupItem: DriveBackup, staging: StagingSink): Promise<ImportDownload> {
     return this.importService.download(folder, backupItem, staging);
   }
 
@@ -189,10 +190,10 @@ export interface BackupAdapterInterface {
   connect(): Promise<DriveConnection>;
   createFolder(): Promise<CreateOutcome>;
   openWithRecoveryKey(recoveryKey: RecoveryKey): Promise<DriveConnection>;
-  backUpNow(folder: any, source: BackupSource): Promise<BackupOutcome>;
+  backUpNow(folder: ReadyFolder, source: BackupSource): Promise<BackupOutcome>;
   confirmShrink(backupId: string): Promise<void>;
-  listBackups(folder: any): Promise<BackupListing>;
-  importFromDrive(folder: any, backupId: string, backupItem: any, staging: StagingSink): Promise<ImportDownload>;
+  listBackups(folder: ReadyFolder): Promise<BackupListing>;
+  importFromDrive(folder: ReadyFolder, backupId: string, backupItem: DriveBackup, staging: StagingSink): Promise<ImportDownload>;
   writeReadMe(lang: 'en' | 'hi' | 'ta' | 'te'): Promise<void>;
   schedule(enabled: boolean, ready: boolean): Promise<ScheduleDecision>;
 }
