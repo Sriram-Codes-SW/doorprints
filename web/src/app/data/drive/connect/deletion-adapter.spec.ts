@@ -61,17 +61,28 @@ describe('DriveDeletionAdapter', () => {
 
     // Set up fake authorizer
     fakeAuthorizer = {
+      // authorize() is given a policy string (DELETE_ALL_BACKUPS), not { type: 'allBackups' }.
       authorize: async (action: any, ctx: DeletionContext): Promise<any> => {
+        const level =
+          action === 'DELETE_EVERYTHING' || action === 'WEAKEN_PROTECTION'
+            ? 'L3'
+            : action === 'DELETE_ALL_BACKUPS' ||
+                action === 'STOP_SHARING' ||
+                action === 'REVOKE_DEVICE' ||
+                action === 'APPROVE_DEVICE' ||
+                action === 'DISCONNECT_ALL_DEVICES'
+              ? 'L2'
+              : 'L1';
         const grant: WebGrant = {
           id: 1,
-          action: action,
+          action,
           requirements: {
-            level: action.type === 'allBackups' || action.type === 'olderBackups' ? 'L2' : action.type === 'everything' ? 'L3' : 'L1',
-            factor: 'NONE',
-            tickBox: false,
-            delaySeconds: 0,
+            level,
+            factor: level === 'L1' ? 'NONE' : 'PASSKEY',
+            tickBox: level !== 'L1',
+            delaySeconds: level === 'L3' ? 5 : 0,
             pairing: 'NONE',
-            authValidMs: 0,
+            authValidMs: level === 'L1' ? 0 : 60_000,
           },
           grantedAtMs: server.clock.now(),
         };

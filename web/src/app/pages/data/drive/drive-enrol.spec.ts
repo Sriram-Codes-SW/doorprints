@@ -20,7 +20,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DriveEnrolCard } from './drive-enrol';
 import { TranslationService } from '../../../i18n/translation.service';
-import { approverReply, revealAndCode, type PairingMessage } from '../../../data/drive/connect/pairing-flow';
+import { type PairingMessage } from '../../../data/drive/connect/pairing-flow';
 
 async function render() {
   TestBed.resetTestingModule();
@@ -45,33 +45,33 @@ describe('DriveEnrolCard', () => {
 
   it('newcomer and approver compute the same 8-digit code', async () => {
     const a = await render();
-    a.component.becomeNewcomer();
+    a.component['becomeNewcomer']();
     a.fixture.detectChanges();
     const request = a.component['requestText']();
     expect(request.length).toBeGreaterThan(10);
 
     const b = await render();
-    b.component.becomeApprover();
+    b.component['becomeApprover']();
     b.component['requestText'].set(request);
-    b.component.approvePasted();
+    b.component['approvePasted']();
     const reply = b.component['replyText']();
 
     a.component['replyText'].set(reply);
-    a.component.revealCode();
+    a.component['revealCode']();
     const code = a.component['code']();
     expect(code).toMatch(/^\d{8}$/);
 
     const revealed = JSON.parse(a.component['replyText']()) as PairingMessage;
     b.component['replyText'].set(JSON.stringify(revealed));
-    b.component.showApproverCode();
+    b.component['showApproverCode']();
     expect(b.component['code']()).toBe(code);
   });
 
   it('refuses a garbled reply', async () => {
     const { component } = await render();
-    component.becomeNewcomer();
+    component['becomeNewcomer']();
     component['replyText'].set('not-json');
-    component.revealCode();
+    component['revealCode']();
     expect(component['error']()).toBe('driveEnrol.badMessage');
   });
 });

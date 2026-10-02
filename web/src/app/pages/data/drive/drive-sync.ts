@@ -113,13 +113,15 @@ export class DriveSyncCard implements OnInit, OnDestroy {
       } else {
         this.needsConfirmation.set(false);
         const mapped =
-          result.state === 'up-to-date' || result.state === 'synced'
+          result.state === 'synced' || result.state === 'skipped-files'
             ? 'synced'
             : result.state === 'waiting-wifi'
               ? 'waiting-wifi'
               : result.state === 'offline'
                 ? 'offline'
-                : 'error';
+                : result.state === 'needs-confirmation'
+                  ? 'needs-confirmation'
+                  : 'error';
         this.syncState.set(mapped);
         this.lastSyncAt.set(result.lastSyncAt ?? Date.now());
         this.skippedCount.set(result.skipped?.length ?? 0);
@@ -181,7 +183,7 @@ export class DriveSyncCard implements OnInit, OnDestroy {
   private async loadPhotoSettings(): Promise<void> {
     try {
       const settings = await this.service.photoSettings();
-      this.photosWifiOnly.set(settings.wifiOnly ?? true);
+      this.photosWifiOnly.set(!settings.uploadOnMobileData);
       this.pendingPhotoBytes.set(await this.service.pendingPhotoBytes());
     } catch {
       /* photo settings are not required for the status line */

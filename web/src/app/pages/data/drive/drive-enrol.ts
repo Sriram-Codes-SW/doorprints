@@ -94,7 +94,8 @@ export class DriveEnrolCard {
     pkA[0] = 4;
     const reply = approverReply(commit, pkA, this.nApprover, Date.now());
     if (!reply.ok || !reply.message) {
-      this.error.set(this.i18n.t(reply.reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.badMessage'));
+      const reason = !reply.ok ? reply.reason : 'INCOMPLETE';
+      this.error.set(this.i18n.t(reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.badMessage'));
       return;
     }
     this.replyText.set(JSON.stringify(reply.message));
@@ -115,7 +116,8 @@ export class DriveEnrolCard {
     }
     const out = revealAndCode(reply, this.nNew, Date.now());
     if (!out.ok || !out.message) {
-      this.error.set(this.i18n.t(out.reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.mismatch'));
+      const reason = !out.ok ? out.reason : 'INCOMPLETE';
+      this.error.set(this.i18n.t(reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.mismatch'));
       return;
     }
     this.code.set(out.code);
