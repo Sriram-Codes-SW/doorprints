@@ -20,6 +20,23 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DriveSyncAdapter } from './sync-adapter';
 import { kidOf } from '../../crypto/folder-key';
 import { SyncWorld } from '../drive-sync-test-world';
+import { DRIVE_SYNC_LOCK } from '../backup/lock-runner';
+import type { LockRunner } from '../backup/lock-runner';
+
+/** Queues callers of one lock name, the same way Web Locks does. */
+class QueueLock implements LockRunner {
+  private tail: Promise<void> = Promise.resolve();
+
+  request<T>(lockName: string, fn: () => Promise<T>): Promise<T> {
+    expect(lockName).toBe(DRIVE_SYNC_LOCK);
+    const previous = this.tail;
+    let release!: () => void;
+    this.tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return previous.then(fn).finally(release);
+  }
+}
 
 describe('DriveSyncAdapter', () => {
   let adapter: DriveSyncAdapter;
@@ -192,6 +209,46 @@ describe('DriveSyncAdapter', () => {
     const bIsBehind = await adapterB.isBehind();
     expect(typeof aIsBehind).toBe('boolean');
     expect(typeof bIsBehind).toBe('boolean');
+  });
+
+  it('holds the one-tab lock for the whole sync pass', async () => {
+    const world2 = new SyncWorld();
+    const device = await world2.add('tabs');
+    let inside = 0;
+    let maxInside = 0;
+    let releaseFirst: (() => void) | undefined;
+    let changedCalls = 0;
+    const local = {
+      all: async () => [],
+      photo: async () => null,
+      changedRows: async () => {
+        changedCalls += 1;
+        inside += 1;
+        maxInside = Math.max(maxInside, inside);
+        if (changedCalls === 1) await new Promise<void>((resolve) => { releaseFirst = resolve; });
+        inside -= 1;
+        return [];
+      },
+    };
+    const locks = new QueueLock();
+    const tabA = new DriveSyncAdapter(
+      device.session(), device.drive, () => world2.now(), device.photoStore,
+      undefined, undefined, local, undefined, locks,
+    );
+    const tabB = new DriveSyncAdapter(
+      device.session(), device.drive, () => world2.now(), device.photoStore,
+      undefined, undefined, local, undefined, locks,
+    );
+    const first = tabA.syncNow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(changedCalls).toBe(1);
+    const second = tabB.syncNow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(changedCalls).toBe(1);
+    releaseFirst!();
+    await Promise.all([first, second]);
+    expect(changedCalls).toBe(2);
+    expect(maxInside).toBe(1);
   });
 
   it('should use webUnknownAllowed for photo gate on web', async () => {

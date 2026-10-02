@@ -18,8 +18,12 @@
 
 /**
  * Seam for running async functions under an exclusive lock to prevent concurrent access.
- * Used in createFolder to prevent two tabs from creating duplicate root folders.
+ * Folder creation uses `doorprints-drive-create`. A sync pass uses `doorprints-drive-sync`,
+ * so two tabs of one browser sync one at a time (docs/15 §5.1).
  */
+
+/** Web Locks name for a Drive sync pass. Two tabs share one device, so only one pass runs. */
+export const DRIVE_SYNC_LOCK = 'doorprints-drive-sync';
 export interface LockRunner {
   /**
    * Acquire an exclusive lock and run the function. The function may not run immediately
