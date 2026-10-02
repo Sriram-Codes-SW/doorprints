@@ -16,14 +16,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { DriveDeletionAdapter, DeletionPreflightResult, AuthorizationResult, ConfirmGateState } from '../deletion-adapter';
+import type { DriveDeletionAdapter, DeletionPreflightResult, AuthorizationResult, ConfirmGateState, KeyValueStore } from '../deletion-adapter';
 import {
   DriveDeletionAdapterImpl, PersistentDeletionStore, InMemoryKeyValueStore,
 } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
 import { WebAuthorizer } from '../../../device-auth/web-authorizer';
 import { WebAuthnPrfAuthenticator } from '../../../device-auth/web-authn-prf-authenticator';
-import { FakePrfAuthenticator } from '../../../device-auth/prf-seal';
+import type { PrfAuthenticator } from '../../../device-auth/prf-seal';
 import type { DriveRuntime } from './runtime';
 import type { DeletionAction } from '../../drive-deletion-rules';
 import type { DeletionContext } from '../../../device-auth/delete-policy';
@@ -33,13 +33,46 @@ import type { DeletionContext } from '../../../device-auth/delete-policy';
  *
  * Constructs DriveDeletionService with the runtime's drive client and an authorization gate,
  * WebAuthorizer with the PRF authenticator, and DriveDeletionAdapterImpl to bridge to the UI.
+ * Requires runtime.session to be set; if missing, the adapter returns 'not connected' refusals.
  *
  * S4b-BL-73, S4b-BL-127, docs/15 §9.4, §10.4.
  */
-export function createDeletionAdapter(rt: DriveRuntime, keyValueStore?: any): DriveDeletionAdapter {
+export function createDeletionAdapter(
+  rt: DriveRuntime,
+  keyValueStore?: KeyValueStore,
+  prfAuthenticator?: PrfAuthenticator,
+): DriveDeletionAdapter {
   // Create a key-value store for deletion state persistence (backed by IndexedDB or in-memory)
   const kv = keyValueStore || new InMemoryKeyValueStore();
   const deletionStore = new PersistentDeletionStore(kv);
+
+  // If no session, return an adapter that always refuses
+  if (!rt.session) {
+    return {
+      async preflight() {
+        return { kind: 'refused', reason: 'Not connected to Drive folder' };
+      },
+      decide() {
+        return { outcome: 'REFUSED', reason: 'OFFLINE' };
+      },
+      async authorize() {
+        return { kind: 'refused', reason: 'Not connected' };
+      },
+      async execute() {
+        return { kind: 'refused', reason: 'OFFLINE', error: null };
+      },
+      async resume() {
+        return { kind: 'refused', reason: 'OFFLINE', error: null };
+      },
+      confirmGate() {
+        return {
+          tickBoxRequired: false,
+          delayMs: 0,
+          enabled: () => false,
+        };
+      },
+    };
+  }
 
   // Create the authorization gate that validates tokens
   const authorizationGate = {
@@ -63,8 +96,8 @@ export function createDeletionAdapter(rt: DriveRuntime, keyValueStore?: any): Dr
     now: () => Date.now(),
   });
 
-  // Create the PRF authenticator (real browser-based WebAuthn)
-  const prfAuthenticator = new WebAuthnPrfAuthenticator(
+  // Create the PRF authenticator (real browser-based WebAuthn or provided fake)
+  const authenticator = prfAuthenticator || new WebAuthnPrfAuthenticator(
     async (key: string) => {
       try {
         return await kv.get(key);
@@ -88,19 +121,14 @@ export function createDeletionAdapter(rt: DriveRuntime, keyValueStore?: any): Dr
   // Create the web authorizer with the PRF authenticator
   const webAuthorizer = new WebAuthorizer(
     rt.crypto,
-    prfAuthenticator,
+    authenticator,
     sealedBlob,
     () => Date.now(),
   );
 
-  // Get the root folder ID and backups count from the runtime session
-  // This must be provided when a connection is established
-  const rootId = rt.session?.rootFolderId || '';
-  let backupsLeft = rt.session?.backupsCount;
-  // If backupsLeft is a number, use it; otherwise null
-  if (typeof backupsLeft !== 'number') {
-    backupsLeft = null;
-  }
+  // Get the root folder ID from the runtime session
+  // FolderSession has rootId field set by backup adapter after successful connect
+  const rootId = rt.session.rootId;
 
   // Create and return the adapter
   return new DriveDeletionAdapterImpl(
@@ -108,7 +136,7 @@ export function createDeletionAdapter(rt: DriveRuntime, keyValueStore?: any): Dr
     webAuthorizer,
     deletionStore,
     rootId,
-    backupsLeft,
+    null, // backupsLeft not tracked in FolderSession; will be updated by UI
   );
 }
 
@@ -183,63 +211,3 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
   };
 }
 
-/**
- * Creates a deletion adapter for testing with a fake PRF authenticator.
- * This is used in specs to avoid requiring real WebAuthn.
- */
-export function createTestDeletionAdapter(
-  rt: DriveRuntime,
-  options: {
-    prfAuthenticator?: any;
-    rootId?: string;
-    backupsLeft?: number | null;
-  } = {},
-): DriveDeletionAdapter {
-  const kv = new InMemoryKeyValueStore();
-  const deletionStore = new PersistentDeletionStore(kv);
-
-  const authorizationGate = {
-    async isGenuine(): Promise<boolean> {
-      return true;
-    },
-    async stillHolds(): Promise<boolean> {
-      return true;
-    },
-  };
-
-  const deletionService = new DriveDeletionService({
-    drive: rt.drive,
-    gate: authorizationGate,
-    store: deletionStore,
-    isOnline: () => navigator.onLine,
-    now: () => Date.now(),
-  });
-
-  const prfAuthenticator = options.prfAuthenticator || new FakePrfAuthenticator(rt.crypto);
-  const sealedBlob = () => null;
-
-  const webAuthorizer = new WebAuthorizer(
-    rt.crypto,
-    prfAuthenticator,
-    sealedBlob,
-    () => Date.now(),
-  );
-
-  // Use provided options, falling back to session data
-  const rootId = options.rootId || rt.session?.rootFolderId || '';
-  let backupsLeft = options.backupsLeft;
-  if (backupsLeft === undefined) {
-    backupsLeft = rt.session?.backupsCount ?? null;
-  }
-  if (typeof backupsLeft !== 'number') {
-    backupsLeft = null;
-  }
-
-  return new DriveDeletionAdapterImpl(
-    deletionService,
-    webAuthorizer,
-    deletionStore,
-    rootId,
-    backupsLeft,
-  );
-}
