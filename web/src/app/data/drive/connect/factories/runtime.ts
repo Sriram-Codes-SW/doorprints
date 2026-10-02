@@ -34,6 +34,7 @@ import { sameControlWatermark } from '../../backup/control-file';
 import type { FolderSession } from '../../drive-sync-seams';
 import type { SyncStateStore } from '../../drive-sync-seams';
 import type { PhotoStateStore } from '../../drive-photo-seams';
+import { KeysGuard } from '../../../crypto/keys-guard';
 
 /**
  * The runtime needed by Drive backup, sync, and deletion: database, crypto, device identity,
@@ -56,6 +57,7 @@ export interface DriveRuntime {
   folderTrustStores: FolderTrustStores;
   syncStateStore: SyncStateStore;
   photoStateStore: PhotoStateStore;
+  guard: KeysGuard; // Needed to build FolderSession for sync
   session?: FolderSession; // Mutable: set by backup adapter after successful connect, read by sync
 }
 
@@ -160,6 +162,9 @@ export async function createDriveRuntime(deps: {
   // Create folder trust stores backed by the opened DB's key-value store
   const folderTrustStores = new DbFolderTrustStores(opened.keyValueStore);
 
+  // Create guard for key operations (opens keys with user's pin or recovery anchor)
+  const guard = new KeysGuard(crypto, opened.keysWatermarkStore);
+
   return {
     db,
     crypto,
@@ -172,6 +177,7 @@ export async function createDriveRuntime(deps: {
     folderTrustStores,
     syncStateStore: opened.syncStateStore,
     photoStateStore: opened.photoStateStore,
+    guard,
   };
 }
 

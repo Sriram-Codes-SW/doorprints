@@ -21,27 +21,24 @@ import { DriveSyncAdapter, type IDriveSyncAdapter, type SyncAdapterStatus } from
 import type { DriveRuntime } from './runtime';
 
 /**
- * Creates a real sync adapter from the Drive runtime and an opened folder session.
+ * Creates a real sync adapter from the Drive runtime.
  *
- * Constructs LocalRowsAdapter with the runtime's local store and device ID, then wraps both
- * in DriveSyncAdapter for the Connect page UI to use.
+ * Constructs DriveSyncAdapter with the runtime's stores and optional session. The adapter
+ * defers initialization of engine, backend, and photos until first use (when session is available).
  *
  * Returns a DriveSyncAdapter that:
+ * - Returns 'not connected' status if session is null (before backup connects)
  * - Syncs houses, visits, records, and photos through Drive's encrypted sync folder
  * - Handles photo uploads on metered vs unmetered networks
  * - Reports sync status, skipped files, and photo upload progress
  *
  * S4b-BL-131, S4b-BL-118, S4b-BL-128; docs/15 §9.4, §5.1, §11.
  */
-export function createSyncAdapter(rt: DriveRuntime): DriveSyncAdapter | null {
-  // Sync cannot run without a folder session (happens before backup connect)
-  if (!rt.session) {
-    return null;
-  }
-
+export function createSyncAdapter(rt: DriveRuntime): DriveSyncAdapter {
   // Wrap in sync adapter with production dependencies from runtime
+  // Session is optional and may be set later by backup adapter; adapter handles null gracefully
   return new DriveSyncAdapter(
-    rt.session,
+    rt.session ?? null,
     rt.drive,
     () => Date.now(),
     rt.photoStateStore, // Photo state store from opened DB
@@ -61,11 +58,7 @@ export function createLazySyncAdapterProxy(getRuntime: () => Promise<DriveRuntim
   async function ensureAdapter(): Promise<DriveSyncAdapter> {
     if (cachedAdapter) return cachedAdapter;
     const rt = await getRuntime();
-    const adapter = createSyncAdapter(rt);
-    if (!adapter) {
-      throw new Error('Sync adapter not ready: folder not connected');
-    }
-    cachedAdapter = adapter;
+    cachedAdapter = createSyncAdapter(rt);
     return cachedAdapter;
   }
 

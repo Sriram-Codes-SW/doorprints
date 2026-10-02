@@ -51,7 +51,7 @@ export interface SyncAdapterStatus {
  * Plain class, injectable dependencies only (no Angular DI). Kotlin twin: `DriveSyncAdapter.kt`.
  */
 export class DriveSyncAdapter {
-  private readonly photoSettings: PhotoSettings;
+  private photoSettings: PhotoSettings; // Mutable: updated by setters
   private readonly photoState: PhotoState;
   private readonly syncState: DriveSyncState;
   private lastSyncAt: number | null = null;
@@ -72,7 +72,8 @@ export class DriveSyncAdapter {
     photoSettings?: PhotoSettings,
     private readonly photoConfig: PhotoConfig = DEFAULT_PHOTO_CONFIG,
   ) {
-    this.photoSettings = photoSettings ?? DEFAULT_PHOTO_SETTINGS;
+    // Store settings as mutable object (updated by setters)
+    this.photoSettings = { ...DEFAULT_PHOTO_SETTINGS, ...photoSettings };
     this.photoState = { ...EMPTY_PHOTO_STATE };
     this.syncState = { ...EMPTY_SYNC_STATE };
 
@@ -267,14 +268,14 @@ export class DriveSyncAdapter {
    * Update the "upload photos only on Wi-Fi" setting (default: true).
    */
   setPhotosWifiOnly(wifiOnly: boolean): void {
-    (this.photoSettings as any).uploadOnMobileData = !wifiOnly;
+    this.photoSettings = { ...this.photoSettings, uploadOnMobileData: !wifiOnly };
   }
 
   /**
    * Update the "allow photos on mobile data" setting (default: false).
    */
   setUploadOnMobile(allowed: boolean): void {
-    (this.photoSettings as any).uploadOnMobileData = allowed;
+    this.photoSettings = { ...this.photoSettings, uploadOnMobileData: allowed };
   }
 
   /**
