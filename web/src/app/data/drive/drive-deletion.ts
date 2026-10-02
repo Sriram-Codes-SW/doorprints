@@ -52,7 +52,7 @@ export interface DeletionPlan {
 /** The seam for S4b-BL-127: genuineness of a token, and whether it still holds before each file. */
 export interface AuthorizationGate {
   isGenuine(token: AuthorizationToken): Promise<boolean>;
-  stillHolds(token: AuthorizationToken): Promise<boolean>;
+  stillHolds(token: AuthorizationToken, action: DeletionAction): Promise<boolean>;
 }
 
 export type StopReason = 'DRIVE_ERROR' | 'AUTHORIZATION_LOST' | 'FILES_FAILED';
@@ -269,7 +269,7 @@ export class DriveDeletionService {
     for (let index = 0; index < items.length; index++) {
       const it = items[index];
       if (it.phase >= blockedFrom) break;
-      if (pending.level !== 'L1' && !(await gate.stillHolds(token!))) {
+      if (pending.level !== 'L1' && !(await gate.stillHolds(token!, pending.action))) {
         stopped = 'AUTHORIZATION_LOST';
         break;
       }

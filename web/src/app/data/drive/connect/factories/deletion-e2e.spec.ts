@@ -117,6 +117,12 @@ async function createTestDeletionAdapterWithSealedBlob(
           enabled: () => false,
         };
       },
+      async registerPasskey() {
+        return 'unsupported';
+      },
+      async passkeyStatus() {
+        return 'unsupported';
+      },
     };
   }
 

@@ -18,11 +18,33 @@
 
 import { DriveDeletionAdapterImpl, PersistentDeletionStore, InMemoryKeyValueStore } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
+import type { AuthorizationGate } from '../../drive-deletion';
 import { WebAuthorizer } from '../../../device-auth/web-authorizer';
 import { FakePrfAuthenticator } from '../../../device-auth/prf-seal';
 import type { DriveRuntime } from './runtime';
 import type { DriveDeletionAdapter } from '../deletion-adapter';
 import type { PrfAuthenticator } from '../../../device-auth/prf-seal';
+import type { DeletionAction } from '../../drive-deletion-rules';
+
+/**
+ * Simple fake authorization gate for testing.
+ */
+class FakeAuthorizationGate implements AuthorizationGate {
+  issuedGrants = new Map<number, { action: DeletionAction; operationId: string }>();
+  spent = new Set<number>();
+
+  registerGrant(grantId: number, action: DeletionAction, operationId: string): void {
+    this.issuedGrants.set(grantId, { action, operationId });
+  }
+
+  async isGenuine(): Promise<boolean> {
+    return true;
+  }
+
+  async stillHolds(): Promise<boolean> {
+    return true;
+  }
+}
 
 /**
  * Test helper: creates a deletion adapter with a fake PRF authenticator and in-memory stores.
@@ -39,14 +61,7 @@ export function createTestDeletionAdapter(
   const kv = new InMemoryKeyValueStore();
   const deletionStore = new PersistentDeletionStore(kv);
 
-  const authorizationGate = {
-    async isGenuine(): Promise<boolean> {
-      return true;
-    },
-    async stillHolds(): Promise<boolean> {
-      return true;
-    },
-  };
+  const authorizationGate = new FakeAuthorizationGate();
 
   const deletionService = new DriveDeletionService({
     drive: rt.drive,
@@ -75,5 +90,9 @@ export function createTestDeletionAdapter(
     deletionStore,
     rootId,
     backupsLeft,
+    authorizationGate,
+    rt.crypto,
+    prfAuthenticator,
+    kv,
   );
 }
