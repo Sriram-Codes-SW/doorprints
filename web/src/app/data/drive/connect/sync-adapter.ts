@@ -56,25 +56,25 @@ export class DriveSyncAdapter {
   private readonly syncState: DriveSyncState;
   private lastSyncAt: number | null = null;
   private lastResult: SyncPassResult | null = null;
-  private readonly engine: DriveSyncEngine;
-  private readonly backend: DriveSyncBackend;
+  private engine: DriveSyncEngine | null = null;
+  private backend: DriveSyncBackend | null = null;
   private readonly photoGate: PhotoUploadGate;
-  private readonly photos: DrivePhotos | null;
+  private photos: DrivePhotos | null = null;
   private readonly local: LocalRows;
   private readonly photoStore: PhotoStateStore;
+  private readonly syncStateStore: { load(): Promise<DriveSyncState>; save(s: DriveSyncState): Promise<void> };
 
   constructor(
-    private readonly session: FolderSession,
+    private readonly session: FolderSession | null,
     private readonly drive: DriveClient,
     private readonly clock: () => number = () => Date.now(),
     photoStateStore?: PhotoStateStore,
     photoSettings?: PhotoSettings,
-    photoConfig?: PhotoConfig,
+    private readonly photoConfig: PhotoConfig = DEFAULT_PHOTO_CONFIG,
   ) {
     this.photoSettings = photoSettings ?? DEFAULT_PHOTO_SETTINGS;
     this.photoState = { ...EMPTY_PHOTO_STATE };
     this.syncState = { ...EMPTY_SYNC_STATE };
-    this.photoConfig = photoConfig ?? DEFAULT_PHOTO_CONFIG;
 
     this.photoStore = photoStateStore || {
       load: async () => this.photoState,
@@ -83,7 +83,7 @@ export class DriveSyncAdapter {
       },
     };
 
-    const syncStateStore = {
+    this.syncStateStore = {
       load: async () => this.syncState,
       save: async (s: DriveSyncState) => {
         Object.assign(this.syncState, s);
@@ -96,35 +96,6 @@ export class DriveSyncAdapter {
       photo: async () => null,
     };
 
-    // Initialize engine
-    this.engine = new DriveSyncEngine(
-      this.drive,
-      new WebCryptoProvider(),
-      this.session,
-      syncStateStore,
-      this.local,
-      this.clock,
-    );
-
-    // Initialize photos service
-    this.photos = new DrivePhotos(
-      this.drive,
-      new WebCryptoProvider(),
-      this.session,
-      this.photoStore,
-      this.clock,
-      this.photoConfig,
-    );
-
-    // Initialize backend with engine and photos
-    this.backend = new DriveSyncBackend(
-      this.engine,
-      this.local,
-      this.clock,
-      this.session.deviceId,
-      this.photos,
-    );
-
     // Initialize photo upload gate with web network state
     // Web treats UNKNOWN network (no type on desktop) as ALLOWED (S4b-BL-131, docs/15 §11)
     this.photoGate = new PhotoUploadGate(
@@ -135,11 +106,63 @@ export class DriveSyncAdapter {
     );
   }
 
+  /** Lazy initialize engine, backend and photos (deferred until session is available). */
+  private ensureInitialized(): void {
+    if (this.engine || !this.session) return;
+
+    this.engine = new DriveSyncEngine(
+      this.drive,
+      new WebCryptoProvider(),
+      this.session,
+      this.syncStateStore,
+      this.local,
+      this.clock,
+    );
+
+    this.photos = new DrivePhotos(
+      this.drive,
+      new WebCryptoProvider(),
+      this.session,
+      this.photoStore,
+      this.clock,
+      this.photoConfig,
+    );
+
+    this.backend = new DriveSyncBackend(
+      this.engine,
+      this.local,
+      this.clock,
+      this.session.deviceId,
+      this.photos,
+    );
+  }
+
   /**
    * Run one sync pass: connect, fetch peer files, merge, push this device's state.
    * Returns a UI-friendly status; confirmShrink asks to apply house deletions that were held.
+   * Before backup connect, returns an 'error' status with 'not connected' message.
    */
   async syncNow(opts: { confirmShrink?: boolean } = {}): Promise<SyncAdapterStatus> {
+    // Sync before backup connects: no session available
+    if (!this.session) {
+      return {
+        state: 'error',
+        skipped: [],
+        lastSyncAt: this.lastSyncAt,
+        error: 'not connected',
+      };
+    }
+
+    this.ensureInitialized();
+    if (!this.backend) {
+      return {
+        state: 'error',
+        skipped: [],
+        lastSyncAt: this.lastSyncAt,
+        error: 'not connected',
+      };
+    }
+
     if (opts.confirmShrink) {
       this.backend.confirmShrink();
     }
@@ -215,8 +238,16 @@ export class DriveSyncAdapter {
 
   /**
    * Check if this device is behind peers: unread files from other devices, or a difference in generation.
+   * Before backup connect, returns false (not behind; sync will fail with 'not connected').
    */
   async isBehind(): Promise<boolean> {
+    if (!this.session) {
+      return false;
+    }
+    this.ensureInitialized();
+    if (!this.engine) {
+      return false;
+    }
     try {
       return await this.engine.isBehind();
     } catch (err) {
@@ -292,8 +323,6 @@ export class DriveSyncAdapter {
     // Allow backup on unmetered networks or with the mobile data setting on
     return decision.reason === 'UNMETERED' || decision.reason === 'MOBILE_DATA_SETTING';
   }
-
-  private readonly photoConfig: PhotoConfig;
 }
 
 /**
