@@ -47,3 +47,56 @@ export function keepLocalRecord(
   if (!local) return false;
   return keepLocal(local.dirty, millis(local.updatedAt), millis(incoming.updatedAt));
 }
+
+/**
+ * How a pulled row meets the local copy of it (S4b-BL-70; Kotlin: `MergeRule`): true keeps the local row and drops the
+ * incoming one. Each `SyncBackend` supplies its own: the server's is {@link serverMerge}; Drive's per-device files will
+ * use last-write-wins on `updatedAt` with ties broken by the writing device (docs/15 §5.1, S4b-BL-130), because an
+ * older device snapshot must not overwrite a clean, newer local row.
+ */
+export type MergeRule = (
+  local: { updatedAt?: string | null; dirty: boolean } | undefined | null,
+  incoming: { updatedAt?: string | null },
+) => boolean;
+
+/**
+ * The server sync's merge rule (Kotlin: `SyncRules.serverMerge`): {@link keepLocalRecord}. Right for a server that has
+ * already merged every device's writes, so any row it sends is at least as new as a clean local one.
+ */
+export const serverMerge: MergeRule = keepLocalRecord;
+
+/**
+ * True when the server's highest sync version (`maxSyncVersion` from `GET /api/stats`) is below one of this browser's
+ * stored `cursors` (S4b-BL-20; Android: `SyncRules.serverBehind`). A cursor only ever holds a version the server
+ * handed out, and the server's sequence never goes back while it keeps its data (not even after "delete all my
+ * data"), so on a healthy server no cursor is above it. A missing or unreadable value (an older server) is unknown:
+ * false.
+ */
+export function serverBehind(maxSyncVersion: unknown, cursors: readonly number[]): boolean {
+  const highest = wireVersion(maxSyncVersion);
+  if (highest === null) return false;
+  return cursors.some((cursor) => cursor > highest);
+}
+
+/**
+ * A row's `syncVersion` as a finite number, or `null` when it cannot be used to move a cursor.
+ *
+ * Deliberately **not** `Number(value)` with a list of exceptions: `Number()` coerces objects and arrays through
+ * `valueOf`/`toString`, so `Number([])` is `0` and `Number(['5'])` is `5`. A hand-rolled or proxied body carrying
+ * `"syncVersion": []` would then move the cursor to 0 and store the row as version 0 — exactly the poisoning this
+ * function exists to prevent. So only the two primitive shapes the wire can legitimately use are accepted:
+ *
+ *  * a finite `number` — what the backend writes (`HouseDto.syncVersion` is a JSON number);
+ *  * a `string` that is a finite number once trimmed — tolerated because a proxy or a hand-written fixture may
+ *    quote it, and `"12"` means 12 to every reader. `""` and `"  "` are not numbers and are refused.
+ *
+ * Everything else — `undefined`, `null`, booleans, objects, arrays, `NaN`, `Infinity` — is `null`.
+ */
+export function wireVersion(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
