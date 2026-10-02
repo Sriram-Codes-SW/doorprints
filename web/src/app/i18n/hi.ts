@@ -43,6 +43,8 @@ export const hi: Dict = {
   'common.untitled': 'बिना नाम',
   'common.retry': 'फिर कोशिश करें',
   'common.close': 'बंद करें',
+  'common.next': 'आगे',
+  'common.skip': 'छोड़ें',
   'common.notSet': 'तय नहीं',
   'common.bhk': '{n} BHK',
   'common.score': 'अंक',

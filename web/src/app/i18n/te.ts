@@ -43,6 +43,8 @@ export const te: Dict = {
   'common.untitled': 'పేరు లేదు',
   'common.retry': 'మళ్లీ ప్రయత్నించండి',
   'common.close': 'మూసివేయండి',
+  'common.next': 'తరువాత',
+  'common.skip': 'దాటవేయండి',
   'common.notSet': 'సెట్ చేయలేదు',
   'common.bhk': '{n} BHK',
   'common.score': 'స్కోర్',
