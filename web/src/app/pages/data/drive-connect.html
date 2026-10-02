@@ -139,17 +139,41 @@
       </button>
     </div>
 
-    @if (deleteConfirmLevel(); as level) {
+    @if (deleteConfirmLevel() === 'L1') {
       <div class="confirm-box">
-        <p>{{ ('driveConnect.deleteConfirm' + level | t) }}</p>
-        @if (level === 'L3') {
-          <label class="checkbox">
-            <input type="checkbox" [checked]="deleteL3Confirmed()" (change)="toggleDeleteL3()" />
-            <span>{{ 'driveConnect.deleteL3Confirm' | t }}</span>
-          </label>
-        }
+        <p>{{ 'driveConnect.deleteConfirmL1' | t }}</p>
         <div class="actions">
-          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="(level === 'L3' && !deleteL3Confirmed()) || busy()">
+          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="busy()">
+            {{ 'common.delete' | t }}
+          </button>
+          <button type="button" class="btn" (click)="cancelDelete()">
+            {{ 'common.cancel' | t }}
+          </button>
+        </div>
+      </div>
+    }
+    @if (deleteConfirmLevel() === 'L2') {
+      <div class="confirm-box">
+        <p>{{ 'driveConnect.deleteConfirmL2' | t }}</p>
+        <div class="actions">
+          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="busy()">
+            {{ 'common.delete' | t }}
+          </button>
+          <button type="button" class="btn" (click)="cancelDelete()">
+            {{ 'common.cancel' | t }}
+          </button>
+        </div>
+      </div>
+    }
+    @if (deleteConfirmLevel() === 'L3') {
+      <div class="confirm-box">
+        <p>{{ 'driveConnect.deleteConfirmL3' | t }}</p>
+        <label class="checkbox">
+          <input type="checkbox" [checked]="deleteL3Confirmed()" (change)="toggleDeleteL3()" />
+          <span>{{ 'driveConnect.deleteL3Confirm' | t }}</span>
+        </label>
+        <div class="actions">
+          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="!deleteL3Confirmed() || busy()">
             {{ 'common.delete' | t }}
           </button>
           <button type="button" class="btn" (click)="cancelDelete()">
@@ -163,7 +187,9 @@
   <!-- Error -->
   @if (state() === 'Error') {
     <div class="error-box">
-      <p>{{ ('driveConnect.error' | t: { reason: error() }) }}</p>
+      @if (error(); as err) {
+        <p>{{ ('driveConnect.error' | t: { reason: err }) }}</p>
+      }
       <button type="button" class="btn" (click)="onConnect()">
         {{ 'common.retry' | t }}
       </button>
