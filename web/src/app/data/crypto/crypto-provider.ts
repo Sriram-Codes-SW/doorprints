@@ -44,6 +44,8 @@ export interface CryptoProvider {
   p256ValidatePublic(encoded: Uint8Array): Uint8Array;
   /** ECDH: the 32-byte x-coordinate; the peer key is validated first. */
   p256Agree(privateKey: P256PrivateKey, peerPublic: Uint8Array): Promise<Uint8Array>;
+  /** Wrap a stored P-256 private key (from IndexedDB), validating it before use. */
+  p256FromStoredKey(privateKey: CryptoKey, publicKeyRaw: Uint8Array): Promise<P256PrivateKey>;
 }
 
 export interface AesKey {
@@ -224,6 +226,44 @@ export class WebCryptoProvider implements CryptoProvider {
       return new Uint8Array(await this.subtle.deriveBits({ name: 'ECDH', public: pk }, privateKey.key, 256));
     } catch {
       throw new CryptoError('INVALID_KEY', 'ECDH');
+    }
+  }
+
+  /**
+   * Wrap a stored P-256 private key (from IndexedDB or similar persistent storage).
+   * Validates the CryptoKey (type 'private', ECDH/P-256, deriveBits usage, non-extractable)
+   * and the public key bytes before returning the provider's own WebP256Key wrapper.
+   */
+  async p256FromStoredKey(privateKey: CryptoKey, publicKeyRaw: Uint8Array): Promise<P256PrivateKey> {
+    try {
+      // Validate CryptoKey properties
+      if (!privateKey || typeof privateKey !== 'object') {
+        throw new CryptoError('INVALID_KEY', 'invalid CryptoKey object');
+      }
+
+      // Check extractable flag
+      if (privateKey.extractable) {
+        throw new CryptoError('INVALID_KEY', 'private key must be non-extractable');
+      }
+
+      // Check algorithm
+      const algo = privateKey.algorithm as any;
+      if (!algo || algo.name !== 'ECDH' || algo.namedCurve !== 'P-256') {
+        throw new CryptoError('INVALID_KEY', 'not a P-256 ECDH private key');
+      }
+
+      // Check usages
+      if (!privateKey.usages.includes('deriveBits')) {
+        throw new CryptoError('INVALID_KEY', 'private key missing deriveBits usage');
+      }
+
+      // Validate public key bytes
+      const pub = this.p256ValidatePublic(publicKeyRaw);
+
+      return new WebP256Key(privateKey, pub);
+    } catch (err) {
+      if (err instanceof CryptoError) throw err;
+      throw new CryptoError('INVALID_KEY', `failed to wrap stored key: ${err}`);
     }
   }
 }
