@@ -52,8 +52,7 @@ export class DriveConnectComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
-    // Initialize: check if sign-in is available (real GoogleConfig will inject it)
-    this.service.setSignIn(null);
+    // Initialize component
   }
 
   async onConnect(): Promise<void> {

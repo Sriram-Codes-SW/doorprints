@@ -273,35 +273,3 @@ export class InMemoryKeyValueStore implements KeyValueStore {
   }
 }
 
-/**
- * Fake AuthorizationGate for testing.
- */
-export class FakeAuthorizationGate implements AuthorizationGate {
-  private genuine = new Set<number>();
-  private stillValid = new Set<number>();
-
-  constructor() {
-    this.resetAll();
-  }
-
-  markGenuine(proof: string): void {
-    this.genuine.add(Number(proof));
-  }
-
-  markStillValid(proof: string): void {
-    this.stillValid.add(Number(proof));
-  }
-
-  resetAll(): void {
-    this.genuine.clear();
-    this.stillValid.clear();
-  }
-
-  async isGenuine(token: AuthorizationToken): Promise<boolean> {
-    return this.genuine.has(Number(token.proof));
-  }
-
-  async stillHolds(token: AuthorizationToken): Promise<boolean> {
-    return this.stillValid.has(Number(token.proof));
-  }
-}

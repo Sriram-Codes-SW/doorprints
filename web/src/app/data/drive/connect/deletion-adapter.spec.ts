@@ -22,10 +22,10 @@ import { DriveDeletionService } from '../drive-deletion';
 import type { AuthorizationGate, DeletedMarker, DeletionStore } from '../drive-deletion';
 import {
   DriveDeletionAdapterImpl,
-  FakeAuthorizationGate,
   InMemoryKeyValueStore,
   PersistentDeletionStore,
 } from './deletion-adapter';
+import { FakeAuthorizationGate } from './deletion-adapter.test-support';
 import type { WebGrant } from '../../device-auth/web-authorizer';
 import type { DeletionContext } from '../../device-auth/delete-policy';
 
