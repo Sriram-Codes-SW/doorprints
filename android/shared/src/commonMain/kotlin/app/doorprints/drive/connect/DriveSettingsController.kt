@@ -1,3 +1,21 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package app.doorprints.drive.connect
 
 import app.doorprints.crypto.RecoveryKey
@@ -306,7 +324,8 @@ class DriveSettingsController(
         if (f != null) launchOp(DriveBusy.READING) { becomeReady(f) }
     }
 
-    private fun normalise(text: String) = text.trim().uppercase().filter { it.isLetterOrDigit() }
+    /** The check symbol of the key can be `*`, `~`, `$`, `=` or `U` (Crockford): only spaces and dashes are dropped. */
+    private fun normalise(text: String) = text.uppercase().filter { !it.isWhitespace() && it != '-' }
 
     /** NEEDS_ENROLMENT / NEEDS_RECOVERY_KEY: the typed recovery key. A wrong one changes nothing and says so. */
     fun enterRecoveryKey(text: String) {
@@ -466,7 +485,8 @@ class DriveSettingsController(
             if (!pausedOrGo()) return@launchOp
             set { it.copy(busy = DriveBusy.IMPORTING, message = null) }
             val staging = deps.importHandoff.staging()
-            when (val r = deps.service.imports.download(f, backup, staging)) {
+            val result = deps.service.imports.download(f, backup, staging)
+            when (val r = result) {
                 is ImportDownload.Verified -> {
                     deps.importHandoff.open(r)
                     set { it.copy(busy = null, message = DriveMessage.IMPORT_READY) }
@@ -474,7 +494,13 @@ class DriveSettingsController(
                 }
                 is ImportDownload.Refused -> {
                     staging.discard()
-                    problem(r.problem)
+                    if (r.problem.driveKind == DriveException.Kind.NOT_FOUND) {
+                        // The file vanished between the listing and the tap: say so, and read the list again.
+                        loadList(f)
+                        set { it.copy(message = DriveMessage.BACKUP_GONE) }
+                    } else {
+                        problem(r.problem)
+                    }
                 }
             }
         }
@@ -669,7 +695,11 @@ class DriveSettingsController(
                     else -> DriveMessage.DELETE_DONE_BACKUP
                 }
                 set { it.copy(dialog = null, message = msg) }
-                if (f != null) loadList(f)
+                if (f != null) {
+                    loadList(f)
+                    // A stopped run's words matter more than the listing's "offline" that usually follows it.
+                    if (!outcome.finished) set { it.copy(message = msg) }
+                }
             }
         }
     }
