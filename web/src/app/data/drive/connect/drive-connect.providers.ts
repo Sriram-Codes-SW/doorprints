@@ -27,6 +27,7 @@ import { FetchDriveClient } from '../fetch-drive-client';
 import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { createLazyBackupAdapterProxy, createBackupAdapter } from './factories/backup-factory';
 import { createLazyDeletionAdapterProxy } from './factories/deletion-factory';
+import { createLazySyncAdapterProxy } from './factories/sync-factory';
 import { createDriveRuntime, getRuntime } from './factories/runtime';
 import { LocalStore } from '../../local-store.service';
 
@@ -99,15 +100,18 @@ export function provideDriveConnect(): Provider[] {
       },
     },
 
-    // Sync adapter (TODO: wire FolderSession, LocalRows, and DriveSyncEngine)
+    // Sync adapter (lazy-loaded: nothing created until first use)
     {
       provide: DRIVE_SYNC_ADAPTER,
       useFactory: () => {
-        const drive = inject(FetchDriveClient);
-        // TODO: Wire FolderSession from connection state and LocalRows from LocalStore
-        return new DriveSyncAdapter(
-          null as any, // TODO: FolderSession
-          drive,
+        // Lazy proxy that awaits getRuntime() and builds the adapter from the runtime's session
+        // (set by backup adapter after successful connect)
+        return createLazySyncAdapterProxy(() =>
+          getRuntime({
+            tokens: inject(GoogleTokenProvider),
+            local: inject(LocalStore),
+            crypto: inject(WebCryptoProvider),
+          })
         );
       },
     },
