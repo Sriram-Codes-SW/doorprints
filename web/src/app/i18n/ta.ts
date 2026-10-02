@@ -43,6 +43,8 @@ export const ta: Dict = {
   'common.untitled': 'பெயரில்லை',
   'common.retry': 'மீண்டும் முயலவும்',
   'common.close': 'மூடு',
+  'common.next': 'அடுத்து',
+  'common.skip': 'தவிர்',
   'common.notSet': 'அமைக்கப்படவில்லை',
   'common.bhk': '{n} BHK',
   'common.score': 'மதிப்பெண்',

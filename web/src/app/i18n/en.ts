@@ -52,6 +52,8 @@ export const en = {
   'common.untitled': 'Untitled',
   'common.retry': 'Try again',
   'common.close': 'Close',
+  'common.next': 'Next',
+  'common.skip': 'Skip',
   'common.notSet': 'Not set',
   'common.bhk': '{n} BHK',
   'common.score': 'Score',
