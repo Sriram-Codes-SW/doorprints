@@ -57,3 +57,39 @@ Website work still needed for "fully functional" (after the web page branch is d
 6. Link the privacy page from the website's settings; the user guide pages with screenshots for the Drive features.
 7. Then the postponed steps for the web scope: reviews (Haiku, narrow prompts), fixes, local checks, docs pass, stacked
    pull requests bottom-up, merges with green CI and `main` push CI checked after each.
+
+## State at the pause (2026-10-02, owner setting up Vertex AI)
+
+**Integration branch for the website: `feat/drive-web-page`** (head 7261d5f + later). It already contains every Drive
+branch (crypto, sync schema, backups, device auth, deletion, sync, photos, web connect, privacy page, factories, stores,
+the three fix branches and the service branch). Full web suite 2,278 passing, type check clean, build succeeds.
+Android/iOS work is PAUSED (owner); `feat/drive-connect` is parked.
+
+Done and verified (by deliberate mutations): encryption core and key list with pins; sync (engine applies rows before
+saving cursors; rows marked clean after read-back; real two-device test `factories/sync-e2e.spec.ts`); backups/import
+(service + real flows tested in `drive-connect.service.spec.ts`); deletion gate (`deletion-gate.ts`, no test hooks) and
+passkey registration; DriveConnectService (backUpNow really backs up, typed recovery key parsed strictly, automatic
+backup preference + `runDueBackup`).
+
+In progress (branches off feat/drive-web-page, each with a wip commit): `feat/drive-ui-join` (app-drive-join,
+app-drive-passkey; Tamil strings had wrong-script letters, a11y-sweep must pass), `feat/drive-ui-backups`
+(app-drive-backups; tests being written one at a time), `feat/drive-ui-sync` (app-drive-sync, app-drive-delete).
+Then: merge them, resolve the small i18n append conflicts, compose them into `pages/data/drive-connect.html`, hand the
+`importFile` output to the data page's existing import handler, clear the recovery key from the component after
+confirm/skip.
+
+Still to do for a fully functional website: real-browser Playwright test against a fake Google/Drive; a test with real
+IndexedDB (reload persistence, forged keys.json after reload); second review round on the changes; docs pass; deploy
+setup for the client id (`web/public/config.js` is tracked with an empty config, the deploy overwrites it); PRs bottom-up
+with CI; `tools/drive-spike` for the owner's real-account run. Deferred: QR enrolment, sharing, authenticator code.
+
+## How to get Haiku agents to deliver (what worked and what did not)
+Worked: one file + spec per agent; a named mutation as the acceptance test; copying a sibling file; one failing test at a
+time with a commit per test. Failed: broad briefs (they stop early citing budget), "complete" with stubs, tests through a
+hand-built harness, test hooks inside production code, hand-set state in end-to-end tests. Always verify with the mutation
+spot-checks and run `a11y-sweep.spec.ts` (it catches wrong-script letters in hi/ta/te). Details in the session notes.
+
+## Vertex AI (owner is setting it up)
+Separate project, Vertex AI API, Claude enabled in Model Garden, quota, service account (Vertex AI User) with a JSON key put
+in the environment settings as variables (never in chat), network hosts allowed, budget alert. A NEW session is needed to
+see the variables. First step there: write the key to a private temp file, one tiny test request, delete the file.
