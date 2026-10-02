@@ -16,35 +16,45 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Provider } from '@angular/core';
-import { DriveConnectService } from './drive-connect.service';
-import { DriveBackupAdapter } from './backup-adapter';
-import { DriveSyncAdapter } from './sync-adapter';
-import { DriveDeletionAdapterImpl } from './deletion-adapter';
+import { InjectionToken, Provider, inject } from '@angular/core';
+import { DriveConnectService, DRIVE_BACKUP_ADAPTER, DRIVE_DELETION_ADAPTER, DRIVE_SYNC_ADAPTER } from './drive-connect.service';
+import { GoogleTokenProvider, WindowGoogleConfig } from './google-token-provider';
+import type { GoogleConfig } from './google-token-provider';
+
+/**
+ * GoogleConfig provider: reads window.__DOORPRINTS__.googleClientId (empty by default, set via index.html).
+ * S4b-BL-117, docs/15 §9.4.
+ */
+export const GOOGLE_CONFIG: InjectionToken<GoogleConfig> = new InjectionToken('GoogleConfig', {
+  providedIn: 'root',
+  factory: () => new WindowGoogleConfig(),
+});
 
 /**
  * Provides DriveConnectService with its dependencies (backup, sync, deletion adapters).
- * The service is a plain class that receives adapters as constructor parameters.
- * Each adapter is also a plain class receiving its own dependencies.
+ * Also provides GoogleConfig for Google authentication.
  *
- * Usage in a component or module:
+ * Usage:
  * ```
- * providers: [...provideDriveConnect()]
+ * providers: [
+ *   ...provideDriveConnect(),
+ *   // Then provide the adapters from their own modules
+ * ]
  * ```
  *
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
 export function provideDriveConnect(): Provider[] {
   return [
+    { provide: GOOGLE_CONFIG, useClass: WindowGoogleConfig },
     {
       provide: DriveConnectService,
-      useFactory: (
-        backupAdapter: DriveBackupAdapter,
-        syncAdapter: DriveSyncAdapter,
-        deletionAdapter: DriveDeletionAdapterImpl,
-      ) => new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter),
-      deps: [DriveBackupAdapter, DriveSyncAdapter, DriveDeletionAdapterImpl],
+      useFactory: () => {
+        const backupAdapter = inject(DRIVE_BACKUP_ADAPTER);
+        const syncAdapter = inject(DRIVE_SYNC_ADAPTER);
+        const deletionAdapter = inject(DRIVE_DELETION_ADAPTER);
+        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter);
+      },
     },
-    // Adapters are provided by other modules; this just wires them together
   ];
 }
