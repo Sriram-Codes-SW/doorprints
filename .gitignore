@@ -23,3 +23,6 @@ web/.angular/
 web/scripts/geo/.tilecache/
 tools/live-ui/node_modules/
 tools/live-ui/out/
+
+# Per-deploy site configuration (Google client id), never committed
+web/public/config.js
