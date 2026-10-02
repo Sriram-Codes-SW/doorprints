@@ -118,7 +118,7 @@ export class GoogleTokenProvider implements TokenProvider {
     }
   }
 
-  private async ensureScriptLoaded(): Promise<void> {
+  protected async ensureScriptLoaded(): Promise<void> {
     if (this.scriptLoaded) return;
     if (this.loadingScript) {
       await this.loadingScript;
@@ -138,7 +138,7 @@ export class GoogleTokenProvider implements TokenProvider {
     }
   }
 
-  private async requestToken(clientId: string): Promise<string> {
+  protected async requestToken(clientId: string): Promise<string> {
     const gis = (window as unknown as { google?: unknown })?.google;
     if (!gis || typeof gis !== 'object') {
       throw new Error('Google Identity Services not loaded');
@@ -161,14 +161,25 @@ export class GoogleTokenProvider implements TokenProvider {
 
     // Initialize token client if not done yet
     if (!this.tokenClient) {
-      this.tokenClient = (initTokenClient as Function)({
-        client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: () => {}, // We'll use requestAccessToken instead
-      });
+      this.tokenClient = this.createTokenClient(initTokenClient, clientId);
     }
 
     // Request a token
+    return this.doRequestToken();
+  }
+
+  protected createTokenClient(
+    initTokenClient: Function,
+    clientId: string,
+  ): unknown {
+    return (initTokenClient as Function)({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: () => {}, // Callback will be set per request
+    });
+  }
+
+  protected async doRequestToken(): Promise<string> {
     return new Promise((resolve, reject) => {
       const client = this.tokenClient as Record<string, unknown>;
       if (typeof client.requestAccessToken !== 'function') {
@@ -176,53 +187,48 @@ export class GoogleTokenProvider implements TokenProvider {
         return;
       }
 
+      const handler = (response: unknown) => {
+        const resp = response as {
+          access_token?: string;
+          error?: string;
+        } | null;
+
+        if (!resp) {
+          reject(new Error('No response from Google'));
+          return;
+        }
+
+        if (resp.error) {
+          const error = resp.error.toLowerCase();
+          if (error.includes('popup_blocked')) {
+            reject(new Error('popup_blocked'));
+          } else if (error.includes('popup_closed')) {
+            reject(new Error('popup_closed'));
+          } else if (error.includes('access_denied') || error.includes('denied')) {
+            reject(new Error('denied'));
+          } else {
+            reject(new Error(`Google error: ${resp.error}`));
+          }
+          return;
+        }
+
+        if (!resp.access_token) {
+          reject(new Error('No access token in response'));
+          return;
+        }
+
+        // Token is valid for 1 hour (3600 seconds)
+        this.currentToken = resp.access_token;
+        this.tokenExpiresAtMs = Date.now() + 3600 * 1000;
+        resolve(resp.access_token);
+      };
+
+      client.callback = handler;
+
       try {
         (client.requestAccessToken as Function)({
           prompt: this.currentToken ? '' : 'consent',
         });
-
-        // Hook into the callback
-        const originalCallback = client.callback;
-        client.callback = (response: unknown) => {
-          const resp = response as {
-            access_token?: string;
-            error?: string;
-          } | null;
-
-          if (!resp) {
-            reject(new Error('No response from Google'));
-            return;
-          }
-
-          if (resp.error) {
-            const error = resp.error.toLowerCase();
-            if (error.includes('popup_blocked')) {
-              reject(new Error('popup_blocked'));
-            } else if (error.includes('popup_closed')) {
-              reject(new Error('popup_closed'));
-            } else if (error.includes('access_denied') || error.includes('denied')) {
-              reject(new Error('denied'));
-            } else {
-              reject(new Error(`Google error: ${resp.error}`));
-            }
-            return;
-          }
-
-          if (!resp.access_token) {
-            reject(new Error('No access token in response'));
-            return;
-          }
-
-          // Token is valid for 1 hour (3600 seconds)
-          this.currentToken = resp.access_token;
-          this.tokenExpiresAtMs = Date.now() + 3600 * 1000;
-          resolve(resp.access_token);
-
-          // Restore original callback
-          if (typeof originalCallback === 'function') {
-            client.callback = originalCallback;
-          }
-        };
       } catch (e) {
         if ((e as Error).message.includes('offline')) {
           reject(new Error('offline'));
