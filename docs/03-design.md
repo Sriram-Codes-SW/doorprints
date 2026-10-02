@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.61 |
+| Version | 0.62 |
 | Date | 2026-10-02 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -70,6 +70,7 @@
 | 0.56 | 2026-09-30 | Claude (Code), lead | Slice 4a of ADR-28 ([10](10-sprint-log.md) §13.27): `area`, `place` and `areanote` are record types; `/api/import` and `/api/export` carry `areas`, `places`, `areaNotes` and write `/2` when the server holds any. |
 | 0.59 | 2026-10-01 | Claude (Code), lead | §11.1: the reply read against the 2021 guidelines PDF (8(ii)(1), 8(xii), 8(xiii); "adhere to these standards" as the sense of "no alteration"); the National Geospatial Policy 2022 guidelines still to be read (S4b-BL-111 P2). |
 | 0.61 | 2026-10-02 | Claude (Code), lead | New **ADR-33**: Google Drive backup, sync and deletion with client-side encryption, decided by the owner on 2026-10-02 ([15](15-google-drive-backup-and-sharing.md)). (0.60 is taken by the Survey of India branch.) |
+| 0.62 | 2026-10-02 | Claude (Code), lead | **The `SyncBackend` seam** (S4b-BL-70, [15](15-google-drive-backup-and-sharing.md) §7 phase 1; branch `refactor/sync-backend-seam`): §4.2, §4.3, §10.1 and §10.2 say where sync lives now. `CommonRepository.sync` and the web's `SyncService` keep the loop and reach the remote only through `SyncBackend`; today's server calls moved unchanged into `ServerSyncBackend`; the backend supplies the merge rule (`MergeRule`, the server's `SyncRules.serverMerge` / `serverMerge`, which is `keepLocal`). No behaviour change. |
 | 0.58 | 2026-10-01 | Claude (Code), lead | §11.1: the Survey of India's reply of 2026-10-01 (no prior permission for its Administrative Boundary Database; no alteration or modification; acknowledgement; National Geospatial Policy 2022 guidelines) and what it means for ADR-22 ([ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.5, [10](10-sprint-log.md) S4b-BL-111). |
 | 0.57 | 2026-10-01 | Claude (Code), lead | The finishing batch ([10](10-sprint-log.md) §13.29..§13.39, on stacked branches): §6.1 `house.move_in` (V11), the photo's room, tags, caption and `meta_updated_at` (V12), `house.floor` (V13), the statuses TAKEN and NOT_CHOSEN; §8.1 the two statuses; §9 `PUT /api/photos/{id}/meta` and `/3` on `/api/import`; §11.2 the website's offline tiles; new **ADR-29** (deletions in an update file, `doorprints-backup/3`), **ADR-30** (offline tiles on the website through `addProtocol` over Cache Storage), **ADR-31** (search engines: one indexable page, `noindex` by default), **ADR-32** (accessibility rules and their automated checks); new **§17**, the smaller decisions of the batch (copies in UTC, seeded records stamped 2000-01-01, Hunt alerts `VISIBILITY_SECRET` with the app lock, the status colours, the locality lookup on the tap only, the iPhone's wake-up notification, import caps). |
 
@@ -261,7 +262,8 @@ flowchart TB
 | Mappers | `data/Mappers.kt`, `data/ModelLabels.kt` | Room entity ↔ DTO (epoch ms ↔ ISO-8601 through `IsoTime`), translated labels for shared statuses and checklist keys |
 | `SettingsStore`, `SecretStore`, `ServerUrl` | `:shared` `app.doorprints.data` (commonMain since CMP-4 P4b) | Preferences DataStore settings (file `settings`, key names unchanged); the API key only through `SecretStore`; URL validation (`UriParts`, a port of `java.net.URI`'s parser) |
 | `ApiKeyCipher`, `KeystoreSecretStore`, `SettingsStoreFactory` | `data/*.kt` | Android's `SecretStore`: the key stored in the settings entry `apiKeyEnc` as `v1:` + Base64(IV + AES-GCM ciphertext), Keystore alias `house_hunt_api_key_v1`; the settings DataStore opened once per process on `files/datastore/settings.preferences_pb` |
-| `SyncOutcome`, `SyncRules`, `HouseScore` | `:shared` `app.doorprints.shared.sync`, `.model` | Last sync result as a stored code (errors classified without server text), last-edit-wins rule, overall score and ranking |
+| `SyncOutcome`, `SyncRules`, `MergeRule`, `HouseScore` | `:shared` `app.doorprints.shared.sync`, `.model` | Last sync result as a stored code (errors classified without server text), last-edit-wins rule (`SyncRules.serverMerge` is the server's `MergeRule`), overall score and ranking |
+| `SyncBackend`, `ServerSyncBackend` | `:shared` `app.doorprints.data` (S4b-BL-70) | The seam between `CommonRepository.sync` and one remote (§10.1): push a row, pull since a cursor, photo bytes, "is it behind", and the remote's merge rule. `ServerSyncBackend` is the self-hosted server over `ApiClient` (the calls the loop made before, unchanged, with its permanent photo refusals); Drive's backend comes with S4b-BL-118 |
 | `AppLocale` | `i18n/AppLocale.kt` | Per-app language: `LocaleManager` on API 33+, SharedPreferences + context wrapping on 26–32 |
 
 ### 4.2.1 Kotlin Multiplatform module boundaries (`:shared`, Sprint 3.5, ADR-14; `:ui`, ADR-23)
@@ -359,7 +361,8 @@ is no Mac and no paid Apple account.
 |---|---|---|
 | `ConfigService` | `core/config.*` | Base URL + key in sessionStorage, or localStorage with "Remember on this device". **Since Sprint 4a `configGuard` is gone** and no route is guarded: the app is local-first, and a configured server only adds sync (section 16.4). |
 | `LocalDb`, `MemoryDb`, `LocalStore` | `data/local-db.ts`, `data/local-store.service.ts` | The browser's own copy of everything: IndexedDB stores `houses`, `visits`, `photos` (blobs) and `settings`, database `doorprints` version 1. A hand-written wrapper rather than Dexie or `idb` (ADR-19). `MemoryDb` is the fallback when IndexedDB is blocked — the app still works for the session and says clearly that nothing is being kept. |
-| `SyncService`, `syncRules` | `data/sync.service.ts`, `data/sync-rules.ts` | The same push/pull, cursor and last-write-wins rules as Android (section 10), against the API-key server when one is configured. Optional. |
+| `SyncService`, `syncRules` | `data/sync.service.ts`, `data/sync-rules.ts` | The same push/pull, cursor and last-write-wins rules as Android (section 10), against the API-key server when one is configured. Optional. The loop (cursors, progress, *Stop*, cancellation, the 429 wait) stays here; every remote call goes through `SYNC_BACKEND` (below). `serverBehind`, `wireVersion` and the `MergeRule` type live in `sync-rules.ts` (re-exported from `sync.service.ts`). |
+| `SyncBackend`, `ServerSyncBackend`, `SYNC_BACKEND` | `data/sync-backend.ts` (S4b-BL-70) | The web's side of the seam of §10.1, the same members as Kotlin's with `Observable`s; `ServerSyncBackend` wraps `HouseApiService` unchanged and is the token's default. |
 | `StorageService` | `data/storage.service.ts` | `navigator.storage.persist()` / `estimate()`; drives the durability warnings of NFR-027. |
 | `PwaService` | `core/pwa.service.ts` | Registers `sw.js` **beside `index.html`** three seconds after start (never competing with the first paint), with its URL and scope taken from `document.baseURI` (`serviceWorkerRegistration`: `/sw.js` with scope `/` at the root of `https://doorprints.web.app` on Firebase Hosting, the live host since 2026-09-23 (ADR-21); the same code gives `/<path>/sw.js` with scope `/<path>/` if a build is ever served from a sub-path). Keeps the `beforeinstallprompt` event for the permanent *Install the app* card on *Your data* and for a **one-time install banner** (`AppBanners`) after the first saved house; "Not now" there is remembered for 30 days (`INSTALL_SNOOZE_MS`). Surfaces a waiting service worker as an update banner, and the reload it offers checks `UnsavedChanges` first. Records why registration did not happen (`registrationProblem`) for a debugger, never for the user. |
 | `ExportService` and the format writers | `export/*.ts` | The six formats of section 16; `zip.ts` is a small stored-entry ZIP writer and `sha256.ts` the manifest hashes, so no npm dependency was added (ADR-19). |
@@ -855,13 +858,16 @@ Common statuses: 400 invalid input or non-canonical path, 401 missing/wrong key,
 | Conflict policy | LWW on `updatedAt`, applied on the server (stored newer means the incoming write is ignored) and on the client (local dirty and newer means the incoming change is skipped). The server clamps a client `updatedAt` more than 5 min ahead to its own clock (`ClientClock`). |
 | Reset server (S4b-BL-20, since 2026-09-24) | Once any cursor is above 0, a sync first reads `GET /api/stats`: `maxSyncVersion` below a stored cursor means the database was replaced (empty, or restored from an older dump). A server without the field falls back to the push answer: an **accepted** house or visit write answered with a `syncVersion` at or below the highest cursor. Then every house and visit is marked dirty and every stored photo not uploaded, the three cursors go to 0 (rows first, so an interrupted reset is found again), everything is pushed and pulled again, and the user is told (web: announced and on *Your data*; Android: the sync outcome line). A kept newer row (LWW) and `DELETE /api/data` (the sequence carries on) are not a reset. `SyncRules.serverBehind`, `pushShowsReset`; web `serverBehind`, `serverWasReset` |
 | Deletes | Tombstones (`deleted = true`) travel through the same feeds; they carry no content and are purged after 90 days |
+| Backend seam (S4b-BL-70, since 2026-10-02) | The loop above is the same for every remote and lives in `CommonRepository.sync` (Android, iPhone) and `SyncService` (web); the remote is a `SyncBackend`: `isBehind(cursors)`, `pushHouse`/`pushVisit`/`pushRecord` (answer: the row the remote keeps), `deletePhoto`, `uploadPhoto`, `pushPhotoMeta`, `housesSince`/`visitsSince`/`recordsSince`/`photoChangesSince(cursor)`, `downloadPhoto`, and `mergeRule`. Rows travel as the sync DTOs with tombstones; a cursor is a position the loop only compares and stores (the server's `sync_seq`; a backend without a counter gives a growing time or revision and keeps the rest itself); photos move only when the caller allows; failures are thrown as `ApiException`/IO errors (web: `HttpErrorResponse`) so `SyncOutcome.fromError` and `errorMsg` word them alike. Today's only backend is `ServerSyncBackend`; Drive's (S4b-BL-118) brings its own merge rule (last-write-wins on `updatedAt`, [15](15-google-drive-backup-and-sharing.md) §5.1) through `mergeRule` instead of `keepLocal` |
 | Photos | Push: queued deletes first (any network), then uploads of rows with `uploaded = false` if their house is not deleted (unmetered only, when the Wi-Fi setting is on). A permanent 4xx (not an image, cap reached) keeps the photo local only. Pull: `GET /api/photos?since=photoCursor`; tombstones delete local files, new photos of live houses are downloaded. |
 
 ### 10.2 Client pseudocode (`Repository.sync`)
 
+Every remote call below goes through the `SyncBackend` (10.1); for the server, "PUT house" is `ServerSyncBackend.pushHouse`.
+
 ```text
-if server not configured: return "offline"
-if any cursor > 0 and stats.maxSyncVersion < some cursor: markAllForResync(); cursors = 0   # 10.1 Reset server
+backend = syncBackendFor(settings); if none: return "offline"       # the server's when one is configured
+if any cursor > 0 and backend.isBehind(cursors): markAllForResync(); cursors = 0   # 10.1 Reset server (stats.maxSyncVersion)
 for h in houses where dirty:   PUT house; markClean(h.id, h.updatedAt)   # only if not edited meanwhile
 for v in visits where dirty:   PUT visit; markClean(v.id, v.updatedAt)
 for p in photos where deleted:  DELETE photo (404 is fine); remove row
@@ -870,7 +876,7 @@ for p in photos where !uploaded and house not deleted:
     POST photo(id); uploaded = true              # 400/404/409 -> keep local only
 (hc, vc, pc) = cursors
 for dto in GET houses?since=hc: hc = max(hc, dto.syncVersion)
-    if local.dirty and local.updatedAt > dto.updatedAt: skip else upsert(dto, dirty=false)
+    if backend.mergeRule.keepLocal(local, dto): skip else upsert(dto, dirty=false)   # server: local.dirty and local.updatedAt > dto.updatedAt
 same for visits with vc
 save cursors (hc, vc)
 for ch in GET photos?since=pc:
