@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.4 |
+| Version | 0.5 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -16,6 +16,7 @@
 | 0.2 | 2026-10-02 | Claude (Code), lead | **Re-scoped for D-28** (S4b-BL-74; design [15](15-google-drive-backup-and-sharing.md)): there is no hosted server, so no server-side OAuth, OIDC, sessions or data-fiduciary case; new part I, Google sign-in and Drive (client OAuth with PKCE on the iPhone, Play services on Android, the GIS token model on the website; token storage; the one scope `drive.file`; what sits in the person's Drive; deleting it); G3 rewritten (the right to erasure is the in-app deletion); §1 and §5 name Drive's go-live instead of Sprint 5's sign-in. |
 | 0.3 | 2026-10-02 | Claude (Code), lead | Part I gains I10..I14 for the owner's additions to [15](15-google-drive-backup-and-sharing.md) v0.2: encryption with device keys and the recovery key, device authentication for deletes, the required screen lock, photos on mobile data. |
 | 0.4 | 2026-10-02 | Claude (Code), lead | I15, the authenticator app ([15](15-google-drive-backup-and-sharing.md) §10.5). |
+| 0.5 | 2026-10-02 | Claude (Code), lead | After the review of [15](15-google-drive-backup-and-sharing.md) v0.4: I5 depends on the Android sign-in choice; I14 for the QR enrolment and the recovery public key; new I16 (a restored old `keys.json` refused) and I17 (Limited Use and the privacy page). |
 
 ## 1. What this is, and when it runs
 
@@ -152,7 +153,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | I2 | No secret in the apps | Search the APK, the website's bundle and the iOS app for the web client's secret and any `client_secret` | None; only client ids, the iOS URL scheme, the Picker browser key and the project number |
 | I3 | The Picker key's restrictions | Credentials > the API key | Websites `https://doorprints.web.app/*` only, API *Google Picker API* only |
 | I4 | Client OAuth | iPhone: the authorisation request carries `code_challenge` (S256) and `state`, the token request `code_verifier` and no secret; Android: the grant through Play services; website: the GIS token popup works with the release's COOP (`same-origin-allow-popups`) and CSP | As said; the callback refuses a wrong `state` |
-| I5 | Token storage | Website: developer tools > Application (no token in `localStorage`, `sessionStorage` or IndexedDB); iPhone: the Keychain item is *this device only*; Android: no token in shared preferences or files; all: `adb logcat` / the console during a sync | No token anywhere but memory and the iPhone's Keychain; no token in a log |
+| I5 | Token storage | Website: developer tools > Application (no token in `localStorage`, `sessionStorage` or IndexedDB); iPhone: the Keychain item is *this device only*; Android: no token in shared preferences or files with Play services, or, with the Custom Tab choice (15 §5.5, open question 6), the refresh token only sealed by a Keystore key bound to the screen lock; all: `adb logcat` / the console during a sync | No token anywhere but memory and the iPhone's Keychain; no token in a log |
 | I6 | What sits in the person's Drive | drive.google.com with the test account after a backup, a sync and a share | Only the *Doorprints* folder of [15](15-google-drive-backup-and-sharing.md) §5.1; contact details absent where they were left out; the shared file shared as *Viewer* with only the chosen account |
 | I7 | Deleting | *Delete this backup*, *Delete all backups*, *Delete everything …* on the test account (TC-M-48) | The files are gone and not in Drive's bin; sharing removed first; automatic backup stays off; another device asks before backing up again |
 | I8 | Disconnect and revoke | *Disconnect Google Drive*, then *Disconnect on all devices*, then Google's *third-party connections* page | Each does what 15 §3.5 says; no local data deleted; the app shows *Google Drive disconnected* |
@@ -161,8 +162,10 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored |
 | I12 | Device authentication (TC-M-50) | *Delete all backups* and *Delete everything* on each phone; cancel once; wait over a minute once | The phone's own check every time, nothing deleted on cancel, asked again after the minute; the website without a passkey offers L1 only |
 | I13 | The screen lock (TC-M-51) | Connect on a phone with no lock; then with a lock, connect and remove the lock | Refused without a lock; paused with its message after removal, no upload or delete; re-enrolment needed afterwards |
-| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; open the backups on a fresh browser with it; enrol a phone by approval; revoke it | As 15 §9.4, §9.5; the recovery key appears nowhere in the app's storage, logs or Drive |
+| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; a fresh device sees the existing folder and writes nothing until it joins; enrol it by QR code and once by the code fallback; revoke it; open a backup made after the revoke with the recovery key on a fresh browser | As 15 §9.3..§9.5: no silent adoption, a swapped key refused, the recovery key opens post-revoke files without having been typed in between; it appears nowhere in the app's storage, logs or Drive |
 | I15 | Authenticator app (TC-M-55) | Set it up; use a code on the website; replay it; five wrong codes; download `keys.json` | A replayed code and the sixth try are refused; the lock lasts 5 minutes; `keys.json` holds the secret only wrapped; a valid code alone never approves a device unattended |
+| I16 | Rollback | Revoke a device, then bring back the older `keys.json` with Drive's *Manage versions* | Every device refuses it and says so; the revoked device's later files are skipped |
+| I17 | Google's user-data policy | The privacy page and the consent screen | The page says what 15 S4b-BL-121 lists, including the Limited Use sentence; the consent screen links it |
 
 ### H. India's boundaries (5 minutes)
 
