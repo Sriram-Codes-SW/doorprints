@@ -106,7 +106,7 @@ describe('DriveConnectService', () => {
       const listing = await a.service.listBackups();
       expect(listing.ok).toBe(false);
       if (!listing.ok) {
-        expect(listing.reason.toLowerCase()).toContain('not connected');
+      expect(listing.reason).toBe('driveBackups.error.notConnected');
       }
     });
 
@@ -130,7 +130,7 @@ describe('DriveConnectService', () => {
 
       // B: try with wrong key string (not a valid RecoveryKey)
       const opened = await b.service.openWithRecoveryKey('wrong-key-string-12345');
-      expect(opened.error).toMatch(/not valid/i);
+      expect(opened.error).toBe('driveJoin.errorInvalidFormat');
       expect(opened.state).not.toBe('Ready');
     });
   });
@@ -178,7 +178,7 @@ describe('DriveConnectService', () => {
       const listing = await a.service.listBackups();
       expect(listing.ok).toBe(false);
       if (!listing.ok) {
-        expect(listing.reason.toLowerCase()).toContain('not connected');
+      expect(listing.reason).toBe('driveBackups.error.notConnected');
       }
     });
   });
@@ -188,7 +188,7 @@ describe('DriveConnectService', () => {
       const result = await a.service.importFromDrive('backup-id');
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.reason.toLowerCase()).toContain('not connected');
+        expect(result.reason).toBe('driveBackups.error.notConnected');
       }
     });
 
@@ -199,7 +199,7 @@ describe('DriveConnectService', () => {
       const result = await a.service.importFromDrive('nonexistent-backup-id');
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.reason.toLowerCase()).toContain('not found');
+        expect(result.reason).toBe('driveBackups.error.backupNotFound');
       }
     });
   });
@@ -303,7 +303,7 @@ describe('DriveConnectService', () => {
       const key = created.recoveryKey!;
       const flipped = key.slice(0, 2) + (key[2] === '2' ? '3' : '2') + key.slice(3);
       const out = await b.service.openWithRecoveryKey(flipped);
-      expect(out.error).toMatch(/not valid/i);
+      expect(out.error).toBe('driveJoin.errorInvalidFormat');
       expect(b.service.getState()).not.toBe('Ready');
       expect((await b.runtime()).session).toBeUndefined();
     });

@@ -20,6 +20,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@ang
 import { CommonModule } from '@angular/common';
 import { TPipe } from '../../../i18n/t.pipe';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 
 /**
@@ -41,7 +42,7 @@ export class DrivePasskeyComponent implements OnInit {
 
   protected readonly status = signal<'none' | 'registered' | 'unsupported' | 'loading'>('loading');
   protected readonly busy = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
+  protected readonly errorMessage = signal<TKey | null>(null);
 
   async ngOnInit(): Promise<void> {
     await this.loadStatus();
@@ -51,8 +52,8 @@ export class DrivePasskeyComponent implements OnInit {
     try {
       const result = await this.service.passkeyStatus();
       this.status.set(result || 'unsupported');
-    } catch (err) {
-      this.errorMessage.set(String(err));
+    } catch {
+      this.errorMessage.set('driveConnect.failed');
       this.status.set('unsupported');
     }
   }
@@ -72,8 +73,8 @@ export class DrivePasskeyComponent implements OnInit {
       }
       // Refresh status after registration
       await this.loadStatus();
-    } catch (err) {
-      this.errorMessage.set(String(err));
+    } catch {
+      this.errorMessage.set('driveConnect.failed');
     } finally {
       this.busy.set(false);
     }

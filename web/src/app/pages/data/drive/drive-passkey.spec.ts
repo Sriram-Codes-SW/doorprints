@@ -160,7 +160,7 @@ describe('DrivePasskeyComponent', () => {
     await component.onRegisterPasskey();
     detect();
 
-    expect(component['errorMessage']()).toContain('Registration failed');
+    expect(component['errorMessage']()).toBe('driveConnect.failed');
   });
 
   it('renders without missing i18n keys', async () => {

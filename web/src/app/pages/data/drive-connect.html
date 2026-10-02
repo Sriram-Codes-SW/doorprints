@@ -95,7 +95,7 @@
   @if (state() === 'Error' || error()) {
     <div class="error-box">
       @if (error(); as err) {
-        <p>{{ 'driveConnect.error' | t: { reason: err } }}</p>
+        <p>{{ err | t }}</p>
       }
       <button type="button" class="btn" (click)="onConnect()">
         {{ 'common.retry' | t }}

@@ -107,7 +107,9 @@
 
   @if (phase() === 'error') {
     <div>
-      <p role="alert">{{ error() }}</p>
+      @if (error(); as err) {
+        <p role="alert">{{ err | t }}</p>
+      }
       <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
     </div>
   }

@@ -115,7 +115,7 @@ describe('DriveJoinComponent', () => {
   });
 
   it('shows error message for invalid recovery key format', async () => {
-    const errorMsg = 'The recovery key is not valid: check it letter by letter.';
+    const errorMsg = 'driveJoin.errorInvalidFormat';
     const service = createFakeDriveService({
       openWithRecoveryKey: vi.fn(async () => ({
         state: 'NeedsRecoveryKey',
@@ -132,7 +132,7 @@ describe('DriveJoinComponent', () => {
   });
 
   it('shows error message for wrong recovery key', async () => {
-    const errorMsg = 'This recovery key does not open this folder.';
+    const errorMsg = 'driveJoin.errorWrongKey';
     const service = createFakeDriveService({
       openWithRecoveryKey: vi.fn(async () => ({
         state: 'NeedsRecoveryKey',
@@ -228,7 +228,7 @@ describe('DriveJoinComponent', () => {
   });
 
   it('displays error message after operation completes', async () => {
-    const errorMsg = 'Test error';
+    const errorMsg = 'driveConnect.failed';
     const service = createFakeDriveService({
       openWithRecoveryKey: vi.fn(async () => ({
         state: 'NeedsRecoveryKey',
@@ -244,6 +244,7 @@ describe('DriveJoinComponent', () => {
     detect();
 
     const errorRegion = host.querySelector('[aria-live="polite"]');
-    expect(errorRegion?.textContent).toContain(errorMsg);
+    expect(errorRegion?.textContent).toContain('Something went wrong. Try again.');
+    expect(errorRegion?.textContent).not.toContain('driveConnect.failed');
   });
 });

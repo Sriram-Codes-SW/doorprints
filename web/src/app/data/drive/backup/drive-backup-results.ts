@@ -31,6 +31,7 @@ import type { ShrinkHold } from './backup-retention';
 import type { ScheduleFailure } from './backup-schedule';
 import { ControlError } from './control-file';
 import type { ControlBody, ControlErrorKind } from './control-file';
+import type { TKey } from '../../../i18n/en';
 
 /*
  * The typed results of the Drive backups (S4b-BL-116) that the screens show: where the folder stands on this device,
@@ -147,6 +148,49 @@ export class DriveProblem {
     if (e instanceof CryptoError) return new DriveProblem(e.kind === 'UNAVAILABLE' ? 'CRYPTO_UNAVAILABLE' : 'BACKUP_REFUSED');
     return new DriveProblem('SOURCE_FAILED');
   }
+}
+
+
+const PROBLEM_MSG: Record<DriveProblemKind, TKey> = {
+  OFFLINE: 'driveProblem.OFFLINE',
+  UNAUTHORIZED: 'driveProblem.UNAUTHORIZED',
+  QUOTA_EXCEEDED: 'driveProblem.QUOTA_EXCEEDED',
+  RATE_LIMITED: 'driveProblem.RATE_LIMITED',
+  SERVER: 'driveProblem.SERVER',
+  DRIVE: 'driveProblem.DRIVE',
+  CORRUPT: 'driveProblem.CORRUPT',
+  KEYS_ROLLED_BACK: 'driveProblem.KEYS_ROLLED_BACK',
+  KEYS_UNTRUSTED: 'driveProblem.KEYS_UNTRUSTED',
+  KEYS_UNREADABLE: 'driveProblem.KEYS_UNREADABLE',
+  WRONG_RECOVERY_KEY: 'driveJoin.errorWrongKey',
+  NO_RECOVERY_KEY: 'driveProblem.NO_RECOVERY_KEY',
+  DEVICE_REVOKED: 'driveProblem.DEVICE_REVOKED',
+  CONTROL_ROLLED_BACK: 'driveProblem.CONTROL_ROLLED_BACK',
+  CONTROL_INVALID: 'driveProblem.CONTROL_INVALID',
+  FOLDER_WITHOUT_KEYS: 'driveProblem.FOLDER_WITHOUT_KEYS',
+  FOLDER_EXISTS: 'driveProblem.FOLDER_EXISTS',
+  BACKUP_REFUSED: 'driveProblem.BACKUP_REFUSED',
+  BACKUP_GONE: 'driveBackups.error.backupNotFound',
+  SOURCE_FAILED: 'driveProblem.SOURCE_FAILED',
+  CRYPTO_UNAVAILABLE: 'driveProblem.CRYPTO_UNAVAILABLE',
+  SIGNIN_POPUP_BLOCKED: 'driveProblem.SIGNIN_POPUP_BLOCKED',
+  SIGNIN_CLOSED: 'driveProblem.SIGNIN_CLOSED',
+  SIGNIN_DENIED: 'driveProblem.SIGNIN_DENIED',
+  SIGNIN_UNAVAILABLE: 'driveProblem.SIGNIN_UNAVAILABLE',
+};
+
+/** The screen key for a Drive problem; never a raw English sentence. */
+export function problemToMsg(kind: DriveProblemKind): TKey {
+  return PROBLEM_MSG[kind];
+}
+
+const TYPED_ERRORS = [SignInError, DriveError, KeysError, ControlError, DpxError, RecoveryKeyError, CryptoError] as const;
+
+/** A thrown value as a screen key: typed Drive failures map; anything else is the generic message, never String(err). */
+export function msgOfThrown(err: unknown): TKey {
+  if (err instanceof DriveProblem) return problemToMsg(err.kind);
+  if (TYPED_ERRORS.some((C) => err instanceof C)) return problemToMsg(DriveProblem.of(err).kind);
+  return 'driveConnect.failed';
 }
 
 /** An opened folder: its ids, the trusted key list and the control file. Only the services make one. */

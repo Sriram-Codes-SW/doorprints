@@ -111,7 +111,7 @@ describe('DriveBackupsCard', () => {
 
   it('shows a backup error from the service', async () => {
     const fakes = fakeDriveService();
-    fakes.backUpNow.mockResolvedValue({ ok: false, reason: 'Not connected to folder' });
+    fakes.backUpNow.mockResolvedValue({ ok: false, reason: 'driveBackups.error.notConnected' });
     const { host, fixture } = await render(fakes);
     host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.backUpNow')}"]`)!.click();
     await flush();

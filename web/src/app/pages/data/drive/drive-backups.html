@@ -38,9 +38,9 @@
     }
 
     <!-- Backup error -->
-    @if (backupError()) {
+    @if (backupError(); as err) {
       <div class="message message-error" role="alert" aria-live="assertive">
-        {{ backupError() }}
+        {{ err | t }}
       </div>
     }
 
@@ -78,7 +78,9 @@
       </div>
     } @else if (listState() === 'error') {
       <div class="state-message error" role="alert" aria-live="assertive">
-        {{ listError() }}
+        @if (listError(); as err) {
+          {{ err | t }}
+        }
         <button (click)="retryLoadBackups()" class="btn btn-sm btn-secondary">
           {{ 'driveBackups.retry' | t }}
         </button>
@@ -124,9 +126,9 @@
   </section>
 
   <!-- Import error -->
-  @if (importError()) {
+  @if (importError(); as err) {
     <div class="message message-error" role="alert" aria-live="assertive">
-      {{ importError() }}
+      {{ err | t }}
     </div>
   }
 

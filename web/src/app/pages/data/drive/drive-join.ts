@@ -21,6 +21,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TPipe } from '../../../i18n/t.pipe';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 
 /**
@@ -44,7 +45,7 @@ export class DriveJoinComponent implements AfterViewInit {
 
   protected readonly recoveryKeyText = signal('');
   protected readonly busy = signal(false);
-  protected readonly errorMessage = signal<string | null>(null);
+  protected readonly errorMessage = signal<TKey | null>(null);
 
   readonly joined = output<void>();
 
@@ -58,7 +59,7 @@ export class DriveJoinComponent implements AfterViewInit {
 
     const text = this.recoveryKeyText().trim();
     if (!text) {
-      this.errorMessage.set(this.i18n.t('driveJoin.errorEmpty'));
+      this.errorMessage.set('driveJoin.errorEmpty');
       return;
     }
 
@@ -74,8 +75,8 @@ export class DriveJoinComponent implements AfterViewInit {
       } else if (result.error) {
         this.errorMessage.set(result.error);
       }
-    } catch (err) {
-      this.errorMessage.set(String(err));
+    } catch {
+      this.errorMessage.set('driveConnect.failed');
     } finally {
       this.busy.set(false);
     }
