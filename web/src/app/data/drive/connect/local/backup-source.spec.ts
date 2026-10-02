@@ -17,8 +17,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_EXPORT_OPTIONS } from '../../../export/export-model';
-import type { ExportService } from '../../../export/export.service';
+import { DEFAULT_EXPORT_OPTIONS } from '../../../../export/export-model';
+import type { ExportService } from '../../../../export/export.service';
 import { createDriveBackupSource } from './backup-source';
 
 describe('createDriveBackupSource', () => {
@@ -58,7 +58,7 @@ describe('createDriveBackupSource', () => {
     const zipBytes = new Uint8Array([1, 2, 3, 4, 5]);
     const blob = new Blob([zipBytes], { type: 'application/zip' });
 
-    vi.mocked(mockExporter.build).mockResolvedValue({
+    vi.mocked(mockExporter.build!).mockResolvedValue({
       blob,
       format: 'backup',
       fileName: 'test.zip',
@@ -86,12 +86,12 @@ describe('createDriveBackupSource', () => {
   });
 
   it('throws when ExportService returns no blob', async () => {
-    vi.mocked(mockExporter.build).mockResolvedValue({
+    vi.mocked(mockExporter.build!).mockResolvedValue({
       format: 'backup',
       fileName: 'test.zip',
+      blob: null,
       counts: { houses: 0, visits: 0, photos: 0 },
-      // No blob
-    });
+    } as any);
 
     const source = createDriveBackupSource(mockExporter as ExportService, DEFAULT_EXPORT_OPTIONS);
 
@@ -103,7 +103,7 @@ describe('createDriveBackupSource', () => {
     const largeArray = new Uint8Array(5 * 1024 * 1024);
     const blob = new Blob([largeArray], { type: 'application/zip' });
 
-    vi.mocked(mockExporter.build).mockResolvedValue({
+    vi.mocked(mockExporter.build!).mockResolvedValue({
       blob,
       format: 'backup',
       fileName: 'large-backup.zip',
@@ -129,7 +129,7 @@ describe('createDriveBackupSource', () => {
   it('calls ExportService.build with correct arguments', async () => {
     const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'application/zip' });
 
-    vi.mocked(mockExporter.build).mockResolvedValue({
+    vi.mocked(mockExporter.build!).mockResolvedValue({
       blob,
       format: 'backup',
       fileName: 'test.zip',
