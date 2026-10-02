@@ -27,6 +27,10 @@ import type { PhotoChangeDto } from '../../core/models';
 import { DRIVE_LAYOUT, FOLDER_MIME } from './drive-client';
 import type { DriveFile } from './drive-client';
 import { nextStamp, takesIncoming } from './drive-merge';
+import { DrivePhotos } from './drive-photos';
+import { DriveSyncBackend } from './drive-sync-backend';
+import { DEFAULT_PHOTO_CONFIG, EMPTY_PHOTO_STATE, KIND_PHOTO } from './drive-photo-seams';
+import type { PhotoConfig, PhotoState, PhotoStateStore } from './drive-photo-seams';
 import { DriveSyncEngine } from './drive-sync-engine';
 import { EMPTY_SYNC_STATE, FolderSession, KIND_SYNC, reportOf, syncDeviceId } from './drive-sync-seams';
 import type { DriveSyncState, LocalRows, SyncPassResult, SyncStateStore } from './drive-sync-seams';
@@ -55,6 +59,10 @@ export function houseRow(id: string, label: string, updatedAt: number, by: strin
 }
 
 const rk = (kind: SyncKind, key: string) => `${kind}\u0000${key}`;
+
+export function photoRow(id: string, houseId: string, updatedAt: number, by: string, deleted = false): SyncRow {
+  return syncRow('photos', { id, houseId, contentType: 'image/jpeg', sizeBytes: 1234, updatedAt: new Date(updatedAt).toISOString(), deleted, by });
+}
 
 export class MemLocal implements LocalRows {
   readonly rows = new Map<string, SyncRow>();
@@ -145,6 +153,14 @@ export class SyncWorld {
   syncFiles(): DriveFile[] {
     return this.server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === KIND_SYNC);
   }
+
+  photosFolderId(): string {
+    return this.server.allFiles().find((f) => f.appProperties[DRIVE_LAYOUT.role] === 'photos')!.id;
+  }
+
+  photoFiles(): DriveFile[] {
+    return this.server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === KIND_PHOTO);
+  }
 }
 
 export class TestDevice {
@@ -179,6 +195,26 @@ export class TestDevice {
 
   engine(stale = false): DriveSyncEngine {
     return new DriveSyncEngine(this.drive, this.p, this.session(stale), this.store, this.local, () => this.now());
+  }
+
+  // ---- Photos (S4b-BL-128) ----
+  photoState: PhotoState = EMPTY_PHOTO_STATE;
+  readonly photoStore: PhotoStateStore = {
+    load: async () => this.photoState,
+    save: async (s) => {
+      this.photoState = s;
+    },
+  };
+
+  photos(stale = false, config: PhotoConfig = DEFAULT_PHOTO_CONFIG): DrivePhotos {
+    return new DrivePhotos(this.drive, this.p, this.session(stale), this.photoStore, () => this.now(), config);
+  }
+
+  /** The backend the sync loop talks to, with the engine and the photo service sharing one session. */
+  backend(stale = false, config: PhotoConfig = DEFAULT_PHOTO_CONFIG): DriveSyncBackend {
+    const s = this.session(stale);
+    const ph = new DrivePhotos(this.drive, this.p, s, this.photoStore, () => this.now(), config);
+    return new DriveSyncBackend(new DriveSyncEngine(this.drive, this.p, s, this.store, this.local, () => this.now(), undefined, ph), this.local, () => this.now(), this.id, ph);
   }
 
   edit(houseId: string, label: string): void {
