@@ -119,7 +119,7 @@ class FakeSyncBackend implements SyncBackend {
   /** Photos the backend cannot have (Drive: tampered, planted): null, the loop skips them (S4b-BL-128). */
   unavailable = new Set<string>();
   downloadPhotoIfAvailable(id: string): Observable<Blob | null> {
-    this.calls.push(`downloadPhotoIfAvailable ${id}`);
+    this.calls.push(`downloadPhoto ${id}`);
     return this.unavailable.has(id) ? of(null) : of(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
   }
   /** The network policy (S4b-BL-128): false holds photo bytes back. */
@@ -338,7 +338,7 @@ describe('SyncService through the SyncBackend seam', () => {
     backend.allowed = true;
     await sync.syncNow(true);
     expect(backend.calls).toContain(`uploadPhoto ${P2}`);
-    expect(backend.calls).toContain(`downloadPhotoIfAvailable ${P1}`);
+    expect(backend.calls).toContain(`downloadPhoto ${P1}`);
     expect((await store.getPhoto(P1))?.uploaded).toBe(true);
     expect((await store.getPhoto(P2))?.uploaded).toBe(true);
   });
