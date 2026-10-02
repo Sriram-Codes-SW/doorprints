@@ -118,6 +118,22 @@ class DriveBackupServiceTest {
     }
 
     @Test
+    fun filesCarryTheKindsAndLiveWhereTheDeletionRulesExpectThem() = runTest {
+        val folder = ready()
+        a.service.done(folder, Payload.of(3_000, 3))
+        val all = server.allFiles()
+        val root = all.first { it.appProperties[DriveLayout.ROLE] == "root" }
+        val keys = all.first { it.appProperties[DriveLayout.KIND] == "keys" }
+        val control = all.first { it.appProperties[DriveLayout.KIND] == "control" }
+        val backup = all.first { it.appProperties[DriveLayout.KIND] == "backup" }
+        assertEquals(listOf(root.id), keys.parents)
+        assertEquals(listOf(root.id), control.parents)
+        assertEquals(listOf(a.backupsFolder().id), backup.parents)
+        assertEquals(listOf(root.id), a.backupsFolder().parents)
+        assertTrue(all.filter { !it.isFolder }.all { it.appProperties[DriveLayout.KIND] != null })
+    }
+
+    @Test
     fun aSecondRunReconnectsWithoutWriting() = runTest {
         a.created()
         val before = writeCount()
