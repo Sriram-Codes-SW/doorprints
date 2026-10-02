@@ -853,7 +853,7 @@ because WebCrypto is asynchronous). Tests: TC-U-125..TC-U-131 ([06](06-test-plan
 `{"v":1,"alg":"A256GCM-STREAM-64K","epoch":E,"kid":…,"wrappedKey":{"nonce":…,"ct":…},"noncePrefix":…,"chunkSize":65536,"inner":"…"}`
 (base64 with padding, RFC 4648 §4), then chunks of 65536 plaintext bytes plus a 16-byte tag, the last 0..65536 + 16; nonce
 `noncePrefix(7) ‖ u32 index ‖ u8 last`, AAD `header bytes ‖ u32 index ‖ u8 last`. `keys.json`:
-`{"format":"doorprints-keys/1","body":{"revision","epoch","chain":[{"epoch","nonce","ct"}],"devices":[{"kid","name","platform","publicKey","enrolledAt","enrolledBy","wrap":{"enc","ct"}}],"recovery":{"kid","publicKey","anchorEpoch","anchor":{"nonce","ct"},"wrap"}|null,"revoked":[{"kid","revokedAt","revokedAtEpoch"}]},"mac":…}`.
+`{"format":"doorprints-keys/1","body":{"revision","epoch","chain":[{"epoch","nonce","ct"}],"devices":[{"kid","name","platform","publicKey","enrolledAt","enrolledBy","wrap":{"enc","ct"}}],"recovery":{"kid","publicKey","anchorEpoch","anchor":{"nonce","ct"},"wrap"}|null,"revoked":[{"kid","kind":"device|recovery","revokedAt","revokedAtEpoch"}]},"mac":…}`.
 
 **What makes a list trusted (after the review of 2026-10-02).** The MAC proves only that its writer knew *some*
 folder key, and HPKE base mode does not say who wrapped a key: anyone in the Google account can pick a folder key,
@@ -869,11 +869,28 @@ device with no pin opens nothing from Drive (`NOT_PINNED`) except by three named
 anchor**: when a recovery key is made at epoch E0, the recovery entry stores the folder key of E0 under
 `HKDF(recovery key bytes, "doorprints/dpx1/recovery-anchor")` with the AAD `u8 len ‖ "dpx1/recovery-anchor" ‖ u32 E0
 ‖ recovery kid`; opening with the recovery key walks the chain from the current epoch down to E0 and requires the
-anchored key at the end, so a re-wrapped list is refused there too (`RECOVERY_ANCHOR_INVALID`). An enrolled device that
-knows an old epoch's key (a thief before the revoke) can still extend that epoch for a device that has not yet seen the
-revoke; once that device sees the genuine list it reports `FORK_DETECTED` ([02](02-threat-model.md) RR-29). **Writing**
-(S4b-BL-126, -118): re-read and open the head of `keys.json` just before a change, upload, read it back, and only then
-`KeysGuard.acceptWritten`; two writers at once make two lists of one revision, which every device refuses as a fork.
+anchored key at the end, so a list re-wrapped by an outsider is refused there too (`RECOVERY_ANCHOR_INVALID`). **The
+anchor alone does not stop a device that was enrolled**: it can walk the chain down to the anchor's epoch, chain epochs
+of its own below the anchored key, copy the public anchor and wrap to the recovery public key (second review,
+2026-10-02). So **every revoke issues a new recovery key** (`newEpoch(revokeKid, newRecovery)`; without one it is
+`NEW_RECOVERY_REQUIRED`, and re-using the old key is refused the same way): the new anchor holds the new epoch's key,
+which the revoked device never had, and the old recovery kid moves to the revoked list. **UI requirement (S4b-BL-126):
+revoking a device shows the new recovery key once, with the same *Print* / *Copy* / *I have saved it* step as at the
+first connect, and says the old one no longer opens anything.** A new epoch without a revoke keeps the anchor, so then the
+recovery key does not protect against a device enrolled before it (fully trusted anyway, §9.3). An old recovery key the
+person kept after a revoke still opens lists a thief forges from the old anchor ([02](02-threat-model.md) RR-29): the
+screen says to destroy it. An enrolled device that knows an epoch's key (a thief before the revoke) can also extend that
+epoch for a device that has not yet seen the revoke; when that device then sees the genuine list it reads
+`ROLLED_BACK` (the thief chained to a higher epoch) or `FORK_DETECTED` (the same epoch), never something benign, and
+the way back is a **repin** on a stronger proof than the old pin: `KeysFile.repinFirstPin` (the folder key over the
+QR/PSK enrolment again) or `repinWithRecovery` (the current recovery key's anchor), only on the person's action.
+**No error kind from `keys.json` may trigger a revoke, a re-key, a wipe of local keys or data, or re-creating the
+folder**: anyone with write access to the folder can cause every one of them; the app reports, stops writing and asks.
+**Writing** (S4b-BL-126, -118): re-read and open the head of `keys.json` just before a change, upload, read it back,
+and only then `KeysGuard.acceptWritten`; two writers at once make two lists of one revision, which every device
+refuses as a fork; **never write data under a folder key not yet confirmed by that read-back**. A new epoch starts at
+revision 1, and a revision more than 1024 above the pinned one in the same epoch is refused (`REVISION_JUMP`), so a
+stolen device cannot exhaust the revisions and block a revoke.
 
 What this design did not say, and the build chose (the default unless the owner or the review objects):
 
@@ -904,11 +921,11 @@ What this design did not say, and the build chose (the default unless the owner 
   RR-27); the iPhone will use CryptoKit (S4b-BL-131). The reduction `(seed mod (n − 1)) + 1` is common code with fixed
   limbs and no secret-dependent branch.
 - **A new recovery key starts a new epoch** (the old one may have been seen) with a new anchor, and the old recovery kid
-  joins the revoked list; a revoked device moves from `devices` to `revoked` and cannot be listed again; `enrolledBy`
+  joins the revoked list (`"kind":"recovery"`, never an accepted writer); a revoke always comes with one (above); a revoked device moves from `devices` to `revoked` and cannot be listed again; `enrolledBy`
   must name a listed, recovery or revoked kid; the last device cannot be revoked when there is no recovery key.
 - **The rollback rule** orders (epoch, revision) lexicographically: a higher epoch always wins, so a holder of an old
-  epoch's key cannot block a revoke by writing revision 2⁵³ − 1 (and a list at that revision cannot be written on:
-  `REVISION_LIMIT`). **`RevokedEpochRule`**: a revoked writer's
+  epoch's key cannot block a revoke by writing revision 2⁵³ − 1 (a pinned device refuses the jump, `REVISION_JUMP`;
+  a list at that revision cannot be written on, `REVISION_LIMIT`, but a new epoch starts at revision 1). **`RevokedEpochRule`**: a revoked writer's
   file is skipped if written after its revoke or under an epoch it never had; any file under an epoch older than a
   revoke and written after it is skipped; an unknown writer is skipped; the time is the caller's (Drive's
   `modifiedTime`), not authenticated ([02](02-threat-model.md) RR-26).

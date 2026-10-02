@@ -112,14 +112,17 @@ class CryptoVectorsTest {
         val rp = FakeRandomProvider(p, k.s("seed"))
         val files = KeysFile(rp)
         val devices = k.arr("devices").map { Hpke(p).deriveKeyPair(it.h("ikm")) to KeysFile.NewDevice(Hpke(p).deriveKeyPair(it.h("ikm")).publicKey, it.s("name"), DevicePlatform.entries.single { e -> e.wire == it.s("platform") }) }
-        val recovery = RecoveryKey.fromBytes(k.h("recoveryBytes"))
+        var recovery = RecoveryKey.fromBytes(k.h("recoveryBytes"))
         var opened: OpenedKeys? = null
         for (step in k.arr("steps")) {
             val now = step.getValue("now").jsonPrimitive.long
             val written = when (val op = step.s("op")) {
                 "create" -> files.createFirstDevice(devices[0].second, recovery, now)
                 "addDevice" -> files.addDevice(opened!!, kidOf(p, devices[step.getValue("approver").jsonPrimitive.int].second.publicKey), devices[step.getValue("device").jsonPrimitive.int].second, now)
-                "newEpoch" -> files.newEpoch(opened!!, now, revokeKid = kidOf(p, devices[step.getValue("revoke").jsonPrimitive.int].second.publicKey))
+                "newEpoch" -> {
+                    recovery = RecoveryKey.fromBytes(step.h("newRecoveryBytes"))
+                    files.newEpoch(opened!!, now, revokeKid = kidOf(p, devices[step.getValue("revoke").jsonPrimitive.int].second.publicKey), newRecovery = recovery)
+                }
                 else -> error(op)
             }
             assertEquals(step.s("op"), step.s("file"), Bytes.b64(written.bytes))
@@ -253,11 +256,12 @@ class CryptoVectorsTest {
         val news = deviceSpecs.mapIndexed { i, d -> KeysFile.NewDevice(keys[i].publicKey, d.second, d.third) }
         val recovery = RecoveryKey.fromBytes(hex("00112233445566778899aabbccddeeff"))
         val steps = ArrayList<JsonObject>()
-        fun record(op: String, now: Long, w: KeysFile.Written, openers: List<Int>, extra: Map<String, Int>) {
+        fun record(op: String, now: Long, w: KeysFile.Written, openers: List<Int>, extra: Map<String, Int>, newRecoveryHex: String? = null) {
             steps += buildJsonObject {
                 put("op", op)
                 put("now", now)
                 extra.forEach { (k, v) -> put(k, v) }
+                if (newRecoveryHex != null) put("newRecoveryBytes", newRecoveryHex)
                 put("file", Bytes.b64(w.bytes))
                 put("openers", JsonArray(openers.map { JsonPrimitive(it) }))
                 put("folderKeys", buildJsonObject { for (e in 1..w.opened.epoch) put(e.toString(), Bytes.b64(w.opened.folderKey(e)!!)) })
@@ -269,8 +273,9 @@ class CryptoVectorsTest {
         record("addDevice", 1790000100000, w, listOf(0, 1), mapOf("approver" to 0, "device" to 1))
         w = files.addDevice(w.opened, kidOf(p, news[0].publicKey), news[2], 1790000200000)
         record("addDevice", 1790000200000, w, listOf(0, 1, 2), mapOf("approver" to 0, "device" to 2))
-        w = files.newEpoch(w.opened, 1790000300000, revokeKid = kidOf(p, news[1].publicKey))
-        record("newEpoch", 1790000300000, w, listOf(0, 2), mapOf("revoke" to 1))
+        val newRecovery = RecoveryKey.fromBytes(hex("ffeeddccbbaa99887766554433221100"))
+        w = files.newEpoch(w.opened, 1790000300000, revokeKid = kidOf(p, news[1].publicKey), newRecovery = newRecovery)
+        record("newEpoch", 1790000300000, w, listOf(0, 2), mapOf("revoke" to 1), newRecovery.bytes.hex())
         return buildJsonObject {
             put("seed", seed)
             put("recoveryBytes", recovery.bytes.hex())

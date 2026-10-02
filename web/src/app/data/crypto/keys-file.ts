@@ -18,12 +18,11 @@
 
 import { b64, concat, constantTimeEquals, equalBytes, unb64, utf8 } from './bytes';
 import { CanonicalJson, exactObj, int, isObj, MAX_SAFE, parseJson, str } from './canonical-json';
-import { CryptoError } from './crypto-provider';
+import { CryptoError, sha256Of } from './crypto-provider';
 import type { CryptoProvider, P256PrivateKey } from './crypto-provider';
-import { chainWrapKey, FOLDER_KEY_SIZE, HPKE_INFO, kidOf, macKey, WrapAad } from './folder-key';
+import { chainWrapKey, FOLDER_KEY_SIZE, HPKE_INFO, keyId, kidOf, macKey, WrapAad } from './folder-key';
 import type { FolderKeys } from './folder-key';
 import { Hpke } from './hpke';
-import type { KeysGuard } from './keys-guard';
 import type { RecoveryKey } from './recovery-key';
 
 export type KeysErrorKind =
@@ -47,12 +46,18 @@ export type KeysErrorKind =
   | 'ALREADY_ENROLLED'
   | 'NOT_LISTED'
   | 'LAST_RECIPIENT'
-  | 'REVISION_LIMIT';
+  | 'REVISION_LIMIT'
+  | 'REVISION_JUMP'
+  | 'NEW_RECOVERY_REQUIRED'
+  | 'TOO_LARGE';
 
 /**
  * The kinds of Kotlin's `KeysException`. Every kind found before the MAC and the pin (MALFORMED, NOT_CANONICAL,
  * UNSUPPORTED_FORMAT, INVALID_ENTRY, NOT_ENROLLED, REVOKED, UNWRAP_FAILED, NO_RECOVERY, RECOVERY_MISMATCH) comes from
- * bytes anyone in the Google account can write: report it, and never act destructively on it.
+ * bytes anyone in the Google account can write: report it, and never act destructively on it. The same holds for
+ * every kind: anyone with write access to the Drive folder can cause any of them, so NO error kind from `keys.json`
+ * may trigger a revoke, a re-key, a wipe of local keys or data, or re-creating the folder (docs/15 §9.9);
+ * `ROLLED_BACK` is not benign either (docs/02 RR-29).
  */
 export class KeysError extends Error {
   constructor(
@@ -88,8 +93,10 @@ export interface RecoveryEntry {
   anchor: { nonce: Uint8Array; ct: Uint8Array };
   wrap: HpkeWrap;
 }
+/** A revoked kid: a device's, or a replaced recovery key's (`isRecovery`; never a writer of files). */
 export interface RevokedEntry {
   kid: Uint8Array;
+  isRecovery: boolean;
   revokedAt: number;
   revokedAtEpoch: number;
 }
@@ -164,7 +171,7 @@ export function bodyJson(b: KeysBody): Uint8Array {
   j.raw(',"revoked":[');
   b.revoked.forEach((r, i) => {
     if (i > 0) j.raw(',');
-    j.raw('{"kid":').string(b64(r.kid)).raw(',"revokedAt":').number(r.revokedAt).raw(',"revokedAtEpoch":').number(r.revokedAtEpoch).raw('}');
+    j.raw('{"kid":').string(b64(r.kid)).raw(',"kind":').string(r.isRecovery ? 'recovery' : 'device').raw(',"revokedAt":').number(r.revokedAt).raw(',"revokedAtEpoch":').number(r.revokedAtEpoch).raw('}');
   });
   j.raw(']}');
   return j.bytes();
@@ -187,15 +194,19 @@ export function validName(name: string): boolean {
   return true;
 }
 
-/** An opened `keys.json` and the folder keys it chains to (Kotlin `OpenedKeys`). */
+/** Module-private: only this file can build an `OpenedKeys` or move a pin. */
+const TOKEN: unique symbol = Symbol('keys-file');
+
+/** An opened `keys.json` and the folder keys it chains to (Kotlin `OpenedKeys`); only `KeysFile` makes one. */
 export class OpenedKeys implements FolderKeys {
   private readonly keys = new Map<number, Uint8Array>();
+  private readonly p: CryptoProvider;
+  readonly body: KeysBody;
 
-  constructor(
-    private readonly p: CryptoProvider,
-    readonly body: KeysBody,
-    currentKey: Uint8Array,
-  ) {
+  constructor(token: typeof TOKEN, p: CryptoProvider, body: KeysBody, currentKey: Uint8Array) {
+    if (token !== TOKEN) throw new KeysError('INVALID_ENTRY', 'OpenedKeys is made by KeysFile only');
+    this.p = p;
+    this.body = body;
     this.keys.set(body.epoch, currentKey.slice());
   }
 
@@ -250,7 +261,8 @@ export interface WrittenKeys {
  * `keys.json` (docs/15 §9.3..§9.5, §9.9), byte for byte the twin of Kotlin's `KeysFile` (the layout is in its
  * comment). No I/O. A list is trusted by the device's pin (`KeysGuard`), not by its MAC: HPKE base mode does not say
  * who wrapped a key. Writing: re-read the head before the change and after the upload, then `KeysGuard.acceptWritten`
- * (two writers at once are a FORK_DETECTED everywhere).
+ * (two writers at once are a FORK_DETECTED everywhere). Never write data under a folder key not yet confirmed by that
+ * read-back.
  */
 export class KeysFile {
   private readonly hpke: Hpke;
@@ -286,10 +298,18 @@ export class KeysFile {
    * channel (the QR code's HPKE PSK wrap), then pins it. Never call it with a key read from Drive.
    */
   openFirstPin(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: Uint8Array): Promise<OpenedKeys> {
-    return this.openDevice(file, device, guard, trustedFolderKey);
+    return this.openDevice(file, device, guard, trustedFolderKey, 'FIRST_PIN');
   }
 
-  private async openDevice(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard, trusted: Uint8Array | null): Promise<OpenedKeys> {
+  /**
+   * Repin (S4b-BL-126): a device on the losing side of a fork replaces its pin, whatever its order, only on a stronger
+   * proof: the folder key received again over the QR/PSK enrolment. Only on the person's action, never on an error.
+   */
+  repinFirstPin(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: Uint8Array): Promise<OpenedKeys> {
+    return this.openDevice(file, device, guard, trustedFolderKey, 'REPIN');
+  }
+
+  private async openDevice(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard, trusted: Uint8Array | null, trust: KeysTrust = 'PINNED'): Promise<OpenedKeys> {
     const { body, mac } = this.parse(file);
     const pub = device.publicKey;
     const kid = kidOf(this.p, pub);
@@ -300,8 +320,8 @@ export class KeysFile {
     try {
       await this.checkMac(body, mac, folderKey);
       if (trusted && !constantTimeEquals(folderKey, trusted)) throw new KeysError('PIN_MISMATCH', 'not the folder key received at enrolment');
-      const opened = new OpenedKeys(this.p, body, folderKey);
-      await guard.accept(opened, trusted ? 'FIRST_PIN' : 'PINNED');
+      const opened = new OpenedKeys(TOKEN, this.p, body, folderKey);
+      await guard.accept(TOKEN, opened, trust);
       return opened;
     } finally {
       folderKey.fill(0);
@@ -309,7 +329,16 @@ export class KeysFile {
   }
 
   /** The wrap, the MAC, then the anchor: the chain down to the anchor's epoch must end at the key it holds. */
-  async openWithRecovery(file: Uint8Array, recovery: RecoveryKey, guard: KeysGuard): Promise<OpenedKeys> {
+  openWithRecovery(file: Uint8Array, recovery: RecoveryKey, guard: KeysGuard): Promise<OpenedKeys> {
+    return this.recoveryOpen(file, recovery, guard, 'RECOVERY_ANCHOR');
+  }
+
+  /** Repin with the current recovery key's anchor (an old key, shown before a revoke, is RR-29). */
+  repinWithRecovery(file: Uint8Array, recovery: RecoveryKey, guard: KeysGuard): Promise<OpenedKeys> {
+    return this.recoveryOpen(file, recovery, guard, 'REPIN');
+  }
+
+  private async recoveryOpen(file: Uint8Array, recovery: RecoveryKey, guard: KeysGuard, trust: KeysTrust): Promise<OpenedKeys> {
     const { body, mac } = this.parse(file);
     const listed = body.recovery;
     if (!listed) throw new KeysError('NO_RECOVERY', 'no recovery key in the list');
@@ -318,7 +347,7 @@ export class KeysFile {
     const folderKey = await this.unwrap(listed.wrap, pair, body.epoch, listed.kid);
     try {
       await this.checkMac(body, mac, folderKey);
-      const opened = new OpenedKeys(this.p, body, folderKey);
+      const opened = new OpenedKeys(TOKEN, this.p, body, folderKey);
       let bottom: Uint8Array | null = null;
       try {
         bottom = await opened.folderKey(listed.anchorEpoch);
@@ -337,7 +366,7 @@ export class KeysFile {
       anchored.fill(0);
       bottom.fill(0);
       if (!same) throw new KeysError('RECOVERY_ANCHOR_INVALID', 'the chain does not end at the anchored key');
-      await guard.accept(opened, 'RECOVERY_ANCHOR');
+      await guard.accept(TOKEN, opened, trust);
       return opened;
     } finally {
       folderKey.fill(0);
@@ -374,7 +403,9 @@ export class KeysFile {
 
   /**
    * A new epoch: revoke a device and/or replace the recovery key (`newRecovery`: a new anchor at the new epoch, the old
-   * recovery kid joins the revoked list).
+   * recovery kid joins the revoked list). A revoke needs a new recovery key when the folder has one
+   * (NEW_RECOVERY_REQUIRED; the revoked device could forge lists the old key accepts); the screen shows it once. A new
+   * epoch starts at revision 1, so a poisoned revision never blocks a revoke.
    */
   async newEpoch(opened: OpenedKeys, now: number, opts: { revokeKid?: Uint8Array; newRecovery?: RecoveryKey } = {}): Promise<WrittenKeys> {
     checkTime(now);
@@ -382,7 +413,12 @@ export class KeysFile {
     const { revokeKid, newRecovery } = opts;
     if (body.epoch === MAX_EPOCH) throw new KeysError('REVISION_LIMIT', 'epoch limit');
     if (revokeKid && !body.devices.some((d) => equalBytes(d.kid, revokeKid))) throw new KeysError('NOT_LISTED', 'no such device');
-    const revision = nextRevision(body);
+    const old = body.recovery;
+    if (revokeKid && old && !newRecovery) throw new KeysError('NEW_RECOVERY_REQUIRED', 'a revoke issues a new recovery key');
+    if (newRecovery && old && equalBytes(kidOf(this.p, (await newRecovery.keyPair(this.p)).publicKey), old.kid)) {
+      throw new KeysError('NEW_RECOVERY_REQUIRED', 'the same recovery key');
+    }
+    const revision = 1;
     const remaining = body.devices.filter((d) => !revokeKid || !equalBytes(d.kid, revokeKid));
     const epoch = body.epoch + 1;
     const oldKey = opened.currentFolderKey();
@@ -392,7 +428,6 @@ export class KeysFile {
       const link: ChainLink = { epoch, nonce: chainNonce, ct: await this.p.aesGcmSeal(await chainWrapKey(this.p, newKey), chainNonce, WrapAad.chain(epoch), oldKey) };
       const devices: DeviceEntry[] = [];
       for (const d of remaining) devices.push({ ...d, wrap: await this.wrap(d.publicKey, d.kid, epoch, newKey) });
-      const old = body.recovery;
       let recovery: RecoveryEntry | null = null;
       if (newRecovery) recovery = await this.newRecoveryEntry(newRecovery, epoch, newKey);
       else if (old) recovery = { ...old, wrap: await this.wrap(old.publicKey, old.kid, epoch, newKey) };
@@ -402,8 +437,8 @@ export class KeysFile {
       }
       if (devices.length === 0 && !rec) throw new KeysError('LAST_RECIPIENT', 'nobody could open the folder');
       let revoked = body.revoked;
-      if (revokeKid) revoked = [...revoked, { kid: revokeKid.slice(), revokedAt: now, revokedAtEpoch: epoch }];
-      if (newRecovery && old && rec && !equalBytes(old.kid, rec.kid)) revoked = [...revoked, { kid: old.kid, revokedAt: now, revokedAtEpoch: epoch }];
+      if (revokeKid) revoked = [...revoked, { kid: revokeKid.slice(), isRecovery: false, revokedAt: now, revokedAtEpoch: epoch }];
+      if (newRecovery && old) revoked = [...revoked, { kid: old.kid, isRecovery: true, revokedAt: now, revokedAtEpoch: epoch }];
       return await this.write({ revision, epoch, chain: [...body.chain, link], devices, recovery: rec, revoked }, newKey);
     } finally {
       oldKey.fill(0);
@@ -452,7 +487,9 @@ export class KeysFile {
 
   private async write(body: KeysBody, folderKey: Uint8Array): Promise<WrittenKeys> {
     this.checkRules(body);
-    return { bytes: encode(body, await this.mac(folderKey, body)), opened: new OpenedKeys(this.p, body, folderKey) };
+    const bytes = encode(body, await this.mac(folderKey, body));
+    if (bytes.length > MAX_FILE) throw new KeysError('TOO_LARGE', `the list would be ${bytes.length} bytes`);
+    return { bytes, opened: new OpenedKeys(TOKEN, this.p, body, folderKey) };
   }
 
   /** @internal Parses and checks the structure and every entry; the MAC is checked once the key is known. */
@@ -570,9 +607,11 @@ function parseBody(v: unknown): KeysBody {
     };
   }
   const revoked = array(o['revoked'], 'revoked').map((x) => {
-    const r = exactObj(x, 'kid', 'revokedAt', 'revokedAtEpoch') ?? malformed('revoked entry');
+    const r = exactObj(x, 'kid', 'kind', 'revokedAt', 'revokedAtEpoch') ?? malformed('revoked entry');
+    const kind = r['kind'] === 'device' || r['kind'] === 'recovery' ? r['kind'] : malformed('revoked.kind');
     return {
       kid: b64of(r['kid'], 16, 'revoked.kid'),
+      isRecovery: kind === 'recovery',
       revokedAt: int(r['revokedAt'], 0, MAX_SAFE) ?? malformed('revokedAt'),
       revokedAtEpoch: int(r['revokedAtEpoch'], 2, MAX_EPOCH) ?? malformed('revokedAtEpoch'),
     };
@@ -588,3 +627,124 @@ function nextRevision(body: KeysBody): number {
 function checkTime(now: number): void {
   if (!Number.isSafeInteger(now) || now < 0) throw new KeysError('INVALID_ENTRY', 'time');
 }
+
+/**
+ * What a device has accepted of one folder's `keys.json` (Kotlin `KeysWatermark`): the highest (epoch, revision),
+ * the pin of that epoch's folder key (`keyId`, HKDF "doorprints/dpx1/key-id") and the SHA-256 of that revision's body.
+ */
+export interface KeysWatermark {
+  epoch: number;
+  revision: number;
+  keyId: Uint8Array;
+  bodyHash: Uint8Array;
+}
+
+/** Where a device keeps its watermark (on the website: IndexedDB, with S4b-BL-126). `compareAndSet` must be atomic. */
+export interface KeysWatermarkStore {
+  load(): Promise<KeysWatermark | null>;
+  compareAndSet(expected: KeysWatermark | null, next: KeysWatermark): Promise<boolean>;
+}
+
+export function sameWatermark(a: KeysWatermark | null, b: KeysWatermark | null): boolean {
+  if (!a || !b) return a === b;
+  return a.epoch === b.epoch && a.revision === b.revision && equalBytes(a.keyId, b.keyId) && equalBytes(a.bodyHash, b.bodyHash);
+}
+
+/** How a list was proven: by the pin, one of the three named first-pin paths, or a repin. */
+type KeysTrust = 'PINNED' | 'FIRST_PIN' | 'RECOVERY_ANCHOR' | 'CREATED' | 'REPIN';
+export type KeysOrder = 'LOWER' | 'SAME_EPOCH' | 'HIGHER_EPOCH';
+
+/** (epoch, revision) ordered lexicographically: a higher epoch always wins, a lower one never does. */
+export function keysOrder(seenEpoch: number, seenRevision: number, epoch: number, revision: number): KeysOrder {
+  if (epoch < seenEpoch) return 'LOWER';
+  if (epoch > seenEpoch) return 'HIGHER_EPOCH';
+  return revision < seenRevision ? 'LOWER' : 'SAME_EPOCH';
+}
+
+function higher(next: KeysWatermark, seen: KeysWatermark): boolean {
+  return next.epoch > seen.epoch || (next.epoch === seen.epoch && next.revision > seen.revision);
+}
+
+const MAX_TRIES = 4;
+/** The largest revision step within one epoch a device accepts (Kotlin `KeysGuard.MAX_REVISION_STEP`). */
+export const MAX_REVISION_STEP = 1024;
+
+/**
+ * The trust anchor of a device in one folder, the twin of Kotlin's `KeysGuard` (docs/15 §9.9): a list is accepted
+ * only if it leads to the pinned folder key (same epoch: same key id, and the same revision means the same body;
+ * higher epoch: the whole chain down to the pinned epoch ends at the pinned key; lower epoch: rolled back). No pin:
+ * only `KeysFile.openFirstPin`, `KeysFile.openWithRecovery` and `pinCreated` may make one.
+ */
+export class KeysGuard {
+  constructor(
+    private readonly p: CryptoProvider,
+    private readonly store: KeysWatermarkStore,
+  ) {}
+
+  watermark(): Promise<KeysWatermark | null> {
+    return this.store.load();
+  }
+
+  /** After this device's own write was confirmed by Drive. */
+  acceptWritten(written: WrittenKeys): Promise<void> {
+    return this.accept(TOKEN, written.opened, 'PINNED');
+  }
+
+  /** After `createFirstDevice`'s list was confirmed by Drive: the first pin, only if there is none. */
+  pinCreated(written: WrittenKeys): Promise<void> {
+    return this.accept(TOKEN, written.opened, 'CREATED');
+  }
+
+  /** Only this module may call it (`token`), so app code cannot pin arbitrary state. */
+  async accept(token: typeof TOKEN, opened: OpenedKeys, trust: KeysTrust): Promise<void> {
+    if (token !== TOKEN) throw new KeysError('INVALID_ENTRY', 'not callable from outside keys-file.ts');
+    const next = await watermarkOf(this.p, opened);
+    for (let i = 0; i < MAX_TRIES; i++) {
+      const seen = await this.store.load();
+      if (trust === 'REPIN') {
+        if (sameWatermark(seen, next)) return;
+        if (await this.store.compareAndSet(seen, next)) return;
+        continue;
+      }
+      if (!seen) {
+        if (trust === 'PINNED') throw new KeysError('NOT_PINNED', 'no pin for this folder yet');
+      } else {
+        await this.verify(seen, opened, next);
+        if (!higher(next, seen)) return;
+      }
+      if (await this.store.compareAndSet(seen, next)) return;
+    }
+    throw new KeysError('CONCURRENT_UPDATE', 'the watermark kept changing');
+  }
+
+  private async verify(seen: KeysWatermark, opened: OpenedKeys, next: KeysWatermark): Promise<void> {
+    const order = keysOrder(seen.epoch, seen.revision, next.epoch, next.revision);
+    if (order === 'LOWER') {
+      throw new KeysError('ROLLED_BACK', `epoch ${next.epoch} revision ${next.revision} is older than epoch ${seen.epoch} revision ${seen.revision}`);
+    }
+    if (order === 'SAME_EPOCH') {
+      if (!constantTimeEquals(next.keyId, seen.keyId)) throw new KeysError('FORK_DETECTED', `another folder key for epoch ${next.epoch}`);
+      if (next.revision - seen.revision > MAX_REVISION_STEP) throw new KeysError('REVISION_JUMP', `revision ${next.revision} is far above ${seen.revision}`);
+      if (next.revision === seen.revision && !equalBytes(next.bodyHash, seen.bodyHash)) throw new KeysError('FORK_DETECTED', `another list at revision ${next.revision}`);
+      return;
+    }
+    let pinned: Uint8Array | null = null;
+    try {
+      pinned = await opened.folderKey(seen.epoch);
+    } catch (e) {
+      if (!(e instanceof KeysError)) throw e;
+    }
+    if (!pinned) throw new KeysError('PIN_MISMATCH', `the chain does not reach epoch ${seen.epoch}`);
+    const id = await keyId(this.p, pinned);
+    pinned.fill(0);
+    if (!constantTimeEquals(id, seen.keyId)) throw new KeysError('PIN_MISMATCH', 'the chain does not end at the pinned key');
+  }
+}
+
+async function watermarkOf(p: CryptoProvider, opened: OpenedKeys): Promise<KeysWatermark> {
+  const key = opened.currentFolderKey();
+  const id = await keyId(p, key);
+  key.fill(0);
+  return { epoch: opened.epoch, revision: opened.revision, keyId: id, bodyHash: sha256Of(p, bodyJson(opened.body)) };
+}
+

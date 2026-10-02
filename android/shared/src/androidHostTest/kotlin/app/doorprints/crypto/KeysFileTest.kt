@@ -147,12 +147,18 @@ class KeysFileTest {
     fun revokeStartsAChainedEpochTheRevokedDeviceCannotOpen() {
         val w1 = created()
         val w2 = files.addDevice(w1.opened, kid(phone), nd(tablet, "Tab"), t0 + 1)
-        val w3 = files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet))
+        expect(KeysException.Kind.NEW_RECOVERY_REQUIRED) { files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet)) }
+        expect(KeysException.Kind.NEW_RECOVERY_REQUIRED) { files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet), newRecovery = recovery) }
+        val r2 = RecoveryKey.generate(p)
+        val w3 = files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet), newRecovery = r2)
         assertEquals(2, w3.opened.epoch)
-        assertEquals(3L, w3.opened.revision)
+        // A new epoch starts again at revision 1: the order is (epoch, revision).
+        assertEquals(1L, w3.opened.revision)
         expect(KeysException.Kind.REVOKED) { files.open(w3.bytes, tablet, pinnedTo(w1)) }
         val byPhone = files.open(w3.bytes, phone, pinnedTo(w1))
-        val byRecovery = files.openWithRecovery(w3.bytes, recovery, fresh())
+        expect(KeysException.Kind.RECOVERY_MISMATCH) { files.openWithRecovery(w3.bytes, recovery, fresh()) }
+        val byRecovery = files.openWithRecovery(w3.bytes, r2, fresh())
+        assertTrue(byPhone.body.revokedEntry(w1.opened.body.recovery!!.kid)!!.isRecovery)
         assertTrue(!byPhone.currentFolderKey().contentEquals(w1.opened.currentFolderKey()))
         assertArrayEquals(byPhone.currentFolderKey(), byRecovery.currentFolderKey())
         assertArrayEquals(w1.opened.currentFolderKey(), byPhone.folderKey(1))
@@ -162,7 +168,7 @@ class KeysFileTest {
         val revoked = byPhone.body.revokedEntry(kid(tablet))!!
         assertEquals(t0 + 2, revoked.revokedAt)
         assertEquals(2, revoked.revokedAtEpoch)
-        expect(KeysException.Kind.NOT_LISTED) { files.newEpoch(w3.opened, t0 + 3, revokeKid = kid(tablet)) }
+        expect(KeysException.Kind.NOT_LISTED) { files.newEpoch(w3.opened, t0 + 3, revokeKid = kid(tablet), newRecovery = RecoveryKey.generate(p)) }
         expect(KeysException.Kind.REVOKED) { files.addDevice(w3.opened, kid(phone), nd(tablet, "back"), t0 + 3) }
     }
 
@@ -203,8 +209,9 @@ class KeysFileTest {
     fun theLastRecipientCannotBeRevoked() {
         val w = files.createFirstDevice(nd(phone, "Only phone"), null, t0)
         expect(KeysException.Kind.LAST_RECIPIENT) { files.newEpoch(w.opened, t0 + 1, revokeKid = kid(phone)) }
-        val withRecovery = files.newEpoch(created().opened, t0 + 1, revokeKid = kid(phone))
-        files.openWithRecovery(withRecovery.bytes, recovery, fresh())
+        val r2 = RecoveryKey.generate(p)
+        val withRecovery = files.newEpoch(created().opened, t0 + 1, revokeKid = kid(phone), newRecovery = r2)
+        files.openWithRecovery(withRecovery.bytes, r2, fresh())
     }
 
     @Test
@@ -266,15 +273,15 @@ class KeysFileTest {
         val g = KeysGuard(p, store)
         val w1 = created()
         val w2 = files.addDevice(w1.opened, kid(phone), nd(tablet, "Tab"), t0 + 1)
-        val w3 = files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet))
+        val w3 = files.newEpoch(w2.opened, t0 + 2, revokeKid = kid(tablet), newRecovery = RecoveryKey.generate(p))
         g.pinCreated(w1)
         files.open(w3.bytes, phone, g)
         assertEquals(2, store.value!!.epoch)
-        assertEquals(3L, store.value!!.revision)
+        assertEquals(1L, store.value!!.revision)
         expect(KeysException.Kind.ROLLED_BACK) { files.open(w2.bytes, phone, g) }
         expect(KeysException.Kind.ROLLED_BACK) { files.open(w1.bytes, phone, g) }
         expect(KeysException.Kind.ROLLED_BACK) { files.openWithRecovery(w2.bytes, recovery, g) }
-        assertEquals(3L, store.value!!.revision)
+        assertEquals(1L, store.value!!.revision)
         files.open(w3.bytes, phone, g)
     }
 
@@ -287,20 +294,24 @@ class KeysFileTest {
         val w3 = files.addDevice(w2.opened, kid(phone), nd(thief, "Thief"), t0 + 2)
         val gB = fresh().also { files.openFirstPin(w3.bytes, tablet, it, w1.opened.currentFolderKey()) }
         val thiefOpened = files.openFirstPin(w3.bytes, thief, fresh(), w1.opened.currentFolderKey())
-        val revoke = files.newEpoch(w3.opened, t0 + 3, revokeKid = kid(thief))
+        val revoke = files.newEpoch(w3.opened, t0 + 3, revokeKid = kid(thief), newRecovery = RecoveryKey.generate(p))
         // The thief knows epoch 1's key, so its list passes B's pin at epoch 1 (an enrolled device is trusted).
         val b = thiefOpened.body
         val poisoned = KeysBody(CanonicalJson.MAX_SAFE, b.epoch, b.chain, b.devices, b.recovery, b.revoked)
         val k = thiefOpened.currentFolderKey()
         val mac = p.hmacSha256(FolderKey.macKey(p, k), Bytes.concat(Bytes.utf8(KeysFile.FORMAT), byteArrayOf(0), poisoned.json()))
         val file = Bytes.concat("{\"format\":\"doorprints-keys/1\",\"body\":".encodeToByteArray(), poisoned.json(), ",\"mac\":\"${Bytes.b64(mac)}\"}".encodeToByteArray())
-        val o = files.open(file, tablet, gB)
-        // Writing on from it is a clean refusal, not an overflow.
+        // A pinned device refuses the jump outright (REVISION_JUMP); one that had no pin and was given it anyway…
+        expect(KeysException.Kind.REVISION_JUMP) { files.open(file, tablet, gB) }
+        val o = files.openFirstPin(file, tablet, fresh(), w1.opened.currentFolderKey())
+        // …cannot write on from it (a clean refusal, not an overflow), but a revoke still can: it starts at revision 1.
         expect(KeysException.Kind.REVISION_LIMIT) { files.addDevice(o, kid(tablet), nd(browser, "x"), t0 + 4) }
-        // The genuine revoke (epoch 2, revision 4) is accepted: the higher epoch wins whatever the revision.
+        val fromPoison = files.newEpoch(o, t0 + 5, revokeKid = kid(thief), newRecovery = RecoveryKey.generate(p))
+        assertEquals(1L, fromPoison.opened.revision)
+        // The genuine revoke (epoch 2, revision 1) is accepted: the higher epoch wins whatever the revision.
         files.open(revoke.bytes, tablet, gB)
         assertEquals(2, gB.watermark()!!.epoch)
-        assertEquals(4L, gB.watermark()!!.revision)
+        assertEquals(1L, gB.watermark()!!.revision)
         expect(KeysException.Kind.ROLLED_BACK) { files.open(file, tablet, gB) }
     }
 
@@ -376,8 +387,10 @@ class KeysFileTest {
     fun aRevokedFileRuleOverRealLists() {
         val w1 = created()
         val w2 = files.addDevice(w1.opened, kid(phone), nd(tablet, "Tab"), t0 + 1)
-        val w3 = files.newEpoch(w2.opened, t0 + 100, revokeKid = kid(tablet))
+        val w3 = files.newEpoch(w2.opened, t0 + 100, revokeKid = kid(tablet), newRecovery = RecoveryKey.generate(p))
         val body = w3.opened.body
+        // The replaced recovery kid is never an accepted writer.
+        assertEquals(RevokedEpochRule.Verdict.SKIP_UNKNOWN_WRITER, RevokedEpochRule.check(body, 1, w1.opened.body.recovery!!.kid, t0 + 50))
         assertEquals(RevokedEpochRule.Verdict.ACCEPT, RevokedEpochRule.check(body, 1, kid(tablet), t0 + 50))
         assertEquals(RevokedEpochRule.Verdict.SKIP_REVOKED_WRITER, RevokedEpochRule.check(body, 1, kid(tablet), t0 + 150))
         assertEquals(RevokedEpochRule.Verdict.SKIP_OLD_EPOCH_AFTER_REVOKE, RevokedEpochRule.check(body, 1, kid(phone), t0 + 150))
@@ -385,5 +398,102 @@ class KeysFileTest {
         assertEquals(RevokedEpochRule.Verdict.SKIP_UNKNOWN_WRITER, RevokedEpochRule.check(body, 2, kid(browser), t0 + 150))
         assertEquals(RevokedEpochRule.Verdict.SKIP_UNKNOWN_WRITER, RevokedEpochRule.check(body, 2, body.recovery!!.kid, t0 + 150))
         assertEquals(RevokedEpochRule.Verdict.NEWER_EPOCH, RevokedEpochRule.check(body, 3, kid(phone), t0 + 150))
+    }
+
+    /** A link of epoch [epoch] wrapping [prev] under [key], as a thief who knows [prev] can make. */
+    private fun link(epoch: Int, key: ByteArray, prev: ByteArray): ChainLink {
+        val n = p.randomBytes(12)
+        return ChainLink(epoch, AeadWrap(n, p.aesGcmSeal(FolderKey.chainWrapKey(p, key), n, WrapAad.chain(epoch), prev)))
+    }
+
+    private fun signed(body: KeysBody, key: ByteArray): ByteArray {
+        val mac = p.hmacSha256(FolderKey.macKey(p, key), Bytes.concat(Bytes.utf8(KeysFile.FORMAT), byteArrayOf(0), body.json()))
+        return Bytes.concat("{\"format\":\"doorprints-keys/1\",\"body\":".encodeToByteArray(), body.json(), ",\"mac\":\"${Bytes.b64(mac)}\"}".encodeToByteArray())
+    }
+
+    /**
+     * poc2 t2/t4: a revoked device knows the anchor epoch's key, so it chains epochs of its own down to it, copies the
+     * public anchor and wraps to the recovery public key. Refused: the revoke issued a new recovery key (R2), the old
+     * one is RECOVERY_MISMATCH against the genuine list and the new one against the thief's.
+     */
+    @Test
+    fun aRevokedDeviceCannotForgeForTheRecoveryKey() {
+        val thief = p.p256Generate()
+        val r1 = recovery
+        var w = created()
+        val oldAnchorBody = files.parse(w.bytes).first // public: in Drive's history or kept by the thief
+        w = files.newEpoch(w.opened, t0 + 1)
+        w = files.addDevice(w.opened, kid(phone), nd(thief, "Thief"), t0 + 2)
+        val k1 = checkNotNull(files.openFirstPin(w.bytes, thief, fresh(), w.opened.currentFolderKey()).folderKey(1))
+        val r2 = RecoveryKey.generate(p)
+        w = files.newEpoch(w.opened, t0 + 3, revokeKid = kid(thief), newRecovery = r2)
+        w = files.newEpoch(w.opened, t0 + 4)
+        val genuine = files.parse(w.bytes).first
+        val keys = listOf(k1) + List(9) { p.randomBytes(32) }
+        val chain = (2..10).map { e -> link(e, keys[e - 1], keys[e - 2]) }
+        val hpke = Hpke(p)
+        fun wrapped(entry: RecoveryEntry) = RecoveryEntry(entry.kid, entry.publicKey, entry.anchorEpoch, entry.anchor,
+            hpke.seal(entry.publicKey, WrapAad.HPKE_INFO, WrapAad.folderKey(10, entry.kid), keys[9]).let { HpkeWrap(it.enc, it.ciphertext) })
+        // With the old anchor (epoch 1, the old recovery key) and with the current anchor (the new key's).
+        val withOld = signed(KeysBody(1, 10, chain, emptyList(), wrapped(oldAnchorBody.recovery!!), emptyList()), keys[9])
+        val withNew = signed(KeysBody(1, 10, chain, emptyList(), wrapped(genuine.recovery!!), emptyList()), keys[9])
+        expect(KeysException.Kind.RECOVERY_ANCHOR_INVALID) { files.openWithRecovery(withNew, r2, fresh()) }
+        expect(KeysException.Kind.RECOVERY_MISMATCH) { files.openWithRecovery(withOld, r2, fresh()) }
+        // The old key against the genuine list is refused; against the thief's list it is the residual risk RR-29
+        // (the person must use the key shown at the revoke).
+        expect(KeysException.Kind.RECOVERY_MISMATCH) { files.openWithRecovery(w.bytes, r1, fresh()) }
+        files.openWithRecovery(w.bytes, r2, fresh())
+        // A later re-anchor with the same key is refused; a new key again does not open the thief's lists.
+        expect(KeysException.Kind.NEW_RECOVERY_REQUIRED) { files.newEpoch(w.opened, t0 + 5, newRecovery = r2) }
+        val r3 = RecoveryKey.generate(p)
+        files.newEpoch(w.opened, t0 + 5, newRecovery = r3)
+        expect(KeysException.Kind.RECOVERY_MISMATCH) { files.openWithRecovery(withNew, r3, fresh()) }
+    }
+
+    /** poc2 t3: a stolen, still-listed device writes revision 2^53 − 1 at the current epoch before the revoke. */
+    @Test
+    fun aPoisonedRevisionNeverBlocksTheRevoke() {
+        val thief = p.p256Generate()
+        val w1 = created()
+        val gA = pinnedTo(w1)
+        val w2 = files.addDevice(w1.opened, kid(phone), nd(thief, "Thief"), t0 + 1)
+        gA.acceptWritten(w2)
+        val t = files.openFirstPin(w2.bytes, thief, fresh(), w1.opened.currentFolderKey())
+        val b = t.body
+        val poisoned = signed(KeysBody(CanonicalJson.MAX_SAFE, b.epoch, b.chain, b.devices, b.recovery, b.revoked), t.currentFolderKey())
+        expect(KeysException.Kind.REVISION_JUMP) { files.open(poisoned, phone, gA) }
+        // Even built on the poisoned list (a device without the clamp), the revoke goes through at revision 1.
+        val o = files.openFirstPin(poisoned, phone, fresh(), w1.opened.currentFolderKey())
+        val revoke = files.newEpoch(o, t0 + 2, revokeKid = kid(thief), newRecovery = RecoveryKey.generate(p))
+        gA.acceptWritten(revoke)
+        assertEquals(2, gA.watermark()!!.epoch)
+        // A gap within the clamp is fine.
+        var w = revoke
+        repeat(3) { i -> w = files.addDevice(w.opened, kid(phone), nd(p.p256Generate(), "D$i"), t0 + 3 + i) }
+        files.open(w.bytes, phone, gA)
+    }
+
+    /** Minor 3: a device on the losing side of a fork repins only on a stronger proof than its old pin. */
+    @Test
+    fun repinNeedsTheEnrolmentKeyOrTheRecoveryAnchor() {
+        val w1 = created()
+        val a = files.addDevice(w1.opened, kid(phone), nd(tablet, "A"), t0 + 1)
+        val bWin = files.addDevice(w1.opened, kid(phone), nd(browser, "B"), t0 + 1)
+        val g = pinnedTo(w1)
+        files.open(a.bytes, phone, g)
+        expect(KeysException.Kind.FORK_DETECTED) { files.open(bWin.bytes, phone, g) }
+        // Not with a wrong key, and plain open never moves the pin back.
+        expect(KeysException.Kind.PIN_MISMATCH) { files.repinFirstPin(bWin.bytes, phone, g, p.randomBytes(32)) }
+        files.repinFirstPin(bWin.bytes, phone, g, w1.opened.currentFolderKey())
+        files.open(bWin.bytes, phone, g)
+        expect(KeysException.Kind.FORK_DETECTED) { files.open(a.bytes, phone, g) }
+        // With the recovery anchor, even over a higher pinned epoch.
+        val h = pinnedTo(w1)
+        val e2 = files.newEpoch(w1.opened, t0 + 2)
+        files.open(e2.bytes, phone, h)
+        expect(KeysException.Kind.ROLLED_BACK) { files.open(bWin.bytes, phone, h) }
+        expect(KeysException.Kind.RECOVERY_MISMATCH) { files.repinWithRecovery(bWin.bytes, RecoveryKey.generate(p), h) }
+        files.repinWithRecovery(bWin.bytes, recovery, h)
+        assertEquals(1, h.watermark()!!.epoch)
     }
 }

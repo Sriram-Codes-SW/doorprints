@@ -26,8 +26,12 @@ class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.na
     /**
      * Every kind before the MAC and the pin are checked ([MALFORMED], [NOT_CANONICAL], [UNSUPPORTED_FORMAT],
      * [INVALID_ENTRY], [NOT_ENROLLED], [REVOKED], [UNWRAP_FAILED], [NO_RECOVERY], [RECOVERY_MISMATCH]) comes from
-     * bytes anyone in the Google account can write: a caller reports it and stops, and **never acts destructively on it**
-     * (no deleting keys, no re-enrolling, no "this device was revoked" clean-up) without a list that passed the pin.
+     * bytes anyone in the Google account can write: a caller reports it and stops, and **never acts destructively on it**.
+     * The same holds for **every** kind here, the later ones included: anyone with write access to the Drive folder can
+     * cause any of them (an old copy gives `ROLLED_BACK`, a re-wrapped list `FORK_DETECTED`/`PIN_MISMATCH`), so **no
+     * error kind from `keys.json` may trigger a revoke, a re-key, a wipe of local keys or data, or re-creating the
+     * folder**; the app reports, stops writing, and asks the person (docs/15 §9.9). `ROLLED_BACK` is not benign either:
+     * it is also what a thief's chained epochs look like next to the genuine list (docs/02 RR-29).
      */
     enum class Kind {
         /** Not JSON, or not the `doorprints-keys/1` structure. */
@@ -90,8 +94,23 @@ class KeysException(val kind: Kind, message: String) : Exception("keys ${kind.na
         /** The change would leave no device and no recovery key that can open the folder. */
         LAST_RECIPIENT,
 
-        /** The revision (2⁵³ − 1) or the epoch (2³¹ − 1) cannot go higher. */
+        /** The revision (2⁵³ − 1) or the epoch (2³¹ − 1) cannot go higher; a new epoch starts again at revision 1. */
         REVISION_LIMIT,
+
+        /**
+         * The same epoch at a revision more than [KeysGuard.MAX_REVISION_STEP] above the pinned one: not what devices
+         * write (each write adds one), so refused as suspicious (a stolen device trying to exhaust the revisions).
+         */
+        REVISION_JUMP,
+
+        /**
+         * A revoke without a new recovery key, or a "new" recovery key that is the old one: every device enrolled before
+         * a revoke could derive the old anchor's key, so after a revoke only a new recovery key protects the recovery path.
+         */
+        NEW_RECOVERY_REQUIRED,
+
+        /** The new list is larger than [KeysFile.MAX_FILE]. */
+        TOO_LARGE,
     }
 }
 
@@ -130,7 +149,8 @@ class RecoveryEntry internal constructor(
     val wrap: HpkeWrap,
 )
 
-class RevokedEntry internal constructor(val kid: ByteArray, val revokedAt: Long, val revokedAtEpoch: Int)
+/** A revoked kid: a device's, or a replaced recovery key's ([isRecovery]; never a writer of files). */
+class RevokedEntry internal constructor(val kid: ByteArray, val isRecovery: Boolean, val revokedAt: Long, val revokedAtEpoch: Int)
 
 /** The link of epoch [epoch]: the folder key of epoch − 1 under the chain-wrap key of [epoch] (docs/15 §9.1). */
 class ChainLink internal constructor(val epoch: Int, val prev: AeadWrap)
@@ -187,6 +207,7 @@ class KeysBody internal constructor(
         revoked.forEachIndexed { i, r ->
             if (i > 0) j.raw(",")
             j.raw("{\"kid\":").string(Bytes.b64(r.kid))
+                .raw(",\"kind\":").string(if (r.isRecovery) "recovery" else "device")
                 .raw(",\"revokedAt\":").number(r.revokedAt)
                 .raw(",\"revokedAtEpoch\":").number(r.revokedAtEpoch.toLong()).raw("}")
         }
@@ -250,6 +271,7 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
  * **Writing** (S4b-BL-126/-118): re-read the head of `keys.json` and open it just before writing, build the change on
  * it, upload, read it back, and call [KeysGuard.acceptWritten] only when what Drive returns is the list written; two
  * writers at once make two lists of one revision, which every device then refuses as [KeysException.Kind.FORK_DETECTED].
+ * **Never write data under a folder key not yet confirmed by that read-back.**
  *
  * ```
  * {"format":"doorprints-keys/1","body":{…},"mac":B64(32)}
@@ -259,7 +281,7 @@ class OpenedKeys internal constructor(private val p: CryptoProvider, val body: K
  *                     "enrolledAt":ms,"enrolledBy":B64(16)|null,"wrap":{"enc":B64(65),"ct":B64(48)}},…],
  *         "recovery":{"kid":B64(16),"publicKey":B64(65),"anchorEpoch":E0,"anchor":{"nonce":B64(12),"ct":B64(48)},
  *                     "wrap":{…}}|null,
- *         "revoked":[{"kid":B64(16),"revokedAt":ms,"revokedAtEpoch":N},…]}
+ *         "revoked":[{"kid":B64(16),"kind":"device|recovery","revokedAt":ms,"revokedAtEpoch":N},…]}
  * mac    = HMAC-SHA-256(FolderKey.macKey(folder key of epoch E), "doorprints-keys/1" ‖ 0x00 ‖ canonical body)
  * wrap   = HPKE base (RFC 9180, DHKEM(P-256), HKDF-SHA256, AES-256-GCM) to the entry's public key,
  *          info "doorprints/dpx1/wrap", aad WrapAad.folderKey(E, entry kid), plaintext the 32-byte folder key
@@ -307,6 +329,15 @@ class KeysFile(private val p: CryptoProvider) {
     fun openFirstPin(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: ByteArray): OpenedKeys =
         openDevice(file, device, guard, KeysGuard.Trust.FIRST_PIN, trustedFolderKey)
 
+    /**
+     * **Repin** (S4b-BL-126): for a device that has a pin but is on the losing side of a fork (`FORK_DETECTED`,
+     * `PIN_MISMATCH`, `ROLLED_BACK` against the genuine list). The old pin is replaced, whatever its order, only on a
+     * proof stronger than it: the folder key received again over the QR/PSK enrolment ([trustedFolderKey]). The other
+     * proof is [repinWithRecovery]. Only on the person's explicit action, never on an error kind alone.
+     */
+    fun repinFirstPin(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trustedFolderKey: ByteArray): OpenedKeys =
+        openDevice(file, device, guard, KeysGuard.Trust.REPIN, trustedFolderKey)
+
     private fun openDevice(file: ByteArray, device: P256PrivateKey, guard: KeysGuard, trust: KeysGuard.Trust, trusted: ByteArray?): OpenedKeys {
         val (body, mac) = parse(file)
         val pub = device.publicKey
@@ -333,7 +364,19 @@ class KeysFile(private val p: CryptoProvider) {
      * current epoch down to the anchor's epoch must end at the folder key the anchor holds, which only the recovery
      * key's holder could have written. A device with a pin also checks it; one without is pinned by this.
      */
-    fun openWithRecovery(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard): OpenedKeys {
+    fun openWithRecovery(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard): OpenedKeys =
+        recoveryOpen(file, recovery, guard, KeysGuard.Trust.RECOVERY_ANCHOR)
+
+    /**
+     * **Repin** with the recovery key (see [repinFirstPin]): the anchor replaces the old pin whatever its order. The
+     * recovery key is the root of trust above the devices: since every revoke issues a new recovery key, a thief who
+     * held keys before the revoke cannot pass the current key's anchor. The person must use the **current** recovery key;
+     * an old one (shown before a revoke) still opens lists the thief can forge (docs/02 RR-29).
+     */
+    fun repinWithRecovery(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard): OpenedKeys =
+        recoveryOpen(file, recovery, guard, KeysGuard.Trust.REPIN)
+
+    private fun recoveryOpen(file: ByteArray, recovery: RecoveryKey, guard: KeysGuard, trust: KeysGuard.Trust): OpenedKeys {
         val (body, mac) = parse(file)
         val listed = body.recovery ?: throw KeysException(KeysException.Kind.NO_RECOVERY, "no recovery key in the list")
         val pair = recovery.keyPair(p)
@@ -356,7 +399,7 @@ class KeysFile(private val p: CryptoProvider) {
             anchored.fill(0)
             bottom.fill(0)
             if (!same) throw KeysException(KeysException.Kind.RECOVERY_ANCHOR_INVALID, "the chain does not end at the anchored key")
-            guard.accept(opened, KeysGuard.Trust.RECOVERY_ANCHOR)
+            guard.accept(opened, trust)
             return opened
         } finally {
             folderKey.fill(0)
@@ -394,13 +437,26 @@ class KeysFile(private val p: CryptoProvider) {
      * revoked list (`revokedAt` = [now], `revokedAtEpoch` = the new epoch). [newRecovery] replaces the recovery key
      * (*Make a recovery key*): a new anchor at the new epoch, and the old recovery kid joins the revoked list, so the old
      * key opens nothing written afterwards.
+     *
+     * **A revoke needs a new recovery key** when the folder has one ([KeysException.Kind.NEW_RECOVERY_REQUIRED]): the
+     * revoked device could walk the chain to the old anchor's epoch and forge lists the old recovery key accepts; the
+     * screen shows the new key once (docs/15 §9.9). A new epoch without a revoke keeps the anchor, so the recovery key
+     * then does not protect against a device enrolled before it. The new epoch starts at revision 1 (the order is
+     * (epoch, revision)), so a poisoned revision never blocks a revoke.
      */
     fun newEpoch(opened: OpenedKeys, now: Long, revokeKid: ByteArray? = null, newRecovery: RecoveryKey? = null): Written {
         checkTime(now)
         val body = opened.body
         if (body.epoch == Dpx.MAX_EPOCH) throw KeysException(KeysException.Kind.REVISION_LIMIT, "epoch limit")
         if (revokeKid != null && body.device(revokeKid) == null) throw KeysException(KeysException.Kind.NOT_LISTED, "no such device")
-        val revision = nextRevision(body)
+        val old = body.recovery
+        if (revokeKid != null && old != null && newRecovery == null) {
+            throw KeysException(KeysException.Kind.NEW_RECOVERY_REQUIRED, "a revoke issues a new recovery key")
+        }
+        if (newRecovery != null && old != null && kidOf(p, newRecovery.keyPair(p).publicKey).contentEquals(old.kid)) {
+            throw KeysException(KeysException.Kind.NEW_RECOVERY_REQUIRED, "the same recovery key")
+        }
+        val revision = 1L
         val remaining = body.devices.filter { revokeKid == null || !it.kid.contentEquals(revokeKid) }
         val epoch = body.epoch + 1
         val oldKey = opened.currentFolderKey()
@@ -409,7 +465,6 @@ class KeysFile(private val p: CryptoProvider) {
             val chainNonce = p.randomBytes(12)
             val link = ChainLink(epoch, AeadWrap(chainNonce, p.aesGcmSeal(FolderKey.chainWrapKey(p, newKey), chainNonce, WrapAad.chain(epoch), oldKey)))
             val devices = remaining.map { DeviceEntry(it.kid, it.name, it.platform, it.publicKey, it.enrolledAt, it.enrolledBy, wrap(it.publicKey, it.kid, epoch, newKey)) }
-            val old = body.recovery
             val recovery = when {
                 newRecovery != null -> newRecoveryEntry(newRecovery, epoch, newKey)
                 old != null -> RecoveryEntry(old.kid, old.publicKey, old.anchorEpoch, old.anchor, wrap(old.publicKey, old.kid, epoch, newKey))
@@ -420,8 +475,8 @@ class KeysFile(private val p: CryptoProvider) {
             }
             if (devices.isEmpty() && recovery == null) throw KeysException(KeysException.Kind.LAST_RECIPIENT, "nobody could open the folder")
             var revoked = body.revoked
-            if (revokeKid != null) revoked = revoked + RevokedEntry(revokeKid.copyOf(), now, epoch)
-            if (newRecovery != null && old != null && !old.kid.contentEquals(recovery!!.kid)) revoked = revoked + RevokedEntry(old.kid, now, epoch)
+            if (revokeKid != null) revoked = revoked + RevokedEntry(revokeKid.copyOf(), false, now, epoch)
+            if (newRecovery != null && old != null) revoked = revoked + RevokedEntry(old.kid, true, now, epoch)
             return write(KeysBody(revision, epoch, body.chain + link, devices, recovery, revoked), newKey)
         } finally {
             oldKey.fill(0)
@@ -470,6 +525,7 @@ class KeysFile(private val p: CryptoProvider) {
     private fun write(body: KeysBody, folderKey: ByteArray): Written {
         checkRules(body)
         val bytes = encode(body, mac(folderKey, body))
+        if (bytes.size > MAX_FILE) throw KeysException(KeysException.Kind.TOO_LARGE, "the list would be ${bytes.size} bytes")
         return Written(bytes, OpenedKeys(p, body, folderKey))
     }
 
@@ -541,9 +597,11 @@ class KeysFile(private val p: CryptoProvider) {
             )
         }
         val revoked = (JsonRead.array(o["revoked"]) ?: malformed("revoked")).map {
-            val r = JsonRead.obj(it, "kid", "revokedAt", "revokedAtEpoch") ?: malformed("revoked entry")
+            val r = JsonRead.obj(it, "kid", "kind", "revokedAt", "revokedAtEpoch") ?: malformed("revoked entry")
+            val kind = JsonRead.string(r["kind"])?.takeIf { k -> k == "device" || k == "recovery" } ?: malformed("revoked.kind")
             RevokedEntry(
                 b64(r["kid"], 16, "revoked.kid"),
+                kind == "recovery",
                 JsonRead.long(r["revokedAt"], 0, CanonicalJson.MAX_SAFE) ?: malformed("revokedAt"),
                 JsonRead.long(r["revokedAtEpoch"], 2, Dpx.MAX_EPOCH.toLong())?.toInt() ?: malformed("revokedAtEpoch"),
             )
