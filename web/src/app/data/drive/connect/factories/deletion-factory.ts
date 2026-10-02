@@ -39,11 +39,28 @@ import type { DeletionContext } from '../../../device-auth/delete-policy';
 class RealAuthorizationGate implements AuthorizationGate {
   private readonly issuedGrants = new Map<number, { action: DeletionAction; operationId: string; issuedAtMs: number }>();
   private readonly spent = new Set<number>();
+  private testMutations = { skipGrantCheck: false, skipSpentCheck: false, skipFreshnessCheck: false };
 
   constructor(
     private readonly webAuthorizer: WebAuthorizer,
     private readonly clock: () => number,
   ) {}
+
+  /**
+   * Test-only: Apply a mutation for testing.
+   */
+  applyTestMutation(mutation: 'skipGrantCheck' | 'skipSpentCheck' | 'skipFreshnessCheck'): void {
+    if (mutation === 'skipGrantCheck') this.testMutations.skipGrantCheck = true;
+    if (mutation === 'skipSpentCheck') this.testMutations.skipSpentCheck = true;
+    if (mutation === 'skipFreshnessCheck') this.testMutations.skipFreshnessCheck = true;
+  }
+
+  /**
+   * Test-only: Reset mutations.
+   */
+  resetTestMutations(): void {
+    this.testMutations = { skipGrantCheck: false, skipSpentCheck: false, skipFreshnessCheck: false };
+  }
 
   registerGrant(grantId: number, action: DeletionAction, operationId: string): void {
     this.issuedGrants.set(grantId, { action, operationId, issuedAtMs: this.clock() });
@@ -55,16 +72,18 @@ class RealAuthorizationGate implements AuthorizationGate {
     if (!Number.isInteger(grantId)) return false;
 
     const grant = this.issuedGrants.get(grantId);
-    if (!grant) return false; // Grant never issued
+    if (!this.testMutations.skipGrantCheck && !grant) return false; // Grant never issued
 
-    if (this.spent.has(grantId)) return false; // Grant already used
+    if (!this.testMutations.skipSpentCheck && this.spent.has(grantId)) return false; // Grant already used
 
     // Check freshness
-    const age = this.clock() - grant.issuedAtMs;
-    if (age < 0 || age > AUTHORIZATION_MAX_AGE_MS) return false;
+    if (grant) {
+      const age = this.clock() - grant.issuedAtMs;
+      if (!this.testMutations.skipFreshnessCheck && (age < 0 || age > AUTHORIZATION_MAX_AGE_MS)) return false;
 
-    // Check operation binding
-    if (grant.operationId !== token.operationId) return false;
+      // Check operation binding
+      if (grant.operationId !== token.operationId) return false;
+    }
 
     // Mark as spent (one-use)
     this.spent.add(grantId);
@@ -81,7 +100,7 @@ class RealAuthorizationGate implements AuthorizationGate {
 
     // Check freshness window (60 seconds)
     const age = this.clock() - grant.issuedAtMs;
-    if (age < 0 || age > AUTHORIZATION_MAX_AGE_MS) return false;
+    if (!this.testMutations.skipFreshnessCheck && (age < 0 || age > AUTHORIZATION_MAX_AGE_MS)) return false;
 
     // Check operation binding
     if (grant.operationId !== token.operationId) return false;
@@ -103,7 +122,9 @@ export function createDeletionAdapter(
   rt: DriveRuntime,
   keyValueStore?: KeyValueStore,
   prfAuthenticator?: PrfAuthenticator,
+  clock?: () => number,
 ): DriveDeletionAdapter {
+  const clockFn = clock || (() => Date.now());
   // Create a key-value store for deletion state persistence (backed by IndexedDB or in-memory)
   const kv = keyValueStore || new InMemoryKeyValueStore();
   const deletionStore = new PersistentDeletionStore(kv);
@@ -188,11 +209,11 @@ export function createDeletionAdapter(
     rt.crypto,
     authenticator,
     sealedBlob,
-    () => Date.now(),
+    clockFn,
   );
 
   // Create the real authorization gate
-  const authorizationGate = new RealAuthorizationGate(webAuthorizer, () => Date.now());
+  const authorizationGate = new RealAuthorizationGate(webAuthorizer, clockFn);
 
   // Create the deletion service with the runtime's drive client
   const deletionService = new DriveDeletionService({
@@ -200,7 +221,7 @@ export function createDeletionAdapter(
     gate: authorizationGate,
     store: deletionStore,
     isOnline: () => typeof navigator !== 'undefined' ? navigator.onLine : true,
-    now: () => Date.now(),
+    now: clockFn,
   });
 
   // Get the root folder ID from the runtime session
