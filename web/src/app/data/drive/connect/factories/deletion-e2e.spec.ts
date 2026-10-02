@@ -401,6 +401,21 @@ describe('Deletion Factory E2E', () => {
         backupsLeft: 2,
       };
 
+      // Snapshot all files BEFORE execution
+      const filesBefore = new Map<string, { kind?: string; role?: string }>();
+      for (const f of server.allFiles()) {
+        filesBefore.set(f.id, {
+          kind: f.appProperties?.[DRIVE_LAYOUT.kind],
+          role: f.appProperties?.[DRIVE_LAYOUT.role],
+        });
+      }
+      const keysFileId = Array.from(filesBefore.entries()).find(([, props]) => props.kind === 'keys')?.[0];
+      const controlFileId = Array.from(filesBefore.entries()).find(([, props]) => props.kind === 'control')?.[0];
+      const backupIds = Array.from(filesBefore.entries()).filter(([, props]) => props.kind === 'backup').map(([id]) => id);
+      const syncIds = Array.from(filesBefore.entries()).filter(([, props]) => props.kind === 'sync').map(([id]) => id);
+      const photoIds = Array.from(filesBefore.entries()).filter(([, props]) => props.kind === 'photo').map(([id]) => id);
+      const folderIds = Array.from(filesBefore.entries()).filter(([, props]) => props.role).map(([id]) => id);
+
       const preflightResult = await adapter.preflight({ type: 'everything' });
       expect(preflightResult.kind).toBe('ready');
       if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
@@ -412,44 +427,51 @@ describe('Deletion Factory E2E', () => {
 
       const executeResult = await adapter.execute(plan, authResult.grant);
       expect(executeResult.kind).toBe('ran');
-      if (executeResult.kind !== 'ran') throw new Error('Execution failed');
-      expect(executeResult.finished).toBe(true);
+      expect((executeResult as any).finished).toBe(true);
 
       // Extract delete order from server requests
       const deletes = server.requests
         .filter((r) => r.op === 'DELETE')
         .map((r) => r.about!);
 
-      // Find keys.json ID
-      const keysFile = server.allFiles().find((f) => f.appProperties?.[DRIVE_LAYOUT.kind] === 'keys');
-      const controlFile = server.allFiles().find((f) => f.appProperties?.[DRIVE_LAYOUT.kind] === 'control');
+      // Unconditional assertions: every file must be in the delete log
+      expect(deletes.length).toBe(filesBefore.size);
 
-      if (keysFile && controlFile) {
-        const keysPos = deletes.indexOf(keysFile.id);
-        const controlPos = deletes.indexOf(controlFile.id);
+      // keys.json must exist and be deleted
+      expect(keysFileId).toBeDefined();
+      expect(deletes).toContain(keysFileId);
 
-        // keys.json should come after control (both are metadata, keys is last of metadata)
-        expect(keysPos).toBeGreaterThan(-1);
-        expect(controlPos).toBeGreaterThan(-1);
-        expect(keysPos).toBeGreaterThan(controlPos);
+      // control.json must exist and be deleted
+      expect(controlFileId).toBeDefined();
+      expect(deletes).toContain(controlFileId);
 
-        // All backup/sync/photo files should come before keys
-        const backupFiles = Array.from(server.allFiles()).filter((f) => f.appProperties?.[DRIVE_LAYOUT.kind] === 'backup');
-        const syncFiles = Array.from(server.allFiles()).filter((f) => f.appProperties?.[DRIVE_LAYOUT.kind] === 'sync');
-        const photoFiles = Array.from(server.allFiles()).filter((f) => f.appProperties?.[DRIVE_LAYOUT.kind] === 'photo');
+      const keysPos = deletes.indexOf(keysFileId!);
+      const controlPos = deletes.indexOf(controlFileId!);
 
-        for (const bf of backupFiles) {
-          const bfPos = deletes.indexOf(bf.id);
-          if (bfPos > -1) expect(bfPos).toBeLessThan(keysPos);
-        }
-        for (const sf of syncFiles) {
-          const sfPos = deletes.indexOf(sf.id);
-          if (sfPos > -1) expect(sfPos).toBeLessThan(keysPos);
-        }
-        for (const pf of photoFiles) {
-          const pfPos = deletes.indexOf(pf.id);
-          if (pfPos > -1) expect(pfPos).toBeLessThan(keysPos);
-        }
+      // keys.json comes after control (both metadata, keys is last)
+      expect(keysPos).toBeGreaterThan(controlPos);
+
+      // All backup/sync/photo files come before keys.json
+      for (const backupId of backupIds) {
+        const pos = deletes.indexOf(backupId);
+        expect(pos).toBeGreaterThan(-1);
+        expect(pos).toBeLessThan(keysPos);
+      }
+      for (const syncId of syncIds) {
+        const pos = deletes.indexOf(syncId);
+        expect(pos).toBeGreaterThan(-1);
+        expect(pos).toBeLessThan(keysPos);
+      }
+      for (const photoId of photoIds) {
+        const pos = deletes.indexOf(photoId);
+        expect(pos).toBeGreaterThan(-1);
+        expect(pos).toBeLessThan(keysPos);
+      }
+
+      // Folders are deleted after all their files
+      for (const folderId of folderIds) {
+        const folderPos = deletes.indexOf(folderId);
+        expect(folderPos).toBeGreaterThan(keysPos);
       }
     });
   });
@@ -473,21 +495,21 @@ describe('Deletion Factory E2E', () => {
 
       const preflightResult = await adapter.preflight({ type: 'allBackups' });
       expect(preflightResult.kind).toBe('ready');
-      if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
 
-      const plan = preflightResult.plan;
+      const plan = (preflightResult as any).plan;
       const authResult = await adapter.authorize({ type: 'allBackups' }, context);
       expect(authResult.kind).toBe('granted');
-      if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
-      const grant = authResult.grant;
+      const grant = (authResult as any).grant;
 
       // First execute should succeed
       const executeResult1 = await adapter.execute(plan, grant);
-      expect(executeResult1.kind).toMatch(/ran|refused/);
+      expect(executeResult1.kind).toBe('ran');
 
-      // Second use of same grant should be refused (operation already completed or token already used)
-      // This depends on the gate's validation; we verify the gate validates uniqueness
+      // Second use of same grant should be refused (WebAuthorizer tracks spent grants)
+      const executeResult2 = await adapter.execute(plan, grant);
+      expect(executeResult2.kind).toBe('refused');
+      expect(['NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult2 as any).reason);
     });
 
     it('grant older than 60s is refused', async () => {
@@ -508,24 +530,20 @@ describe('Deletion Factory E2E', () => {
 
       const preflightResult = await adapter.preflight({ type: 'allBackups' });
       expect(preflightResult.kind).toBe('ready');
-      if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
 
-      const plan = preflightResult.plan;
+      const plan = (preflightResult as any).plan;
       const authResult = await adapter.authorize({ type: 'allBackups' }, context);
       expect(authResult.kind).toBe('granted');
-      if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
-      const grant = authResult.grant;
+      const grant = (authResult as any).grant;
 
       // Advance time beyond 60 seconds
       server.clock.advance(61_000);
 
-      // Execution should be refused due to stale grant
+      // Execution must be refused due to stale grant
       const executeResult = await adapter.execute(plan, grant);
       expect(executeResult.kind).toBe('refused');
-      if (executeResult.kind === 'refused') {
-        expect(['AUTHORIZATION_STALE', 'NOT_AUTHORIZED', 'OFFLINE']).toContain(executeResult.reason);
-      }
+      expect(['AUTHORIZATION_STALE', 'NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult as any).reason);
     });
 
     it('grant issued for another action is refused', async () => {
@@ -547,25 +565,20 @@ describe('Deletion Factory E2E', () => {
       // Get grant for 'allBackups'
       const preflight1 = await adapter.preflight({ type: 'allBackups' });
       expect(preflight1.kind).toBe('ready');
-      if (preflight1.kind !== 'ready') throw new Error('Preflight 1 failed');
 
       const auth1 = await adapter.authorize({ type: 'allBackups' }, context);
       expect(auth1.kind).toBe('granted');
-      if (auth1.kind !== 'granted') throw new Error('Authorization 1 failed');
 
       // Get plan for 'everything'
       const preflight2 = await adapter.preflight({ type: 'everything' });
       expect(preflight2.kind).toBe('ready');
-      if (preflight2.kind !== 'ready') throw new Error('Preflight 2 failed');
 
-      const plan2 = preflight2.plan;
+      const plan2 = (preflight2 as any).plan;
 
-      // Try to execute 'everything' plan with 'allBackups' grant - should be refused
-      const executeResult = await adapter.execute(plan2, auth1.grant);
-      expect(executeResult.kind).toMatch(/refused|ran/);
-      if (executeResult.kind === 'refused') {
-        expect(['AUTHORIZATION_OTHER_OPERATION', 'NOT_AUTHORIZED', 'OFFLINE']).toContain(executeResult.reason);
-      }
+      // Try to execute 'everything' plan with 'allBackups' grant - must be refused
+      const executeResult = await adapter.execute(plan2, (auth1 as any).grant);
+      expect(executeResult.kind).toBe('refused');
+      expect(['AUTHORIZATION_OTHER_OPERATION', 'NOT_AUTHORIZED', 'OFFLINE']).toContain((executeResult as any).reason);
     });
   });
 
@@ -773,9 +786,7 @@ describe('Deletion Factory E2E', () => {
 
       const result = await adapter.preflight({ type: 'everything' });
       expect(result.kind).toBe('refused');
-      if (result.kind === 'refused') {
-        expect(result.reason).toContain('Not connected');
-      }
+      expect((result as any).reason).toContain('Not connected');
     });
 
     it('execute returns NOT_CONNECTED when no session', async () => {
@@ -800,10 +811,8 @@ describe('Deletion Factory E2E', () => {
 
       const result = await adapter.execute(fakePlan, null);
       expect(result.kind).toBe('refused');
-      if (result.kind === 'refused') {
-        // With no session, the adapter returns OFFLINE or similar refusal
-        expect(['OFFLINE', 'Not connected']).toContain(result.reason);
-      }
+      // With no session, the adapter returns OFFLINE or similar refusal
+      expect(['OFFLINE', 'Not connected']).toContain((result as any).reason);
     });
 
     it('resume returns NOT_CONNECTED when no session', async () => {
@@ -816,9 +825,7 @@ describe('Deletion Factory E2E', () => {
 
       const result = await adapter.resume(null);
       expect(result.kind).toBe('refused');
-      if (result.kind === 'refused') {
-        expect(['Not connected', 'OFFLINE', 'NOTHING_PENDING']).toContain(result.reason);
-      }
+      expect(['Not connected', 'OFFLINE', 'NOTHING_PENDING']).toContain((result as any).reason);
     });
   });
 
@@ -843,22 +850,20 @@ describe('Deletion Factory E2E', () => {
 
       const preflightResult = await adapter.preflight({ type: 'everything' });
       expect(preflightResult.kind).toBe('ready');
-      if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
 
-      const plan = preflightResult.plan;
+      const plan = (preflightResult as any).plan;
+      expect(plan).toBeDefined();
 
       // Foreign files should be counted as kept
       expect(plan.foreignKept).toBeGreaterThan(0);
 
       const authResult = await adapter.authorize({ type: 'everything' }, context);
       expect(authResult.kind).toBe('granted');
-      if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
-      const executeResult = await adapter.execute(plan, authResult.grant);
+      const executeResult = await adapter.execute(plan, (authResult as any).grant);
       expect(executeResult.kind).toBe('ran');
-      if (executeResult.kind !== 'ran') throw new Error('Execution failed');
 
-      // Foreign file should still exist after deletion
+      // Foreign file must still exist after deletion
       const foreignFile = server.allFiles().find((f) => f.name === 'my-file.txt');
       expect(foreignFile).toBeDefined();
     });
@@ -881,18 +886,17 @@ describe('Deletion Factory E2E', () => {
 
       const preflightResult = await adapter.preflight({ type: 'everything' });
       expect(preflightResult.kind).toBe('ready');
-      if (preflightResult.kind !== 'ready') throw new Error('Preflight failed');
 
-      const plan = preflightResult.plan;
+      const plan = (preflightResult as any).plan;
+      expect(plan).toBeDefined();
+
       const authResult = await adapter.authorize({ type: 'everything' }, context);
       expect(authResult.kind).toBe('granted');
-      if (authResult.kind !== 'granted') throw new Error('Authorization failed');
 
-      const executeResult = await adapter.execute(plan, authResult.grant);
+      const executeResult = await adapter.execute(plan, (authResult as any).grant);
       expect(executeResult.kind).toBe('ran');
-      if (executeResult.kind !== 'ran') throw new Error('Execution failed');
 
-      // L3 deletion of 'everything' should delete all Doorprints files, including root
+      // L3 deletion of 'everything' must delete all Doorprints files, including root
       const doorprintsFiles = server.allFiles().filter((f) => f.appProperties?.[DRIVE_LAYOUT.role] || f.appProperties?.[DRIVE_LAYOUT.kind]);
       expect(doorprintsFiles.length).toBe(0);
     });
