@@ -169,6 +169,9 @@ describe('DriveConnectComponent', () => {
     component.importFile.subscribe((b) => seen.push(b));
     const blob = new Blob(['x']);
     component['onImportFromDrive'](blob);
-    expect(seen).toEqual([blob]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toBe(blob);
+    expect(seen[0].size).toBe(1);
+    expect(await seen[0].text()).toBe('x');
   });
 });

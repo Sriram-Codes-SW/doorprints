@@ -152,7 +152,10 @@ describe('DriveBackupsCard', () => {
     host.querySelector<HTMLButtonElement>(`button[aria-label="${t('driveBackups.importBackup')}"]`)!.click();
     await flush();
     expect(fakes.importFromDrive).toHaveBeenCalledWith('b1');
-    expect(seen).toEqual([blob]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toBe(blob);
+    expect(seen[0].size).toBe(blob.size);
+    expect(await seen[0].text()).toBe('zip');
   });
 
   it('toggles automatic backup', async () => {
