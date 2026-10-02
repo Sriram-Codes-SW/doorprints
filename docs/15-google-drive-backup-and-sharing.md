@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.4 |
+| Version | 0.5 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
-| Status | Draft for the owner's decisions (§6, §6.1). Docs only: nothing here is built. The tickets are S4b-BL-70, -73, S4b-BL-115..122, -124 and S4b-BL-125..130 ([10](10-sprint-log.md) §12.7); the order is [14](14-lead-backlog-and-handoff.md) N17 |
+| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Docs only so far: nothing here is built. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
 ## Change log
 
@@ -16,6 +16,7 @@
 | 0.2 | 2026-10-02 | Claude (Code), lead | Three owner additions of the same day: **encryption without a passphrase** (new §9: device keys made silently, a folder key wrapped per device with ECDH P-256 and HKDF, a mandatory recovery-key step skippable after a warning, enrolment by approval or the recovery key, revocation with key epochs, sharing by key cards, the `dpx/1` envelope, vectors; replaces v0.1's "no passphrase" of §5.4); **device authentication for deletes and a required device lock** (new §10: levels L1..L3, the line at L2, the app lock's code path, keys that stop working when the lock is removed, the website's passkey); **photos on Wi-Fi or mobile data** (new §11). §1.3, §1.5, §2.1, §3.2, §5.1, §5.4, §5.5, §5.7, §6 (decisions 3, 6 and 8), §7 (S4b-BL-125..128, TC-M-50..54) and §8 (R10..R12) follow. |
 | 0.3 | 2026-10-02 | Claude (Code), lead | Owner addition of the same day, *an authenticator app*: new §10.5 (TOTP, RFC 6238, as an option for the authentication steps only, never for encryption or recovery; the website's second way to L2/L3 next to a passkey; a second check at device approval; an optional extra factor for L3 on the phones); §10.1's table by factor and platform; §10.6, the limit of every gate inside the app; decision 8; S4b-BL-129 and TC-M-55 in §7; R13. |
 | 0.4 | 2026-10-02 | Claude (Code), lead | Fixes from an adversarial review: the recovery key as a P-256 key pair whose public key receives every epoch (§9.4); enrolment out of band by QR code with HPKE PSK mode, the commit-then-reveal code fallback, a 10-minute expiry, and no silent adoption of an existing folder (§9.3, §9.5 i); rollback refused by a `revision` counter and the highest epoch kept on each device, files written after a revoke skipped (§9.3, §9.5 iv); a revoke does not revoke Google's grant; *Delete everything* ends the recovery key; local copies rebuild `keys.json`; chained epochs (§9.1); HPKE (RFC 9180) for the wraps, fresh nonces, no content-key reuse, key commitment discussed (§9.2, §9.6); `sync/1` as a new schema (S4b-BL-130); 64-bit key-card fingerprints and the sender from Drive's metadata; every enrolled device fully trusted, with "New device enrolled" notices; the Drive merge rule as last-write-wins on `updatedAt`, not `SyncRules.keepLocal` (§5.1); `state=complete` as the backup marker (§1.4); tombstones vs import; the shrink guard's L1 confirmation and the 7-month photo note; the Android Custom Tab alternative (§5.5); the website's storage eviction; the GIS popup's user gesture and the CSP entries; the overlay-not-root note and §10.6 on the screen; TOTP no longer approves devices; the privacy page's contents and Limited Use; the spike first (§7). New §6.1: six open questions of scope. |
+| 0.5 | 2026-10-02 | Claude (Code), lead | **The owner decided** (2026-10-02): the eight decisions of §6 as written and the reviewer's answer to all six questions of §6.1 (the authenticator app cut from v1; website L2/L3 only with a PRF-sealed passkey; sharing deferred until the spike; no monthly mobile-data cap; *Lock old backups again* deferred; Android sign-in by Custom Tab and PKCE unless the spike shows it fails). New §1.6, version 1 and later; §4, §5.5, §5.7, §7, §9.5, §10.1, §10.4, §10.5 and §11 follow; [03](03-design.md) ADR-33. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -41,7 +42,7 @@ copy* sends one out, never "Restore" on a button.
 | G3 | "manual" | *Back up to Google Drive now* (Settings > Google Drive), and *Save a copy* gets *Google Drive* as a place to save a Full backup. |
 | G4 | "time synced" | *Automatic backup and sync* (§1.3): the person's devices keep each other up to date through Drive, and a dated backup is kept every day, on its own. |
 | G5 | "not having to worry about data loss" | The promises of §1.4, said honestly, and what Doorprints cannot promise (§1.5). |
-| G6 | "shareable to others using the same app/website" | §4: a person shares their hunt with someone they know, read-only by default, and can stop at any time. |
+| G6 | "shareable to others using the same app/website" | §4: a person shares their hunt with someone they know, read-only by default, and can stop at any time. **Deferred from v1** (owner, 2026-10-02) until the spike proves Google's Picker on the phones (§1.6). |
 | G7 | "delete the data in the backup as the user wants" | §3: delete one backup, all backups, or everything Doorprints keeps in the person's Drive, from inside the app on every platform; deleting really deletes. |
 
 ### 1.2 Non-goals
@@ -63,7 +64,7 @@ copy* sends one out, never "Restore" on a button.
 | The app goes to the background | Sync at once if anything is waiting (expedited work) | Sync in the time iOS gives (`beginBackgroundTask`, about 30 s) | `visibilitychange` to hidden: best effort, may not finish |
 | Regularly | Every 6 hours with a network (periodic work) | When iOS wakes the app (`BGAppRefreshTask`, iOS chooses when; may be never) | Every 30 minutes while open (the existing timer) |
 | The daily backup | Once a day, battery not low (the backup is small, §5.2; photos are already in Drive) | On the first start or background after 24 h | On the first visit after 24 h, while open |
-| Photos | Wi-Fi only by default (*Upload photos only on Wi-Fi*); switched off, mobile data too, up to a monthly limit; Data Saver and roaming respected; *Upload photos now over mobile data* once (§11) | The same (`NWPathMonitor`: `isExpensive`, `isConstrained`) | Automatically, unless the browser says *save data* or *cellular*; *Upload photos now* (§11) |
+| Photos | Wi-Fi only by default (*Upload photos only on Wi-Fi*); switched off, mobile data too (no monthly limit in v1); Data Saver and roaming respected; *Upload photos now over mobile data* once (§11) | The same (`NWPathMonitor`: `isExpensive`, `isConstrained`) | Automatically, unless the browser says *save data* or *cellular*; *Upload photos now* (§11) |
 | *Back up to Google Drive now* | Any network, photos by the Wi-Fi rule | The same | The same |
 
 **The website's honest limit.** A browser cannot wake a closed website without a push service (D-03, D-07), and
@@ -122,6 +123,22 @@ photos on Wi-Fi only; one switch turns it off. Decision 6 (§6).
   encrypted, §9.5 vii). (This is why §2 recommends a visible folder, not the hidden app folder.)
 - If the person skipped the recovery key and loses every device (or removes the screen lock on their only phone,
   §10.3), the backups in Drive can never be opened again (§9.5 iii).
+
+### 1.6 Version 1, and what comes later (owner, 2026-10-02)
+
+**Version 1:** connect Google Drive (§5.5, §5.6: the website's token model, the iPhone's PKCE flow, Android by a
+browser tab with PKCE unless the spike S4b-BL-122 shows it fails) · a screen lock required on the phones (§10.3) ·
+encryption on by default with device keys and the recovery key (§9.1..§9.4) · joining a new device by QR code, the
+code fallback or the recovery key (§9.5 i) · revoking a device (§9.5 iv, without *Lock old backups again*) · backups
+in Drive with *Import a backup* from Drive (§1.4, §5.1) · sync between the person's devices (§5.1) · deleting from
+Drive at L1, L2 and L3 with the phone's own authentication (§3, §10); on the website L1, and L2/L3 only where a
+passkey with the PRF extension seals the website's key (§10.4) · photos on Wi-Fi only by default, with the switch and
+the one-off *Upload photos now over mobile data* (§11).
+
+**Later (deferred by the owner, kept designed):** sharing with someone who uses Doorprints (§4, S4b-BL-120, after the
+spike proves Google's Picker on the phones) · the authenticator app (§10.5, S4b-BL-129) · *Lock old backups again*
+after a revoke (§9.5 iv) · a monthly limit for photos on mobile data (§11). "After real world use, we can change as
+needed."
 
 ## 2. Where in Drive, and the owner's Google Cloud setup
 
@@ -289,7 +306,10 @@ For a full erasure the guide gives the order: delete the data from Drive, then r
 data* on each device. This is the person's right to erasure exercised directly: Doorprints never received the data,
 so there is no request to make to anyone ([13](13-release-security-checklist.md) G3).
 
-## 4. Sharing with someone who uses Doorprints
+## 4. Sharing with someone who uses Doorprints (deferred, not in v1: owner, 2026-10-02)
+
+Deferred until the spike S4b-BL-122 proves Google's Picker on the phones (§6.1 question 3); the design below is
+kept for then. Until then, sharing stays the update file of ADR-27, sent through any app.
 
 ### 4.1 The options
 
@@ -431,17 +451,16 @@ is made from a password.
 | Platform | How the app gets access | What is kept | Where |
 |---|---|---|---|
 | Website | Google Identity Services, token model (`google.accounts.oauth2.initTokenClient`, popup) | The access token (one hour) | **Memory only**, never `localStorage`; lost on reload, asked again quietly (`prompt: ''`) at the next tap |
-| Android (default, open question 6) | Google Play services `Identity.getAuthorizationClient(…).authorize(…)` with `drive.file` (`play-services-auth`: a new dependency, justified because the platform has no OAuth API; Google Play services libraries are covered by `NOTICE`'s section 7 permission) | Nothing: Play services keeps and refreshes the grant; the app asks for a fresh access token each sync | Memory only |
-| Android (alternative) | A Custom Tab (`androidx.browser`, already small, or the plain `ACTION_VIEW` browser) with authorisation code and **PKCE** for an *iOS-style* client, the redirect back by an App Link on `doorprints.web.app`; no `play-services-auth` | The refresh token | Sealed by a Keystore AES-GCM key bound to the screen lock (as the iPhone's Keychain item, §10.3) |
+| Android (**default**, owner 2026-10-02, unless the spike S4b-BL-122 shows Google refuses it) | The system browser (`ACTION_VIEW`, no new library; a Custom Tab only if `androidx.browser` is ever added for another reason) with authorisation code and **PKCE**, the redirect back by an App Link on `doorprints.web.app` (the spike confirms which client type Google accepts for it); no `play-services-auth` | The refresh token | Sealed by a Keystore AES-GCM key bound to the screen lock (as the iPhone's Keychain item, §10.3) |
+| Android (fallback, only if the spike shows the default fails) | Google Play services `Identity.getAuthorizationClient(…).authorize(…)` with `drive.file` (`play-services-auth`, a new dependency, covered by `NOTICE`'s section 7 permission) | Nothing: Play services keeps and refreshes the grant | Memory only |
 | iPhone | `ASWebAuthenticationSession` (the platform's own), authorisation code with **PKCE**, the iOS client, redirect to the reversed client id; no Google SDK | The refresh token | **Keychain**, `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly` (not in iCloud Keychain, not in a device backup, deleted by iOS if the passcode is removed, §10.3; so background sync runs only while the phone is unlocked); the access token in memory |
 
 - `AppSettings.toString()` and every log stay free of tokens (S4b-BL-29's rule).
-- A phone without Google Play services (some Android phones): with the default, Drive is not offered there in version
-  1; *Save a copy* and the other ways keep working. The alternative row works without Play services. **Pros of the
-  alternative**: no Google library, one OAuth model with the iPhone, phones without Play services included. **Cons**:
-  Google's guidance for Android prefers its own library, Google may refuse a custom-scheme or App Link redirect for an
-  Android client type (to confirm in the spike S4b-BL-122), and the app must keep a refresh token itself. Decided as
-  open question 6 (§6).
+- **Decided (open question 6, 2026-10-02):** the browser with PKCE, for no Google library, one OAuth model with the
+  iPhone, and phones without Google Play services included. Its costs: Google's Android guidance prefers its own
+  library, Google may refuse the redirect for an Android client (the spike checks), and the app keeps a refresh token
+  itself (sealed, as above). If the spike shows it fails, Play services is the fallback and phones without it get no
+  Drive in version 1.
 - `invalid_grant` or a revoked grant: "Google Drive disconnected. Your houses are safe on this device. Connect
   again?" Nothing local is deleted, queued work waits.
 
@@ -464,9 +483,8 @@ is made from a password.
 
 Settings > **Google Drive**: *Connect Google Drive* (Google's own button rules: the Drive name and logo as Google
 allows; it is not *Sign in with Google*, because Doorprints keeps no account, only Drive access) · the account's email
-· *Automatic backup and sync* (on/off) · *Upload photos only on Wi-Fi* (and, off, *Mobile data limit for photos*; *Upload photos now over mobile data*, §11) · *Devices* (the enrolled devices, *Revoke this device*, *Approve a new device*) · *Recovery key* (saved, or *Make a recovery key*) · *Back up to Google Drive now* · "Last
-backup: today 09:30, checked" · *Backups in Google Drive* (the list, each with *Delete this backup*) · *Share my hunt
-with…* · *Add a shared hunt* · *Disconnect Google Drive* · *Disconnect on all devices* · *Delete all backups* ·
+· *Automatic backup and sync* (on/off) · *Upload photos only on Wi-Fi* (*Upload photos now over mobile data*, §11) · *Devices* (the enrolled devices, *Revoke this device*, *Approve a new device*) · *Recovery key* (saved, or *Make a recovery key*) · *Back up to Google Drive now* · "Last
+backup: today 09:30, checked" · *Backups in Google Drive* (the list, each with *Delete this backup*) · *Disconnect Google Drive* · *Disconnect on all devices* · *Delete all backups* ·
 *Delete everything Doorprints keeps in my Google Drive*. *Import a backup* gets *From this device* and *From Google
 Drive*. *Save a copy* gets *Save to Google Drive*. Never "Restore" (12 G.3 rule 3); "bring back" only in explanations.
 
@@ -477,7 +495,10 @@ not by name. A missing backup is simply not in the list; a missing photo is "not
 again from the device if the device has it; a missing sync file of another device is that device gone; the whole
 folder gone is §3.4's question. A file edited by hand fails the import checks and is skipped with a message.
 
-## 6. The owner's decisions
+## 6. The owner's decisions (decided 2026-10-02)
+
+The owner agreed to all eight as written, with decision 3 (encryption on by default, silent device keys, a mandatory
+recovery key skippable only after a warning) and decision 8 as amended by §6.1 questions 1 and 2.
 
 | # | Decision | Recommendation | Cost of the alternative |
 |---|---|---|---|
@@ -486,14 +507,15 @@ folder gone is §3.4's question. A file edited by hand fails the import checks a
 | 3 | Encryption | **On by default, with device keys made silently (no passphrase) and a mandatory recovery-key step at the first connect, skippable only after a plain warning** (§9) | Off by default: Google (and anyone in the Google account) can read the backups. Recovery key with no skip: some people will not connect at all. No recovery key at all: losing every device (or the lock on the only phone) loses the backups for good. A passphrase: typed often, forgotten, total loss |
 | 4 | Sharing in version 1 | **A read-only file per person, shared with one Google account; photos off by default** (opt-in, up to 50 MB) | A shared folder both write: depends on undocumented Picker behaviour and gives editor rights. No sharing in version 1: the owner's "shareable" waits |
 | 5 | How many backups to keep | **7 daily, 4 weekly, 6 monthly** (about 17 small files) | "The last 4" of 5.2: a mistake noticed after four days cannot be undone from Drive |
-| 6 | Automatic backup and sync after connecting; photos on mobile data | **On; text and backups on any network; *Upload photos only on Wi-Fi* on, switchable to mobile data with a 500 MB monthly limit, plus a one-off *Upload photos now over mobile data*** (§11) | Off: people who connect and forget have no backup. Photos on mobile data by default: a surprise data bill. No switch: photos never leave a phone that is never on Wi-Fi |
+| 6 | Automatic backup and sync after connecting; photos on mobile data | **Decided: on; text and backups on any network; *Upload photos only on Wi-Fi* on, switchable to mobile data, plus a one-off *Upload photos now over mobile data*** (§11); the monthly limit deferred (§6.1 question 4) | Off: people who connect and forget have no backup. Photos on mobile data by default: a surprise data bill. No switch: photos never leave a phone that is never on Wi-Fi |
 | 7 | Google's publishing status | **Testing while building; production with brand verification once the release gate passes** (needs the privacy page, S4b-BL-121) | Staying in Testing: only 100 named people, and the iPhone asks again every 7 days |
-| 8 | Confirming a deletion, and where device authentication starts | **The dialog for L1; the dialog and the phone's own authentication for L2 and L3** (all backups, the last backup, stop sharing, revoke or approve a device, everything); a tick box and a 5-second delay for L3; no typed word. **On the website, L2 and L3 with a passkey or an authenticator code** (§10.5); on the phones the authenticator app is an optional second factor for L3, off by default (§10) | Authentication for every delete: tiresome for one old backup, and people learn to tap through it. Only for *Delete everything*: deleting all backups would need no proof. A typed word: hard on Indic keyboards. Allowing L2/L3 on the website without a passkey or code: anyone at an unlocked computer could delete everything. Passkey only on the website: many people stay at L1 there. The authenticator app as the phones' default: an extra app for everyone, for no gain over the phone's own lock |
+| 8 | Confirming a deletion, and where device authentication starts | **Decided: the dialog for L1; the dialog and the phone's own authentication for L2 and L3** (all backups, the last backup, revoke or approve a device, everything); a tick box and a 5-second delay for L3; no typed word. **On the website L1, and L2/L3 only where a passkey with the PRF extension seals the website's key**, otherwise "use your phone" (§10.4; §6.1 questions 1 and 2) | Authentication for every delete: tiresome for one old backup, and people learn to tap through it. Only for *Delete everything*: deleting all backups would need no proof. A typed word: hard on Indic keyboards. A check in the page without PRF: anyone with the browser's developer tools skips it |
 
-### 6.1 Open questions raised by the review (the owner's to decide; not applied)
+### 6.1 Questions raised by the review (closed: the owner took the reviewer's recommendation on all six, 2026-10-02)
 
 An adversarial review of v0.3 (2026-10-02) found the defects fixed in v0.4 and raised six questions of scope. The
-design above keeps the v0.3 scope until the owner answers.
+owner agreed to the reviewer's recommendation on each; §1.6 is the result. Question 6 is recorded as: the browser with
+PKCE by default, Play services only if the spike shows that fails.
 
 | # | Question | Reviewer's recommendation | For | Against |
 |---|---|---|---|---|
@@ -509,27 +531,29 @@ design above keeps the v0.3 scope until the owner answers.
 Each phase is one pull request (or a few), tested on Linux CI against **a fake Drive** (`FakeDriveApi`: an in-memory
 Drive with files, folders, `appProperties`, checksums, permissions, quota, and injected 401, 403 rate-limit, 404,
 429 and 5xx answers, and a "stop after N calls" switch), in Kotlin common code and TypeScript, with shared vectors
-where the rules are shared. Nothing in CI talks to Google. The device and real-Drive checks are TC-M-46..TC-M-55
-([06](06-test-plan.md)), for the owner at the end (N15 step 6's rule).
+where the rules are shared. Nothing in CI talks to Google. The device and real-Drive checks for version 1 are TC-M-46..TC-M-48 and TC-M-50..TC-M-54 ([06](06-test-plan.md)),
+for the owner at the end (N15 step 6's rule); TC-M-49 and TC-M-55 wait with their deferred features. **The build
+order is final** (owner, 2026-10-02); the rows below are in that order, the deferred ones at the end.
 
 | Phase | Ticket | What | Tests on Linux | Owner or device |
 |---|---|---|---|---|
-| 0 | this change, S4b-BL-74 | This design; docs/13 re-scoped for client OAuth and Drive; docs/02 §10 | `licence-headers --check` | Decisions §6 |
-| 0s | **S4b-BL-122** | **The spike, first after the owner's §2.4 checklist and before the crypto phase**, with the owner's clients in Testing: is a `drive.file` grant visible across the Android, iOS and web clients of one project? Does Google's Picker for mobile apps return to the Android and iOS apps, and does a picked folder give its files? Does revoking one client revoke all? Are `sha256Checksum`, `appProperties` and `files.list` consistent right after a write? Does the 7-day testing expiry also hit the Play-services grant? Does Google accept a Custom Tab redirect for Android (open question 6)? | — | Owner's client ids (§2.4) |
+| 0 | this change, S4b-BL-74 | This design; docs/13 re-scoped for client OAuth and Drive; docs/02 §10; ADR-33 | `licence-headers --check` | Decided 2026-10-02 |
+| 0s | **S4b-BL-122** | **The spike, first after the owner's §2.4 checklist and before the crypto phase**, with the owner's clients in Testing: is a `drive.file` grant visible across the Android, iOS and web clients of one project? Does Google's Picker for mobile apps return to the Android and iOS apps, and does a picked folder give its files? Does revoking one client revoke all? Are `sha256Checksum`, `appProperties` and `files.list` consistent right after a write? Does the 7-day testing expiry also hit the Play-services grant? Does Google accept the browser-and-PKCE redirect for Android (the default of open question 6; if not, Play services)? | — | Owner's client ids (§2.4) |
 | 1 | **S4b-BL-70** | The `SyncBackend` seam on both stacks: push, pull since an opaque cursor, photos, "is it behind"; today's code becomes `ServerSyncBackend`, no behaviour change | Existing sync tests through the seam; a `FakeSyncBackend` | — |
 | 2 | **S4b-BL-115** | `DriveApi` (Ktor in `:shared`, `fetch` on the website: list, create multipart and resumable, get, update, delete, permissions, about), error mapping, backoff; `FakeDriveApi` | Contract tests run against the fake on both stacks; backoff vectors | — |
-| 2c | **S4b-BL-125**, **S4b-BL-126** | Encryption (§9): the `dpx/1` envelope, HPKE and the primitives per platform, the device keys, `keys.json` with its MAC, `revision` and rollback check, chained epochs, the local copies that rebuild it; then the first-connect rule, enrolment by QR (HPKE PSK mode) and by the code fallback, the recovery key and its public key, revocation (files after a revoke skipped) and *Lock old backups again* (open question 5), the share key and key cards. Before any file is written to Drive | Known-answer and RFC 9180 vectors, shared Kotlin/TypeScript envelope vectors, tamper, downgrade and rollback tests, enrolment, revocation and epoch-chaining tests on the fake, the Android 26-30 software-key row | TC-M-52, TC-M-53 |
+| 2c | **S4b-BL-125**, **S4b-BL-126** | Encryption (§9): the `dpx/1` envelope, HPKE and the primitives per platform, the device keys, `keys.json` with its MAC, `revision` and rollback check, chained epochs, the local copies that rebuild it; then the first-connect rule, enrolment by QR (HPKE PSK mode) and by the code fallback, the recovery key and its public key, revocation (files after a revoke skipped) and revocation without *Lock old backups again* (deferred); the share key and key cards wait with sharing. Before any file is written to Drive | Known-answer and RFC 9180 vectors, shared Kotlin/TypeScript envelope vectors, tamper, downgrade and rollback tests, enrolment, revocation and epoch-chaining tests on the fake, the Android 26-30 software-key row | TC-M-52, TC-M-53 |
 | 3 | **S4b-BL-116** | Backups in Drive: the folder and control file, the backup writer without photo bytes, `partial-` and rename, the checksum check, retention with the shrink guard, *Back up to Google Drive now*, *Import a backup* > *From Google Drive* through the existing preview | Fake: partial never listed, retention keeps 17, shrink guard, a corrupted file refused, import vectors | — |
 | 4 | **S4b-BL-117**, **S4b-BL-73** | Connecting per platform: the website's GIS token client with the CSP and COOP change and the self-hosted Noto subsets (one live UI run), Android's AuthorizationClient, the iPhone's PKCE flow and Keychain; Settings > Google Drive (connect, account, disconnect, disconnect on all devices) | Token handling against fakes; CSP and header tests; the iOS klib compile | TC-M-46 |
-| 4b | **S4b-BL-127** | The device lock (§10.3): required to switch Drive on, checked before every run, the pause and its words, the auth-bound Keystore keys and `WhenPasscodeSet` Keychain items; the delete levels and device authentication (§10.1, §10.2) with the operation-bound signature on Android 11+; the website's passkey (and PRF where offered) | A fake authenticator: passed, denied, cancelled, timed out, lock removed half way; a fake lock state: no lock refuses connect, a removed lock pauses; the emulator test by `AppLockEmulatorTest`'s rules | TC-M-50, TC-M-51 |
-| 4c | **S4b-BL-129** | An authenticator app as an option (§10.5): set up with the QR code, the wrapped secret in `keys.json`, checks with the window, replay and lockout, the website's second way to L2/L3, the second check at device approval, *Also ask for my authenticator code* for L3 on the phones, *Set up again* and *Turn off* as L3 | RFC 6238 vectors on both stacks, a fake clock, the lockout and reset paths | TC-M-55 |
+| 4b | **S4b-BL-127** | The device lock (§10.3): required to switch Drive on, checked before every run, the pause and its words, the auth-bound Keystore keys and `WhenPasscodeSet` Keychain items; the delete levels and device authentication (§10.1, §10.2) with the operation-bound signature on Android 11+; the website's passkey, used for L2/L3 only where PRF seals the website's key | A fake authenticator: passed, denied, cancelled, timed out, lock removed half way; a fake lock state: no lock refuses connect, a removed lock pauses; the emulator test by `AppLockEmulatorTest`'s rules | TC-M-50, TC-M-51 |
 | 4d | **S4b-BL-130** | The `sync/1` inner format (§5.1): its schema in docs/schemas (houses, visits, records, photo metadata and every tombstone; the writer's device id; caps), its validation as untrusted input on both stacks, and the merge vectors of §5.1 | Schema and golden files; the three-device, stale-snapshot and rolled-back-file vectors | — |
 | 5 | **S4b-BL-118** | `DriveSyncBackend`: the per-device files, merge, photos, the triggers of §1.3, the status line, one-tab lock on the website, "the folder was deleted" question | Two and three fake devices converging; offline then back; tombstones; a hand-edited file skipped | TC-M-47 |
-| 5b | **S4b-BL-128** | Photos on Wi-Fi or mobile data (§11): the switch, the monthly limit, the one-off, Data Saver, roaming, Low Data Mode and Low Power Mode, resumable sessions kept across network changes, the website's *Upload photos now* | `PhotoUploadPolicy` vectors on both stacks over a fake network-conditions provider; a resumed upload continues from its byte | TC-M-54 |
+| 5b | **S4b-BL-128** | Photos on Wi-Fi or mobile data (§11): the switch, the one-off (no monthly limit in v1), Data Saver, roaming, Low Data Mode and Low Power Mode, resumable sessions kept across network changes, the website's *Upload photos now* | `PhotoUploadPolicy` vectors on both stacks over a fake network-conditions provider; a resumed upload continues from its byte | TC-M-54 |
 | 6 | **S4b-BL-119** | Deleting from Drive (§3): the three actions, the dialog, *Save a copy first*, permanent delete, the resumable list, offline refusal, automatic backup off afterwards and on other devices | Fake: nothing left after each action; a stop half way reports what is left and *Try again* finishes; offline refused with nothing deleted; shared files' permissions removed first; no re-creation afterwards | TC-M-48 |
-| 7 | **S4b-BL-120** | Sharing version 1 (§4): *Share my hunt with…*, the consent text, the outbox file, *Add a shared hunt* with the Picker, *Stop sharing*, *Remove a hunt shared with me* | Two fake accounts: share, pick, update, delete travels, stop sharing ends access | TC-M-49 |
 | side | **S4b-BL-121** | The website's privacy page (`privacy.html`, static, four languages) for the consent screen, linked from About and the apps. It must say: there is no server of ours and the owner receives nothing; what Google sees (§9.5 vi); that the files are encrypted and a lost recovery key with no device left means the backups cannot be opened; that sharing includes other people's contact details only if ticked; deletion (§3) and the three disconnect actions (§3.5); how it maps to Play's data-safety form; and **Google's Limited Use sentence**: "Doorprints' use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements." | A check that it exists, carries the Limited Use sentence and is linked | Owner signs off the text |
 | side | **S4b-BL-124** | docs/08: incidents for Drive (the project stopped or the client deleted, a leaked Picker key, a user's lost access) and the guide's Google Drive pages | `mkdocs build --strict` | — |
+| later | **S4b-BL-120** (deferred until the spike proves the mobile Picker, owner 2026-10-02) | Sharing version 1 (§4): *Share my hunt with…*, the consent text, the outbox file, *Add a shared hunt* with the Picker, *Stop sharing*, *Remove a hunt shared with me* | Two fake accounts: share, pick, update, delete travels, stop sharing ends access | TC-M-49 |
+| later | **S4b-BL-129** (deferred, owner 2026-10-02) | An authenticator app as an option (§10.5): set up with the QR code, the wrapped secret in `keys.json`, checks with the window, replay and lockout, the website's second way to L2/L3, the second check at device approval, *Also ask for my authenticator code* for L3 on the phones, *Set up again* and *Turn off* as L3 | RFC 6238 vectors on both stacks, a fake clock, the lockout and reset paths | TC-M-55 |
+| later | — | *Lock old backups again* (§9.5 iv); a monthly limit for photos on mobile data (§11) | — | — |
 
 Before production (decision 7): the release gate on a release candidate with [13](13-release-security-checklist.md)
 part I, and the deep self-run pentest's Drive scope (13 §5).
@@ -543,12 +567,13 @@ part I, and the deep self-run pentest's Drive scope (13 §5).
 - **TC-M-48**: in a real Drive: *Delete this backup*, *Delete all backups*, *Delete everything*; check Drive's bin
   is empty of them, the storage figure drops, automatic backup stays off and another device asks before backing up
   again; interrupt one deletion (airplane mode) and finish it with *Try again*.
-- **TC-M-49**: two Google accounts: share, the Google email arrives, *Add a shared hunt* through the Picker on the
+- **TC-M-49** (deferred with sharing): two Google accounts: share, the Google email arrives, *Add a shared hunt* through the Picker on the
   website and on a phone, an update and a delete travel, *Stop sharing* ends the updates and the other keeps their
   copy.
-- **TC-M-50**: device authentication for deletes: *Delete this backup* asks nothing more; *Delete all backups*, *Stop
-  sharing* and *Delete everything* ask for the phone's PIN, fingerprint or face; cancel deletes nothing; waiting over a
-  minute after the check asks again; on the website the same with a passkey, and without one only L1 is offered.
+- **TC-M-50**: device authentication for deletes: *Delete this backup* asks nothing more; *Delete all backups*, the
+  last backup and *Delete everything* ask for the phone's PIN, fingerprint or face; cancel deletes nothing; waiting over
+  a minute after the check asks again; on the website L2/L3 only with a passkey whose PRF seals the key, and otherwise
+  only L1 with "use your phone".
 - **TC-M-51**: the device lock: on a phone with no screen lock *Connect Google Drive* refuses with the words of §10.3;
   with a lock, connect, then remove the lock: Drive pauses with its message, nothing is uploaded or deleted; set a lock
   again: the phone must re-enrol (approval or recovery key) and the houses on it are intact.
@@ -565,7 +590,7 @@ part I, and the deep self-run pentest's Drive scope (13 §5).
 - **TC-M-54**: photos on mobile data: with the switch on, photos wait on 4G/5G and go on Wi-Fi; switch it off: they go
   on mobile data up to the limit; Data Saver (Android) and Low Data Mode (iPhone) hold them; *Upload photos now over
   mobile data* shows the size and works once; an upload interrupted by leaving Wi-Fi resumes.
-- **TC-M-55**: the authenticator app: set it up with Google Authenticator or Aegis from the QR code; on the website
+- **TC-M-55** (deferred with the authenticator app): the authenticator app: set it up with Google Authenticator or Aegis from the QR code; on the website
   without a passkey, *Delete all backups* with a code; the same code a second time is refused; five wrong codes lock
   the check for 5 minutes; on a phone with *Also ask for my authenticator code* on, *Delete everything* asks for both;
   *Set up again* after "losing" the app needs the phone's own check or the recovery key.
@@ -706,8 +731,8 @@ connect makes a new key set and a new recovery key (§3.2).
 | i | **A new phone, a reinstalled Android phone, a cleared browser** has no private key | It makes its keys and asks to join. **Main path, by QR code (the pairing pattern of ADR-25):** the new device shows a QR code (and a link) holding `pk_new ‖ s`, where `s` is 128 random bits; an enrolled device scans it with the phone's camera, authenticates the person (L2), and HPKE-wraps the current folder key **for exactly the `pk_new` bytes it scanned**, in **PSK mode with `psk = s`**, so only someone who saw that screen could make a wrap the newcomer accepts; the newcomer checks it, then checks `keys.json` with the folder key it got. **Without a camera (fallback), the 8-digit comparison,** done as a commit-then-reveal numeric comparison (the pattern of Bluetooth's numeric comparison): the newcomer posts `pk_new` and a commitment to its nonce `n_new`; the approver posts its nonce `n_a` and `pk_approver`; the newcomer reveals `n_new`; both show `code = first 8 digits of SHA-256(n_new ‖ n_a ‖ pk_approver ‖ pk_new)`; the person compares; the approver signs its wrap with its static ECDSA key. Neither side can choose its nonce after seeing the other's, so a key swapped in Drive shows different codes. **Either way:** a pending request expires after 10 minutes, and there is one at a time. **Or the recovery key**, typed on the new device. **iPhone reinstall:** Keychain items survive an app's removal on iOS, so a reinstalled iPhone may find its old key; it reuses it only if `keys.json` still lists that `kid` unrevoked, and otherwise deletes the stale items and joins as new |
 | ii | **The website's data is cleared** (by the person, by Safari after 7 days without a visit, or under storage pressure) | The same as (i); the QR path is the easy one (§5.1) |
 | iii | **Every device lost** | Only the recovery key opens the files (on the website too: *Import a backup* > a downloaded `.dpx` file and the recovery key). Without it the data in Drive cannot be read by anyone, ever. The app says this at connect and in Settings |
-| iv | **A device lost or stolen: revoke it** (L2) | Its entry becomes a revoked entry, a **new epoch** is made, chained to the old one, and HPKE-wrapped for the remaining devices **and the recovery public key** (nobody types the recovery key); new files use it. The remaining devices **skip and report** any sync or backup file written after `revokedAt` under an older epoch or by the revoked device ("A file written by the revoked Pixel 8 after it was revoked was ignored"). Old files stay readable to the old key, so a thief who has both the phone and access to the Google account could open the backups made before the revocation; *Lock old backups again* rewrites the kept backups and sync files under the new epoch (open question 5); photos only on request. **A revoke does not revoke that device's Google access**: the dialog says "This stops that device from opening new Doorprints backups. It does not sign it out of your Google account: use *Disconnect on all devices*, or Google's *Your devices* page, and change your Google password if it was stolen" |
-| v | **Sharing** | The recipient's app has an account **share key** pair (its private part wrapped under the recipient's own folder key, so all their devices have it). The recipient sends a **key card**: a QR code carrying the whole public key, or a Doorprints link (`https://doorprints.web.app/k#…`) whose **64-bit fingerprint** (16 characters in four groups) the two compare by voice or in person; the sharer's app wraps the shared file's content key for it. *Stop sharing* deletes the file; new shares never use her key |
+| iv | **A device lost or stolen: revoke it** (L2) | Its entry becomes a revoked entry, a **new epoch** is made, chained to the old one, and HPKE-wrapped for the remaining devices **and the recovery public key** (nobody types the recovery key); new files use it. The remaining devices **skip and report** any sync or backup file written after `revokedAt` under an older epoch or by the revoked device ("A file written by the revoked Pixel 8 after it was revoked was ignored"). Old files stay readable to the old key, so a thief who has both the phone and access to the Google account could open the backups made before the revocation; *Lock old backups again* rewrites the kept backups and sync files under the new epoch (**deferred, not in v1**, owner 2026-10-02). **A revoke does not revoke that device's Google access**: the dialog says "This stops that device from opening new Doorprints backups. It does not sign it out of your Google account: use *Disconnect on all devices*, or Google's *Your devices* page, and change your Google password if it was stolen" |
+| v | **Sharing** (deferred with §4) | The recipient's app has an account **share key** pair (its private part wrapped under the recipient's own folder key, so all their devices have it). The recipient sends a **key card**: a QR code carrying the whole public key, or a Doorprints link (`https://doorprints.web.app/k#…`) whose **64-bit fingerprint** (16 characters in four groups) the two compare by voice or in person; the sharer's app wraps the shared file's content key for it. *Stop sharing* deletes the file; new shares never use her key |
 | vi | **What Google still sees** | File names, sizes, times, the number of files (so roughly the number of photos), who a file is shared with, and the account. The names carry no house data (`Doorprints-backup-<date>.dpx`, photos `p-<random>.dpx`); `appProperties` carry only random ids and `state`, no house id or plaintext checksum. Drive's preview, search and virus scan see only noise, by design |
 | vii | **Readable without the app** | No longer: an encrypted backup opens only in Doorprints (any platform, the website included, with a device key or the recovery key). If Google stops the project (R1), the person downloads the `.dpx` files from Drive and opens them with the website and the recovery key; *Save a copy* to the device stays unencrypted, as today |
 
@@ -767,15 +792,17 @@ authentication, and this feature's usage also needs device lock to be enabled."
 |---|---|---|
 | **L1** | *Delete this backup* (not the last one left); *Remove a hunt shared with me*; *Disconnect Google Drive* on this device; turning automatic backup off | The dialog of §3.2 |
 | **L2** | *Delete all backups*; deleting the **last** remaining backup; *Stop sharing with…* / deleting a shared file; *Revoke this device*; approving a new device (§9.5 i); *Disconnect on all devices* | The dialog **and one factor** (below) |
-| **L3** | *Delete everything Doorprints keeps in my Google Drive*; anything that weakens protection: making or skipping a recovery key after connect, turning encryption off (not offered in v1), turning the authenticator app off or setting it up again (§10.5) | The dialog with the tick box and the 5-second delay, **and one factor** (two if the person asked for it) |
+| **L3** | *Delete everything Doorprints keeps in my Google Drive*; anything that weakens protection: making or skipping a recovery key after connect, turning encryption off (not offered in v1) | The dialog with the tick box and the 5-second delay, **and the factor** below |
 
 Which factor satisfies a level, per platform:
 
 | Platform | L2 | L3 | Approving a new device |
 |---|---|---|---|
-| Android phone, iPhone | **Device authentication** (default) | Device authentication; **plus the authenticator code** if the person turned on *Also ask for my authenticator code* (off by default) Scanning the new device's QR code (or, without a camera, the 8-digit comparison of §9.5 i) **and** device authentication on the approving phone |
-| Website | **A passkey** (user verification) **or the authenticator code** | The same (both, if the person asked for two) On the website as the approver: the 8-digit comparison (a computer rarely has a camera) and a passkey or authenticator code |
-| Website with neither set up | Not offered: "Use Doorprints on your phone, or set up a passkey or an authenticator app" | Not offered | Not offered |
+| Android phone, iPhone | **Device authentication** | Device authentication | Scanning the new device's QR code (or, without a camera, the 8-digit comparison of §9.5 i) **and** device authentication on the approving phone |
+| Website with a passkey whose PRF extension seals the website's key | The passkey (user verification) | The passkey | The 8-digit comparison (a computer rarely has a camera) and the passkey |
+| Website without that | Not offered: "To do this, use Doorprints on your phone" | Not offered | Not offered |
+
+The authenticator app (§10.5) is deferred and is not a factor in version 1.
 
 **Recommendation: the line is between L1 and L2.** L2 and L3 are the actions after which nothing is left to go back
 to, or that change who can read the data. One backup out of seventeen is not.
@@ -822,20 +849,23 @@ A website cannot learn whether the computer has a lock and cannot call the opera
 Google's token flow cannot force a fresh password either (it offers only `prompt` = none, consent or
 select_account), so it is not a check of who is at the keyboard and is not used as one. The honest equivalent:
 
-- **A passkey for this browser** (WebAuthn, platform authenticator, `userVerification: "required"`: Windows Hello,
-  Touch ID, the phone's screen lock), registered when Drive is connected on the website. **L2 and L3 on the website
-  need it**; the page checks the signed assertion against the public key it stored. Where the browser offers the
-  WebAuthn **PRF extension**, the website's device key is also sealed with a key derived from the passkey, so the key
-  itself needs the person's verification (once per page load).
-- **Or an authenticator app** (§10.5), for browsers and computers without passkeys.
-- **With neither** the website does L1 only, and says: "To delete all backups, use Doorprints on your phone, or set up
-  a passkey or an authenticator app."
+- **A passkey for this browser with the PRF extension** (WebAuthn, platform authenticator, `userVerification:
+  "required"`: Windows Hello, Touch ID, the phone's screen lock), offered when Drive is connected on the website. The
+  website's device key is sealed with a key derived from the passkey's PRF output, so the key itself needs the
+  person's verification (once per page load). **Only then are L2 and L3 offered on the website** (decided 2026-10-02,
+  §6.1 question 2): a check made only in the page, without a key behind it, is skipped by anyone with the browser's
+  developer tools.
+- **Without it** (no passkey, or no PRF in this browser) the website does L1 only, and says: "To delete all backups,
+  use Doorprints on your phone." The authenticator app is not offered (deferred, §10.5).
 - **What is weaker, and what the person is told** when connecting on the website: "This browser cannot show Doorprints
   whether your computer is locked. Anyone who can use this browser profile can open your houses and your Drive backups
   here. Use your own computer, and *Disconnect Google Drive* on a shared one." The website check runs in the page, so
   it guards against someone at an unlocked computer, not against a changed page (nothing can, without a server).
 
-### 10.5 An authenticator app as an option (owner addition, 2026-10-02)
+### 10.5 An authenticator app as an option (owner addition, 2026-10-02; **deferred, not in v1**)
+
+**Deferred by the owner on 2026-10-02** (§6.1 question 1): on a phone it repeats the phone's own lock, and on the
+website a check in the page is skipped with developer tools. The design is kept for later (S4b-BL-129).
 
 **The owner's words:** "An authenticator app can also be used if it makes things easier for the user than the public
 private approach." An authenticator app (Google Authenticator, Microsoft Authenticator, Aegis and others) shows a
@@ -870,7 +900,7 @@ no extra app.
 
 ### 10.6 The limit of every check inside the app
 
-Device authentication, a passkey and an authenticator code are checks **inside Doorprints**. They stop someone using
+Device authentication and a passkey (and, later, an authenticator code) are checks **inside Doorprints**. They stop someone using
 an unlocked phone or an open browser from deleting or exposing the data through the app. They do **not** stop someone
 who holds the person's Google account: Drive cannot enforce them, and such a person can delete the files with Drive's
 own pages or API. What still protects the person then: the encryption (§9: the contents stay unreadable), the copy on
@@ -888,7 +918,7 @@ switch to a normal 4G/5G upload as well."
 | Setting (Settings > Google Drive) | Default | What it does |
 |---|---|---|
 | **Upload photos only on Wi-Fi** | On | Photos wait for an unmetered network |
-| (switched off) **Mobile data limit for photos** | 500 MB a month | Photos also go on mobile data up to the limit (Off, 100 MB, 500 MB, 1 GB, no limit); counted on the device per calendar month |
+| (switched off) | — | Photos also go on mobile data. **A monthly limit is deferred** (owner, 2026-10-02); the note below says how much is waiting |
 | **Upload photos now over mobile data** | — | A one-off button when photos wait and the phone is on mobile data: "37 photos are waiting, about 48 MB. Upload them now on mobile data?" It does not change the setting |
 
 - The note under the switch: "Photos can use a lot of mobile data. 37 photos are waiting (about 48 MB)."
@@ -907,6 +937,6 @@ switch to a normal 4G/5G upload as well."
   in Chromium and often has no `type` on a computer. So on the website photos upload automatically unless
   `navigator.connection.saveData` is set or `type` is `cellular`; then they wait and *Upload photos now* is shown. The
   setting there reads *Upload photos automatically*.
-- **One rule, tested once**: `PhotoUploadPolicy.allowed(conditions, settings, usedThisMonth, oneOff)` in common code
+- **One rule, tested once**: `PhotoUploadPolicy.allowed(conditions, settings, oneOff)` in common code
   with a TypeScript twin, over a fake network-conditions provider (unmetered, metered, roaming, Data Saver or Low Data
   Mode, low power, unknown), with shared vectors.
