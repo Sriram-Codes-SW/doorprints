@@ -1296,6 +1296,34 @@ export const en = {
   'driveBackups.error.backupNotFound': 'Backup not found',
   'driveBackups.error.retrieveFailed': 'Could not retrieve backup data',
   'driveBackups.error.safetyCheckFailed': 'This backup did not pass its safety checks and was not imported',
+
+  // Google Drive sync component (S4b-BL-117)
+  'driveSync.syncNow': 'Sync now',
+  'driveSync.skippedFiles': 'Some files from other devices were skipped ({count}). They did not pass the safety checks.',
+  'driveSync.shrinkConfirm': 'Confirm deletions from another device',
+  'driveSync.shrinkConfirmDetails': 'Another device deleted backups. Apply these deletions on this device?',
+  'driveSync.applyShrink': 'Apply deletions',
+  'driveSync.notNow': 'Not now',
+  'driveSync.wifiOnly': 'Upload photos only on Wi-Fi',
+  'driveSync.uploadNow': 'Upload photos now over mobile data ({size})',
+  'driveSync.photoError': 'Could not update photo settings',
+
+  // Google Drive deletion component (S4b-BL-117)
+  'driveDelete.heading': 'Delete data in Google Drive',
+  'driveDelete.olderBackups': 'Delete older backups',
+  'driveDelete.allBackups': 'Delete all backups',
+  'driveDelete.everything': 'Delete everything Doorprints keeps in Google Drive',
+  'driveDelete.oneBackup': 'Delete this backup',
+  'driveDelete.planHeading': 'What will be deleted',
+  'driveDelete.planWarning': 'Deletes from Google Drive for all devices.',
+  'driveDelete.proceed': 'Proceed',
+  'driveDelete.confirmHeading': 'Confirm deletion',
+  'driveDelete.confirmWarning': 'This cannot be undone. Deletes from Google Drive for all devices.',
+  'driveDelete.confirmCheckbox': 'I understand this cannot be undone',
+  'driveDelete.countdown': 'Please wait {seconds} seconds…',
+  'driveDelete.passkeyRequired': 'Passkey required',
+  'driveDelete.setupPasskey': 'Set up a passkey',
+  'driveDelete.deleting': 'Deleting…',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

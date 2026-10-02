@@ -1280,4 +1280,32 @@ export const hi: Dict = {
   'drivePasskey.registerButton': 'एक पासकी सेट अप करें',
   'drivePasskey.registeredDescription': 'इस डिवाइस पर एक पासकी सेट अप की गई है।',
   'drivePasskey.unsupportedDescription': 'यह ब्राउज़र उस तरह की पासकी नहीं बना सकता जो आवश्यक है। यहाँ से सब कुछ हटाना उपलब्ध नहीं है; आप अभी भी अलग-अलग बैकअप हटा सकते हैं।',
+
+  // Google Drive sync component (S4b-BL-117) - Under review
+  'driveSync.syncNow': 'अभी सिंक करें',
+  'driveSync.skippedFiles': 'दूसरी डिवाइस की कुछ फ़ाइलें छोड़ दी गईं ({count})। वे सुरक्षा जाँच पास नहीं कर सकीं।',
+  'driveSync.shrinkConfirm': 'दूसरी डिवाइस से हटाई गई फ़ाइलों की पुष्टि करें',
+  'driveSync.shrinkConfirmDetails': 'दूसरी डिवाइस ने बैकअप हटा दिए। इस डिवाइस पर ये हटाए जाने वाली फ़ाइलें लागू करें?',
+  'driveSync.applyShrink': 'हटाई गई फ़ाइलें लागू करें',
+  'driveSync.notNow': 'अभी नहीं',
+  'driveSync.wifiOnly': 'फ़ोटो केवल वाई-फाई पर अपलोड करें',
+  'driveSync.uploadNow': 'मोबाइल डेटा पर अब फ़ोटो अपलोड करें ({size})',
+  'driveSync.photoError': 'फ़ोटो सेटिंग अपडेट नहीं कर सके',
+
+  // Google Drive deletion component (S4b-BL-117) - Under review
+  'driveDelete.heading': 'गूगल ड्राइव में डेटा हटाएँ',
+  'driveDelete.olderBackups': 'पुराने बैकअप हटाएँ',
+  'driveDelete.allBackups': 'सभी बैकअप हटाएँ',
+  'driveDelete.everything': 'गूगल ड्राइव में Doorprints द्वारा सहेजी गई सभी चीज़ें हटाएँ',
+  'driveDelete.oneBackup': 'यह बैकअप हटाएँ',
+  'driveDelete.planHeading': 'क्या हटाया जाएगा',
+  'driveDelete.planWarning': 'सभी डिवाइस के लिए गूगल ड्राइव से हटाएँ।',
+  'driveDelete.proceed': 'आगे बढ़ें',
+  'driveDelete.confirmHeading': 'हटाने की पुष्टि करें',
+  'driveDelete.confirmWarning': 'यह पूर्ववत नहीं हो सकता। सभी डिवाइस के लिए गूगल ड्राइव से हटाएँ।',
+  'driveDelete.confirmCheckbox': 'मैं समझता हूँ कि यह पूर्ववत नहीं हो सकता',
+  'driveDelete.countdown': 'कृपया {seconds} सेकंड प्रतीक्षा करें…',
+  'driveDelete.passkeyRequired': 'पासकी आवश्यक है',
+  'driveDelete.setupPasskey': 'एक पासकी सेट अप करें',
+  'driveDelete.deleting': 'हटाया जा रहा है…',
 };
