@@ -139,7 +139,7 @@ export function decide(
     requirements: {
       level,
       factor,
-      tickBox: l3,
+      tickBox: l3 || action === 'DELETE_ALL_BACKUPS',
       delaySeconds: l3 ? DELAY_SECONDS_L3 : 0,
       pairing,
       authValidMs: factor === "NONE" ? 0 : AUTH_VALID_MS,

@@ -176,7 +176,7 @@
     "outcome": "ALLOWED",
     "level": "L2",
     "factor": "DEVICE_AUTH",
-    "tickBox": false,
+    "tickBox": true,
     "delaySeconds": 0,
     "pairing": "NONE",
     "authValidMs": 60000
@@ -751,7 +751,7 @@
     "outcome": "ALLOWED",
     "level": "L2",
     "factor": "PASSKEY",
-    "tickBox": false,
+    "tickBox": true,
     "delaySeconds": 0,
     "pairing": "NONE",
     "authValidMs": 60000
@@ -811,7 +811,7 @@
     "outcome": "ALLOWED",
     "level": "L2",
     "factor": "PASSKEY",
-    "tickBox": false,
+    "tickBox": true,
     "delaySeconds": 0,
     "pairing": "NONE",
     "authValidMs": 60000
@@ -846,7 +846,7 @@
     "outcome": "ALLOWED",
     "level": "L2",
     "factor": "DEVICE_AUTH",
-    "tickBox": false,
+    "tickBox": true,
     "delaySeconds": 0,
     "pairing": "NONE",
     "authValidMs": 60000
@@ -917,6 +917,22 @@
    "ticked": true,
    "elapsedMs": 0,
    "enabled": false
+  },
+  {
+   "name": "L2 delete all backups: box needed, no delay, not ticked",
+   "tickBox": true,
+   "delaySeconds": 0,
+   "ticked": false,
+   "elapsedMs": 10000,
+   "enabled": false
+  },
+  {
+   "name": "L2 delete all backups: ticked, enabled at once",
+   "tickBox": true,
+   "delaySeconds": 0,
+   "ticked": true,
+   "elapsedMs": 0,
+   "enabled": true
   }
  ],
  "grants": [
