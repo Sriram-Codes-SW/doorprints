@@ -95,6 +95,19 @@ export interface SyncBackend {
   photoChangesSince(cursor: number): Observable<PhotoChangeDto[]>;
   /** One photo's bytes. */
   downloadPhoto(id: string): Observable<Blob>;
+
+  /**
+   * Like {@link downloadPhoto}, but null when this one photo cannot be had and will not be by trying again now (Drive: the
+   * file was altered, swapped, planted, written by a revoked device, or is gone). The loop skips it and goes on; the backend
+   * reports why. A failure that may pass (offline, rate limit) is still thrown. Absent: {@link downloadPhoto}.
+   */
+  downloadPhotoIfAvailable?(id: string): Observable<Blob | null>;
+
+  /**
+   * Whether photo bytes may move now (the network policy, S4b-BL-128, docs/15 §11). False: photos are not uploaded or
+   * downloaded this run (deletes and metadata still go); they wait and come again. Absent: always.
+   */
+  photosAllowed?(): boolean;
 }
 
 /**

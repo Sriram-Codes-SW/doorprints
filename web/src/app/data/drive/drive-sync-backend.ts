@@ -25,6 +25,9 @@ import type { MergeRule } from '../sync-rules';
 import { driveMerge, nextStamp } from './drive-merge';
 import { DriveError } from './drive-client';
 import type { DriveSyncEngine } from './drive-sync-engine';
+import type { DrivePhotos } from './drive-photos';
+import { withRef } from './drive-photo-seams';
+import type { SkippedPhoto } from './drive-photo-seams';
 import { DriveSyncNotYet } from './drive-sync-seams';
 import type { LocalRows, SyncPassResult } from './drive-sync-seams';
 import { syncRow, syncTime } from './sync-file';
@@ -35,8 +38,12 @@ import type { SyncKind, SyncRow } from './sync-file';
  * already uses, over a {@link DriveSyncEngine}. Drive keeps whole snapshots, so: `push*` send nothing (the engine writes
  * this device's whole state once, in {@link commitPushes}, and the loop marks rows clean only after that returned: the
  * file complete and read back); what the other devices' files changed is found in `commitPushes` too and handed out by
- * `*Since`, a row's position being the pass counter; photos are the next ticket (S4b-BL-128): metadata and tombstones
- * flow, `uploadPhoto` and `downloadPhoto` throw {@link DriveSyncNotYet}. The shrink guard's question is not an error:
+ * `*Since`, a row's position being the pass counter. Photos (S4b-BL-128): metadata and tombstones flow in the sync file;
+ * the bytes go as one `photo/1` file each through {@link DrivePhotos}. A photo's row carries the Drive file and the
+ * plaintext SHA-256 once uploaded; a photo another device has not uploaded yet, or one that cannot be read (tampered,
+ * planted, revoked writer), is not handed to the loop: `photoChangesSince` leaves it out until its bytes can be fetched,
+ * `downloadPhotoIfAvailable` answers null and the skip is in {@link photoSkips}. Without `photos` the photo calls throw
+ * {@link DriveSyncNotYet}. The shrink guard's question is not an error:
  * the last pass is in {@link lastResult}; {@link confirmShrink} and the next sync apply the held deletions.
  */
 export class DriveSyncBackend implements SyncBackend {
@@ -55,6 +62,8 @@ export class DriveSyncBackend implements SyncBackend {
     private readonly local: LocalRows,
     private readonly clock: () => number,
     private readonly deviceId: string,
+    /** Photo bytes over Drive (S4b-BL-128); null: the photo calls throw {@link DriveSyncNotYet}. */
+    private readonly photos: DrivePhotos | null = null,
   ) {}
 
   /** The person said yes to the shrink guard: the next pass applies the house deletions it held. */
@@ -104,11 +113,22 @@ export class DriveSyncBackend implements SyncBackend {
     if (!photo) return;
     const previous = photo.updatedAt ? syncTime(photo.updatedAt) : null;
     const at = nextStamp(this.clock(), previous);
-    this.engine.stage(syncRowOf('photos', { ...photo, deleted: true, updatedAt: new Date(at).toISOString() }, this.deviceId));
+    // The tombstone keeps the Drive file of the bytes, so a later clean-up (30 days, no kept backup) finds it.
+    const row = syncRowOf('photos', { ...photo, deleted: true, updatedAt: new Date(at).toISOString() }, this.deviceId);
+    const ref = this.photos ? (await this.photos.refs())[id] : undefined;
+    this.engine.stage(ref ? withRef(row, ref) : row);
   }
 
-  uploadPhoto(): Observable<unknown> {
-    throw new DriveSyncNotYet('photo upload', 'S4b-BL-128');
+  /** The photos skipped since the last call (reported, never thrown). */
+  photoSkips(): SkippedPhoto[] {
+    return this.photos?.drainSkipped() ?? [];
+  }
+
+  /** One `photo/1` file per photo; a photo that can never go (too large, empty) stays on this device and counts as sent. */
+  uploadPhoto(_houseId: string, blob: Blob, id: string): Observable<unknown> {
+    const service = this.photos;
+    if (!service) throw new DriveSyncNotYet('photo upload', 'S4b-BL-128');
+    return from(blob.arrayBuffer().then((buf) => service.upload(id, new Uint8Array(buf))));
   }
 
   pushPhotoMeta(id: string, meta: PhotoMeta): Observable<PhotoChangeDto> {
@@ -131,11 +151,36 @@ export class DriveSyncBackend implements SyncBackend {
   }
 
   photoChangesSince(cursor: number): Observable<PhotoChangeDto[]> {
-    return of(this.since<PhotoChangeDto>('photos', cursor));
+    return from(this.photoChanges(cursor));
   }
 
-  downloadPhoto(): Observable<Blob> {
-    throw new DriveSyncNotYet('photo download', 'S4b-BL-128');
+  private async photoChanges(cursor: number): Promise<PhotoChangeDto[]> {
+    const all = this.since<PhotoChangeDto>('photos', cursor);
+    if (!this.photos) return all;
+    // A live photo this device does not have and whose bytes are not in Drive yet (the other device waits for Wi-Fi) is
+    // left out; its row comes again in a later pass, once the other device's file names the Drive file.
+    const refs = await this.photos.refs();
+    const out: PhotoChangeDto[] = [];
+    for (const c of all) if (c.deleted || c.id in refs || (await this.local.photo(c.id)) !== null) out.push(c);
+    return out;
+  }
+
+  downloadPhoto(id: string): Observable<Blob> {
+    return from(this.fetchPhoto(id).then((blob) => {
+      if (!blob) throw new DriveError('NOT_FOUND', 0, null, 'photoUnavailable');
+      return blob;
+    }));
+  }
+
+  /** The photo's bytes, or null when this photo cannot be had and will not be by trying again now (reported in {@link photoSkips}). */
+  downloadPhotoIfAvailable(id: string): Observable<Blob | null> {
+    return from(this.fetchPhoto(id));
+  }
+
+  private async fetchPhoto(id: string): Promise<Blob | null> {
+    if (!this.photos) throw new DriveSyncNotYet('photo download', 'S4b-BL-128');
+    const bytes = await this.photos.download(id);
+    return bytes ? new Blob([bytes as BlobPart], { type: 'image/jpeg' }) : null;
   }
 
   private since<T>(kind: SyncKind, cursor: number): T[] {

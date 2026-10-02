@@ -353,8 +353,9 @@ describe('DriveSyncEngine', () => {
     expect(houses[0].syncVersion).toBe(1);
     const again = await new Promise<unknown[]>((res, rej) => backend.housesSince(1).subscribe({ next: res, error: rej }));
     expect(again).toEqual([]);
-    expect(() => backend.downloadPhoto()).toThrow(DriveSyncNotYet);
-    expect(() => backend.uploadPhoto()).toThrow(DriveSyncNotYet);
+    // Without a photo service the photo calls keep their old answer (S4b-BL-128 wires it).
+    await expect(new Promise((res, rej) => backend.downloadPhoto('p').subscribe({ next: res, error: rej }))).rejects.toBeInstanceOf(DriveSyncNotYet);
+    expect(() => backend.uploadPhoto('h', new Blob(['x']), 'p')).toThrow(DriveSyncNotYet);
   });
 });
 

@@ -582,6 +582,8 @@ export class SyncService {
     for (const photo of photoUploads) {
       const bytes = photo.blob;
       if (!bytes) continue;
+      // The network policy (S4b-BL-128): photos wait for Wi-Fi unless the person allowed mobile data; they come again.
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) continue;
       await this.call(gen, () => this.backend.uploadPhoto(photo.houseId, bytes, photo.id));
       this.live(gen);
       // The stored row, not the one read before the upload: a meta edit made meanwhile stays.
@@ -775,11 +777,19 @@ export class SyncService {
       const house = houses.get(change.houseId);
       if (!house || house.deleted) continue; // the house is gone or deleted here: nothing to attach the photo to
       const photoId = change.id;
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) {
+        // Waiting for Wi-Fi (S4b-BL-128): the phase ends here at the position reached, so the rest comes later.
+        photoCursor = cursorBefore;
+        break;
+      }
       let blob: Blob;
       try {
         // One request per photo: on a large first-run download this is what meets the server's rate limit, and
         // `call` waits out a short 429 and carries on instead of failing the whole pull.
-        blob = await this.call(gen, () => this.backend.downloadPhoto(photoId));
+        const got = await this.call(gen, () => this.backend.downloadPhotoIfAvailable ? this.backend.downloadPhotoIfAvailable(photoId) : this.backend.downloadPhoto(photoId));
+        // Null: this photo cannot be had (Drive: tampered, planted, a revoked writer); skipped, the backend reports it.
+        if (got === null) continue;
+        blob = got;
       } catch (err: unknown) {
         // Still refused (a long Retry-After, or the network went away): keep the position reached, so "Try again"
         // resumes at this photo rather than walking the whole photo list again. A cancelled run writes nothing.

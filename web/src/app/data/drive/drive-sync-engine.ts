@@ -29,6 +29,8 @@ import { DRIVE_LAYOUT, DriveError } from './drive-client';
 import type { DriveClient, DriveFile } from './drive-client';
 import { isHeld as _isHeld, planMerge, takesIncoming } from './drive-merge';
 import { downloadVerified, ensureFolder, listAll, markComplete, uploadBytes } from './drive-ops';
+import { refOfRow, withRef } from './drive-photo-seams';
+import type { PhotoRef, PhotoRefs } from './drive-photo-seams';
 import {
   EMPTY_SYNC_STATE, KIND_SYNC, PROP_SEQ, SYNC_INNER, syncDeviceId,
 } from './drive-sync-seams';
@@ -91,6 +93,8 @@ export class DriveSyncEngine {
     private readonly clock: () => number,
     /** True while a deletion is pending or the folder was deleted: no pass then (docs/15 §3.3, §3.4). */
     private readonly paused: () => Promise<boolean> = async () => false,
+    /** Where the photos' Drive files are remembered (S4b-BL-128): written into the photo rows, learned from the others' files. */
+    private readonly photos: PhotoRefs | null = null,
   ) {
     this.dpx = new Dpx(p);
   }
@@ -245,6 +249,7 @@ export class DriveSyncEngine {
     let held = 0;
     let peersRead = 0;
     const peers: Record<string, SyncPeer> = { ...st.peers };
+    const learned: Record<string, PhotoRef> = {};
     for (const [dev, group] of groups) {
       const peer = peers[dev] ?? { highestSeq: 0, mergedChecksum: null };
       const candidates = group
@@ -268,6 +273,12 @@ export class DriveSyncEngine {
       }
       if (!best) continue;
       peersRead++;
+      // The Drive file of each live photo the authenticated file names, for downloads (and for our own next file).
+      for (const row of best.file.rows.photos) {
+        if (row.stamp.deleted || row.key in learned) continue;
+        const ref = refOfRow(row);
+        if (ref) learned[row.key] = ref;
+      }
       const plan = planMerge(best.file, { now, highestSeq: peer.highestSeq > 0 ? peer.highestSeq : null, liveHouses, confirmShrink }, stamps);
       if (plan.stale) {
         skipped.push({ deviceId: dev, fileId: bestFile!.id, reason: 'ROLLED_BACK' });
@@ -287,6 +298,16 @@ export class DriveSyncEngine {
       peers[dev] = { highestSeq: Math.max(peer.highestSeq, best.file.seq), mergedChecksum: settled ? best.checksum : peer.mergedChecksum };
     }
     for (const r of take.values()) putIfNewer(current, r);
+    if (this.photos) {
+      await this.photos.learn(learned);
+      // Every photo row of our file carries the Drive file of its bytes, once there is one.
+      const refs = await this.photos.refs();
+      for (const [id, row] of [...current.entries()]) {
+        if (row.kind !== 'photos' || refOfRow(row)) continue;
+        const ref = refs[row.key];
+        if (ref) current.set(id, withRef(row, ref));
+      }
+    }
 
     // This device's own file.
     let wrote = false;
