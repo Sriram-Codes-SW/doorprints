@@ -1236,4 +1236,32 @@ export const ta: Dict = {
   'driveConnect.backupError': 'பேக்கப் செய்ய முடியவில்லை: {reason}',
   'driveConnect.noAuth': 'அங்கீகாரம் தேவை',
   'driveConnect.noAuthHint': 'முன்னேற தவணை அல்லது கைரேகை தேவை.',
+
+  // Google Drive sync component (S4b-BL-117) - Under review
+  'driveSync.syncNow': 'இப்போது ஒத்திசைக்கவும்',
+  'driveSync.skippedFiles': 'மற்ற சாதனங்களில் இருந்து சில கோப்புகள் தவிர்க்கப்பட்டுள்ளன ({count}). அவை பாதுகாப்பு சோதனைகளை தெரிவு செய்யவில்லை.',
+  'driveSync.shrinkConfirm': 'மற்ற சாதனத்தில் இருந்து நீக்கப்பட்ட பேக்கப்களைக் குறிப்பிடவும்',
+  'driveSync.shrinkConfirmDetails': 'மற்ற சாதனம் பேக்கப்களை நீக்கியுள்ளது. இந்த சாதனத்தில் இந்த நீக்கல்களைப் பயன்படுத்த வேண்டுமா?',
+  'driveSync.applyShrink': 'நீக்கல்களைப் பயன்படுத்தவும்',
+  'driveSync.notNow': 'இப்போது இல்லை',
+  'driveSync.wifiOnly': 'Wi-Fi இல் மட்டுமே புகைப்படங்களை அப்லோட் செய்யவும்',
+  'driveSync.uploadNow': 'மொபைல் தரவில் இப்போது புகைப்படங்களை அப்லோட் செய்யவும் ({size})',
+  'driveSync.photoError': 'புகைப்படம் அமைப்புகளைப் புதுப்பிக்க முடியவில்லை',
+
+  // Google Drive deletion component (S4b-BL-117) - Under review
+  'driveDelete.heading': 'Google Drive இல் தரவை நீக்கவும்',
+  'driveDelete.olderBackups': 'பழைய பேக்கப்களை நீக்கவும்',
+  'driveDelete.allBackups': 'அனைத்து பேக்கப்களை நீக்கவும்',
+  'driveDelete.everything': 'Google Drive இல் Doorprints வைத்திருக்கும் அனைத்தையும் நீக்கவும்',
+  'driveDelete.oneBackup': 'இந்த பேக்கப்ஐ நீக்கவும்',
+  'driveDelete.planHeading': 'என்ன நீக்கப்படும்',
+  'driveDelete.planWarning': 'அனைத்து சாதனங்களுக்கு Google Drive இலிருந்து நீக்கவும்.',
+  'driveDelete.proceed': 'முன்னேறவும்',
+  'driveDelete.confirmHeading': 'நீக்கலைக் குறிப்பிடவும்',
+  'driveDelete.confirmWarning': 'இதைச் செய்ய முடியாது. அனைத்து சாதனங்களுக்கு Google Drive இலிருந்து நீக்கவும்.',
+  'driveDelete.confirmCheckbox': 'நான் புரிந்துகொண்டேன்: இதைச் செய்ய முடியாது',
+  'driveDelete.countdown': 'தயவு செய்து {seconds} வினாடிகள் காத்திருக்கவும்…',
+  'driveDelete.passkeyRequired': 'தவணை தேவை',
+  'driveDelete.setupPasskey': 'தவணைஐ அமைக்கவும்',
+  'driveDelete.deleting': 'நீக்கப்படுகிறது…',
 };
