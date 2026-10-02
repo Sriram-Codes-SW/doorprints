@@ -1,0 +1,4442 @@
+{
+ "version": 1,
+ "about": "S4b-BL-116 Drive backups: retention (7 daily, 4 weekly, 6 monthly, the shrink guard) and the automatic schedule. Times are epoch milliseconds; utcOffsetMinutes is the device's offset east of UTC. Read by BackupVectorsTest (Kotlin) and backup-vectors.spec.ts (TypeScript); written by an independent Python implementation.",
+ "constants": {
+  "daily": 7,
+  "weekly": 4,
+  "monthly": 6,
+  "dailyMs": 86400000,
+  "verifyMs": 604800000,
+  "retryMs": 1800000,
+  "quotaRetryMs": 86400000,
+  "clockSkewMs": 300000
+ },
+ "retention": [
+  {
+   "name": "empty",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [],
+   "keep": [],
+   "prune": [],
+   "hold": null
+  },
+  {
+   "name": "one backup is kept",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 40
+    }
+   ],
+   "keep": [
+    "d000"
+   ],
+   "prune": [],
+   "hold": null
+  },
+  {
+   "name": "a week of daily backups: all kept",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 40
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 40
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 40
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 40
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 40
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 40
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 40
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006"
+   ],
+   "prune": [],
+   "hold": null
+  },
+  {
+   "name": "a year of daily backups keeps 13: the buckets overlap",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 40
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 40
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 40
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 40
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 40
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 40
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 40
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 40
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 40
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 40
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 40
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 40
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 40
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 40
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 40
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 40
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 40
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 40
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 40
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 40
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 40
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 40
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 40
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 40
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 40
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 40
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 40
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 40
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 40
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 40
+    },
+    {
+     "id": "d030",
+     "createdAt": 1788321600000,
+     "houses": 40
+    },
+    {
+     "id": "d031",
+     "createdAt": 1788235200000,
+     "houses": 40
+    },
+    {
+     "id": "d032",
+     "createdAt": 1788148800000,
+     "houses": 40
+    },
+    {
+     "id": "d033",
+     "createdAt": 1788062400000,
+     "houses": 40
+    },
+    {
+     "id": "d034",
+     "createdAt": 1787976000000,
+     "houses": 40
+    },
+    {
+     "id": "d035",
+     "createdAt": 1787889600000,
+     "houses": 40
+    },
+    {
+     "id": "d036",
+     "createdAt": 1787803200000,
+     "houses": 40
+    },
+    {
+     "id": "d037",
+     "createdAt": 1787716800000,
+     "houses": 40
+    },
+    {
+     "id": "d038",
+     "createdAt": 1787630400000,
+     "houses": 40
+    },
+    {
+     "id": "d039",
+     "createdAt": 1787544000000,
+     "houses": 40
+    },
+    {
+     "id": "d040",
+     "createdAt": 1787457600000,
+     "houses": 40
+    },
+    {
+     "id": "d041",
+     "createdAt": 1787371200000,
+     "houses": 40
+    },
+    {
+     "id": "d042",
+     "createdAt": 1787284800000,
+     "houses": 40
+    },
+    {
+     "id": "d043",
+     "createdAt": 1787198400000,
+     "houses": 40
+    },
+    {
+     "id": "d044",
+     "createdAt": 1787112000000,
+     "houses": 40
+    },
+    {
+     "id": "d045",
+     "createdAt": 1787025600000,
+     "houses": 40
+    },
+    {
+     "id": "d046",
+     "createdAt": 1786939200000,
+     "houses": 40
+    },
+    {
+     "id": "d047",
+     "createdAt": 1786852800000,
+     "houses": 40
+    },
+    {
+     "id": "d048",
+     "createdAt": 1786766400000,
+     "houses": 40
+    },
+    {
+     "id": "d049",
+     "createdAt": 1786680000000,
+     "houses": 40
+    },
+    {
+     "id": "d050",
+     "createdAt": 1786593600000,
+     "houses": 40
+    },
+    {
+     "id": "d051",
+     "createdAt": 1786507200000,
+     "houses": 40
+    },
+    {
+     "id": "d052",
+     "createdAt": 1786420800000,
+     "houses": 40
+    },
+    {
+     "id": "d053",
+     "createdAt": 1786334400000,
+     "houses": 40
+    },
+    {
+     "id": "d054",
+     "createdAt": 1786248000000,
+     "houses": 40
+    },
+    {
+     "id": "d055",
+     "createdAt": 1786161600000,
+     "houses": 40
+    },
+    {
+     "id": "d056",
+     "createdAt": 1786075200000,
+     "houses": 40
+    },
+    {
+     "id": "d057",
+     "createdAt": 1785988800000,
+     "houses": 40
+    },
+    {
+     "id": "d058",
+     "createdAt": 1785902400000,
+     "houses": 40
+    },
+    {
+     "id": "d059",
+     "createdAt": 1785816000000,
+     "houses": 40
+    },
+    {
+     "id": "d060",
+     "createdAt": 1785729600000,
+     "houses": 40
+    },
+    {
+     "id": "d061",
+     "createdAt": 1785643200000,
+     "houses": 40
+    },
+    {
+     "id": "d062",
+     "createdAt": 1785556800000,
+     "houses": 40
+    },
+    {
+     "id": "d063",
+     "createdAt": 1785470400000,
+     "houses": 40
+    },
+    {
+     "id": "d064",
+     "createdAt": 1785384000000,
+     "houses": 40
+    },
+    {
+     "id": "d065",
+     "createdAt": 1785297600000,
+     "houses": 40
+    },
+    {
+     "id": "d066",
+     "createdAt": 1785211200000,
+     "houses": 40
+    },
+    {
+     "id": "d067",
+     "createdAt": 1785124800000,
+     "houses": 40
+    },
+    {
+     "id": "d068",
+     "createdAt": 1785038400000,
+     "houses": 40
+    },
+    {
+     "id": "d069",
+     "createdAt": 1784952000000,
+     "houses": 40
+    },
+    {
+     "id": "d070",
+     "createdAt": 1784865600000,
+     "houses": 40
+    },
+    {
+     "id": "d071",
+     "createdAt": 1784779200000,
+     "houses": 40
+    },
+    {
+     "id": "d072",
+     "createdAt": 1784692800000,
+     "houses": 40
+    },
+    {
+     "id": "d073",
+     "createdAt": 1784606400000,
+     "houses": 40
+    },
+    {
+     "id": "d074",
+     "createdAt": 1784520000000,
+     "houses": 40
+    },
+    {
+     "id": "d075",
+     "createdAt": 1784433600000,
+     "houses": 40
+    },
+    {
+     "id": "d076",
+     "createdAt": 1784347200000,
+     "houses": 40
+    },
+    {
+     "id": "d077",
+     "createdAt": 1784260800000,
+     "houses": 40
+    },
+    {
+     "id": "d078",
+     "createdAt": 1784174400000,
+     "houses": 40
+    },
+    {
+     "id": "d079",
+     "createdAt": 1784088000000,
+     "houses": 40
+    },
+    {
+     "id": "d080",
+     "createdAt": 1784001600000,
+     "houses": 40
+    },
+    {
+     "id": "d081",
+     "createdAt": 1783915200000,
+     "houses": 40
+    },
+    {
+     "id": "d082",
+     "createdAt": 1783828800000,
+     "houses": 40
+    },
+    {
+     "id": "d083",
+     "createdAt": 1783742400000,
+     "houses": 40
+    },
+    {
+     "id": "d084",
+     "createdAt": 1783656000000,
+     "houses": 40
+    },
+    {
+     "id": "d085",
+     "createdAt": 1783569600000,
+     "houses": 40
+    },
+    {
+     "id": "d086",
+     "createdAt": 1783483200000,
+     "houses": 40
+    },
+    {
+     "id": "d087",
+     "createdAt": 1783396800000,
+     "houses": 40
+    },
+    {
+     "id": "d088",
+     "createdAt": 1783310400000,
+     "houses": 40
+    },
+    {
+     "id": "d089",
+     "createdAt": 1783224000000,
+     "houses": 40
+    },
+    {
+     "id": "d090",
+     "createdAt": 1783137600000,
+     "houses": 40
+    },
+    {
+     "id": "d091",
+     "createdAt": 1783051200000,
+     "houses": 40
+    },
+    {
+     "id": "d092",
+     "createdAt": 1782964800000,
+     "houses": 40
+    },
+    {
+     "id": "d093",
+     "createdAt": 1782878400000,
+     "houses": 40
+    },
+    {
+     "id": "d094",
+     "createdAt": 1782792000000,
+     "houses": 40
+    },
+    {
+     "id": "d095",
+     "createdAt": 1782705600000,
+     "houses": 40
+    },
+    {
+     "id": "d096",
+     "createdAt": 1782619200000,
+     "houses": 40
+    },
+    {
+     "id": "d097",
+     "createdAt": 1782532800000,
+     "houses": 40
+    },
+    {
+     "id": "d098",
+     "createdAt": 1782446400000,
+     "houses": 40
+    },
+    {
+     "id": "d099",
+     "createdAt": 1782360000000,
+     "houses": 40
+    },
+    {
+     "id": "d100",
+     "createdAt": 1782273600000,
+     "houses": 40
+    },
+    {
+     "id": "d101",
+     "createdAt": 1782187200000,
+     "houses": 40
+    },
+    {
+     "id": "d102",
+     "createdAt": 1782100800000,
+     "houses": 40
+    },
+    {
+     "id": "d103",
+     "createdAt": 1782014400000,
+     "houses": 40
+    },
+    {
+     "id": "d104",
+     "createdAt": 1781928000000,
+     "houses": 40
+    },
+    {
+     "id": "d105",
+     "createdAt": 1781841600000,
+     "houses": 40
+    },
+    {
+     "id": "d106",
+     "createdAt": 1781755200000,
+     "houses": 40
+    },
+    {
+     "id": "d107",
+     "createdAt": 1781668800000,
+     "houses": 40
+    },
+    {
+     "id": "d108",
+     "createdAt": 1781582400000,
+     "houses": 40
+    },
+    {
+     "id": "d109",
+     "createdAt": 1781496000000,
+     "houses": 40
+    },
+    {
+     "id": "d110",
+     "createdAt": 1781409600000,
+     "houses": 40
+    },
+    {
+     "id": "d111",
+     "createdAt": 1781323200000,
+     "houses": 40
+    },
+    {
+     "id": "d112",
+     "createdAt": 1781236800000,
+     "houses": 40
+    },
+    {
+     "id": "d113",
+     "createdAt": 1781150400000,
+     "houses": 40
+    },
+    {
+     "id": "d114",
+     "createdAt": 1781064000000,
+     "houses": 40
+    },
+    {
+     "id": "d115",
+     "createdAt": 1780977600000,
+     "houses": 40
+    },
+    {
+     "id": "d116",
+     "createdAt": 1780891200000,
+     "houses": 40
+    },
+    {
+     "id": "d117",
+     "createdAt": 1780804800000,
+     "houses": 40
+    },
+    {
+     "id": "d118",
+     "createdAt": 1780718400000,
+     "houses": 40
+    },
+    {
+     "id": "d119",
+     "createdAt": 1780632000000,
+     "houses": 40
+    },
+    {
+     "id": "d120",
+     "createdAt": 1780545600000,
+     "houses": 40
+    },
+    {
+     "id": "d121",
+     "createdAt": 1780459200000,
+     "houses": 40
+    },
+    {
+     "id": "d122",
+     "createdAt": 1780372800000,
+     "houses": 40
+    },
+    {
+     "id": "d123",
+     "createdAt": 1780286400000,
+     "houses": 40
+    },
+    {
+     "id": "d124",
+     "createdAt": 1780200000000,
+     "houses": 40
+    },
+    {
+     "id": "d125",
+     "createdAt": 1780113600000,
+     "houses": 40
+    },
+    {
+     "id": "d126",
+     "createdAt": 1780027200000,
+     "houses": 40
+    },
+    {
+     "id": "d127",
+     "createdAt": 1779940800000,
+     "houses": 40
+    },
+    {
+     "id": "d128",
+     "createdAt": 1779854400000,
+     "houses": 40
+    },
+    {
+     "id": "d129",
+     "createdAt": 1779768000000,
+     "houses": 40
+    },
+    {
+     "id": "d130",
+     "createdAt": 1779681600000,
+     "houses": 40
+    },
+    {
+     "id": "d131",
+     "createdAt": 1779595200000,
+     "houses": 40
+    },
+    {
+     "id": "d132",
+     "createdAt": 1779508800000,
+     "houses": 40
+    },
+    {
+     "id": "d133",
+     "createdAt": 1779422400000,
+     "houses": 40
+    },
+    {
+     "id": "d134",
+     "createdAt": 1779336000000,
+     "houses": 40
+    },
+    {
+     "id": "d135",
+     "createdAt": 1779249600000,
+     "houses": 40
+    },
+    {
+     "id": "d136",
+     "createdAt": 1779163200000,
+     "houses": 40
+    },
+    {
+     "id": "d137",
+     "createdAt": 1779076800000,
+     "houses": 40
+    },
+    {
+     "id": "d138",
+     "createdAt": 1778990400000,
+     "houses": 40
+    },
+    {
+     "id": "d139",
+     "createdAt": 1778904000000,
+     "houses": 40
+    },
+    {
+     "id": "d140",
+     "createdAt": 1778817600000,
+     "houses": 40
+    },
+    {
+     "id": "d141",
+     "createdAt": 1778731200000,
+     "houses": 40
+    },
+    {
+     "id": "d142",
+     "createdAt": 1778644800000,
+     "houses": 40
+    },
+    {
+     "id": "d143",
+     "createdAt": 1778558400000,
+     "houses": 40
+    },
+    {
+     "id": "d144",
+     "createdAt": 1778472000000,
+     "houses": 40
+    },
+    {
+     "id": "d145",
+     "createdAt": 1778385600000,
+     "houses": 40
+    },
+    {
+     "id": "d146",
+     "createdAt": 1778299200000,
+     "houses": 40
+    },
+    {
+     "id": "d147",
+     "createdAt": 1778212800000,
+     "houses": 40
+    },
+    {
+     "id": "d148",
+     "createdAt": 1778126400000,
+     "houses": 40
+    },
+    {
+     "id": "d149",
+     "createdAt": 1778040000000,
+     "houses": 40
+    },
+    {
+     "id": "d150",
+     "createdAt": 1777953600000,
+     "houses": 40
+    },
+    {
+     "id": "d151",
+     "createdAt": 1777867200000,
+     "houses": 40
+    },
+    {
+     "id": "d152",
+     "createdAt": 1777780800000,
+     "houses": 40
+    },
+    {
+     "id": "d153",
+     "createdAt": 1777694400000,
+     "houses": 40
+    },
+    {
+     "id": "d154",
+     "createdAt": 1777608000000,
+     "houses": 40
+    },
+    {
+     "id": "d155",
+     "createdAt": 1777521600000,
+     "houses": 40
+    },
+    {
+     "id": "d156",
+     "createdAt": 1777435200000,
+     "houses": 40
+    },
+    {
+     "id": "d157",
+     "createdAt": 1777348800000,
+     "houses": 40
+    },
+    {
+     "id": "d158",
+     "createdAt": 1777262400000,
+     "houses": 40
+    },
+    {
+     "id": "d159",
+     "createdAt": 1777176000000,
+     "houses": 40
+    },
+    {
+     "id": "d160",
+     "createdAt": 1777089600000,
+     "houses": 40
+    },
+    {
+     "id": "d161",
+     "createdAt": 1777003200000,
+     "houses": 40
+    },
+    {
+     "id": "d162",
+     "createdAt": 1776916800000,
+     "houses": 40
+    },
+    {
+     "id": "d163",
+     "createdAt": 1776830400000,
+     "houses": 40
+    },
+    {
+     "id": "d164",
+     "createdAt": 1776744000000,
+     "houses": 40
+    },
+    {
+     "id": "d165",
+     "createdAt": 1776657600000,
+     "houses": 40
+    },
+    {
+     "id": "d166",
+     "createdAt": 1776571200000,
+     "houses": 40
+    },
+    {
+     "id": "d167",
+     "createdAt": 1776484800000,
+     "houses": 40
+    },
+    {
+     "id": "d168",
+     "createdAt": 1776398400000,
+     "houses": 40
+    },
+    {
+     "id": "d169",
+     "createdAt": 1776312000000,
+     "houses": 40
+    },
+    {
+     "id": "d170",
+     "createdAt": 1776225600000,
+     "houses": 40
+    },
+    {
+     "id": "d171",
+     "createdAt": 1776139200000,
+     "houses": 40
+    },
+    {
+     "id": "d172",
+     "createdAt": 1776052800000,
+     "houses": 40
+    },
+    {
+     "id": "d173",
+     "createdAt": 1775966400000,
+     "houses": 40
+    },
+    {
+     "id": "d174",
+     "createdAt": 1775880000000,
+     "houses": 40
+    },
+    {
+     "id": "d175",
+     "createdAt": 1775793600000,
+     "houses": 40
+    },
+    {
+     "id": "d176",
+     "createdAt": 1775707200000,
+     "houses": 40
+    },
+    {
+     "id": "d177",
+     "createdAt": 1775620800000,
+     "houses": 40
+    },
+    {
+     "id": "d178",
+     "createdAt": 1775534400000,
+     "houses": 40
+    },
+    {
+     "id": "d179",
+     "createdAt": 1775448000000,
+     "houses": 40
+    },
+    {
+     "id": "d180",
+     "createdAt": 1775361600000,
+     "houses": 40
+    },
+    {
+     "id": "d181",
+     "createdAt": 1775275200000,
+     "houses": 40
+    },
+    {
+     "id": "d182",
+     "createdAt": 1775188800000,
+     "houses": 40
+    },
+    {
+     "id": "d183",
+     "createdAt": 1775102400000,
+     "houses": 40
+    },
+    {
+     "id": "d184",
+     "createdAt": 1775016000000,
+     "houses": 40
+    },
+    {
+     "id": "d185",
+     "createdAt": 1774929600000,
+     "houses": 40
+    },
+    {
+     "id": "d186",
+     "createdAt": 1774843200000,
+     "houses": 40
+    },
+    {
+     "id": "d187",
+     "createdAt": 1774756800000,
+     "houses": 40
+    },
+    {
+     "id": "d188",
+     "createdAt": 1774670400000,
+     "houses": 40
+    },
+    {
+     "id": "d189",
+     "createdAt": 1774584000000,
+     "houses": 40
+    },
+    {
+     "id": "d190",
+     "createdAt": 1774497600000,
+     "houses": 40
+    },
+    {
+     "id": "d191",
+     "createdAt": 1774411200000,
+     "houses": 40
+    },
+    {
+     "id": "d192",
+     "createdAt": 1774324800000,
+     "houses": 40
+    },
+    {
+     "id": "d193",
+     "createdAt": 1774238400000,
+     "houses": 40
+    },
+    {
+     "id": "d194",
+     "createdAt": 1774152000000,
+     "houses": 40
+    },
+    {
+     "id": "d195",
+     "createdAt": 1774065600000,
+     "houses": 40
+    },
+    {
+     "id": "d196",
+     "createdAt": 1773979200000,
+     "houses": 40
+    },
+    {
+     "id": "d197",
+     "createdAt": 1773892800000,
+     "houses": 40
+    },
+    {
+     "id": "d198",
+     "createdAt": 1773806400000,
+     "houses": 40
+    },
+    {
+     "id": "d199",
+     "createdAt": 1773720000000,
+     "houses": 40
+    },
+    {
+     "id": "d200",
+     "createdAt": 1773633600000,
+     "houses": 40
+    },
+    {
+     "id": "d201",
+     "createdAt": 1773547200000,
+     "houses": 40
+    },
+    {
+     "id": "d202",
+     "createdAt": 1773460800000,
+     "houses": 40
+    },
+    {
+     "id": "d203",
+     "createdAt": 1773374400000,
+     "houses": 40
+    },
+    {
+     "id": "d204",
+     "createdAt": 1773288000000,
+     "houses": 40
+    },
+    {
+     "id": "d205",
+     "createdAt": 1773201600000,
+     "houses": 40
+    },
+    {
+     "id": "d206",
+     "createdAt": 1773115200000,
+     "houses": 40
+    },
+    {
+     "id": "d207",
+     "createdAt": 1773028800000,
+     "houses": 40
+    },
+    {
+     "id": "d208",
+     "createdAt": 1772942400000,
+     "houses": 40
+    },
+    {
+     "id": "d209",
+     "createdAt": 1772856000000,
+     "houses": 40
+    },
+    {
+     "id": "d210",
+     "createdAt": 1772769600000,
+     "houses": 40
+    },
+    {
+     "id": "d211",
+     "createdAt": 1772683200000,
+     "houses": 40
+    },
+    {
+     "id": "d212",
+     "createdAt": 1772596800000,
+     "houses": 40
+    },
+    {
+     "id": "d213",
+     "createdAt": 1772510400000,
+     "houses": 40
+    },
+    {
+     "id": "d214",
+     "createdAt": 1772424000000,
+     "houses": 40
+    },
+    {
+     "id": "d215",
+     "createdAt": 1772337600000,
+     "houses": 40
+    },
+    {
+     "id": "d216",
+     "createdAt": 1772251200000,
+     "houses": 40
+    },
+    {
+     "id": "d217",
+     "createdAt": 1772164800000,
+     "houses": 40
+    },
+    {
+     "id": "d218",
+     "createdAt": 1772078400000,
+     "houses": 40
+    },
+    {
+     "id": "d219",
+     "createdAt": 1771992000000,
+     "houses": 40
+    },
+    {
+     "id": "d220",
+     "createdAt": 1771905600000,
+     "houses": 40
+    },
+    {
+     "id": "d221",
+     "createdAt": 1771819200000,
+     "houses": 40
+    },
+    {
+     "id": "d222",
+     "createdAt": 1771732800000,
+     "houses": 40
+    },
+    {
+     "id": "d223",
+     "createdAt": 1771646400000,
+     "houses": 40
+    },
+    {
+     "id": "d224",
+     "createdAt": 1771560000000,
+     "houses": 40
+    },
+    {
+     "id": "d225",
+     "createdAt": 1771473600000,
+     "houses": 40
+    },
+    {
+     "id": "d226",
+     "createdAt": 1771387200000,
+     "houses": 40
+    },
+    {
+     "id": "d227",
+     "createdAt": 1771300800000,
+     "houses": 40
+    },
+    {
+     "id": "d228",
+     "createdAt": 1771214400000,
+     "houses": 40
+    },
+    {
+     "id": "d229",
+     "createdAt": 1771128000000,
+     "houses": 40
+    },
+    {
+     "id": "d230",
+     "createdAt": 1771041600000,
+     "houses": 40
+    },
+    {
+     "id": "d231",
+     "createdAt": 1770955200000,
+     "houses": 40
+    },
+    {
+     "id": "d232",
+     "createdAt": 1770868800000,
+     "houses": 40
+    },
+    {
+     "id": "d233",
+     "createdAt": 1770782400000,
+     "houses": 40
+    },
+    {
+     "id": "d234",
+     "createdAt": 1770696000000,
+     "houses": 40
+    },
+    {
+     "id": "d235",
+     "createdAt": 1770609600000,
+     "houses": 40
+    },
+    {
+     "id": "d236",
+     "createdAt": 1770523200000,
+     "houses": 40
+    },
+    {
+     "id": "d237",
+     "createdAt": 1770436800000,
+     "houses": 40
+    },
+    {
+     "id": "d238",
+     "createdAt": 1770350400000,
+     "houses": 40
+    },
+    {
+     "id": "d239",
+     "createdAt": 1770264000000,
+     "houses": 40
+    },
+    {
+     "id": "d240",
+     "createdAt": 1770177600000,
+     "houses": 40
+    },
+    {
+     "id": "d241",
+     "createdAt": 1770091200000,
+     "houses": 40
+    },
+    {
+     "id": "d242",
+     "createdAt": 1770004800000,
+     "houses": 40
+    },
+    {
+     "id": "d243",
+     "createdAt": 1769918400000,
+     "houses": 40
+    },
+    {
+     "id": "d244",
+     "createdAt": 1769832000000,
+     "houses": 40
+    },
+    {
+     "id": "d245",
+     "createdAt": 1769745600000,
+     "houses": 40
+    },
+    {
+     "id": "d246",
+     "createdAt": 1769659200000,
+     "houses": 40
+    },
+    {
+     "id": "d247",
+     "createdAt": 1769572800000,
+     "houses": 40
+    },
+    {
+     "id": "d248",
+     "createdAt": 1769486400000,
+     "houses": 40
+    },
+    {
+     "id": "d249",
+     "createdAt": 1769400000000,
+     "houses": 40
+    },
+    {
+     "id": "d250",
+     "createdAt": 1769313600000,
+     "houses": 40
+    },
+    {
+     "id": "d251",
+     "createdAt": 1769227200000,
+     "houses": 40
+    },
+    {
+     "id": "d252",
+     "createdAt": 1769140800000,
+     "houses": 40
+    },
+    {
+     "id": "d253",
+     "createdAt": 1769054400000,
+     "houses": 40
+    },
+    {
+     "id": "d254",
+     "createdAt": 1768968000000,
+     "houses": 40
+    },
+    {
+     "id": "d255",
+     "createdAt": 1768881600000,
+     "houses": 40
+    },
+    {
+     "id": "d256",
+     "createdAt": 1768795200000,
+     "houses": 40
+    },
+    {
+     "id": "d257",
+     "createdAt": 1768708800000,
+     "houses": 40
+    },
+    {
+     "id": "d258",
+     "createdAt": 1768622400000,
+     "houses": 40
+    },
+    {
+     "id": "d259",
+     "createdAt": 1768536000000,
+     "houses": 40
+    },
+    {
+     "id": "d260",
+     "createdAt": 1768449600000,
+     "houses": 40
+    },
+    {
+     "id": "d261",
+     "createdAt": 1768363200000,
+     "houses": 40
+    },
+    {
+     "id": "d262",
+     "createdAt": 1768276800000,
+     "houses": 40
+    },
+    {
+     "id": "d263",
+     "createdAt": 1768190400000,
+     "houses": 40
+    },
+    {
+     "id": "d264",
+     "createdAt": 1768104000000,
+     "houses": 40
+    },
+    {
+     "id": "d265",
+     "createdAt": 1768017600000,
+     "houses": 40
+    },
+    {
+     "id": "d266",
+     "createdAt": 1767931200000,
+     "houses": 40
+    },
+    {
+     "id": "d267",
+     "createdAt": 1767844800000,
+     "houses": 40
+    },
+    {
+     "id": "d268",
+     "createdAt": 1767758400000,
+     "houses": 40
+    },
+    {
+     "id": "d269",
+     "createdAt": 1767672000000,
+     "houses": 40
+    },
+    {
+     "id": "d270",
+     "createdAt": 1767585600000,
+     "houses": 40
+    },
+    {
+     "id": "d271",
+     "createdAt": 1767499200000,
+     "houses": 40
+    },
+    {
+     "id": "d272",
+     "createdAt": 1767412800000,
+     "houses": 40
+    },
+    {
+     "id": "d273",
+     "createdAt": 1767326400000,
+     "houses": 40
+    },
+    {
+     "id": "d274",
+     "createdAt": 1767240000000,
+     "houses": 40
+    },
+    {
+     "id": "d275",
+     "createdAt": 1767153600000,
+     "houses": 40
+    },
+    {
+     "id": "d276",
+     "createdAt": 1767067200000,
+     "houses": 40
+    },
+    {
+     "id": "d277",
+     "createdAt": 1766980800000,
+     "houses": 40
+    },
+    {
+     "id": "d278",
+     "createdAt": 1766894400000,
+     "houses": 40
+    },
+    {
+     "id": "d279",
+     "createdAt": 1766808000000,
+     "houses": 40
+    },
+    {
+     "id": "d280",
+     "createdAt": 1766721600000,
+     "houses": 40
+    },
+    {
+     "id": "d281",
+     "createdAt": 1766635200000,
+     "houses": 40
+    },
+    {
+     "id": "d282",
+     "createdAt": 1766548800000,
+     "houses": 40
+    },
+    {
+     "id": "d283",
+     "createdAt": 1766462400000,
+     "houses": 40
+    },
+    {
+     "id": "d284",
+     "createdAt": 1766376000000,
+     "houses": 40
+    },
+    {
+     "id": "d285",
+     "createdAt": 1766289600000,
+     "houses": 40
+    },
+    {
+     "id": "d286",
+     "createdAt": 1766203200000,
+     "houses": 40
+    },
+    {
+     "id": "d287",
+     "createdAt": 1766116800000,
+     "houses": 40
+    },
+    {
+     "id": "d288",
+     "createdAt": 1766030400000,
+     "houses": 40
+    },
+    {
+     "id": "d289",
+     "createdAt": 1765944000000,
+     "houses": 40
+    },
+    {
+     "id": "d290",
+     "createdAt": 1765857600000,
+     "houses": 40
+    },
+    {
+     "id": "d291",
+     "createdAt": 1765771200000,
+     "houses": 40
+    },
+    {
+     "id": "d292",
+     "createdAt": 1765684800000,
+     "houses": 40
+    },
+    {
+     "id": "d293",
+     "createdAt": 1765598400000,
+     "houses": 40
+    },
+    {
+     "id": "d294",
+     "createdAt": 1765512000000,
+     "houses": 40
+    },
+    {
+     "id": "d295",
+     "createdAt": 1765425600000,
+     "houses": 40
+    },
+    {
+     "id": "d296",
+     "createdAt": 1765339200000,
+     "houses": 40
+    },
+    {
+     "id": "d297",
+     "createdAt": 1765252800000,
+     "houses": 40
+    },
+    {
+     "id": "d298",
+     "createdAt": 1765166400000,
+     "houses": 40
+    },
+    {
+     "id": "d299",
+     "createdAt": 1765080000000,
+     "houses": 40
+    },
+    {
+     "id": "d300",
+     "createdAt": 1764993600000,
+     "houses": 40
+    },
+    {
+     "id": "d301",
+     "createdAt": 1764907200000,
+     "houses": 40
+    },
+    {
+     "id": "d302",
+     "createdAt": 1764820800000,
+     "houses": 40
+    },
+    {
+     "id": "d303",
+     "createdAt": 1764734400000,
+     "houses": 40
+    },
+    {
+     "id": "d304",
+     "createdAt": 1764648000000,
+     "houses": 40
+    },
+    {
+     "id": "d305",
+     "createdAt": 1764561600000,
+     "houses": 40
+    },
+    {
+     "id": "d306",
+     "createdAt": 1764475200000,
+     "houses": 40
+    },
+    {
+     "id": "d307",
+     "createdAt": 1764388800000,
+     "houses": 40
+    },
+    {
+     "id": "d308",
+     "createdAt": 1764302400000,
+     "houses": 40
+    },
+    {
+     "id": "d309",
+     "createdAt": 1764216000000,
+     "houses": 40
+    },
+    {
+     "id": "d310",
+     "createdAt": 1764129600000,
+     "houses": 40
+    },
+    {
+     "id": "d311",
+     "createdAt": 1764043200000,
+     "houses": 40
+    },
+    {
+     "id": "d312",
+     "createdAt": 1763956800000,
+     "houses": 40
+    },
+    {
+     "id": "d313",
+     "createdAt": 1763870400000,
+     "houses": 40
+    },
+    {
+     "id": "d314",
+     "createdAt": 1763784000000,
+     "houses": 40
+    },
+    {
+     "id": "d315",
+     "createdAt": 1763697600000,
+     "houses": 40
+    },
+    {
+     "id": "d316",
+     "createdAt": 1763611200000,
+     "houses": 40
+    },
+    {
+     "id": "d317",
+     "createdAt": 1763524800000,
+     "houses": 40
+    },
+    {
+     "id": "d318",
+     "createdAt": 1763438400000,
+     "houses": 40
+    },
+    {
+     "id": "d319",
+     "createdAt": 1763352000000,
+     "houses": 40
+    },
+    {
+     "id": "d320",
+     "createdAt": 1763265600000,
+     "houses": 40
+    },
+    {
+     "id": "d321",
+     "createdAt": 1763179200000,
+     "houses": 40
+    },
+    {
+     "id": "d322",
+     "createdAt": 1763092800000,
+     "houses": 40
+    },
+    {
+     "id": "d323",
+     "createdAt": 1763006400000,
+     "houses": 40
+    },
+    {
+     "id": "d324",
+     "createdAt": 1762920000000,
+     "houses": 40
+    },
+    {
+     "id": "d325",
+     "createdAt": 1762833600000,
+     "houses": 40
+    },
+    {
+     "id": "d326",
+     "createdAt": 1762747200000,
+     "houses": 40
+    },
+    {
+     "id": "d327",
+     "createdAt": 1762660800000,
+     "houses": 40
+    },
+    {
+     "id": "d328",
+     "createdAt": 1762574400000,
+     "houses": 40
+    },
+    {
+     "id": "d329",
+     "createdAt": 1762488000000,
+     "houses": 40
+    },
+    {
+     "id": "d330",
+     "createdAt": 1762401600000,
+     "houses": 40
+    },
+    {
+     "id": "d331",
+     "createdAt": 1762315200000,
+     "houses": 40
+    },
+    {
+     "id": "d332",
+     "createdAt": 1762228800000,
+     "houses": 40
+    },
+    {
+     "id": "d333",
+     "createdAt": 1762142400000,
+     "houses": 40
+    },
+    {
+     "id": "d334",
+     "createdAt": 1762056000000,
+     "houses": 40
+    },
+    {
+     "id": "d335",
+     "createdAt": 1761969600000,
+     "houses": 40
+    },
+    {
+     "id": "d336",
+     "createdAt": 1761883200000,
+     "houses": 40
+    },
+    {
+     "id": "d337",
+     "createdAt": 1761796800000,
+     "houses": 40
+    },
+    {
+     "id": "d338",
+     "createdAt": 1761710400000,
+     "houses": 40
+    },
+    {
+     "id": "d339",
+     "createdAt": 1761624000000,
+     "houses": 40
+    },
+    {
+     "id": "d340",
+     "createdAt": 1761537600000,
+     "houses": 40
+    },
+    {
+     "id": "d341",
+     "createdAt": 1761451200000,
+     "houses": 40
+    },
+    {
+     "id": "d342",
+     "createdAt": 1761364800000,
+     "houses": 40
+    },
+    {
+     "id": "d343",
+     "createdAt": 1761278400000,
+     "houses": 40
+    },
+    {
+     "id": "d344",
+     "createdAt": 1761192000000,
+     "houses": 40
+    },
+    {
+     "id": "d345",
+     "createdAt": 1761105600000,
+     "houses": 40
+    },
+    {
+     "id": "d346",
+     "createdAt": 1761019200000,
+     "houses": 40
+    },
+    {
+     "id": "d347",
+     "createdAt": 1760932800000,
+     "houses": 40
+    },
+    {
+     "id": "d348",
+     "createdAt": 1760846400000,
+     "houses": 40
+    },
+    {
+     "id": "d349",
+     "createdAt": 1760760000000,
+     "houses": 40
+    },
+    {
+     "id": "d350",
+     "createdAt": 1760673600000,
+     "houses": 40
+    },
+    {
+     "id": "d351",
+     "createdAt": 1760587200000,
+     "houses": 40
+    },
+    {
+     "id": "d352",
+     "createdAt": 1760500800000,
+     "houses": 40
+    },
+    {
+     "id": "d353",
+     "createdAt": 1760414400000,
+     "houses": 40
+    },
+    {
+     "id": "d354",
+     "createdAt": 1760328000000,
+     "houses": 40
+    },
+    {
+     "id": "d355",
+     "createdAt": 1760241600000,
+     "houses": 40
+    },
+    {
+     "id": "d356",
+     "createdAt": 1760155200000,
+     "houses": 40
+    },
+    {
+     "id": "d357",
+     "createdAt": 1760068800000,
+     "houses": 40
+    },
+    {
+     "id": "d358",
+     "createdAt": 1759982400000,
+     "houses": 40
+    },
+    {
+     "id": "d359",
+     "createdAt": 1759896000000,
+     "houses": 40
+    },
+    {
+     "id": "d360",
+     "createdAt": 1759809600000,
+     "houses": 40
+    },
+    {
+     "id": "d361",
+     "createdAt": 1759723200000,
+     "houses": 40
+    },
+    {
+     "id": "d362",
+     "createdAt": 1759636800000,
+     "houses": 40
+    },
+    {
+     "id": "d363",
+     "createdAt": 1759550400000,
+     "houses": 40
+    },
+    {
+     "id": "d364",
+     "createdAt": 1759464000000,
+     "houses": 40
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019",
+    "d032",
+    "d063",
+    "d094",
+    "d124"
+   ],
+   "prune": [
+    "d007",
+    "d008",
+    "d009",
+    "d010",
+    "d011",
+    "d013",
+    "d014",
+    "d015",
+    "d016",
+    "d017",
+    "d018",
+    "d020",
+    "d021",
+    "d022",
+    "d023",
+    "d024",
+    "d025",
+    "d026",
+    "d027",
+    "d028",
+    "d029",
+    "d030",
+    "d031",
+    "d033",
+    "d034",
+    "d035",
+    "d036",
+    "d037",
+    "d038",
+    "d039",
+    "d040",
+    "d041",
+    "d042",
+    "d043",
+    "d044",
+    "d045",
+    "d046",
+    "d047",
+    "d048",
+    "d049",
+    "d050",
+    "d051",
+    "d052",
+    "d053",
+    "d054",
+    "d055",
+    "d056",
+    "d057",
+    "d058",
+    "d059",
+    "d060",
+    "d061",
+    "d062",
+    "d064",
+    "d065",
+    "d066",
+    "d067",
+    "d068",
+    "d069",
+    "d070",
+    "d071",
+    "d072",
+    "d073",
+    "d074",
+    "d075",
+    "d076",
+    "d077",
+    "d078",
+    "d079",
+    "d080",
+    "d081",
+    "d082",
+    "d083",
+    "d084",
+    "d085",
+    "d086",
+    "d087",
+    "d088",
+    "d089",
+    "d090",
+    "d091",
+    "d092",
+    "d093",
+    "d095",
+    "d096",
+    "d097",
+    "d098",
+    "d099",
+    "d100",
+    "d101",
+    "d102",
+    "d103",
+    "d104",
+    "d105",
+    "d106",
+    "d107",
+    "d108",
+    "d109",
+    "d110",
+    "d111",
+    "d112",
+    "d113",
+    "d114",
+    "d115",
+    "d116",
+    "d117",
+    "d118",
+    "d119",
+    "d120",
+    "d121",
+    "d122",
+    "d123",
+    "d125",
+    "d126",
+    "d127",
+    "d128",
+    "d129",
+    "d130",
+    "d131",
+    "d132",
+    "d133",
+    "d134",
+    "d135",
+    "d136",
+    "d137",
+    "d138",
+    "d139",
+    "d140",
+    "d141",
+    "d142",
+    "d143",
+    "d144",
+    "d145",
+    "d146",
+    "d147",
+    "d148",
+    "d149",
+    "d150",
+    "d151",
+    "d152",
+    "d153",
+    "d154",
+    "d155",
+    "d156",
+    "d157",
+    "d158",
+    "d159",
+    "d160",
+    "d161",
+    "d162",
+    "d163",
+    "d164",
+    "d165",
+    "d166",
+    "d167",
+    "d168",
+    "d169",
+    "d170",
+    "d171",
+    "d172",
+    "d173",
+    "d174",
+    "d175",
+    "d176",
+    "d177",
+    "d178",
+    "d179",
+    "d180",
+    "d181",
+    "d182",
+    "d183",
+    "d184",
+    "d185",
+    "d186",
+    "d187",
+    "d188",
+    "d189",
+    "d190",
+    "d191",
+    "d192",
+    "d193",
+    "d194",
+    "d195",
+    "d196",
+    "d197",
+    "d198",
+    "d199",
+    "d200",
+    "d201",
+    "d202",
+    "d203",
+    "d204",
+    "d205",
+    "d206",
+    "d207",
+    "d208",
+    "d209",
+    "d210",
+    "d211",
+    "d212",
+    "d213",
+    "d214",
+    "d215",
+    "d216",
+    "d217",
+    "d218",
+    "d219",
+    "d220",
+    "d221",
+    "d222",
+    "d223",
+    "d224",
+    "d225",
+    "d226",
+    "d227",
+    "d228",
+    "d229",
+    "d230",
+    "d231",
+    "d232",
+    "d233",
+    "d234",
+    "d235",
+    "d236",
+    "d237",
+    "d238",
+    "d239",
+    "d240",
+    "d241",
+    "d242",
+    "d243",
+    "d244",
+    "d245",
+    "d246",
+    "d247",
+    "d248",
+    "d249",
+    "d250",
+    "d251",
+    "d252",
+    "d253",
+    "d254",
+    "d255",
+    "d256",
+    "d257",
+    "d258",
+    "d259",
+    "d260",
+    "d261",
+    "d262",
+    "d263",
+    "d264",
+    "d265",
+    "d266",
+    "d267",
+    "d268",
+    "d269",
+    "d270",
+    "d271",
+    "d272",
+    "d273",
+    "d274",
+    "d275",
+    "d276",
+    "d277",
+    "d278",
+    "d279",
+    "d280",
+    "d281",
+    "d282",
+    "d283",
+    "d284",
+    "d285",
+    "d286",
+    "d287",
+    "d288",
+    "d289",
+    "d290",
+    "d291",
+    "d292",
+    "d293",
+    "d294",
+    "d295",
+    "d296",
+    "d297",
+    "d298",
+    "d299",
+    "d300",
+    "d301",
+    "d302",
+    "d303",
+    "d304",
+    "d305",
+    "d306",
+    "d307",
+    "d308",
+    "d309",
+    "d310",
+    "d311",
+    "d312",
+    "d313",
+    "d314",
+    "d315",
+    "d316",
+    "d317",
+    "d318",
+    "d319",
+    "d320",
+    "d321",
+    "d322",
+    "d323",
+    "d324",
+    "d325",
+    "d326",
+    "d327",
+    "d328",
+    "d329",
+    "d330",
+    "d331",
+    "d332",
+    "d333",
+    "d334",
+    "d335",
+    "d336",
+    "d337",
+    "d338",
+    "d339",
+    "d340",
+    "d341",
+    "d342",
+    "d343",
+    "d344",
+    "d345",
+    "d346",
+    "d347",
+    "d348",
+    "d349",
+    "d350",
+    "d351",
+    "d352",
+    "d353",
+    "d354",
+    "d355",
+    "d356",
+    "d357",
+    "d358",
+    "d359",
+    "d360",
+    "d361",
+    "d362",
+    "d363",
+    "d364"
+   ],
+   "hold": null,
+   "note": "7 days, then the newest of each older week and month; at most 17"
+  },
+  {
+   "name": "several a day: the newest of each day",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "a",
+     "createdAt": 1790913600000,
+     "houses": 5
+    },
+    {
+     "id": "b",
+     "createdAt": 1790906400000,
+     "houses": 5
+    },
+    {
+     "id": "c",
+     "createdAt": 1790895600000,
+     "houses": 5
+    },
+    {
+     "id": "d",
+     "createdAt": 1790827200000,
+     "houses": 5
+    },
+    {
+     "id": "e",
+     "createdAt": 1790823600000,
+     "houses": 5
+    }
+   ],
+   "keep": [
+    "a",
+    "d"
+   ],
+   "prune": [
+    "b",
+    "c",
+    "e"
+   ],
+   "hold": null
+  },
+  {
+   "name": "days are local: 23:00 UTC is the next day in India",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "late",
+     "createdAt": 1790895600000,
+     "houses": 5
+    },
+    {
+     "id": "early",
+     "createdAt": 1790874000000,
+     "houses": 5
+    },
+    {
+     "id": "prev",
+     "createdAt": 1790787600000,
+     "houses": 5
+    }
+   ],
+   "keep": [
+    "late",
+    "early",
+    "prev"
+   ],
+   "prune": [],
+   "hold": null
+  },
+  {
+   "name": "the same backups at UTC fall on one day",
+   "utcOffsetMinutes": 0,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "late",
+     "createdAt": 1790895600000,
+     "houses": 5
+    },
+    {
+     "id": "early",
+     "createdAt": 1790874000000,
+     "houses": 5
+    },
+    {
+     "id": "prev",
+     "createdAt": 1790787600000,
+     "houses": 5
+    }
+   ],
+   "keep": [
+    "late",
+    "prev"
+   ],
+   "prune": [
+    "early"
+   ],
+   "hold": null
+  },
+  {
+   "name": "ties in time go by id",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "b",
+     "createdAt": 1790913600000,
+     "houses": 5
+    },
+    {
+     "id": "a",
+     "createdAt": 1790913600000,
+     "houses": 5
+    },
+    {
+     "id": "c",
+     "createdAt": 1790827200000,
+     "houses": 5
+    }
+   ],
+   "keep": [
+    "a",
+    "c"
+   ],
+   "prune": [
+    "b"
+   ],
+   "hold": null
+  },
+  {
+   "name": "weeks run Monday to Sunday",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "w000",
+     "createdAt": 1790913600000,
+     "houses": 40
+    },
+    {
+     "id": "w001",
+     "createdAt": 1790784000000,
+     "houses": 40
+    },
+    {
+     "id": "w002",
+     "createdAt": 1790654400000,
+     "houses": 40
+    },
+    {
+     "id": "w003",
+     "createdAt": 1790524800000,
+     "houses": 40
+    },
+    {
+     "id": "w004",
+     "createdAt": 1790395200000,
+     "houses": 40
+    },
+    {
+     "id": "w005",
+     "createdAt": 1790265600000,
+     "houses": 40
+    },
+    {
+     "id": "w006",
+     "createdAt": 1790136000000,
+     "houses": 40
+    },
+    {
+     "id": "w007",
+     "createdAt": 1790006400000,
+     "houses": 40
+    },
+    {
+     "id": "w008",
+     "createdAt": 1789876800000,
+     "houses": 40
+    },
+    {
+     "id": "w009",
+     "createdAt": 1789747200000,
+     "houses": 40
+    },
+    {
+     "id": "w010",
+     "createdAt": 1789617600000,
+     "houses": 40
+    },
+    {
+     "id": "w011",
+     "createdAt": 1789488000000,
+     "houses": 40
+    },
+    {
+     "id": "w012",
+     "createdAt": 1789358400000,
+     "houses": 40
+    },
+    {
+     "id": "w013",
+     "createdAt": 1789228800000,
+     "houses": 40
+    },
+    {
+     "id": "w014",
+     "createdAt": 1789099200000,
+     "houses": 40
+    },
+    {
+     "id": "w015",
+     "createdAt": 1788969600000,
+     "houses": 40
+    },
+    {
+     "id": "w016",
+     "createdAt": 1788840000000,
+     "houses": 40
+    },
+    {
+     "id": "w017",
+     "createdAt": 1788710400000,
+     "houses": 40
+    },
+    {
+     "id": "w018",
+     "createdAt": 1788580800000,
+     "houses": 40
+    },
+    {
+     "id": "w019",
+     "createdAt": 1788451200000,
+     "houses": 40
+    },
+    {
+     "id": "w020",
+     "createdAt": 1788321600000,
+     "houses": 40
+    },
+    {
+     "id": "w021",
+     "createdAt": 1788192000000,
+     "houses": 40
+    },
+    {
+     "id": "w022",
+     "createdAt": 1788062400000,
+     "houses": 40
+    },
+    {
+     "id": "w023",
+     "createdAt": 1787932800000,
+     "houses": 40
+    },
+    {
+     "id": "w024",
+     "createdAt": 1787803200000,
+     "houses": 40
+    },
+    {
+     "id": "w025",
+     "createdAt": 1787673600000,
+     "houses": 40
+    },
+    {
+     "id": "w026",
+     "createdAt": 1787544000000,
+     "houses": 40
+    },
+    {
+     "id": "w027",
+     "createdAt": 1787414400000,
+     "houses": 40
+    },
+    {
+     "id": "w028",
+     "createdAt": 1787284800000,
+     "houses": 40
+    },
+    {
+     "id": "w029",
+     "createdAt": 1787155200000,
+     "houses": 40
+    },
+    {
+     "id": "w030",
+     "createdAt": 1787025600000,
+     "houses": 40
+    },
+    {
+     "id": "w031",
+     "createdAt": 1786896000000,
+     "houses": 40
+    },
+    {
+     "id": "w032",
+     "createdAt": 1786766400000,
+     "houses": 40
+    },
+    {
+     "id": "w033",
+     "createdAt": 1786636800000,
+     "houses": 40
+    },
+    {
+     "id": "w034",
+     "createdAt": 1786507200000,
+     "houses": 40
+    },
+    {
+     "id": "w035",
+     "createdAt": 1786377600000,
+     "houses": 40
+    },
+    {
+     "id": "w036",
+     "createdAt": 1786248000000,
+     "houses": 40
+    },
+    {
+     "id": "w037",
+     "createdAt": 1786118400000,
+     "houses": 40
+    },
+    {
+     "id": "w038",
+     "createdAt": 1785988800000,
+     "houses": 40
+    },
+    {
+     "id": "w039",
+     "createdAt": 1785859200000,
+     "houses": 40
+    }
+   ],
+   "keep": [
+    "w000",
+    "w001",
+    "w002",
+    "w003",
+    "w004",
+    "w005",
+    "w006",
+    "w008",
+    "w013",
+    "w021"
+   ],
+   "prune": [
+    "w007",
+    "w009",
+    "w010",
+    "w011",
+    "w012",
+    "w014",
+    "w015",
+    "w016",
+    "w017",
+    "w018",
+    "w019",
+    "w020",
+    "w022",
+    "w023",
+    "w024",
+    "w025",
+    "w026",
+    "w027",
+    "w028",
+    "w029",
+    "w030",
+    "w031",
+    "w032",
+    "w033",
+    "w034",
+    "w035",
+    "w036",
+    "w037",
+    "w038",
+    "w039"
+   ],
+   "hold": null
+  },
+  {
+   "name": "sparse monthly backups over two years keep six months",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "m000",
+     "createdAt": 1790913600000,
+     "houses": 40
+    },
+    {
+     "id": "m001",
+     "createdAt": 1788321600000,
+     "houses": 40
+    },
+    {
+     "id": "m002",
+     "createdAt": 1785729600000,
+     "houses": 40
+    },
+    {
+     "id": "m003",
+     "createdAt": 1783137600000,
+     "houses": 40
+    },
+    {
+     "id": "m004",
+     "createdAt": 1780545600000,
+     "houses": 40
+    },
+    {
+     "id": "m005",
+     "createdAt": 1777953600000,
+     "houses": 40
+    },
+    {
+     "id": "m006",
+     "createdAt": 1775361600000,
+     "houses": 40
+    },
+    {
+     "id": "m007",
+     "createdAt": 1772769600000,
+     "houses": 40
+    },
+    {
+     "id": "m008",
+     "createdAt": 1770177600000,
+     "houses": 40
+    },
+    {
+     "id": "m009",
+     "createdAt": 1767585600000,
+     "houses": 40
+    },
+    {
+     "id": "m010",
+     "createdAt": 1764993600000,
+     "houses": 40
+    },
+    {
+     "id": "m011",
+     "createdAt": 1762401600000,
+     "houses": 40
+    },
+    {
+     "id": "m012",
+     "createdAt": 1759809600000,
+     "houses": 40
+    },
+    {
+     "id": "m013",
+     "createdAt": 1757217600000,
+     "houses": 40
+    },
+    {
+     "id": "m014",
+     "createdAt": 1754625600000,
+     "houses": 40
+    },
+    {
+     "id": "m015",
+     "createdAt": 1752033600000,
+     "houses": 40
+    },
+    {
+     "id": "m016",
+     "createdAt": 1749441600000,
+     "houses": 40
+    },
+    {
+     "id": "m017",
+     "createdAt": 1746849600000,
+     "houses": 40
+    },
+    {
+     "id": "m018",
+     "createdAt": 1744257600000,
+     "houses": 40
+    },
+    {
+     "id": "m019",
+     "createdAt": 1741665600000,
+     "houses": 40
+    },
+    {
+     "id": "m020",
+     "createdAt": 1739073600000,
+     "houses": 40
+    },
+    {
+     "id": "m021",
+     "createdAt": 1736481600000,
+     "houses": 40
+    },
+    {
+     "id": "m022",
+     "createdAt": 1733889600000,
+     "houses": 40
+    },
+    {
+     "id": "m023",
+     "createdAt": 1731297600000,
+     "houses": 40
+    }
+   ],
+   "keep": [
+    "m000",
+    "m001",
+    "m002",
+    "m003",
+    "m004",
+    "m005",
+    "m006"
+   ],
+   "prune": [
+    "m007",
+    "m008",
+    "m009",
+    "m010",
+    "m011",
+    "m012",
+    "m013",
+    "m014",
+    "m015",
+    "m016",
+    "m017",
+    "m018",
+    "m019",
+    "m020",
+    "m021",
+    "m022",
+    "m023"
+   ],
+   "hold": null
+  },
+  {
+   "name": "leap day and year end",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "y1",
+     "createdAt": 1835416800000,
+     "houses": 3
+    },
+    {
+     "id": "y2",
+     "createdAt": 1830283200000,
+     "houses": 3
+    },
+    {
+     "id": "y3",
+     "createdAt": 1830272400000,
+     "houses": 3
+    },
+    {
+     "id": "y4",
+     "createdAt": 0,
+     "houses": 3
+    }
+   ],
+   "keep": [
+    "y1",
+    "y2",
+    "y3",
+    "y4"
+   ],
+   "prune": [],
+   "hold": null
+  },
+  {
+   "name": "shrink guard: the newest has 3 houses after 48, nothing is pruned",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 3
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 48
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 48
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 48
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 48
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [],
+   "hold": {
+    "backupId": "d000",
+    "houses": 3,
+    "previousId": "d001",
+    "previousHouses": 48
+   }
+  },
+  {
+   "name": "shrink guard confirmed: pruning goes on",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [
+    "d000"
+   ],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 3
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 48
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 48
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 48
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 48
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [
+    "d007",
+    "d008",
+    "d009",
+    "d010",
+    "d011",
+    "d013",
+    "d014",
+    "d015",
+    "d016",
+    "d017",
+    "d018",
+    "d020",
+    "d021",
+    "d022",
+    "d023",
+    "d024",
+    "d025",
+    "d026",
+    "d027",
+    "d028",
+    "d029"
+   ],
+   "hold": null
+  },
+  {
+   "name": "a wiped phone's five small backups still hold",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 0
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 0
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 0
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 0
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 0
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [],
+   "hold": {
+    "backupId": "d000",
+    "houses": 0,
+    "previousId": "d005",
+    "previousHouses": 48
+   }
+  },
+  {
+   "name": "after a confirm the same level does not ask again",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [
+    "d004"
+   ],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 0
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 0
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 0
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 0
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 0
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [
+    "d007",
+    "d008",
+    "d009",
+    "d010",
+    "d011",
+    "d013",
+    "d014",
+    "d015",
+    "d016",
+    "d017",
+    "d018",
+    "d020",
+    "d021",
+    "d022",
+    "d023",
+    "d024",
+    "d025",
+    "d026",
+    "d027",
+    "d028",
+    "d029"
+   ],
+   "hold": null
+  },
+  {
+   "name": "a further drop after a confirm holds again",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [
+    "d004"
+   ],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 4
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 20
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 20
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 20
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 20
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [],
+   "hold": {
+    "backupId": "d000",
+    "houses": 4,
+    "previousId": "d001",
+    "previousHouses": 20
+   }
+  },
+  {
+   "name": "a dip that recovered does not hold",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "d000",
+     "createdAt": 1790913600000,
+     "houses": 48
+    },
+    {
+     "id": "d001",
+     "createdAt": 1790827200000,
+     "houses": 48
+    },
+    {
+     "id": "d002",
+     "createdAt": 1790740800000,
+     "houses": 48
+    },
+    {
+     "id": "d003",
+     "createdAt": 1790654400000,
+     "houses": 1
+    },
+    {
+     "id": "d004",
+     "createdAt": 1790568000000,
+     "houses": 48
+    },
+    {
+     "id": "d005",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "d006",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "d007",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "d008",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "d009",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "d010",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "d011",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "d012",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "d013",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "d014",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "d015",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "d016",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "d017",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "d018",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "d019",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "d020",
+     "createdAt": 1789185600000,
+     "houses": 48
+    },
+    {
+     "id": "d021",
+     "createdAt": 1789099200000,
+     "houses": 48
+    },
+    {
+     "id": "d022",
+     "createdAt": 1789012800000,
+     "houses": 48
+    },
+    {
+     "id": "d023",
+     "createdAt": 1788926400000,
+     "houses": 48
+    },
+    {
+     "id": "d024",
+     "createdAt": 1788840000000,
+     "houses": 48
+    },
+    {
+     "id": "d025",
+     "createdAt": 1788753600000,
+     "houses": 48
+    },
+    {
+     "id": "d026",
+     "createdAt": 1788667200000,
+     "houses": 48
+    },
+    {
+     "id": "d027",
+     "createdAt": 1788580800000,
+     "houses": 48
+    },
+    {
+     "id": "d028",
+     "createdAt": 1788494400000,
+     "houses": 48
+    },
+    {
+     "id": "d029",
+     "createdAt": 1788408000000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "d000",
+    "d001",
+    "d002",
+    "d003",
+    "d004",
+    "d005",
+    "d006",
+    "d012",
+    "d019"
+   ],
+   "prune": [
+    "d007",
+    "d008",
+    "d009",
+    "d010",
+    "d011",
+    "d013",
+    "d014",
+    "d015",
+    "d016",
+    "d017",
+    "d018",
+    "d020",
+    "d021",
+    "d022",
+    "d023",
+    "d024",
+    "d025",
+    "d026",
+    "d027",
+    "d028",
+    "d029"
+   ],
+   "hold": null
+  },
+  {
+   "name": "exactly half is not a drop",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "n",
+     "createdAt": 1790913600000,
+     "houses": 24
+    },
+    {
+     "id": "o000",
+     "createdAt": 1790827200000,
+     "houses": 48
+    },
+    {
+     "id": "o001",
+     "createdAt": 1790740800000,
+     "houses": 48
+    },
+    {
+     "id": "o002",
+     "createdAt": 1790654400000,
+     "houses": 48
+    },
+    {
+     "id": "o003",
+     "createdAt": 1790568000000,
+     "houses": 48
+    },
+    {
+     "id": "o004",
+     "createdAt": 1790481600000,
+     "houses": 48
+    },
+    {
+     "id": "o005",
+     "createdAt": 1790395200000,
+     "houses": 48
+    },
+    {
+     "id": "o006",
+     "createdAt": 1790308800000,
+     "houses": 48
+    },
+    {
+     "id": "o007",
+     "createdAt": 1790222400000,
+     "houses": 48
+    },
+    {
+     "id": "o008",
+     "createdAt": 1790136000000,
+     "houses": 48
+    },
+    {
+     "id": "o009",
+     "createdAt": 1790049600000,
+     "houses": 48
+    },
+    {
+     "id": "o010",
+     "createdAt": 1789963200000,
+     "houses": 48
+    },
+    {
+     "id": "o011",
+     "createdAt": 1789876800000,
+     "houses": 48
+    },
+    {
+     "id": "o012",
+     "createdAt": 1789790400000,
+     "houses": 48
+    },
+    {
+     "id": "o013",
+     "createdAt": 1789704000000,
+     "houses": 48
+    },
+    {
+     "id": "o014",
+     "createdAt": 1789617600000,
+     "houses": 48
+    },
+    {
+     "id": "o015",
+     "createdAt": 1789531200000,
+     "houses": 48
+    },
+    {
+     "id": "o016",
+     "createdAt": 1789444800000,
+     "houses": 48
+    },
+    {
+     "id": "o017",
+     "createdAt": 1789358400000,
+     "houses": 48
+    },
+    {
+     "id": "o018",
+     "createdAt": 1789272000000,
+     "houses": 48
+    },
+    {
+     "id": "o019",
+     "createdAt": 1789185600000,
+     "houses": 48
+    }
+   ],
+   "keep": [
+    "n",
+    "o000",
+    "o001",
+    "o002",
+    "o003",
+    "o004",
+    "o005",
+    "o011",
+    "o018"
+   ],
+   "prune": [
+    "o006",
+    "o007",
+    "o008",
+    "o009",
+    "o010",
+    "o012",
+    "o013",
+    "o014",
+    "o015",
+    "o016",
+    "o017",
+    "o019"
+   ],
+   "hold": null
+  },
+  {
+   "name": "one house to none is a drop",
+   "utcOffsetMinutes": 330,
+   "confirmedDrops": [],
+   "backups": [
+    {
+     "id": "n",
+     "createdAt": 1790913600000,
+     "houses": 0
+    },
+    {
+     "id": "o",
+     "createdAt": 1790827200000,
+     "houses": 1
+    }
+   ],
+   "keep": [
+    "n",
+    "o"
+   ],
+   "prune": [],
+   "hold": {
+    "backupId": "n",
+    "houses": 0,
+    "previousId": "o",
+    "previousHouses": 1
+   }
+  }
+ ],
+ "schedule": [
+  {
+   "name": "not ready",
+   "input": {
+    "ready": false,
+    "lastSuccessAt": 1790740800000,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NOT_READY",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "first backup",
+   "input": {
+    "lastSuccessAt": null,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "FIRST",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "manual runs even when automatic is off",
+   "input": {
+    "enabled": false,
+    "manual": true,
+    "lastSuccessAt": 1790910000000,
+    "ready": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "MANUAL",
+    "nextAt": null,
+    "verify": true
+   }
+  },
+  {
+   "name": "automatic off",
+   "input": {
+    "enabled": false,
+    "lastSuccessAt": 1790740800000,
+    "ready": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "DISABLED",
+    "nextAt": null,
+    "verify": true
+   }
+  },
+  {
+   "name": "not due yet",
+   "input": {
+    "lastSuccessAt": 1790830800000,
+    "lastAttemptAt": 1790830800000,
+    "lastVerifyAt": 1790827200000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NOT_DUE",
+    "nextAt": 1790917200000,
+    "verify": false
+   }
+  },
+  {
+   "name": "due after 24 hours",
+   "input": {
+    "lastSuccessAt": 1790827200000,
+    "lastAttemptAt": 1790827200000,
+    "lastVerifyAt": 1790827200000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "DAILY",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "weekly verify is due",
+   "input": {
+    "lastSuccessAt": 1790910000000,
+    "lastVerifyAt": 1790308800000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NOT_DUE",
+    "nextAt": 1790996400000,
+    "verify": true
+   }
+  },
+  {
+   "name": "verify never done",
+   "input": {
+    "lastSuccessAt": 1790910000000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NOT_DUE",
+    "nextAt": 1790996400000,
+    "verify": true
+   }
+  },
+  {
+   "name": "a failure waits 30 minutes",
+   "input": {
+    "lastSuccessAt": 1790740800000,
+    "lastAttemptAt": 1790913000000,
+    "lastFailure": "RETRYABLE",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "WAIT_RETRY",
+    "nextAt": 1790914800000,
+    "verify": false
+   }
+  },
+  {
+   "name": "after 30 minutes it tries again",
+   "input": {
+    "lastSuccessAt": 1790740800000,
+    "lastAttemptAt": 1790911800000,
+    "lastFailure": "RETRYABLE",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "DAILY",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "a full Drive waits a day",
+   "input": {
+    "lastSuccessAt": 1790654400000,
+    "lastAttemptAt": 1790906400000,
+    "lastFailure": "QUOTA",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "WAIT_QUOTA",
+    "nextAt": 1790992800000,
+    "verify": false
+   }
+  },
+  {
+   "name": "a full Drive after a day",
+   "input": {
+    "lastSuccessAt": 1790654400000,
+    "lastAttemptAt": 1790827200000,
+    "lastFailure": "QUOTA",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "DAILY",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "refused grant waits for a connect",
+   "input": {
+    "lastSuccessAt": 1790654400000,
+    "lastAttemptAt": 1790827200000,
+    "lastFailure": "UNAUTHORIZED",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NEEDS_CONNECT",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "blocked waits for the person",
+   "input": {
+    "lastSuccessAt": 1790654400000,
+    "lastAttemptAt": 1790827200000,
+    "lastFailure": "BLOCKED",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "BLOCKED",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "manual runs after a blocked failure",
+   "input": {
+    "manual": true,
+    "lastSuccessAt": 1790654400000,
+    "lastFailure": "BLOCKED",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "MANUAL",
+    "nextAt": null,
+    "verify": false
+   }
+  },
+  {
+   "name": "the clock moved back",
+   "input": {
+    "lastSuccessAt": 1791172800000,
+    "lastAttemptAt": 1791172800000,
+    "lastVerifyAt": 1791172800000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "CLOCK_CHANGED",
+    "nextAt": null,
+    "verify": true
+   }
+  },
+  {
+   "name": "a skew under five minutes is not a change",
+   "input": {
+    "lastSuccessAt": 1790913840000,
+    "lastVerifyAt": 1790913840000,
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": false,
+    "reason": "NOT_DUE",
+    "nextAt": 1791000240000,
+    "verify": false
+   }
+  },
+  {
+   "name": "an attempt in the future does not hold a retry",
+   "input": {
+    "lastSuccessAt": 1790740800000,
+    "lastAttemptAt": 1791000000000,
+    "lastFailure": "RETRYABLE",
+    "ready": true,
+    "enabled": true,
+    "now": 1790913600000
+   },
+   "expect": {
+    "backup": true,
+    "reason": "DAILY",
+    "nextAt": null,
+    "verify": false
+   }
+  }
+ ]
+}
