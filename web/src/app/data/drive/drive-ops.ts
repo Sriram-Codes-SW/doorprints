@@ -231,9 +231,9 @@ export async function deleteAll(drive: DriveClient, fileIds: readonly string[]):
       await drive.delete(fileIds[i]);
     } catch (e) {
       if (!(e instanceof DriveError)) throw e;
-      return { deleted, left: fileIds.slice(i), error: e };
+      return { deleted, left: fileIds.slice(i), error: e, failed: [] };
     }
     deleted.push(fileIds[i]);
   }
-  return { deleted, left: [], error: null };
+  return { deleted, left: [], error: null, failed: [] };
 }

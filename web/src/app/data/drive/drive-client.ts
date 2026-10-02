@@ -152,6 +152,15 @@ export interface DeleteReport {
   readonly deleted: readonly string[];
   readonly left: readonly string[];
   readonly error: DriveError | null;
+  /** Per file: which ones failed and why (S4b-BL-119); `error` is the first failure that stopped the run. */
+  readonly failed: readonly DeleteFailure[];
+}
+
+/** One file a deletion could not remove: the error kind and status only, never a name. */
+export interface DeleteFailure {
+  readonly fileId: string;
+  readonly kind: DriveErrorKind;
+  readonly httpStatus: number;
 }
 
 /** A folder of docs/15 §5.1, found by its `doorprints` app property. */
