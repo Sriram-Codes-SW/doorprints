@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.6 |
+| Version | 0.8 |
 | Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -18,6 +18,8 @@
 | 0.4 | 2026-10-02 | Claude (Code), lead | I15, the authenticator app ([15](15-google-drive-backup-and-sharing.md) §10.5). |
 | 0.5 | 2026-10-02 | Claude (Code), lead | After the review of [15](15-google-drive-backup-and-sharing.md) v0.4: I5 depends on the Android sign-in choice; I14 for the QR enrolment and the recovery public key; new I16 (a restored old `keys.json` refused) and I17 (Limited Use and the privacy page). |
 | 0.6 | 2026-10-02 | Claude (Code), lead | The owner decided [15](15-google-drive-backup-and-sharing.md) (v0.5): I15 (authenticator app) deferred; I12 for the website's PRF-only rule; I5 with Android's browser-and-PKCE default. |
+| 0.7 | 2026-10-02 | Claude (Code), lead | The encryption core is built (S4b-BL-125, [15](15-google-drive-backup-and-sharing.md) §9.9): I10, I11, I14 and I16 name the unit tests that already hold their rules on Linux (TC-U-128, TC-U-130, TC-U-127; [06](06-test-plan.md)), so the release run checks the real Drive and the screens; I14 adds the website's recovery key in Firefox and Safari ([02](02-threat-model.md) RR-27). I13 is unchanged (the screen lock is S4b-BL-127). |
+| 0.8 | 2026-10-02 | Claude (Code), lead | I11 adds a list re-wrapped under another folder key (the review of S4b-BL-125: refused by the pin and the recovery anchor, TC-U-132). |
 
 ## 1. What this is, and when it runs
 
@@ -159,13 +161,13 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | I7 | Deleting | *Delete this backup*, *Delete all backups*, *Delete everything …* on the test account (TC-M-48) | The files are gone and not in Drive's bin; sharing removed first; automatic backup stays off; another device asks before backing up again |
 | I8 | Disconnect and revoke | *Disconnect Google Drive*, then *Disconnect on all devices*, then Google's *third-party connections* page | Each does what 15 §3.5 says; no local data deleted; the app shows *Google Drive disconnected* |
 | I9 | Untrusted files | Put the TC-S-17 files (zip slip, bomb, hash mismatch) into the test account's *Doorprints/Sync* and *Backups* and share one from a second account | Each refused with a message; nothing written |
-| I10 | Encryption | Download a backup, a sync file and a photo from the test account's Drive; open Drive's preview | Each starts with `DPX1` and shows no house text, name or JPEG header; Drive's preview shows nothing; file names and `appProperties` carry no house data |
-| I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored |
+| I10 | Encryption | Download a backup, a sync file and a photo from the test account's Drive; open Drive's preview | Each starts with `DPX1` and shows no house text, name or JPEG header; Drive's preview shows nothing; file names and `appProperties` carry no house data. The format's own refusals are unit-tested since S4b-BL-125 (TC-U-128) |
+| I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored. The MAC and the `NOT_DPX` refusal are unit-tested since S4b-BL-125 (TC-U-128, TC-U-130); the report and the ignore rule come with S4b-BL-116/-118; and replace `keys.json` by one made with another folder key wrapped to every listed device (TC-U-132's forge, by hand): every device and the recovery key refuse it |
 | I12 | Device authentication (TC-M-50) | *Delete all backups* and *Delete everything* on each phone; cancel once; wait over a minute once | The phone's own check every time, nothing deleted on cancel, asked again after the minute; the website offers L2/L3 only with a passkey whose PRF extension seals its key, otherwise L1 only |
 | I13 | The screen lock (TC-M-51) | Connect on a phone with no lock; then with a lock, connect and remove the lock | Refused without a lock; paused with its message after removal, no upload or delete; re-enrolment needed afterwards |
-| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; a fresh device sees the existing folder and writes nothing until it joins; enrol it by QR code and once by the code fallback; revoke it; open a backup made after the revoke with the recovery key on a fresh browser | As 15 §9.3..§9.5: no silent adoption, a swapped key refused, the recovery key opens post-revoke files without having been typed in between; it appears nowhere in the app's storage, logs or Drive |
+| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; a fresh device sees the existing folder and writes nothing until it joins; enrol it by QR code and once by the code fallback; revoke it; open a backup made after the revoke with the recovery key on a fresh browser | As 15 §9.3..§9.5: no silent adoption, a swapped key refused, the recovery key opens post-revoke files without having been typed in between; it appears nowhere in the app's storage, logs or Drive. The recovery key's derivation, check symbol and post-revoke wrap are unit-tested since S4b-BL-125 (TC-U-127, TC-U-130); on the website, open with the recovery key in Chromium, Firefox and Safari ([02](02-threat-model.md) RR-27) |
 | I15 | Authenticator app (TC-M-55; **deferred**, owner 2026-10-02: n/a until S4b-BL-129) | Set it up; use a code on the website; replay it; five wrong codes; download `keys.json` | A replayed code and the sixth try are refused; the lock lasts 5 minutes; `keys.json` holds the secret only wrapped; a valid code alone never approves a device unattended |
-| I16 | Rollback | Revoke a device, then bring back the older `keys.json` with Drive's *Manage versions* | Every device refuses it and says so; the revoked device's later files are skipped |
+| I16 | Rollback | Revoke a device, then bring back the older `keys.json` with Drive's *Manage versions* | Every device refuses it and says so; the revoked device's later files are skipped. The refusal (`ROLLED_BACK`) and the skip rule are unit-tested since S4b-BL-125 (TC-U-130, TC-U-131); the words and the report come with S4b-BL-126/-118 |
 | I17 | Google's user-data policy | The privacy page and the consent screen | The page says what 15 S4b-BL-121 lists, including the Limited Use sentence; the consent screen links it |
 
 ### H. India's boundaries (5 minutes)
