@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import indexHtml from '../index.html' with { loader: 'text' };
 import aboutHtml from '../../public/about.html' with { loader: 'text' };
+import privacyHtml from '../../public/privacy.html' with { loader: 'text' };
 import robotsTxt from '../../public/robots.txt' with { loader: 'text' };
 import sitemapXml from '../../public/sitemap.xml' with { loader: 'text' };
 import { IMPORT_ROUTE } from './core/launch-files.service';
@@ -33,7 +34,7 @@ import { SITE_URL } from './i18n/i18n-title.strategy';
 
 /**
  * The search-engine invariants of the public pages (Wave E): what a crawler that does not run scripts reads in
- * index.html and about.html, robots.txt, sitemap.xml and the manifest, and which routes the app keeps out of the index.
+ * index.html, about.html and privacy.html, robots.txt, sitemap.xml and the manifest, and which routes the app keeps out of the index.
  * Read from the repository files themselves, so a change that breaks one fails here and not in Search Console.
  */
 const ORIGIN = 'https://doorprints.web.app';
@@ -44,7 +45,7 @@ function parse(html: string): Document {
 const meta = (doc: Document, selector: string): string | null | undefined =>
   doc.head.querySelector(`meta[${selector}]`)?.getAttribute('content');
 
-const pages = { 'index.html': parse(indexHtml), 'about.html': parse(aboutHtml) };
+const pages = { 'index.html': parse(indexHtml), 'about.html': parse(aboutHtml), 'privacy.html': parse(privacyHtml) };
 
 describe.each(Object.entries(pages))('%s as a search result and a link preview', (name, doc) => {
   const url = name === 'index.html' ? `${ORIGIN}/` : `${ORIGIN}/${name}`;
@@ -133,6 +134,7 @@ describe('index.html', () => {
     for (const name of ['English', 'हिन्दी', 'தமிழ்', 'తెలుగు']) expect(text).toContain(name);
     const hrefs = [...root.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toContain('about.html');
+    expect(hrefs).toContain('privacy.html');
     expect(hrefs).toContain('https://sriram-codes-sw.github.io/doorprints/');
     for (const lang of ['hi', 'ta', 'te']) expect(hrefs).toContain(`https://sriram-codes-sw.github.io/doorprints/${lang}/`);
     expect(text).not.toMatch(/play store/i);
@@ -155,6 +157,83 @@ describe('about.html', () => {
     for (const lang of ['hi', 'ta', 'te']) expect(hrefs).toContain(`https://sriram-codes-sw.github.io/doorprints/${lang}/`);
     expect(hrefs.join(' ')).not.toMatch(/play\.google/);
   });
+
+  it('links the privacy policy from every language section', () => {
+    for (const s of doc.body.querySelectorAll('section[lang]')) {
+      const hrefs = [...s.querySelectorAll('a')].map((a) => a.getAttribute('href')!);
+      expect(hrefs.some((h) => h.startsWith('privacy.html')), s.getAttribute('lang')!).toBe(true);
+    }
+  });
+});
+
+/**
+ * S4b-BL-121: the privacy policy Google's consent screen links (docs/15 §2.3, §2.4; docs/13 I17). Static, read without
+ * scripts, in four languages like about.html (hi/ta/te under review, English governs).
+ */
+describe('privacy.html', () => {
+  const doc = pages['privacy.html'];
+  const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' ');
+  const LIMITED_USE =
+    "Doorprints' use and transfer to any other app of information received from Google APIs will adhere to the " +
+    'Google API Services User Data Policy, including the Limited Use requirements.';
+
+  it('has its own title and canonical address', () => {
+    expect(doc.title).toBe('Privacy policy: Doorprints');
+    expect(doc.head.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`${ORIGIN}/privacy.html`);
+  });
+
+  it("carries Google's Limited Use sentence verbatim, in English, in every language section", () => {
+    const sections = [...doc.body.querySelectorAll('section[lang]')];
+    expect(sections.map((s) => s.getAttribute('lang'))).toEqual(['en', 'hi', 'ta', 'te']);
+    for (const s of sections) expect(text(s), s.getAttribute('lang')!).toContain(LIMITED_USE);
+    expect(doc.body.querySelector('a[href="https://developers.google.com/terms/api-services-user-data-policy"]')).not.toBeNull();
+  });
+
+  it('says what it must: the one scope, no server of ours, encryption on the device, deletion, revoking, children, the date', () => {
+    const en = text(doc.body.querySelector('section[lang="en"]'));
+    for (const phrase of [
+      'drive.file',
+      'no server of ours',
+      'encrypted on your device',
+      'No advertising',
+      'Nothing is sold',
+      'Delete this backup',
+      'Delete all backups',
+      'Delete everything Doorprints keeps in my Google Drive',
+      'Disconnect Google Drive',
+      'Disconnect on all devices',
+      'Remove all data',
+      'Children',
+      'Changes to this policy',
+    ]) {
+      expect(en, phrase).toContain(phrase);
+    }
+    const hrefs = [...doc.body.querySelectorAll('a')].map((a) => a.getAttribute('href')!);
+    expect(hrefs).toContain('https://myaccount.google.com/connections');
+    expect(hrefs).toContain('./');
+    expect(hrefs).toContain('about.html');
+    expect(doc.body.querySelector('time[datetime]')?.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('names no email address: the contact is the public issues page (no personal address on a public page)', () => {
+    expect(privacyHtml).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    expect(privacyHtml).not.toMatch(/mailto:/i);
+    const hrefs = [...doc.body.querySelectorAll('a')].map((a) => a.getAttribute('href')!);
+    expect(hrefs).toContain('https://github.com/Sriram-Codes-SW/doorprints/issues');
+  });
+
+  it('works without scripts and loads nothing from another site', () => {
+    expect(doc.querySelectorAll('script, iframe, object, embed')).toHaveLength(0);
+    expect(privacyHtml).not.toMatch(/\son\w+\s*=/i);
+    for (const el of doc.querySelectorAll('link[href]:not([rel="canonical"]), img[src], [style*="url("]')) {
+      expect(el.getAttribute('href') ?? el.getAttribute('src') ?? '', el.outerHTML).not.toMatch(/^(https?:)?\/\//);
+    }
+  });
+
+  it('keeps the brand words (never "Restore")', () => {
+    expect(text(doc.body)).not.toMatch(/\brestore\b/i);
+    expect(text(doc.body)).toContain('Import a backup');
+  });
 });
 
 describe('sitemap.xml', () => {
@@ -174,6 +253,7 @@ describe('sitemap.xml', () => {
 
   it('lists the public pages and none of the private routes', () => {
     expect(locs).toContain(`${ORIGIN}/about.html`);
+    expect(locs).toContain(`${ORIGIN}/privacy.html`);
     const privatePaths = routes.filter((r) => r.data?.['index'] !== true).map((r) => r.path!.split('/')[0]);
     for (const loc of locs) {
       const first = new URL(loc).pathname.split('/')[1];
@@ -191,7 +271,7 @@ describe('robots.txt', () => {
 });
 
 describe('Firebase Hosting', () => {
-  it('rewrites only what is not a file: robots.txt, sitemap.xml and about.html exist in public/, so they win', () => {
+  it('rewrites only what is not a file: robots.txt, sitemap.xml, about.html and privacy.html exist in public/, so they win', () => {
     const rewrites = firebaseJson.hosting.rewrites;
     expect(rewrites).toEqual([{ source: '**', destination: '/index.html' }]);
     // The static files above are copied from public/ to the build output by Angular's assets rule.
