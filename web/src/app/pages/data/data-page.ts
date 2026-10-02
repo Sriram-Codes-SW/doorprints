@@ -60,6 +60,7 @@ import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { OfflineAreasCard } from './offline-areas';
+import { DriveConnectComponent } from './drive-connect';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { guideUrl } from '../../shared/help-link';
 
@@ -103,7 +104,7 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
 })

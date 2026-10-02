@@ -1,0 +1,172 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card" aria-labelledby="drive-heading" *ngIf="state() !== 'Unavailable'">
+  <h2 id="drive-heading">{{ 'driveConnect.heading' | t }}</h2>
+
+  <!-- Disconnected: show Connect button -->
+  @if (state() === 'Disconnected') {
+    <p>{{ 'data.intro' | t }}</p>
+    <button type="button" class="btn btn-primary" (click)="onConnect()" [disabled]="busy()">
+      {{ 'driveConnect.connect' | t }}
+    </button>
+  }
+
+  <!-- Connecting: show spinner -->
+  @if (state() === 'Connecting') {
+    <p role="status">{{ 'driveConnect.connecting' | t }}</p>
+  }
+
+  <!-- FirstConnectShowRecoveryKey: show key once with copy and confirm -->
+  @if (state() === 'FirstConnectShowRecoveryKey') {
+    <div class="card-section">
+      <h3>{{ 'driveConnect.firstConnect' | t }}</h3>
+      <p class="muted">{{ 'driveConnect.recoveryKeyNote' | t }}</p>
+      @if (recoveryKey(); as key) {
+        <div class="recovery-key-box">
+          <code>{{ key }}</code>
+          <button type="button" class="btn btn-sm" (click)="copyRecoveryKey(key)" [disabled]="busy()">
+            {{ keyCopied() ? ('driveConnect.recoveryKeyCopied' | t) : ('driveConnect.recoveryKeyCopy' | t) }}
+          </button>
+        </div>
+        <div class="warn-box">
+          <p>{{ 'driveConnect.recoveryKeyWarning' | t }}</p>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" [checked]="recoveryKeySaved()" (change)="toggleRecoverySaved()" />
+          <span>{{ 'driveConnect.confirmSavedRecoveryKey' | t }}</span>
+        </label>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" (click)="continueFromRecoveryKey()" [disabled]="!recoveryKeySaved() || busy()">
+            {{ 'common.next' | t }}
+          </button>
+          <button type="button" class="btn" (click)="skipRecoveryKey()" [disabled]="busy()">
+            {{ 'common.skip' | t }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- NeedsEnrolment: message only (QR is a later ticket) -->
+  @if (state() === 'NeedsEnrolment') {
+    <div class="card-section">
+      <h3>{{ 'driveConnect.needsEnrolmentHeading' | t }}</h3>
+      <p>{{ 'driveConnect.needsEnrolmentMessage' | t }}</p>
+    </div>
+  }
+
+  <!-- Ready: all controls -->
+  @if (state() === 'Ready') {
+    <div class="card-section">
+      <h3>{{ 'driveConnect.lastBackup' | t }}</h3>
+      <p>{{ lastBackupTime() || ('driveConnect.never' | t) }}</p>
+      <button type="button" class="btn btn-primary" (click)="onBackupNow()" [disabled]="busy()">
+        {{ 'driveConnect.backUpNow' | t }}
+      </button>
+    </div>
+
+    <div class="card-section">
+      <h3>{{ 'driveConnect.backupsList' | t }}</h3>
+      @if ((backups() | async)?.length) {
+        <ul>
+          @for (backup of backups() | async; track backup) {
+            <li>{{ backup }}</li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">{{ 'driveConnect.noBackups' | t }}</p>
+      }
+    </div>
+
+    <div class="card-section">
+      <button type="button" class="btn" (click)="onImportFromDrive()" [disabled]="busy()">
+        {{ 'driveConnect.importFromDrive' | t }}
+      </button>
+    </div>
+
+    <div class="card-section">
+      <h3>{{ 'driveConnect.automaticBackup' | t }}</h3>
+      <label class="checkbox">
+        <input type="checkbox" [checked]="autoBackupEnabled()" (change)="toggleAutoBackup($event)" />
+        <span>{{ autoBackupEnabled() ? ('driveConnect.automaticBackupOn' | t) : ('driveConnect.automaticBackupOff' | t) }}</span>
+      </label>
+    </div>
+
+    <div class="card-section">
+      <h3>{{ 'driveConnect.uploadPhotos' | t }}</h3>
+      <label class="checkbox">
+        <input type="checkbox" [checked]="photosWifiOnly()" (change)="togglePhotosWifiOnly($event)" />
+        <span>{{ 'driveConnect.uploadPhotos' | t }}</span>
+      </label>
+      <button type="button" class="btn btn-sm" (click)="onUploadPhotosNow()" [disabled]="!photosWifiOnly() || busy()">
+        {{ 'driveConnect.uploadPhotosNow' | t }}
+      </button>
+    </div>
+
+    <div class="card-section">
+      <h3>{{ 'driveConnect.disconnect' | t }}</h3>
+      <button type="button" class="btn btn-danger" (click)="onDisconnect()" [disabled]="busy()">
+        {{ 'driveConnect.disconnect' | t }}
+      </button>
+    </div>
+
+    <div class="card-section">
+      <h3>Delete</h3>
+      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L1')" [disabled]="busy()">
+        {{ 'driveConnect.deleteMenuLevel1' | t }}
+      </button>
+      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L2')" [disabled]="busy()">
+        {{ 'driveConnect.deleteMenuLevel2' | t }}
+      </button>
+      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L3')" [disabled]="busy()">
+        {{ 'driveConnect.deleteMenuLevel3' | t }}
+      </button>
+    </div>
+
+    @if (deleteConfirmLevel(); as level) {
+      <div class="confirm-box">
+        <p>{{ ('driveConnect.deleteConfirm' + level | t) }}</p>
+        @if (level === 'L3') {
+          <label class="checkbox">
+            <input type="checkbox" [checked]="deleteL3Confirmed()" (change)="toggleDeleteL3()" />
+            <span>{{ 'driveConnect.deleteL3Confirm' | t }}</span>
+          </label>
+        }
+        <div class="actions">
+          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="(level === 'L3' && !deleteL3Confirmed()) || busy()">
+            {{ 'common.delete' | t }}
+          </button>
+          <button type="button" class="btn" (click)="cancelDelete()">
+            {{ 'common.cancel' | t }}
+          </button>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Error -->
+  @if (state() === 'Error') {
+    <div class="error-box">
+      <p>{{ ('driveConnect.error' | t: { reason: error() }) }}</p>
+      <button type="button" class="btn" (click)="onConnect()">
+        {{ 'common.retry' | t }}
+      </button>
+    </div>
+  }
+</section>
