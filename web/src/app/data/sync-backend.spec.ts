@@ -199,6 +199,23 @@ describe('SyncService through the SyncBackend seam', () => {
     expect(await pullOlderOverCleanLocal()).toBe('Newer here');
   });
 
+  it('shows the rule every local record, clean ones too (S4b-BL-130)', async () => {
+    // A clean record newer than the incoming one: the server's rule overwrites it, a last-write-wins rule keeps it.
+    const pullOlderRecord = async (): Promise<unknown> => {
+      await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 1 });
+      backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 2 }];
+      await sync.syncNow(true);
+      return (await store.allRecords()).find((r) => r.id === B1)?.payload;
+    };
+    expect(await pullOlderRecord()).toEqual({ name: 'Older snapshot' });
+    backend.mergeRule = (local, incoming) => !!local && millis(local.updatedAt) >= millis(incoming.updatedAt);
+    await store.putRecordFromServer({ type: 'broker', id: B1, payload: { name: 'Newer here' }, updatedAt: '2026-09-22T00:00:00.000Z', deleted: false, syncVersion: 3 });
+    backend.records = [{ type: 'broker', id: B1, payload: { name: 'Older snapshot' }, updatedAt: AT, deleted: false, syncVersion: 4 }];
+    await sync.syncNow(true);
+    expect((await store.allRecords()).find((r) => r.id === B1)?.payload).toEqual({ name: 'Newer here' });
+    expect(await store.dirtyRecords()).toEqual([]);
+  });
+
   it('sends everything again and pulls from 0 when the backend is behind', async () => {
     await store.putHouseFromServer({ ...house(H1), updatedAt: AT, syncVersion: 250 });
     await store.setSetting(SETTING_KEYS.houseCursor, '250');
@@ -211,7 +228,7 @@ describe('SyncService through the SyncBackend seam', () => {
       'recordsSince 0',
       'photoChangesSince 0',
     ]);
-    expect(sync.serverResetAt()).not.toBeNull();
+    expect(sync.remoteResetAt()).not.toBeNull();
   });
 
   it('treats a failed "is it behind" as unknown and carries on', async () => {
