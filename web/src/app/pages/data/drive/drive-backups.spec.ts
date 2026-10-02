@@ -44,7 +44,7 @@ async function render(fakes: ReturnType<typeof fakeDriveService>) {
     providers: [
       { provide: DriveConnectService, useValue: fakes },
       { provide: Announcer, useValue: { announce: vi.fn() } },
-      { provide: TranslationService, useValue: { t: (k: string) => k, dateTime: (s: string) => new Date(s).toLocaleString() } },
+      { provide: TranslationService, useValue: { t: (k: string, p?: any) => k, dateTime: (s: string) => new Date(s).toLocaleString(), lang: () => 'en' } },
     ],
   });
   const fixture = TestBed.createComponent(DriveBackupsCard);
@@ -66,5 +66,22 @@ describe('DriveBackupsCard', () => {
 
     expect(f.listBackups).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('driveBackups.emptyState');
+  });
+
+  it('shows two backup rows with houses and size text', async () => {
+    const backups: BackupSummary[] = [
+      { id: 'b1', createdAt: new Date('2026-10-01T10:00:00Z').getTime(), houses: 5, bytes: 1024 * 512, name: 'b1' },
+      { id: 'b2', createdAt: new Date('2026-09-30T15:00:00Z').getTime(), houses: 3, bytes: 1024 * 256, name: 'b2' },
+    ];
+    const fakes = fakeDriveService();
+    fakes.listBackups.mockResolvedValue({ ok: true, backups, missingNewer: false });
+    const { host } = await render(fakes);
+
+    const rows = host.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent).toContain('5');
+    expect(rows[0].textContent).toContain('512');
+    expect(rows[1].textContent).toContain('3');
+    expect(rows[1].textContent).toContain('256');
   });
 });
