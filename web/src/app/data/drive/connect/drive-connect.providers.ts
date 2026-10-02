@@ -25,6 +25,9 @@ import { GoogleTokenProvider, WindowGoogleConfig, DefaultScriptLoader } from './
 import type { GoogleConfig } from './google-token-provider';
 import { FetchDriveClient } from '../fetch-drive-client';
 import { WebCryptoProvider } from '../../crypto/crypto-provider';
+import { createLazyBackupAdapterProxy, createBackupAdapter } from './factories/backup-factory';
+import { createDriveRuntime, getRuntime } from './factories/runtime';
+import { LocalStore } from '../../local-store.service';
 
 /**
  * GoogleConfig provider: reads window.__DOORPRINTS__.googleClientId (empty by default, set via index.html).
@@ -76,22 +79,21 @@ export function provideDriveConnect(): Provider[] {
       },
     },
 
-    // Backup adapter (TODO: wire real DriveBackupService with all dependencies)
+    // Backup adapter (lazy-loaded: nothing created until first use)
     {
       provide: DRIVE_BACKUP_ADAPTER,
       useFactory: () => {
-        const drive = inject(FetchDriveClient);
-        // TODO: Initialize DriveBackupService with:
-        // - crypto provider
-        // - device identity (from device-key-store)
-        // - state store (from drive-db)
-        // - folder trust stores (from crypto layer)
-        // For now, stub with minimal initialization
-        return new DriveBackupAdapter(
-          null as any, // TODO: DriveBackupService
-          null as any, // TODO: DriveImportService
-          drive,
-          null as any, // TODO: DriveStateStore
+        const tokenProvider = inject(GoogleTokenProvider);
+        const localStore = inject(LocalStore);
+        const crypto = inject(WebCryptoProvider);
+
+        // Lazy proxy that defers getRuntime() until first adapter method is called
+        return createLazyBackupAdapterProxy(() =>
+          getRuntime({
+            tokens: tokenProvider,
+            local: localStore,
+            crypto,
+          })
         );
       },
     },
