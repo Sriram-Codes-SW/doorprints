@@ -115,6 +115,7 @@ licence change from MIT to `AGPL-3.0-only` with a trademark notice is approved a
 
 ### Added
 
+- **Design: Google Drive backup, sync, deletion and sharing** (docs only, nothing built; **decided by the owner on 2026-10-02**, ADR-33: version 1 is backup, sync, deletion and encryption; sharing and an authenticator app come later; [design](docs/15-google-drive-backup-and-sharing.md)): how Doorprints will back up to and import from each person's own Google Drive, by hand and on its own, keep many dated versions, delete the data in Drive when the person asks, and share a hunt read-only with someone who uses Doorprints, with the one Drive scope `drive.file`, no server and no cost. Every file in Drive is encrypted on the device with keys the devices make by themselves and a recovery key saved at the start; deleting all backups or everything needs the phone's own PIN, fingerprint or face (on the website a passkey or an authenticator-app code), and the feature needs a screen lock; photos go on Wi-Fi by default, with a switch for mobile data. The release security checklist is re-scoped for it (part I; no hosted server).
 - **Google Search Console ownership tag** on the landing page (`web/src/index.html`), so the owner can verify `https://doorprints.web.app/` and submit `sitemap.xml` (TC-M-40; `seo.spec.ts` pins that only `index.html` carries it).
 The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or released; [sprint log](docs/10-sprint-log.md) §13.29..§13.40) adds the first fourteen entries below.
 

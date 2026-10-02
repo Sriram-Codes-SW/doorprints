@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.1 |
-| Date | 2026-09-29 |
+| Version | 0.6 |
+| Date | 2026-10-02 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -13,6 +13,11 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-09-29 | Claude (Code), lead | First version (S4b-SEC-3, owner decision 1 of 2026-09-23, [10](10-sprint-log.md) §12.5): what the list is for and when it runs (1), what must be true before it starts (2), the list itself, about one hour, in eight parts (3), how a result is judged and recorded (4), the deep self-run pentest's scope (5), and a record to copy for each release (6). [06](06-test-plan.md) §11.1 gives each automated check its owner and threshold. |
+| 0.2 | 2026-10-02 | Claude (Code), lead | **Re-scoped for D-28** (S4b-BL-74; design [15](15-google-drive-backup-and-sharing.md)): there is no hosted server, so no server-side OAuth, OIDC, sessions or data-fiduciary case; new part I, Google sign-in and Drive (client OAuth with PKCE on the iPhone, Play services on Android, the GIS token model on the website; token storage; the one scope `drive.file`; what sits in the person's Drive; deleting it); G3 rewritten (the right to erasure is the in-app deletion); §1 and §5 name Drive's go-live instead of Sprint 5's sign-in. |
+| 0.3 | 2026-10-02 | Claude (Code), lead | Part I gains I10..I14 for the owner's additions to [15](15-google-drive-backup-and-sharing.md) v0.2: encryption with device keys and the recovery key, device authentication for deletes, the required screen lock, photos on mobile data. |
+| 0.4 | 2026-10-02 | Claude (Code), lead | I15, the authenticator app ([15](15-google-drive-backup-and-sharing.md) §10.5). |
+| 0.5 | 2026-10-02 | Claude (Code), lead | After the review of [15](15-google-drive-backup-and-sharing.md) v0.4: I5 depends on the Android sign-in choice; I14 for the QR enrolment and the recovery public key; new I16 (a restored old `keys.json` refused) and I17 (Limited Use and the privacy page). |
+| 0.6 | 2026-10-02 | Claude (Code), lead | The owner decided [15](15-google-drive-backup-and-sharing.md) (v0.5): I15 (authenticator app) deferred; I12 for the website's PRF-only rule; I5 with Android's browser-and-PKCE default. |
 
 ## 1. What this is, and when it runs
 
@@ -21,13 +26,15 @@ release security gate exists and passes**, and once it exists, every web deploy 
 
 1. **Automated**, in CI on every push: the checks in [06](06-test-plan.md) §11.1, each with its tool, owner and threshold.
 2. **Manual, about one hour per release**: this document's section 3.
-3. **A deep self-run pentest** before the Play Store launch and again before Sprint 5's Google sign-in goes live: section 5.
+3. **A deep self-run pentest** before the Play Store launch and again before Google Drive sign-in goes to production: section 5.
 
 Run section 3 on the **release candidate**: the exact commit, APK and web build that would ship. It runs before:
 
 - a Play Store release (any track, internal testing included);
-- a server that anyone outside the owner's own devices can reach (the hosted server of Sprint 5, or a self-hosted one
-  opened to the internet);
+- a server that anyone outside the owner's own devices can reach (a self-hosted one opened to the internet; there is
+  no hosted server, D-28);
+- publishing the Google Cloud project's sign-in to production, so that people beyond the listed test users can connect
+  Google Drive ([15](15-google-drive-backup-and-sharing.md) §2.3, decision 7);
 - a web deploy, once this gate exists. A web-only deploy runs parts A, B, F (if AI changed) and H only; the rest
   covers code that did not change.
 
@@ -137,7 +144,29 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 |---|---|---|
 | G1 | What the release collects, sends and keeps | Matches [04](04-data-flow-diagrams.md) and the privacy note in the apps; a new flow is documented first |
 | G2 | Play's data-safety form (Play release only) | Its answers match G1: location and contacts stay on the device or go to the user's own server; map tiles see the IP address; AI text goes to the chosen provider only when AI is on |
-| G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). **A hosted server (Sprint 5) makes Doorprints a data fiduciary for its users**: before that release, the notice, consent, the grievance contact, deletion on request and breach reporting are in place, reviewed with the owner |
+| G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). There is no hosted server (D-28): the owner never receives anyone's data, so Doorprints holds nothing to notify about or erase on request. **The person's right to erasure is exercised directly in the app**: *Delete this backup*, *Delete all backups* and *Delete everything Doorprints keeps in my Google Drive* work on every platform and really delete (I7), *Remove all data* clears a device, and the privacy page ([15](15-google-drive-backup-and-sharing.md) S4b-BL-121) says in plain words what each does, what stays (other devices, shared copies others imported, Google's own retention) and how to remove Doorprints' access at Google. Recheck if a hosted service is ever added |
+
+### I. Google sign-in and Drive (10 minutes; only once Drive is built, [15](15-google-drive-backup-and-sharing.md))
+
+| # | Check | How | Pass |
+|---|---|---|---|
+| I1 | The scopes asked for | Google Auth Platform > Data access, and the consent screen each app shows | Exactly `drive.file`; no other scope (no `drive`, `drive.appdata`, `openid`) |
+| I2 | No secret in the apps | Search the APK, the website's bundle and the iOS app for the web client's secret and any `client_secret` | None; only client ids, the iOS URL scheme, the Picker browser key and the project number |
+| I3 | The Picker key's restrictions | Credentials > the API key | Websites `https://doorprints.web.app/*` only, API *Google Picker API* only |
+| I4 | Client OAuth | iPhone: the authorisation request carries `code_challenge` (S256) and `state`, the token request `code_verifier` and no secret; Android: the grant through Play services; website: the GIS token popup works with the release's COOP (`same-origin-allow-popups`) and CSP | As said; the callback refuses a wrong `state` |
+| I5 | Token storage | Website: developer tools > Application (no token in `localStorage`, `sessionStorage` or IndexedDB); iPhone: the Keychain item is *this device only*; Android (the browser with PKCE, the default decided 2026-10-02): the refresh token only sealed by a Keystore key bound to the screen lock (with the Play-services fallback: no token at all); all: `adb logcat` / the console during a sync | No token anywhere but memory and the iPhone's Keychain; no token in a log |
+| I6 | What sits in the person's Drive | drive.google.com with the test account after a backup, a sync and a share | Only the *Doorprints* folder of [15](15-google-drive-backup-and-sharing.md) §5.1; contact details absent where they were left out; the shared file shared as *Viewer* with only the chosen account |
+| I7 | Deleting | *Delete this backup*, *Delete all backups*, *Delete everything …* on the test account (TC-M-48) | The files are gone and not in Drive's bin; sharing removed first; automatic backup stays off; another device asks before backing up again |
+| I8 | Disconnect and revoke | *Disconnect Google Drive*, then *Disconnect on all devices*, then Google's *third-party connections* page | Each does what 15 §3.5 says; no local data deleted; the app shows *Google Drive disconnected* |
+| I9 | Untrusted files | Put the TC-S-17 files (zip slip, bomb, hash mismatch) into the test account's *Doorprints/Sync* and *Backups* and share one from a second account | Each refused with a message; nothing written |
+| I10 | Encryption | Download a backup, a sync file and a photo from the test account's Drive; open Drive's preview | Each starts with `DPX1` and shows no house text, name or JPEG header; Drive's preview shows nothing; file names and `appProperties` carry no house data |
+| I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored |
+| I12 | Device authentication (TC-M-50) | *Delete all backups* and *Delete everything* on each phone; cancel once; wait over a minute once | The phone's own check every time, nothing deleted on cancel, asked again after the minute; the website offers L2/L3 only with a passkey whose PRF extension seals its key, otherwise L1 only |
+| I13 | The screen lock (TC-M-51) | Connect on a phone with no lock; then with a lock, connect and remove the lock | Refused without a lock; paused with its message after removal, no upload or delete; re-enrolment needed afterwards |
+| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; a fresh device sees the existing folder and writes nothing until it joins; enrol it by QR code and once by the code fallback; revoke it; open a backup made after the revoke with the recovery key on a fresh browser | As 15 §9.3..§9.5: no silent adoption, a swapped key refused, the recovery key opens post-revoke files without having been typed in between; it appears nowhere in the app's storage, logs or Drive |
+| I15 | Authenticator app (TC-M-55; **deferred**, owner 2026-10-02: n/a until S4b-BL-129) | Set it up; use a code on the website; replay it; five wrong codes; download `keys.json` | A replayed code and the sixth try are refused; the lock lasts 5 minutes; `keys.json` holds the secret only wrapped; a valid code alone never approves a device unattended |
+| I16 | Rollback | Revoke a device, then bring back the older `keys.json` with Drive's *Manage versions* | Every device refuses it and says so; the revoked device's later files are skipped |
+| I17 | Google's user-data policy | The privacy page and the consent screen | The page says what 15 S4b-BL-121 lists, including the Limited Use sentence; the consent screen links it |
 
 ### H. India's boundaries (5 minutes)
 
@@ -158,12 +187,13 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 
 ## 5. The deep self-run pentest
 
-Before the **Play Store launch**, and again before **Sprint 5's Google sign-in** goes live. Time box: two days, with
+Before the **Play Store launch**, and again before **Google Drive sign-in goes to production**. Time box: two days, with
 the owner. It is run by us on our own systems: no third party, no paid tool (zero cost).
 
 **In scope:** the release APK; the web app on a preview deploy or served locally; the backend in its release image
 with PostGIS, on a private network or a test host; its API, `/mcp`, the AI endpoints (with a capped test key) and
-sync; from Sprint 5, Google sign-in (the OAuth flow, the session, account linking and sign-out).
+sync; once Drive is built, the client OAuth flows on the three platforms, token storage, the Drive files, sharing
+and deletion ([15](15-google-drive-backup-and-sharing.md); [02](02-threat-model.md) §10).
 
 **Out of scope:** Google's, Firebase's and the tile providers' systems; the phone's operating system; load or denial
 of service; social engineering; anything not ours. Nothing against `https://doorprints.web.app` beyond normal use and
@@ -178,8 +208,11 @@ the passive ZAP baseline the first-deploy checks already run ([06](06-test-plan.
 - Android: MASVS L1 with the MASTG tests for storage, crypto, network, platform and code, plus a Frida or objection
   session on a rooted emulator (root detection is not a requirement; the point is to see what an attacker with the
   device sees).
-- Server: OWASP ASVS level 2 for authentication, session, access control and API; from Sprint 5 its OAuth and OIDC
-  requirements (state, PKCE, redirect URI, token audience).
+- Server: OWASP ASVS level 2 for authentication, session, access control and API (the self-hosted server; there is
+  no hosted one, D-28).
+- Client OAuth: ASVS's OAuth client requirements and RFC 8252 (OAuth for native apps) for the phones (PKCE, state, the
+  redirect, no embedded web view), the GIS token model on the website, and every file read from Drive treated as
+  untrusted ([02](02-threat-model.md) T-T15).
 - AI: the Top 10 for LLM applications with hand-made payloads beyond the golden set.
 
 **Tools:** OWASP ZAP (active scan and manual requests), Burp Suite Community, MobSF, Frida and objection,
@@ -201,7 +234,8 @@ E server           pass / fail / n/a
 F LLM Top 10       pass / fail / n/a   AI evals run: <link>
 G privacy          pass / fail
 H boundaries       pass / fail
+I Google Drive     pass / fail / n/a
 Findings: <F- ids>   Accepted risks: <02 §7 RR- ids, expiry>
-Pentest (Play launch or Sprint 5 only): <date, report link>
+Pentest (Play launch or Drive go-live only): <date, report link>
 Decision: ship / do not ship   Owner: <name>
 ```
