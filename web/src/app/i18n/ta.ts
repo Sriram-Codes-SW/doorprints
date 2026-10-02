@@ -1235,5 +1235,5 @@ export const ta: Dict = {
   'driveConnect.error': 'ஏதோ தவறு நடந்தது: {reason}',
   'driveConnect.backupError': 'பேக்கப் செய்ய முடியவில்லை: {reason}',
   'driveConnect.noAuth': 'அங்கீகாரம் தேவை',
-  'driveConnect.noAuthHint': 'முன்னேற தவணை அல்லது கைரேகை தேவை।',
+  'driveConnect.noAuthHint': 'முன்னேற தவணை அல்லது கைரேகை தேவை.',
 };
