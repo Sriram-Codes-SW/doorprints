@@ -16,10 +16,13 @@
    SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-<section class="card" aria-labelledby="drive-heading" *ngIf="state() !== 'Unavailable'">
+<section class="card" aria-labelledby="drive-heading">
   <h2 id="drive-heading">{{ 'driveConnect.heading' | t }}</h2>
 
-  <!-- Disconnected: show Connect button -->
+  @if (state() === 'Unavailable') {
+    <p>{{ 'driveConnect.unavailable' | t }}</p>
+  }
+
   @if (state() === 'Disconnected') {
     <p>{{ 'data.intro' | t }}</p>
     <button type="button" class="btn btn-primary" (click)="onConnect()" [disabled]="busy()">
@@ -27,12 +30,10 @@
     </button>
   }
 
-  <!-- Connecting: show spinner -->
   @if (state() === 'Connecting') {
     <p role="status">{{ 'driveConnect.connecting' | t }}</p>
   }
 
-  <!-- FirstConnectShowRecoveryKey: show key once with copy and confirm -->
   @if (state() === 'FirstConnectShowRecoveryKey') {
     <div class="card-section">
       <h3>{{ 'driveConnect.firstConnect' | t }}</h3>
@@ -52,7 +53,12 @@
           <span>{{ 'driveConnect.confirmSavedRecoveryKey' | t }}</span>
         </label>
         <div class="actions">
-          <button type="button" class="btn btn-primary" (click)="continueFromRecoveryKey()" [disabled]="!recoveryKeySaved() || busy()">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="continueFromRecoveryKey()"
+            [disabled]="!recoveryKeySaved() || busy()"
+          >
             {{ 'common.next' | t }}
           </button>
           <button type="button" class="btn" (click)="skipRecoveryKey()" [disabled]="busy()">
@@ -63,132 +69,33 @@
     </div>
   }
 
-  <!-- NeedsEnrolment: message only (QR is a later ticket) -->
-  @if (state() === 'NeedsEnrolment') {
+  @if (state() === 'NeedsRecoveryKey' || state() === 'NeedsEnrolment') {
     <div class="card-section">
       <h3>{{ 'driveConnect.needsEnrolmentHeading' | t }}</h3>
       <p>{{ 'driveConnect.needsEnrolmentMessage' | t }}</p>
+      <app-drive-join (joined)="recoveryKey.set(null)" />
+      <app-drive-enrol />
     </div>
   }
 
-  <!-- Ready: all controls -->
   @if (state() === 'Ready') {
-    <div class="card-section">
-      <h3>{{ 'driveConnect.lastBackup' | t }}</h3>
-      <p>{{ lastBackupTime() || ('driveConnect.never' | t) }}</p>
-      <button type="button" class="btn btn-primary" (click)="onBackupNow()" [disabled]="busy()">
-        {{ 'driveConnect.backUpNow' | t }}
-      </button>
-    </div>
-
-    <div class="card-section">
-      <h3>{{ 'driveConnect.backupsList' | t }}</h3>
-      @if ((backups() | async)?.length) {
-        <ul>
-          @for (backup of backups() | async; track backup) {
-            <li>{{ backup }}</li>
-          }
-        </ul>
-      } @else {
-        <p class="muted">{{ 'driveConnect.noBackups' | t }}</p>
-      }
-    </div>
-
-    <div class="card-section">
-      <button type="button" class="btn" (click)="onImportFromDrive()" [disabled]="busy()">
-        {{ 'driveConnect.importFromDrive' | t }}
-      </button>
-    </div>
-
-    <div class="card-section">
-      <h3>{{ 'driveConnect.automaticBackup' | t }}</h3>
-      <label class="checkbox">
-        <input type="checkbox" [checked]="autoBackupEnabled()" (change)="toggleAutoBackup($event)" />
-        <span>{{ autoBackupEnabled() ? ('driveConnect.automaticBackupOn' | t) : ('driveConnect.automaticBackupOff' | t) }}</span>
-      </label>
-    </div>
-
-    <div class="card-section">
-      <h3>{{ 'driveConnect.uploadPhotos' | t }}</h3>
-      <label class="checkbox">
-        <input type="checkbox" [checked]="photosWifiOnly()" (change)="togglePhotosWifiOnly($event)" />
-        <span>{{ 'driveConnect.uploadPhotos' | t }}</span>
-      </label>
-      <button type="button" class="btn btn-sm" (click)="onUploadPhotosNow()" [disabled]="!photosWifiOnly() || busy()">
-        {{ 'driveConnect.uploadPhotosNow' | t }}
-      </button>
-    </div>
-
+    <p role="status">{{ 'driveConnect.ready' | t }}</p>
+    <app-drive-backups (importFile)="onImportFromDrive($event)" />
+    <app-drive-sync />
+    <app-drive-passkey />
+    <app-drive-delete />
     <div class="card-section">
       <h3>{{ 'driveConnect.disconnect' | t }}</h3>
       <button type="button" class="btn btn-danger" (click)="onDisconnect()" [disabled]="busy()">
         {{ 'driveConnect.disconnect' | t }}
       </button>
     </div>
-
-    <div class="card-section">
-      <h3>Delete</h3>
-      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L1')" [disabled]="busy()">
-        {{ 'driveConnect.deleteMenuLevel1' | t }}
-      </button>
-      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L2')" [disabled]="busy()">
-        {{ 'driveConnect.deleteMenuLevel2' | t }}
-      </button>
-      <button type="button" class="btn btn-sm" (click)="showDeleteMenu('L3')" [disabled]="busy()">
-        {{ 'driveConnect.deleteMenuLevel3' | t }}
-      </button>
-    </div>
-
-    @if (deleteConfirmLevel() === 'L1') {
-      <div class="confirm-box">
-        <p>{{ 'driveConnect.deleteConfirmL1' | t }}</p>
-        <div class="actions">
-          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="busy()">
-            {{ 'common.delete' | t }}
-          </button>
-          <button type="button" class="btn" (click)="cancelDelete()">
-            {{ 'common.cancel' | t }}
-          </button>
-        </div>
-      </div>
-    }
-    @if (deleteConfirmLevel() === 'L2') {
-      <div class="confirm-box">
-        <p>{{ 'driveConnect.deleteConfirmL2' | t }}</p>
-        <div class="actions">
-          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="busy()">
-            {{ 'common.delete' | t }}
-          </button>
-          <button type="button" class="btn" (click)="cancelDelete()">
-            {{ 'common.cancel' | t }}
-          </button>
-        </div>
-      </div>
-    }
-    @if (deleteConfirmLevel() === 'L3') {
-      <div class="confirm-box">
-        <p>{{ 'driveConnect.deleteConfirmL3' | t }}</p>
-        <label class="checkbox">
-          <input type="checkbox" [checked]="deleteL3Confirmed()" (change)="toggleDeleteL3()" />
-          <span>{{ 'driveConnect.deleteL3Confirm' | t }}</span>
-        </label>
-        <div class="actions">
-          <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="!deleteL3Confirmed() || busy()">
-            {{ 'common.delete' | t }}
-          </button>
-          <button type="button" class="btn" (click)="cancelDelete()">
-            {{ 'common.cancel' | t }}
-          </button>
-        </div>
-      </div>
-    }
   }
 
-  <!-- Error -->
-  @if (state() === 'Error') {
+  @if (state() === 'Error' || error()) {
     <div class="error-box">
       @if (error(); as err) {
-        <p>{{ ('driveConnect.error' | t: { reason: err }) }}</p>
+        <p>{{ 'driveConnect.error' | t: { reason: err } }}</p>
       }
       <button type="button" class="btn" (click)="onConnect()">
         {{ 'common.retry' | t }}

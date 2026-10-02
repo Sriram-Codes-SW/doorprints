@@ -83,14 +83,14 @@ describe('DriveConnectService', () => {
       const created = await a.service.createFolder();
       expect(created.state).toBe('FirstConnectShowRecoveryKey');
       a.service.confirmRecoveryKeySaved();
-      expect(a.service.getState()).toBe('NeedsEnrolment');
+      expect(a.service.getState()).toBe('Ready');
     });
 
     it('skipRecoveryKeyWithWarning works', async () => {
       await a.service.createFolder();
       a.service.skipRecoveryKeyWithWarning();
       expect(a.service.hasShownRecoveryKey()).toBe(true);
-      expect(a.service.getState()).toBe('NeedsEnrolment');
+      expect(a.service.getState()).toBe('Ready');
     });
   });
 

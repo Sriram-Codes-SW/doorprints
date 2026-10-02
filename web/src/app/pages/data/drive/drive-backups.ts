@@ -21,11 +21,8 @@ import {
   ChangeDetectionStrategy,
   OnInit,
   OnDestroy,
-  DestroyRef,
   inject,
   signal,
-  computed,
-  effect,
   output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -54,7 +51,6 @@ export class DriveBackupsCard implements OnInit, OnDestroy {
   private readonly service = inject(DriveConnectService);
   protected readonly i18n = inject(TranslationService);
   private readonly announcer = inject(Announcer);
-  private readonly destroyRef = inject(DestroyRef);
 
   // Outputs for parent component (data-page)
   readonly importFile = output<Blob>();

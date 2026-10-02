@@ -117,6 +117,7 @@ export class DriveConnectService {
     @Optional() @Inject(DRIVE_PREFS) private readonly prefs: DrivePrefs = browserPrefs(),
   ) {
     this.isConfigured = !!googleConfig.clientId;
+    this.state.set(this.isConfigured ? 'Disconnected' : 'Unavailable');
   }
 
   getState(): ConnectState {
@@ -187,12 +188,12 @@ export class DriveConnectService {
 
   confirmRecoveryKeySaved(): void {
     this.recoveryKeyShown = true;
-    this.state.set('NeedsEnrolment');
+    this.state.set(this.readyFolder ? 'Ready' : 'NeedsEnrolment');
   }
 
   skipRecoveryKeyWithWarning(): void {
     this.recoveryKeyShown = true;
-    this.state.set('NeedsEnrolment');
+    this.state.set(this.readyFolder ? 'Ready' : 'NeedsEnrolment');
   }
 
   hasShownRecoveryKey(): boolean {
@@ -440,13 +441,7 @@ export class DriveConnectService {
     | { readonly ok: false; readonly reason: string }
   > {
     try {
-      const context: DeletionContext = {
-        platform: 'WEBSITE',
-        deviceLock: false,
-        webPrf: false,
-        online: navigator.onLine,
-        backupsLeft: null,
-      };
+      const context = await this.deletionContext();
       const decision = this.deletionAdapter.decide(action, context);
       if (decision.outcome === 'REFUSED') {
         return { ok: false, reason: decision.reason };
@@ -469,13 +464,7 @@ export class DriveConnectService {
     | { readonly ok: false; readonly reason: string }
   > {
     try {
-      const context: DeletionContext = {
-        platform: 'WEBSITE',
-        deviceLock: false,
-        webPrf: false,
-        online: navigator.onLine,
-        backupsLeft: null,
-      };
+      const context = await this.deletionContext();
       const result = await this.deletionAdapter.authorize(action, context);
       if (result.kind === 'refused') {
         return { ok: false, reason: result.reason };
@@ -536,10 +525,13 @@ export class DriveConnectService {
   /** *Automatic backup and sync* (a per-device preference, kept in the browser; off until the person turns it on). */
   autoBackupEnabled(): boolean {
     try {
-      return this.prefs.getItem(AUTO_BACKUP_KEY) === '1';
+      const stored = this.prefs.getItem(AUTO_BACKUP_KEY);
+      if (stored === '1') return true;
+      if (stored === '0') return false;
     } catch {
-      return false;
+      /* private window: the in-memory choice below */
     }
+    return this.memoryPref;
   }
 
   async setAutoBackup(enabled: boolean): Promise<void> {
@@ -585,18 +577,12 @@ export class DriveConnectService {
 
   async deleteL2(): Promise<{ success: boolean; error?: string }> {
     try {
-      const action: DeletionAction = { type: 'olderBackups' };
+      const action: DeletionAction = { type: 'allBackups' };
       const preflight = await this.deletionAdapter.preflight(action);
       if (preflight.kind === 'refused') {
         return { success: false, error: preflight.reason };
       }
-      const context: DeletionContext = {
-        platform: 'WEBSITE',
-        deviceLock: false,
-        webPrf: false,
-        online: navigator.onLine,
-        backupsLeft: null,
-      };
+      const context = await this.deletionContext();
       const auth = await this.deletionAdapter.authorize(action, context);
       if (auth.kind === 'refused') {
         return { success: false, error: auth.reason };
@@ -615,13 +601,7 @@ export class DriveConnectService {
       if (preflight.kind === 'refused') {
         return { success: false, error: preflight.reason };
       }
-      const context: DeletionContext = {
-        platform: 'WEBSITE',
-        deviceLock: false,
-        webPrf: false,
-        online: navigator.onLine,
-        backupsLeft: null,
-      };
+      const context = await this.deletionContext();
       const auth = await this.deletionAdapter.authorize(action, context);
       if (auth.kind === 'refused') {
         return { success: false, error: auth.reason };
@@ -631,6 +611,17 @@ export class DriveConnectService {
     } catch (err) {
       return { success: false, error: String(err) };
     }
+  }
+
+  private async deletionContext(): Promise<DeletionContext> {
+    const status = await this.passkeyStatus();
+    return {
+      platform: 'WEBSITE',
+      deviceLock: false,
+      webPrf: status === 'registered',
+      online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+      backupsLeft: null,
+    };
   }
 
   // ==================== Cleanup ====================
