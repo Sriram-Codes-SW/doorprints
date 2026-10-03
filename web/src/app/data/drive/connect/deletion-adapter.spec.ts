@@ -37,6 +37,8 @@ describe('DriveDeletionAdapter', () => {
   let gate: FakeAuthorizationGate;
   let fakeAuthorizer: {
     authorize: (a: any, c: DeletionContext) => Promise<any>;
+    /** Null when this page has no PRF HMAC key; the adapter then uses the grant id (L1 always does). */
+    proofFor: (operationId: string, issuedAtMs: number) => Promise<string | null>;
     redeem?: (grant: any, action: any) => any;
   };
   let adapter: DriveDeletionAdapterImpl;
@@ -88,6 +90,8 @@ describe('DriveDeletionAdapter', () => {
         };
         return { kind: 'GRANTED', grant };
       },
+      // L2 and L3 call this. Null matches a page that has not opened the PRF, so the token proof stays the grant id.
+      proofFor: async () => null,
     };
 
     // Create a root folder by hand for testing
@@ -460,6 +464,51 @@ describe('DriveDeletionAdapter', () => {
         }
       }
     }
+  });
+
+  it('uses the HMAC from proofFor as the L2 proof, and the grant id when there is none', async () => {
+    const backups = server.putByHand({
+      name: 'Backups',
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [rootId],
+      appProperties: { [DRIVE_LAYOUT.role]: 'backups' },
+    }, new Uint8Array());
+    server.putByHand({
+      name: 'backup-1.zip',
+      mimeType: 'application/octet-stream',
+      parents: [backups.id],
+      appProperties: { [DRIVE_LAYOUT.kind]: 'backup', [DRIVE_LAYOUT.state]: 'complete' },
+    }, new Uint8Array(1024));
+    const pre = await adapter.preflight({ type: 'allBackups' });
+    if (pre.kind !== 'ready') throw new Error('preflight');
+    const context: DeletionContext = {
+      platform: 'WEBSITE',
+      deviceLock: true,
+      webPrf: true,
+      online: true,
+      backupsLeft: 5,
+    };
+    const auth = await adapter.authorize({ type: 'allBackups' }, context, pre.plan.operationId);
+    if (auth.kind !== 'granted') throw new Error('auth');
+
+    const seen: string[] = [];
+    deletionService.delete = (_plan, token) => {
+      seen.push(token?.proof ?? '');
+      return Promise.resolve({ kind: 'refused', reason: 'NOTHING_TO_DELETE', error: null });
+    };
+
+    const hmac = 'cd'.repeat(32);
+    fakeAuthorizer.proofFor = async (operationId, issuedAtMs) => {
+      expect(operationId).toBe(pre.plan.operationId);
+      expect(issuedAtMs).toBe(auth.grant.grantedAtMs);
+      return hmac;
+    };
+    await adapter.execute(pre.plan, auth.grant);
+    expect(seen).toEqual([hmac]);
+
+    fakeAuthorizer.proofFor = async () => null;
+    await adapter.execute(pre.plan, auth.grant);
+    expect(seen).toEqual([hmac, String(auth.grant.id)]);
   });
 
   it('should persist pending deletion across instances', async () => {
