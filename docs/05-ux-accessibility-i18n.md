@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.26 |
-| Date | 2026-10-01 |
+| Version | 0.27 |
+| Date | 2026-10-03 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -39,6 +39,7 @@
 | 0.24 | 2026-09-24 | Claude (Code), lead | Combined CMP-5..7 change with the web backlog and the phone display fixes (branch `claude/doorprints-dev-continue-fzcge2`, PR #24). **§4.1, §4.2**: the invalid-field edge (S4b-BL-6) with its contrast. **§5**: the text field's visible invalid state; **§5.1** *Retry*: the scope now includes the sync card, the first-run banner (S4b-BL-1) and the house page's four cards (S4b-BL-2). New **§5.2**: the web on phones (visible-height sizing, 44 px targets, the credits fold, the legend and buttons, capped banners, the keyboard, long words, the skip link). **§8.2**: 444 Compose strings and 17 plurals, 71 service strings and 4 plurals, 46 keys in both places (S4b-BL-31, S4b-BL-35). New **§8.3**: the server-reset message in four languages (S4b-BL-20). |
 | 0.25 | 2026-09-29 | Claude (Code), lead | §9: the web loads one language at a time (English built in; hi, ta, te as chunks, the saved one before the app starts); the add-a-language steps follow. |
 | 0.26 | 2026-10-01 | Claude (Code), lead | §4.1, §4.4 and §7: the light `--star` is `#966000` (was `#A86A00`, 4.44:1 on white), at least 4.5:1 on every surface a star sits on, web and phones alike (S4b-BL-110); 2.3.3 notes that Compose follows *Remove animations* on Android and *Reduce Motion* on iPhone through its frame clock. |
+| 0.27 | 2026-10-03 | Cursor Agent | §5.2: the phone map legend's floor is the row when a label is wider than the row. Tamil "Not chosen" at 200% text on a 360px phone had scrolled the page sideways by 33px; that label wraps inside the legend. |
 
 ---
 
@@ -308,10 +309,10 @@ browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); 
 | Size to what is visible | Heights use the visible page area, not `vh` (the viewport without the address bar): `100dvh` for the shell and the photo viewer, `100cqh` of `<main>` (a size container) for the phone map, which fills it less the list's heading and counters (`--map-peek`, measured by `listPeek`), at least 256 px and never shorter than MapLibre's control column |
 | Targets | 44 x 44 CSS px on touch screens, the brand link included (it was 28 px wide where its name is hidden) |
 | Map credits | Shown for 5 s after the style first loads, then folded into the (i) button (`foldAttribution`, `ATTRIBUTION_SHOW_MS`), sooner at the first zoom or move, on maps up to 640 px wide; the (i) opens them in full (nothing hides the credit, R5) |
-| Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
+| Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. A label wider than that row (Tamil "Not chosen" at 200% text on a 360px phone) wraps inside the legend instead of widening the page. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
 | Banners | At most 40 % of the visible height (`40dvh`), scrolling inside |
 | Keyboard | With a field focused on a phone under 500 px tall, the bottom bar steps aside, so it never covers the field |
-| Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`: no page scrolls sideways (a Tamil word had scrolled pages 32-103 px) |
+| Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`. The map legend's floor is `min(100%, 10rem)` and its labels use `anywhere`, because `min-content` is the longest word and had let Tamil "Not chosen" scroll the page 33px at 360px and 200% text. No page scrolls sideways |
 | Skip link | Hidden by its own height (`translateY(-110%)`) until focused; a fixed offset let a wrapped Tamil label show |
 | Header and toolbar | The app header is 48 px on phones (was 56); the house page's toolbar title takes up to two lines before its ellipsis (320 px cut "New house"), its actions at most 60 % of the bar |
 
