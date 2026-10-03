@@ -81,6 +81,12 @@ export class MemoryTrust implements FolderTrustStores {
     if (!this.controlStores.has(rootId)) this.controlStores.set(rootId, new MemoryControlStore());
     return this.controlStores.get(rootId)!;
   }
+
+  /** An empty shell is finished with a new key set; the old pins opened nothing that is still in the folder. */
+  async forgetShell(rootId: string): Promise<void> {
+    this.keysStores.set(rootId, new MemoryKeysStore());
+    this.controlStores.set(rootId, new MemoryControlStore());
+  }
 }
 
 /** A staging sink that records what was written and whether it was discarded. */

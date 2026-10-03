@@ -1319,7 +1319,7 @@ export const en = {
   'driveProblem.DEVICE_REVOKED': 'This device is no longer allowed to use this folder.',
   'driveProblem.CONTROL_ROLLED_BACK': 'The folder control file is older than this device last saw.',
   'driveProblem.CONTROL_INVALID': 'The folder control file did not pass its safety checks.',
-  'driveProblem.FOLDER_WITHOUT_KEYS': 'This Google Drive folder is missing its key list.',
+  'driveProblem.FOLDER_WITHOUT_KEYS': 'This Google Drive folder is missing its key list, and it still holds other files. Doorprints will not change those files. Open Doorprints on a device that already connected, or delete the Doorprints folder in Google Drive and connect again.',
   'driveProblem.FOLDER_EXISTS': 'A Doorprints folder is already in this Google Drive.',
   'driveProblem.BACKUP_REFUSED': 'This backup was refused.',
   'driveProblem.SOURCE_FAILED': 'This browser could not prepare the backup.',

@@ -89,6 +89,11 @@ export interface DriveStateStore {
 export interface FolderTrustStores {
   keys(rootId: string): KeysWatermarkStore;
   control(rootId: string): ControlWatermarkStore;
+  /**
+   * Drop this device's pins for `rootId` after the service has proved the folder is an empty shell.
+   * The next `pinCreated` may start a new key set. Website only: a phone still refuses that folder.
+   */
+  forgetShell?(rootId: string): Promise<void>;
 }
 
 /**
