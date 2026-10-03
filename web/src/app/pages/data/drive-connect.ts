@@ -65,6 +65,8 @@ export class DriveConnectComponent implements OnDestroy {
 
   protected readonly state = computed(() => this.service?.getState() ?? 'Unavailable');
   protected readonly busy = signal(false);
+  /** Connect and folder creation only. Disconnect uses busy and must not say the connection is in progress. */
+  private readonly connectWork = signal(false);
   protected readonly recoveryKey = signal<string | null>(null);
   protected readonly recoveryKeySaved = signal(false);
   protected readonly keyCopied = signal(false);
@@ -74,6 +76,16 @@ export class DriveConnectComponent implements OnDestroy {
   protected shownError(): TKey {
     return this.error() ?? 'driveConnect.failed';
   }
+
+  /**
+   * The gap after sign-in: busy creating a folder, state is no longer Connecting, and the recovery key
+   * is not on screen yet. Signing in… already covers Connecting. An error sentence, or the key, replaces this.
+   */
+  protected readonly connectionInProgress = computed(() => {
+    if (!this.connectWork() || this.recoveryKey() || this.error()) return false;
+    const current = this.state();
+    return current !== 'Connecting' && current !== 'Error' && current !== 'FirstConnectShowRecoveryKey';
+  });
 
   /** The revoked-device sentence, when this browser is no longer allowed. Null on a new browser. */
   protected enrolmentNotice(): TKey | null {
@@ -92,6 +104,7 @@ export class DriveConnectComponent implements OnDestroy {
   async onConnect(): Promise<void> {
     if (!this.service) return;
     this.busy.set(true);
+    this.connectWork.set(true);
     this.error.set(null);
     try {
       const result = await this.service.connect();
@@ -123,6 +136,7 @@ export class DriveConnectComponent implements OnDestroy {
       this.error.set('driveConnect.failed');
     } finally {
       this.busy.set(false);
+      this.connectWork.set(false);
     }
   }
 

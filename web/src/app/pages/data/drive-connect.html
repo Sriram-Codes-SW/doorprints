@@ -31,7 +31,11 @@
   }
 
   @if (state() === 'Connecting') {
-    <p role="status">{{ 'driveConnect.connecting' | t }}</p>
+    <p class="connection-status" role="status">{{ 'driveConnect.connecting' | t }}</p>
+  }
+
+  @if (connectionInProgress()) {
+    <p class="connection-status" role="status">{{ 'driveConnect.connectionInProgress' | t }}</p>
   }
 
   @if (state() === 'FirstConnectShowRecoveryKey' && recoveryKey(); as key) {
