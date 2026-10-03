@@ -197,6 +197,21 @@ export function createLazyBackupAdapterProxy(getRuntime: () => Promise<DriveRunt
       return result;
     },
 
+    async approveDevicePsk(publicKey, name, platform, psk) {
+      const rt = await getRuntime();
+      const result = await createBackupAdapter(rt).approveDevicePsk(publicKey, name, platform, psk);
+      if (result.kind === 'approved') updateSessionFromReady(rt, result.connection.folder);
+      return result;
+    },
+
+    async joinFromPsk(enc, ct, epoch, psk) {
+      const rt = await getRuntime();
+      const result = await createBackupAdapter(rt).joinFromPsk(enc, ct, epoch, psk);
+      if (result.kind === 'READY') updateSessionFromReady(rt, result.folder);
+      else rt.session = undefined;
+      return result;
+    },
+
     async revokeDevice(kid) {
       const rt = await getRuntime();
       const result = await createBackupAdapter(rt).revokeDevice(kid);

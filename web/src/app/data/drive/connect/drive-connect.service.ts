@@ -637,6 +637,36 @@ export class DriveConnectService {
     }
   }
 
+  /**
+   * After the connected browser has the new browser's QR text: L2, then a PSK wrap of the folder key.
+   * The base-mode wrap is not returned.
+   */
+  async approveJoinedDevicePsk(
+    publicKey: Uint8Array,
+    name: string,
+    psk: Uint8Array,
+  ): Promise<
+    | { readonly ok: true; readonly wrapEnc: string; readonly wrapCt: string; readonly epoch: number }
+    | { readonly ok: false; readonly reason: string }
+  > {
+    const auth = await this.authorizePolicyAction('APPROVE_DEVICE');
+    if (!auth.ok) return auth;
+    try {
+      const approved = await this.backupAdapter.approveDevicePsk(publicKey, name, 'web', psk);
+      if (approved.kind === 'error') return { ok: false, reason: problemToMsg(approved.problem.kind) };
+      this.updateReadyFolderFromConnection(approved.connection);
+      this.state.set('Ready');
+      return {
+        ok: true,
+        wrapEnc: b64(approved.wrapEnc),
+        wrapCt: b64(approved.wrapCt),
+        epoch: approved.epoch,
+      };
+    } catch (err) {
+      return { ok: false, reason: msgOfThrown(err) };
+    }
+  }
+
   /** Open the wrap from the enrolled browser and pin this device. */
   async joinFromWrap(wrapEnc: string, wrapCt: string, epoch: number): Promise<ConnectResult> {
     const enc = unb64(wrapEnc);
@@ -644,6 +674,19 @@ export class DriveConnectService {
     if (!enc || !ct) return { state: this.getState(), error: 'driveEnrol.badMessage' };
     try {
       const connection = await this.backupAdapter.joinFromWrap(enc, ct, epoch);
+      return this.handleConnection(connection);
+    } catch (err) {
+      return this.fail(err);
+    }
+  }
+
+  /** Open the PSK wrap from the connected browser and pin this device. */
+  async joinFromPsk(wrapEnc: string, wrapCt: string, epoch: number, psk: Uint8Array): Promise<ConnectResult> {
+    const enc = unb64(wrapEnc);
+    const ct = unb64(wrapCt);
+    if (!enc || !ct) return { state: this.getState(), error: 'driveEnrol.badMessage' };
+    try {
+      const connection = await this.backupAdapter.joinFromPsk(enc, ct, epoch, psk);
       return this.handleConnection(connection);
     } catch (err) {
       return this.fail(err);

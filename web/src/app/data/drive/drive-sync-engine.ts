@@ -367,16 +367,11 @@ export class DriveSyncEngine {
     await this.state.save(st);
     const text = encodeSyncFile(syncFile(me, seq, Math.max(now, SYNC_EARLIEST_MS), rowsFile.rows));
     const keys = ctx.keys;
-    const folderKey = keys.currentFolderKey();
-    let bytes: Uint8Array;
-    let written;
-    try {
-      const out = await this.dpx.encryptBytes(folderKey, keys.epoch, this.session.deviceKid, SYNC_INNER, utf8(text));
-      bytes = out.file;
-      written = out.result;
-    } finally {
-      folderKey.fill(0);
-    }
+    const wrap = await keys.contentWrapAes();
+    if (!wrap) throw new DriveError('BAD_REQUEST', 0, null, 'keys');
+    const out = await this.dpx.encryptBytesWithAes(wrap, keys.epoch, this.session.deviceKid, SYNC_INNER, utf8(text));
+    const bytes = out.file;
+    const written = out.result;
     const sha = hex(written.ciphertextSha256);
     const partial = await uploadBytes(
       this.drive,

@@ -22,7 +22,7 @@ Android and iPhone Drive work is paused. This page describes the **website**.
 
 On a second computer, **Connect** then type the recovery key. You can also compare an **8-digit code** (copy a pairing
 request from the new browser, paste it on one that is already connected, paste the reply back; both screens must show
-the same eight digits). Enrolment by QR code is a later ticket.
+the same eight digits). A new browser can also show a QR code; the connected browser scans it or you paste the code.
 
 ## Delete
 

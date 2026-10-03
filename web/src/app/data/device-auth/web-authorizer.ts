@@ -24,6 +24,7 @@ import type {
   RefusalReason,
   Requirements,
 } from "./delete-policy";
+import { checkProof, importProofKey, signProof } from "./deletion-proof";
 import { openWithPrf } from "./prf-seal";
 import type { PrfAuthenticator, SealedBlob } from "./prf-seal";
 import type { CryptoProvider } from "../crypto/crypto-provider";
@@ -55,6 +56,8 @@ export class WebAuthorizer {
   private readonly spent = new Set<number>();
   /** Grants this authorizer issued after a policy pass (and a PRF open for L2/L3). Looked up by id on redeem. */
   private readonly issued = new Map<number, WebGrant>();
+  /** Non-extractable HMAC key from the latest PRF open. Gone when the page is. L1 does not use it. */
+  private proofKey: CryptoKey | null = null;
 
   constructor(
     private readonly p: CryptoProvider,
@@ -77,13 +80,25 @@ export class WebAuthorizer {
       return { kind: "DENIED", reason: "NOT_SUPPORTED" };
     const blob = await this.sealed();
     if (!blob) return { kind: "DENIED", reason: "NOT_SUPPORTED" };
-    const r = await openWithPrf(this.p, this.prf, blob).catch(() => ({
+    const r = await openWithPrf(this.p, this.prf, blob, async (output) => {
+      this.proofKey = await importProofKey(output);
+    }).catch(() => ({
       ok: false as const,
       reason: "FAILED" as const,
     }));
     if (!r.ok) return { kind: "DENIED", reason: r.reason };
     r.plaintext.fill(0);
     return { kind: "GRANTED", grant: this.issue(action, req) };
+  }
+
+  /** Hex HMAC of this operation, or null when this page has not opened the PRF. */
+  proofFor(operationId: string, issuedAtMs: number): Promise<string | null> {
+    return this.proofKey ? signProof(this.proofKey, operationId, issuedAtMs) : Promise.resolve(null);
+  }
+
+  /** True only when `proof` is the HMAC of this operation under the PRF-derived key. */
+  verifyProof(operationId: string, issuedAtMs: number, proof: string): Promise<boolean> {
+    return this.proofKey ? checkProof(this.proofKey, operationId, issuedAtMs, proof) : Promise.resolve(false);
   }
 
   redeem(grant: WebGrant, action: DeletionAction): WebRedeemed {

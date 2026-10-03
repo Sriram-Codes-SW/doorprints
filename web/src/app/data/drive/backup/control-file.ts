@@ -129,12 +129,8 @@ export class ControlFile {
   }
 
   private async write(body: ControlBody, opened: OpenedKeys): Promise<WrittenControl> {
-    const key = opened.currentFolderKey();
-    try {
-      return { bytes: this.encode(body, await this.mac(key, body)), body };
-    } finally {
-      key.fill(0);
-    }
+    const data = concat(utf8(CONTROL_FORMAT), new Uint8Array([0]), controlBodyJson(body));
+    return { bytes: this.encode(body, await opened.hmacUnder(opened.epoch, 'doorprints/dpx1/control', data)), body };
   }
 
   /** Opens `file` with the folder keys of an opened `keys.json`, then moves the watermark in `store`. */

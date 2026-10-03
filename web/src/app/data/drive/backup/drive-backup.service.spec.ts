@@ -685,4 +685,24 @@ describe('DriveBackupService', () => {
     }
     expect((await b.service.connect()).kind).not.toBe('READY');
   });
+
+  it('a QR PSK wrap enrols a second device; a wrong PSK or another key does not', async () => {
+    const { server } = world();
+    const a = await Rig.make(server, 'Browser A');
+    await a.created();
+    const b = await Rig.make(server, 'Browser B');
+    const psk = p.randomBytes(32);
+    const approved = await a.service.approveDevicePsk(b.identity.key.publicKey, b.identity.name, 'web', psk);
+    expect(approved.kind).toBe('approved');
+    if (approved.kind !== 'approved') return;
+    const wrong = psk.slice();
+    wrong[0] ^= 1;
+    expect((await b.service.joinFromPsk(approved.wrapEnc, approved.wrapCt, approved.epoch, wrong)).kind).toBe('ERROR');
+    const other = await Rig.make(server, 'Browser C');
+    expect((await other.service.joinFromPsk(approved.wrapEnc, approved.wrapCt, approved.epoch, psk)).kind).toBe('ERROR');
+    const joined = await b.service.joinFromPsk(approved.wrapEnc, approved.wrapCt, approved.epoch, psk);
+    expect(joined.kind).toBe('READY');
+    if (joined.kind !== 'READY') return;
+    expect(joined.folder.keys.body.devices).toHaveLength(2);
+  });
 });

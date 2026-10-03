@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.13 |
+| Version | 0.14 |
 | Date | 2026-10-03 |
 | Author | Claude (Code), lead |
-| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; HMAC-over-operationId proof S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
+| Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR on the phones and the phones' HMAC proof stay open with S4b-BL-134 and S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
 ## Change log
 
@@ -25,6 +25,7 @@
 | 0.11 | 2026-10-02 | Cursor Agent, lead | **§10.4:** an L2/L3 grant is registered at **authorize** with that preflight plan's `operationId`. Execute of another plan of the same action (a different `operationId`) is refused. The in-memory grant is gone after a reload; the sealed passkey remains and a new PRF open is required. HMAC of the operation id as the proof is still S4b-BL-135. |
 | 0.12 | 2026-10-02 | Cursor Agent, lead | Website Drive cards (draft PR #118): connect, join, backups, delete and sync show **translated reasons** (`TKey`, `problemToMsg` / `msgOfThrown`), never `String(err)` or a raw English sentence from the service. Empty `GOOGLE_CONFIG` is Unavailable with no Connect button. |
 | 0.13 | 2026-10-03 | Cursor Agent, lead | Website version 1 gaps on draft PR #118: the 8-digit path enrols with this device's real public key and the HPKE wrap (`approveDevice` / `joinFromWrap`; the recovery key is not required to finish). *Revoke this device* (L2) shows a new recovery key once and says it does not sign the device out of Google. *Disconnect on all devices* (L2) revokes the in-memory GIS token, then drops the local session. A delete that stops with files left shows the count and *Try again*. Sync runs about two minutes after the last local change while Your data is open. Screen copy: backups only while open, the browser-lock warning, the 2-Step Verification sentence, the three disconnect actions, website photo behaviour. QR enrolment stays S4b-BL-134. Non-extractable folder keys (S4b-BL-132) and HMAC deletion proof (S4b-BL-135) stay open. The repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID` is set; a real Google sign-in in the browser is the remaining owner step. |
+| 0.14 | 2026-10-03 | Cursor Agent, lead | Website version 1 closed on draft PR #118. **§9.9:** an opened folder key is a non-extractable HKDF `CryptoKey` (S4b-BL-132, website). **§9.5:** the website shows a QR (`dp1.` of `pk_new` ‖ `s`) and the enrolled browser scans it or the person pastes it; the wrap is HPKE PSK mode. The website's `s` is **32 bytes** (RFC 9180's minimum), not the 128 bits of the prose, because a shorter PSK is refused; `psk_id` is `doorprints/dpx1/qr-psk`. `keys.json` device wraps stay base mode. **§10.4:** an L2/L3 proof is an HMAC of `operationId` and `issuedAtMs` under a key from the passkey PRF (S4b-BL-135, website); L1 stays the grant id. Android and iPhone QR and HMAC stay open. A real Google sign-in in the browser is the remaining owner step. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -793,6 +794,8 @@ connect makes a new key set and a new recovery key (§3.2).
 | vi | **What Google still sees** | File names, sizes, times, the number of files (so roughly the number of photos), who a file is shared with, and the account. The names carry no house data (`Doorprints-backup-<date>.dpx`, photos `p-<random>.dpx`); `appProperties` carry only random ids and `state`, no house id or plaintext checksum. Drive's preview, search and virus scan see only noise, by design |
 | vii | **Readable without the app** | No longer: an encrypted backup opens only in Doorprints (any platform, the website included, with a device key or the recovery key). If Google stops the project (R1), the person downloads the `.dpx` files from Drive and opens them with the website and the recovery key; *Save a copy* to the device stays unencrypted, as today |
 
+**Website QR (draft PR #118, S4b-BL-134).** A new browser shows a QR, drawn in the page with no extra library, and a copyable link. The payload is `dp1.` plus the base64url of `pk_new` (65 bytes) followed by `s`. The enrolled browser scans it with `BarcodeDetector` when that API exists, or the person pastes the text. After an L2 passkey check the enrolled browser returns an HPKE **PSK** wrap of the current folder key (not the base-mode wrap stored in `keys.json`). The newcomer opens that wrap and pins. The wrap's reply is pasted, the same channel as the 8-digit path. **`s` on the website is 32 bytes**, RFC 9180's minimum `Nsk`. The prose above says 128 bits; `keySchedule` refuses a shorter PSK, so the website does not use 16 bytes. `psk_id` is the UTF-8 of `doorprints/dpx1/qr-psk`. Scanning a real camera is TC-M-52. Android and iPhone QR enrolment stay open.
+
 ### 9.6 The envelope format (`dpx/1`)
 
 `"DPX1"` magic, a 2-byte header length, a JSON header (`v`, `alg` `A256GCM-STREAM-64K`, `epoch`, `kid` of the writing
@@ -848,7 +851,7 @@ because WebCrypto is asynchronous). Tests: TC-U-125..TC-U-131 ([06](06-test-plan
 | Piece | Kotlin / TypeScript | What it is |
 |---|---|---|
 | Primitives | `CryptoProvider` (`JvmCryptoProvider` on Android, `WebCryptoProvider`; the iPhone's `actual` fails closed with `UNAVAILABLE` until S4b-BL-131) | Random bytes, SHA-256, HMAC-SHA-256, AES-GCM with AAD and a caller's 96-bit nonce (opening fails closed: `AUTH_FAILED`), P-256 generate, from-scalar, validate (65 bytes, `04`, x and y < p, on the curve) and ECDH; constant-time comparison |
-| HKDF, HPKE | `Hkdf`, `Hpke` | RFC 5869 over HMAC; RFC 9180 base mode, DHKEM(P-256, HKDF-SHA256), HKDF-SHA256, AES-256-GCM (AES-128-GCM only for the A.3 vectors); `setupBaseS/R`, `seal`, `open`; the key schedule takes mode, `psk` and `psk_id`, so S4b-BL-126 adds PSK mode without changing it |
+| HKDF, HPKE | `Hkdf`, `Hpke` | RFC 5869 over HMAC; RFC 9180 base mode, DHKEM(P-256, HKDF-SHA256), HKDF-SHA256, AES-256-GCM (AES-128-GCM only for the A.3 vectors); `setupBaseS/R`, `seal`, `open`; the website also has `setupPskS/R`, `sealPsk`, `openPsk` (mode `0x01`) for the QR channel of §9.5 |
 | The recovery key | `RecoveryKey` | §9.4, the text and the key pair |
 | The envelope | `Dpx` | `dpx/1`, streaming and in memory |
 | The key list | `KeysFile`, `OpenedKeys` | Create (first device), open by a device or the recovery key, add a device, new epoch (revoke, new recovery key), the chain |
@@ -951,11 +954,17 @@ What this design did not say, and the build chose (the default unless the owner 
   failing source or sink) can leave a partial file on the sink, which the caller discards; `decrypt` writes each chunk
   only once it authenticated, but the whole file is proven only when it returns. Content keys, folder-key copies,
   derived keys and the recovery scalar are overwritten after use where the code holds them; the platforms' own key
-  objects and JavaScript strings are out of reach ([02](02-threat-model.md) RR-28, S4b-BL-132).
+  objects and JavaScript strings are out of reach ([02](02-threat-model.md) RR-28). **On the website an opened folder key
+  is now a non-extractable HKDF base** (S4b-BL-132): imported once with `extractable: false`, and the MAC, content-wrap,
+  chain-wrap and key-id keys are derived from it. `currentFolderKey()` throws on that object. A wrap or a chain link
+  still needs the raw key once, so `rawFolderKey()` opens the device or recovery wrap again and the caller wipes the
+  copy. A key the page has just created still holds raw bytes until that same object writes its next wrap. The vectors
+  in `dpx-vectors.json` stay byte-identical. Content keys and the recovery scalar are still raw while used. Android
+  still holds folder keys as bytes.
 - **Not in this ticket**: the local copies that rebuild `keys.json` and the first-connect rule (S4b-BL-126), the MACed
   `doorprints.json` (S4b-BL-116, with `KeysGuard` and a MAC of its own label), Keystore, Secure Enclave and IndexedDB key
-  storage (S4b-BL-127, -131, -126), PSK mode and its RFC 9180 A.3.2 vectors (S4b-BL-126), the vectors on the Android
-  runtime's own provider (Conscrypt, S4b-BL-133).
+  storage (S4b-BL-127, -131, -126), RFC 9180 A.3.2 known-answer vectors for PSK mode (the website's `sealPsk` /
+  `openPsk` are in for the QR channel), the vectors on the Android runtime's own provider (Conscrypt, S4b-BL-133).
 
 ## 10. Device authentication and the device lock (owner addition, 2026-10-02)
 
@@ -975,7 +984,7 @@ Which factor satisfies a level, per platform:
 | Platform | L2 | L3 | Approving a new device |
 |---|---|---|---|
 | Android phone, iPhone | **Device authentication** | Device authentication | Scanning the new device's QR code (or, without a camera, the 8-digit comparison of §9.5 i) **and** device authentication on the approving phone |
-| Website with a passkey whose PRF extension seals the website's key | The passkey (user verification) | The passkey | The 8-digit comparison (a computer rarely has a camera) and the passkey |
+| Website with a passkey whose PRF extension seals the website's key | The passkey (user verification) | The passkey | The QR of §9.5 i (scan when the browser can, otherwise paste) or the 8-digit comparison, and the passkey |
 | Website without that | Not offered: "To do this, use Doorprints on your phone" | Not offered | Not offered |
 
 The authenticator app (§10.5) is deferred and is not a factor in version 1.
@@ -1045,8 +1054,11 @@ select_account), so it is not a check of who is at the keyboard and is not used 
   `operationId` (`registerGrant` then, not at execute), and is redeemed once (`WebAuthorizer.redeem` inside
   `RealAuthorizationGate.isGenuine`). Execute of another plan of the same action (a different `operationId`) is
   refused (`AUTHORIZATION_OTHER_OPERATION`). The grant map is in memory only: after a reload it is gone, the sealed
-  passkey in IndexedDB remains, and a new PRF open is required. Binding the proof bytes themselves to an HMAC of the
-  operation id is S4b-BL-135.
+  passkey in IndexedDB remains, and a new PRF open is required. **The proof bytes are an HMAC** (S4b-BL-135, website):
+  after the PRF open, the page derives a non-extractable HMAC key (HKDF info `doorprints/deletion-proof/1`) and
+  `AuthorizationToken.proof` is the hex HMAC of `utf8(operationId) ‖ 0x00 ‖ u64be(issuedAtMs)`. A 64-hex proof that
+  was not made under that key fails, including one registered in the page without the PRF. L1 keeps the numeric grant
+  id as its proof. The phones' HMAC, under the device lock, is still open.
 
 ### 10.5 An authenticator app as an option (owner addition, 2026-10-02; **deferred, not in v1**)
 

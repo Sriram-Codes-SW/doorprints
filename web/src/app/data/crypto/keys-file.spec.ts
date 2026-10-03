@@ -22,7 +22,7 @@ import { CanonicalJson } from './canonical-json';
 import { WebCryptoProvider } from './crypto-provider';
 import type { P256PrivateKey } from './crypto-provider';
 import { Dpx } from './dpx';
-import { chainWrapKey, HPKE_INFO, kidOf, macKey, WrapAad } from './folder-key';
+import { chainWrapKey, deriveFolderBits, hmacFromBase, HPKE_INFO, importFolderBase, keyId, kidOf, macKey, WrapAad } from './folder-key';
 import { Hpke } from './hpke';
 import { bodyJson, KeysError, KeysFile, OpenedKeys } from './keys-file';
 import type { KeysBody, KeysErrorKind, WrittenKeys } from './keys-file';
@@ -103,7 +103,7 @@ describe('keys.json', () => {
     const w1 = await files.createFirstDevice(nd(phone, 'Pixel 8'), recovery, t0);
     const old = (await new Dpx(p).encryptBytes(w1.opened.currentFolderKey(), 1, kid(phone), 'doorprints-backup/2', utf8('old'))).file;
     const w2 = await files.addDevice(w1.opened, kid(phone), nd(tablet, 'Tab'), t0 + 1);
-    expect(hex((await files.openFirstPin(w2.bytes, tablet, fresh(), w1.opened.currentFolderKey())).currentFolderKey())).toBe(hex(w1.opened.currentFolderKey()));
+    expect(hex(await (await files.openFirstPin(w2.bytes, tablet, fresh(), w1.opened.currentFolderKey())).rawFolderKey())).toBe(hex(w1.opened.currentFolderKey()));
     await expectKind('ALREADY_ENROLLED', () => files.addDevice(w2.opened, kid(phone), nd(tablet, 'again'), t0 + 2));
     await expectKind('NOT_LISTED', () => files.addDevice(w2.opened, kid(laptop), nd(laptop, 'x'), t0 + 2));
     await expectKind('NEW_RECOVERY_REQUIRED', () => files.newEpoch(w2.opened, t0 + 100, { revokeKid: kid(tablet) }));
@@ -119,7 +119,7 @@ describe('keys.json', () => {
     expect(new TextDecoder().decode((await new Dpx(p).decryptBytes(byLaptop, 'doorprints-backup/2', old)).plaintext)).toBe('old');
     await files.open(w4.bytes, phone, await pinnedTo(w1));
     const byRecovery = await files.openWithRecovery(w4.bytes, RecoveryKey.parse(r2.display.toLowerCase()), fresh());
-    expect(hex(byRecovery.currentFolderKey())).toBe(hex(byLaptop.currentFolderKey()));
+    expect(hex(await byRecovery.rawFolderKey())).toBe(hex(await byLaptop.rawFolderKey()));
     await expectKind('RECOVERY_MISMATCH', () => files.openWithRecovery(w4.bytes, recovery, fresh()));
     const body = byLaptop.body;
     expect(revokedEpochRule(body, 1, kid(tablet), t0 + 50)).toBe('ACCEPT');
@@ -173,7 +173,7 @@ describe('keys.json', () => {
     const thief = await files.openFirstPin(w3.bytes, T, fresh(), w1.opened.currentFolderKey());
     const revoke = await files.newEpoch(w3.opened, 4, { revokeKid: kid(T) });
     const poisoned: KeysBody = { ...thief.body, revision: Number.MAX_SAFE_INTEGER };
-    const mac = await p.hmacSha256(await macKey(p, thief.currentFolderKey()), concat(utf8('doorprints-keys/1'), new Uint8Array([0]), bodyJson(poisoned)));
+    const mac = await p.hmacSha256(await macKey(p, await thief.rawFolderKey()), concat(utf8('doorprints-keys/1'), new Uint8Array([0]), bodyJson(poisoned)));
     await expectKind('REVISION_JUMP', () => files.open(fileOf(poisoned, mac), B, gB));
     const o = await files.openFirstPin(fileOf(poisoned, mac), B, fresh(), w1.opened.currentFolderKey());
     await expectKind('REVISION_LIMIT', async () => files.addDevice(o, kid(B), nd(await p.p256Generate(), 'x'), 5));
@@ -278,7 +278,7 @@ describe('keys.json after the second review (poc2)', () => {
     const w2 = await files.addDevice(w1.opened, kid(A), nd(T, 'Thief'), 2);
     await gA.acceptWritten(w2);
     const t = await files.openFirstPin(w2.bytes, T, fresh(), w1.opened.currentFolderKey());
-    const poisoned = await signed({ ...t.body, revision: Number.MAX_SAFE_INTEGER }, t.currentFolderKey());
+    const poisoned = await signed({ ...t.body, revision: Number.MAX_SAFE_INTEGER }, await t.rawFolderKey());
     await expectKind('REVISION_JUMP', () => files.open(poisoned, A, gA));
     const o = await files.openFirstPin(poisoned, A, fresh(), w1.opened.currentFolderKey());
     const revoke = await files.newEpoch(o, 3, { revokeKid: kid(T), newRecovery: RecoveryKey.generate(p) });
@@ -303,6 +303,27 @@ describe('keys.json after the second review (poc2)', () => {
     await expectKind('ROLLED_BACK', () => files.open(wb.bytes, phone, h));
     await files.repinWithRecovery(wb.bytes, recovery, h);
     expect((await h.watermark())!.epoch).toBe(1);
+  });
+
+  it('holds an opened folder key only as a non-extractable HKDF base', async () => {
+    const phone = await p.p256Generate();
+    const w = await files.createFirstDevice(nd(phone, 'Pixel 8'), null, t0);
+    expect(w.opened.retainsRaw()).toBe(true);
+    const raw = w.opened.currentFolderKey();
+    const base = await importFolderBase(raw);
+    expect(base.extractable).toBe(false);
+    await expect(crypto.subtle.exportKey('raw', base)).rejects.toBeTruthy();
+    const data = utf8('mac-input');
+    expect(hex(await hmacFromBase(base, 'doorprints/dpx1/dir', data))).toBe(hex(await p.hmacSha256(await macKey(p, raw), data)));
+    expect(hex(await deriveFolderBits(base, 'doorprints/dpx1/key-id'))).toBe(hex(await keyId(p, raw)));
+    const g = fresh();
+    await files.openFirstPin(w.bytes, phone, g, raw);
+    const opened = await files.open(w.bytes, phone, g);
+    expect(opened.retainsRaw()).toBe(false);
+    expect(() => opened.currentFolderKey()).toThrow(KeysError);
+    expect(hex(await opened.rawFolderKey())).toBe(hex(raw));
+    expect(hex(await opened.keyIdAt())).toBe(hex(await keyId(p, raw)));
+    raw.fill(0);
   });
 
   it('keeps the pin out of reach of app code', async () => {

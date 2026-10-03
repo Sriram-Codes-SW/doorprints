@@ -19,7 +19,7 @@
 import { b64, unb64 } from '../../crypto/bytes';
 import { commitHolds, commitNonce, pairingCode, pairingExpired } from './pairing-code';
 
-/** One pairing message on the channel (Drive file or a test double). QR enrolment is a later ticket. */
+/** One pairing message on the 8-digit channel. QR enrolment is the separate `dp1.` code. */
 export interface PairingMessage {
   readonly phase: 'commit' | 'approver' | 'reveal';
   readonly createdAtMs: number;

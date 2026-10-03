@@ -221,4 +221,23 @@ export class Hpke {
   async open(enc: Uint8Array, skR: P256PrivateKey, info: Uint8Array, aad: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array> {
     return (await this.setupBaseR(enc, skR, info)).open(aad, ciphertext);
   }
+
+  /** SetupPSKS (RFC 9180). `psk` is at least 32 bytes, the suite's Nsk. */
+  async setupPskS(pkR: Uint8Array, info: Uint8Array, psk: Uint8Array, pskId: Uint8Array, ephemeral?: P256PrivateKey): Promise<{ enc: Uint8Array; context: HpkeContext }> {
+    const { sharedSecret, enc } = await this.encap(pkR, ephemeral ?? (await this.generateKeyPair()));
+    return { enc, context: await this.context(await this.keySchedule(MODE_PSK, sharedSecret, info, psk, pskId)) };
+  }
+
+  async setupPskR(enc: Uint8Array, skR: P256PrivateKey, info: Uint8Array, psk: Uint8Array, pskId: Uint8Array): Promise<HpkeContext> {
+    return this.context(await this.keySchedule(MODE_PSK, await this.decap(enc, skR), info, psk, pskId));
+  }
+
+  async sealPsk(pkR: Uint8Array, info: Uint8Array, aad: Uint8Array, plaintext: Uint8Array, psk: Uint8Array, pskId: Uint8Array): Promise<{ enc: Uint8Array; ciphertext: Uint8Array }> {
+    const s = await this.setupPskS(pkR, info, psk, pskId);
+    return { enc: s.enc, ciphertext: await s.context.seal(aad, plaintext) };
+  }
+
+  async openPsk(enc: Uint8Array, skR: P256PrivateKey, info: Uint8Array, aad: Uint8Array, ciphertext: Uint8Array, psk: Uint8Array, pskId: Uint8Array): Promise<Uint8Array> {
+    return (await this.setupPskR(enc, skR, info, psk, pskId)).open(aad, ciphertext);
+  }
 }

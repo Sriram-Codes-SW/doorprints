@@ -45,7 +45,7 @@ export interface DriveDeletionAdapter {
 
   /**
    * Issues a one-use 60-second grant for `action` bound to `operationId` (the preflight plan's id).
-   * Policy must have said ALLOWED. HMAC of the operation id as the proof is S4b-BL-135.
+   * Policy must have said ALLOWED. An L2 or L3 proof is an HMAC under the PRF-derived key (S4b-BL-135).
    */
   authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult>;
 
@@ -206,7 +206,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
   async execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome> {
     const mismatch = this.grantOperationMismatch(grant, plan.operationId);
     if (mismatch) return mismatch;
-    const token = this.grantToToken(plan, grant);
+    const token = await this.grantToToken(plan.operationId, grant);
     return this.deletionService.delete(plan, token);
   }
 
@@ -221,7 +221,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     }
     const mismatch = this.grantOperationMismatch(grant, pending.operationId);
     if (mismatch) return mismatch;
-    const token = this.grantToTokenWithOperationId(grant, pending.operationId);
+    const token = await this.grantToToken(pending.operationId, grant);
     return this.deletionService.resume(token);
   }
 
@@ -240,23 +240,20 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     return confirmGateOf(this.decide(action, context));
   }
 
-  private grantToToken(plan: DeletionPlan, grant: WebGrant | null): AuthorizationToken | null {
+  /**
+   * L1 keeps the grant id as the proof (no PRF). L2 and L3 use the HMAC under the key from that PRF open.
+   * A missing HMAC key leaves the grant id, which `isGenuine` rejects for L2 and L3.
+   */
+  private async grantToToken(operationId: string, grant: WebGrant | null): Promise<AuthorizationToken | null> {
     if (!grant) return null;
-    return {
-      level: grant.requirements.level,
-      issuedAtMs: grant.grantedAtMs,
-      operationId: plan.operationId,
-      proof: String(grant.id),
-    };
-  }
-
-  private grantToTokenWithOperationId(grant: WebGrant | null, operationId: string): AuthorizationToken | null {
-    if (!grant) return null;
+    const hmac = grant.requirements.level === 'L1' || grant.requirements.factor === 'NONE'
+      ? null
+      : await this.webAuthorizer.proofFor(operationId, grant.grantedAtMs);
     return {
       level: grant.requirements.level,
       issuedAtMs: grant.grantedAtMs,
       operationId,
-      proof: String(grant.id),
+      proof: hmac ?? String(grant.id),
     };
   }
 

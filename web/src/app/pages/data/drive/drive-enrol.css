@@ -51,3 +51,25 @@
 .error-message {
   color: var(--error-text, #b00020);
 }
+
+.qr {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  margin: 0.5rem 0 1rem;
+}
+
+.qr-row {
+  display: flex;
+  line-height: 0;
+}
+
+.qr-cell {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+}
+
+.qr-cell.on {
+  background: #000;
+}

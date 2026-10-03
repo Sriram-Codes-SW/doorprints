@@ -38,6 +38,8 @@ function fakeService() {
     devicePublicKey: async () => deviceKey.slice(),
     approveJoinedDevice: vi.fn(async () => ({ ok: true, wrapEnc: 'YQ', wrapCt: 'Yg', epoch: 1 })),
     joinFromWrap: vi.fn(async () => ({ state: 'Ready' as const })),
+    approveJoinedDevicePsk: vi.fn(async () => ({ ok: true, wrapEnc: 'YQ', wrapCt: 'Yg', epoch: 1 })),
+    joinFromPsk: vi.fn(async () => ({ state: 'Ready' as const })),
   };
 }
 
@@ -135,6 +137,27 @@ describe('DriveEnrolCard', () => {
     a.fixture.detectChanges();
     await a.component['joinFolder']();
     expect(a.svc.joinFromWrap).toHaveBeenCalledWith('YQ', 'Yg', 1);
+    a.fixture.detectChanges();
+    expect(a.component['joined']()).toBe(true);
+  });
+
+  it('shows a QR code and joins from the PSK wrap', async () => {
+    const a = await render();
+    await a.component['becomeQrNewcomer']();
+    a.fixture.detectChanges();
+    const offer = a.component['requestText']();
+    expect(offer.startsWith('dp1.')).toBe(true);
+    expect(a.host.querySelectorAll('.qr-cell.on').length).toBeGreaterThan(20);
+
+    const b = await render();
+    b.component['becomeQrApprover']();
+    b.component['requestText'].set(offer);
+    await b.component['approveQr']();
+    expect(b.svc.approveJoinedDevicePsk).toHaveBeenCalledTimes(1);
+
+    a.component['replyText'].set(b.component['replyText']());
+    await a.component['joinFromQr']();
+    expect(a.svc.joinFromPsk).toHaveBeenCalled();
     a.fixture.detectChanges();
     expect(a.component['joined']()).toBe(true);
   });

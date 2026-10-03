@@ -20,6 +20,8 @@ import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { unb64 } from '../../../data/crypto/bytes';
+import { encodeQr } from '../../../data/crypto/qr-code';
+import { parseQrOffer, qrOfferText } from '../../../data/crypto/qr-enrol';
 import { TPipe } from '../../../i18n/t.pipe';
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
@@ -37,9 +39,9 @@ import {
 const WEBSITE_DEVICE_NAME = 'Website';
 
 /**
- * Second-browser enrolment without a camera (docs/15 §9.5 i). Both sides use this device's real public key.
- * After the codes match, the connected browser approves (L2) and the new browser opens the returned wrap.
- * QR enrolment is a later ticket. The recovery key stays on the sibling join card.
+ * Second-browser enrolment (docs/15 §9.5 i). The new browser can show a QR code (`pk_new ‖ s`) or an 8-digit
+ * comparison. The connected browser scans or pastes the code, approves (L2), and the new browser opens the
+ * PSK wrap. The 8-digit path still uses the base-mode wrap. The recovery key stays on the sibling join card.
  */
 @Component({
   selector: 'app-drive-enrol',
@@ -53,7 +55,9 @@ export class DriveEnrolCard {
   private readonly service = inject(DriveConnectService);
   protected readonly i18n = inject(TranslationService);
 
-  protected readonly role = signal<'choose' | 'newcomer' | 'approver'>('choose');
+  protected readonly role = signal<'choose' | 'newcomer' | 'approver' | 'qr-new' | 'qr-old'>('choose');
+  protected readonly qr = signal<boolean[][] | null>(null);
+  protected readonly camera = signal(typeof barcodeDetector() === 'function');
   protected readonly requestText = signal('');
   protected readonly replyText = signal('');
   protected readonly code = signal<string | null>(null);
@@ -69,6 +73,7 @@ export class DriveEnrolCard {
 
   private nNew: Uint8Array | null = null;
   private nApprover: Uint8Array | null = null;
+  private psk: Uint8Array | null = null;
 
   protected async becomeNewcomer(): Promise<void> {
     this.error.set(null);
@@ -79,6 +84,96 @@ export class DriveEnrolCard {
     const msg = newcomerCommit(pkNew, this.nNew, Date.now());
     this.requestText.set(JSON.stringify(msg));
     this.role.set('newcomer');
+  }
+
+  protected async becomeQrNewcomer(): Promise<void> {
+    this.error.set(null);
+    this.joined.set(false);
+    const pkNew = await this.publicKey();
+    if (!pkNew) return;
+    this.psk = crypto.getRandomValues(new Uint8Array(32));
+    const text = qrOfferText(pkNew, this.psk);
+    this.requestText.set(text);
+    this.qr.set(encodeQr(new TextEncoder().encode(text)));
+    this.role.set('qr-new');
+  }
+
+  protected becomeQrApprover(): void {
+    this.error.set(null);
+    this.approved.set(false);
+    this.qr.set(null);
+    this.role.set('qr-old');
+  }
+
+  protected async approveQr(): Promise<void> {
+    this.error.set(null);
+    this.approved.set(false);
+    const offer = parseQrOffer(this.requestText());
+    if (!offer) {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const out = await this.service.approveJoinedDevicePsk(offer.publicKey, WEBSITE_DEVICE_NAME, offer.psk);
+    if (!out.ok) {
+      this.error.set(this.i18n.t(this.reasonKey(out.reason)));
+      return;
+    }
+    this.replyText.set(JSON.stringify({ wrapEnc: out.wrapEnc, wrapCt: out.wrapCt, epoch: out.epoch }));
+    this.approved.set(true);
+  }
+
+  protected async joinFromQr(): Promise<void> {
+    this.error.set(null);
+    if (!this.psk) {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const msg = parseMessage(this.replyText());
+    if (!msg || !msg.wrapEnc || !msg.wrapCt || typeof msg.epoch !== 'number') {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const result = await this.service.joinFromPsk(msg.wrapEnc, msg.wrapCt, msg.epoch, this.psk);
+    if (result.state === 'Ready') {
+      this.psk.fill(0);
+      this.psk = null;
+      this.joined.set(true);
+      return;
+    }
+    this.error.set(this.i18n.t(result.error ?? 'driveEnrol.badMessage'));
+  }
+
+  protected async useCamera(): Promise<void> {
+    this.error.set(null);
+    const Detector = barcodeDetector();
+    if (!Detector || !navigator.mediaDevices?.getUserMedia) {
+      this.error.set(this.i18n.t('driveEnrol.cameraMissing'));
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    } catch {
+      this.error.set(this.i18n.t('driveEnrol.cameraMissing'));
+      return;
+    }
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.srcObject = stream;
+    try {
+      await video.play();
+      const found = await new Detector({ formats: ['qr_code'] }).detect(video);
+      const text = found[0]?.rawValue ?? '';
+      if (!parseQrOffer(text)) {
+        this.error.set(this.i18n.t('driveEnrol.badMessage'));
+        return;
+      }
+      this.requestText.set(text.trim());
+    } catch {
+      this.error.set(this.i18n.t('driveEnrol.cameraMissing'));
+    } finally {
+      for (const track of stream.getTracks()) track.stop();
+    }
   }
 
   protected becomeApprover(): void {
@@ -216,6 +311,17 @@ export class DriveEnrolCard {
     if (reason.startsWith('drive')) return reason as TKey;
     return 'driveEnrol.badMessage';
   }
+}
+
+interface BarcodeHit {
+  rawValue: string;
+}
+interface BarcodeDetectorCtor {
+  new (options: { formats: string[] }): { detect(source: HTMLVideoElement): Promise<BarcodeHit[]> };
+}
+
+function barcodeDetector(): BarcodeDetectorCtor | undefined {
+  return (globalThis as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
 }
 
 function parseMessage(text: string): PairingMessage | null {

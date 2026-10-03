@@ -208,7 +208,23 @@ export class Dpx {
     if (!Number.isInteger(epoch) || epoch < 1 || epoch > MAX_EPOCH) throw new RangeError('epoch');
     if (writerKid.length !== KID_SIZE || !INNER.test(inner)) throw new RangeError('kid or inner');
     if (r.contentKey.length !== 32 || r.wrapNonce.length !== 12 || r.noncePrefix.length !== NONCE_PREFIX) throw new RangeError('random values');
-    const wrapped = await this.p.aesGcmSeal(await contentWrapKey(this.p, folderKey), r.wrapNonce, WrapAad.contentKey(epoch, writerKid, inner), r.contentKey);
+    return this.sealPrepared(await contentWrapKey(this.p, folderKey), epoch, writerKid, inner, source, sink, maxPlaintext, r);
+  }
+
+  private async sealPrepared(
+    wrapKey: AesKey,
+    epoch: number,
+    writerKid: Uint8Array,
+    inner: string,
+    source: ByteSource,
+    sink: ByteSink,
+    maxPlaintext: number,
+    r: { contentKey: Uint8Array; wrapNonce: Uint8Array; noncePrefix: Uint8Array },
+  ): Promise<DpxResult> {
+    if (!Number.isInteger(epoch) || epoch < 1 || epoch > MAX_EPOCH) throw new RangeError('epoch');
+    if (writerKid.length !== KID_SIZE || !INNER.test(inner)) throw new RangeError('kid or inner');
+    if (r.contentKey.length !== 32 || r.wrapNonce.length !== 12 || r.noncePrefix.length !== NONCE_PREFIX) throw new RangeError('random values');
+    const wrapped = await this.p.aesGcmSeal(wrapKey, r.wrapNonce, WrapAad.contentKey(epoch, writerKid, inner), r.contentKey);
     const header = makeHeader({ epoch, kid: writerKid.slice(), wrapNonce: r.wrapNonce.slice(), wrappedKey: wrapped, noncePrefix: r.noncePrefix.slice(), inner });
     const key = await this.p.aesKey(r.contentKey);
     const ptHash = this.p.sha256();
@@ -268,12 +284,18 @@ export class Dpx {
     // Every photo is a valid file under the same folder key: only the row's hash binds the file to the row.
     if (header.inner === PHOTO && !opts.expectedPlaintextSha256) throw new DpxError('CHECKSUM_REQUIRED', "a photo needs its row's SHA-256");
     opts.headerCheck?.(header);
-    const folderKey = await keys.folderKey(header.epoch);
-    if (!folderKey) throw new DpxError('UNKNOWN_EPOCH', `epoch ${header.epoch}`);
+    const fromBase = keys.contentWrapAes ? await keys.contentWrapAes(header.epoch) : null;
+    let folderKey: Uint8Array | null = null;
+    let wrapKey = fromBase;
+    if (!wrapKey) {
+      folderKey = await keys.folderKey(header.epoch);
+      wrapKey = folderKey ? await contentWrapKey(this.p, folderKey) : null;
+    }
+    if (!wrapKey) throw new DpxError('UNKNOWN_EPOCH', `epoch ${header.epoch}`);
     let contentKey: Uint8Array;
     try {
       contentKey = await this.p.aesGcmOpen(
-        await contentWrapKey(this.p, folderKey),
+        wrapKey,
         header.wrapNonce,
         WrapAad.contentKey(header.epoch, header.kid, header.inner),
         header.wrappedKey,
@@ -282,7 +304,7 @@ export class Dpx {
       if (e instanceof CryptoError) throw new DpxError('KEY_UNWRAP_FAILED', 'content key');
       throw e;
     } finally {
-      folderKey.fill(0);
+      folderKey?.fill(0);
     }
     const key = await this.p.aesKey(contentKey);
     contentKey.fill(0);
@@ -332,6 +354,37 @@ export class Dpx {
     if (asOther && !last) throw new DpxError('TRAILING_DATA', 'bytes after the last chunk', index);
     if (asOther && last) throw new DpxError('TRUNCATED', 'file ends after a middle chunk', index);
     throw new DpxError('CHUNK_AUTH_FAILED', `chunk ${index}`, index);
+  }
+
+  /**
+   * Encrypt under a content-wrap key already derived from the folder key (S4b-BL-132), so the raw folder key is not
+   * required for the file.
+   */
+  async encryptWithAes(
+    wrapKey: AesKey,
+    epoch: number,
+    writerKid: Uint8Array,
+    inner: string,
+    source: ByteSource,
+    sink: ByteSink,
+    maxPlaintext = DEFAULT_MAX_PLAINTEXT,
+  ): Promise<DpxResult> {
+    const contentKey = this.p.randomBytes(32);
+    try {
+      return await this.sealPrepared(wrapKey, epoch, writerKid, inner, source, sink, maxPlaintext, {
+        contentKey,
+        wrapNonce: this.p.randomBytes(12),
+        noncePrefix: this.p.randomBytes(NONCE_PREFIX),
+      });
+    } finally {
+      contentKey.fill(0);
+    }
+  }
+
+  async encryptBytesWithAes(wrapKey: AesKey, epoch: number, writerKid: Uint8Array, inner: string, plaintext: Uint8Array): Promise<{ file: Uint8Array; result: DpxResult }> {
+    const parts: Uint8Array[] = [];
+    const result = await this.encryptWithAes(wrapKey, epoch, writerKid, inner, sourceOf(plaintext), (b) => void parts.push(b), Number.MAX_SAFE_INTEGER);
+    return { file: concat(...parts), result };
   }
 
   async encryptBytes(folderKey: Uint8Array, epoch: number, writerKid: Uint8Array, inner: string, plaintext: Uint8Array): Promise<{ file: Uint8Array; result: DpxResult }> {

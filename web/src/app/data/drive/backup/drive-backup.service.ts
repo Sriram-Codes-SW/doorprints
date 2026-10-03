@@ -20,6 +20,7 @@ import { equalBytes, hex } from '../../crypto/bytes';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
 import { Dpx } from '../../crypto/dpx';
 import { HPKE_INFO, WrapAad, kidOf } from '../../crypto/folder-key';
+import { QR_PSK_ID, QR_PSK_LEN } from '../../crypto/qr-enrol';
 import { Hpke } from '../../crypto/hpke';
 import { KeysError, KeysFile, KeysGuard } from '../../crypto/keys-file';
 import type { DevicePlatform, OpenedKeys } from '../../crypto/keys-file';
@@ -246,7 +247,7 @@ export class DriveBackupService {
   /**
    * After the 8-digit codes match (docs/15 §9.5 i): re-read `keys.json`, list the new device, and return the wrap of
    * the current folder key made for exactly that public key. The newcomer opens that wrap (it came over the pairing
-   * messages, not from a file they chose in Drive) and pins with it. QR enrolment stays S4b-BL-134.
+   * messages, not from a file they chose in Drive) and pins with it. A QR enrolment uses {@link approveDevicePsk}.
    */
   async approveDevice(publicKey: Uint8Array, name: string, platform: DevicePlatform): Promise<ApproveDeviceOutcome> {
     try {
@@ -282,6 +283,34 @@ export class DriveBackupService {
   }
 
   /**
+   * After the connected browser has seen `pk_new ‖ s` (the QR or the pasted code): list the device as {@link approveDevice}
+   * does, then return a second wrap of the same folder key in HPKE PSK mode. The newcomer accepts only that wrap.
+   * The base-mode wrap stays in `keys.json` and is not handed back.
+   */
+  async approveDevicePsk(publicKey: Uint8Array, name: string, platform: DevicePlatform, psk: Uint8Array): Promise<ApproveDeviceOutcome> {
+    if (psk.length !== QR_PSK_LEN) return { kind: 'error', problem: new DriveProblem('KEYS_UNREADABLE') };
+    const approved = await this.approveDevice(publicKey, name, platform);
+    if (approved.kind !== 'approved') return approved;
+    const kid = kidOf(this.p, publicKey);
+    const folderKey = approved.connection.folder.keys.currentFolderKey();
+    try {
+      const sealed = await new Hpke(this.p).sealPsk(
+        publicKey,
+        HPKE_INFO,
+        WrapAad.folderKey(approved.epoch, kid),
+        folderKey,
+        psk,
+        QR_PSK_ID,
+      );
+      return { kind: 'approved', connection: approved.connection, wrapEnc: sealed.enc, wrapCt: sealed.ciphertext, epoch: approved.epoch };
+    } catch (e) {
+      return { kind: 'error', problem: DriveProblem.of(e) };
+    } finally {
+      folderKey.fill(0);
+    }
+  }
+
+  /**
    * The newcomer's first pin from the wrap the enrolled device handed over after the codes matched. The wrap is opened
    * here; the folder key is never taken from a Drive download alone.
    */
@@ -290,6 +319,25 @@ export class DriveBackupService {
     let folderKey: Uint8Array;
     try {
       folderKey = await hpke.open(enc, this.device.key, HPKE_INFO, WrapAad.folderKey(epoch, this.myKid), ct);
+    } catch (e) {
+      return { kind: 'ERROR', problem: DriveProblem.of(e) };
+    }
+    try {
+      return await this.openWithFolderKey(folderKey);
+    } finally {
+      folderKey.fill(0);
+    }
+  }
+
+  /**
+   * The newcomer's first pin from the PSK wrap. A wrong PSK, or a wrap made for another public key, does not open.
+   */
+  async joinFromPsk(enc: Uint8Array, ct: Uint8Array, epoch: number, psk: Uint8Array): Promise<DriveConnection> {
+    if (psk.length !== QR_PSK_LEN) return { kind: 'ERROR', problem: new DriveProblem('KEYS_UNREADABLE') };
+    const hpke = new Hpke(this.p);
+    let folderKey: Uint8Array;
+    try {
+      folderKey = await hpke.openPsk(enc, this.device.key, HPKE_INFO, WrapAad.folderKey(epoch, this.myKid), ct, psk, QR_PSK_ID);
     } catch (e) {
       return { kind: 'ERROR', problem: DriveProblem.of(e) };
     }
@@ -360,20 +408,17 @@ export class DriveBackupService {
       }
       const file = this.scratch.create();
       try {
-        const key = folder.keys.currentFolderKey();
+        const wrap = await folder.keys.contentWrapAes();
+        if (!wrap) return await this.failed(new DriveProblem('KEYS_UNREADABLE'));
         let mac: Uint8Array;
+        let written;
         try {
-          let written;
-          try {
-            written = await new Dpx(this.p).encrypt(key, folder.keys.epoch, this.myKid, payload.format, payload.source, (b) => file.write(b), MAX_BACKUP_PLAINTEXT);
-          } finally {
-            payload.close?.();
-          }
-          meta = new BackupMeta(now, payload.houses, folder.keys.epoch, this.myKid, written.ciphertextSha256);
-          mac = await meta.mac(this.p, key);
+          written = await new Dpx(this.p).encryptWithAes(wrap, folder.keys.epoch, this.myKid, payload.format, payload.source, (b) => file.write(b), MAX_BACKUP_PLAINTEXT);
         } finally {
-          key.fill(0);
+          payload.close?.();
         }
+        meta = new BackupMeta(now, payload.houses, folder.keys.epoch, this.myKid, written.ciphertextSha256);
+        mac = await folder.keys.hmacUnder(folder.keys.epoch, 'doorprints/dpx1/backup-meta', meta.macInput());
         const name = backupName(now, this.utcOffsetMinutes());
         const target: UploadTarget = {
           kind: 'new',

@@ -33,6 +33,8 @@ export interface CryptoProvider {
   hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array>;
   /** 16 bytes (RFC 9180's AES-128 vectors only) or 32. */
   aesKey(raw: Uint8Array): Promise<AesKey>;
+  /** An AES-GCM `CryptoKey` already derived non-extractable (S4b-BL-132). */
+  adoptAes(key: CryptoKey): AesKey;
   /** AES-GCM, 96-bit nonce chosen by the caller (never reused under a key), 128-bit tag appended. */
   aesGcmSeal(key: AesKey, nonce: Uint8Array, aad: Uint8Array, plaintext: Uint8Array): Promise<Uint8Array>;
   /** Fails closed: `CryptoError('AUTH_FAILED')` and no plaintext for a wrong key, nonce, AAD or byte. */
@@ -162,6 +164,15 @@ export class WebCryptoProvider implements CryptoProvider {
     if (raw.length !== 16 && raw.length !== 32) throw new CryptoError('INVALID_KEY', 'AES key length');
     const k = await this.subtle.importKey('raw', ab(raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
     return new WebAesKey(k, raw.length);
+  }
+
+  adoptAes(key: CryptoKey): AesKey {
+    const algo = key.algorithm as AesKeyAlgorithm;
+    if (key.type !== 'secret' || key.extractable || algo.name !== 'AES-GCM' || (algo.length !== 128 && algo.length !== 256)) {
+      throw new CryptoError('INVALID_KEY', 'derived AES key');
+    }
+    if (!key.usages.includes('encrypt') || !key.usages.includes('decrypt')) throw new CryptoError('INVALID_KEY', 'derived AES key');
+    return new WebAesKey(key, algo.length / 8);
   }
 
   private gcm(key: AesKey, nonce: Uint8Array, aad: Uint8Array): { k: CryptoKey; params: AesGcmParams } {

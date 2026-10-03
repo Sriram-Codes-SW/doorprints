@@ -204,6 +204,14 @@ export class DriveBackupAdapter {
     return this.backupService.joinFromWrap(enc, ct, epoch);
   }
 
+  approveDevicePsk(publicKey: Uint8Array, name: string, platform: DevicePlatform, psk: Uint8Array): Promise<ApproveDeviceOutcome> {
+    return this.backupService.approveDevicePsk(publicKey, name, platform, psk);
+  }
+
+  joinFromPsk(enc: Uint8Array, ct: Uint8Array, epoch: number, psk: Uint8Array): Promise<DriveConnection> {
+    return this.backupService.joinFromPsk(enc, ct, epoch, psk);
+  }
+
   revokeDevice(kid: Uint8Array): Promise<RevokeDeviceOutcome> {
     return this.backupService.revokeDevice(kid);
   }
@@ -235,6 +243,8 @@ export interface BackupAdapterInterface {
   deviceKidHex(): Promise<string>;
   approveDevice(publicKey: Uint8Array, name: string, platform: DevicePlatform): Promise<ApproveDeviceOutcome>;
   joinFromWrap(enc: Uint8Array, ct: Uint8Array, epoch: number): Promise<DriveConnection>;
+  approveDevicePsk(publicKey: Uint8Array, name: string, platform: DevicePlatform, psk: Uint8Array): Promise<ApproveDeviceOutcome>;
+  joinFromPsk(enc: Uint8Array, ct: Uint8Array, epoch: number, psk: Uint8Array): Promise<DriveConnection>;
   revokeDevice(kid: Uint8Array): Promise<RevokeDeviceOutcome>;
   accountEmail(): Promise<string | null>;
 }
