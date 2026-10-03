@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.21 |
-| Date | 2026-09-29 |
+| Version | 0.22 |
+| Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -33,8 +33,9 @@
 | 0.19 | 2026-09-29 | Claude (Code), lead | The backup workflow sketch names its runner image (`ubuntu-26.04`), as the real workflows do ([07](07-secure-build-and-deploy.md) §1). |
 | 0.20 | 2026-09-29 | Claude (Code), lead | New §5.1a: devices and the owner page (first sign-in, a lost phone, AI per device, signing other browsers out) ([03](03-design.md) §12.1, ADR-25). |
 | 0.21 | 2026-09-29 | Claude (Code), lead | §5.1a: the Gemini key on the owner page (encrypted, no restart, *Remove key*, pausing AI) and what an owner-key rotation does to it. |
+| 0.22 | 2026-10-03 | Cursor Agent, lead | S4b-BL-124: §7 IR-11 (the Google project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account), from [15](15-google-drive-backup-and-sharing.md). |
 
-Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
+Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
 ---
 
@@ -344,6 +345,50 @@ update check (the precache is per build). Then fix on a branch and merge; the ne
 that fails with `PERMISSION_DENIED`: send the red line to DevSecOps; do not add roles to the service account by hand
 ([07](07-secure-build-and-deploy.md) §6.3). Old releases are not reachable at addresses of their own, so there is
 nothing else to withdraw.
+
+### IR-11 The Google project stopped, or a client deleted
+
+Google has suspended or changed the Doorprints Cloud project `doorprints` (policy or brand verification), or one of
+its OAuth clients (website, Android, iPhone) has been deleted
+([15](15-google-drive-backup-and-sharing.md) §2.4, R1). Connect and sync fail. The houses already on each phone
+and in each browser stay. The self-hosted server, and sharing by an update file, do not use this project.
+
+| Step | Action |
+|---|---|
+| Detect | One platform cannot connect while the others still can (a client is gone), or every platform fails together (the project is stopped). In Google Cloud Console, project `doorprints`: *APIs & Services > Credentials*, and *Google Auth Platform* (Audience status, brand verification). |
+| Contain | Do not add a restricted scope such as `drive` to get past a review: that needs a yearly paid assessment, which the zero-cost rule excludes (15 §2.1). Do not move the files into the hidden app folder (`drive.appdata`): if the project stops, those files are unreachable for good (15 §2.1). |
+| What stays readable | Each person's *Doorprints* folder stays in their own Drive, because the scope is `drive.file` (15 §2.2). They download the `.dpx` files and open them on the website with *Import a backup* and the recovery key, or on a device that still holds its key (15 §1.5, §9.5 vii). A *Save a copy* already on a device is readable without Google. |
+| A deleted client | Create that client again with the same settings as 15 §2.4: web origins `https://doorprints.web.app` and `http://localhost:4200`; Android package `app.doorprints` and the release or debug SHA-1; iPhone bundle `app.doorprints`. The new client id replaces the old one in configuration only (the website's repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`, Android's Gradle property, the iPhone's `Info.plist`). Do not copy the web client's secret anywhere (15 §2.4). People on that platform connect again. Check the other platforms before assuming they still work: whether losing one client takes the others with it is still the spike's question (S4b-BL-122). |
+| A stopped project | Read Google's notice. Brand verification needs the home page and the privacy page (S4b-BL-121; the owner still signs off that text). Leave Audience on **Testing** until the release gate passes (15 §2.3). While the project is stopped, tell people the files are still in Drive and how to open a downloaded backup (the guide's Google Drive page). |
+| Learn | Record what Google said. If a client was missing, note which one so the next pass of [13](13-release-security-checklist.md) I1 catches it. |
+
+### IR-12 A leaked Picker key
+
+The Picker key is a browser API key. It is public by nature: it ships in the page. The restrictions are what protect
+it ([15](15-google-drive-backup-and-sharing.md) §2.4, [13](13-release-security-checklist.md) I3): *Websites*
+`https://doorprints.web.app/*` only, and the API *Google Picker API* only. The project number (the Picker's app id)
+is the same kind of value. Sharing, which is what the Picker is for, is deferred (S4b-BL-120). Seeing the key in the
+page or in configuration, while those restrictions still hold, is not this incident.
+
+| Step | Action |
+|---|---|
+| Detect | The key is called from a site other than `https://doorprints.web.app`, it can call an API other than the Picker API, or *Credentials > the API key* shows the restrictions missing or wider than I3. |
+| Contain | Put the two restrictions back at once. If the key was ever unrestricted, create a new key with those restrictions, point the website's Picker configuration at it, and delete the old key. This is not the server API key: IR-2 does not apply, and rotating `APP_API_KEY` does nothing here. Do not write the key into the docs (15 §2.4). |
+| Assess | *APIs & Services* metrics for the Picker API: calls from an unexpected referrer. The key does not grant `drive.file` and does not decrypt a file. Reading a file the project was handed still needs that person's OAuth grant (15 §4.3). |
+| Learn | Check I3 at the next release. |
+
+### IR-13 A person lost access to their Google account
+
+The account is closed, or the person can no longer sign in to it. Its Drive goes with it
+([15](15-google-drive-backup-and-sharing.md) §1.5). Doorprints keeps no server copy to give back.
+
+| Step | Action |
+|---|---|
+| What stays | The houses on each device that already had them. A *Save a copy* on a device is readable without Google. Another enrolled device keeps its own copy and can still make a *Save a copy*. |
+| What goes | The *Doorprints* folder in that account (backups, sync files, photos and `keys.json`) if the account stays closed or unreachable. A recovery key kept only in that Google account is gone with it (15 §9.4). |
+| If they get the account back | The files are still encrypted. A device that still has its key connects again. A new device joins from one that still has the key, or with the recovery key (15 §9.5 i, iii). With no recovery key and every device gone, the files in Drive cannot be opened (15 §1.5, §9.5 iii). |
+| If someone else has the account | They can delete the files from Drive's own pages. They cannot read the houses: the contents stay encrypted (15 §9, §10.6). The person recovers the account with Google, turns on 2-Step Verification, and changes the Google password. From a device that still opens Doorprints: *Disconnect on all devices* (or Google's *Your connections to third-party apps & services*). If a phone was also lost, *Revoke this device* (IR-1). A revoke does not sign that phone out of Google (15 §9.5 iv). *Lock old backups again* is not in version 1, so someone who has both the lost phone and the account can still open backups made before the revoke. |
+| Another Google account | A different account is a different Drive. Connecting it does not open the lost account's files. The first connect there shows a new recovery key (15 §9.4). |
 
 ## 8. Release checklist
 
