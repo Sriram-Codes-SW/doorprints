@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.87 |
+| Version | 0.89 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -86,6 +86,8 @@
 | 0.83 | 2026-10-02 | Cursor Agent, lead | Website Drive quality follow-up (draft PR #118): 06 v0.109 (TC-U-133 translated errors, empty config, a11y states, changelog order, Blob identity), 10 v0.134, 15 v0.12. |
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
 | 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
+| 0.89 | 2026-10-03 | Cursor Agent | Tamil at 200% text on a 360px phone: 05 v0.28 (the map's two-finger hint stays off the legend). |
+| 0.88 | 2026-10-03 | Cursor Agent | Tamil at 200% text on a 360px phone: 05 v0.27 (the map legend no longer scrolls the page sideways). |
 | 0.86 | 2026-10-03 | Cursor Agent, lead | Website Drive CI fix (draft PR #118): 06 v0.112 (TC-U-133: the deletion adapter's authorizer double has `proofFor`; the HMAC is the token proof). |
 | 0.85 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 closed (draft PR #118): 02 v0.56 (RR-28), 06 v0.111 (TC-U-133 QR, non-extractable keys, HMAC proof), 10 v0.136 (S4b-BL-132 done; S4b-BL-134 and S4b-BL-135 website), 14 v0.82 (N17), 15 v0.14. |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |

@@ -954,6 +954,8 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Fixed
 
+- **Tamil at 200% text on a narrow phone scrolled the map page sideways.** The status legend's "Not chosen" label (தேர்ந்தெடுக்கவில்லை) is wider than a 360px screen at that size, and the legend's minimum width was that label, so the page scrolled 33px sideways on the map and on an unknown address (which opens the map). The legend now stays within the row. The whole label wraps onto a second line and stays readable; it is not cut off. English, Hindi and Telugu at that size, in both themes, do not scroll sideways.
+- **The map's two-finger hint covered the legend on a phone.** For about a second after the map loaded, before any touch, the white "use two fingers" sentence was painted over the legend (Tamil at 200% text on a 360px phone: on "Taken" and "Not chosen"). The hint now stays hidden until a one-finger pan is blocked, and then it sits in the map above the legend, in both themes, so the labels stay readable.
 - **The user guide's Compare and plan page** (all four languages) says Compare and Plan visits leave out Rejected and Not chosen houses, and that a status of Shortlisted or New brings one back.
 - **Compare and Plan visits offered Not chosen houses** on the phones and the website (with your own Gemini key): they now leave out Not chosen houses as well as Rejected ones, as the server's planner already did; change a house back to Shortlisted to bring it back. One rule on the three stacks, checked by a shared test vector (S4b-BL-99 a).
 - **The website's readable copies labelled the move-in date *When***: it is now *Move-in date*, in the same words as the phones' copies (S4b-BL-99 d).
