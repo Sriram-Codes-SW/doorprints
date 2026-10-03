@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.90 |
+| Version | 0.92 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -86,6 +86,7 @@
 | 0.83 | 2026-10-02 | Cursor Agent, lead | Website Drive quality follow-up (draft PR #118): 06 v0.109 (TC-U-133 translated errors, empty config, a11y states, changelog order, Blob identity), 10 v0.134, 15 v0.12. |
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
 | 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
+| 0.92 | 2026-10-03 | Cursor Agent, lead | Website Drive card: 06 v0.117 (TC-U-133). While a deleted folder is being created, the card says "Connection in progress." |
 | 0.91 | 2026-10-03 | Cursor Agent, lead | Website Drive card: 06 v0.116 (TC-U-133), 15 v0.18. A deleted folder, an interrupted create pinned only for the bytes saved before upload, a wrong recovery key, the connected approver, and a revoked device. |
 | 0.90 | 2026-10-03 | Cursor Agent, lead | Firefox Drive encrypt check: 02 v0.57 (RR-27), 06 v0.115 (TC-U-125), 15 v0.17. A failed JWK export is not "this browser cannot encrypt". |
 | 0.89 | 2026-10-03 | Cursor Agent | Tamil at 200% text on a 360px phone: 05 v0.28 (the map's two-finger hint stays off the legend). |

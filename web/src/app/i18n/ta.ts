@@ -1205,6 +1205,8 @@ export const ta: Dict = {
   'driveConnect.unavailable': 'இந்த உலாவியில் Google Drive இணைக்க கிடைக்கவில்லை.',
   'driveConnect.connect': 'Google Drive இல் இணைக்கவும்',
   'driveConnect.connecting': 'கையொப்பமிடப்படுகிறது…',
+  // 2026-10-03: the connect is still running after sign-in. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.connectionInProgress': 'இணைப்பு நடைபெறுகிறது.',
   'driveConnect.firstConnect': 'உங்கள் மீட்டெடுக்க விசையைச் சேமிக்கவும்',
   'driveConnect.recoveryKeyNote': 'ஒருமுறை மட்டுமே காட்டப்படுகிறது. இதைப் பாதுகாப்பான இடத்தில் சேமிக்கவும் (மின்னஞ்சல், குறிப்பு பயன்பாடு, அல்லது அதை அச்சிடுங்கள்).',
   'driveConnect.recoveryKeyCopy': 'மீட்டெடுக்க விசையைக் கபி செய்யவும்',
