@@ -78,6 +78,9 @@ forgets it. If you also connect a server, you choose which one answers: **Use my
 The key stays in this browser and goes only to Google. It is forgotten when you close the tab, unless you tick
 **Remember on this device**; leave that off on a shared computer. **Remove all data** on **Your data** also removes it.
 
+On the website, **Your data** also has a **Privacy page** link (`privacy.html`) and **Back up to Google Drive**.
+See [Back up to Google Drive](google-drive.md).
+
 !!! warning "Google's free tier"
     On the free tier, Google may use what you send to improve its products, and people may read it. Keep personal
     details out of your notes, or turn on billing for the key in Google AI Studio (see

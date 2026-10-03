@@ -81,4 +81,8 @@ Android அல்லது iPhone-இல், **அமைப்புகள்** 
 
 படிக்கக்கூடிய நகல்களை (HTML, PDF, CSV, Excel, Markdown) இறக்குமதி செய்ய முடியாது.
 
+## Google Drive {#google-drive}
+
+இணையதளத்தில் **உங்கள் தரவு** இல் **Google Drive இல் பேக்கப் செய்யவும்** உள்ளது. பார்க்க: [Google Drive இல் பேக்கப்](google-drive.md). Android மற்றும் iPhone Drive பணி நிறுத்தப்பட்டுள்ளது.
+
 <img src="images/android-import.png" width="300" alt="Android-இல் காப்புப்பிரதியை இறக்குமதி செய்: Doorprints காப்புப்பிரதியிலிருந்து வீடுகள், வருகைகள், படங்களை மீட்டெடு, காப்புப்பிரதிக் கோப்பைத் தேர்ந்தெடு பொத்தான்">

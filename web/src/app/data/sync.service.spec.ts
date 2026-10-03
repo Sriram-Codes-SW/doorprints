@@ -37,7 +37,7 @@ import {
   rateLimitWaitMs,
   resumeCursor,
   serverBehind,
-  serverWasReset,
+  pushShowsReset,
   wireVersion,
 } from './sync.service';
 import type { MigrationState } from './sync.service';
@@ -1117,7 +1117,7 @@ describe('SyncService', () => {
       expect(await store.dirtyVisits()).toEqual([]);
       expect(await sync.pendingCount()).toBe(0);
       // Said calmly, once: a note, not a failure.
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
       // The two records the recorded server had sent go up again too (the broker and the place's tombstone).
@@ -1135,7 +1135,7 @@ describe('SyncService', () => {
       api.version = 30;
       recordedServer();
       await sync.syncNow(true);
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(api.since.house).toEqual([0]);
       // The pull from 0 brings the recorded rows (versions up to 42) back, so the cursors are where they were.
       expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
@@ -1152,7 +1152,7 @@ describe('SyncService', () => {
       expect(api.since).toEqual({ house: [42, 42], visit: [17, 17], photo: [8, 8], record: [22, 22] });
       expect(api.pushedHouses).toEqual([]);
       expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('does not take a push answered above the cursors for a reset', async () => {
@@ -1162,7 +1162,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.pushedHouses.map((h) => h.id)).toEqual(['local-1']);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('does not take the server keeping its own newer row (last write wins) for a reset', async () => {
@@ -1177,7 +1177,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.pushedHouses.map((h) => h.id)).toEqual([HOUSE_ID]);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     /** A server that sends its highest sync version in `GET /api/stats` (2026-09-24). */
@@ -1202,7 +1202,7 @@ describe('SyncService', () => {
       expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
       expect(api.since).toEqual({ house: [0], visit: [0], photo: [0], record: [0] });
       expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
     });
@@ -1215,7 +1215,7 @@ describe('SyncService', () => {
       expect(api.statsCalls).toBe(1);
       expect(api.pushedHouses).toEqual([]);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('treats stats without maxSyncVersion (an older server), or a failed stats request, as unknown', async () => {
@@ -1227,7 +1227,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.since.house).toEqual([42, 42]);
       expect(api.pushedHouses).toEqual([]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
       expect(sync.lastError()).toBeNull();
     });
 
@@ -1249,21 +1249,21 @@ describe('SyncService', () => {
       expect(serverBehind('many', [42, 17, 8])).toBe(false);
     });
 
-    it('is decided by serverWasReset: an accepted write at or below the highest cursor', () => {
+    it('is decided by pushShowsReset: an accepted write at or below the highest cursor', () => {
       const sent = '2026-09-23T00:00:00.000Z';
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: sent }, 42)).toBe(true);
-      expect(serverWasReset(sent, { syncVersion: 42, updatedAt: sent }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: sent }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 42, updatedAt: sent }, 42)).toBe(true);
       // The server clamped a clock that ran ahead: still accepted.
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-22T23:59:00.000Z' }, 42)).toBe(true);
-      expect(serverWasReset(sent, { syncVersion: 43, updatedAt: sent }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: '2026-09-22T23:59:00.000Z' }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 43, updatedAt: sent }, 42)).toBe(false);
       // Nothing synced yet: no cursor to be below.
-      expect(serverWasReset(sent, { syncVersion: 1, updatedAt: sent }, 0)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 1, updatedAt: sent }, 0)).toBe(false);
       // The server kept its newer row.
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-23T00:00:01.000Z' }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: '2026-09-23T00:00:01.000Z' }, 42)).toBe(false);
       // An answer that cannot be read proves nothing.
-      expect(serverWasReset(sent, { syncVersion: null, updatedAt: sent }, 42)).toBe(false);
-      expect(serverWasReset(sent, { syncVersion: 5 }, 42)).toBe(false);
-      expect(serverWasReset(sent, null, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: null, updatedAt: sent }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5 }, 42)).toBe(false);
+      expect(pushShowsReset(sent, null, 42)).toBe(false);
     });
   });
 

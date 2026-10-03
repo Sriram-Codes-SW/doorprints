@@ -60,6 +60,8 @@ import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
 import { OfflineAreasCard } from './offline-areas';
+import { DriveConnectComponent } from './drive-connect';
+import { provideDriveConnect } from '../../data/drive/connect/drive-connect.providers';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { guideUrl } from '../../shared/help-link';
 
@@ -103,9 +105,10 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
+  providers: provideDriveConnect(),
 })
 export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);
@@ -213,6 +216,12 @@ export class DataPage implements OnInit, OnDestroy {
    */
   protected stopFocused = false;
   private readonly installHeading = viewChild<ElementRef<HTMLElement>>('installHeading');
+  private readonly importCard = viewChild(ImportBackupCard);
+
+  /** A Full backup ZIP fetched from Google Drive is checked by *Import a backup*, nothing written yet. */
+  protected onDriveImport(file: Blob): void {
+    void this.importCard()?.check(file);
+  }
 
   /**
    * Nothing to export with these options, and why: `none` (no house in this browser: Android's export_empty),

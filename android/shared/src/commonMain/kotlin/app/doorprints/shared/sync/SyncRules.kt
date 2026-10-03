@@ -28,13 +28,22 @@ interface SyncRecord {
 
     /** True while this row has local changes the server has not seen yet. */
     val dirty: Boolean
+
+    /** True for a tombstone; the Drive rule puts a tombstone above a live row of the same time and writer. */
+    val deleted: Boolean get() = false
+
+    /**
+     * The device that made this version of the row (`by` in a `sync/1` file), the Drive rule's tie-break; null while
+     * the store does not keep it (S4b-BL-118 adds it), which compares as `""`.
+     */
+    val writer: String? get() = null
 }
 
 /**
  * How a pulled row meets the local copy of it (S4b-BL-70): true keeps the local row and drops the incoming one. Each
  * [app.doorprints.data.SyncBackend] supplies its own: the server's is [SyncRules.serverMerge]; Drive's per-device
- * files will use last-write-wins on `updatedAt` with ties broken by the writing device (docs/15 §5.1, S4b-BL-130),
- * because an older device snapshot must not overwrite a clean, newer local row.
+ * files use [DriveMerge.rule], last-write-wins on `updatedAt` with ties broken by the writing device (docs/15 §5.1,
+ * S4b-BL-130), because an older device snapshot must not overwrite a clean, newer local row.
  */
 fun interface MergeRule {
     fun keepLocal(local: SyncRecord?, incoming: SyncRecord): Boolean
@@ -92,7 +101,7 @@ object SyncRules {
         maxSyncVersion != null && cursors.any { it > maxSyncVersion }
 
     /**
-     * S4b-BL-20, from a push's answer (the web's `serverWasReset`): every accepted write takes a new version above
+     * S4b-BL-20, from a push's answer (the web's `pushShowsReset`): every accepted write takes a new version above
      * every cursor on a healthy server, so an accepted write answered with a version at or below [highestCursor]
      * shows a server that went back. Accepted means the answer's [answerUpdatedAt] is not later than the
      * [sentUpdatedAt]: when last-write-wins keeps the server's newer row, the server answers with that row, its old

@@ -171,7 +171,7 @@ class SyncServerResetTest {
     private fun pulls() = server.seen.filter { it.startsWith("GET /api/") && it.contains("since=") }
 
     private fun assertEverythingSentAgainAndPulledFromZero(outcome: SyncOutcome) {
-        assertTrue(outcome.serverReset)
+        assertTrue(outcome.remoteReset)
         assertTrue(server.seen.contains("PUT /api/houses/h1"))
         assertTrue(server.seen.contains("PUT /api/visits/v1"))
         assertTrue(server.seen.contains("POST /api/houses/h1/photos"))
@@ -197,7 +197,7 @@ class SyncServerResetTest {
     fun aHealthyServerIsLeftAsItIs() {
         server.maxSyncVersion = 250 // At the highest cursor: nothing lost.
         val outcome = sync()
-        assertFalse(outcome.serverReset)
+        assertFalse(outcome.remoteReset)
         assertEquals(0, outcome.pushed)
         assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
@@ -206,7 +206,7 @@ class SyncServerResetTest {
     fun anOlderServerWithoutTheFieldIsLeftAsItIs() {
         server.maxSyncVersion = null
         val outcome = sync()
-        assertFalse(outcome.serverReset)
+        assertFalse(outcome.remoteReset)
         assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
 
@@ -230,7 +230,7 @@ class SyncServerResetTest {
         server.answerLaterByMs = 60_000 // Last-write-wins kept the server's row: its old version, a later time.
         db.houses().upsert(HouseEntity(id = "h2", label = "Edited", lat = 12.9, lon = 77.6, createdAt = at, updatedAt = at + 5))
         val outcome = sync()
-        assertFalse(outcome.serverReset)
+        assertFalse(outcome.remoteReset)
         assertEquals(1, server.seen.count { it.startsWith("PUT ") })
         assertEquals(listOf("GET /api/houses?since=250", "GET /api/visits?since=240", "GET /api/records?since=235", "GET /api/photos?since=230"), pulls())
     }
