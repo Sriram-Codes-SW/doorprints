@@ -46,6 +46,8 @@ export class DriveDevicesCard implements OnInit {
   protected readonly error = signal<TKey | null>(null);
   protected readonly recoveryKey = signal<string | null>(null);
   protected readonly recoverySaved = signal(false);
+  /** Which action the passkey sentence is for. Revoke keeps the deletion sentence. */
+  protected readonly passkeyFor = signal<'revoke' | 'disconnect'>('revoke');
 
   async ngOnInit(): Promise<void> {
     await this.reload();
@@ -76,7 +78,7 @@ export class DriveDevicesCard implements OnInit {
     this.error.set(null);
     try {
       const out = await this.service.disconnectAll();
-      if (!out.ok) this.showRefused(out.reason);
+      if (!out.ok) this.showRefused(out.reason, 'disconnect');
     } catch {
       this.error.set('driveConnect.failed');
     } finally {
@@ -108,8 +110,9 @@ export class DriveDevicesCard implements OnInit {
     }
   }
 
-  private showRefused(reason: string): void {
+  private showRefused(reason: string, action: 'revoke' | 'disconnect' = 'revoke'): void {
     if (reason === 'USE_PHONE') {
+      this.passkeyFor.set(action);
       this.phase.set('passkey');
       return;
     }

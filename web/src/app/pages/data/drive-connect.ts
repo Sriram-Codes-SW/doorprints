@@ -75,6 +75,12 @@ export class DriveConnectComponent implements OnDestroy {
     return this.error() ?? 'driveConnect.failed';
   }
 
+  /** The revoked-device sentence, when this browser is no longer allowed. Null on a new browser. */
+  protected enrolmentNotice(): TKey | null {
+    const notice = this.service?.enrolmentNotice;
+    return typeof notice === 'function' ? notice.call(this.service) : null;
+  }
+
   ngOnDestroy(): void {
     if (this.copyTimer !== undefined) clearTimeout(this.copyTimer);
   }
@@ -89,9 +95,13 @@ export class DriveConnectComponent implements OnDestroy {
     this.error.set(null);
     try {
       const result = await this.service.connect();
-      if (result.state === 'Disconnected' && !result.error) {
-        // No folder yet: create one. A failure comes back on the result (the service is already Error) and must
-        // be copied here. Leaving the signal null shows only Try again, with no sentence.
+      // No folder yet, or the one this browser remembers was deleted: create one. FOLDER_GONE is Disconnected
+      // plus driveConnect.folderGone. Connect and Try again both come through here, and that sentence promises a
+      // new folder. A failure comes back on the result (the service is already Error) and must be copied here.
+      // Leaving the signal null shows only Try again, with no sentence.
+      const folderMissing = result.state === 'Disconnected'
+        && (result.error == null || result.error === 'driveConnect.folderGone');
+      if (folderMissing) {
         const created = await this.service.createFolder();
         if (created.error) {
           this.error.set(created.error);

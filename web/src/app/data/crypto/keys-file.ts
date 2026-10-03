@@ -368,6 +368,18 @@ export class KeysFile {
   }
 
   /**
+   * This device uploaded the list and was reloaded before `pinCreated`. `committedSha256` is the SHA-256 saved
+   * before that upload. The pin (`CREATED`) is made only when `file` is still those bytes: a device key that
+   * unwraps some other list is not proof this device wrote it (docs/15 §9.9).
+   */
+  finishOwnCreate(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard, committedSha256: Uint8Array): Promise<OpenedKeys> {
+    if (committedSha256.length !== 32 || !constantTimeEquals(sha256Of(this.p, file), committedSha256)) {
+      throw new KeysError('NOT_PINNED', 'not the key list this device wrote');
+    }
+    return this.openDevice(file, device, guard, null, 'CREATED');
+  }
+
+  /**
    * The first pin (S4b-BL-126): opens only if the folder key equals `trustedFolderKey`, received over an authenticated
    * channel (the QR code's HPKE PSK wrap), then pins it. Never call it with a key read from Drive.
    */
@@ -746,6 +758,7 @@ export const MAX_REVISION_STEP = 1024;
  * only if it leads to the pinned folder key (same epoch: same key id, and the same revision means the same body;
  * higher epoch: the whole chain down to the pinned epoch ends at the pinned key; lower epoch: rolled back). No pin:
  * only `KeysFile.openFirstPin`, `KeysFile.openWithRecovery` and `pinCreated` may make one.
+ * `finishOwnCreate` is that `pinCreated` path for bytes whose SHA-256 was saved before the upload.
  */
 export class KeysGuard {
   constructor(

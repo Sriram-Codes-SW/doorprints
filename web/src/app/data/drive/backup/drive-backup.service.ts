@@ -16,7 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { equalBytes, hex } from '../../crypto/bytes';
+import { constantTimeEquals, equalBytes, hex } from '../../crypto/bytes';
+import { sha256Of } from '../../crypto/crypto-provider';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
 import { Dpx } from '../../crypto/dpx';
 import { HPKE_INFO, WrapAad, kidOf } from '../../crypto/folder-key';
@@ -84,7 +85,10 @@ class FolderWithoutKeys extends Error {}
  * and the first pin comes only from `createFolder`, `openWithRecoveryKey` or `openWithFolderKey` (S4b-BL-126's QR
  * enrolment). `connect` never writes (a missing control file excepted), and never adopts a folder it is not pinned to.
  * An empty shell (no key list and no other file, including the bin) is an unfinished first connect: `createFolder`
- * writes the key list there. Any other file is left untouched: no revoke, re-key, wipe or re-create.
+ * writes the key list there. Any file that is still in Drive is left untouched: no revoke, re-key, wipe, or
+ * replacement of a folder that still exists. A remembered folder that Drive no longer has is not that case:
+ * `createFolder` drops its pin and makes a new one. A reload after this device's own upload, before the pin,
+ * pins that list only when its bytes still match the hash saved before the upload.
  *
  * **A backup** is the app's *Full backup* ZIP, encrypted as `dpx/1`, uploaded `state=partial` with its authenticated
  * metadata under a `partial-` name, then marked complete and renamed only after Drive's `sha256Checksum` equals the one
@@ -136,7 +140,12 @@ export class DriveBackupService {
       const guard = new KeysGuard(this.p, this.trust.keys(root.id));
       if ((await guard.watermark()) == null) {
         // Never adopted silently (docs/15 §9.3). A key list already in the folder is not wiped to start again.
-        if (st.creatingRootId === root.id) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
+        // This browser's own upload, reloaded before the pin, is finished here. Someone else's list is a join.
+        if (st.creatingRootId === root.id) {
+          const finished = await this.finishInterruptedCreate(root.id, keys.id, bytes, guard, st.creatingKeysHash);
+          if (finished) return finished;
+          return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
+        }
         return { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
       }
       let opened: OpenedKeys;
@@ -154,9 +163,11 @@ export class DriveBackupService {
 
   /**
    * The first connect to a Drive with no Doorprints folder, or *Start again* after `FOLDER_GONE`: makes `Doorprints/`,
-   * the key set, `doorprints.json` and `Backups/`, then pins this device to it. `withRecoveryKey` false is the
-   * person's *Skip* after the warning. The recovery key comes back to be shown **once**; it is never stored. The pin is
-   * the last step, so a run that stops before a key list is in the folder leaves nothing this device trusts.
+   * the key set, `doorprints.json` and `Backups/`, then pins this device to it. When the remembered folder is gone,
+   * its pin is dropped first; a folder that is still there is not replaced, and nothing else in Drive is deleted.
+   * `withRecoveryKey` false is the person's *Skip* after the warning. The recovery key comes back to be shown
+   * **once**; it is never stored. The pin is the last step, so a run that stops before a key list is in the folder
+   * leaves nothing this device trusts.
    * A folder with no key list and no other file is that unfinished create: this writes the key list into it.
    * A folder that still holds any file, including a key list, is not replaced, and nothing in it is binned.
    *
@@ -170,6 +181,9 @@ export class DriveBackupService {
         // Re-read state after lock acquire: the first tab may have created the folder while we waited.
         const st = await this.state.load();
         const existing = await ensureFolder(this.drive, DRIVE_LAYOUT.root, null, false, st.rootId);
+        // Remembered, and Drive has no Doorprints folder. Drop that pin before a new folder is made.
+        // A folder that is still here takes the branches below and is not replaced.
+        if (!existing) await this.forgetGoneFolder(st);
 
         // If a folder exists and it's not one we're currently creating, check if it's already pinned by us.
         // This can happen when a second tab calls createFolder while the first tab is creating;
@@ -206,6 +220,8 @@ export class DriveBackupService {
             return this.refuseOccupied(root.id, st.keysId);
           }
         }
+        // Leave creatingKeysHash until the new list is about to be uploaded. Clearing it here would forget
+        // the bytes of an interrupted create when this call then refuses a folder that still holds a file.
         await this.state.save({ ...st, rootId: root.id, creatingRootId: root.id, keysId: null, controlId: null, backupsId: null });
         const guard = new KeysGuard(this.p, this.trust.keys(root.id));
         if (!finishEmptyShell && (await guard.watermark()) != null) return { kind: 'ERROR', problem: new DriveProblem('FOLDER_EXISTS') };
@@ -214,6 +230,9 @@ export class DriveBackupService {
         const written = await this.keysFile.createFirstDevice({ publicKey: this.device.key.publicKey, name: this.device.name, platform: this.device.platform }, key, now);
         // Key generation takes long enough for another device to put a file in the shell.
         if (existing && !(await this.folderIsEmptyShell(root.id))) return this.refuseOccupied(root.id, null);
+        // Saved before the upload, so a later reload can tell this list from one wrapped to the same public key.
+        const creatingKeysHash = sha256Of(this.p, written.bytes);
+        await this.state.save({ ...(await this.state.load()), creatingKeysHash });
         const keysId = await this.uploadSmall(root.id, KEYS_NAME, KIND_KEYS, written.bytes);
         const control = await this.controlFile.create(written.opened, now);
         const controlId = await this.uploadSmall(root.id, CONTROL_NAME, KIND_CONTROL, control.bytes);
@@ -222,7 +241,7 @@ export class DriveBackupService {
         await guard.pinCreated(written);
         await this.state.save({
           ...(await this.state.load()),
-          rootId: root.id, keysId, controlId, backupsId: backups.id, creatingRootId: null,
+          rootId: root.id, keysId, controlId, backupsId: backups.id, creatingRootId: null, creatingKeysHash: null,
           deviceId: st.deviceId ?? this.newDeviceId(), newestSeenAt: null, lastBackupId: null,
         });
         recovery = key;
@@ -588,7 +607,7 @@ export class DriveBackupService {
     const backupsId = (st.rootId === rootId ? st.backupsId : null) ?? (await ensureFolder(this.drive, DRIVE_LAYOUT.backups, rootId, false))?.id ?? null;
     await this.state.save({
       ...(await this.state.load()),
-      rootId, keysId, controlId, backupsId, creatingRootId: null, deviceId: st.deviceId ?? this.newDeviceId(),
+      rootId, keysId, controlId, backupsId, creatingRootId: null, creatingKeysHash: null, deviceId: st.deviceId ?? this.newDeviceId(),
     });
     return { kind: 'READY', folder: { rootId, keysId, controlId, backupsId, keys: opened, control: body } };
   }
@@ -670,6 +689,74 @@ export class DriveBackupService {
       }
     }
     return true;
+  }
+
+  /**
+   * The id this device remembers is not a live Doorprints folder. Drop those pins so the new folder can be pinned.
+   * Does not touch Drive. Called only after `ensureFolder` found nothing.
+   */
+  private async forgetGoneFolder(st: DriveDeviceState): Promise<void> {
+    const ids = new Set<string>();
+    if (st.rootId != null) ids.add(st.rootId);
+    if (st.creatingRootId != null) ids.add(st.creatingRootId);
+    for (const id of ids) await this.trust.forgetShell?.(id);
+  }
+
+  /**
+   * `keys.json` is already in the folder this browser was creating, and the pin was never saved.
+   * Pin and finish only when `committed` is the hash saved before the upload and Drive still has those bytes.
+   * A missing control file is written. A file that is already there is not replaced.
+   * A list this browser is not in is a join, and is not pinned. Anything else keeps the old refusal.
+   */
+  private async finishInterruptedCreate(
+    rootId: string,
+    keysId: string,
+    bytes: Uint8Array,
+    guard: KeysGuard,
+    committed: Uint8Array | null,
+  ): Promise<DriveConnection | null> {
+    if (committed == null || !constantTimeEquals(sha256Of(this.p, bytes), committed)) {
+      return this.outcomeWithoutPin(rootId, keysId, bytes, guard);
+    }
+    try {
+      const opened = await this.keysFile.finishOwnCreate(bytes, this.device.key, guard, committed);
+      return await this.ready(rootId, keysId, opened);
+    } catch (e) {
+      if (!(e instanceof KeysError)) throw e;
+      if (e.kind === 'NOT_ENROLLED' || e.kind === 'UNWRAP_FAILED') {
+        return { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
+      }
+      if (e.kind === 'REVOKED') {
+        return { kind: 'NEEDS_RECOVERY_KEY', recoveryAvailable: this.recoveryHint(bytes), reason: 'REVOKED' };
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Classify a list this device must not pin. `open` uses the existing pin and refuses to make one.
+   * Not enrolled: join. Revoked: the recovery key. A list this device could unwrap, or a file that is not a list,
+   * returns null so the caller keeps the occupied-folder refusal.
+   */
+  private async outcomeWithoutPin(
+    rootId: string,
+    keysId: string,
+    bytes: Uint8Array,
+    guard: KeysGuard,
+  ): Promise<DriveConnection | null> {
+    try {
+      const opened = await this.keysFile.open(bytes, this.device.key, guard);
+      return await this.ready(rootId, keysId, opened);
+    } catch (e) {
+      if (!(e instanceof KeysError)) throw e;
+      if (e.kind === 'NOT_ENROLLED' || e.kind === 'UNWRAP_FAILED') {
+        return { kind: 'NEEDS_ENROLMENT', recoveryAvailable: this.recoveryHint(bytes) };
+      }
+      if (e.kind === 'REVOKED') {
+        return { kind: 'NEEDS_RECOVERY_KEY', recoveryAvailable: this.recoveryHint(bytes), reason: 'REVOKED' };
+      }
+      return null;
+    }
   }
 
   /** Drop pins only after the folder has been proved empty, so `pinCreated` can start a new key set. */
