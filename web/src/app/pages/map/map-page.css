@@ -461,13 +461,27 @@
   /*
    * Beside the actions while its widest item fits there, else on a row of its own above them: at 320px with 150% text
    * "Shortlisted" and "Rejected" ran under "Add house" (owner report 2026-09-24). It wraps from its narrowest
-   * (min-content) and grows no wider than its one-line width, so it keeps the shape of a small card.
+   * and grows no wider than its one-line width, so it keeps the shape of a small card.
+   *
+   * The floor is min(100%, 10rem), not min-content. min-content is the longest label, and Tamil
+   * தேர்ந்தெடுக்கவில்லை ("Not chosen") at 200% text is about 10rem — wider than the row on a 360px phone, which
+   * made <main> scroll sideways by 33px (TC-M-26, w360-text200, ta). A percentage mixed with min-content in min()
+   * does not resolve on this flex item, so the cap is the label's own width in rem: the card stays that wide
+   * until the row is narrower, and only then does the label break (below). 10rem still leaves the card beside
+   * the actions at ordinary text sizes, where the longest label fits.
    */
   .legend {
     position: static;
     flex: 1 1 0;
-    min-width: min-content;
+    min-width: min(100%, 10rem);
     max-width: max-content;
+  }
+
+  /* A label wider than the card breaks inside itself; shorter labels stay one line. */
+  .legend-item {
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .map-actions {
