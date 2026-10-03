@@ -64,8 +64,12 @@ export interface DriveDeletionAdapter {
   /** UI helper: whether confirm is enabled and how long to wait (5s for L3 only). */
   confirmGate(action: DeletionAction, context: DeletionContext): ConfirmGateState;
 
-  /** Registers a passkey for L2/L3 deletion. Returns status: 'registered', 'unsupported', or null on cancellation. */
-  registerPasskey(): Promise<'registered' | 'unsupported' | null>;
+  /**
+   * Registers a passkey for L2/L3 deletion.
+   * 'unsupported' only when this browser has no platform authenticator (or the pieces it needs are missing).
+   * null when the person cancelled. 'failed' when the prompt was refused or the credential cannot produce a PRF output.
+   */
+  registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | null>;
 
   /** Returns passkey status: 'none', 'registered', or 'unsupported'. */
   passkeyStatus(): Promise<'none' | 'registered' | 'unsupported'>;
@@ -257,7 +261,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     };
   }
 
-  async registerPasskey(): Promise<'registered' | 'unsupported' | null> {
+  async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | null> {
     if (!this.prf || !this.crypto || !this.kv) return 'unsupported';
     try {
       if (!(await this.prf.isSupported())) return 'unsupported';
@@ -268,11 +272,13 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       const secret = this.crypto.randomBytes(32);
       const sealed = await sealWithPrf(this.crypto, this.prf, credentialId, secret);
       secret.fill(0);
-      if (!('v' in sealed)) return sealed.reason === 'NOT_SUPPORTED' ? 'unsupported' : null;
+      // Cancel stays a cancel. A credential that cannot produce the PRF output is a failure, not
+      // "this browser has no platform authenticator" — that case already returned above.
+      if (!('v' in sealed)) return sealed.reason === 'CANCELLED' ? null : 'failed';
       await this.kv.set(SEALED_BLOB_KEY, sealedBlobToJson(sealed));
       return 'registered';
     } catch {
-      return null;
+      return 'failed';
     }
   }
 

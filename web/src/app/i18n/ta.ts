@@ -1320,6 +1320,9 @@ export const ta: Dict = {
   'drivePasskey.registerButton': 'தவணை அமைக்கவும்',
   'drivePasskey.registeredDescription': 'இந்த சாதனத்தில் தவணை அமைக்கப்பட்டுள்ளது.',
   'drivePasskey.unsupportedDescription': 'இந்த உலாவி தேவைப்படும் தவணை வகையை உருவாக்க முடியாது. இங்கிருந்து எல்லாவற்றையும் நீக்க முடியாது; நீங்கள் இன்னும் தனிப்பு பேக்கப்களை நீக்க முடியும்.',
+  // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerCancelled': 'கேட்பு ரத்து செய்யப்பட்டது.',
+  'drivePasskey.registerFailed': 'தவணை அமைக்க முடியவில்லை. மீண்டும் முயலவும்.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'இப்போது ஒத்திசைக்கவும்',

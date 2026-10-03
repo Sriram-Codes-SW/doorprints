@@ -39,7 +39,10 @@ export interface PrfAuthenticator {
   isSupported(): Promise<boolean>;
   /** One user-verified assertion for [credentialId]; the PRF output for [salt] (32 bytes). */
   evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
-  /** Makes a new passkey for this site; its credential id, or null when the person cancelled or the browser refused. */
+  /**
+   * Makes a new passkey for this site. The credential id, or null when the person cancelled.
+   * A credential that cannot produce a PRF output is refused (the promise rejects).
+   */
   registerPasskey(displayName: string): Promise<Uint8Array | null>;
 }
 

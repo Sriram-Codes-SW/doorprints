@@ -563,7 +563,7 @@ export class DriveConnectService {
     return this.deletionAdapter.passkeyStatus();
   }
 
-  async registerPasskey(): Promise<'registered' | 'unsupported' | null> {
+  async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | null> {
     return this.deletionAdapter.registerPasskey();
   }
 
