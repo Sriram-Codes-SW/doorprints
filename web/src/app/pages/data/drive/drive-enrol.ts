@@ -19,7 +19,7 @@
 import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { unb64 } from '../../../data/crypto/bytes';
+import { constantTimeEquals, unb64 } from '../../../data/crypto/bytes';
 import { encodeQr } from '../../../data/crypto/qr-code';
 import { parseQrOffer, qrOfferText } from '../../../data/crypto/qr-enrol';
 import { TPipe } from '../../../i18n/t.pipe';
@@ -74,6 +74,8 @@ export class DriveEnrolCard {
   private nNew: Uint8Array | null = null;
   private nApprover: Uint8Array | null = null;
   private psk: Uint8Array | null = null;
+  /** Pairing fields of the reveal whose 8-digit code is on screen. Approval uses this transcript, not a later paste. */
+  private compared: PairingFields | null = null;
 
   protected async becomeNewcomer(): Promise<void> {
     this.error.set(null);
@@ -179,6 +181,8 @@ export class DriveEnrolCard {
   protected becomeApprover(): void {
     this.error.set(null);
     this.approved.set(false);
+    this.code.set(null);
+    this.compared = null;
     this.role.set('approver');
   }
 
@@ -248,6 +252,7 @@ export class DriveEnrolCard {
 
   protected showApproverCode(): void {
     this.error.set(null);
+    this.compared = null;
     let revealed: PairingMessage;
     try {
       revealed = JSON.parse(this.replyText()) as PairingMessage;
@@ -257,18 +262,52 @@ export class DriveEnrolCard {
     }
     const out = codeOf(revealed, Date.now());
     if (!out.ok) {
+      this.code.set(null);
       this.error.set(this.i18n.t(out.reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.mismatch'));
       return;
     }
+    const fields = pairingFields(revealed);
+    if (!fields) {
+      this.code.set(null);
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    this.compared = fields;
     this.code.set(out.code);
   }
 
-  /** The connected browser, after the person has compared the codes: list this public key and hand back its wrap. */
+  /**
+   * The connected browser, after the person has compared the codes: list this public key and hand back its wrap.
+   * The public key is the one in the transcript just shown. A later paste, or a transcript that replaced this
+   * browser's nonce or public key, is refused. An 8-digit collision is not enough.
+   */
   protected async confirmNumbers(): Promise<void> {
     this.error.set(null);
     const revealed = parseMessage(this.replyText());
-    const pk = revealed?.pkNew ? unb64(revealed.pkNew) : null;
-    if (!revealed || !pk) {
+    const fields = revealed ? pairingFields(revealed) : null;
+    const snap = this.compared;
+    if (!revealed || !fields || !snap || !this.code() || !this.nApprover) {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    if (!samePairingFields(fields, snap)) {
+      this.error.set(this.i18n.t('driveEnrol.mismatch'));
+      return;
+    }
+    const checked = codeOf(revealed, Date.now());
+    if (!checked.ok || checked.code !== this.code()) {
+      this.error.set(this.i18n.t(!checked.ok && checked.reason === 'EXPIRED' ? 'driveEnrol.expired' : 'driveEnrol.mismatch'));
+      return;
+    }
+    const nA = unb64(fields.nApprover);
+    const pkA = unb64(fields.pkApprover);
+    const mine = await this.publicKey();
+    if (!nA || !pkA || !mine || !constantTimeEquals(nA, this.nApprover) || !constantTimeEquals(pkA, mine)) {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const pk = unb64(fields.pkNew);
+    if (!pk) {
       this.error.set(this.i18n.t('driveEnrol.badMessage'));
       return;
     }
@@ -331,4 +370,27 @@ function parseMessage(text: string): PairingMessage | null {
   } catch {
     return null;
   }
+}
+
+interface PairingFields {
+  pkNew: string;
+  nNew: string;
+  nApprover: string;
+  pkApprover: string;
+  commit: string;
+}
+
+function pairingFields(msg: PairingMessage): PairingFields | null {
+  if (!msg.pkNew || !msg.nNew || !msg.nApprover || !msg.pkApprover || !msg.commit) return null;
+  return {
+    pkNew: msg.pkNew,
+    nNew: msg.nNew,
+    nApprover: msg.nApprover,
+    pkApprover: msg.pkApprover,
+    commit: msg.commit,
+  };
+}
+
+function samePairingFields(a: PairingFields, b: PairingFields): boolean {
+  return a.pkNew === b.pkNew && a.nNew === b.nNew && a.nApprover === b.nApprover && a.pkApprover === b.pkApprover && a.commit === b.commit;
 }
