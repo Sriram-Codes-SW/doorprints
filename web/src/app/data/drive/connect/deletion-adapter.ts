@@ -49,6 +49,12 @@ export interface DriveDeletionAdapter {
    */
   authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult>;
 
+  /**
+   * A passkey check for an L2 action that is not a file deletion (approve, revoke, disconnect on all devices).
+   * The same grant rules: without a PRF passkey the policy says use your phone.
+   */
+  authorizePolicy(action: PolicyDeletionAction, context: DeletionContext): Promise<AuthorizationResult>;
+
   /** Executes the plan; requires a valid authorization token for L2/L3. */
   execute(plan: DeletionPlan, grant: WebGrant | null): Promise<DeletionOutcome>;
 
@@ -182,6 +188,17 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     }
     if (result.kind === 'REFUSED') {
       return { kind: 'refused', reason: 'AUTHORIZATION_REFUSED' };
+    }
+    return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
+  }
+
+  async authorizePolicy(action: PolicyDeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
+    const result = await this.webAuthorizer.authorize(action, context);
+    if (result.kind === 'GRANTED' && result.grant) {
+      return { kind: 'granted', grant: result.grant };
+    }
+    if (result.kind === 'REFUSED') {
+      return { kind: 'refused', reason: result.reason === 'USE_PHONE' ? 'USE_PHONE' : 'AUTHORIZATION_REFUSED' };
     }
     return { kind: 'refused', reason: 'AUTHORIZATION_DENIED' };
   }

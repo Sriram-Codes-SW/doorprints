@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.12 |
-| Date | 2026-10-02 |
+| Version | 0.13 |
+| Date | 2026-10-03 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, and the **website** connect/backup/sync/delete cards (draft PR #118): L1 on the site, L2/L3 only with a PRF-sealed passkey, 8-digit pairing (QR enrolment deferred, S4b-BL-134), `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR camera enrolment S4b-BL-134; HMAC-over-operationId proof S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
@@ -24,6 +24,7 @@
 | 0.10 | 2026-10-02 | Cursor Agent, lead | **§10.4:** the website's L3 confirm is a tick box and **no countdown** (owner: no delay on the website). The shared delete-policy vectors keep **5 s for L3 on the phones** (Kotlin stays in step with decision 8). The website binds a delete grant to a passkey PRF open; HMAC of the operation id is S4b-BL-135. |
 | 0.11 | 2026-10-02 | Cursor Agent, lead | **§10.4:** an L2/L3 grant is registered at **authorize** with that preflight plan's `operationId`. Execute of another plan of the same action (a different `operationId`) is refused. The in-memory grant is gone after a reload; the sealed passkey remains and a new PRF open is required. HMAC of the operation id as the proof is still S4b-BL-135. |
 | 0.12 | 2026-10-02 | Cursor Agent, lead | Website Drive cards (draft PR #118): connect, join, backups, delete and sync show **translated reasons** (`TKey`, `problemToMsg` / `msgOfThrown`), never `String(err)` or a raw English sentence from the service. Empty `GOOGLE_CONFIG` is Unavailable with no Connect button. |
+| 0.13 | 2026-10-03 | Cursor Agent, lead | Website version 1 gaps on draft PR #118: the 8-digit path enrols with this device's real public key and the HPKE wrap (`approveDevice` / `joinFromWrap`; the recovery key is not required to finish). *Revoke this device* (L2) shows a new recovery key once and says it does not sign the device out of Google. *Disconnect on all devices* (L2) revokes the in-memory GIS token, then drops the local session. A delete that stops with files left shows the count and *Try again*. Sync runs about two minutes after the last local change while Your data is open. Screen copy: backups only while open, the browser-lock warning, the 2-Step Verification sentence, the three disconnect actions, website photo behaviour. QR enrolment stays S4b-BL-134. Non-extractable folder keys (S4b-BL-132) and HMAC deletion proof (S4b-BL-135) stay open. The repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID` is set; a real Google sign-in in the browser is the remaining owner step. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of

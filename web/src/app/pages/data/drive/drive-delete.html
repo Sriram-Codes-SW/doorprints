@@ -48,6 +48,7 @@
     <div>
       <h3>{{ 'driveDelete.planHeading' | t }}</h3>
       <p>{{ 'driveDelete.planWarning' | t }}</p>
+      <p><a href="#export-heading">{{ 'driveDelete.saveCopyFirst' | t }}</a></p>
       <div class="actions">
         <button type="button" class="btn btn-primary" (click)="proceedToConfirm()" [disabled]="busy()">
           {{ 'driveDelete.proceed' | t }}
@@ -61,6 +62,7 @@
     <div class="confirm-box" role="dialog" aria-labelledby="delete-confirm-title">
       <h3 id="delete-confirm-title">{{ 'driveDelete.confirmHeading' | t }}</h3>
       <p>{{ 'driveDelete.confirmWarning' | t }}</p>
+      <p><a href="#export-heading">{{ 'driveDelete.saveCopyFirst' | t }}</a></p>
       @if (tickBoxRequired()) {
         <label class="checkbox">
           <input type="checkbox" [checked]="ticked()" (change)="toggleTickBox()" [disabled]="busy() || phase() === 'running'" />
@@ -74,7 +76,7 @@
           (click)="confirmDelete()"
           [disabled]="busy() || (tickBoxRequired() && !ticked())"
         >
-          {{ 'common.delete' | t }}
+          {{ (tickBoxRequired() ? 'driveDelete.deleteForGood' : 'common.delete') | t }}
         </button>
         <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
       </div>
@@ -96,6 +98,18 @@
 
   @if (phase() === 'running') {
     <p role="status" aria-live="polite">{{ 'driveDelete.deleting' | t }}</p>
+  }
+
+  @if (phase() === 'partial') {
+    <div>
+      <p role="alert">{{ 'driveDelete.left' | t: { left: left(), total: total() } }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="tryAgain()" [disabled]="busy()">
+          {{ 'driveDelete.tryAgain' | t }}
+        </button>
+        <button type="button" class="btn" (click)="cancel()" [disabled]="busy()">{{ 'common.cancel' | t }}</button>
+      </div>
+    </div>
   }
 
   @if (phase() === 'done') {

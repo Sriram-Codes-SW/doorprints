@@ -337,7 +337,11 @@ describe('DriveConnectService', () => {
       const plan = await a.service.deletePlan({ type: 'oneBackup', fileId: victim });
       if (!plan.ok) throw new Error(plan.reason);
       const ran = await a.service.executeDelete(plan.plan, null);
-      expect(ran).toEqual({ ok: true });
+      expect(ran.ok).toBe(true);
+      if (ran.ok) {
+        expect(ran.finished).toBe(true);
+        expect(ran.left).toBe(0);
+      }
 
       const after = await a.service.listBackups();
       if (!after.ok) throw new Error(after.reason);
@@ -368,6 +372,21 @@ describe('DriveConnectService', () => {
       expect(info.ok).toBe(false);
       const auth = await a.service.authorizeDelete({ type: 'everything' }, 'op');
       expect(auth.ok).toBe(false);
+      expect(server.allFiles().length).toBe(before);
+    });
+
+    it('approving or revoking a device without a passkey writes nothing', async () => {
+      await a.service.createFolder();
+      const before = server.allFiles().length;
+      const pk = new Uint8Array(65);
+      pk[0] = 4;
+      const approved = await a.service.approveJoinedDevice(pk, 'Website');
+      expect(approved).toEqual({ ok: false, reason: 'USE_PHONE' });
+      const revoked = await a.service.revokeListedDevice('aa');
+      expect(revoked).toEqual({ ok: false, reason: 'USE_PHONE' });
+      const all = await a.service.disconnectAll();
+      expect(all).toEqual({ ok: false, reason: 'USE_PHONE' });
+      expect(a.service.getState()).toBe('FirstConnectShowRecoveryKey');
       expect(server.allFiles().length).toBe(before);
     });
 

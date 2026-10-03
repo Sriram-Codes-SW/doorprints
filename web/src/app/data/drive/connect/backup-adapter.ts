@@ -16,8 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { hex } from '../../crypto/bytes';
+import type { DevicePlatform } from '../../crypto/keys-file';
 import type { RecoveryKey } from '../../crypto/recovery-key';
 import { DriveBackupService } from '../backup/drive-backup.service';
+import type { ApproveDeviceOutcome, RevokeDeviceOutcome } from '../backup/drive-backup.service';
 import type { BackupSource, StagingSink, DriveStateStore } from '../backup/drive-backup-seams';
 import {
   type BackupListing,
@@ -183,6 +186,38 @@ export class DriveBackupAdapter {
   async schedule(enabled: boolean, ready: boolean): Promise<ScheduleDecision> {
     return this.backupService.schedule(enabled, ready);
   }
+
+  /** This browser's device public key, for an 8-digit pairing request. */
+  async devicePublicKey(): Promise<Uint8Array> {
+    return this.backupService.devicePublicKey();
+  }
+
+  async deviceKidHex(): Promise<string> {
+    return hex(this.backupService.deviceKid());
+  }
+
+  approveDevice(publicKey: Uint8Array, name: string, platform: DevicePlatform): Promise<ApproveDeviceOutcome> {
+    return this.backupService.approveDevice(publicKey, name, platform);
+  }
+
+  joinFromWrap(enc: Uint8Array, ct: Uint8Array, epoch: number): Promise<DriveConnection> {
+    return this.backupService.joinFromWrap(enc, ct, epoch);
+  }
+
+  revokeDevice(kid: Uint8Array): Promise<RevokeDeviceOutcome> {
+    return this.backupService.revokeDevice(kid);
+  }
+
+  /** The Google account from Drive's `about.user`. Null when Drive cannot say. */
+  async accountEmail(): Promise<string | null> {
+    try {
+      const about = await this.drive.about();
+      const email = about.email.trim();
+      return email.length > 0 ? email : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 /** The public methods the adapter exposes to screens and workers. */
@@ -196,4 +231,10 @@ export interface BackupAdapterInterface {
   importFromDrive(folder: ReadyFolder, backupId: string, backupItem: DriveBackup, staging: StagingSink): Promise<ImportDownload>;
   writeReadMe(lang: 'en' | 'hi' | 'ta' | 'te'): Promise<void>;
   schedule(enabled: boolean, ready: boolean): Promise<ScheduleDecision>;
+  devicePublicKey(): Promise<Uint8Array>;
+  deviceKidHex(): Promise<string>;
+  approveDevice(publicKey: Uint8Array, name: string, platform: DevicePlatform): Promise<ApproveDeviceOutcome>;
+  joinFromWrap(enc: Uint8Array, ct: Uint8Array, epoch: number): Promise<DriveConnection>;
+  revokeDevice(kid: Uint8Array): Promise<RevokeDeviceOutcome>;
+  accountEmail(): Promise<string | null>;
 }

@@ -134,6 +134,37 @@ export class GoogleTokenProvider implements TokenProvider {
     }
   }
 
+  /**
+   * *Disconnect on all devices*: ask Google to drop this access token (`oauth2.revoke`), then forget it.
+   * The token stays in memory only and is never logged. A missing GIS `revoke` still clears the memory copy.
+   */
+  async revokeAccess(): Promise<void> {
+    const token = this.currentToken;
+    this.currentToken = null;
+    this.tokenExpiresAtMs = null;
+    if (!token) return;
+    const revoke = this.gisRevoke();
+    if (!revoke) return;
+    await new Promise<void>((resolve) => {
+      try {
+        revoke(token, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  private gisRevoke(): ((token: string, done: () => void) => void) | null {
+    const gis = (window as unknown as { google?: unknown })?.google;
+    if (!gis || typeof gis !== 'object') return null;
+    const accounts = (gis as Record<string, unknown>).accounts;
+    if (!accounts || typeof accounts !== 'object') return null;
+    const oauth2 = (accounts as Record<string, unknown>).oauth2;
+    if (!oauth2 || typeof oauth2 !== 'object') return null;
+    const revoke = (oauth2 as Record<string, unknown>).revoke;
+    return typeof revoke === 'function' ? (revoke as (token: string, done: () => void) => void) : null;
+  }
+
   protected async ensureScriptLoaded(): Promise<void> {
     if (this.scriptLoaded) return;
     if (this.loadingScript) {

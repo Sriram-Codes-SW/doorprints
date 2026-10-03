@@ -17,17 +17,35 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import '../../../i18n/all-dictionaries';
 import { DriveEnrolCard } from './drive-enrol';
+import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
+import { unb64 } from '../../../data/crypto/bytes';
 import { type PairingMessage } from '../../../data/drive/connect/pairing-flow';
 
-async function render() {
+const deviceKey = (() => {
+  const pk = new Uint8Array(65);
+  pk[0] = 4;
+  pk[1] = 7;
+  return pk;
+})();
+
+function fakeService() {
+  return {
+    devicePublicKey: async () => deviceKey.slice(),
+    approveJoinedDevice: vi.fn(async () => ({ ok: true, wrapEnc: 'YQ', wrapCt: 'Yg', epoch: 1 })),
+    joinFromWrap: vi.fn(async () => ({ state: 'Ready' as const })),
+  };
+}
+
+async function render(svc = fakeService()) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [DriveEnrolCard],
+    providers: [{ provide: DriveConnectService, useValue: svc }],
   });
   const fixture = TestBed.createComponent(DriveEnrolCard);
   fixture.detectChanges();
@@ -35,6 +53,7 @@ async function render() {
     host: fixture.nativeElement as HTMLElement,
     fixture,
     component: fixture.componentInstance,
+    svc,
     i18n: TestBed.inject(TranslationService),
   };
 }
@@ -58,7 +77,7 @@ describe('DriveEnrolCard', () => {
 
   it('newcomer and approver compute the same 8-digit code', async () => {
     const a = await render();
-    a.component['becomeNewcomer']();
+    await a.component['becomeNewcomer']();
     a.fixture.detectChanges();
     const request = a.component['requestText']();
     expect(request.length).toBeGreaterThan(10);
@@ -66,7 +85,7 @@ describe('DriveEnrolCard', () => {
     const b = await render();
     b.component['becomeApprover']();
     b.component['requestText'].set(request);
-    b.component['approvePasted']();
+    await b.component['approvePasted']();
     const reply = b.component['replyText']();
 
     a.component['replyText'].set(reply);
@@ -82,11 +101,41 @@ describe('DriveEnrolCard', () => {
 
   it('refuses a garbled reply', async () => {
     const { component, fixture, host, i18n } = await render();
-    component['becomeNewcomer']();
+    await component['becomeNewcomer']();
     component['replyText'].set('not-json');
     component['revealCode']();
     fixture.detectChanges();
     expect(component['error']()).toBe(i18n.t('driveEnrol.badMessage'));
     shown(host, i18n, 'driveEnrol.badMessage');
+  });
+
+  it('approves with this device key and joins from the wrap, not a recovery key', async () => {
+    const a = await render();
+    await a.component['becomeNewcomer']();
+    const request = JSON.parse(a.component['requestText']()) as PairingMessage;
+    expect(unb64(request.pkNew ?? '')).toEqual(deviceKey);
+
+    const b = await render();
+    b.component['becomeApprover']();
+    b.component['requestText'].set(a.component['requestText']());
+    await b.component['approvePasted']();
+    a.component['replyText'].set(b.component['replyText']());
+    a.component['revealCode']();
+    b.component['replyText'].set(a.component['replyText']());
+    b.component['showApproverCode']();
+    expect(b.component['code']()).toBe(a.component['code']());
+
+    await b.component['confirmNumbers']();
+    expect(b.svc.approveJoinedDevice).toHaveBeenCalledWith(deviceKey, 'Website');
+    const wrapped = JSON.parse(b.component['replyText']()) as PairingMessage;
+    expect(wrapped.wrapEnc).toBe('YQ');
+    expect(wrapped.epoch).toBe(1);
+
+    a.component['replyText'].set(b.component['replyText']());
+    a.fixture.detectChanges();
+    await a.component['joinFolder']();
+    expect(a.svc.joinFromWrap).toHaveBeenCalledWith('YQ', 'Yg', 1);
+    a.fixture.detectChanges();
+    expect(a.component['joined']()).toBe(true);
   });
 });

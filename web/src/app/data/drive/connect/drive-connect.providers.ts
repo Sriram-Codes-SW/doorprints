@@ -154,7 +154,15 @@ export function provideDriveConnect(): Provider[] {
         const backupAdapter = inject(DRIVE_BACKUP_ADAPTER);
         const syncAdapter = inject(DRIVE_SYNC_ADAPTER);
         const deletionAdapter = inject(DRIVE_DELETION_ADAPTER);
-        return new DriveConnectService(backupAdapter, syncAdapter, deletionAdapter, googleConfig, inject(DRIVE_BACKUP_SOURCE));
+        return new DriveConnectService(
+          backupAdapter,
+          syncAdapter,
+          deletionAdapter,
+          googleConfig,
+          inject(DRIVE_BACKUP_SOURCE),
+          undefined,
+          inject(GoogleTokenProvider),
+        );
       },
     },
   ];

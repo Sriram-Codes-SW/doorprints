@@ -28,6 +28,15 @@ export interface PairingMessage {
   readonly pkApprover?: string;
   readonly nApprover?: string;
   readonly nNew?: string;
+  /** HPKE wrap of the current folder key, copied back after the codes match. Base64. */
+  readonly wrapEnc?: string;
+  readonly wrapCt?: string;
+  readonly epoch?: number;
+}
+
+/** Attach the enrolled browser's wrap so the newcomer can open it. The pairing fields stay as they were. */
+export function withWrap(message: PairingMessage, wrapEnc: string, wrapCt: string, epoch: number): PairingMessage {
+  return { ...message, wrapEnc, wrapCt, epoch };
 }
 
 export type PairingOutcome =

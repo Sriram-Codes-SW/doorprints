@@ -28,6 +28,7 @@ import { DriveBackupsCard } from './drive/drive-backups';
 import { DriveSyncCard } from './drive/drive-sync';
 import { DrivePasskeyComponent } from './drive/drive-passkey';
 import { DriveDeleteCard } from './drive/drive-delete';
+import { DriveDevicesCard } from './drive/drive-devices';
 import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 
@@ -47,6 +48,7 @@ import { ConfirmService } from '../../core/confirm.service';
     DriveSyncCard,
     DrivePasskeyComponent,
     DriveDeleteCard,
+    DriveDevicesCard,
   ],
   templateUrl: './drive-connect.html',
   styleUrl: './drive-connect.css',

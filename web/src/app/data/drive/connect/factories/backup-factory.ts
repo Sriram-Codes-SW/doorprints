@@ -171,5 +171,42 @@ export function createLazyBackupAdapterProxy(getRuntime: () => Promise<DriveRunt
       const adapter = createBackupAdapter(rt);
       return adapter.schedule(enabled, ready);
     },
+
+    async devicePublicKey() {
+      const rt = await getRuntime();
+      return createBackupAdapter(rt).devicePublicKey();
+    },
+
+    async deviceKidHex() {
+      const rt = await getRuntime();
+      return createBackupAdapter(rt).deviceKidHex();
+    },
+
+    async approveDevice(publicKey, name, platform) {
+      const rt = await getRuntime();
+      const result = await createBackupAdapter(rt).approveDevice(publicKey, name, platform);
+      if (result.kind === 'approved') updateSessionFromReady(rt, result.connection.folder);
+      return result;
+    },
+
+    async joinFromWrap(enc, ct, epoch) {
+      const rt = await getRuntime();
+      const result = await createBackupAdapter(rt).joinFromWrap(enc, ct, epoch);
+      if (result.kind === 'READY') updateSessionFromReady(rt, result.folder);
+      else rt.session = undefined;
+      return result;
+    },
+
+    async revokeDevice(kid) {
+      const rt = await getRuntime();
+      const result = await createBackupAdapter(rt).revokeDevice(kid);
+      if (result.connection.kind === 'READY') updateSessionFromReady(rt, result.connection.folder);
+      return result;
+    },
+
+    async accountEmail() {
+      const rt = await getRuntime();
+      return createBackupAdapter(rt).accountEmail();
+    },
   };
 }

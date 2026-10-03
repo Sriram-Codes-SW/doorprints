@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { DriveDeletionAdapter, DeletionPreflightResult, AuthorizationResult, ConfirmGateState, KeyValueStore } from '../deletion-adapter';
+import type { DriveDeletionAdapter, DeletionPreflightResult, AuthorizationResult, ConfirmGateState, KeyValueStore, PolicyDeletionAction } from '../deletion-adapter';
 import { DriveDeletionAdapterImpl, PersistentDeletionStore, confirmGateOf, decideDeletion } from '../deletion-adapter';
 import { DriveDeletionService } from '../../drive-deletion';
 import { RealAuthorizationGate } from './deletion-gate';
@@ -42,6 +42,9 @@ const REFUSING: DriveDeletionAdapter = {
     return { outcome: 'REFUSED', reason: 'OFFLINE' };
   },
   async authorize() {
+    return { kind: 'refused', reason: 'Not connected' };
+  },
+  async authorizePolicy() {
     return { kind: 'refused', reason: 'Not connected' };
   },
   async execute() {
@@ -164,6 +167,10 @@ export function createLazyDeletionAdapterProxy(getRuntime: () => Promise<DriveRu
 
     async authorize(action: DeletionAction, context: DeletionContext, operationId: string): Promise<AuthorizationResult> {
       return (await getAdapter()).authorize(action, context, operationId);
+    },
+
+    async authorizePolicy(action: PolicyDeletionAction, context: DeletionContext): Promise<AuthorizationResult> {
+      return (await getAdapter()).authorizePolicy(action, context);
     },
 
     async execute(plan, grant) {
