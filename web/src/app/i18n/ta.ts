@@ -1322,6 +1322,11 @@ export const ta: Dict = {
   'drivePasskey.unsupportedDescription': 'இந்த உலாவி தேவைப்படும் தவணை வகையை உருவாக்க முடியாது. இங்கிருந்து எல்லாவற்றையும் நீக்க முடியாது; நீங்கள் இன்னும் தனிப்பு பேக்கப்களை நீக்க முடியும்.',
   // 2026-10-03: what makes Set up a passkey appear. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.unsupportedNext': 'இந்தக் கணினியில் விரல் ரேகை, முகத் திறப்பு அல்லது திரை பூட்டு இருந்த பிறகு தவணை அமைக்கவும் தோன்றும். Windows இல் அது Windows Hello PIN: Settings, Accounts, Sign-in options. பிறகு இந்தப் பக்கத்தை மீண்டும் ஏற்றுங்கள்.',
+  // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerCancelled': 'கேட்பு ரத்து செய்யப்பட்டது.',
+  'drivePasskey.registerFailed': 'தவணை அமைக்க முடியவில்லை. மீண்டும் முயலவும்.',
+  // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'இந்த தவணை நீக்கங்களை முத்திரையிடத் தேவையான PRF வெளியீட்டைத் தரவில்லை.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'இப்போது ஒத்திசைக்கவும்',

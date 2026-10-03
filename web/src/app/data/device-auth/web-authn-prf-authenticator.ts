@@ -17,7 +17,7 @@
  */
 
 import type { PrfAuthenticator, PrfResult } from './prf-seal';
-import { prfInput } from './prf-seal';
+import { prfInput, prfOutputSeals } from './prf-seal';
 
 /** Decode a base64url string to Uint8Array. */
 function base64urlToBytes(base64url: string): Uint8Array {
@@ -74,6 +74,72 @@ function isPrfExtensionOutput(ext: unknown): ext is PrfExtensionOutput {
   return ext !== null && typeof ext === 'object' && 'prf' in ext;
 }
 
+/** The 32-byte PRF output, or null when this ceremony did not return one. `enabled` is not that output. */
+function prfOutputOf(ext: unknown): Uint8Array | null {
+  if (!isPrfExtensionOutput(ext)) return null;
+  const first = ext.prf?.results?.first as BufferSource | undefined;
+  if (!first) return null;
+  if (first instanceof ArrayBuffer) {
+    return first.byteLength === 32 ? new Uint8Array(first.slice(0)) : null;
+  }
+  if (!ArrayBuffer.isView(first) || first.byteLength !== 32) return null;
+  return new Uint8Array(first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength));
+}
+
+function rawIdBytes(credential: Credential): Uint8Array | null {
+  if (!('rawId' in credential) || credential.rawId == null) return null;
+  const raw = credential.rawId as BufferSource;
+  if (raw instanceof ArrayBuffer) return raw.byteLength > 0 ? new Uint8Array(raw.slice(0)) : null;
+  if (ArrayBuffer.isView(raw) && raw.byteLength > 0) {
+    return new Uint8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
+  }
+  return null;
+}
+
+function credentialIdBytes(credential: Credential): Uint8Array {
+  const fromRaw = rawIdBytes(credential);
+  const fromId =
+    'id' in credential && typeof credential.id === 'string' && credential.id.length > 0
+      ? base64urlToBytes(credential.id)
+      : null;
+  // rawId is authoritative. A string id that disagrees with it is not this credential.
+  if (fromRaw && fromId && !sameBytes(fromRaw, fromId)) {
+    throw new Error('Passkey credential id did not match rawId.');
+  }
+  if (fromRaw) return fromRaw;
+  if (fromId) return fromId;
+  throw new Error('Passkey registration returned no credential id.');
+}
+
+/** UV flag in authenticatorData. Creation asks for it; an assertion must show it. There is no server to check. */
+function assertionUserVerified(credential: Credential): boolean {
+  if (!('response' in credential) || credential.response == null || typeof credential.response !== 'object') {
+    return false;
+  }
+  const data = (credential.response as { authenticatorData?: BufferSource }).authenticatorData;
+  if (!data) return false;
+  const flags = data instanceof ArrayBuffer
+    ? new Uint8Array(data)
+    : ArrayBuffer.isView(data)
+      ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+      : null;
+  return !!flags && flags.length >= 33 && (flags[32] & 0x04) !== 0;
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/** The credential exists, but it did not return the PRF output the deletion seal needs. */
+export class PasskeyPrfMissingError extends Error {
+  constructor() {
+    super('This passkey did not return the PRF output needed to seal deletions.');
+    this.name = 'PasskeyPrfMissingError';
+  }
+}
+
 /** Hostname used as WebAuthn `rp.id`. IPs and an empty host map to `localhost`. */
 export function relyingPartyIdOf(hostname: string): string {
   const host = hostname.trim().toLowerCase();
@@ -107,6 +173,8 @@ function hasGetClientExtensionResults(
  */
 export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   private credentialId: Uint8Array | null = null;
+  /** Output from the registration ceremony, not stored until the sealed blob is kept. */
+  private pending: { credentialId: Uint8Array; salt: Uint8Array; output: Uint8Array } | null = null;
 
   constructor(
     private readonly storageKey: (key: string) => Promise<string | undefined>,
@@ -144,15 +212,22 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
    * On first call without a stored credential, attempts registration with PRF.
    * On subsequent calls, uses the stored credential ID for assertion.
    */
-  async evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult> {
+  async evaluate(
+    credentialId: Uint8Array,
+    salt: Uint8Array,
+    evalOptions?: { persist?: boolean; useStoredCredential?: boolean },
+  ): Promise<PrfResult> {
+    const persist = evalOptions?.persist !== false;
+    // Opens keep using the stored passkey. A registration probe must pass false: otherwise an
+    // already stored id is asserted, and its PRF output would be sealed under the new credential.
+    const useStored = evalOptions?.useStoredCredential !== false;
     if (typeof navigator === 'undefined' || !navigator.credentials) {
       return { kind: 'NOT_SUPPORTED' };
     }
 
     try {
-      // Use the provided credential ID if available, otherwise try the stored one
       let targetId = credentialId;
-      if (this.credentialId && this.credentialId.length > 0) {
+      if (useStored && this.credentialId && this.credentialId.length > 0) {
         targetId = this.credentialId;
       }
 
@@ -183,6 +258,21 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return { kind: 'CANCELLED' };
       }
 
+      // userVerification: "required" is also checked on the response. A clear UV flag is not a PRF result.
+      if (!assertionUserVerified(assertion)) {
+        return { kind: 'FAILED' };
+      }
+
+      let assertedId: Uint8Array;
+      try {
+        assertedId = credentialIdBytes(assertion);
+      } catch {
+        return { kind: 'FAILED' };
+      }
+      if (!sameBytes(assertedId, targetId)) {
+        return { kind: 'FAILED' };
+      }
+
       // Extract PRF output from extension result
       if (!hasGetClientExtensionResults(assertion)) {
         return { kind: 'FAILED' };
@@ -198,16 +288,15 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return { kind: 'NOT_SUPPORTED' };
       }
 
-      const prfOutput = new Uint8Array(prfExt.results.first);
-      if (prfOutput.length !== 32) {
-        return { kind: 'FAILED' };
+      const prfOutput = prfOutputOf(extensionResults);
+      if (!prfOutput || !(await prfOutputSeals(prfOutput, salt))) {
+        prfOutput?.fill(0);
+        return { kind: 'NOT_SUPPORTED' };
       }
 
-      // Store credential ID for future use
-      if (!this.credentialId || this.credentialId.length === 0) {
-        const idStr = Array.from(targetId).join(',');
-        await this.storageSet('doorprints-webauthn-credential-id', idStr);
-        this.credentialId = targetId.slice();
+      // A registration probe must not count as success: the sealed blob is what the deletion flow keeps.
+      if (persist && (!this.credentialId || this.credentialId.length === 0)) {
+        await this.commitRegistration(targetId);
       }
 
       return { kind: 'OK', output: prfOutput };
@@ -224,9 +313,24 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     }
   }
 
+  consumeRegistrationPrf(credentialId: Uint8Array): { salt: Uint8Array; output: Uint8Array } | null {
+    const pending = this.pending;
+    this.pending = null;
+    if (!pending || !sameBytes(pending.credentialId, credentialId)) return null;
+    return { salt: pending.salt, output: pending.output };
+  }
+
+  async commitRegistration(credentialId: Uint8Array): Promise<void> {
+    const idStr = Array.from(credentialId).join(',');
+    await this.storageSet('doorprints-webauthn-credential-id', idStr);
+    this.credentialId = credentialId.slice();
+  }
+
   /**
-   * Registers a new passkey with PRF support. Stores the credential ID for future use.
-   * Returns the credential ID on success, or null if registration was cancelled or unsupported.
+   * Registers a new discoverable platform passkey and asks for a PRF output in that same ceremony.
+   * Returns the credential ID, or null when the person cancelled the prompt.
+   * The id is not stored here. A credential that never returns a 32-byte PRF output throws
+   * {@link PasskeyPrfMissingError} — that is not "no platform authenticator".
    */
   async registerPasskey(displayName: string): Promise<Uint8Array | null> {
     if (typeof navigator === 'undefined' || !navigator.credentials) {
@@ -234,6 +338,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     }
 
     try {
+      const salt = randomBytes(32);
       const options: CredentialCreationOptions = {
         publicKey: {
           challenge: randomBytes(32),
@@ -247,21 +352,38 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             name: 'doorprints-user',
             displayName: displayName || 'Doorprints User',
           },
-          pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+          // ES256 first, then RS256. Windows Hello refuses a list that omits RS256 before it
+          // shows a prompt (Chromium: content/browser/webauth/pub_key_cred_params.md).
+          pubKeyCredParams: [
+            { alg: -7, type: 'public-key' },
+            { alg: -257, type: 'public-key' },
+          ],
           authenticatorSelection: {
             authenticatorAttachment: 'platform',
+            // A passkey is a discoverable credential. Without this, the default is "discouraged".
+            residentKey: 'required',
+            requireResidentKey: true,
             userVerification: 'required',
           },
+          // Evaluate during create so one Windows Hello PIN returns the PRF output. An empty
+          // `prf: {}` only asks whether the extension is enabled, and Windows Hello reports that
+          // as false after the PIN even when an evaluation would succeed.
           extensions: {
-            prf: {},
+            prf: {
+              eval: {
+                first: prfInput(salt),
+              },
+            },
           },
         } as PublicKeyCredentialCreationOptions & {
           authenticatorSelection?: {
             authenticatorAttachment?: string;
+            residentKey?: string;
+            requireResidentKey?: boolean;
             userVerification?: string;
           };
           extensions?: {
-            prf?: Record<string, never>;
+            prf?: { eval?: { first: BufferSource } };
           };
         },
       };
@@ -272,23 +394,45 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return null;
       }
 
-      // Extract and store the credential ID
-      if (!('id' in credential) || typeof credential.id !== 'string') {
-        return null;
+      const credIdBuffer = credentialIdBytes(credential);
+      // `prf.enabled` is not the output the deletion flow opens. Windows Hello can leave it false
+      // after a successful PIN and still return results.first from this eval, or from one assertion.
+      let output = hasGetClientExtensionResults(credential)
+        ? prfOutputOf(credential.getClientExtensionResults())
+        : null;
+      if (output && !(await prfOutputSeals(output, salt))) {
+        output.fill(0);
+        output = null;
       }
-      // The credential.id from WebAuthn is a base64url string; decode it to bytes
-      const credIdBuffer = base64urlToBytes(credential.id);
-      const idStr = Array.from(credIdBuffer).join(',');
-      await this.storageSet('doorprints-webauthn-credential-id', idStr);
-      this.credentialId = credIdBuffer;
-
+      if (!output) {
+        // The assertion has to be for this new credential, not one already stored in the browser.
+        const evaluated = await this.evaluate(credIdBuffer, salt, {
+          persist: false,
+          useStoredCredential: false,
+        });
+        if (evaluated.kind === 'CANCELLED') return null;
+        if (evaluated.kind === 'FAILED') {
+          throw new Error('Passkey assertion was not user-verified for this credential.');
+        }
+        if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError();
+        output = evaluated.output;
+      }
+      const kept = output.slice();
+      output.fill(0);
+      this.pending = {
+        credentialId: credIdBuffer.slice(),
+        salt: salt.slice(),
+        output: kept,
+      };
       return credIdBuffer;
     } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      if (error.name === 'NotAllowedError') {
-        return null;
-      }
-      return null;
+      // DOMException is not an Error in every runtime, but it still carries name.
+      const name =
+        e !== null && typeof e === 'object' && 'name' in e && typeof e.name === 'string' ? e.name : '';
+      // NotAllowedError is cancel or a timeout, including the person dismissing Windows Hello.
+      if (name === 'NotAllowedError') return null;
+      if (e instanceof Error) throw e;
+      throw new Error(name ? `${name}: ${String(e)}` : String(e));
     }
   }
 }

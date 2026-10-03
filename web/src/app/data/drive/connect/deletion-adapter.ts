@@ -25,6 +25,7 @@ import { decide } from '../../device-auth/delete-policy';
 import type { WebGrant, WebAuthorizer } from '../../device-auth/web-authorizer';
 import type { PrfAuthenticator } from '../../device-auth/prf-seal';
 import { SEALED_BLOB_KEY, sealWithPrf, sealedBlobFromJson, sealedBlobToJson } from '../../device-auth/prf-seal';
+import { PasskeyPrfMissingError } from '../../device-auth/web-authn-prf-authenticator';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
 
 /**
@@ -64,8 +65,13 @@ export interface DriveDeletionAdapter {
   /** UI helper: whether confirm is enabled and how long to wait (5s for L3 only). */
   confirmGate(action: DeletionAction, context: DeletionContext): ConfirmGateState;
 
-  /** Registers a passkey for L2/L3 deletion. Returns status: 'registered', 'unsupported', or null on cancellation. */
-  registerPasskey(): Promise<'registered' | 'unsupported' | null>;
+  /**
+   * Registers a passkey for L2/L3 deletion.
+   * 'unsupported' only when this browser has no platform authenticator (or the pieces it needs are missing).
+   * null when the person cancelled. 'no-prf' when the credential did not return the PRF output the deletion
+   * flow needs (not "no platform authenticator"). 'failed' for any other refusal.
+   */
+  registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null>;
 
   /** Returns passkey status: 'none', 'registered', or 'unsupported'. */
   passkeyStatus(): Promise<'none' | 'registered' | 'unsupported'>;
@@ -257,7 +263,7 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
     };
   }
 
-  async registerPasskey(): Promise<'registered' | 'unsupported' | null> {
+  async registerPasskey(): Promise<'registered' | 'unsupported' | 'failed' | 'no-prf' | null> {
     if (!this.prf || !this.crypto || !this.kv) return 'unsupported';
     try {
       if (!(await this.prf.isSupported())) return 'unsupported';
@@ -268,11 +274,15 @@ export class DriveDeletionAdapterImpl implements DriveDeletionAdapter {
       const secret = this.crypto.randomBytes(32);
       const sealed = await sealWithPrf(this.crypto, this.prf, credentialId, secret);
       secret.fill(0);
-      if (!('v' in sealed)) return sealed.reason === 'NOT_SUPPORTED' ? 'unsupported' : null;
+      // Cancel stays a cancel. A missing PRF output is not "this browser has no platform authenticator"
+      // — that case already returned above — and it is not stored.
+      if (!('v' in sealed)) return sealed.reason === 'CANCELLED' ? null : sealed.reason === 'NOT_SUPPORTED' ? 'no-prf' : 'failed';
       await this.kv.set(SEALED_BLOB_KEY, sealedBlobToJson(sealed));
+      await this.prf.commitRegistration?.(credentialId);
       return 'registered';
-    } catch {
-      return null;
+    } catch (e) {
+      if (e instanceof PasskeyPrfMissingError) return 'no-prf';
+      return 'failed';
     }
   }
 

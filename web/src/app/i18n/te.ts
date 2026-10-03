@@ -1322,6 +1322,11 @@ export const te: Dict = {
   'drivePasskey.unsupportedDescription': 'ఈ బ్రౌజర్ అవసరమైన పాస్‌కీ రకాన్ని చేయలేకపోయింది. ఇక్కడ నుండి ప్రతిదీ తొలగించడం అందుబాటులో లేదు; మీరు ఇప్పటికీ వ్యక్తిగత బ్యాకప్‌లను తొలగించవచ్చు.',
   // 2026-10-03: what makes Set up a passkey appear. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.unsupportedNext': 'ఈ కంప్యూటర్‌లో ఫింగర్‌ప్రింట్, ముఖ అన్‌లాక్ లేదా స్క్రీన్ లాక్ ఉన్న తర్వాత పాస్‌కీని సెట్ చేయండి కనిపిస్తుంది. Windows లో అది Windows Hello PIN: Settings, Accounts, Sign-in options. ఆపై ఈ పేజీని మళ్లీ లోడ్ చేయండి.',
+  // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerCancelled': 'ప్రాంప్ట్ రద్దు చేయబడింది.',
+  'drivePasskey.registerFailed': 'పాస్‌కీ సెట్ చేయలేకపోయింది. మళ్లీ ప్రయత్నించండి.',
+  // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'ఈ పాస్‌కీ తొలగింపులను సీల్ చేయడానికి కావలసిన PRF అవుట్‌పుట్‌ను ఇవ్వలేదు.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'ఇప్పుడు సమకాలీకరణ చేయండి',
