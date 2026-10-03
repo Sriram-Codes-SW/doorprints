@@ -122,6 +122,8 @@ export class DriveConnectService {
   private readonly state = signal<ConnectState>('Unavailable');
   /** Set when this device was revoked, so the card does not use the new-browser sentence. */
   private readonly blockedNotice = signal<TKey | null>(null);
+  /** This browser pinned its own upload, and the recovery key was never painted. Not the key. */
+  private readonly keyUnshown = signal(false);
   private recoveryKeyShown = false;
   private readonly isConfigured: boolean;
   private readyFolder: ReadyFolder | null = null;
@@ -152,6 +154,17 @@ export class DriveConnectService {
   /** The revoked-device sentence, or null when this card is a new browser. */
   enrolmentNotice(): TKey | null {
     return this.blockedNotice();
+  }
+
+  /** True when this connect pinned a list whose recovery key was never on screen. */
+  recoveryKeyWasNotShown(): boolean {
+    return this.keyUnshown();
+  }
+
+  /** The card has said that once. Does not store or reveal a recovery key. */
+  acknowledgeRecoveryKeyUnshown(): Promise<void> {
+    this.keyUnshown.set(false);
+    return this.backupAdapter.clearRecoveryKeyUnshown();
   }
 
   // ==================== Connection Flow ====================
@@ -238,6 +251,7 @@ export class DriveConnectService {
     switch (connection.kind) {
       case 'READY':
         this.blockedNotice.set(null);
+        this.keyUnshown.set(connection.recoveryKeyUnshown === true);
         this.state.set('Ready');
         return { state: 'Ready' };
       case 'NEEDS_RECOVERY_KEY':
@@ -261,7 +275,9 @@ export class DriveConnectService {
         // A wrong key is said on the join form. Moving to Error destroys that form and the parent
         // then shows "Something went wrong."
         const onJoin = this.state() === 'NeedsEnrolment' || this.state() === 'NeedsRecoveryKey';
-        if (onJoin && connection.problem.kind === 'WRONG_RECOVERY_KEY') {
+        // A wrong key stays on the join form. No recovery key does too: the sentence says to join
+        // from a device that is already connected, and that card is the enrol card beside the form.
+        if (onJoin && (connection.problem.kind === 'WRONG_RECOVERY_KEY' || connection.problem.kind === 'NO_RECOVERY_KEY')) {
           return { state: this.getState(), error: key };
         }
         this.blockedNotice.set(null);

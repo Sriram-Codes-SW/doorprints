@@ -1246,6 +1246,8 @@ export const te: Dict = {
   'driveConnect.folderGone': 'ఫోల్డర్ తొలగించబడింది. కొత్తది సృష్టించడానికి మళ్లీ కనెక్ట్ చేయండి.',
   'driveConnect.failed': 'ఏదో తప్పు జరిగింది. మళ్లీ ప్రయత్నించండి.',
   'driveConnect.noBackupSource': 'ఈ బ్రౌజర్ ఇప్పుడు బ్యాకప్ చేయలేదు.',
+  // 2026-10-03: the recovery key was not on screen. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.recoveryKeyUnshown': 'రికవరీ కీ చూపబడలేదు. మరో బ్రౌజర్‌ను దీని నుండి ఆమోదించండి.',
     // Drive backups card (S4b-BL-73)
   'driveBackups.backUpNow': 'ఇప్పుడు బ్యాకప్ తీయండి',
   'driveBackups.housesBackedUp': '{n} ఇళ్లు {time} వద్ద బ్యాకప్ అయ్యాయి',
@@ -1280,7 +1282,8 @@ export const te: Dict = {
   'driveProblem.SERVER': 'Google Driveలో సమస్య వచ్చింది. మళ్లీ ప్రయత్నించండి.',
   'driveProblem.DRIVE': 'Google Drive ఆ పని పూర్తి చేయలేకపోయింది. మళ్లీ ప్రయత్నించండి.',
   'driveProblem.CORRUPT': 'Google Driveలో ఒక ఫైల్ చదవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
-  'driveProblem.KEYS_ROLLED_BACK': 'Google Driveలోని కీ జాబితా ఈ పరికరం చివరిసారి చూసినదాని కంటే పాతది. మళ్లీ కనెక్ట్ చేయండి.',
+  // 2026-10-03: Try again reads the same list. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.KEYS_ROLLED_BACK': 'Google Driveలోని కీ జాబితా ఈ పరికరం చివరిసారి చూసినదాని కంటే పాతది. మళ్లీ ప్రయత్నించండి అదే జాబితాను చదువుతుంది.',
   'driveProblem.KEYS_UNTRUSTED': 'Google Driveలోని కీ జాబితా భద్రత తనిఖీలను దాటలేదు.',
   'driveProblem.KEYS_UNREADABLE': 'Google Driveలోని కీ జాబితాను చదవలేకపోయాం.',
   'driveProblem.NO_RECOVERY_KEY': 'ఈ ఫోల్డర్‌లో రికవరీ కీ లేదు. ఇప్పటికే కనెక్ట్ అయిన పరికరం నుండి చేరండి.',
@@ -1292,6 +1295,8 @@ export const te: Dict = {
   'driveProblem.FOLDER_EXISTS': 'ఈ Google Driveలో Doorprints ఫోల్డర్ ఇప్పటికే ఉంది.',
   'driveProblem.BACKUP_REFUSED': 'ఈ బ్యాకప్ నిరాకరించబడింది.',
   'driveProblem.SOURCE_FAILED': 'ఈ బ్రౌజర్ బ్యాకప్ సిద్ధం చేయలేకపోయింది.',
+  // 2026-10-03: a connect failure, not a backup. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.CONNECT_FAILED': 'ఈ బ్రౌజర్ Google Driveకు కనెక్ట్ కాలేకపోయింది. మళ్లీ ప్రయత్నించండి.',
   'driveProblem.CRYPTO_UNAVAILABLE': 'ఈ బ్రౌజర్ ఎన్‌క్రిప్ట్ చేయలేదు. మరో బ్రౌజర్ ప్రయత్నించండి.',
   'driveProblem.SIGNIN_POPUP_BLOCKED': 'సైన్-ఇన్ విండో నిరోధించబడింది. పాప్-అప్‌లను అనుమతించి మళ్లీ ప్రయత్నించండి.',
   'driveProblem.SIGNIN_CLOSED': 'సైన్-ఇన్ విండో పూర్తయ్యే ముందు మూసివేయబడింది.',

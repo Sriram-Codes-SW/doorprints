@@ -1246,6 +1246,8 @@ export const hi: Dict = {
   'driveConnect.folderGone': 'फ़ोल्डर हटा दिया गया था। नया बनाने के लिए फिर से कनेक्ट करें।',
   'driveConnect.failed': 'कुछ गलत हुआ। फिर कोशिश करें।',
   'driveConnect.noBackupSource': 'यह ब्राउज़र अभी बैकअप नहीं बना सकता।',
+  // 2026-10-03: the recovery key was not on screen. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.recoveryKeyUnshown': 'रिकवरी कुंजी दिखाई नहीं गई। दूसरे ब्राउज़र को इसी से मंज़ूरी दें।',
     // Drive backups card (S4b-BL-73)
   'driveBackups.backUpNow': 'अभी बैकअप लें',
   'driveBackups.housesBackedUp': '{n} मकान {time} पर बैकअप हुए',
@@ -1280,7 +1282,8 @@ export const hi: Dict = {
   'driveProblem.SERVER': 'गूगल ड्राइव में समस्या आई। फिर कोशिश करें।',
   'driveProblem.DRIVE': 'गूगल ड्राइव वह काम पूरा नहीं कर सका। फिर कोशिश करें।',
   'driveProblem.CORRUPT': 'गूगल ड्राइव की एक फ़ाइल पढ़ी नहीं जा सकी। फिर कोशिश करें।',
-  'driveProblem.KEYS_ROLLED_BACK': 'गूगल ड्राइव की कुंजी सूची इस डिवाइस की पिछली सूची से पुरानी है। फिर से कनेक्ट करें।',
+  // 2026-10-03: Try again reads the same list. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.KEYS_ROLLED_BACK': 'गूगल ड्राइव की कुंजी सूची इस डिवाइस की पिछली सूची से पुरानी है। फिर कोशिश करें उसी सूची को पढ़ता है।',
   'driveProblem.KEYS_UNTRUSTED': 'गूगल ड्राइव की कुंजी सूची अपनी सुरक्षा जाँच पास नहीं कर सकी।',
   'driveProblem.KEYS_UNREADABLE': 'गूगल ड्राइव की कुंजी सूची पढ़ी नहीं जा सकी।',
   'driveProblem.NO_RECOVERY_KEY': 'इस फ़ोल्डर में रिकवरी कुंजी नहीं है। पहले से जुड़े डिवाइस से शामिल हों।',
@@ -1292,6 +1295,8 @@ export const hi: Dict = {
   'driveProblem.FOLDER_EXISTS': 'इस गूगल ड्राइव में Doorprints फ़ोल्डर पहले से है।',
   'driveProblem.BACKUP_REFUSED': 'यह बैकअप स्वीकार नहीं हुआ।',
   'driveProblem.SOURCE_FAILED': 'यह ब्राउज़र बैकअप तैयार नहीं कर सका।',
+  // 2026-10-03: a connect failure, not a backup. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.CONNECT_FAILED': 'यह ब्राउज़र गूगल ड्राइव से कनेक्ट नहीं हो सका। फिर कोशिश करें।',
   'driveProblem.CRYPTO_UNAVAILABLE': 'यह ब्राउज़र एन्क्रिप्ट नहीं कर सकता। दूसरा ब्राउज़र आज़माएँ।',
   'driveProblem.SIGNIN_POPUP_BLOCKED': 'साइन-इन विंडो अवरुद्ध थी। पॉप-अप अनुमति दें और फिर कोशिश करें।',
   'driveProblem.SIGNIN_CLOSED': 'साइन-इन विंडो खत्म होने से पहले बंद हो गई।',

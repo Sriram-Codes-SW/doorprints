@@ -1246,6 +1246,8 @@ export const ta: Dict = {
   'driveConnect.folderGone': 'கோப்புறை நீக்கப்பட்டது. புதியதை உருவாக்க மீண்டும் இணைக்கவும்.',
   'driveConnect.failed': 'ஏதோ தவறு நடந்தது. மீண்டும் முயலவும்.',
   'driveConnect.noBackupSource': 'இந்த உலாவி இப்போது பேக்கப் செய்ய முடியாது.',
+  // 2026-10-03: the recovery key was not on screen. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.recoveryKeyUnshown': 'மீட்டெடுக்கும் விசை காட்டப்படவில்லை. மற்றொரு உலாவியை இதிலிருந்து அனுமதிக்கவும்.',
     // Drive backups card (S4b-BL-73)
   'driveBackups.backUpNow': 'இப்போது பேக்கப் செய்யவும்',
   'driveBackups.housesBackedUp': '{n} வீடுகள் {time} இல் பேக்கப் செய்யப்பட்டன',
@@ -1280,7 +1282,8 @@ export const ta: Dict = {
   'driveProblem.SERVER': 'Google Drive இல் சிக்கல் ஏற்பட்டது. மீண்டும் முயலவும்.',
   'driveProblem.DRIVE': 'Google Drive அதை முடிக்க முடியவில்லை. மீண்டும் முயலவும்.',
   'driveProblem.CORRUPT': 'Google Drive இல் ஒரு கோப்பைப் படிக்க முடியவில்லை. மீண்டும் முயலவும்.',
-  'driveProblem.KEYS_ROLLED_BACK': 'Google Drive இல் உள்ள விசைப் பட்டியல் இந்த சாதனம் கடைசியாகப் பார்த்ததை விடப் பழையது. மீண்டும் இணைக்கவும்.',
+  // 2026-10-03: Try again reads the same list. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.KEYS_ROLLED_BACK': 'Google Drive இல் உள்ள விசைப் பட்டியல் இந்த சாதனம் கடைசியாகப் பார்த்ததை விடப் பழையது. மீண்டும் முயலவும் அதே பட்டியலைப் படிக்கும்.',
   'driveProblem.KEYS_UNTRUSTED': 'Google Drive இல் உள்ள விசைப் பட்டியல் பாதுகாப்பு சோதனைகளைத் தாண்டவில்லை.',
   'driveProblem.KEYS_UNREADABLE': 'Google Drive இல் உள்ள விசைப் பட்டியலைப் படிக்க முடியவில்லை.',
   'driveProblem.NO_RECOVERY_KEY': 'இந்தக் கோப்புறையில் மீட்டெடுக்கும் விசை இல்லை. ஏற்கனவே இணைக்கப்பட்ட சாதனத்திலிருந்து இணையவும்.',
@@ -1292,6 +1295,8 @@ export const ta: Dict = {
   'driveProblem.FOLDER_EXISTS': 'இந்த Google Drive இல் Doorprints கோப்புறை ஏற்கனவே உள்ளது.',
   'driveProblem.BACKUP_REFUSED': 'இந்தப் பேக்கப் மறுக்கப்பட்டது.',
   'driveProblem.SOURCE_FAILED': 'இந்த உலாவி பேக்கப்பைத் தயாரிக்க முடியவில்லை.',
+  // 2026-10-03: a connect failure, not a backup. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.CONNECT_FAILED': 'இந்த உலாவி Google Drive உடன் இணைக்க முடியவில்லை. மீண்டும் முயலவும்.',
   'driveProblem.CRYPTO_UNAVAILABLE': 'இந்த உலாவி மறைகுறியாக்க முடியாது. வேறு உலாவியை முயலவும்.',
   'driveProblem.SIGNIN_POPUP_BLOCKED': 'உள்நுழைவு சாளரம் தடுக்கப்பட்டது. பாப்-அப்களை அனுமதித்து மீண்டும் முயலவும்.',
   'driveProblem.SIGNIN_CLOSED': 'உள்நுழைவு சாளரம் முடிவதற்கு முன் மூடப்பட்டது.',
