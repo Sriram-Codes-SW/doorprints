@@ -58,6 +58,29 @@ export class DrivePasskeyComponent implements OnInit {
     }
   }
 
+  /**
+   * Replace the button only when this browser has no platform authenticator.
+   * A PRF miss on a computer that can still show a prompt stays on *Set up a passkey*.
+   */
+  private async applyUnsupported(): Promise<void> {
+    try {
+      const status = await this.service.passkeyStatus();
+      if (status === 'unsupported') {
+        this.status.set('unsupported');
+        return;
+      }
+      if (status === 'registered') {
+        this.status.set('registered');
+        return;
+      }
+      this.status.set('none');
+      this.errorMessage.set('drivePasskey.registerFailed');
+    } catch {
+      this.errorMessage.set('drivePasskey.registerFailed');
+      if (this.status() !== 'registered') this.status.set('none');
+    }
+  }
+
   async onRegisterPasskey(): Promise<void> {
     if (this.busy()) return;
 
@@ -68,13 +91,21 @@ export class DrivePasskeyComponent implements OnInit {
       const result = await this.service.registerPasskey();
       if (result === 'registered') {
         this.status.set('registered');
-      } else if (result === null || result === 'unsupported') {
-        this.status.set('unsupported');
+        this.errorMessage.set(null);
+        await this.loadStatus();
+      } else if (result === null) {
+        // The person dismissed the prompt. Leave *Set up a passkey* and say so.
+        this.errorMessage.set('drivePasskey.registerCancelled');
+        if (this.status() !== 'registered') this.status.set('none');
+      } else if (result === 'unsupported') {
+        await this.applyUnsupported();
+      } else {
+        this.errorMessage.set('drivePasskey.registerFailed');
+        if (this.status() !== 'registered') this.status.set('none');
       }
-      // Refresh status after registration
-      await this.loadStatus();
     } catch {
-      this.errorMessage.set('driveConnect.failed');
+      this.errorMessage.set('drivePasskey.registerFailed');
+      if (this.status() !== 'registered') this.status.set('none');
     } finally {
       this.busy.set(false);
     }

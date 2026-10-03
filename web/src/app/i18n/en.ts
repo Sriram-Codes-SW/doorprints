@@ -1281,6 +1281,8 @@ export const en = {
   'drivePasskey.registerButton': 'Set up a passkey',
   'drivePasskey.registeredDescription': 'A passkey is set up on this device.',
   'drivePasskey.unsupportedDescription': 'This browser cannot make the kind of passkey needed. Deleting everything from here is not available; you can still delete single backups.',
+  'drivePasskey.registerCancelled': 'The prompt was cancelled.',
+  'drivePasskey.registerFailed': 'The passkey could not be set up. Try again.',
   'driveBackups.backUpNow': 'Back up now',
   'driveBackups.housesBackedUp': '{n} houses backed up at {time}',
   'driveBackups.backups': 'Backups',

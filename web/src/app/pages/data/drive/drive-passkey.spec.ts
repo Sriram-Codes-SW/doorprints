@@ -152,7 +152,7 @@ describe('DrivePasskeyComponent', () => {
         throw new Error('Registration failed');
       }),
     });
-    const { component, detect } = await render(service);
+    const { host, component, detect } = await render(service);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     detect();
@@ -160,7 +160,11 @@ describe('DrivePasskeyComponent', () => {
     await component.onRegisterPasskey();
     detect();
 
-    expect(component['errorMessage']()).toBe('driveConnect.failed');
+    expect(component['status']()).toBe('none');
+    expect(component['errorMessage']()).toBe('drivePasskey.registerFailed');
+    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+    expect(host.querySelector('.error-message')?.textContent).toContain('The passkey could not be set up. Try again.');
+    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
   });
 
   it('renders without missing i18n keys', async () => {
@@ -173,12 +177,74 @@ describe('DrivePasskeyComponent', () => {
     expect(host.querySelector('h3')).toBeTruthy();
   });
 
-  it('handles null return from registerPasskey', async () => {
+  it('stays on Set up a passkey and says the prompt was cancelled', async () => {
     const service = createFakeDriveService({
       registerPasskey: vi.fn(async () => null),
+      passkeyStatus: vi.fn(async () => 'none' as const),
+    });
+    const { host, component, detect } = await render(service);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    detect();
+
+    (host.querySelector('button') as HTMLButtonElement).click();
+    await vi.waitFor(() => {
+      expect(component['errorMessage']()).toBe('drivePasskey.registerCancelled');
+    });
+    detect();
+
+    expect(component['status']()).toBe('none');
+    expect(component['errorMessage']()).toBe('drivePasskey.registerCancelled');
+    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+    expect(host.querySelector('.error-message')?.textContent).toContain('The prompt was cancelled.');
+    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
+  });
+
+  it('stays on Set up a passkey and shows a sentence when registration fails', async () => {
+    const service = createFakeDriveService({
+      registerPasskey: vi.fn(async () => 'failed' as const),
+      passkeyStatus: vi.fn(async () => 'none' as const),
+    });
+    const { host, component, detect } = await render(service);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    detect();
+
+    await component.onRegisterPasskey();
+    detect();
+
+    expect(component['status']()).toBe('none');
+    expect(component['errorMessage']()).toBe('drivePasskey.registerFailed');
+    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+    expect(host.querySelector('.error-message')?.textContent).toContain('The passkey could not be set up. Try again.');
+    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
+  });
+
+  it('keeps the button when registration is unsupported but a platform authenticator is still available', async () => {
+    const service = createFakeDriveService({
+      registerPasskey: vi.fn(async () => 'unsupported' as const),
+      passkeyStatus: vi.fn(async () => 'none' as const),
+    });
+    const { host, component, detect } = await render(service);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    detect();
+
+    await component.onRegisterPasskey();
+    detect();
+
+    expect(component['status']()).toBe('none');
+    expect(component['errorMessage']()).toBe('drivePasskey.registerFailed');
+    expect(host.querySelector('button')?.textContent).toContain('Set up a passkey');
+    expect(host.textContent).not.toContain('This browser cannot make the kind of passkey');
+  });
+
+  it('replaces the button only when the platform authenticator is unavailable', async () => {
+    const service = createFakeDriveService({
+      registerPasskey: vi.fn(async () => 'unsupported' as const),
       passkeyStatus: vi.fn(async () => 'unsupported' as const),
     });
-    const { component, detect } = await render(service);
+    const { host, component, detect } = await render(service);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     detect();
@@ -187,6 +253,8 @@ describe('DrivePasskeyComponent', () => {
     detect();
 
     expect(component['status']()).toBe('unsupported');
+    expect(host.querySelector('button')).toBeNull();
+    expect(host.textContent).toContain('This browser cannot make the kind of passkey');
   });
 
   it('has aria-live region for error messages', async () => {

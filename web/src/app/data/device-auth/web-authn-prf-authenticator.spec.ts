@@ -38,6 +38,8 @@ class FakeCredentialsContainer {
   private scriptError: Error | null = null;
   recordedCreateOptions: CredentialCreationOptions | null = null;
   recordedGetOptions: CredentialRequestOptions | null = null;
+  /** When false, registration reports a credential that cannot produce a PRF output. */
+  createPrfEnabled = true;
 
   constructor(prfSecret: Uint8Array = utf8("fake-prf-secret")) {
     this.prfSecret = prfSecret;
@@ -86,7 +88,7 @@ class FakeCredentialsContainer {
       authenticatorAttachment: "platform",
       transports: ["internal"],
       getClientExtensionResults: () => ({
-        prf: { enabled: true },
+        prf: { enabled: this.createPrfEnabled },
       }),
       toJSON: () => ({
         id: idString,
@@ -278,14 +280,53 @@ describe("WebAuthnPrfAuthenticator", () => {
       expect(result).toBeNull();
     });
 
-    it("returns null for generic errors", async () => {
+    it("throws for generic errors", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
 
       fakeCredentials.setScriptError(new Error("Unknown error"));
 
-      const result = await auth.registerPasskey("Test User");
-      expect(result).toBeNull();
+      await expect(auth.registerPasskey("Test User")).rejects.toThrow("Unknown error");
+      expect(await store.get("doorprints-webauthn-credential-id")).toBeUndefined();
+    });
+
+    it("lists ES256 then RS256 and requires a discoverable platform credential", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
+
+      const credId = await auth.registerPasskey("Test User");
+      expect(credId).not.toBeNull();
+
+      const opts = fakeCredentials.recordedCreateOptions!.publicKey as {
+        pubKeyCredParams?: { alg: number; type: string }[];
+        authenticatorSelection?: {
+          authenticatorAttachment?: string;
+          residentKey?: string;
+          requireResidentKey?: boolean;
+          userVerification?: string;
+        };
+        extensions?: { prf?: Record<string, never> };
+      };
+      expect(opts.pubKeyCredParams).toEqual([
+        { alg: -7, type: "public-key" },
+        { alg: -257, type: "public-key" },
+      ]);
+      expect(opts.authenticatorSelection).toEqual({
+        authenticatorAttachment: "platform",
+        residentKey: "required",
+        requireResidentKey: true,
+        userVerification: "required",
+      });
+      expect(opts.extensions?.prf).toEqual({});
+    });
+
+    it("does not keep a credential that cannot produce a PRF output", async () => {
+      const store = createStore();
+      const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
+      fakeCredentials.createPrfEnabled = false;
+
+      await expect(auth.registerPasskey("Test User")).rejects.toThrow(/PRF/);
+      expect(await store.get("doorprints-webauthn-credential-id")).toBeUndefined();
     });
 
     it("uses userVerification 'required' in creation options", async () => {

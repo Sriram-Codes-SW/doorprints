@@ -1320,6 +1320,9 @@ export const te: Dict = {
   'drivePasskey.registerButton': 'పాస్‌కీని సెట్ చేయండి',
   'drivePasskey.registeredDescription': 'ఈ సాధనం పై పాస్‌కీ సెట్ చేయబడింది.',
   'drivePasskey.unsupportedDescription': 'ఈ బ్రౌజర్ అవసరమైన పాస్‌కీ రకాన్ని చేయలేకపోయింది. ఇక్కడ నుండి ప్రతిదీ తొలగించడం అందుబాటులో లేదు; మీరు ఇప్పటికీ వ్యక్తిగత బ్యాకప్‌లను తొలగించవచ్చు.',
+  // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerCancelled': 'ప్రాంప్ట్ రద్దు చేయబడింది.',
+  'drivePasskey.registerFailed': 'పాస్‌కీ సెట్ చేయలేకపోయింది. మళ్లీ ప్రయత్నించండి.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'ఇప్పుడు సమకాలీకరణ చేయండి',

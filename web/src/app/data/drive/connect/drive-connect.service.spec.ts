@@ -212,7 +212,7 @@ describe('DriveConnectService', () => {
 
     it('registerPasskey returns appropriate result', async () => {
       const result = await a.service.registerPasskey();
-      expect(['registered', 'unsupported', null]).toContain(result);
+      expect(['registered', 'unsupported', 'failed', null]).toContain(result);
     });
   });
 

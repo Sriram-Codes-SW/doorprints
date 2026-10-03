@@ -1320,6 +1320,9 @@ export const hi: Dict = {
   'drivePasskey.registerButton': 'एक पासकी सेट अप करें',
   'drivePasskey.registeredDescription': 'इस डिवाइस पर एक पासकी सेट अप की गई है।',
   'drivePasskey.unsupportedDescription': 'यह ब्राउज़र उस तरह की पासकी नहीं बना सकता जो आवश्यक है। यहाँ से सब कुछ हटाना उपलब्ध नहीं है; आप अभी भी अलग-अलग बैकअप हटा सकते हैं।',
+  // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerCancelled': 'संकेत रद्द कर दिया गया।',
+  'drivePasskey.registerFailed': 'पासकी सेट नहीं हो सकी। फिर कोशिश करें।',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'अभी सिंक करें',

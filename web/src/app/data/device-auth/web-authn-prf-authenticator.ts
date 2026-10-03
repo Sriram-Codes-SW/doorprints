@@ -74,6 +74,16 @@ function isPrfExtensionOutput(ext: unknown): ext is PrfExtensionOutput {
   return ext !== null && typeof ext === 'object' && 'prf' in ext;
 }
 
+/**
+ * Registration asked for the PRF extension. Keep the credential only when the authenticator
+ * says that extension is enabled; a later assertion is what actually produces the output.
+ */
+function creationEnablesPrf(cred: unknown): boolean {
+  if (!hasGetClientExtensionResults(cred)) return false;
+  const ext = cred.getClientExtensionResults();
+  return isPrfExtensionOutput(ext) && ext.prf?.enabled === true;
+}
+
 /** Hostname used as WebAuthn `rp.id`. IPs and an empty host map to `localhost`. */
 export function relyingPartyIdOf(hostname: string): string {
   const host = hostname.trim().toLowerCase();
@@ -225,8 +235,9 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   }
 
   /**
-   * Registers a new passkey with PRF support. Stores the credential ID for future use.
-   * Returns the credential ID on success, or null if registration was cancelled or unsupported.
+   * Registers a new discoverable platform passkey with PRF support.
+   * Returns the credential ID on success, or null when the person cancelled the prompt.
+   * A refusal (including a credential that cannot produce a PRF output) throws, so the card can say so.
    */
   async registerPasskey(displayName: string): Promise<Uint8Array | null> {
     if (typeof navigator === 'undefined' || !navigator.credentials) {
@@ -247,9 +258,17 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             name: 'doorprints-user',
             displayName: displayName || 'Doorprints User',
           },
-          pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+          // ES256 first, then RS256. Windows Hello refuses a list that omits RS256 before it
+          // shows a prompt (Chromium: content/browser/webauth/pub_key_cred_params.md).
+          pubKeyCredParams: [
+            { alg: -7, type: 'public-key' },
+            { alg: -257, type: 'public-key' },
+          ],
           authenticatorSelection: {
             authenticatorAttachment: 'platform',
+            // A passkey is a discoverable credential. Without this, the default is "discouraged".
+            residentKey: 'required',
+            requireResidentKey: true,
             userVerification: 'required',
           },
           extensions: {
@@ -258,6 +277,8 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         } as PublicKeyCredentialCreationOptions & {
           authenticatorSelection?: {
             authenticatorAttachment?: string;
+            residentKey?: string;
+            requireResidentKey?: boolean;
             userVerification?: string;
           };
           extensions?: {
@@ -272,9 +293,13 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return null;
       }
 
-      // Extract and store the credential ID
+      // Do not keep a credential the deletion flow cannot open. PRF output is checked again when sealing.
+      if (!creationEnablesPrf(credential)) {
+        throw new DOMException('This passkey cannot produce a PRF output.', 'NotSupportedError');
+      }
+
       if (!('id' in credential) || typeof credential.id !== 'string') {
-        return null;
+        throw new Error('Passkey registration returned no credential id.');
       }
       // The credential.id from WebAuthn is a base64url string; decode it to bytes
       const credIdBuffer = base64urlToBytes(credential.id);
@@ -284,11 +309,13 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
 
       return credIdBuffer;
     } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e));
-      if (error.name === 'NotAllowedError') {
-        return null;
-      }
-      return null;
+      // DOMException is not an Error in every runtime, but it still carries name.
+      const name =
+        e !== null && typeof e === 'object' && 'name' in e && typeof e.name === 'string' ? e.name : '';
+      // NotAllowedError is cancel or a timeout, including the person dismissing Windows Hello.
+      if (name === 'NotAllowedError') return null;
+      if (e instanceof Error) throw e;
+      throw new Error(name ? `${name}: ${String(e)}` : String(e));
     }
   }
 }
