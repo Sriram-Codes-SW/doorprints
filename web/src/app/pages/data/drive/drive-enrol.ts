@@ -346,7 +346,7 @@ export class DriveEnrolCard {
   }
 
   private reasonKey(reason: string): TKey {
-    if (reason === 'USE_PHONE') return 'driveDelete.usePhone';
+    if (reason === 'USE_PHONE') return 'driveEnrol.passkeyNeeded';
     if (reason.startsWith('drive')) return reason as TKey;
     return 'driveEnrol.badMessage';
   }

@@ -1365,6 +1365,8 @@ export const ta: Dict = {
   'driveEnrol.cameraMissing': 'இந்த உலாவி கேமராவைத் திறக்கவில்லை. குறியீட்டை ஒட்டவும்.',
   'driveEnrol.newcomer': 'இது புதிய உலாவி',
   'driveEnrol.approver': 'இந்த உலாவி ஏற்கனவே இணைக்கப்பட்டுள்ளது',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveEnrol.passkeyNeeded': 'பாஸ்கீ இல்லாமல் இந்த உலாவி மற்றொரு உலாவியை அனுமதிக்க முடியாது. இந்தச் சாதனத்தில் பாஸ்கீ அமைக்கவும்.',
   'driveEnrol.newcomerHelp': 'இந்தக் கோரிக்கையை நகலெடுத்து, இணைக்கப்பட்ட சாதனத்தில் ஒட்டவும், பின்னர் அதன் பதிலை இங்கே ஒட்டவும்.',
   'driveEnrol.approverHelp': 'புதிய உலாவியின் கோரிக்கையை ஒட்டி, பதிலை உருவாக்கி, பின்னர் வெளிப்படுத்தப்பட்ட செய்தியை மீண்டும் ஒட்டவும்.',
   'driveEnrol.requestLabel': 'இணைப்புக் கோரிக்கை',
@@ -1388,6 +1390,8 @@ export const ta: Dict = {
   'driveDevices.revoke': 'இந்த சாதனத்தை நீக்கு',
   'driveDevices.revokeNote': 'இது அந்த சாதனம் புதிய Doorprints காப்புப்பிரதிகளைத் திறப்பதை நிறுத்தும். இது அதை உங்கள் Google கணக்கிலிருந்து வெளியேற்றாது: அனைத்து சாதனங்களிலும் துண்டிக்கவும், அல்லது Google இன் Your devices பக்கத்தைப் பயன்படுத்தவும், திருடப்பட்டால் Google கடவுச்சொல்லை மாற்றவும்.',
   'driveDevices.disconnectAll': 'அனைத்து சாதனங்களிலும் துண்டிக்கவும்',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveDevices.disconnectPasskey': 'பாஸ்கீ இல்லாமல் இந்த உலாவி எல்லா சாதனங்களையும் துண்டிக்க முடியாது. இந்தச் சாதனத்தில் பாஸ்கீ அமைக்கவும்.',
   'driveDevices.threeDisconnect': 'Google Drive துண்டிப்பு: இந்த சாதனம் ஒத்திசைவையும் காப்புப்பிரதியையும் நிறுத்தும். எங்கும் எதுவும் நீக்கப்படாது; மற்ற சாதனங்கள் தொடரும்.',
   'driveDevices.threeRemove': 'அனைத்து சாதனங்களிலும் துண்டிப்பு: ஒவ்வொரு சாதனமும் ஒரே நேரத்தில் அணுகலை இழக்கும். உங்கள் கோப்புகள் Drive இல் இருக்கும்.',
   'driveDevices.threeDelete': 'Google Drive இலிருந்து Doorprints தரவை நீக்கு: Drive கோப்புகள் போகும். சாதனங்கள் தங்கள் வீடுகளை வைத்திருக்கும்.',

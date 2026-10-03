@@ -120,6 +120,8 @@ export const DRIVE_BACKUP_SOURCE = new InjectionToken<BackupSource>('DRIVE_BACKU
 @Injectable()
 export class DriveConnectService {
   private readonly state = signal<ConnectState>('Unavailable');
+  /** Set when this device was revoked, so the card does not use the new-browser sentence. */
+  private readonly blockedNotice = signal<TKey | null>(null);
   private recoveryKeyShown = false;
   private readonly isConfigured: boolean;
   private readyFolder: ReadyFolder | null = null;
@@ -147,6 +149,11 @@ export class DriveConnectService {
     return this.state();
   }
 
+  /** The revoked-device sentence, or null when this card is a new browser. */
+  enrolmentNotice(): TKey | null {
+    return this.blockedNotice();
+  }
+
   // ==================== Connection Flow ====================
 
   async connect(): Promise<ConnectResult> {
@@ -168,13 +175,15 @@ export class DriveConnectService {
   }
 
   async createFolder(): Promise<ConnectResult> {
-    this.state.set('FirstConnectShowRecoveryKey');
     try {
       const outcome = await this.backupAdapter.createFolder();
       this.recoveryKeyShown = false;
 
       if (outcome.recoveryKey) {
         this.updateReadyFolderFromConnection(outcome.connection);
+        // The heading is only true once the key is in this result. Setting the state earlier paints
+        // "Save your recovery key" while the key is still absent.
+        this.state.set('FirstConnectShowRecoveryKey');
         return {
           state: 'FirstConnectShowRecoveryKey',
           recoveryKey: outcome.recoveryKey.display,
@@ -228,24 +237,39 @@ export class DriveConnectService {
     this.updateReadyFolderFromConnection(connection);
     switch (connection.kind) {
       case 'READY':
+        this.blockedNotice.set(null);
         this.state.set('Ready');
         return { state: 'Ready' };
       case 'NEEDS_RECOVERY_KEY':
         this.state.set('NeedsRecoveryKey');
+        this.blockedNotice.set(connection.reason === 'REVOKED' ? 'driveProblem.DEVICE_REVOKED' : null);
         return { state: 'NeedsRecoveryKey' };
       case 'NEEDS_ENROLMENT':
+        this.blockedNotice.set(null);
         this.state.set('NeedsEnrolment');
         return { state: 'NeedsEnrolment' };
       case 'FOLDER_GONE':
+        this.blockedNotice.set(null);
         this.state.set('Disconnected');
         return { state: 'Disconnected', error: 'driveConnect.folderGone' };
       case 'NO_FOLDER':
+        this.blockedNotice.set(null);
         this.state.set('Disconnected');
         return { state: 'Disconnected' };
-      case 'ERROR':
+      case 'ERROR': {
+        const key = problemToMsg(connection.problem.kind);
+        // A wrong key is said on the join form. Moving to Error destroys that form and the parent
+        // then shows "Something went wrong."
+        const onJoin = this.state() === 'NeedsEnrolment' || this.state() === 'NeedsRecoveryKey';
+        if (onJoin && connection.problem.kind === 'WRONG_RECOVERY_KEY') {
+          return { state: this.getState(), error: key };
+        }
+        this.blockedNotice.set(null);
         this.state.set('Error');
-        return { state: 'Error', error: problemToMsg(connection.problem.kind) };
+        return { state: 'Error', error: key };
+      }
       default:
+        this.blockedNotice.set(null);
         this.state.set('Error');
         return { state: 'Error', error: 'driveConnect.failed' };
     }

@@ -589,6 +589,41 @@ describe('DriveBackupService', () => {
     expect(writeCount()).toBe(before);
   });
 
+  it('after FOLDER_GONE, createFolder makes a new folder and a recovery key, and does not replace one that is still there', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const folder = await a.created();
+    const oldRoot = folder.rootId;
+    expect(await a.trust.keys(oldRoot).load()).not.toBeNull();
+    const keysBefore = server.contentOf(folder.keysId);
+    const kept = await a.service.createFolder(true);
+    expect(kept.connection.kind).toBe('READY');
+    expect(kept.recoveryKey).toBeNull();
+    if (kept.connection.kind === 'READY') expect(kept.connection.folder.rootId).toBe(oldRoot);
+    expect(server.contentOf(folder.keysId)).toEqual(keysBefore);
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.role] === 'root' && !f.trashed).length).toBe(1);
+
+    server.putByHand({
+      name: 'keep-me.txt', mimeType: 'text/plain', parents: [], appProperties: {},
+    }, new Uint8Array([1, 2, 3]));
+    server.trashByHand(oldRoot);
+    expect((await a.service.connect()).kind).toBe('FOLDER_GONE');
+    const snapshot = server.allFiles().map((f) => ({ id: f.id, trashed: f.trashed, bytes: server.contentOf(f.id) }));
+    const out = await a.service.createFolder(true);
+    expect(out.connection.kind).toBe('READY');
+    expect(out.recoveryKey).not.toBeNull();
+    if (out.connection.kind === 'READY') expect(out.connection.folder.rootId).not.toBe(oldRoot);
+    expect(await a.trust.keys(oldRoot).load()).toBeNull();
+    expect(await a.trust.control(oldRoot).load()).toBeNull();
+    for (const f of snapshot) {
+      const now = server.fileOrNull(f.id);
+      expect(now).not.toBeNull();
+      expect(now!.trashed).toBe(f.trashed);
+      expect(server.contentOf(f.id)).toEqual(f.bytes);
+    }
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.role] === 'root' && !f.trashed).length).toBe(1);
+  });
+
   it('starts an unfinished create again on the same device only', async () => {
     const { server } = world();
     const a = await Rig.make(server);

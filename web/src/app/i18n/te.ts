@@ -1365,6 +1365,8 @@ export const te: Dict = {
   'driveEnrol.cameraMissing': 'ఈ బ్రౌజర్ కెమెరాను తెరవలేకపోయింది. కోడ్‌ను అతికించండి.',
   'driveEnrol.newcomer': 'ఇది కొత్త బ్రౌజర్',
   'driveEnrol.approver': 'ఈ బ్రౌజర్ ఇప్పటికే కనెక్ట్ అయింది',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveEnrol.passkeyNeeded': 'పాస్‌కీ లేకుండా ఈ బ్రౌజర్ మరో బ్రౌజర్‌ను అనుమతించలేదు. ఈ పరికరంపై పాస్‌కీని సెట్ చేయండి.',
   'driveEnrol.newcomerHelp': 'ఈ అభ్యర్థనను కాపీ చేసి, కనెక్ట్ అయిన పరికరంపై అతికించి, ఆపై దాని సమాధానాన్ని ఇక్కడ అతికించండి.',
   'driveEnrol.approverHelp': 'కొత్త బ్రౌజర్ అభ్యర్థనను అతికించి, సమాధానం చేసి, ఆపై వెల్లడించిన సందేశాన్ని తిరిగి అతికించండి.',
   'driveEnrol.requestLabel': 'జత అభ్యర్థన',
@@ -1388,6 +1390,8 @@ export const te: Dict = {
   'driveDevices.revoke': 'ఈ పరికరాన్ని ఉపసంహరించు',
   'driveDevices.revokeNote': 'ఇది ఆ పరికరం కొత్త Doorprints బ్యాకప్‌లను తెరవకుండా ఆపుతుంది. ఇది దానిని మీ Google ఖాతా నుండి సైన్ అవుట్ చేయదు: అన్ని పరికరాలపై డిస్‌కనెక్ట్ చేయండి, లేదా Google యొక్క Your devices పేజీని ఉపయోగించండి, మరియు దొంగిలించబడితే Google పాస్‌వర్డ్‌ను మార్చండి.',
   'driveDevices.disconnectAll': 'అన్ని పరికరాలపై డిస్‌కనెక్ట్ చేయండి',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveDevices.disconnectPasskey': 'పాస్‌కీ లేకుండా ఈ బ్రౌజర్ ప్రతి పరికరాన్ని డిస్‌కనెక్ట్ చేయలేదు. ఈ పరికరంపై పాస్‌కీని సెట్ చేయండి.',
   'driveDevices.threeDisconnect': 'Google Drive డిస్‌కనెక్ట్: ఈ పరికరం సింక్ మరియు బ్యాకప్ ఆపుతుంది. ఎక్కడా ఏదీ తొలగించబడదు; మీ ఇతర పరికరాలు కొనసాగుతాయి.',
   'driveDevices.threeRemove': 'అన్ని పరికరాలపై డిస్‌కనెక్ట్: ప్రతి పరికరం ఒకేసారి యాక్సెస్ కోల్పోతుంది. మీ ఫైళ్లు Drive లో ఉంటాయి.',
   'driveDevices.threeDelete': 'Google Drive నుండి Doorprints డేటాను తొలగించండి: Drive ఫైళ్లు పోతాయి. పరికరాలు తమ ఇళ్లను ఉంచుతాయి.',
