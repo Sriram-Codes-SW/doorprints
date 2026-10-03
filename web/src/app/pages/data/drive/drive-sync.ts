@@ -21,14 +21,19 @@ import {
   OnDestroy,
   OnInit,
   ChangeDetectionStrategy,
+  effect,
   inject,
   signal,
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
+import { LocalStore } from '../../../data/local-store.service';
 import { TranslationService } from '../../../i18n/translation.service';
 import { TPipe } from '../../../i18n/t.pipe';
+
+/** docs/15 §1.3: sync two minutes after the last local change, while the page is open. */
+export const DRIVE_SYNC_AFTER_CHANGE_MS = 2 * 60 * 1000;
 
 /**
  * Drive sync status and controls: status line, sync now, shrink confirmation, Wi-Fi photo rule.
@@ -44,6 +49,8 @@ import { TPipe } from '../../../i18n/t.pipe';
 export class DriveSyncCard implements OnInit, OnDestroy {
   private readonly service = inject(DriveConnectService);
   protected readonly i18n = inject(TranslationService);
+  private alive = true;
+  private afterChangeTimer: number | null = null;
 
   protected readonly busy = signal(false);
   protected readonly syncState = signal<'synced' | 'waiting-wifi' | 'offline' | 'error' | 'syncing' | 'needs-confirmation'>('synced');
@@ -80,6 +87,23 @@ export class DriveSyncCard implements OnInit, OnDestroy {
   private offlineHandler: (() => void) | null = null;
   private visibilityHandler: (() => void) | null = null;
 
+  constructor() {
+    const store = inject(LocalStore);
+    let previous = store.revision();
+    effect((onCleanup) => {
+      const rev = store.revision();
+      if (rev === previous) return;
+      previous = rev;
+      if (this.afterChangeTimer !== null) window.clearTimeout(this.afterChangeTimer);
+      const timer = window.setTimeout(() => {
+        this.afterChangeTimer = null;
+        if (this.alive) void this.performSync();
+      }, DRIVE_SYNC_AFTER_CHANGE_MS);
+      this.afterChangeTimer = timer;
+      onCleanup(() => window.clearTimeout(timer));
+    });
+  }
+
   async ngOnInit(): Promise<void> {
     await this.performSync();
     this.onlineHandler = () => void this.performSync();
@@ -95,6 +119,8 @@ export class DriveSyncCard implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.alive = false;
+    if (this.afterChangeTimer !== null) window.clearTimeout(this.afterChangeTimer);
     if (this.syncIntervalId !== null) clearInterval(this.syncIntervalId);
     if (this.onlineHandler) window.removeEventListener('online', this.onlineHandler);
     if (this.offlineHandler) window.removeEventListener('offline', this.offlineHandler);

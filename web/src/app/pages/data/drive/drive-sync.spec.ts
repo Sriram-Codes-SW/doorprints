@@ -19,8 +19,9 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '../../../i18n/all-dictionaries';
-import { DriveSyncCard } from './drive-sync';
+import { DriveSyncCard, DRIVE_SYNC_AFTER_CHANGE_MS } from './drive-sync';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
+import { LocalStore } from '../../../data/local-store.service';
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
 import type { Params } from '../../../i18n/translation.service';
@@ -118,5 +119,37 @@ describe('DriveSyncCard', () => {
     expect(status).toContain(i18n.t('driveSync.statusError'));
     expect(status).not.toContain('driveSync.statusError');
     expect(status).not.toContain('offline');
+  });
+
+  it('syncs about two minutes after a local change', async () => {
+    const { svc } = await render();
+    const before = svc.syncNow.mock.calls.length;
+    const store = TestBed.inject(LocalStore);
+    const scheduled: Array<() => void> = [];
+    const real = window.setTimeout.bind(window);
+    const spy = vi.spyOn(window, 'setTimeout').mockImplementation(((fn: TimerHandler, ms?: number, ...rest: unknown[]) => {
+      if (ms === DRIVE_SYNC_AFTER_CHANGE_MS && typeof fn === 'function') {
+        scheduled.push(() => fn());
+        return 1 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return real(fn, ms as number, ...(rest as []));
+    }) as typeof setTimeout);
+    try {
+      store.revision.set(store.revision() + 1);
+      TestBed.tick();
+      expect(scheduled).toHaveLength(1);
+      expect(svc.syncNow.mock.calls.length).toBe(before);
+      scheduled[0]();
+      await flush();
+      expect(svc.syncNow.mock.calls.length).toBe(before + 1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('says photos upload on their own unless data saver or cellular', async () => {
+    const { host, i18n } = await render();
+    shown(host, i18n, 'driveSync.afterChange');
+    shown(host, i18n, 'driveSync.websitePhotos');
   });
 });

@@ -16,22 +16,30 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { unb64 } from '../../../data/crypto/bytes';
 import { TPipe } from '../../../i18n/t.pipe';
 import { TranslationService } from '../../../i18n/translation.service';
+import type { TKey } from '../../../i18n/en';
+import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import {
   approverReply,
   codeOf,
   newcomerCommit,
   revealAndCode,
+  withWrap,
   type PairingMessage,
 } from '../../../data/drive/connect/pairing-flow';
 
+/** The name written into keys.json for a browser that joins by the 8-digit code. */
+const WEBSITE_DEVICE_NAME = 'Website';
+
 /**
- * Second-browser enrolment without a camera: the 8-digit comparison (docs/15 §9.5 i) and the recovery-key path
- * on the sibling join card. QR enrolment is a later ticket.
+ * Second-browser enrolment without a camera (docs/15 §9.5 i). Both sides use this device's real public key.
+ * After the codes match, the connected browser approves (L2) and the new browser opens the returned wrap.
+ * QR enrolment is a later ticket. The recovery key stays on the sibling join card.
  */
 @Component({
   selector: 'app-drive-enrol',
@@ -42,6 +50,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DriveEnrolCard {
+  private readonly service = inject(DriveConnectService);
   protected readonly i18n = inject(TranslationService);
 
   protected readonly role = signal<'choose' | 'newcomer' | 'approver'>('choose');
@@ -50,15 +59,23 @@ export class DriveEnrolCard {
   protected readonly code = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly copied = signal(false);
+  protected readonly approved = signal(false);
+  protected readonly joined = signal(false);
+
+  protected readonly canJoin = computed(() => {
+    const msg = parseMessage(this.replyText());
+    return !!msg && typeof msg.wrapEnc === 'string' && typeof msg.wrapCt === 'string' && typeof msg.epoch === 'number';
+  });
 
   private nNew: Uint8Array | null = null;
   private nApprover: Uint8Array | null = null;
 
-  protected becomeNewcomer(): void {
+  protected async becomeNewcomer(): Promise<void> {
     this.error.set(null);
+    this.joined.set(false);
+    const pkNew = await this.publicKey();
+    if (!pkNew) return;
     this.nNew = crypto.getRandomValues(new Uint8Array(16));
-    const pkNew = crypto.getRandomValues(new Uint8Array(65));
-    pkNew[0] = 4;
     const msg = newcomerCommit(pkNew, this.nNew, Date.now());
     this.requestText.set(JSON.stringify(msg));
     this.role.set('newcomer');
@@ -66,6 +83,7 @@ export class DriveEnrolCard {
 
   protected becomeApprover(): void {
     this.error.set(null);
+    this.approved.set(false);
     this.role.set('approver');
   }
 
@@ -89,19 +107,18 @@ export class DriveEnrolCard {
     }
   }
 
-  protected approvePasted(): void {
+  protected async approvePasted(): Promise<void> {
     this.error.set(null);
     this.code.set(null);
-    let commit: PairingMessage;
-    try {
-      commit = JSON.parse(this.requestText()) as PairingMessage;
-    } catch {
+    this.approved.set(false);
+    const commit = parseMessage(this.requestText());
+    if (!commit) {
       this.error.set(this.i18n.t('driveEnrol.badMessage'));
       return;
     }
+    const pkA = await this.publicKey();
+    if (!pkA) return;
     this.nApprover = crypto.getRandomValues(new Uint8Array(16));
-    const pkA = crypto.getRandomValues(new Uint8Array(65));
-    pkA[0] = 4;
     const reply = approverReply(commit, pkA, this.nApprover, Date.now());
     if (!reply.ok || !reply.message) {
       const reason = !reply.ok ? reply.reason : 'INCOMPLETE';
@@ -149,5 +166,63 @@ export class DriveEnrolCard {
       return;
     }
     this.code.set(out.code);
+  }
+
+  /** The connected browser, after the person has compared the codes: list this public key and hand back its wrap. */
+  protected async confirmNumbers(): Promise<void> {
+    this.error.set(null);
+    const revealed = parseMessage(this.replyText());
+    const pk = revealed?.pkNew ? unb64(revealed.pkNew) : null;
+    if (!revealed || !pk) {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const out = await this.service.approveJoinedDevice(pk, WEBSITE_DEVICE_NAME);
+    if (!out.ok) {
+      this.error.set(this.i18n.t(this.reasonKey(out.reason)));
+      return;
+    }
+    this.replyText.set(JSON.stringify(withWrap(revealed, out.wrapEnc, out.wrapCt, out.epoch)));
+    this.approved.set(true);
+  }
+
+  /** The new browser opens the wrap from the reply. The recovery key is not required. */
+  protected async joinFolder(): Promise<void> {
+    this.error.set(null);
+    const msg = parseMessage(this.replyText());
+    if (!msg || !msg.wrapEnc || !msg.wrapCt || typeof msg.epoch !== 'number') {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return;
+    }
+    const result = await this.service.joinFromWrap(msg.wrapEnc, msg.wrapCt, msg.epoch);
+    if (result.state === 'Ready') {
+      this.joined.set(true);
+      return;
+    }
+    this.error.set(this.i18n.t(result.error ?? 'driveEnrol.badMessage'));
+  }
+
+  private async publicKey(): Promise<Uint8Array | null> {
+    try {
+      return await this.service.devicePublicKey();
+    } catch {
+      this.error.set(this.i18n.t('driveEnrol.badMessage'));
+      return null;
+    }
+  }
+
+  private reasonKey(reason: string): TKey {
+    if (reason === 'USE_PHONE') return 'driveDelete.usePhone';
+    if (reason.startsWith('drive')) return reason as TKey;
+    return 'driveEnrol.badMessage';
+  }
+}
+
+function parseMessage(text: string): PairingMessage | null {
+  try {
+    const msg = JSON.parse(text) as PairingMessage;
+    return msg && typeof msg === 'object' ? msg : null;
+  } catch {
+    return null;
   }
 }

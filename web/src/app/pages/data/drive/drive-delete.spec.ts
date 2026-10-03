@@ -23,6 +23,7 @@ import { DriveDeleteCard } from './drive-delete';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
+import type { Params } from '../../../i18n/translation.service';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -33,7 +34,8 @@ function fakeService(overrides: Record<string, unknown> = {}) {
     deletePlan: vi.fn().mockResolvedValue({ ok: true, plan: { operationId: 'op1' } }),
     deleteConfirmInfo: vi.fn().mockResolvedValue({ ok: true, tickBoxRequired: true, delayMs: 0 }),
     authorizeDelete: vi.fn().mockResolvedValue({ ok: true, grant: { id: 1, requirements: { level: 'L3' } } }),
-    executeDelete: vi.fn().mockResolvedValue({ ok: true }),
+    executeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 1 }),
+    resumeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 1 }),
     ...overrides,
   };
 }
@@ -86,7 +88,7 @@ describe('DriveDeleteCard', () => {
     expect(host.textContent).not.toContain('driveDelete.countdown');
     expect(host.textContent).not.toContain(countdown);
     const del = host.querySelectorAll('button');
-    const deleteBtn = Array.from(del).find((b) => b.textContent?.includes(i18n.t('common.delete')));
+    const deleteBtn = Array.from(del).find((b) => b.textContent?.includes(i18n.t('driveDelete.deleteForGood')));
     expect(deleteBtn?.disabled).toBe(true);
   });
 
@@ -149,5 +151,26 @@ describe('DriveDeleteCard', () => {
     expect(svc.executeDelete).not.toHaveBeenCalled();
     expect(component['error']()).toBe('driveDelete.tickRequired');
     expect(component['phase']()).toBe('error');
+  });
+
+  it('shows how many files are left and Try again resumes', async () => {
+    const svc = fakeService({
+      executeDelete: vi.fn().mockResolvedValue({ ok: true, finished: false, left: 2, total: 5 }),
+      resumeDelete: vi.fn().mockResolvedValue({ ok: true, finished: true, left: 0, total: 5 }),
+    });
+    const { component, fixture, host, i18n } = await render(svc);
+    await component['startDeletion']({ type: 'everything' });
+    fixture.detectChanges();
+    shown(host, i18n, 'driveDelete.saveCopyFirst');
+    await component['proceedToConfirm']();
+    component['toggleTickBox']();
+    await component['confirmDelete']();
+    fixture.detectChanges();
+    expect(host.textContent).toContain(i18n.t('driveDelete.left', { left: 2, total: 5 }));
+    shown(host, i18n, 'driveDelete.tryAgain');
+    await component['tryAgain']();
+    expect(svc.resumeDelete).toHaveBeenCalled();
+    fixture.detectChanges();
+    shown(host, i18n, 'driveDelete.done');
   });
 });

@@ -662,4 +662,27 @@ describe('DriveBackupService', () => {
     expect((await failed(a, folder, wrong)).kind).toBe('SOURCE_FAILED' satisfies DriveProblemKind);
     expect(writeCount()).toBe(before);
   });
+
+  it('an 8-digit wrap enrols a second device, and revoke drops it', async () => {
+    const { server } = world();
+    const a = await Rig.make(server, 'Browser A');
+    await a.created();
+    const b = await Rig.make(server, 'Browser B');
+    const approved = await a.service.approveDevice(b.identity.key.publicKey, b.identity.name, 'web');
+    expect(approved.kind).toBe('approved');
+    if (approved.kind !== 'approved') return;
+    const joined = await b.service.joinFromWrap(approved.wrapEnc, approved.wrapCt, approved.epoch);
+    expect(joined.kind).toBe('READY');
+    if (joined.kind !== 'READY') return;
+    expect(joined.folder.keys.body.devices).toHaveLength(2);
+    const victim = kidOf(p, b.identity.key.publicKey);
+    const revoked = await a.service.revokeDevice(victim);
+    expect(revoked.connection.kind).toBe('READY');
+    expect(revoked.recoveryKey).not.toBeNull();
+    if (revoked.connection.kind === 'READY') {
+      expect(revoked.connection.folder.keys.body.devices.some((d) => equalBytes(d.kid, victim))).toBe(false);
+      expect(revoked.connection.folder.keys.epoch).toBe(2);
+    }
+    expect((await b.service.connect()).kind).not.toBe('READY');
+  });
 });

@@ -19,9 +19,10 @@
 import { equalBytes, hex } from '../../crypto/bytes';
 import type { CryptoProvider } from '../../crypto/crypto-provider';
 import { Dpx } from '../../crypto/dpx';
-import { kidOf } from '../../crypto/folder-key';
+import { HPKE_INFO, WrapAad, kidOf } from '../../crypto/folder-key';
+import { Hpke } from '../../crypto/hpke';
 import { KeysError, KeysFile, KeysGuard } from '../../crypto/keys-file';
-import type { OpenedKeys } from '../../crypto/keys-file';
+import type { DevicePlatform, OpenedKeys } from '../../crypto/keys-file';
 import { RecoveryKey } from '../../crypto/recovery-key';
 import { BACKUP_FORMATS_READ } from '../../../export/backup-export';
 import { DRIVE_LAYOUT, DriveError, FOLDER_MIME, MULTIPART_LIMIT } from '../drive-client';
@@ -48,6 +49,23 @@ export const KIND_KEYS = 'keys';
 export const KIND_CONTROL = 'control';
 export const KEYS_NAME = 'keys.json';
 export const CONTROL_NAME = 'doorprints.json';
+
+/** The enrolled device listed the newcomer and wrapped the folder key for that public key alone. */
+export type ApproveDeviceOutcome =
+  | {
+      readonly kind: 'approved';
+      readonly connection: Extract<DriveConnection, { kind: 'READY' }>;
+      readonly wrapEnc: Uint8Array;
+      readonly wrapCt: Uint8Array;
+      readonly epoch: number;
+    }
+  | { readonly kind: 'error'; readonly problem: DriveProblem };
+
+/** A revoke that finished: the new recovery key is shown once and is not stored. */
+export interface RevokeDeviceOutcome {
+  readonly connection: DriveConnection;
+  readonly recoveryKey: RecoveryKey | null;
+}
 export const JSON_MIME = 'application/json';
 /** A backup ZIP is at most 1 GiB of contents, plus its directory. */
 export const MAX_BACKUP_PLAINTEXT = 1024 * 1024 * 1024 + 64 * 1024 * 1024;
@@ -213,6 +231,92 @@ export class DriveBackupService {
       }
       return this.ready(rootId, keys.id, opened);
     });
+  }
+
+  /** This device's public key, the one a pairing request must carry (not a key made up on the screen). */
+  devicePublicKey(): Uint8Array {
+    return this.device.key.publicKey;
+  }
+
+  /** This device's key id, so a screen can mark its own row. */
+  deviceKid(): Uint8Array {
+    return this.myKid;
+  }
+
+  /**
+   * After the 8-digit codes match (docs/15 §9.5 i): re-read `keys.json`, list the new device, and return the wrap of
+   * the current folder key made for exactly that public key. The newcomer opens that wrap (it came over the pairing
+   * messages, not from a file they chose in Drive) and pins with it. QR enrolment stays S4b-BL-134.
+   */
+  async approveDevice(publicKey: Uint8Array, name: string, platform: DevicePlatform): Promise<ApproveDeviceOutcome> {
+    try {
+      const located = await this.locateKeys();
+      if (!located) return { kind: 'error', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') };
+      const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
+      const opened = await this.keysFile.open(located.bytes, this.device.key, guard);
+      const written = await this.keysFile.addDevice(
+        opened,
+        this.myKid,
+        { publicKey, name, platform },
+        this.clock(),
+      );
+      await this.writeKeys(located.keys.id, written.bytes);
+      await guard.acceptWritten(written);
+      const kid = kidOf(this.p, publicKey);
+      const entry = written.opened.body.devices.find((d) => equalBytes(d.kid, kid));
+      if (!entry) return { kind: 'error', problem: new DriveProblem('KEYS_UNREADABLE') };
+      const connection = await this.ready(located.rootId, located.keys.id, written.opened);
+      if (connection.kind !== 'READY') {
+        return { kind: 'error', problem: connection.kind === 'ERROR' ? connection.problem : new DriveProblem('DRIVE') };
+      }
+      return {
+        kind: 'approved',
+        connection,
+        wrapEnc: entry.wrap.enc,
+        wrapCt: entry.wrap.ct,
+        epoch: written.opened.epoch,
+      };
+    } catch (e) {
+      return { kind: 'error', problem: DriveProblem.of(e) };
+    }
+  }
+
+  /**
+   * The newcomer's first pin from the wrap the enrolled device handed over after the codes matched. The wrap is opened
+   * here; the folder key is never taken from a Drive download alone.
+   */
+  async joinFromWrap(enc: Uint8Array, ct: Uint8Array, epoch: number): Promise<DriveConnection> {
+    const hpke = new Hpke(this.p);
+    let folderKey: Uint8Array;
+    try {
+      folderKey = await hpke.open(enc, this.device.key, HPKE_INFO, WrapAad.folderKey(epoch, this.myKid), ct);
+    } catch (e) {
+      return { kind: 'ERROR', problem: DriveProblem.of(e) };
+    }
+    try {
+      return await this.openWithFolderKey(folderKey);
+    } finally {
+      folderKey.fill(0);
+    }
+  }
+
+  /**
+   * Revoke one listed device (docs/15 §9.5 iv): a new epoch and a new recovery key, shown once. Does not revoke
+   * Google's grant. A keys error is reported; it does not revoke, re-key or wipe by itself.
+   */
+  async revokeDevice(kid: Uint8Array): Promise<RevokeDeviceOutcome> {
+    const recovery = RecoveryKey.generate(this.p);
+    const connection = await this.connection(async () => {
+      const located = await this.locateKeys();
+      if (!located) return { kind: 'NO_FOLDER' };
+      const guard = new KeysGuard(this.p, this.trust.keys(located.rootId));
+      const opened = await this.keysFile.open(located.bytes, this.device.key, guard);
+      const written = await this.keysFile.newEpoch(opened, this.clock(), { revokeKid: kid, newRecovery: recovery });
+      await this.writeKeys(located.keys.id, written.bytes);
+      await guard.acceptWritten(written);
+      return this.ready(located.rootId, located.keys.id, written.opened);
+    });
+    return { connection, recoveryKey: connection.kind === 'READY' ? recovery : null };
   }
 
   /**

@@ -214,10 +214,11 @@ describe('GoogleTokenProvider with the real token client wiring', () => {
   interface Captured {
     config: { callback: (r: unknown) => void; error_callback: (e: unknown) => void; scope: string };
     requests: Array<{ prompt?: string }>;
+    revoked: string[];
   }
 
   function install(granted: boolean): Captured {
-    const captured: Captured = { config: null as never, requests: [] };
+    const captured: Captured = { config: null as never, requests: [], revoked: [] };
     (window as unknown as Record<string, unknown>).google = {
       accounts: {
         oauth2: {
@@ -226,6 +227,10 @@ describe('GoogleTokenProvider with the real token client wiring', () => {
             return { requestAccessToken: (o: { prompt?: string }) => captured.requests.push(o) };
           },
           hasGrantedAllScopes: () => granted,
+          revoke: (token: string, done: () => void) => {
+            captured.revoked.push(token);
+            done();
+          },
         },
       },
     };
@@ -285,5 +290,21 @@ describe('GoogleTokenProvider with the real token client wiring', () => {
     expect(g.requests).toHaveLength(2);
     g.config.error_callback({ type: 'popup_closed' });
     await expect(second).rejects.toBeTruthy();
+  });
+
+  it('revokeAccess asks GIS to drop the in-memory token and then asks again', async () => {
+    const g = install(true);
+    const provider = new GoogleTokenProvider(loader, cfg);
+    const first = provider.accessToken();
+    await tick();
+    g.config.callback({ access_token: 'memory-token' });
+    await expect(first).resolves.toBe('memory-token');
+    await provider.revokeAccess();
+    expect(g.revoked).toEqual(['memory-token']);
+    const again = provider.accessToken();
+    await tick();
+    expect(g.requests).toHaveLength(2);
+    g.config.error_callback({ type: 'popup_closed' });
+    await expect(again).rejects.toBeTruthy();
   });
 });

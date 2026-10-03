@@ -25,6 +25,7 @@
   <p class="status-line" role="status" aria-live="polite" aria-atomic="true">
     {{ statusMessage() }}
   </p>
+  <p>{{ 'driveSync.afterChange' | t }}</p>
 
   @if (skippedCount() > 0) {
     <p class="notice" role="alert" aria-live="assertive">
@@ -56,6 +57,7 @@
     />
     <span>{{ 'driveSync.wifiOnly' | t }}</span>
   </label>
+  <p>{{ 'driveSync.websitePhotos' | t }}</p>
 
   @if (photoLabel(); as size) {
     <button type="button" class="btn" (click)="uploadPhotosNowOverMobile()" [disabled]="busy()">

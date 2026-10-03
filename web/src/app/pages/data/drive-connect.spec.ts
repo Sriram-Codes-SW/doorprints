@@ -62,6 +62,8 @@ function fakeService(state: ConnectState, extra: Record<string, unknown> = {}) {
     authorizeDelete: vi.fn(),
     executeDelete: vi.fn(),
     openWithRecoveryKey: vi.fn(),
+    listedDevices: vi.fn(async () => []),
+    accountEmail: vi.fn(async () => null),
     ...extra,
   };
 }

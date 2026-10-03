@@ -18,12 +18,14 @@
 
 import { Injectable, Inject, InjectionToken, Optional, signal } from '@angular/core';
 import type { BackupSource } from '../backup/drive-backup-seams';
+import { b64, hex, unb64, unhex } from '../../crypto/bytes';
 import type { RecoveryKey } from '../../crypto/recovery-key';
 import { RecoveryKey as RecoveryKeyClass } from '../../crypto/recovery-key';
 import type { DriveBackupAdapter } from './backup-adapter';
 import type { DriveSyncAdapter } from './sync-adapter';
 import type { DriveDeletionAdapter } from './deletion-adapter';
 import type { GoogleConfig } from './google-token-provider';
+import { GoogleTokenProvider } from './google-token-provider';
 import { GOOGLE_CONFIG } from './drive-connect.providers';
 import type { DeletionAction } from '../drive-deletion-rules';
 import type { DeletionPlan } from '../drive-deletion';
@@ -34,6 +36,7 @@ import type { TKey } from '../../../i18n/en';
 import type { SyncAdapterStatus } from './sync-adapter';
 import type { PhotoSettings, OneOffGrant } from '../photo-network-policy';
 import type { DeletionContext } from '../../device-auth/delete-policy';
+import type { PolicyDeletionAction } from './deletion-adapter';
 import type {
   DeletionPreflightResult,
   AuthorizationResult,
@@ -75,6 +78,19 @@ export interface PhotoPendingInfo {
   readonly bytes: number | null;
   readonly settings: Readonly<PhotoSettings>;
 }
+
+/** One device listed in the opened folder, for the devices card. */
+export interface ListedDevice {
+  readonly kidHex: string;
+  readonly name: string;
+  readonly platform: string;
+  readonly self: boolean;
+}
+
+/** A delete that ran: `finished` is false when files are still left (`left` of `total`). */
+export type DeleteRun =
+  | { readonly ok: true; readonly finished: boolean; readonly left: number; readonly total: number }
+  | { readonly ok: false; readonly reason: string };
 
 /**
  * Orchestrates Google Drive connection, backup, import, sync, photos, and deletion for the Connect page.
@@ -120,6 +136,8 @@ export class DriveConnectService {
     @Optional() @Inject(DRIVE_BACKUP_SOURCE) private readonly backupSource: BackupSource | null = null,
     /** Where the *Automatic backup* preference lives (tests pass an in-memory one). */
     @Optional() @Inject(DRIVE_PREFS) private readonly prefs: DrivePrefs = browserPrefs(),
+    /** Present on the Data page so *Disconnect on all devices* can revoke the in-memory Google token. */
+    @Optional() @Inject(GoogleTokenProvider) private readonly tokens: GoogleTokenProvider | null = null,
   ) {
     this.isConfigured = !!googleConfig.clientId;
     this.state.set(this.isConfigured ? 'Disconnected' : 'Unavailable');
@@ -475,39 +493,28 @@ export class DriveConnectService {
     }
   }
 
-  async executeDelete(
-    plan: DeletionPlan,
-    grant: WebGrant | null,
-  ): Promise<
-    | { readonly ok: true }
-    | { readonly ok: false; readonly reason: string }
-  > {
+  async executeDelete(plan: DeletionPlan, grant: WebGrant | null): Promise<DeleteRun> {
     try {
       const outcome = await this.deletionAdapter.execute(plan, grant);
-      if (outcome.kind === 'ran') {
-        return { ok: true };
-      }
+      if (outcome.kind === 'ran') return this.ran(outcome);
       return { ok: false, reason: outcome.reason };
     } catch (err) {
       return { ok: false, reason: msgOfThrown(err) };
     }
   }
 
-  async resumeDelete(
-    grant: WebGrant | null,
-  ): Promise<
-    | { readonly ok: true }
-    | { readonly ok: false; readonly reason: string }
-  > {
+  async resumeDelete(grant: WebGrant | null): Promise<DeleteRun> {
     try {
       const outcome = await this.deletionAdapter.resume(grant);
-      if (outcome.kind === 'ran') {
-        return { ok: true };
-      }
+      if (outcome.kind === 'ran') return this.ran(outcome);
       return { ok: false, reason: outcome.reason };
     } catch (err) {
       return { ok: false, reason: msgOfThrown(err) };
     }
+  }
+
+  private ran(outcome: { readonly finished: boolean; readonly total: number; readonly report: { readonly left: readonly string[] } }): DeleteRun {
+    return { ok: true, finished: outcome.finished, left: outcome.report.left.length, total: outcome.total };
   }
 
   // ==================== Passkey ====================
@@ -570,6 +577,134 @@ export class DriveConnectService {
       online: typeof navigator !== 'undefined' ? navigator.onLine : true,
       backupsLeft: null,
     };
+  }
+
+  // ==================== Devices, enrolment, disconnect-all ====================
+
+  /** This browser's real device public key, for an 8-digit pairing request. */
+  devicePublicKey(): Promise<Uint8Array> {
+    return this.backupAdapter.devicePublicKey();
+  }
+
+  /** Devices in the opened folder. Empty until the folder is ready. */
+  async listedDevices(): Promise<readonly ListedDevice[]> {
+    if (!this.readyFolder) return [];
+    let mine = '';
+    try {
+      mine = await this.backupAdapter.deviceKidHex();
+    } catch {
+      mine = '';
+    }
+    return this.readyFolder.keys.body.devices.map((d) => ({
+      kidHex: hex(d.kid),
+      name: d.name,
+      platform: d.platform,
+      self: hex(d.kid) === mine,
+    }));
+  }
+
+  /** The Google account from Drive's about, or null when Drive cannot say. */
+  accountEmail(): Promise<string | null> {
+    return this.backupAdapter.accountEmail();
+  }
+
+  /**
+   * After the 8-digit codes match: L2, then list the new device and return the HPKE wrap of the current folder key
+   * for exactly that public key. The newcomer opens the wrap; it is not a key read from Drive.
+   */
+  async approveJoinedDevice(
+    publicKey: Uint8Array,
+    name: string,
+  ): Promise<
+    | { readonly ok: true; readonly wrapEnc: string; readonly wrapCt: string; readonly epoch: number }
+    | { readonly ok: false; readonly reason: string }
+  > {
+    const auth = await this.authorizePolicyAction('APPROVE_DEVICE');
+    if (!auth.ok) return auth;
+    try {
+      const approved = await this.backupAdapter.approveDevice(publicKey, name, 'web');
+      if (approved.kind === 'error') return { ok: false, reason: problemToMsg(approved.problem.kind) };
+      this.updateReadyFolderFromConnection(approved.connection);
+      this.state.set('Ready');
+      return {
+        ok: true,
+        wrapEnc: b64(approved.wrapEnc),
+        wrapCt: b64(approved.wrapCt),
+        epoch: approved.epoch,
+      };
+    } catch (err) {
+      return { ok: false, reason: msgOfThrown(err) };
+    }
+  }
+
+  /** Open the wrap from the enrolled browser and pin this device. */
+  async joinFromWrap(wrapEnc: string, wrapCt: string, epoch: number): Promise<ConnectResult> {
+    const enc = unb64(wrapEnc);
+    const ct = unb64(wrapCt);
+    if (!enc || !ct) return { state: this.getState(), error: 'driveEnrol.badMessage' };
+    try {
+      const connection = await this.backupAdapter.joinFromWrap(enc, ct, epoch);
+      return this.handleConnection(connection);
+    } catch (err) {
+      return this.fail(err);
+    }
+  }
+
+  /**
+   * Revoke one listed device (L2): a new epoch and a new recovery key, shown once by the caller.
+   * Does not sign that device out of Google.
+   */
+  async revokeListedDevice(
+    kidHex: string,
+  ): Promise<
+    | { readonly ok: true; readonly recoveryKey: string | null }
+    | { readonly ok: false; readonly reason: string }
+  > {
+    const auth = await this.authorizePolicyAction('REVOKE_DEVICE');
+    if (!auth.ok) return auth;
+    let kid: Uint8Array;
+    try {
+      kid = unhex(kidHex);
+    } catch {
+      return { ok: false, reason: 'driveConnect.failed' };
+    }
+    try {
+      const out = await this.backupAdapter.revokeDevice(kid);
+      this.updateReadyFolderFromConnection(out.connection);
+      if (out.connection.kind !== 'READY' || !out.recoveryKey) {
+        const reason = out.connection.kind === 'ERROR' ? problemToMsg(out.connection.problem.kind) : 'driveConnect.failed';
+        return { ok: false, reason };
+      }
+      this.state.set('Ready');
+      return { ok: true, recoveryKey: out.recoveryKey.display };
+    } catch (err) {
+      return { ok: false, reason: msgOfThrown(err) };
+    }
+  }
+
+  /**
+   * *Disconnect on all devices* (L2): revoke Google's grant for the in-memory token, then drop the local session.
+   * Files in Drive stay.
+   */
+  async disconnectAll(): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }> {
+    const auth = await this.authorizePolicyAction('DISCONNECT_ALL_DEVICES');
+    if (!auth.ok) return auth;
+    try {
+      await this.tokens?.revokeAccess();
+    } catch {
+      // The local session still ends. The token is never logged.
+    }
+    await this.disconnect();
+    return { ok: true };
+  }
+
+  private async authorizePolicyAction(
+    action: PolicyDeletionAction,
+  ): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }> {
+    const context = await this.deletionContext();
+    const result = await this.deletionAdapter.authorizePolicy(action, context);
+    if (result.kind === 'refused') return { ok: false, reason: result.reason };
+    return { ok: true };
   }
 
   // ==================== Cleanup ====================

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.80 |
+| Version | 0.81 |
 | Date | 2026-10-02 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..135); this file lists the lead-level items and points to the rest. |
@@ -89,6 +89,7 @@
 | 0.78 | 2026-10-02 | Claude (Code), lead | N17: **S4b-BL-70 built** on branch `refactor/sync-backend-seam` (the `SyncBackend` seam on both stacks, today's calls in `ServerSyncBackend`, the merge rule supplied by the backend; no behaviour change; [10](10-sprint-log.md) v0.126); §8 finding 1 marked done. |
 | 0.79 | 2026-10-02 | Cursor Agent, lead | N17: **website Drive cards** on draft PR #118 (`cursor/drive-web-integration-144b`): connect, backups, sync, L1/L2/L3 deletion, 8-digit pairing, `config.js` from `GOOGLE_OAUTH_WEB_CLIENT_ID`; QR enrolment deferred as S4b-BL-134. Android and iPhone Drive UI paused. Real Google waits on the owner's Web client id. |
 | 0.80 | 2026-10-02 | Cursor Agent, lead | N17: website Drive follow-up on #118 (PRF-bound grants, Drive off the initial bundle). New S4b-BL-135 (HMAC deletion proof). Z1 re-confirmed as RR-30. Session scratch `docs/ops/drive-batch-notes` removed. |
+| 0.81 | 2026-10-03 | Cursor Agent, lead | N17: website Drive on draft PR #118 enrols by the 8-digit HPKE wrap, revokes a device (new recovery key once), disconnects on all devices, resumes a half-finished delete, and syncs about two minutes after a local change. `GOOGLE_OAUTH_WEB_CLIENT_ID` is set. A real Google sign-in in the browser is the remaining owner step. S4b-BL-132 and S4b-BL-135 stay open. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -111,10 +112,13 @@ section is only today's state. Earlier versions of this file (git history) carry
 
 - **Live:** https://doorprints.web.app, deployed from `main` by `web.yml` (Firebase Hosting, Workload Identity
   Federation, main only). The user guide is built by `pages.yml` (GitHub Pages).
-- **Website Google Drive (N17, draft PR #118):** connect, recovery key shown once, backups, sync, L1 deletion and
-  L2/L3 with a PRF passkey, 8-digit pairing and the typed recovery key. `web/public/config.js` stays empty in the
-  tree; deploy writes the Web client id from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Real Google
-  sign-in waits on that variable. Android and iPhone Drive UI is paused. QR camera enrolment is S4b-BL-134.
+- **Website Google Drive (N17, draft PR #118, still a draft):** connect, recovery key shown once, backups, sync, L1 deletion and
+  L2/L3 with a PRF passkey, 8-digit enrolment by HPKE wrap (the recovery key is not required to finish), revoke with a
+  new recovery key shown once, disconnect on all devices, and *Try again* when a delete stops with files left. Sync
+  runs about two minutes after the last local change while Your data is open. `web/public/config.js` stays empty in the
+  tree; deploy writes the Web client id from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`, which is set.
+  A real Google sign-in in the browser is the remaining owner step. Android and iPhone Drive UI is paused. QR camera
+  enrolment is S4b-BL-134. Non-extractable folder keys (S4b-BL-132) and the HMAC deletion proof (S4b-BL-135) stay open.
 - **Done and merged, in order:** CMP-0..CMP-8 (the Compose Multiplatform track, iPhone app on the simulator with the
   map, PRs #17-#35); the **release security gate** exists (automated checks in CI, PRs #36, #37; manual list
   [13](13-release-security-checklist.md); **not yet passed** on a release candidate); **device pairing and the owner
@@ -305,10 +309,11 @@ section is only today's state. Earlier versions of this file (git history) carry
   the **one scope `drive.file`** (the design drops `drive.appdata`, decision 1), clients for the website, Android
   (package `app.doorprints`, release and debug SHA-1) and iOS (bundle `app.doorprints`), and a Picker browser key
   restricted to the site and the Picker API). The client ids are not secrets; tell the session when they exist.
-  Until then sign-in is built and tested only against the fake Drive. **For the website now:** set the GitHub
-  repository variable **`GOOGLE_OAUTH_WEB_CLIENT_ID`** to the Web client id (Authorized JavaScript origin
-  `https://doorprints.web.app`; the one scope `drive.file`). Do not put it in the repository. An empty variable
-  leaves Drive unavailable. A test Google account for `tools/drive-spike` can wait until the spike.
+  Automated tests stay on the fake Drive. **For the website:** the GitHub repository variable
+  **`GOOGLE_OAUTH_WEB_CLIENT_ID`** is set (Authorized JavaScript origin `https://doorprints.web.app`; the one scope
+  `drive.file`; Testing audience). Do not put the client id in the repository. An empty variable leaves Drive
+  unavailable. The remaining website step is a real Google sign-in in the browser. A test Google account for
+  `tools/drive-spike` can wait until the spike.
 
 - **The finishing batch's manual checks** (N15 step 6): the TC-M list there; Claude can drive the website parts
   and prepare each check, the phones and screen readers need you. Also: add the site to **Google Search Console** and

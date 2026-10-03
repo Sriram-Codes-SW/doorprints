@@ -273,6 +273,8 @@ function driveCard(state: ConnectState, theme: 'light' | 'dark', after?: (c: Dri
       connect: async () => ({ state }),
       createFolder: async () => ({ state, recoveryKey: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF' }),
       openWithRecoveryKey: async () => ({ state: 'Ready' }),
+      listedDevices: async () => [],
+      accountEmail: async () => null,
     };
     TestBed.configureTestingModule({
       imports: [DriveConnectComponent],

@@ -76,6 +76,19 @@
       <code>{{ digits }}</code>
     </p>
     <p>{{ 'driveEnrol.confirmMatch' | t }}</p>
+    @if (role() === 'approver') {
+      <button type="button" class="btn btn-primary" (click)="confirmNumbers()">{{ 'driveEnrol.numbersMatch' | t }}</button>
+    }
+    @if (role() === 'newcomer' && canJoin()) {
+      <button type="button" class="btn btn-primary" (click)="joinFolder()">{{ 'driveEnrol.joinNow' | t }}</button>
+    }
+  }
+
+  @if (approved()) {
+    <p role="status">{{ 'driveEnrol.enrolDone' | t }}</p>
+  }
+  @if (joined()) {
+    <p role="status">{{ 'driveEnrol.joined' | t }}</p>
   }
 
   <div aria-live="polite" class="error-region">

@@ -24,7 +24,7 @@ import { DriveConnectService } from '../../../data/drive/connect/drive-connect.s
 import { TPipe } from '../../../i18n/t.pipe';
 import type { TKey } from '../../../i18n/en';
 
-type Phase = 'menu' | 'plan' | 'confirm' | 'passkey-error' | 'running' | 'done' | 'error';
+type Phase = 'menu' | 'plan' | 'confirm' | 'passkey-error' | 'running' | 'partial' | 'done' | 'error';
 
 /**
  * Drive deletion: L1 without a passkey; L2/L3 only with a PRF-sealed passkey (docs/15 §10.4).
@@ -50,6 +50,8 @@ export class DriveDeleteCard implements OnInit {
   protected readonly error = signal<TKey | null>(null);
   protected readonly passkeyStatus = signal<'none' | 'registered' | 'unsupported'>('none');
   protected readonly result = signal<string | null>(null);
+  protected readonly left = signal(0);
+  protected readonly total = signal(0);
 
   private currentAction: DeletionAction | null = null;
   private currentPlan: DeletionPlan | null = null;
@@ -149,12 +151,29 @@ export class DriveDeleteCard implements OnInit {
       }
       this.phase.set('running');
       const result = await this.service.executeDelete(this.currentPlan, grant);
-      if (!result.ok) {
-        this.showRefused(result.reason);
+      this.applyRun(result);
+    } catch {
+      this.error.set('driveConnect.failed');
+      this.phase.set('error');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** A run that stopped with files left: a fresh passkey check, then the same plan continues. */
+  protected async tryAgain(): Promise<void> {
+    if (!this.currentAction || !this.currentPlan) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const auth = await this.service.authorizeDelete(this.currentAction, this.currentPlan.operationId);
+      if (!auth.ok) {
+        this.showRefused(auth.reason);
         return;
       }
-      this.result.set('ok');
-      this.phase.set('done');
+      this.phase.set('running');
+      const result = await this.service.resumeDelete(auth.grant);
+      this.applyRun(result);
     } catch {
       this.error.set('driveConnect.failed');
       this.phase.set('error');
@@ -170,6 +189,21 @@ export class DriveDeleteCard implements OnInit {
     this.result.set(null);
     this.currentAction = null;
     this.currentPlan = null;
+  }
+
+  private applyRun(result: { readonly ok: true; readonly finished?: boolean; readonly left?: number; readonly total?: number } | { readonly ok: false; readonly reason: string }): void {
+    if (!result.ok) {
+      this.showRefused(result.reason);
+      return;
+    }
+    if (result.finished === false) {
+      this.left.set(result.left ?? 0);
+      this.total.set(result.total ?? 0);
+      this.phase.set('partial');
+      return;
+    }
+    this.result.set('ok');
+    this.phase.set('done');
   }
 
   /** Adapter codes stay off the screen; USE_PHONE has its own phase; TKeys (drive…) are translated. */
