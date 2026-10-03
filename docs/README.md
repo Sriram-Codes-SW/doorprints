@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.85 |
+| Version | 0.86 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -85,6 +85,7 @@
 | 0.82 | 2026-10-02 | Cursor Agent, lead | Website Drive security follow-up (draft PR #118): 06 v0.107 (TC-U-133 grant/operationId, tick re-check, `rp.id`), 10 v0.132, 15 v0.11. |
 | 0.83 | 2026-10-02 | Cursor Agent, lead | Website Drive quality follow-up (draft PR #118): 06 v0.109 (TC-U-133 translated errors, empty config, a11y states, changelog order, Blob identity), 10 v0.134, 15 v0.12. |
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
+| 0.86 | 2026-10-03 | Cursor Agent, lead | Website Drive CI fix (draft PR #118): 06 v0.112 (TC-U-133: the deletion adapter's authorizer double has `proofFor`; the HMAC is the token proof). |
 | 0.85 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 closed (draft PR #118): 02 v0.56 (RR-28), 06 v0.111 (TC-U-133 QR, non-extractable keys, HMAC proof), 10 v0.136 (S4b-BL-132 done; S4b-BL-134 and S4b-BL-135 website), 14 v0.82 (N17), 15 v0.14. |
 | 0.65 | 2026-10-01 | Claude (Code), lead | The app lock emulator test retries every PIN entry (10 v0.116). |
 | 0.64 | 2026-10-01 | Claude (Code), lead | S4b-BL-110 (a) and (b) (branch `fix/a11y-stars-and-motion`): 05 v0.26 (§4.1 `--star` `#966000`, §4.4 `secondary`, 1.4.11 and 2.3.3), 06 v0.92 (TC-A-05, TC-U-117, TC-U-WEB-A11Y-1, TC-M-42), 10 v0.115 (S4b-BL-110 partly done, §13.38). |
