@@ -322,6 +322,8 @@ const CASES: Case[] = [
   { name: 'Drive card (unavailable, dark)', render: driveCard('Unavailable', 'dark') },
   { name: 'Drive card (connecting, light)', render: driveCard('Connecting', 'light') },
   { name: 'Drive card (connecting, dark)', render: driveCard('Connecting', 'dark') },
+  { name: 'Drive card (connection in progress, light)', render: driveCard('Disconnected', 'light', (c) => c['connectWork'].set(true)) },
+  { name: 'Drive card (connection in progress, dark)', render: driveCard('Disconnected', 'dark', (c) => c['connectWork'].set(true)) },
   { name: 'Drive card (needs enrolment, light)', render: driveCard('NeedsEnrolment', 'light') },
   { name: 'Drive card (needs enrolment, dark)', render: driveCard('NeedsEnrolment', 'dark') },
   { name: 'Drive card (error, light)', render: driveCard('Error', 'light', (c) => c['error'].set('driveConnect.failed')) },

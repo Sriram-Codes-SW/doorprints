@@ -16,6 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+.connection-status {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
 .recovery-key-box {
   background: var(--color-bg-secondary);
   padding: 1rem;

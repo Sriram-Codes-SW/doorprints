@@ -1205,6 +1205,8 @@ export const hi: Dict = {
   'driveConnect.unavailable': 'इस ब्राउज़र पर गूगल ड्राइव कनेक्ट उपलब्ध नहीं है।',
   'driveConnect.connect': 'गूगल ड्राइव से कनेक्ट करें',
   'driveConnect.connecting': 'साइन इन किया जा रहा है…',
+  // 2026-10-03: the connect is still running after sign-in. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveConnect.connectionInProgress': 'कनेक्शन हो रहा है।',
   'driveConnect.firstConnect': 'अपनी रिकवरी कुंजी सहेजें',
   'driveConnect.recoveryKeyNote': 'केवल एक बार दिखाया गया। इसे एक सुरक्षित जगह पर सहेजें (ईमेल, नोट ऐप, या इसे प्रिंट करें)।',
   'driveConnect.recoveryKeyCopy': 'रिकवरी कुंजी की नक़ल करें',
