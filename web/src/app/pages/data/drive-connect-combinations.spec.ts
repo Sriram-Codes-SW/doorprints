@@ -428,7 +428,7 @@ describe('Drive connect card combinations', () => {
   it('an unknown throw inside connect is a connect failure, not a backup sentence', async () => {
     const server = new FakeDriveServer();
     const rig = await Rig.make(server);
-    const leak = 'secret google body ya29.token';
+    const leak = 'secret google body not-shown';
     rig.drive.list = (() => Promise.reject(new Error(leak))) as typeof rig.drive.list;
     const service = serviceFor(rig);
     const { host, component, fixture, i18n } = await render(service);
