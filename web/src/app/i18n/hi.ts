@@ -1285,7 +1285,8 @@ export const hi: Dict = {
   'driveProblem.DEVICE_REVOKED': 'इस डिवाइस को इस फ़ोल्डर का उपयोग करने की अनुमति नहीं रही।',
   'driveProblem.CONTROL_ROLLED_BACK': 'फ़ोल्डर नियंत्रण फ़ाइल इस डिवाइस की पिछली फ़ाइल से पुरानी है।',
   'driveProblem.CONTROL_INVALID': 'फ़ोल्डर नियंत्रण फ़ाइल अपनी सुरक्षा जाँच पास नहीं कर सकी।',
-  'driveProblem.FOLDER_WITHOUT_KEYS': 'इस गूगल ड्राइव फ़ोल्डर में कुंजी सूची नहीं है।',
+  // 2026-10-03: a folder that still holds files. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.FOLDER_WITHOUT_KEYS': 'इस गूगल ड्राइव फ़ोल्डर में कुंजी सूची नहीं है, और इसमें दूसरी फ़ाइलें अभी भी हैं। Doorprints उन फ़ाइलों को नहीं बदलेगा। पहले से जुड़े डिवाइस पर Doorprints खोलें, या गूगल ड्राइव में Doorprints फ़ोल्डर हटाकर फिर से कनेक्ट करें।',
   'driveProblem.FOLDER_EXISTS': 'इस गूगल ड्राइव में Doorprints फ़ोल्डर पहले से है।',
   'driveProblem.BACKUP_REFUSED': 'यह बैकअप स्वीकार नहीं हुआ।',
   'driveProblem.SOURCE_FAILED': 'यह ब्राउज़र बैकअप तैयार नहीं कर सका।',

@@ -1285,7 +1285,8 @@ export const te: Dict = {
   'driveProblem.DEVICE_REVOKED': 'ఈ పరికరానికి ఈ ఫోల్డర్‌ను ఉపయోగించే అనుమతి లేదు.',
   'driveProblem.CONTROL_ROLLED_BACK': 'ఫోల్డర్ నియంత్రణ ఫైల్ ఈ పరికరం చివరిసారి చూసినదాని కంటే పాతది.',
   'driveProblem.CONTROL_INVALID': 'ఫోల్డర్ నియంత్రణ ఫైల్ భద్రత తనిఖీలను దాటలేదు.',
-  'driveProblem.FOLDER_WITHOUT_KEYS': 'ఈ Google Drive ఫోల్డర్‌లో కీ జాబితా లేదు.',
+  // 2026-10-03: a folder that still holds files. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.FOLDER_WITHOUT_KEYS': 'ఈ Google Drive ఫోల్డర్‌లో కీ జాబితా లేదు, ఇంకా ఇతర ఫైల్స్ ఉన్నాయి. Doorprints ఆ ఫైల్స్‌ను మార్చదు. ఇప్పటికే కనెక్ట్ అయిన పరికరంలో Doorprints తెరవండి, లేదా Google Driveలో Doorprints ఫోల్డర్‌ను తొలగించి మళ్లీ కనెక్ట్ చేయండి.',
   'driveProblem.FOLDER_EXISTS': 'ఈ Google Driveలో Doorprints ఫోల్డర్ ఇప్పటికే ఉంది.',
   'driveProblem.BACKUP_REFUSED': 'ఈ బ్యాకప్ నిరాకరించబడింది.',
   'driveProblem.SOURCE_FAILED': 'ఈ బ్రౌజర్ బ్యాకప్ సిద్ధం చేయలేకపోయింది.',

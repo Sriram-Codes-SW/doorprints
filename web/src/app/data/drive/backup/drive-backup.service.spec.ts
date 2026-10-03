@@ -22,7 +22,7 @@ import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { Dpx } from '../../crypto/dpx';
 import { kidOf } from '../../crypto/folder-key';
 import { RecoveryKey } from '../../crypto/recovery-key';
-import { DRIVE_LAYOUT } from '../drive-client';
+import { DRIVE_LAYOUT, FOLDER_MIME } from '../drive-client';
 import type { DriveOp } from '../fake-drive-faults';
 import { DriveFaults } from '../fake-drive-faults';
 import { FakeDriveServer } from '../in-memory-fake-drive';
@@ -599,12 +599,91 @@ describe('DriveBackupService', () => {
     server.faults.clear();
     expect([...a.trust.keysStores.values()].every((s) => s.value === null)).toBe(true);
     expect((await a.service.connect()).kind).toBe('NO_FOLDER');
-    const other = await Rig.make(server, 'Tablet');
-    expect((await other.service.createFolder(true)).connection.kind).toBe('ERROR');
     const again = await a.service.createFolder(true);
     expect(again.connection.kind).toBe('READY');
     expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.role] === 'root' && !f.trashed).length).toBe(1);
     expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed).length).toBe(1);
+  });
+
+  function plantRoot(server: ReturnType<typeof world>['server']): string {
+    return server.putByHand({
+      name: 'Doorprints', mimeType: FOLDER_MIME, parents: [], appProperties: { ...DRIVE_LAYOUT.root.appProperties },
+    }).id;
+  }
+
+  it('finishes an empty shell whose creating mark was lost, including a stale pin and an empty subfolder', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    const rootId = plantRoot(server);
+    server.putByHand({
+      name: 'Backups', mimeType: FOLDER_MIME, parents: [rootId], appProperties: { ...DRIVE_LAYOUT.backups.appProperties },
+    });
+    a.trust.keys(rootId).value = { epoch: 1, revision: 1, keyId: new Uint8Array(32), bodyHash: new Uint8Array(32) };
+    expect((await a.service.connect()).kind).toBe('NO_FOLDER');
+    const finished = await a.service.createFolder(true);
+    expect(finished.connection.kind).toBe('READY');
+    expect(finished.recoveryKey).not.toBeNull();
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.role] === 'root' && !f.trashed).map((f) => f.id)).toEqual([rootId]);
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed).length).toBe(1);
+    expect((await a.service.connect()).kind).toBe('READY');
+  });
+
+  it('does not bin a key list another device wrote into an empty shell', async () => {
+    const { server } = world();
+    const a = await Rig.make(server);
+    server.faults.always(DriveFaults.offline, 'UPLOAD');
+    await a.service.createFolder(true);
+    server.faults.clear();
+    const other = await Rig.make(server, 'Tablet');
+    expect((await other.service.createFolder(true)).connection.kind).toBe('READY');
+    const keys = server.allFiles().find((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed)!;
+    const before = server.contentOf(keys.id);
+    const again = await a.service.createFolder(true);
+    expect(again.connection.kind === 'ERROR' && again.connection.problem.kind).toBe('FOLDER_EXISTS');
+    expect(server.contentOf(keys.id)).toEqual(before);
+    expect(server.allFiles().filter((f) => f.appProperties[DRIVE_LAYOUT.kind] === 'keys' && !f.trashed).length).toBe(1);
+  });
+
+  it('leaves a folder that still holds a file, including one in the bin, and a key list found by name', async () => {
+    const { server, writeCount } = world();
+    const a = await Rig.make(server);
+    const rootId = plantRoot(server);
+    const backup = server.putByHand({
+      name: 'Doorprints-backup-2026-10-03-1200.dpx', mimeType: 'application/octet-stream', parents: [rootId],
+      appProperties: { kind: 'backup', state: 'complete' },
+    }, new Uint8Array([1, 2, 3]));
+    const before = writeCount();
+    const refused = await a.service.connect();
+    expect(refused.kind === 'ERROR' && refused.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+    const created = await a.service.createFolder(true);
+    expect(created.connection.kind === 'ERROR' && created.connection.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+    expect(created.recoveryKey).toBeNull();
+    expect(writeCount()).toBe(before);
+    expect(server.contentOf(backup.id)).toEqual(new Uint8Array([1, 2, 3]));
+
+    const binned = await Rig.make(new FakeDriveServer());
+    const binRoot = plantRoot(binned.server);
+    const gone = binned.server.putByHand({
+      name: 'note.txt', mimeType: 'text/plain', parents: [binRoot], appProperties: {},
+    }, new Uint8Array([9]));
+    binned.server.trashByHand(gone.id);
+    const binConnect = await binned.service.connect();
+    expect(binConnect.kind === 'ERROR' && binConnect.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+    const binCreate = await binned.service.createFolder(true);
+    expect(binCreate.connection.kind === 'ERROR' && binCreate.connection.problem.kind).toBe('FOLDER_WITHOUT_KEYS');
+
+    const named = await Rig.make(new FakeDriveServer());
+    const namedRoot = plantRoot(named.server);
+    named.server.putByHand({
+      name: 'keys.json', mimeType: 'application/json', parents: [namedRoot], appProperties: {},
+    }, new TextEncoder().encode('{'));
+    const namedBefore = named.server.allFiles().length;
+    const namedConnect = await named.service.connect();
+    expect(namedConnect.kind === 'ERROR' && namedConnect.problem.kind).not.toBe('FOLDER_WITHOUT_KEYS');
+    const namedCreate = await named.service.createFolder(true);
+    expect(namedCreate.connection.kind).not.toBe('READY');
+    expect(named.server.allFiles().filter((f) => f.name === 'keys.json').length).toBe(1);
+    expect(named.server.allFiles().length).toBe(namedBefore);
   });
 
   // ---- offline and the schedule ----
