@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.25 | 2026-09-29 | Claude (Code), lead | §9: the web loads one language at a time (English built in; hi, ta, te as chunks, the saved one before the app starts); the add-a-language steps follow. |
 | 0.26 | 2026-10-01 | Claude (Code), lead | §4.1, §4.4 and §7: the light `--star` is `#966000` (was `#A86A00`, 4.44:1 on white), at least 4.5:1 on every surface a star sits on, web and phones alike (S4b-BL-110); 2.3.3 notes that Compose follows *Remove animations* on Android and *Reduce Motion* on iPhone through its frame clock. |
 | 0.27 | 2026-10-03 | Cursor Agent | §5.2: the phone map legend's floor is the row when a label is wider than the row. Tamil "Not chosen" at 200% text on a 360px phone had scrolled the page sideways by 33px; that label wraps inside the legend. |
+| 0.28 | 2026-10-03 | Cursor Agent | §5.2: on a phone the map's two-finger hint stays off the legend. It is hidden until a one-finger pan is blocked, and then the sentence sits above the legend, in either theme. |
 
 ---
 
@@ -309,7 +310,7 @@ browser). Fixed in the same change (`web/README.md` row *Phone display fixes*); 
 | Size to what is visible | Heights use the visible page area, not `vh` (the viewport without the address bar): `100dvh` for the shell and the photo viewer, `100cqh` of `<main>` (a size container) for the phone map, which fills it less the list's heading and counters (`--map-peek`, measured by `listPeek`), at least 256 px and never shorter than MapLibre's control column |
 | Targets | 44 x 44 CSS px on touch screens, the brand link included (it was 28 px wide where its name is hidden) |
 | Map credits | Shown for 5 s after the style first loads, then folded into the (i) button (`foldAttribution`, `ATTRIBUTION_SHOW_MS`), sooner at the first zoom or move, on maps up to 640 px wide; the (i) opens them in full (nothing hides the credit, R5) |
-| Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. A label wider than that row (Tamil "Not chosen" at 200% text on a 360px phone) wraps inside the legend. The whole label stays readable: it is not cut off, and the page does not scroll sideways. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
+| Legend and map buttons | The legend moves to its own row above the actions when its widest item does not fit beside them; the actions keep one-line width. A label wider than that row (Tamil "Not chosen" at 200% text on a 360px phone) wraps inside the legend. The whole label stays readable: it is not cut off, and the page does not scroll sideways. The two-finger hint stays off those labels: it is hidden until a one-finger pan is blocked, and then the sentence sits in the map above the legend, in either theme. Up to 384 px each counter is one line ("0 Houses"), a long caption wrapping in its cell |
 | Banners | At most 40 % of the visible height (`40dvh`), scrolling inside |
 | Keyboard | With a field focused on a phone under 500 px tall, the bottom bar steps aside, so it never covers the field |
 | Long words at 200 % text | `overflow-wrap` on the body and, up to 600 px, `anywhere` on buttons, chips, options and checkbox labels; grids use `minmax(0, 1fr)`. The map legend's floor is `min(100%, 10rem)` and its labels use `anywhere`, because `min-content` is the longest word and had let Tamil "Not chosen" scroll the page 33px at 360px and 200% text. No page scrolls sideways |
