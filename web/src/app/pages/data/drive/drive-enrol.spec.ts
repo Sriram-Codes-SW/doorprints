@@ -23,7 +23,7 @@ import { DriveEnrolCard } from './drive-enrol';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
-import { unb64 } from '../../../data/crypto/bytes';
+import { b64, unb64 } from '../../../data/crypto/bytes';
 import { type PairingMessage } from '../../../data/drive/connect/pairing-flow';
 
 const deviceKey = (() => {
@@ -160,5 +160,49 @@ describe('DriveEnrolCard', () => {
     expect(a.svc.joinFromPsk).toHaveBeenCalled();
     a.fixture.detectChanges();
     expect(a.component['joined']()).toBe(true);
+  });
+
+  it('does not approve a public key pasted after the code was shown', async () => {
+    const a = await render();
+    await a.component['becomeNewcomer']();
+    const b = await render();
+    b.component['becomeApprover']();
+    b.component['requestText'].set(a.component['requestText']());
+    await b.component['approvePasted']();
+    a.component['replyText'].set(b.component['replyText']());
+    a.component['revealCode']();
+    b.component['replyText'].set(a.component['replyText']());
+    b.component['showApproverCode']();
+
+    const revealed = JSON.parse(b.component['replyText']()) as PairingMessage;
+    const swapped = deviceKey.slice();
+    swapped[2] = 9;
+    b.component['replyText'].set(JSON.stringify({ ...revealed, pkNew: b64(swapped) }));
+    await b.component['confirmNumbers']();
+    b.fixture.detectChanges();
+
+    expect(b.svc.approveJoinedDevice).not.toHaveBeenCalled();
+    expect(b.component['approved']()).toBe(false);
+    expect(b.component['error']()).toBe(b.i18n.t('driveEnrol.mismatch'));
+  });
+
+  it('does not approve a transcript that replaced this browser nonce', async () => {
+    const a = await render();
+    await a.component['becomeNewcomer']();
+    const b = await render();
+    b.component['becomeApprover']();
+    b.component['requestText'].set(a.component['requestText']());
+    await b.component['approvePasted']();
+    a.component['replyText'].set(b.component['replyText']());
+    a.component['revealCode']();
+    const revealed = JSON.parse(a.component['replyText']()) as PairingMessage;
+    b.component['replyText'].set(JSON.stringify({ ...revealed, nApprover: b64(crypto.getRandomValues(new Uint8Array(16))) }));
+    b.component['showApproverCode']();
+    expect(b.component['code']()).toMatch(/^\d{8}$/);
+
+    await b.component['confirmNumbers']();
+    b.fixture.detectChanges();
+    expect(b.svc.approveJoinedDevice).not.toHaveBeenCalled();
+    expect(b.component['error']()).toBe(b.i18n.t('driveEnrol.badMessage'));
   });
 });
