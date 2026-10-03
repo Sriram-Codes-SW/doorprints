@@ -172,13 +172,27 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       shownIsTranslated(host, i18n, 'driveConnect.notConfigured');
     });
 
-    it(`${lang}: a deleted folder shows the translated folder-gone copy`, async () => {
-      const backup = stubBackup({ connect: async () => ({ kind: 'FOLDER_GONE' }) });
+    it(`${lang}: a deleted folder creates a new one and shows the recovery key, not the intro beside the error`, async () => {
+      const key = 'BBBB-CCCC-DDDD-EEEE-FFFF-GGGG';
+      let created = 0;
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'FOLDER_GONE' }),
+        createFolder: async () => {
+          created += 1;
+          return { connection: { kind: 'READY', folder: FOLDER }, recoveryKey: { display: key } as never };
+        },
+      });
       const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
       await component.onConnect();
       await flush();
       fixture.detectChanges();
-      shownIsTranslated(host, i18n, 'driveConnect.folderGone');
+      expect(created).toBe(1);
+      shownIsTranslated(host, i18n, 'driveConnect.firstConnect');
+      expect(host.textContent).toContain(key);
+      const text = host.textContent ?? '';
+      expect(text.includes(i18n.t('data.intro')) && text.includes(i18n.t('driveConnect.folderGone'))).toBe(false);
+      expect(host.querySelector('.error-box')).toBeNull();
+      expect(text.toLowerCase()).not.toContain('restore');
     });
 
     it(`${lang}: an unknown thrown error shows the generic translated message, never the throw text`, async () => {
@@ -280,6 +294,96 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       shownIsTranslated(host, i18n, 'driveConnect.failed', leak);
     });
   }
+
+  it('the deleted-folder card keeps the intro off the error, and Connect and Try again both create a folder', async () => {
+    const key = 'CCCC-DDDD-EEEE-FFFF-GGGG-HHHH';
+    let created = 0;
+    const backup = stubBackup({
+      connect: async () => ({ kind: 'FOLDER_GONE' }),
+      createFolder: async () => {
+        created += 1;
+        return { connection: { kind: 'READY', folder: FOLDER }, recoveryKey: { display: key } as never };
+      },
+    });
+    const service = makeService('client', backup);
+    const { host, i18n, component, fixture } = await renderConnect(service);
+    // A normal browser that still remembers the folder: Disconnected, plus the folder-gone error.
+    // That is the live card (heading, intro, Connect, the sentence, Try again) before this fix.
+    component['error'].set('driveConnect.folderGone');
+    fixture.detectChanges();
+
+    const intro = i18n.t('data.intro');
+    const gone = i18n.t('driveConnect.folderGone');
+    const heading = i18n.t('driveConnect.heading');
+    const connectLabel = i18n.t('driveConnect.connect');
+    const retry = i18n.t('common.retry');
+    const saveKey = i18n.t('driveConnect.firstConnect');
+    let text = host.textContent ?? '';
+    expect(text).toContain(heading);
+    expect(text).toContain(gone);
+    expect(text).toContain(connectLabel);
+    expect(text).toContain(retry);
+    expect(text.includes(intro) && text.includes(gone)).toBe(false);
+    expect(text.toLowerCase()).not.toContain('restore');
+    expect(text).not.toMatch(/ya29\.|Bearer |access_token/);
+
+    const click = (label: string) => {
+      const button = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes(label));
+      expect(button, label).toBeTruthy();
+      button!.click();
+    };
+
+    click(connectLabel);
+    await flush();
+    fixture.detectChanges();
+    text = host.textContent ?? '';
+    expect(created).toBe(1);
+    expect(text).toContain(saveKey);
+    expect(text).toContain(key);
+    expect(text.includes(intro) && text.includes(gone)).toBe(false);
+    expect(host.querySelector('.error-box')).toBeNull();
+
+    await service.disconnect();
+    component['recoveryKey'].set(null);
+    component['error'].set('driveConnect.folderGone');
+    fixture.detectChanges();
+    text = host.textContent ?? '';
+    expect(text).toContain(gone);
+    expect(text).toContain(retry);
+    expect(text.includes(intro) && text.includes(gone)).toBe(false);
+
+    click(retry);
+    await flush();
+    fixture.detectChanges();
+    text = host.textContent ?? '';
+    expect(created).toBe(2);
+    expect(text).toContain(saveKey);
+    expect(text).toContain(key);
+    expect(text.includes(intro) && text.includes(gone)).toBe(false);
+    expect(host.querySelector('.error-box')).toBeNull();
+  });
+
+  it('does not say the recovery key is on screen before createFolder returns one', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const key = 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF';
+    const backup = stubBackup({
+      createFolder: async () => {
+        await gate;
+        return { connection: { kind: 'READY', folder: FOLDER }, recoveryKey: { display: key } as never };
+      },
+    });
+    const service = makeService('client', backup);
+    const pending = service.createFolder();
+    expect(service.getState()).not.toBe('FirstConnectShowRecoveryKey');
+    release();
+    const created = await pending;
+    expect(created.recoveryKey).toBe(key);
+    expect(created.state).toBe('FirstConnectShowRecoveryKey');
+    expect(service.getState()).toBe('FirstConnectShowRecoveryKey');
+  });
 
   it('a first folder with a recovery key is shown, not an error', async () => {
     const key = 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF';

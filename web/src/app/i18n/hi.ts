@@ -1365,6 +1365,8 @@ export const hi: Dict = {
   'driveEnrol.cameraMissing': 'यह ब्राउज़र कैमरा नहीं खोल सका। कोड चिपकाएँ।',
   'driveEnrol.newcomer': 'यह एक नया ब्राउज़र है',
   'driveEnrol.approver': 'यह ब्राउज़र पहले से जुड़ा है',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveEnrol.passkeyNeeded': 'यह ब्राउज़र बिना पासकी के दूसरे ब्राउज़र को मंज़ूरी नहीं दे सकता। इस डिवाइस पर पासकी सेट करें।',
   'driveEnrol.newcomerHelp': 'यह अनुरोध कॉपी करें, जुड़े डिवाइस पर चिपकाएँ, फिर उसकी उत्तर यहाँ चिपकाएँ।',
   'driveEnrol.approverHelp': 'नए ब्राउज़र का अनुरोध चिपकाएँ, उत्तर बनाएँ, फिर खोला गया संदेश वापस चिपकाएँ।',
   'driveEnrol.requestLabel': 'जोड़ी अनुरोध',
@@ -1388,6 +1390,8 @@ export const hi: Dict = {
   'driveDevices.revoke': 'इस डिवाइस की पहुँच हटाएँ',
   'driveDevices.revokeNote': 'यह उस डिवाइस को नए Doorprints बैकअप खोलने से रोकता है। यह उसे आपके Google खाते से साइन आउट नहीं करता: सभी डिवाइस पर डिस्कनेक्ट करें, या Google के Your devices पेज का उपयोग करें, और चोरी होने पर Google पासवर्ड बदलें।',
   'driveDevices.disconnectAll': 'सभी डिवाइस पर डिस्कनेक्ट करें',
+  // Under review (owner rule: hi/ta/te ship marked under review).
+  'driveDevices.disconnectPasskey': 'यह ब्राउज़र बिना पासकी के हर डिवाइस को डिस्कनेक्ट नहीं कर सकता। इस डिवाइस पर पासकी सेट करें।',
   'driveDevices.threeDisconnect': 'Google Drive डिस्कनेक्ट: यह डिवाइस सिंक और बैकअप रोकता है। कहीं कुछ नहीं मिटता; बाकी डिवाइस चलते रहते हैं।',
   'driveDevices.threeRemove': 'सभी डिवाइस पर डिस्कनेक्ट: हर डिवाइस की पहुँच एक साथ जाती है। आपकी फ़ाइलें Drive में रहती हैं।',
   'driveDevices.threeDelete': 'Google Drive से Doorprints डेटा मिटाएँ: Drive की फ़ाइलें जाती हैं। डिवाइस अपने मकान रखते हैं।',

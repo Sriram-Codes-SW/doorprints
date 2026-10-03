@@ -111,4 +111,15 @@ describe('DriveDevicesCard', () => {
     await component['disconnectAll']();
     expect(svc.disconnectAll).toHaveBeenCalled();
   });
+
+  it('disconnect on all devices without a passkey does not use the deletion sentence', async () => {
+    const svc = fakeService({
+      disconnectAll: vi.fn(async () => ({ ok: false, reason: 'USE_PHONE' })),
+    });
+    const { component, fixture, host, i18n } = await render(svc);
+    await component['disconnectAll']();
+    fixture.detectChanges();
+    shown(host, i18n, 'driveDevices.disconnectPasskey');
+    expect(host.textContent).not.toContain(i18n.t('driveDelete.usePhone'));
+  });
 });

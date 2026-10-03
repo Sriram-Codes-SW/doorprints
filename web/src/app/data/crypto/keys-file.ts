@@ -368,6 +368,14 @@ export class KeysFile {
   }
 
   /**
+   * This device uploaded the list and was reloaded before `pinCreated`. The device key opens its own wrap and,
+   * when there is no pin yet, this makes that pin (`CREATED`). A list this device is not in throws `NOT_ENROLLED`.
+   */
+  finishOwnCreate(file: Uint8Array, device: P256PrivateKey, guard: KeysGuard): Promise<OpenedKeys> {
+    return this.openDevice(file, device, guard, null, 'CREATED');
+  }
+
+  /**
    * The first pin (S4b-BL-126): opens only if the folder key equals `trustedFolderKey`, received over an authenticated
    * channel (the QR code's HPKE PSK wrap), then pins it. Never call it with a key read from Drive.
    */

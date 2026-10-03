@@ -32,6 +32,7 @@ function fakeService(state: ConnectState, extra: Record<string, unknown> = {}) {
   let current = state;
   return {
     getState: () => current,
+    enrolmentNotice: () => null,
     connect: vi.fn(async () => ({ state: current })),
     createFolder: vi.fn(async () => ({ state: 'FirstConnectShowRecoveryKey' as const, recoveryKey: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX' })),
     confirmRecoveryKeySaved: vi.fn(() => {
@@ -116,6 +117,20 @@ describe('DriveConnectComponent', () => {
   it('shows Connect when disconnected', async () => {
     const { host, i18n } = await render(fakeService('Disconnected'));
     shown(host, i18n, 'driveConnect.connect');
+  });
+
+  it('does not claim the recovery key is on screen when it is gone', async () => {
+    const { host, i18n } = await render(fakeService('FirstConnectShowRecoveryKey'));
+    const text = host.textContent ?? '';
+    expect(text).not.toContain(i18n.t('driveConnect.firstConnect'));
+    expect(text).not.toContain(i18n.t('driveConnect.recoveryKeyNote'));
+  });
+
+  it('a connected browser can show the 8-digit code and scan a QR', async () => {
+    const { host, i18n } = await render(fakeService('Ready'));
+    shown(host, i18n, 'driveEnrol.approver');
+    shown(host, i18n, 'driveEnrol.scanQr');
+    shown(host, i18n, 'driveConnect.ready');
   });
 
   it('clears the recovery key after confirm', async () => {

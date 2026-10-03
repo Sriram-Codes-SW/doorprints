@@ -24,6 +24,7 @@ import { DriveConnectService } from '../../../data/drive/connect/drive-connect.s
 import { TranslationService } from '../../../i18n/translation.service';
 import type { TKey } from '../../../i18n/en';
 import { b64, unb64 } from '../../../data/crypto/bytes';
+import { qrOfferText } from '../../../data/crypto/qr-enrol';
 import { type PairingMessage } from '../../../data/drive/connect/pairing-flow';
 
 const deviceKey = (() => {
@@ -204,5 +205,17 @@ describe('DriveEnrolCard', () => {
     b.fixture.detectChanges();
     expect(b.svc.approveJoinedDevice).not.toHaveBeenCalled();
     expect(b.component['error']()).toBe(b.i18n.t('driveEnrol.badMessage'));
+  });
+
+  it('approving without a passkey does not use the deletion sentence', async () => {
+    const svc = fakeService();
+    svc.approveJoinedDevicePsk.mockResolvedValue({ ok: false, reason: 'USE_PHONE' } as never);
+    const { component, fixture, host, i18n } = await render(svc);
+    component['becomeQrApprover']();
+    component['requestText'].set(qrOfferText(deviceKey, new Uint8Array(32)));
+    await component['approveQr']();
+    fixture.detectChanges();
+    expect(host.textContent).toContain(i18n.t('driveEnrol.passkeyNeeded'));
+    expect(host.textContent).not.toContain(i18n.t('driveDelete.usePhone'));
   });
 });
