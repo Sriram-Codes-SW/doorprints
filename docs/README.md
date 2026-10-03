@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.89 |
+| Version | 0.90 |
 | Date | 2026-10-03 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -86,6 +86,7 @@
 | 0.83 | 2026-10-02 | Cursor Agent, lead | Website Drive quality follow-up (draft PR #118): 06 v0.109 (TC-U-133 translated errors, empty config, a11y states, changelog order, Blob identity), 10 v0.134, 15 v0.12. |
 | 0.84 | 2026-10-03 | Cursor Agent, lead | Website Drive version 1 follow-up (draft PR #118): 06 v0.110, 10 v0.135, 14 v0.81, 15 v0.13 (8-digit HPKE enrolment, revoke, disconnect-all, partial delete, two-minute sync). |
 | 0.87 | 2026-10-03 | Cursor Agent, lead | Website Drive enrolment check (draft PR #118): 06 v0.113 (TC-U-133: the 8-digit approve step is bound to the transcript just shown and to this browser's nonce and public key). |
+| 0.90 | 2026-10-03 | Cursor Agent, lead | Firefox Drive encrypt check: 02 v0.57 (RR-27), 06 v0.115 (TC-U-125), 15 v0.17. A failed JWK export is not "this browser cannot encrypt". |
 | 0.89 | 2026-10-03 | Cursor Agent | Tamil at 200% text on a 360px phone: 05 v0.28 (the map's two-finger hint stays off the legend). |
 | 0.88 | 2026-10-03 | Cursor Agent | Tamil at 200% text on a 360px phone: 05 v0.27 (the map legend no longer scrolls the page sideways). |
 | 0.86 | 2026-10-03 | Cursor Agent, lead | Website Drive CI fix (draft PR #118): 06 v0.112 (TC-U-133: the deletion adapter's authorizer double has `proofFor`; the HMAC is the token proof). |

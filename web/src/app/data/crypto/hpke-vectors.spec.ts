@@ -118,6 +118,57 @@ describe('crypto primitives (WebCrypto) against published vectors', () => {
     }
   });
 
+  it('recovers the public key when JWK export fails the way Firefox does', async () => {
+    let nonExtractable = 0;
+    const real = globalThis.crypto;
+    const fx = new WebCryptoProvider({
+      getRandomValues: real.getRandomValues.bind(real),
+      subtle: {
+        importKey: (format: string, keyData: BufferSource | JsonWebKey, algorithm: Algorithm, extractable: boolean, keyUsages: KeyUsage[]) => {
+          if (format === 'jwk' && extractable === false) nonExtractable++;
+          return real.subtle.importKey(format as 'raw', keyData as BufferSource, algorithm, extractable, keyUsages);
+        },
+        exportKey: async (format: KeyFormat, key: CryptoKey) => {
+          if (format === 'jwk') throw new DOMException('The operation failed for an operation-specific reason', 'OperationError');
+          return real.subtle.exportKey(format, key);
+        },
+        deriveBits: real.subtle.deriveBits.bind(real.subtle),
+      },
+    } as unknown as Crypto);
+    for (const c of vectors.primitives['ecdhP256']) {
+      const i = await fx.p256FromScalar(h(c, 'i'));
+      const r = await fx.p256FromScalar(h(c, 'r'));
+      expect(hex(i.publicKey)).toBe(c['gi']);
+      expect(hex(r.publicKey)).toBe(c['gr']);
+      expect(hex(await fx.p256Agree(i, r.publicKey))).toBe(c['girx']);
+      expect(hex(await fx.p256Agree(r, i.publicKey))).toBe(c['girx']);
+    }
+    for (const c of vectors.primitives['p256ScalarMult']) expect(hex((await fx.p256FromScalar(h(c, 'k'))).publicKey)).toBe(c['point']);
+    expect(nonExtractable).toBeGreaterThan(0);
+    const k = await fx.p256FromScalar(real.getRandomValues(new Uint8Array(32)).map((b, i) => (i === 0 ? b & 0x7f : b)));
+    const sealed = await new Hpke(p).seal(k.publicKey, new Uint8Array(0), new Uint8Array(0), new Uint8Array([1, 2, 3]));
+    expect([...(await new Hpke(p).open(sealed.enc, k, new Uint8Array(0), new Uint8Array(0), sealed.ciphertext))]).toEqual([1, 2, 3]);
+  });
+
+  it('still says the browser cannot encrypt when PKCS #8 import itself fails', async () => {
+    const refused = new WebCryptoProvider({
+      subtle: {
+        importKey: () => Promise.reject(new DOMException('Data provided to an operation does not meet requirements', 'DataError')),
+      },
+    } as unknown as Crypto);
+    const scalar = unhex('0000000000000000000000000000000000000000000000000000000000000001');
+    try {
+      await refused.p256FromScalar(scalar);
+    } catch (e) {
+      expect(e).toBeInstanceOf(CryptoError);
+      expect((e as CryptoError).kind).toBe('UNAVAILABLE');
+      expect((e as CryptoError).message).toBe('crypto UNAVAILABLE: this browser cannot import a P-256 key without its public key');
+      expect((e as CryptoError).message).not.toContain(hex(scalar));
+      return;
+    }
+    throw new Error('expected UNAVAILABLE');
+  });
+
   it('a scalar key pair has the right sign of y (HPKE opens to it)', async () => {
     for (let n = 0; n < 5; n++) {
       const k = await p.p256FromScalar(p.randomBytes(32).map((b, i) => (i === 0 ? b & 0x7f : b)));

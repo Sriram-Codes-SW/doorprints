@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.16 |
+| Version | 0.17 |
 | Date | 2026-10-03 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. Android and iPhone Drive UI is paused. Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; QR on the phones and the phones' HMAC proof stay open with S4b-BL-134 and S4b-BL-135; the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
@@ -28,6 +28,7 @@
 | 0.14 | 2026-10-03 | Cursor Agent, lead | Website version 1 closed on draft PR #118. **§9.9:** an opened folder key is a non-extractable HKDF `CryptoKey` (S4b-BL-132, website). **§9.5:** the website shows a QR (`dp1.` of `pk_new` ‖ `s`) and the enrolled browser scans it or the person pastes it; the wrap is HPKE PSK mode. The website's `s` is **32 bytes** (RFC 9180's minimum), not the 128 bits of the prose, because a shorter PSK is refused; `psk_id` is `doorprints/dpx1/qr-psk`. `keys.json` device wraps stay base mode. **§10.4:** an L2/L3 proof is an HMAC of `operationId` and `issuedAtMs` under a key from the passkey PRF (S4b-BL-135, website); L1 stays the grant id. Android and iPhone QR and HMAC stay open. A real Google sign-in in the browser is the remaining owner step. |
 | 0.15 | 2026-10-03 | Cursor Agent, lead | **S4b-BL-124 runbook half:** the three incidents named in §7 are [08](08-operations-runbook.md) v0.22 IR-11 (the project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account). §8 R1 points at IR-11. The guide pages were already on `main`. The privacy page (S4b-BL-121) is unchanged. |
 | 0.16 | 2026-10-03 | Cursor Agent, lead | **Website, empty first folder.** A Doorprints folder with no key list and no other file (nothing in the bin either) is an unfinished first connect: the website writes the key list there. A folder that still holds any file is left as it is, including when this device remembers starting it; nothing is put in the bin. The card tells the person to open a device that already connected, or to delete that folder in Google Drive and connect again. A listing Drive marks incomplete is not treated as empty. The phone still refuses the folder (no Drive screen yet). |
+| 0.17 | 2026-10-03 | Cursor Agent, lead | **Website, Firefox.** Firefox 132 and later imports a P-256 PKCS #8 key that omits the public key and can run ECDH with it, but `exportKey('jwk')` fails. The website no longer treats that as "this browser cannot encrypt": it reads x(d·G) and x((d+1)·G) from ECDH, the same way Android does, and imports a non-extractable JWK that already has x and y. A browser that cannot import the PKCS #8 key at all (Safari, Firefox before 132) still fails closed. No point multiplication was added. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -768,7 +769,8 @@ a P-256 private key deterministically: `seed = HKDF-SHA-256(ikm = recoveryKey, s
 info = "p256", L = 48)`, `d = (seed as a big-endian integer mod (n − 1)) + 1`, the method of FIPS 186-5 A.2.1 with 64
 extra bits, which always gives a valid scalar (no retry rule is needed, and the bias is below 2⁻⁶⁴). The public key is
 computed from `d` by each platform's own code (CryptoKit's `P256.KeyAgreement.PrivateKey(rawRepresentation:)` on the
-iPhone, S4b-BL-131; a PKCS #8 import on the website; on Android, which has no call for it, two of the platform's own
+iPhone, S4b-BL-131; on the website, a PKCS #8 import, and when the browser will not export the public key, the same
+two ECDH operations as Android; on Android, which has no call for it, two of the platform's own
 ECDH operations, x(d·G) and x((d+1)·G), and the sign of y chosen by one addition of public points, §9.9). **As built,
 there is no point multiplication in common code** (v0.4 planned one for Android); the result is checked against the
 RFC 5903 and well-known P-256 vectors. **Only the public key is
@@ -928,9 +930,11 @@ What this design did not say, and the build chose (the default unless the owner 
   ignores case, spaces and hyphens and reads O as 0, I and L as 1. The HKDF input is the 16 bytes, not the text.
 - **The recovery public key per platform**: Android, which cannot give the public key of a raw scalar, uses two of its
   own ECDH operations (x(d·G) and x((d+1)·G)) and one affine addition of public points to fix the sign of y; the
-  website imports a PKCS #8 key without its public key (the browser computes it) and reads it from a JWK, then imports
-  the scalar again as non-extractable (Chromium and Node checked; Firefox and Safari wait for TC-M-53, [02](02-threat-model.md)
-  RR-27); the iPhone will use CryptoKit (S4b-BL-131). The reduction `(seed mod (n − 1)) + 1` is common code with fixed
+  website imports a PKCS #8 key without its public key and, where `exportKey('jwk')` returns x and y (Chromium and
+  Node), reads them from that JWK. Firefox 132 and later imports the key and can derive with it, but the JWK export
+  fails, so the website uses Android's two ECDH operations and then imports a non-extractable JWK that already has
+  x and y (TC-U-125). A browser that cannot import the PKCS #8 key at all (Safari, Firefox before 132) still says
+  *UNAVAILABLE* ([02](02-threat-model.md) RR-27; TC-M-53). The iPhone will use CryptoKit (S4b-BL-131). The reduction `(seed mod (n − 1)) + 1` is common code with fixed
   limbs and no secret-dependent branch.
 - **A new recovery key starts a new epoch** (the old one may have been seen) with a new anchor, and the old recovery kid
   joins the revoked list (`"kind":"recovery"`, never an accepted writer); a revoke always comes with one (above); a revoked device moves from `devices` to `revoked` and cannot be listed again; `enrolledBy`
