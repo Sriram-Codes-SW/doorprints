@@ -74,14 +74,37 @@ function isPrfExtensionOutput(ext: unknown): ext is PrfExtensionOutput {
   return ext !== null && typeof ext === 'object' && 'prf' in ext;
 }
 
-/**
- * Registration asked for the PRF extension. Keep the credential only when the authenticator
- * says that extension is enabled; a later assertion is what actually produces the output.
- */
-function creationEnablesPrf(cred: unknown): boolean {
-  if (!hasGetClientExtensionResults(cred)) return false;
-  const ext = cred.getClientExtensionResults();
-  return isPrfExtensionOutput(ext) && ext.prf?.enabled === true;
+/** The 32-byte PRF output, or null when this ceremony did not return one. `enabled` is not that output. */
+function prfOutputOf(ext: unknown): Uint8Array | null {
+  if (!isPrfExtensionOutput(ext)) return null;
+  const first = ext.prf?.results?.first as BufferSource | undefined;
+  if (!first) return null;
+  const bytes = first instanceof ArrayBuffer
+    ? new Uint8Array(first.slice(0))
+    : new Uint8Array(first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength));
+  return bytes.length === 32 ? bytes : null;
+}
+
+function credentialIdBytes(credential: Credential): Uint8Array {
+  if ('rawId' in credential && credential.rawId instanceof ArrayBuffer) {
+    return new Uint8Array(credential.rawId.slice(0));
+  }
+  if ('id' in credential && typeof credential.id === 'string') return base64urlToBytes(credential.id);
+  throw new Error('Passkey registration returned no credential id.');
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/** The credential exists, but it did not return the PRF output the deletion seal needs. */
+export class PasskeyPrfMissingError extends Error {
+  constructor() {
+    super('This passkey did not return the PRF output needed to seal deletions.');
+    this.name = 'PasskeyPrfMissingError';
+  }
 }
 
 /** Hostname used as WebAuthn `rp.id`. IPs and an empty host map to `localhost`. */
@@ -117,6 +140,8 @@ function hasGetClientExtensionResults(
  */
 export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
   private credentialId: Uint8Array | null = null;
+  /** Output from the registration ceremony, not stored until the sealed blob is kept. */
+  private pending: { credentialId: Uint8Array; salt: Uint8Array; output: Uint8Array } | null = null;
 
   constructor(
     private readonly storageKey: (key: string) => Promise<string | undefined>,
@@ -154,7 +179,12 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
    * On first call without a stored credential, attempts registration with PRF.
    * On subsequent calls, uses the stored credential ID for assertion.
    */
-  async evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult> {
+  async evaluate(
+    credentialId: Uint8Array,
+    salt: Uint8Array,
+    evalOptions?: { persist?: boolean },
+  ): Promise<PrfResult> {
+    const persist = evalOptions?.persist !== false;
     if (typeof navigator === 'undefined' || !navigator.credentials) {
       return { kind: 'NOT_SUPPORTED' };
     }
@@ -208,16 +238,14 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return { kind: 'NOT_SUPPORTED' };
       }
 
-      const prfOutput = new Uint8Array(prfExt.results.first);
-      if (prfOutput.length !== 32) {
-        return { kind: 'FAILED' };
+      const prfOutput = prfOutputOf(extensionResults);
+      if (!prfOutput) {
+        return { kind: 'NOT_SUPPORTED' };
       }
 
-      // Store credential ID for future use
-      if (!this.credentialId || this.credentialId.length === 0) {
-        const idStr = Array.from(targetId).join(',');
-        await this.storageSet('doorprints-webauthn-credential-id', idStr);
-        this.credentialId = targetId.slice();
+      // A registration probe must not count as success: the sealed blob is what the deletion flow keeps.
+      if (persist && (!this.credentialId || this.credentialId.length === 0)) {
+        await this.commitRegistration(targetId);
       }
 
       return { kind: 'OK', output: prfOutput };
@@ -234,10 +262,24 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     }
   }
 
+  consumeRegistrationPrf(credentialId: Uint8Array): { salt: Uint8Array; output: Uint8Array } | null {
+    const pending = this.pending;
+    this.pending = null;
+    if (!pending || !sameBytes(pending.credentialId, credentialId)) return null;
+    return { salt: pending.salt, output: pending.output };
+  }
+
+  async commitRegistration(credentialId: Uint8Array): Promise<void> {
+    const idStr = Array.from(credentialId).join(',');
+    await this.storageSet('doorprints-webauthn-credential-id', idStr);
+    this.credentialId = credentialId.slice();
+  }
+
   /**
-   * Registers a new discoverable platform passkey with PRF support.
-   * Returns the credential ID on success, or null when the person cancelled the prompt.
-   * A refusal (including a credential that cannot produce a PRF output) throws, so the card can say so.
+   * Registers a new discoverable platform passkey and asks for a PRF output in that same ceremony.
+   * Returns the credential ID, or null when the person cancelled the prompt.
+   * The id is not stored here. A credential that never returns a 32-byte PRF output throws
+   * {@link PasskeyPrfMissingError} — that is not "no platform authenticator".
    */
   async registerPasskey(displayName: string): Promise<Uint8Array | null> {
     if (typeof navigator === 'undefined' || !navigator.credentials) {
@@ -245,6 +287,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
     }
 
     try {
+      const salt = randomBytes(32);
       const options: CredentialCreationOptions = {
         publicKey: {
           challenge: randomBytes(32),
@@ -271,8 +314,15 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             requireResidentKey: true,
             userVerification: 'required',
           },
+          // Evaluate during create so one Windows Hello PIN returns the PRF output. An empty
+          // `prf: {}` only asks whether the extension is enabled, and Windows Hello reports that
+          // as false after the PIN even when an evaluation would succeed.
           extensions: {
-            prf: {},
+            prf: {
+              eval: {
+                first: prfInput(salt),
+              },
+            },
           },
         } as PublicKeyCredentialCreationOptions & {
           authenticatorSelection?: {
@@ -282,7 +332,7 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
             userVerification?: string;
           };
           extensions?: {
-            prf?: Record<string, never>;
+            prf?: { eval?: { first: BufferSource } };
           };
         },
       };
@@ -293,20 +343,23 @@ export class WebAuthnPrfAuthenticator implements PrfAuthenticator {
         return null;
       }
 
-      // Do not keep a credential the deletion flow cannot open. PRF output is checked again when sealing.
-      if (!creationEnablesPrf(credential)) {
-        throw new DOMException('This passkey cannot produce a PRF output.', 'NotSupportedError');
+      const credIdBuffer = credentialIdBytes(credential);
+      // `prf.enabled` is not the output the deletion flow opens. Windows Hello can leave it false
+      // after a successful PIN and still return results.first from this eval, or from one assertion.
+      let output = hasGetClientExtensionResults(credential)
+        ? prfOutputOf(credential.getClientExtensionResults())
+        : null;
+      if (!output) {
+        const evaluated = await this.evaluate(credIdBuffer, salt, { persist: false });
+        if (evaluated.kind === 'CANCELLED') return null;
+        if (evaluated.kind !== 'OK') throw new PasskeyPrfMissingError();
+        output = evaluated.output;
       }
-
-      if (!('id' in credential) || typeof credential.id !== 'string') {
-        throw new Error('Passkey registration returned no credential id.');
-      }
-      // The credential.id from WebAuthn is a base64url string; decode it to bytes
-      const credIdBuffer = base64urlToBytes(credential.id);
-      const idStr = Array.from(credIdBuffer).join(',');
-      await this.storageSet('doorprints-webauthn-credential-id', idStr);
-      this.credentialId = credIdBuffer;
-
+      this.pending = {
+        credentialId: credIdBuffer.slice(),
+        salt: salt.slice(),
+        output: output.slice(),
+      };
       return credIdBuffer;
     } catch (e) {
       // DOMException is not an Error in every runtime, but it still carries name.

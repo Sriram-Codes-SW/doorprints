@@ -34,16 +34,33 @@ export type PrfResult =
   | { kind: "NOT_SUPPORTED" }
   | { kind: "FAILED" };
 
+/** Salt and PRF output from the registration ceremony, evaluated together. */
+export interface RegistrationPrf {
+  salt: Uint8Array;
+  output: Uint8Array;
+}
+
 export interface PrfAuthenticator {
   /** A platform authenticator with the PRF extension is usable in this browser. */
   isSupported(): Promise<boolean>;
-  /** One user-verified assertion for [credentialId]; the PRF output for [salt] (32 bytes). */
+  /**
+   * One user-verified assertion for [credentialId]. [salt] is the blob salt; the authenticator applies the label
+   * before the PRF sees it. The PRF output is 32 bytes.
+   */
   evaluate(credentialId: Uint8Array, salt: Uint8Array): Promise<PrfResult>;
   /**
    * Makes a new passkey for this site. The credential id, or null when the person cancelled.
    * A credential that cannot produce a PRF output is refused (the promise rejects).
+   * The id is not stored until {@link commitRegistration} — success is the sealed blob, not the ceremony.
    */
   registerPasskey(displayName: string): Promise<Uint8Array | null>;
+  /**
+   * PRF output already produced for [credentialId] during registration, and the salt it was evaluated on.
+   * Null when this registration did not produce one. Consumed once.
+   */
+  consumeRegistrationPrf?(credentialId: Uint8Array): RegistrationPrf | null;
+  /** Remember the credential id once the sealed blob that uses its PRF output is stored. */
+  commitRegistration?(credentialId: Uint8Array): Promise<void>;
 }
 
 export interface SealedBlob {
@@ -122,11 +139,21 @@ export async function sealWithPrf(
 ): Promise<
   SealedBlob | { ok: false; reason: "CANCELLED" | "NOT_SUPPORTED" | "FAILED" }
 > {
-  const salt = p.randomBytes(32);
-  const r = await prf.evaluate(credentialId, prfInput(salt));
-  if (r.kind !== "OK") return { ok: false, reason: r.kind };
+  // Registration may already have evaluated a salt (one Windows Hello PIN). Use that output.
+  // Otherwise evaluate the raw blob salt; the authenticator applies the label once.
+  const pending = prf.consumeRegistrationPrf?.(credentialId) ?? null;
+  const salt = pending?.salt ?? p.randomBytes(32);
+  const evaluated = pending ? null : await prf.evaluate(credentialId, salt);
+  if (!pending && evaluated?.kind !== "OK") {
+    return { ok: false, reason: evaluated?.kind ?? "FAILED" };
+  }
+  const output = pending ? pending.output : evaluated && evaluated.kind === "OK" ? evaluated.output : null;
+  if (!output || output.length !== 32) {
+    output?.fill(0);
+    return { ok: false, reason: "NOT_SUPPORTED" };
+  }
   try {
-    const key = await sealKey(p, r.output, salt);
+    const key = await sealKey(p, output, salt);
     const nonce = p.randomBytes(12);
     const ciphertext = await p.aesGcmSeal(
       key,
@@ -137,14 +164,14 @@ export async function sealWithPrf(
     return {
       v: 1,
       credentialId: credentialId.slice(),
-      salt,
+      salt: salt.slice(),
       nonce,
       ciphertext,
     };
   } catch {
     return { ok: false, reason: "FAILED" };
   } finally {
-    r.output.fill(0);
+    output.fill(0);
   }
 }
 
@@ -157,7 +184,7 @@ export async function openWithPrf(
   onPrf?: (output: Uint8Array) => Promise<void>,
 ): Promise<SealOpen> {
   if (blob.v !== 1) return { ok: false, reason: "FAILED" };
-  const r = await prf.evaluate(blob.credentialId, prfInput(blob.salt));
+  const r = await prf.evaluate(blob.credentialId, blob.salt);
   if (r.kind !== "OK") return { ok: false, reason: r.kind };
   try {
     if (onPrf) await onPrf(r.output);

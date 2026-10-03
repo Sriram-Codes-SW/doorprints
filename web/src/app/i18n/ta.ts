@@ -1323,6 +1323,8 @@ export const ta: Dict = {
   // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerCancelled': 'கேட்பு ரத்து செய்யப்பட்டது.',
   'drivePasskey.registerFailed': 'தவணை அமைக்க முடியவில்லை. மீண்டும் முயலவும்.',
+  // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'இந்த தவணை நீக்கங்களை முத்திரையிடத் தேவையான PRF வெளியீட்டைத் தரவில்லை.',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'இப்போது ஒத்திசைக்கவும்',

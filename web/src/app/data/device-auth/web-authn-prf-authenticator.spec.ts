@@ -19,8 +19,9 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { utf8 } from "../crypto/bytes";
 import { WebCryptoProvider } from "../crypto/crypto-provider";
-import { prfInput } from "./prf-seal";
-import { WebAuthnPrfAuthenticator } from "./web-authn-prf-authenticator";
+import { DriveDeletionAdapterImpl, InMemoryKeyValueStore } from "../drive/connect/deletion-adapter";
+import { SEALED_BLOB_KEY, openWithPrf, prfInput, sealedBlobFromJson } from "./prf-seal";
+import { PasskeyPrfMissingError, WebAuthnPrfAuthenticator } from "./web-authn-prf-authenticator";
 
 // Polyfill PublicKeyCredential for testing if not available
 if (typeof globalThis.PublicKeyCredential === "undefined") {
@@ -38,8 +39,13 @@ class FakeCredentialsContainer {
   private scriptError: Error | null = null;
   recordedCreateOptions: CredentialCreationOptions | null = null;
   recordedGetOptions: CredentialRequestOptions | null = null;
-  /** When false, registration reports a credential that cannot produce a PRF output. */
+  /** When false, registration reports `prf.enabled: false`. That flag is not the PRF output. */
   createPrfEnabled = true;
+  /** When true, create returns a 32-byte `results.first` derived the same way as get. */
+  createReturnsPrf = false;
+  /** When false, get returns no PRF output (the ceremony can still succeed). */
+  getReturnsPrf = true;
+  getCalls = 0;
 
   constructor(prfSecret: Uint8Array = utf8("fake-prf-secret")) {
     this.prfSecret = prfSecret;
@@ -78,6 +84,13 @@ class FakeCredentialsContainer {
     // Store the raw credential ID for later retrieval by ID string
     this.registeredCredentials.set(idString, credId);
 
+    const extensionInput = (options.publicKey as { extensions?: { prf?: { eval?: { first?: BufferSource } } } })
+      ?.extensions?.prf;
+    const saltFirst = extensionInput?.eval?.first
+      ? new Uint8Array(extensionInput.eval.first as ArrayBuffer)
+      : new Uint8Array(32);
+    const derived = this.createReturnsPrf ? await this.derive(credId, saltFirst) : null;
+
     const credential = {
       id: idString,
       type: "public-key",
@@ -88,7 +101,9 @@ class FakeCredentialsContainer {
       authenticatorAttachment: "platform",
       transports: ["internal"],
       getClientExtensionResults: () => ({
-        prf: { enabled: this.createPrfEnabled },
+        prf: derived
+          ? { enabled: this.createPrfEnabled, results: { first: derived.buffer } }
+          : { enabled: this.createPrfEnabled },
       }),
       toJSON: () => ({
         id: idString,
@@ -109,7 +124,17 @@ class FakeCredentialsContainer {
    * Get an assertion with PRF extension. Derives the PRF output from the registered
    * credential ID and the salt provided in the PRF extension input.
    */
+  private async derive(credIdUint8: Uint8Array, saltFirst: Uint8Array): Promise<Uint8Array> {
+    const hashData = new Uint8Array(credIdUint8.length + saltFirst.length + this.prfSecret.length);
+    hashData.set(credIdUint8, 0);
+    hashData.set(saltFirst, credIdUint8.length);
+    hashData.set(this.prfSecret, credIdUint8.length + saltFirst.length);
+    const hash = await crypto.subtle.digest("SHA-256", hashData);
+    return new Uint8Array(hash).slice(0, 32);
+  }
+
   async get(options: CredentialRequestOptions): Promise<Credential | null> {
+    this.getCalls++;
     // Record the options for assertions
     this.recordedGetOptions = options;
 
@@ -138,15 +163,7 @@ class FakeCredentialsContainer {
     const saltFirst = extensionInput?.eval?.first
       ? new Uint8Array(extensionInput.eval.first)
       : new Uint8Array(32);
-
-    // Use HMAC-SHA256 to derive deterministic output
-    const hashData = new Uint8Array(credIdUint8.length + saltFirst.length + this.prfSecret.length);
-    hashData.set(credIdUint8, 0);
-    hashData.set(saltFirst, credIdUint8.length);
-    hashData.set(this.prfSecret, credIdUint8.length + saltFirst.length);
-
-    const hash = await crypto.subtle.digest("SHA-256", hashData);
-    const prfOutput = new Uint8Array(hash).slice(0, 32);
+    const prfOutput = this.getReturnsPrf ? await this.derive(credIdUint8, saltFirst) : null;
 
     const assertion = {
       id: idString,
@@ -159,10 +176,9 @@ class FakeCredentialsContainer {
       },
       authenticatorAttachment: "platform",
       getClientExtensionResults: () => ({
-        prf: {
-          enabled: true,
-          results: { first: prfOutput.buffer },
-        },
+        prf: prfOutput
+          ? { enabled: true, results: { first: prfOutput.buffer } }
+          : { enabled: false },
       }),
       toJSON: () => ({
         id: idString,
@@ -216,7 +232,7 @@ describe("WebAuthnPrfAuthenticator", () => {
   };
 
   describe("registerPasskey()", () => {
-    it("persists the credential ID through the store", async () => {
+    it("does not persist the credential ID until the sealed blob is kept", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
 
@@ -224,7 +240,9 @@ describe("WebAuthnPrfAuthenticator", () => {
 
       expect(credId).not.toBeNull();
       expect(credId).toHaveLength(16);
+      expect(await store.get("doorprints-webauthn-credential-id")).toBeUndefined();
 
+      await auth.commitRegistration(credId!);
       const stored = await store.get("doorprints-webauthn-credential-id");
       expect(stored).toBeDefined();
       expect(Array.from(new Uint8Array(stored!.split(",").map(Number)))).toEqual(
@@ -261,6 +279,7 @@ describe("WebAuthnPrfAuthenticator", () => {
       const store = createStore();
       const auth1 = new WebAuthnPrfAuthenticator(store.get, store.set);
       const credId1 = await auth1.registerPasskey("Test User");
+      await auth1.commitRegistration(credId1!);
 
       const auth2 = new WebAuthnPrfAuthenticator(store.get, store.set);
       const supported = await auth2.isSupported();
@@ -305,7 +324,7 @@ describe("WebAuthnPrfAuthenticator", () => {
           requireResidentKey?: boolean;
           userVerification?: string;
         };
-        extensions?: { prf?: Record<string, never> };
+        extensions?: { prf?: { eval?: { first?: BufferSource } } };
       };
       expect(opts.pubKeyCredParams).toEqual([
         { alg: -7, type: "public-key" },
@@ -317,16 +336,84 @@ describe("WebAuthnPrfAuthenticator", () => {
         requireResidentKey: true,
         userVerification: "required",
       });
-      expect(opts.extensions?.prf).toEqual({});
+      const evalFirst = opts.extensions?.prf?.eval?.first;
+      expect(evalFirst).toBeDefined();
+      expect(new Uint8Array(evalFirst as ArrayBuffer).length).toBe(prfInput(new Uint8Array(32)).length);
     });
 
     it("does not keep a credential that cannot produce a PRF output", async () => {
       const store = createStore();
       const auth = new WebAuthnPrfAuthenticator(store.get, store.set);
+      // Windows Hello: the PIN ceremony succeeds and reports enabled false, and the assertion
+      // also returns no PRF output. That must not be stored, and must not stop at the flag alone.
       fakeCredentials.createPrfEnabled = false;
+      fakeCredentials.getReturnsPrf = false;
 
-      await expect(auth.registerPasskey("Test User")).rejects.toThrow(/PRF/);
+      await expect(auth.registerPasskey("Test User")).rejects.toBeInstanceOf(PasskeyPrfMissingError);
+      expect(fakeCredentials.getCalls).toBe(1);
       expect(await store.get("doorprints-webauthn-credential-id")).toBeUndefined();
+    });
+
+    it("finishes setup from a Windows Hello PIN when create returns the PRF output and enabled is false", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const crypto = new WebCryptoProvider();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createPrfEnabled = false;
+      fakeCredentials.createReturnsPrf = true;
+
+      const adapter = new DriveDeletionAdapterImpl(
+        {} as never,
+        {} as never,
+        {} as never,
+        "root",
+        null,
+        undefined,
+        crypto,
+        auth,
+        kv,
+      );
+
+      expect(await adapter.registerPasskey()).toBe("registered");
+      // One PIN: the output came back from create, so no second ceremony.
+      expect(fakeCredentials.getCalls).toBe(0);
+      expect(await kv.get("doorprints-webauthn-credential-id")).toBeDefined();
+      const stored = await kv.get(SEALED_BLOB_KEY);
+      expect(stored).toBeDefined();
+      const blob = sealedBlobFromJson(stored!);
+      expect(blob).not.toBeNull();
+      const opened = await openWithPrf(crypto, auth, blob!);
+      expect(opened.ok).toBe(true);
+    });
+
+    it("does not store a sealed blob when the PIN succeeds and the PRF output is missing", async () => {
+      const kv = new InMemoryKeyValueStore();
+      const crypto = new WebCryptoProvider();
+      const auth = new WebAuthnPrfAuthenticator(
+        (key) => kv.get(key),
+        (key, value) => kv.set(key, value),
+      );
+      fakeCredentials.createPrfEnabled = false;
+      fakeCredentials.getReturnsPrf = false;
+
+      const adapter = new DriveDeletionAdapterImpl(
+        {} as never,
+        {} as never,
+        {} as never,
+        "root",
+        null,
+        undefined,
+        crypto,
+        auth,
+        kv,
+      );
+
+      expect(await adapter.registerPasskey()).toBe("no-prf");
+      expect(fakeCredentials.getCalls).toBe(1);
+      expect(await kv.get("doorprints-webauthn-credential-id")).toBeUndefined();
+      expect(await kv.get(SEALED_BLOB_KEY)).toBeUndefined();
     });
 
     it("uses userVerification 'required' in creation options", async () => {

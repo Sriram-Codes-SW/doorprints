@@ -1323,6 +1323,8 @@ export const hi: Dict = {
   // 2026-10-03: a cancelled or failed passkey prompt. Under review (owner rule: hi/ta/te ship marked under review).
   'drivePasskey.registerCancelled': 'संकेत रद्द कर दिया गया।',
   'drivePasskey.registerFailed': 'पासकी सेट नहीं हो सकी। फिर कोशिश करें।',
+  // 2026-10-03: the passkey did not return a PRF output. Under review (owner rule: hi/ta/te ship marked under review).
+  'drivePasskey.registerNoPrf': 'इस पासकी ने विलोपन सील करने के लिए ज़रूरी PRF आउटपुट नहीं दिया।',
 
   // Google Drive sync component (S4b-BL-117) - Under review
   'driveSync.syncNow': 'अभी सिंक करें',
