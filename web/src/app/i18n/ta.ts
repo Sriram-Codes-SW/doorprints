@@ -1285,7 +1285,8 @@ export const ta: Dict = {
   'driveProblem.DEVICE_REVOKED': 'இந்தச் சாதனம் இந்தக் கோப்புறையைப் பயன்படுத்த இனி அனுமதிக்கப்படவில்லை.',
   'driveProblem.CONTROL_ROLLED_BACK': 'கோப்புறை கட்டுப்பாட்டுக் கோப்பு இந்தச் சாதனம் கடைசியாகப் பார்த்ததை விடப் பழையது.',
   'driveProblem.CONTROL_INVALID': 'கோப்புறை கட்டுப்பாட்டுக் கோப்பு பாதுகாப்பு சோதனைகளைத் தாண்டவில்லை.',
-  'driveProblem.FOLDER_WITHOUT_KEYS': 'இந்த Google Drive கோப்புறையில் விசைப் பட்டியல் இல்லை.',
+  // 2026-10-03: a folder that still holds files. Under review (owner rule: hi/ta/te ship marked under review).
+  'driveProblem.FOLDER_WITHOUT_KEYS': 'இந்த Google Drive கோப்புறையில் விசைப் பட்டியல் இல்லை, வேறு கோப்புகளும் இன்னும் உள்ளன. Doorprints அந்தக் கோப்புகளை மாற்றாது. ஏற்கனவே இணைக்கப்பட்ட சாதனத்தில் Doorprintsஐத் திறக்கவும், அல்லது Google Drive இல் Doorprints கோப்புறையை நீக்கி மீண்டும் இணைக்கவும்.',
   'driveProblem.FOLDER_EXISTS': 'இந்த Google Drive இல் Doorprints கோப்புறை ஏற்கனவே உள்ளது.',
   'driveProblem.BACKUP_REFUSED': 'இந்தப் பேக்கப் மறுக்கப்பட்டது.',
   'driveProblem.SOURCE_FAILED': 'இந்த உலாவி பேக்கப்பைத் தயாரிக்க முடியவில்லை.',

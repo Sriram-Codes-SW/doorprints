@@ -106,6 +106,12 @@ export class DbFolderTrustStores implements FolderTrustStores {
       },
     };
   }
+
+  /** An empty shell is finished with a new key set. An empty string reads back as no pin. */
+  async forgetShell(rootId: string): Promise<void> {
+    await this.keyValueStore.set(`keys:${rootId}`, '');
+    await this.keyValueStore.set(`control:${rootId}`, '');
+  }
 }
 
 // Watermarks hold byte arrays; JSON.stringify would turn them into plain objects and a reloaded pin would never equal

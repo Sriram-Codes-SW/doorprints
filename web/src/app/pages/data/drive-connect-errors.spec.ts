@@ -217,6 +217,19 @@ describe('DriveConnectService error states on the card (en and hi)', () => {
       expect(box?.textContent).toContain(i18n.t('common.retry'));
     });
 
+    it(`${lang}: a folder that still holds files says what to do, and never says Restore`, async () => {
+      const backup = stubBackup({
+        connect: async () => ({ kind: 'ERROR', problem: new DriveProblem('FOLDER_WITHOUT_KEYS') }),
+      });
+      const { host, i18n, component, fixture } = await renderConnect(makeService('client', backup), lang);
+      await component.onConnect();
+      await flush();
+      fixture.detectChanges();
+      shownIsTranslated(host, i18n, 'driveProblem.FOLDER_WITHOUT_KEYS');
+      expect(host.textContent?.toLowerCase()).not.toContain('restore');
+      expect(host.textContent).toContain(i18n.t('driveProblem.FOLDER_WITHOUT_KEYS'));
+    });
+
     it(`${lang}: a thrown folder-creation error shows the generic sentence, never the throw text`, async () => {
       const leak = 'secret stack from folder create';
       const backup = stubBackup({
