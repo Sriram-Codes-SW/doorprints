@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DriveSyncState } from '../../drive-sync-seams';
 import type { PhotoState } from '../../drive-photo-seams';
+import { normalizeDeviceState } from '../../backup/drive-backup-seams';
 import type { DriveDeviceState } from '../../backup/drive-backup-seams';
 import type { KeyValueStore } from '../deletion-adapter';
 import type { KeysWatermarkStore } from '../../../crypto/keys-file';
@@ -268,6 +269,7 @@ describe('DriveDb stores', () => {
         keysId: null,
         controlId: null,
         creatingRootId: null,
+        creatingKeysHash: null,
         lastBackupId: null,
         lastSuccessAt: null,
         lastAttemptAt: null,
@@ -298,6 +300,7 @@ describe('DriveDb stores', () => {
         keysId: 'keys-101112',
         controlId: 'control-131415',
         creatingRootId: null,
+        creatingKeysHash: null,
         lastBackupId: 'backup-161718',
         lastSuccessAt: Date.now(),
         lastAttemptAt: Date.now(),
@@ -313,5 +316,27 @@ describe('DriveDb stores', () => {
       expect(loaded.rootId).toBe('root-456');
       expect(loaded.confirmedDrops).toHaveLength(2);
     });
+  });
+
+  it('an older device state without a keys hash does not invent one', () => {
+    const loaded = normalizeDeviceState({
+      deviceId: null,
+      rootId: 'root-old',
+      backupsId: null,
+      keysId: null,
+      controlId: null,
+      creatingRootId: 'root-old',
+      lastBackupId: null,
+      lastSuccessAt: null,
+      lastAttemptAt: null,
+      lastFailure: null,
+      lastVerifyAt: null,
+      newestSeenAt: null,
+      confirmedDrops: ['kept'],
+    });
+    expect(loaded.rootId).toBe('root-old');
+    expect(loaded.creatingRootId).toBe('root-old');
+    expect(loaded.creatingKeysHash).toBeNull();
+    expect(loaded.confirmedDrops).toEqual(['kept']);
   });
 });

@@ -69,6 +69,7 @@ class MemoryStateStore implements DriveStateStore {
     controlId: null,
     backupsId: null,
     creatingRootId: null,
+    creatingKeysHash: null,
     deviceId: null,
     confirmedDrops: [],
     lastSuccessAt: null,
